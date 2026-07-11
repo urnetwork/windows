@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- urnetworkd — the URnetwork Windows service. SPDX-License-Identifier: MPL-2.0 -->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64"><Configuration>Debug</Configuration><Platform>ARM64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64"><Configuration>Release</Configuration><Platform>ARM64</Platform></ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{A1B2C3D4-0002-4E5F-8A9B-000000000002}</ProjectGuid>
+    <RootNamespace>urnetworkd</RootNamespace>
+    <ConfigurationType>Application</ConfigurationType>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
+    <WholeProgramOptimization Condition="'$(Configuration)'=='Release'">true</WholeProgramOptimization>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreaded</RuntimeLibrary>
+      <Optimization Condition="'$(Configuration)'=='Release'">MaxSpeed</Optimization>
+      <!-- wintun.h ships beside the vendored wintun.dll under third_party -->
+      <AdditionalIncludeDirectories>$(UrnWintunDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalLibraryDirectories>$(UrnSdkDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>URnetworkSdk.lib;iphlpapi.lib;ws2_32.lib;advapi32.lib;shell32.lib;ntdll.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <!-- copy the SDK dll (and wintun) next to the service exe for local runs -->
+    <PostBuildEvent>
+      <Command>copy /y "$(UrnSdkDir)URnetworkSdk.dll" "$(OutDir)" &amp; copy /y "$(UrnWintunDir)bin\$(UrnSdkArch)\wintun.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="ControlServer.cpp" />
+    <ClCompile Include="TunnelController.cpp" />
+    <ClCompile Include="Wintun.cpp" />
+    <ClCompile Include="PacketPump.cpp" />
+    <ClCompile Include="NetworkConfig.cpp" />
+    <ClCompile Include="EgressMonitor.cpp" />
+    <ClCompile Include="SplitTunnelClient.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ControlServer.h" />
+    <ClInclude Include="TunnelController.h" />
+    <ClInclude Include="Wintun.h" />
+    <ClInclude Include="PacketPump.h" />
+    <ClInclude Include="NetworkConfig.h" />
+    <ClInclude Include="EgressMonitor.h" />
+    <ClInclude Include="SplitTunnelClient.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Common\Common.vcxproj">
+      <Project>{A1B2C3D4-0001-4E5F-8A9B-000000000001}</Project>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

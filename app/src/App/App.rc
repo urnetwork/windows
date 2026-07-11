@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: MPL-2.0
+#include "resource.h"
+
+// App icon (taskbar, alt-tab).
+IDI_APP ICON "Assets\\app.ico"
+
+// Tray icons — light taskbar variants (dark icon art), TrayState order.
+IDI_TRAY_LIGHT_NOPROVIDE_NOCONNECT ICON "Assets\\tray_light_noprovide_noconnect.ico"
+IDI_TRAY_LIGHT_NOPROVIDE_CONNECT   ICON "Assets\\tray_light_noprovide_connect.ico"
+IDI_TRAY_LIGHT_PROVIDE_NOCONNECT   ICON "Assets\\tray_light_provide_noconnect.ico"
+IDI_TRAY_LIGHT_PROVIDE_CONNECT     ICON "Assets\\tray_light_provide_connect.ico"
+
+// Tray icons — dark taskbar variants (light icon art), TrayState order.
+IDI_TRAY_DARK_NOPROVIDE_NOCONNECT  ICON "Assets\\tray_dark_noprovide_noconnect.ico"
+IDI_TRAY_DARK_NOPROVIDE_CONNECT    ICON "Assets\\tray_dark_noprovide_connect.ico"
+IDI_TRAY_DARK_PROVIDE_NOCONNECT    ICON "Assets\\tray_dark_provide_noconnect.ico"
+IDI_TRAY_DARK_PROVIDE_CONNECT      ICON "Assets\\tray_dark_provide_connect.ico"

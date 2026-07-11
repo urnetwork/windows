@@ -1,0 +1,70 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.0.0
+MinimumVisualStudioVersion = 10.0.40219.1
+# URnetwork Windows solution. Common/Service/App build with the MSVC v143
+# toolset. SplitTunnel (driver) requires the WDK; Installer requires the WiX
+# toolset. See README.md.
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Common", "src\Common\Common.vcxproj", "{A1B2C3D4-0001-4E5F-8A9B-000000000001}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "urnetworkd", "src\Service\Service.vcxproj", "{A1B2C3D4-0002-4E5F-8A9B-000000000002}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001} = {A1B2C3D4-0001-4E5F-8A9B-000000000001}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "URnetwork", "src\App\App.vcxproj", "{A1B2C3D4-0003-4E5F-8A9B-000000000003}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001} = {A1B2C3D4-0001-4E5F-8A9B-000000000001}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SplitTunnel", "driver\SplitTunnel.vcxproj", "{A1B2C3D4-0004-4E5F-8A9B-000000000004}"
+EndProject
+Project("{930C7802-8A8C-48F9-8165-68863BCCD9DD}") = "Installer", "installer\Installer.wixproj", "{A1B2C3D4-0005-4E5F-8A9B-000000000005}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+		Debug|ARM64 = Debug|ARM64
+		Release|ARM64 = Release|ARM64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001}.Debug|x64.ActiveCfg = Debug|x64
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001}.Debug|x64.Build.0 = Debug|x64
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001}.Release|x64.ActiveCfg = Release|x64
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001}.Release|x64.Build.0 = Release|x64
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001}.Debug|ARM64.Build.0 = Debug|ARM64
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001}.Release|ARM64.ActiveCfg = Release|ARM64
+		{A1B2C3D4-0001-4E5F-8A9B-000000000001}.Release|ARM64.Build.0 = Release|ARM64
+		{A1B2C3D4-0002-4E5F-8A9B-000000000002}.Debug|x64.ActiveCfg = Debug|x64
+		{A1B2C3D4-0002-4E5F-8A9B-000000000002}.Debug|x64.Build.0 = Debug|x64
+		{A1B2C3D4-0002-4E5F-8A9B-000000000002}.Release|x64.ActiveCfg = Release|x64
+		{A1B2C3D4-0002-4E5F-8A9B-000000000002}.Release|x64.Build.0 = Release|x64
+		{A1B2C3D4-0002-4E5F-8A9B-000000000002}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{A1B2C3D4-0002-4E5F-8A9B-000000000002}.Debug|ARM64.Build.0 = Debug|ARM64
+		{A1B2C3D4-0002-4E5F-8A9B-000000000002}.Release|ARM64.ActiveCfg = Release|ARM64
+		{A1B2C3D4-0002-4E5F-8A9B-000000000002}.Release|ARM64.Build.0 = Release|ARM64
+		{A1B2C3D4-0003-4E5F-8A9B-000000000003}.Debug|x64.ActiveCfg = Debug|x64
+		{A1B2C3D4-0003-4E5F-8A9B-000000000003}.Debug|x64.Build.0 = Debug|x64
+		{A1B2C3D4-0003-4E5F-8A9B-000000000003}.Release|x64.ActiveCfg = Release|x64
+		{A1B2C3D4-0003-4E5F-8A9B-000000000003}.Release|x64.Build.0 = Release|x64
+		{A1B2C3D4-0003-4E5F-8A9B-000000000003}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{A1B2C3D4-0003-4E5F-8A9B-000000000003}.Debug|ARM64.Build.0 = Debug|ARM64
+		{A1B2C3D4-0003-4E5F-8A9B-000000000003}.Release|ARM64.ActiveCfg = Release|ARM64
+		{A1B2C3D4-0003-4E5F-8A9B-000000000003}.Release|ARM64.Build.0 = Release|ARM64
+		{A1B2C3D4-0004-4E5F-8A9B-000000000004}.Debug|x64.ActiveCfg = Debug|x64
+		{A1B2C3D4-0004-4E5F-8A9B-000000000004}.Release|x64.ActiveCfg = Release|x64
+		{A1B2C3D4-0004-4E5F-8A9B-000000000004}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{A1B2C3D4-0004-4E5F-8A9B-000000000004}.Release|ARM64.ActiveCfg = Release|ARM64
+		{A1B2C3D4-0005-4E5F-8A9B-000000000005}.Debug|x64.ActiveCfg = Debug|x64
+		{A1B2C3D4-0005-4E5F-8A9B-000000000005}.Release|x64.ActiveCfg = Release|x64
+		{A1B2C3D4-0005-4E5F-8A9B-000000000005}.Release|x64.Build.0 = Release|x64
+		{A1B2C3D4-0005-4E5F-8A9B-000000000005}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{A1B2C3D4-0005-4E5F-8A9B-000000000005}.Release|ARM64.ActiveCfg = Release|ARM64
+		{A1B2C3D4-0005-4E5F-8A9B-000000000005}.Release|ARM64.Build.0 = Release|ARM64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

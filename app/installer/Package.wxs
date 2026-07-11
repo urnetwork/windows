@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- URnetwork MSI (WiX v5). Installs the tray app, the urnetworkd service, the
+     vendored wintun DLL, and (optionally) the split-tunnel driver. Per-machine.
+     The WindowsAppRuntime is chained by the outer bundle (see README); this
+     package is the payload. Distributed via the Microsoft Store as a Win32 MSI.
+     SPDX-License-Identifier: MPL-2.0 -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
+
+  <Package Name="URnetwork" Manufacturer="URnetwork" Version="0.0.1.0"
+           UpgradeCode="a7c1e2d3-4b5f-6081-9c2d-3e4f50617283"
+           Scope="perMachine" Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of URnetwork is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Build binaries are staged under $(var.BinDir) by the .wixproj. -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="URnetwork">
+
+        <!-- Tray app + SDK -->
+        <Component Id="AppExe" Guid="*">
+          <File Id="URnetworkExe" Source="$(var.BinDir)\URnetwork.exe" KeyPath="yes" />
+        </Component>
+        <Component Id="SdkDll" Guid="*">
+          <File Id="URnetworkSdkDll" Source="$(var.BinDir)\URnetworkSdk.dll" KeyPath="yes" />
+        </Component>
+
+        <!-- Service + wintun -->
+        <Component Id="ServiceExe" Guid="*">
+          <File Id="urnetworkdExe" Source="$(var.BinDir)\urnetworkd.exe" KeyPath="yes" />
+          <!-- Register urnetworkd as an auto-start LocalSystem service. -->
+          <ServiceInstall Id="UrnetworkdService" Name="urnetworkd"
+                          DisplayName="URnetwork Service" Type="ownProcess"
+                          Start="auto" ErrorControl="normal"
+                          Description="Runs the URnetwork VPN tunnel."
+                          Account="LocalSystem">
+            <ServiceConfig DelayedAutoStart="no" OnInstall="yes" OnReinstall="yes" />
+            <!-- restart on crash (plan M4) -->
+            <util:ServiceConfig xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+                                FirstFailureActionType="restart"
+                                SecondFailureActionType="restart"
+                                ThirdFailureActionType="none"
+                                RestartServiceDelayInSeconds="5" ResetPeriodInDays="1" />
+          </ServiceInstall>
+          <ServiceControl Id="UrnetworkdControl" Name="urnetworkd"
+                          Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+        </Component>
+        <Component Id="WintunDll" Guid="*">
+          <File Id="wintunDll" Source="$(var.BinDir)\wintun.dll" KeyPath="yes" />
+        </Component>
+
+        <!-- Split-tunnel driver payload (installed as a demand-start kernel
+             service via its own control; attestation-signed in production). -->
+        <Component Id="SplitTunnelDriver" Guid="*" Condition="INSTALLDRIVER=1">
+          <File Id="SplitTunnelSys" Source="$(var.BinDir)\SplitTunnel.sys" KeyPath="yes" />
+          <ServiceInstall Id="SplitTunnelSvc" Name="URnetworkSplitTunnel"
+                          DisplayName="URnetwork Split Tunnel" Type="kernelDriver"
+                          Start="demand" ErrorControl="normal" />
+          <ServiceControl Id="SplitTunnelCtl" Name="URnetworkSplitTunnel"
+                          Stop="uninstall" Remove="uninstall" Wait="yes" />
+        </Component>
+
+      </Directory>
+    </StandardDirectory>
+
+    <!-- urnetwork:// protocol handler (OAuth callbacks + deep links) -->
+    <StandardDirectory Id="TARGETDIR">
+      <Component Id="UriScheme" Guid="*">
+        <RegistryKey Root="HKLM" Key="Software\Classes\urnetwork">
+          <RegistryValue Type="string" Value="URL:URnetwork Protocol" />
+          <RegistryValue Name="URL Protocol" Type="string" Value="" />
+          <RegistryKey Key="shell\open\command">
+            <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]URnetwork.exe&quot; &quot;%1&quot;" />
+          </RegistryKey>
+        </RegistryKey>
+      </Component>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="URnetwork" Level="1">
+      <ComponentRef Id="AppExe" />
+      <ComponentRef Id="SdkDll" />
+      <ComponentRef Id="ServiceExe" />
+      <ComponentRef Id="WintunDll" />
+      <ComponentRef Id="UriScheme" />
+    </Feature>
+    <Feature Id="SplitTunnel" Title="Per-app split tunneling" Level="1">
+      <ComponentRef Id="SplitTunnelDriver" />
+    </Feature>
+
+    <Property Id="INSTALLDRIVER" Value="1" />
+  </Package>
+</Wix>

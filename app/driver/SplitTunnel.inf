@@ -1,0 +1,47 @@
+; URnetwork split-tunnel WFP callout driver.
+; Non-PnP software (kernel service) driver, installed by the MSI / service.
+; SPDX-License-Identifier: MPL-2.0
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = WFPCALLOUTS
+ClassGuid   = {57465043-616C-6C6F-7574-5F636C617373}
+Provider    = %ManufacturerName%
+CatalogFile = SplitTunnel.cat
+DriverVer   =
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 12  ; %windir%\System32\drivers
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+SplitTunnel.sys = 1
+
+[DefaultInstall.NTamd64]
+CopyFiles = SplitTunnel.CopyFiles
+
+[DefaultInstall.NTamd64.Services]
+AddService = URnetworkSplitTunnel,,SplitTunnel.Service
+
+[DefaultInstall.NTarm64]
+CopyFiles = SplitTunnel.CopyFiles
+
+[DefaultInstall.NTarm64.Services]
+AddService = URnetworkSplitTunnel,,SplitTunnel.Service
+
+[SplitTunnel.CopyFiles]
+SplitTunnel.sys
+
+[SplitTunnel.Service]
+DisplayName   = %ServiceName%
+ServiceType   = 1              ; SERVICE_KERNEL_DRIVER
+StartType     = 3             ; SERVICE_DEMAND_START (service starts it on demand)
+ErrorControl  = 1             ; SERVICE_ERROR_NORMAL
+ServiceBinary = %12%\SplitTunnel.sys
+
+[Strings]
+ManufacturerName = "URnetwork"
+DiskName         = "URnetwork Split Tunnel Installation Disk"
+ServiceName      = "URnetwork Split Tunnel"

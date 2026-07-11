@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- URnetwork main window. Sign-in panel, then a NavigationView home with the
+     macOS sections: Connect, Account, Wallet, Leaderboard, Support, Settings.
+     Each home panel is driven by MainWindow code-behind over the SDK Api.
+     SPDX-License-Identifier: MPL-2.0 -->
+<Window
+    x:Class="URnetwork.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    Title="URnetwork">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Margin="16,12" Text="URnetwork"
+                   FontSize="18" FontWeight="SemiBold" />
+
+        <!-- Sign-in -->
+        <StackPanel x:Name="LoginPanel" Grid.Row="1" Margin="24" Spacing="12"
+                    MaxWidth="360" VerticalAlignment="Center">
+            <TextBlock Text="Sign in" FontSize="20" FontWeight="SemiBold" />
+            <TextBox x:Name="EmailBox" Header="Email or phone"
+                     PlaceholderText="you@example.com" />
+            <PasswordBox x:Name="PasswordBox" Header="Password" />
+            <Button x:Name="SignInButton" Content="Sign in"
+                    Style="{StaticResource AccentButtonStyle}"
+                    HorizontalAlignment="Stretch" Click="OnSignIn" />
+            <muxc:InfoBar x:Name="LoginError" Severity="Error" IsOpen="False" IsClosable="False" />
+            <TextBlock Text="Or use a device code" Margin="0,8,0,0"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="CodeBox" Grid.Column="0" PlaceholderText="device code" />
+                <Button x:Name="CodeButton" Grid.Column="1" Content="Use code" Click="OnUseCode" />
+            </Grid>
+        </StackPanel>
+
+        <!-- Home -->
+        <muxc:NavigationView x:Name="HomeNav" Grid.Row="1" Visibility="Collapsed"
+                             IsBackButtonVisible="Collapsed" PaneDisplayMode="Top"
+                             SelectionChanged="OnNavSelectionChanged">
+            <muxc:NavigationView.MenuItems>
+                <muxc:NavigationViewItem Content="Connect" Tag="connect" IsSelected="True" />
+                <muxc:NavigationViewItem Content="Account" Tag="account" />
+                <muxc:NavigationViewItem Content="Wallet" Tag="wallet" />
+                <muxc:NavigationViewItem Content="Leaderboard" Tag="leaderboard" />
+                <muxc:NavigationViewItem Content="Support" Tag="support" />
+                <muxc:NavigationViewItem Content="Settings" Tag="settings" />
+            </muxc:NavigationView.MenuItems>
+
+            <Grid Margin="24">
+                <!-- Connect -->
+                <StackPanel x:Name="ConnectView" Spacing="16" HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                    <TextBlock x:Name="StatusText" Text="Disconnected" FontSize="22"
+                               FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <Button x:Name="ConnectButton" Content="Connect"
+                            Style="{StaticResource AccentButtonStyle}" MinWidth="200"
+                            HorizontalAlignment="Center" Click="OnConnectToggle" />
+                    <TextBlock x:Name="LocationText" Text="Best available"
+                               HorizontalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <!-- live stats (macOS parity): provider window size, throughput, provide -->
+                    <TextBlock x:Name="ProviderCountText" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Name="ThroughputText" HorizontalAlignment="Center"
+                               FontFamily="Consolas"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Name="ProvideStatsText" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
+                             Severity="Warning" Title="Insufficient balance"
+                             Message="Add balance or a plan to keep connecting." />
+                </StackPanel>
+
+                <!-- Account -->
+                <ScrollViewer x:Name="AccountView" Visibility="Collapsed">
+                    <StackPanel Spacing="12" MaxWidth="520">
+                        <TextBlock Text="Account" FontSize="18" FontWeight="SemiBold" />
+                        <TextBox x:Name="NetworkNameBox" Header="Network name" />
+                        <Button Content="Save name" Click="OnSaveNetworkName" />
+                        <TextBlock x:Name="AccountAuthText"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="Referrals" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
+                        <TextBlock x:Name="ReferralText" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Wallet -->
+                <ScrollViewer x:Name="WalletView" Visibility="Collapsed">
+                    <StackPanel Spacing="12" MaxWidth="520">
+                        <TextBlock Text="Plan" FontSize="18" FontWeight="SemiBold" />
+                        <Button x:Name="UpgradeButton" Content="Upgrade with Stripe"
+                                Style="{StaticResource AccentButtonStyle}" Click="OnUpgrade" />
+                        <TextBlock Text="Redeem a balance code" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="BalanceCodeBox" Grid.Column="0" PlaceholderText="code" />
+                            <Button x:Name="RedeemButton" Grid.Column="1" Content="Redeem" Click="OnRedeemCode" />
+                        </Grid>
+                        <muxc:InfoBar x:Name="WalletInfo" IsOpen="False" IsClosable="True" />
+                        <TextBlock Text="Payout wallets" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
+                        <ListView x:Name="WalletsList" MaxHeight="200" BorderThickness="1"
+                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Leaderboard -->
+                <ScrollViewer x:Name="LeaderboardView" Visibility="Collapsed">
+                    <StackPanel Spacing="8" MaxWidth="640">
+                        <TextBlock Text="Leaderboard" FontSize="18" FontWeight="SemiBold" />
+                        <ListView x:Name="LeaderboardList" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Support -->
+                <ScrollViewer x:Name="SupportView" Visibility="Collapsed">
+                    <StackPanel Spacing="12" MaxWidth="520">
+                        <TextBlock Text="Send feedback" FontSize="18" FontWeight="SemiBold" />
+                        <muxc:RatingControl x:Name="FeedbackRating" Caption="Rating" />
+                        <TextBox x:Name="FeedbackText" Header="Anything else?"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" />
+                        <Button Content="Send" Click="OnSendFeedback" />
+                        <muxc:InfoBar x:Name="SupportInfo" IsOpen="False" IsClosable="True" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Settings -->
+                <ScrollViewer x:Name="SettingsView" Visibility="Collapsed">
+                    <StackPanel Spacing="16" MaxWidth="520">
+                        <TextBlock Text="Split tunneling" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Apps listed here bypass the VPN."
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <ListView x:Name="ExcludedAppsList" MaxHeight="220" BorderThickness="1"
+                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Add app…" Click="OnAddExcludedApp" />
+                            <Button Content="Remove selected" Click="OnRemoveExcludedApp" />
+                        </StackPanel>
+                        <TextBlock Text="Account" FontSize="18" FontWeight="SemiBold" Margin="0,16,0,0" />
+                        <Button Content="Sign out" Click="OnSignOut" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </muxc:NavigationView>
+    </Grid>
+</Window>

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: MPL-2.0
+namespace URnetwork
+{
+    [default_interface]
+    runtimeclass MainWindow : Microsoft.UI.Xaml.Window
+    {
+        MainWindow();
+    }
+}

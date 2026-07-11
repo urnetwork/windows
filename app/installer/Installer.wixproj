@@ -1,0 +1,16 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <!-- URnetwork MSI. Build: dotnet build -c Release -p:Platform=x64 (or ARM64).
+       BinDir must point at the staged binaries (app + service + wintun + driver).
+       SPDX-License-Identifier: MPL-2.0 -->
+  <PropertyGroup>
+    <OutputName>URnetwork</OutputName>
+    <OutputType>Package</OutputType>
+    <!-- default staging dir; override on the command line per arch/config -->
+    <BinDir Condition="'$(BinDir)'==''">$(MSBuildThisFileDirectory)..\build\$(Platform)\Release</BinDir>
+    <DefineConstants>BinDir=$(BinDir)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Firewall.wixext" Version="5.0.2" />
+  </ItemGroup>
+</Project>

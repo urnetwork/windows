@@ -1,0 +1,20 @@
+# build outputs
+build/
+[Bb]in/
+[Oo]bj/
+x64/
+ARM64/
+*.user
+.vs/
+
+# vcpkg / nuget
+packages/
+vcpkg_installed/
+
+# vendored binaries (fetched by tools/fetch-deps.ps1)
+third_party/urnetwork-sdk/*/
+third_party/wintun/bin/
+third_party/wintun/wintun.h
+
+# app icons (.ico) ARE committed — generated from the macOS brand art by
+# tools/make-icons.py; small, stable, and needed at build time.
