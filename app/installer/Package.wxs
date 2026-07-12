@@ -26,6 +26,14 @@
           <File Id="URnetworkSdkDll" Source="$(var.BinDir)\URnetworkSdk.dll" KeyPath="yes" />
         </Component>
 
+        <!-- Localized UI strings: the MakePri index of Strings\<locale>\Resources.resw
+             (generated from urnetwork/localizations). The app is unpackaged, so there
+             is no package to carry it — MRT Core loads it by path from next to the exe,
+             and without it every string renders as its key id. -->
+        <Component Id="ResourcesPri" Guid="*">
+          <File Id="resourcesPri" Source="$(var.BinDir)\resources.pri" KeyPath="yes" />
+        </Component>
+
         <!-- Service + wintun -->
         <Component Id="ServiceExe" Guid="*">
           <File Id="urnetworkdExe" Source="$(var.BinDir)\urnetworkd.exe" KeyPath="yes" />
@@ -80,6 +88,7 @@
     <Feature Id="Main" Title="URnetwork" Level="1">
       <ComponentRef Id="AppExe" />
       <ComponentRef Id="SdkDll" />
+      <ComponentRef Id="ResourcesPri" />
       <ComponentRef Id="ServiceExe" />
       <ComponentRef Id="WintunDll" />
       <ComponentRef Id="UriScheme" />

@@ -1,124 +1,574 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- URnetwork main window. Sign-in panel, then a NavigationView home with the
+<!-- URnetwork main window. Sign-in flow (initial → password / create / verify /
+     reset — macOS Authenticate/** parity), then a NavigationView home with the
      macOS sections: Connect, Account, Wallet, Leaderboard, Support, Settings.
      Each home panel is driven by MainWindow code-behind over the SDK Api.
+
+     No user-facing text lives in this file: every label is named and set from the
+     shared localization store in MainWindow::ApplyStrings (Localization.h). Tags
+     ("connect", "phantom", ...) are internal identifiers, not UI text.
      SPDX-License-Identifier: MPL-2.0 -->
 <Window
     x:Class="URnetwork.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-    Title="URnetwork">
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
 
-    <Grid>
+    <Grid Background="{StaticResource UrBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Margin="16,12" Text="URnetwork"
+        <TextBlock x:Name="BrandText" Grid.Row="0" Margin="16,12"
                    FontSize="18" FontWeight="SemiBold" />
 
-        <!-- Sign-in -->
-        <StackPanel x:Name="LoginPanel" Grid.Row="1" Margin="24" Spacing="12"
-                    MaxWidth="360" VerticalAlignment="Center">
-            <TextBlock Text="Sign in" FontSize="20" FontWeight="SemiBold" />
-            <TextBox x:Name="EmailBox" Header="Email or phone"
-                     PlaceholderText="you@example.com" />
-            <PasswordBox x:Name="PasswordBox" Header="Password" />
-            <Button x:Name="SignInButton" Content="Sign in"
-                    Style="{StaticResource AccentButtonStyle}"
-                    HorizontalAlignment="Stretch" Click="OnSignIn" />
-            <muxc:InfoBar x:Name="LoginError" Severity="Error" IsOpen="False" IsClosable="False" />
-            <TextBlock Text="Or use a device code" Margin="0,8,0,0"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            <Grid ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="CodeBox" Grid.Column="0" PlaceholderText="device code" />
-                <Button x:Name="CodeButton" Grid.Column="1" Content="Use code" Click="OnUseCode" />
+        <!-- Sign-in flow: one step visible at a time (ShowLoginStep) -->
+        <ScrollViewer x:Name="LoginRoot" Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <Grid>
+
+                <!-- Initial: account discovery (email/phone), wallets, auth code -->
+                <StackPanel x:Name="LoginPanel" Margin="24" Spacing="12"
+                            MaxWidth="360" VerticalAlignment="Center">
+                    <TextBlock x:Name="SignInHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBox x:Name="EmailBox" />
+                    <Button x:Name="GetStartedButton"
+                            Style="{StaticResource AccentButtonStyle}"
+                            HorizontalAlignment="Stretch" Click="OnGetStarted" />
+                    <muxc:InfoBar x:Name="LoginError" Severity="Error" IsOpen="False" IsClosable="False" />
+
+                    <!-- Wallet sign in through the ur.io/wallet-connect browser bridge
+                         (desktop wallets are browser extensions, not deeplink apps).
+                         Bittensor first, then Solana — apple/android parity. -->
+                    <TextBlock x:Name="WalletSignInLabel" Margin="0,8,0,0"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <Button x:Name="BittensorSignInButton" HorizontalAlignment="Stretch"
+                            Click="OnSignInWithBittensor">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <!-- the bittensor tau mark -->
+                            <TextBlock x:Name="TauGlyph" FontWeight="Bold" />
+                            <TextBlock x:Name="BittensorSignInText" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock x:Name="SolanaSignInLabel" FontSize="12"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="PhantomSignInButton" Grid.Column="0" Tag="phantom"
+                                HorizontalAlignment="Stretch" Click="OnSignInWithSolana" />
+                        <Button x:Name="SolflareSignInButton" Grid.Column="1" Tag="solflare"
+                                HorizontalAlignment="Stretch" Click="OnSignInWithSolana" />
+                    </Grid>
+
+                    <TextBlock x:Name="AuthCodeLabel" Margin="0,8,0,0"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="CodeBox" Grid.Column="0" />
+                        <Button x:Name="CodeButton" Grid.Column="1" Click="OnUseCode" />
+                    </Grid>
+
+                    <!-- Guest mode (macOS GuestModeSheet parity): a text button below
+                         the wallet / auth-code options opens the terms-consent sheet
+                         that creates a one-tap throwaway network, upgradeable later
+                         from the plan card's create-account affordance -->
+                    <Button x:Name="GuestModeButton" HorizontalAlignment="Center"
+                            Background="Transparent" BorderThickness="0"
+                            Click="OnTryGuestMode" />
+                </StackPanel>
+
+                <!-- Password: an existing account signs in -->
+                <StackPanel x:Name="PasswordPanel" Margin="24" Spacing="12"
+                            MaxWidth="360" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <Button x:Name="PasswordBackButton" Tag="initial" Click="OnLoginBack" />
+                    <TextBlock x:Name="PasswordHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PasswordEmailText"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <PasswordBox x:Name="PasswordBox" KeyDown="OnPasswordKeyDown" />
+                    <Button x:Name="SignInButton"
+                            Style="{StaticResource AccentButtonStyle}"
+                            HorizontalAlignment="Stretch" Click="OnSignIn" />
+                    <muxc:InfoBar x:Name="PasswordError" Severity="Error" IsOpen="False" IsClosable="False" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock x:Name="ForgotPasswordLabel" FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                        <Button x:Name="ForgotResetButton" FontSize="12" Padding="4,2"
+                                Background="Transparent" BorderThickness="0"
+                                Click="OnForgotPassword" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Create network: sign-up (email + password), a wallet that
+                     isn't linked to a network yet (name + terms only), or the
+                     guest network's upgrade to a full account (editable email;
+                     MainWindow::EnterCreateStep drives the per-mode visibility) -->
+                <StackPanel x:Name="CreatePanel" Margin="24" Spacing="12"
+                            MaxWidth="360" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <Button x:Name="CreateBackButton" Tag="initial" Click="OnLoginBack" />
+                    <TextBlock x:Name="CreateHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="WalletCreateNote" FontSize="12" TextWrapping="Wrap"
+                               Visibility="Collapsed"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <!-- guest upgrade (the plan card's create-account affordance):
+                         status + call to action, and an editable email in place of
+                         the echoed one -->
+                    <TextBlock x:Name="GuestUpgradeNote" FontSize="12" TextWrapping="Wrap"
+                               Visibility="Collapsed"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <TextBlock x:Name="CreateEmailText"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <TextBox x:Name="CreateEmailBox" Visibility="Collapsed"
+                             TextChanged="OnCreateEmailChanged" />
+                    <TextBox x:Name="CreateNameBox" TextChanged="OnCreateNameChanged" />
+                    <TextBlock x:Name="CreateNameStatusText" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <PasswordBox x:Name="CreatePasswordBox" PasswordChanged="OnCreatePasswordChanged" />
+                    <TextBlock x:Name="CreatePasswordHint" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <CheckBox x:Name="TermsCheck" MinWidth="0" VerticalAlignment="Top"
+                                  Checked="OnTermsChanged" Unchecked="OnTermsChanged" />
+                        <!-- inlines with tappable terms/privacy links, set in code -->
+                        <TextBlock x:Name="TermsText" Grid.Column="1" TextWrapping="Wrap"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                    </Grid>
+                    <TextBox x:Name="BonusCodeBox" TextChanged="OnBonusCodeChanged" />
+                    <TextBlock x:Name="BonusStatusText" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <Button x:Name="CreateButton" IsEnabled="False"
+                            Style="{StaticResource AccentButtonStyle}"
+                            HorizontalAlignment="Stretch" Click="OnCreateNetwork" />
+                    <muxc:InfoBar x:Name="CreateError" Severity="Error" IsOpen="False" IsClosable="False" />
+                </StackPanel>
+
+                <!-- Verify: the emailed / texted one-time code -->
+                <StackPanel x:Name="VerifyPanel" Margin="24" Spacing="12"
+                            MaxWidth="360" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <Button x:Name="VerifyBackButton" Tag="initial" Click="OnLoginBack" />
+                    <TextBlock x:Name="VerifyHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="VerifyExplanationText" TextWrapping="Wrap"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <TextBox x:Name="VerifyCodeBox" MaxLength="6"
+                             TextChanged="OnVerifyCodeChanged" />
+                    <Button x:Name="VerifyButton" IsEnabled="False"
+                            Style="{StaticResource AccentButtonStyle}"
+                            HorizontalAlignment="Stretch" Click="OnVerifySubmit" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock x:Name="DontSeeItLabel" FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                        <Button x:Name="ResendCodeButton" FontSize="12" Padding="4,2"
+                                Background="Transparent" BorderThickness="0"
+                                Click="OnResendCode" />
+                    </StackPanel>
+                    <muxc:InfoBar x:Name="VerifyInfo" IsOpen="False" IsClosable="False" />
+                </StackPanel>
+
+                <!-- Password reset: send the reset link -->
+                <StackPanel x:Name="ResetPanel" Margin="24" Spacing="12"
+                            MaxWidth="360" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <Button x:Name="ResetBackButton" Tag="password" Click="OnLoginBack" />
+                    <TextBlock x:Name="ResetHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="ResetEmailText"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <TextBlock x:Name="ResetSpamNote" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <Button x:Name="SendResetButton"
+                            Style="{StaticResource AccentButtonStyle}"
+                            HorizontalAlignment="Stretch" Click="OnSendResetLink" />
+                    <muxc:InfoBar x:Name="ResetInfo" IsOpen="False" IsClosable="False" />
+                </StackPanel>
+
             </Grid>
-        </StackPanel>
+        </ScrollViewer>
 
         <!-- Home -->
         <muxc:NavigationView x:Name="HomeNav" Grid.Row="1" Visibility="Collapsed"
                              IsBackButtonVisible="Collapsed" PaneDisplayMode="Top"
                              SelectionChanged="OnNavSelectionChanged">
             <muxc:NavigationView.MenuItems>
-                <muxc:NavigationViewItem Content="Connect" Tag="connect" IsSelected="True" />
-                <muxc:NavigationViewItem Content="Account" Tag="account" />
-                <muxc:NavigationViewItem Content="Wallet" Tag="wallet" />
-                <muxc:NavigationViewItem Content="Leaderboard" Tag="leaderboard" />
-                <muxc:NavigationViewItem Content="Support" Tag="support" />
-                <muxc:NavigationViewItem Content="Settings" Tag="settings" />
+                <muxc:NavigationViewItem x:Name="ConnectNavItem" Tag="connect" IsSelected="True" />
+                <muxc:NavigationViewItem x:Name="AccountNavItem" Tag="account" />
+                <muxc:NavigationViewItem x:Name="WalletNavItem" Tag="wallet" />
+                <muxc:NavigationViewItem x:Name="LeaderboardNavItem" Tag="leaderboard" />
+                <muxc:NavigationViewItem x:Name="SupportNavItem" Tag="support" />
+                <muxc:NavigationViewItem x:Name="SettingsNavItem" Tag="settings" />
             </muxc:NavigationView.MenuItems>
 
             <Grid Margin="24">
-                <!-- Connect -->
-                <StackPanel x:Name="ConnectView" Spacing="16" HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-                    <TextBlock x:Name="StatusText" Text="Disconnected" FontSize="22"
-                               FontWeight="SemiBold" HorizontalAlignment="Center" />
-                    <Button x:Name="ConnectButton" Content="Connect"
-                            Style="{StaticResource AccentButtonStyle}" MinWidth="200"
-                            HorizontalAlignment="Center" Click="OnConnectToggle" />
-                    <TextBlock x:Name="LocationText" Text="Best available"
-                               HorizontalAlignment="Center"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <!-- live stats (macOS parity): provider window size, throughput, provide -->
-                    <TextBlock x:Name="ProviderCountText" HorizontalAlignment="Center"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock x:Name="ThroughputText" HorizontalAlignment="Center"
-                               FontFamily="Consolas"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock x:Name="ProvideStatsText" HorizontalAlignment="Center"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
-                             Severity="Warning" Title="Insufficient balance"
-                             Message="Add balance or a plan to keep connecting." />
-                </StackPanel>
+                <!-- Connect: the connect drawer (macOS ConnectActions parity).
+                     A scrollable column of cards capped at 600: connection
+                     controls, client statistics, local statistics, custom DNS,
+                     the ad/tracker blocker toggle, and the plan + usage card.
+                     Charts render into the *ChartHost grids from code-behind
+                     (TransferChart); the usage bar into DrawerUsageBarHost
+                     (UsageBar). -->
+                <ScrollViewer x:Name="ConnectView" HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="DrawerStack" Spacing="16" MaxWidth="600"
+                                HorizontalAlignment="Stretch" Margin="0,0,0,24">
 
-                <!-- Account -->
+                        <!-- Connection controls -->
+                        <Border x:Name="ControlsCard" Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="StatusText" FontSize="22"
+                                           FontWeight="SemiBold" />
+                                <StackPanel Spacing="2">
+                                    <TextBlock x:Name="SelectedProviderLabel" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="LocationText" FontSize="15" />
+                                </StackPanel>
+                                <Button x:Name="ConnectButton"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        HorizontalAlignment="Stretch" Click="OnConnectToggle" />
+                                <!-- out of balance: the action button opens the upgrade flow -->
+                                <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
+                                         Severity="Warning" />
+                                <!-- live stats (macOS parity): providers, throughput, provide -->
+                                <TextBlock x:Name="ProviderCountText" FontSize="12"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <TextBlock x:Name="ThroughputText" FontSize="12"
+                                           FontFamily="Consolas"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <TextBlock x:Name="ProvideStatsText" FontSize="12"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <TextBlock x:Name="ConnectOptionsLabel" FontSize="12" Margin="0,12,0,0"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <!-- Connection Mode: device performance profile -->
+                                <muxc:SelectorBar x:Name="ConnectionModeBar"
+                                                  SelectionChanged="OnConnectionModeChanged">
+                                    <muxc:SelectorBarItem x:Name="ModeAutoItem" />
+                                    <muxc:SelectorBarItem x:Name="ModeWebItem" />
+                                    <muxc:SelectorBarItem x:Name="ModeStreamingItem" />
+                                </muxc:SelectorBar>
+                                <Grid>
+                                    <TextBlock x:Name="FixedIpLabel" FontSize="14"
+                                               VerticalAlignment="Center" />
+                                    <ToggleSwitch x:Name="FixedIpToggle" OnContent="" OffContent=""
+                                                  MinWidth="0" HorizontalAlignment="Right"
+                                                  Toggled="OnFixedIpToggled" />
+                                </Grid>
+                                <Grid>
+                                    <TextBlock x:Name="StrongAnonLabel" FontSize="14"
+                                               VerticalAlignment="Center" />
+                                    <ToggleSwitch x:Name="StrongAnonToggle" OnContent="" OffContent=""
+                                                  MinWidth="0" HorizontalAlignment="Right"
+                                                  Toggled="OnStrongAnonToggled" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 1: client statistics (remote + blocked charts) -->
+                        <Border x:Name="ClientStatsCard" Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16" Tapped="OnClientStatsCardTapped">
+                            <StackPanel Spacing="12">
+                                <Grid>
+                                    <TextBlock x:Name="ClientStatsLabel" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <FontIcon Glyph="&#xE76C;" FontSize="12"
+                                              HorizontalAlignment="Right"
+                                              Foreground="{StaticResource UrTextFaintBrush}" />
+                                </Grid>
+                                <Grid x:Name="RemoteChartHost" Height="128" />
+                                <Grid x:Name="BlockedChartHost" Height="128" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 2: local statistics (local chart + split rules) -->
+                        <Border x:Name="LocalStatsCard" Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16" Tapped="OnLocalStatsCardTapped">
+                            <StackPanel Spacing="12">
+                                <Grid>
+                                    <TextBlock x:Name="LocalStatsLabel" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <FontIcon Glyph="&#xE76C;" FontSize="12"
+                                              HorizontalAlignment="Right"
+                                              Foreground="{StaticResource UrTextFaintBrush}" />
+                                </Grid>
+                                <Grid x:Name="LocalChartHost" Height="128" />
+                                <TextBlock x:Name="SplitRuleCountText" FontSize="12" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 3: custom dns summary -->
+                        <Border x:Name="DnsCard" Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16" Tapped="OnDnsCardTapped">
+                            <StackPanel Spacing="8">
+                                <Grid Margin="0,0,0,4">
+                                    <TextBlock x:Name="DnsCardLabel" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <FontIcon Glyph="&#xE76C;" FontSize="12"
+                                              HorizontalAlignment="Right"
+                                              Foreground="{StaticResource UrTextFaintBrush}" />
+                                </Grid>
+                                <StackPanel x:Name="DnsRowsPanel" Spacing="8">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse x:Name="DohDot" Width="6" Height="6"
+                                                 VerticalAlignment="Center" />
+                                        <TextBlock x:Name="DohLabel" Grid.Column="1" FontSize="14" />
+                                        <TextBlock x:Name="DohState" Grid.Column="2" FontSize="12" />
+                                    </Grid>
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse x:Name="UdnsDot" Width="6" Height="6"
+                                                 VerticalAlignment="Center" />
+                                        <TextBlock x:Name="UdnsLabel" Grid.Column="1" FontSize="14" />
+                                        <TextBlock x:Name="UdnsState" Grid.Column="2" FontSize="12" />
+                                    </Grid>
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse x:Name="LdnsDot" Width="6" Height="6"
+                                                 VerticalAlignment="Center" />
+                                        <TextBlock x:Name="LdnsLabel" Grid.Column="1" FontSize="14" />
+                                        <TextBlock x:Name="LdnsState" Grid.Column="2" FontSize="12" />
+                                    </Grid>
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse x:Name="FallbackDot" Width="6" Height="6"
+                                                 VerticalAlignment="Center" />
+                                        <TextBlock x:Name="FallbackLabel" Grid.Column="1" FontSize="14" />
+                                        <TextBlock x:Name="FallbackState" Grid.Column="2" FontSize="12" />
+                                    </Grid>
+                                </StackPanel>
+                                <TextBlock x:Name="DnsUnavailableText" FontSize="12"
+                                           Visibility="Collapsed"
+                                           Foreground="{StaticResource UrTextFaintBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Block ads and trackers: the device applies and persists it -->
+                        <Border x:Name="BlockerCard" Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16,8,16,8">
+                            <Grid>
+                                <TextBlock x:Name="BlockerLabel" FontSize="14"
+                                           VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="BlockerToggle" OnContent="" OffContent=""
+                                              MinWidth="0" HorizontalAlignment="Right"
+                                              Toggled="OnBlockerToggled" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Plan + usage (macOS ConnectActions.swift:169-204) -->
+                        <Border x:Name="DrawerPlanCard" Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock x:Name="DrawerPlanLabel" FontSize="12"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <Grid>
+                                    <TextBlock x:Name="DrawerPlanValueText" FontSize="22"
+                                               FontWeight="SemiBold" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center">
+                                        <muxc:ProgressRing x:Name="DrawerPlanRing" Width="16" Height="16"
+                                                           IsActive="False" Visibility="Collapsed" />
+                                        <Button x:Name="DrawerGetProButton" Click="OnOpenUpgrade" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid x:Name="DrawerUsageBarHost" Height="32" />
+                                <StackPanel x:Name="DrawerUsageLegend" Orientation="Horizontal"
+                                            Spacing="16" />
+                                <Grid Margin="0,4,0,0">
+                                    <TextBlock x:Name="DrawerDailyLabel" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="DrawerDailyValue" FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource UrBorderBrush}" />
+                                <Grid>
+                                    <TextBlock x:Name="DrawerReferralTotals" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="DrawerReferralBonus" FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Account (macOS AccountRootView parity: plan card + usage bar,
+                     redeem, redeemed codes, profile, referrals) -->
                 <ScrollViewer x:Name="AccountView" Visibility="Collapsed">
-                    <StackPanel Spacing="12" MaxWidth="520">
-                        <TextBlock Text="Account" FontSize="18" FontWeight="SemiBold" />
-                        <TextBox x:Name="NetworkNameBox" Header="Network name" />
-                        <Button Content="Save name" Click="OnSaveNetworkName" />
-                        <TextBlock x:Name="AccountAuthText"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <TextBlock Text="Referrals" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
-                        <TextBlock x:Name="ReferralText" />
+                    <StackPanel Spacing="16" MaxWidth="520" Margin="0,0,0,24">
+
+                        <!-- Plan + usage card -->
+                        <Border Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock x:Name="AccountPlanLabel" FontSize="12"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <Grid>
+                                    <TextBlock x:Name="AccountPlanValueText" FontSize="22"
+                                               FontWeight="SemiBold" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center">
+                                        <muxc:ProgressRing x:Name="AccountPlanRing" Width="16" Height="16"
+                                                           IsActive="False" Visibility="Collapsed" />
+                                        <Button x:Name="AccountUpgradeButton" Click="OnOpenUpgrade" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid x:Name="AccountUsageBarHost" Height="32" />
+                                <StackPanel x:Name="AccountUsageLegend" Orientation="Horizontal"
+                                            Spacing="16" />
+                                <Grid Margin="0,4,0,0">
+                                    <TextBlock x:Name="AccountDailyLabel" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="AccountDailyValue" FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource UrBorderBrush}" />
+                                <Grid>
+                                    <TextBlock x:Name="AccountReferralTotals" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="AccountReferralBonus" FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </Grid>
+                                <!-- full-width redeem row (macOS: its own tappable row) -->
+                                <Button x:Name="RedeemRowButton" HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="0,8,0,8" Click="OnOpenRedeem">
+                                    <Grid HorizontalAlignment="Stretch">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="RedeemRowText" FontSize="14" />
+                                        <FontIcon Grid.Column="1" Glyph="&#xE76C;" FontSize="12"
+                                                  Foreground="{StaticResource UrTextMutedBrush}" />
+                                    </Grid>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Redeemed balance codes -->
+                        <Border Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock x:Name="BalanceCodesLabel" FontSize="12"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <!-- header + rows built in code (LoadBalanceCodes) -->
+                                <StackPanel x:Name="BalanceCodesPanel" Spacing="6" />
+                                <TextBlock x:Name="BalanceCodesEmptyText" FontSize="12"
+                                           Visibility="Collapsed"
+                                           Foreground="{StaticResource UrTextFaintBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Profile -->
+                        <Border Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="AccountHeading" FontSize="18" FontWeight="SemiBold" />
+                                <TextBox x:Name="NetworkNameBox" />
+                                <Button x:Name="SaveNameButton" Click="OnSaveNetworkName" />
+                                <TextBlock x:Name="AccountAuthText"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Referrals -->
+                        <Border Background="{StaticResource UrCardBrush}"
+                                CornerRadius="12" Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="ReferralsHeading" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ReferralText" TextWrapping="Wrap" />
+
+                                <!-- referral royalty: networks with at least one referral get
+                                     the crowned frog mascot (same as the ur.io site) -->
+                                <StackPanel x:Name="RoyaltyBadge" Visibility="Collapsed"
+                                            HorizontalAlignment="Center" Spacing="4">
+                                    <Image Source="ms-appx:///Assets/ReferralFrog.png"
+                                           Width="80" Height="80" />
+                                    <TextBlock x:Name="RoyaltyText" HorizontalAlignment="Center"
+                                               Foreground="{StaticResource UrTextMutedBrush}" FontSize="12" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
 
                 <!-- Wallet -->
                 <ScrollViewer x:Name="WalletView" Visibility="Collapsed">
                     <StackPanel Spacing="12" MaxWidth="520">
-                        <TextBlock Text="Plan" FontSize="18" FontWeight="SemiBold" />
-                        <Button x:Name="UpgradeButton" Content="Upgrade with Stripe"
-                                Style="{StaticResource AccentButtonStyle}" Click="OnUpgrade" />
-                        <TextBlock Text="Redeem a balance code" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
+                        <TextBlock x:Name="PlanHeading" FontSize="18" FontWeight="SemiBold" />
+                        <Button x:Name="UpgradeButton"
+                                Style="{StaticResource AccentButtonStyle}" Click="OnOpenUpgrade" />
+                        <muxc:InfoBar x:Name="WalletInfo" IsOpen="False" IsClosable="True" />
+                        <TextBlock x:Name="PayoutWalletsHeading" FontSize="16" FontWeight="SemiBold"
+                                   Margin="0,12,0,0" />
+                        <ListView x:Name="WalletsList" MaxHeight="200" BorderThickness="1"
+                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+                        <!-- Connect an external wallet by address. The server
+                             validates it per chain; Bittensor (TAO) wallets are
+                             recorded for future use only and can never be the
+                             payout wallet. -->
+                        <TextBlock x:Name="ConnectWalletHeading" FontSize="16" FontWeight="SemiBold"
+                                   Margin="0,12,0,0" />
+                        <TextBlock x:Name="ConnectWalletChainsText" FontSize="12" TextWrapping="Wrap"
+                                   Foreground="{StaticResource UrTextMutedBrush}" />
                         <Grid ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="BalanceCodeBox" Grid.Column="0" PlaceholderText="code" />
-                            <Button x:Name="RedeemButton" Grid.Column="1" Content="Redeem" Click="OnRedeemCode" />
+                            <TextBox x:Name="WalletAddressBox" Grid.Column="0"
+                                     TextChanged="OnWalletAddressChanged" />
+                            <Button x:Name="ConnectWalletButton" Grid.Column="1"
+                                    IsEnabled="False" Click="OnConnectWallet" />
                         </Grid>
-                        <muxc:InfoBar x:Name="WalletInfo" IsOpen="False" IsClosable="True" />
-                        <TextBlock Text="Payout wallets" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0" />
-                        <ListView x:Name="WalletsList" MaxHeight="200" BorderThickness="1"
-                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
+                        <TextBlock x:Name="WalletChainText" FontSize="12"
+                                   Foreground="{StaticResource UrTextMutedBrush}" />
                     </StackPanel>
                 </ScrollViewer>
 
                 <!-- Leaderboard -->
                 <ScrollViewer x:Name="LeaderboardView" Visibility="Collapsed">
                     <StackPanel Spacing="8" MaxWidth="640">
-                        <TextBlock Text="Leaderboard" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock x:Name="LeaderboardHeading" FontSize="18" FontWeight="SemiBold" />
                         <ListView x:Name="LeaderboardList" />
                     </StackPanel>
                 </ScrollViewer>
@@ -126,11 +576,11 @@
                 <!-- Support -->
                 <ScrollViewer x:Name="SupportView" Visibility="Collapsed">
                     <StackPanel Spacing="12" MaxWidth="520">
-                        <TextBlock Text="Send feedback" FontSize="18" FontWeight="SemiBold" />
-                        <muxc:RatingControl x:Name="FeedbackRating" Caption="Rating" />
-                        <TextBox x:Name="FeedbackText" Header="Anything else?"
-                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" />
-                        <Button Content="Send" Click="OnSendFeedback" />
+                        <TextBlock x:Name="FeedbackHeading" FontSize="18" FontWeight="SemiBold" />
+                        <muxc:RatingControl x:Name="FeedbackRating" />
+                        <TextBox x:Name="FeedbackText" AcceptsReturn="True" TextWrapping="Wrap"
+                                 MinHeight="80" />
+                        <Button x:Name="SendFeedbackButton" Click="OnSendFeedback" />
                         <muxc:InfoBar x:Name="SupportInfo" IsOpen="False" IsClosable="True" />
                     </StackPanel>
                 </ScrollViewer>
@@ -138,17 +588,20 @@
                 <!-- Settings -->
                 <ScrollViewer x:Name="SettingsView" Visibility="Collapsed">
                     <StackPanel Spacing="16" MaxWidth="520">
-                        <TextBlock Text="Split tunneling" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock Text="Apps listed here bypass the VPN."
+                        <TextBlock x:Name="SplitTunnelHeading" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock x:Name="SplitTunnelDescription"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <ListView x:Name="ExcludedAppsList" MaxHeight="220" BorderThickness="1"
                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Add app…" Click="OnAddExcludedApp" />
-                            <Button Content="Remove selected" Click="OnRemoveExcludedApp" />
+                            <Button x:Name="AddAppButton" Click="OnAddExcludedApp" />
+                            <Button x:Name="RemoveAppButton" Click="OnRemoveExcludedApp" />
                         </StackPanel>
-                        <TextBlock Text="Account" FontSize="18" FontWeight="SemiBold" Margin="0,16,0,0" />
-                        <Button Content="Sign out" Click="OnSignOut" />
+                        <TextBlock x:Name="SettingsAccountHeading" FontSize="18" FontWeight="SemiBold"
+                                   Margin="0,16,0,0" />
+                        <Button x:Name="SignOutButton" Click="OnSignOut" />
+                        <HyperlinkButton x:Name="ProtocolLink" NavigateUri="https://ur.xyz"
+                                         FontSize="12" Padding="0" Margin="0,16,0,0" />
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

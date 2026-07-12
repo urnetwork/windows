@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
+// the project compiles with /Yu"pch.h" (App.vcxproj), so every translation unit
+// must include it first
+#include "pch.h"
+
 #include "ServiceClient.h"
 
 #include "Log.h"

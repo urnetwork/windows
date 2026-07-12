@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
+// the project compiles with /Yu"pch.h" (App.vcxproj), so every translation unit
+// must include it first
+#include "pch.h"
+
 #include "WalletConnect.h"
 
 #include <windows.h>
@@ -11,6 +15,8 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+
+#include "Config.h"
 
 namespace urnw {
 namespace {
@@ -110,12 +116,17 @@ std::map<std::string, std::string> ParseQuery(const std::string& query) {
 }  // namespace
 
 const char* WalletConnect::Host(Provider p) {
-  return p == Provider::Solflare ? "solflare" : "phantom";
+  switch (p) {
+    case Provider::Solflare: return "solflare";
+    case Provider::Bittensor: return "bittensor";
+    default: return "phantom";
+  }
 }
 
 std::optional<WalletConnect::Provider> WalletConnect::ProviderForHost(const std::string& host) {
   if (host == "phantom-connect" || host == "phantom-sign-message") return Provider::Phantom;
   if (host == "solflare-connect" || host == "solflare-sign-message") return Provider::Solflare;
+  if (host == "bittensor-connect" || host == "bittensor-sign-message") return Provider::Bittensor;
   return std::nullopt;
 }
 
@@ -189,12 +200,34 @@ void WalletConnect::SignMessage(const std::string& message) {
   OpenUrl(url);
 }
 
+void WalletConnect::SignMessageBittensor(const std::string& message) {
+  // No connect handshake and no encryption envelope: the bridge drives an
+  // injected substrate wallet (Bittensor Wallet, SubWallet, Talisman,
+  // polkadot-js) and returns the ss58 address with the sr25519 signature.
+  connectedPublicKey_.reset();
+  walletEncryptionPublicKey_.reset();
+  session_.reset();
+  currentProvider_ = Provider::Bittensor;
+  const std::string redirect =
+      std::string("urnetwork://") + Host(Provider::Bittensor) + "-sign-message";
+  std::string url = std::string(kWebBridge) + "?provider=" + Host(Provider::Bittensor) +
+                    "&method=signMessage&message=" + Esc(message) +
+                    "&redirect_link=" + Esc(redirect);
+  // The WalletConnect Cloud project id lets the bridge pair with a wallet app;
+  // without one the bridge falls back to injected (extension) wallets only.
+  const std::string projectId = config::kWalletConnectProjectId;
+  if (!projectId.empty()) url += "&wc_project_id=" + Esc(projectId);
+  OpenUrl(url);
+}
+
 bool WalletConnect::HandleDeepLink(const std::string& url) {
   std::string host, query;
   SplitUrl(url, host, query);
   auto provider = ProviderForHost(host);
   if (!provider) return false;
-  if (host.find("-connect") != std::string::npos)
+  if (*provider == Provider::Bittensor)
+    HandleBittensor(host, query);
+  else if (host.find("-connect") != std::string::npos)
     HandleConnect(*provider, query);
   else
     HandleSignMessage(*provider, query);
@@ -235,13 +268,13 @@ void WalletConnect::HandleConnect(Provider p, const std::string& query) {
 }
 
 void WalletConnect::HandleSignMessage(Provider p, const std::string& query) {
-  (void)p;
   auto params = ParseQuery(query);
   if (params.count("errorCode")) {
     if (on_error) on_error(params.count("errorMessage") ? params["errorMessage"] : "wallet signing error");
     return;
   }
-  if (!params.count("nonce") || !params.count("data") || !dappKeyPair_ || !walletEncryptionPublicKey_) {
+  if (!params.count("nonce") || !params.count("data") || !dappKeyPair_ ||
+      !walletEncryptionPublicKey_ || !connectedPublicKey_) {
     if (on_error) on_error("missing wallet signature parameters");
     return;
   }
@@ -263,11 +296,43 @@ void WalletConnect::HandleSignMessage(Provider p, const std::string& query) {
       if (on_error) on_error("failed to decode wallet signature");
       return;
     }
-    // The backend expects a base64 signature (macOS parity).
-    if (on_signature) on_signature(Base64(sigBytes->data(), sigBytes->size()));
+    // The backend expects a base64 signature for Solana (macOS parity).
+    if (on_signature)
+      on_signature(*connectedPublicKey_, Base64(sigBytes->data(), sigBytes->size()), p);
   } catch (const std::exception& e) {
     if (on_error) on_error(std::string("bad signature response: ") + e.what());
   }
+}
+
+// Bittensor returns plain query params from the bridge — sr25519 signatures are
+// public, so there is no envelope to decrypt (apple/android parity):
+//   urnetwork://bittensor-sign-message?address=<ss58>&signature=<0xhex>
+//   urnetwork://bittensor-connect?address=<ss58>
+//   urnetwork://bittensor-*?errorCode=-1&errorMessage=<text>
+void WalletConnect::HandleBittensor(const std::string& host, const std::string& query) {
+  auto params = ParseQuery(query);
+  if (params.count("errorCode")) {
+    if (on_error) on_error(params.count("errorMessage") ? params["errorMessage"] : "wallet signing error");
+    return;
+  }
+  const std::string address = params.count("address") ? params["address"] : std::string();
+  if (address.empty()) {
+    if (on_error) on_error("missing wallet address parameter");
+    return;
+  }
+  connectedPublicKey_ = address;
+  currentProvider_ = Provider::Bittensor;
+  if (host == "bittensor-connect") {
+    if (on_public_key) on_public_key(address, Provider::Bittensor);
+    return;
+  }
+  const std::string signature = params.count("signature") ? params["signature"] : std::string();
+  if (signature.empty()) {
+    if (on_error) on_error("missing wallet signature parameters");
+    return;
+  }
+  // The server verifies the hex sr25519 signature as returned (no re-encoding).
+  if (on_signature) on_signature(address, signature, Provider::Bittensor);
 }
 
 }  // namespace urnw

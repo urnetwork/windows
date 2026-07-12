@@ -124,8 +124,12 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     if (settings.local_address_v4.empty()) settings.local_address_v4 = "169.254.2.1";
     settings.prefix_v4 = 24;
     settings.mtu = kTunnelMtu;
-    if (auto dns = device_->tunnelDnsSetting(); dns && !dns->Server.empty()) {
-      settings.dns_servers = {dns->Server};
+    // dns from the device, like the tunnel address: the dns settings' unencrypted
+    // local servers when set, otherwise the default plain 1.1.1.1 (which the
+    // UpgradeMux can intercept and upgrade). the tunnel is ipv4-only, so only the
+    // ipv4 resolvers apply
+    if (auto dns = device_->tunnelDnsAddressesIpv4(); dns && !dns->empty()) {
+      settings.dns_servers = *dns;
     } else {
       settings.dns_servers = {"1.1.1.1"};
     }

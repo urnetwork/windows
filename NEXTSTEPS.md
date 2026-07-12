@@ -117,23 +117,37 @@ DeviceRemote → service):
 - [ ] **Onboarding/Introduction flow** (DESKTOP2 §1) — welcome → plan/paywall →
   participate-to-earn → refer, gated by `isPro`/introduction-complete; "get more
   data" opens it. Gating via `Api::subscriptionBalance`.
-- [ ] **Guest mode** (DESKTOP2 §2) — `Api::networkCreate{guest_mode=true,terms=true}`
-  → register client (mirror the Linux `SdkHost::LoginAsGuest`); "Try Guest Mode"
-  entry + guest→full-account **upgrade** (`Api::upgradeGuest`/`upgradeGuestExisting`).
+- [x] **Guest mode** (DESKTOP2 §2) — **wired end to end, not yet compiled**:
+  "Try Guest Mode" on the initial step opens `AuthSheets` GuestModeSheet (terms
+  consent) → `SdkHost::LoginAsGuest` (`Api::networkCreate{guest_mode,terms}` →
+  register client, mirroring linux); the plan cards' "Create an account" routes a
+  guest into the create step's guest-upgrade mode → `SdkHost::UpgradeGuest`
+  (`Api::upgradeGuest`, verify supported) → re-register under the new jwt.
+  (`upgradeGuestExisting` — linking a guest to an existing login — remains open.)
 - [ ] **Account menu** (DESKTOP2 §3) — logout, referral share link
   (`Api::getNetworkReferralCode`), create-account. (Windows already has an Account
   panel — add the menu actions.)
 - [ ] **Copy client ID** (DESKTOP2 §4) — `DeviceRemote::getClientId()` → clipboard,
   in the contract-details view.
-- [~] **Solana wallet connect / Sign-in-with-Solana** (DESKTOP2) — core **DONE**:
-  `src/App/WalletConnect.{h,cpp}` (Win32 glue: ShellExecute, CryptBinaryToString,
-  same SDK crypto/envelope as Linux/macOS) + `SdkHost::SignInWithSolana`/
-  `HandleDeepLink`/`AuthLoginWithWallet` + vcxproj entries. **Two integration
-  points remain (WinUI, unverifiable here):** (1) a "Sign in with Solana" button in
-  `MainWindow.xaml` calling `SignInWithSolana`; (2) register `urnetwork://` (MSI
-  registry / package manifest) + handle protocol activation
-  (`AppInstance`/`ProtocolActivatedEventArgs` in `App.xaml.cpp`) → route the URI to
-  `SdkHost::HandleDeepLink`. Then deploy ur.io/wallet-connect + real-wallet test.
+- [x] **Wallet sign in + connect wallet (Solana and Bittensor)** (DESKTOP2 /
+  `apple/BITTENSOR.md`) — **wired end to end, not yet compiled**:
+  `src/App/WalletConnect.{h,cpp}` drives the `ur.io/wallet-connect` bridge for both
+  providers (Solana keeps the NaCl envelope; Bittensor is a single `signMessage`
+  returning plain `?address=<ss58>&signature=<0xhex>`), `SdkHost::SignInWith{Solana,
+  Bittensor}` → `authLogin{wallet_auth{blockchain=SOL|TAO}}`, sign-in buttons on the
+  login panel (Bittensor before Solana), and connect-wallet by address on the Wallet
+  page (`walletValidateAddress` per chain → `createAccountWallet`).
+  **`urnetwork://` protocol activation is now handled**: the MSI already registered
+  the scheme; `main.cpp` single-instances on `AppInstance::FindOrRegisterForKey` and
+  redirects a second launch (the browser returning the wallet callback) to the
+  running app, which routes it on `AppInstance::Activated` →
+  `AppController::HandleDeepLink` → `SdkHost::HandleDeepLink`. Remaining: set
+  `UrnWalletConnectProjectId` (see `src/App/Config.h`), deploy ur.io/wallet-connect,
+  and do a real-wallet test.
+  > **No create-network-with-wallet path.** A wallet with no network still only gets
+  > an error ("this wallet isn't linked to a network yet") because the app has no
+  > sign-up UI at all. Both wallets are equally affected; fix it with the sign up
+  > work above (`NetworkCreate{wallet_auth}` is already in the cgo surface).
 
 > **Wrapper-signature reconciliation (correctness, do first on-Windows):** the cgo
 > wrapper now uses `(std::optional<Result>, std::optional<std::string> err)`
@@ -149,9 +163,17 @@ DeviceRemote → service):
 
 ## 9. Polish (M5)
 
-- Localization (convert `apple/.../Localizable.xcstrings` ~22 langs to an
-  app-owned JSON catalog), toast notifications, launch-at-login (HKCU Run),
-  kill-switch (`vpnInterfaceWhileOffline` via WFP).
+- ~~Localization~~ **done**: the app reads the shared store
+  (`urnetwork/localizations`, 28 locales). `Strings/<locale>/Resources.resw` is
+  generated (`npm run gen`) and indexed into `resources.pri` by MakePri; the UI
+  goes through `Localization.h` (`Localized` / `Format` / `Plural`). No string
+  lives in the app: add or change one in `localizations/keys/*.yaml`.
+- Toast notifications, launch-at-login (HKCU Run), kill-switch
+  (`vpnInterfaceWhileOffline` via WFP).
+- Not localized yet, and the store has no keys for them: `StatsFormat.cpp` (byte
+  and bit-rate units, `"unknown"`, and the compact relative times `now` / `5s
+  ago` / `3m ago` / `2h ago`) and the leaderboard row (`"%d.  %s  —  %.1f MiB"`).
+  They are unit abbreviations and numeric formatting, and they match macOS today.
 
 ## Open decisions
 

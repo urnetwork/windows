@@ -39,6 +39,10 @@
       <PreprocessorDefinitions>NOMINMAX;WIN32_LEAN_AND_MEAN;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <WarningLevel>Level3</WarningLevel>
+      <!-- the sources are utf-8 and narrow literals carry non-ascii (e.g. the
+           "…" in the host-cluster truncation). without /utf-8 msvc reads them
+           in the system code page and mojibakes the strings -->
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
 

@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
+// the project compiles with /Yu"pch.h" (App.vcxproj), so every translation unit
+// must include it first
+#include "pch.h"
+
 #include "TrayIcon.h"
 
 #include <windowsx.h>  // GET_X_LPARAM / GET_Y_LPARAM
 
 #include "Ids.h"
+#include "Localization.h"
 #include "Log.h"
 #include "resource.h"
 
@@ -46,7 +51,8 @@ bool TrayIcon::Create(HINSTANCE instance, Callbacks callbacks) {
   ::RegisterClassExW(&wc);
 
   // A hidden top-level window receives the tray callback + broadcast messages
-  // (a message-only window would miss TaskbarCreated).
+  // (a message-only window would miss TaskbarCreated). Its title is never shown,
+  // so it stays an internal identifier.
   hwnd_ = ::CreateWindowExW(0, kWindowClass, L"URnetwork", 0, 0, 0, 0, 0, nullptr,
                             nullptr, instance, this);
   if (!hwnd_) {
@@ -67,7 +73,7 @@ void TrayIcon::AddIcon() {
   nid.guidItem = ids::kTrayIconGuid;
   nid.uCallbackMessage = kTrayCallbackMsg;
   nid.hIcon = CurrentIcon();
-  wcscpy_s(nid.szTip, L"URnetwork");
+  wcsncpy_s(nid.szTip, Localized("app_name").c_str(), _TRUNCATE);
   // If a stale registration from a previous run lingers (same GUID), clear it.
   ::Shell_NotifyIconW(NIM_DELETE, &nid);
   if (!::Shell_NotifyIconW(NIM_ADD, &nid)) {
@@ -139,12 +145,14 @@ void TrayIcon::OnThemeChanged() {
 }
 
 void TrayIcon::ShowContextMenu(POINT pt) {
+  // AppendMenuW copies the item text, so the temporaries are fine.
   HMENU menu = ::CreatePopupMenu();
-  ::AppendMenuW(menu, MF_STRING, kMenuOpen, L"Open URnetwork");
+  ::AppendMenuW(menu, MF_STRING, kMenuOpen, Localized("open_urnetwork").c_str());
   bool connected = cb_.isConnected && cb_.isConnected();
-  ::AppendMenuW(menu, MF_STRING, kMenuConnect, connected ? L"Disconnect" : L"Connect");
+  ::AppendMenuW(menu, MF_STRING, kMenuConnect,
+                Localized(connected ? "disconnect" : "connect").c_str());
   ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-  ::AppendMenuW(menu, MF_STRING, kMenuQuit, L"Quit");
+  ::AppendMenuW(menu, MF_STRING, kMenuQuit, Localized("quit_urnetwork").c_str());
 
   // Required so the menu dismisses correctly when focus is lost.
   ::SetForegroundWindow(hwnd_);

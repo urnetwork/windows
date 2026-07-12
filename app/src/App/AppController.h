@@ -10,8 +10,10 @@
 #include <string>
 
 #include <winrt/Microsoft.UI.Dispatching.h>
+#include <winrt/Microsoft.Windows.AppLifecycle.h>
 
 #include "SdkHost.h"
+#include "SubscriptionBalance.h"
 #include "TrayIcon.h"
 
 namespace winrt::URnetwork::implementation {
@@ -30,6 +32,12 @@ class AppController {
   void Shutdown();
 
   SdkHost& sdk() { return sdk_; }
+  // The subscription balance / plan store (fetch + polling; Phase 1 keystone).
+  SubscriptionBalanceStore& balance() { return balance_; }
+
+  // Route a urnetwork:// URI (the wallet-connect callback) into the SdkHost and
+  // bring the app forward so the sign-in result is visible. UI thread only.
+  void HandleDeepLink(const std::string& url);
 
   // Show/position the main window; anchor != nullptr positions it near the tray
   // (left-click flyout behavior), otherwise it centers.
@@ -45,6 +53,7 @@ class AppController {
   void OnUi(F&& f);  // marshal onto the UI thread
 
   SdkHost sdk_;
+  SubscriptionBalanceStore balance_{sdk_};
   TrayIcon tray_;
   winrt::Microsoft::UI::Dispatching::DispatcherQueue uiThread_{nullptr};
   winrt::Microsoft::UI::Xaml::Window window_{nullptr};
@@ -64,5 +73,22 @@ class AppController {
 // The single app controller instance (created in App::OnLaunched).
 AppController& App();
 void SetApp(std::unique_ptr<AppController> app);
+
+// ---- urnetwork:// protocol activation --------------------------------------
+// The MSI registers the scheme (installer/Package.wxs) as
+// `"URnetwork.exe" "%1"`, so the shell hands the callback uri to the app as a
+// launch argument. Launches while the app is already running are redirected to
+// it by AppInstance (see main.cpp) and arrive on AppInstance::Activated.
+
+// The urnetwork:// uri carried by an activation, or empty when it carries none.
+// Handles both shapes: a typed Protocol activation (if the scheme is ever
+// registered through ActivationRegistrationManager) and the plain Launch
+// activation the MSI registration produces.
+std::string DeepLinkFromActivation(
+    winrt::Microsoft::Windows::AppLifecycle::AppActivationArguments const& args);
+
+// The urnetwork:// uri this process was launched with, or empty. Cold-launch
+// fallback for the Launch case, read straight from our own command line.
+std::string LaunchDeepLink();
 
 }  // namespace urnw

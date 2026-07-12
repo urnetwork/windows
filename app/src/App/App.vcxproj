@@ -28,6 +28,11 @@
     <CppWinRTOptimized>true</CppWinRTOptimized>
     <CppWinRTRootNamespaceAutoMerge>true</CppWinRTRootNamespaceAutoMerge>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <!-- Default language for MakePri. An unpackaged app has no appxmanifest to
+         carry it, so the PRI config takes it from here; it must name a folder
+         that exists under Strings\ (Strings\en\Resources.resw) or the resources
+         have no default candidate and every lookup falls back to the key id. -->
+    <DefaultLanguage>en</DefaultLanguage>
   </PropertyGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -39,6 +44,29 @@
   </PropertyGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- MakePri indexes this project's resources at the root of the app's resource
+       map, so a resw entry lands at ms-resource:///Resources/<id> — what MRT Core
+       asks for (Localization.cpp). Without the empty initial path an unpackaged
+       C++ WinUI app prefixes the URIs and the runtime resolves nothing: a Windows
+       App SDK known issue whose documented fix is exactly this property, placed
+       right after Microsoft.Cpp.props.
+       https://learn.microsoft.com/windows/apps/windows-app-sdk/release-notes/windows-app-sdk-1-0 -->
+  <PropertyGroup>
+    <AppxPriInitialPath></AppxPriInitialPath>
+  </PropertyGroup>
+
+  <!-- WebView2 (embedded Stripe checkout, BalanceSheets.cpp). Force the SDK's
+       WinRT flavor: its targets add the Microsoft.Web.WebView2.Core.winmd
+       reference C++/WinRT projects from, and skip the Win32 WebView2Loader —
+       the WinAppSDK runtime provides Microsoft.Web.WebView2.Core.dll (with the
+       loader linked in) through its lifted-class registrations. The package's
+       own auto-detection keys off $(MicrosoftWindowsAppSDKPackageDir), which
+       this project never defines because it imports only the WinAppSDK targets,
+       not its props — so say it explicitly. -->
+  <PropertyGroup>
+    <WebView2UseWinRT>true</WebView2UseWinRT>
+  </PropertyGroup>
 
   <ItemDefinitionGroup>
     <ClCompile>
@@ -61,12 +89,60 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
 
+  <!-- WalletConnect Cloud project id (src/App/Config.h). Injected by the build
+       machine / CI the way android takes it from local.properties:
+       msbuild ... /p:UrnWalletConnectProjectId=<project id>
+       Unset is fine: the wallet-connect bridge then drives injected
+       (browser-extension) wallets only. -->
+  <ItemDefinitionGroup Condition="'$(UrnWalletConnectProjectId)'!=''">
+    <ClCompile>
+      <PreprocessorDefinitions>URN_WALLETCONNECT_PROJECT_ID=\"$(UrnWalletConnectProjectId)\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
   <!-- XAML -->
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml"><SubType>Designer</SubType></ApplicationDefinition>
     <Page Include="MainWindow.xaml"><SubType>Designer</SubType></Page>
     <Midl Include="App.idl" />
     <Midl Include="MainWindow.idl" />
+  </ItemGroup>
+
+  <!-- UI strings. GENERATED from the shared store (urnetwork/localizations):
+       `cd urnetwork/localizations && npm run gen` — never hand-edit a resw.
+       MakePri takes the language qualifier from the folder name, indexes every
+       resw into the "Resources" map, and writes resources.pri; MRT Core picks
+       the right one for the user's display language at run time, falling back to
+       en. Adding a locale to the store = adding one line here. -->
+  <ItemGroup>
+    <PRIResource Include="Strings\en\Resources.resw" />
+    <PRIResource Include="Strings\ar\Resources.resw" />
+    <PRIResource Include="Strings\cs\Resources.resw" />
+    <PRIResource Include="Strings\de\Resources.resw" />
+    <PRIResource Include="Strings\el\Resources.resw" />
+    <PRIResource Include="Strings\es\Resources.resw" />
+    <PRIResource Include="Strings\es-419\Resources.resw" />
+    <PRIResource Include="Strings\es-MX\Resources.resw" />
+    <PRIResource Include="Strings\fr\Resources.resw" />
+    <PRIResource Include="Strings\he\Resources.resw" />
+    <PRIResource Include="Strings\hi\Resources.resw" />
+    <PRIResource Include="Strings\id\Resources.resw" />
+    <PRIResource Include="Strings\it\Resources.resw" />
+    <PRIResource Include="Strings\ja\Resources.resw" />
+    <PRIResource Include="Strings\ko\Resources.resw" />
+    <PRIResource Include="Strings\nl\Resources.resw" />
+    <PRIResource Include="Strings\pl\Resources.resw" />
+    <PRIResource Include="Strings\pt\Resources.resw" />
+    <PRIResource Include="Strings\pt-BR\Resources.resw" />
+    <PRIResource Include="Strings\pt-PT\Resources.resw" />
+    <PRIResource Include="Strings\ru\Resources.resw" />
+    <PRIResource Include="Strings\sv\Resources.resw" />
+    <PRIResource Include="Strings\sw\Resources.resw" />
+    <PRIResource Include="Strings\th\Resources.resw" />
+    <PRIResource Include="Strings\uk\Resources.resw" />
+    <PRIResource Include="Strings\vi\Resources.resw" />
+    <PRIResource Include="Strings\zh-Hans\Resources.resw" />
+    <PRIResource Include="Strings\zh-HK\Resources.resw" />
   </ItemGroup>
 
   <!-- Native sources -->
@@ -76,7 +152,15 @@
     <ClCompile Include="App.xaml.cpp"><DependentUpon>App.xaml</DependentUpon></ClCompile>
     <ClCompile Include="MainWindow.xaml.cpp"><DependentUpon>MainWindow.xaml</DependentUpon></ClCompile>
     <ClCompile Include="AppController.cpp" />
+    <ClCompile Include="AuthSheets.cpp" />
+    <ClCompile Include="BalanceSheets.cpp" />
+    <ClCompile Include="Localization.cpp" />
     <ClCompile Include="SdkHost.cpp" />
+    <ClCompile Include="StatsFormat.cpp" />
+    <ClCompile Include="StatsSheets.cpp" />
+    <ClCompile Include="SubscriptionBalance.cpp" />
+    <ClCompile Include="TransferChart.cpp" />
+    <ClCompile Include="UsageBar.cpp" />
     <ClCompile Include="WalletConnect.cpp" />
     <ClCompile Include="ServiceClient.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
@@ -86,7 +170,17 @@
     <ClInclude Include="App.xaml.h"><DependentUpon>App.xaml</DependentUpon></ClInclude>
     <ClInclude Include="MainWindow.xaml.h"><DependentUpon>MainWindow.xaml</DependentUpon></ClInclude>
     <ClInclude Include="AppController.h" />
+    <ClInclude Include="AuthSheets.h" />
+    <ClInclude Include="BalanceSheets.h" />
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="Localization.h" />
     <ClInclude Include="SdkHost.h" />
+    <ClInclude Include="StatsFormat.h" />
+    <ClInclude Include="StatsSheets.h" />
+    <ClInclude Include="SubscriptionBalance.h" />
+    <ClInclude Include="TransferChart.h" />
+    <ClInclude Include="UsageBar.h" />
+    <ClInclude Include="UrColors.h" />
     <ClInclude Include="WalletConnect.h" />
     <ClInclude Include="ServiceClient.h" />
     <ClInclude Include="TrayIcon.h" />
@@ -94,6 +188,13 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="App.rc" />
+  </ItemGroup>
+
+  <!-- loose image assets, copied next to the exe for ms-appx:/// XAML sources -->
+  <ItemGroup>
+    <CopyFileToFolders Include="Assets\ReferralFrog.png">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
   </ItemGroup>
 
   <ItemGroup>
@@ -104,12 +205,24 @@
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 
-  <!-- NuGet: CppWinRT + Windows App SDK + SDK build tools -->
+  <!-- The app loads resources.pri by path, from next to the exe: unpackaged, there
+       is no package to carry it (and the MSI ships it, see installer/Package.wxs).
+       If MakePri never ran, or dropped it somewhere else, every string in the UI
+       renders as its key id ("sign_in") — a silent, shipping-grade failure. Say so
+       at build time instead. Warning, not Error: never break a build over it. -->
+  <Target Name="UrnVerifyResourcesPri" AfterTargets="Build">
+    <Warning Condition="!Exists('$(OutDir)resources.pri')"
+             Text="resources.pri is missing from $(OutDir): the app will render resource ids instead of localized strings. Check that the Strings\*\Resources.resw PRIResource items were indexed by MakePri." />
+  </Target>
+
+  <!-- NuGet: CppWinRT + Windows App SDK (+ its WebView2 dependency) + SDK build tools -->
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\..\packages\Microsoft.Windows.CppWinRT.2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.targets"
             Condition="Exists('..\..\packages\Microsoft.Windows.CppWinRT.2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.targets')" />
     <Import Project="..\..\packages\Microsoft.WindowsAppSDK.1.6.240923002\build\native\Microsoft.WindowsAppSDK.targets"
             Condition="Exists('..\..\packages\Microsoft.WindowsAppSDK.1.6.240923002\build\native\Microsoft.WindowsAppSDK.targets')" />
+    <Import Project="..\..\packages\Microsoft.Web.WebView2.1.0.2651.64\build\native\Microsoft.Web.WebView2.targets"
+            Condition="Exists('..\..\packages\Microsoft.Web.WebView2.1.0.2651.64\build\native\Microsoft.Web.WebView2.targets')" />
     <Import Project="..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.22621.3233\build\Microsoft.Windows.SDK.BuildTools.targets"
             Condition="Exists('..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.22621.3233\build\Microsoft.Windows.SDK.BuildTools.targets')" />
   </ImportGroup>
