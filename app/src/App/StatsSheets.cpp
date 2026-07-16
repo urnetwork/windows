@@ -35,8 +35,12 @@ using ShapeEllipse = winrt::Microsoft::UI::Xaml::Shapes::Ellipse;
 using ShapeRectangle = winrt::Microsoft::UI::Xaml::Shapes::Rectangle;
 
 constexpr winrt::Windows::UI::Color kTransparent{0, 0, 0, 0};
-// contract circle transitions (disc growth + swap fade/slide)
-constexpr double kCircleTransitionSeconds = 0.5;
+// contract circle transitions
+constexpr double kCircleTransitionSeconds = 0.5;   // inner disc grow/drain
+constexpr double kRingEjectSeconds = 0.5;          // ring slide-out + fade (Apple slideDuration)
+constexpr double kRingFadeInSeconds = 0.35;        // incoming ring fade-in (Apple fadeInDuration)
+constexpr double kRingSize = 56.0;                 // circle diameter
+constexpr double kRingOffscreen = kRingSize * 3.0; // slide distance to clear the slot
 
 hstring H(std::string const& s) { return winrt::to_hstring(s); }
 
@@ -60,6 +64,14 @@ double NowSeconds() {
 double EaseOutCubic(double progress) {
   progress = std::clamp(progress, 0.0, 1.0);
   return 1 - std::pow(1 - progress, 3);
+}
+
+// cubic ease-in-out, matching SwiftUI's .easeInOut used for the ring eject slide
+// and fade-in (ContractRing)
+double EaseInOutCubic(double progress) {
+  progress = std::clamp(progress, 0.0, 1.0);
+  return progress < 0.5 ? 4 * progress * progress * progress
+                        : 1 - std::pow(-2 * progress + 2, 3) / 2;
 }
 
 std::string ToLower(std::string s) {
@@ -289,19 +301,20 @@ ClientContractsSheet::RowUi ClientContractsSheet::BuildRow(const std::string& cl
     StackPanel panel;
     panel.Width(92);
     panel.Spacing(8);
+    circle.color = color;
     circle.ring = Grid();
-    circle.ring.Width(56);
-    circle.ring.Height(56);
+    circle.ring.Width(kRingSize);
+    circle.ring.Height(kRingSize);
     circle.ring.HorizontalAlignment(HorizontalAlignment::Center);
-    // swap transition: the replaced circle slides/fades back in
-    circle.ringShift = TranslateTransform();
-    circle.ring.RenderTransform(circle.ringShift);
-    ShapeEllipse outer;
-    outer.Width(56);
-    outer.Height(56);
-    outer.Stroke(SolidColorBrush(colors::WithAlpha(color, 204)));  // 0.8
-    outer.StrokeThickness(1);
-    circle.ring.Children().Append(outer);
+    // the ring carrying the current contract identity; its opacity fades in when
+    // admitted, and a replaced ring is ejected as a separate sliding clone
+    circle.current = ShapeEllipse();
+    circle.current.Width(kRingSize);
+    circle.current.Height(kRingSize);
+    circle.current.Stroke(SolidColorBrush(colors::WithAlpha(color, 204)));  // 0.8
+    circle.current.StrokeThickness(1);
+    circle.current.Opacity(0);  // faded in on the first update
+    circle.ring.Children().Append(circle.current);
     // area-proportional inner disc; grows as the contract is used
     circle.inner = ShapeEllipse();
     circle.inner.Width(0);
@@ -375,7 +388,7 @@ ClientContractsSheet::RowUi ClientContractsSheet::BuildRow(const std::string& cl
   };
 
   auto contractPanel = buildCircle(colors::kUrGreen, Loc("contract"), ui.contract);
-  ui.contract.swapFromLeft = true;  // replaced contract slides in from the left edge
+  ui.contract.removalLeading = true;  // contract ring ejects toward the left edge
   Grid::SetColumn(contractPanel, 0);
   viz.Children().Append(contractPanel);
 
@@ -414,12 +427,12 @@ void ClientContractsSheet::UpdateRow(RowUi& ui, const ContractClientRow& row) {
   }
 
   auto updateCircle = [now](CircleUi& circle, int64_t used, int64_t total,
-                            const std::string& signature) {
+                            const std::string& signature, bool present) {
     // inner disc area proportional to the used fraction, minimum visible size
     const double fraction =
         0 < total ? (std::min)(1.0, static_cast<double>(used) / static_cast<double>(total))
                   : 0;
-    const double target = 0 < fraction ? (std::max)(6.0, 56.0 * std::sqrt(fraction)) : 0;
+    const double target = 0 < fraction ? (std::max)(6.0, kRingSize * std::sqrt(fraction)) : 0;
     if (target != circle.sizeTo) {
       // ease the disc toward its new size from wherever it currently is
       const double progress = circle.sizeStart <= 0
@@ -430,19 +443,53 @@ void ClientContractsSheet::UpdateRow(RowUi& ui, const ContractClientRow& row) {
       circle.sizeTo = target;
       circle.sizeStart = now;
     }
-    // a changed contract id signature means the contract was replaced: fade and
-    // slide the circle back in rather than snapping (macOS swap parity)
-    if (signature != circle.signature) {
-      if (!circle.signature.empty() && !signature.empty()) circle.swapStart = now;
+
+    // ring eject/admit lifecycle (mirrors Apple ContractRing)
+    if (!circle.initialized) {
+      // first sight: occupy the slot instantly, no eject or fade
+      circle.initialized = true;
       circle.signature = signature;
+      circle.present = present;
+      circle.currentShown = present;
+      circle.fadeStart = 0;  // 0 => full opacity once shown
+    } else {
+      // (a) a replaced contract (new id signature): eject the on-screen ring and
+      // admit the new id -- but only eject a ring that is actually visible, and
+      // only fade the new one in now if nothing is still leaving
+      if (signature != circle.signature) {
+        if (circle.currentShown) EjectRing(circle, now);
+        circle.signature = signature;
+        circle.currentShown = false;
+        circle.fadeStart = 0;
+        if (present && circle.ejections.empty()) {
+          circle.currentShown = true;
+          circle.fadeStart = now;  // fade in the incoming ring
+        }
+      }
+      // (b) the row closing/reopening: eject on close (show nothing after),
+      // fade back in on reopen
+      if (present != circle.present) {
+        circle.present = present;
+        if (present) {
+          if (!circle.currentShown && circle.ejections.empty()) {
+            circle.currentShown = true;
+            circle.fadeStart = now;
+          }
+        } else if (circle.currentShown) {
+          EjectRing(circle, now);
+          circle.currentShown = false;
+        }
+      }
     }
+
     circle.used.Text(H(FormatByteCountCompact(used)));
     circle.total.Text(hstring{Format("of_total", Widen(FormatByteCountCompact(total)))});
     AnimateCircle(circle, now);
   };
-  updateCircle(ui.contract, row.contractUsedByteCount, row.contractByteCount, row.contractId);
+  updateCircle(ui.contract, row.contractUsedByteCount, row.contractByteCount, row.contractId,
+               !row.closing);
   updateCircle(ui.companion, row.companionContractUsedByteCount,
-               row.companionContractByteCount, row.companionContractId);
+               row.companionContractByteCount, row.companionContractId, !row.closing);
 
   auto updateLine = [](LineUi& line, int64_t bitRate) {
     if (0 < bitRate) {
@@ -459,8 +506,25 @@ void ClientContractsSheet::UpdateRow(RowUi& ui, const ContractClientRow& row) {
   updateLine(ui.companionLine, row.companionContractBitRate);
 }
 
+void ClientContractsSheet::EjectRing(CircleUi& circle, double now) {
+  // an independent clone of the current ring; it slides out + fades once and is
+  // never reversed, even if further contracts change while it is still leaving
+  CircleUi::Ejection ejection;
+  ejection.start = now;
+  ejection.ring = ShapeEllipse();
+  ejection.ring.Width(kRingSize);
+  ejection.ring.Height(kRingSize);
+  ejection.ring.Stroke(SolidColorBrush(colors::WithAlpha(circle.color, 204)));  // 0.8
+  ejection.ring.StrokeThickness(1);
+  ejection.shift = TranslateTransform();
+  ejection.ring.RenderTransform(ejection.shift);
+  // behind the current ring + disc so the incoming ring reads on top
+  circle.ring.Children().InsertAt(0, ejection.ring);
+  circle.ejections.push_back(ejection);
+}
+
 void ClientContractsSheet::AnimateCircle(CircleUi& circle, double now) {
-  // eased inner disc size
+  // eased inner disc size (persists across a swap; never ejects)
   const double progress = circle.sizeStart <= 0
                               ? 1.0
                               : EaseOutCubic((now - circle.sizeStart) /
@@ -468,13 +532,43 @@ void ClientContractsSheet::AnimateCircle(CircleUi& circle, double now) {
   const double size = circle.sizeFrom + (circle.sizeTo - circle.sizeFrom) * progress;
   circle.inner.Width((std::max)(0.0, size));
   circle.inner.Height((std::max)(0.0, size));
-  // swap fade/slide
-  if (0 < circle.swapStart) {
-    const double swap = EaseOutCubic((now - circle.swapStart) / kCircleTransitionSeconds);
-    circle.ring.Opacity(0.2 + 0.8 * swap);
-    circle.ringShift.X((circle.swapFromLeft ? -10.0 : 10.0) * (1 - swap));
-    if (1.0 <= swap) circle.swapStart = 0;
+
+  // advance ejecting rings: each slides toward its edge and fades on its own
+  // fixed schedule, never reversing; drop it once it has fully left
+  const double dir = circle.removalLeading ? -1.0 : 1.0;
+  for (auto it = circle.ejections.begin(); it != circle.ejections.end();) {
+    const double p = EaseInOutCubic((now - it->start) / kRingEjectSeconds);
+    it->shift.X(dir * kRingOffscreen * p);
+    it->ring.Opacity(1.0 - p);
+    if (1.0 <= p) {
+      uint32_t index = 0;
+      if (circle.ring.Children().IndexOf(it->ring, index)) {
+        circle.ring.Children().RemoveAt(index);
+      }
+      it = circle.ejections.erase(it);
+    } else {
+      ++it;
+    }
   }
+
+  // admit a ring that is waiting to fade in, once the last ejection has left and
+  // a ring is still wanted in the slot
+  if (circle.ejections.empty() && circle.present && !circle.currentShown) {
+    circle.currentShown = true;
+    circle.fadeStart = now;
+  }
+
+  // current ring opacity: hidden while waiting, eased in once admitted, then held
+  double opacity;
+  if (!circle.currentShown) {
+    opacity = 0.0;
+  } else if (circle.fadeStart <= 0) {
+    opacity = 1.0;
+  } else {
+    opacity = EaseInOutCubic((now - circle.fadeStart) / kRingFadeInSeconds);
+    if (1.0 <= opacity) circle.fadeStart = 0;  // settle to full opacity
+  }
+  circle.current.Opacity(opacity);
 }
 
 void ClientContractsSheet::Tick() {

@@ -91,7 +91,10 @@ struct PerformanceSettings {
 };
 
 // One row of the client-contracts sheet: the egress ("contract") and ingress
-// ("companion") contracts aggregated per peer client.
+// ("companion") contracts aggregated per peer client. Rendered shape only; the
+// per-peer aggregation, egress+ingress coalescing, renewal atomicity, and the
+// closing lifecycle all live in the SDK ContractDetailsViewController now
+// (macOS ContractDetailsStore parity).
 struct ContractClientRow {
   std::string clientId;
   std::string contractId;           // joined sorted contract ids (swap signature)
@@ -103,6 +106,9 @@ struct ContractClientRow {
   int64_t companionContractByteCount = 0;
   int64_t companionContractBitRate = 0;
   int64_t pairCount = 0;
+  // the peer's last contract closed and the row is being ejected: the view
+  // controller keeps it briefly so the circles slide off, then removes it
+  bool closing = false;
 };
 
 inline bool operator==(const ContractClientRow& a, const ContractClientRow& b) {
@@ -114,7 +120,7 @@ inline bool operator==(const ContractClientRow& a, const ContractClientRow& b) {
          a.companionContractUsedByteCount == b.companionContractUsedByteCount &&
          a.companionContractByteCount == b.companionContractByteCount &&
          a.companionContractBitRate == b.companionContractBitRate &&
-         a.pairCount == b.pairCount;
+         a.pairCount == b.pairCount && a.closing == b.closing;
 }
 inline bool operator!=(const ContractClientRow& a, const ContractClientRow& b) {
   return !(a == b);
@@ -190,6 +196,11 @@ class SdkHost {
   using SplitRulesHandler = std::function<void(std::vector<SplitRule>)>;
   using DnsSettingsHandler = std::function<void(std::optional<urnet::DnsResolverSettings>)>;
   using BlockerEnabledHandler = std::function<void(bool)>;
+  // Location/provider chooser feeds (invoked on SDK callback threads; payloads
+  // by value so the UI can marshal them onto its thread).
+  using LocationsHandler =
+      std::function<void(std::optional<urnet::FilteredLocations>, std::string state)>;
+  using PeersHandler = std::function<void(std::optional<urnet::NetworkPeerList>)>;
 
   SdkHost() = default;
   ~SdkHost();
@@ -277,6 +288,25 @@ class SdkHost {
   void Connect(const std::string& connectLocationJson);
   void Disconnect();
 
+  // ---- location/provider chooser -------------------------------------------
+  // LocationsViewController buckets provider locations into sections and owns
+  // the search; PeerViewController surfaces the connected, provide-enabled
+  // network peers pinned atop the chooser. Both are opened lazily on the first
+  // chooser open (EnsureLocations) and torn down with the session; reads are
+  // graceful (empty) before the view controllers exist.
+  void EnsureLocations();
+  void SetLocationFilter(const std::string& query);
+  std::optional<urnet::FilteredLocations> CurrentFilteredLocations();
+  std::string CurrentFilteredLocationState();
+  std::optional<urnet::NetworkPeerList> ConnectedProvidePeers();
+  // The selected connect location (the chooser's selection check + the drawer's
+  // selected-peer name resolution).
+  std::optional<urnet::ConnectLocation> SelectedLocation();
+  // Connect to a chosen provider location as-is: the chooser holds the typed
+  // ConnectLocation (an SDK one, or one it built from a peer), so skip the json
+  // round-trip that Connect(const std::string&) does.
+  void Connect(const urnet::ConnectLocation& location);
+
   void SetAuthStateHandler(AuthStateHandler h) { onAuth_ = std::move(h); }
   void SetAuthInvalidHandler(AuthInvalidHandler h) { onAuthInvalid_ = std::move(h); }
   void SetTunnelStateHandler(TunnelStateHandler h) { onTunnel_ = std::move(h); }
@@ -294,6 +324,8 @@ class SdkHost {
   void SetSplitRulesHandler(SplitRulesHandler h) { onSplitRules_ = std::move(h); }
   void SetDnsSettingsHandler(DnsSettingsHandler h) { onDnsSettings_ = std::move(h); }
   void SetBlockerEnabledHandler(BlockerEnabledHandler h) { onBlockerEnabled_ = std::move(h); }
+  void SetLocationsHandler(LocationsHandler h) { onLocations_ = std::move(h); }
+  void SetPeersHandler(PeersHandler h) { onPeers_ = std::move(h); }
 
   // Snapshots on demand (seed / resync when the window shows).
   std::vector<urnet::ThroughputPoint> CurrentThroughputPoints(int64_t& windowSeconds);
@@ -382,7 +414,12 @@ class SdkHost {
   std::optional<urnet::DeviceRemote> device_;
   std::optional<urnet::ConnectViewController> connectVc_;
   std::optional<urnet::ContractViewController> contractVc_;  // live throughput feed
+  // aggregated per-peer contract rows: the VC owns the egress+ingress coalescing,
+  // renewal atomicity, per-peer aggregation, and the closing/eject lifecycle
+  std::optional<urnet::ContractDetailsViewController> contractDetailsVc_;
   std::optional<urnet::BlockActionViewController> blockVc_;  // block actions + stats
+  std::optional<urnet::LocationsViewController> locationsVc_;  // provider chooser feed
+  std::optional<urnet::PeerViewController> peerVc_;  // connected provide-enabled peers
   // network-name availability at sign-up; api-scoped, so it survives logout
   std::optional<urnet::NetworkNameValidationViewController> networkNameVc_;
   std::vector<urnet::Sub> subs_;
@@ -393,7 +430,6 @@ class SdkHost {
   std::vector<urnet::ThroughputPoint> lastThroughputPoints_;
   int64_t throughputWindowSeconds_ = 60;
   std::vector<ContractClientRow> lastContractRows_;
-  std::unordered_map<std::string, int> contractClientOrder_;  // first-seen order
   std::vector<BlockActionItem> lastBlockActions_;
   int64_t lastAllowedCount_ = 0;
   int64_t lastBlockedCount_ = 0;
@@ -419,6 +455,8 @@ class SdkHost {
   SplitRulesHandler onSplitRules_;
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;
+  LocationsHandler onLocations_;
+  PeersHandler onPeers_;
   AuthState authState_ = AuthState::LoggedOut;
 };
 

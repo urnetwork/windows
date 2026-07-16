@@ -1422,6 +1422,14 @@ Claim your bonus by creating a network!</value>
     <value>Network name unavailable</value>
     <comment>Create Network Form</comment>
   </data>
+  <data name="network_peer_count.one" xml:space="preserve">
+    <value>You have {} other device online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>You have {} other devices online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
   <data name="network_peers" xml:space="preserve">
     <value>Network peers</value>
     <comment>A label displayed above the list of connected peers.</comment>
@@ -2168,6 +2176,238 @@ world's content</value>
   <data name="signed_in" xml:space="preserve">
     <value>Signed in</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_account_tools" xml:space="preserve">
+    <value>Account tools</value>
+    <comment>Account panel: tools section heading</comment>
+  </data>
+  <data name="site_best_available" xml:space="preserve">
+    <value>Best available</value>
+    <comment>Account panel: any-provider location option</comment>
+  </data>
+  <data name="site_best_available_sub" xml:space="preserve">
+    <value>Any provider on the network</value>
+    <comment>Account panel: 'best available' location subtitle</comment>
+  </data>
+  <data name="site_best_value" xml:space="preserve">
+    <value>Best value</value>
+    <comment>Buy data: best-value pack tag</comment>
+  </data>
+  <data name="site_billing_portal_error" xml:space="preserve">
+    <value>Could not open the billing portal.</value>
+    <comment>Account panel: billing portal failed to open</comment>
+  </data>
+  <data name="site_buy_code_prompt" xml:space="preserve">
+    <value>Don't have a code yet? Buy one — it applies to your balance right away.</value>
+    <comment>Account panel: prompt to buy a balance code</comment>
+  </data>
+  <data name="site_cancel_anytime" xml:space="preserve">
+    <value>You can cancel anytime from your account.</value>
+    <comment>Upgrade: cancel-anytime reassurance</comment>
+  </data>
+  <data name="site_clear_location" xml:space="preserve">
+    <value>Clear location</value>
+    <comment>Account panel: clear the chosen location</comment>
+  </data>
+  <data name="site_client_limit_upgrade" xml:space="preserve">
+    <value>Your plan is at its concurrent client limit — Pro raises it to 1,000.</value>
+    <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
+  </data>
+  <data name="site_copy_url" xml:space="preserve">
+    <value>Copy URL</value>
+    <comment>Account panel: copy a proxy's URL</comment>
+  </data>
+  <data name="site_create_another" xml:space="preserve">
+    <value>Create another</value>
+    <comment>Account panel: create another proxy</comment>
+  </data>
+  <data name="site_create_proxy" xml:space="preserve">
+    <value>Create proxy</value>
+    <comment>Account panel: create-proxy button</comment>
+  </data>
+  <data name="site_create_proxy_error" xml:space="preserve">
+    <value>Could not create the proxy.</value>
+    <comment>Account panel: proxy creation failed</comment>
+  </data>
+  <data name="site_data_on_its_way" xml:space="preserve">
+    <value>Your data is on its way — the balance updates within a few moments.</value>
+    <comment>Checkout: data-purchase success body</comment>
+  </data>
+  <data name="site_data_pack" xml:space="preserve">
+    <value>Data pack</value>
+    <comment>Buy data: pack picker aria-label</comment>
+  </data>
+  <data name="site_done" xml:space="preserve">
+    <value>Done</value>
+    <comment>Upgrade: dismiss the success sheet</comment>
+  </data>
+  <data name="site_download_conf" xml:space="preserve">
+    <value>Download .conf</value>
+    <comment>Account panel: download a WireGuard config file</comment>
+  </data>
+  <data name="site_download_wg_config" xml:space="preserve">
+    <value>Download WireGuard config</value>
+    <comment>Account panel: download WireGuard config (created card)</comment>
+  </data>
+  <data name="site_generic_error" xml:space="preserve">
+    <value>Something went wrong. Please try again.</value>
+    <comment>Account panel: generic retry error</comment>
+  </data>
+  <data name="site_invalid_balance_code" xml:space="preserve">
+    <value>Invalid balance code.</value>
+    <comment>Account panel: invalid balance code</comment>
+  </data>
+  <data name="site_load_balance_codes_error" xml:space="preserve">
+    <value>Could not load balance codes</value>
+    <comment>Account panel: balance codes load error</comment>
+  </data>
+  <data name="site_load_clients_error" xml:space="preserve">
+    <value>Could not load clients</value>
+    <comment>Account panel: online-clients load error</comment>
+  </data>
+  <data name="site_load_proxies_error" xml:space="preserve">
+    <value>Could not load proxies</value>
+    <comment>Account panel: proxies load error</comment>
+  </data>
+  <data name="site_loading_balance_codes" xml:space="preserve">
+    <value>Loading balance codes…</value>
+    <comment>Account panel: loading balance codes</comment>
+  </data>
+  <data name="site_loading_clients" xml:space="preserve">
+    <value>Loading clients…</value>
+    <comment>Account panel: loading online clients</comment>
+  </data>
+  <data name="site_loading_proxies" xml:space="preserve">
+    <value>Loading proxies…</value>
+    <comment>Account panel: loading proxies</comment>
+  </data>
+  <data name="site_location_search_placeholder" xml:space="preserve">
+    <value>Search for any location</value>
+    <comment>Account panel: location chooser search field</comment>
+  </data>
+  <data name="site_locations" xml:space="preserve">
+    <value>Locations</value>
+    <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_manage_billing_hint" xml:space="preserve">
+    <value>Manage payment details, see invoices, or cancel your subscription.</value>
+    <comment>Account panel: billing portal hint for Pro users</comment>
+  </data>
+  <data name="site_most_popular_trial" xml:space="preserve">
+    <value>Most popular · 7-day free trial</value>
+    <comment>Upgrade: plan option tagline</comment>
+  </data>
+  <data name="site_no_balance_codes" xml:space="preserve">
+    <value>No balance codes redeemed yet</value>
+    <comment>Account panel: empty redeemed-codes list</comment>
+  </data>
+  <data name="site_no_clients_online" xml:space="preserve">
+    <value>No clients online</value>
+    <comment>Account panel: empty online-clients list</comment>
+  </data>
+  <data name="site_no_proxies" xml:space="preserve">
+    <value>No proxies yet</value>
+    <comment>Account panel: empty proxies list</comment>
+  </data>
+  <data name="site_open_checkout_error" xml:space="preserve">
+    <value>Could not open checkout.</value>
+    <comment>Checkout: embedded checkout failed to open</comment>
+  </data>
+  <data name="site_open_client_manager" xml:space="preserve">
+    <value>Open client manager</value>
+    <comment>Account panel: launch the client-manager app</comment>
+  </data>
+  <data name="site_opening_checkout" xml:space="preserve">
+    <value>Opening checkout…</value>
+    <comment>Buy data: opening checkout</comment>
+  </data>
+  <data name="site_opening_secure_checkout" xml:space="preserve">
+    <value>Opening secure checkout…</value>
+    <comment>Checkout: opening embedded Stripe checkout</comment>
+  </data>
+  <data name="site_pay_solana" xml:space="preserve">
+    <value>Pay with Solana</value>
+    <comment>Upgrade: pay via Solana button</comment>
+  </data>
+  <data name="site_payment_complete" xml:space="preserve">
+    <value>Payment complete</value>
+    <comment>Checkout: payment complete heading</comment>
+  </data>
+  <data name="site_principal" xml:space="preserve">
+    <value>Principal</value>
+    <comment>Account panel: client info — principal label</comment>
+  </data>
+  <data name="site_pro_active_body" xml:space="preserve">
+    <value>Thanks for supporting URnetwork. UR Pro is now active.</value>
+    <comment>Upgrade: success body</comment>
+  </data>
+  <data name="site_product_updates_optin" xml:space="preserve">
+    <value>You can send me occasional product updates</value>
+    <comment>Account panel: product-updates opt-in checkbox</comment>
+  </data>
+  <data name="site_proxies" xml:space="preserve">
+    <value>Proxies</value>
+    <comment>Account panel: proxies section heading</comment>
+  </data>
+  <data name="site_proxy_type" xml:space="preserve">
+    <value>Proxy type</value>
+    <comment>Account panel: proxy-type picker aria-label</comment>
+  </data>
+  <data name="site_roles" xml:space="preserve">
+    <value>Roles</value>
+    <comment>Account panel: client info — roles label</comment>
+  </data>
+  <data name="site_saved" xml:space="preserve">
+    <value>Saved</value>
+    <comment>Account panel: preference saved flash</comment>
+  </data>
+  <data name="site_searching" xml:space="preserve">
+    <value>Searching…</value>
+    <comment>Account panel: location search in progress</comment>
+  </data>
+  <data name="site_socks_cred_note" xml:space="preserve">
+    <value>Username is the token in the URL; password is empty.</value>
+    <comment>Account panel: SOCKS credential note</comment>
+  </data>
+  <data name="site_solana_failed" xml:space="preserve">
+    <value>Solana payment failed</value>
+    <comment>Upgrade: Solana payment failed</comment>
+  </data>
+  <data name="site_solana_start_error" xml:space="preserve">
+    <value>Could not start Solana payment</value>
+    <comment>Upgrade: Solana payment could not start</comment>
+  </data>
+  <data name="site_solana_unavailable" xml:space="preserve">
+    <value>Solana Pay is unavailable right now. You can pay by card instead.</value>
+    <comment>Upgrade: Solana Pay unavailable</comment>
+  </data>
+  <data name="site_start_checkout_error" xml:space="preserve">
+    <value>Could not start checkout. Please try again.</value>
+    <comment>Checkout: could not start a checkout session</comment>
+  </data>
+  <data name="site_stripe_load_error" xml:space="preserve">
+    <value>Could not load Stripe.</value>
+    <comment>Checkout: Stripe.js failed to load</comment>
+  </data>
+  <data name="site_stripe_not_configured" xml:space="preserve">
+    <value>Stripe is not configured in this build</value>
+    <comment>Upgrade: Stripe unconfigured error</comment>
+  </data>
+  <data name="site_subscribe_stripe" xml:space="preserve">
+    <value>Subscribe with Stripe</value>
+    <comment>Upgrade: subscribe via Stripe button</comment>
+  </data>
+  <data name="site_unexpected_error" xml:space="preserve">
+    <value>Something unexpected happened.</value>
+    <comment>Account panel: generic unexpected error</comment>
+  </data>
+  <data name="site_waiting_payment" xml:space="preserve">
+    <value>Waiting for payment confirmation…</value>
+    <comment>Upgrade: waiting for payment confirmation</comment>
+  </data>
+  <data name="site_youre_pro" xml:space="preserve">
+    <value>You're Pro</value>
+    <comment>Upgrade: success heading</comment>
   </data>
   <data name="solana" xml:space="preserve">
     <value>Solana</value>

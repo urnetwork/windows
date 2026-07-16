@@ -890,6 +890,7 @@ void SdkHost::SubscribeDrawer() {
   // caller holds mutex_ (BootstrapSession)
   if (!device_ || !contractVc_) return;
   blockVc_ = device_->openBlockActionViewController();
+  contractDetailsVc_ = device_->openContractDetailsViewController();
 
   // Offline reconcile: the app LocalState is the source of truth for per-app rules;
   // on connect merge them into the device (which also holds host rules) so the live
@@ -915,11 +916,11 @@ void SdkHost::SubscribeDrawer() {
 
   // throughput points feed the three transfer charts
   subs_.push_back(contractVc_->addThroughputListener([this] { PublishThroughput(); }));
-  // client contracts (egress) + companion contracts (ingress), merged per peer
-  subs_.push_back(device_->addEgressContractDetailsChangeListener(
-      [this](std::optional<urnet::ContractDetails>) { PublishContractRows(); }));
-  subs_.push_back(device_->addIngressContractDetailsChangeListener(
-      [this](std::optional<urnet::ContractDetails>) { PublishContractRows(); }));
+  // aggregated per-peer contract rows: the ContractDetailsViewController coalesces
+  // the egress + ingress change streams and does the per-peer aggregation +
+  // closing lifecycle, then fires one settled ContractRowsChanged we re-read
+  subs_.push_back(contractDetailsVc_->addContractRowsListener([this] { PublishContractRows(); }));
+  contractDetailsVc_->start();
   // live routing decisions + allow/block counters + overrides ("split rules")
   subs_.push_back(blockVc_->addBlockActionsListener([this] { PublishBlockActions(); }));
   subs_.push_back(blockVc_->addBlockActionStatsListener([this] { PublishBlockStats(); }));
@@ -963,80 +964,35 @@ void SdkHost::PublishThroughput() {
 }
 
 void SdkHost::PublishContractRows() {
-  if (!device_) return;
-  const std::string ownClientId = device_->getClientId();
+  if (!contractDetailsVc_) return;
 
-  // aggregate the egress and ingress contract pairs per peer client
-  std::unordered_map<std::string, ContractClientRow> rowsByClient;
-  std::unordered_map<std::string, std::vector<std::string>> contractIdsByClient;
-  std::unordered_map<std::string, std::vector<std::string>> companionIdsByClient;
-  auto peerClientId = [&ownClientId](const urnet::ContractDetails& details) -> std::string {
-    if (details.ContractTransferPath) {
-      const auto& path = *details.ContractTransferPath;
-      if (!ownClientId.empty()) {
-        if (path.SourceId && *path.SourceId == ownClientId && path.DestinationId)
-          return *path.DestinationId;
-        if (path.DestinationId && *path.DestinationId == ownClientId && path.SourceId)
-          return *path.SourceId;
-      }
-      if (path.DestinationId) return *path.DestinationId;
-      if (path.SourceId) return *path.SourceId;
-    }
-    if (details.ContractId) return *details.ContractId;
-    return "unknown";
-  };
-  auto merge = [&](const std::optional<urnet::ContractDetailsList>& list) {
-    if (!list) return;
-    for (const auto& details : *list) {
-      const std::string clientId = peerClientId(details);
-      ContractClientRow& row = rowsByClient[clientId];
-      row.clientId = clientId;
-      row.contractUsedByteCount += details.ContractUsedByteCount;
-      row.contractByteCount += details.ContractByteCount;
-      row.contractBitRate += details.ContractBitRate;
-      row.companionContractUsedByteCount += details.CompanionContractUsedByteCount;
-      row.companionContractByteCount += details.CompanionContractByteCount;
-      row.companionContractBitRate += details.CompanionContractBitRate;
-      row.pairCount += 1;
-      if (details.ContractId) contractIdsByClient[clientId].push_back(*details.ContractId);
-      if (details.CompanionContractId)
-        companionIdsByClient[clientId].push_back(*details.CompanionContractId);
-    }
-  };
-  merge(device_->getEgressContractDetails());
-  merge(device_->getIngressContractDetails());
-
+  // The view controller returns fully aggregated, render-ready rows: per-peer
+  // sums, the contract-id swap signatures, and the closing flag. Map them onto
+  // the app row type -- no per-app aggregation, ordering, or coalescing here
+  // (macOS ContractDetailsStore.update parity).
   std::vector<ContractClientRow> rows;
+  if (auto list = contractDetailsVc_->getClientContractRows()) {
+    rows.reserve(list->size());
+    for (const auto& r : *list) {
+      ContractClientRow row;
+      row.clientId = r.ClientId;
+      row.contractId = r.ContractId;
+      row.companionContractId = r.CompanionContractId;
+      row.contractUsedByteCount = r.ContractUsedByteCount;
+      row.contractByteCount = r.ContractByteCount;
+      row.contractBitRate = r.ContractBitRate;
+      row.companionContractUsedByteCount = r.CompanionContractUsedByteCount;
+      row.companionContractByteCount = r.CompanionContractByteCount;
+      row.companionContractBitRate = r.CompanionContractBitRate;
+      row.pairCount = r.PairCount;
+      row.closing = r.Closing;
+      rows.push_back(std::move(row));
+    }
+  }
+
   bool changed = false;
   {
     std::scoped_lock lock(drawerMutex_);
-    // keep first-seen order; newly seen clients sort to the top
-    for (const auto& [clientId, row] : rowsByClient) {
-      if (contractClientOrder_.find(clientId) == contractClientOrder_.end()) {
-        contractClientOrder_[clientId] = static_cast<int>(contractClientOrder_.size());
-      }
-    }
-    rows.reserve(rowsByClient.size());
-    for (auto& [clientId, row] : rowsByClient) {
-      // contract id signatures: a change means a contract was replaced
-      auto joinSorted = [](std::vector<std::string>& ids) {
-        std::sort(ids.begin(), ids.end());
-        std::string joined;
-        for (const auto& id : ids) {
-          if (!joined.empty()) joined += ",";
-          joined += id;
-        }
-        return joined;
-      };
-      row.contractId = joinSorted(contractIdsByClient[clientId]);
-      row.companionContractId = joinSorted(companionIdsByClient[clientId]);
-      rows.push_back(row);
-    }
-    std::sort(rows.begin(), rows.end(),
-              [this](const ContractClientRow& a, const ContractClientRow& b) {
-                return contractClientOrder_[a.clientId] > contractClientOrder_[b.clientId];
-              });
-    // both the egress and ingress listeners land here; publish only on change
     changed = rows != lastContractRows_;
     if (changed) lastContractRows_ = rows;
   }
@@ -1145,7 +1101,6 @@ void SdkHost::ClearDrawer() {
     std::scoped_lock lock(drawerMutex_);
     lastThroughputPoints_.clear();
     lastContractRows_.clear();
-    contractClientOrder_.clear();
     lastBlockActions_.clear();
     lastAllowedCount_ = 0;
     lastBlockedCount_ = 0;
@@ -1157,6 +1112,9 @@ void SdkHost::ClearDrawer() {
   if (onBlockStats_) onBlockStats_(0, 0);
   if (onSplitRules_) onSplitRules_({});
   if (onDnsSettings_) onDnsSettings_(std::nullopt);
+  // clear the chooser's peer-count sub-label + any open sheet on logout
+  if (onLocations_) onLocations_(std::nullopt, std::string());
+  if (onPeers_) onPeers_(std::nullopt);
 }
 
 std::vector<urnet::ThroughputPoint> SdkHost::CurrentThroughputPoints(int64_t& windowSeconds) {
@@ -1396,6 +1354,67 @@ std::vector<AppRule> SdkHost::CurrentAppRules() {
   return rules;
 }
 
+// ---- location/provider chooser --------------------------------------------
+// The bucketed location feed + the connected, provide-enabled peers pinned atop
+// the chooser. Opened lazily on the first chooser open; start() kicks the
+// initial load (filterLocations("")). The listeners fire on SDK callback
+// threads and only marshal (never re-enter SdkHost), so pushing the initial
+// snapshot under mutex_ here is safe.
+void SdkHost::EnsureLocations() {
+  std::scoped_lock lock(mutex_);
+  if (!device_ || locationsVc_) return;  // idempotent; needs a live session
+  locationsVc_ = device_->openLocationsViewController();
+  subs_.push_back(locationsVc_->addFilteredLocationsListener(
+      [this](std::optional<urnet::FilteredLocations> locations, std::string state) {
+        if (onLocations_) onLocations_(std::move(locations), std::move(state));
+      }));
+  locationsVc_->start();
+  // PeerViewController: connected AND provide-enabled peers only (SDK filters).
+  peerVc_ = device_->openPeerViewController();
+  subs_.push_back(peerVc_->addPeersListener(
+      [this](std::optional<urnet::NetworkPeerList> peers) {
+        if (onPeers_) onPeers_(std::move(peers));
+      }));
+  peerVc_->start();
+  // seed the chooser + the drawer's peer-count sub-label (the listeners only
+  // fire on later changes)
+  if (onLocations_) {
+    onLocations_(locationsVc_->getFilteredLocations(),
+                 locationsVc_->getFilteredLocationState());
+  }
+  if (onPeers_) onPeers_(peerVc_->getPeers());
+}
+
+void SdkHost::SetLocationFilter(const std::string& query) {
+  std::scoped_lock lock(mutex_);
+  if (locationsVc_) locationsVc_->filterLocations(query);
+}
+
+std::optional<urnet::FilteredLocations> SdkHost::CurrentFilteredLocations() {
+  std::scoped_lock lock(mutex_);
+  if (locationsVc_) return locationsVc_->getFilteredLocations();
+  return std::nullopt;
+}
+
+std::string SdkHost::CurrentFilteredLocationState() {
+  std::scoped_lock lock(mutex_);
+  if (locationsVc_) return locationsVc_->getFilteredLocationState();
+  return std::string();
+}
+
+std::optional<urnet::NetworkPeerList> SdkHost::ConnectedProvidePeers() {
+  std::scoped_lock lock(mutex_);
+  if (peerVc_) return peerVc_->getPeers();
+  return std::nullopt;
+}
+
+std::optional<urnet::ConnectLocation> SdkHost::SelectedLocation() {
+  std::scoped_lock lock(mutex_);
+  if (connectVc_) return connectVc_->getSelectedLocation();
+  if (device_) return device_->getConnectLocation();
+  return std::nullopt;
+}
+
 void SdkHost::ConnectBestAvailable() {
   std::scoped_lock lock(mutex_);
   if (connectVc_) connectVc_->connectBestAvailable();
@@ -1413,6 +1432,13 @@ void SdkHost::Connect(const std::string& connectLocationJson) {
   }
 }
 
+// Connect to an SDK-supplied ConnectLocation as-is (the chooser already holds
+// the typed struct; skip the json round-trip). connect() takes an optional.
+void SdkHost::Connect(const urnet::ConnectLocation& location) {
+  std::scoped_lock lock(mutex_);
+  if (connectVc_) connectVc_->connect(location);
+}
+
 void SdkHost::Disconnect() {
   std::scoped_lock lock(mutex_);
   if (connectVc_) connectVc_->disconnect();
@@ -1422,7 +1448,15 @@ void SdkHost::TeardownSessionLocked() {
   subs_.clear();
   connectVc_.reset();
   contractVc_.reset();
+  // the details VC spawns a coalescing run loop in Start(); Close() cancels it
+  // (macOS ContractDetailsStore.reset -> viewController.close parity)
+  if (contractDetailsVc_) {
+    contractDetailsVc_->close();
+    contractDetailsVc_.reset();
+  }
   blockVc_.reset();
+  locationsVc_.reset();
+  peerVc_.reset();
   ClearDrawer();
   if (device_) { device_->close(); device_.reset(); }
   if (service_.IsConnected()) {

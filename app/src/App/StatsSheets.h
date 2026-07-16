@@ -42,19 +42,38 @@ class ClientContractsSheet : public std::enable_shared_from_this<ClientContracts
 
  private:
   struct CircleUi {
+    // 56x56 slot holding the current ring, any ejecting rings, and the disc
+    winrt::Microsoft::UI::Xaml::Controls::Grid ring{nullptr};
+    // the ring carrying the current contract identity (its opacity fades in)
+    winrt::Microsoft::UI::Xaml::Shapes::Ellipse current{nullptr};
+    // usage disc; persists across a contract swap (never ejects), just resizes
     winrt::Microsoft::UI::Xaml::Shapes::Ellipse inner{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock used{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock total{nullptr};
-    winrt::Microsoft::UI::Xaml::Controls::Grid ring{nullptr};
-    winrt::Microsoft::UI::Xaml::Media::TranslateTransform ringShift{nullptr};
+    winrt::Windows::UI::Color color{};  // stroke color, to clone ejecting rings
     // eased disc size (from -> to starting at start, cubic ease-out 0.5s)
     double sizeFrom = 0;
     double sizeTo = 0;
     double sizeStart = 0;
-    // a replaced contract (new id signature) fades/slides the circle back in
-    double swapStart = 0;
-    bool swapFromLeft = false;
-    std::string signature;
+
+    // ---- ring eject model (mirrors Apple ContractRing) ---------------------
+    // On a contract-id (signature) change the on-screen ring is EJECTED: an
+    // independent clone slides out toward its edge and fades on its own fixed
+    // schedule, never reversing; several can be leaving at once. The incoming
+    // ring fades into the slot only once the LAST ejection has left. A closing
+    // row ejects its ring and admits nothing after.
+    std::string signature;        // contract-id signature occupying the slot
+    bool initialized = false;     // first signature occupies instantly (no eject)
+    bool removalLeading = false;  // eject direction: contract=left, companion=right
+    bool present = false;         // a ring is wanted (false while the row closes)
+    bool currentShown = false;    // the current ring is admitted (fading in/settled)
+    double fadeStart = 0;         // when the current ring began fading in (0=settled)
+    struct Ejection {
+      winrt::Microsoft::UI::Xaml::Shapes::Ellipse ring{nullptr};
+      winrt::Microsoft::UI::Xaml::Media::TranslateTransform shift{nullptr};
+      double start = 0;           // NowSeconds() when the slide-out began
+    };
+    std::vector<Ejection> ejections;
   };
   struct LineUi {
     winrt::Microsoft::UI::Xaml::Controls::TextBlock rate{nullptr};
@@ -73,6 +92,9 @@ class ClientContractsSheet : public std::enable_shared_from_this<ClientContracts
   RowUi BuildRow(const std::string& clientId);
   void UpdateRow(RowUi& ui, const ContractClientRow& row);
   static void AnimateCircle(CircleUi& circle, double now);
+  // spawn an independent slide-out+fade of the on-screen ring (runs once, never
+  // reverses); the incoming ring waits for the last ejection to leave
+  static void EjectRing(CircleUi& circle, double now);
   void CopyClientId(const std::string& clientId);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};

@@ -212,6 +212,7 @@
     <ClCompile Include="AuthSheets.cpp" />
     <ClCompile Include="BalanceSheets.cpp" />
     <ClCompile Include="Localization.cpp" />
+    <ClCompile Include="LocationSheets.cpp" />
     <ClCompile Include="SdkHost.cpp" />
     <ClCompile Include="StatsFormat.cpp" />
     <ClCompile Include="StatsSheets.cpp" />
@@ -231,6 +232,7 @@
     <ClInclude Include="BalanceSheets.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Localization.h" />
+    <ClInclude Include="LocationSheets.h" />
     <ClInclude Include="SdkHost.h" />
     <ClInclude Include="StatsFormat.h" />
     <ClInclude Include="StatsSheets.h" />

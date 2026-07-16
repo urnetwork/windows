@@ -15,6 +15,7 @@
 
 #include "AuthSheets.h"
 #include "BalanceSheets.h"
+#include "LocationSheets.h"
 #include "Protocol.h"
 #include "SdkHost.h"
 #include "StatsSheets.h"
@@ -115,6 +116,10 @@ struct MainWindow : MainWindowT<MainWindow> {
                               winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
   void OnDnsCardTapped(winrt::Windows::Foundation::IInspectable const&,
                        winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
+  void OnLocationRowTapped(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
+  void OnPeersLineTapped(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
 
   // Called by AppController (already marshaled onto the UI thread).
   void OnAuthStateChanged(urnw::AuthState state, std::string const& error);
@@ -196,6 +201,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   winrt::fire_and_forget ShowSplitRulesSheet();
   winrt::fire_and_forget ShowAppRulesSheet();
   winrt::fire_and_forget ShowDnsSheet();
+  winrt::fire_and_forget ShowLocationChooserSheet();
+  // drawer "N network peers" sub-label (req1); space-preserved (blank + Opacity
+  // 0 when there are none) so the location row never jumps
+  void ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers);
 
   bool connected_ = false;
 
@@ -266,6 +275,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::shared_ptr<urnw::SplitRulesSheet> splitRulesSheet_;
   std::shared_ptr<urnw::AppRulesSheet> appRulesSheet_;
   std::shared_ptr<urnw::DnsEditorSheet> dnsSheet_;
+  std::shared_ptr<urnw::LocationChooserSheet> locationSheet_;
 };
 
 }  // namespace winrt::URnetwork::implementation

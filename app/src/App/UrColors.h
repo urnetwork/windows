@@ -47,6 +47,8 @@ inline constexpr winrt::Windows::UI::Color kUrCoral{255, 0xFF, 0x6C, 0x58};
 inline constexpr winrt::Windows::UI::Color kUrElectricBlue{255, 0x00, 0x39, 0xDE};
 // blocked packets (maroon reads as near-black against the dark background)
 inline constexpr winrt::Windows::UI::Color kUrMutedCoral{255, 0xC8, 0x60, 0x4F};
+// idle / none status (0 network peers): amber
+inline constexpr winrt::Windows::UI::Color kUrAmber{255, 0xF5, 0xC2, 0x42};
 
 inline winrt::Windows::UI::Color WithAlpha(winrt::Windows::UI::Color c, uint8_t a) {
   c.A = a;

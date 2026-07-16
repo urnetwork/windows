@@ -126,13 +126,16 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     settings.prefix_v4 = 24;
     settings.mtu = kTunnelMtu;
     // dns from the device, like the tunnel address: the dns settings' unencrypted
-    // local servers when set, otherwise the default plain 1.1.1.1 (which the
-    // UpgradeMux can intercept and upgrade). the tunnel is ipv4-only, so only the
-    // ipv4 resolvers apply
+    // local servers when set, otherwise the default plain-DNS resolvers (which the
+    // UpgradeMux can intercept and upgrade). always plain :53, never OS-level
+    // encrypted DNS: the mux performs the unencrypted-DNS -> DoH upgrade in-tunnel.
+    // the tunnel is ipv4-only, so only the ipv4 resolvers apply
     if (auto dns = device_->tunnelDnsAddressesIpv4(); dns && !dns->empty()) {
       settings.dns_servers = *dns;
     } else {
-      settings.dns_servers = {"1.1.1.1"};
+      // static fallback matching the SDK default tunnel resolvers (Quad9 leads so
+      // no OS auto-upgrade to encrypted DNS applies)
+      settings.dns_servers = {"9.9.9.9", "1.1.1.1"};
     }
     netConfig_ = std::make_unique<NetworkConfig>(adapter_->Luid());
     if (!netConfig_->Apply(settings)) throw std::runtime_error("network config failed");

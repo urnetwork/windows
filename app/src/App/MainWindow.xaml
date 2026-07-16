@@ -232,14 +232,43 @@
                             <StackPanel Spacing="12">
                                 <TextBlock x:Name="StatusText" FontSize="22"
                                            FontWeight="SemiBold" />
-                                <StackPanel Spacing="2">
-                                    <TextBlock x:Name="SelectedProviderLabel" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="LocationText" FontSize="15" />
-                                </StackPanel>
+                                <!-- selected location; the whole row opens the provider chooser -->
+                                <Border x:Name="LocationRow"
+                                        Background="{StaticResource UrCardBrush}"
+                                        CornerRadius="8" Padding="12,8"
+                                        Tapped="OnLocationRowTapped">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock x:Name="SelectedProviderLabel" FontSize="12"
+                                                       Foreground="{StaticResource UrTextMutedBrush}" />
+                                            <TextBlock x:Name="LocationText" FontSize="15" />
+                                        </StackPanel>
+                                        <FontIcon Grid.Column="1" Glyph="&#xE76C;" FontSize="14"
+                                                  VerticalAlignment="Center"
+                                                  Foreground="{StaticResource UrTextMutedBrush}" />
+                                    </Grid>
+                                </Border>
                                 <Button x:Name="ConnectButton"
                                         Style="{StaticResource AccentButtonStyle}"
                                         HorizontalAlignment="Stretch" Click="OnConnectToggle" />
+                                <!-- network peers status line (apple ConnectActions parity): a
+                                     filled dot (green when providing peers are online, coral at
+                                     zero) + "{n} peers", always shown; tapping opens the chooser -->
+                                <Border x:Name="PeersLine" Background="{StaticResource UrCardBrush}"
+                                        CornerRadius="8" Padding="12,8"
+                                        Tapped="OnPeersLineTapped">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Ellipse x:Name="PeerDot" Width="8" Height="8"
+                                                 VerticalAlignment="Center" />
+                                        <TextBlock x:Name="PeerCountText" FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                                    </StackPanel>
+                                </Border>
                                 <!-- out of balance: the action button opens the upgrade flow -->
                                 <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
                                          Severity="Warning" />

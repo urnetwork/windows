@@ -11,9 +11,11 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Microsoft.UI.Interop.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
+#include <winrt/Microsoft.UI.Xaml.Shapes.h>  // PeerDot Ellipse.Fill
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 
 #include "AppController.h"
@@ -261,6 +263,7 @@ void MainWindow::ApplyStrings() {
   StatusText().Text(Loc("disconnected"));
   SelectedProviderLabel().Text(Loc("selected_provider"));
   LocationText().Text(Loc("best_available_provider"));
+  ApplyPeerCount(std::nullopt);   // seed the peers status line ("0 peers" + dot)
   ConnectButton().Content(LocBox("connect"));
   BalanceWarning().Title(Loc("insufficient_balance"));
   BalanceWarning().Message(Loc("insufficient_balance_message"));
@@ -1436,9 +1439,26 @@ void MainWindow::SetConnectedUi(bool connected) {
 void MainWindow::OnStatsChanged(urnw::LiveStats const& stats) { ApplyStats(stats); }
 
 void MainWindow::ApplyStats(urnw::LiveStats const& stats) {
-  // Selected provider row (read-only; the app has no provider picker yet).
-  LocationText().Text(stats.locationName.empty() ? Loc("best_available_provider")
-                                                 : H(stats.locationName));
+  // Selected provider row. When the selected location is a connected network
+  // peer, show its device name instead of the raw client id (req4): resolve it
+  // from the live peer list by client id, like the linux drawer does.
+  std::string locationName = stats.locationName;
+  const auto peers = Sdk().ConnectedProvidePeers();
+  if (auto selected = Sdk().SelectedLocation();
+      peers && selected && selected->connect_location_id &&
+      selected->connect_location_id->client_id &&
+      !selected->connect_location_id->client_id->empty()) {
+    const auto& clientId = *selected->connect_location_id->client_id;
+    for (const auto& peer : *peers) {
+      if (peer.ClientId && *peer.ClientId == clientId) {
+        locationName = urnw::PeerDisplayName(peer);
+        break;
+      }
+    }
+  }
+  LocationText().Text(locationName.empty() ? Loc("best_available_provider")
+                                           : H(locationName));
+  ApplyPeerCount(peers);  // the peers status line below the connect button (req1)
   countryCode_ = stats.countryCode;
   countryName_ = stats.countryName;
 
@@ -1506,11 +1526,16 @@ void MainWindow::WireDrawerFeeds() {
       }
     });
   });
-  sdk.SetContractRowsHandler([queue, weak](std::vector<urnw::ContractClientRow> rows) {
-    queue.TryEnqueue([weak, rows = std::move(rows)] {
+  // The ContractDetailsViewController already coalesces the egress + ingress
+  // change streams into one settled ContractRowsChanged (no intermediate
+  // one-list-updated aggregate reaches us), so the UI can apply each push
+  // directly -- re-reading the settled snapshot on the UI thread (macOS
+  // ContractDetailsStore.update parity).
+  sdk.SetContractRowsHandler([queue, weak](std::vector<urnw::ContractClientRow>) {
+    queue.TryEnqueue([weak] {
       if (auto self = weak.get()) {
-        self->contractRows_ = rows;
-        if (self->contractsSheet_) self->contractsSheet_->Update(rows);
+        self->contractRows_ = Sdk().CurrentContractRows();
+        if (self->contractsSheet_) self->contractsSheet_->Update(self->contractRows_);
       }
     });
   });
@@ -1562,6 +1587,26 @@ void MainWindow::WireDrawerFeeds() {
       if (auto self = weak.get()) self->ApplyBlockerUi(on);
     });
   });
+  // location/provider chooser: the bucketed locations feed the open sheet; the
+  // peers feed both the sheet's pinned section and the drawer's peer-count label
+  sdk.SetLocationsHandler([queue, weak](std::optional<urnet::FilteredLocations> locations,
+                                        std::string) {
+    queue.TryEnqueue([weak, locations = std::move(locations)] {
+      if (auto self = weak.get(); self && self->locationSheet_) {
+        self->locationSheet_->Update(locations, Sdk().ConnectedProvidePeers());
+      }
+    });
+  });
+  sdk.SetPeersHandler([queue, weak](std::optional<urnet::NetworkPeerList> peers) {
+    queue.TryEnqueue([weak, peers = std::move(peers)] {
+      if (auto self = weak.get()) {
+        self->ApplyPeerCount(peers);
+        if (self->locationSheet_) {
+          self->locationSheet_->Update(Sdk().CurrentFilteredLocations(), peers);
+        }
+      }
+    });
+  });
 }
 
 void MainWindow::WireCardAffordances() {
@@ -1584,6 +1629,8 @@ void MainWindow::WireCardAffordances() {
     card.PointerCanceled(
         [setBg](IInspectable const& sender, auto const&) { setBg(sender, urnw::colors::kCard); });
   };
+  wire(LocationRow());
+  wire(PeersLine());
   wire(ClientStatsCard());
   wire(LocalStatsCard());
   wire(DnsCard());
@@ -1591,6 +1638,10 @@ void MainWindow::WireCardAffordances() {
 
 void MainWindow::ResyncDrawer() {
   auto& sdk = Sdk();
+  // open the locations + peers feeds so the drawer's "N network peers" label is
+  // live from login, not only after the chooser is first opened (idempotent and
+  // session-guarded; one provider fetch per session, matching the Linux app).
+  sdk.EnsureLocations();
   int64_t windowSeconds = 60;
   auto points = sdk.CurrentThroughputPoints(windowSeconds);
   remoteChart_->SetPoints(points, windowSeconds);
@@ -1787,6 +1838,14 @@ void MainWindow::OnDnsCardTapped(IInspectable const&, Input::TappedRoutedEventAr
   ShowDnsSheet();
 }
 
+void MainWindow::OnLocationRowTapped(IInspectable const&, Input::TappedRoutedEventArgs const&) {
+  ShowLocationChooserSheet();
+}
+
+void MainWindow::OnPeersLineTapped(IInspectable const&, Input::TappedRoutedEventArgs const&) {
+  ShowLocationChooserSheet();
+}
+
 winrt::fire_and_forget MainWindow::ShowClientContractsSheet() {
   if (sheetOpen_) co_return;  // only one ContentDialog can show at a time
   auto self = get_strong();
@@ -1844,6 +1903,34 @@ winrt::fire_and_forget MainWindow::ShowDnsSheet() {
   }
   self->dnsSheet_.reset();
   self->sheetOpen_ = false;
+}
+
+winrt::fire_and_forget MainWindow::ShowLocationChooserSheet() {
+  if (sheetOpen_) co_return;  // only one ContentDialog can show at a time
+  auto self = get_strong();
+  self->sheetOpen_ = true;
+  // open the locations + peers view controllers (idempotent) and push an initial
+  // snapshot before seeding the sheet from the current values
+  Sdk().EnsureLocations();
+  try {
+    self->locationSheet_ = urnw::LocationChooserSheet::Create(Content().XamlRoot(), Sdk());
+    self->locationSheet_->Update(Sdk().CurrentFilteredLocations(),
+                                 Sdk().ConnectedProvidePeers());
+    co_await self->locationSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  self->locationSheet_.reset();
+  self->sheetOpen_ = false;
+}
+
+void MainWindow::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers) {
+  const int64_t count = peers ? static_cast<int64_t>(peers->size()) : 0;
+  // the standalone peers status line below the connect button, always shown:
+  // "{n} peers" + a filled dot, green when providing peers are online and amber
+  // at zero (apple ConnectActions parity)
+  PeerCountText().Text(hstring{urnw::Plural("network_peer_count", count)});
+  PeerDot().Fill(urnw::colors::MakeBrush(0 < count ? urnw::colors::kUrGreen
+                                                   : urnw::colors::kUrAmber));
 }
 
 }  // namespace winrt::URnetwork::implementation
