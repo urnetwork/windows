@@ -2201,6 +2201,514 @@ world's content</value>
     <value>Account tools</value>
     <comment>Account panel: tools section heading</comment>
   </data>
+  <data name="site_app_add" xml:space="preserve">
+    <value>Add</value>
+    <comment>App wallets/blocked: add button</comment>
+  </data>
+  <data name="site_app_add_wallet" xml:space="preserve">
+    <value>Add wallet</value>
+    <comment>App wallets: add wallet heading</comment>
+  </data>
+  <data name="site_app_allowed" xml:space="preserve">
+    <value>allowed</value>
+    <comment>App connect: allowed count label</comment>
+  </data>
+  <data name="site_app_auth_code_limit" xml:space="preserve">
+    <value>Auth code limit reached. Try again later.</value>
+    <comment>App settings: auth code limit error</comment>
+  </data>
+  <data name="site_app_auth_code_note" xml:space="preserve">
+    <value>Created auth codes expire after 5 minutes</value>
+    <comment>App settings: auth code expiry note</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>Average reliability</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_block_ads" xml:space="preserve">
+    <value>Block ads and trackers</value>
+    <comment>App connect: block ads and trackers toggle</comment>
+  </data>
+  <data name="site_app_block_hint" xml:space="preserve">
+    <value>Search for a location to block</value>
+    <comment>App blocked locations: search hint</comment>
+  </data>
+  <data name="site_app_blockchain" xml:space="preserve">
+    <value>Blockchain</value>
+    <comment>App payout detail: blockchain</comment>
+  </data>
+  <data name="site_app_blocked" xml:space="preserve">
+    <value>blocked</value>
+    <comment>App connect: blocked count label</comment>
+  </data>
+  <data name="site_app_blocked_locations" xml:space="preserve">
+    <value>Blocked locations</value>
+    <comment>App account: blocked locations row/screen title</comment>
+  </data>
+  <data name="site_app_bonus_referral" xml:space="preserve">
+    <value>Bonus referral code</value>
+    <comment>App settings: bonus referral code section</comment>
+  </data>
+  <data name="site_app_canceled" xml:space="preserve">
+    <value>Canceled</value>
+    <comment>App wallets: canceled payout status</comment>
+  </data>
+  <data name="site_app_canceled_on" xml:space="preserve">
+    <value>Canceled</value>
+    <comment>App payout detail: canceled time</comment>
+  </data>
+  <data name="site_app_change" xml:space="preserve">
+    <value>Change</value>
+    <comment>App connect screen: change location button</comment>
+  </data>
+  <data name="site_app_check_ip" xml:space="preserve">
+    <value>Check my IP</value>
+    <comment>App account: check my IP quick action</comment>
+  </data>
+  <data name="site_app_cities" xml:space="preserve">
+    <value>Cities</value>
+    <comment>App connect location picker: cities section</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>Clients</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_code_capped" xml:space="preserve">
+    <value>This referral code has reached its referral limit</value>
+    <comment>App settings: referral code capped error</comment>
+  </data>
+  <data name="site_app_complete" xml:space="preserve">
+    <value>Complete</value>
+    <comment>App wallets: completed payout status</comment>
+  </data>
+  <data name="site_app_completed_on" xml:space="preserve">
+    <value>Completed</value>
+    <comment>App payout detail: completed time</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>Connect options</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>Connect to view live activity</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_connected" xml:space="preserve">
+    <value>Connected</value>
+    <comment>App connect screen: connected state</comment>
+  </data>
+  <data name="site_app_connecting" xml:space="preserve">
+    <value>Connecting…</value>
+    <comment>App connect screen: connecting state</comment>
+  </data>
+  <data name="site_app_connections" xml:space="preserve">
+    <value>Connections</value>
+    <comment>App settings: connections section</comment>
+  </data>
+  <data name="site_app_contracts" xml:space="preserve">
+    <value>Contracts</value>
+    <comment>App connect screen: contract details section title</comment>
+  </data>
+  <data name="site_app_copied" xml:space="preserve">
+    <value>Copied</value>
+    <comment>App: copied flash</comment>
+  </data>
+  <data name="site_app_copy" xml:space="preserve">
+    <value>Copy</value>
+    <comment>App: copy button</comment>
+  </data>
+  <data name="site_app_countries" xml:space="preserve">
+    <value>Countries</value>
+    <comment>App connect location picker: countries section</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>Country</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>Country multipliers</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_create_auth_code" xml:space="preserve">
+    <value>Create auth code</value>
+    <comment>App settings: create auth code button</comment>
+  </data>
+  <data name="site_app_created" xml:space="preserve">
+    <value>Created</value>
+    <comment>App payout detail: created time</comment>
+  </data>
+  <data name="site_app_current_ranking" xml:space="preserve">
+    <value>Current ranking</value>
+    <comment>App leaderboard: own rank label</comment>
+  </data>
+  <data name="site_app_data_paid" xml:space="preserve">
+    <value>Data paid for</value>
+    <comment>App payout detail: data paid for</comment>
+  </data>
+  <data name="site_app_data_shared" xml:space="preserve">
+    <value>Data shared</value>
+    <comment>App leaderboard: data shared label</comment>
+  </data>
+  <data name="site_app_delete_account" xml:space="preserve">
+    <value>Delete account</value>
+    <comment>App settings: delete account button</comment>
+  </data>
+  <data name="site_app_delete_confirm" xml:space="preserve">
+    <value>Type your network name to confirm</value>
+    <comment>App settings: delete confirm prompt</comment>
+  </data>
+  <data name="site_app_delete_warning" xml:space="preserve">
+    <value>This permanently deletes your network, its data, and its earnings. This cannot be undone.</value>
+    <comment>App settings: delete warning</comment>
+  </data>
+  <data name="site_app_device_attaching" xml:space="preserve">
+    <value>Attaching device controls…</value>
+    <comment>App connect screen: device rpc attaching hint</comment>
+  </data>
+  <data name="site_app_disconnecting" xml:space="preserve">
+    <value>Disconnecting…</value>
+    <comment>App connect screen: disconnecting state</comment>
+  </data>
+  <data name="site_app_dns" xml:space="preserve">
+    <value>DNS</value>
+    <comment>App connect: custom DNS section</comment>
+  </data>
+  <data name="site_app_dns_encrypted" xml:space="preserve">
+    <value>Encrypted (DoH)</value>
+    <comment>App connect: DNS summary encrypted</comment>
+  </data>
+  <data name="site_app_dns_fallback" xml:space="preserve">
+    <value>Fast fallback during startup</value>
+    <comment>App connect DNS: fallback toggle</comment>
+  </data>
+  <data name="site_app_dns_local_dns" xml:space="preserve">
+    <value>Standard DNS on this device</value>
+    <comment>App connect DNS: local plain DNS toggle</comment>
+  </data>
+  <data name="site_app_dns_local_doh" xml:space="preserve">
+    <value>Encrypted DNS on this device</value>
+    <comment>App connect DNS: local DoH toggle</comment>
+  </data>
+  <data name="site_app_dns_plain" xml:space="preserve">
+    <value>Standard</value>
+    <comment>App connect: DNS summary plain</comment>
+  </data>
+  <data name="site_app_dns_remote_dns" xml:space="preserve">
+    <value>Standard DNS through the tunnel</value>
+    <comment>App connect DNS: remote plain DNS toggle</comment>
+  </data>
+  <data name="site_app_dns_remote_doh" xml:space="preserve">
+    <value>Encrypted DNS through the tunnel</value>
+    <comment>App connect DNS: remote DoH toggle</comment>
+  </data>
+  <data name="site_app_dns_reset" xml:space="preserve">
+    <value>Reset to recommended</value>
+    <comment>App connect DNS: reset to default</comment>
+  </data>
+  <data name="site_app_earnings" xml:space="preserve">
+    <value>Network earnings</value>
+    <comment>App account: network earnings card</comment>
+  </data>
+  <data name="site_app_email" xml:space="preserve">
+    <value>Email</value>
+    <comment>App profile: email label</comment>
+  </data>
+  <data name="site_app_enter_referral" xml:space="preserve">
+    <value>Enter referral code</value>
+    <comment>App settings: referral code input placeholder</comment>
+  </data>
+  <data name="site_app_ext_needed" xml:space="preserve">
+    <value>The URnetwork browser extension is not available in this browser</value>
+    <comment>App settings: extension unavailable note</comment>
+  </data>
+  <data name="site_app_feedback_placeholder" xml:space="preserve">
+    <value>Tell us what's working and what could be better…</value>
+    <comment>App support: feedback textarea placeholder</comment>
+  </data>
+  <data name="site_app_feedback_sent" xml:space="preserve">
+    <value>Sent! Thanks for your feedback.</value>
+    <comment>App support: sent confirmation</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>Fixed IP</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_gib_added" xml:space="preserve">
+    <value>+{gib} GiB added</value>
+    <comment>App balance codes: redeem success flash</comment>
+  </data>
+  <data name="site_app_how_are_we_doing" xml:space="preserve">
+    <value>How are we doing?</value>
+    <comment>App support: star rating label</comment>
+  </data>
+  <data name="site_app_invalid_address" xml:space="preserve">
+    <value>This address is not valid for the selected chain</value>
+    <comment>App wallets: invalid address error</comment>
+  </data>
+  <data name="site_app_invalid_code" xml:space="preserve">
+    <value>This referral code is not valid</value>
+    <comment>App settings: invalid referral code error</comment>
+  </data>
+  <data name="site_app_join_discord" xml:space="preserve">
+    <value>Join the community on Discord</value>
+    <comment>App support: Discord community card</comment>
+  </data>
+  <data name="site_app_kill_switch" xml:space="preserve">
+    <value>Kill switch</value>
+    <comment>App settings: kill switch toggle</comment>
+  </data>
+  <data name="site_app_kill_switch_note" xml:space="preserve">
+    <value>Block browser traffic when URnetwork is disconnected</value>
+    <comment>App settings: kill switch note</comment>
+  </data>
+  <data name="site_app_leaderboard_empty" xml:space="preserve">
+    <value>No networks on the leaderboard yet.</value>
+    <comment>App leaderboard: empty state</comment>
+  </data>
+  <data name="site_app_leaderboard_note" xml:space="preserve">
+    <value>The leaderboard is the sum of the last 4 payments. It is updated each payment cycle.</value>
+    <comment>App leaderboard: explainer note</comment>
+  </data>
+  <data name="site_app_loading" xml:space="preserve">
+    <value>Loading…</value>
+    <comment>App: loading state</comment>
+  </data>
+  <data name="site_app_login_methods" xml:space="preserve">
+    <value>Login methods</value>
+    <comment>App profile: login methods section</comment>
+  </data>
+  <data name="site_app_make_payout_wallet" xml:space="preserve">
+    <value>Make payout wallet</value>
+    <comment>App wallets: make payout wallet action</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>Manage Subscription</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mean_reliability" xml:space="preserve">
+    <value>Mean reliability</value>
+    <comment>App provider: mean reliability metric</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>Auto</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>Streaming</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>Web</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>Multiplier</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_network_name" xml:space="preserve">
+    <value>Network name</value>
+    <comment>App profile: network name label</comment>
+  </data>
+  <data name="site_app_network_reliability" xml:space="preserve">
+    <value>Network reliability</value>
+    <comment>App provider: reliability section</comment>
+  </data>
+  <data name="site_app_no_balance_codes" xml:space="preserve">
+    <value>No balance codes redeemed yet</value>
+    <comment>App balance codes: empty state</comment>
+  </data>
+  <data name="site_app_no_blocked" xml:space="preserve">
+    <value>No blocked locations yet</value>
+    <comment>App blocked locations: empty state</comment>
+  </data>
+  <data name="site_app_no_payouts" xml:space="preserve">
+    <value>No payouts yet</value>
+    <comment>App wallets: payouts empty state</comment>
+  </data>
+  <data name="site_app_no_provider_activity" xml:space="preserve">
+    <value>No providing activity in this window.</value>
+    <comment>App provider: no provider throughput</comment>
+  </data>
+  <data name="site_app_no_provider_contracts" xml:space="preserve">
+    <value>No active provider contracts.</value>
+    <comment>App provider: no provider contracts</comment>
+  </data>
+  <data name="site_app_no_reliability" xml:space="preserve">
+    <value>No reliability data yet.</value>
+    <comment>App provider: no reliability data</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>No traffic yet</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_no_wallets" xml:space="preserve">
+    <value>No wallets yet — add one to receive payouts</value>
+    <comment>App wallets: empty state</comment>
+  </data>
+  <data name="site_app_paid_on" xml:space="preserve">
+    <value>Paid</value>
+    <comment>App payout detail: paid time</comment>
+  </data>
+  <data name="site_app_payout_not_found" xml:space="preserve">
+    <value>This payout could not be found.</value>
+    <comment>App payout detail: not found</comment>
+  </data>
+  <data name="site_app_payout_wallet" xml:space="preserve">
+    <value>Payout wallet</value>
+    <comment>App wallets: payout wallet label</comment>
+  </data>
+  <data name="site_app_payouts" xml:space="preserve">
+    <value>Payouts</value>
+    <comment>App wallets: payouts section</comment>
+  </data>
+  <data name="site_app_peak_clients" xml:space="preserve">
+    <value>Peak clients</value>
+    <comment>App provider: peak clients metric</comment>
+  </data>
+  <data name="site_app_peers" xml:space="preserve">
+    <value>Your devices online</value>
+    <comment>App connect screen: online devices section title</comment>
+  </data>
+  <data name="site_app_pending" xml:space="preserve">
+    <value>Pending</value>
+    <comment>App wallets: pending payout status</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>Plan</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_private_network" xml:space="preserve">
+    <value>Private network</value>
+    <comment>App leaderboard: hidden network row label</comment>
+  </data>
+  <data name="site_app_profile" xml:space="preserve">
+    <value>Profile</value>
+    <comment>App account: profile row/screen title</comment>
+  </data>
+  <data name="site_app_provider" xml:space="preserve">
+    <value>Providing</value>
+    <comment>App account: provider row + screen title</comment>
+  </data>
+  <data name="site_app_provider_contracts" xml:space="preserve">
+    <value>Provider contracts</value>
+    <comment>App provider: contracts section</comment>
+  </data>
+  <data name="site_app_provider_intro" xml:space="preserve">
+    <value>How your network's devices are providing bandwidth and earning.</value>
+    <comment>App provider screen: intro</comment>
+  </data>
+  <data name="site_app_provider_needs_connect" xml:space="preserve">
+    <value>Connect to see live providing statistics.</value>
+    <comment>App provider: connect prompt for live stats</comment>
+  </data>
+  <data name="site_app_provider_stats" xml:space="preserve">
+    <value>Provider statistics</value>
+    <comment>App provider: throughput section</comment>
+  </data>
+  <data name="site_app_providers" xml:space="preserve">
+    <value>Providers</value>
+    <comment>App connect screen: provider grid section title</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>Proxies</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_received" xml:space="preserve">
+    <value>Received</value>
+    <comment>App provider: bytes received metric</comment>
+  </data>
+  <data name="site_app_redeemed_on" xml:space="preserve">
+    <value>Redeemed {date}</value>
+    <comment>App balance codes: redeemed date row</comment>
+  </data>
+  <data name="site_app_refer_friends" xml:space="preserve">
+    <value>Refer friends</value>
+    <comment>App account: refer friends card</comment>
+  </data>
+  <data name="site_app_referral_network" xml:space="preserve">
+    <value>Referral network</value>
+    <comment>App settings: referral network section</comment>
+  </data>
+  <data name="site_app_regions" xml:space="preserve">
+    <value>Regions</value>
+    <comment>App connect location picker: regions section</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>Reliability weight</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_remove" xml:space="preserve">
+    <value>Remove</value>
+    <comment>App: remove button</comment>
+  </data>
+  <data name="site_app_retry" xml:space="preserve">
+    <value>Try again</value>
+    <comment>App screens: retry button</comment>
+  </data>
+  <data name="site_app_save" xml:space="preserve">
+    <value>Save</value>
+    <comment>App: save button</comment>
+  </data>
+  <data name="site_app_send" xml:space="preserve">
+    <value>Send</value>
+    <comment>App support: send button</comment>
+  </data>
+  <data name="site_app_served" xml:space="preserve">
+    <value>Served</value>
+    <comment>App provider: bytes served metric</comment>
+  </data>
+  <data name="site_app_show_on_leaderboard" xml:space="preserve">
+    <value>Show my network on the leaderboard</value>
+    <comment>App leaderboard: public visibility toggle</comment>
+  </data>
+  <data name="site_app_shuffle" xml:space="preserve">
+    <value>Shuffle</value>
+    <comment>App connect screen: shuffle providers button</comment>
+  </data>
+  <data name="site_app_stay_in_touch" xml:space="preserve">
+    <value>Stay in touch</value>
+    <comment>App settings: stay in touch section</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>Strong Anonymization</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_support_intro" xml:space="preserve">
+    <value>Send us your feedback directly, or join the community for direct support.</value>
+    <comment>App support: intro line</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>Transfer</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_app_total_referrals" xml:space="preserve">
+    <value>Total referrals</value>
+    <comment>App account: total referrals label</comment>
+  </data>
+  <data name="site_app_transaction" xml:space="preserve">
+    <value>Transaction</value>
+    <comment>App payout detail: transaction hash</comment>
+  </data>
+  <data name="site_app_unlink" xml:space="preserve">
+    <value>Unlink</value>
+    <comment>App settings: unlink referral network</comment>
+  </data>
+  <data name="site_app_verified" xml:space="preserve">
+    <value>Verified</value>
+    <comment>App profile: verified badge</comment>
+  </data>
+  <data name="site_app_wallet" xml:space="preserve">
+    <value>Wallet</value>
+    <comment>App wallets: wallet label</comment>
+  </data>
+  <data name="site_app_wallet_address" xml:space="preserve">
+    <value>Wallet address</value>
+    <comment>App wallets: wallet address input</comment>
+  </data>
+  <data name="site_app_wallets" xml:space="preserve">
+    <value>Wallets</value>
+    <comment>App account: wallets row/screen title</comment>
+  </data>
   <data name="site_best_available" xml:space="preserve">
     <value>Best available</value>
     <comment>Account panel: any-provider location option</comment>
@@ -2209,21 +2717,9 @@ world's content</value>
     <value>Any provider on the network</value>
     <comment>Account panel: 'best available' location subtitle</comment>
   </data>
-  <data name="site_best_value" xml:space="preserve">
-    <value>Best value</value>
-    <comment>Buy data: best-value pack tag</comment>
-  </data>
   <data name="site_billing_portal_error" xml:space="preserve">
     <value>Could not open the billing portal.</value>
     <comment>Account panel: billing portal failed to open</comment>
-  </data>
-  <data name="site_buy_code_prompt" xml:space="preserve">
-    <value>Don't have a code yet? Buy one — it applies to your balance right away.</value>
-    <comment>Account panel: prompt to buy a balance code</comment>
-  </data>
-  <data name="site_cancel_anytime" xml:space="preserve">
-    <value>You can cancel anytime from your account.</value>
-    <comment>Upgrade: cancel-anytime reassurance</comment>
   </data>
   <data name="site_clear_location" xml:space="preserve">
     <value>Clear location</value>
@@ -2232,6 +2728,34 @@ world's content</value>
   <data name="site_client_limit_upgrade" xml:space="preserve">
     <value>Your plan is at its concurrent client limit — Pro raises it to 1,000.</value>
     <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>Set up the extension to connect</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>The extension is signed into a different network:</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork routes this browser through the extension. Install it to start connecting.</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>Install the extension to connect</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>Extension detected and signed in</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>The extension is installed but signed out. Set it up with your network to connect.</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>Ready to connect</value>
+    <comment>Connect: disconnected status line</comment>
   </data>
   <data name="site_copy_url" xml:space="preserve">
     <value>Copy URL</value>
@@ -2249,18 +2773,6 @@ world's content</value>
     <value>Could not create the proxy.</value>
     <comment>Account panel: proxy creation failed</comment>
   </data>
-  <data name="site_data_on_its_way" xml:space="preserve">
-    <value>Your data is on its way — the balance updates within a few moments.</value>
-    <comment>Checkout: data-purchase success body</comment>
-  </data>
-  <data name="site_data_pack" xml:space="preserve">
-    <value>Data pack</value>
-    <comment>Buy data: pack picker aria-label</comment>
-  </data>
-  <data name="site_done" xml:space="preserve">
-    <value>Done</value>
-    <comment>Upgrade: dismiss the success sheet</comment>
-  </data>
   <data name="site_download_conf" xml:space="preserve">
     <value>Download .conf</value>
     <comment>Account panel: download a WireGuard config file</comment>
@@ -2269,9 +2781,53 @@ world's content</value>
     <value>Download WireGuard config</value>
     <comment>Account panel: download WireGuard config (created card)</comment>
   </data>
+  <data name="site_ext_current_network" xml:space="preserve">
+    <value>Currently set up for</value>
+    <comment>Extension status: label before the extension's current network name</comment>
+  </data>
+  <data name="site_ext_get" xml:space="preserve">
+    <value>Protect this browser with URnetwork.</value>
+    <comment>Extension status: install pitch</comment>
+  </data>
+  <data name="site_ext_install" xml:space="preserve">
+    <value>Install the extension</value>
+    <comment>Extension status: install CTA</comment>
+  </data>
+  <data name="site_ext_proxy_on" xml:space="preserve">
+    <value>Browser connection active</value>
+    <comment>Extension status: linked with the browser connection active</comment>
+  </data>
+  <data name="site_ext_ready" xml:space="preserve">
+    <value>Extension connected and ready to use</value>
+    <comment>Extension status: linked and idle</comment>
+  </data>
+  <data name="site_ext_setting_up" xml:space="preserve">
+    <value>Setting up…</value>
+    <comment>Extension status: setup in flight</comment>
+  </data>
+  <data name="site_ext_setup" xml:space="preserve">
+    <value>Set up extension to use your network</value>
+    <comment>Extension status: hand the page session to the extension</comment>
+  </data>
+  <data name="site_ext_setup_badge" xml:space="preserve">
+    <value>Set up extension</value>
+    <comment>Extension status: compact 'set up extension' badge next to the account pill</comment>
+  </data>
+  <data name="site_ext_setup_foreign_note" xml:space="preserve">
+    <value>This will log the extension out of its current network and disconnect the browser.</value>
+    <comment>Extension status: warning when replacing another network</comment>
+  </data>
+  <data name="site_ext_title" xml:space="preserve">
+    <value>Browser extension</value>
+    <comment>Extension status: section title</comment>
+  </data>
   <data name="site_generic_error" xml:space="preserve">
     <value>Something went wrong. Please try again.</value>
     <comment>Account panel: generic retry error</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>Install the app</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
   <data name="site_invalid_balance_code" xml:space="preserve">
     <value>Invalid balance code.</value>
@@ -2313,10 +2869,6 @@ world's content</value>
     <value>Manage payment details, see invoices, or cancel your subscription.</value>
     <comment>Account panel: billing portal hint for Pro users</comment>
   </data>
-  <data name="site_most_popular_trial" xml:space="preserve">
-    <value>Most popular · 7-day free trial</value>
-    <comment>Upgrade: plan option tagline</comment>
-  </data>
   <data name="site_no_balance_codes" xml:space="preserve">
     <value>No balance codes redeemed yet</value>
     <comment>Account panel: empty redeemed-codes list</comment>
@@ -2329,37 +2881,21 @@ world's content</value>
     <value>No proxies yet</value>
     <comment>Account panel: empty proxies list</comment>
   </data>
-  <data name="site_open_checkout_error" xml:space="preserve">
-    <value>Could not open checkout.</value>
-    <comment>Checkout: embedded checkout failed to open</comment>
+  <data name="site_open_app" xml:space="preserve">
+    <value>Open app</value>
+    <comment>Account panel: open the in-site web app (/app)</comment>
   </data>
   <data name="site_open_client_manager" xml:space="preserve">
     <value>Open client manager</value>
     <comment>Account panel: launch the client-manager app</comment>
   </data>
-  <data name="site_opening_checkout" xml:space="preserve">
-    <value>Opening checkout…</value>
-    <comment>Buy data: opening checkout</comment>
-  </data>
-  <data name="site_opening_secure_checkout" xml:space="preserve">
-    <value>Opening secure checkout…</value>
-    <comment>Checkout: opening embedded Stripe checkout</comment>
-  </data>
-  <data name="site_pay_solana" xml:space="preserve">
-    <value>Pay with Solana</value>
-    <comment>Upgrade: pay via Solana button</comment>
-  </data>
-  <data name="site_payment_complete" xml:space="preserve">
-    <value>Payment complete</value>
-    <comment>Checkout: payment complete heading</comment>
+  <data name="site_operator_client_ui" xml:space="preserve">
+    <value>Operator Client UI</value>
+    <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
   </data>
   <data name="site_principal" xml:space="preserve">
     <value>Principal</value>
     <comment>Account panel: client info — principal label</comment>
-  </data>
-  <data name="site_pro_active_body" xml:space="preserve">
-    <value>Thanks for supporting URnetwork. UR Pro is now active.</value>
-    <comment>Upgrade: success body</comment>
   </data>
   <data name="site_product_updates_optin" xml:space="preserve">
     <value>You can send me occasional product updates</value>
@@ -2389,45 +2925,33 @@ world's content</value>
     <value>Username is the token in the URL; password is empty.</value>
     <comment>Account panel: SOCKS credential note</comment>
   </data>
-  <data name="site_solana_failed" xml:space="preserve">
-    <value>Solana payment failed</value>
-    <comment>Upgrade: Solana payment failed</comment>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>You're on the Free plan. Upgrade to Pro for more data and features.</value>
+    <comment>Subscription: free plan body</comment>
   </data>
-  <data name="site_solana_start_error" xml:space="preserve">
-    <value>Could not start Solana payment</value>
-    <comment>Upgrade: Solana payment could not start</comment>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>Free plan</value>
+    <comment>Subscription: free plan title</comment>
   </data>
-  <data name="site_solana_unavailable" xml:space="preserve">
-    <value>Solana Pay is unavailable right now. You can pay by card instead.</value>
-    <comment>Upgrade: Solana Pay unavailable</comment>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>Manage in {platform}</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
   </data>
-  <data name="site_start_checkout_error" xml:space="preserve">
-    <value>Could not start checkout. Please try again.</value>
-    <comment>Checkout: could not start a checkout session</comment>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>another platform</value>
+    <comment>Subscription: unknown platform fallback</comment>
   </data>
-  <data name="site_stripe_load_error" xml:space="preserve">
-    <value>Could not load Stripe.</value>
-    <comment>Checkout: Stripe.js failed to load</comment>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>Your Pro subscription is billed through {platform}. To change or cancel it, manage your subscriptions in {platform}.</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
   </data>
-  <data name="site_stripe_not_configured" xml:space="preserve">
-    <value>Stripe is not configured in this build</value>
-    <comment>Upgrade: Stripe unconfigured error</comment>
-  </data>
-  <data name="site_subscribe_stripe" xml:space="preserve">
-    <value>Subscribe with Stripe</value>
-    <comment>Upgrade: subscribe via Stripe button</comment>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>Your Pro subscription is billed through Stripe. Update your payment details or cancel anytime below.</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="site_unexpected_error" xml:space="preserve">
     <value>Something unexpected happened.</value>
     <comment>Account panel: generic unexpected error</comment>
-  </data>
-  <data name="site_waiting_payment" xml:space="preserve">
-    <value>Waiting for payment confirmation…</value>
-    <comment>Upgrade: waiting for payment confirmation</comment>
-  </data>
-  <data name="site_youre_pro" xml:space="preserve">
-    <value>You're Pro</value>
-    <comment>Upgrade: success heading</comment>
   </data>
   <data name="solana" xml:space="preserve">
     <value>Solana</value>
