@@ -326,8 +326,7 @@ void MainWindow::ApplyStrings() {
   // settings
   SplitTunnelHeading().Text(Loc("app_split_rules"));
   SplitTunnelDescription().Text(Loc("apps_listed_bypass_vpn"));
-  AddAppButton().Content(LocBox("add"));
-  RemoveAppButton().Content(LocBox("remove"));
+  ManageAppSplitButton().Content(winrt::box_value(winrt::hstring{L"Manage apps"}));
   SettingsAccountHeading().Text(Loc("account"));
   SignOutButton().Content(LocBox("sign_out"));
   ProtocolLink().Content(LocBox("uses_ur_protocol"));
@@ -1383,34 +1382,9 @@ void MainWindow::OnSendFeedback(IInspectable const&, RoutedEventArgs const&) {
 
 // ---- split tunnel (settings) ---------------------------------------------
 
-void MainWindow::OnAddExcludedApp(IInspectable const&, RoutedEventArgs const&) {
-  auto picker = winrt::Windows::Storage::Pickers::FileOpenPicker();
-  auto init = picker.as<::IInitializeWithWindow>();
-  HWND hwnd = nullptr;
-  this->try_as<::IWindowNative>()->get_WindowHandle(&hwnd);
-  init->Initialize(hwnd);
-  picker.FileTypeFilter().Append(L".exe");
-  picker.PickSingleFileAsync().Completed([this](auto const& op, auto) {
-    auto file = op.GetResults();
-    if (!file) return;
-    std::string path = urnw::Narrow(file.Path().c_str());
-    DispatcherQueue().TryEnqueue([this, path] {
-      excludedApps_.push_back(path);
-      ExcludedAppsList().Items().Append(winrt::box_value(H(path)));
-      PushExcludedApps();
-    });
-  });
+void MainWindow::OnManageAppSplitTunnel(IInspectable const&, RoutedEventArgs const&) {
+  ShowAppRulesSheet();
 }
-
-void MainWindow::OnRemoveExcludedApp(IInspectable const&, RoutedEventArgs const&) {
-  int index = ExcludedAppsList().SelectedIndex();
-  if (index < 0 || index >= static_cast<int>(excludedApps_.size())) return;
-  excludedApps_.erase(excludedApps_.begin() + index);
-  ExcludedAppsList().Items().RemoveAt(index);
-  PushExcludedApps();
-}
-
-void MainWindow::PushExcludedApps() { Sdk().SetExcludedApps(excludedApps_); }
 
 // ---- state relay ---------------------------------------------------------
 
@@ -1650,7 +1624,7 @@ void MainWindow::SeedConnectControls() {
   updatingControls_ = false;
 }
 
-urnw::ConnectionMode MainWindow::SelectedMode() const {
+urnw::ConnectionMode MainWindow::SelectedMode() {
   auto selected = ConnectionModeBar().SelectedItem();
   if (selected == ModeWebItem()) return urnw::ConnectionMode::Web;
   if (selected == ModeStreamingItem()) return urnw::ConnectionMode::Streaming;
@@ -1839,6 +1813,19 @@ winrt::fire_and_forget MainWindow::ShowSplitRulesSheet() {
   } catch (...) {
   }
   self->splitRulesSheet_.reset();
+  self->sheetOpen_ = false;
+}
+
+winrt::fire_and_forget MainWindow::ShowAppRulesSheet() {
+  if (sheetOpen_) co_return;
+  auto self = get_strong();
+  self->sheetOpen_ = true;
+  try {
+    self->appRulesSheet_ = urnw::AppRulesSheet::Create(Content().XamlRoot(), Sdk());
+    co_await self->appRulesSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  self->appRulesSheet_.reset();
   self->sheetOpen_ = false;
 }
 

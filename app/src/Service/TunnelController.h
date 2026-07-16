@@ -35,8 +35,9 @@ class TunnelController {
   // Tear the tunnel down and restore the network.
   void Stop();
 
-  // Update the excluded-app set for split tunneling (driver, if present).
-  bool SetSplitTunnel(const std::vector<std::string>& excludedPaths);
+  // Update the split-tunnel app set + mode (driver, if present). allowlist=false:
+  // excludedPaths bypass the tunnel; allowlist=true: ONLY excludedPaths tunnel.
+  bool SetSplitTunnel(const std::vector<std::string>& excludedPaths, bool allowlist);
 
   // Clear persisted auth/session state (mirrors the macOS logout message).
   void Logout();
@@ -49,7 +50,7 @@ class TunnelController {
   // Load persisted DeviceLocalKeyMaterial blobs, or return nullopt on first run.
   std::optional<urnet::DeviceLocalKeyMaterial> LoadKeyMaterial();
   void PersistKeyMaterial(const urnet::DeviceLocalKeyMaterial& km);
-  void PushExcludedToDriver(const std::vector<std::string>& paths);
+  void PushExcludedToDriver(const std::vector<std::string>& paths, bool allowlist);
 
   std::mutex mutex_;
   proto::TunnelState state_ = proto::TunnelState::Stopped;
@@ -73,6 +74,7 @@ class TunnelController {
   std::unique_ptr<PacketPump> pump_;
   SplitTunnelClient splitTunnel_;
   std::vector<std::string> excludedPaths_;
+  bool allowlist_ = false;
 };
 
 }  // namespace urnw

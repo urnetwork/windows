@@ -3,6 +3,7 @@
 
 #include "StatsFormat.h"
 
+#include <winsock2.h>   // must precede ws2tcpip.h (pch.h's windows.h is LEAN, no winsock)
 #include <ws2tcpip.h>
 
 #include <algorithm>

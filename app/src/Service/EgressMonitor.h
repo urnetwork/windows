@@ -6,9 +6,13 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+// Same order as NetworkConfig.cpp (which compiles): winsock2 before the IP
+// helpers, and ws2tcpip pulls in ws2ipdef (SOCKADDR_INET) that netioapi needs.
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <ifdef.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#include <netioapi.h>    // NET_LUID, MIB_IPINTERFACE_ROW, MIB_NOTIFICATION_TYPE, NotifyIpInterfaceChange
 
 namespace urnw {
 

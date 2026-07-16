@@ -15,7 +15,11 @@
 #include <windows.h>
 #include <winternl.h>
 
-#include "wintun.h"
+// Angle brackets, not quotes: on a case-insensitive filesystem `"wintun.h"`
+// resolves to THIS file (Wintun.h) and self-includes to nothing. <wintun.h>
+// searches the include path, finding the vendored API header (Service.vcxproj
+// puts third_party/wintun on AdditionalIncludeDirectories).
+#include <wintun.h>
 
 namespace urnw {
 

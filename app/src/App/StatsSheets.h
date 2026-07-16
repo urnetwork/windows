@@ -20,6 +20,7 @@
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 
+#include "InstalledApps.h"
 #include "SdkHost.h"
 
 namespace urnw {
@@ -135,6 +136,28 @@ class SplitRulesSheet : public std::enable_shared_from_this<SplitRulesSheet> {
   std::string editRuleId_;
   std::vector<std::string> candidates_;
   std::set<std::string> selected_;
+};
+
+// ---- Per-app split tunnel (Android parity) ---------------------------------
+// Lists installed apps (+ any existing per-app rules) and lets the user route each
+// through the tunnel, bypass it, or leave it at the default. Each change calls
+// SdkHost::SetAppRule / RemoveAppRule, which persists a BlockActionOverride and
+// re-drives the split-tunnel driver from getLocalOverrideAppIds.
+class AppRulesSheet : public std::enable_shared_from_this<AppRulesSheet> {
+ public:
+  static std::shared_ptr<AppRulesSheet> Create(
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk);
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+
+ private:
+  explicit AppRulesSheet(SdkHost& sdk) : sdk_(sdk) {}
+  void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  void RenderList();
+
+  SdkHost& sdk_;
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel appsList_{nullptr};
+  std::vector<InstalledApp> installed_;
 };
 
 // ---- Custom DNS editor -----------------------------------------------------

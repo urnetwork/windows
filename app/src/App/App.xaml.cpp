@@ -10,6 +10,17 @@
 using namespace winrt;
 using namespace winrt::Microsoft::UI::Xaml;
 
+// cppwinrt's generated module.g.cpp (the activation-factory dispatcher) links against the
+// global ::winrt_make_URnetwork_App(). Unlike MainWindow (Microsoft.UI.Xaml.Window), cppwinrt
+// emits NO factory_implementation::App / composition ctor for App (a Microsoft.UI.Xaml.
+// Application subclass) - App.g.cpp references them but App.g.h / URnetwork.2.h never declare
+// them, so App.g.cpp cannot be compiled. That is correct: App is a singleton created via
+// Application::Start -> winrt::make<implementation::App> (main.cpp) and is NEVER activated by
+// name (the winrt::URnetwork::App projection is never constructed), so this maker is never
+// invoked. Returning null is the honest answer - App has no activation factory - and lets
+// URnetwork.exe link. Global namespace to match module.g.cpp's extern declaration.
+void* winrt_make_URnetwork_App() { return nullptr; }
+
 namespace winrt::URnetwork::implementation {
 
 App::App() {

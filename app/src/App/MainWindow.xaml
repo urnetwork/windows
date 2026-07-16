@@ -591,12 +591,8 @@
                         <TextBlock x:Name="SplitTunnelHeading" FontSize="18" FontWeight="SemiBold" />
                         <TextBlock x:Name="SplitTunnelDescription"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <ListView x:Name="ExcludedAppsList" MaxHeight="220" BorderThickness="1"
-                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button x:Name="AddAppButton" Click="OnAddExcludedApp" />
-                            <Button x:Name="RemoveAppButton" Click="OnRemoveExcludedApp" />
-                        </StackPanel>
+                        <Button x:Name="ManageAppSplitButton" Click="OnManageAppSplitTunnel"
+                                Style="{StaticResource AccentButtonStyle}" />
                         <TextBlock x:Name="SettingsAccountHeading" FontSize="18" FontWeight="SemiBold"
                                    Margin="0,16,0,0" />
                         <Button x:Name="SignOutButton" Click="OnSignOut" />

@@ -1,6 +1,8 @@
-// User-mode client for the split-tunnel driver. Opens the driver device and
-// pushes the excluded-app set and physical-interface addresses via IOCTL. If
-// the driver is not installed (split tunneling disabled or not yet shipped),
+// User-mode client for the split-tunnel driver. On Open() it registers + starts
+// the kernel driver on demand (the MSI ships only SplitTunnel.sys next to the
+// service; the service owns the driver's lifecycle), opens its device, and
+// pushes the excluded-app set and physical-interface addresses via IOCTL.
+// Close() unloads + deregisters it. If the driver isn't shipped or won't load,
 // all operations are graceful no-ops so the tunnel still works.
 //
 // SPDX-License-Identifier: MPL-2.0
@@ -26,6 +28,8 @@ class SplitTunnelClient {
   void Close();
 
   bool SetEnabled(bool enabled);
+  // Select denylist (false) vs allowlist (true) redirect mode - see Ioctl.h.
+  bool SetMode(bool allowlist);
   // Physical interface addresses excluded flows rebind to (network byte order).
   bool SetPhysicalAddresses(uint32_t ifIndex4, const uint8_t addr4[4],
                             uint32_t ifIndex6, const uint8_t addr6[16]);

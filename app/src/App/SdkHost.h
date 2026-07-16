@@ -158,6 +158,18 @@ inline bool operator==(const SplitRule& a, const SplitRule& b) {
 }
 inline bool operator!=(const SplitRule& a, const SplitRule& b) { return !(a == b); }
 
+// A per-app split rule (Android parity): a BlockActionOverride keyed by the app's
+// exe IMAGE PATH. includeInTunnel=true routes the app THROUGH the tunnel
+// (RouteOverride.Local=false); false makes it BYPASS the tunnel (Local=true).
+struct AppRule {
+  std::string imagePath;
+  bool includeInTunnel = true;
+};
+inline bool operator==(const AppRule& a, const AppRule& b) {
+  return a.imagePath == b.imagePath && a.includeInTunnel == b.includeInTunnel;
+}
+inline bool operator!=(const AppRule& a, const AppRule& b) { return !(a == b); }
+
 class SdkHost {
  public:
   using AuthStateHandler = std::function<void(AuthState, const std::string& error)>;
@@ -265,9 +277,6 @@ class SdkHost {
   void Connect(const std::string& connectLocationJson);
   void Disconnect();
 
-  // Split tunneling: excluded process image paths.
-  void SetExcludedApps(const std::vector<std::string>& paths);
-
   void SetAuthStateHandler(AuthStateHandler h) { onAuth_ = std::move(h); }
   void SetAuthInvalidHandler(AuthInvalidHandler h) { onAuthInvalid_ = std::move(h); }
   void SetTunnelStateHandler(TunnelStateHandler h) { onTunnel_ = std::move(h); }
@@ -307,6 +316,15 @@ class SdkHost {
   void UpdateSplitRule(const std::string& overrideId, const std::vector<std::string>& hosts);
   void RemoveSplitRule(const std::string& overrideId);
 
+  // Per-app split tunneling (Android parity). A rule is a BlockActionOverride keyed
+  // by the app's exe image path; the SDK persists it and the change listener re-
+  // drives the driver from getLocalOverrideAppIds. includeInTunnel=true routes the
+  // app through the tunnel; false bypasses it. SetAppRule on an app that already
+  // has a rule updates it; RemoveAppRule clears it (back to the default = tunneled).
+  void SetAppRule(const std::string& imagePath, bool includeInTunnel);
+  void RemoveAppRule(const std::string& imagePath);
+  std::vector<AppRule> CurrentAppRules();
+
   // Accessors for the UI/view models to drive the SDK directly.
   bool apiReady() { return api_.has_value(); }
   urnet::Api& api() { return *api_; }
@@ -345,6 +363,11 @@ class SdkHost {
   void PublishBlockActions();
   void PublishBlockStats();
   void PublishSplitRules();
+  // Read getLocalOverrideAppIds(), compute {paths, allowlist} (Android inversion:
+  // any include-in-tunnel app => allowlist with the tunnel set, else denylist with
+  // the bypass set), and push to the service -> driver. Called from the override
+  // change listener and the initial drawer snapshot.
+  void PushLocalOverrideAppsToDriver();
   void ClearDrawer();             // logout: reset caches and push empty snapshots
   static std::string RandomLoopbackHostPort();
   std::string DeviceSpec();
@@ -377,7 +400,6 @@ class SdkHost {
   std::vector<SplitRule> lastSplitRules_;
 
   ServiceClient service_;
-  std::vector<std::string> excludedApps_;
   std::string appVersion_ = "0.0.1";
 
   WalletConnect wallet_;

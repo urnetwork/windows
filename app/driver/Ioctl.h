@@ -10,7 +10,15 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+// CTL_CODE / METHOD_BUFFERED / FILE_WRITE_ACCESS come from <winioctl.h> in user
+// mode (the SplitTunnelClient side), but in kernel mode they are already provided
+// by <wdm.h> (via <ntddk.h>, included before this header in Driver.c). Including
+// the user-mode <winioctl.h> in the driver redefines DEVICE_TYPE (C4005 -> C2220
+// warnings-as-errors) and drags in user-mode-only types (FILE_ID_128, USN_RECORD_*
+// -> C2061), so guard it to user mode only.
+#ifndef _KERNEL_MODE
 #include <winioctl.h>
+#endif
 
 // Device type in the vendor range.
 #define URST_DEVICE_TYPE 0x8000
@@ -27,17 +35,35 @@
 // Input: URST_PHYSICAL_ADDRS.
 #define IOCTL_URST_SET_PHYSICAL_ADDRS URST_IOCTL(0x801)
 
-// Replace the excluded-image-path set. Input: URST_EXCLUDED_PATHS (variable).
+// Replace the image-path set. Input: URST_EXCLUDED_PATHS (variable). The set's
+// MEANING depends on the mode (IOCTL_URST_SET_MODE): in denylist mode it is the
+// BYPASS set (redirect these; everyone else tunnels); in allowlist mode it is the
+// KEEP-ON-TUNNEL set (only these tunnel; everyone else is redirected).
 #define IOCTL_URST_SET_EXCLUDED_PATHS URST_IOCTL(0x802)
 
-// Clear all excluded paths and disable. No input.
+// Clear all paths, reset to denylist, and disable. No input.
 #define IOCTL_URST_CLEAR URST_IOCTL(0x803)
+
+// Select redirect mode. Input: URST_MODE.
+//   Denylist (0, default): the path set is the BYPASS set - those apps egress the
+//     physical NIC; every other process stays on the tunnel (permit unchanged).
+//   Allowlist (1): the path set is the KEEP-ON-TUNNEL set - only those apps stay
+//     on the tunnel; every OTHER process is redirected to the physical NIC.
+// Mirrors Android: any app marked include-in-tunnel flips the whole tunnel to
+// allowlist ("inclusions take precedence"). The controlling service (urnetworkd,
+// the process that opened this device) is ALWAYS exempt from redirection in both
+// modes, so the VPN transport is never rebound - see the classify path.
+#define IOCTL_URST_SET_MODE URST_IOCTL(0x804)
 
 #pragma pack(push, 1)
 
 typedef struct _URST_ENABLED {
   UINT32 Enabled;
 } URST_ENABLED;
+
+typedef struct _URST_MODE {
+  UINT32 Allowlist;  // 0 = denylist (redirect the path set), 1 = allowlist (redirect all BUT the path set)
+} URST_MODE;
 
 typedef struct _URST_PHYSICAL_ADDRS {
   UINT32 InterfaceIndex4;  // physical IPv4 interface index (0 = none)

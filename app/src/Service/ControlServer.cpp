@@ -37,7 +37,7 @@ nlohmann::json ControlServer::Handle(const nlohmann::json& request) {
       PushState();
     } else if (type == proto::msg::kSetSplitTunnel) {
       proto::SetSplitTunnel s = request.get<proto::SetSplitTunnel>();
-      reply.ok = tunnel_.SetSplitTunnel(s.excluded_app_paths);
+      reply.ok = tunnel_.SetSplitTunnel(s.excluded_app_paths, s.allowlist_mode);
       reply.status = tunnel_.Status();
     } else if (type == proto::msg::kLogout) {
       tunnel_.Logout();

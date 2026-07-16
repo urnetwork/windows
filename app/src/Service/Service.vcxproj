@@ -12,6 +12,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <ProjectGuid>{A1B2C3D4-0002-4E5F-8A9B-000000000002}</ProjectGuid>
     <RootNamespace>urnetworkd</RootNamespace>
+    <TargetName>urnetworkd</TargetName>  <!-- urnetworkd.exe (the WiX ServiceInstall expects it) -->
     <ConfigurationType>Application</ConfigurationType>
   </PropertyGroup>
 
@@ -27,8 +28,10 @@
 
   <ItemDefinitionGroup>
     <ClCompile>
-      <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebug</RuntimeLibrary>
-      <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreaded</RuntimeLibrary>
+      <!-- DYNAMIC CRT (MD) to match Common.lib (which is /MD for the WinUI App); the CRT
+           flavor must be identical across a binary and the static libs it links. -->
+      <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreadedDLL</RuntimeLibrary>
       <Optimization Condition="'$(Configuration)'=='Release'">MaxSpeed</Optimization>
       <!-- wintun.h ships beside the vendored wintun.dll under third_party -->
       <AdditionalIncludeDirectories>$(UrnWintunDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

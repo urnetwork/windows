@@ -1310,4 +1310,115 @@ void DnsEditorSheet::OnDraftChanged() {
   RenderRecommendationPanel();
 }
 
+// ---- Per-app split tunnel --------------------------------------------------
+
+std::shared_ptr<AppRulesSheet> AppRulesSheet::Create(XamlRoot const& root, SdkHost& sdk) {
+  auto sheet = std::shared_ptr<AppRulesSheet>(new AppRulesSheet(sdk));
+  sheet->Build(root);
+  return sheet;
+}
+
+void AppRulesSheet::Build(XamlRoot const& root) {
+  dialog_ = MakeDialog(root, hstring{L"App split tunnel"});
+  installed_ = EnumerateInstalledApps();
+
+  StackPanel body;
+  body.Spacing(8);
+
+  Border banner;
+  banner.CornerRadius(CornerRadius{12, 12, 12, 12});
+  banner.Padding(Thickness{12, 12, 12, 12});
+  banner.Background(colors::CardBrush());
+  banner.Child(MakeText(
+      hstring{L"Choose which apps use the VPN. \"Include\" routes an app through the "
+              L"tunnel; \"Bypass\" sends it direct. If any app is included, only "
+              L"included apps use the tunnel."},
+      12, MutedBrush(), true));
+  body.Children().Append(banner);
+
+  appsList_ = StackPanel();
+  appsList_.Spacing(2);
+  body.Children().Append(appsList_);
+
+  dialog_.Content(MakeSheetScroll(body));
+  RenderList();
+}
+
+void AppRulesSheet::RenderList() {
+  appsList_.Children().Clear();
+
+  auto lower = [](std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return (char)std::tolower(c); });
+    return s;
+  };
+
+  // current per-app rules from the SDK, keyed by lowercased image path
+  std::vector<AppRule> rules = sdk_.CurrentAppRules();
+  std::unordered_map<std::string, bool> ruleFor;  // lower(path) -> includeInTunnel
+  for (const auto& r : rules) ruleFor[lower(r.imagePath)] = r.includeInTunnel;
+
+  // rows = enumerated apps UNION any ruled app not enumerated, so an existing rule
+  // stays visible + changeable even if the app wasn't found in the registry.
+  std::vector<InstalledApp> rows = installed_;
+  std::unordered_map<std::string, bool> present;
+  for (const auto& a : installed_) present[lower(a.exePath)] = true;
+  for (const auto& r : rules) {
+    if (present.count(lower(r.imagePath))) continue;
+    std::string name = r.imagePath;
+    if (auto slash = name.find_last_of("\\/"); slash != std::string::npos)
+      name = name.substr(slash + 1);
+    rows.push_back({name, r.imagePath});
+  }
+
+  if (rows.empty()) {
+    appsList_.Children().Append(MakeText(
+        hstring{L"No installed apps found. (Store apps aren't listed.)"}, 12,
+        FaintBrush(), true));
+    return;
+  }
+
+  std::weak_ptr<AppRulesSheet> weak = weak_from_this();
+  for (const auto& app : rows) {
+    Grid row;
+    ColumnDefinition c0, c1;
+    c0.Width(GridLength{1, GridUnitType::Star});
+    c1.Width(GridLength{0, GridUnitType::Auto});
+    row.ColumnDefinitions().Append(c0);
+    row.ColumnDefinitions().Append(c1);
+    row.ColumnSpacing(8);
+    row.Padding(Thickness{0, 4, 0, 4});
+
+    StackPanel labels;
+    labels.Children().Append(MakeText(H(app.name), 13, nullptr, true));
+    labels.Children().Append(MakeText(H(app.exePath), 10, FaintBrush(), true));
+    Grid::SetColumn(labels, 0);
+    row.Children().Append(labels);
+
+    ComboBox combo;
+    combo.MinWidth(130);
+    combo.VerticalAlignment(VerticalAlignment::Center);
+    combo.Items().Append(box_value(hstring{L"Default"}));         // 0 = no rule
+    combo.Items().Append(box_value(hstring{L"Include in VPN"}));  // 1 -> Local=false
+    combo.Items().Append(box_value(hstring{L"Bypass VPN"}));      // 2 -> Local=true
+    int sel = 0;
+    if (auto it = ruleFor.find(lower(app.exePath)); it != ruleFor.end())
+      sel = it->second ? 1 : 2;
+    combo.SelectedIndex(sel);
+    std::string path = app.exePath;
+    combo.SelectionChanged(
+        [weak, path](IInspectable const& sender, SelectionChangedEventArgs const&) {
+          auto self = weak.lock();
+          if (!self) return;
+          int idx = sender.as<ComboBox>().SelectedIndex();
+          if (idx <= 0) self->sdk_.RemoveAppRule(path);
+          else self->sdk_.SetAppRule(path, idx == 1);  // 1 = include, 2 = bypass
+        });
+    Grid::SetColumn(combo, 1);
+    row.Children().Append(combo);
+
+    appsList_.Children().Append(row);
+  }
+}
+
 }  // namespace urnw

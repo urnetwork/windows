@@ -46,6 +46,18 @@ New-Item -ItemType Directory -Force -Path "$wintunDir\bin\amd64", "$wintunDir\bi
 Copy-Item "$wintunExtract\wintun\include\wintun.h" "$wintunDir\wintun.h" -Force
 Copy-Item "$wintunExtract\wintun\bin\amd64\wintun.dll" "$wintunDir\bin\amd64\wintun.dll" -Force
 Copy-Item "$wintunExtract\wintun\bin\arm64\wintun.dll" "$wintunDir\bin\arm64\wintun.dll" -Force
+
+# Preserve Wintun's license next to the vendored DLL for third-party attribution
+# (the prebuilt binaries are permissively licensed for redistribution; see
+# THIRD-PARTY-NOTICES.txt, which the MSI ships). Prefer the copy inside the zip;
+# if this version's zip doesn't carry one, fetch the pinned upstream text.
+$wintunLicense = Get-ChildItem "$wintunExtract\wintun" -Recurse -File -ErrorAction SilentlyContinue |
+  Where-Object { $_.Name -match '(?i)licen[cs]e' } | Select-Object -First 1
+if ($wintunLicense) {
+  Copy-Item $wintunLicense.FullName "$wintunDir\wintun-license.txt" -Force
+} else {
+  Invoke-WebRequest -Uri "https://raw.githubusercontent.com/WireGuard/wintun/$WintunVersion/prebuilt-binaries-license.txt" -OutFile "$wintunDir\wintun-license.txt"
+}
 Write-Host "Wintun OK (signer + hash verified)."
 
 # --- URnetwork SDK: unzip per-arch and build import libs ------------------------
@@ -70,5 +82,18 @@ foreach ($arch in @("amd64", "arm64")) {
   & lib.exe "/def:$dst\urnetwork_sdk.def" "/machine:$machine" "/out:$dst\URnetworkSdk.lib" | Out-Null
   Write-Host "SDK $arch OK."
 }
+
+# --- nlohmann/json (single header) --------------------------------------------
+# Vendored instead of via vcpkg: the app is the only vcpkg consumer and vcpkg's
+# MSBuild integration collides with the Windows App SDK. json.hpp is header-only,
+# so a pinned single-header drop-in is simpler + reproducible. wil was declared in
+# the old vcpkg manifest but is never #included, so it's dropped entirely.
+$nlohmannDir = Join-Path $thirdParty "vendor-include\nlohmann"
+if (-not (Test-Path (Join-Path $nlohmannDir "json.hpp"))) {
+  New-Item -ItemType Directory -Force -Path $nlohmannDir | Out-Null
+  Write-Host "Downloading nlohmann/json 3.12.0 (single header) ..."
+  Invoke-WebRequest -Uri "https://github.com/nlohmann/json/releases/download/v3.12.0/json.hpp" -OutFile (Join-Path $nlohmannDir "json.hpp")
+}
+Write-Host "nlohmann/json OK."
 
 Write-Host "Dependencies fetched."

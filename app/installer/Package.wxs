@@ -58,16 +58,32 @@
           <File Id="wintunDll" Source="$(var.BinDir)\wintun.dll" KeyPath="yes" />
         </Component>
 
-        <!-- Split-tunnel driver payload (installed as a demand-start kernel
-             service via its own control; attestation-signed in production). -->
+        <!-- Third-party attributions: the notices index (checked in) + Wintun's
+             verbatim prebuilt-binaries license (staged by tools/fetch-deps.ps1). -->
+        <!-- One file per component: WiX auto-GUID ('*') requires a single file (or a
+             versioned keypath), so these two unversioned .txt files must be separate
+             components (else WIX0367). -->
+        <Component Id="ThirdPartyNotices" Guid="*">
+          <File Id="ThirdPartyNoticesTxt" Source="$(sys.SOURCEFILEDIR)..\THIRD-PARTY-NOTICES.txt" KeyPath="yes" />
+        </Component>
+        <Component Id="WintunLicense" Guid="*">
+          <File Id="WintunLicenseTxt" Source="$(sys.SOURCEFILEDIR)..\third_party\wintun\wintun-license.txt" KeyPath="yes" />
+        </Component>
+
+        <!-- Split-tunnel driver payload. The MSI only lays down the .sys; the
+             urnetworkd service (LocalSystem) registers + starts it on demand and
+             stops + deletes it on teardown (SplitTunnelClient). Windows Installer
+             can't host a kernel-driver service (SERVICE_KERNEL_DRIVER is not a
+             valid ServiceInstall type). Attestation-signed in production.
+             Compiled in only when the driver was built: -p:IncludeDriver=true on
+             the .wixproj (build.ps1 -IncludeDriver) defines IncludeDriver. Without
+             it the WFP driver / split tunneling is omitted and the .sys need not
+             exist at package time. -->
+        <?ifdef IncludeDriver ?>
         <Component Id="SplitTunnelDriver" Guid="*" Condition="INSTALLDRIVER=1">
           <File Id="SplitTunnelSys" Source="$(var.BinDir)\SplitTunnel.sys" KeyPath="yes" />
-          <ServiceInstall Id="SplitTunnelSvc" Name="URnetworkSplitTunnel"
-                          DisplayName="URnetwork Split Tunnel" Type="kernelDriver"
-                          Start="demand" ErrorControl="normal" />
-          <ServiceControl Id="SplitTunnelCtl" Name="URnetworkSplitTunnel"
-                          Stop="uninstall" Remove="uninstall" Wait="yes" />
         </Component>
+        <?endif?>
 
       </Directory>
     </StandardDirectory>
@@ -91,12 +107,16 @@
       <ComponentRef Id="ResourcesPri" />
       <ComponentRef Id="ServiceExe" />
       <ComponentRef Id="WintunDll" />
+      <ComponentRef Id="ThirdPartyNotices" />
+      <ComponentRef Id="WintunLicense" />
       <ComponentRef Id="UriScheme" />
     </Feature>
+    <?ifdef IncludeDriver ?>
     <Feature Id="SplitTunnel" Title="Per-app split tunneling" Level="1">
       <ComponentRef Id="SplitTunnelDriver" />
     </Feature>
 
     <Property Id="INSTALLDRIVER" Value="1" />
+    <?endif?>
   </Package>
 </Wix>

@@ -55,9 +55,10 @@ proto::TunnelStatus ServiceClient::GetState() {
   return CallStatus(proto::Request(proto::msg::kGetState));
 }
 
-bool ServiceClient::SetSplitTunnel(const std::vector<std::string>& excludedPaths) {
+bool ServiceClient::SetSplitTunnel(const std::vector<std::string>& excludedPaths, bool allowlist) {
   proto::SetSplitTunnel s;
   s.excluded_app_paths = excludedPaths;
+  s.allowlist_mode = allowlist;
   nlohmann::json body = s;
   try {
     nlohmann::json reply = pipe_.Call(proto::Request(proto::msg::kSetSplitTunnel, body));

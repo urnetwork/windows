@@ -27,6 +27,18 @@
     <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
     <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
     <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
+    <!-- Driver projects default SpectreMitigation to 'Spectre', which requires the
+         Spectre-mitigated VC runtime libs (a separate VS installer component not in
+         the build image -> MSB8040). Disable it so the driver builds on the stock
+         Build Tools. NOTE: for a hardened production driver, install the Spectre
+         libs (VC.Runtimes.{x86.x64,ARM64}.Spectre) in provision.ps1 and set this
+         back to 'Spectre'. -->
+    <SpectreMitigation>false</SpectreMitigation>
+    <!-- Driver projects auto-run a post-build signtool (SignMode defaults to TestSign),
+         which fails with "No file digest algorithm specified" without a cert here. The
+         .sys is produced before signing; production signing is a separate offline
+         attestation step (see driver/README + SIGNING.md), so skip build-time signing. -->
+    <SignMode>Off</SignMode>
   </PropertyGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -43,7 +55,14 @@
   <ItemGroup>
     <ClCompile Include="Driver.c" />
     <ClInclude Include="Ioctl.h" />
-    <Inf Include="SplitTunnel.inf" />
+    <!-- The <Inf> item triggers the WDK packaging chain (StampInf + Inf2Cat +
+         catalog signing). inf2cat.exe exits -2 here (it runs x86/x64-emulated on
+         the ARM64 build host, same class of tool-arch problem as the XAML markup
+         compiler). We ship only SplitTunnel.sys and load it via the service
+         (CreateService, not an INF install), and the .sys is produced by the link
+         before packaging, so exclude the INF from the build to skip inf2cat. The
+         SplitTunnel.inf file stays in the repo for reference / future PnP install. -->
+    <None Include="SplitTunnel.inf" />
   </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

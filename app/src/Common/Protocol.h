@@ -83,12 +83,17 @@ struct StartTunnel {
   std::string rpc_server_pem;      // server key+cert the service presents
   std::string rpc_client_cert_pem; // client cert the service pins (mTLS)
   std::string rpc_listen_hostport; // e.g. "127.0.0.1:12042"
-  // split tunnel: process image paths excluded from the tunnel
+  // split tunnel: process image paths. In denylist mode (allowlist_mode=false)
+  // these are BYPASS paths (they leave the tunnel; everyone else tunnels). In
+  // allowlist mode they are the KEEP-ON-TUNNEL paths (only these tunnel; everyone
+  // else bypasses) - mirrors Android's "inclusions take precedence".
   std::vector<std::string> excluded_app_paths;
+  bool allowlist_mode = false;
 };
 
 struct SetSplitTunnel {
-  std::vector<std::string> excluded_app_paths;
+  std::vector<std::string> excluded_app_paths;  // meaning depends on allowlist_mode (see StartTunnel)
+  bool allowlist_mode = false;
 };
 
 // ---- reply / state payload ------------------------------------------------
@@ -126,6 +131,7 @@ inline void to_json(nlohmann::json& j, const StartTunnel& v) {
       {"rpc_client_cert_pem", v.rpc_client_cert_pem},
       {"rpc_listen_hostport", v.rpc_listen_hostport},
       {"excluded_app_paths", v.excluded_app_paths},
+      {"allowlist_mode", v.allowlist_mode},
   };
 }
 
@@ -143,14 +149,19 @@ inline void from_json(const nlohmann::json& j, StartTunnel& v) {
   get("rpc_client_cert_pem", v.rpc_client_cert_pem);
   get("rpc_listen_hostport", v.rpc_listen_hostport);
   get("excluded_app_paths", v.excluded_app_paths);
+  get("allowlist_mode", v.allowlist_mode);
 }
 
 inline void to_json(nlohmann::json& j, const SetSplitTunnel& v) {
-  j = {{"excluded_app_paths", v.excluded_app_paths}};
+  j = {{"excluded_app_paths", v.excluded_app_paths},
+       {"allowlist_mode", v.allowlist_mode}};
 }
 inline void from_json(const nlohmann::json& j, SetSplitTunnel& v) {
-  if (auto it = j.find("excluded_app_paths"); it != j.end() && !it->is_null())
-    it->get_to(v.excluded_app_paths);
+  auto get = [&](const char* k, auto& out) {
+    if (auto it = j.find(k); it != j.end() && !it->is_null()) it->get_to(out);
+  };
+  get("excluded_app_paths", v.excluded_app_paths);
+  get("allowlist_mode", v.allowlist_mode);
 }
 
 inline void to_json(nlohmann::json& j, const TunnelStatus& v) {

@@ -659,6 +659,56 @@ void SdkHost::AuthLoginWithWallet(const std::string& address, const std::string&
   });
 }
 
+// Invert a BlockActionOverride list into the driver's {paths, allowlist}, the same
+// way the SDK's getLocalOverrideAppIds does: RouteOverride.Local=true => bypass,
+// false => through-tunnel. Android's "inclusions take precedence": if any app is
+// through-tunnel, use ALLOWLIST (keep only those on the tunnel); else DENYLIST
+// (bypass those). App rules only (AppIds present); host rules are ignored here.
+static void ComputeAppSplit(const urnet::BlockActionOverrideList& overrides,
+                            std::vector<std::string>& paths, bool& allowlist) {
+  std::vector<std::string> bypass, tunnel;
+  for (const auto& over : overrides) {
+    if (!over.AppIds || over.AppIds->empty()) continue;
+    std::vector<std::string>& dst =
+        (over.RouteOverride && over.RouteOverride->Local) ? bypass : tunnel;
+    for (const auto& id : *over.AppIds) dst.push_back(id);
+  }
+  if (!tunnel.empty()) { paths = tunnel; allowlist = true; }
+  else { paths = bypass; allowlist = false; }
+}
+
+// Upsert / remove one app rule in a BlockActionOverride list (app rules are keyed
+// by the exe image path in AppIds; host rules with Hosts are left untouched).
+// Shared by the localState_ (offline) and device_ (live) writes.
+static void UrstUpsertAppRule(urnet::BlockActionOverrideList& list,
+                              const std::string& imagePath, bool includeInTunnel) {
+  for (auto& over : list) {
+    if (over.AppIds && !over.AppIds->empty() && over.AppIds->front() == imagePath) {
+      urnet::RouteOverride route;
+      route.Local = !includeInTunnel;
+      over.RouteOverride = route;
+      return;
+    }
+  }
+  urnet::BlockActionOverride over;
+  over.OverrideId = urnet::newId();
+  over.AppIds = urnet::StringList{imagePath};
+  urnet::RouteOverride route;
+  route.Local = !includeInTunnel;
+  over.RouteOverride = route;
+  list.push_back(std::move(over));
+}
+
+static void UrstRemoveAppRule(urnet::BlockActionOverrideList& list,
+                              const std::string& imagePath) {
+  list.erase(std::remove_if(list.begin(), list.end(),
+                            [&](const urnet::BlockActionOverride& over) {
+                              return over.AppIds && !over.AppIds->empty() &&
+                                     over.AppIds->front() == imagePath;
+                            }),
+             list.end());
+}
+
 bool SdkHost::BootstrapSession() {
   // caller holds mutex_
   const std::string clientJwt = localState_->getByClientJwt();
@@ -697,7 +747,13 @@ bool SdkHost::BootstrapSession() {
       cfg.rpc_server_pem = km.getServerPem();
       cfg.rpc_client_cert_pem = km.getClientCertPem();
       cfg.rpc_listen_hostport = hostPort;
-      cfg.excluded_app_paths = excludedApps_;
+      // Seed split tunneling from the persisted per-app overrides so the driver is
+      // correct at tunnel-up (device_ isn't connected yet - read the app LocalState).
+      // PushLocalOverrideAppsToDriver re-applies it live once the device is up.
+      if (localState_) {
+        if (auto ov = localState_->getBlockActionOverrides())
+          ComputeAppSplit(*ov, cfg.excluded_app_paths, cfg.allowlist_mode);
+      }
 
       proto::TunnelStatus st = service_.StartTunnel(cfg);
       if (st.state != proto::TunnelState::Up) {
@@ -835,6 +891,28 @@ void SdkHost::SubscribeDrawer() {
   if (!device_ || !contractVc_) return;
   blockVc_ = device_->openBlockActionViewController();
 
+  // Offline reconcile: the app LocalState is the source of truth for per-app rules;
+  // on connect merge them into the device (which also holds host rules) so the live
+  // tunnel matches what the user configured while disconnected. Host rules are kept.
+  if (localState_) {
+    try {
+      if (auto local = localState_->getBlockActionOverrides()) {
+        auto merged = device_->getBlockActionOverrides();
+        if (!merged) merged = urnet::BlockActionOverrideList{};
+        merged->erase(std::remove_if(merged->begin(), merged->end(),
+                                     [](const urnet::BlockActionOverride& o) {
+                                       return o.AppIds && !o.AppIds->empty();
+                                     }),
+                      merged->end());
+        for (const auto& o : *local)
+          if (o.AppIds && !o.AppIds->empty()) merged->push_back(o);
+        device_->setBlockActionOverrides(merged);
+      }
+    } catch (const std::exception& e) {
+      LogWarn("sdkhost: merge offline app rules failed: {}", e.what());
+    }
+  }
+
   // throughput points feed the three transfer charts
   subs_.push_back(contractVc_->addThroughputListener([this] { PublishThroughput(); }));
   // client contracts (egress) + companion contracts (ingress), merged per peer
@@ -846,7 +924,10 @@ void SdkHost::SubscribeDrawer() {
   subs_.push_back(blockVc_->addBlockActionsListener([this] { PublishBlockActions(); }));
   subs_.push_back(blockVc_->addBlockActionStatsListener([this] { PublishBlockStats(); }));
   subs_.push_back(device_->addBlockActionOverridesChangeListener(
-      [this](std::optional<urnet::BlockActionOverrideList>) { PublishSplitRules(); }));
+      [this](std::optional<urnet::BlockActionOverrideList>) {
+        PublishSplitRules();
+        PushLocalOverrideAppsToDriver();  // re-drive the split-tunnel driver on any override change
+      }));
   // dns resolver settings + ad/tracker blocker
   subs_.push_back(device_->addDnsResolverSettingsChangeListener(
       [this](std::optional<urnet::DnsResolverSettings> settings) {
@@ -862,6 +943,7 @@ void SdkHost::SubscribeDrawer() {
   PublishBlockActions();
   PublishBlockStats();
   PublishSplitRules();
+  PushLocalOverrideAppsToDriver();  // seed the driver once the device + service are up
   if (onDnsSettings_) onDnsSettings_(device_->getDnsResolverSettings());
   if (onBlockerEnabled_) onBlockerEnabled_(device_->getBlockerEnabled());
 }
@@ -1033,6 +1115,29 @@ void SdkHost::PublishSplitRules() {
     if (changed) lastSplitRules_ = rules;
   }
   if (changed && onSplitRules_) onSplitRules_(std::move(rules));
+}
+
+void SdkHost::PushLocalOverrideAppsToDriver() {
+  if (!device_) return;
+  // getLocalOverrideAppIds() already inverts: Included = Local (bypass), Excluded =
+  // remote (through the tunnel). Android's "inclusions take precedence": any through-
+  // tunnel app => ALLOWLIST with the tunnel set; else DENYLIST with the bypass set.
+  std::vector<std::string> paths;
+  bool allowlist = false;
+  try {
+    if (auto ids = device_->getLocalOverrideAppIds()) {
+      if (ids->Excluded && !ids->Excluded->empty()) {
+        paths = *ids->Excluded;   // through-tunnel apps => allowlist keep-set
+        allowlist = true;
+      } else if (ids->Included) {
+        paths = *ids->Included;   // bypass apps => denylist redirect-set
+      }
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read local override app ids failed: {}", e.what());
+    return;
+  }
+  if (service_.IsConnected()) service_.SetSplitTunnel(paths, allowlist);
 }
 
 void SdkHost::ClearDrawer() {
@@ -1223,6 +1328,74 @@ void SdkHost::RemoveSplitRule(const std::string& overrideId) {
   PublishSplitRules();
 }
 
+void SdkHost::SetAppRule(const std::string& imagePath, bool includeInTunnel) {
+  std::scoped_lock lock(mutex_);
+  if (imagePath.empty()) return;
+  try {
+    // localState_ is the OFFLINE source of truth (persists, readable while
+    // disconnected). device_ drives the LIVE tunnel when connected -
+    // setBlockActionOverrides fires the change listener -> re-drives the driver.
+    // Write both so the config is durable and applies immediately when up.
+    if (localState_) {
+      auto list = localState_->getBlockActionOverrides();
+      if (!list) list = urnet::BlockActionOverrideList{};
+      UrstUpsertAppRule(*list, imagePath, includeInTunnel);
+      localState_->setBlockActionOverrides(list);
+    }
+    if (device_) {
+      auto list = device_->getBlockActionOverrides();
+      if (!list) list = urnet::BlockActionOverrideList{};
+      UrstUpsertAppRule(*list, imagePath, includeInTunnel);
+      device_->setBlockActionOverrides(list);
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: set app rule failed: {}", e.what());
+  }
+}
+
+void SdkHost::RemoveAppRule(const std::string& imagePath) {
+  std::scoped_lock lock(mutex_);
+  if (imagePath.empty()) return;
+  try {
+    if (localState_) {
+      if (auto list = localState_->getBlockActionOverrides()) {
+        UrstRemoveAppRule(*list, imagePath);
+        localState_->setBlockActionOverrides(list);
+      }
+    }
+    if (device_) {
+      if (auto list = device_->getBlockActionOverrides()) {
+        UrstRemoveAppRule(*list, imagePath);
+        device_->setBlockActionOverrides(list);
+      }
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: remove app rule failed: {}", e.what());
+  }
+}
+
+std::vector<AppRule> SdkHost::CurrentAppRules() {
+  std::scoped_lock lock(mutex_);
+  std::vector<AppRule> rules;
+  try {
+    // Read the offline source of truth so the sheet works while disconnected.
+    std::optional<urnet::BlockActionOverrideList> list;
+    if (localState_) list = localState_->getBlockActionOverrides();
+    if (list) {
+      for (const auto& over : *list) {
+        if (!over.AppIds || over.AppIds->empty()) continue;  // app rules only
+        AppRule rule;
+        rule.imagePath = over.AppIds->front();
+        rule.includeInTunnel = !(over.RouteOverride && over.RouteOverride->Local);
+        rules.push_back(std::move(rule));
+      }
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: current app rules failed: {}", e.what());
+  }
+  return rules;
+}
+
 void SdkHost::ConnectBestAvailable() {
   std::scoped_lock lock(mutex_);
   if (connectVc_) connectVc_->connectBestAvailable();
@@ -1243,12 +1416,6 @@ void SdkHost::Connect(const std::string& connectLocationJson) {
 void SdkHost::Disconnect() {
   std::scoped_lock lock(mutex_);
   if (connectVc_) connectVc_->disconnect();
-}
-
-void SdkHost::SetExcludedApps(const std::vector<std::string>& paths) {
-  std::scoped_lock lock(mutex_);
-  excludedApps_ = paths;
-  if (service_.IsConnected()) service_.SetSplitTunnel(paths);
 }
 
 void SdkHost::TeardownSessionLocked() {

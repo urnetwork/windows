@@ -23,7 +23,7 @@ class ServiceClient {
   proto::TunnelStatus StartTunnel(const proto::StartTunnel& config);
   proto::TunnelStatus StopTunnel();
   proto::TunnelStatus GetState();
-  bool SetSplitTunnel(const std::vector<std::string>& excludedPaths);
+  bool SetSplitTunnel(const std::vector<std::string>& excludedPaths, bool allowlist = false);
   bool Logout();
 
  private:

@@ -23,9 +23,9 @@ in `connect/`+`sdk/`+`cgo/`.
 1. Install: VS 2022 (v143) + "Desktop development with C++" + Windows 11 SDK
    (10.0.22621) + the WDK (for the driver); WiX v5 (`dotnet tool install --global wix`);
    vcpkg (manifest mode).
-2. On the **macOS build server**, produce the SDK Windows zip:
-   `make -C sdk/cgo build_windows` → `sdk/cgo/build/URnetworkSdkWindows.zip`.
-   (arm64 needs `make -C sdk/cgo init` first for llvm-mingw — see step 4.)
+2. Produce the SDK Windows zip **in the build VM**: `windows/build-sdk.ps1`
+   (Go + llvm-mingw, provisioned by `all/windows/packer/scripts/provision.ps1`) →
+   `sdk/cgo/build/URnetworkSdkWindows.zip`. (No mac cross-toolchain needed.)
 3. On Windows: `windows/app/tools/fetch-deps.ps1 -SdkZip <path to the zip>`
    (fetches pinned wintun, unzips the SDK, builds the import libs).
 4. `msbuild URnetwork.sln /p:Configuration=Release /p:Platform=x64`.
@@ -50,8 +50,8 @@ in `connect/`+`sdk/`+`cgo/`.
 
 ## 3. arm64
 
-- On the mac build server: `make -C sdk/cgo init` (installs llvm-mingw + zig),
-  then `make -C sdk/cgo build_windows` produces the arm64 DLL too.
+- The arm64 DLL builds in the VM via `windows/build-sdk.ps1` (llvm-mingw targets
+  both arches). No mac llvm-mingw needed; the mac only builds the Linux SDK (zig).
 - Build the solution for ARM64; smoke-test on an arm64 Windows box/VM.
 
 ## 4. Close the leak guards (R6/R7) — implement + validate in M1

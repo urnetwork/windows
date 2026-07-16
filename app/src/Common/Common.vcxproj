@@ -29,8 +29,13 @@
 
   <ItemDefinitionGroup>
     <ClCompile>
-      <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebug</RuntimeLibrary>
-      <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreaded</RuntimeLibrary>
+      <!-- DYNAMIC CRT (MD). Common.lib links into the WinUI App, which requires the
+           dynamic CRT (the Windows App SDK + WinUI are built /MD); a static-CRT (/MT)
+           Common.lib triggers LNK2038 RuntimeLibrary-mismatch + LNK4098. Service links
+           Common too, so it is /MD as well (see Service.vcxproj) - the CRT flavor must
+           match within, and across statically-linked, binaries. -->
+      <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreadedDLL</RuntimeLibrary>
       <Optimization Condition="'$(Configuration)'=='Release'">MaxSpeed</Optimization>
     </ClCompile>
   </ItemDefinitionGroup>

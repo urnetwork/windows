@@ -6,8 +6,27 @@
      packages.config against the installed Windows App SDK on the build box.
      SPDX-License-Identifier: MPL-2.0 -->
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\..\packages\Microsoft.Windows.CppWinRT.2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.props"
-          Condition="Exists('..\..\packages\Microsoft.Windows.CppWinRT.2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.props')" />
+  <!-- WinUI 3 / C++/WinRT build tooling via NuGet PackageReference (restored by
+       `msbuild /t:restore`; see build.ps1). The package build props/targets are
+       auto-imported from obj\*.nuget.g.props / .nuget.g.targets - no manual <Import>.
+       GeneratePathProperty on SDK.BuildTools exposes $(PkgMicrosoft_Windows_SDK_BuildTools)
+       for the MakePri path below. Versions track the installed Windows App SDK. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.CppWinRT" Version="3.0.260520.1" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <!-- C++ vcxproj + PackageReference: disable the LEGACY managed NuGet asset resolver
+       (Microsoft.NuGet.targets ResolveNuGetPackageAssets). It resolves lib/ref assets
+       by a managed TargetFramework, which a native project has none of, so it dies with
+       "Sequence contains no elements / GiveErrorForMissingFramework". We consume these
+       packages purely via their build\native props/targets (auto-imported from
+       obj\*.nuget.g.props/.nuget.g.targets), not lib/ assets - so skip that resolver. -->
+  <PropertyGroup>
+    <ResolveNuGetPackages>false</ResolveNuGetPackages>
+  </PropertyGroup>
 
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
@@ -20,11 +39,25 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <ProjectGuid>{A1B2C3D4-0003-4E5F-8A9B-000000000003}</ProjectGuid>
     <RootNamespace>URnetwork</RootNamespace>
+    <TargetName>URnetwork</TargetName>  <!-- URnetwork.exe (the WiX + tray registration expect it) -->
     <ConfigurationType>Application</ConfigurationType>
     <UseWinUI>true</UseWinUI>
     <WindowsPackageType>None</WindowsPackageType>
     <AppxPackage>false</AppxPackage>
     <AppContainerApplication>false</AppContainerApplication>
+    <!-- PRI: use the DEFAULT MrtCore path (EnableCoreMrtTooling stays true). Its PRI tasks
+         (GetSdkFileFullPath / GenerateProjectPriFile / ExpandPriContent) load from VS's AppxPackage
+         component (Microsoft.Build.AppxPackage.dll / Microsoft.Build.Packaging.Pri.Tasks.dll), which
+         is now provisioned via Microsoft.VisualStudio.ComponentGroup.UWP.BuildTools (".NET WinUI app
+         development build tools"; NOT the ".VC" variant, which is the C++ UWP compiler support and
+         lacks these managed tasks) - see all/windows/packer/scripts/provision.ps1. We previously set
+         EnableMsixTooling=true to use the WASDK self-contained Msix PRI tasks because VS *Build Tools*
+         lacked that component. -->
+    <!-- MrtCore names the project PRI $(TargetName).pri (= URnetwork.pri) by default. The app loads
+         "resources.pri" by path from next to the exe (unpackaged), and installer/Package.wxs harvests
+         that exact name - so pin the PRI output filename. (UrnVerifyResourcesPri below also stages a
+         $(TargetName).pri -> resources.pri fallback in case a future SDK ignores this property.) -->
+    <ProjectPriFileName>resources.pri</ProjectPriFileName>
     <CppWinRTOptimized>true</CppWinRTOptimized>
     <CppWinRTRootNamespaceAutoMerge>true</CppWinRTRootNamespaceAutoMerge>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
@@ -60,10 +93,9 @@
        WinRT flavor: its targets add the Microsoft.Web.WebView2.Core.winmd
        reference C++/WinRT projects from, and skip the Win32 WebView2Loader —
        the WinAppSDK runtime provides Microsoft.Web.WebView2.Core.dll (with the
-       loader linked in) through its lifted-class registrations. The package's
-       own auto-detection keys off $(MicrosoftWindowsAppSDKPackageDir), which
-       this project never defines because it imports only the WinAppSDK targets,
-       not its props — so say it explicitly. -->
+       loader linked in) through its lifted-class registrations. Pin it explicitly
+       rather than rely on the package's auto-detection (off
+       $(MicrosoftWindowsAppSDKPackageDir)), so the flavor is deterministic. -->
   <PropertyGroup>
     <WebView2UseWinRT>true</WebView2UseWinRT>
   </PropertyGroup>
@@ -72,6 +104,30 @@
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <!-- $(IntDir) (intermediate ROOT): the WinUI XAML markup compiler writes
+           App.xaml.g.h / MainWindow.xaml.g.h (+ their .g.hpp, and XamlTypeInfo/
+           XamlBindingInfo) to $(XamlGeneratedOutputPath) = $(IntermediateOutputPath) =
+           $(IntDir), but cppwinrt only adds $(IntDir)Generated Files\ (one level down) to
+           the include path -> App.xaml.h's #include "App.xaml.g.h" would C1083 without it.
+           $(MSBuildProjectDirectory) (the project dir, src\App): the markup-generated impl
+           units (XamlTypeInfo.g.cpp / XamlTypeInfo.Impl.g.cpp / XamlLibMetadataProvider.g.cpp)
+           live in $(IntDir) but #include the AUTHORED "App.xaml.h" / "MainWindow.xaml.h",
+           which sit in the project dir; MSVC resolves a quoted include relative to the
+           including file's own dir (=$(IntDir)) then /I, so without the project dir on /I
+           XamlTypeInfo.g.cpp fails C1083 'App.xaml.h'. Our hand-authored .cpp don't hit
+           this only because they physically sit next to those headers. -->
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- DISABLE_XAML_GENERATED_MAIN: the WinUI markup compiler emits an app bootstrap
+           (wWinMain + its winrt module glue, guarded by #ifndef DISABLE_XAML_GENERATED_MAIN)
+           into the generated XamlTypeInfo.g.cpp unit. We ship our OWN entry point in
+           main.cpp (single-instance AppInstance redirect + AppUserModelId + the same
+           Application::Start/make<App>), so the generated one is redundant. Once
+           UrnCompileGeneratedXamlImpl adds XamlTypeInfo.g.cpp to the build, its wWinMain
+           collides with main.obj (LNK2005) and its bootstrap references
+           WINRT_GetActivationFactory / WINRT_CanUnloadNow (LNK2001, normally defined by the
+           module.g.cpp we don't compile) - defining this compiles the whole block out, and
+           since ONLY that generated unit referenced those symbols, both errors clear. -->
+      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebugDLL</RuntimeLibrary>
       <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreadedDLL</RuntimeLibrary>
       <Optimization Condition="'$(Configuration)'=='Release'">MaxSpeed</Optimization>
@@ -79,7 +135,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(UrnSdkDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>URnetworkSdk.lib;shell32.lib;advapi32.lib;ws2_32.lib;iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <!-- crypt32.lib: WalletConnect.cpp uses CryptBinaryToStringA (Base64) -> __imp_CryptBinaryToStringA. -->
+      <AdditionalDependencies>URnetworkSdk.lib;shell32.lib;advapi32.lib;ws2_32.lib;iphlpapi.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>app.manifest</AdditionalManifestFiles>
@@ -211,19 +268,86 @@
        renders as its key id ("sign_in") — a silent, shipping-grade failure. Say so
        at build time instead. Warning, not Error: never break a build over it. -->
   <Target Name="UrnVerifyResourcesPri" AfterTargets="Build">
+    <!-- Stage the MrtCore PRI under the runtime/installer name if it was emitted as
+         $(TargetName).pri (see ProjectPriFileName above). No-op once resources.pri exists.
+         Runs in the App project's AfterBuild, before the Installer project harvests it. -->
+    <Copy Condition="!Exists('$(OutDir)resources.pri') and Exists('$(OutDir)$(TargetName).pri')"
+          SourceFiles="$(OutDir)$(TargetName).pri" DestinationFiles="$(OutDir)resources.pri" SkipUnchangedFiles="true" />
     <Warning Condition="!Exists('$(OutDir)resources.pri')"
              Text="resources.pri is missing from $(OutDir): the app will render resource ids instead of localized strings. Check that the Strings\*\Resources.resw PRIResource items were indexed by MakePri." />
   </Target>
 
-  <!-- NuGet: CppWinRT + Windows App SDK (+ its WebView2 dependency) + SDK build tools -->
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\..\packages\Microsoft.Windows.CppWinRT.2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.targets"
-            Condition="Exists('..\..\packages\Microsoft.Windows.CppWinRT.2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.targets')" />
-    <Import Project="..\..\packages\Microsoft.WindowsAppSDK.1.6.240923002\build\native\Microsoft.WindowsAppSDK.targets"
-            Condition="Exists('..\..\packages\Microsoft.WindowsAppSDK.1.6.240923002\build\native\Microsoft.WindowsAppSDK.targets')" />
-    <Import Project="..\..\packages\Microsoft.Web.WebView2.1.0.2651.64\build\native\Microsoft.Web.WebView2.targets"
-            Condition="Exists('..\..\packages\Microsoft.Web.WebView2.1.0.2651.64\build\native\Microsoft.Web.WebView2.targets')" />
-    <Import Project="..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.22621.3233\build\Microsoft.Windows.SDK.BuildTools.targets"
-            Condition="Exists('..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.22621.3233\build\Microsoft.Windows.SDK.BuildTools.targets')" />
-  </ImportGroup>
+  <!-- (NuGet CppWinRT + Windows App SDK + WebView2 + SDK build tools .targets are
+       auto-imported from obj\*.nuget.g.targets under PackageReference.) -->
+
+  <!-- Wire the WinUI XAML markup compiler into the NATIVE C++ build. The Windows App
+       SDK and C++/WinRT targets DEFINE MarkupCompilePass1/Pass2 (they generate
+       App.xaml.g.h / MainWindow.xaml.g.h and the x:Name accessors + InitializeComponent)
+       and even augment their *DependsOn lists, but they only auto-INVOKE them for the
+       MANAGED build, via $(PrepareResourcesDependsOn) - which the WinUI targets comment
+       as "used only for the Managed build". For a classic C++/WinRT .vcxproj built from
+       the command line, nothing runs the passes before ClCompile, so cppwinrt's
+       projection (App.g.h) is produced but the markup output (App.xaml.g.h) is not,
+       giving C1083 'App.xaml.g.h' + a cascade of x:Name "identifier not found". Inject
+       the passes into $(BeforeClCompileTargets) - the same native pre-compile hook
+       C++/WinRT uses for its own projection (CppWinRTMakeProjections) - so they run
+       after MIDL/WinMD-merge/cppwinrt and before ClCompile. This import must come after
+       the C++/WinRT + WindowsAppSDK targets above so those targets are defined. -->
+  <PropertyGroup>
+    <BeforeClCompileTargets>$(BeforeClCompileTargets);MarkupCompilePass1;MarkupCompilePass2</BeforeClCompileTargets>
+  </PropertyGroup>
+
+  <!-- WASDK 1.7's NATIVE markup compiler takes its winmd references from
+       @(WinMDReferenceToCompile) - "a filtered Item that eliminates any Managed
+       Assemblies on the ReferencePath" per Microsoft.UI.Xaml.Markup.Compiler.interop.targets
+       (native Pass2 does ReferenceAssemblies="@(XamlReferencesToCompile)", and for a
+       native build XamlReferencesToCompile = @(WinMDReferenceToCompile)). Nothing in
+       this hand-authored packages.config C++/WinRT project populates that item - neither
+       CppWinRT 2.0.x nor the WinUI targets do; the C++ project system only provides it
+       for its recognized XAML project types. So the markup compiler receives ZERO winmd
+       references and fails with "XamlCompiler error WMC1007: Cannot resolve metadata for
+       WinUI types." Populate it from the winmds already resolved onto @(ReferencePath)
+       (the same set cppwinrt used to generate App.g.h), just before the markup passes,
+       and only if nothing else did; fall back to the Windows App SDK package winmds if
+       ReferencePath happened to carry none. The [urn-xaml] messages report what the
+       markup compiler actually received (remove this whole target once XAML is green). -->
+  <Target Name="UrnPopulateWinMDReferenceToCompile" BeforeTargets="MarkupCompilePass1;MarkupCompilePass2">
+    <ItemGroup Condition="'@(WinMDReferenceToCompile)' == ''">
+      <WinMDReferenceToCompile Include="@(ReferencePath)" Condition="'%(ReferencePath.Extension)' == '.winmd'" />
+    </ItemGroup>
+    <ItemGroup Condition="'@(WinMDReferenceToCompile)' == '' and '$(MicrosoftWindowsAppSDKPackageDir)' != ''">
+      <WinMDReferenceToCompile Include="$(MicrosoftWindowsAppSDKPackageDir)lib\uap10.0\*.winmd" />
+      <WinMDReferenceToCompile Include="$(MicrosoftWindowsAppSDKPackageDir)lib\uap10.0.18362\*.winmd" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Compile the generated IMPLEMENTATION units the normal WinUI/cppwinrt project system
+       would add to @(ClCompile) but our forced-early markup wiring bypasses. Two families:
+       (A) MARKUP units in the intermediate ROOT ($(IntDir)*.g.cpp = XamlTypeInfo.g.cpp /
+           XamlTypeInfo.Impl.g.cpp / XamlLibMetadataProvider.g.cpp) + XamlMetaDataProvider.cpp -
+           these carry XamlMetaDataProvider::GetXamlType/GetXmlnsDefinitions and the per-page
+           InitializeComponent/Connect (LNK2001/LNK1120 without them).
+       (B) The cppwinrt MODULE unit 'Generated Files\module.g.cpp' - a STANDALONE compiland
+           (it starts with its own #include "pch.h") that DEFINES the module activation
+           exports WINRT_GetActivationFactory / WINRT_CanUnloadNow (+ the
+           winrt_get_activation_factory by-name table XAML uses to activate our runtime
+           classes at startup) which XamlTypeInfo.g.obj references (LNK2001 without it).
+       NOT here: the per-class cppwinrt projections (App.g.cpp / MainWindow.g.cpp /
+           XamlMetaDataProvider.g.cpp). Those are generated #include FRAGMENTS with no pch.h
+           of their own - compiled standalone they C1010 ('unexpected EOF looking for pch').
+           Each must be #included by a host TU that already pulled in pch.h + the class's
+           impl header: MainWindow.g.cpp<-MainWindow.xaml.cpp, XamlMetaDataProvider.g.cpp<-the
+           markup XamlMetaDataProvider.cpp, App.g.cpp<-App.xaml.cpp (we added the missing
+           `#if __has_include("App.g.cpp")` there, matching MainWindow.xaml.cpp).
+       Runs after the markup passes, before ClCompile. The message lists exactly what was added. -->
+  <Target Name="UrnCompileGeneratedXamlImpl" BeforeTargets="ClCompile" DependsOnTargets="MarkupCompilePass1;MarkupCompilePass2">
+    <ItemGroup>
+      <_UrnGenXamlCpp Include="$(IntDir)*.g.cpp" />
+      <_UrnGenXamlCpp Include="$(MSBuildProjectDirectory)\XamlMetaDataProvider.cpp" Condition="Exists('$(MSBuildProjectDirectory)\XamlMetaDataProvider.cpp')" />
+      <_UrnGenXamlCpp Include="$(GeneratedFilesDir)XamlMetaDataProvider.cpp"         Condition="Exists('$(GeneratedFilesDir)XamlMetaDataProvider.cpp')" />
+      <_UrnGenXamlCpp Include="$(GeneratedFilesDir)module.g.cpp"                     Condition="Exists('$(GeneratedFilesDir)module.g.cpp')" />
+      <ClCompile Include="@(_UrnGenXamlCpp)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

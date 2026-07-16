@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+// The cppwinrt projection base. It transitively includes the markup MainWindow.xaml.g.h,
+// which references MainWindow_base defined HERE - so this is the correct include (do NOT
+// swap it for MainWindow.xaml.g.h, which then can't find MainWindow_base). The generated
+// InitializeComponent/Connect impls are compiled from the XamlTypeInfo*.g.cpp units that
+// App.vcxproj's UrnCompileGeneratedXamlImpl adds to the build, not from this header.
 #include "MainWindow.g.h"
 
 #include <memory>
@@ -75,10 +80,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnNavSelectionChanged(
       winrt::Microsoft::UI::Xaml::Controls::NavigationView const&,
       winrt::Microsoft::UI::Xaml::Controls::NavigationViewSelectionChangedEventArgs const&);
-  void OnAddExcludedApp(winrt::Windows::Foundation::IInspectable const&,
-                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnRemoveExcludedApp(winrt::Windows::Foundation::IInspectable const&,
-                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnManageAppSplitTunnel(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignOut(winrt::Windows::Foundation::IInspectable const&,
                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSaveNetworkName(winrt::Windows::Foundation::IInspectable const&,
@@ -145,7 +148,6 @@ struct MainWindow : MainWindowT<MainWindow> {
 
   void SetConnectedUi(bool connected);
   void ApplyStats(urnw::LiveStats const& stats);
-  void PushExcludedApps();
   void LoadAccount();
   void LoadBalanceCodes();     // redeemed-codes list (account panel)
   void LoadReferralInfo();     // referral code + totals (usage-bar rows)
@@ -182,7 +184,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   void ResyncDrawer();         // seed the caches/cards from SdkHost snapshots
   void SeedConnectControls();  // performance profile + blocker toggle state
   void PushPerformanceSettings();
-  urnw::ConnectionMode SelectedMode() const;
+  // Non-const: reads the ConnectionModeBar / ModeWebItem / ModeStreamingItem x:Name
+  // accessors, which C++/WinRT generates as non-const members of the .xaml.g.h base.
+  urnw::ConnectionMode SelectedMode();
   void ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& settings);
   void ApplySplitRuleCount();
   void ApplyBlockerUi(bool on);
@@ -190,10 +194,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   void AnimateDrawerIn();  // fade + slide-up entrance, staggered across cards
   winrt::fire_and_forget ShowClientContractsSheet();
   winrt::fire_and_forget ShowSplitRulesSheet();
+  winrt::fire_and_forget ShowAppRulesSheet();
   winrt::fire_and_forget ShowDnsSheet();
 
   bool connected_ = false;
-  std::vector<std::string> excludedApps_;
 
   // sign-in flow state (UI thread only)
   LoginStep loginStep_ = LoginStep::Initial;
@@ -260,6 +264,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   bool sheetOpen_ = false;         // only one ContentDialog can show at a time
   std::shared_ptr<urnw::ClientContractsSheet> contractsSheet_;
   std::shared_ptr<urnw::SplitRulesSheet> splitRulesSheet_;
+  std::shared_ptr<urnw::AppRulesSheet> appRulesSheet_;
   std::shared_ptr<urnw::DnsEditorSheet> dnsSheet_;
 };
 

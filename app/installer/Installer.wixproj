@@ -8,6 +8,10 @@
     <!-- default staging dir; override on the command line per arch/config -->
     <BinDir Condition="'$(BinDir)'==''">$(MSBuildThisFileDirectory)..\build\$(Platform)\Release</BinDir>
     <DefineConstants>BinDir=$(BinDir)</DefineConstants>
+    <!-- -p:IncludeDriver=true (build.ps1 -IncludeDriver) compiles the split-tunnel
+         driver component into the package; otherwise the .sys is omitted so the MSI
+         builds without the (WDK-built) driver. -->
+    <DefineConstants Condition="'$(IncludeDriver)'=='true'">$(DefineConstants);IncludeDriver</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />

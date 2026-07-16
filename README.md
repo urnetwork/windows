@@ -39,9 +39,9 @@ named pipe only carries lifecycle/config (mirrors macOS app↔extension).
   (10.0.22621) + the WDK (for the driver).
 - vcpkg (manifest mode; `app/vcpkg.json` pulls nlohmann-json + wil).
 - WiX Toolset v5 (`dotnet tool install --global wix`) for the installer.
-- The SDK Windows zip: build `make -C ../sdk/cgo build_windows` on the macOS
-  build server (needs mingw-w64 for x64, llvm-mingw for arm64 — `make -C ../sdk/cgo init`),
-  producing `../sdk/cgo/build/URnetworkSdkWindows.zip`.
+- The SDK Windows zip: built by `../build-sdk.ps1` (Go + llvm-mingw; provisioned
+  into the build VM by `all/windows/packer/scripts/provision.ps1`) →
+  `../sdk/cgo/build/URnetworkSdkWindows.zip`.
 
 ## Build
 

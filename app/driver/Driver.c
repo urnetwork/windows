@@ -9,7 +9,6 @@
  */
 
 #include <ntddk.h>
-#include <wdf.h>
 #define INITGUID
 #include <guiddef.h>
 #include <fwpsk.h>
@@ -49,6 +48,8 @@ typedef struct _URST_STATE {
 
   EX_SPIN_LOCK lock;          // guards the fields below
   BOOLEAN enabled;
+  BOOLEAN allowlist;          // FALSE = denylist (redirect the path set); TRUE = allowlist (redirect all BUT the set)
+  HANDLE servicePid;          // the process that opened the device (urnetworkd); never redirected, in either mode
   URST_PHYSICAL_ADDRS physical;
 
   // excluded image paths (owned copies)
@@ -100,8 +101,10 @@ static VOID UrstUntrackPid(HANDLE pid) {
   }
 }
 
-// Case-insensitive suffix/exact match of an image path against the exclusion set.
-static BOOLEAN UrstImageExcluded(PCUNICODE_STRING image) {
+// Case-insensitive exact match of an image path against the current path set
+// (denylist: the bypass set; allowlist: the keep-on-tunnel set). Used by the
+// process-create tracker AND the classify direct-match on ALE_APP_ID.
+static BOOLEAN UrstImageInSet(PCUNICODE_STRING image) {
   for (ULONG i = 0; i < g_state.pathCount; ++i) {
     if (RtlEqualUnicodeString(image, &g_state.paths[i], TRUE)) return TRUE;
   }
@@ -121,7 +124,7 @@ static VOID UrstCreateProcessNotify(PEPROCESS process, HANDLE pid,
     // process created
     BOOLEAN excluded = FALSE;
     if (info->ImageFileName) {
-      excluded = UrstImageExcluded(info->ImageFileName);
+      excluded = UrstImageInSet(info->ImageFileName);
     }
     if (!excluded) {
       // inherit exclusion from an excluded parent (child-process inheritance)
@@ -146,8 +149,8 @@ static void NTAPI UrstClassify(const FWPS_INCOMING_VALUES* inFixedValues,
                                void* layerData, const void* classifyContext,
                                const FWPS_FILTER* filter, UINT64 flowContext,
                                FWPS_CLASSIFY_OUT* classifyOut) {
-  UNREFERENCED_PARAMETER(inFixedValues);
   UNREFERENCED_PARAMETER(flowContext);
+  UNREFERENCED_PARAMETER(layerData);
 
   // Default: permit unchanged (fail-open).
   classifyOut->actionType = FWP_ACTION_PERMIT;
@@ -159,10 +162,43 @@ static void NTAPI UrstClassify(const FWPS_INCOMING_VALUES* inFixedValues,
     return;
   HANDLE pid = (HANDLE)(ULONG_PTR)inMetaValues->processId;
 
-  // Snapshot the decision + physical source under the lock.
+  // WFP hands us the binding process's IMAGE PATH as the ALE_APP_ID fixed value
+  // (NT device-path form). Matching on it directly classifies ANY process -
+  // already-running or new - on its next bind, with no relaunch and no pre-
+  // tracking. Defensive: validate valueCount/type/blob before use; if unavailable,
+  // appId stays empty and we fall back to the tracked-pid set (fail-safe: no match).
+  UNICODE_STRING appId;
+  appId.Buffer = NULL;
+  appId.Length = 0;
+  appId.MaximumLength = 0;
+  if (inFixedValues) {
+    UINT32 idx = (inFixedValues->layerId == FWPS_LAYER_ALE_BIND_REDIRECT_V6)
+                     ? FWPS_FIELD_ALE_BIND_REDIRECT_V6_ALE_APP_ID
+                     : FWPS_FIELD_ALE_BIND_REDIRECT_V4_ALE_APP_ID;
+    if (idx < inFixedValues->valueCount) {
+      const FWP_VALUE0* v = &inFixedValues->incomingValue[idx].value;
+      if (v->type == FWP_BYTE_BLOB_TYPE && v->byteBlob && v->byteBlob->data &&
+          v->byteBlob->size >= sizeof(WCHAR)) {
+        SIZE_T bytes = v->byteBlob->size - sizeof(WCHAR);  // drop the null terminator
+        if (bytes > 0xFFFE) bytes = 0xFFFE;                // UNICODE_STRING.Length is USHORT
+        appId.Buffer = (PWCH)v->byteBlob->data;
+        appId.Length = (USHORT)bytes;
+        appId.MaximumLength = (USHORT)bytes;
+      }
+    }
+  }
+
+  // Snapshot the decision + physical source under the lock. The controlling VPN
+  // service (urnetworkd) is NEVER rebound in either mode. A process MATCHES if its
+  // image is in the set (catches already-running apps) OR it is a tracked
+  // descendant of a matched app. Denylist: redirect matches (the bypass set).
+  // Allowlist: redirect everything EXCEPT matches (the keep-on-tunnel set).
   URST_PHYSICAL_ADDRS physical;
   KIRQL irql = ExAcquireSpinLockShared(&g_state.lock);
-  BOOLEAN redirect = g_state.enabled && UrstIsPidTracked(pid);
+  BOOLEAN match = (appId.Length != 0 && UrstImageInSet(&appId)) || UrstIsPidTracked(pid);
+  BOOLEAN isService = (g_state.servicePid != NULL && pid == g_state.servicePid);
+  BOOLEAN redirect = g_state.enabled && !isService &&
+                     (g_state.allowlist ? !match : match);
   physical = g_state.physical;
   ExReleaseSpinLockShared(&g_state.lock, irql);
   if (!redirect) return;
@@ -172,7 +208,10 @@ static void NTAPI UrstClassify(const FWPS_INCOMING_VALUES* inFixedValues,
   // route. Purely process-scoped; no destination is consulted.
   // (FwpsAcquireWritableLayerDataPointer + FwpsApplyModifiedLayerData, WFP
   //  bind-redirect sample.) Hardening surface (R10): Driver Verifier + tests.
-  HANDLE classifyHandle = NULL;
+  // FwpsAcquireClassifyHandle/AcquireWritableLayerDataPointer/ApplyModifiedLayerData/
+  // ReleaseClassifyHandle take a UINT64 classify handle (not a HANDLE) - using HANDLE
+  // trips C4047/C4024 (indirection mismatch) -> C2220 under warnings-as-errors.
+  UINT64 classifyHandle = 0;
   NTSTATUS status = FwpsAcquireClassifyHandle((void*)classifyContext, 0, &classifyHandle);
   if (!NT_SUCCESS(status)) return;  // fail-open
 
@@ -285,6 +324,7 @@ static VOID UrstClearExcluded(void) {
   g_state.pathCount = 0;
   g_state.trackedCount = 0;  // stop tracking; new launches re-evaluate
   g_state.enabled = FALSE;
+  g_state.allowlist = FALSE;  // reset to denylist default
   ExReleaseSpinLockExclusive(&g_state.lock, irql);
 }
 
@@ -351,6 +391,13 @@ static NTSTATUS UrstDeviceControl(DEVICE_OBJECT* device, IRP* irp) {
     case IOCTL_URST_SET_EXCLUDED_PATHS:
       status = UrstSetExcludedPaths((const UINT8*)buf, inLen);
       break;
+    case IOCTL_URST_SET_MODE:
+      if (inLen >= sizeof(URST_MODE)) {
+        KIRQL irql = ExAcquireSpinLockExclusive(&g_state.lock);
+        g_state.allowlist = ((URST_MODE*)buf)->Allowlist != 0;
+        ExReleaseSpinLockExclusive(&g_state.lock, irql);
+      } else status = STATUS_BUFFER_TOO_SMALL;
+      break;
     case IOCTL_URST_CLEAR:
       UrstClearExcluded();
       break;
@@ -367,6 +414,21 @@ static NTSTATUS UrstDeviceControl(DEVICE_OBJECT* device, IRP* irp) {
 
 static NTSTATUS UrstCreateClose(DEVICE_OBJECT* device, IRP* irp) {
   UNREFERENCED_PARAMETER(device);
+  // Record the controlling service (urnetworkd) as the process that opens this
+  // device, so the classify path can ALWAYS exempt it. This is essential in
+  // allowlist mode, where every non-included process is redirected and the
+  // create-notify tracker cannot catch the already-running service. Only an
+  // admin/SYSTEM handle can open the device (FILE_WRITE_ACCESS, see Ioctl.h).
+  IO_STACK_LOCATION* stack = IoGetCurrentIrpStackLocation(irp);
+  if (stack->MajorFunction == IRP_MJ_CREATE) {
+    KIRQL irql = ExAcquireSpinLockExclusive(&g_state.lock);
+    g_state.servicePid = PsGetCurrentProcessId();
+    ExReleaseSpinLockExclusive(&g_state.lock, irql);
+  } else if (stack->MajorFunction == IRP_MJ_CLOSE) {
+    KIRQL irql = ExAcquireSpinLockExclusive(&g_state.lock);
+    if (g_state.servicePid == PsGetCurrentProcessId()) g_state.servicePid = NULL;
+    ExReleaseSpinLockExclusive(&g_state.lock, irql);
+  }
   irp->IoStatus.Status = STATUS_SUCCESS;
   irp->IoStatus.Information = 0;
   IoCompleteRequest(irp, IO_NO_INCREMENT);

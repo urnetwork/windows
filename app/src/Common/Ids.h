@@ -35,6 +35,13 @@ inline constexpr wchar_t kUriScheme[] = L"urnetwork";
 // Split-tunnel driver device interface (see driver/Ioctl.h for the codes).
 inline constexpr wchar_t kSplitTunnelDevicePath[] = L"\\\\.\\URnetworkSplitTunnel";
 
+// Split-tunnel kernel driver: SCM service name + on-disk image (installed next to
+// urnetworkd.exe). The service registers + starts it on demand and stops +
+// deletes it on teardown (SplitTunnelClient) — Windows Installer can't host a
+// kernel-driver service, so the MSI only lays down the .sys.
+inline constexpr wchar_t kSplitTunnelServiceName[] = L"URnetworkSplitTunnel";
+inline constexpr wchar_t kSplitTunnelSysFileName[] = L"SplitTunnel.sys";
+
 // Stable GUID for the wintun tunnel adapter, so it keeps the same NLA identity
 // and interface index across restarts.
 // {C4E5F6A7-8B9C-4D0E-A1F2-3B4C5D6E7F80}

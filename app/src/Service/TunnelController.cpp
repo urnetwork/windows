@@ -5,6 +5,7 @@
 #include <fstream>
 
 #define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>   // AF_INET / AF_INET6
 #include <windows.h>
 
 #include "Ids.h"
@@ -139,7 +140,8 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     // --- split tunneling (driver optional) ---
     splitTunnel_.Open();
     excludedPaths_ = config.excluded_app_paths;
-    PushExcludedToDriver(excludedPaths_);
+    allowlist_ = config.allowlist_mode;
+    PushExcludedToDriver(excludedPaths_, allowlist_);
 
     // --- packet pump ---
     pump_ = std::make_unique<PacketPump>(*adapter_, *device_);
@@ -186,7 +188,7 @@ void TunnelController::StopLocked() {
   state_ = proto::TunnelState::Stopped;
 }
 
-void TunnelController::PushExcludedToDriver(const std::vector<std::string>& paths) {
+void TunnelController::PushExcludedToDriver(const std::vector<std::string>& paths, bool allowlist) {
   if (!splitTunnel_.IsAvailable()) return;
   // The driver rebinds excluded sockets to the physical interface's source
   // address, so resolve the current physical interface + its preferred source.
@@ -199,15 +201,20 @@ void TunnelController::PushExcludedToDriver(const std::vector<std::string>& path
               NetworkConfig::InterfaceSourceAddress(egress.index6, AF_INET6, addr6);
   splitTunnel_.SetPhysicalAddresses(has4 ? egress.index4 : 0, has4 ? addr4 : nullptr,
                                     has6 ? egress.index6 : 0, has6 ? addr6 : nullptr);
+  splitTunnel_.SetMode(allowlist);
   splitTunnel_.SetExcludedPaths(paths);
+  // Enable whenever there is a rule set. In allowlist mode an empty keep-set would
+  // route nothing through the tunnel, so the service only sends allowlist mode with
+  // a non-empty set (see SdkHost); either way !empty is the right enable signal.
   splitTunnel_.SetEnabled(!paths.empty());
 }
 
-bool TunnelController::SetSplitTunnel(const std::vector<std::string>& excludedPaths) {
+bool TunnelController::SetSplitTunnel(const std::vector<std::string>& excludedPaths, bool allowlist) {
   std::scoped_lock lock(mutex_);
   excludedPaths_ = excludedPaths;
+  allowlist_ = allowlist;
   if (state_ != proto::TunnelState::Up) return true;  // applied on next Start
-  PushExcludedToDriver(excludedPaths_);
+  PushExcludedToDriver(excludedPaths_, allowlist_);
   return true;
 }
 

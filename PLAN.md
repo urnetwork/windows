@@ -105,6 +105,21 @@ carries lifecycle/config. Last-good rpc session persists like `RpcSessionStore` 
   `wintun.dll` + chained `WindowsAppRuntimeInstall.exe`, all Authenticode-signed.
   Verify early via a certification spike: Win32-listing rules for VPN apps, service+driver
   installers, and third-party commerce (Stripe) under current Store policies.
+- **Split-tunnel driver install: runtime, service-managed — not MSI `ServiceInstall`.**
+  [decided 2026-07-12] Windows Installer can't register a kernel service (`ServiceInstall`
+  rejects `SERVICE_KERNEL_DRIVER` → WIX0073) and DIFxApp is deprecated, so the MSI ships only
+  `SplitTunnel.sys` (a `File` in `INSTALLFOLDER`) and the LocalSystem `urnetworkd` service owns
+  the driver lifecycle over the SCM (`SplitTunnelClient`): `Open()` does
+  `CreateService(SERVICE_KERNEL_DRIVER, SERVICE_DEMAND_START)` + `StartService`, `Close()` does
+  `ControlService(STOP)` + `DeleteService`. Ephemeral by design — created/loaded on connect,
+  stopped/deleted on disconnect — so the driver is demand-loaded, uninstall needs no driver
+  cleanup, and no orphan service persists; this mirrors how the service already manages wintun's
+  driver and how WireGuard/Mullvad manage theirs. The driver only *loads* when attestation-signed
+  (R10); unsigned/dev builds fail `StartService` and split tunneling degrades gracefully (the
+  tunnel still works). This is also why split tunneling needs a WFP driver at all: app-*exclude*
+  steering is process-identity-aware and only expressible in WFP — the native Windows VPN
+  Platform does route-based split + per-app *inclusion* only, and would mean abandoning the
+  wintun / user-space `gvisor` data plane.
 - **VS solution (MSBuild, native Visual Studio):** [judgment]
   ```
   windows/app/URnetwork.sln
@@ -178,9 +193,11 @@ carries lifecycle/config. Last-good rpc session persists like `RpcSessionStore` 
   Verifier/stress hardening. Attestation signing (EV cert + Partner Center) starts at M0. See
   R10.
 - **M4 — packaging + signing + Store submission.** WiX MSI per arch (silent
-  install/upgrade for Store-managed updates), chained WinAppSDK runtime, service + driver
-  install/upgrade/uninstall (network restore on uninstall), Authenticode everywhere, arm64
-  build via sdk arm64 dll (needs llvm-mingw on the mac build server), Store certification
+  install/upgrade for Store-managed updates), chained WinAppSDK runtime, service
+  install/upgrade/uninstall + the split-tunnel `.sys` payload (the service registers/starts
+  the driver at runtime — see §2; network restore on uninstall), Authenticode everywhere, the
+  cgo SDK DLLs (x64 + arm64) built inside the Windows VM (Go + llvm-mingw provisioned there;
+  the mac needs no Windows cross-toolchain — see `all/build-windows.sh`), Store certification
   pass (R9).
 - **M5 — polish.** Notifications, deep links/SSO, launch-at-login, localization, fonts,
   kill-switch (`vpnInterfaceWhileOffline` via user-mode WFP block).
@@ -287,7 +304,8 @@ Product — DECIDED 2026-07-09:
   incompatible with this architecture.
 
 Technical (owner: port work, listed by milestone):
-- M0/M4: windows/arm64 DLL proof (llvm-mingw on the mac build server; brew formula check).
+- M0/M4: windows/arm64 DLL builds in the Windows VM (Go + llvm-mingw provisioned by
+  `provision.ps1`; the mac needs no Windows cross-toolchain).
 - M1: R1 socket-binding hook in `connect` + `urnet_set_egress_interface_index`; R6 DNS leak
   mechanism; R7 IPv6 policy; packet-pump throughput measurement (decide whether a batched
   `urnet_device_local_send_packets` cgo export is warranted).
