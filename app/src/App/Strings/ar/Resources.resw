@@ -2256,6 +2256,634 @@
     <value>تم تسجيل الدخول</value>
     <comment>Tray notification shown when the account signs in.</comment>
   </data>
+  <data name="site_account_tools" xml:space="preserve">
+    <value>أدوات الحساب</value>
+    <comment>Account panel: tools section heading</comment>
+  </data>
+  <data name="site_app_add" xml:space="preserve">
+    <value>إضافة</value>
+    <comment>App wallets/blocked: add button</comment>
+  </data>
+  <data name="site_app_add_wallet" xml:space="preserve">
+    <value>إضافة محفظة</value>
+    <comment>App wallets: add wallet heading</comment>
+  </data>
+  <data name="site_app_allowed" xml:space="preserve">
+    <value>مسموح</value>
+    <comment>App connect: allowed count label</comment>
+  </data>
+  <data name="site_app_auth_code_limit" xml:space="preserve">
+    <value>تم بلوغ حد رموز المصادقة. حاول مرة أخرى لاحقاً.</value>
+    <comment>App settings: auth code limit error</comment>
+  </data>
+  <data name="site_app_auth_code_note" xml:space="preserve">
+    <value>تنتهي صلاحية رموز المصادقة المُنشأة بعد 5 دقائق</value>
+    <comment>App settings: auth code expiry note</comment>
+  </data>
+  <data name="site_app_block_ads" xml:space="preserve">
+    <value>حظر الإعلانات والمتتبعات</value>
+    <comment>App connect: block ads and trackers toggle</comment>
+  </data>
+  <data name="site_app_block_hint" xml:space="preserve">
+    <value>ابحث عن موقع لحظره</value>
+    <comment>App blocked locations: search hint</comment>
+  </data>
+  <data name="site_app_blockchain" xml:space="preserve">
+    <value>سلسلة الكتل</value>
+    <comment>App payout detail: blockchain</comment>
+  </data>
+  <data name="site_app_blocked" xml:space="preserve">
+    <value>محظور</value>
+    <comment>App connect: blocked count label</comment>
+  </data>
+  <data name="site_app_blocked_locations" xml:space="preserve">
+    <value>المواقع المحظورة</value>
+    <comment>App account: blocked locations row/screen title</comment>
+  </data>
+  <data name="site_app_bonus_referral" xml:space="preserve">
+    <value>رمز الإحالة الإضافي</value>
+    <comment>App settings: bonus referral code section</comment>
+  </data>
+  <data name="site_app_canceled" xml:space="preserve">
+    <value>ملغى</value>
+    <comment>App wallets: canceled payout status</comment>
+  </data>
+  <data name="site_app_canceled_on" xml:space="preserve">
+    <value>تاريخ الإلغاء</value>
+    <comment>App payout detail: canceled time</comment>
+  </data>
+  <data name="site_app_change" xml:space="preserve">
+    <value>تغيير</value>
+    <comment>App connect screen: change location button</comment>
+  </data>
+  <data name="site_app_check_ip" xml:space="preserve">
+    <value>التحقق من عنوان IP الخاص بي</value>
+    <comment>App account: check my IP quick action</comment>
+  </data>
+  <data name="site_app_cities" xml:space="preserve">
+    <value>المدن</value>
+    <comment>App connect location picker: cities section</comment>
+  </data>
+  <data name="site_app_code_capped" xml:space="preserve">
+    <value>لقد بلغ رمز الإحالة هذا حدّ الإحالات الخاص به</value>
+    <comment>App settings: referral code capped error</comment>
+  </data>
+  <data name="site_app_complete" xml:space="preserve">
+    <value>مكتمل</value>
+    <comment>App wallets: completed payout status</comment>
+  </data>
+  <data name="site_app_completed_on" xml:space="preserve">
+    <value>تاريخ الإكمال</value>
+    <comment>App payout detail: completed time</comment>
+  </data>
+  <data name="site_app_connected" xml:space="preserve">
+    <value>متصل</value>
+    <comment>App connect screen: connected state</comment>
+  </data>
+  <data name="site_app_connecting" xml:space="preserve">
+    <value>جارٍ الاتصال…</value>
+    <comment>App connect screen: connecting state</comment>
+  </data>
+  <data name="site_app_connections" xml:space="preserve">
+    <value>الاتصالات</value>
+    <comment>App settings: connections section</comment>
+  </data>
+  <data name="site_app_contracts" xml:space="preserve">
+    <value>العقود</value>
+    <comment>App connect screen: contract details section title</comment>
+  </data>
+  <data name="site_app_copied" xml:space="preserve">
+    <value>تم النسخ</value>
+    <comment>App: copied flash</comment>
+  </data>
+  <data name="site_app_copy" xml:space="preserve">
+    <value>نسخ</value>
+    <comment>App: copy button</comment>
+  </data>
+  <data name="site_app_countries" xml:space="preserve">
+    <value>الدول</value>
+    <comment>App connect location picker: countries section</comment>
+  </data>
+  <data name="site_app_create_auth_code" xml:space="preserve">
+    <value>إنشاء رمز مصادقة</value>
+    <comment>App settings: create auth code button</comment>
+  </data>
+  <data name="site_app_created" xml:space="preserve">
+    <value>تاريخ الإنشاء</value>
+    <comment>App payout detail: created time</comment>
+  </data>
+  <data name="site_app_current_ranking" xml:space="preserve">
+    <value>الترتيب الحالي</value>
+    <comment>App leaderboard: own rank label</comment>
+  </data>
+  <data name="site_app_data_paid" xml:space="preserve">
+    <value>البيانات المدفوعة</value>
+    <comment>App payout detail: data paid for</comment>
+  </data>
+  <data name="site_app_data_shared" xml:space="preserve">
+    <value>البيانات المُشارَكة</value>
+    <comment>App leaderboard: data shared label</comment>
+  </data>
+  <data name="site_app_delete_account" xml:space="preserve">
+    <value>حذف الحساب</value>
+    <comment>App settings: delete account button</comment>
+  </data>
+  <data name="site_app_delete_confirm" xml:space="preserve">
+    <value>اكتب اسم شبكتك للتأكيد</value>
+    <comment>App settings: delete confirm prompt</comment>
+  </data>
+  <data name="site_app_delete_warning" xml:space="preserve">
+    <value>سيؤدي هذا إلى حذف شبكتك وبياناتها وأرباحها نهائياً. لا يمكن التراجع عن هذا الإجراء.</value>
+    <comment>App settings: delete warning</comment>
+  </data>
+  <data name="site_app_device_attaching" xml:space="preserve">
+    <value>جارٍ إرفاق عناصر التحكم بالجهاز…</value>
+    <comment>App connect screen: device rpc attaching hint</comment>
+  </data>
+  <data name="site_app_disconnecting" xml:space="preserve">
+    <value>جارٍ قطع الاتصال…</value>
+    <comment>App connect screen: disconnecting state</comment>
+  </data>
+  <data name="site_app_dns" xml:space="preserve">
+    <value>DNS</value>
+    <comment>App connect: custom DNS section</comment>
+  </data>
+  <data name="site_app_dns_encrypted" xml:space="preserve">
+    <value>مُشفّر (DoH)</value>
+    <comment>App connect: DNS summary encrypted</comment>
+  </data>
+  <data name="site_app_dns_fallback" xml:space="preserve">
+    <value>احتياطي سريع أثناء بدء التشغيل</value>
+    <comment>App connect DNS: fallback toggle</comment>
+  </data>
+  <data name="site_app_dns_local_dns" xml:space="preserve">
+    <value>DNS قياسي على هذا الجهاز</value>
+    <comment>App connect DNS: local plain DNS toggle</comment>
+  </data>
+  <data name="site_app_dns_local_doh" xml:space="preserve">
+    <value>DNS مُشفّر على هذا الجهاز</value>
+    <comment>App connect DNS: local DoH toggle</comment>
+  </data>
+  <data name="site_app_dns_plain" xml:space="preserve">
+    <value>قياسي</value>
+    <comment>App connect: DNS summary plain</comment>
+  </data>
+  <data name="site_app_dns_remote_dns" xml:space="preserve">
+    <value>DNS قياسي عبر النفق</value>
+    <comment>App connect DNS: remote plain DNS toggle</comment>
+  </data>
+  <data name="site_app_dns_remote_doh" xml:space="preserve">
+    <value>DNS مُشفّر عبر النفق</value>
+    <comment>App connect DNS: remote DoH toggle</comment>
+  </data>
+  <data name="site_app_dns_reset" xml:space="preserve">
+    <value>إعادة التعيين إلى الموصى به</value>
+    <comment>App connect DNS: reset to default</comment>
+  </data>
+  <data name="site_app_earnings" xml:space="preserve">
+    <value>أرباح الشبكة</value>
+    <comment>App account: network earnings card</comment>
+  </data>
+  <data name="site_app_email" xml:space="preserve">
+    <value>البريد الإلكتروني</value>
+    <comment>App profile: email label</comment>
+  </data>
+  <data name="site_app_enter_referral" xml:space="preserve">
+    <value>أدخل رمز الإحالة</value>
+    <comment>App settings: referral code input placeholder</comment>
+  </data>
+  <data name="site_app_ext_needed" xml:space="preserve">
+    <value>إضافة متصفح URnetwork غير متوفرة في هذا المتصفح</value>
+    <comment>App settings: extension unavailable note</comment>
+  </data>
+  <data name="site_app_feedback_placeholder" xml:space="preserve">
+    <value>أخبرنا بما يعمل جيداً وما يمكن تحسينه…</value>
+    <comment>App support: feedback textarea placeholder</comment>
+  </data>
+  <data name="site_app_feedback_sent" xml:space="preserve">
+    <value>تم الإرسال! شكراً لملاحظاتك.</value>
+    <comment>App support: sent confirmation</comment>
+  </data>
+  <data name="site_app_gib_added" xml:space="preserve">
+    <value>تمت إضافة +{gib} GiB</value>
+    <comment>App balance codes: redeem success flash</comment>
+  </data>
+  <data name="site_app_how_are_we_doing" xml:space="preserve">
+    <value>ما رأيك في أدائنا؟</value>
+    <comment>App support: star rating label</comment>
+  </data>
+  <data name="site_app_invalid_address" xml:space="preserve">
+    <value>هذا العنوان غير صالح للسلسلة المحددة</value>
+    <comment>App wallets: invalid address error</comment>
+  </data>
+  <data name="site_app_invalid_code" xml:space="preserve">
+    <value>رمز الإحالة هذا غير صالح</value>
+    <comment>App settings: invalid referral code error</comment>
+  </data>
+  <data name="site_app_join_discord" xml:space="preserve">
+    <value>انضم إلى المجتمع على Discord</value>
+    <comment>App support: Discord community card</comment>
+  </data>
+  <data name="site_app_kill_switch" xml:space="preserve">
+    <value>مفتاح الإيقاف</value>
+    <comment>App settings: kill switch toggle</comment>
+  </data>
+  <data name="site_app_kill_switch_note" xml:space="preserve">
+    <value>حظر حركة بيانات المتصفح عند قطع اتصال URnetwork</value>
+    <comment>App settings: kill switch note</comment>
+  </data>
+  <data name="site_app_leaderboard_empty" xml:space="preserve">
+    <value>لا توجد شبكات في لوحة المتصدرين بعد.</value>
+    <comment>App leaderboard: empty state</comment>
+  </data>
+  <data name="site_app_leaderboard_note" xml:space="preserve">
+    <value>لوحة المتصدرين هي مجموع آخر 4 دفعات. ويتم تحديثها في كل دورة دفع.</value>
+    <comment>App leaderboard: explainer note</comment>
+  </data>
+  <data name="site_app_loading" xml:space="preserve">
+    <value>جارٍ التحميل…</value>
+    <comment>App: loading state</comment>
+  </data>
+  <data name="site_app_login_methods" xml:space="preserve">
+    <value>طرق تسجيل الدخول</value>
+    <comment>App profile: login methods section</comment>
+  </data>
+  <data name="site_app_make_payout_wallet" xml:space="preserve">
+    <value>تعيين محفظة الدفعات</value>
+    <comment>App wallets: make payout wallet action</comment>
+  </data>
+  <data name="site_app_mean_reliability" xml:space="preserve">
+    <value>متوسط الموثوقية</value>
+    <comment>App provider: mean reliability metric</comment>
+  </data>
+  <data name="site_app_network_name" xml:space="preserve">
+    <value>اسم الشبكة</value>
+    <comment>App profile: network name label</comment>
+  </data>
+  <data name="site_app_network_reliability" xml:space="preserve">
+    <value>موثوقية الشبكة</value>
+    <comment>App provider: reliability section</comment>
+  </data>
+  <data name="site_app_no_balance_codes" xml:space="preserve">
+    <value>لم يتم استبدال أي رموز رصيد بعد</value>
+    <comment>App balance codes: empty state</comment>
+  </data>
+  <data name="site_app_no_blocked" xml:space="preserve">
+    <value>لا توجد مواقع محظورة بعد</value>
+    <comment>App blocked locations: empty state</comment>
+  </data>
+  <data name="site_app_no_payouts" xml:space="preserve">
+    <value>لا توجد دفعات بعد</value>
+    <comment>App wallets: payouts empty state</comment>
+  </data>
+  <data name="site_app_no_provider_activity" xml:space="preserve">
+    <value>لا يوجد نشاط تزويد في هذه الفترة.</value>
+    <comment>App provider: no provider throughput</comment>
+  </data>
+  <data name="site_app_no_provider_contracts" xml:space="preserve">
+    <value>لا توجد عقود مزوّد نشطة.</value>
+    <comment>App provider: no provider contracts</comment>
+  </data>
+  <data name="site_app_no_reliability" xml:space="preserve">
+    <value>لا توجد بيانات موثوقية بعد.</value>
+    <comment>App provider: no reliability data</comment>
+  </data>
+  <data name="site_app_no_wallets" xml:space="preserve">
+    <value>لا توجد محافظ بعد — أضف واحدة لاستلام الدفعات</value>
+    <comment>App wallets: empty state</comment>
+  </data>
+  <data name="site_app_paid_on" xml:space="preserve">
+    <value>تاريخ الدفع</value>
+    <comment>App payout detail: paid time</comment>
+  </data>
+  <data name="site_app_payout_not_found" xml:space="preserve">
+    <value>تعذّر العثور على هذه الدفعة.</value>
+    <comment>App payout detail: not found</comment>
+  </data>
+  <data name="site_app_payout_wallet" xml:space="preserve">
+    <value>محفظة الدفعات</value>
+    <comment>App wallets: payout wallet label</comment>
+  </data>
+  <data name="site_app_payouts" xml:space="preserve">
+    <value>الدفعات</value>
+    <comment>App wallets: payouts section</comment>
+  </data>
+  <data name="site_app_peak_clients" xml:space="preserve">
+    <value>ذروة العملاء</value>
+    <comment>App provider: peak clients metric</comment>
+  </data>
+  <data name="site_app_peers" xml:space="preserve">
+    <value>أجهزتك المتصلة</value>
+    <comment>App connect screen: online devices section title</comment>
+  </data>
+  <data name="site_app_pending" xml:space="preserve">
+    <value>قيد الانتظار</value>
+    <comment>App wallets: pending payout status</comment>
+  </data>
+  <data name="site_app_private_network" xml:space="preserve">
+    <value>شبكة خاصة</value>
+    <comment>App leaderboard: hidden network row label</comment>
+  </data>
+  <data name="site_app_profile" xml:space="preserve">
+    <value>الملف الشخصي</value>
+    <comment>App account: profile row/screen title</comment>
+  </data>
+  <data name="site_app_provider" xml:space="preserve">
+    <value>التزويد</value>
+    <comment>App account: provider row + screen title</comment>
+  </data>
+  <data name="site_app_provider_contracts" xml:space="preserve">
+    <value>عقود المزوّد</value>
+    <comment>App provider: contracts section</comment>
+  </data>
+  <data name="site_app_provider_intro" xml:space="preserve">
+    <value>كيف تقوم أجهزة شبكتك بتزويد النطاق الترددي وتحقيق الأرباح.</value>
+    <comment>App provider screen: intro</comment>
+  </data>
+  <data name="site_app_provider_needs_connect" xml:space="preserve">
+    <value>اتصل لعرض إحصائيات التزويد المباشرة.</value>
+    <comment>App provider: connect prompt for live stats</comment>
+  </data>
+  <data name="site_app_provider_stats" xml:space="preserve">
+    <value>إحصائيات المزوّد</value>
+    <comment>App provider: throughput section</comment>
+  </data>
+  <data name="site_app_providers" xml:space="preserve">
+    <value>المزوّدون</value>
+    <comment>App connect screen: provider grid section title</comment>
+  </data>
+  <data name="site_app_received" xml:space="preserve">
+    <value>المُستَلَم</value>
+    <comment>App provider: bytes received metric</comment>
+  </data>
+  <data name="site_app_redeemed_on" xml:space="preserve">
+    <value>تم الاستبدال في {date}</value>
+    <comment>App balance codes: redeemed date row</comment>
+  </data>
+  <data name="site_app_refer_friends" xml:space="preserve">
+    <value>دعوة الأصدقاء</value>
+    <comment>App account: refer friends card</comment>
+  </data>
+  <data name="site_app_referral_network" xml:space="preserve">
+    <value>شبكة الإحالة</value>
+    <comment>App settings: referral network section</comment>
+  </data>
+  <data name="site_app_regions" xml:space="preserve">
+    <value>المناطق</value>
+    <comment>App connect location picker: regions section</comment>
+  </data>
+  <data name="site_app_remove" xml:space="preserve">
+    <value>إزالة</value>
+    <comment>App: remove button</comment>
+  </data>
+  <data name="site_app_retry" xml:space="preserve">
+    <value>حاول مرة أخرى</value>
+    <comment>App screens: retry button</comment>
+  </data>
+  <data name="site_app_save" xml:space="preserve">
+    <value>حفظ</value>
+    <comment>App: save button</comment>
+  </data>
+  <data name="site_app_send" xml:space="preserve">
+    <value>إرسال</value>
+    <comment>App support: send button</comment>
+  </data>
+  <data name="site_app_served" xml:space="preserve">
+    <value>المُقدَّم</value>
+    <comment>App provider: bytes served metric</comment>
+  </data>
+  <data name="site_app_show_on_leaderboard" xml:space="preserve">
+    <value>إظهار شبكتي في لوحة المتصدرين</value>
+    <comment>App leaderboard: public visibility toggle</comment>
+  </data>
+  <data name="site_app_shuffle" xml:space="preserve">
+    <value>خلط</value>
+    <comment>App connect screen: shuffle providers button</comment>
+  </data>
+  <data name="site_app_stay_in_touch" xml:space="preserve">
+    <value>ابقَ على تواصل</value>
+    <comment>App settings: stay in touch section</comment>
+  </data>
+  <data name="site_app_support_intro" xml:space="preserve">
+    <value>أرسل لنا ملاحظاتك مباشرةً، أو انضم إلى المجتمع للحصول على دعم مباشر.</value>
+    <comment>App support: intro line</comment>
+  </data>
+  <data name="site_app_total_referrals" xml:space="preserve">
+    <value>إجمالي الإحالات</value>
+    <comment>App account: total referrals label</comment>
+  </data>
+  <data name="site_app_transaction" xml:space="preserve">
+    <value>المعاملة</value>
+    <comment>App payout detail: transaction hash</comment>
+  </data>
+  <data name="site_app_unlink" xml:space="preserve">
+    <value>إلغاء الربط</value>
+    <comment>App settings: unlink referral network</comment>
+  </data>
+  <data name="site_app_verified" xml:space="preserve">
+    <value>تم التحقق</value>
+    <comment>App profile: verified badge</comment>
+  </data>
+  <data name="site_app_wallet" xml:space="preserve">
+    <value>محفظة</value>
+    <comment>App wallets: wallet label</comment>
+  </data>
+  <data name="site_app_wallet_address" xml:space="preserve">
+    <value>عنوان المحفظة</value>
+    <comment>App wallets: wallet address input</comment>
+  </data>
+  <data name="site_app_wallets" xml:space="preserve">
+    <value>المحافظ</value>
+    <comment>App account: wallets row/screen title</comment>
+  </data>
+  <data name="site_best_available" xml:space="preserve">
+    <value>الأفضل المتاح</value>
+    <comment>Account panel: any-provider location option</comment>
+  </data>
+  <data name="site_best_available_sub" xml:space="preserve">
+    <value>أي مزوّد على الشبكة</value>
+    <comment>Account panel: 'best available' location subtitle</comment>
+  </data>
+  <data name="site_billing_portal_error" xml:space="preserve">
+    <value>تعذّر فتح بوابة الفوترة.</value>
+    <comment>Account panel: billing portal failed to open</comment>
+  </data>
+  <data name="site_clear_location" xml:space="preserve">
+    <value>مسح الموقع</value>
+    <comment>Account panel: clear the chosen location</comment>
+  </data>
+  <data name="site_client_limit_upgrade" xml:space="preserve">
+    <value>بلغت خطتك الحد الأقصى للعملاء المتزامنين — يرفعه Pro إلى 1,000.</value>
+    <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
+  </data>
+  <data name="site_copy_url" xml:space="preserve">
+    <value>نسخ الرابط</value>
+    <comment>Account panel: copy a proxy's URL</comment>
+  </data>
+  <data name="site_create_another" xml:space="preserve">
+    <value>إنشاء آخر</value>
+    <comment>Account panel: create another proxy</comment>
+  </data>
+  <data name="site_create_proxy" xml:space="preserve">
+    <value>إنشاء وكيل</value>
+    <comment>Account panel: create-proxy button</comment>
+  </data>
+  <data name="site_create_proxy_error" xml:space="preserve">
+    <value>تعذّر إنشاء الوكيل.</value>
+    <comment>Account panel: proxy creation failed</comment>
+  </data>
+  <data name="site_download_conf" xml:space="preserve">
+    <value>تنزيل ملف .conf</value>
+    <comment>Account panel: download a WireGuard config file</comment>
+  </data>
+  <data name="site_download_wg_config" xml:space="preserve">
+    <value>تنزيل إعدادات WireGuard</value>
+    <comment>Account panel: download WireGuard config (created card)</comment>
+  </data>
+  <data name="site_ext_current_network" xml:space="preserve">
+    <value>مُعدّة حالياً لـ</value>
+    <comment>Extension status: label before the extension's current network name</comment>
+  </data>
+  <data name="site_ext_get" xml:space="preserve">
+    <value>احمِ هذا المتصفح باستخدام URnetwork.</value>
+    <comment>Extension status: install pitch</comment>
+  </data>
+  <data name="site_ext_install" xml:space="preserve">
+    <value>تثبيت الإضافة</value>
+    <comment>Extension status: install CTA</comment>
+  </data>
+  <data name="site_ext_proxy_on" xml:space="preserve">
+    <value>اتصال المتصفح نشط</value>
+    <comment>Extension status: linked with the browser connection active</comment>
+  </data>
+  <data name="site_ext_ready" xml:space="preserve">
+    <value>الإضافة متصلة وجاهزة للاستخدام</value>
+    <comment>Extension status: linked and idle</comment>
+  </data>
+  <data name="site_ext_setting_up" xml:space="preserve">
+    <value>جارٍ الإعداد…</value>
+    <comment>Extension status: setup in flight</comment>
+  </data>
+  <data name="site_ext_setup" xml:space="preserve">
+    <value>إعداد الإضافة لاستخدام شبكتك</value>
+    <comment>Extension status: hand the page session to the extension</comment>
+  </data>
+  <data name="site_ext_setup_badge" xml:space="preserve">
+    <value>إعداد الإضافة</value>
+    <comment>Extension status: compact 'set up extension' badge next to the account pill</comment>
+  </data>
+  <data name="site_ext_setup_foreign_note" xml:space="preserve">
+    <value>سيؤدي هذا إلى تسجيل خروج الإضافة من شبكتها الحالية وقطع اتصال المتصفح.</value>
+    <comment>Extension status: warning when replacing another network</comment>
+  </data>
+  <data name="site_ext_title" xml:space="preserve">
+    <value>إضافة المتصفح</value>
+    <comment>Extension status: section title</comment>
+  </data>
+  <data name="site_generic_error" xml:space="preserve">
+    <value>حدث خطأ ما. يُرجى المحاولة مرة أخرى.</value>
+    <comment>Account panel: generic retry error</comment>
+  </data>
+  <data name="site_invalid_balance_code" xml:space="preserve">
+    <value>رمز رصيد غير صالح.</value>
+    <comment>Account panel: invalid balance code</comment>
+  </data>
+  <data name="site_load_balance_codes_error" xml:space="preserve">
+    <value>تعذّر تحميل رموز الرصيد</value>
+    <comment>Account panel: balance codes load error</comment>
+  </data>
+  <data name="site_load_clients_error" xml:space="preserve">
+    <value>تعذّر تحميل العملاء</value>
+    <comment>Account panel: online-clients load error</comment>
+  </data>
+  <data name="site_load_proxies_error" xml:space="preserve">
+    <value>تعذّر تحميل الوكلاء</value>
+    <comment>Account panel: proxies load error</comment>
+  </data>
+  <data name="site_loading_balance_codes" xml:space="preserve">
+    <value>جارٍ تحميل رموز الرصيد…</value>
+    <comment>Account panel: loading balance codes</comment>
+  </data>
+  <data name="site_loading_clients" xml:space="preserve">
+    <value>جارٍ تحميل العملاء…</value>
+    <comment>Account panel: loading online clients</comment>
+  </data>
+  <data name="site_loading_proxies" xml:space="preserve">
+    <value>جارٍ تحميل الوكلاء…</value>
+    <comment>Account panel: loading proxies</comment>
+  </data>
+  <data name="site_location_search_placeholder" xml:space="preserve">
+    <value>ابحث عن أي موقع</value>
+    <comment>Account panel: location chooser search field</comment>
+  </data>
+  <data name="site_locations" xml:space="preserve">
+    <value>المواقع</value>
+    <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_manage_billing_hint" xml:space="preserve">
+    <value>إدارة تفاصيل الدفع، أو عرض الفواتير، أو إلغاء اشتراكك.</value>
+    <comment>Account panel: billing portal hint for Pro users</comment>
+  </data>
+  <data name="site_no_balance_codes" xml:space="preserve">
+    <value>لم يتم استبدال أي رموز رصيد بعد</value>
+    <comment>Account panel: empty redeemed-codes list</comment>
+  </data>
+  <data name="site_no_clients_online" xml:space="preserve">
+    <value>لا يوجد عملاء متصلون</value>
+    <comment>Account panel: empty online-clients list</comment>
+  </data>
+  <data name="site_no_proxies" xml:space="preserve">
+    <value>لا يوجد وكلاء بعد</value>
+    <comment>Account panel: empty proxies list</comment>
+  </data>
+  <data name="site_open_app" xml:space="preserve">
+    <value>فتح التطبيق</value>
+    <comment>Account panel: open the in-site web app (/app)</comment>
+  </data>
+  <data name="site_open_client_manager" xml:space="preserve">
+    <value>فتح مدير العملاء</value>
+    <comment>Account panel: launch the client-manager app</comment>
+  </data>
+  <data name="site_operator_client_ui" xml:space="preserve">
+    <value>واجهة عميل المشغّل</value>
+    <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
+  </data>
+  <data name="site_principal" xml:space="preserve">
+    <value>الكيان الأساسي</value>
+    <comment>Account panel: client info — principal label</comment>
+  </data>
+  <data name="site_product_updates_optin" xml:space="preserve">
+    <value>يمكنكم إرسال تحديثات المنتج إليّ من حين لآخر</value>
+    <comment>Account panel: product-updates opt-in checkbox</comment>
+  </data>
+  <data name="site_proxies" xml:space="preserve">
+    <value>الوكلاء</value>
+    <comment>Account panel: proxies section heading</comment>
+  </data>
+  <data name="site_proxy_type" xml:space="preserve">
+    <value>نوع الوكيل</value>
+    <comment>Account panel: proxy-type picker aria-label</comment>
+  </data>
+  <data name="site_roles" xml:space="preserve">
+    <value>الأدوار</value>
+    <comment>Account panel: client info — roles label</comment>
+  </data>
+  <data name="site_saved" xml:space="preserve">
+    <value>تم الحفظ</value>
+    <comment>Account panel: preference saved flash</comment>
+  </data>
+  <data name="site_searching" xml:space="preserve">
+    <value>جارٍ البحث…</value>
+    <comment>Account panel: location search in progress</comment>
+  </data>
+  <data name="site_socks_cred_note" xml:space="preserve">
+    <value>اسم المستخدم هو الرمز الموجود في الرابط؛ وكلمة المرور فارغة.</value>
+    <comment>Account panel: SOCKS credential note</comment>
+  </data>
+  <data name="site_unexpected_error" xml:space="preserve">
+    <value>حدث خطأ غير متوقع.</value>
+    <comment>Account panel: generic unexpected error</comment>
+  </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>يرجى التأكد من أن لديك رصيد كافٍ من USDC في محفظتك. في بعض الحالات، قد تفشل مطالبات الدفع إذا لم تكن هناك أموال كافية في المحفظة.</value>
     <comment>Call to action</comment>

@@ -2185,6 +2185,634 @@
     <value>Вы вошли</value>
     <comment>Tray notification shown when the account signs in.</comment>
   </data>
+  <data name="site_account_tools" xml:space="preserve">
+    <value>Инструменты аккаунта</value>
+    <comment>Account panel: tools section heading</comment>
+  </data>
+  <data name="site_app_add" xml:space="preserve">
+    <value>Добавить</value>
+    <comment>App wallets/blocked: add button</comment>
+  </data>
+  <data name="site_app_add_wallet" xml:space="preserve">
+    <value>Добавить кошелёк</value>
+    <comment>App wallets: add wallet heading</comment>
+  </data>
+  <data name="site_app_allowed" xml:space="preserve">
+    <value>разрешено</value>
+    <comment>App connect: allowed count label</comment>
+  </data>
+  <data name="site_app_auth_code_limit" xml:space="preserve">
+    <value>Достигнут лимит кодов авторизации. Попробуйте позже.</value>
+    <comment>App settings: auth code limit error</comment>
+  </data>
+  <data name="site_app_auth_code_note" xml:space="preserve">
+    <value>Созданные коды авторизации истекают через 5 минут</value>
+    <comment>App settings: auth code expiry note</comment>
+  </data>
+  <data name="site_app_block_ads" xml:space="preserve">
+    <value>Блокировать рекламу и трекеры</value>
+    <comment>App connect: block ads and trackers toggle</comment>
+  </data>
+  <data name="site_app_block_hint" xml:space="preserve">
+    <value>Найдите локацию для блокировки</value>
+    <comment>App blocked locations: search hint</comment>
+  </data>
+  <data name="site_app_blockchain" xml:space="preserve">
+    <value>Блокчейн</value>
+    <comment>App payout detail: blockchain</comment>
+  </data>
+  <data name="site_app_blocked" xml:space="preserve">
+    <value>заблокировано</value>
+    <comment>App connect: blocked count label</comment>
+  </data>
+  <data name="site_app_blocked_locations" xml:space="preserve">
+    <value>Заблокированные локации</value>
+    <comment>App account: blocked locations row/screen title</comment>
+  </data>
+  <data name="site_app_bonus_referral" xml:space="preserve">
+    <value>Бонусный реферальный код</value>
+    <comment>App settings: bonus referral code section</comment>
+  </data>
+  <data name="site_app_canceled" xml:space="preserve">
+    <value>Отменено</value>
+    <comment>App wallets: canceled payout status</comment>
+  </data>
+  <data name="site_app_canceled_on" xml:space="preserve">
+    <value>Отменено</value>
+    <comment>App payout detail: canceled time</comment>
+  </data>
+  <data name="site_app_change" xml:space="preserve">
+    <value>Изменить</value>
+    <comment>App connect screen: change location button</comment>
+  </data>
+  <data name="site_app_check_ip" xml:space="preserve">
+    <value>Проверить мой IP</value>
+    <comment>App account: check my IP quick action</comment>
+  </data>
+  <data name="site_app_cities" xml:space="preserve">
+    <value>Города</value>
+    <comment>App connect location picker: cities section</comment>
+  </data>
+  <data name="site_app_code_capped" xml:space="preserve">
+    <value>Этот реферальный код достиг лимита рефералов</value>
+    <comment>App settings: referral code capped error</comment>
+  </data>
+  <data name="site_app_complete" xml:space="preserve">
+    <value>Завершено</value>
+    <comment>App wallets: completed payout status</comment>
+  </data>
+  <data name="site_app_completed_on" xml:space="preserve">
+    <value>Завершено</value>
+    <comment>App payout detail: completed time</comment>
+  </data>
+  <data name="site_app_connected" xml:space="preserve">
+    <value>Подключено</value>
+    <comment>App connect screen: connected state</comment>
+  </data>
+  <data name="site_app_connecting" xml:space="preserve">
+    <value>Подключение…</value>
+    <comment>App connect screen: connecting state</comment>
+  </data>
+  <data name="site_app_connections" xml:space="preserve">
+    <value>Подключения</value>
+    <comment>App settings: connections section</comment>
+  </data>
+  <data name="site_app_contracts" xml:space="preserve">
+    <value>Контракты</value>
+    <comment>App connect screen: contract details section title</comment>
+  </data>
+  <data name="site_app_copied" xml:space="preserve">
+    <value>Скопировано</value>
+    <comment>App: copied flash</comment>
+  </data>
+  <data name="site_app_copy" xml:space="preserve">
+    <value>Копировать</value>
+    <comment>App: copy button</comment>
+  </data>
+  <data name="site_app_countries" xml:space="preserve">
+    <value>Страны</value>
+    <comment>App connect location picker: countries section</comment>
+  </data>
+  <data name="site_app_create_auth_code" xml:space="preserve">
+    <value>Создать код авторизации</value>
+    <comment>App settings: create auth code button</comment>
+  </data>
+  <data name="site_app_created" xml:space="preserve">
+    <value>Создано</value>
+    <comment>App payout detail: created time</comment>
+  </data>
+  <data name="site_app_current_ranking" xml:space="preserve">
+    <value>Текущий рейтинг</value>
+    <comment>App leaderboard: own rank label</comment>
+  </data>
+  <data name="site_app_data_paid" xml:space="preserve">
+    <value>Оплаченные данные</value>
+    <comment>App payout detail: data paid for</comment>
+  </data>
+  <data name="site_app_data_shared" xml:space="preserve">
+    <value>Передано данных</value>
+    <comment>App leaderboard: data shared label</comment>
+  </data>
+  <data name="site_app_delete_account" xml:space="preserve">
+    <value>Удалить аккаунт</value>
+    <comment>App settings: delete account button</comment>
+  </data>
+  <data name="site_app_delete_confirm" xml:space="preserve">
+    <value>Введите имя вашей сети для подтверждения</value>
+    <comment>App settings: delete confirm prompt</comment>
+  </data>
+  <data name="site_app_delete_warning" xml:space="preserve">
+    <value>Это навсегда удалит вашу сеть, её данные и заработок. Отменить это действие нельзя.</value>
+    <comment>App settings: delete warning</comment>
+  </data>
+  <data name="site_app_device_attaching" xml:space="preserve">
+    <value>Подключение управления устройством…</value>
+    <comment>App connect screen: device rpc attaching hint</comment>
+  </data>
+  <data name="site_app_disconnecting" xml:space="preserve">
+    <value>Отключение…</value>
+    <comment>App connect screen: disconnecting state</comment>
+  </data>
+  <data name="site_app_dns" xml:space="preserve">
+    <value>DNS</value>
+    <comment>App connect: custom DNS section</comment>
+  </data>
+  <data name="site_app_dns_encrypted" xml:space="preserve">
+    <value>Зашифрованный (DoH)</value>
+    <comment>App connect: DNS summary encrypted</comment>
+  </data>
+  <data name="site_app_dns_fallback" xml:space="preserve">
+    <value>Быстрый резерв при запуске</value>
+    <comment>App connect DNS: fallback toggle</comment>
+  </data>
+  <data name="site_app_dns_local_dns" xml:space="preserve">
+    <value>Стандартный DNS на этом устройстве</value>
+    <comment>App connect DNS: local plain DNS toggle</comment>
+  </data>
+  <data name="site_app_dns_local_doh" xml:space="preserve">
+    <value>Зашифрованный DNS на этом устройстве</value>
+    <comment>App connect DNS: local DoH toggle</comment>
+  </data>
+  <data name="site_app_dns_plain" xml:space="preserve">
+    <value>Стандартный</value>
+    <comment>App connect: DNS summary plain</comment>
+  </data>
+  <data name="site_app_dns_remote_dns" xml:space="preserve">
+    <value>Стандартный DNS через туннель</value>
+    <comment>App connect DNS: remote plain DNS toggle</comment>
+  </data>
+  <data name="site_app_dns_remote_doh" xml:space="preserve">
+    <value>Зашифрованный DNS через туннель</value>
+    <comment>App connect DNS: remote DoH toggle</comment>
+  </data>
+  <data name="site_app_dns_reset" xml:space="preserve">
+    <value>Сбросить до рекомендуемых</value>
+    <comment>App connect DNS: reset to default</comment>
+  </data>
+  <data name="site_app_earnings" xml:space="preserve">
+    <value>Заработок сети</value>
+    <comment>App account: network earnings card</comment>
+  </data>
+  <data name="site_app_email" xml:space="preserve">
+    <value>Email</value>
+    <comment>App profile: email label</comment>
+  </data>
+  <data name="site_app_enter_referral" xml:space="preserve">
+    <value>Введите реферальный код</value>
+    <comment>App settings: referral code input placeholder</comment>
+  </data>
+  <data name="site_app_ext_needed" xml:space="preserve">
+    <value>Расширение URnetwork недоступно в этом браузере</value>
+    <comment>App settings: extension unavailable note</comment>
+  </data>
+  <data name="site_app_feedback_placeholder" xml:space="preserve">
+    <value>Расскажите, что работает хорошо, а что можно улучшить…</value>
+    <comment>App support: feedback textarea placeholder</comment>
+  </data>
+  <data name="site_app_feedback_sent" xml:space="preserve">
+    <value>Отправлено! Спасибо за ваш отзыв.</value>
+    <comment>App support: sent confirmation</comment>
+  </data>
+  <data name="site_app_gib_added" xml:space="preserve">
+    <value>+{gib} GiB добавлено</value>
+    <comment>App balance codes: redeem success flash</comment>
+  </data>
+  <data name="site_app_how_are_we_doing" xml:space="preserve">
+    <value>Как мы справляемся?</value>
+    <comment>App support: star rating label</comment>
+  </data>
+  <data name="site_app_invalid_address" xml:space="preserve">
+    <value>Этот адрес недействителен для выбранной сети</value>
+    <comment>App wallets: invalid address error</comment>
+  </data>
+  <data name="site_app_invalid_code" xml:space="preserve">
+    <value>Этот реферальный код недействителен</value>
+    <comment>App settings: invalid referral code error</comment>
+  </data>
+  <data name="site_app_join_discord" xml:space="preserve">
+    <value>Присоединяйтесь к сообществу в Discord</value>
+    <comment>App support: Discord community card</comment>
+  </data>
+  <data name="site_app_kill_switch" xml:space="preserve">
+    <value>Kill switch</value>
+    <comment>App settings: kill switch toggle</comment>
+  </data>
+  <data name="site_app_kill_switch_note" xml:space="preserve">
+    <value>Блокировать трафик браузера, когда URnetwork отключён</value>
+    <comment>App settings: kill switch note</comment>
+  </data>
+  <data name="site_app_leaderboard_empty" xml:space="preserve">
+    <value>Пока нет сетей в рейтинге.</value>
+    <comment>App leaderboard: empty state</comment>
+  </data>
+  <data name="site_app_leaderboard_note" xml:space="preserve">
+    <value>Рейтинг — это сумма последних 4 выплат. Он обновляется каждый платёжный цикл.</value>
+    <comment>App leaderboard: explainer note</comment>
+  </data>
+  <data name="site_app_loading" xml:space="preserve">
+    <value>Загрузка…</value>
+    <comment>App: loading state</comment>
+  </data>
+  <data name="site_app_login_methods" xml:space="preserve">
+    <value>Способы входа</value>
+    <comment>App profile: login methods section</comment>
+  </data>
+  <data name="site_app_make_payout_wallet" xml:space="preserve">
+    <value>Назначить кошельком для выплат</value>
+    <comment>App wallets: make payout wallet action</comment>
+  </data>
+  <data name="site_app_mean_reliability" xml:space="preserve">
+    <value>Средняя надёжность</value>
+    <comment>App provider: mean reliability metric</comment>
+  </data>
+  <data name="site_app_network_name" xml:space="preserve">
+    <value>Имя сети</value>
+    <comment>App profile: network name label</comment>
+  </data>
+  <data name="site_app_network_reliability" xml:space="preserve">
+    <value>Надёжность сети</value>
+    <comment>App provider: reliability section</comment>
+  </data>
+  <data name="site_app_no_balance_codes" xml:space="preserve">
+    <value>Пока нет активированных кодов баланса</value>
+    <comment>App balance codes: empty state</comment>
+  </data>
+  <data name="site_app_no_blocked" xml:space="preserve">
+    <value>Пока нет заблокированных локаций</value>
+    <comment>App blocked locations: empty state</comment>
+  </data>
+  <data name="site_app_no_payouts" xml:space="preserve">
+    <value>Пока нет выплат</value>
+    <comment>App wallets: payouts empty state</comment>
+  </data>
+  <data name="site_app_no_provider_activity" xml:space="preserve">
+    <value>Нет активности раздачи за этот период.</value>
+    <comment>App provider: no provider throughput</comment>
+  </data>
+  <data name="site_app_no_provider_contracts" xml:space="preserve">
+    <value>Нет активных контрактов раздачи.</value>
+    <comment>App provider: no provider contracts</comment>
+  </data>
+  <data name="site_app_no_reliability" xml:space="preserve">
+    <value>Пока нет данных о надёжности.</value>
+    <comment>App provider: no reliability data</comment>
+  </data>
+  <data name="site_app_no_wallets" xml:space="preserve">
+    <value>Пока нет кошельков — добавьте, чтобы получать выплаты</value>
+    <comment>App wallets: empty state</comment>
+  </data>
+  <data name="site_app_paid_on" xml:space="preserve">
+    <value>Оплачено</value>
+    <comment>App payout detail: paid time</comment>
+  </data>
+  <data name="site_app_payout_not_found" xml:space="preserve">
+    <value>Эта выплата не найдена.</value>
+    <comment>App payout detail: not found</comment>
+  </data>
+  <data name="site_app_payout_wallet" xml:space="preserve">
+    <value>Кошелёк для выплат</value>
+    <comment>App wallets: payout wallet label</comment>
+  </data>
+  <data name="site_app_payouts" xml:space="preserve">
+    <value>Выплаты</value>
+    <comment>App wallets: payouts section</comment>
+  </data>
+  <data name="site_app_peak_clients" xml:space="preserve">
+    <value>Пик клиентов</value>
+    <comment>App provider: peak clients metric</comment>
+  </data>
+  <data name="site_app_peers" xml:space="preserve">
+    <value>Ваши устройства в сети</value>
+    <comment>App connect screen: online devices section title</comment>
+  </data>
+  <data name="site_app_pending" xml:space="preserve">
+    <value>В ожидании</value>
+    <comment>App wallets: pending payout status</comment>
+  </data>
+  <data name="site_app_private_network" xml:space="preserve">
+    <value>Частная сеть</value>
+    <comment>App leaderboard: hidden network row label</comment>
+  </data>
+  <data name="site_app_profile" xml:space="preserve">
+    <value>Профиль</value>
+    <comment>App account: profile row/screen title</comment>
+  </data>
+  <data name="site_app_provider" xml:space="preserve">
+    <value>Раздача</value>
+    <comment>App account: provider row + screen title</comment>
+  </data>
+  <data name="site_app_provider_contracts" xml:space="preserve">
+    <value>Контракты раздачи</value>
+    <comment>App provider: contracts section</comment>
+  </data>
+  <data name="site_app_provider_intro" xml:space="preserve">
+    <value>Как устройства вашей сети раздают трафик и зарабатывают.</value>
+    <comment>App provider screen: intro</comment>
+  </data>
+  <data name="site_app_provider_needs_connect" xml:space="preserve">
+    <value>Подключитесь, чтобы видеть статистику раздачи в реальном времени.</value>
+    <comment>App provider: connect prompt for live stats</comment>
+  </data>
+  <data name="site_app_provider_stats" xml:space="preserve">
+    <value>Статистика раздачи</value>
+    <comment>App provider: throughput section</comment>
+  </data>
+  <data name="site_app_providers" xml:space="preserve">
+    <value>Провайдеры</value>
+    <comment>App connect screen: provider grid section title</comment>
+  </data>
+  <data name="site_app_received" xml:space="preserve">
+    <value>Получено</value>
+    <comment>App provider: bytes received metric</comment>
+  </data>
+  <data name="site_app_redeemed_on" xml:space="preserve">
+    <value>Активировано {date}</value>
+    <comment>App balance codes: redeemed date row</comment>
+  </data>
+  <data name="site_app_refer_friends" xml:space="preserve">
+    <value>Пригласить друзей</value>
+    <comment>App account: refer friends card</comment>
+  </data>
+  <data name="site_app_referral_network" xml:space="preserve">
+    <value>Реферальная сеть</value>
+    <comment>App settings: referral network section</comment>
+  </data>
+  <data name="site_app_regions" xml:space="preserve">
+    <value>Регионы</value>
+    <comment>App connect location picker: regions section</comment>
+  </data>
+  <data name="site_app_remove" xml:space="preserve">
+    <value>Удалить</value>
+    <comment>App: remove button</comment>
+  </data>
+  <data name="site_app_retry" xml:space="preserve">
+    <value>Попробовать ещё раз</value>
+    <comment>App screens: retry button</comment>
+  </data>
+  <data name="site_app_save" xml:space="preserve">
+    <value>Сохранить</value>
+    <comment>App: save button</comment>
+  </data>
+  <data name="site_app_send" xml:space="preserve">
+    <value>Отправить</value>
+    <comment>App support: send button</comment>
+  </data>
+  <data name="site_app_served" xml:space="preserve">
+    <value>Отдано</value>
+    <comment>App provider: bytes served metric</comment>
+  </data>
+  <data name="site_app_show_on_leaderboard" xml:space="preserve">
+    <value>Показывать мою сеть в рейтинге</value>
+    <comment>App leaderboard: public visibility toggle</comment>
+  </data>
+  <data name="site_app_shuffle" xml:space="preserve">
+    <value>Перемешать</value>
+    <comment>App connect screen: shuffle providers button</comment>
+  </data>
+  <data name="site_app_stay_in_touch" xml:space="preserve">
+    <value>Оставайтесь на связи</value>
+    <comment>App settings: stay in touch section</comment>
+  </data>
+  <data name="site_app_support_intro" xml:space="preserve">
+    <value>Отправьте нам отзыв напрямую или присоединяйтесь к сообществу для поддержки.</value>
+    <comment>App support: intro line</comment>
+  </data>
+  <data name="site_app_total_referrals" xml:space="preserve">
+    <value>Всего рефералов</value>
+    <comment>App account: total referrals label</comment>
+  </data>
+  <data name="site_app_transaction" xml:space="preserve">
+    <value>Транзакция</value>
+    <comment>App payout detail: transaction hash</comment>
+  </data>
+  <data name="site_app_unlink" xml:space="preserve">
+    <value>Отвязать</value>
+    <comment>App settings: unlink referral network</comment>
+  </data>
+  <data name="site_app_verified" xml:space="preserve">
+    <value>Подтверждено</value>
+    <comment>App profile: verified badge</comment>
+  </data>
+  <data name="site_app_wallet" xml:space="preserve">
+    <value>Кошелёк</value>
+    <comment>App wallets: wallet label</comment>
+  </data>
+  <data name="site_app_wallet_address" xml:space="preserve">
+    <value>Адрес кошелька</value>
+    <comment>App wallets: wallet address input</comment>
+  </data>
+  <data name="site_app_wallets" xml:space="preserve">
+    <value>Кошельки</value>
+    <comment>App account: wallets row/screen title</comment>
+  </data>
+  <data name="site_best_available" xml:space="preserve">
+    <value>Лучший доступный</value>
+    <comment>Account panel: any-provider location option</comment>
+  </data>
+  <data name="site_best_available_sub" xml:space="preserve">
+    <value>Любой провайдер в сети</value>
+    <comment>Account panel: 'best available' location subtitle</comment>
+  </data>
+  <data name="site_billing_portal_error" xml:space="preserve">
+    <value>Не удалось открыть платёжный портал.</value>
+    <comment>Account panel: billing portal failed to open</comment>
+  </data>
+  <data name="site_clear_location" xml:space="preserve">
+    <value>Сбросить локацию</value>
+    <comment>Account panel: clear the chosen location</comment>
+  </data>
+  <data name="site_client_limit_upgrade" xml:space="preserve">
+    <value>Достигнут лимит одновременных клиентов вашего тарифа — Pro повышает его до 1000.</value>
+    <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
+  </data>
+  <data name="site_copy_url" xml:space="preserve">
+    <value>Копировать URL</value>
+    <comment>Account panel: copy a proxy's URL</comment>
+  </data>
+  <data name="site_create_another" xml:space="preserve">
+    <value>Создать ещё</value>
+    <comment>Account panel: create another proxy</comment>
+  </data>
+  <data name="site_create_proxy" xml:space="preserve">
+    <value>Создать прокси</value>
+    <comment>Account panel: create-proxy button</comment>
+  </data>
+  <data name="site_create_proxy_error" xml:space="preserve">
+    <value>Не удалось создать прокси.</value>
+    <comment>Account panel: proxy creation failed</comment>
+  </data>
+  <data name="site_download_conf" xml:space="preserve">
+    <value>Скачать .conf</value>
+    <comment>Account panel: download a WireGuard config file</comment>
+  </data>
+  <data name="site_download_wg_config" xml:space="preserve">
+    <value>Скачать конфиг WireGuard</value>
+    <comment>Account panel: download WireGuard config (created card)</comment>
+  </data>
+  <data name="site_ext_current_network" xml:space="preserve">
+    <value>Сейчас настроено для</value>
+    <comment>Extension status: label before the extension's current network name</comment>
+  </data>
+  <data name="site_ext_get" xml:space="preserve">
+    <value>Защитите этот браузер с помощью URnetwork.</value>
+    <comment>Extension status: install pitch</comment>
+  </data>
+  <data name="site_ext_install" xml:space="preserve">
+    <value>Установить расширение</value>
+    <comment>Extension status: install CTA</comment>
+  </data>
+  <data name="site_ext_proxy_on" xml:space="preserve">
+    <value>Подключение браузера активно</value>
+    <comment>Extension status: linked with the browser connection active</comment>
+  </data>
+  <data name="site_ext_ready" xml:space="preserve">
+    <value>Расширение подключено и готово к работе</value>
+    <comment>Extension status: linked and idle</comment>
+  </data>
+  <data name="site_ext_setting_up" xml:space="preserve">
+    <value>Настройка…</value>
+    <comment>Extension status: setup in flight</comment>
+  </data>
+  <data name="site_ext_setup" xml:space="preserve">
+    <value>Настроить расширение для вашей сети</value>
+    <comment>Extension status: hand the page session to the extension</comment>
+  </data>
+  <data name="site_ext_setup_badge" xml:space="preserve">
+    <value>Настроить расширение</value>
+    <comment>Extension status: compact 'set up extension' badge next to the account pill</comment>
+  </data>
+  <data name="site_ext_setup_foreign_note" xml:space="preserve">
+    <value>Это отключит расширение от текущей сети и отсоединит браузер.</value>
+    <comment>Extension status: warning when replacing another network</comment>
+  </data>
+  <data name="site_ext_title" xml:space="preserve">
+    <value>Расширение для браузера</value>
+    <comment>Extension status: section title</comment>
+  </data>
+  <data name="site_generic_error" xml:space="preserve">
+    <value>Что-то пошло не так. Попробуйте ещё раз.</value>
+    <comment>Account panel: generic retry error</comment>
+  </data>
+  <data name="site_invalid_balance_code" xml:space="preserve">
+    <value>Неверный код баланса.</value>
+    <comment>Account panel: invalid balance code</comment>
+  </data>
+  <data name="site_load_balance_codes_error" xml:space="preserve">
+    <value>Не удалось загрузить коды баланса</value>
+    <comment>Account panel: balance codes load error</comment>
+  </data>
+  <data name="site_load_clients_error" xml:space="preserve">
+    <value>Не удалось загрузить клиентов</value>
+    <comment>Account panel: online-clients load error</comment>
+  </data>
+  <data name="site_load_proxies_error" xml:space="preserve">
+    <value>Не удалось загрузить прокси</value>
+    <comment>Account panel: proxies load error</comment>
+  </data>
+  <data name="site_loading_balance_codes" xml:space="preserve">
+    <value>Загрузка кодов баланса…</value>
+    <comment>Account panel: loading balance codes</comment>
+  </data>
+  <data name="site_loading_clients" xml:space="preserve">
+    <value>Загрузка клиентов…</value>
+    <comment>Account panel: loading online clients</comment>
+  </data>
+  <data name="site_loading_proxies" xml:space="preserve">
+    <value>Загрузка прокси…</value>
+    <comment>Account panel: loading proxies</comment>
+  </data>
+  <data name="site_location_search_placeholder" xml:space="preserve">
+    <value>Поиск любой локации</value>
+    <comment>Account panel: location chooser search field</comment>
+  </data>
+  <data name="site_locations" xml:space="preserve">
+    <value>Локации</value>
+    <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_manage_billing_hint" xml:space="preserve">
+    <value>Управляйте платёжными данными, просматривайте счета или отмените подписку.</value>
+    <comment>Account panel: billing portal hint for Pro users</comment>
+  </data>
+  <data name="site_no_balance_codes" xml:space="preserve">
+    <value>Пока нет активированных кодов баланса</value>
+    <comment>Account panel: empty redeemed-codes list</comment>
+  </data>
+  <data name="site_no_clients_online" xml:space="preserve">
+    <value>Нет клиентов в сети</value>
+    <comment>Account panel: empty online-clients list</comment>
+  </data>
+  <data name="site_no_proxies" xml:space="preserve">
+    <value>Пока нет прокси</value>
+    <comment>Account panel: empty proxies list</comment>
+  </data>
+  <data name="site_open_app" xml:space="preserve">
+    <value>Открыть приложение</value>
+    <comment>Account panel: open the in-site web app (/app)</comment>
+  </data>
+  <data name="site_open_client_manager" xml:space="preserve">
+    <value>Открыть менеджер клиентов</value>
+    <comment>Account panel: launch the client-manager app</comment>
+  </data>
+  <data name="site_operator_client_ui" xml:space="preserve">
+    <value>Интерфейс клиента оператора</value>
+    <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
+  </data>
+  <data name="site_principal" xml:space="preserve">
+    <value>Принципал</value>
+    <comment>Account panel: client info — principal label</comment>
+  </data>
+  <data name="site_product_updates_optin" xml:space="preserve">
+    <value>Можно иногда присылать мне новости о продукте</value>
+    <comment>Account panel: product-updates opt-in checkbox</comment>
+  </data>
+  <data name="site_proxies" xml:space="preserve">
+    <value>Прокси</value>
+    <comment>Account panel: proxies section heading</comment>
+  </data>
+  <data name="site_proxy_type" xml:space="preserve">
+    <value>Тип прокси</value>
+    <comment>Account panel: proxy-type picker aria-label</comment>
+  </data>
+  <data name="site_roles" xml:space="preserve">
+    <value>Роли</value>
+    <comment>Account panel: client info — roles label</comment>
+  </data>
+  <data name="site_saved" xml:space="preserve">
+    <value>Сохранено</value>
+    <comment>Account panel: preference saved flash</comment>
+  </data>
+  <data name="site_searching" xml:space="preserve">
+    <value>Поиск…</value>
+    <comment>Account panel: location search in progress</comment>
+  </data>
+  <data name="site_socks_cred_note" xml:space="preserve">
+    <value>Имя пользователя — это токен из URL; пароль пустой.</value>
+    <comment>Account panel: SOCKS credential note</comment>
+  </data>
+  <data name="site_unexpected_error" xml:space="preserve">
+    <value>Произошла непредвиденная ошибка.</value>
+    <comment>Account panel: generic unexpected error</comment>
+  </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>Пожалуйста, убедитесь, что у вас достаточно средств USDC в вашем кошельке. В некоторых случаях запросы на оплату не проходят, если в кошельке недостаточно средств.</value>
     <comment>Call to action</comment>
