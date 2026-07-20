@@ -398,6 +398,14 @@
     <value>변경</value>
     <comment>Call to action</comment>
   </data>
+  <data name="change_network_api" xml:space="preserve">
+    <value>네트워크 API 변경</value>
+    <comment>Button that opens the network API selector, for pointing the app at a custom network domain.</comment>
+  </data>
+  <data name="change_network_api_title" xml:space="preserve">
+    <value>네트워크 API 변경</value>
+    <comment>Title of the network API selector dialog.</comment>
+  </data>
   <data name="change_password" xml:space="preserve">
     <value>비밀번호 변경</value>
     <comment>Profile</comment>
@@ -734,6 +742,14 @@
     <value>기기</value>
     <comment>device</comment>
   </data>
+  <data name="device_discoverable" xml:space="preserve">
+    <value>이 기기는 검색될 수 있습니다</value>
+    <comment>Status label shown when this device can be discovered by peers on the network.</comment>
+  </data>
+  <data name="device_discoverable_as" xml:space="preserve">
+    <value>이 기기는 {}(으)로 검색될 수 있습니다</value>
+    <comment>Status label shown when this device can be discovered by peers, with the device's visible name. The argument is the device name.</comment>
+  </data>
   <data name="device_name" xml:space="preserve">
     <value>기기 이름</value>
     <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -745,6 +761,10 @@
   <data name="device_name_updated" xml:space="preserve">
     <value>기기 이름이 업데이트되었습니다</value>
     <comment>Snackbar shown after the device name is saved. Used in Main/Account/Settings/SettingsView.swift.</comment>
+  </data>
+  <data name="device_not_discoverable" xml:space="preserve">
+    <value>제공 모드를 켜면 이 기기가 검색될 수 있습니다</value>
+    <comment>Hint shown when the device is not discoverable because provide mode is off.</comment>
   </data>
   <data name="device_spec_label" xml:space="preserve">
     <value>사양</value>
@@ -778,9 +798,21 @@
     <value>리더보드에 네트워크 표시</value>
     <comment>Call to action</comment>
   </data>
+  <data name="dns_default_not_applied" xml:space="preserve">
+    <value>기본 안전 설정이 적용되어 있지 않습니다</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS over HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
+  </data>
+  <data name="dns_pill_defaults" xml:space="preserve">
+    <value>기본 안전 설정이 적용되어 있지 않습니다</value>
+    <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
+  </data>
+  <data name="dns_pill_recommended" xml:space="preserve">
+    <value>{}에 대한 권장 설정이 적용되지 않았습니다</value>
+    <comment>dns settings</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>가장 강력한 보안 규칙은 {}에서 작동하지 않는 것으로 알려져 있습니다. 보안 수준은 낮지만 더 잘 작동하는 권장 DNS 설정이 있습니다.</value>
@@ -1326,6 +1358,70 @@
   <data name="net_provided" xml:space="preserve">
     <value>제공된 넷</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network_api_api_url_help" xml:space="preserve">
+    <value>비워 두면 네트워크 도메인에서 파생됩니다.</value>
+    <comment>Help text under the API URL field of the network API selector.</comment>
+  </data>
+  <data name="network_api_api_url_label" xml:space="preserve">
+    <value>API URL(선택 사항)</value>
+    <comment>Label of the optional API URL field in the network API selector.</comment>
+  </data>
+  <data name="network_api_apply" xml:space="preserve">
+    <value>네트워크 API 적용</value>
+    <comment>Button that applies the entered network API settings.</comment>
+  </data>
+  <data name="network_api_connect_url_help" xml:space="preserve">
+    <value>안전한 사용자 지정 connect 서버에는 wss://를 사용하세요.</value>
+    <comment>Help text under the connect URL field of the network API selector.</comment>
+  </data>
+  <data name="network_api_connect_url_label" xml:space="preserve">
+    <value>Connect URL(선택 사항)</value>
+    <comment>Label of the optional connect URL field in the network API selector.</comment>
+  </data>
+  <data name="network_api_current_api" xml:space="preserve">
+    <value>현재 API: {}</value>
+    <comment>Shows the API URL currently in use. The argument is the URL.</comment>
+  </data>
+  <data name="network_api_current_connect" xml:space="preserve">
+    <value>현재 connect: {}</value>
+    <comment>Shows the connect URL currently in use. The argument is the URL.</comment>
+  </data>
+  <data name="network_api_description" xml:space="preserve">
+    <value>앱이 사용할 네트워크 도메인을 선택하세요. API 및 connect URL을 비워 두면 도메인에서 파생됩니다.</value>
+    <comment>Explains the network API selector.</comment>
+  </data>
+  <data name="network_api_domain_help" xml:space="preserve">
+    <value>예: ur.network 또는 사용자 지정 도메인.</value>
+    <comment>Help text under the network domain field of the network API selector.</comment>
+  </data>
+  <data name="network_api_domain_label" xml:space="preserve">
+    <value>네트워크 도메인</value>
+    <comment>Label of the network domain field in the network API selector.</comment>
+  </data>
+  <data name="network_api_enter_domain" xml:space="preserve">
+    <value>네트워크 도메인을 입력하세요</value>
+    <comment>Validation message when the network domain field is empty.</comment>
+  </data>
+  <data name="network_api_failed" xml:space="preserve">
+    <value>실패: {}</value>
+    <comment>Error shown when switching the network API fails. The argument is the error message.</comment>
+  </data>
+  <data name="network_api_insecure_warning" xml:space="preserve">
+    <value>경고: 하나 이상의 사용자 지정 엔드포인트가 HTTPS/WSS를 사용하지 않습니다. 트래픽이 암호화되지 않을 수 있습니다.</value>
+    <comment>Warning shown when a custom endpoint uses plain HTTP/WS instead of HTTPS/WSS.</comment>
+  </data>
+  <data name="network_api_manager_unavailable" xml:space="preserve">
+    <value>네트워크 관리자를 사용할 수 없습니다</value>
+    <comment>Error shown when the network API manager is not available on this device.</comment>
+  </data>
+  <data name="network_api_switched_to" xml:space="preserve">
+    <value>{}(으)로 전환했습니다</value>
+    <comment>Confirmation after switching the network API. The argument is the new network domain.</comment>
+  </data>
+  <data name="network_api_use_default" xml:space="preserve">
+    <value>기본 네트워크 사용</value>
+    <comment>Button that resets the network API to the default network.</comment>
   </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>누군가가 당신을 초대했어요 🥳\n네트워크를 만들어 보너스를 받아보세요!</value>

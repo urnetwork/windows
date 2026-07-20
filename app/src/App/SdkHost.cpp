@@ -838,11 +838,26 @@ void SdkHost::SubscribeStats() {
       [this](std::optional<urnet::ConnectLocation>) { PublishStats(); }));
   // ContractViewController: throughput points (bytes/bit rate up/down).
   subs_.push_back(contractVc_->addThroughputListener(pub));
-  // Device: contract status (balance/permission), provide on/off/paused, tunnel.
+  // Device: contract status (balance/permission), provide on/off/paused,
+  // provide secret keys (network-visible bit), tunnel.
   subs_.push_back(device_->addContractStatusChangeListener(
       [this](std::optional<urnet::ContractStatus>) { PublishStats(); }));
   subs_.push_back(device_->addProvideChangeListener([this](bool) { PublishStats(); }));
   subs_.push_back(device_->addProvidePausedChangeListener([this](bool) { PublishStats(); }));
+  subs_.push_back(device_->addProvideSecretKeysListener(
+      [this](std::optional<urnet::ProvideSecretKeyList> keys) {
+        bool hasNetworkKey = false;
+        if (keys) {
+          for (const auto& key : *keys) {
+            if (key.provide_mode == 1 /* network — bit set, per-case */) {
+              hasNetworkKey = true;
+              break;
+            }
+          }
+        }
+        provideHasNetworkKey_.store(hasNetworkKey);
+        PublishStats();
+      }));
   subs_.push_back(device_->addTunnelChangeListener([this](bool) { PublishStats(); }));
   PublishStats();  // initial snapshot
 }
@@ -872,14 +887,7 @@ LiveStats SdkHost::ReadStats() {
     s.provideEnabled = device_->getProvideEnabled();
     s.providePaused = device_->getProvidePaused();
     s.provideMode = static_cast<int64_t>(device_->getProvideMode());
-    if (auto keys = device_->getProvideSecretKeys(); keys) {
-      for (const auto& key : *keys) {
-        if (key.provide_mode == 1 /* network — bit set, per-case */) {
-          s.provideHasNetworkKey = true;
-          break;
-        }
-      }
-    }
+    s.provideHasNetworkKey = provideHasNetworkKey_.load();
     if (auto np = device_->getNetworkPeers(); np && np->Connected) {
       s.provideClients = static_cast<int64_t>(np->Connected->size());
     }
@@ -1537,6 +1545,7 @@ void SdkHost::TeardownSessionLocked() {
   peerVc_.reset();
   ClearDrawer();
   if (device_) { device_->close(); device_.reset(); }
+  provideHasNetworkKey_ = false;
   if (service_.IsConnected()) {
     service_.StopTunnel();
     service_.Logout();

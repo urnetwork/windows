@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <mutex>
 #include <optional>
@@ -458,6 +459,10 @@ class SdkHost {
   std::optional<urnet::AsyncLocalState> asyncLocalState_;
   std::optional<urnet::LocalState> localState_;
   std::optional<urnet::DeviceRemote> device_;
+  // whether a network-visible provide key exists, pushed by
+  // addProvideSecretKeysListener (DeviceRemote has no secret-keys getter --
+  // the controller subscribes and caches the derived bit)
+  std::atomic<bool> provideHasNetworkKey_{false};
   std::optional<urnet::ConnectViewController> connectVc_;
   std::optional<urnet::ContractViewController> contractVc_;  // live throughput feed
   // per-peer contract rows: this single-feed VC (the client feed) owns the
