@@ -1111,6 +1111,14 @@ right way</value>
     <value>{} hosts</value>
     <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
   </data>
+  <data name="ip_count.one" xml:space="preserve">
+    <value>{} IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} IPs</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="hours_ago_abbrev" xml:space="preserve">
     <value>{}h ago</value>
     <comment>Compact relative-time label with an abbreviated hours unit ("3h ago"), shown by the windows and linux stats formatters for events an hour or more old. The argument is the elapsed hours. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
@@ -1413,6 +1421,18 @@ Claim your bonus by creating a network!</value>
   <data name="network_name_ready_to_connect" xml:space="preserve">
     <value>{} is ready to connect</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="device_discoverable" xml:space="preserve">
+    <value>This device is discoverable</value>
+    <comment>Shown under the peers count when this device is providing to same-network peers and can be connected to by them.</comment>
+  </data>
+  <data name="device_not_discoverable" xml:space="preserve">
+    <value>Enable provide mode to make this device discoverable</value>
+    <comment>Shown under the peers count when this device is not providing to same-network peers.</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>Network</value>
+    <comment>Provide control mode option: the private provider — the provider is always on, but provides only to same-network peers, never publicly.</comment>
   </data>
   <data name="network_name_taken" xml:space="preserve">
     <value>This network name is already taken</value>

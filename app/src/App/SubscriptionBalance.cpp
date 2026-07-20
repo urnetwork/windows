@@ -110,6 +110,17 @@ void SubscriptionBalanceStore::ClearTimeout() {
   Publish();
 }
 
+void SubscriptionBalanceStore::OnJwtRefreshed() {
+  auto byJwt = sdk_.ParsedJwt();
+  if (!byJwt) return;
+  jwtPro_ = byJwt->Pro;  // the claim actually landed; advance the tracking
+  if (snapshot_.isPro == jwtPro_) return;
+  snapshot_.isPro = jwtPro_;
+  // a lapse back to free resumes the background poll; Pro stops it (Apply parity)
+  if (!jwtPro_) EnsureBackgroundPolling();
+  Publish();
+}
+
 void SubscriptionBalanceStore::Fetch() {
   if (loading_ || !sdk_.apiReady()) return;
   loading_ = true;
@@ -149,8 +160,11 @@ void SubscriptionBalanceStore::Apply(urnet::SubscriptionBalanceResult const& res
   // every poll.
   const bool serverIsPro = result.current_subscription.has_value();
   if (serverIsPro != jwtPro_) {
+    // trigger a refresh; the jwt-refresh listener (OnJwtRefreshed) advances jwtPro_
+    // from the real new claim once it lands. Advancing it here optimistically would
+    // "forget" the disagreement when RefreshJwt no-ops (device not yet up on resume),
+    // leaving the stored token's stale Pro claim frozen for its lifetime.
     sdk_.RefreshJwt();
-    jwtPro_ = serverIsPro;
   }
   snapshot_.isPro = serverIsPro;
 

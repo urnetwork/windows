@@ -70,6 +70,13 @@ class SubscriptionBalanceStore {
   // Fetch now (navigating to the account panel, window shown, redeem success).
   void Refresh();
 
+  // Re-derive Pro from the (freshly refreshed) jwt. Wired to the sdk's jwt-refresh
+  // listener so a mid-session Pro change -- notably a Pro->free lapse a Pro
+  // network's paused poll would miss -- is reflected right away, and so the jwt's
+  // Pro claim (jwtPro_) advances only when a refresh actually lands. Must be called
+  // on the UI thread (AppController marshals it via OnUi).
+  void OnJwtRefreshed();
+
   // After a checkout was handed to the browser (or a balance code redeemed):
   // poll every 5 seconds until the server confirms, giving up after 2 minutes.
   void StartConfirmationPolling();

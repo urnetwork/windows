@@ -25,85 +25,120 @@
 
 namespace urnw {
 
-// ---- Client contracts ------------------------------------------------------
-// One row per peer client aggregating the contract (egress, green) and
-// companion (ingress, pink) transfer, visualized as two usage circles with
-// directional transfer lines between them.
+// ---- Client / provider contracts -------------------------------------------
+// Which traffic feed the sheet renders (macOS ContractDetailsMode parity).
+enum class ContractDetailsMode { Client, Provider };
+
+// Live per-contract details: one row per peer client, each row two independent
+// newest-first stacks -- send (green) and receive (pink). Every circle is ONE
+// contract: the outer ring is its total (area-proportional to the largest
+// contract in that stack), the inner disc is the used fraction, and a contract
+// moving bytes brightens its ring. Contracts slide off / drop in as they close
+// and open. Grouping, the FINAL row ordering (the at-top activity sort and the
+// scrolled-away freeze), the activity signal, the closing lifecycle, and the
+// pending "N new" count all live in the shared SDK view controller (macOS
+// ContractDetailsView / ContractDetailsStore parity); the sheet holds no
+// ordering state -- it renders the rows in the order given, reports its scroll
+// position via SdkHost::SetContractsAtTop, and reads SdkHost::ContractsPendingCount
+// for the chip.
 class ClientContractsSheet : public std::enable_shared_from_this<ClientContractsSheet> {
  public:
   static std::shared_ptr<ClientContractsSheet> Create(
-      winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
+      ContractDetailsMode mode = ContractDetailsMode::Client);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
-  void Update(const std::vector<ContractClientRow>& rows);
-  // ~10 fps while the dialog is open: eases the inner disc sizes and plays the
-  // contract-swap fade/slide (macOS parity: 0.5s ease-out transitions).
+  // The SDK's already-ordered rows. Renders them in order as-is and refreshes
+  // the "N new" chip; the SDK owns the ordering and the scrolled-away freeze.
+  void Update(const std::vector<ContractPeerRow>& rows);
+  // ~10 fps while the dialog is open: eases ring/disc sizes and advances the
+  // contract slide-off / drop-in animations.
   void Tick();
 
  private:
-  struct CircleUi {
-    // 56x56 slot holding the current ring, any ejecting rings, and the disc
-    winrt::Microsoft::UI::Xaml::Controls::Grid ring{nullptr};
-    // the ring carrying the current contract identity (its opacity fades in)
-    winrt::Microsoft::UI::Xaml::Shapes::Ellipse current{nullptr};
-    // usage disc; persists across a contract swap (never ejects), just resizes
-    winrt::Microsoft::UI::Xaml::Shapes::Ellipse inner{nullptr};
+  explicit ClientContractsSheet(SdkHost& sdk, ContractDetailsMode mode)
+      : sdk_(sdk), mode_(mode) {}
+
+  // One contract in a stack: a fixed-height slot with the contract circle and
+  // the used/total counts beside it. Keyed by contract id for its whole life.
+  struct BlockUi {
+    std::string contractId;
+    // horizontal [stats,circle] (send) / [circle,stats] (receive), fixed height
+    winrt::Microsoft::UI::Xaml::Controls::StackPanel root{nullptr};
+    winrt::Microsoft::UI::Xaml::Media::TranslateTransform shift{nullptr};  // slide in/out
+    winrt::Microsoft::UI::Xaml::Shapes::Ellipse ring{nullptr};   // outer total ring
+    // stream contracts only: a 2nd concentric ring just outside the main ring
+    // (null for direct contracts); AnimateStack keeps it in step with the ring
+    winrt::Microsoft::UI::Xaml::Shapes::Ellipse streamRing{nullptr};
+    winrt::Microsoft::UI::Xaml::Shapes::Ellipse inner{nullptr};  // used-fraction disc
     winrt::Microsoft::UI::Xaml::Controls::TextBlock used{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock total{nullptr};
-    winrt::Windows::UI::Color color{};  // stroke color, to clone ejecting rings
-    // eased disc size (from -> to starting at start, cubic ease-out 0.5s)
-    double sizeFrom = 0;
-    double sizeTo = 0;
-    double sizeStart = 0;
+    int64_t usedByteCount = 0;
+    int64_t totalByteCount = 0;
+    int64_t bitRate = 0;
+    // eased outer diameter (rescales when the stack max changes) and inner disc
+    double diaFrom = 0, diaTo = 0, diaStart = 0;
+    double innerFrom = 0, innerTo = 0, innerStart = 0;
+    bool entering = false;  // dropping in at the top (fade + slide down)
+    bool leaving = false;   // sliding off to the edge + fading, then removed
+    double animStart = 0;
+  };
 
-    // ---- ring eject model (mirrors Apple ContractRing) ---------------------
-    // On a contract-id (signature) change the on-screen ring is EJECTED: an
-    // independent clone slides out toward its edge and fades on its own fixed
-    // schedule, never reversing; several can be leaving at once. The incoming
-    // ring fades into the slot only once the LAST ejection has left. A closing
-    // row ejects its ring and admits nothing after.
-    std::string signature;        // contract-id signature occupying the slot
-    bool initialized = false;     // first signature occupies instantly (no eject)
-    bool removalLeading = false;  // eject direction: contract=left, companion=right
-    bool present = false;         // a ring is wanted (false while the row closes)
-    bool currentShown = false;    // the current ring is admitted (fading in/settled)
-    double fadeStart = 0;         // when the current ring began fading in (0=settled)
-    struct Ejection {
-      winrt::Microsoft::UI::Xaml::Shapes::Ellipse ring{nullptr};
-      winrt::Microsoft::UI::Xaml::Media::TranslateTransform shift{nullptr};
-      double start = 0;           // NowSeconds() when the slide-out began
-    };
-    std::vector<Ejection> ejections;
+  // One direction's stack: the header (title, arrow, summed bit rate), the pile
+  // of contract circles (newest on top), and the "max N" scale anchor below.
+  struct StackUi {
+    winrt::Microsoft::UI::Xaml::Controls::StackPanel root{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock rate{nullptr};   // header bit rate
+    winrt::Microsoft::UI::Xaml::Controls::StackPanel pile{nullptr};  // the circles
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock maxLabel{nullptr};
+    winrt::Windows::UI::Color color{};
+    bool mirrored = false;        // send: stats outside, circle toward the row center
+    bool removalLeading = false;  // slide-off direction (send=left, receive=right)
+    std::vector<BlockUi> blocks;  // on-screen, newest first; leavers hold their slot
   };
-  struct LineUi {
-    winrt::Microsoft::UI::Xaml::Controls::TextBlock rate{nullptr};
-    winrt::Microsoft::UI::Xaml::Controls::Grid line{nullptr};
-  };
+
   struct RowUi {
     winrt::Microsoft::UI::Xaml::Controls::StackPanel root{nullptr};
-    winrt::Microsoft::UI::Xaml::Controls::TextBlock pairCount{nullptr};
-    CircleUi contract;
-    CircleUi companion;
-    LineUi contractLine;
-    LineUi companionLine;
+    StackUi send;
+    StackUi receive;
   };
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   RowUi BuildRow(const std::string& clientId);
-  void UpdateRow(RowUi& ui, const ContractClientRow& row);
-  static void AnimateCircle(CircleUi& circle, double now);
-  // spawn an independent slide-out+fade of the on-screen ring (runs once, never
-  // reverses); the incoming ring waits for the last ejection to leave
-  static void EjectRing(CircleUi& circle, double now);
+  StackUi BuildStack(bool mirrored, winrt::hstring const& title,
+                     winrt::Windows::UI::Color color);
+  BlockUi BuildBlock(StackUi const& stack, const ContractEntry& entry);
+  // reconcile a stack's circles with the truth: update values live, admit
+  // arrivals at the top, mark departures leaving
+  void SyncStack(StackUi& stack, const std::vector<ContractEntry>& entries,
+                 int64_t byteCount, double now);
+  // advance eases + slide/fade animations; drop finished leavers (the survivors
+  // settle via the pile's RepositionThemeTransition)
+  static void AnimateStack(StackUi& stack, double now);
   void CopyClientId(const std::string& clientId);
 
+  // ---- scroll reporting + "N new" chip -------------------------------------
+  // the SDK VC owns the ordering, the freeze, and the pending count; the sheet
+  // only reports at-top and renders/refreshes from what the VC hands back
+  void OnScrollViewChanged();  // report at-top to the SDK VC
+  void RenderList();           // reconcile list_ children to the SDK row order
+  void UpdateChip();           // drive from SdkHost::ContractsPendingCount
+  void ScrollToTop();          // chip tap: report at-top + scroll to the top
+
+  SdkHost& sdk_;
+  ContractDetailsMode mode_;
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ScrollViewer scroll_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel list_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel empty_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button chip_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock chipText_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock copiedNote_{nullptr};
+
   std::unordered_map<std::string, RowUi> rowUis_;
-  std::vector<std::string> renderedIds_;
+  std::vector<std::string> renderedIds_;    // current list_ child order
+  std::vector<ContractPeerRow> rows_;       // latest rows, already ordered by the SDK
+  bool atTop_ = true;                       // last scroll state reported to the SDK VC
 };
 
 // ---- Split rules -----------------------------------------------------------

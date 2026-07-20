@@ -77,6 +77,9 @@ void AppController::Start() {
   sdk_.SetAuthInvalidHandler([this] {
     OnUi([this] { sdk_.Logout(); });
   });
+  sdk_.SetJwtRefreshedHandler([this] {
+    OnUi([this] { balance_.OnJwtRefreshed(); });
+  });
   sdk_.SetTunnelStateHandler([this](const proto::TunnelStatus& st) {
     OnUi([this, st] { OnTunnelState(st); });
   });

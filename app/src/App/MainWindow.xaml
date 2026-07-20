@@ -269,6 +269,10 @@
                                                    Foreground="{StaticResource UrTextMutedBrush}" />
                                     </StackPanel>
                                 </Border>
+                                <!-- discoverability (apple/android parity): whether this device
+                                     is itself connectable as a same-network peer -->
+                                <TextBlock x:Name="DiscoverableText" FontSize="12"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
                                 <!-- out of balance: the action button opens the upgrade flow -->
                                 <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
                                          Severity="Warning" />
@@ -280,6 +284,28 @@
                                            Foreground="{StaticResource UrTextMutedBrush}" />
                                 <TextBlock x:Name="ProvideStatsText" FontSize="12"
                                            Foreground="{StaticResource UrTextMutedBrush}" />
+                                <!-- Provide control mode: Auto | Always | Network | Never.
+                                     "Network" is the private provider (always on, provides
+                                     only to same-network peers, never publicly). -->
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0" Spacing="6">
+                                    <!-- provide indicator (apple parity): solid dot = Network
+                                         provide tier; dot + outer ring = Public tier -->
+                                    <Grid Width="14" Height="14" VerticalAlignment="Center">
+                                        <Ellipse x:Name="ProvideModeRing" Width="14" Height="14"
+                                                 StrokeThickness="1.5" Visibility="Collapsed" />
+                                        <Ellipse x:Name="ProvideModeDot" Width="8" Height="8" />
+                                    </Grid>
+                                    <TextBlock x:Name="ProvideModeLabel" FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </StackPanel>
+                                <muxc:SelectorBar x:Name="ProvideModeBar"
+                                                  SelectionChanged="OnProvideModeChanged">
+                                    <muxc:SelectorBarItem x:Name="ProvideAutoItem" />
+                                    <muxc:SelectorBarItem x:Name="ProvideAlwaysItem" />
+                                    <muxc:SelectorBarItem x:Name="ProvideNetworkItem" />
+                                    <muxc:SelectorBarItem x:Name="ProvideNeverItem" />
+                                </muxc:SelectorBar>
                                 <TextBlock x:Name="ConnectOptionsLabel" FontSize="12" Margin="0,12,0,0"
                                            Foreground="{StaticResource UrTextMutedBrush}" />
                                 <!-- Connection Mode: device performance profile -->
@@ -349,6 +375,27 @@
                                               HorizontalAlignment="Right"
                                               Foreground="{StaticResource UrTextFaintBrush}" />
                                 </Grid>
+                                <!-- unapplied-recommendation pill (iOS DnsRecommendationPill
+                                     parity): shown above the status rows when the applied dns
+                                     settings differ from the connected country's regional
+                                     recommendation (with a country-color dot) or, failing that,
+                                     the safe defaults (no dot); collapsed when they already
+                                     match. Driven by MainWindow::ApplyDnsRecommendationPill. -->
+                                <Border x:Name="DnsRecPill" Visibility="Collapsed"
+                                        Background="{StaticResource UrCoralSubtleBrush}"
+                                        CornerRadius="9" Padding="10,5,10,5"
+                                        HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                                VerticalAlignment="Center">
+                                        <Ellipse x:Name="DnsRecDot" Width="8" Height="8"
+                                                 VerticalAlignment="Center"
+                                                 Visibility="Collapsed" />
+                                        <TextBlock x:Name="DnsRecText" FontSize="11"
+                                                   FontWeight="Medium" TextWrapping="Wrap"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource UrTextBrush}" />
+                                    </StackPanel>
+                                </Border>
                                 <StackPanel x:Name="DnsRowsPanel" Spacing="8">
                                     <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>

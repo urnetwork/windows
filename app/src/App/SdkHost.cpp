@@ -822,6 +822,13 @@ void SdkHost::SubscribeStats() {
   subs_.push_back(device_->addAuthLogoutListener([this] {
     if (onAuthInvalid_) onAuthInvalid_();
   }));
+  // A jwt refresh re-derives Pro from the (now-updated) token -- macOS
+  // JwtRefreshListener parity. Without it a mid-session Pro change (notably a
+  // Pro->free lapse, which a Pro network's paused poll won't catch) isn't
+  // reflected until the next server fetch. Same marshal-only rule as above.
+  subs_.push_back(device_->addJwtRefreshListener([this](std::string) {
+    if (onJwtRefreshed_) onJwtRefreshed_();
+  }));
   // ConnectViewController: status, provider grid/window size, selected location.
   subs_.push_back(connectVc_->addConnectionStatusListener(pub));
   subs_.push_back(connectVc_->addGridListener(pub));
@@ -864,6 +871,15 @@ LiveStats SdkHost::ReadStats() {
     if (auto cs = device_->getContractStatus(); cs) s.insufficientBalance = cs->InsufficientBalance;
     s.provideEnabled = device_->getProvideEnabled();
     s.providePaused = device_->getProvidePaused();
+    s.provideMode = static_cast<int64_t>(device_->getProvideMode());
+    if (auto keys = device_->getProvideSecretKeys(); keys) {
+      for (const auto& key : *keys) {
+        if (key.provide_mode == 1 /* network — bit set, per-case */) {
+          s.provideHasNetworkKey = true;
+          break;
+        }
+      }
+    }
     if (auto np = device_->getNetworkPeers(); np && np->Connected) {
       s.provideClients = static_cast<int64_t>(np->Connected->size());
     }
@@ -890,7 +906,11 @@ void SdkHost::SubscribeDrawer() {
   // caller holds mutex_ (BootstrapSession)
   if (!device_ || !contractVc_) return;
   blockVc_ = device_->openBlockActionViewController();
-  contractDetailsVc_ = device_->openContractDetailsViewController();
+  // single-feed view controller: the current sheet is client-only, so open the
+  // client feed (open a provider feed into a second VC if a provider sheet is
+  // ever added). It owns the display order, the scrolled-away freeze, and the
+  // "N new" pending count -- the sheet just reports scroll and renders its rows.
+  contractDetailsVc_ = device_->openClientContractDetailsViewController();
 
   // Offline reconcile: the app LocalState is the source of truth for per-app rules;
   // on connect merge them into the device (which also holds host rules) so the live
@@ -966,25 +986,33 @@ void SdkHost::PublishThroughput() {
 void SdkHost::PublishContractRows() {
   if (!contractDetailsVc_) return;
 
-  // The view controller returns fully aggregated, render-ready rows: per-peer
-  // sums, the contract-id swap signatures, and the closing flag. Map them onto
-  // the app row type -- no per-app aggregation, ordering, or coalescing here
-  // (macOS ContractDetailsStore.update parity).
-  std::vector<ContractClientRow> rows;
-  if (auto list = contractDetailsVc_->getClientContractRows()) {
+  // The view controller returns render-ready rows: per-peer send/receive stacks
+  // (newest first), the two bit-rate sums, the last-activity timestamp, and the
+  // closing flag. Map them onto the app row type -- the grouping, ordering,
+  // activity signal, and closing lifecycle all live in the VC (macOS
+  // ContractDetailsStore.update parity).
+  auto entries = [](const std::optional<urnet::ContractEntryList>& list) {
+    std::vector<ContractEntry> out;
+    if (list) {
+      out.reserve(list->size());
+      for (const auto& e : *list) {
+        out.push_back(ContractEntry{e.ContractId, e.UsedByteCount, e.TotalByteCount, e.BitRate,
+                                    e.HasStream});
+      }
+    }
+    return out;
+  };
+  std::vector<ContractPeerRow> rows;
+  if (auto list = contractDetailsVc_->getContractRows()) {
     rows.reserve(list->size());
     for (const auto& r : *list) {
-      ContractClientRow row;
+      ContractPeerRow row;
       row.clientId = r.ClientId;
-      row.contractId = r.ContractId;
-      row.companionContractId = r.CompanionContractId;
-      row.contractUsedByteCount = r.ContractUsedByteCount;
-      row.contractByteCount = r.ContractByteCount;
-      row.contractBitRate = r.ContractBitRate;
-      row.companionContractUsedByteCount = r.CompanionContractUsedByteCount;
-      row.companionContractByteCount = r.CompanionContractByteCount;
-      row.companionContractBitRate = r.CompanionContractBitRate;
-      row.pairCount = r.PairCount;
+      row.send = entries(r.SendContracts);
+      row.receive = entries(r.ReceiveContracts);
+      row.sendByteCount = r.SendByteCount;
+      row.receiveByteCount = r.ReceiveByteCount;
+      row.lastActivityMillis = r.LastActivityMillis;
       row.closing = r.Closing;
       rows.push_back(std::move(row));
     }
@@ -1013,6 +1041,9 @@ void SdkHost::PublishBlockActions() {
       item.timeMillis = it->Time;
       if (it->Hosts) item.hosts = *it->Hosts;
       if (it->Ips) item.ips = *it->Ips;
+      // the sdk keeps the matched hosts/ips disjoint from Hosts/Ips
+      if (it->MatchedHosts) item.matchedHosts = *it->MatchedHosts;
+      if (it->MatchedIps) item.matchedIps = *it->MatchedIps;
       item.block = it->Block;
       item.local = it->Local;
       if (it->OverrideId) item.overrideId = *it->OverrideId;
@@ -1123,9 +1154,23 @@ std::vector<urnet::ThroughputPoint> SdkHost::CurrentThroughputPoints(int64_t& wi
   return lastThroughputPoints_;
 }
 
-std::vector<ContractClientRow> SdkHost::CurrentContractRows() {
+std::vector<ContractPeerRow> SdkHost::CurrentContractRows() {
   std::scoped_lock lock(drawerMutex_);
   return lastContractRows_;
+}
+
+void SdkHost::SetContractsAtTop(bool atTop) {
+  // report the sheet's scroll position to the shared view controller, which owns
+  // the at-top activity sort and the scrolled-away freeze (macOS setAtTop parity)
+  std::scoped_lock lock(mutex_);
+  if (contractDetailsVc_) contractDetailsVc_->setAtTop(atTop);
+}
+
+int64_t SdkHost::ContractsPendingCount() {
+  // the VC's "N new" count: rows that arrived while scrolled away and are not yet
+  // merged (0 at the top)
+  std::scoped_lock lock(mutex_);
+  return contractDetailsVc_ ? contractDetailsVc_->pendingCount() : 0;
 }
 
 std::vector<BlockActionItem> SdkHost::CurrentBlockActions() {
@@ -1214,6 +1259,30 @@ void SdkHost::SetBlockerEnabled(bool on) {
     device_->setBlockerEnabled(on);  // the device persists and restores this
   } catch (const std::exception& e) {
     LogWarn("sdkhost: set blocker failed: {}", e.what());
+  }
+}
+
+std::string SdkHost::CurrentProvideControlMode() {
+  try {
+    if (device_) return device_->getProvideControlMode();
+    // tunnel down: the persisted preference is still the truth
+    if (localState_) return localState_->getProvideControlMode();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: get provide control mode failed: {}", e.what());
+  }
+  return "never";
+}
+
+void SdkHost::SetProvideControlMode(const std::string& mode) {
+  std::scoped_lock lock(mutex_);
+  try {
+    if (device_) device_->setProvideControlMode(mode);
+    // Persist alongside the device write (macOS handleProvideControlModeUpdate
+    // parity) — DeviceLocal.SetProvideControlMode alone does not persist, and
+    // the session bootstrap restores the persisted mode.
+    if (localState_) localState_->setProvideControlMode(mode);
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: set provide control mode failed: {}", e.what());
   }
 }
 
@@ -1406,6 +1475,15 @@ std::optional<urnet::NetworkPeerList> SdkHost::ConnectedProvidePeers() {
   std::scoped_lock lock(mutex_);
   if (peerVc_) return peerVc_->getPeers();
   return std::nullopt;
+}
+
+int64_t SdkHost::ConnectedPeerCount() {
+  std::scoped_lock lock(mutex_);
+  // ALL connected peers, whether or not they provide — the "You have {n}
+  // other devices online" count (connecting still requires provide, which is
+  // what ConnectedProvidePeers captures)
+  if (peerVc_) return static_cast<int64_t>(peerVc_->getConnectedCount());
+  return 0;
 }
 
 std::optional<urnet::ConnectLocation> SdkHost::SelectedLocation() {

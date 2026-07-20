@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cctype>
 #include <chrono>
 
 #include "AppController.h"
@@ -85,6 +86,57 @@ std::wstring ChainName(std::string const& blockchain) {
   if (blockchain == urnet::TAO) return urnw::Localized("bittensor");
   if (blockchain == urnet::MATIC) return urnw::Localized("polygon");
   return urnw::Widen(blockchain);  // an unknown chain: its raw id
+}
+
+// country-code case folding for the dns pill: the sdk recommendation/color
+// lookups are keyed on the lowercase code; ToUpper is the display fallback when
+// the connected location has no country name (StatsSheets parity).
+std::string ToLower(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return s;
+}
+std::string ToUpper(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+  return s;
+}
+
+// "AABBCC" / "#AABBCC" / "AARRGGBB" -> Color (fallback muted gray). Mirrors the
+// StatsSheets helper; used to fill the dns pill's country-color dot.
+winrt::Windows::UI::Color ColorFromHex(std::string hex) {
+  if (!hex.empty() && hex[0] == '#') hex = hex.substr(1);
+  auto parse = [&](size_t offset) {
+    return static_cast<uint8_t>(std::stoul(hex.substr(offset, 2), nullptr, 16));
+  };
+  try {
+    if (hex.size() == 6) return {255, parse(0), parse(2), parse(4)};
+    if (hex.size() == 8) return {parse(0), parse(2), parse(4), parse(6)};
+  } catch (...) {
+  }
+  return urnw::colors::kTextMuted;
+}
+
+// Two applied dns snapshots are equivalent when every resolver flag and every
+// server list matches; an absent list and an empty list are the same. This is
+// the same field-for-field comparison DnsEditorSheet makes on its Draft and the
+// iOS DnsSettings ==, so the pill agrees with the editor's recommendation panel.
+bool DnsSettingsEquivalent(urnet::DnsResolverSettings const& a,
+                           urnet::DnsResolverSettings const& b) {
+  auto list = [](std::optional<urnet::StringList> const& v) {
+    return v ? *v : urnet::StringList{};
+  };
+  return a.EnableRemoteDoh == b.EnableRemoteDoh && a.EnableLocalDoh == b.EnableLocalDoh &&
+         a.EnableRemoteDns == b.EnableRemoteDns && a.EnableLocalDns == b.EnableLocalDns &&
+         a.EnableFallback == b.EnableFallback &&
+         list(a.RemoteDohUrlsIpv4) == list(b.RemoteDohUrlsIpv4) &&
+         list(a.RemoteDohUrlsIpv6) == list(b.RemoteDohUrlsIpv6) &&
+         list(a.LocalDohUrlsIpv4) == list(b.LocalDohUrlsIpv4) &&
+         list(a.LocalDohUrlsIpv6) == list(b.LocalDohUrlsIpv6) &&
+         list(a.RemoteDnsIpv4) == list(b.RemoteDnsIpv4) &&
+         list(a.RemoteDnsIpv6) == list(b.RemoteDnsIpv6) &&
+         list(a.LocalDnsIpv4) == list(b.LocalDnsIpv4) &&
+         list(a.LocalDnsIpv6) == list(b.LocalDnsIpv6);
 }
 }  // namespace
 
@@ -271,6 +323,11 @@ void MainWindow::ApplyStrings() {
   ModeAutoItem().Text(Loc("window_type_auto"));
   ModeWebItem().Text(Loc("window_type_quality"));
   ModeStreamingItem().Text(Loc("window_type_speed"));
+  ProvideModeLabel().Text(Loc("provide_mode"));
+  ProvideAutoItem().Text(Loc("auto"));
+  ProvideAlwaysItem().Text(Loc("always"));
+  ProvideNetworkItem().Text(Loc("network"));
+  ProvideNeverItem().Text(Loc("never"));
   FixedIpLabel().Text(Loc("fixed_ip"));
   StrongAnonLabel().Text(Loc("strong_anonymization"));
   ClientStatsLabel().Text(Loc("client_statistics"));
@@ -1459,8 +1516,13 @@ void MainWindow::ApplyStats(urnw::LiveStats const& stats) {
   LocationText().Text(locationName.empty() ? Loc("best_available_provider")
                                            : H(locationName));
   ApplyPeerCount(peers);  // the peers status line below the connect button (req1)
+  // the connected country drives the dns-card recommendation pill; only refresh
+  // it when the country actually changes (stats push on every throughput tick).
+  const bool countryChanged =
+      countryCode_ != stats.countryCode || countryName_ != stats.countryName;
   countryCode_ = stats.countryCode;
   countryName_ = stats.countryName;
+  if (countryChanged) ApplyDnsRecommendationPill();
 
   // Provider window size ("Connected to N providers"), like macOS. The count is a
   // CLDR plural in the store: select the form, never inflect here.
@@ -1489,6 +1551,34 @@ void MainWindow::ApplyStats(urnw::LiveStats const& stats) {
                   : hstring{urnw::Plural("providing_client_count", stats.provideClients)};
   }
   ProvideStatsText().Text(provide);
+
+  // provide indicator (apple parity). The effective provide mode is a bit set
+  // (0 none, 1 network, 2 friends-and-family, 3 public) — per-case only.
+  // Solid dot = Network tier; dot + outer ring = Public tier (amber while
+  // paused — pause stops public only); coral = not providing.
+  auto provideColor = urnw::colors::kUrCoral;
+  bool provideRing = false;
+  switch (stats.provideMode) {
+    case 3:  // public
+      provideColor = stats.providePaused ? urnw::colors::kUrAmber : urnw::colors::kUrGreen;
+      provideRing = true;
+      break;
+    case 1:  // network (also Auto while idle)
+    case 2:  // friends-and-family
+      provideColor = urnw::colors::kUrGreen;
+      break;
+    default:
+      break;
+  }
+  // discoverability line (apple/android parity): a paused device stays
+  // discoverable — pause stops public provide only
+  DiscoverableText().Text(Loc(stats.provideEnabled && stats.provideHasNetworkKey
+                                  ? "device_discoverable"
+                                  : "device_not_discoverable"));
+  ProvideModeDot().Fill(urnw::colors::MakeBrush(provideColor));
+  ProvideModeRing().Stroke(urnw::colors::MakeBrush(provideColor));
+  ProvideModeRing().Visibility(provideRing ? winrt::Microsoft::UI::Xaml::Visibility::Visible
+                                           : winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
 }
 
 // ---- connect drawer --------------------------------------------------------
@@ -1531,7 +1621,7 @@ void MainWindow::WireDrawerFeeds() {
   // one-list-updated aggregate reaches us), so the UI can apply each push
   // directly -- re-reading the settled snapshot on the UI thread (macOS
   // ContractDetailsStore.update parity).
-  sdk.SetContractRowsHandler([queue, weak](std::vector<urnw::ContractClientRow>) {
+  sdk.SetContractRowsHandler([queue, weak](std::vector<urnw::ContractPeerRow>) {
     queue.TryEnqueue([weak] {
       if (auto self = weak.get()) {
         self->contractRows_ = Sdk().CurrentContractRows();
@@ -1672,6 +1762,18 @@ void MainWindow::SeedConnectControls() {
   // "Strong Anonymization" is the inverse of allowDirect
   StrongAnonToggle().IsOn(!settings.allowDirect);
   BlockerToggle().IsOn(Sdk().CurrentBlockerEnabled());
+  // provide control mode ("manual"/unknown land on Never, the SDK's
+  // conservative default case)
+  const std::string provideMode = Sdk().CurrentProvideControlMode();
+  if (provideMode == "auto") {
+    ProvideModeBar().SelectedItem(ProvideAutoItem());
+  } else if (provideMode == "always") {
+    ProvideModeBar().SelectedItem(ProvideAlwaysItem());
+  } else if (provideMode == "network") {
+    ProvideModeBar().SelectedItem(ProvideNetworkItem());
+  } else {
+    ProvideModeBar().SelectedItem(ProvideNeverItem());
+  }
   updatingControls_ = false;
 }
 
@@ -1702,6 +1804,20 @@ void MainWindow::OnConnectionModeChanged(SelectorBar const&,
   }
   FixedIpToggle().IsEnabled(mode != urnw::ConnectionMode::Auto);
   PushPerformanceSettings();
+}
+
+std::string MainWindow::SelectedProvideMode() {
+  auto selected = ProvideModeBar().SelectedItem();
+  if (selected == ProvideAutoItem()) return "auto";
+  if (selected == ProvideAlwaysItem()) return "always";
+  if (selected == ProvideNetworkItem()) return "network";
+  return "never";
+}
+
+void MainWindow::OnProvideModeChanged(SelectorBar const&,
+                                      SelectorBarSelectionChangedEventArgs const&) {
+  if (updatingControls_) return;
+  Sdk().SetProvideControlMode(SelectedProvideMode());
 }
 
 void MainWindow::OnFixedIpToggled(IInspectable const&, RoutedEventArgs const&) {
@@ -1735,6 +1851,10 @@ void MainWindow::ApplySplitRuleCount() {
 void MainWindow::ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& settings) {
   DnsRowsPanel().Visibility(settings ? Visibility::Visible : Visibility::Collapsed);
   DnsUnavailableText().Visibility(settings ? Visibility::Collapsed : Visibility::Visible);
+  // the applied settings just changed: re-evaluate the recommendation pill (it
+  // reads dnsSettings_, already updated to `settings` by the caller). Runs in
+  // the unavailable path too so the pill collapses with the rows.
+  ApplyDnsRecommendationPill();
   if (!settings) return;
 
   // looked up once for the four rows; the lambda runs here, so capturing by
@@ -1756,6 +1876,50 @@ void MainWindow::ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& s
   applyRow(FallbackDot(), FallbackState(), settings->EnableFallback);
 }
 
+// The unapplied-recommendation pill atop the dns card (iOS DnsRecommendationPill
+// parity). Priority, matching the iOS computed `recommendation`:
+//   1. no applied settings -> hidden (nothing to compare; the card shows
+//      "unavailable").
+//   2. a connected country whose regional recommendation differs from the
+//      applied settings -> pill "...recommended settings for {country}" with the
+//      country-color dot. If that recommendation IS already applied, hide and do
+//      NOT fall through to the default nudge.
+//   3. otherwise (no country, or the country has no regional recommendation) and
+//      the safe defaults are not applied -> pill "default safe settings are not
+//      applied", no dot.
+//   4. hidden otherwise.
+void MainWindow::ApplyDnsRecommendationPill() {
+  const auto& current = dnsSettings_;
+  if (!current) {
+    DnsRecPill().Visibility(Visibility::Collapsed);
+    return;
+  }
+  if (!countryCode_.empty()) {
+    const std::string code = ToLower(countryCode_);
+    if (auto rec = urnet::getRecommendedDnsResolverSettings(code)) {
+      if (!DnsSettingsEquivalent(*current, *rec)) {
+        const std::wstring name = countryName_.empty() ? urnw::Widen(ToUpper(countryCode_))
+                                                        : urnw::Widen(countryName_);
+        DnsRecText().Text(hstring{urnw::Format("dns_pill_recommended", name)});
+        DnsRecDot().Fill(urnw::colors::MakeBrush(ColorFromHex(urnet::getColorHex(code))));
+        DnsRecDot().Visibility(Visibility::Visible);
+        DnsRecPill().Visibility(Visibility::Visible);
+      } else {
+        DnsRecPill().Visibility(Visibility::Collapsed);
+      }
+      return;  // the country has a recommendation: never fall through to defaults
+    }
+  }
+  if (auto def = urnet::getDefaultDnsResolverSettings();
+      def && !DnsSettingsEquivalent(*current, *def)) {
+    DnsRecText().Text(Loc("dns_pill_default"));
+    DnsRecDot().Visibility(Visibility::Collapsed);
+    DnsRecPill().Visibility(Visibility::Visible);
+    return;
+  }
+  DnsRecPill().Visibility(Visibility::Collapsed);
+}
+
 void MainWindow::OnChartTick() {
   // skip the redraw work while the window is hidden (tray) or on another tab
   if (!Visible()) return;
@@ -1765,10 +1929,12 @@ void MainWindow::OnChartTick() {
     blockedChart_->Tick();
     localChart_->Tick();
   }
-  if (contractsSheet_) contractsSheet_->Tick();  // disc easing + swap fades
-  if (++chartTickCount_ % 10 == 0 && splitRulesSheet_) {
-    splitRulesSheet_->RefreshTimes();  // "Ns ago" labels, once a second
+  if (contractsSheet_) contractsSheet_->Tick();  // ring/disc easing + slide animations
+  if (++chartTickCount_ % 10 == 0) {  // ~1s cadence
+    if (splitRulesSheet_) splitRulesSheet_->RefreshTimes();  // "Ns ago" labels
   }
+  // the contract-details activity resort now lives in the SDK view controller;
+  // the sheet just reports scroll and renders the ordered rows (no local tick)
 }
 
 void MainWindow::AnimateDrawerIn() {
@@ -1851,13 +2017,16 @@ winrt::fire_and_forget MainWindow::ShowClientContractsSheet() {
   auto self = get_strong();
   self->sheetOpen_ = true;
   try {
-    self->contractsSheet_ = urnw::ClientContractsSheet::Create(Content().XamlRoot());
+    self->contractsSheet_ = urnw::ClientContractsSheet::Create(Content().XamlRoot(), Sdk());
     self->contractsSheet_->Update(self->contractRows_);
     co_await self->contractsSheet_->Dialog().ShowAsync();
   } catch (...) {
   }
   self->contractsSheet_.reset();
   self->sheetOpen_ = false;
+  // the sheet drove the VC's at-top state; leave it at the top on close so the
+  // controller isn't stuck frozen (collecting a pending count) with nobody viewing
+  Sdk().SetContractsAtTop(true);
 }
 
 winrt::fire_and_forget MainWindow::ShowSplitRulesSheet() {
@@ -1924,7 +2093,11 @@ winrt::fire_and_forget MainWindow::ShowLocationChooserSheet() {
 }
 
 void MainWindow::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers) {
-  const int64_t count = peers ? static_cast<int64_t>(peers->size()) : 0;
+  // ALL connected devices (online, provide or not); the chooser's peers
+  // section stays provide-filtered (connectable only). The list argument is
+  // the update trigger; the count reads the unfiltered value.
+  (void)peers;
+  const int64_t count = Sdk().ConnectedPeerCount();
   // the standalone peers status line below the connect button, always shown:
   // "{n} peers" + a filled dot, green when providing peers are online and amber
   // at zero (apple ConnectActions parity)

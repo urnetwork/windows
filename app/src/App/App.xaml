@@ -54,6 +54,9 @@
             <SolidColorBrush x:Key="UrGreenBrush" Color="#87FB67" />
             <SolidColorBrush x:Key="UrPinkBrush" Color="#ED8FFF" />
             <SolidColorBrush x:Key="UrCoralBrush" Color="#FF6C58" />
+            <!-- coral at 15% alpha: the unapplied-dns-recommendation pill background
+                 (iOS Color.urCoral.opacity(0.15)) -->
+            <SolidColorBrush x:Key="UrCoralSubtleBrush" Color="#26FF6C58" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

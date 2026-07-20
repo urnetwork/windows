@@ -54,6 +54,29 @@ void DeleteTunRoute(NET_LUID tun, uint32_t network, uint8_t prefix) {
   ::DeleteIpForwardEntry2(&row);
 }
 
+// The whole ipv4 space EXCEPT the private ranges (10.0.0.0/8, 172.16.0.0/12,
+// 192.168.0.0/16), captured through the tun so LAN traffic bypasses the tunnel —
+// matching Android (MainService excludeRoute), iOS (NEIPv4Settings.excludedRoutes)
+// and Linux. These are the complement prefixes of those ranges within 0.0.0.0/0
+// (the same set Android adds on its no-excludeRoute path). Like the old 0.0.0.0/1 +
+// 128.0.0.0/1 capture they sort above the physical default without deleting it; the
+// excluded ranges fall through to the physical/connected routes. {network (host
+// byte order), prefix length}.
+struct TunPrefix {
+  uint32_t network;
+  uint8_t prefix;
+};
+constexpr TunPrefix kIncludedV4Routes[] = {
+    {0x00000000u, 5},  {0x08000000u, 7},  {0x0B000000u, 8},  {0x0C000000u, 6},
+    {0x10000000u, 4},  {0x20000000u, 3},  {0x40000000u, 2},  {0x80000000u, 3},
+    {0xA0000000u, 5},  {0xA8000000u, 6},  {0xAC000000u, 12}, {0xAC200000u, 11},
+    {0xAC400000u, 10}, {0xAC800000u, 9},  {0xAD000000u, 8},  {0xAE000000u, 7},
+    {0xB0000000u, 4},  {0xC0000000u, 9},  {0xC0800000u, 11}, {0xC0A00000u, 13},
+    {0xC0A90000u, 16}, {0xC0AA0000u, 15}, {0xC0AC0000u, 14}, {0xC0B00000u, 12},
+    {0xC0C00000u, 10}, {0xC1000000u, 8},  {0xC2000000u, 7},  {0xC4000000u, 6},
+    {0xC8000000u, 5},  {0xD0000000u, 4},  {0xE0000000u, 3},
+};
+
 bool SetTunDns(NET_LUID tun, const std::vector<std::string>& servers,
                const std::string& search) {
   GUID guid{};
@@ -122,9 +145,11 @@ bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
     if (err != NO_ERROR) LogWarn("netcfg: set MTU/metric failed: {}", err);
   }
 
-  // --- split-default routes through the tun ---
-  bool routesOk = AddTunRoute(tunLuid_, 0x00000000u, 1) &&   // 0.0.0.0/1
-                  AddTunRoute(tunLuid_, 0x80000000u, 1);      // 128.0.0.0/1
+  // --- split-default routes through the tun, EXCLUDING the local network ---
+  bool routesOk = true;
+  for (const auto& r : kIncludedV4Routes) {
+    routesOk = routesOk && AddTunRoute(tunLuid_, r.network, r.prefix);
+  }
   if (!routesOk) {
     Revert();
     return false;
@@ -143,8 +168,9 @@ bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
 
 void NetworkConfig::Revert() {
   if (!applied_ && settings_.local_address_v4.empty()) return;
-  DeleteTunRoute(tunLuid_, 0x00000000u, 1);
-  DeleteTunRoute(tunLuid_, 0x80000000u, 1);
+  for (const auto& r : kIncludedV4Routes) {
+    DeleteTunRoute(tunLuid_, r.network, r.prefix);
+  }
   // Address and DNS go away with the adapter on session end; clearing DNS
   // explicitly avoids a stale resolver if the adapter lingers.
   SetTunDns(tunLuid_, {}, {});

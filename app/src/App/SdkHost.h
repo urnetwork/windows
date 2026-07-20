@@ -74,6 +74,12 @@ struct LiveStats {
   bool provideEnabled = false;
   bool providePaused = false;
   int64_t provideClients = 0;     // connected peers while providing
+  // the LIVE effective provide mode (protocol values: 0 none, 1 network,
+  // 2 friends-and-family, 3 public — a bit set, compare per-case)
+  int64_t provideMode = 0;
+  // the provider holds a Network-mode provide key: with provideEnabled this
+  // means the device is discoverable/connectable as a same-network peer
+  bool provideHasNetworkKey = false;
   std::string locationName;       // selected connect location (empty = best available)
   std::string countryCode;        // selected location country code (dns recommendations)
   std::string countryName;
@@ -90,39 +96,58 @@ struct PerformanceSettings {
   bool allowDirect = false;   // inverse of the "Strong Anonymization" toggle
 };
 
-// One row of the client-contracts sheet: the egress ("contract") and ingress
-// ("companion") contracts aggregated per peer client. Rendered shape only; the
-// per-peer aggregation, egress+ingress coalescing, renewal atomicity, and the
-// closing lifecycle all live in the SDK ContractDetailsViewController now
-// (macOS ContractDetailsStore parity).
-struct ContractClientRow {
+// One contract, un-aggregated: its own used/total byte counts and bit rate.
+// Contracts are never paired -- a peer's send and receive contracts are
+// fundamentally many-to-many, so each is presented on its own (SDK
+// ContractEntry parity).
+struct ContractEntry {
+  std::string contractId;  // stable identity a circle keeps for its whole life
+  int64_t usedByteCount = 0;
+  int64_t totalByteCount = 0;
+  int64_t bitRate = 0;
+  // a stream contract (its transfer path carries a stream id): the circle is
+  // drawn with a second concentric outer ring so streams read as distinct from
+  // direct contracts (SDK ContractEntry.HasStream)
+  bool hasStream = false;
+};
+
+inline bool operator==(const ContractEntry& a, const ContractEntry& b) {
+  return a.contractId == b.contractId && a.usedByteCount == b.usedByteCount &&
+         a.totalByteCount == b.totalByteCount && a.bitRate == b.bitRate &&
+         a.hasStream == b.hasStream;
+}
+inline bool operator!=(const ContractEntry& a, const ContractEntry& b) { return !(a == b); }
+
+// One peer client's open contracts, as two independent stacks (newest first):
+// contracts sending to the peer and contracts receiving from it. The per-peer
+// grouping, ordering, activity signal, and closing lifecycle all live in the
+// SDK ContractDetailsViewController, shared by every platform (macOS
+// ContractDetailsStore parity); the sheet just renders these rows.
+struct ContractPeerRow {
   std::string clientId;
-  std::string contractId;           // joined sorted contract ids (swap signature)
-  std::string companionContractId;
-  int64_t contractUsedByteCount = 0;
-  int64_t contractByteCount = 0;
-  int64_t contractBitRate = 0;
-  int64_t companionContractUsedByteCount = 0;
-  int64_t companionContractByteCount = 0;
-  int64_t companionContractBitRate = 0;
-  int64_t pairCount = 0;
+  std::vector<ContractEntry> send;     // newest first
+  std::vector<ContractEntry> receive;  // newest first
+  // cumulative bytes moved to / from this peer in the current run (accumulated
+  // across the peer's contracts, reset when it goes idle), for the direction headers
+  int64_t sendByteCount = 0;
+  int64_t receiveByteCount = 0;
+  // unix-millis of this peer's last byte movement (any contract with a positive
+  // bit rate), or 0 if it has not moved bytes since appearing. The list floats
+  // rows with recent activity above idle ones; freshness is judged against the
+  // device clock (the view controller runs in-app, same wall clock as the view).
+  int64_t lastActivityMillis = 0;
   // the peer's last contract closed and the row is being ejected: the view
-  // controller keeps it briefly so the circles slide off, then removes it
+  // controller keeps it briefly (empty stacks) so the circles slide off, then
+  // removes it
   bool closing = false;
 };
 
-inline bool operator==(const ContractClientRow& a, const ContractClientRow& b) {
-  return a.clientId == b.clientId && a.contractId == b.contractId &&
-         a.companionContractId == b.companionContractId &&
-         a.contractUsedByteCount == b.contractUsedByteCount &&
-         a.contractByteCount == b.contractByteCount &&
-         a.contractBitRate == b.contractBitRate &&
-         a.companionContractUsedByteCount == b.companionContractUsedByteCount &&
-         a.companionContractByteCount == b.companionContractByteCount &&
-         a.companionContractBitRate == b.companionContractBitRate &&
-         a.pairCount == b.pairCount && a.closing == b.closing;
+inline bool operator==(const ContractPeerRow& a, const ContractPeerRow& b) {
+  return a.clientId == b.clientId && a.send == b.send && a.receive == b.receive &&
+         a.sendByteCount == b.sendByteCount && a.receiveByteCount == b.receiveByteCount &&
+         a.lastActivityMillis == b.lastActivityMillis && a.closing == b.closing;
 }
-inline bool operator!=(const ContractClientRow& a, const ContractClientRow& b) {
+inline bool operator!=(const ContractPeerRow& a, const ContractPeerRow& b) {
   return !(a == b);
 }
 
@@ -132,6 +157,10 @@ struct BlockActionItem {
   int64_t timeMillis = 0;
   std::vector<std::string> hosts;
   std::vector<std::string> ips;
+  // the exact hosts/ips that matched an override (disjoint from hosts/ips), shown
+  // as green chips at the front of the row (iOS BlockActionItem.matchedHosts/Ips)
+  std::vector<std::string> matchedHosts;
+  std::vector<std::string> matchedIps;
   bool block = false;
   bool local = false;
   std::string overrideId;  // deciding override id ("" when none)
@@ -143,7 +172,8 @@ struct BlockActionItem {
 
 inline bool operator==(const BlockActionItem& a, const BlockActionItem& b) {
   return a.id == b.id && a.timeMillis == b.timeMillis && a.hosts == b.hosts &&
-         a.ips == b.ips && a.block == b.block && a.local == b.local &&
+         a.ips == b.ips && a.matchedHosts == b.matchedHosts &&
+         a.matchedIps == b.matchedIps && a.block == b.block && a.local == b.local &&
          a.overrideId == b.overrideId && a.hasBlockOverride == b.hasBlockOverride &&
          a.hasRouteOverride == b.hasRouteOverride && a.packetCount == b.packetCount &&
          a.byteCount == b.byteCount;
@@ -184,13 +214,14 @@ class SdkHost {
   // state. Runs on an sdk callback thread and must only marshal -- the ui
   // marshals onto its thread and calls Logout().
   using AuthInvalidHandler = std::function<void()>;
+  using JwtRefreshedHandler = std::function<void()>;
   using TunnelStateHandler = std::function<void(const proto::TunnelStatus&)>;
   using StatsHandler = std::function<void(const LiveStats&)>;
   // Connect drawer feeds (invoked on SDK callback threads; payloads by value so
   // the UI can marshal them onto its thread).
   using ThroughputHandler =
       std::function<void(std::vector<urnet::ThroughputPoint>, int64_t windowSeconds)>;
-  using ContractRowsHandler = std::function<void(std::vector<ContractClientRow>)>;
+  using ContractRowsHandler = std::function<void(std::vector<ContractPeerRow>)>;
   using BlockActionsHandler = std::function<void(std::vector<BlockActionItem>)>;
   using BlockStatsHandler = std::function<void(int64_t allowed, int64_t blocked)>;
   using SplitRulesHandler = std::function<void(std::vector<SplitRule>)>;
@@ -299,6 +330,8 @@ class SdkHost {
   std::optional<urnet::FilteredLocations> CurrentFilteredLocations();
   std::string CurrentFilteredLocationState();
   std::optional<urnet::NetworkPeerList> ConnectedProvidePeers();
+  // count of ALL connected peers (online, provide or not)
+  int64_t ConnectedPeerCount();
   // The selected connect location (the chooser's selection check + the drawer's
   // selected-peer name resolution).
   std::optional<urnet::ConnectLocation> SelectedLocation();
@@ -309,6 +342,7 @@ class SdkHost {
 
   void SetAuthStateHandler(AuthStateHandler h) { onAuth_ = std::move(h); }
   void SetAuthInvalidHandler(AuthInvalidHandler h) { onAuthInvalid_ = std::move(h); }
+  void SetJwtRefreshedHandler(JwtRefreshedHandler h) { onJwtRefreshed_ = std::move(h); }
   void SetTunnelStateHandler(TunnelStateHandler h) { onTunnel_ = std::move(h); }
   // Live stats push (connection/throughput/provide). Fired on SDK listener
   // callbacks; the UI marshals to its thread and applies visibility gating.
@@ -329,7 +363,13 @@ class SdkHost {
 
   // Snapshots on demand (seed / resync when the window shows).
   std::vector<urnet::ThroughputPoint> CurrentThroughputPoints(int64_t& windowSeconds);
-  std::vector<ContractClientRow> CurrentContractRows();
+  std::vector<ContractPeerRow> CurrentContractRows();
+  // Contract-details sheet surface into the single-feed view controller, which
+  // owns the ordering, the scrolled-away freeze, and the pending count. The
+  // sheet reports its scroll position and reads the "N new" count; the ordered
+  // rows arrive via SetContractRowsHandler / CurrentContractRows.
+  void SetContractsAtTop(bool atTop);
+  int64_t ContractsPendingCount();
   std::vector<BlockActionItem> CurrentBlockActions();
   void CurrentBlockCounts(int64_t& allowed, int64_t& blocked);
   std::vector<SplitRule> CurrentSplitRules();
@@ -343,6 +383,12 @@ class SdkHost {
   void SetPerformanceSettings(const PerformanceSettings& settings);
   // Ad/tracker blocker: the device applies and persists it; the app stores nothing.
   void SetBlockerEnabled(bool on);
+  // Provide/earn control mode: "never"|"always"|"network"|"auto"|"manual".
+  // "network" is the private provider: the provider is always on, but provides
+  // ONLY to same-network peers — never publicly. Persisted in LocalState like
+  // macOS (DeviceLocal does not persist the control mode itself).
+  std::string CurrentProvideControlMode();
+  void SetProvideControlMode(const std::string& mode);
   void ApplyDnsSettings(const urnet::DnsResolverSettings& settings);
   void CreateSplitRule(const std::vector<std::string>& hosts);
   void UpdateSplitRule(const std::string& overrideId, const std::vector<std::string>& hosts);
@@ -414,8 +460,10 @@ class SdkHost {
   std::optional<urnet::DeviceRemote> device_;
   std::optional<urnet::ConnectViewController> connectVc_;
   std::optional<urnet::ContractViewController> contractVc_;  // live throughput feed
-  // aggregated per-peer contract rows: the VC owns the egress+ingress coalescing,
-  // renewal atomicity, per-peer aggregation, and the closing/eject lifecycle
+  // per-peer contract rows: this single-feed VC (the client feed) owns the
+  // egress+ingress coalescing, renewal atomicity, per-peer aggregation, the
+  // closing/eject lifecycle, the at-top activity sort, the scrolled-away freeze,
+  // and the pending count -- getContractRows() returns the FINAL ordered rows
   std::optional<urnet::ContractDetailsViewController> contractDetailsVc_;
   std::optional<urnet::BlockActionViewController> blockVc_;  // block actions + stats
   std::optional<urnet::LocationsViewController> locationsVc_;  // provider chooser feed
@@ -429,7 +477,7 @@ class SdkHost {
   std::mutex drawerMutex_;
   std::vector<urnet::ThroughputPoint> lastThroughputPoints_;
   int64_t throughputWindowSeconds_ = 60;
-  std::vector<ContractClientRow> lastContractRows_;
+  std::vector<ContractPeerRow> lastContractRows_;
   std::vector<BlockActionItem> lastBlockActions_;
   int64_t lastAllowedCount_ = 0;
   int64_t lastBlockedCount_ = 0;
@@ -446,6 +494,7 @@ class SdkHost {
 
   AuthStateHandler onAuth_;
   AuthInvalidHandler onAuthInvalid_;
+  JwtRefreshedHandler onJwtRefreshed_;
   TunnelStateHandler onTunnel_;
   StatsHandler onStats_;
   ThroughputHandler onThroughput_;

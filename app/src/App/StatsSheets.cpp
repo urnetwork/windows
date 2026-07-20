@@ -4,10 +4,13 @@
 #include "StatsSheets.h"
 
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
+#include <winrt/Microsoft.UI.Xaml.Documents.h>  // RichTextBlock chip-flow inlines
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <unordered_set>
 
 #include "Localization.h"
 #include "StatsFormat.h"
@@ -33,14 +36,18 @@ namespace {
 // so unqualified lookup under the using-directives stays unambiguous
 using ShapeEllipse = winrt::Microsoft::UI::Xaml::Shapes::Ellipse;
 using ShapeRectangle = winrt::Microsoft::UI::Xaml::Shapes::Rectangle;
+namespace documents = winrt::Microsoft::UI::Xaml::Documents;  // chip-flow inlines
 
 constexpr winrt::Windows::UI::Color kTransparent{0, 0, 0, 0};
-// contract circle transitions
-constexpr double kCircleTransitionSeconds = 0.5;   // inner disc grow/drain
-constexpr double kRingEjectSeconds = 0.5;          // ring slide-out + fade (Apple slideDuration)
-constexpr double kRingFadeInSeconds = 0.35;        // incoming ring fade-in (Apple fadeInDuration)
-constexpr double kRingSize = 56.0;                 // circle diameter
-constexpr double kRingOffscreen = kRingSize * 3.0; // slide distance to clear the slot
+// contract stack transitions (macOS ContractStackView / ContractBlock parity)
+constexpr double kRingSlot = 56.0;                 // fixed circle slot + block height
+constexpr double kMinDiameter = 16.0;              // smallest outer ring
+constexpr double kStreamRingGap = 4.0;             // stream contract: 2nd ring sits this far radially outside the main ring; applied to the diameter doubled (4px radial = 8px diameter delta) (Apple streamRingGap)
+constexpr double kDiscEaseSeconds = 0.5;           // outer-ring + inner-disc size ease
+constexpr double kSlideOffSeconds = 0.4;           // leaver slide-out + fade (Apple slideDuration)
+constexpr double kFadeInSeconds = 0.35;            // arrival drop-in fade
+constexpr double kOffscreen = kRingSlot * 4.0;     // slide distance to clear the row
+constexpr double kEnterDropPx = 10.0;              // arrival slides down from this offset
 
 hstring H(std::string const& s) { return winrt::to_hstring(s); }
 
@@ -173,6 +180,26 @@ Border MakeChip(hstring const& text, winrt::Windows::UI::Color color, bool highl
   return chip;
 }
 
+// Core WinUI has no WrapPanel, so host/ip chips flow inline in a RichTextBlock,
+// which wraps to the next line when the next chip would overflow the column --
+// the "chip flow" the mobile apps get from SwiftUI ChipFlowLayout / Compose
+// FlowRow. AppendChip adds a MakeChip() border; each chip carries a right +
+// bottom margin for the inter-chip and wrap-line gaps.
+RichTextBlock MakeChipFlow() {
+  RichTextBlock flow;
+  flow.TextWrapping(TextWrapping::Wrap);
+  flow.IsTextSelectionEnabled(false);  // the row owns Tapped; no text caret/selection
+  flow.Blocks().Append(documents::Paragraph());
+  return flow;
+}
+
+void AppendChip(RichTextBlock const& flow, FrameworkElement const& chip) {
+  chip.Margin(Thickness{0, 0, 6, 6});
+  documents::InlineUIContainer container;
+  container.Child(chip);
+  flow.Blocks().GetAt(0).as<documents::Paragraph>().Inlines().Append(container);
+}
+
 Button MakeSubtleButton(hstring const& text) {
   Button button;
   button.Content(winrt::box_value(text));
@@ -223,17 +250,38 @@ ToggleSwitch MakeBareToggle() {
 
 // ---- ClientContractsSheet --------------------------------------------------
 
-std::shared_ptr<ClientContractsSheet> ClientContractsSheet::Create(XamlRoot const& root) {
-  auto sheet = std::shared_ptr<ClientContractsSheet>(new ClientContractsSheet());
+namespace anim = winrt::Microsoft::UI::Xaml::Media::Animation;
+
+// a transition collection that animates a panel's children gliding to new
+// layout positions -- the stack "settling" when a circle leaves, and the rows
+// re-ordering on an activity resort or a "N new" merge
+anim::TransitionCollection RepositionTransitions() {
+  anim::TransitionCollection trans;
+  trans.Append(anim::RepositionThemeTransition());
+  return trans;
+}
+
+std::shared_ptr<ClientContractsSheet> ClientContractsSheet::Create(XamlRoot const& root,
+                                                                   SdkHost& sdk,
+                                                                   ContractDetailsMode mode) {
+  auto sheet = std::shared_ptr<ClientContractsSheet>(new ClientContractsSheet(sdk, mode));
   sheet->Build(root);
   return sheet;
 }
 
 void ClientContractsSheet::Build(XamlRoot const& root) {
-  dialog_ = MakeDialog(root, Loc("client_contracts"));
+  dialog_ = MakeDialog(root, Loc(mode_ == ContractDetailsMode::Client ? "client_contracts"
+                                                                      : "provider_contracts"));
 
   list_ = StackPanel();
+  list_.ChildrenTransitions(RepositionTransitions());  // animate row resort / merge
   scroll_ = MakeSheetScroll(list_);
+  {
+    std::weak_ptr<ClientContractsSheet> weak = weak_from_this();
+    scroll_.ViewChanged([weak](IInspectable const&, auto const&) {
+      if (auto self = weak.lock()) self->OnScrollViewChanged();
+    });
+  }
 
   empty_ = StackPanel();
   empty_.Spacing(8);
@@ -241,8 +289,12 @@ void ClientContractsSheet::Build(XamlRoot const& root) {
   empty_.HorizontalAlignment(HorizontalAlignment::Center);
   auto emptyTitle = MakeText(Loc("no_open_contracts"), 14, MutedBrush());
   emptyTitle.HorizontalAlignment(HorizontalAlignment::Center);
-  auto emptyBody = MakeText(Loc("contracts_appear_connected"), 12, FaintBrush());
+  auto emptyBody = MakeText(Loc(mode_ == ContractDetailsMode::Client
+                                    ? "contracts_appear_connected"
+                                    : "contracts_appear_providing"),
+                            12, FaintBrush());
   emptyBody.HorizontalAlignment(HorizontalAlignment::Center);
+  emptyBody.TextAlignment(TextAlignment::Center);
   empty_.Children().Append(emptyTitle);
   empty_.Children().Append(emptyBody);
 
@@ -250,22 +302,62 @@ void ClientContractsSheet::Build(XamlRoot const& root) {
   copiedNote_.Visibility(Visibility::Collapsed);
   copiedNote_.Margin(Thickness{0, 8, 0, 0});
 
-  StackPanel content;
-  content.MinWidth(440);
-  content.Children().Append(scroll_);
-  content.Children().Append(empty_);
-  content.Children().Append(copiedNote_);
-  dialog_.Content(content);
+  // the "N new" chip: floats over the top of the list while scrolled away, and
+  // collects newly prepended rows; tapping it merges + resorts + scrolls to top
+  chip_ = Button();
+  chip_.Visibility(Visibility::Collapsed);
+  chip_.HorizontalAlignment(HorizontalAlignment::Center);
+  chip_.VerticalAlignment(VerticalAlignment::Top);
+  chip_.Margin(Thickness{0, 8, 0, 0});
+  chip_.Padding(Thickness{10, 6, 10, 6});
+  chip_.Background(colors::AccentBrush());
+  chip_.BorderThickness(Thickness{0, 0, 0, 0});
+  chip_.CornerRadius(CornerRadius{12, 12, 12, 12});
+  {
+    StackPanel chipContent;
+    chipContent.Orientation(Orientation::Horizontal);
+    chipContent.Spacing(4);
+    auto up = MakeText(L"↑", 10, SolidColorBrush(colors::kInverseText));
+    up.FontWeight(winrt::Windows::UI::Text::FontWeight{600});
+    up.VerticalAlignment(VerticalAlignment::Center);
+    chipContent.Children().Append(up);
+    chipText_ = MakeText(L"", 12, SolidColorBrush(colors::kInverseText));
+    chipText_.FontFamily(FontFamily(L"Consolas"));
+    chipText_.FontWeight(winrt::Windows::UI::Text::FontWeight{500});
+    chipContent.Children().Append(chipText_);
+    chip_.Content(chipContent);
+  }
+  {
+    std::weak_ptr<ClientContractsSheet> weak = weak_from_this();
+    chip_.Click([weak](IInspectable const&, RoutedEventArgs const&) {
+      if (auto self = weak.lock()) self->ScrollToTop();
+    });
+  }
+
+  StackPanel body;
+  body.MinWidth(440);
+  body.Children().Append(scroll_);
+  body.Children().Append(empty_);
+  body.Children().Append(copiedNote_);
+
+  // overlay the chip on top of the list (single-cell grid)
+  Grid overlay;
+  overlay.Children().Append(body);
+  overlay.Children().Append(chip_);
+  dialog_.Content(overlay);
+
+  // a fresh dialog opens scrolled to the top; report it so the VC merges +
+  // re-sorts to the at-top order (macOS ContractDetailsView.onAppear setAtTop parity)
+  sdk_.SetContractsAtTop(atTop_);
 }
 
 ClientContractsSheet::RowUi ClientContractsSheet::BuildRow(const std::string& clientId) {
   RowUi ui;
   ui.root = StackPanel();
-  ui.root.Padding(Thickness{0, 16, 0, 0});
+  ui.root.Padding(Thickness{0, 16, 0, 16});
   ui.root.Spacing(16);
 
-  // header: the full client id (tap to copy) + the pair count
-  Grid header = MakeStarAutoRow();
+  // the full client id, tap to copy
   TextBlock idText = MakeText(H(clientId), 13, nullptr, true);
   idText.FontFamily(FontFamily(L"Consolas"));
   idText.FontWeight(winrt::Windows::UI::Text::FontWeight{500});
@@ -276,335 +368,434 @@ ClientContractsSheet::RowUi ClientContractsSheet::BuildRow(const std::string& cl
       if (auto self = weak.lock()) self->CopyClientId(copyId);
     });
   }
-  Grid::SetColumn(idText, 0);
-  header.Children().Append(idText);
-  ui.pairCount = MakeText(L"", 12, MutedBrush());
-  ui.pairCount.Visibility(Visibility::Collapsed);
-  Grid::SetColumn(ui.pairCount, 1);
-  header.Children().Append(ui.pairCount);
-  ui.root.Children().Append(header);
+  ui.root.Children().Append(idText);
 
-  // viz: contract circle | transfer lines | companion circle
-  Grid viz;
+  // two top-anchored stacks laid out as four columns mirrored around the row
+  // center: send stats | send circles | receive circles | receive stats
+  Grid stacks;
   {
-    ColumnDefinition v0, v1, v2;
-    v0.Width(GridLength{0, GridUnitType::Auto});
-    v1.Width(GridLength{1, GridUnitType::Star});
-    v2.Width(GridLength{0, GridUnitType::Auto});
-    viz.ColumnDefinitions().Append(v0);
-    viz.ColumnDefinitions().Append(v1);
-    viz.ColumnDefinitions().Append(v2);
+    ColumnDefinition c0, c1;
+    c0.Width(GridLength{1, GridUnitType::Star});
+    c1.Width(GridLength{1, GridUnitType::Star});
+    stacks.ColumnDefinitions().Append(c0);
+    stacks.ColumnDefinitions().Append(c1);
+    stacks.ColumnSpacing(20);
   }
+  ui.send = BuildStack(/*mirrored*/ true, Loc("send"), colors::kUrGreen);
+  ui.send.removalLeading = true;  // send circles slide off toward the left edge
+  Grid::SetColumn(ui.send.root, 0);
+  stacks.Children().Append(ui.send.root);
 
-  auto buildCircle = [](winrt::Windows::UI::Color color, hstring const& label,
-                        CircleUi& circle) {
-    StackPanel panel;
-    panel.Width(92);
-    panel.Spacing(8);
-    circle.color = color;
-    circle.ring = Grid();
-    circle.ring.Width(kRingSize);
-    circle.ring.Height(kRingSize);
-    circle.ring.HorizontalAlignment(HorizontalAlignment::Center);
-    // the ring carrying the current contract identity; its opacity fades in when
-    // admitted, and a replaced ring is ejected as a separate sliding clone
-    circle.current = ShapeEllipse();
-    circle.current.Width(kRingSize);
-    circle.current.Height(kRingSize);
-    circle.current.Stroke(SolidColorBrush(colors::WithAlpha(color, 204)));  // 0.8
-    circle.current.StrokeThickness(1);
-    circle.current.Opacity(0);  // faded in on the first update
-    circle.ring.Children().Append(circle.current);
-    // area-proportional inner disc; grows as the contract is used
-    circle.inner = ShapeEllipse();
-    circle.inner.Width(0);
-    circle.inner.Height(0);
-    circle.inner.HorizontalAlignment(HorizontalAlignment::Center);
-    circle.inner.VerticalAlignment(VerticalAlignment::Center);
-    circle.inner.Fill(SolidColorBrush(colors::WithAlpha(color, 77)));     // 0.3
-    circle.inner.Stroke(SolidColorBrush(colors::WithAlpha(color, 153)));  // 0.6
-    circle.inner.StrokeThickness(0.5);
-    circle.ring.Children().Append(circle.inner);
-    panel.Children().Append(circle.ring);
+  ui.receive = BuildStack(/*mirrored*/ false, Loc("receive"), colors::kUrPink);
+  ui.receive.removalLeading = false;  // receive circles slide off toward the right edge
+  Grid::SetColumn(ui.receive.root, 1);
+  stacks.Children().Append(ui.receive.root);
 
-    StackPanel labels;
-    labels.Spacing(2);
-    labels.HorizontalAlignment(HorizontalAlignment::Center);
-    circle.used = MakeText(L"", 11);
-    circle.used.FontFamily(FontFamily(L"Consolas"));
-    circle.used.FontWeight(winrt::Windows::UI::Text::FontWeight{500});
-    circle.used.HorizontalAlignment(HorizontalAlignment::Center);
-    circle.total = MakeText(L"", 10, MutedBrush());
-    circle.total.FontFamily(FontFamily(L"Consolas"));
-    circle.total.HorizontalAlignment(HorizontalAlignment::Center);
-    auto caption = MakeText(label, 10, FaintBrush());
-    caption.HorizontalAlignment(HorizontalAlignment::Center);
-    labels.Children().Append(circle.used);
-    labels.Children().Append(circle.total);
-    labels.Children().Append(caption);
-    panel.Children().Append(labels);
-    return panel;
-  };
-
-  auto buildLine = [](winrt::Windows::UI::Color color, bool pointsRight, LineUi& line) {
-    StackPanel panel;
-    panel.Spacing(3);
-    line.rate = MakeText(L" ", 9, SolidColorBrush(color));
-    line.rate.FontFamily(FontFamily(L"Consolas"));
-    line.rate.HorizontalAlignment(HorizontalAlignment::Center);
-    panel.Children().Append(line.rate);
-
-    line.line = MakeStarAutoRow();
-    // rebuild the columns as [Auto |*| Auto] with the arrow head on one side
-    line.line.ColumnDefinitions().Clear();
-    ColumnDefinition l0, l1, l2;
-    l0.Width(GridLength{0, GridUnitType::Auto});
-    l1.Width(GridLength{1, GridUnitType::Star});
-    l2.Width(GridLength{0, GridUnitType::Auto});
-    line.line.ColumnDefinitions().Append(l0);
-    line.line.ColumnDefinitions().Append(l1);
-    line.line.ColumnDefinitions().Append(l2);
-    if (!pointsRight) {
-      auto head = MakeText(L"◀", 7, SolidColorBrush(color));
-      head.VerticalAlignment(VerticalAlignment::Center);
-      Grid::SetColumn(head, 0);
-      line.line.Children().Append(head);
-    }
-    ShapeRectangle bar;
-    bar.Height(1);
-    bar.Fill(SolidColorBrush(color));
-    bar.VerticalAlignment(VerticalAlignment::Center);
-    Grid::SetColumn(bar, 1);
-    line.line.Children().Append(bar);
-    if (pointsRight) {
-      auto head = MakeText(L"▶", 7, SolidColorBrush(color));
-      head.VerticalAlignment(VerticalAlignment::Center);
-      Grid::SetColumn(head, 2);
-      line.line.Children().Append(head);
-    }
-    line.line.Opacity(0.25);
-    panel.Children().Append(line.line);
-    return panel;
-  };
-
-  auto contractPanel = buildCircle(colors::kUrGreen, Loc("contract"), ui.contract);
-  ui.contract.removalLeading = true;  // contract ring ejects toward the left edge
-  Grid::SetColumn(contractPanel, 0);
-  viz.Children().Append(contractPanel);
-
-  StackPanel lines;
-  lines.Spacing(12);
-  lines.Margin(Thickness{8, 10, 8, 0});
-  lines.VerticalAlignment(VerticalAlignment::Top);
-  // top line: contract transfer, points right (green); bottom: companion, left
-  lines.Children().Append(buildLine(colors::kUrGreen, true, ui.contractLine));
-  lines.Children().Append(buildLine(colors::kUrPink, false, ui.companionLine));
-  Grid::SetColumn(lines, 1);
-  viz.Children().Append(lines);
-
-  auto companionPanel = buildCircle(colors::kUrPink, Loc("companion"), ui.companion);
-  Grid::SetColumn(companionPanel, 2);
-  viz.Children().Append(companionPanel);
-
-  ui.root.Children().Append(viz);
+  ui.root.Children().Append(stacks);
 
   // separator under the row
   Border separator;
   separator.Height(1);
-  separator.Margin(Thickness{0, 16, 0, 0});
   separator.Background(colors::BorderBrush());
   ui.root.Children().Append(separator);
   return ui;
 }
 
-void ClientContractsSheet::UpdateRow(RowUi& ui, const ContractClientRow& row) {
-  const double now = NowSeconds();
-  if (1 < row.pairCount) {
-    ui.pairCount.Text(hstring{Format("contract_count", row.pairCount)});
-    ui.pairCount.Visibility(Visibility::Visible);
+ClientContractsSheet::StackUi ClientContractsSheet::BuildStack(bool mirrored, hstring const& title,
+                                                               winrt::Windows::UI::Color color) {
+  StackUi stack;
+  stack.color = color;
+  stack.mirrored = mirrored;
+  const auto side = mirrored ? HorizontalAlignment::Right : HorizontalAlignment::Left;
+
+  stack.root = StackPanel();
+  stack.root.Spacing(12);
+  stack.root.HorizontalAlignment(side);
+
+  // direction header: title, arrow, and the summed bit rate, ordered so the rate
+  // always lands against the row center (over its own circle column): send reads
+  // "title arrow rate", receive reads "rate arrow title".
+  StackPanel header;
+  header.Orientation(Orientation::Horizontal);
+  header.Spacing(5);
+  header.HorizontalAlignment(side);
+  auto titleText = MakeText(title, 11, MutedBrush());
+  titleText.VerticalAlignment(VerticalAlignment::Center);
+  auto arrow = MakeText(mirrored ? L"→" : L"←", 9, SolidColorBrush(color));  // -> / <-
+  arrow.FontWeight(winrt::Windows::UI::Text::FontWeight{600});
+  arrow.VerticalAlignment(VerticalAlignment::Center);
+  stack.rate = MakeText(L" ", 9, SolidColorBrush(color));
+  stack.rate.FontFamily(FontFamily(L"Consolas"));
+  stack.rate.FontWeight(winrt::Windows::UI::Text::FontWeight{500});
+  stack.rate.VerticalAlignment(VerticalAlignment::Center);
+  stack.rate.Opacity(0);
+  if (mirrored) {
+    header.Children().Append(titleText);
+    header.Children().Append(arrow);
+    header.Children().Append(stack.rate);
   } else {
-    ui.pairCount.Visibility(Visibility::Collapsed);
+    header.Children().Append(stack.rate);
+    header.Children().Append(arrow);
+    header.Children().Append(titleText);
   }
+  stack.root.Children().Append(header);
 
-  auto updateCircle = [now](CircleUi& circle, int64_t used, int64_t total,
-                            const std::string& signature, bool present) {
-    // inner disc area proportional to the used fraction, minimum visible size
-    const double fraction =
-        0 < total ? (std::min)(1.0, static_cast<double>(used) / static_cast<double>(total))
-                  : 0;
-    const double target = 0 < fraction ? (std::max)(6.0, kRingSize * std::sqrt(fraction)) : 0;
-    if (target != circle.sizeTo) {
-      // ease the disc toward its new size from wherever it currently is
-      const double progress = circle.sizeStart <= 0
-                                  ? 1.0
-                                  : EaseOutCubic((now - circle.sizeStart) /
-                                                 kCircleTransitionSeconds);
-      circle.sizeFrom = circle.sizeFrom + (circle.sizeTo - circle.sizeFrom) * progress;
-      circle.sizeTo = target;
-      circle.sizeStart = now;
-    }
+  // the pile, newest first; children glide as the stack settles / grows down
+  stack.pile = StackPanel();
+  stack.pile.Spacing(4);
+  stack.pile.HorizontalAlignment(side);
+  stack.pile.ChildrenTransitions(RepositionTransitions());
+  stack.root.Children().Append(stack.pile);
 
-    // ring eject/admit lifecycle (mirrors Apple ContractRing)
-    if (!circle.initialized) {
-      // first sight: occupy the slot instantly, no eject or fade
-      circle.initialized = true;
-      circle.signature = signature;
-      circle.present = present;
-      circle.currentShown = present;
-      circle.fadeStart = 0;  // 0 => full opacity once shown
-    } else {
-      // (a) a replaced contract (new id signature): eject the on-screen ring and
-      // admit the new id -- but only eject a ring that is actually visible, and
-      // only fade the new one in now if nothing is still leaving
-      if (signature != circle.signature) {
-        if (circle.currentShown) EjectRing(circle, now);
-        circle.signature = signature;
-        circle.currentShown = false;
-        circle.fadeStart = 0;
-        if (present && circle.ejections.empty()) {
-          circle.currentShown = true;
-          circle.fadeStart = now;  // fade in the incoming ring
-        }
-      }
-      // (b) the row closing/reopening: eject on close (show nothing after),
-      // fade back in on reopen
-      if (present != circle.present) {
-        circle.present = present;
-        if (present) {
-          if (!circle.currentShown && circle.ejections.empty()) {
-            circle.currentShown = true;
-            circle.fadeStart = now;
-          }
-        } else if (circle.currentShown) {
-          EjectRing(circle, now);
-          circle.currentShown = false;
-        }
-      }
-    }
-
-    circle.used.Text(H(FormatByteCountCompact(used)));
-    circle.total.Text(hstring{Format("of_total", Widen(FormatByteCountCompact(total)))});
-    AnimateCircle(circle, now);
-  };
-  updateCircle(ui.contract, row.contractUsedByteCount, row.contractByteCount, row.contractId,
-               !row.closing);
-  updateCircle(ui.companion, row.companionContractUsedByteCount,
-               row.companionContractByteCount, row.companionContractId, !row.closing);
-
-  auto updateLine = [](LineUi& line, int64_t bitRate) {
-    if (0 < bitRate) {
-      line.rate.Text(H(FormatBitRate(bitRate)));
-      line.rate.Opacity(1);
-      line.line.Opacity(0.9);
-    } else {
-      line.rate.Text(L" ");
-      line.rate.Opacity(0);
-      line.line.Opacity(0.25);
-    }
-  };
-  updateLine(ui.contractLine, row.contractBitRate);
-  updateLine(ui.companionLine, row.companionContractBitRate);
+  // the scale anchor ("max N"): every circle is sized relative to this
+  stack.maxLabel = MakeText(L"", 10, FaintBrush());
+  stack.maxLabel.FontFamily(FontFamily(L"Consolas"));
+  stack.maxLabel.HorizontalAlignment(side);
+  stack.maxLabel.Opacity(0);
+  stack.root.Children().Append(stack.maxLabel);
+  return stack;
 }
 
-void ClientContractsSheet::EjectRing(CircleUi& circle, double now) {
-  // an independent clone of the current ring; it slides out + fades once and is
-  // never reversed, even if further contracts change while it is still leaving
-  CircleUi::Ejection ejection;
-  ejection.start = now;
-  ejection.ring = ShapeEllipse();
-  ejection.ring.Width(kRingSize);
-  ejection.ring.Height(kRingSize);
-  ejection.ring.Stroke(SolidColorBrush(colors::WithAlpha(circle.color, 204)));  // 0.8
-  ejection.ring.StrokeThickness(1);
-  ejection.shift = TranslateTransform();
-  ejection.ring.RenderTransform(ejection.shift);
-  // behind the current ring + disc so the incoming ring reads on top
-  circle.ring.Children().InsertAt(0, ejection.ring);
-  circle.ejections.push_back(ejection);
+ClientContractsSheet::BlockUi ClientContractsSheet::BuildBlock(StackUi const& stack,
+                                                               const ContractEntry& entry) {
+  BlockUi block;
+  block.contractId = entry.contractId;
+  block.usedByteCount = entry.usedByteCount;
+  block.totalByteCount = entry.totalByteCount;
+  block.bitRate = entry.bitRate;
+  block.diaFrom = kMinDiameter;
+  block.diaTo = kMinDiameter;
+
+  // a mirrored block lays out stats-then-circle so the circle column sits against
+  // the row center; an unmirrored block is circle-then-stats. A fixed height keeps
+  // the stack falling in uniform increments.
+  block.root = StackPanel();
+  block.root.Orientation(Orientation::Horizontal);
+  block.root.Spacing(10);
+  block.root.Height(kRingSlot);
+  block.root.HorizontalAlignment(stack.mirrored ? HorizontalAlignment::Right
+                                                : HorizontalAlignment::Left);
+  block.shift = TranslateTransform();
+  block.root.RenderTransform(block.shift);
+
+  // the circle: outer total ring + inner used-fraction disc, centered in a slot
+  Grid circle;
+  circle.Width(kRingSlot);
+  circle.Height(kRingSlot);
+  // a stream contract (one carrying a stream id) reads as a double concentric
+  // ring: a second ring ~2px outside the main outer ring (sized diameter +
+  // kStreamRingGap), kept outside the inner disc so it stays visible when full.
+  // Appended first so it sits behind the main ring/disc; AnimateStack keeps its
+  // diameter and stroke in step with the main ring.
+  if (entry.hasStream) {
+    block.streamRing = ShapeEllipse();
+    block.streamRing.Stroke(SolidColorBrush(colors::WithAlpha(stack.color, 140)));
+    block.streamRing.StrokeThickness(1);
+    block.streamRing.Width(kMinDiameter + 2 * kStreamRingGap);
+    block.streamRing.Height(kMinDiameter + 2 * kStreamRingGap);
+    block.streamRing.HorizontalAlignment(HorizontalAlignment::Center);
+    block.streamRing.VerticalAlignment(VerticalAlignment::Center);
+    circle.Children().Append(block.streamRing);
+  }
+  block.ring = ShapeEllipse();
+  block.ring.Stroke(SolidColorBrush(colors::WithAlpha(stack.color, 140)));
+  block.ring.StrokeThickness(1);
+  block.ring.Width(kMinDiameter);
+  block.ring.Height(kMinDiameter);
+  block.ring.HorizontalAlignment(HorizontalAlignment::Center);
+  block.ring.VerticalAlignment(VerticalAlignment::Center);
+  circle.Children().Append(block.ring);
+  block.inner = ShapeEllipse();
+  block.inner.Fill(SolidColorBrush(colors::WithAlpha(stack.color, 77)));     // 0.3
+  block.inner.Stroke(SolidColorBrush(colors::WithAlpha(stack.color, 153)));  // 0.6
+  block.inner.StrokeThickness(0.5);
+  block.inner.Width(0);
+  block.inner.Height(0);
+  block.inner.HorizontalAlignment(HorizontalAlignment::Center);
+  block.inner.VerticalAlignment(VerticalAlignment::Center);
+  circle.Children().Append(block.inner);
+
+  // used / of-total counts, beside the circle (away from the row center)
+  StackPanel stats;
+  stats.Spacing(2);
+  stats.VerticalAlignment(VerticalAlignment::Center);
+  block.used = MakeText(H(FormatByteCountCompact(entry.usedByteCount)), 11);
+  block.used.FontFamily(FontFamily(L"Consolas"));
+  block.used.FontWeight(winrt::Windows::UI::Text::FontWeight{500});
+  block.total =
+      MakeText(hstring{Format("of_total", Widen(FormatByteCountCompact(entry.totalByteCount)))}, 10,
+               MutedBrush());
+  block.total.FontFamily(FontFamily(L"Consolas"));
+  const auto textAlign = stack.mirrored ? TextAlignment::Right : TextAlignment::Left;
+  block.used.TextAlignment(textAlign);
+  block.total.TextAlignment(textAlign);
+  stats.Children().Append(block.used);
+  stats.Children().Append(block.total);
+
+  if (stack.mirrored) {
+    block.root.Children().Append(stats);
+    block.root.Children().Append(circle);
+  } else {
+    block.root.Children().Append(circle);
+    block.root.Children().Append(stats);
+  }
+  return block;
 }
 
-void ClientContractsSheet::AnimateCircle(CircleUi& circle, double now) {
-  // eased inner disc size (persists across a swap; never ejects)
-  const double progress = circle.sizeStart <= 0
-                              ? 1.0
-                              : EaseOutCubic((now - circle.sizeStart) /
-                                             kCircleTransitionSeconds);
-  const double size = circle.sizeFrom + (circle.sizeTo - circle.sizeFrom) * progress;
-  circle.inner.Width((std::max)(0.0, size));
-  circle.inner.Height((std::max)(0.0, size));
+void ClientContractsSheet::SyncStack(StackUi& stack, const std::vector<ContractEntry>& truth,
+                                     int64_t byteCount, double now) {
+  // header run total: cumulative bytes moved on this stack since the peer last
+  // went idle (sits over this stack's circle column)
+  if (0 < byteCount) {
+    stack.rate.Text(H(FormatByteCountCompact(byteCount)));
+    stack.rate.Opacity(1);
+  } else {
+    stack.rate.Text(L" ");
+    stack.rate.Opacity(0);
+  }
 
-  // advance ejecting rings: each slides toward its edge and fades on its own
-  // fixed schedule, never reversing; drop it once it has fully left
-  const double dir = circle.removalLeading ? -1.0 : 1.0;
-  for (auto it = circle.ejections.begin(); it != circle.ejections.end();) {
-    const double p = EaseInOutCubic((now - it->start) / kRingEjectSeconds);
-    it->shift.X(dir * kRingOffscreen * p);
-    it->ring.Opacity(1.0 - p);
-    if (1.0 <= p) {
-      uint32_t index = 0;
-      if (circle.ring.Children().IndexOf(it->ring, index)) {
-        circle.ring.Children().RemoveAt(index);
+  std::unordered_map<std::string, const ContractEntry*> truthById;
+  for (const auto& e : truth) truthById.emplace(e.contractId, &e);
+
+  // 1. surviving blocks track their values live; a departed block starts leaving;
+  //    a leaving block that reappears before it is gone is re-admitted
+  std::unordered_set<std::string> onScreen;
+  for (auto& block : stack.blocks) {
+    auto it = truthById.find(block.contractId);
+    if (it != truthById.end()) {
+      onScreen.insert(block.contractId);
+      const ContractEntry& e = *it->second;
+      block.usedByteCount = e.usedByteCount;
+      block.totalByteCount = e.totalByteCount;
+      block.bitRate = e.bitRate;
+      block.used.Text(H(FormatByteCountCompact(e.usedByteCount)));
+      block.total.Text(
+          hstring{Format("of_total", Widen(FormatByteCountCompact(e.totalByteCount)))});
+      if (block.leaving) {  // reappeared: cancel the slide-off
+        block.leaving = false;
+        block.animStart = 0;
+        block.shift.X(0);
+        block.root.Opacity(1);
       }
-      it = circle.ejections.erase(it);
-    } else {
-      ++it;
+    } else if (!block.leaving) {
+      block.leaving = true;
+      block.animStart = now;
     }
   }
 
-  // admit a ring that is waiting to fade in, once the last ejection has left and
-  // a ring is still wanted in the slot
-  if (circle.ejections.empty() && circle.present && !circle.currentShown) {
-    circle.currentShown = true;
-    circle.fadeStart = now;
+  // 2. arrivals: truth ids with no block yet, admitted newest-on-top. truth is
+  //    newest first, so inserting each missing id at the top in reverse order
+  //    lands the newest contract at the very top of the pile.
+  for (auto it = truth.rbegin(); it != truth.rend(); ++it) {
+    if (onScreen.count(it->contractId)) continue;
+    BlockUi block = BuildBlock(stack, *it);
+    block.entering = true;
+    block.animStart = now;
+    block.root.Opacity(0);
+    stack.pile.Children().InsertAt(0, block.root);
+    stack.blocks.insert(stack.blocks.begin(), std::move(block));
   }
 
-  // current ring opacity: hidden while waiting, eased in once admitted, then held
-  double opacity;
-  if (!circle.currentShown) {
-    opacity = 0.0;
-  } else if (circle.fadeStart <= 0) {
-    opacity = 1.0;
-  } else {
-    opacity = EaseInOutCubic((now - circle.fadeStart) / kRingFadeInSeconds);
-    if (1.0 <= opacity) circle.fadeStart = 0;  // settle to full opacity
+  // 3. size everything against the new stack max and advance one frame
+  AnimateStack(stack, now);
+}
+
+void ClientContractsSheet::AnimateStack(StackUi& stack, double now) {
+  // scale reference: the largest total on screen (leavers included, so survivors
+  // rescale as the pile settles rather than mid-slide)
+  int64_t stackMax = 0;
+  for (const auto& b : stack.blocks) stackMax = (std::max)(stackMax, b.totalByteCount);
+
+  const double dir = stack.removalLeading ? -1.0 : 1.0;
+  for (auto it = stack.blocks.begin(); it != stack.blocks.end();) {
+    BlockUi& block = *it;
+
+    // target outer diameter: area-proportional to the stack max
+    double diaTarget = kMinDiameter;
+    if (0 < stackMax && 0 < block.totalByteCount) {
+      double d = kRingSlot * std::sqrt(static_cast<double>(block.totalByteCount) /
+                                       static_cast<double>(stackMax));
+      diaTarget = (std::max)(kMinDiameter, (std::min)(kRingSlot, d));
+    }
+    if (diaTarget != block.diaTo) {  // re-ease from wherever the diameter is now
+      double p =
+          block.diaStart <= 0 ? 1.0 : EaseOutCubic((now - block.diaStart) / kDiscEaseSeconds);
+      block.diaFrom = block.diaFrom + (block.diaTo - block.diaFrom) * p;
+      block.diaTo = diaTarget;
+      block.diaStart = now;
+    }
+    double diaP =
+        block.diaStart <= 0 ? 1.0 : EaseOutCubic((now - block.diaStart) / kDiscEaseSeconds);
+    double dia = block.diaFrom + (block.diaTo - block.diaFrom) * diaP;
+    block.ring.Width(dia);
+    block.ring.Height(dia);
+
+    // inner disc: area-proportional to the used fraction of this contract
+    double fraction = 0 < block.totalByteCount
+                          ? (std::min)(1.0, static_cast<double>(block.usedByteCount) /
+                                                static_cast<double>(block.totalByteCount))
+                          : 0;
+    double innerTarget = 0 < fraction ? (std::max)(4.0, dia * std::sqrt(fraction)) : 0;
+    if (innerTarget != block.innerTo) {
+      double p =
+          block.innerStart <= 0 ? 1.0 : EaseOutCubic((now - block.innerStart) / kDiscEaseSeconds);
+      block.innerFrom = block.innerFrom + (block.innerTo - block.innerFrom) * p;
+      block.innerTo = innerTarget;
+      block.innerStart = now;
+    }
+    double innerP =
+        block.innerStart <= 0 ? 1.0 : EaseOutCubic((now - block.innerStart) / kDiscEaseSeconds);
+    double inner = block.innerFrom + (block.innerTo - block.innerFrom) * innerP;
+    block.inner.Width((std::max)(0.0, inner));
+    block.inner.Height((std::max)(0.0, inner));
+
+    // a contract moving bytes brightens its ring
+    const bool active = 0 < block.bitRate;
+    block.ring.Stroke(SolidColorBrush(colors::WithAlpha(stack.color, active ? 255 : 140)));
+    block.ring.StrokeThickness(active ? 1.5 : 1);
+
+    // a stream contract's second ring tracks the main ring: same color + width,
+    // sized a 4px radial gap outside it (8px diameter delta; the double concentric ring)
+    if (block.streamRing) {
+      block.streamRing.Width(dia + 2 * kStreamRingGap);
+      block.streamRing.Height(dia + 2 * kStreamRingGap);
+      block.streamRing.Stroke(SolidColorBrush(colors::WithAlpha(stack.color, active ? 255 : 140)));
+      block.streamRing.StrokeThickness(active ? 1.5 : 1);
+    }
+
+    if (block.leaving) {
+      double p = EaseInOutCubic((now - block.animStart) / kSlideOffSeconds);
+      block.shift.X(dir * kOffscreen * p);
+      block.root.Opacity(1.0 - p);
+      if (1.0 <= p) {
+        uint32_t index = 0;
+        if (stack.pile.Children().IndexOf(block.root, index)) {
+          // the survivors below fall into the space via the pile's reposition
+          // transition
+          stack.pile.Children().RemoveAt(index);
+        }
+        it = stack.blocks.erase(it);
+        continue;
+      }
+    } else if (block.entering) {
+      double p = EaseInOutCubic((now - block.animStart) / kFadeInSeconds);
+      block.root.Opacity(p);
+      block.shift.Y((1.0 - p) * -kEnterDropPx);  // drops down into place
+      if (1.0 <= p) {
+        block.entering = false;
+        block.root.Opacity(1);
+        block.shift.Y(0);
+      }
+    }
+    ++it;
   }
-  circle.current.Opacity(opacity);
+
+  // the scale anchor
+  if (stack.blocks.empty()) {
+    stack.maxLabel.Opacity(0);
+  } else {
+    stack.maxLabel.Text(
+        hstring{Format("contract_stack_max", Widen(FormatByteCountCompact(stackMax)))});
+    stack.maxLabel.Opacity(1);
+  }
+}
+
+void ClientContractsSheet::Update(const std::vector<ContractPeerRow>& rows) {
+  // the SDK view controller hands back the FINAL, already-ordered rows (the
+  // at-top activity sort and the scrolled-away freeze both happen inside it)
+  rows_ = rows;
+  const bool empty = rows.empty();
+  empty_.Visibility(empty ? Visibility::Visible : Visibility::Collapsed);
+  scroll_.Visibility(empty ? Visibility::Collapsed : Visibility::Visible);
+  RenderList();
+  UpdateChip();
 }
 
 void ClientContractsSheet::Tick() {
   const double now = NowSeconds();
   for (auto& [id, ui] : rowUis_) {
-    AnimateCircle(ui.contract, now);
-    AnimateCircle(ui.companion, now);
+    AnimateStack(ui.send, now);
+    AnimateStack(ui.receive, now);
   }
 }
 
-void ClientContractsSheet::Update(const std::vector<ContractClientRow>& rows) {
-  empty_.Visibility(rows.empty() ? Visibility::Visible : Visibility::Collapsed);
-  scroll_.Visibility(rows.empty() ? Visibility::Collapsed : Visibility::Visible);
+void ClientContractsSheet::OnScrollViewChanged() {
+  const bool atTop = scroll_.VerticalOffset() <= 4.0;
+  if (atTop != atTop_) {
+    atTop_ = atTop;
+    // report scroll to the SDK VC: at the top it re-sorts active-above-idle and
+    // merges pending rows; scrolled away it freezes membership + order and
+    // collects new rows into the pending count. A rows-changed push follows when
+    // the ordering actually changed.
+    sdk_.SetContractsAtTop(atTop);
+  }
+  UpdateChip();
+}
 
+void ClientContractsSheet::RenderList() {
+  // render the SDK's rows in order as-is; the sheet holds no ordering state
   std::vector<std::string> ids;
-  ids.reserve(rows.size());
-  for (const auto& row : rows) ids.push_back(row.clientId);
+  ids.reserve(rows_.size());
+  for (const auto& row : rows_) ids.push_back(row.clientId);
 
-  if (ids != renderedIds_) {
-    // membership or order changed: re-append in order, reusing built rows so
-    // in-place data updates don't reset the scroll position every second
-    list_.Children().Clear();
-    std::unordered_map<std::string, RowUi> kept;
-    for (const auto& row : rows) {
-      auto it = rowUis_.find(row.clientId);
-      RowUi ui = it != rowUis_.end() ? it->second : BuildRow(row.clientId);
-      list_.Children().Append(ui.root);
-      kept[row.clientId] = ui;
+  // build any newly shown peer
+  for (const auto& id : ids)
+    if (!rowUis_.count(id)) rowUis_.emplace(id, BuildRow(id));
+
+  // drop rows no longer shown (their circles already slid off when the SDK
+  // emptied the stacks; now the row itself leaves)
+  for (auto it = rowUis_.begin(); it != rowUis_.end();) {
+    if (std::find(ids.begin(), ids.end(), it->first) == ids.end()) {
+      uint32_t index = 0;
+      if (list_.Children().IndexOf(it->second.root, index)) list_.Children().RemoveAt(index);
+      it = rowUis_.erase(it);
+    } else {
+      ++it;
     }
-    rowUis_ = std::move(kept);
-    renderedIds_ = ids;
   }
-  for (const auto& row : rows) {
+
+  // reconcile the child order to `ids` by moving in place, so a resort / merge
+  // glides the rows via the list's RepositionThemeTransition
+  for (uint32_t i = 0; i < ids.size(); ++i) {
+    auto root = rowUis_.at(ids[i]).root;
+    uint32_t cur = 0;
+    if (list_.Children().IndexOf(root, cur)) {
+      if (cur != i) {
+        list_.Children().RemoveAt(cur);
+        list_.Children().InsertAt(i, root);
+      }
+    } else {
+      list_.Children().InsertAt(i, root);
+    }
+  }
+  renderedIds_ = ids;
+
+  // update every shown row's stacks
+  const double now = NowSeconds();
+  for (const auto& row : rows_) {
     auto it = rowUis_.find(row.clientId);
-    if (it != rowUis_.end()) UpdateRow(it->second, row);
+    if (it == rowUis_.end()) continue;
+    SyncStack(it->second.send, row.send, row.sendByteCount, now);
+    SyncStack(it->second.receive, row.receive, row.receiveByteCount, now);
   }
+}
+
+void ClientContractsSheet::UpdateChip() {
+  // the SDK owns the "N new" count (rows that arrived while scrolled away)
+  const int64_t pending = sdk_.ContractsPendingCount();
+  if (!atTop_ && 0 < pending) {
+    chipText_.Text(hstring{Plural("new_items_count", pending)});
+    chip_.Visibility(Visibility::Visible);
+  } else {
+    chip_.Visibility(Visibility::Collapsed);
+  }
+}
+
+void ClientContractsSheet::ScrollToTop() {
+  // chip tap: report we're back at the top (the VC merges + re-sorts and resets
+  // the pending count), then scroll -- ViewChanged then refreshes the chip
+  sdk_.SetContractsAtTop(true);
+  scroll_.ChangeView(nullptr, winrt::Windows::Foundation::IReference<double>{0.0}, nullptr);
 }
 
 void ClientContractsSheet::CopyClientId(const std::string& clientId) {
@@ -750,21 +941,22 @@ void SplitRulesSheet::RenderRules() {
     row.Padding(Thickness{0, 4, 0, 4});
     row.Background(SolidColorBrush(kTransparent));  // hit-testable for Tapped
 
-    // split-rule hosts can mix host names and raw ips; cluster them like a row
+    // split-rule hosts can mix host names and raw ips; the whole rule is active,
+    // so show its host base names + exact ips as green chips (mirrors iOS
+    // SplitRuleRowView / Android SplitRuleRow)
     std::vector<std::string> hostNames, ips;
     for (const auto& value : rule.hosts) {
       (IsIpAddressValue(value) ? ips : hostNames).push_back(value);
     }
-    StackPanel text;
-    text.Spacing(2);
-    text.Children().Append(
-        MakeText(H(FormatHostClusterText(hostNames, ips)), 13, nullptr, true));
-    // CLDR plural from the store; never inflect the count here
-    text.Children().Append(
-        MakeText(hstring{Plural("host_count", static_cast<int64_t>(rule.hosts.size()))}, 11,
-                 FaintBrush()));
-    Grid::SetColumn(text, 0);
-    row.Children().Append(text);
+    RichTextBlock flow = MakeChipFlow();
+    for (const auto& name : urnet::collapseHostNames(hostNames)) {
+      AppendChip(flow, MakeChip(H(name), colors::kUrGreen, true));
+    }
+    for (const auto& ip : ips) {
+      AppendChip(flow, MakeChip(H(ip), colors::kUrGreen, true));
+    }
+    Grid::SetColumn(flow, 0);
+    row.Children().Append(flow);
 
     auto chip = MakeChip(Loc("local"), colors::kUrGreen, true);
     Grid::SetColumn(chip, 1);
@@ -811,8 +1003,27 @@ void SplitRulesSheet::RenderActivity() {
 
     StackPanel text;
     text.Spacing(2);
-    text.Children().Append(
-        MakeText(H(FormatHostClusterText(action.hosts, action.ips)), 13, nullptr, true));
+
+    // host/ip chips (wrap): the exact matched hosts + ips (green), then the
+    // remaining hosts collapsed to base names (muted), then a single "X IPs" pill
+    // for the remaining ips. Mirrors iOS BlockActionRowView / Android BlockActionRow.
+    RichTextBlock flow = MakeChipFlow();
+    for (const auto& name : action.matchedHosts) {
+      AppendChip(flow, MakeChip(H(name), colors::kUrGreen, true));
+    }
+    for (const auto& ip : action.matchedIps) {
+      AppendChip(flow, MakeChip(H(ip), colors::kUrGreen, true));
+    }
+    for (const auto& name : urnet::collapseHostNames(action.hosts)) {
+      AppendChip(flow, MakeChip(H(name), colors::kTextMuted, false));
+    }
+    if (!action.ips.empty()) {
+      AppendChip(flow,
+                 MakeChip(hstring{Plural("ip_count", static_cast<int64_t>(action.ips.size()))},
+                          colors::kTextMuted, false));
+    }
+    text.Children().Append(flow);
+
     StackPanel caption;
     caption.Orientation(Orientation::Horizontal);
     caption.Spacing(6);
@@ -875,15 +1086,20 @@ void SplitRulesSheet::OpenEditorForAction(const BlockActionItem& action) {
       }
     }
   }
-  std::vector<std::string> hostValues = action.hosts;
+  // every host value (matched + unmatched), host names first, then ips (iOS
+  // BlockActionItem.hostValues) so the editor's checklist sees everything
+  std::vector<std::string> hostValues = action.matchedHosts;
+  hostValues.insert(hostValues.end(), action.hosts.begin(), action.hosts.end());
+  hostValues.insert(hostValues.end(), action.matchedIps.begin(), action.matchedIps.end());
   hostValues.insert(hostValues.end(), action.ips.begin(), action.ips.end());
   if (rule) {
     OpenEditor(rule->overrideId, OrderedUnion(rule->hosts, hostValues),
                std::set<std::string>(rule->hosts.begin(), rule->hosts.end()));
   } else {
-    // new rule from the action's host values, host names pre-selected
-    const auto& preselect = action.hosts.empty() ? action.ips : action.hosts;
-    OpenEditor("", hostValues, std::set<std::string>(preselect.begin(), preselect.end()));
+    // create a rule from the action's host values, all initially UNSELECTED: the
+    // common case is picking one or a few server names, so pre-selecting
+    // everything just makes the user uncheck the rest (iOS/Android parity)
+    OpenEditor("", hostValues, std::set<std::string>{});
   }
 }
 

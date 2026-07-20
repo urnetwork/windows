@@ -104,6 +104,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnConnectionModeChanged(
       winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
       winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
+  void OnProvideModeChanged(
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
   void OnFixedIpToggled(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnStrongAnonToggled(winrt::Windows::Foundation::IInspectable const&,
@@ -192,7 +195,14 @@ struct MainWindow : MainWindowT<MainWindow> {
   // Non-const: reads the ConnectionModeBar / ModeWebItem / ModeStreamingItem x:Name
   // accessors, which C++/WinRT generates as non-const members of the .xaml.g.h base.
   urnw::ConnectionMode SelectedMode();
+  // provide control mode picker <-> the SDK's mode string (same non-const note)
+  std::string SelectedProvideMode();
   void ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& settings);
+  // The unapplied-recommendation pill atop the dns card: compares the applied dns
+  // settings against the connected country's regional recommendation (else the
+  // safe defaults) and shows/collapses the pill. Recomputed on dns-setting changes
+  // (ApplyDnsCard) and connected-country changes (ApplyStats).
+  void ApplyDnsRecommendationPill();
   void ApplySplitRuleCount();
   void ApplyBlockerUi(bool on);
   void OnChartTick();
@@ -260,7 +270,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::unique_ptr<urnw::TransferChart> localChart_;
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer chartTimer_{nullptr};
   uint32_t chartTickCount_ = 0;
-  std::vector<urnw::ContractClientRow> contractRows_;
+  std::vector<urnw::ContractPeerRow> contractRows_;
   std::vector<urnw::BlockActionItem> blockActions_;
   std::vector<urnw::SplitRule> splitRules_;
   int64_t allowedCount_ = 0;
