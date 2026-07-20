@@ -637,6 +637,10 @@ správným způsobem</value>
     <value>Kontrakty: {}</value>
     <comment>A label that shows the number of contracts for a given client. The argument is the number of contracts.</comment>
   </data>
+  <data name="contract_stack_max" xml:space="preserve">
+    <value>max {}</value>
+    <comment>A faint scale-reference label under a stack of contract circles, giving the size of the largest contract in the stack. The argument is a formatted byte size (e.g. "128 MiB").</comment>
+  </data>
   <data name="contracts_appear_connected" xml:space="preserve">
     <value>Kontrakty se zde zobrazí po připojení.</value>
     <comment>A description of the contract details view.</comment>
@@ -1801,6 +1805,10 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   <data name="ready_to_connect" xml:space="preserve">
     <value>Připraveno k připojení</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="receive" xml:space="preserve">
+    <value>Přijmout</value>
+    <comment>Direction label for the stack of contracts receiving data from a peer, shown next to Send.</comment>
   </data>
   <data name="receive_notifications" xml:space="preserve">
     <value>Přijímání oznámení o připojení</value>

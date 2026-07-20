@@ -606,6 +606,10 @@ richtig auf</value>
     <value>{} Verträge</value>
     <comment>A label that shows the number of contracts for a given client. The argument is the number of contracts.</comment>
   </data>
+  <data name="contract_stack_max" xml:space="preserve">
+    <value>max {}</value>
+    <comment>A faint scale-reference label under a stack of contract circles, giving the size of the largest contract in the stack. The argument is a formatted byte size (e.g. "128 MiB").</comment>
+  </data>
   <data name="contracts_appear_connected" xml:space="preserve">
     <value>Verträge erscheinen hier, während du verbunden bist.</value>
     <comment>A description of the contract details view.</comment>
@@ -1730,6 +1734,10 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
   <data name="ready_to_connect" xml:space="preserve">
     <value>Bereit zur Verbindung</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="receive" xml:space="preserve">
+    <value>Empfange</value>
+    <comment>Direction label for the stack of contracts receiving data from a peer, shown next to Send.</comment>
   </data>
   <data name="receive_notifications" xml:space="preserve">
     <value>Verbindungsbenachrichtigungen erhalten</value>

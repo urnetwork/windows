@@ -606,6 +606,10 @@ bonne manière</value>
     <value>{} contrats</value>
     <comment>A label that shows the number of contracts for a given client. The argument is the number of contracts.</comment>
   </data>
+  <data name="contract_stack_max" xml:space="preserve">
+    <value>max {}</value>
+    <comment>A faint scale-reference label under a stack of contract circles, giving the size of the largest contract in the stack. The argument is a formatted byte size (e.g. "128 MiB").</comment>
+  </data>
   <data name="contracts_appear_connected" xml:space="preserve">
     <value>Les contrats apparaissent ici lorsque vous êtes connecté.</value>
     <comment>A description of the contract details view.</comment>
@@ -1730,6 +1734,10 @@ le plus vaste, le plus sûr et le plus décentralisé au monde.</value>
   <data name="ready_to_connect" xml:space="preserve">
     <value>Prêt à connecter</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="receive" xml:space="preserve">
+    <value>Reçois</value>
+    <comment>Direction label for the stack of contracts receiving data from a peer, shown next to Send.</comment>
   </data>
   <data name="receive_notifications" xml:space="preserve">
     <value>Recevoir des notifications de connexion</value>

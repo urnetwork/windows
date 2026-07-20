@@ -170,6 +170,10 @@
     <value>App split rules</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>0 split apps</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>Apply bonus</value>
     <comment>Call to action</comment>
@@ -626,6 +630,10 @@ right way</value>
     <value>{} contracts</value>
     <comment>A label that shows the number of contracts for a given client. The argument is the number of contracts.</comment>
   </data>
+  <data name="contract_stack_max" xml:space="preserve">
+    <value>max {}</value>
+    <comment>A faint scale-reference label under a stack of contract circles, giving the size of the largest contract in the stack. The argument is a formatted byte size (e.g. "128 MiB").</comment>
+  </data>
   <data name="contracts_appear_connected" xml:space="preserve">
     <value>Contracts appear here while connected.</value>
     <comment>A description of the contract details view.</comment>
@@ -810,9 +818,21 @@ right way</value>
     <value>Display network on leaderboard</value>
     <comment>Call to action</comment>
   </data>
+  <data name="dns_default_not_applied" xml:space="preserve">
+    <value>The default safe settings are not applied</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS over HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
+  </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>The default safe settings are not applied</value>
+    <comment>dns settings</comment>
+  </data>
+  <data name="dns_pill_recommended" xml:space="preserve">
+    <value>There are unapplied recommended settings for {}</value>
+    <comment>dns settings</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>The strongest security rules are known not to work in {}. There are less secure recommended DNS settings that work better.</value>
@@ -825,6 +845,10 @@ right way</value>
   <data name="dns_settings_unavailable" xml:space="preserve">
     <value>DNS settings unavailable</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
+  </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>There are unapplied recommended settings for {}</value>
+    <comment>dns settings</comment>
   </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>Using recommended regional settings</value>
@@ -1111,14 +1135,6 @@ right way</value>
     <value>{} hosts</value>
     <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
   </data>
-  <data name="ip_count.one" xml:space="preserve">
-    <value>{} IP</value>
-    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
-  </data>
-  <data name="ip_count.other" xml:space="preserve">
-    <value>{} IPs</value>
-    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
-  </data>
   <data name="hours_ago_abbrev" xml:space="preserve">
     <value>{}h ago</value>
     <comment>Compact relative-time label with an abbreviated hours unit ("3h ago"), shown by the windows and linux stats formatters for events an hour or more old. The argument is the elapsed hours. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
@@ -1190,6 +1206,14 @@ right way</value>
   <data name="ip_address" xml:space="preserve">
     <value>IP address</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="ip_count.one" xml:space="preserve">
+    <value>{} IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} IPs</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
   </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
@@ -1389,6 +1413,10 @@ sent you to verify your identity.</value>
     <value>Net Provided</value>
     <comment>Call to action</comment>
   </data>
+  <data name="network" xml:space="preserve">
+    <value>Network</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
+  </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>Someone invited you to join 🥳 
 Claim your bonus by creating a network!</value>
@@ -1421,18 +1449,6 @@ Claim your bonus by creating a network!</value>
   <data name="network_name_ready_to_connect" xml:space="preserve">
     <value>{} is ready to connect</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="device_discoverable" xml:space="preserve">
-    <value>This device is discoverable</value>
-    <comment>Shown under the peers count when this device is providing to same-network peers and can be connected to by them.</comment>
-  </data>
-  <data name="device_not_discoverable" xml:space="preserve">
-    <value>Enable provide mode to make this device discoverable</value>
-    <comment>Shown under the peers count when this device is not providing to same-network peers.</comment>
-  </data>
-  <data name="network" xml:space="preserve">
-    <value>Network</value>
-    <comment>Provide control mode option: the private provider — the provider is always on, but provides only to same-network peers, never publicly.</comment>
   </data>
   <data name="network_name_taken" xml:space="preserve">
     <value>This network name is already taken</value>
@@ -1815,6 +1831,10 @@ and most decentralized ingress and egress protocol.</value>
   <data name="ready_to_connect" xml:space="preserve">
     <value>Ready to connect</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="receive" xml:space="preserve">
+    <value>Receive</value>
+    <comment>Direction label for the stack of contracts receiving data from a peer, shown next to Send.</comment>
   </data>
   <data name="receive_notifications" xml:space="preserve">
     <value>Receive connection notifications</value>
@@ -3172,6 +3192,14 @@ as it should be.</value>
   <data name="this_region" xml:space="preserve">
     <value>this region</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>Connected</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>Disconnected</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Login</value>
