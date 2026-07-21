@@ -422,6 +422,14 @@
     <value>Изменить</value>
     <comment>Call to action</comment>
   </data>
+  <data name="change_network_api" xml:space="preserve">
+    <value>Изменить API сети</value>
+    <comment>Button that opens the network API selector, for pointing the app at a custom network domain.</comment>
+  </data>
+  <data name="change_network_api_title" xml:space="preserve">
+    <value>Изменить API сети</value>
+    <comment>Title of the network API selector dialog.</comment>
+  </data>
   <data name="change_password" xml:space="preserve">
     <value>Изменить пароль</value>
     <comment>Profile</comment>
@@ -782,6 +790,14 @@
     <value>Устройство</value>
     <comment>device</comment>
   </data>
+  <data name="device_discoverable" xml:space="preserve">
+    <value>Это устройство доступно для обнаружения</value>
+    <comment>Status label shown when this device can be discovered by peers on the network.</comment>
+  </data>
+  <data name="device_discoverable_as" xml:space="preserve">
+    <value>Это устройство доступно для обнаружения как {}</value>
+    <comment>Status label shown when this device can be discovered by peers, with the device's visible name. The argument is the device name.</comment>
+  </data>
   <data name="device_name" xml:space="preserve">
     <value>Имя устройства</value>
     <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -793,6 +809,10 @@
   <data name="device_name_updated" xml:space="preserve">
     <value>Имя устройства обновлено</value>
     <comment>Snackbar shown after the device name is saved. Used in Main/Account/Settings/SettingsView.swift.</comment>
+  </data>
+  <data name="device_not_discoverable" xml:space="preserve">
+    <value>Включите режим предоставления, чтобы это устройство было доступно для обнаружения</value>
+    <comment>Hint shown when the device is not discoverable because provide mode is off.</comment>
   </data>
   <data name="device_spec_label" xml:space="preserve">
     <value>Модель</value>
@@ -826,9 +846,21 @@
     <value>Отображать сеть в таблице лидеров</value>
     <comment>Call to action</comment>
   </data>
+  <data name="dns_default_not_applied" xml:space="preserve">
+    <value>Безопасные настройки по умолчанию не применены</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS через HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
+  </data>
+  <data name="dns_pill_defaults" xml:space="preserve">
+    <value>Безопасные настройки по умолчанию не применены</value>
+    <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
+  </data>
+  <data name="dns_pill_recommended" xml:space="preserve">
+    <value>Есть непримененные рекомендуемые настройки для {}</value>
+    <comment>dns settings</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>Известно, что самые строгие правила безопасности не работают в {}. Есть менее безопасные рекомендованные настройки DNS, которые работают лучше.</value>
@@ -1386,6 +1418,70 @@
   <data name="net_provided" xml:space="preserve">
     <value>Предоставлено (нетто)</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network_api_api_url_help" xml:space="preserve">
+    <value>Оставьте пустым, чтобы вывести из домена сети.</value>
+    <comment>Help text under the API URL field of the network API selector.</comment>
+  </data>
+  <data name="network_api_api_url_label" xml:space="preserve">
+    <value>URL API (необязательно)</value>
+    <comment>Label of the optional API URL field in the network API selector.</comment>
+  </data>
+  <data name="network_api_apply" xml:space="preserve">
+    <value>Применить API сети</value>
+    <comment>Button that applies the entered network API settings.</comment>
+  </data>
+  <data name="network_api_connect_url_help" xml:space="preserve">
+    <value>Используйте wss:// для защищённых пользовательских connect-серверов.</value>
+    <comment>Help text under the connect URL field of the network API selector.</comment>
+  </data>
+  <data name="network_api_connect_url_label" xml:space="preserve">
+    <value>Connect URL (необязательно)</value>
+    <comment>Label of the optional connect URL field in the network API selector.</comment>
+  </data>
+  <data name="network_api_current_api" xml:space="preserve">
+    <value>Текущий API: {}</value>
+    <comment>Shows the API URL currently in use. The argument is the URL.</comment>
+  </data>
+  <data name="network_api_current_connect" xml:space="preserve">
+    <value>Текущий connect: {}</value>
+    <comment>Shows the connect URL currently in use. The argument is the URL.</comment>
+  </data>
+  <data name="network_api_description" xml:space="preserve">
+    <value>Выберите домен сети, используемый приложением. Оставьте URL API и connect пустыми, чтобы вывести их из домена.</value>
+    <comment>Explains the network API selector.</comment>
+  </data>
+  <data name="network_api_domain_help" xml:space="preserve">
+    <value>Пример: ur.network или ваш собственный домен.</value>
+    <comment>Help text under the network domain field of the network API selector.</comment>
+  </data>
+  <data name="network_api_domain_label" xml:space="preserve">
+    <value>Домен сети</value>
+    <comment>Label of the network domain field in the network API selector.</comment>
+  </data>
+  <data name="network_api_enter_domain" xml:space="preserve">
+    <value>Введите домен сети</value>
+    <comment>Validation message when the network domain field is empty.</comment>
+  </data>
+  <data name="network_api_failed" xml:space="preserve">
+    <value>Сбой: {}</value>
+    <comment>Error shown when switching the network API fails. The argument is the error message.</comment>
+  </data>
+  <data name="network_api_insecure_warning" xml:space="preserve">
+    <value>Внимание: один или несколько пользовательских эндпоинтов не используют HTTPS/WSS. Трафик может быть незашифрованным.</value>
+    <comment>Warning shown when a custom endpoint uses plain HTTP/WS instead of HTTPS/WSS.</comment>
+  </data>
+  <data name="network_api_manager_unavailable" xml:space="preserve">
+    <value>Менеджер сети недоступен</value>
+    <comment>Error shown when the network API manager is not available on this device.</comment>
+  </data>
+  <data name="network_api_switched_to" xml:space="preserve">
+    <value>Переключено на {}</value>
+    <comment>Confirmation after switching the network API. The argument is the new network domain.</comment>
+  </data>
+  <data name="network_api_use_default" xml:space="preserve">
+    <value>Использовать сеть по умолчанию</value>
+    <comment>Button that resets the network API to the default network.</comment>
   </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>Кто-то пригласил вас присоединиться 🥳 

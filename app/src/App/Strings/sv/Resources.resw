@@ -406,6 +406,14 @@ rätt sätt</value>
     <value>Ändra</value>
     <comment>Call to action</comment>
   </data>
+  <data name="change_network_api" xml:space="preserve">
+    <value>Ändra nätverks-API</value>
+    <comment>Button that opens the network API selector, for pointing the app at a custom network domain.</comment>
+  </data>
+  <data name="change_network_api_title" xml:space="preserve">
+    <value>Ändra nätverks-API</value>
+    <comment>Title of the network API selector dialog.</comment>
+  </data>
   <data name="change_password" xml:space="preserve">
     <value>Byt lösenord</value>
     <comment>Profile</comment>
@@ -750,6 +758,14 @@ rätt sätt</value>
     <value>Enhet</value>
     <comment>device</comment>
   </data>
+  <data name="device_discoverable" xml:space="preserve">
+    <value>Den här enheten är upptäckbar</value>
+    <comment>Status label shown when this device can be discovered by peers on the network.</comment>
+  </data>
+  <data name="device_discoverable_as" xml:space="preserve">
+    <value>Den här enheten är upptäckbar som {}</value>
+    <comment>Status label shown when this device can be discovered by peers, with the device's visible name. The argument is the device name.</comment>
+  </data>
   <data name="device_name" xml:space="preserve">
     <value>Enhetsnamn</value>
     <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -761,6 +777,10 @@ rätt sätt</value>
   <data name="device_name_updated" xml:space="preserve">
     <value>Enhetsnamn uppdaterat</value>
     <comment>Snackbar shown after the device name is saved. Used in Main/Account/Settings/SettingsView.swift.</comment>
+  </data>
+  <data name="device_not_discoverable" xml:space="preserve">
+    <value>Aktivera tillhandahållandeläget för att göra enheten upptäckbar</value>
+    <comment>Hint shown when the device is not discoverable because provide mode is off.</comment>
   </data>
   <data name="device_spec_label" xml:space="preserve">
     <value>Specifikation</value>
@@ -794,9 +814,21 @@ rätt sätt</value>
     <value>Visa nätverk på topplistan</value>
     <comment>Call to action</comment>
   </data>
+  <data name="dns_default_not_applied" xml:space="preserve">
+    <value>De säkra standardinställningarna är inte tillämpade</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS över HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
+  </data>
+  <data name="dns_pill_defaults" xml:space="preserve">
+    <value>De säkra standardinställningarna är inte tillämpade</value>
+    <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
+  </data>
+  <data name="dns_pill_recommended" xml:space="preserve">
+    <value>Det finns otillämpade rekommenderade inställningar för {}</value>
+    <comment>dns settings</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>De starkaste säkerhetsreglerna fungerar inte i {}. Det finns rekommenderade DNS-inställningar som är mindre säkra men fungerar bättre.</value>
@@ -1346,6 +1378,70 @@ skickade till dig för att verifiera din identitet.</value>
   <data name="net_provided" xml:space="preserve">
     <value>Nettotillhandahållen</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network_api_api_url_help" xml:space="preserve">
+    <value>Lämna tomt för att härleda från nätverksdomänen.</value>
+    <comment>Help text under the API URL field of the network API selector.</comment>
+  </data>
+  <data name="network_api_api_url_label" xml:space="preserve">
+    <value>API-URL (valfritt)</value>
+    <comment>Label of the optional API URL field in the network API selector.</comment>
+  </data>
+  <data name="network_api_apply" xml:space="preserve">
+    <value>Tillämpa nätverks-API</value>
+    <comment>Button that applies the entered network API settings.</comment>
+  </data>
+  <data name="network_api_connect_url_help" xml:space="preserve">
+    <value>Använd wss:// för säkra anpassade connect-servrar.</value>
+    <comment>Help text under the connect URL field of the network API selector.</comment>
+  </data>
+  <data name="network_api_connect_url_label" xml:space="preserve">
+    <value>Connect-URL (valfritt)</value>
+    <comment>Label of the optional connect URL field in the network API selector.</comment>
+  </data>
+  <data name="network_api_current_api" xml:space="preserve">
+    <value>Aktuellt API: {}</value>
+    <comment>Shows the API URL currently in use. The argument is the URL.</comment>
+  </data>
+  <data name="network_api_current_connect" xml:space="preserve">
+    <value>Aktuell connect: {}</value>
+    <comment>Shows the connect URL currently in use. The argument is the URL.</comment>
+  </data>
+  <data name="network_api_description" xml:space="preserve">
+    <value>Välj nätverksdomänen som appen använder. Lämna API- och connect-URL:erna tomma för att härleda dem från domänen.</value>
+    <comment>Explains the network API selector.</comment>
+  </data>
+  <data name="network_api_domain_help" xml:space="preserve">
+    <value>Exempel: ur.network eller din egen domän.</value>
+    <comment>Help text under the network domain field of the network API selector.</comment>
+  </data>
+  <data name="network_api_domain_label" xml:space="preserve">
+    <value>Nätverksdomän</value>
+    <comment>Label of the network domain field in the network API selector.</comment>
+  </data>
+  <data name="network_api_enter_domain" xml:space="preserve">
+    <value>Ange en nätverksdomän</value>
+    <comment>Validation message when the network domain field is empty.</comment>
+  </data>
+  <data name="network_api_failed" xml:space="preserve">
+    <value>Misslyckades: {}</value>
+    <comment>Error shown when switching the network API fails. The argument is the error message.</comment>
+  </data>
+  <data name="network_api_insecure_warning" xml:space="preserve">
+    <value>Varning: en eller flera anpassade slutpunkter använder inte HTTPS/WSS. Trafiken kan vara okrypterad.</value>
+    <comment>Warning shown when a custom endpoint uses plain HTTP/WS instead of HTTPS/WSS.</comment>
+  </data>
+  <data name="network_api_manager_unavailable" xml:space="preserve">
+    <value>Nätverkshanteraren är inte tillgänglig</value>
+    <comment>Error shown when the network API manager is not available on this device.</comment>
+  </data>
+  <data name="network_api_switched_to" xml:space="preserve">
+    <value>Bytte till {}</value>
+    <comment>Confirmation after switching the network API. The argument is the new network domain.</comment>
+  </data>
+  <data name="network_api_use_default" xml:space="preserve">
+    <value>Använd standardnätverk</value>
+    <comment>Button that resets the network API to the default network.</comment>
   </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>Någon har bjudit in dig 🥳 
