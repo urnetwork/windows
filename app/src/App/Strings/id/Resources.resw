@@ -398,14 +398,6 @@ cara yang benar</value>
     <value>Ubah</value>
     <comment>Call to action</comment>
   </data>
-  <data name="change_network_api" xml:space="preserve">
-    <value>Ubah API jaringan</value>
-    <comment>Button that opens the network API selector, for pointing the app at a custom network domain.</comment>
-  </data>
-  <data name="change_network_api_title" xml:space="preserve">
-    <value>Ubah API jaringan</value>
-    <comment>Title of the network API selector dialog.</comment>
-  </data>
   <data name="change_password" xml:space="preserve">
     <value>Ubah Kata Sandi</value>
     <comment>Profile</comment>
@@ -742,14 +734,6 @@ cara yang benar</value>
     <value>Perangkat</value>
     <comment>device</comment>
   </data>
-  <data name="device_discoverable" xml:space="preserve">
-    <value>Perangkat ini dapat ditemukan</value>
-    <comment>Status label shown when this device can be discovered by peers on the network.</comment>
-  </data>
-  <data name="device_discoverable_as" xml:space="preserve">
-    <value>Perangkat ini dapat ditemukan sebagai {}</value>
-    <comment>Status label shown when this device can be discovered by peers, with the device's visible name. The argument is the device name.</comment>
-  </data>
   <data name="device_name" xml:space="preserve">
     <value>Nama perangkat</value>
     <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -761,10 +745,6 @@ cara yang benar</value>
   <data name="device_name_updated" xml:space="preserve">
     <value>Nama perangkat diperbarui</value>
     <comment>Snackbar shown after the device name is saved. Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
-  <data name="device_not_discoverable" xml:space="preserve">
-    <value>Aktifkan mode penyediaan agar perangkat ini dapat ditemukan</value>
-    <comment>Hint shown when the device is not discoverable because provide mode is off.</comment>
   </data>
   <data name="device_spec_label" xml:space="preserve">
     <value>Spesifikasi</value>
@@ -798,21 +778,9 @@ cara yang benar</value>
     <value>Tampilkan jaringan di papan peringkat</value>
     <comment>Call to action</comment>
   </data>
-  <data name="dns_default_not_applied" xml:space="preserve">
-    <value>Pengaturan aman default tidak diterapkan</value>
-    <comment>dns settings</comment>
-  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS melalui HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
-  </data>
-  <data name="dns_pill_defaults" xml:space="preserve">
-    <value>Pengaturan aman default tidak diterapkan</value>
-    <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
-  </data>
-  <data name="dns_pill_recommended" xml:space="preserve">
-    <value>Ada pengaturan yang disarankan belum diterapkan untuk {}</value>
-    <comment>dns settings</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>Aturan keamanan terkuat diketahui tidak berfungsi di {}. Ada pengaturan DNS yang disarankan, kurang aman tetapi bekerja lebih baik.</value>
@@ -1358,70 +1326,6 @@ kami kirimkan untuk memverifikasi identitas Anda.</value>
   <data name="net_provided" xml:space="preserve">
     <value>Bersih Disediakan</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_api_api_url_help" xml:space="preserve">
-    <value>Biarkan kosong untuk diturunkan dari domain jaringan.</value>
-    <comment>Help text under the API URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_api_url_label" xml:space="preserve">
-    <value>URL API (opsional)</value>
-    <comment>Label of the optional API URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_apply" xml:space="preserve">
-    <value>Terapkan API jaringan</value>
-    <comment>Button that applies the entered network API settings.</comment>
-  </data>
-  <data name="network_api_connect_url_help" xml:space="preserve">
-    <value>Gunakan wss:// untuk server connect kustom yang aman.</value>
-    <comment>Help text under the connect URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_connect_url_label" xml:space="preserve">
-    <value>URL connect (opsional)</value>
-    <comment>Label of the optional connect URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_current_api" xml:space="preserve">
-    <value>API saat ini: {}</value>
-    <comment>Shows the API URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_current_connect" xml:space="preserve">
-    <value>Connect saat ini: {}</value>
-    <comment>Shows the connect URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_description" xml:space="preserve">
-    <value>Pilih domain jaringan yang digunakan aplikasi. Biarkan URL API dan connect kosong agar diturunkan dari domain.</value>
-    <comment>Explains the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_help" xml:space="preserve">
-    <value>Contoh: ur.network atau domain kustom Anda.</value>
-    <comment>Help text under the network domain field of the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_label" xml:space="preserve">
-    <value>Domain jaringan</value>
-    <comment>Label of the network domain field in the network API selector.</comment>
-  </data>
-  <data name="network_api_enter_domain" xml:space="preserve">
-    <value>Masukkan domain jaringan</value>
-    <comment>Validation message when the network domain field is empty.</comment>
-  </data>
-  <data name="network_api_failed" xml:space="preserve">
-    <value>Gagal: {}</value>
-    <comment>Error shown when switching the network API fails. The argument is the error message.</comment>
-  </data>
-  <data name="network_api_insecure_warning" xml:space="preserve">
-    <value>Peringatan: satu atau beberapa endpoint kustom tidak menggunakan HTTPS/WSS. Lalu lintas mungkin tidak terenkripsi.</value>
-    <comment>Warning shown when a custom endpoint uses plain HTTP/WS instead of HTTPS/WSS.</comment>
-  </data>
-  <data name="network_api_manager_unavailable" xml:space="preserve">
-    <value>Pengelola jaringan tidak tersedia</value>
-    <comment>Error shown when the network API manager is not available on this device.</comment>
-  </data>
-  <data name="network_api_switched_to" xml:space="preserve">
-    <value>Beralih ke {}</value>
-    <comment>Confirmation after switching the network API. The argument is the new network domain.</comment>
-  </data>
-  <data name="network_api_use_default" xml:space="preserve">
-    <value>Gunakan jaringan default</value>
-    <comment>Button that resets the network API to the default network.</comment>
   </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>Seseorang mengundang Anda untuk bergabung 🥳 

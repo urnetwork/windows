@@ -405,14 +405,6 @@
     <value>बदलें</value>
     <comment>Call to action</comment>
   </data>
-  <data name="change_network_api" xml:space="preserve">
-    <value>नेटवर्क API बदलें</value>
-    <comment>Button that opens the network API selector, for pointing the app at a custom network domain.</comment>
-  </data>
-  <data name="change_network_api_title" xml:space="preserve">
-    <value>नेटवर्क API बदलें</value>
-    <comment>Title of the network API selector dialog.</comment>
-  </data>
   <data name="change_password" xml:space="preserve">
     <value>पासवर्ड बदलें</value>
     <comment>Profile</comment>
@@ -757,14 +749,6 @@
     <value>डिवाइस</value>
     <comment>device</comment>
   </data>
-  <data name="device_discoverable" xml:space="preserve">
-    <value>यह डिवाइस खोजा जा सकता है</value>
-    <comment>Status label shown when this device can be discovered by peers on the network.</comment>
-  </data>
-  <data name="device_discoverable_as" xml:space="preserve">
-    <value>यह डिवाइस {} के रूप में खोजा जा सकता है</value>
-    <comment>Status label shown when this device can be discovered by peers, with the device's visible name. The argument is the device name.</comment>
-  </data>
   <data name="device_name" xml:space="preserve">
     <value>डिवाइस का नाम</value>
     <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -776,10 +760,6 @@
   <data name="device_name_updated" xml:space="preserve">
     <value>डिवाइस का नाम अपडेट किया गया</value>
     <comment>Snackbar shown after the device name is saved. Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
-  <data name="device_not_discoverable" xml:space="preserve">
-    <value>इस डिवाइस को खोजने योग्य बनाने के लिए प्रदान मोड चालू करें</value>
-    <comment>Hint shown when the device is not discoverable because provide mode is off.</comment>
   </data>
   <data name="device_spec_label" xml:space="preserve">
     <value>स्पेक</value>
@@ -813,21 +793,9 @@
     <value>लीडरबोर्ड पर नेटवर्क प्रदर्शित करें</value>
     <comment>Call to action</comment>
   </data>
-  <data name="dns_default_not_applied" xml:space="preserve">
-    <value>डिफ़ॉल्ट सुरक्षित सेटिंग्स लागू नहीं हैं</value>
-    <comment>dns settings</comment>
-  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>HTTPS पर DNS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
-  </data>
-  <data name="dns_pill_defaults" xml:space="preserve">
-    <value>डिफ़ॉल्ट सुरक्षित सेटिंग्स लागू नहीं हैं</value>
-    <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
-  </data>
-  <data name="dns_pill_recommended" xml:space="preserve">
-    <value>{} के लिए अनुशंसित सेटिंग्स लागू नहीं हैं</value>
-    <comment>dns settings</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>{} में सबसे मज़बूत सुरक्षा नियम काम नहीं करते। कुछ कम सुरक्षित अनुशंसित DNS सेटिंग्स हैं जो बेहतर काम करती हैं।</value>
@@ -1376,70 +1344,6 @@
   <data name="net_provided" xml:space="preserve">
     <value>प्रदान किया गया नेट</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_api_api_url_help" xml:space="preserve">
-    <value>नेटवर्क डोमेन से प्राप्त करने के लिए खाली छोड़ें।</value>
-    <comment>Help text under the API URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_api_url_label" xml:space="preserve">
-    <value>API URL (वैकल्पिक)</value>
-    <comment>Label of the optional API URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_apply" xml:space="preserve">
-    <value>नेटवर्क API लागू करें</value>
-    <comment>Button that applies the entered network API settings.</comment>
-  </data>
-  <data name="network_api_connect_url_help" xml:space="preserve">
-    <value>सुरक्षित कस्टम connect सर्वर के लिए wss:// का उपयोग करें।</value>
-    <comment>Help text under the connect URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_connect_url_label" xml:space="preserve">
-    <value>Connect URL (वैकल्पिक)</value>
-    <comment>Label of the optional connect URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_current_api" xml:space="preserve">
-    <value>वर्तमान API: {}</value>
-    <comment>Shows the API URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_current_connect" xml:space="preserve">
-    <value>वर्तमान connect: {}</value>
-    <comment>Shows the connect URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_description" xml:space="preserve">
-    <value>ऐप द्वारा उपयोग किया जाने वाला नेटवर्क डोमेन चुनें। API और connect URL को डोमेन से प्राप्त करने के लिए खाली छोड़ें।</value>
-    <comment>Explains the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_help" xml:space="preserve">
-    <value>उदाहरण: ur.network या आपका कस्टम डोमेन।</value>
-    <comment>Help text under the network domain field of the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_label" xml:space="preserve">
-    <value>नेटवर्क डोमेन</value>
-    <comment>Label of the network domain field in the network API selector.</comment>
-  </data>
-  <data name="network_api_enter_domain" xml:space="preserve">
-    <value>नेटवर्क डोमेन दर्ज करें</value>
-    <comment>Validation message when the network domain field is empty.</comment>
-  </data>
-  <data name="network_api_failed" xml:space="preserve">
-    <value>विफल: {}</value>
-    <comment>Error shown when switching the network API fails. The argument is the error message.</comment>
-  </data>
-  <data name="network_api_insecure_warning" xml:space="preserve">
-    <value>चेतावनी: एक या अधिक कस्टम एंडपॉइंट HTTPS/WSS का उपयोग नहीं कर रहे हैं। ट्रैफ़िक अनएन्क्रिप्टेड हो सकता है।</value>
-    <comment>Warning shown when a custom endpoint uses plain HTTP/WS instead of HTTPS/WSS.</comment>
-  </data>
-  <data name="network_api_manager_unavailable" xml:space="preserve">
-    <value>नेटवर्क प्रबंधक उपलब्ध नहीं है</value>
-    <comment>Error shown when the network API manager is not available on this device.</comment>
-  </data>
-  <data name="network_api_switched_to" xml:space="preserve">
-    <value>{} पर स्विच किया गया</value>
-    <comment>Confirmation after switching the network API. The argument is the new network domain.</comment>
-  </data>
-  <data name="network_api_use_default" xml:space="preserve">
-    <value>डिफ़ॉल्ट नेटवर्क का उपयोग करें</value>
-    <comment>Button that resets the network API to the default network.</comment>
   </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>किसी ने आपको जुड़ने के लिए आमंत्रित किया 🥳\nनेटवर्क बनाकर अपना बोनस प्राप्त करें!</value>

@@ -430,14 +430,6 @@ right way</value>
     <value>Change</value>
     <comment>Call to action</comment>
   </data>
-  <data name="change_network_api" xml:space="preserve">
-    <value>Change Network API</value>
-    <comment>Button that opens the network API selector, for pointing the app at a custom network domain.</comment>
-  </data>
-  <data name="change_network_api_title" xml:space="preserve">
-    <value>Change Network API</value>
-    <comment>Title of the network API selector dialog.</comment>
-  </data>
   <data name="change_password" xml:space="preserve">
     <value>Change Password</value>
     <comment>Profile</comment>
@@ -782,14 +774,6 @@ right way</value>
     <value>Device</value>
     <comment>device</comment>
   </data>
-  <data name="device_discoverable" xml:space="preserve">
-    <value>This device is discoverable</value>
-    <comment>Status label shown when this device can be discovered by peers on the network.</comment>
-  </data>
-  <data name="device_discoverable_as" xml:space="preserve">
-    <value>This device is discoverable as {}</value>
-    <comment>Status label shown when this device can be discovered by peers, with the device's visible name. The argument is the device name.</comment>
-  </data>
   <data name="device_name" xml:space="preserve">
     <value>Device name</value>
     <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -801,10 +785,6 @@ right way</value>
   <data name="device_name_updated" xml:space="preserve">
     <value>Device name updated</value>
     <comment>Snackbar shown after the device name is saved. Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
-  <data name="device_not_discoverable" xml:space="preserve">
-    <value>Enable provide mode to make this device discoverable</value>
-    <comment>Hint shown when the device is not discoverable because provide mode is off.</comment>
   </data>
   <data name="device_spec_label" xml:space="preserve">
     <value>Spec</value>
@@ -849,10 +829,6 @@ right way</value>
   <data name="dns_pill_default" xml:space="preserve">
     <value>The default safe settings are not applied</value>
     <comment>dns settings</comment>
-  </data>
-  <data name="dns_pill_defaults" xml:space="preserve">
-    <value>The default safe settings are not applied</value>
-    <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
   </data>
   <data name="dns_pill_recommended" xml:space="preserve">
     <value>There are unapplied recommended settings for {}</value>
@@ -1440,70 +1416,6 @@ sent you to verify your identity.</value>
   <data name="network" xml:space="preserve">
     <value>Network</value>
     <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
-  </data>
-  <data name="network_api_api_url_help" xml:space="preserve">
-    <value>Leave blank to derive from the network domain.</value>
-    <comment>Help text under the API URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_api_url_label" xml:space="preserve">
-    <value>API URL (optional)</value>
-    <comment>Label of the optional API URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_apply" xml:space="preserve">
-    <value>Apply Network API</value>
-    <comment>Button that applies the entered network API settings.</comment>
-  </data>
-  <data name="network_api_connect_url_help" xml:space="preserve">
-    <value>Use wss:// for secure custom connect servers.</value>
-    <comment>Help text under the connect URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_connect_url_label" xml:space="preserve">
-    <value>Connect URL (optional)</value>
-    <comment>Label of the optional connect URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_current_api" xml:space="preserve">
-    <value>Current API: {}</value>
-    <comment>Shows the API URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_current_connect" xml:space="preserve">
-    <value>Current connect: {}</value>
-    <comment>Shows the connect URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_description" xml:space="preserve">
-    <value>Choose the network domain used by the app. Leave the API and connect URLs blank to derive them from the domain.</value>
-    <comment>Explains the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_help" xml:space="preserve">
-    <value>Example: ur.network or your custom domain.</value>
-    <comment>Help text under the network domain field of the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_label" xml:space="preserve">
-    <value>Network domain</value>
-    <comment>Label of the network domain field in the network API selector.</comment>
-  </data>
-  <data name="network_api_enter_domain" xml:space="preserve">
-    <value>Enter a network domain</value>
-    <comment>Validation message when the network domain field is empty.</comment>
-  </data>
-  <data name="network_api_failed" xml:space="preserve">
-    <value>Failed: {}</value>
-    <comment>Error shown when switching the network API fails. The argument is the error message.</comment>
-  </data>
-  <data name="network_api_insecure_warning" xml:space="preserve">
-    <value>Warning: one or more custom endpoints are not using HTTPS/WSS. Traffic may be unencrypted.</value>
-    <comment>Warning shown when a custom endpoint uses plain HTTP/WS instead of HTTPS/WSS.</comment>
-  </data>
-  <data name="network_api_manager_unavailable" xml:space="preserve">
-    <value>Network manager unavailable</value>
-    <comment>Error shown when the network API manager is not available on this device.</comment>
-  </data>
-  <data name="network_api_switched_to" xml:space="preserve">
-    <value>Switched to {}</value>
-    <comment>Confirmation after switching the network API. The argument is the new network domain.</comment>
-  </data>
-  <data name="network_api_use_default" xml:space="preserve">
-    <value>Use default network</value>
-    <comment>Button that resets the network API to the default network.</comment>
   </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>Someone invited you to join 🥳 

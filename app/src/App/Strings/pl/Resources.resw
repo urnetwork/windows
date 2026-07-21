@@ -422,14 +422,6 @@ właściwy sposób</value>
     <value>Zmień</value>
     <comment>Call to action</comment>
   </data>
-  <data name="change_network_api" xml:space="preserve">
-    <value>Zmień API sieci</value>
-    <comment>Button that opens the network API selector, for pointing the app at a custom network domain.</comment>
-  </data>
-  <data name="change_network_api_title" xml:space="preserve">
-    <value>Zmień API sieci</value>
-    <comment>Title of the network API selector dialog.</comment>
-  </data>
   <data name="change_password" xml:space="preserve">
     <value>Zmień hasło</value>
     <comment>Profile</comment>
@@ -790,14 +782,6 @@ właściwy sposób</value>
     <value>Urządzenie</value>
     <comment>device</comment>
   </data>
-  <data name="device_discoverable" xml:space="preserve">
-    <value>To urządzenie jest wykrywalne</value>
-    <comment>Status label shown when this device can be discovered by peers on the network.</comment>
-  </data>
-  <data name="device_discoverable_as" xml:space="preserve">
-    <value>To urządzenie jest wykrywalne jako {}</value>
-    <comment>Status label shown when this device can be discovered by peers, with the device's visible name. The argument is the device name.</comment>
-  </data>
   <data name="device_name" xml:space="preserve">
     <value>Nazwa urządzenia</value>
     <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -809,10 +793,6 @@ właściwy sposób</value>
   <data name="device_name_updated" xml:space="preserve">
     <value>Zaktualizowano nazwę urządzenia</value>
     <comment>Snackbar shown after the device name is saved. Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
-  <data name="device_not_discoverable" xml:space="preserve">
-    <value>Włącz tryb udostępniania, aby to urządzenie było wykrywalne</value>
-    <comment>Hint shown when the device is not discoverable because provide mode is off.</comment>
   </data>
   <data name="device_spec_label" xml:space="preserve">
     <value>Specyfikacja</value>
@@ -846,21 +826,9 @@ właściwy sposób</value>
     <value>Wyświetlaj sieć w tablicy wyników</value>
     <comment>Call to action</comment>
   </data>
-  <data name="dns_default_not_applied" xml:space="preserve">
-    <value>Domyślne bezpieczne ustawienia nie są zastosowane</value>
-    <comment>dns settings</comment>
-  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS przez HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
-  </data>
-  <data name="dns_pill_defaults" xml:space="preserve">
-    <value>Domyślne bezpieczne ustawienia nie są zastosowane</value>
-    <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
-  </data>
-  <data name="dns_pill_recommended" xml:space="preserve">
-    <value>Istnieją niezastosowane zalecane ustawienia dla {}</value>
-    <comment>dns settings</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>Najsilniejsze reguły bezpieczeństwa nie działają w {}. Istnieją mniej bezpieczne, zalecane ustawienia DNS, które sprawdzają się lepiej.</value>
@@ -1418,70 +1386,6 @@ który wysłaliśmy, aby zweryfikować twoją tożsamość.</value>
   <data name="net_provided" xml:space="preserve">
     <value>Dostarczona sieć</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_api_api_url_help" xml:space="preserve">
-    <value>Pozostaw puste, aby wyprowadzić z domeny sieci.</value>
-    <comment>Help text under the API URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_api_url_label" xml:space="preserve">
-    <value>Adres URL API (opcjonalnie)</value>
-    <comment>Label of the optional API URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_apply" xml:space="preserve">
-    <value>Zastosuj API sieci</value>
-    <comment>Button that applies the entered network API settings.</comment>
-  </data>
-  <data name="network_api_connect_url_help" xml:space="preserve">
-    <value>Użyj wss:// dla bezpiecznych niestandardowych serwerów connect.</value>
-    <comment>Help text under the connect URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_connect_url_label" xml:space="preserve">
-    <value>Adres URL connect (opcjonalnie)</value>
-    <comment>Label of the optional connect URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_current_api" xml:space="preserve">
-    <value>Bieżące API: {}</value>
-    <comment>Shows the API URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_current_connect" xml:space="preserve">
-    <value>Bieżący connect: {}</value>
-    <comment>Shows the connect URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_description" xml:space="preserve">
-    <value>Wybierz domenę sieci używaną przez aplikację. Pozostaw adresy URL API i connect puste, aby wyprowadzić je z domeny.</value>
-    <comment>Explains the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_help" xml:space="preserve">
-    <value>Przykład: ur.network lub twoja własna domena.</value>
-    <comment>Help text under the network domain field of the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_label" xml:space="preserve">
-    <value>Domena sieci</value>
-    <comment>Label of the network domain field in the network API selector.</comment>
-  </data>
-  <data name="network_api_enter_domain" xml:space="preserve">
-    <value>Wprowadź domenę sieci</value>
-    <comment>Validation message when the network domain field is empty.</comment>
-  </data>
-  <data name="network_api_failed" xml:space="preserve">
-    <value>Niepowodzenie: {}</value>
-    <comment>Error shown when switching the network API fails. The argument is the error message.</comment>
-  </data>
-  <data name="network_api_insecure_warning" xml:space="preserve">
-    <value>Ostrzeżenie: co najmniej jeden niestandardowy punkt końcowy nie używa HTTPS/WSS. Ruch może być nieszyfrowany.</value>
-    <comment>Warning shown when a custom endpoint uses plain HTTP/WS instead of HTTPS/WSS.</comment>
-  </data>
-  <data name="network_api_manager_unavailable" xml:space="preserve">
-    <value>Menedżer sieci niedostępny</value>
-    <comment>Error shown when the network API manager is not available on this device.</comment>
-  </data>
-  <data name="network_api_switched_to" xml:space="preserve">
-    <value>Przełączono na {}</value>
-    <comment>Confirmation after switching the network API. The argument is the new network domain.</comment>
-  </data>
-  <data name="network_api_use_default" xml:space="preserve">
-    <value>Użyj domyślnej sieci</value>
-    <comment>Button that resets the network API to the default network.</comment>
   </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>Ktoś zaprosił Cię do dołączenia 🥳\nOdbierz swój bonus tworząc sieć!</value>

@@ -398,14 +398,6 @@
     <value>更改</value>
     <comment>Call to action</comment>
   </data>
-  <data name="change_network_api" xml:space="preserve">
-    <value>更改網絡 API</value>
-    <comment>Button that opens the network API selector, for pointing the app at a custom network domain.</comment>
-  </data>
-  <data name="change_network_api_title" xml:space="preserve">
-    <value>更改網絡 API</value>
-    <comment>Title of the network API selector dialog.</comment>
-  </data>
   <data name="change_password" xml:space="preserve">
     <value>更改密碼</value>
     <comment>Profile</comment>
@@ -742,14 +734,6 @@
     <value>裝置</value>
     <comment>device</comment>
   </data>
-  <data name="device_discoverable" xml:space="preserve">
-    <value>此裝置可被發現</value>
-    <comment>Status label shown when this device can be discovered by peers on the network.</comment>
-  </data>
-  <data name="device_discoverable_as" xml:space="preserve">
-    <value>此裝置可被發現，名稱為 {}</value>
-    <comment>Status label shown when this device can be discovered by peers, with the device's visible name. The argument is the device name.</comment>
-  </data>
   <data name="device_name" xml:space="preserve">
     <value>裝置名稱</value>
     <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -761,10 +745,6 @@
   <data name="device_name_updated" xml:space="preserve">
     <value>裝置名稱已更新</value>
     <comment>Snackbar shown after the device name is saved. Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
-  <data name="device_not_discoverable" xml:space="preserve">
-    <value>啟用提供模式以使此裝置可被發現</value>
-    <comment>Hint shown when the device is not discoverable because provide mode is off.</comment>
   </data>
   <data name="device_spec_label" xml:space="preserve">
     <value>規格</value>
@@ -798,21 +778,9 @@
     <value>在排行榜上顯示網絡</value>
     <comment>Call to action</comment>
   </data>
-  <data name="dns_default_not_applied" xml:space="preserve">
-    <value>預設安全設定未套用</value>
-    <comment>dns settings</comment>
-  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS over HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
-  </data>
-  <data name="dns_pill_defaults" xml:space="preserve">
-    <value>預設安全設定未套用</value>
-    <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
-  </data>
-  <data name="dns_pill_recommended" xml:space="preserve">
-    <value>有適用於 {} 的未套用建議設定</value>
-    <comment>dns settings</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>已知最嚴格的安全規則在{}無法正常運作。可改用建議的 DNS 設定，安全性稍低但更好用。</value>
@@ -1358,70 +1326,6 @@
   <data name="net_provided" xml:space="preserve">
     <value>淨提供</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_api_api_url_help" xml:space="preserve">
-    <value>留空則從網絡網域衍生。</value>
-    <comment>Help text under the API URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_api_url_label" xml:space="preserve">
-    <value>API URL（可選）</value>
-    <comment>Label of the optional API URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_apply" xml:space="preserve">
-    <value>套用網絡 API</value>
-    <comment>Button that applies the entered network API settings.</comment>
-  </data>
-  <data name="network_api_connect_url_help" xml:space="preserve">
-    <value>自訂 connect 伺服器請使用 wss:// 以確保安全。</value>
-    <comment>Help text under the connect URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_connect_url_label" xml:space="preserve">
-    <value>Connect URL（可選）</value>
-    <comment>Label of the optional connect URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_current_api" xml:space="preserve">
-    <value>目前 API：{}</value>
-    <comment>Shows the API URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_current_connect" xml:space="preserve">
-    <value>目前 connect：{}</value>
-    <comment>Shows the connect URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_description" xml:space="preserve">
-    <value>選擇應用程式使用的網絡網域。將 API 和 connect URL 留空則從網域衍生。</value>
-    <comment>Explains the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_help" xml:space="preserve">
-    <value>例如：ur.network 或你的自訂網域。</value>
-    <comment>Help text under the network domain field of the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_label" xml:space="preserve">
-    <value>網絡網域</value>
-    <comment>Label of the network domain field in the network API selector.</comment>
-  </data>
-  <data name="network_api_enter_domain" xml:space="preserve">
-    <value>請輸入網絡網域</value>
-    <comment>Validation message when the network domain field is empty.</comment>
-  </data>
-  <data name="network_api_failed" xml:space="preserve">
-    <value>失敗：{}</value>
-    <comment>Error shown when switching the network API fails. The argument is the error message.</comment>
-  </data>
-  <data name="network_api_insecure_warning" xml:space="preserve">
-    <value>警告：一個或多個自訂端點未使用 HTTPS/WSS。流量可能未加密。</value>
-    <comment>Warning shown when a custom endpoint uses plain HTTP/WS instead of HTTPS/WSS.</comment>
-  </data>
-  <data name="network_api_manager_unavailable" xml:space="preserve">
-    <value>網絡管理員不可用</value>
-    <comment>Error shown when the network API manager is not available on this device.</comment>
-  </data>
-  <data name="network_api_switched_to" xml:space="preserve">
-    <value>已切換至 {}</value>
-    <comment>Confirmation after switching the network API. The argument is the new network domain.</comment>
-  </data>
-  <data name="network_api_use_default" xml:space="preserve">
-    <value>使用預設網絡</value>
-    <comment>Button that resets the network API to the default network.</comment>
   </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>有人邀請你加入 🥳 

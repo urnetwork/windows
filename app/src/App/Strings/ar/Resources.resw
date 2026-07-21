@@ -438,14 +438,6 @@
     <value>غيّر</value>
     <comment>Call to action</comment>
   </data>
-  <data name="change_network_api" xml:space="preserve">
-    <value>تغيير API الشبكة</value>
-    <comment>Button that opens the network API selector, for pointing the app at a custom network domain.</comment>
-  </data>
-  <data name="change_network_api_title" xml:space="preserve">
-    <value>تغيير API الشبكة</value>
-    <comment>Title of the network API selector dialog.</comment>
-  </data>
   <data name="change_password" xml:space="preserve">
     <value>تغيير كلمة المرور</value>
     <comment>Profile</comment>
@@ -822,14 +814,6 @@
     <value>الجهاز</value>
     <comment>device</comment>
   </data>
-  <data name="device_discoverable" xml:space="preserve">
-    <value>هذا الجهاز قابل للاكتشاف</value>
-    <comment>Status label shown when this device can be discovered by peers on the network.</comment>
-  </data>
-  <data name="device_discoverable_as" xml:space="preserve">
-    <value>هذا الجهاز قابل للاكتشاف باسم {}</value>
-    <comment>Status label shown when this device can be discovered by peers, with the device's visible name. The argument is the device name.</comment>
-  </data>
   <data name="device_name" xml:space="preserve">
     <value>اسم الجهاز</value>
     <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -841,10 +825,6 @@
   <data name="device_name_updated" xml:space="preserve">
     <value>تم تحديث اسم الجهاز</value>
     <comment>Snackbar shown after the device name is saved. Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
-  <data name="device_not_discoverable" xml:space="preserve">
-    <value>فعّل وضع التوفير لجعل هذا الجهاز قابلاً للاكتشاف</value>
-    <comment>Hint shown when the device is not discoverable because provide mode is off.</comment>
   </data>
   <data name="device_spec_label" xml:space="preserve">
     <value>المواصفات</value>
@@ -878,21 +858,9 @@
     <value>عرض الشبكة على لوحة الصدارة</value>
     <comment>Call to action</comment>
   </data>
-  <data name="dns_default_not_applied" xml:space="preserve">
-    <value>الإعدادات الآمنة الافتراضية غير مطبقة</value>
-    <comment>dns settings</comment>
-  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS عبر HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
-  </data>
-  <data name="dns_pill_defaults" xml:space="preserve">
-    <value>الإعدادات الآمنة الافتراضية غير مطبقة</value>
-    <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
-  </data>
-  <data name="dns_pill_recommended" xml:space="preserve">
-    <value>توجد إعدادات موصى بها غير مطبقة لـ {}</value>
-    <comment>dns settings</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>من المعروف أن أقوى قواعد الأمان لا تعمل في {}. هناك إعدادات DNS موصى بها أقل أمانًا تعمل بشكل أفضل.</value>
@@ -1457,70 +1425,6 @@
   <data name="net_provided" xml:space="preserve">
     <value>البيانات المقدمة</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_api_api_url_help" xml:space="preserve">
-    <value>اتركه فارغًا ليتم اشتقاقه من نطاق الشبكة.</value>
-    <comment>Help text under the API URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_api_url_label" xml:space="preserve">
-    <value>عنوان URL لواجهة API (اختياري)</value>
-    <comment>Label of the optional API URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_apply" xml:space="preserve">
-    <value>تطبيق API الشبكة</value>
-    <comment>Button that applies the entered network API settings.</comment>
-  </data>
-  <data name="network_api_connect_url_help" xml:space="preserve">
-    <value>استخدم wss:// لخوادم connect المخصصة الآمنة.</value>
-    <comment>Help text under the connect URL field of the network API selector.</comment>
-  </data>
-  <data name="network_api_connect_url_label" xml:space="preserve">
-    <value>Connect URL (اختياري)</value>
-    <comment>Label of the optional connect URL field in the network API selector.</comment>
-  </data>
-  <data name="network_api_current_api" xml:space="preserve">
-    <value>واجهة API الحالية: {}</value>
-    <comment>Shows the API URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_current_connect" xml:space="preserve">
-    <value>Connect الحالي: {}</value>
-    <comment>Shows the connect URL currently in use. The argument is the URL.</comment>
-  </data>
-  <data name="network_api_description" xml:space="preserve">
-    <value>اختر نطاق الشبكة الذي يستخدمه التطبيق. اترك عنواني API و connect فارغين ليتم اشتقاقهما من النطاق.</value>
-    <comment>Explains the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_help" xml:space="preserve">
-    <value>مثال: ur.network أو نطاقك المخصص.</value>
-    <comment>Help text under the network domain field of the network API selector.</comment>
-  </data>
-  <data name="network_api_domain_label" xml:space="preserve">
-    <value>نطاق الشبكة</value>
-    <comment>Label of the network domain field in the network API selector.</comment>
-  </data>
-  <data name="network_api_enter_domain" xml:space="preserve">
-    <value>أدخل نطاق شبكة</value>
-    <comment>Validation message when the network domain field is empty.</comment>
-  </data>
-  <data name="network_api_failed" xml:space="preserve">
-    <value>فشل: {}</value>
-    <comment>Error shown when switching the network API fails. The argument is the error message.</comment>
-  </data>
-  <data name="network_api_insecure_warning" xml:space="preserve">
-    <value>تحذير: نقطة نهاية مخصصة واحدة أو أكثر لا تستخدم HTTPS/WSS. قد تكون حركة المرور غير مشفرة.</value>
-    <comment>Warning shown when a custom endpoint uses plain HTTP/WS instead of HTTPS/WSS.</comment>
-  </data>
-  <data name="network_api_manager_unavailable" xml:space="preserve">
-    <value>مدير الشبكة غير متاح</value>
-    <comment>Error shown when the network API manager is not available on this device.</comment>
-  </data>
-  <data name="network_api_switched_to" xml:space="preserve">
-    <value>تم التبديل إلى {}</value>
-    <comment>Confirmation after switching the network API. The argument is the new network domain.</comment>
-  </data>
-  <data name="network_api_use_default" xml:space="preserve">
-    <value>استخدام الشبكة الافتراضية</value>
-    <comment>Button that resets the network API to the default network.</comment>
   </data>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>شخص ما دعاك للانضمام 🥳\nاحصل على مكافأتك عن طريق إنشاء شبكة!</value>
