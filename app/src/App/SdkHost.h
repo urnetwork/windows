@@ -95,6 +95,7 @@ struct PerformanceSettings {
   ConnectionMode mode = ConnectionMode::Auto;
   bool fixedIp = false;       // window size pinned to [1,1]
   bool allowDirect = false;   // inverse of the "Strong Anonymization" toggle
+  bool postQuantum = false;   // "Post Quantum Encryption" toggle (not inverted)
 };
 
 // One contract, un-aggregated: its own used/total byte counts and bit rate.
@@ -379,8 +380,11 @@ class SdkHost {
   PerformanceSettings CurrentPerformanceSettings();
 
   // Drawer mutations (called from the UI thread).
-  // Connection mode / fixed ip / strong anonymization -> device performance
-  // profile (Auto -> nullopt). Persisted in the app LocalState like macOS.
+  // Connection mode / fixed ip / strong anonymization / post quantum -> device
+  // performance profile. Always writes a profile — Auto carries window_type
+  // "auto" with no window size — so the orthogonal settings (allowDirect,
+  // postQuantum) persist and apply in every mode (macOS DeviceManager
+  // createPerformanceProfile parity). Persisted in the app LocalState.
   void SetPerformanceSettings(const PerformanceSettings& settings);
   // Ad/tracker blocker: the device applies and persists it; the app stores nothing.
   void SetBlockerEnabled(bool on);
@@ -419,9 +423,11 @@ class SdkHost {
   // the running device, and BootstrapSession rebuilds under the new auth.
   void RegisterNetworkClient(const std::string& byJwt, std::function<void(AuthResult)> done);
   // Tear down the live session — listeners, view controllers, drawer caches,
-  // the device, the service tunnel (and its persisted device identity), and the
-  // saved RPC session — without touching the stored auth. Logout clears the
-  // auth on top of this; RegisterNetworkClient replaces it. Caller holds mutex_.
+  // the device, the service tunnel, and the saved RPC session — without
+  // touching the stored auth or the service-persisted device identity (the
+  // key material is device-scoped and survives re-registration). Logout
+  // clears the auth and severs the identity on top of this;
+  // RegisterNetworkClient replaces the auth. Caller holds mutex_.
   void TeardownSessionLocked();
   void SetupWalletCallbacks();
   // The wallet signed the challenge: authLogin{wallet_auth}. `signature` is what

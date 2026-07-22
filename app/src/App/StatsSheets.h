@@ -196,8 +196,10 @@ class SplitRulesSheet : public std::enable_shared_from_this<SplitRulesSheet> {
 };
 
 // ---- Per-app split tunnel (Android parity) ---------------------------------
-// Lists installed apps (+ any existing per-app rules) and lets the user route each
-// through the tunnel, bypass it, or leave it at the default. Each change calls
+// Installed apps with the ruled apps pinned on top showing their Included /
+// Local state chip (the same Local chip the split rules sheet uses -- app
+// splits and split rules share the same local language). Each row's combo
+// routes the app through the tunnel, bypasses it, or clears the rule via
 // SdkHost::SetAppRule / RemoveAppRule, which persists a BlockActionOverride and
 // re-drives the split-tunnel driver from getLocalOverrideAppIds.
 class AppRulesSheet : public std::enable_shared_from_this<AppRulesSheet> {
@@ -210,10 +212,19 @@ class AppRulesSheet : public std::enable_shared_from_this<AppRulesSheet> {
   explicit AppRulesSheet(SdkHost& sdk) : sdk_(sdk) {}
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void RenderList();
+  void RefreshRuleState();
 
   SdkHost& sdk_;
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel appsList_{nullptr};
+  // summary card: the active app-split behavior (include / exclude / none)
+  winrt::Microsoft::UI::Xaml::Controls::Border statusDot_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock statusText_{nullptr};
+  // per-row state chip slot keyed by lowercased image path; RefreshRuleState
+  // re-fills the chips + summary in place after a combo change (pinned order
+  // only re-sorts on the next open)
+  std::vector<std::pair<std::string, winrt::Microsoft::UI::Xaml::Controls::Border>>
+      chipSlots_;
   std::vector<InstalledApp> installed_;
 };
 

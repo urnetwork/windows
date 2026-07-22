@@ -744,7 +744,7 @@ richtig auf</value>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Löschen</value>
-    <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+    <comment>Delete button label. Apple: Main/Account/BlockedLocations/BlockedLocationsView.swift. Android: the swipe-to-reveal delete button label (SwipeToRevealRow).</comment>
   </data>
   <data name="delete_account" xml:space="preserve">
     <value>Konto löschen</value>
@@ -2315,7 +2315,7 @@ der Welt</value>
   </data>
   <data name="site_app_copied" xml:space="preserve">
     <value>Kopiert</value>
-    <comment>App: copied flash</comment>
+    <comment>App: copied flash. Also the linux share-dialog toast after copying the identity payload.</comment>
   </data>
   <data name="site_app_copy" xml:space="preserve">
     <value>Kopieren</value>
@@ -2955,7 +2955,7 @@ wie es sein sollte.</value>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Starke Anonymisierung</value>
-    <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+    <comment>Connect drawer: strong anonymization toggle — the inverse of allow direct (direct connections expose the real source IP to the provider).</comment>
   </data>
   <data name="successfully_claimed_multiplier" xml:space="preserve">
     <value>Multiplikator erfolgreich beansprucht!</value>
@@ -3369,7 +3369,7 @@ wie es sein sollte.</value>
   </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>Automatisch</value>
-    <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+    <comment>Connect drawer: the auto connection mode (no fixed window type).</comment>
   </data>
   <data name="window_type_quality" xml:space="preserve">
     <value>Web</value>

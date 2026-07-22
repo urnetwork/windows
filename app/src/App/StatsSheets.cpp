@@ -1622,6 +1622,12 @@ void DnsEditorSheet::OnDraftChanged() {
 
 // ---- Per-app split tunnel --------------------------------------------------
 
+static std::string LowerAscii(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(),
+                 [](unsigned char c) { return (char)std::tolower(c); });
+  return s;
+}
+
 std::shared_ptr<AppRulesSheet> AppRulesSheet::Create(XamlRoot const& root, SdkHost& sdk) {
   auto sheet = std::shared_ptr<AppRulesSheet>(new AppRulesSheet(sdk));
   sheet->Build(root);
@@ -1629,21 +1635,45 @@ std::shared_ptr<AppRulesSheet> AppRulesSheet::Create(XamlRoot const& root, SdkHo
 }
 
 void AppRulesSheet::Build(XamlRoot const& root) {
-  dialog_ = MakeDialog(root, hstring{L"App split tunnel"});
+  dialog_ = MakeDialog(root, Loc("app_split_rules"));
   installed_ = EnumerateInstalledApps();
 
   StackPanel body;
   body.Spacing(8);
 
+  // summary card: the active behavior + the include-precedence note (mirrors
+  // Android AppSplitSummary)
   Border banner;
   banner.CornerRadius(CornerRadius{12, 12, 12, 12});
   banner.Padding(Thickness{12, 12, 12, 12});
   banner.Background(colors::CardBrush());
-  banner.Child(MakeText(
-      hstring{L"Choose which apps use the VPN. \"Include\" routes an app through the "
-              L"tunnel; \"Bypass\" sends it direct. If any app is included, only "
-              L"included apps use the tunnel."},
-      12, MutedBrush(), true));
+  {
+    StackPanel summary;
+    summary.Spacing(6);
+
+    Grid statusRow;
+    ColumnDefinition s0, s1;
+    s0.Width(GridLength{0, GridUnitType::Auto});
+    s1.Width(GridLength{1, GridUnitType::Star});
+    statusRow.ColumnDefinitions().Append(s0);
+    statusRow.ColumnDefinitions().Append(s1);
+    statusRow.ColumnSpacing(8);
+    statusDot_ = Border();
+    statusDot_.Width(8);
+    statusDot_.Height(8);
+    statusDot_.CornerRadius(CornerRadius{4, 4, 4, 4});
+    statusDot_.VerticalAlignment(VerticalAlignment::Center);
+    Grid::SetColumn(statusDot_, 0);
+    statusRow.Children().Append(statusDot_);
+    statusText_ = MakeText(L"", 13, nullptr, true);
+    Grid::SetColumn(statusText_, 1);
+    statusRow.Children().Append(statusText_);
+    summary.Children().Append(statusRow);
+
+    summary.Children().Append(
+        MakeText(Loc("app_split_precedence_note"), 12, MutedBrush(), true));
+    banner.Child(summary);
+  }
   body.Children().Append(banner);
 
   appsList_ = StackPanel();
@@ -1656,46 +1686,52 @@ void AppRulesSheet::Build(XamlRoot const& root) {
 
 void AppRulesSheet::RenderList() {
   appsList_.Children().Clear();
-
-  auto lower = [](std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return (char)std::tolower(c); });
-    return s;
-  };
+  chipSlots_.clear();
 
   // current per-app rules from the SDK, keyed by lowercased image path
   std::vector<AppRule> rules = sdk_.CurrentAppRules();
   std::unordered_map<std::string, bool> ruleFor;  // lower(path) -> includeInTunnel
-  for (const auto& r : rules) ruleFor[lower(r.imagePath)] = r.includeInTunnel;
+  for (const auto& r : rules) ruleFor[LowerAscii(r.imagePath)] = r.includeInTunnel;
 
-  // rows = enumerated apps UNION any ruled app not enumerated, so an existing rule
-  // stays visible + changeable even if the app wasn't found in the registry.
-  std::vector<InstalledApp> rows = installed_;
-  std::unordered_map<std::string, bool> present;
-  for (const auto& a : installed_) present[lower(a.exePath)] = true;
+  // ruled apps pinned on top (rule order), then the remaining installed apps.
+  // A ruled app that wasn't enumerated still gets a row (name = image basename)
+  // so an existing rule stays visible + changeable.
+  std::unordered_map<std::string, const InstalledApp*> installedByPath;
+  for (const auto& a : installed_) installedByPath[LowerAscii(a.exePath)] = &a;
+  std::vector<InstalledApp> ruled;
   for (const auto& r : rules) {
-    if (present.count(lower(r.imagePath))) continue;
+    if (auto it = installedByPath.find(LowerAscii(r.imagePath));
+        it != installedByPath.end()) {
+      ruled.push_back(*it->second);
+      continue;
+    }
     std::string name = r.imagePath;
     if (auto slash = name.find_last_of("\\/"); slash != std::string::npos)
       name = name.substr(slash + 1);
-    rows.push_back({name, r.imagePath});
+    ruled.push_back({name, r.imagePath});
+  }
+  std::vector<InstalledApp> unruled;
+  for (const auto& a : installed_) {
+    if (!ruleFor.count(LowerAscii(a.exePath))) unruled.push_back(a);
   }
 
-  if (rows.empty()) {
-    appsList_.Children().Append(MakeText(
-        hstring{L"No installed apps found. (Store apps aren't listed.)"}, 12,
-        FaintBrush(), true));
+  if (ruled.empty() && unruled.empty()) {
+    appsList_.Children().Append(
+        MakeText(Loc("no_installed_apps_found"), 12, FaintBrush(), true));
+    RefreshRuleState();  // the summary still reflects the (empty) rules
     return;
   }
 
   std::weak_ptr<AppRulesSheet> weak = weak_from_this();
-  for (const auto& app : rows) {
+  auto appendRow = [&](const InstalledApp& app, int sel) {
     Grid row;
-    ColumnDefinition c0, c1;
+    ColumnDefinition c0, c1, c2;
     c0.Width(GridLength{1, GridUnitType::Star});
     c1.Width(GridLength{0, GridUnitType::Auto});
+    c2.Width(GridLength{0, GridUnitType::Auto});
     row.ColumnDefinitions().Append(c0);
     row.ColumnDefinitions().Append(c1);
+    row.ColumnDefinitions().Append(c2);
     row.ColumnSpacing(8);
     row.Padding(Thickness{0, 4, 0, 4});
 
@@ -1705,15 +1741,20 @@ void AppRulesSheet::RenderList() {
     Grid::SetColumn(labels, 0);
     row.Children().Append(labels);
 
+    // state chip slot: RefreshRuleState fills it for ruled apps (Included /
+    // Local -- the same Local chip the split rules sheet uses)
+    Border chipSlot;
+    chipSlot.VerticalAlignment(VerticalAlignment::Center);
+    Grid::SetColumn(chipSlot, 1);
+    row.Children().Append(chipSlot);
+    chipSlots_.emplace_back(LowerAscii(app.exePath), chipSlot);
+
     ComboBox combo;
     combo.MinWidth(130);
     combo.VerticalAlignment(VerticalAlignment::Center);
-    combo.Items().Append(box_value(hstring{L"Default"}));         // 0 = no rule
-    combo.Items().Append(box_value(hstring{L"Include in VPN"}));  // 1 -> Local=false
-    combo.Items().Append(box_value(hstring{L"Bypass VPN"}));      // 2 -> Local=true
-    int sel = 0;
-    if (auto it = ruleFor.find(lower(app.exePath)); it != ruleFor.end())
-      sel = it->second ? 1 : 2;
+    combo.Items().Append(LocBox("default_option"));  // 0 = no rule
+    combo.Items().Append(LocBox("include_in_vpn"));  // 1 -> Local=false
+    combo.Items().Append(LocBox("bypass_vpn"));      // 2 -> Local=true
     combo.SelectedIndex(sel);
     std::string path = app.exePath;
     combo.SelectionChanged(
@@ -1723,11 +1764,61 @@ void AppRulesSheet::RenderList() {
           int idx = sender.as<ComboBox>().SelectedIndex();
           if (idx <= 0) self->sdk_.RemoveAppRule(path);
           else self->sdk_.SetAppRule(path, idx == 1);  // 1 = include, 2 = bypass
+          self->RefreshRuleState();
         });
-    Grid::SetColumn(combo, 1);
+    Grid::SetColumn(combo, 2);
     row.Children().Append(combo);
 
     appsList_.Children().Append(row);
+  };
+
+  if (!ruled.empty()) {
+    appsList_.Children().Append(SectionHeader(Loc("rules")));
+    for (const auto& app : ruled) {
+      appendRow(app, ruleFor[LowerAscii(app.exePath)] ? 1 : 2);
+    }
+  }
+  appsList_.Children().Append(SectionHeader(Loc("apps")));
+  for (const auto& app : unruled) appendRow(app, 0);
+
+  RefreshRuleState();
+}
+
+// Re-derives the summary + row chips from the current rules. The chips and the
+// active-behavior summary track every combo change in place; the pinned order
+// only re-sorts on the next open (rows keep position while the user edits).
+void AppRulesSheet::RefreshRuleState() {
+  std::vector<AppRule> rules = sdk_.CurrentAppRules();
+  std::unordered_map<std::string, bool> ruleFor;  // lower(path) -> includeInTunnel
+  bool includeMode = false;
+  for (const auto& r : rules) {
+    ruleFor[LowerAscii(r.imagePath)] = r.includeInTunnel;
+    if (r.includeInTunnel) includeMode = true;
+  }
+  // inclusions take precedence: when any app is included the tunnel runs in
+  // allowlist mode and the local rules have no distinct effect
+  const bool excludeMode = !includeMode && !rules.empty();
+
+  statusDot_.Background(SolidColorBrush(includeMode   ? colors::kToggleAccent
+                                        : excludeMode ? colors::kUrGreen
+                                                      : colors::kTextMuted));
+  statusText_.Text(Loc(includeMode   ? "app_split_active_include"
+                       : excludeMode ? "app_split_active_exclude"
+                                     : "app_split_active_none"));
+
+  for (auto& [path, slot] : chipSlots_) {
+    auto it = ruleFor.find(path);
+    if (it == ruleFor.end()) {
+      slot.Child(nullptr);
+      continue;
+    }
+    const bool included = it->second;
+    // a local rule has no effect while include mode is active: muted chip
+    const bool active = included || !includeMode;
+    slot.Child(MakeChip(included ? Loc("included") : Loc("local"),
+                        active ? (included ? colors::kToggleAccent : colors::kUrGreen)
+                               : colors::kTextMuted,
+                        active));
   }
 }
 

@@ -329,6 +329,20 @@
                                                   MinWidth="0" HorizontalAlignment="Right"
                                                   Toggled="OnStrongAnonToggled" />
                                 </Grid>
+                                <!-- Post quantum encryption: opportunistic e2e; providers
+                                     without support fall back to plaintext at this layer -->
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="PostQuantumLabel" FontSize="14"
+                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <ToggleSwitch x:Name="PostQuantumToggle" Grid.Column="1"
+                                                  OnContent="" OffContent="" MinWidth="0"
+                                                  HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                  Toggled="OnPostQuantumToggled" />
+                                </Grid>
                             </StackPanel>
                         </Border>
 

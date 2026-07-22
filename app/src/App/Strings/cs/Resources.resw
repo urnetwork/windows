@@ -775,7 +775,7 @@ správným způsobem</value>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Odstranit</value>
-    <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+    <comment>Delete button label. Apple: Main/Account/BlockedLocations/BlockedLocationsView.swift. Android: the swipe-to-reveal delete button label (SwipeToRevealRow).</comment>
   </data>
   <data name="delete_account" xml:space="preserve">
     <value>Odstranit účet</value>
@@ -2405,7 +2405,7 @@ jaký by měl být.</value>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Silná anonymizace</value>
-    <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+    <comment>Connect drawer: strong anonymization toggle — the inverse of allow direct (direct connections expose the real source IP to the provider).</comment>
   </data>
   <data name="successfully_claimed_multiplier" xml:space="preserve">
     <value>Násobitel byl úspěšně nárokován!</value>
@@ -2827,7 +2827,7 @@ jaký by měl být.</value>
   </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>Automaticky</value>
-    <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+    <comment>Connect drawer: the auto connection mode (no fixed window type).</comment>
   </data>
   <data name="window_type_quality" xml:space="preserve">
     <value>Web</value>

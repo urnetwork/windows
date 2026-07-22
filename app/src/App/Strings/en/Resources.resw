@@ -418,6 +418,10 @@ right way</value>
     <value>By subscribing, you agree to URnetwork's [Terms and Services](https://ur.io/terms) and [Privacy Policy](https://ur.io/privacy)</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>Bypass VPN</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>Cancel</value>
     <comment>Call to action</comment>
@@ -758,6 +762,10 @@ right way</value>
     <value>By default, you get {} GiB/month. Here's how you can earn extra bandwidth:</value>
     <comment>Call to action</comment>
   </data>
+  <data name="default_option" xml:space="preserve">
+    <value>Default</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
+  </data>
   <data name="default_txt" xml:space="preserve">
     <value>DEFAULT</value>
     <comment>Used in Shared/Views/PayoutWalletTag.swift.</comment>
@@ -768,7 +776,7 @@ right way</value>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Delete</value>
-    <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+    <comment>Delete button label. Apple: Main/Account/BlockedLocations/BlockedLocationsView.swift. Android: the swipe-to-reveal delete button label (SwipeToRevealRow).</comment>
   </data>
   <data name="delete_account" xml:space="preserve">
     <value>Delete Account</value>
@@ -1171,6 +1179,10 @@ right way</value>
     <value>I agree to URnetwork's [Terms and Services](https://ur.io/terms) and [Privacy Policy](https://ur.io/privacy)</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>Identity key hash copied</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>If the problem persists, contact us at [support@ur.io](mailto:support@ur.io) or [join our Discord](https://discord.com/invite/RUNZXMwPRK) for direct support.</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1190,6 +1202,10 @@ right way</value>
   <data name="include_app_description" xml:space="preserve">
     <value>Only included apps use the tunnel.</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>Include in VPN</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>Included</value>
@@ -1384,6 +1400,10 @@ sent you to verify your identity.</value>
   <data name="make_default" xml:space="preserve">
     <value>Make default</value>
     <comment>Wallet Screen</comment>
+  </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>Manage apps</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
   </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>Manage subscription</value>
@@ -1602,6 +1622,10 @@ Claim your bonus by creating a network!</value>
     <value>No blocked locations</value>
     <comment>Call to action</comment>
   </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>No installed apps found. (Store apps aren't listed.)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
+  </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>No locations found</value>
     <comment>Call to action</comment>
@@ -1763,6 +1787,14 @@ and most decentralized ingress and egress protocol.</value>
     <value>Payouts occur every Sunday at 00:00 UTC, and require meeting a minimum USDC threshold.</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>1 peer</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d peers</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>Pending</value>
     <comment>Call to action</comment>
@@ -1829,6 +1861,22 @@ and most decentralized ingress and egress protocol.</value>
     <value>Polygon</value>
     <comment>Blockchain name. A product name: never translated.</comment>
   </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>Post Quantum Encryption</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>Fallback enabled (temporary)</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>Post Quantum Identity</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>Your identity key is stored locally on this device. If any peer's key appears different than their locally stored key, it means the network operator cannot be trusted.</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
+  </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>Pricing is shown at checkout.</value>
     <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
@@ -1879,6 +1927,10 @@ and most decentralized ingress and egress protocol.</value>
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} providers</value>
+  </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>Provider Identities</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>Provider statistics</value>
@@ -2193,6 +2245,10 @@ world's content</value>
     <value>Select country to block</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
   </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>Select location provider globe</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
+  </data>
   <data name="selected_location" xml:space="preserve">
     <value>Selected location</value>
     <comment>Fallback name for the connect location when the selected location has no name.</comment>
@@ -2419,7 +2475,7 @@ world's content</value>
   </data>
   <data name="site_app_copied" xml:space="preserve">
     <value>Copied</value>
-    <comment>App: copied flash</comment>
+    <comment>App: copied flash. Also the linux share-dialog toast after copying the identity payload.</comment>
   </data>
   <data name="site_app_copy" xml:space="preserve">
     <value>Copy</value>
@@ -3179,7 +3235,7 @@ as it should be.</value>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Strong Anonymization</value>
-    <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+    <comment>Connect drawer: strong anonymization toggle — the inverse of allow direct (direct connections expose the real source IP to the provider).</comment>
   </data>
   <data name="successfully_claimed_multiplier" xml:space="preserve">
     <value>Successfully claimed multiplier!</value>
@@ -3634,7 +3690,7 @@ as it should be.</value>
   </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>Auto</value>
-    <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+    <comment>Connect drawer: the auto connection mode (no fixed window type).</comment>
   </data>
   <data name="window_type_quality" xml:space="preserve">
     <value>Web</value>

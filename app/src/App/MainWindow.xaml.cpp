@@ -330,6 +330,7 @@ void MainWindow::ApplyStrings() {
   ProvideNeverItem().Text(Loc("never"));
   FixedIpLabel().Text(Loc("fixed_ip"));
   StrongAnonLabel().Text(Loc("strong_anonymization"));
+  PostQuantumLabel().Text(Loc("post_quantum_encryption"));
   ClientStatsLabel().Text(Loc("client_statistics"));
   LocalStatsLabel().Text(Loc("local_statistics"));
   DnsCardLabel().Text(Loc("custom_dns"));
@@ -386,7 +387,7 @@ void MainWindow::ApplyStrings() {
   // settings
   SplitTunnelHeading().Text(Loc("app_split_rules"));
   SplitTunnelDescription().Text(Loc("apps_listed_bypass_vpn"));
-  ManageAppSplitButton().Content(winrt::box_value(winrt::hstring{L"Manage apps"}));
+  ManageAppSplitButton().Content(LocBox("manage_apps"));
   SettingsAccountHeading().Text(Loc("account"));
   SignOutButton().Content(LocBox("sign_out"));
   ProtocolLink().Content(LocBox("uses_ur_protocol"));
@@ -1761,6 +1762,7 @@ void MainWindow::SeedConnectControls() {
   FixedIpToggle().IsEnabled(settings.mode != urnw::ConnectionMode::Auto);
   // "Strong Anonymization" is the inverse of allowDirect
   StrongAnonToggle().IsOn(!settings.allowDirect);
+  PostQuantumToggle().IsOn(settings.postQuantum);
   BlockerToggle().IsOn(Sdk().CurrentBlockerEnabled());
   // provide control mode ("manual"/unknown land on Never, the SDK's
   // conservative default case)
@@ -1789,6 +1791,7 @@ void MainWindow::PushPerformanceSettings() {
   settings.mode = SelectedMode();
   settings.fixedIp = FixedIpToggle().IsOn();
   settings.allowDirect = !StrongAnonToggle().IsOn();
+  settings.postQuantum = PostQuantumToggle().IsOn();
   Sdk().SetPerformanceSettings(settings);
 }
 
@@ -1826,6 +1829,11 @@ void MainWindow::OnFixedIpToggled(IInspectable const&, RoutedEventArgs const&) {
 }
 
 void MainWindow::OnStrongAnonToggled(IInspectable const&, RoutedEventArgs const&) {
+  if (updatingControls_) return;
+  PushPerformanceSettings();
+}
+
+void MainWindow::OnPostQuantumToggled(IInspectable const&, RoutedEventArgs const&) {
   if (updatingControls_) return;
   PushPerformanceSettings();
 }

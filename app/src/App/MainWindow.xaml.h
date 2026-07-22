@@ -111,6 +111,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnStrongAnonToggled(winrt::Windows::Foundation::IInspectable const&,
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnPostQuantumToggled(winrt::Windows::Foundation::IInspectable const&,
+                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnBlockerToggled(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnClientStatsCardTapped(winrt::Windows::Foundation::IInspectable const&,

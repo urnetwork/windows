@@ -1229,10 +1229,18 @@ PerformanceSettings SdkHost::CurrentPerformanceSettings() {
   } catch (const std::exception& e) {
     LogWarn("sdkhost: get performance profile failed: {}", e.what());
   }
-  if (!profile) return s;  // nil profile -> Auto
-  s.mode = profile->window_type == urnet::WindowTypeQuality ? ConnectionMode::Web
-                                                            : ConnectionMode::Streaming;
+  if (!profile) return s;  // nil profile ≡ window type auto, everything off
+  // a nil profile and window type "auto" mean the same thing (macOS
+  // loadPerformanceProfileFromDevice parity)
+  if (profile->window_type == urnet::WindowTypeQuality) {
+    s.mode = ConnectionMode::Web;
+  } else if (profile->window_type == urnet::WindowTypeSpeed) {
+    s.mode = ConnectionMode::Streaming;
+  } else {
+    s.mode = ConnectionMode::Auto;
+  }
   s.allowDirect = profile->allow_direct;
+  s.postQuantum = profile->post_quantum_encryption;
   s.fixedIp = profile->window_size && profile->window_size->window_size_min == 1 &&
               profile->window_size->window_size_max == 1;
   return s;
@@ -1240,18 +1248,24 @@ PerformanceSettings SdkHost::CurrentPerformanceSettings() {
 
 void SdkHost::SetPerformanceSettings(const PerformanceSettings& settings) {
   std::scoped_lock lock(mutex_);
-  std::optional<urnet::PerformanceProfile> profile;
-  if (settings.mode != ConnectionMode::Auto) {
-    urnet::PerformanceProfile p;
+  // always a profile, even for window type auto, so the orthogonal settings
+  // (allow direct, post quantum encryption) persist and apply in every mode
+  // (macOS DeviceManager createPerformanceProfile parity)
+  urnet::PerformanceProfile p;
+  p.allow_direct = settings.allowDirect;
+  p.post_quantum_encryption = settings.postQuantum;
+  if (settings.mode == ConnectionMode::Auto) {
+    // no fixed window type or size
+    p.window_type = urnet::WindowTypeAuto;
+  } else {
     p.window_type = settings.mode == ConnectionMode::Web ? urnet::WindowTypeQuality
                                                          : urnet::WindowTypeSpeed;
-    p.allow_direct = settings.allowDirect;
     urnet::WindowSizeSettings ws;
     ws.window_size_min = settings.fixedIp ? 1 : 2;
     ws.window_size_max = settings.fixedIp ? 1 : 4;
     p.window_size = ws;
-    profile = std::move(p);
   }
+  const std::optional<urnet::PerformanceProfile> profile = std::move(p);
   try {
     if (localState_) localState_->setPerformanceProfile(profile);  // persistence
     if (device_) device_->setPerformanceProfile(profile);          // live device
@@ -1546,9 +1560,13 @@ void SdkHost::TeardownSessionLocked() {
   ClearDrawer();
   if (device_) { device_->close(); device_.reset(); }
   provideHasNetworkKey_ = false;
+  // Session teardown only: stop the tunnel but keep the service-persisted
+  // device identity (key material). The identity is device-scoped, not
+  // session-scoped — RegisterNetworkClient's re-registration under a new jwt
+  // (guest upgrade, verify after an upgrade) must not rotate the key peers
+  // use to verify this device. Only the explicit Logout() below severs it.
   if (service_.IsConnected()) {
     service_.StopTunnel();
-    service_.Logout();
   }
   ClearRpcSession();
 }
@@ -1558,6 +1576,10 @@ void SdkHost::Logout() {
   try {
     pendingWalletAuth_.reset();
     TeardownSessionLocked();
+    // Explicit logout deliberately severs the device identity: clear the
+    // service-persisted key material (TunnelController::Logout) so the next
+    // login starts with a fresh identity.
+    if (service_.IsConnected()) service_.Logout();
     if (asyncLocalState_) asyncLocalState_->logout([](bool) {});
     SetAuthState(AuthState::LoggedOut);
     LogInfo("sdkhost: logged out");
