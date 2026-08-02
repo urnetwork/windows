@@ -768,19 +768,27 @@ bool SdkHost::BootstrapSession() {
     // The controlling DeviceRemote dials the service's mTLS RPC listener.
     device_ = urnet::newDeviceRemoteWithDefaults(*networkSpace_, clientJwt, instanceId);
     device_->setRpcServer(clientPem, serverCertPem, hostPort);
-    connectVc_ = device_->openConnectViewController();
 
-    subs_.push_back(connectVc_->addConnectionStatusListener(
-        [this] {
-          // pull the current status and relay it to the UI as a tunnel event
-          if (onTunnel_ && connectVc_) {
-            proto::TunnelStatus st;
-            st.state = connectVc_->getConnected() ? proto::TunnelState::Up
-                                                  : proto::TunnelState::Stopped;
-            onTunnel_(st);
-          }
+    // These session listeners are functional rather than presentational: auth
+    // invalidation and tray connection state must keep working while hidden.
+    subs_.push_back(device_->addAuthLogoutListener([this] {
+      if (onAuthInvalid_) onAuthInvalid_();
+    }));
+    subs_.push_back(device_->addJwtRefreshListener([this](std::string) {
+      if (onJwtRefreshed_) onJwtRefreshed_();
+    }));
+    subs_.push_back(device_->addConnectLocationChangeListener(
+        [this](std::optional<urnet::ConnectLocation> location) {
+          if (!onTunnel_) return;
+          proto::TunnelStatus st;
+          st.state = location ? proto::TunnelState::Up : proto::TunnelState::Stopped;
+          onTunnel_(st);
         }));
-    connectVc_->start();
+    subs_.push_back(device_->addRemoteChangeListener([this](bool remoteConnected) {
+      // availability for the peers status line: with the rpc down the peer
+      // count is unavailable (not zero), and the UI renders it disabled
+      if (onRemoteChanged_) onRemoteChanged_(remoteConnected);
+    }));
     // Re-apply the persisted performance profile onto the (re)created device
     // (macOS DeviceManager parity: LocalState is the profile's persistence).
     try {
@@ -798,8 +806,17 @@ bool SdkHost::BootstrapSession() {
     } catch (const std::exception& e) {
       LogWarn("sdkhost: restore provide control mode failed: {}", e.what());
     }
-    SubscribeStats();   // live connection/throughput/provide feed (macOS parity)
-    SubscribeDrawer();  // connect drawer feeds (charts, contracts, split rules, dns)
+    if (presentationActive_) {
+      SubscribeStats();
+      SubscribeDrawer();
+    }
+
+    if (onTunnel_) {
+      proto::TunnelStatus st;
+      st.state = device_->getConnectLocation() ? proto::TunnelState::Up
+                                               : proto::TunnelState::Stopped;
+      onTunnel_(st);
+    }
 
     LogInfo("sdkhost: session bootstrapped (rpc={})", hostPort);
     return true;
@@ -812,39 +829,28 @@ bool SdkHost::BootstrapSession() {
 // ---- live stats (macOS parity: listener-push, not polling) ----------------
 
 void SdkHost::SubscribeStats() {
-  if (!device_ || !connectVc_) return;
+  if (!device_ || connectVc_) return;
+  connectVc_ = device_->openConnectViewController();
+  connectVc_->start();
   contractVc_ = device_->openContractViewController();  // live throughput feed
   auto pub = [this] { PublishStats(); };
-  // The jwt refresh (which runs immediately at device creation) tells us when
-  // the stored client no longer exists on the server. Only marshal from the
-  // callback: it runs on an sdk thread, and Logout() clears subs_ -- which
-  // would destroy the sub whose callback is running.
-  subs_.push_back(device_->addAuthLogoutListener([this] {
-    if (onAuthInvalid_) onAuthInvalid_();
-  }));
-  // A jwt refresh re-derives Pro from the (now-updated) token -- macOS
-  // JwtRefreshListener parity. Without it a mid-session Pro change (notably a
-  // Pro->free lapse, which a Pro network's paused poll won't catch) isn't
-  // reflected until the next server fetch. Same marshal-only rule as above.
-  subs_.push_back(device_->addJwtRefreshListener([this](std::string) {
-    if (onJwtRefreshed_) onJwtRefreshed_();
-  }));
   // ConnectViewController: status, provider grid/window size, selected location.
-  subs_.push_back(connectVc_->addConnectionStatusListener(pub));
-  subs_.push_back(connectVc_->addGridListener(pub));
-  subs_.push_back(connectVc_->addSelectedLocationListener(
+  presentationSubs_.push_back(connectVc_->addConnectionStatusListener(pub));
+  presentationSubs_.push_back(connectVc_->addGridListener(pub));
+  presentationSubs_.push_back(connectVc_->addSelectedLocationListener(
       [this](std::optional<urnet::ConnectLocation>) { PublishStats(); }));
-  subs_.push_back(device_->addConnectLocationChangeListener(
+  presentationSubs_.push_back(device_->addConnectLocationChangeListener(
       [this](std::optional<urnet::ConnectLocation>) { PublishStats(); }));
   // ContractViewController: throughput points (bytes/bit rate up/down).
-  subs_.push_back(contractVc_->addThroughputListener(pub));
+  presentationSubs_.push_back(contractVc_->addThroughputListener(pub));
   // Device: contract status (balance/permission), provide on/off/paused,
   // provide secret keys (network-visible bit), tunnel.
-  subs_.push_back(device_->addContractStatusChangeListener(
+  presentationSubs_.push_back(device_->addContractStatusChangeListener(
       [this](std::optional<urnet::ContractStatus>) { PublishStats(); }));
-  subs_.push_back(device_->addProvideChangeListener([this](bool) { PublishStats(); }));
-  subs_.push_back(device_->addProvidePausedChangeListener([this](bool) { PublishStats(); }));
-  subs_.push_back(device_->addProvideSecretKeysListener(
+  presentationSubs_.push_back(device_->addProvideChangeListener([this](bool) { PublishStats(); }));
+  presentationSubs_.push_back(
+      device_->addProvidePausedChangeListener([this](bool) { PublishStats(); }));
+  presentationSubs_.push_back(device_->addProvideSecretKeysListener(
       [this](std::optional<urnet::ProvideSecretKeyList> keys) {
         bool hasNetworkKey = false;
         if (keys) {
@@ -858,7 +864,7 @@ void SdkHost::SubscribeStats() {
         provideHasNetworkKey_.store(hasNetworkKey);
         PublishStats();
       }));
-  subs_.push_back(device_->addTunnelChangeListener([this](bool) { PublishStats(); }));
+  presentationSubs_.push_back(device_->addTunnelChangeListener([this](bool) { PublishStats(); }));
   PublishStats();  // initial snapshot
 }
 
@@ -869,6 +875,9 @@ LiveStats SdkHost::ReadStats() {
     s.connected = connectVc_->getConnected();
     auto grid = connectVc_->getGrid();
     s.providerCount = grid.getWindowCurrentSize();
+  } else if (device_) {
+    s.connected = device_->getConnectLocation().has_value();
+    s.connectionStatus = s.connected ? "DESTINATION_SET" : "DISCONNECTED";
   }
   if (contractVc_) {
     // Most recent throughput point that has a Remote (tunneled) sample.
@@ -943,26 +952,30 @@ void SdkHost::SubscribeDrawer() {
   }
 
   // throughput points feed the three transfer charts
-  subs_.push_back(contractVc_->addThroughputListener([this] { PublishThroughput(); }));
+  presentationSubs_.push_back(
+      contractVc_->addThroughputListener([this] { PublishThroughput(); }));
   // aggregated per-peer contract rows: the ContractDetailsViewController coalesces
   // the egress + ingress change streams and does the per-peer aggregation +
   // closing lifecycle, then fires one settled ContractRowsChanged we re-read
-  subs_.push_back(contractDetailsVc_->addContractRowsListener([this] { PublishContractRows(); }));
+  presentationSubs_.push_back(
+      contractDetailsVc_->addContractRowsListener([this] { PublishContractRows(); }));
   contractDetailsVc_->start();
   // live routing decisions + allow/block counters + overrides ("split rules")
-  subs_.push_back(blockVc_->addBlockActionsListener([this] { PublishBlockActions(); }));
-  subs_.push_back(blockVc_->addBlockActionStatsListener([this] { PublishBlockStats(); }));
-  subs_.push_back(device_->addBlockActionOverridesChangeListener(
+  presentationSubs_.push_back(
+      blockVc_->addBlockActionsListener([this] { PublishBlockActions(); }));
+  presentationSubs_.push_back(
+      blockVc_->addBlockActionStatsListener([this] { PublishBlockStats(); }));
+  presentationSubs_.push_back(device_->addBlockActionOverridesChangeListener(
       [this](std::optional<urnet::BlockActionOverrideList>) {
         PublishSplitRules();
         PushLocalOverrideAppsToDriver();  // re-drive the split-tunnel driver on any override change
       }));
   // dns resolver settings + ad/tracker blocker
-  subs_.push_back(device_->addDnsResolverSettingsChangeListener(
+  presentationSubs_.push_back(device_->addDnsResolverSettingsChangeListener(
       [this](std::optional<urnet::DnsResolverSettings> settings) {
         if (onDnsSettings_) onDnsSettings_(std::move(settings));
       }));
-  subs_.push_back(device_->addBlockerEnabledChangeListener([this](bool on) {
+  presentationSubs_.push_back(device_->addBlockerEnabledChangeListener([this](bool on) {
     if (onBlockerEnabled_) onBlockerEnabled_(on);
   }));
 
@@ -1453,16 +1466,16 @@ std::vector<AppRule> SdkHost::CurrentAppRules() {
 // snapshot under mutex_ here is safe.
 void SdkHost::EnsureLocations() {
   std::scoped_lock lock(mutex_);
-  if (!device_ || locationsVc_) return;  // idempotent; needs a live session
+  if (!presentationActive_ || !device_ || locationsVc_) return;
   locationsVc_ = device_->openLocationsViewController();
-  subs_.push_back(locationsVc_->addFilteredLocationsListener(
+  presentationSubs_.push_back(locationsVc_->addFilteredLocationsListener(
       [this](std::optional<urnet::FilteredLocations> locations, std::string state) {
         if (onLocations_) onLocations_(std::move(locations), std::move(state));
       }));
   locationsVc_->start();
   // PeerViewController: connected AND provide-enabled peers only (SDK filters).
   peerVc_ = device_->openPeerViewController();
-  subs_.push_back(peerVc_->addPeersListener(
+  presentationSubs_.push_back(peerVc_->addPeersListener(
       [this](std::optional<urnet::NetworkPeerList> peers) {
         if (onPeers_) onPeers_(std::move(peers));
       }));
@@ -1508,6 +1521,12 @@ int64_t SdkHost::ConnectedPeerCount() {
   return 0;
 }
 
+bool SdkHost::RemoteConnected() {
+  std::scoped_lock lock(mutex_);
+  if (device_) return device_->getRemoteConnected();
+  return false;
+}
+
 std::optional<urnet::ConnectLocation> SdkHost::SelectedLocation() {
   std::scoped_lock lock(mutex_);
   if (connectVc_) return connectVc_->getSelectedLocation();
@@ -1517,16 +1536,27 @@ std::optional<urnet::ConnectLocation> SdkHost::SelectedLocation() {
 
 void SdkHost::ConnectBestAvailable() {
   std::scoped_lock lock(mutex_);
-  if (connectVc_) connectVc_->connectBestAvailable();
+  if (connectVc_) {
+    connectVc_->connectBestAvailable();
+  } else if (device_) {
+    auto controller = device_->openConnectViewController();
+    controller.connectBestAvailable();
+    device_->closeConnectViewController(controller);
+  }
 }
 
 void SdkHost::Connect(const std::string& connectLocationJson) {
   std::scoped_lock lock(mutex_);
-  if (!connectVc_) return;
   try {
     urnet::ConnectLocation loc =
         nlohmann::json::parse(connectLocationJson).get<urnet::ConnectLocation>();
-    connectVc_->connect(loc);
+    if (connectVc_) {
+      connectVc_->connect(loc);
+    } else if (device_) {
+      auto controller = device_->openConnectViewController();
+      controller.connect(loc);
+      device_->closeConnectViewController(controller);
+    }
   } catch (const std::exception& e) {
     LogWarn("sdkhost: connect parse failed: {}", e.what());
   }
@@ -1536,28 +1566,70 @@ void SdkHost::Connect(const std::string& connectLocationJson) {
 // the typed struct; skip the json round-trip). connect() takes an optional.
 void SdkHost::Connect(const urnet::ConnectLocation& location) {
   std::scoped_lock lock(mutex_);
-  if (connectVc_) connectVc_->connect(location);
+  if (connectVc_) {
+    connectVc_->connect(location);
+  } else if (device_) {
+    auto controller = device_->openConnectViewController();
+    controller.connect(location);
+    device_->closeConnectViewController(controller);
+  }
 }
 
 void SdkHost::Disconnect() {
   std::scoped_lock lock(mutex_);
-  if (connectVc_) connectVc_->disconnect();
+  if (connectVc_) {
+    connectVc_->disconnect();
+  } else if (device_) {
+    auto controller = device_->openConnectViewController();
+    controller.disconnect();
+    device_->closeConnectViewController(controller);
+  }
+}
+
+void SdkHost::ClosePresentationLocked() {
+  presentationSubs_.clear();
+  if (!device_) {
+    connectVc_.reset();
+    contractVc_.reset();
+    contractDetailsVc_.reset();
+    blockVc_.reset();
+    locationsVc_.reset();
+    peerVc_.reset();
+    return;
+  }
+  if (peerVc_) device_->closePeerViewController(*peerVc_);
+  peerVc_.reset();
+  if (locationsVc_) device_->closeLocationsViewController(*locationsVc_);
+  locationsVc_.reset();
+  if (contractDetailsVc_) {
+    device_->closeContractDetailsViewController(*contractDetailsVc_);
+  }
+  contractDetailsVc_.reset();
+  if (blockVc_) device_->closeBlockActionViewController(*blockVc_);
+  blockVc_.reset();
+  if (contractVc_) device_->closeContractViewController(*contractVc_);
+  contractVc_.reset();
+  if (connectVc_) device_->closeConnectViewController(*connectVc_);
+  connectVc_.reset();
+  ClearDrawer();
+}
+
+void SdkHost::SetPresentationActive(bool active) {
+  std::scoped_lock lock(mutex_);
+  if (presentationActive_ == active) return;
+  presentationActive_ = active;
+  if (!active) {
+    ClosePresentationLocked();
+    return;
+  }
+  if (!device_) return;
+  SubscribeStats();
+  SubscribeDrawer();
 }
 
 void SdkHost::TeardownSessionLocked() {
+  ClosePresentationLocked();
   subs_.clear();
-  connectVc_.reset();
-  contractVc_.reset();
-  // the details VC spawns a coalescing run loop in Start(); Close() cancels it
-  // (macOS ContractDetailsStore.reset -> viewController.close parity)
-  if (contractDetailsVc_) {
-    contractDetailsVc_->close();
-    contractDetailsVc_.reset();
-  }
-  blockVc_.reset();
-  locationsVc_.reset();
-  peerVc_.reset();
-  ClearDrawer();
   if (device_) { device_->close(); device_.reset(); }
   provideHasNetworkKey_ = false;
   // Session teardown only: stop the tunnel but keep the service-persisted

@@ -37,27 +37,26 @@ void SubscriptionBalanceStore::Initialize(
   backgroundTimer_ = queue_.CreateTimer();
   backgroundTimer_.Interval(kBackgroundInterval);
   backgroundTimer_.Tick([this](auto const&, auto const&) {
-    // skip the network round trip while the window is hidden to the tray; the
-    // snapshot resyncs on show (Refresh)
-    if (visible_ && !visible_()) return;
     Fetch();
   });
 
   confirmTimer_ = queue_.CreateTimer();
   confirmTimer_.Interval(kConfirmInterval);
   confirmTimer_.Tick([this](auto const&, auto const&) {
-    Fetch();
     // the server never confirmed within the window: stop hammering the api and
     // tell the user, rather than spinning for the rest of the session
     if (confirming_ && NowMillis() >= deadlineMillis_) {
       StopConfirmation(/*timedOut=*/true);
       EnsureBackgroundPolling();
       Publish();
+      return;
     }
+    Fetch();
   });
 }
 
 void SubscriptionBalanceStore::Start() {
+  started_ = true;
   ++generation_;
   loading_ = false;
   timedOut_ = false;
@@ -75,11 +74,12 @@ void SubscriptionBalanceStore::Start() {
   }
   Publish();
 
-  Fetch();
+  if (visible_) Fetch();
   EnsureBackgroundPolling();
 }
 
 void SubscriptionBalanceStore::Stop() {
+  started_ = false;
   ++generation_;  // any fetch still in flight is dropped
   loading_ = false;
   StopConfirmation(/*timedOut=*/false);
@@ -92,6 +92,23 @@ void SubscriptionBalanceStore::Stop() {
 
 void SubscriptionBalanceStore::Refresh() { Fetch(); }
 
+void SubscriptionBalanceStore::SetVisible(bool visible) {
+  if (visible_ == visible) return;
+  visible_ = visible;
+  if (!visible_) {
+    StopBackground();
+    if (confirmTimer_) confirmTimer_.Stop();
+    return;
+  }
+  if (!started_) return;
+  if (confirming_) {
+    ResumeConfirmationPolling();
+    return;
+  }
+  Fetch();
+  EnsureBackgroundPolling();
+}
+
 void SubscriptionBalanceStore::StartConfirmationPolling() {
   if (confirming_) return;
   StopBackground();
@@ -99,8 +116,19 @@ void SubscriptionBalanceStore::StartConfirmationPolling() {
   timedOut_ = false;
   confirming_ = true;
   deadlineMillis_ = NowMillis() + kConfirmDeadlineMillis;
-  if (confirmTimer_) confirmTimer_.Start();
   Publish();
+  ResumeConfirmationPolling();
+}
+
+void SubscriptionBalanceStore::ResumeConfirmationPolling() {
+  if (!started_ || !visible_ || !confirming_) return;
+  if (NowMillis() >= deadlineMillis_) {
+    StopConfirmation(/*timedOut=*/true);
+    EnsureBackgroundPolling();
+    Publish();
+    return;
+  }
+  if (confirmTimer_ && !confirmTimer_.IsRunning()) confirmTimer_.Start();
   Fetch();
 }
 
@@ -179,7 +207,10 @@ void SubscriptionBalanceStore::Apply(urnet::SubscriptionBalanceResult const& res
 }
 
 void SubscriptionBalanceStore::EnsureBackgroundPolling() {
-  if (!backgroundTimer_ || confirming_ || IsSupporterWithBalance()) return;
+  if (!backgroundTimer_ || !started_ || !visible_ || confirming_ ||
+      IsSupporterWithBalance()) {
+    return;
+  }
   if (!backgroundTimer_.IsRunning()) backgroundTimer_.Start();
 }
 

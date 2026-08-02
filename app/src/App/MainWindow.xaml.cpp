@@ -177,7 +177,6 @@ MainWindow::MainWindow() {
   chartTimer_.Tick([weak = get_weak()](auto const&, auto const&) {
     if (auto self = weak.get()) self->OnChartTick();
   });
-  chartTimer_.Start();
 
   // debounce the connect-wallet address validation while typing (apple parity):
   // each keystroke restarts the window, and only the pause validates.
@@ -230,6 +229,15 @@ MainWindow::~MainWindow() {
   if (nameCheckTimer_) nameCheckTimer_.Stop();
   if (bonusCheckTimer_) bonusCheckTimer_.Stop();
   if (resendCooldownTimer_) resendCooldownTimer_.Stop();
+}
+
+void MainWindow::SetPresentationActive(bool active) {
+  if (!chartTimer_) return;
+  if (active) {
+    if (!chartTimer_.IsRunning()) chartTimer_.Start();
+  } else {
+    chartTimer_.Stop();
+  }
 }
 
 // ---- strings -------------------------------------------------------------
@@ -1698,6 +1706,15 @@ void MainWindow::WireDrawerFeeds() {
       }
     });
   });
+  sdk.SetRemoteChangedHandler([queue, weak](bool) {
+    queue.TryEnqueue([weak] {
+      if (auto self = weak.get()) {
+        // remote attach/detach flips the peers line's disabled state; the
+        // nullopt trigger leaves the chooser's peer rows untouched
+        self->ApplyPeerCount(std::nullopt);
+      }
+    });
+  });
 }
 
 void MainWindow::WireCardAffordances() {
@@ -2105,6 +2122,15 @@ void MainWindow::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& pee
   // section stays provide-filtered (connectable only). The list argument is
   // the update trigger; the count reads the unfiltered value.
   (void)peers;
+  // The peers state lives in the service's device: while the rpc is down
+  // (service not running) a zero here would be a stale claim presented as
+  // fact, so the line goes gray and says discovery is disabled (apple
+  // ConnectActions parity).
+  if (!Sdk().RemoteConnected()) {
+    PeerCountText().Text(Loc("peer_discovery_disabled"));
+    PeerDot().Fill(urnw::colors::MutedBrush());
+    return;
+  }
   const int64_t count = Sdk().ConnectedPeerCount();
   // the standalone peers status line below the connect button, always shown:
   // "{n} peers" + a filled dot, green when providing peers are online and amber

@@ -22,6 +22,15 @@ namespace urnw {
 namespace {
 std::unique_ptr<AppController> g_app;
 
+constexpr bool WindowPresentationShouldRun(bool shown, bool activated) {
+  return shown && activated;
+}
+
+static_assert(WindowPresentationShouldRun(true, true));
+static_assert(!WindowPresentationShouldRun(true, false));
+static_assert(!WindowPresentationShouldRun(false, true));
+static_assert(!WindowPresentationShouldRun(false, false));
+
 // Pull a urnetwork:// uri out of a command line. The shell appends it as an
 // argument (possibly quoted); the uri itself never contains whitespace because
 // the wallet-connect bridge percent-encodes the query.
@@ -90,7 +99,6 @@ void AppController::Start() {
   // Subscription balance / plan store (Api::subscriptionBalance + polling).
   // Its timers live on this (UI) thread; its change handler already runs here.
   balance_.Initialize(uiThread_);
-  balance_.SetVisibilityGate([this] { return windowVisible_; });
   balance_.SetChangeHandler([this](const BalanceSnapshot& snapshot,
                                    const BalancePollState& poll) {
     if (windowVisible_ && window_) {
@@ -182,6 +190,11 @@ void AppController::ShowWindow(const POINT* anchor) {
             HideWindow();
           });
     }
+    window_.Activated([this](auto const&, auto const& args) {
+      windowActivated_ =
+          args.WindowActivationState() != WindowActivationState::Deactivated;
+      ReconcileWindowPresentation();
+    });
   }
   // Position near the tray anchor for the flyout-style left-click; otherwise
   // let it appear at its default location.
@@ -198,24 +211,39 @@ void AppController::ShowWindow(const POINT* anchor) {
       appWindow.Move(pos);
     }
   }
+  windowShown_ = true;
+  windowActivated_ = true;
   window_.Activate();
-  windowVisible_ = true;
-  // the window is created lazily and only updated while visible; re-apply the
-  // current auth + tunnel state so it reflects anything that changed while hidden
-  if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>()) {
-    self->OnAuthStateChanged(authState_, authError_);
-    if (lastTunnelStatus_) self->OnTunnelStateChanged(*lastTunnelStatus_);
-    self->OnStatsChanged(sdk_.CurrentStats());  // resync live stats on show
-    // resync the plan cards, then fetch fresh (the background poll was gated
-    // off while the window was hidden)
-    self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
-    if (authState_ == AuthState::LoggedIn) balance_.Refresh();
-  }
+  ReconcileWindowPresentation();
 }
 
 void AppController::HideWindow() {
-  windowVisible_ = false;
+  windowShown_ = false;
+  windowActivated_ = false;
+  ReconcileWindowPresentation();
   if (window_) window_.try_as<Window>().AppWindow().Hide();
+}
+
+void AppController::ReconcileWindowPresentation() {
+  const bool active =
+      WindowPresentationShouldRun(windowShown_, windowActivated_);
+  if (windowVisible_ == active) return;
+  windowVisible_ = active;
+
+  sdk_.SetPresentationActive(active);
+  balance_.SetVisible(active);
+  if (!window_) return;
+  if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>()) {
+    self->SetPresentationActive(active);
+    if (!active) return;
+
+    // Re-apply the current state after the hidden/inactive interval.
+    self->OnAuthStateChanged(authState_, authError_);
+    if (lastTunnelStatus_) self->OnTunnelStateChanged(*lastTunnelStatus_);
+    self->OnStatsChanged(sdk_.CurrentStats());
+    self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
+    if (authState_ == AuthState::LoggedIn) balance_.Refresh();
+  }
 }
 
 // ---- urnetwork:// protocol activation --------------------------------------

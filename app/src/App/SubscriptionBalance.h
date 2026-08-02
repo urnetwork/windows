@@ -58,9 +58,9 @@ class SubscriptionBalanceStore {
   void Initialize(winrt::Microsoft::UI::Dispatching::DispatcherQueue queue);
 
   void SetChangeHandler(ChangeHandler h) { onChange_ = std::move(h); }
-  // The background poll only runs while this returns true (window visible).
-  // The confirmation poll ignores it: the user is off in the browser paying.
-  void SetVisibilityGate(std::function<bool()> gate) { visible_ = std::move(gate); }
+  // Stop/start every timer with window visibility. A confirmation preserves
+  // its deadline while hidden and resumes (or times out) when shown.
+  void SetVisible(bool visible);
 
   // Login: seed Pro/guest offline from the stored jwt, fetch once, and begin
   // the 30s background poll (it stops itself once Pro with balance).
@@ -94,6 +94,7 @@ class SubscriptionBalanceStore {
     return snapshot_.isPro && snapshot_.availableByteCount > 0;
   }
   void EnsureBackgroundPolling();
+  void ResumeConfirmationPolling();
   void StopBackground();
   void StopConfirmation(bool timedOut);
   void Publish();
@@ -103,9 +104,9 @@ class SubscriptionBalanceStore {
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer backgroundTimer_{nullptr};
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer confirmTimer_{nullptr};
   ChangeHandler onChange_;
-  std::function<bool()> visible_;
-
   BalanceSnapshot snapshot_;
+  bool started_ = false;
+  bool visible_ = false;
   bool jwtPro_ = false;     // the jwt's Pro claim (stale across plan changes)
   bool loading_ = false;    // one fetch in flight at a time
   bool confirming_ = false;

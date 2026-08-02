@@ -1795,6 +1795,10 @@ and most decentralized ingress and egress protocol.</value>
     <value>%d peers</value>
     <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
   </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>Peer discovery disabled until connected</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>Pending</value>
     <comment>Call to action</comment>

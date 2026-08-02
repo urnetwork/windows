@@ -234,6 +234,7 @@ class SdkHost {
   using LocationsHandler =
       std::function<void(std::optional<urnet::FilteredLocations>, std::string state)>;
   using PeersHandler = std::function<void(std::optional<urnet::NetworkPeerList>)>;
+  using RemoteChangedHandler = std::function<void(bool remoteConnected)>;
 
   SdkHost() = default;
   ~SdkHost();
@@ -334,6 +335,10 @@ class SdkHost {
   std::optional<urnet::NetworkPeerList> ConnectedProvidePeers();
   // count of ALL connected peers (online, provide or not)
   int64_t ConnectedPeerCount();
+  // Whether the service rpc is attached. The peers state lives in the
+  // service's device: while this is false the peer count is unavailable
+  // (not zero) and the peers status line shows a disabled-discovery state.
+  bool RemoteConnected();
   // The selected connect location (the chooser's selection check + the drawer's
   // selected-peer name resolution).
   std::optional<urnet::ConnectLocation> SelectedLocation();
@@ -341,6 +346,9 @@ class SdkHost {
   // ConnectLocation (an SDK one, or one it built from a peer), so skip the json
   // round-trip that Connect(const std::string&) does.
   void Connect(const urnet::ConnectLocation& location);
+  // Own presentation-only view controllers only while the WinUI window is
+  // visible. The DeviceRemote and service tunnel remain alive in the tray.
+  void SetPresentationActive(bool active);
 
   void SetAuthStateHandler(AuthStateHandler h) { onAuth_ = std::move(h); }
   void SetAuthInvalidHandler(AuthInvalidHandler h) { onAuthInvalid_ = std::move(h); }
@@ -362,6 +370,7 @@ class SdkHost {
   void SetBlockerEnabledHandler(BlockerEnabledHandler h) { onBlockerEnabled_ = std::move(h); }
   void SetLocationsHandler(LocationsHandler h) { onLocations_ = std::move(h); }
   void SetPeersHandler(PeersHandler h) { onPeers_ = std::move(h); }
+  void SetRemoteChangedHandler(RemoteChangedHandler h) { onRemoteChanged_ = std::move(h); }
 
   // Snapshots on demand (seed / resync when the window shows).
   std::vector<urnet::ThroughputPoint> CurrentThroughputPoints(int64_t& windowSeconds);
@@ -437,12 +446,13 @@ class SdkHost {
   // Bring up the tunnel (service) and the controlling DeviceRemote.
   bool BootstrapSession();
   void SetAuthState(AuthState s, const std::string& error = {});
-  void SubscribeStats();          // subscribe live-stats listeners (in BootstrapSession)
+  void SubscribeStats();          // caller holds mutex_; opens presentation controllers
   LiveStats ReadStats();          // read the current snapshot from the SDK getters
   void PublishStats();            // ReadStats() -> onStats_
   // Drawer feeds: subscribe listeners (in BootstrapSession) and publish
   // snapshots, only on change (block actions storm per routing decision).
   void SubscribeDrawer();
+  void ClosePresentationLocked();
   void PublishThroughput();
   void PublishContractRows();
   void PublishBlockActions();
@@ -482,6 +492,8 @@ class SdkHost {
   // network-name availability at sign-up; api-scoped, so it survives logout
   std::optional<urnet::NetworkNameValidationViewController> networkNameVc_;
   std::vector<urnet::Sub> subs_;
+  std::vector<urnet::Sub> presentationSubs_;
+  bool presentationActive_ = false;
 
   // Drawer caches (change detection + on-demand snapshots), guarded by
   // drawerMutex_ because the SDK listeners fire on their own threads.
@@ -517,6 +529,7 @@ class SdkHost {
   BlockerEnabledHandler onBlockerEnabled_;
   LocationsHandler onLocations_;
   PeersHandler onPeers_;
+  RemoteChangedHandler onRemoteChanged_;
   AuthState authState_ = AuthState::LoggedOut;
 };
 

@@ -28,6 +28,7 @@ namespace winrt::URnetwork::implementation {
 struct MainWindow : MainWindowT<MainWindow> {
   MainWindow();
   ~MainWindow();
+  void SetPresentationActive(bool active);
 
   // XAML event handlers — sign-in flow (initial → password / create / verify /
   // reset; macOS Authenticate/** parity)

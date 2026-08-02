@@ -49,6 +49,7 @@ class AppController {
   void OnTunnelState(const proto::TunnelStatus& status);
   void OnStats(const LiveStats& stats);
   void UpdateTray();
+  void ReconcileWindowPresentation();
   template <class F>
   void OnUi(F&& f);  // marshal onto the UI thread
 
@@ -64,8 +65,10 @@ class AppController {
   // set when the tray "Quit" is chosen, so the window's Closing handler lets it
   // close instead of hiding to tray (macOS parity: X/close hides, tray Quit exits)
   bool quitting_ = false;
-  // tray app: skip pushing state into the window while it is hidden (resynced on
-  // show) so a hidden window doesn't churn on high-frequency SDK updates
+  // Presentation controllers run only while the tray window is both shown and
+  // active. Minimize/app deactivation suspends them just like an explicit hide.
+  bool windowShown_ = false;
+  bool windowActivated_ = false;
   bool windowVisible_ = false;
   std::optional<proto::TunnelStatus> lastTunnelStatus_;
 };
