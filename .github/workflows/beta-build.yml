@@ -207,8 +207,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: urnetwork-windows-${{ matrix.platform }}
-          path: |
-            app/build/${{ matrix.platform }}/Release/**/*.exe
-            app/build/${{ matrix.platform }}/Release/**/*.dll
-            app/build/${{ matrix.platform }}/Release/**/*.pri
+          # the WHOLE output dir, not a glob of exe/dll/pri: that pattern
+          # silently dropped Assets\Fonts (the brand typefaces the app copies
+          # next to the exe), and would drop the next asset added too. An
+          # artifact that is missing files the build produced is worse than a
+          # bigger artifact.
+          path: app/build/${{ matrix.platform }}/Release/
           if-no-files-found: error
