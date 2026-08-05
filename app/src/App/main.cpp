@@ -177,6 +177,16 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
   }
 
   // Application::Start does not return until the app exits (tray "Quit").
+  if (!urnw::WasLaunched()) {
+    urnw::FailVisible(
+        L"URnetwork started but its user interface never launched, so it has "
+        L"exited.\n\n"
+        L"The app's resources (resources.pri, next to URnetwork.exe) are the "
+        L"usual cause.",
+        L"Application::Start returned without OnLaunched ever running, and "
+        L"without reporting an error.");
+    return 1;
+  }
   urnw::LogInfo("startup: message loop exited; process ending normally");
   return 0;
 }

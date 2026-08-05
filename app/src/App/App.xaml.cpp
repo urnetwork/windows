@@ -50,7 +50,9 @@ App::App() {
 // picture.
 void App::OnLaunched(LaunchActivatedEventArgs const&) {
   // main.cpp already opened the log (its first instruction) — this is the entry
-  // marker for the XAML side of the handoff.
+  // marker for the XAML side of the handoff, and the proof for wWinMain that
+  // XAML got this far at all.
+  urnw::MarkLaunched();
   urnw::LogInfo("app: OnLaunched");
 
   try {

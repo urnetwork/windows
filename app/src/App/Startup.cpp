@@ -7,6 +7,7 @@
 
 #include <shellapi.h>  // CommandLineToArgvW
 
+#include <atomic>
 #include <filesystem>
 #include <format>
 #include <optional>
@@ -33,6 +34,11 @@ constexpr wchar_t kBootstrapDll[] = L"Microsoft.WindowsAppRuntime.Bootstrap.dll"
 // Whether StartupLogInit got the log file open. Unset until it has run, so the
 // diagnostics never claim anything about a log nobody tried to open yet.
 std::optional<bool> g_logOpened;
+
+// Written on the UI thread in OnLaunched, read on the same thread after the
+// message loop ends; atomic anyway, because a flag that decides whether the
+// owner gets told anything is not the place to be clever.
+std::atomic<bool> g_launched{false};
 
 std::filesystem::path ExePath() {
   wchar_t path[MAX_PATH]{};
@@ -225,6 +231,9 @@ bool WantsDiagnose() {
   ::LocalFree(argv);
   return wants;
 }
+
+void MarkLaunched() { g_launched.store(true); }
+bool WasLaunched() { return g_launched.load(); }
 
 void FailVisible(std::wstring_view cause, std::wstring_view detail) {
   LogError("startup: FAILED: {}{}{}", Narrow(cause), detail.empty() ? "" : " | ",

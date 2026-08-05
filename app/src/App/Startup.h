@@ -52,6 +52,12 @@ int WriteDiagnosticsToConsole(const std::vector<std::wstring>& lines);
 // --diagnose, -diagnose, /diagnose or a bare diagnose.
 bool WantsDiagnose();
 
+// Set by App::OnLaunched, read by wWinMain after Application::Start returns. A
+// message loop that ends without OnLaunched ever having run means XAML gave up
+// without throwing — the fourth look-alike, and the one nothing else can see.
+void MarkLaunched();
+bool WasLaunched();
+
 // A startup failure the user can see: logged as an error, then a message box
 // naming the cause, the mechanical detail (hresult / GetLastError / path) and
 // the log file. Blocks until dismissed; callers exit afterwards.
