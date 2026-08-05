@@ -425,9 +425,25 @@ static NTSTATUS UrstCreateClose(DEVICE_OBJECT* device, IRP* irp) {
     g_state.servicePid = PsGetCurrentProcessId();
     ExReleaseSpinLockExclusive(&g_state.lock, irql);
   } else if (stack->MajorFunction == IRP_MJ_CLOSE) {
+    BOOLEAN wasController;
     KIRQL irql = ExAcquireSpinLockExclusive(&g_state.lock);
-    if (g_state.servicePid == PsGetCurrentProcessId()) g_state.servicePid = NULL;
+    wasController = (BOOLEAN)(g_state.servicePid == PsGetCurrentProcessId());
+    if (wasController) g_state.servicePid = NULL;
     ExReleaseSpinLockExclusive(&g_state.lock, irql);
+
+    // The controlling service just went away — and the kernel issues this IRP
+    // however it went, including TerminateProcess, so this is the ONLY cleanup
+    // that survives an abnormal exit. Disarm rather than fail open.
+    //
+    // Leaving the rules armed is worse than having no split tunneling at all.
+    // In allowlist mode redirect is !match, so every process outside the
+    // keep-set keeps having its bind rewritten to the physical source address
+    // the now-dead service last supplied. One DHCP renew or NIC change later
+    // that address no longer exists and EVERY process on the machine loses
+    // network until reboot. Nothing in user mode recovers it — not the
+    // service's startup sweep, not `urnetworkd revert` — because the state
+    // lives here. UrstClearExcluded frees the path set and clears enabled.
+    if (wasController) UrstClearExcluded();
   }
   irp->IoStatus.Status = STATUS_SUCCESS;
   irp->IoStatus.Information = 0;
