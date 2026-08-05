@@ -47,31 +47,55 @@ is survivable at all.
 > **§4 test B is the test that proves it.** If it turns out to be false on some
 > Windows build, everything else in this section is what saves the machine.
 
-**The backstops, in the order they fire:**
+**The backstops — and be precise about what each one actually covers**, because
+this paragraph is where you calibrate how much to trust the design:
 
 1. `NetworkConfig::CrashRevert()` — deletes the 31 routes and clears the tun DNS
    from an unhandled-exception filter, a `std::terminate` handler, or the console
-   control handler (window close / logoff / shutdown). Allocation-free and
-   lock-free on purpose: it runs when the process is already broken, and it runs
-   *before* it logs, because formatting allocates.
+   control handler (window close / logoff / shutdown). Lock-free on purpose: it
+   runs when the process is already broken, and it reverts *before* it logs,
+   because formatting allocates.
+
+   > **This one covers less than it looks like it does.** The SDK is a cgo DLL
+   > that embeds the Go runtime, and Go installs its own vectored exception
+   > handler, which runs *before* a top-level unhandled-exception filter — so a
+   > crash inside the SDK may never reach ours. A Go panic raises no SEH at all.
+   > And `TerminateProcess` (what `taskkill /F` and Stop-Process do) runs
+   > **nothing**: no filter, no handler, no destructor. Effectively this catches
+   > a C++ exception escaping our own native code, and the console-close path.
+   > That is worth having and it is not the thing keeping you safe.
+
 2. `NetworkConfig::SweepOrphanedTunnel()` at every service start — finds a tun
    interface that outlived its process, by the pinned adapter GUID *and* by
    adapter alias (wintun treats the GUID as a request and may fall back to
    another), and takes its routes back. The installed service restarts itself
    after a crash (`SC_ACTION_RESTART`, 5s), so this normally fires within seconds
-   without anyone doing anything.
-3. `urnetworkd revert` — a command that takes back leftover routes and DNS
-   without starting anything. This is the manual escape hatch. Run it elevated.
+   without anyone doing anything. Unlike (1), this runs no matter how the
+   previous process died.
+3. `urnetworkd revert` — the manual escape hatch, elevated. **It refuses while a
+   urnetworkd is running**, because it cannot tell a live tunnel from an orphan
+   and reverting a live one would drop your traffic to the clear while the app
+   still says Connected. Stop the service first.
 
 **And if all of that fails: reboot.** Routes created with
 `CreateIpForwardEntry2` are not persistent — they live in the stack, not in the
 registry, so they do not survive a restart. (Also per the docs, not observed.)
 
-**The one case that is genuinely not covered:** the split-tunnel kernel driver.
-If it is ever shipped and loaded, an abnormal exit leaves the driver service
-registered and its WFP filters in place; only `SplitTunnelClient::Close()` on an
-orderly path unloads it. The driver is excluded from the solution's build
-configurations today, so it cannot load, and this is a note for whoever turns it
+**So the honest shape of it:** the adapter teardown is not one of four defences,
+it is *the* defence, and the other three are for the cases where it did not
+happen. Note in particular that **test B2 (hard kill) exercises none of the
+three backstops** — `TerminateProcess` skips (1) entirely, and if the machine
+recovers it is because the adapter went away. That is exactly why B2 is the test
+worth running: it measures the mechanism everything else is contingency for.
+
+**The one case that is genuinely not covered by any of this:** the split-tunnel
+kernel driver's user-mode lifecycle. An abnormal exit leaves the driver service
+registered and its WFP filters installed; only `SplitTunnelClient::Close()` on an
+orderly path unloads it. The driver's *rules* now disarm themselves on handle
+close (`Driver.c`, `IRP_MJ_CLOSE` → `UrstClearExcluded`), which is the part that
+could otherwise cost the machine its network — but the service registration and
+the filters survive. The driver is excluded from the solution's build
+configurations today, so none of it can load; this is a note for whoever turns it
 on — see §6.
 
 ---
@@ -287,23 +311,37 @@ the tun LUID — the same ordering Windows itself uses — and pushes it through
 never gets a `0.0.0.0/0` route, only the 31 complement prefixes.
 
 On the connect side the index covers all three socket families the service
-opens (`IP_UNICAST_IF` / `IPV6_UNICAST_IF`, `egress_windows.go`):
+opens (`IP_UNICAST_IF` / `IPV6_UNICAST_IF`, `egress_windows.go:43`). Line
+numbers are against connect **`beta/custom-server` at `8c11844`** — the branch
+this ships on, so the argument is checkable where it runs:
 
 | Sockets | Path | Applied by |
 | --- | --- | --- |
-| every TCP dial | `ConnectSettings.NetDialer` → `egressDialer` | `net.go:129` |
-| the platform QUIC `UDPConn` | `applyEgress(udpConn)` | `transport.go:1274` |
+| every TCP dial | `ConnectSettings.NetDialer` → `egressDialer` | `net.go:133` |
+| the platform QUIC `UDPConn` | `applyEgress(udpConn)` | `transport.go:1434` |
 | pion ICE / p2p UDP | `egressNet.ListenUDP` → `applyEgress` | `egress_net.go` |
 
 The third one is worth knowing about, because it is why the "never push 0"
-change matters more than it looks: `transport_p2p_webrtc_pc.go` chooses
-`newEgressNet()` **only when `EgressInterfaceIndex()` is non-zero**, and
-otherwise falls back to `newIceInterfaceNet`, whose `dialLocalIP` opens a
-connect-only UDP socket to discover the local address. With the tunnel up and
-the index cleared, that socket resolves through the tun and reports
-`169.254.2.1` as the host's address — wrong ICE candidates on top of the
-unbound-socket problem. Unbinding is worse than pinning to a downed NIC in two
-separate ways.
+change matters more than it looks: `transport_p2p_webrtc_pc.go:73` selects
+`newEgressNet(log)` **only when `EgressInterfaceIndex()` is non-zero**, and
+otherwise falls through to `newIceInterfaceNet`, whose `dialLocalIP`
+(`ice_net.go:184`) opens a connect-only UDP socket to discover the local
+address. With the tunnel up and the index cleared, that socket resolves through
+the tun and reports `169.254.2.1` as the host's address — wrong ICE candidates
+on top of the unbound-socket problem. Unbinding is worse than pinning to a
+downed NIC in two separate ways.
+
+**And the pin itself is now checkable.** `applyEgressInterface` used to discard
+both `setsockopt` results and return `nil` unconditionally, so a pin to an index
+that no longer resolved failed *silently* and the socket followed the route
+table — into our own tun, R1 defeated with nothing reporting it. It now reports
+the case where every attempted option failed: the TCP path fails the dial
+(visible in the existing `[net]dial` log line) and the QUIC and ICE paths log.
+Per-option failures are still ignored, and must be — setting the wrong family's
+option on a single-family socket fails harmlessly, and treating that as an error
+would break every connection. `EgressMonitor::Refresh` also re-validates a
+retained index against `GetIfEntry2` before keeping it pinned, so the two ends
+agree about what a live interface is.
 
 The binding was already applied before the routes. It is now also applied before
 the `NetworkSpace` and `DeviceLocal` are constructed, so no SDK socket can be
