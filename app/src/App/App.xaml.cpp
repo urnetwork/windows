@@ -89,6 +89,13 @@ void App::OnLaunched(LaunchActivatedEventArgs const&) {
   }
   urnw::LogInfo("app: controller started");
 
+  // Here, and not earlier: the tray icon has already resolved a localized
+  // string, so the resource loader is cached either way and this only reads what
+  // the UI itself got. Run before that and this probe would BE the first lookup,
+  // and a probe failing for its own reasons would leave every string in the UI
+  // rendering as a key id for the rest of the process (see Startup.h).
+  urnw::LogInfo("startup: {}", urnw::Narrow(urnw::ResourceProbe()));
+
   // urnetwork:// protocol activation — the ur.io/wallet-connect bridge returning
   // through the browser (see main.cpp). A launch while the app is already running
   // is redirected to this instance by AppInstance and lands on Activated, which

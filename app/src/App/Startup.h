@@ -45,8 +45,17 @@ void LogDiagnostics(const std::vector<std::wstring>& lines);
 // resources.pri exists, which is all a file check can tell. Localized() falls
 // back to the key id, so a present-but-unindexed pri renders every string in the
 // UI as "app_name" / "connect": that is cause 4 of the four look-alikes, and a
-// file size cannot see it. MRT Core is a WinRT API, so this must be called AFTER
-// init_apartment. Returns a ready-formatted diagnostics line.
+// file size cannot see it.
+//
+// CALL ORDER MATTERS. Localization.cpp caches its ResourceLoader in a
+// function-local static on the FIRST call, keeping the failure too — so probing
+// before the app is up would move that first call earlier than the UI's, and a
+// probe that failed for a reason of its own (no apartment yet, MRT not ready)
+// would then make every string in the UI render as its key id for the rest of
+// the process. A diagnostic that causes the fault it looks for is worse than no
+// diagnostic. So: --diagnose calls this (that process prints and exits, there is
+// no UI to poison), and the normal path calls it from OnLaunched AFTER the tray
+// icon has already resolved a string, where it only reads what is cached.
 std::wstring ResourceProbe();
 
 // --diagnose: print the lines to the console this process was launched from (a

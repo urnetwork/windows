@@ -192,15 +192,13 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     return 1;
   }
 
-  // Needs the apartment, so it joins the diagnostics here rather than in
-  // CollectDiagnostics: this is the probe that can see cause 4 (resources
-  // present on disk but not resolving), which no file check can.
-  const std::wstring resources = urnw::ResourceProbe();
-  diagnostics.push_back(resources);
-  urnw::LogInfo("startup: {}", urnw::Narrow(resources));
-
   // --diagnose exits here, before the single-instance registration.
   if (diagnose) {
+    // Both of these need the apartment, and ResourceProbe is deliberately only
+    // run HERE and in OnLaunched — see its declaration: it would otherwise be
+    // the first caller of Localized(), whose loader is cached on first use, and
+    // a probe that fails early would make the whole UI render key ids.
+    diagnostics.push_back(urnw::ResourceProbe());
     diagnostics.push_back(InstanceProbe());
     return urnw::WriteDiagnosticsToConsole(diagnostics);
   }
