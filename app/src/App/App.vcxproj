@@ -136,7 +136,11 @@
            WINRT_GetActivationFactory / WINRT_CanUnloadNow (LNK2001, normally defined by the
            module.g.cpp we don't compile) - defining this compiles the whole block out, and
            since ONLY that generated unit referenced those symbols, both errors clear. -->
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;URN_WINDOWSAPPSDK_VERSION=L\"$(UrnWindowsAppSdkVersion)\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- URN_WINDOWSAPPSDK_VERSION_RAW is the BARE token (2.2.0); the source
+           stringizes it (Startup.cpp). A `\"` -escaped literal does not survive
+           MSBuild's command-line quoting here — verified: cl then sees the value
+           end at `L` and the TU fails with C2065 'L': undeclared identifier. -->
+      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;URN_WINDOWSAPPSDK_VERSION_RAW=$(UrnWindowsAppSdkVersion);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebugDLL</RuntimeLibrary>
       <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreadedDLL</RuntimeLibrary>
       <Optimization Condition="'$(Configuration)'=='Release'">MaxSpeed</Optimization>
@@ -162,7 +166,11 @@
        (browser-extension) wallets only. -->
   <ItemDefinitionGroup Condition="'$(UrnWalletConnectProjectId)'!=''">
     <ClCompile>
-      <PreprocessorDefinitions>URN_WALLETCONNECT_PROJECT_ID=\"$(UrnWalletConnectProjectId)\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- Bare token, stringized in Config.h — same reason as
+           URN_WINDOWSAPPSDK_VERSION_RAW above. The `\"` form this used to have
+           would have broken the build for the first person to actually pass a
+           project id, which is why it never showed up: CI never sets one. -->
+      <PreprocessorDefinitions>URN_WALLETCONNECT_PROJECT_ID_RAW=$(UrnWalletConnectProjectId);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
 

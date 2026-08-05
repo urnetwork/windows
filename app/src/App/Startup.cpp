@@ -23,8 +23,17 @@
 // so the two cannot drift. Printed next to the runtime actually loaded: a
 // major.minor mismatch is then one line to read instead of an invisible
 // incompatibility.
-#if !defined(URN_WINDOWSAPPSDK_VERSION)
-#define URN_WINDOWSAPPSDK_VERSION L"(not injected by the build)"
+//
+// It arrives as a bare token (2.2.0) and is stringized here — an MSBuild
+// PreprocessorDefinition cannot carry a `\"`-escaped literal through to cl:
+// verified against msbuild locally, where the value ends at the `L` and the TU
+// dies with C2065 'L': undeclared identifier.
+#define URN_STR2(x) #x
+#define URN_STR(x) URN_STR2(x)
+#if defined(URN_WINDOWSAPPSDK_VERSION_RAW)
+#define URN_WINDOWSAPPSDK_VERSION URN_STR(URN_WINDOWSAPPSDK_VERSION_RAW)
+#else
+#define URN_WINDOWSAPPSDK_VERSION "(not injected by the build)"
 #endif
 
 namespace urnw {
@@ -198,7 +207,7 @@ std::vector<std::wstring> CollectDiagnostics() {
   lines.push_back(std::format(L"  storage root     : {}",
                               StorageRoot(/*isService=*/false).wstring()));
   lines.push_back(std::format(L"  built against    : Windows App SDK {}",
-                              URN_WINDOWSAPPSDK_VERSION));
+                              Widen(URN_WINDOWSAPPSDK_VERSION)));
   lines.push_back(std::format(L"  app runtime      : {}", AppRuntimeProbe()));
   lines.push_back(std::format(L"  bootstrap dll    : {}",
                               LoadedModule(kBootstrapDll, dir / kBootstrapDll)));

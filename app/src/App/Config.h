@@ -17,12 +17,20 @@ namespace urnw::config {
 // polkadot-js for Bittensor; Phantom/Solflare for Solana. Nothing crashes and no
 // button dies; only mobile wallet pairing is lost.
 //
-// Define URN_WALLETCONNECT_PROJECT_ID on the build (CI / build machine, the way
-// android takes it from local.properties) to inject the value without
-// committing it:
+// Inject it on the build (CI / build machine, the way android takes it from
+// local.properties) rather than committing it:
 //   msbuild ... /p:UrnWalletConnectProjectId=<project id>
-#if defined(URN_WALLETCONNECT_PROJECT_ID)
-inline constexpr const char* kWalletConnectProjectId = URN_WALLETCONNECT_PROJECT_ID;
+//
+// App.vcxproj passes the id as a BARE token and it is stringized here: an
+// MSBuild PreprocessorDefinition cannot carry `\"`-escaped quotes through to cl
+// (verified — the value ends at the backslash and the TU fails to compile), so
+// the quoting has to happen in the preprocessor instead.
+#define URN_CONFIG_STR2(x) #x
+#define URN_CONFIG_STR(x) URN_CONFIG_STR2(x)
+
+#if defined(URN_WALLETCONNECT_PROJECT_ID_RAW)
+inline constexpr const char* kWalletConnectProjectId =
+    URN_CONFIG_STR(URN_WALLETCONNECT_PROJECT_ID_RAW);
 #else
 inline constexpr const char* kWalletConnectProjectId = "";
 #endif
