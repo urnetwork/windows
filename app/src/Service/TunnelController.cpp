@@ -43,6 +43,15 @@ void WriteFileBytes(const std::filesystem::path& p, const std::vector<uint8_t>& 
   if (f) f.write(reinterpret_cast<const char*>(b.data()), b.size());
 }
 
+std::string Join(const std::vector<std::string>& parts) {
+  std::string out;
+  for (const auto& p : parts) {
+    if (!out.empty()) out += ",";
+    out += p;
+  }
+  return out;
+}
+
 }  // namespace
 
 TunnelController::TunnelController() {
@@ -78,29 +87,73 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
   state_ = proto::TunnelState::Starting;
   error_.clear();
 
+  // Named so a failure says which step threw. Nothing here has run before, so
+  // "it stopped after step 3" is the whole diagnosis on the first real start.
+  const char* step = "init";
+  const int64_t startedAtMillis = NowMillis();
+  LogInfo("tunnel: starting (rpc={} device=\"{}\" spec=\"{}\" app={} jwt={}B "
+          "split={} paths={})",
+          config.rpc_listen_hostport, config.device_description,
+          config.device_spec, config.app_version, config.by_jwt.size(),
+          config.allowlist_mode ? "allowlist" : "denylist",
+          config.excluded_app_paths.size());
+
   try {
-    // --- NetworkSpace (own storage; import the app's space json) ---
+    // --- 1/8 wintun adapter (installs the driver on first use; needs SYSTEM) ---
+    // Created FIRST, before any SDK object: the adapter is what the egress
+    // binding below has to exclude, and it carries no address or route yet so
+    // it cannot attract traffic while we set the rest up.
+    step = "1/8 wintun";
+    const std::filesystem::path dll = ExeDir() / L"wintun.dll";
+    LogInfo("tunnel: [1/8] loading wintun from {}", dll.string());
+    wintun_ = Wintun::Load(dll);
+    if (!wintun_) throw std::runtime_error("failed to load wintun.dll (is it next to urnetworkd.exe?)");
+    adapter_ = WintunAdapter::Create(*wintun_, ids::kTunAdapterName,
+                                     ids::kTunAdapterGuid, kRingCapacity);
+    if (!adapter_)
+      throw std::runtime_error(
+          "failed to create the wintun adapter (needs LocalSystem/admin and a "
+          "loadable wintun driver)");
+    NET_IFINDEX tunIndex = 0;
+    NET_LUID tunLuid = adapter_->Luid();
+    ::ConvertInterfaceLuidToIndex(&tunLuid, &tunIndex);
+    LogInfo("tunnel: [1/8] adapter up: luid {:#x}, interface {}", tunLuid.Value,
+            NetworkConfig::DescribeInterface(tunIndex));
+
+    // --- 2/8 R1: bind the SDK's egress to the physical interface. ---
+    // Ordering is the whole mechanism, and it is load-bearing twice over:
+    //   * BEFORE any SDK object exists, so no socket is ever created unbound
+    //     (an unbound socket keeps whatever route it resolved and will follow
+    //     the tun once step 6 installs the routes);
+    //   * BEFORE step 6 installs those routes, so DiscoverEgress still sees a
+    //     clean table and picks the physical default route.
+    // Do not move this below the NetworkSpace/DeviceLocal construction.
+    step = "2/8 egress (R1)";
+    LogInfo("tunnel: [2/8] binding sdk egress to the physical interface (R1)");
+    egress_ = std::make_unique<EgressMonitor>(adapter_->Luid());
+    egress_->Start();  // logs the chosen interface; keeps it current on change
+    if (egress_->Current().index4 == 0) {
+      // Not fatal — there may genuinely be no network yet, and the monitor will
+      // bind as soon as one appears — but it is the R1 hazard, so it is loud.
+      LogError("tunnel: [2/8] no physical ipv4 egress interface; R1 protection "
+               "is NOT in force yet");
+    }
+
+    // --- 3/8 NetworkSpace (own storage; import the app's space json) ---
+    step = "3/8 network space";
+    LogInfo("tunnel: [3/8] opening the network space in {}",
+            SdkStorageDir(true).string());
     if (!spaceManager_) {
       spaceManager_ =
           urnet::newNetworkSpaceManager(Narrow(SdkStorageDir(true).wstring()));
     }
     networkSpace_ = spaceManager_->importNetworkSpaceFromJson(config.network_space_json);
 
-    // --- wintun adapter (installs the driver on first use; needs SYSTEM) ---
-    wintun_ = Wintun::Load(ExeDir() / L"wintun.dll");
-    if (!wintun_) throw std::runtime_error("failed to load wintun.dll");
-    adapter_ = WintunAdapter::Create(*wintun_, ids::kTunAdapterName,
-                                     ids::kTunAdapterGuid, kRingCapacity);
-    if (!adapter_) throw std::runtime_error("failed to create wintun adapter");
-
-    // --- R1: bind SDK egress to the physical interface BEFORE the device
-    //     opens its sockets. At this point no tun routes exist yet, so the
-    //     physical default route is discovered correctly. ---
-    egress_ = std::make_unique<EgressMonitor>(adapter_->Luid());
-    egress_->Start();
-
-    // --- DeviceLocal (stable provider identity via persisted key material) ---
+    // --- 4/8 DeviceLocal (stable provider identity via persisted key material) ---
+    step = "4/8 device";
     auto km = LoadKeyMaterial();
+    LogInfo("tunnel: [4/8] constructing DeviceLocal ({} identity)",
+            km ? "persisted" : "new");
     if (km) {
       device_ = urnet::newDeviceLocalWithKeyMaterial(
           *networkSpace_, config.by_jwt, config.device_description,
@@ -113,13 +166,18 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
           /*enable_rpc=*/false);
       PersistKeyMaterial(device_->getKeyMaterial());
     }
+    LogInfo("tunnel: [4/8] device client_id={}", device_->getClientId());
 
-    // --- mTLS RPC listener the app's DeviceRemote dials ---
+    // --- 5/8 mTLS RPC listener the app's DeviceRemote dials ---
+    step = "5/8 rpc";
+    LogInfo("tunnel: [5/8] starting the device rpc listener on {}",
+            config.rpc_listen_hostport);
     device_->setRpcServer(config.rpc_server_pem, config.rpc_client_cert_pem,
                           config.rpc_listen_hostport);
     rpcHostPort_ = config.rpc_listen_hostport;
 
-    // --- network settings (address/MTU/routes/DNS), from the device ---
+    // --- 6/8 network settings (address/MTU/routes/DNS), from the device ---
+    step = "6/8 network config";
     TunnelNetworkSettings settings;
     settings.local_address_v4 = device_->tunnelLocalAddress();
     if (settings.local_address_v4.empty()) settings.local_address_v4 = "169.254.2.1";
@@ -136,26 +194,42 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
       // URnetwork-owned UpgradeMux identity.
       settings.dns_servers = {urnet::getDefaultTunnelDnsAddressIpv4()};
     }
+    LogInfo("tunnel: [6/8] applying network settings addr={}/{} mtu={} dns=[{}]",
+            settings.local_address_v4, settings.prefix_v4, settings.mtu,
+            Join(settings.dns_servers));
     netConfig_ = std::make_unique<NetworkConfig>(adapter_->Luid());
+    // Mark the machine as "routes installed" BEFORE installing them. The next
+    // start reads this to tell an orderly shutdown from a crash; a marker left
+    // by a run that died between the two is exactly the case we want reported.
+    SetActiveMarker(true);
     if (!netConfig_->Apply(settings)) throw std::runtime_error("network config failed");
 
-    // --- split tunneling (driver optional) ---
+    // --- 7/8 split tunneling (driver optional) ---
+    step = "7/8 split tunnel";
+    LogInfo("tunnel: [7/8] split tunnel: {} path(s), {} mode",
+            config.excluded_app_paths.size(),
+            config.allowlist_mode ? "allowlist" : "denylist");
     splitTunnel_.Open();
     excludedPaths_ = config.excluded_app_paths;
     allowlist_ = config.allowlist_mode;
     PushExcludedToDriver(excludedPaths_, allowlist_);
 
-    // --- packet pump ---
+    // --- 8/8 packet pump ---
+    step = "8/8 pump";
+    LogInfo("tunnel: [8/8] starting the packet pump");
     pump_ = std::make_unique<PacketPump>(*adapter_, *device_);
     pump_->Start();
 
     state_ = proto::TunnelState::Up;
     upSinceMillis_ = NowMillis();
-    LogInfo("tunnel: up (rpc={})", rpcHostPort_);
+    EgressInterfaces bound = egress_->Current();
+    LogInfo("tunnel: UP in {}ms (rpc={} egress_v4_ifindex={} split_tunnel={})",
+            upSinceMillis_ - startedAtMillis, rpcHostPort_, bound.index4,
+            splitTunnel_.IsAvailable() ? "driver" : "none");
   } catch (const std::exception& e) {
     error_ = e.what();
     state_ = proto::TunnelState::Error;
-    LogError("tunnel: start failed: {}", error_);
+    LogError("tunnel: start FAILED at step {}: {}", step, error_);
     StopLocked();
     state_ = proto::TunnelState::Error;  // StopLocked resets to Stopped
   }
@@ -169,12 +243,18 @@ void TunnelController::Stop() {
 }
 
 void TunnelController::StopLocked() {
+  const bool wasRunning = state_ != proto::TunnelState::Stopped;
   if (state_ == proto::TunnelState::Up || state_ == proto::TunnelState::Starting)
     state_ = proto::TunnelState::Stopping;
+  if (wasRunning) LogInfo("tunnel: stopping (state was {})", proto::ToString(state_));
 
-  // Tear down in reverse dependency order.
+  // Tear down in reverse dependency order. The network config goes back FIRST
+  // after the pump: while any of this is running the host is still pointed at
+  // the tun, so the routes are the thing to give back soonest.
   if (pump_) { pump_->Stop(); pump_.reset(); }
   if (netConfig_) { netConfig_->Revert(); netConfig_.reset(); }
+  // Routes are gone; the marker's job is done whether or not the rest unwinds.
+  SetActiveMarker(false);
   splitTunnel_.Close();
   if (egress_) { egress_->Stop(); egress_.reset(); }
   // Reset egress binding so a later non-tunnel run isn't pinned to a stale nic.
@@ -188,6 +268,35 @@ void TunnelController::StopLocked() {
   rpcHostPort_.clear();
   upSinceMillis_ = 0;
   state_ = proto::TunnelState::Stopped;
+  if (wasRunning) LogInfo("tunnel: stopped, network restored");
+}
+
+// --- crash/orderly-exit bookkeeping ---------------------------------------
+//
+// This marker does NOT restore anything. The restore path is the wintun adapter
+// dying with the process (see NetworkConfig.h). The marker exists so the next
+// start can SAY that the last one ended badly, instead of the owner having to
+// infer it — and so the startup sweep has a reason to shout.
+
+std::filesystem::path TunnelController::ActiveMarkerPath() {
+  return StorageRoot(/*isService=*/true) / L"tunnel_active";
+}
+
+void TunnelController::SetActiveMarker(bool active) {
+  std::error_code ec;
+  if (active) {
+    std::ofstream f(ActiveMarkerPath(), std::ios::trunc);
+    if (f) f << ::GetCurrentProcessId() << "\n";
+  } else {
+    std::filesystem::remove(ActiveMarkerPath(), ec);
+  }
+}
+
+bool TunnelController::TakeActiveMarker() {
+  std::error_code ec;
+  if (!std::filesystem::exists(ActiveMarkerPath(), ec)) return false;
+  std::filesystem::remove(ActiveMarkerPath(), ec);
+  return true;
 }
 
 void TunnelController::PushExcludedToDriver(const std::vector<std::string>& paths, bool allowlist) {

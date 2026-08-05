@@ -44,6 +44,16 @@ class TunnelController {
 
   proto::TunnelStatus Status();
 
+  // "Routes are installed right now" marker under the service storage root.
+  // Written when the network config is applied and removed when it is reverted,
+  // so the NEXT start can tell an orderly shutdown from a crash. Purely a
+  // reporting aid — the machine's actual restore path is the wintun adapter
+  // going away with the process (see NetworkConfig.h).
+  static std::filesystem::path ActiveMarkerPath();
+  static void SetActiveMarker(bool active);
+  // True if a marker was left behind; clears it either way.
+  static bool TakeActiveMarker();
+
  private:
   proto::TunnelStatus StartLocked(const proto::StartTunnel& config);
   void StopLocked();
