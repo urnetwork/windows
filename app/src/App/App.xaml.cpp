@@ -7,7 +7,6 @@
 
 #include "AppController.h"
 #include "Log.h"
-#include "Paths.h"
 #include "Startup.h"
 #include "Strings.h"
 
@@ -99,7 +98,15 @@ void App::OnLaunched(LaunchActivatedEventArgs const&) {
     instance.Activated([queue](winrt::Windows::Foundation::IInspectable const&,
                                lifecycle::AppActivationArguments const& args) {
       const std::string url = urnw::DeepLinkFromActivation(args);
-      if (url.empty()) return;  // a plain relaunch: nothing to route
+      if (url.empty()) {
+        // A plain relaunch — the user ran URnetwork.exe again, usually because
+        // the first launch "did nothing" (it went to the notification area).
+        // Show the window: an app that ignores being launched is the same
+        // silent non-event all over again.
+        urnw::LogInfo("app: relaunched while running — showing the window");
+        queue.TryEnqueue([] { urnw::App().ShowWindow(nullptr); });
+        return;
+      }
       queue.TryEnqueue([url] { urnw::App().HandleDeepLink(url); });
     });
 
