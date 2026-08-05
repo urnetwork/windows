@@ -48,17 +48,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Ryanmello07/urnetwork-sdk
-          # NOT beta/custom-server: the windows app was written against a newer
-          # sdk (getDefaultTunnelDnsAddressIpv4 and friends do not exist on the
-          # beta branch). This is the merged reliability checkpoint plus the
-          # DeviceLocalRpc bridge, which the app/service split needs anyway.
-          ref: feat/ios-reliability-bridge-upstream
+          # the beta integration line: it now carries the merged reliability
+          # checkpoint + the DeviceLocalRpc bridge (sdk#135) and the cgo fixes
+          # this client needed as the first c-abi consumer
+          ref: beta/custom-server
           path: sdk
 
       # sdk/cgo/go.mod resolves these with `replace ... => ../../<name>`, so
       # they have to sit as siblings of the sdk checkout
       - name: Check out connect dependency
-        run: git clone --depth 1 --branch feat/reliability-checkpoint-upstream https://github.com/Ryanmello07/connect.git connect
+        run: git clone --depth 1 --branch beta/custom-server https://github.com/Ryanmello07/connect.git connect
 
       - name: Check out glog dependency
         run: git clone --depth 1 https://github.com/urnetwork/glog.git glog
