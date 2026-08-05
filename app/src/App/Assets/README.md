@@ -30,6 +30,21 @@ real face is selected rather than synthesised from it.
 files to `$(OutDir)Assets\Fonts` so an unpackaged app can resolve `ms-appx:///`
 against the exe's own folder.
 
+**If the text still renders in the fallback face**, the reference failed and said
+nothing — that is the only failure mode fonts have here. Check, in order:
+
+1. `Assets\Fonts\*` really are next to `URnetwork.exe`. An MSI install does not
+   carry them yet (`installer/Package.wxs` installs no assets at all); running
+   from the build output does.
+2. The family name after `#`. Re-read it rather than trusting this table:
+   `python tools/...` is not needed — any font inspector, or PowerShell's
+   `[System.Drawing.Text.PrivateFontCollection]`, will report name id 1.
+3. The URI form. `ms-appx:///` is what the rest of this app uses (see
+   `ReferralFrog.png` in `MainWindow.xaml`) and is what WinUI documents, but an
+   **unpackaged** app also accepts an exe-relative path — `/Assets/Fonts/
+   pp_neue_montreal_regular.ttf#PP Neue Montreal` — which is worth trying if
+   `ms-appx:///` resolves images but not fonts.
+
 ## App icon assets
 
 The `.ico` files here are the real URnetwork brand icons, generated from the

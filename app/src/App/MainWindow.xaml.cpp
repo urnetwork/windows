@@ -1539,6 +1539,16 @@ void MainWindow::OnTunnelStateChanged(urnw::proto::TunnelStatus const& status) {
   SetConnectedUi(status.state == urnw::proto::TunnelState::Up);
 }
 
+// The SERVICE tunnel came up or went down. This no longer writes the status
+// line: it records the signal and re-renders, so the invariant "the status is
+// re-rendered whenever any of its inputs changes" stays true even though the
+// current rendering does not read connected_.
+//
+// connected_ is kept because it is the signal android's displayReconnectTunnel
+// needs -- SDK connected but tunnel down, "VPN tunnel disconnected" -- which is
+// a separate work item (parity audit §3 item 7). It is deliberately NOT built
+// here: the service has never run, so a tunnel that simply never reports Up
+// would show a permanent false alarm, which is worse than the omission.
 void MainWindow::SetConnectedUi(bool connected) {
   connected_ = connected;
   ApplyConnectStatus();
@@ -1557,8 +1567,14 @@ MainWindow::ConnectStatus MainWindow::ParseConnectStatus(std::string const& valu
 }
 
 bool MainWindow::ConnectActionIsDisconnect() const {
-  // Either signal counts: the SDK is doing something, or the tunnel is up.
-  return connectStatus_ != ConnectStatus::Disconnected || connected_;
+  // The SDK status ALONE, deliberately -- not connected_. The two are not
+  // interchangeable: connected_ is also fed by the service pipe's TunnelStatus
+  // (SdkHost wires service_.SetStateHandler straight to onTunnel_), so the
+  // tunnel can be up with no destination selected, and the old `if (connected_)`
+  // test then offered "Disconnect" while the status line read "Ready to
+  // connect" -- leaving no way to connect at all. The button and the line above
+  // it must never disagree; both now read the same signal.
+  return connectStatus_ != ConnectStatus::Disconnected;
 }
 
 // The connect status line, its dot, and the button label — android
