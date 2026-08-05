@@ -39,8 +39,8 @@ void GuestModeSheet::Build(XamlRoot const& root) {
   dialog_.XamlRoot(root);
   dialog_.Title(winrt::box_value(Loc("try_guest_mode_2")));
   dialog_.CloseButtonText(Loc("close"));
-  // brand sheet surface (macOS sheet background; BalanceSheets::MakeDialog)
-  dialog_.Background(colors::BackgroundBrush());
+  // brand sheet surface (android SheetBlack; BalanceSheets::MakeDialog)
+  dialog_.Background(colors::SheetBrush());
   dialog_.PrimaryButtonText(Loc("enter_urnetwork"));
   dialog_.IsPrimaryButtonEnabled(false);  // gated on the terms consent
   dialog_.DefaultButton(ContentDialogButton::Primary);

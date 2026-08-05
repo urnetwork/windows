@@ -107,7 +107,8 @@ ContentDialog MakeDialog(XamlRoot const& root, hstring const& title) {
   dialog.XamlRoot(root);
   dialog.Title(winrt::box_value(title));
   dialog.CloseButtonText(Loc("close"));
-  dialog.Background(colors::BackgroundBrush());
+  // brand sheet surface (android SheetBlack: a sheet sits ABOVE the page)
+  dialog.Background(colors::SheetBrush());
   return dialog;
 }
 

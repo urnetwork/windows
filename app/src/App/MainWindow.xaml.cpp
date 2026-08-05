@@ -1160,6 +1160,15 @@ void MainWindow::ApplyBalance() {
                                         : Loc("free");
   AccountPlanValueText().Text(plan);
   DrawerPlanValueText().Text(plan);
+  // Pro gold (android theme/Color.kt ProGold). Android spends this colour on the
+  // Pro entitlement and on nothing else, so the plan value is the ONE place on
+  // these cards that may wear it — until now "Supporter" was a word in the same
+  // white as every other label, and the entitlement was invisible. The upgrade
+  // affordance beside it stays un-gilded: it is hidden for Pro accounts anyway.
+  auto planBrush = balance_.isPro ? urnw::colors::ProGoldBrush()
+                                  : urnw::colors::TextBrush();
+  AccountPlanValueText().Foreground(planBrush);
+  DrawerPlanValueText().Foreground(planBrush);
 
   // the upgrade affordances show for a signed-in free account; a guest gets a
   // create-account affordance on the plan cards instead (macOS AccountRootView,
