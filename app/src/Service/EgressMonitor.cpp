@@ -25,6 +25,16 @@ std::string SourceAddressOf(uint32_t ifIndex) {
   return std::format("{}.{}.{}.{}", addr[0], addr[1], addr[2], addr[3]);
 }
 
+// Does this interface index still name something? Retaining an index that has
+// been reclaimed is worse than dropping it: setsockopt fails and the socket
+// falls back to the route table, which with the tunnel up is the tun.
+bool InterfaceExists(uint32_t ifIndex) {
+  if (ifIndex == 0) return false;
+  MIB_IF_ROW2 row{};
+  row.InterfaceIndex = ifIndex;
+  return ::GetIfEntry2(&row) == NO_ERROR;
+}
+
 }  // namespace
 
 EgressMonitor::~EgressMonitor() { Stop(); }
@@ -54,47 +64,78 @@ void EgressMonitor::Stop() {
   }
 }
 
-void EgressMonitor::Refresh() {
+void EgressMonitor::SetOnChange(ChangeHandler handler) {
   std::scoped_lock lock(mutex_);
-  EgressInterfaces egress = NetworkConfig::DiscoverEgress(tunLuid_);
+  onChange_ = std::move(handler);
+}
 
-  // Losing the physical default route (Wi-Fi drops, cable out) makes
-  // DiscoverEgress return 0. Do NOT push 0 down while we have a good index:
-  // unbinding means the SDK's next socket follows the route table, which with
-  // the tunnel up is the tun — the exact self-deadlock R1 exists to prevent. A
-  // socket pinned to a down interface fails fast and retries; a socket pinned
-  // to the tun wedges the client against itself. Keep the last known good and
-  // wait for the next change notification.
-  if (egress.index4 == 0 && current_.index4 != 0) {
-    LogWarn("egress: no ipv4 default route right now — keeping the last physical "
-            "interface {} bound rather than unbinding (R1)",
-            current_.index4);
-    egress.index4 = current_.index4;
-  }
-  if (egress.index6 == 0 && current_.index6 != 0) {
-    egress.index6 = current_.index6;
+void EgressMonitor::Refresh() {
+  ChangeHandler handler;
+  EgressInterfaces egress;
+  bool changed = false;
+
+  {
+    std::scoped_lock lock(mutex_);
+    egress = NetworkConfig::DiscoverEgress(tunLuid_);
+
+    // Losing the physical default route (Wi-Fi drops, cable out) makes
+    // DiscoverEgress return 0. Do NOT push 0 down while we have a good index:
+    // unbinding means the SDK's next socket follows the route table, which with
+    // the tunnel up is the tun — the exact self-deadlock R1 exists to prevent.
+    // A socket pinned to a downed interface fails fast with WSAENETUNREACH and
+    // retries; a socket that follows the tun blackholes silently. Keep the last
+    // known good and wait for the next change notification.
+    //
+    // But only while that index still names a real interface. Pinning to an
+    // index the stack has reclaimed is the worst of both worlds: setsockopt
+    // fails, and the socket falls back to the route table anyway — the loop,
+    // arrived at quietly. Re-validating is what makes the retention safe rather
+    // than merely preferable.
+    if (egress.index4 == 0 && current_.index4 != 0) {
+      if (InterfaceExists(current_.index4)) {
+        LogWarn("egress: no ipv4 default route right now — keeping the last "
+                "physical interface {} bound rather than unbinding (R1)",
+                current_.index4);
+        egress.index4 = current_.index4;
+      } else {
+        LogError("egress: the retained ipv4 interface {} no longer exists, so it "
+                 "cannot stay pinned. The sdk's sockets are unbound and will "
+                 "follow the route table — R1 exposure while the tunnel is up, "
+                 "until an interface reappears.",
+                 current_.index4);
+      }
+    }
+    if (egress.index6 == 0 && current_.index6 != 0 &&
+        InterfaceExists(current_.index6)) {
+      egress.index6 = current_.index6;
+    }
+
+    changed = egress.index4 != current_.index4 || egress.index6 != current_.index6;
+    current_ = egress;
+    urnet::setEgressInterfaceIndex(static_cast<int64_t>(egress.index4),
+                                   static_cast<int64_t>(egress.index6));
+
+    if (changed) {
+      LogInfo("egress: bound to v4=[{}] src={} v6=[{}]",
+              NetworkConfig::DescribeInterface(egress.index4),
+              SourceAddressOf(egress.index4),
+              NetworkConfig::DescribeInterface(egress.index6));
+    } else {
+      LogDebug("egress: unchanged (v4={} v6={})", egress.index4, egress.index6);
+    }
+
+    if (egress.index4 == 0) {
+      // Nothing to pin to at all. Harmless before the tun routes exist; once
+      // they do it is the R1 loop condition, so it is an error either way.
+      LogError("egress: NO physical ipv4 interface bound — the sdk's own sockets "
+               "will follow the route table (R1 exposure once tun routes are up)");
+    }
+    handler = onChange_;
   }
 
-  bool changed = egress.index4 != current_.index4 || egress.index6 != current_.index6;
-  current_ = egress;
-  urnet::setEgressInterfaceIndex(static_cast<int64_t>(egress.index4),
-                                 static_cast<int64_t>(egress.index6));
-
-  if (changed) {
-    LogInfo("egress: bound to v4=[{}] src={} v6=[{}]",
-            NetworkConfig::DescribeInterface(egress.index4),
-            SourceAddressOf(egress.index4),
-            NetworkConfig::DescribeInterface(egress.index6));
-  } else {
-    LogDebug("egress: unchanged (v4={} v6={})", egress.index4, egress.index6);
-  }
-
-  if (egress.index4 == 0) {
-    // Nothing to pin to at all. Harmless before the tun routes exist; once they
-    // do it is the R1 loop condition, so it is an error either way.
-    LogError("egress: NO physical ipv4 interface bound — the sdk's own sockets "
-             "will follow the route table (R1 exposure once tun routes are up)");
-  }
+  // Deliberately outside the lock: the handler takes locks of its own, and
+  // Stop() blocks on this callback while its caller holds one of them.
+  if (changed && handler) handler(egress);
 }
 
 EgressInterfaces EgressMonitor::Current() const {

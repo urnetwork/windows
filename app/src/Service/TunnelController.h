@@ -61,8 +61,20 @@ class TunnelController {
   std::optional<urnet::DeviceLocalKeyMaterial> LoadKeyMaterial();
   void PersistKeyMaterial(const urnet::DeviceLocalKeyMaterial& km);
   void PushExcludedToDriver(const std::vector<std::string>& paths, bool allowlist);
+  // Re-point the driver at a new physical interface. Runs from the egress
+  // monitor's change callback, on a system worker thread.
+  void OnEgressChanged(EgressInterfaces egress);
+  // Shared by both; the caller holds splitMutex_.
+  void PushPhysicalAddressesLocked(const EgressInterfaces& egress);
 
   std::mutex mutex_;
+  // Guards calls into splitTunnel_ ONLY, and is always the inner lock when both
+  // are held. The egress change callback has to reach the driver WITHOUT
+  // mutex_: StopLocked holds mutex_ while EgressMonitor::Stop() waits for that
+  // very callback to return, so taking mutex_ there would deadlock the two
+  // against each other. Correspondingly, nothing may hold splitMutex_ across a
+  // call into the egress monitor.
+  std::mutex splitMutex_;
   proto::TunnelState state_ = proto::TunnelState::Stopped;
   std::string error_;
   std::string rpcHostPort_;

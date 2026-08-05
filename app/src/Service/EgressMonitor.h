@@ -17,6 +17,7 @@
 #include <iphlpapi.h>
 #include <netioapi.h>    // NET_LUID, MIB_IPINTERFACE_ROW, MIB_NOTIFICATION_TYPE, NotifyIpInterfaceChange
 
+#include <functional>
 #include <mutex>
 
 #include "NetworkConfig.h"
@@ -30,6 +31,19 @@ class EgressMonitor {
 
   EgressMonitor(const EgressMonitor&) = delete;
   EgressMonitor& operator=(const EgressMonitor&) = delete;
+
+  // Notified after the binding CHANGES, with the new indices. Everything else
+  // pinned to the physical interface — the split-tunnel driver's source
+  // address above all — has to follow the same NIC the SDK just followed, or it
+  // keeps rewriting binds to an adapter that is gone.
+  //
+  // Runs on the thread that observed the change: a system worker thread for a
+  // notification, the caller's thread for the initial Start(). Invoked WITHOUT
+  // this monitor's lock. The handler must not take a lock that a thread calling
+  // Stop() could be holding — Stop() blocks until in-flight callbacks return,
+  // so such a handler deadlocks against it. Set before Start().
+  using ChangeHandler = std::function<void(EgressInterfaces)>;
+  void SetOnChange(ChangeHandler handler);
 
   // Compute the current egress interfaces, push them to the SDK, and register
   // for change notifications to keep them current. Returns false if the
@@ -57,6 +71,7 @@ class EgressMonitor {
   // worker threads and can overlap each other and Start().
   mutable std::mutex mutex_;
   EgressInterfaces current_;
+  ChangeHandler onChange_;
 };
 
 }  // namespace urnw

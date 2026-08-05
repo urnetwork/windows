@@ -131,6 +131,11 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     step = "2/8 egress (R1)";
     LogInfo("tunnel: [2/8] binding sdk egress to the physical interface (R1)");
     egress_ = std::make_unique<EgressMonitor>(adapter_->Luid());
+    // Set before Start(), which refreshes synchronously. The handler takes only
+    // splitMutex_ — see the note on it in the header; it must not take mutex_,
+    // which this thread is holding right now and StopLocked holds while waiting
+    // for the monitor's callbacks to drain.
+    egress_->SetOnChange([this](EgressInterfaces e) { OnEgressChanged(e); });
     egress_->Start();  // logs the chosen interface; keeps it current on change
     if (egress_->Current().index4 == 0) {
       // Not fatal — there may genuinely be no network yet, and the monitor will
@@ -256,7 +261,15 @@ void TunnelController::StopLocked() {
   if (netConfig_) { netConfig_->Revert(); netConfig_.reset(); }
   // Routes are gone; the marker's job is done whether or not the rest unwinds.
   SetActiveMarker(false);
-  splitTunnel_.Close();
+  {
+    // Scoped: splitMutex_ must NOT be held across egress_->Stop() below, which
+    // blocks until any in-flight change callback returns — and that callback
+    // wants this lock.
+    std::scoped_lock split(splitMutex_);
+    splitTunnel_.Close();
+  }
+  // After this returns no further change callbacks can run, so a late one
+  // cannot reach the driver we just closed.
   if (egress_) { egress_->Stop(); egress_.reset(); }
   // Reset egress binding so a later non-tunnel run isn't pinned to a stale nic.
   urnet::setEgressInterfaceIndex(0, 0);
@@ -300,15 +313,7 @@ bool TunnelController::TakeActiveMarker() {
   return true;
 }
 
-void TunnelController::PushExcludedToDriver(const std::vector<std::string>& paths, bool allowlist) {
-  if (!splitTunnel_.IsAvailable()) return;
-  // The driver rebinds excluded sockets to the physical interface's source
-  // address, so resolve the current physical interface + its preferred source.
-  // Take it from the monitor rather than rediscovering: the monitor holds the
-  // last known good interface across a momentary loss of the default route, and
-  // the driver and the sdk must agree on which nic is "physical".
-  EgressInterfaces egress = egress_ ? egress_->Current()
-                                    : NetworkConfig::DiscoverEgress(adapter_->Luid());
+void TunnelController::PushPhysicalAddressesLocked(const EgressInterfaces& egress) {
   uint8_t addr4[4] = {0};
   uint8_t addr6[16] = {0};
   bool has4 = egress.index4 != 0 &&
@@ -317,6 +322,33 @@ void TunnelController::PushExcludedToDriver(const std::vector<std::string>& path
               NetworkConfig::InterfaceSourceAddress(egress.index6, AF_INET6, addr6);
   splitTunnel_.SetPhysicalAddresses(has4 ? egress.index4 : 0, has4 ? addr4 : nullptr,
                                     has6 ? egress.index6 : 0, has6 ? addr6 : nullptr);
+}
+
+// The egress interface moved (Wi-Fi -> ethernet, DHCP renew, resume). The SDK
+// followed it in EgressMonitor::Refresh; the driver has to follow it here, or
+// every excluded app keeps being rebound to the source address of the adapter
+// we just left — which stops working the moment that address is reclaimed.
+void TunnelController::OnEgressChanged(EgressInterfaces egress) {
+  std::scoped_lock lock(splitMutex_);
+  if (!splitTunnel_.IsAvailable()) return;
+  LogInfo("split-tunnel: following the egress change, re-binding excluded apps "
+          "to v4={} src={} v6={}",
+          egress.index4, NetworkConfig::DescribeInterface(egress.index4),
+          egress.index6);
+  PushPhysicalAddressesLocked(egress);
+}
+
+void TunnelController::PushExcludedToDriver(const std::vector<std::string>& paths, bool allowlist) {
+  std::scoped_lock lock(splitMutex_);
+  if (!splitTunnel_.IsAvailable()) return;
+  // The driver rebinds excluded sockets to the physical interface's source
+  // address, so resolve the current physical interface + its preferred source.
+  // Take it from the monitor rather than rediscovering: the monitor holds the
+  // last known good interface across a momentary loss of the default route, and
+  // the driver and the sdk must agree on which nic is "physical".
+  EgressInterfaces egress = egress_ ? egress_->Current()
+                                    : NetworkConfig::DiscoverEgress(adapter_->Luid());
+  PushPhysicalAddressesLocked(egress);
   splitTunnel_.SetMode(allowlist);
   splitTunnel_.SetExcludedPaths(paths);
   // Enable whenever there is a rule set. In allowlist mode an empty keep-set would
