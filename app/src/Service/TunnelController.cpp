@@ -304,7 +304,11 @@ void TunnelController::PushExcludedToDriver(const std::vector<std::string>& path
   if (!splitTunnel_.IsAvailable()) return;
   // The driver rebinds excluded sockets to the physical interface's source
   // address, so resolve the current physical interface + its preferred source.
-  EgressInterfaces egress = NetworkConfig::DiscoverEgress(adapter_->Luid());
+  // Take it from the monitor rather than rediscovering: the monitor holds the
+  // last known good interface across a momentary loss of the default route, and
+  // the driver and the sdk must agree on which nic is "physical".
+  EgressInterfaces egress = egress_ ? egress_->Current()
+                                    : NetworkConfig::DiscoverEgress(adapter_->Luid());
   uint8_t addr4[4] = {0};
   uint8_t addr6[16] = {0};
   bool has4 = egress.index4 != 0 &&
