@@ -1,9 +1,9 @@
 # URnetwork Windows — Next Steps
 
 Concrete, ordered pickup list. Context: `PLAN.md` (architecture/risks), `README.md`
-(build), `app/STORE.md` (Store), `app/SIGNING.md` (signing). Everything under
-`windows/app/` is written and uncommitted; the SDK-side R1 work is committed-ready
-in `connect/`+`sdk/`+`cgo/`.
+(build), `app/STORE.md` (Store), `app/SIGNING.md` (signing), and
+`docs/superpowers/plans/` for the current work packages. The SDK-side R1 work
+lives on the `beta/custom-server` line of `connect/`+`sdk/`+`cgo/`.
 
 ## Where it stands
 
@@ -12,11 +12,14 @@ in `connect/`+`sdk/`+`cgo/`.
   for darwin + windows/amd64 + windows/arm64; cgo C ABI + `urnetwork_sdk.hpp`
   wrapper regenerate and pass the C++ smoke test; windows/amd64 DLL cross-builds
   via mingw-w64.
-- **Written, not yet compiled on Windows:** the whole `windows/app` solution —
-  Common lib, `urnetworkd` service (wintun + DeviceLocal + packet pump + net
-  config + R1 egress monitor + control pipe), WinUI 3 tray app (SdkHost +
-  ServiceClient + tray + Account/Wallet/Leaderboard/Support UI), clean-room
-  split-tunnel driver, WiX MSI. Real brand icons generated + committed.
+- **Compiled, never run:** the whole `windows/app` solution — Common lib,
+  `urnetworkd` service (wintun + DeviceLocal + packet pump + net config + R1
+  egress monitor + control pipe), WinUI 3 tray app (SdkHost + ServiceClient +
+  tray + Account/Wallet/Leaderboard/Support UI). CI (`beta-build.yml`) builds it
+  for x64 and ARM64 on every push to `beta/custom-server` and uploads the
+  binaries. Not built there: the clean-room split-tunnel driver (needs the WDK)
+  and the WiX MSI — both excluded from the solution's configurations.
+  Compiling is not running: no line of this code has executed on a real machine.
 
 ## 0. Running the app: the Windows App Runtime, the log, and `--diagnose`
 
@@ -85,9 +88,18 @@ Get-AppxPackage -Name Microsoft.WindowsAppRuntime.* | Select-Object Name, Versio
 ```
 
 Also required next to `URnetwork.exe`: `URnetworkSdk.dll`, `resources.pri`, and
-`Microsoft.WindowsAppRuntime.Bootstrap.dll` (the build copies all three into
-`build\<arch>\Release`; copy the whole folder, not just the exe). `--diagnose`
-reports each one.
+`Microsoft.WindowsAppRuntime.Bootstrap.dll`. `--diagnose` reports each one.
+**Keep the folder together** — the CI artifact `urnetwork-windows-<arch>` is
+exactly that drop (verified against run 31025594279):
+
+```
+URnetwork.exe   urnetworkd.exe   URnetworkSdk.dll   wintun.dll
+resources.pri   Microsoft.WindowsAppRuntime.Bootstrap.dll
+Microsoft.Web.WebView2.Core.dll
+```
+
+Copying `URnetwork.exe` alone out of that folder gives an app that cannot start,
+and — before this work — did so silently.
 
 Once the WiX MSI is building in CI (plan WP5) it deploys the runtime itself, and
 this section becomes the fallback for loose builds.
