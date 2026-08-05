@@ -258,6 +258,26 @@
     </CopyFileToFolders>
   </ItemGroup>
 
+  <!-- Brand faces (Assets/README.md). Same deal as the image above: an unpackaged
+       app resolves ms-appx:///Assets/Fonts/<file>#<family> against the exe's own
+       folder, so the files have to BE there. The XAML references them by the
+       fonts' internal family names, not by file name (App.xaml). These are
+       licensed commercial faces - do not redistribute them outside the app. -->
+  <ItemGroup>
+    <CopyFileToFolders Include="Assets\Fonts\abcgravity_extended.otf">
+      <DestinationFolders>$(OutDir)Assets\Fonts</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\Fonts\abcgravity_extra_condensed.otf">
+      <DestinationFolders>$(OutDir)Assets\Fonts</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\Fonts\pp_neue_bit_bold.ttf">
+      <DestinationFolders>$(OutDir)Assets\Fonts</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\Fonts\pp_neue_montreal_regular.ttf">
+      <DestinationFolders>$(OutDir)Assets\Fonts</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.vcxproj">
       <Project>{A1B2C3D4-0001-4E5F-8A9B-000000000001}</Project>

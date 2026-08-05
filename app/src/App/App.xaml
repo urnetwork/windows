@@ -43,8 +43,39 @@
                          white: this is the default foreground every unstyled
                          TextBlock and control text in the app picks up -->
                     <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#F8F8F8" />
+                    <!-- the body face as the default for every TEMPLATED control
+                         (buttons, text boxes, list views, ContentDialog chrome).
+                         Those do not pick up a FontFamily set further up the tree
+                         - their own style setter beats an inherited value - and
+                         this key is what that setter reads. Overridden here, next
+                         to the other WinUI keys this app replaces, because that is
+                         the lookup that is already known to work in this file. -->
+                    <FontFamily x:Key="ContentControlThemeFontFamily">ms-appx:///Assets/Fonts/pp_neue_montreal_regular.ttf#PP Neue Montreal</FontFamily>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Brand faces (android ui/theme/Type.kt; files in Assets/Fonts,
+                 copied next to the exe by App.vcxproj). The part after '#' is the
+                 font's OWN internal family name, read from each file's OpenType
+                 'name' table (name id 1) - NOT the file name, and not a guess:
+                   abcgravity_extended.otf        -> "ABC Gravity Extended"
+                   abcgravity_extra_condensed.otf -> "ABC Gravity Extra Condensed"
+                   pp_neue_montreal_regular.ttf   -> "PP Neue Montreal"
+                   pp_neue_bit_bold.ttf           -> "PP NeueBit"   (note: no space
+                                                     in "NeueBit"; the Bold face is
+                                                     the only one in the file)
+                 Get one of these wrong and there is no error - the text silently
+                 renders in the fallback font, which is exactly what it looks like
+                 today. Role mapping, from Type.kt:
+                   headlineSmall  = ABC Gravity Extended        -> section headings
+                   headlineMedium = ABC Gravity Extra Condensed -> the big plan value
+                                    (ConnectActions.kt renders Supporter/Free in it)
+                   TopBarTitle    = PP NeueBit Bold             -> the wordmark
+                   body*          = PP Neue Montreal            -> everything else -->
+            <FontFamily x:Key="UrHeadingFontFamily">ms-appx:///Assets/Fonts/abcgravity_extended.otf#ABC Gravity Extended</FontFamily>
+            <FontFamily x:Key="UrHeadingCondensedFontFamily">ms-appx:///Assets/Fonts/abcgravity_extra_condensed.otf#ABC Gravity Extra Condensed</FontFamily>
+            <FontFamily x:Key="UrBodyFontFamily">ms-appx:///Assets/Fonts/pp_neue_montreal_regular.ttf#PP Neue Montreal</FontFamily>
+            <FontFamily x:Key="UrWordmarkFontFamily">ms-appx:///Assets/Fonts/pp_neue_bit_bold.ttf#PP NeueBit</FontFamily>
 
             <!-- brand palette (mirrors UrColors.h) -->
             <SolidColorBrush x:Key="UrBackgroundBrush" Color="#101010" />

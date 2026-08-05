@@ -20,11 +20,24 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <!-- the wordmark. Android sets its top-bar title in PP NeueBit Bold at
+             24sp (Type.kt TopBarTitleTextStyle); this line is the desktop
+             equivalent, and was rendering in Segoe UI Semibold. The file carries
+             only a Bold face, so the weight is stated rather than left to be
+             synthesised. -->
         <TextBlock x:Name="BrandText" Grid.Row="0" Margin="16,12"
-                   FontSize="18" FontWeight="SemiBold" />
+                   FontFamily="{StaticResource UrWordmarkFontFamily}"
+                   FontSize="24" FontWeight="Bold" />
 
-        <!-- Sign-in flow: one step visible at a time (ShowLoginStep) -->
+        <!-- Sign-in flow: one step visible at a time (ShowLoginStep).
+             FontFamily here is the BODY face for everything inside: font
+             properties inherit down the XAML tree, so the bare TextBlocks in
+             these panels pick it up without being touched one by one. The
+             headings below override it, and templated controls take it from
+             ContentControlThemeFontFamily instead (a style setter beats an
+             inherited value). -->
         <ScrollViewer x:Name="LoginRoot" Grid.Row="1"
+                      FontFamily="{StaticResource UrBodyFontFamily}"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <Grid>
@@ -32,7 +45,7 @@
                 <!-- Initial: account discovery (email/phone), wallets, auth code -->
                 <StackPanel x:Name="LoginPanel" Margin="24" Spacing="12"
                             MaxWidth="360" VerticalAlignment="Center">
-                    <TextBlock x:Name="SignInHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="SignInHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
                     <TextBox x:Name="EmailBox" />
                     <Button x:Name="GetStartedButton"
                             Style="{StaticResource AccentButtonStyle}"
@@ -90,7 +103,7 @@
                             MaxWidth="360" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="PasswordBackButton" Tag="initial" Click="OnLoginBack" />
-                    <TextBlock x:Name="PasswordHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PasswordHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
                     <TextBlock x:Name="PasswordEmailText"
                                Foreground="{StaticResource UrTextMutedBrush}" />
                     <PasswordBox x:Name="PasswordBox" KeyDown="OnPasswordKeyDown" />
@@ -116,7 +129,7 @@
                             MaxWidth="360" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="CreateBackButton" Tag="initial" Click="OnLoginBack" />
-                    <TextBlock x:Name="CreateHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="CreateHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
                     <TextBlock x:Name="WalletCreateNote" FontSize="12" TextWrapping="Wrap"
                                Visibility="Collapsed"
                                Foreground="{StaticResource UrTextMutedBrush}" />
@@ -162,7 +175,7 @@
                             MaxWidth="360" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="VerifyBackButton" Tag="initial" Click="OnLoginBack" />
-                    <TextBlock x:Name="VerifyHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="VerifyHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
                     <TextBlock x:Name="VerifyExplanationText" TextWrapping="Wrap"
                                Foreground="{StaticResource UrTextMutedBrush}" />
                     <TextBox x:Name="VerifyCodeBox" MaxLength="6"
@@ -186,7 +199,7 @@
                             MaxWidth="360" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="ResetBackButton" Tag="password" Click="OnLoginBack" />
-                    <TextBlock x:Name="ResetHeading" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="ResetHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
                     <TextBlock x:Name="ResetEmailText"
                                Foreground="{StaticResource UrTextMutedBrush}" />
                     <TextBlock x:Name="ResetSpamNote" FontSize="12" TextWrapping="Wrap"
@@ -201,7 +214,9 @@
         </ScrollViewer>
 
         <!-- Home -->
+        <!-- same body-face inheritance as LoginRoot, for the whole home tree -->
         <muxc:NavigationView x:Name="HomeNav" Grid.Row="1" Visibility="Collapsed"
+                             FontFamily="{StaticResource UrBodyFontFamily}"
                              IsBackButtonVisible="Collapsed" PaneDisplayMode="Top"
                              SelectionChanged="OnNavSelectionChanged">
             <muxc:NavigationView.MenuItems>
@@ -501,7 +516,7 @@
                                 <TextBlock x:Name="DrawerPlanLabel" FontSize="12"
                                            Foreground="{StaticResource UrTextMutedBrush}" />
                                 <Grid>
-                                    <TextBlock x:Name="DrawerPlanValueText" FontSize="22"
+                                    <TextBlock x:Name="DrawerPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
                                                FontWeight="SemiBold" />
                                     <StackPanel Orientation="Horizontal" Spacing="8"
                                                 HorizontalAlignment="Right"
@@ -547,7 +562,7 @@
                                 <TextBlock x:Name="AccountPlanLabel" FontSize="12"
                                            Foreground="{StaticResource UrTextMutedBrush}" />
                                 <Grid>
-                                    <TextBlock x:Name="AccountPlanValueText" FontSize="22"
+                                    <TextBlock x:Name="AccountPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
                                                FontWeight="SemiBold" />
                                     <StackPanel Orientation="Horizontal" Spacing="8"
                                                 HorizontalAlignment="Right"
@@ -611,7 +626,7 @@
                         <Border Background="{StaticResource UrCardBrush}"
                                 CornerRadius="12" Padding="16">
                             <StackPanel Spacing="12">
-                                <TextBlock x:Name="AccountHeading" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock x:Name="AccountHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                                 <TextBox x:Name="NetworkNameBox" />
                                 <Button x:Name="SaveNameButton" Click="OnSaveNetworkName" />
                                 <TextBlock x:Name="AccountAuthText"
@@ -623,7 +638,7 @@
                         <Border Background="{StaticResource UrCardBrush}"
                                 CornerRadius="12" Padding="16">
                             <StackPanel Spacing="12">
-                                <TextBlock x:Name="ReferralsHeading" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ReferralsHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock x:Name="ReferralText" TextWrapping="Wrap" />
 
                                 <!-- referral royalty: networks with at least one referral get
@@ -643,11 +658,11 @@
                 <!-- Wallet -->
                 <ScrollViewer x:Name="WalletView" Visibility="Collapsed">
                     <StackPanel Spacing="12" MaxWidth="520">
-                        <TextBlock x:Name="PlanHeading" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock x:Name="PlanHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                         <Button x:Name="UpgradeButton"
                                 Style="{StaticResource AccentButtonStyle}" Click="OnOpenUpgrade" />
                         <muxc:InfoBar x:Name="WalletInfo" IsOpen="False" IsClosable="True" />
-                        <TextBlock x:Name="PayoutWalletsHeading" FontSize="16" FontWeight="SemiBold"
+                        <TextBlock x:Name="PayoutWalletsHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
                                    Margin="0,12,0,0" />
                         <ListView x:Name="WalletsList" MaxHeight="200" BorderThickness="1"
                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -656,7 +671,7 @@
                              validates it per chain; Bittensor (TAO) wallets are
                              recorded for future use only and can never be the
                              payout wallet. -->
-                        <TextBlock x:Name="ConnectWalletHeading" FontSize="16" FontWeight="SemiBold"
+                        <TextBlock x:Name="ConnectWalletHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
                                    Margin="0,12,0,0" />
                         <TextBlock x:Name="ConnectWalletChainsText" FontSize="12" TextWrapping="Wrap"
                                    Foreground="{StaticResource UrTextMutedBrush}" />
@@ -678,7 +693,7 @@
                 <!-- Leaderboard -->
                 <ScrollViewer x:Name="LeaderboardView" Visibility="Collapsed">
                     <StackPanel Spacing="8" MaxWidth="640">
-                        <TextBlock x:Name="LeaderboardHeading" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock x:Name="LeaderboardHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                         <ListView x:Name="LeaderboardList" />
                     </StackPanel>
                 </ScrollViewer>
@@ -686,7 +701,7 @@
                 <!-- Support -->
                 <ScrollViewer x:Name="SupportView" Visibility="Collapsed">
                     <StackPanel Spacing="12" MaxWidth="520">
-                        <TextBlock x:Name="FeedbackHeading" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock x:Name="FeedbackHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                         <muxc:RatingControl x:Name="FeedbackRating" />
                         <TextBox x:Name="FeedbackText" AcceptsReturn="True" TextWrapping="Wrap"
                                  MinHeight="80" />
@@ -698,12 +713,12 @@
                 <!-- Settings -->
                 <ScrollViewer x:Name="SettingsView" Visibility="Collapsed">
                     <StackPanel Spacing="16" MaxWidth="520">
-                        <TextBlock x:Name="SplitTunnelHeading" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock x:Name="SplitTunnelHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                         <TextBlock x:Name="SplitTunnelDescription"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <Button x:Name="ManageAppSplitButton" Click="OnManageAppSplitTunnel"
                                 Style="{StaticResource AccentButtonStyle}" />
-                        <TextBlock x:Name="SettingsAccountHeading" FontSize="18" FontWeight="SemiBold"
+                        <TextBlock x:Name="SettingsAccountHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold"
                                    Margin="0,16,0,0" />
                         <Button x:Name="SignOutButton" Click="OnSignOut" />
                         <HyperlinkButton x:Name="ProtocolLink" NavigateUri="https://ur.xyz"

@@ -1,0 +1,8 @@
+# Everything in Assets/ is binary. Git's own heuristic already gets this right
+# for these files, but this checkout runs core.autocrlf=true and a font or icon
+# that ever went through CRLF translation would be corrupt in a way nothing
+# reports until it fails to load at run time. Say it explicitly.
+*.otf binary
+*.ttf binary
+*.ico binary
+*.png binary
