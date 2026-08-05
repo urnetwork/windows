@@ -13,10 +13,10 @@
        for the MakePri path below. Versions track the installed Windows App SDK. -->
   <!-- One place for the Windows App SDK version: it drives the PackageReference
        below AND is compiled into the binary (URN_WINDOWSAPPSDK_VERSION, printed
-       by --diagnose beside the runtime that actually loaded). An unpackaged app
-       needs a matching Windows App Runtime installed on the machine, and a
-       major.minor mismatch has no symptom of its own, so the version the app was
-       built against has to be readable FROM the app. -->
+       by the app's diagnose switch, beside the runtime that actually loaded).
+       An unpackaged app needs a matching Windows App Runtime installed on the
+       machine, and a major.minor mismatch has no symptom of its own, so the
+       version the app was built against has to be readable FROM the app. -->
   <PropertyGroup>
     <UrnWindowsAppSdkVersion>2.2.0</UrnWindowsAppSdkVersion>
   </PropertyGroup>
