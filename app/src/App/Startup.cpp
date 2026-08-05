@@ -9,6 +9,7 @@
 
 #include <filesystem>
 #include <format>
+#include <optional>
 
 #include "Ids.h"
 #include "Log.h"
@@ -28,6 +29,10 @@ constexpr wchar_t kAppRuntimeDll[] = L"Microsoft.WindowsAppRuntime.dll";
 // Shipped next to the exe by the Windows App SDK targets; the auto-initializer
 // imports it, so a missing one means the process never starts at all.
 constexpr wchar_t kBootstrapDll[] = L"Microsoft.WindowsAppRuntime.Bootstrap.dll";
+
+// Whether StartupLogInit got the log file open. Unset until it has run, so the
+// diagnostics never claim anything about a log nobody tried to open yet.
+std::optional<bool> g_logOpened;
 
 std::filesystem::path ExePath() {
   wchar_t path[MAX_PATH]{};
@@ -118,6 +123,7 @@ bool WriteStdout(HANDLE out, std::wstring_view text) {
 void StartupLogInit() {
   const std::filesystem::path logFile = LogDir(/*isService=*/false) / L"urnetwork-app.log";
   const bool opened = LogInit(logFile, "app");
+  g_logOpened = opened;
   // Every line below also goes to OutputDebugString, so a failed open costs the
   // file but not the log. It is reported in the diagnostics rather than in a
   // message box: it does not stop the app, and a box on every launch of a
@@ -150,9 +156,10 @@ std::vector<std::wstring> CollectDiagnostics() {
   lines.push_back(std::format(L"  process          : pid {}", ::GetCurrentProcessId()));
   lines.push_back(std::format(L"  executable       : {}", exe.wstring()));
   lines.push_back(std::format(L"  command line     : {}", ::GetCommandLineW()));
-  lines.push_back(std::format(L"  log file         : {}",
-                              log.empty() ? std::wstring(L"(none — debugger only)")
-                                          : log.wstring()));
+  std::wstring logLine = log.empty() ? std::wstring(L"(none — debugger only)") : log.wstring();
+  if (g_logOpened && !*g_logOpened)
+    logLine += L"  ** COULD NOT BE OPENED — nothing is being written to it **";
+  lines.push_back(std::format(L"  log file         : {}", logLine));
   lines.push_back(std::format(L"  storage root     : {}",
                               StorageRoot(/*isService=*/false).wstring()));
   lines.push_back(std::format(L"  app runtime      : {}", AppRuntimeProbe()));
