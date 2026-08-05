@@ -30,6 +30,22 @@ real face is selected rather than synthesised from it.
 files to `$(OutDir)Assets\Fonts` so an unpackaged app can resolve `ms-appx:///`
 against the exe's own folder.
 
+### Coverage: these are Latin-only faces
+
+Read out of each `cmap`: PP Neue Montreal 596 codepoints, PP NeueBit 592, both
+ABC Gravity cuts 464. Latin, punctuation, arrows, the currency marks — and
+nothing else. Two consequences, neither of them new (android ships the same four
+files and inherits the same behaviour), but both worth knowing:
+
+- **The app ships 28 locales.** Arabic, Hebrew, Hindi, Japanese, Korean, Thai,
+  Cyrillic and both Chinese variants have no glyphs in these fonts, so those UIs
+  render entirely through DirectWrite's font fallback. That is correct and
+  legible — it is simply not the brand face. Nothing to fix; do not "fix" it by
+  reverting the fonts.
+- **U+03C4, the Bittensor tau, is in none of them.** `TauGlyph` in
+  `MainWindow.xaml` therefore pins `Segoe UI` explicitly rather than inheriting
+  the body face and letting fallback choose for us.
+
 **If the text still renders in the fallback face**, the reference failed and said
 nothing — that is the only failure mode fonts have here. Check, in order:
 
