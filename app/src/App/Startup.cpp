@@ -97,19 +97,20 @@ std::wstring ServicePipeProbe() {
 }
 
 // stdout for a /SUBSYSTEM:WINDOWS process: a console handle takes WriteConsoleW
-// (wide, so non-ascii paths survive), a redirected handle takes utf-8 bytes.
-void WriteStdout(std::wstring_view text) {
-  HANDLE out = ::GetStdHandle(STD_OUTPUT_HANDLE);
-  if (out == nullptr || out == INVALID_HANDLE_VALUE) return;
+// (wide, so non-ascii paths survive), a redirected one (`--diagnose > out.txt`,
+// or a pipe into PowerShell) takes utf-8 bytes. False when there is nothing to
+// write to, which is the caller's cue to use a message box instead.
+bool WriteStdout(HANDLE out, std::wstring_view text) {
+  if (out == nullptr || out == INVALID_HANDLE_VALUE) return false;
+  DWORD written = 0;
   DWORD mode = 0;
   if (::GetConsoleMode(out, &mode)) {
-    DWORD written = 0;
-    ::WriteConsoleW(out, text.data(), static_cast<DWORD>(text.size()), &written, nullptr);
-    return;
+    return ::WriteConsoleW(out, text.data(), static_cast<DWORD>(text.size()), &written,
+                           nullptr) != FALSE;
   }
   const std::string utf8 = Narrow(text);
-  DWORD written = 0;
-  ::WriteFile(out, utf8.data(), static_cast<DWORD>(utf8.size()), &written, nullptr);
+  return ::WriteFile(out, utf8.data(), static_cast<DWORD>(utf8.size()), &written,
+                     nullptr) != FALSE;
 }
 
 }  // namespace
@@ -169,21 +170,35 @@ void LogDiagnostics(const std::vector<std::wstring>& lines) {
 }
 
 int WriteDiagnosticsToConsole(const std::vector<std::wstring>& lines) {
-  // A GUI-subsystem process has no console of its own. Attaching to the parent's
-  // is what makes `URnetwork.exe --diagnose` from a terminal print there; the
-  // shell has already returned its prompt (it does not wait on a GUI app), so
-  // the output lands under it. Double-clicked, there is no parent console and
-  // the message box below is the whole output.
-  const bool console = ::AttachConsole(ATTACH_PARENT_PROCESS) != FALSE;
-
-  std::wstring text;
+  std::wstring text(L"\r\n");
   for (const auto& line : lines) text += line + L"\r\n";
 
-  if (console) {
-    WriteStdout(L"\r\n");
-    WriteStdout(text);
-    ::FreeConsole();
-  } else {
+  // A GUI-subsystem process has no console of its own. Attaching to the
+  // parent's is what makes `URnetwork.exe --diagnose` from a terminal print
+  // there; the shell has already returned its prompt (it does not wait on a GUI
+  // app), so the output lands under it. Redirected or piped, the std handle is
+  // already valid and this is a no-op.
+  const bool attached = ::AttachConsole(ATTACH_PARENT_PROCESS) != FALSE;
+
+  // Attaching a console does not reliably give this process std handles — a
+  // process launched without inheritable handles keeps its null ones — so open
+  // the console's own device when they are missing. Getting this wrong prints
+  // nothing at all, which is the failure mode this command exists to end.
+  HANDLE out = ::GetStdHandle(STD_OUTPUT_HANDLE);
+  bool ownsHandle = false;
+  if ((out == nullptr || out == INVALID_HANDLE_VALUE) && attached) {
+    out = ::CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        nullptr, OPEN_EXISTING, 0, nullptr);
+    ownsHandle = (out != INVALID_HANDLE_VALUE);
+  }
+
+  const bool wrote = WriteStdout(out, text);
+  if (ownsHandle) ::CloseHandle(out);
+  if (attached) ::FreeConsole();
+
+  // Double-clicked from Explorer there is no console and no redirection, so the
+  // box is the whole output.
+  if (!wrote) {
     ::MessageBoxW(nullptr, text.c_str(), L"URnetwork diagnostics",
                   MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND);
   }

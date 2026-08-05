@@ -48,6 +48,10 @@ running, whether `urnetworkd`'s control pipe is listening — and exits without
 starting the UI. Run from a terminal it prints there; double-clicked it shows the
 same text in a message box. Paste that output into any bug report.
 
+> PowerShell does not wait on a GUI-subsystem process, so it returns the prompt
+> before the output lands under it. To get it in order, pipe it —
+> `.\URnetwork.exe --diagnose | Out-String` — or redirect it to a file.
+
 ### An unpackaged WinUI 3 app needs the Windows App Runtime installed
 
 `WindowsPackageType=None` (App.vcxproj) makes the Windows App SDK bootstrapper
