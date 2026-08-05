@@ -1,0 +1,183 @@
+name: Beta Build - Windows
+
+on:
+  push:
+    branches:
+      - beta/custom-server
+  pull_request:
+    branches:
+      - beta/custom-server
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  # the version derive step reads this run's created_at via the actions api
+  actions: read
+
+jobs:
+  # The SDK is a cgo c-shared DLL. It cross-builds cleanly from linux (the
+  # sdk/cgo Makefile's own windows recipe), which is both faster and cheaper
+  # than provisioning Go + llvm-mingw onto a windows runner, and it produces
+  # the exact URnetworkSdkWindows.zip layout app/tools/fetch-deps.ps1 expects.
+  build-sdk:
+    name: Build SDK DLLs (windows/amd64 + arm64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Windows repo
+        uses: actions/checkout@v4
+
+      # Same version scheme as the android and apple beta lines: the official
+      # date format with warpctl's counter (seconds since the company founding
+      # times 10), derived from the RUN's creation time so every job of one run
+      # agrees even across midnight utc.
+      - name: Derive version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          created=$(gh api repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID --jq .created_at)
+          base=$(date -u -d "$created" '+%Y.%-m.%-d')
+          founded=$(date -u -d "2023-05-23" +%s)
+          beta_code=$(( ($(date -u -d "$created" +%s) - founded) * 10 ))
+          version="${base}-${beta_code}-beta"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${beta_code}" >> "$GITHUB_OUTPUT"
+          echo "build date ${base} -> beta ${version} (${beta_code})"
+
+      - name: Check out forked SDK
+        uses: actions/checkout@v4
+        with:
+          repository: Ryanmello07/urnetwork-sdk
+          ref: beta/custom-server
+          path: sdk
+
+      # sdk/cgo/go.mod resolves these with `replace ... => ../../<name>`, so
+      # they have to sit as siblings of the sdk checkout
+      - name: Check out connect dependency
+        run: git clone --depth 1 --branch beta/custom-server https://github.com/Ryanmello07/connect.git connect
+
+      - name: Check out glog dependency
+        run: git clone --depth 1 https://github.com/urnetwork/glog.git glog
+
+      - name: Check out goidenticons dependency
+        run: git clone --depth 1 https://github.com/urnetwork/goidenticons.git goidenticons
+
+      # upstream sdk main references RenderPngV2, which the published
+      # goidenticons does not have; delegate to the published renderer
+      - name: Shim unpublished goidenticons RenderPngV2
+        run: |
+          echo 'package goidenticons' > goidenticons/render_v2_ci_shim.go
+          echo 'func RenderPngV2(data []byte, size int) ([]byte, error) { return RenderPng(data, size) }' >> goidenticons/render_v2_ci_shim.go
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      # amd64 goes through mingw-w64 from apt; arm64 needs llvm-mingw, which
+      # has no apt package -- the pinned upstream release tarball is the same
+      # toolchain the Makefile names (aarch64-w64-mingw32-clang).
+      - name: Install mingw-w64 (amd64 target)
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64 zip
+
+      - name: Install llvm-mingw (arm64 target)
+        run: |
+          version=20250709
+          url="https://github.com/mstorsjo/llvm-mingw/releases/download/${version}/llvm-mingw-${version}-ucrt-ubuntu-22.04-x86_64.tar.xz"
+          curl -fsSL "$url" -o /tmp/llvm-mingw.tar.xz
+          sudo mkdir -p /opt/llvm-mingw
+          sudo tar -xf /tmp/llvm-mingw.tar.xz -C /opt/llvm-mingw --strip-components=1
+          echo "/opt/llvm-mingw/bin" >> "$GITHUB_PATH"
+
+      - name: Build the SDK Windows DLLs
+        working-directory: sdk/cgo
+        env:
+          WARP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # go.sum is generated (git-ignored) -- a build straight from a branch
+          # has not staged, so produce it before the cgo build needs it
+          if [ ! -f go.sum ]; then go mod download all; fi
+          make build_windows
+          ls -la build/windows/amd64 build/windows/arm64
+          test -s build/URnetworkSdkWindows.zip
+
+      - name: Upload the SDK zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: urnetwork-sdk-windows
+          path: sdk/cgo/build/URnetworkSdkWindows.zip
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows app (${{ matrix.platform }})
+    needs: build-sdk
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # ARM64 cross-builds from the same x64 runner (v143 ships both
+        # toolchains); only the platform argument changes.
+        platform: [x64, ARM64]
+    steps:
+      - name: Check out Windows repo
+        uses: actions/checkout@v4
+
+      - name: Download the SDK zip
+        uses: actions/download-artifact@v4
+        with:
+          name: urnetwork-sdk-windows
+          path: sdk-zip
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      # fetch-deps pins wintun by sha256 AND upstream Authenticode signer, then
+      # unpacks the SDK zip and generates the per-arch import libs (needs
+      # lib.exe, which the VS dev shell below puts on PATH).
+      - name: Fetch vendored dependencies (wintun + SDK)
+        shell: pwsh
+        working-directory: app
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          Import-Module "$vs\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          .\tools\fetch-deps.ps1 -SdkZip "$env:GITHUB_WORKSPACE\sdk-zip\URnetworkSdkWindows.zip"
+
+      # The solution's build configurations cover Common, urnetworkd and the
+      # WinUI 3 app only -- the split-tunnel driver (needs the WDK) and the WiX
+      # installer are deliberately excluded, so neither is required here.
+      - name: Build the solution (${{ matrix.platform }})
+        shell: pwsh
+        working-directory: app
+        run: |
+          msbuild URnetwork.sln `
+            /restore `
+            /p:Configuration=Release `
+            /p:Platform=${{ matrix.platform }} `
+            /p:RestorePackagesConfig=true `
+            /m `
+            /v:minimal `
+            /clp:Summary `
+            /flp:LogFile=msbuild-${{ matrix.platform }}.log`;Verbosity=detailed
+
+      # the msbuild log is the whole point of the run while the solution is
+      # still being brought up on a real toolchain, so keep it even on failure
+      - name: Upload the msbuild log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msbuild-log-${{ matrix.platform }}
+          path: app/msbuild-${{ matrix.platform }}.log
+          if-no-files-found: warn
+
+      - name: Upload the build output
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urnetwork-windows-${{ matrix.platform }}
+          path: |
+            app/build/${{ matrix.platform }}/Release/**/*.exe
+            app/build/${{ matrix.platform }}/Release/**/*.dll
+            app/build/${{ matrix.platform }}/Release/**/*.pri
+          if-no-files-found: error
