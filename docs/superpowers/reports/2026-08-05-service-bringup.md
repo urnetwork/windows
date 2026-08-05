@@ -122,6 +122,10 @@ sdk initialized: version=… logDir=… memLimit=64MB
 console: running on \\.\pipe\urnetwork.control; press Ctrl+C to stop
 ```
 
+(The leftover-state sweep runs *before* the SDK comes up on purpose: if a
+previous run left the machine pointed at a tun that is gone, handing the routes
+back matters more than getting the SDK started.)
+
 Things that are now loud rather than silent, and what they mean:
 
 | Line | Meaning |

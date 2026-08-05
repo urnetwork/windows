@@ -175,8 +175,11 @@ BOOL WINAPI OnConsoleControl(DWORD type) {
 }
 
 void Run() {
-  SdkInit(/*isService=*/true, kServiceMemoryLimit);
+  // Sweep before anything else can fail or block: if a previous run left the
+  // machine pointed at a tun that is gone, giving the routes back is more
+  // urgent than getting the sdk up.
   ReportAndClearPriorState();
+  SdkInit(/*isService=*/true, kServiceMemoryLimit);
 
   ControlServer server;
   g_server = &server;
@@ -327,8 +330,8 @@ int RunConsole() {
   }
   ::SetConsoleCtrlHandler(&OnConsoleControl, TRUE);
 
+  ReportAndClearPriorState();  // see Run(): routes back before anything else
   SdkInit(/*isService=*/true, kServiceMemoryLimit);
-  ReportAndClearPriorState();
 
   ControlServer server;
   g_server = &server;
@@ -382,6 +385,14 @@ int wmain(int argc, wchar_t** argv) {
   // reached from the ones that start a tunnel.
   ::SetUnhandledExceptionFilter(&OnUnhandledException);
   std::set_terminate(&OnTerminate);
+
+  // Echo the log to stdout whenever there is a stdout to echo to. `console`,
+  // the dev commands and the no-argument fallback all run in a terminal; the
+  // SCM starts us with no console, so the service is unaffected. Set before the
+  // first log line so the terminal transcript starts at the first line rather
+  // than at whatever RunConsole gets to.
+  const HANDLE stdOut = ::GetStdHandle(STD_OUTPUT_HANDLE);
+  if (stdOut && stdOut != INVALID_HANDLE_VALUE) LogSetConsoleEcho(true);
 
   std::wstring cmd = argc >= 2 ? argv[1] : L"";
   LogInfo("urnetworkd starting: pid={} cmd=\"{}\" identity={} sdk={} log={}",
