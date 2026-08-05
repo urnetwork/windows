@@ -144,6 +144,29 @@ jobs:
           Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
           .\tools\fetch-deps.ps1 -SdkZip "$env:GITHUB_WORKSPACE\sdk-zip\URnetworkSdkWindows.zip"
 
+      # Directory.Build.props pins WindowsTargetPlatformVersion to 10.0.22621.0
+      # (the version on the real build box). Runner images carry a different
+      # set, so resolve what is actually installed and override it as a global
+      # property -- /p: wins over the props file, and the repo keeps its pin
+      # for developers. The MIN version (19041, the app's floor) is untouched,
+      # so this changes which SDK headers build the app, not what it runs on.
+      - name: Resolve the installed Windows SDK version
+        id: winsdk
+        shell: pwsh
+        run: |
+          $roots = @(
+            "${env:ProgramFiles(x86)}\Windows Kits\10\Include",
+            "$env:ProgramFiles\Windows Kits\10\Include"
+          ) | Where-Object { Test-Path $_ }
+          $versions = $roots | ForEach-Object { Get-ChildItem $_ -Directory } |
+            Where-Object { $_.Name -match '^10\.0\.\d+\.\d+$' -and (Test-Path (Join-Path $_.FullName 'um\windows.h')) } |
+            Sort-Object { [version]$_.Name }
+          if (-not $versions) { throw "no Windows 10 SDK found on this runner" }
+          $chosen = $versions[-1].Name
+          Write-Host "available: $($versions.Name -join ', ')"
+          Write-Host "using: $chosen"
+          "version=$chosen" >> $env:GITHUB_OUTPUT
+
       # The solution's build configurations cover Common, urnetworkd and the
       # WinUI 3 app only -- the split-tunnel driver (needs the WDK) and the WiX
       # installer are deliberately excluded, so neither is required here.
@@ -155,6 +178,7 @@ jobs:
             /restore `
             /p:Configuration=Release `
             /p:Platform=${{ matrix.platform }} `
+            /p:WindowsTargetPlatformVersion=${{ steps.winsdk.outputs.version }} `
             /p:RestorePackagesConfig=true `
             /m `
             /v:minimal `
