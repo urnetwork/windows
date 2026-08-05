@@ -279,11 +279,27 @@ interface present`. Confirms the recovery command works *before* you need it.
 route-metric + interface-metric default route (`PrefixLength == 0`) that is not
 the tun LUID — the same ordering Windows itself uses — and pushes it through
 `urnet::setEgressInterfaceIndex` → `sdk.SetEgressInterfaceIndex` →
-`connect.SetEgressInterfaceIndex`, where `egressDialer` (every TCP dial via
-`ConnectSettings.NetDialer`) and `applyEgress` (the platform QUIC `UDPConn` in
-`transport.go`) apply `IP_UNICAST_IF`/`IPV6_UNICAST_IF`. The tun cannot be
-picked even by accident: it never gets a `0.0.0.0/0` route, only the 31
-complement prefixes.
+`connect.SetEgressInterfaceIndex`. The tun cannot be picked even by accident: it
+never gets a `0.0.0.0/0` route, only the 31 complement prefixes.
+
+On the connect side the index covers all three socket families the service
+opens (`IP_UNICAST_IF` / `IPV6_UNICAST_IF`, `egress_windows.go`):
+
+| Sockets | Path | Applied by |
+| --- | --- | --- |
+| every TCP dial | `ConnectSettings.NetDialer` → `egressDialer` | `net.go:129` |
+| the platform QUIC `UDPConn` | `applyEgress(udpConn)` | `transport.go:1274` |
+| pion ICE / p2p UDP | `egressNet.ListenUDP` → `applyEgress` | `egress_net.go` |
+
+The third one is worth knowing about, because it is why the "never push 0"
+change matters more than it looks: `transport_p2p_webrtc_pc.go` chooses
+`newEgressNet()` **only when `EgressInterfaceIndex()` is non-zero**, and
+otherwise falls back to `newIceInterfaceNet`, whose `dialLocalIP` opens a
+connect-only UDP socket to discover the local address. With the tunnel up and
+the index cleared, that socket resolves through the tun and reports
+`169.254.2.1` as the host's address — wrong ICE candidates on top of the
+unbound-socket problem. Unbinding is worse than pinning to a downed NIC in two
+separate ways.
 
 The binding was already applied before the routes. It is now also applied before
 the `NetworkSpace` and `DeviceLocal` are constructed, so no SDK socket can be

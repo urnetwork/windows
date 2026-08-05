@@ -250,6 +250,10 @@ void NetworkConfig::CrashRevert() {
   if (value == 0) return;
   NET_LUID luid{};
   luid.Value = value;
+  // Routes first, always. They are what strands the machine, and the delete is
+  // a stack ioctl. The DNS clear talks to the dnscache service, which is the
+  // heavier of the two — if it hangs on a dying process the routes are already
+  // back, and a stale resolver on a dead interface harms nothing.
   DeleteTunnelRoutes(luid);
   ClearTunnelDns(luid);
 }

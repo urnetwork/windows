@@ -127,12 +127,23 @@ this section becomes the fallback for loose builds.
 
 ## 2. Prove M1 (the service tunnel) end-to-end on Windows
 
+> **Follow `docs/superpowers/reports/2026-08-05-service-bringup.md`.** It is the
+> step-by-step version of this section — the exact commands, the log lines to
+> expect, and what each failure means. Read its §1 before running anything: it
+> explains why an abnormal exit should not cost you your network, and what to run
+> (`urnetworkd revert`, elevated) if it ever does.
+
 1. `urnetworkd.exe console` (dev mode), then the tray app: log in → connect.
+   `console` echoes the log to stdout and unwinds cleanly on Ctrl+C.
 2. **Confirm R1 (top risk):** with the tunnel up, the service's own platform +
-   provider sockets must NOT loop into the tun. Watch `EgressMonitor` set the
-   egress interface; verify browsing works through a provider and there's no
-   route loop. This is the payoff of the socket self-exclusion.
-3. Clean service stop restores the network (routes/DNS reverted).
+   provider sockets must NOT loop into the tun. The `egress:` log line names the
+   interface it bound and its source address; that must be the physical adapter,
+   and the line must appear before the route install. Then
+   `Get-NetTCPConnection -OwningProcess <urnetworkd pid>` must show no socket
+   sourced from the tun's `169.254.2.1`. This is the payoff of the socket
+   self-exclusion.
+3. Clean service stop restores the network (routes/DNS reverted) — and so does
+   `Stop-Process -Force` with the tunnel up, which is the test that matters.
 
 ## 3. arm64
 
