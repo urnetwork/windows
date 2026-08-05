@@ -142,6 +142,14 @@ struct MainWindow : MainWindowT<MainWindow> {
   // account (Api::upgradeGuest; linux CreateNetworkPage::Mode parity).
   enum class CreateMode { Password, Wallet, GuestUpgrade };
 
+  // The SDK's own connection status (ConnectViewController.getConnectionStatus,
+  // surfaced as LiveStats.connectionStatus). Mirrors android's
+  // ui/shared/models/ConnectStatus. This is a DIFFERENT signal from the service
+  // tunnel state that drives connected_: the tunnel says whether packets can
+  // flow, this says what the connect controller is doing about it, and only this
+  // one has a "connecting" value to show.
+  enum class ConnectStatus { Disconnected, Connecting, DestinationSet, Connected };
+
   // every label in the window, from the shared localization store (Localization.h)
   void ApplyStrings();
   void ApplyAuthState(urnw::AuthState state, std::string const& error);
@@ -158,6 +166,13 @@ struct MainWindow : MainWindowT<MainWindow> {
   void SubmitVerifyCode();
 
   void SetConnectedUi(bool connected);
+  // Status line + status dot + connect button, from connectStatus_ (the SDK) and
+  // connected_ (the service tunnel). The single place any of the three is written.
+  void ApplyConnectStatus();
+  static ConnectStatus ParseConnectStatus(std::string const& value);
+  // What the connect button does right now: anything other than a settled
+  // disconnected state means the press disconnects (and, in a transition, aborts).
+  bool ConnectActionIsDisconnect() const;
   void ApplyStats(urnw::LiveStats const& stats);
   void LoadAccount();
   void LoadBalanceCodes();     // redeemed-codes list (account panel)
@@ -219,7 +234,13 @@ struct MainWindow : MainWindowT<MainWindow> {
   // 0 when there are none) so the location row never jumps
   void ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers);
 
-  bool connected_ = false;
+  bool connected_ = false;  // the SERVICE tunnel is up (OnTunnelStateChanged)
+  // the SDK connect controller's own status (ApplyStats); see ConnectStatus
+  ConnectStatus connectStatus_ = ConnectStatus::Disconnected;
+  // network name off the stored jwt, for the idle "{name} is ready to connect"
+  // copy. Read once per auth change, not per stats push (ParsedJwt re-parses).
+  std::string networkName_;
+  bool guestMode_ = false;
 
   // sign-in flow state (UI thread only)
   LoginStep loginStep_ = LoginStep::Initial;

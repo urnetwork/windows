@@ -320,11 +320,12 @@ void MainWindow::ApplyStrings() {
   SettingsNavItem().Content(LocBox("settings"));
 
   // connect drawer
-  StatusText().Text(Loc("disconnected"));
+  // status line, dot and button label all come from ApplyConnectStatus, which
+  // is the single writer of the three (seeded here: idle, blue dot, "Connect")
+  ApplyConnectStatus();
   SelectedProviderLabel().Text(Loc("selected_provider"));
   LocationText().Text(Loc("best_available_provider"));
   ApplyPeerCount(std::nullopt);   // seed the peers status line ("0 peers" + dot)
-  ConnectButton().Content(LocBox("connect"));
   BalanceWarning().Title(Loc("insufficient_balance"));
   BalanceWarning().Message(Loc("insufficient_balance_message"));
   ConnectOptionsLabel().Text(Loc("connect_options"));
@@ -996,10 +997,33 @@ void MainWindow::OnSignOut(IInspectable const&, RoutedEventArgs const&) {
 // ---- connect -------------------------------------------------------------
 
 void MainWindow::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
-  if (connected_)
+  if (ConnectActionIsDisconnect()) {
     Sdk().Disconnect();
-  else
+    return;
+  }
+  // Connect to what the user PICKED. This button used to call
+  // ConnectBestAvailable() unconditionally, while the chooser's own rows call
+  // Connect(location) directly -- so choosing Japan and then pressing Connect
+  // silently sent you somewhere else, and the two controls contradicted each
+  // other with no way to tell from the UI. Android connects to
+  // connectViewModel.selectedLocation; do the same, and fall back to
+  // best-available only when there genuinely is no selection (the SDK flags
+  // best-available on the selection itself -- LocationSheets
+  // IsBestAvailableSelected uses the same test).
+  const auto selected = Sdk().SelectedLocation();
+  const bool bestAvailable =
+      !selected || (selected->connect_location_id &&
+                    selected->connect_location_id->best_available.value_or(false));
+  // Say "connecting" NOW rather than waiting for the SDK to push it back. On a
+  // client that has never run, a Connect press that produces no visible change
+  // is indistinguishable from a hang; the next status push corrects this if the
+  // SDK disagrees.
+  connectStatus_ = ConnectStatus::Connecting;
+  ApplyConnectStatus();
+  if (bestAvailable)
     Sdk().ConnectBestAvailable();
+  else
+    Sdk().Connect(*selected);
 }
 
 // ---- navigation ----------------------------------------------------------
@@ -1480,6 +1504,18 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
     ShowLoginErrorFor(loginStep_, H(error));
   }
   if (loggedIn) createMode_ = CreateMode::Password;  // any guest upgrade resolved
+  // The network name behind the idle "{name} is ready to connect" copy. Read
+  // from the stored jwt once per auth change (ParsedJwt re-parses on every
+  // call, and the status line is rewritten on every stats push).
+  networkName_.clear();
+  guestMode_ = false;
+  if (loggedIn) {
+    if (auto jwt = Sdk().ParsedJwt()) {
+      networkName_ = jwt->NetworkName;
+      guestMode_ = jwt->GuestMode;
+    }
+  }
+  ApplyConnectStatus();
   if (loggedIn && !wasVisible) {
     // the drawer just appeared: refresh its state and play the entrance
     ResyncDrawer();
@@ -1505,8 +1541,66 @@ void MainWindow::OnTunnelStateChanged(urnw::proto::TunnelStatus const& status) {
 
 void MainWindow::SetConnectedUi(bool connected) {
   connected_ = connected;
-  StatusText().Text(connected ? Loc("connected") : Loc("disconnected"));
-  ConnectButton().Content(connected ? LocBox("disconnect") : LocBox("connect"));
+  ApplyConnectStatus();
+}
+
+// "CONNECTED" / "CONNECTING" / "DESTINATION_SET" / "DISCONNECTED", the four
+// values getConnectionStatus() emits (android ConnectStatus.fromString folds
+// case the same way). Anything unrecognised reads as disconnected: an unknown
+// status must not leave the button claiming a connection the SDK never made.
+MainWindow::ConnectStatus MainWindow::ParseConnectStatus(std::string const& value) {
+  const std::string upper = ToUpper(value);
+  if (upper == "CONNECTED") return ConnectStatus::Connected;
+  if (upper == "CONNECTING") return ConnectStatus::Connecting;
+  if (upper == "DESTINATION_SET") return ConnectStatus::DestinationSet;
+  return ConnectStatus::Disconnected;
+}
+
+bool MainWindow::ConnectActionIsDisconnect() const {
+  // Either signal counts: the SDK is doing something, or the tunnel is up.
+  return connectStatus_ != ConnectStatus::Disconnected || connected_;
+}
+
+// The connect status line, its dot, and the button label — android
+// ConnectStatusIndicator parity. Until now StatusText read the SERVICE tunnel
+// state and said only "Connected"/"Disconnected", while the SDK's four-state
+// connectionStatus was fetched into LiveStats and dropped on the floor: there
+// was no connecting state anywhere in the client.
+void MainWindow::ApplyConnectStatus() {
+  hstring text;
+  winrt::Windows::UI::Color dot = urnw::colors::kStatusIdle;
+  switch (connectStatus_) {
+    case ConnectStatus::Connected:
+      // the provider count lives in its own line below (ProviderCountText),
+      // where android folds it into this string — desktop has room for both
+      text = Loc("connected");
+      dot = urnw::colors::kUrGreen;
+      break;
+    case ConnectStatus::Connecting:
+    case ConnectStatus::DestinationSet:
+      // android maps DESTINATION_SET and CONNECTING to one connecting state
+      text = Loc("connecting_status_indicator");
+      dot = urnw::colors::kStatusConnecting;
+      break;
+    case ConnectStatus::Disconnected:
+      // idle copy names the network the user is on, which is how they learn it
+      // (android network_name_ready_to_connect); a guest has no name worth
+      // showing, and neither does a signed-out window
+      text = (networkName_.empty() || guestMode_)
+                 ? Loc("ready_to_connect")
+                 : hstring{urnw::Format("network_name_ready_to_connect",
+                                        urnw::Widen(networkName_))};
+      dot = urnw::colors::kStatusIdle;
+      break;
+  }
+  StatusText().Text(text);
+  StatusDot().Fill(urnw::colors::MakeBrush(dot));
+  // The button no longer lets a second press fire a duplicate connect while one
+  // is in flight (android gates on DISCONNECTED). It stays ENABLED through the
+  // transition on purpose: this client has never run, and a connect that hangs
+  // must leave the owner a way out rather than a dead control.
+  ConnectButton().Content(ConnectActionIsDisconnect() ? LocBox("disconnect")
+                                                      : LocBox("connect"));
 }
 
 // ---- live stats (macOS parity) -------------------------------------------
@@ -1533,6 +1627,10 @@ void MainWindow::ApplyStats(urnw::LiveStats const& stats) {
   }
   LocationText().Text(locationName.empty() ? Loc("best_available_provider")
                                            : H(locationName));
+  // The SDK's connection status: the only signal in the client that carries a
+  // CONNECTING state. It was read into LiveStats and never used.
+  connectStatus_ = ParseConnectStatus(stats.connectionStatus);
+  ApplyConnectStatus();
   ApplyPeerCount(peers);  // the peers status line below the connect button (req1)
   // the connected country drives the dns-card recommendation pill; only refresh
   // it when the country actually changes (stats push on every throughput tick).

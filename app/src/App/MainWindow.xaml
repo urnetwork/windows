@@ -230,8 +230,28 @@
                         <Border x:Name="ControlsCard" Background="{StaticResource UrCardBrush}"
                                 CornerRadius="12" Padding="16">
                             <StackPanel Spacing="12">
-                                <TextBlock x:Name="StatusText" FontSize="22"
-                                           FontWeight="SemiBold" />
+                                <!-- connect status (android ConnectStatusIndicator
+                                     parity): a state-coloured dot + the four-state
+                                     status line. Driven by the SDK's own connection
+                                     status, NOT by the service tunnel alone, so
+                                     "Connecting to providers" exists at all —
+                                     see MainWindow::ApplyConnectStatus. -->
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse x:Name="StatusDot" Width="10" Height="10"
+                                             VerticalAlignment="Center" />
+                                    <!-- a Grid star column, not a horizontal StackPanel:
+                                         the idle copy carries the network name, and a
+                                         StackPanel would hand it infinite width so
+                                         TextWrapping could never fire -->
+                                    <TextBlock x:Name="StatusText" Grid.Column="1"
+                                               FontSize="22" FontWeight="SemiBold"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                </Grid>
                                 <!-- selected location; the whole row opens the provider chooser -->
                                 <Border x:Name="LocationRow"
                                         Background="{StaticResource UrCardBrush}"
