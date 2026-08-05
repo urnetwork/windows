@@ -48,13 +48,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Ryanmello07/urnetwork-sdk
-          ref: beta/custom-server
+          # NOT beta/custom-server: the windows app was written against a newer
+          # sdk (getDefaultTunnelDnsAddressIpv4 and friends do not exist on the
+          # beta branch). This is the merged reliability checkpoint plus the
+          # DeviceLocalRpc bridge, which the app/service split needs anyway.
+          ref: feat/ios-reliability-bridge-upstream
           path: sdk
 
       # sdk/cgo/go.mod resolves these with `replace ... => ../../<name>`, so
       # they have to sit as siblings of the sdk checkout
       - name: Check out connect dependency
-        run: git clone --depth 1 --branch beta/custom-server https://github.com/Ryanmello07/connect.git connect
+        run: git clone --depth 1 --branch feat/reliability-checkpoint-upstream https://github.com/Ryanmello07/connect.git connect
 
       - name: Check out glog dependency
         run: git clone --depth 1 https://github.com/urnetwork/glog.git glog
@@ -111,7 +115,11 @@ jobs:
   build-windows:
     name: Build Windows app (${{ matrix.platform }})
     needs: build-sdk
-    runs-on: windows-latest
+    # NOT windows-latest: that image has moved to Visual Studio 18 (toolset
+    # v180), which carries v143 for x64 but not the v143 ARM64 cross tools, so
+    # ARM64 failed MSB8020 while x64 compiled. windows-2022 is the image whose
+    # toolchain matches the repo's documented prerequisites (VS 2022 v143).
+    runs-on: windows-2022
     strategy:
       fail-fast: false
       matrix:
