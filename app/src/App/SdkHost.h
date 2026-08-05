@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ProviderLocations.h"
 #include "Sdk.h"
 #include "ServiceClient.h"
 #include "WalletConnect.h"
@@ -235,6 +236,8 @@ class SdkHost {
       std::function<void(std::optional<urnet::FilteredLocations>, std::string state)>;
   using PeersHandler = std::function<void(std::optional<urnet::NetworkPeerList>)>;
   using RemoteChangedHandler = std::function<void(bool remoteConnected)>;
+  // The connected providers and where they are (the provider-locations sheet).
+  using ProviderLocationsHandler = std::function<void(std::vector<ProviderLocationRow>)>;
 
   SdkHost() = default;
   ~SdkHost();
@@ -371,6 +374,21 @@ class SdkHost {
   void SetLocationsHandler(LocationsHandler h) { onLocations_ = std::move(h); }
   void SetPeersHandler(PeersHandler h) { onPeers_ = std::move(h); }
   void SetRemoteChangedHandler(RemoteChangedHandler h) { onRemoteChanged_ = std::move(h); }
+  void SetProviderLocationsHandler(ProviderLocationsHandler h) {
+    onProviderLocations_ = std::move(h);
+  }
+
+  // ---- provider locations (the "Connected to N providers" detail sheet) -----
+  // Device::getConnectedProviderLocations is a pure derivation over the window
+  // monitor's retained events, sorted oldest-connected first, and the change
+  // listener is signal-only -- so the getter is re-read on every notify and the
+  // result compared BY VALUE before anything is published (the SDK re-emits on
+  // every window event, and the rows also carry a per-second duration clock, so
+  // an identity compare would thrash the UI).
+  std::vector<ProviderLocationRow> CurrentProviderLocations();
+  // Drop a provider by its EGRESS client id and stop it being re-discovered for
+  // the rest of this connection.
+  void RemoveConnectedProvider(const std::string& clientId);
 
   // Snapshots on demand (seed / resync when the window shows).
   std::vector<urnet::ThroughputPoint> CurrentThroughputPoints(int64_t& windowSeconds);
@@ -458,6 +476,7 @@ class SdkHost {
   void PublishBlockActions();
   void PublishBlockStats();
   void PublishSplitRules();
+  void PublishProviderLocations();
   // Read getLocalOverrideAppIds(), compute {paths, allowlist} (Android inversion:
   // any include-in-tunnel app => allowlist with the tunnel set, else denylist with
   // the bypass set), and push to the service -> driver. Called from the override
@@ -505,6 +524,7 @@ class SdkHost {
   int64_t lastAllowedCount_ = 0;
   int64_t lastBlockedCount_ = 0;
   std::vector<SplitRule> lastSplitRules_;
+  std::vector<ProviderLocationRow> lastProviderLocations_;
 
   ServiceClient service_;
   std::string appVersion_ = "0.0.1";
@@ -530,6 +550,7 @@ class SdkHost {
   LocationsHandler onLocations_;
   PeersHandler onPeers_;
   RemoteChangedHandler onRemoteChanged_;
+  ProviderLocationsHandler onProviderLocations_;
   AuthState authState_ = AuthState::LoggedOut;
 };
 

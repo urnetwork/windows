@@ -414,6 +414,10 @@ juiste manier</value>
     <value>Netwerk-API wijzigen</value>
     <comment>Title of the network API selector dialog.</comment>
   </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>Tik op het bewerkingspictogram om je netwerknaam te wijzigen</value>
+    <comment>A description of the action to change the user's network name.</comment>
+  </data>
   <data name="change_password" xml:space="preserve">
     <value>Verander Wachtwoord</value>
     <comment>Profile</comment>
@@ -465,6 +469,10 @@ juiste manier</value>
   <data name="claim_multiplier" xml:space="preserve">
     <value>Claim je vermenigvuldiger</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>Claim een eigen netwerknaam ter vervanging van je automatisch gegenereerde naam</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Clientcontracten</value>
@@ -877,6 +885,10 @@ juiste manier</value>
   <data name="edit_device_name" xml:space="preserve">
     <value>Apparaatnaam bewerken</value>
     <comment>device</comment>
+  </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>Netwerknaam bewerken</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
   </data>
   <data name="edit_profile" xml:space="preserve">
     <value>Profiel bewerken</value>
@@ -1343,6 +1355,82 @@ naar je hebben gestuurd om je identiteit te verifiëren.</value>
     <value>{} min geleden</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
   </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>Synchroniseren met {}</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>Alleen pagina's in deze browser zien de gewijzigde locatie. De locatie van je apparaat verandert niet.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>Apps kunnen merken dat de locatie gesimuleerd is. Bank-, taxi-, bezorg- en sommige game-apps werken mogelijk niet zolang dit aanstaat.</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>Dit verandert de locatie die aan elke app op je apparaat wordt doorgegeven, niet alleen aan URnetwork.</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>Sites kunnen merken dat de locatie gesimuleerd is en werken mogelijk niet.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>Zet dit uit in URnetwork voordat je de opties voor ontwikkelaars uitschakelt, URnetwork deselecteert of de app verwijdert — anders kan je apparaatlocatie bevroren blijven totdat je opnieuw opstart.</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>URnetwork kon de gesimuleerde locatie niet verwijderen. Selecteer URnetwork opnieuw in de opties voor ontwikkelaars en zet dit uit, of start je apparaat opnieuw op.</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>Als dit is ingeschakeld, zien apps op dit apparaat de locatie van de provider waarmee je het langst verbonden bent, in plaats van je echte locatie.</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>Apparaatlocatie synchroniseren</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>Configuratie vereist</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>“Over de telefoon” openen</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>Opties voor ontwikkelaars openen</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>Locatie-instellingen openen</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>Klaar. Zet de schakelaar aan om je apparaatlocatie te synchroniseren met de langst verbonden provider.</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>Synchronisatie van apparaatlocatie</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>Zet de opties voor ontwikkelaars aan: open “Over de telefoon” en tik zeven keer op “Build-nummer”.</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>Zet “Locatie” aan in de systeeminstellingen zodat apps de locatie kunnen ontvangen.</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>Tik in de opties voor ontwikkelaars op “App voor neplocaties selecteren” en kies URnetwork.</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>Wachten op een providerlocatie</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
+  </data>
   <data name="monthly" xml:space="preserve">
     <value>Maandelijks</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
@@ -1777,6 +1865,18 @@ gedecentraliseerde ingress- en egress-protocol ter wereld.</value>
     <value>Leveringsmodus</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0} u {1} min</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{} min</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{} s</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>Providercontracten</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1791,6 +1891,18 @@ gedecentraliseerde ingress- en egress-protocol ter wereld.</value>
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} providers</value>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>Locatie onbekend</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>Geen providers verbonden</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>Providerlocaties</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>Providerstatistieken</value>
@@ -2365,6 +2477,14 @@ zoals het hoort te zijn.</value>
     <value>Wil je de verbinding met {} verbreken en van account wisselen?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>Apparaatlocatie synchroniseren met de langst verbonden provider</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>Apparaatlocatie synchroniseren met de provider</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>Systeem</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2597,6 +2717,10 @@ zoals het hoort te zijn.</value>
   </data>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>USDC wallet address</value>
+  </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>Gebruikt de stabielste provider</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
   </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>Aanbevolen instellingen gebruiken</value>

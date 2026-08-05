@@ -47,5 +47,23 @@ Both are licensed under the MIT License:
   SOFTWARE.
 
 ===============================================================================
+Natural Earth - world-110m.json (world_atlas / TopoJSON, 1:110m cultural)
+https://www.naturalearthdata.com/   https://github.com/topojson/world-atlas
+
+Natural Earth data is in the PUBLIC DOMAIN. From the project's terms of use:
+
+  All versions of Natural Earth raster + vector map data found on this website
+  are in the public domain. You may use the maps in any manner, including
+  modifying the content and design, electronic dissemination, and offset
+  printing. The primary authors, Tom Patterson and Nathaniel Vaughn Kelso, and
+  all other contributors renounce all financial claim to the maps and invite
+  you to use them for personal, educational, and commercial purposes.
+  No permission is needed to use Natural Earth. Crediting the authors is
+  unnecessary.
+
+URnetwork embeds the quantized TopoJSON country outlines unmodified, as an
+RCDATA resource, to draw the provider-locations globe.
+
+===============================================================================
 Note: URnetworkSdk.dll (the Go/cgo SDK) statically links additional open-source
 Go modules; their notices are maintained with the SDK.

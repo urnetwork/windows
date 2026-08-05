@@ -213,6 +213,14 @@
     <ClCompile Include="BalanceSheets.cpp" />
     <ClCompile Include="Localization.cpp" />
     <ClCompile Include="LocationSheets.cpp" />
+    <!-- The provider-locations pure logic is deliberately WinRT-free (no pch)
+         so tools/globe-tests.cpp can run the ported android test cases on any
+         host; see GlobeGeometry.h. -->
+    <ClCompile Include="GlobeGeometry.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="WorldTopology.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="ProviderLocations.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="ProviderGlobe.cpp" />
+    <ClCompile Include="ProviderLocationsSheet.cpp" />
     <ClCompile Include="SdkHost.cpp" />
     <ClCompile Include="StatsFormat.cpp" />
     <ClCompile Include="StatsSheets.cpp" />
@@ -233,6 +241,11 @@
     <ClInclude Include="Config.h" />
     <ClInclude Include="Localization.h" />
     <ClInclude Include="LocationSheets.h" />
+    <ClInclude Include="GlobeGeometry.h" />
+    <ClInclude Include="WorldTopology.h" />
+    <ClInclude Include="ProviderLocations.h" />
+    <ClInclude Include="ProviderGlobe.h" />
+    <ClInclude Include="ProviderLocationsSheet.h" />
     <ClInclude Include="SdkHost.h" />
     <ClInclude Include="StatsFormat.h" />
     <ClInclude Include="StatsSheets.h" />

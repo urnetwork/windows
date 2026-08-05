@@ -406,6 +406,10 @@ cách đúng đắn</value>
     <value>Đổi API mạng</value>
     <comment>Title of the network API selector dialog.</comment>
   </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>Nhấn vào biểu tượng chỉnh sửa để thay đổi tên mạng của bạn</value>
+    <comment>A description of the action to change the user's network name.</comment>
+  </data>
   <data name="change_password" xml:space="preserve">
     <value>Đổi mật khẩu</value>
     <comment>Profile</comment>
@@ -457,6 +461,10 @@ cách đúng đắn</value>
   <data name="claim_multiplier" xml:space="preserve">
     <value>Hệ số nhân yêu cầu</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>Nhận tên mạng tùy chỉnh để thay thế tên được tạo tự động</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Hợp đồng máy khách</value>
@@ -861,6 +869,10 @@ cách đúng đắn</value>
   <data name="edit_device_name" xml:space="preserve">
     <value>Sửa tên thiết bị</value>
     <comment>device</comment>
+  </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>Sửa tên mạng</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
   </data>
   <data name="edit_profile" xml:space="preserve">
     <value>Sửa hồ sơ</value>
@@ -1323,6 +1335,82 @@ gặp lại bạn</value>
     <value>{} phút trước</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
   </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>Đang đồng bộ với {}</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>Chỉ các trang trong trình duyệt này thấy vị trí đã thay đổi. Vị trí thiết bị của bạn không thay đổi.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>Các ứng dụng có thể phát hiện vị trí là mô phỏng. Ứng dụng ngân hàng, gọi xe, giao hàng và một số trò chơi có thể từ chối hoạt động khi tính năng này đang bật.</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>Điều này thay đổi vị trí được báo cho mọi ứng dụng trên thiết bị của bạn, không chỉ URnetwork.</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>Các trang web có thể phát hiện vị trí là mô phỏng và có thể từ chối hoạt động.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>Hãy tắt tính năng này trong URnetwork trước khi bạn tắt tùy chọn cho nhà phát triển, bỏ chọn URnetwork hoặc gỡ cài đặt ứng dụng — nếu không, vị trí thiết bị của bạn có thể bị giữ nguyên cho đến khi khởi động lại.</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>URnetwork không thể gỡ vị trí mô phỏng. Hãy chọn lại URnetwork trong tùy chọn cho nhà phát triển rồi tắt tính năng này, hoặc khởi động lại thiết bị.</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>Khi bật, các ứng dụng trên thiết bị này sẽ thấy vị trí của nhà cung cấp mà bạn đã kết nối lâu nhất, thay vì vị trí thực của bạn.</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>Đồng bộ vị trí thiết bị</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>Cần thiết lập</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>Mở “Giới thiệu về điện thoại”</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>Mở tùy chọn cho nhà phát triển</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>Mở cài đặt vị trí</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>Sẵn sàng. Bật công tắc để đồng bộ vị trí thiết bị của bạn với nhà cung cấp kết nối lâu nhất.</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>Đồng bộ vị trí thiết bị</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>Bật tùy chọn cho nhà phát triển: mở “Giới thiệu về điện thoại” rồi nhấn bảy lần vào “Số bản dựng”.</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>Bật “Vị trí” trong cài đặt hệ thống để các ứng dụng có thể nhận vị trí.</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>Trong tùy chọn cho nhà phát triển, nhấn vào “Chọn ứng dụng vị trí mô phỏng” rồi chọn URnetwork.</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>Đang chờ vị trí nhà cung cấp</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
+  </data>
   <data name="monthly" xml:space="preserve">
     <value>Hằng tháng</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
@@ -1749,6 +1837,18 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>Chế độ cung cấp</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0} giờ {1} phút</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{} phút</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{} giây</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>Hợp đồng nhà cung cấp</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1759,6 +1859,18 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} nhà cung cấp</value>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>Không rõ vị trí</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>Không có nhà cung cấp nào được kết nối</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>Vị trí nhà cung cấp</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>Thống kê nhà cung cấp</value>
@@ -2325,6 +2437,14 @@ như nó vốn phải thế.</value>
     <value>Bạn có muốn ngắt kết nối khỏi {} và chuyển tài khoản?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>Đồng bộ vị trí thiết bị với nhà cung cấp kết nối lâu nhất</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>Đồng bộ vị trí thiết bị với nhà cung cấp</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>Hệ thống</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2553,6 +2673,10 @@ như nó vốn phải thế.</value>
   </data>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>Địa chỉ ví USDC</value>
+  </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>Sử dụng nhà cung cấp ổn định nhất</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
   </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>Dùng cài đặt được khuyến nghị</value>

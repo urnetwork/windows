@@ -430,6 +430,10 @@
     <value>שינוי ה-API של הרשת</value>
     <comment>Title of the network API selector dialog.</comment>
   </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>הקש על סמל העריכה כדי לשנות את שם הרשת שלך</value>
+    <comment>A description of the action to change the user's network name.</comment>
+  </data>
   <data name="change_password" xml:space="preserve">
     <value>שנה סיסמה</value>
     <comment>Profile</comment>
@@ -481,6 +485,10 @@
   <data name="claim_multiplier" xml:space="preserve">
     <value>מכפיל תביעה</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>בחר שם רשת מותאם אישית שיחליף את השם שנוצר אוטומטית</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>חוזי לקוח</value>
@@ -909,6 +917,10 @@
   <data name="edit_device_name" xml:space="preserve">
     <value>ערוך את שם המכשיר</value>
     <comment>device</comment>
+  </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>ערוך את שם הרשת</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
   </data>
   <data name="edit_profile" xml:space="preserve">
     <value>ערוך פרופיל</value>
@@ -1383,6 +1395,82 @@
     <value>לפני {} דק׳</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
   </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>מתבצע סנכרון עם {}</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>רק דפים בדפדפן הזה רואים את המיקום ששונה. מיקום המכשיר שלך אינו משתנה.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>אפליקציות יכולות לזהות שהמיקום מדומה. אפליקציות בנקאות, נסיעות, משלוחים וחלק מהמשחקים עשויות לסרב לפעול כשהאפשרות פועלת.</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>פעולה זו משנה את המיקום שמדווח לכל אפליקציה במכשיר שלך, לא רק ל-URnetwork.</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>אתרים יכולים לזהות שהמיקום מדומה ועשויים לסרב לפעול.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>כבה זאת ב-URnetwork לפני שתכבה את אפשרויות המפתחים, תבטל את בחירת URnetwork או תסיר את האפליקציה — אחרת מיקום המכשיר שלך עלול להישאר קפוא עד להפעלה מחדש.</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>URnetwork לא הצליח להסיר את המיקום המדומה. בחר שוב את URnetwork באפשרויות המפתחים וכבה זאת, או הפעל מחדש את המכשיר.</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>כשהאפשרות מופעלת, אפליקציות במכשיר זה רואות את המיקום של הספק שאליו אתה מחובר הכי הרבה זמן, במקום את המיקום האמיתי שלך.</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>סנכרון מיקום המכשיר</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>נדרשת הגדרה</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>פתיחת ״מידע על הטלפון״</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>פתיחת אפשרויות המפתחים</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>פתיחת הגדרות מיקום</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>מוכן. הפעל את המתג כדי לסנכרן את מיקום המכשיר שלך עם הספק המחובר הוותיק ביותר.</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>סנכרון מיקום המכשיר</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>הפעל את אפשרויות המפתחים: פתח את ״מידע על הטלפון״ והקש שבע פעמים על ״מספר Build״.</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>הפעל את ״מיקום״ בהגדרות המערכת כדי שאפליקציות יוכלו לקבל את המיקום.</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>באפשרויות המפתחים, הקש על ״בחירת אפליקציה למיקום מדומה״ ובחר URnetwork.</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>ממתין למיקום של ספק</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
+  </data>
   <data name="monthly" xml:space="preserve">
     <value>חודשי</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
@@ -1833,6 +1921,18 @@
     <value>מצב אספקה</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0} שע׳ {1} דק׳</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{} דק׳</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{} שנ׳</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>חוזי ספק</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1855,6 +1955,18 @@
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} ספקים</value>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>מיקום לא ידוע</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>אין ספקים מחוברים</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>מיקומי ספקים</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>סטטיסטיקת ספק</value>
@@ -2445,6 +2557,14 @@
     <value>האם ברצונך להתנתק מ-{} ולהחליף חשבון?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>סנכרון מיקום המכשיר עם הספק המחובר הוותיק ביותר</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>סנכרון מיקום המכשיר עם הספק</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>מערכת</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2685,6 +2805,10 @@
   </data>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>כתובת ארנק USDC</value>
+  </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>משתמש בספק היציב ביותר</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
   </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>השתמש בהגדרות המומלצות</value>

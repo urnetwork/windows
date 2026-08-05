@@ -17,6 +17,7 @@
 #include "BalanceSheets.h"
 #include "LocationSheets.h"
 #include "Protocol.h"
+#include "ProviderLocationsSheet.h"
 #include "SdkHost.h"
 #include "StatsSheets.h"
 #include "SubscriptionBalance.h"
@@ -126,6 +127,10 @@ struct MainWindow : MainWindowT<MainWindow> {
                            winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
   void OnPeersLineTapped(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
+  // "Connected to N providers" -> the provider-locations sheet. Only opens
+  // while genuinely connected (the line is blank otherwise).
+  void OnProviderCountTapped(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
 
   // Called by AppController (already marshaled onto the UI thread).
   void OnAuthStateChanged(urnw::AuthState state, std::string const& error);
@@ -215,6 +220,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   winrt::fire_and_forget ShowAppRulesSheet();
   winrt::fire_and_forget ShowDnsSheet();
   winrt::fire_and_forget ShowLocationChooserSheet();
+  winrt::fire_and_forget ShowProviderLocationsSheet();
   // drawer "N network peers" sub-label (req1); space-preserved (blank + Opacity
   // 0 when there are none) so the location row never jumps
   void ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers);
@@ -276,6 +282,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::vector<urnw::ContractPeerRow> contractRows_;
   std::vector<urnw::BlockActionItem> blockActions_;
   std::vector<urnw::SplitRule> splitRules_;
+  std::vector<urnw::ProviderLocationRow> providerLocations_;
   int64_t allowedCount_ = 0;
   int64_t blockedCount_ = 0;
   std::optional<urnet::DnsResolverSettings> dnsSettings_;
@@ -289,6 +296,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::shared_ptr<urnw::AppRulesSheet> appRulesSheet_;
   std::shared_ptr<urnw::DnsEditorSheet> dnsSheet_;
   std::shared_ptr<urnw::LocationChooserSheet> locationSheet_;
+  std::shared_ptr<urnw::ProviderLocationsSheet> providerLocationsSheet_;
 };
 
 }  // namespace winrt::URnetwork::implementation

@@ -406,6 +406,10 @@
     <value>네트워크 API 변경</value>
     <comment>Title of the network API selector dialog.</comment>
   </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>수정 아이콘을 탭하여 네트워크 이름을 변경하세요</value>
+    <comment>A description of the action to change the user's network name.</comment>
+  </data>
   <data name="change_password" xml:space="preserve">
     <value>비밀번호 변경</value>
     <comment>Profile</comment>
@@ -457,6 +461,10 @@
   <data name="claim_multiplier" xml:space="preserve">
     <value>배율 받기</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>자동 생성된 이름을 대체할 사용자 지정 네트워크 이름을 만드세요</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>클라이언트 계약</value>
@@ -861,6 +869,10 @@
   <data name="edit_device_name" xml:space="preserve">
     <value>기기 이름 편집</value>
     <comment>device</comment>
+  </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>네트워크 이름 편집</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
   </data>
   <data name="edit_profile" xml:space="preserve">
     <value>프로필 수정</value>
@@ -1323,6 +1335,82 @@
     <value>{}분 전</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
   </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>{}와(과) 동기화 중</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>변경된 위치는 이 브라우저의 페이지에만 표시됩니다. 기기의 위치는 그대로입니다.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>앱은 위치가 모의 위치임을 감지할 수 있습니다. 은행, 차량 호출, 배달 및 일부 게임 앱은 이 기능이 켜져 있는 동안 작동을 거부할 수 있습니다.</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>이 설정은 URnetwork뿐만 아니라 기기의 모든 앱에 보고되는 위치를 변경합니다.</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>사이트는 위치가 모의 위치임을 감지할 수 있으며 작동을 거부할 수 있습니다.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>개발자 옵션을 끄거나 URnetwork 선택을 해제하거나 앱을 제거하기 전에 URnetwork에서 이 기능을 먼저 끄세요. 그러지 않으면 기기를 다시 시작할 때까지 기기 위치가 고정된 상태로 남을 수 있습니다.</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>URnetwork가 모의 위치를 제거하지 못했습니다. 개발자 옵션에서 URnetwork를 다시 선택한 후 이 기능을 끄거나 기기를 다시 시작하세요.</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>사용 설정하면 이 기기의 앱에 실제 위치 대신 가장 오래 연결된 제공업체의 위치가 표시됩니다.</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>기기 위치 동기화</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>설정 필요</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>'휴대전화 정보' 열기</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>개발자 옵션 열기</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>위치 설정 열기</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>준비되었습니다. 토글을 켜면 기기 위치가 가장 오래 연결된 제공업체와 동기화됩니다.</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>기기 위치 동기화</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>개발자 옵션을 켭니다. '휴대전화 정보'를 열고 '빌드 번호'를 일곱 번 탭하세요.</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>앱이 위치를 수신할 수 있도록 시스템 설정에서 '위치'를 켜세요.</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>개발자 옵션에서 '모의 위치 앱 선택'을 탭한 다음 URnetwork를 선택하세요.</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>제공업체 위치를 기다리는 중</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
+  </data>
   <data name="monthly" xml:space="preserve">
     <value>월간</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
@@ -1748,6 +1836,18 @@
     <value>제공 모드</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0}시간 {1}분</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{}분</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{}초</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>제공자 계약</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1758,6 +1858,18 @@
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{}개 제공자</value>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>위치 알 수 없음</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>연결된 제공업체가 없습니다</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>제공업체 위치</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>제공자 통계</value>
@@ -2324,6 +2436,14 @@
     <value>{}에서 연결을 끊고 계정을 전환하시겠습니까?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>기기 위치를 가장 오래 연결된 제공업체와 동기화</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>기기 위치를 제공업체와 동기화</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>시스템</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2552,6 +2672,10 @@
   </data>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>USDC 월렛 주소</value>
+  </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>가장 안정적인 제공업체를 사용합니다</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
   </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>권장 설정 사용</value>

@@ -978,6 +978,10 @@ void SdkHost::SubscribeDrawer() {
   presentationSubs_.push_back(device_->addBlockerEnabledChangeListener([this](bool on) {
     if (onBlockerEnabled_) onBlockerEnabled_(on);
   }));
+  // connected provider locations: signal-only (no payload), so re-read the
+  // getter and publish only when the rows actually changed
+  presentationSubs_.push_back(device_->addConnectedProviderLocationChangeListener(
+      [this] { PublishProviderLocations(); }));
 
   // initial snapshots
   PublishThroughput();
@@ -985,6 +989,7 @@ void SdkHost::SubscribeDrawer() {
   PublishBlockActions();
   PublishBlockStats();
   PublishSplitRules();
+  PublishProviderLocations();
   PushLocalOverrideAppsToDriver();  // seed the driver once the device + service are up
   if (onDnsSettings_) onDnsSettings_(device_->getDnsResolverSettings());
   if (onBlockerEnabled_) onBlockerEnabled_(device_->getBlockerEnabled());
@@ -1125,6 +1130,67 @@ void SdkHost::PublishSplitRules() {
   if (changed && onSplitRules_) onSplitRules_(std::move(rules));
 }
 
+void SdkHost::PublishProviderLocations() {
+  if (!device_) return;
+  std::vector<ProviderLocationRow> rows;
+  try {
+    if (auto locations = device_->getConnectedProviderLocations()) {
+      rows.reserve(locations->size());
+      for (const auto& location : *locations) {
+        ProviderLocationRow row;
+        row.clientId = location.ClientId.value_or(std::string());
+        row.country = location.Country;
+        row.countryCode = location.CountryCode;
+        row.region = location.Region;
+        row.city = location.City;
+        row.hasLocation = location.HasLocation;
+        // the city centroid when known, else the region centroid
+        if (location.HasCityCoordinates) {
+          row.hasCoordinates = true;
+          row.lat = location.CityLat;
+          row.lon = location.CityLon;
+        } else if (location.HasRegionCoordinates) {
+          row.hasCoordinates = true;
+          row.lat = location.RegionLat;
+          row.lon = location.RegionLon;
+        }
+        row.connectedSinceMillis = location.ConnectedSinceMillis;
+        rows.push_back(std::move(row));
+      }
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read connected provider locations failed: {}", e.what());
+    return;
+  }
+  // Value compare, not identity: the listener is signal-only and fires on every
+  // window event, so publishing unconditionally would rebuild the sheet (and
+  // restart its globe animation) many times a second.
+  bool changed = false;
+  {
+    std::scoped_lock lock(drawerMutex_);
+    changed = rows != lastProviderLocations_;
+    if (changed) lastProviderLocations_ = rows;
+  }
+  if (changed && onProviderLocations_) onProviderLocations_(std::move(rows));
+}
+
+std::vector<ProviderLocationRow> SdkHost::CurrentProviderLocations() {
+  std::scoped_lock lock(drawerMutex_);
+  return lastProviderLocations_;
+}
+
+void SdkHost::RemoveConnectedProvider(const std::string& clientId) {
+  std::scoped_lock lock(mutex_);
+  if (!device_ || clientId.empty()) return;
+  try {
+    device_->removeConnectedProvider(clientId);
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: remove connected provider failed: {}", e.what());
+  }
+  // the window takes a moment to drop the client; the monitor's change event
+  // publishes the trimmed list when it does
+}
+
 void SdkHost::PushLocalOverrideAppsToDriver() {
   if (!device_) return;
   // getLocalOverrideAppIds() already inverts: Included = Local (bypass), Excluded =
@@ -1157,12 +1223,14 @@ void SdkHost::ClearDrawer() {
     lastAllowedCount_ = 0;
     lastBlockedCount_ = 0;
     lastSplitRules_.clear();
+    lastProviderLocations_.clear();
   }
   if (onThroughput_) onThroughput_({}, 60);
   if (onContractRows_) onContractRows_({});
   if (onBlockActions_) onBlockActions_({});
   if (onBlockStats_) onBlockStats_(0, 0);
   if (onSplitRules_) onSplitRules_({});
+  if (onProviderLocations_) onProviderLocations_({});
   if (onDnsSettings_) onDnsSettings_(std::nullopt);
   // clear the chooser's peer-count sub-label + any open sheet on logout
   if (onLocations_) onLocations_(std::nullopt, std::string());

@@ -276,9 +276,18 @@
                                 <!-- out of balance: the action button opens the upgrade flow -->
                                 <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
                                          Severity="Warning" />
-                                <!-- live stats (macOS parity): providers, throughput, provide -->
-                                <TextBlock x:Name="ProviderCountText" FontSize="12"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <!-- live stats (macOS parity): providers, throughput, provide.
+                                     The provider count is the entry point to the
+                                     provider-locations sheet (globe + connected providers);
+                                     the border is the tap target and is collapsed unless
+                                     genuinely connected, so there is nothing to click when
+                                     the label is blank. -->
+                                <Border x:Name="ProviderCountLine" Background="Transparent"
+                                        Visibility="Collapsed"
+                                        Tapped="OnProviderCountTapped">
+                                    <TextBlock x:Name="ProviderCountText" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </Border>
                                 <TextBlock x:Name="ThroughputText" FontSize="12"
                                            FontFamily="Consolas"
                                            Foreground="{StaticResource UrTextMutedBrush}" />

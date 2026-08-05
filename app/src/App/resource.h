@@ -21,3 +21,9 @@
 
 // App icon
 #define IDI_APP 120
+
+// Data resources (RCDATA). world-110m.json is the quantized TopoJSON the
+// provider-locations globe draws its land from (Natural Earth 110m, public
+// domain, ~100 KB). Embedded rather than deployed beside the exe because the
+// app is unpackaged, so a file would carry an install-path question.
+#define IDR_WORLD_TOPOLOGY 200

@@ -413,6 +413,10 @@
     <value>नेटवर्क API बदलें</value>
     <comment>Title of the network API selector dialog.</comment>
   </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>अपना नेटवर्क नाम बदलने के लिए संपादन आइकॉन पर टैप करें</value>
+    <comment>A description of the action to change the user's network name.</comment>
+  </data>
   <data name="change_password" xml:space="preserve">
     <value>पासवर्ड बदलें</value>
     <comment>Profile</comment>
@@ -464,6 +468,10 @@
   <data name="claim_multiplier" xml:space="preserve">
     <value>गुणक का दावा करें</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>अपने-आप बने नाम की जगह लेने के लिए कस्टम नेटवर्क नाम चुनें</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>क्लाइंट कॉन्ट्रैक्ट</value>
@@ -876,6 +884,10 @@
   <data name="edit_device_name" xml:space="preserve">
     <value>डिवाइस का नाम संपादित करें</value>
     <comment>device</comment>
+  </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>नेटवर्क का नाम संपादित करें</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
   </data>
   <data name="edit_profile" xml:space="preserve">
     <value>प्रोफ़ाइल संपादित करें</value>
@@ -1341,6 +1353,82 @@
     <value>{} मि. पहले</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
   </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>{} के साथ सिंक हो रहा है</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>बदला हुआ स्थान सिर्फ़ इस ब्राउज़र के पेज देखते हैं। आपके डिवाइस का स्थान नहीं बदलता।</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>ऐप्लिकेशन पहचान सकते हैं कि स्थान नकली है। बैंकिंग, राइड-हेलिंग, डिलीवरी और कुछ गेम ऐप्लिकेशन इसके चालू रहने पर काम करने से मना कर सकते हैं।</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>इससे आपके डिवाइस के हर ऐप्लिकेशन को दिखने वाला स्थान बदल जाता है, सिर्फ़ URnetwork को नहीं।</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>साइटें पहचान सकती हैं कि स्थान नकली है और काम करने से मना कर सकती हैं।</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>डेवलपर विकल्प बंद करने, URnetwork का चयन हटाने या ऐप्लिकेशन अनइंस्टॉल करने से पहले इसे URnetwork में बंद करें — वरना आपके डिवाइस का स्थान रीस्टार्ट करने तक अटका रह सकता है।</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>URnetwork नकली स्थान नहीं हटा सका। डेवलपर विकल्प में URnetwork को फिर से चुनें और इसे बंद करें, या अपना डिवाइस रीस्टार्ट करें।</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>चालू होने पर, इस डिवाइस के ऐप्लिकेशन आपके असली स्थान के बजाय उस प्रदाता का स्थान देखते हैं जिससे आप सबसे लंबे समय से कनेक्ट हैं।</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>डिवाइस का स्थान सिंक करें</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>सेटअप ज़रूरी है</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>“फ़ोन के बारे में जानकारी” खोलें</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>डेवलपर विकल्प खोलें</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>जगह की जानकारी की सेटिंग खोलें</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>तैयार है। अपने डिवाइस का स्थान सबसे लंबे समय से कनेक्ट प्रदाता के साथ सिंक करने के लिए टॉगल चालू करें।</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>डिवाइस स्थान सिंक</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>डेवलपर विकल्प चालू करें: “फ़ोन के बारे में जानकारी” खोलें और “बिल्ड नंबर” पर सात बार टैप करें।</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>सिस्टम सेटिंग में “जगह की जानकारी” चालू करें ताकि ऐप्लिकेशन को स्थान मिल सके।</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>डेवलपर विकल्प में, “मॉक लोकेशन ऐप चुनें” पर टैप करें और URnetwork चुनें।</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>प्रदाता के स्थान की प्रतीक्षा हो रही है</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
+  </data>
   <data name="monthly" xml:space="preserve">
     <value>मासिक</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
@@ -1774,6 +1862,18 @@
     <value>प्रदान मोड</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0} घं. {1} मि.</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{} मि.</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{} से.</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>प्रदाता कॉन्ट्रैक्ट</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1788,6 +1888,18 @@
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} प्रदाता</value>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>स्थान अज्ञात</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>कोई प्रदाता कनेक्ट नहीं है</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>प्रदाताओं के स्थान</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>प्रदाता आँकड़े</value>
@@ -2361,6 +2473,14 @@
     <value>क्या आप {} से डिस्कनेक्ट करना और खाते बदलना चाहते हैं?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>डिवाइस का स्थान सबसे लंबे समय से कनेक्ट प्रदाता के साथ सिंक करें</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>डिवाइस का स्थान प्रदाता के साथ सिंक करें</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>सिस्टम</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2593,6 +2713,10 @@
   </data>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>USDC वॉलेट पता</value>
+  </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>सबसे स्थिर प्रदाता का उपयोग करता है</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
   </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>अनुशंसित सेटिंग्स का उपयोग करें</value>

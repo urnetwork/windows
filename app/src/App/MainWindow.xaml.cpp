@@ -1539,6 +1539,10 @@ void MainWindow::ApplyStats(urnw::LiveStats const& stats) {
       stats.connected
           ? hstring{urnw::Plural("connected_provider_count", stats.providerCount)}
           : hstring{L""});
+  // the line is the tap target for the provider-locations sheet; collapse it
+  // unless genuinely connected (CONNECTED, not CONNECTING) so there is never a
+  // clickable blank where the label would be
+  ProviderCountLine().Visibility(stats.connected ? Visibility::Visible : Visibility::Collapsed);
 
   // Live throughput feed: down / up bit rate. Arrows + rates, no prose.
   ThroughputText().Text(stats.connected
@@ -1706,12 +1710,31 @@ void MainWindow::WireDrawerFeeds() {
       }
     });
   });
+  // the connected providers and where they are: SdkHost re-reads the getter on
+  // the signal-only change listener and only pushes when the rows differ by
+  // value, so this can apply every push directly
+  sdk.SetProviderLocationsHandler([queue, weak](std::vector<urnw::ProviderLocationRow> rows) {
+    queue.TryEnqueue([weak, rows = std::move(rows)] {
+      if (auto self = weak.get()) {
+        self->providerLocations_ = rows;
+        if (self->providerLocationsSheet_) {
+          self->providerLocationsSheet_->Update(rows, Sdk().RemoteConnected());
+        }
+      }
+    });
+  });
   sdk.SetRemoteChangedHandler([queue, weak](bool) {
     queue.TryEnqueue([weak] {
       if (auto self = weak.get()) {
         // remote attach/detach flips the peers line's disabled state; the
         // nullopt trigger leaves the chooser's peer rows untouched
         self->ApplyPeerCount(std::nullopt);
+        // the same fact grays the provider-locations list: while the rpc is
+        // down an empty window is unavailable, not "no providers"
+        if (self->providerLocationsSheet_) {
+          self->providerLocationsSheet_->Update(self->providerLocations_,
+                                                Sdk().RemoteConnected());
+        }
       }
     });
   });
@@ -1955,6 +1978,9 @@ void MainWindow::OnChartTick() {
     localChart_->Tick();
   }
   if (contractsSheet_) contractsSheet_->Tick();  // ring/disc easing + slide animations
+  // globe recenter animation + the 1s connected-duration retick (the sheet
+  // owns its own 1s divider off this 100ms clock)
+  if (providerLocationsSheet_) providerLocationsSheet_->Tick();
   if (++chartTickCount_ % 10 == 0) {  // ~1s cadence
     if (splitRulesSheet_) splitRulesSheet_->RefreshTimes();  // "Ns ago" labels
   }
@@ -2035,6 +2061,29 @@ void MainWindow::OnLocationRowTapped(IInspectable const&, Input::TappedRoutedEve
 
 void MainWindow::OnPeersLineTapped(IInspectable const&, Input::TappedRoutedEventArgs const&) {
   ShowLocationChooserSheet();
+}
+
+void MainWindow::OnProviderCountTapped(IInspectable const&,
+                                       Input::TappedRoutedEventArgs const&) {
+  if (!connected_) return;
+  ShowProviderLocationsSheet();
+}
+
+// The connected providers and where they are: globe + list, opened from the
+// "Connected to N providers" line (android ProviderLocationsScreen parity).
+winrt::fire_and_forget MainWindow::ShowProviderLocationsSheet() {
+  if (sheetOpen_) co_return;  // only one ContentDialog can show at a time
+  auto self = get_strong();
+  self->sheetOpen_ = true;
+  try {
+    self->providerLocationsSheet_ =
+        urnw::ProviderLocationsSheet::Create(Content().XamlRoot(), Sdk());
+    self->providerLocationsSheet_->Update(self->providerLocations_, Sdk().RemoteConnected());
+    co_await self->providerLocationsSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  self->providerLocationsSheet_.reset();
+  self->sheetOpen_ = false;
 }
 
 winrt::fire_and_forget MainWindow::ShowClientContractsSheet() {
