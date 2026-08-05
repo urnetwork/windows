@@ -243,10 +243,11 @@ void TunnelController::Stop() {
 }
 
 void TunnelController::StopLocked() {
-  const bool wasRunning = state_ != proto::TunnelState::Stopped;
+  const proto::TunnelState priorState = state_;
+  const bool wasRunning = priorState != proto::TunnelState::Stopped;
   if (state_ == proto::TunnelState::Up || state_ == proto::TunnelState::Starting)
     state_ = proto::TunnelState::Stopping;
-  if (wasRunning) LogInfo("tunnel: stopping (state was {})", proto::ToString(state_));
+  if (wasRunning) LogInfo("tunnel: stopping (was {})", proto::ToString(priorState));
 
   // Tear down in reverse dependency order. The network config goes back FIRST
   // after the pump: while any of this is running the host is still pointed at
