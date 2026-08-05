@@ -15,8 +15,20 @@ namespace urnw {
 enum class LogLevel { Debug, Info, Warn, Error };
 
 // Initialize file logging. Safe to call once at startup; without it, logs still
-// go to the debugger via OutputDebugString.
-void LogInit(const std::filesystem::path& logFile, std::string_view tag);
+// go to the debugger via OutputDebugString. Returns false when the file could
+// not be opened (a read-only or missing directory) — the caller is expected to
+// say so rather than run with logging silently off.
+bool LogInit(const std::filesystem::path& logFile, std::string_view tag);
+
+// The file LogInit opened, or empty when logging is debugger-only. Error paths
+// name it so the user knows where to look (App/Startup.cpp).
+std::filesystem::path LogFilePath();
+
+// Also mirror every line to stdout. `urnetworkd console` turns this on: there
+// the operator is watching a terminal, not tailing the log file, and a dev mode
+// that prints nothing is indistinguishable from one that hung. Off by default,
+// so the SCM service and the tray app are unaffected.
+void LogSetConsoleEcho(bool enabled);
 
 void LogWrite(LogLevel level, std::string_view message);
 
