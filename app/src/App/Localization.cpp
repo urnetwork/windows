@@ -44,7 +44,22 @@ std::optional<ResourceLoader>& Loader() {
 std::string PrimaryLanguage() {
   static const std::string lang = [] {
     try {
-      auto context = ResourceManager().CreateResourceContext();
+      // The manager MUST outlive every context it hands out. A ResourceContext
+      // keeps a NON-owning handle into its manager, and ~ResourceManager tears
+      // that manager down (MrmDestroyResourceManager). Written the obvious way —
+      //     auto context = ResourceManager().CreateResourceContext();
+      // — the manager is a temporary that dies at the end of THAT statement, so
+      // the next line reads through a freed handle. MRM then calls a virtual on
+      // the destroyed object, lands on the pure-virtual thunk, and abort()s the
+      // process: STATUS_STACK_BUFFER_OVERRUN / 0xC0000409.
+      //
+      // That is a FAIL-FAST, not an exception. It walks straight past the catch
+      // below, past AppController::ShowWindow's handler, and past every other
+      // guard in this app — the process vanished between "creating the main
+      // window" and "main window created" with nothing logged. The named local
+      // is the entire fix; do not collapse it back into one expression.
+      ResourceManager manager;
+      auto context = manager.CreateResourceContext();
       winrt::hstring value = context.QualifierValues().Lookup(L"Language");
       if (!value.empty()) return Narrow(std::wstring{value});
     } catch (...) {
