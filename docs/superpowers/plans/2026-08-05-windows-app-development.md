@@ -196,6 +196,20 @@ service down (which is the normal state until WP2 lands).
 - **Final passes**: one integration reviewer over the full diff, one auditor
   over the process, as on the ios port.
 
+## Owner decisions (2026-08-05)
+
+- **Brand fonts: supplied, licensed, in hand.** ABC Gravity (extended +
+  extra-condensed), PP Neue Bit Bold and PP Neue Montreal Regular are tracked
+  in the android repo at `app/app/src/main/res/font/`. Copy them into this
+  repo and wire them (Phase A4) — no substitute families, no licensing
+  question outstanding.
+- **UI scope: the audit's exclusions stand, EXCEPT seedphrase login, which is
+  IN.** Dropped as mobile-shaped: onboarding carousel, introduction funnel,
+  the overlay set, identicons, and the android-only settings (cellular
+  provide, notification permissions, battery optimisation). Seedphrase auth is
+  a real login path and desktop users need it, so it is in scope for the
+  auth work.
+
 ## Known risks
 
 - **Nothing is runtime-verified.** Treat every "works" claim as "compiles".

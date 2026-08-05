@@ -16,6 +16,9 @@ namespace urnw {
 namespace {
 
 constexpr UINT kTrayCallbackMsg = WM_APP + 1;
+// Icon id for the fallback (non-GUID) identity — see TrayIcon::useGuid_. Any
+// value works; it is only unique within our own window.
+constexpr UINT kTrayIconId = 1;
 constexpr UINT kMenuOpen = 1;
 constexpr UINT kMenuConnect = 2;
 constexpr UINT kMenuQuit = 3;
@@ -48,7 +51,15 @@ bool TrayIcon::Create(HINSTANCE instance, Callbacks callbacks) {
   wc.lpfnWndProc = &TrayIcon::WndProc;
   wc.hInstance = instance;
   wc.lpszClassName = kWindowClass;
-  ::RegisterClassExW(&wc);
+  if (!::RegisterClassExW(&wc)) {
+    const DWORD err = ::GetLastError();
+    // Already registered is the normal second call; anything else means no
+    // window, which means no icon and no app.
+    if (err != ERROR_CLASS_ALREADY_EXISTS) {
+      LogError("tray: RegisterClass failed: {}", err);
+      return false;
+    }
+  }
 
   // A hidden top-level window receives the tray callback + broadcast messages
   // (a message-only window would miss TaskbarCreated). Its title is never shown,
@@ -60,39 +71,68 @@ bool TrayIcon::Create(HINSTANCE instance, Callbacks callbacks) {
     return false;
   }
 
-  AddIcon();
-  LogInfo("tray: icon created");
-  return true;
+  return AddIcon();
 }
 
-void TrayIcon::AddIcon() {
-  NOTIFYICONDATAW nid{};
-  nid.cbSize = sizeof(nid);
+void TrayIcon::FillIdentity(NOTIFYICONDATAW& nid) const {
   nid.hWnd = hwnd_;
-  nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
-  nid.guidItem = ids::kTrayIconGuid;
-  nid.uCallbackMessage = kTrayCallbackMsg;
-  nid.hIcon = CurrentIcon();
-  wcsncpy_s(nid.szTip, Localized("app_name").c_str(), _TRUNCATE);
-  // If a stale registration from a previous run lingers (same GUID), clear it.
-  ::Shell_NotifyIconW(NIM_DELETE, &nid);
-  if (!::Shell_NotifyIconW(NIM_ADD, &nid)) {
-    LogError("tray: Shell_NotifyIcon(ADD) failed: {}", ::GetLastError());
-    return;
+  if (useGuid_) {
+    nid.uFlags |= NIF_GUID;
+    nid.guidItem = ids::kTrayIconGuid;
+  } else {
+    nid.uID = kTrayIconId;
   }
-  nid.uVersion = NOTIFYICON_VERSION_4;
-  ::Shell_NotifyIconW(NIM_SETVERSION, &nid);
+}
+
+bool TrayIcon::AddIcon() {
+  // Two attempts at most: the stable GUID first, then the classic hwnd+uID.
+  for (;;) {
+    NOTIFYICONDATAW nid{};
+    nid.cbSize = sizeof(nid);
+    nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP;
+    nid.uCallbackMessage = kTrayCallbackMsg;
+    nid.hIcon = CurrentIcon();
+    wcsncpy_s(nid.szTip, Localized("app_name").c_str(), _TRUNCATE);
+    FillIdentity(nid);
+
+    // If a stale registration from a previous run lingers, clear it.
+    ::Shell_NotifyIconW(NIM_DELETE, &nid);
+    if (::Shell_NotifyIconW(NIM_ADD, &nid)) {
+      nid.uVersion = NOTIFYICON_VERSION_4;
+      if (!::Shell_NotifyIconW(NIM_SETVERSION, &nid))
+        LogWarn("tray: Shell_NotifyIcon(SETVERSION) failed — clicks may not report an anchor");
+      LogInfo("tray: icon added ({} identity)", useGuid_ ? "guid" : "hwnd+id");
+      return true;
+    }
+
+    // Shell_NotifyIcon does not document setting the last error, so the code is
+    // a hint, not a diagnosis.
+    const DWORD err = ::GetLastError();
+    if (useGuid_) {
+      // Expected whenever the exe has moved since the GUID was first
+      // registered (a build copied out of the output dir, then installed by the
+      // MSI). Not fatal — the icon just loses the user's show/hide preference.
+      LogWarn("tray: Shell_NotifyIcon(ADD) with the stable guid failed (last error {}); "
+              "retrying with an hwnd+id identity", err);
+      useGuid_ = false;
+      continue;
+    }
+    LogError("tray: Shell_NotifyIcon(ADD) failed (last error {}) — there is no icon "
+             "in the notification area", err);
+    return false;
+  }
 }
 
 void TrayIcon::Destroy() {
   if (!hwnd_) return;
   NOTIFYICONDATAW nid{};
   nid.cbSize = sizeof(nid);
-  nid.uFlags = NIF_GUID;
-  nid.guidItem = ids::kTrayIconGuid;
-  ::Shell_NotifyIconW(NIM_DELETE, &nid);
+  FillIdentity(nid);
+  if (!::Shell_NotifyIconW(NIM_DELETE, &nid))
+    LogWarn("tray: Shell_NotifyIcon(DELETE) failed — the icon may linger until hover");
   ::DestroyWindow(hwnd_);
   hwnd_ = nullptr;
+  LogInfo("tray: icon removed");
 }
 
 void TrayIcon::SetState(TrayState state) {
@@ -103,21 +143,23 @@ void TrayIcon::SetState(TrayState state) {
 void TrayIcon::SetTooltip(const std::wstring& tip) {
   NOTIFYICONDATAW nid{};
   nid.cbSize = sizeof(nid);
-  nid.uFlags = NIF_TIP | NIF_SHOWTIP | NIF_GUID;
-  nid.guidItem = ids::kTrayIconGuid;
+  nid.uFlags = NIF_TIP | NIF_SHOWTIP;
+  FillIdentity(nid);
   wcsncpy_s(nid.szTip, tip.c_str(), _TRUNCATE);
-  ::Shell_NotifyIconW(NIM_MODIFY, &nid);
+  if (!::Shell_NotifyIconW(NIM_MODIFY, &nid))
+    LogDebug("tray: Shell_NotifyIcon(MODIFY tip) failed");
 }
 
 void TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& text) {
   NOTIFYICONDATAW nid{};
   nid.cbSize = sizeof(nid);
-  nid.uFlags = NIF_INFO | NIF_GUID;
-  nid.guidItem = ids::kTrayIconGuid;
+  nid.uFlags = NIF_INFO;
+  FillIdentity(nid);
   wcsncpy_s(nid.szInfoTitle, title.c_str(), _TRUNCATE);
   wcsncpy_s(nid.szInfo, text.c_str(), _TRUNCATE);
   nid.dwInfoFlags = NIIF_USER;
-  ::Shell_NotifyIconW(NIM_MODIFY, &nid);
+  if (!::Shell_NotifyIconW(NIM_MODIFY, &nid))
+    LogDebug("tray: Shell_NotifyIcon(MODIFY balloon) failed");
 }
 
 HICON TrayIcon::CurrentIcon() {
@@ -130,10 +172,11 @@ HICON TrayIcon::CurrentIcon() {
 void TrayIcon::UpdateIcon() {
   NOTIFYICONDATAW nid{};
   nid.cbSize = sizeof(nid);
-  nid.uFlags = NIF_ICON | NIF_GUID;
-  nid.guidItem = ids::kTrayIconGuid;
+  nid.uFlags = NIF_ICON;
+  FillIdentity(nid);
   nid.hIcon = CurrentIcon();
-  ::Shell_NotifyIconW(NIM_MODIFY, &nid);
+  if (!::Shell_NotifyIconW(NIM_MODIFY, &nid))
+    LogDebug("tray: Shell_NotifyIcon(MODIFY icon) failed — the icon may be stale");
 }
 
 void TrayIcon::OnThemeChanged() {
@@ -178,6 +221,7 @@ LRESULT CALLBACK TrayIcon::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
   if (!self) return ::DefWindowProcW(hwnd, msg, wParam, lParam);
 
   if (msg == self->wmTaskbarCreated_ && self->wmTaskbarCreated_ != 0) {
+    LogInfo("tray: TaskbarCreated — re-adding the icon");
     self->AddIcon();  // Explorer restarted; re-add the icon
     return 0;
   }

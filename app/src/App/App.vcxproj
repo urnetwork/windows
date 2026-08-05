@@ -216,6 +216,7 @@
     <ClCompile Include="SdkHost.cpp" />
     <ClCompile Include="StatsFormat.cpp" />
     <ClCompile Include="StatsSheets.cpp" />
+    <ClCompile Include="Startup.cpp" />
     <ClCompile Include="SubscriptionBalance.cpp" />
     <ClCompile Include="TransferChart.cpp" />
     <ClCompile Include="UsageBar.cpp" />
@@ -236,6 +237,7 @@
     <ClInclude Include="SdkHost.h" />
     <ClInclude Include="StatsFormat.h" />
     <ClInclude Include="StatsSheets.h" />
+    <ClInclude Include="Startup.h" />
     <ClInclude Include="SubscriptionBalance.h" />
     <ClInclude Include="TransferChart.h" />
     <ClInclude Include="UsageBar.h" />

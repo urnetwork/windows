@@ -40,7 +40,11 @@ class TrayIcon {
 
  private:
   static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-  void AddIcon();  // (re)registers the notify icon; also on Explorer restart
+  // (re)registers the notify icon; also on Explorer restart. False means there
+  // is no icon — the app has no UI at all then, so the caller must say so.
+  bool AddIcon();
+  // Fills in whichever identity this icon is registered under (see useGuid_).
+  void FillIdentity(NOTIFYICONDATAW& nid) const;
   void OnThemeChanged();
   void UpdateIcon();
   void ShowContextMenu(POINT pt);
@@ -52,6 +56,11 @@ class TrayIcon {
   TrayState state_ = TrayState::NoProvideNoConnect;
   bool darkTaskbar_ = false;
   UINT wmTaskbarCreated_ = 0;  // re-add the icon if Explorer restarts
+  // A NIF_GUID registration is bound to the executable's PATH: run the same
+  // build from a different folder and Shell_NotifyIcon(NIM_ADD) fails, leaving
+  // the app with no icon and no way in. Cleared when that happens, which falls
+  // the whole icon back to the classic hwnd+uID identity.
+  bool useGuid_ = true;
 };
 
 }  // namespace urnw

@@ -13,6 +13,7 @@
 #include "Localization.h"
 #include "Log.h"
 #include "MainWindow.xaml.h"
+#include "Startup.h"
 #include "Strings.h"
 
 using namespace winrt;
@@ -75,7 +76,18 @@ void AppController::Start() {
   };
   cb.isConnected = [this] { return connected_; };
   cb.onQuit = [this] { Shutdown(); };
-  tray_.Create(::GetModuleHandleW(nullptr), std::move(cb));
+  // The tray icon is the app's ONLY affordance on launch — no icon means no way
+  // in, and from outside that is indistinguishable from a process that died. Say
+  // so on screen. The app keeps running: TrayIcon re-adds itself on
+  // TaskbarCreated, so an Explorer that is still starting up recovers by itself.
+  if (!tray_.Create(::GetModuleHandleW(nullptr), std::move(cb))) {
+    FailVisible(
+        L"URnetwork is running, but it could not put its icon in the "
+        L"notification area — so there is no way to open it.\n\n"
+        L"It will appear if Windows Explorer restarts. Until then you can end "
+        L"URnetwork.exe from Task Manager.",
+        L"See the log for the failing Shell_NotifyIcon call.");
+  }
 
   // SDK state -> tray + window (marshaled onto the UI thread).
   sdk_.SetAuthStateHandler([this](AuthState s, const std::string& e) {
@@ -107,12 +119,14 @@ void AppController::Start() {
     }
   });
 
+  LogInfo("app: initializing the sdk host");
   sdk_.Initialize();
   UpdateTray();
   LogInfo("app: started");
 }
 
 void AppController::Shutdown() {
+  LogInfo("app: shutdown requested (tray quit)");
   quitting_ = true;  // let the window's Closing handler close instead of hiding
   tray_.Destroy();
   if (window_) window_.Close();
@@ -174,12 +188,27 @@ void AppController::UpdateTray() {
 
 void AppController::ShowWindow(const POINT* anchor) {
   if (!window_) {
-    window_ = winrt::make<winrt::URnetwork::implementation::MainWindow>();
+    // First open. This is where XAML actually parses MainWindow.xaml and the
+    // resource lookups run, so it is the second place the app can fail with
+    // nothing on screen (the first is the tray icon): a click that produces no
+    // window and no message would send the owner back to guessing.
+    LogInfo("app: creating the main window");
+    try {
+      window_ = winrt::make<winrt::URnetwork::implementation::MainWindow>();
+    } catch (winrt::hresult_error const& e) {
+      LogError("app: main window creation failed: {}", Narrow(std::wstring{e.message()}));
+      FailVisible(
+          L"URnetwork's window could not be created.\n\n"
+          L"The app is still running in the notification area.",
+          std::wstring{e.message()});
+      return;
+    }
     // Closing the window hides to tray (the tunnel keeps running); the tray
     // "Quit" is the only real exit (macOS parity). Wired once, on creation.
     if (auto native = window_.try_as<::IWindowNative>()) {
       HWND hwnd = nullptr;
       native->get_WindowHandle(&hwnd);
+      LogInfo("app: main window created (hwnd {})", reinterpret_cast<uintptr_t>(hwnd));
       auto windowId = winrt::Microsoft::UI::GetWindowIdFromWindow(hwnd);
       auto appWindow = winrt::Microsoft::UI::Windowing::AppWindow::GetFromWindowId(windowId);
       appWindow.Closing(

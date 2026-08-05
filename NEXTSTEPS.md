@@ -18,6 +18,76 @@ in `connect/`+`sdk/`+`cgo/`.
   ServiceClient + tray + Account/Wallet/Leaderboard/Support UI), clean-room
   split-tunnel driver, WiX MSI. Real brand icons generated + committed.
 
+## 0. Running the app: the Windows App Runtime, the log, and `--diagnose`
+
+**URnetwork.exe is a tray app.** A successful launch opens no window — it puts an
+icon in the notification area (bottom-right; Windows 11 hides new icons behind
+the `^` chevron by default, so look there and drag it onto the taskbar). Left
+click opens the window, right click gives Open / Connect / Quit.
+
+Everything on the startup path is logged, from the first instruction of
+`wWinMain`:
+
+```
+%LOCALAPPDATA%\URnetwork\app\logs\urnetwork-app.log
+```
+
+and any failure before the tray icon exists is also shown in a message box
+naming the cause and that path — a tray app has no other channel.
+
+### One command to see what happened
+
+```powershell
+.\URnetwork.exe --diagnose
+```
+
+It prints the same facts the app logs at startup — build/arch, Windows version,
+the resolved **Windows App Runtime** path (which carries its version),
+`resources.pri`, `URnetworkSdk.dll`, the log file, whether another instance is
+running, whether `urnetworkd`'s control pipe is listening — and exits without
+starting the UI. Run from a terminal it prints there; double-clicked it shows the
+same text in a message box. Paste that output into any bug report.
+
+### An unpackaged WinUI 3 app needs the Windows App Runtime installed
+
+`WindowsPackageType=None` (App.vcxproj) makes the Windows App SDK bootstrapper
+auto-initialize, but it can only bootstrap a runtime that is **already on the
+machine**. If it is missing, the bootstrapper terminates the process from a CRT
+initializer — *before* `wWinMain`, so nothing in this app can log or report it.
+
+> **The tell:** you ran the exe and `urnetwork-app.log` does not exist, or has no
+> new `startup: wWinMain` line for that launch. That means the process died
+> before its own entry point; the runtime is the first thing to check.
+> (Windows Error Reporting also logs it: Event Viewer → Windows Logs →
+> Application.)
+
+Install it, matching **the same major.minor the app was built against**
+(`Microsoft.WindowsAppSDK` in `app/src/App/App.vcxproj` — currently **2.2**) and
+**the same architecture as the exe** (x64 or ARM64; an ARM64 build will not run
+on an x64 runtime):
+
+1. Download "Windows App SDK runtime — downloads" from Microsoft
+   (`https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads`), take
+   the **redistributable installer** (`WindowsAppRuntimeInstall-<arch>.exe`) for
+   that version, and run it. No admin rights are needed for the per-user install.
+2. Or via winget, if the id for that version exists on the box:
+   `winget install Microsoft.WindowsAppRuntime.<major>.<minor>`.
+
+Verify:
+
+```powershell
+Get-AppxPackage -Name Microsoft.WindowsAppRuntime.* | Select-Object Name, Version
+.\URnetwork.exe --diagnose      # "app runtime : present: <path with the version>"
+```
+
+Also required next to `URnetwork.exe`: `URnetworkSdk.dll`, `resources.pri`, and
+`Microsoft.WindowsAppRuntime.Bootstrap.dll` (the build copies all three into
+`build\<arch>\Release`; copy the whole folder, not just the exe). `--diagnose`
+reports each one.
+
+Once the WiX MSI is building in CI (plan WP5) it deploys the runtime itself, and
+this section becomes the fallback for loose builds.
+
 ## 1. Get it building on a Windows box (the gate — nothing else moves until this)
 
 1. Install: VS 2022 (v143) + "Desktop development with C++" + Windows 11 SDK
