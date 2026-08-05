@@ -43,6 +43,15 @@ void WriteFileBytes(const std::filesystem::path& p, const std::vector<uint8_t>& 
   if (f) f.write(reinterpret_cast<const char*>(b.data()), b.size());
 }
 
+// Registry-style GUID text. Hand-rolled rather than StringFromGUID2, which
+// lives behind combaseapi.h — the service has no other reason to pull COM in.
+std::string GuidText(const GUID& g) {
+  return std::format(
+      "{{{:08X}-{:04X}-{:04X}-{:02X}{:02X}-{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}}}",
+      g.Data1, g.Data2, g.Data3, g.Data4[0], g.Data4[1], g.Data4[2], g.Data4[3],
+      g.Data4[4], g.Data4[5], g.Data4[6], g.Data4[7]);
+}
+
 std::string Join(const std::vector<std::string>& parts) {
   std::string out;
   for (const auto& p : parts) {
@@ -117,7 +126,19 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     NET_IFINDEX tunIndex = 0;
     NET_LUID tunLuid = adapter_->Luid();
     ::ConvertInterfaceLuidToIndex(&tunLuid, &tunIndex);
-    LogInfo("tunnel: [1/8] adapter up: luid {:#x}, interface {}", tunLuid.Value,
+    // Log the GUID and alias wintun ACTUALLY assigned, not the ones we asked
+    // for. WintunCreateAdapter treats the GUID as a request, and those two
+    // values are exactly what the startup orphan sweep matches on — if a sweep
+    // ever fails to find a stranded adapter, this line is where the answer is.
+    GUID assignedGuid{};
+    const std::string requestedGuid = GuidText(ids::kTunAdapterGuid);
+    std::string guidText = "?";
+    if (::ConvertInterfaceLuidToGuid(&tunLuid, &assignedGuid) == NO_ERROR)
+      guidText = GuidText(assignedGuid);
+    LogInfo("tunnel: [1/8] adapter up: luid {:#x}, guid {} ({}), interface {}",
+            tunLuid.Value, guidText,
+            guidText == requestedGuid ? "as requested"
+                                      : "NOT the requested " + requestedGuid,
             NetworkConfig::DescribeInterface(tunIndex));
 
     // --- 2/8 R1: bind the SDK's egress to the physical interface. ---
@@ -223,7 +244,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     step = "8/8 pump";
     LogInfo("tunnel: [8/8] starting the packet pump");
     pump_ = std::make_unique<PacketPump>(*adapter_, *device_);
-    pump_->Start();
+    if (!pump_->Start()) throw std::runtime_error("packet pump failed to start");
 
     state_ = proto::TunnelState::Up;
     upSinceMillis_ = NowMillis();

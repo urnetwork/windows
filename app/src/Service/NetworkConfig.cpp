@@ -231,8 +231,12 @@ void NetworkConfig::ClearTunnelDns(NET_LUID tunLuid) {
   if (::ConvertInterfaceLuidToGuid(&tunLuid, &guid) != NO_ERROR) return;
   DNS_INTERFACE_SETTINGS settings{};
   settings.Version = DNS_INTERFACE_SETTINGS_VERSION1;
-  settings.Flags = DNS_SETTING_NAMESERVER;
-  settings.NameServer = nullptr;  // no list to marshal -> no allocation
+  // Clear BOTH of the things Apply can set. Apply adds DNS_SETTING_SEARCHLIST
+  // whenever a search domain is supplied, so clearing only NAMESERVER left the
+  // search list in force on the interface.
+  settings.Flags = DNS_SETTING_NAMESERVER | DNS_SETTING_SEARCHLIST;
+  settings.NameServer = nullptr;
+  settings.SearchList = nullptr;
   ::SetInterfaceDnsSettings(guid, &settings);
 }
 
@@ -250,12 +254,17 @@ void NetworkConfig::CrashRevert() {
   if (value == 0) return;
   NET_LUID luid{};
   luid.Value = value;
-  // Routes first, always. They are what strands the machine, and the delete is
-  // a stack ioctl. The DNS clear talks to the dnscache service, which is the
-  // heavier of the two — if it hangs on a dying process the routes are already
-  // back, and a stale resolver on a dead interface harms nothing.
+  // Routes ONLY. They are what strands the machine, and DeleteIpForwardEntry2
+  // is an ioctl into the stack — bounded, no service to talk to.
+  //
+  // The DNS clear is deliberately NOT here. SetInterfaceDnsSettings is an RPC
+  // to the dnscache service, and this function runs from an exception filter:
+  // if that RPC blocks, the filter never returns and the process wedges instead
+  // of dying — a hung LocalSystem service holding the routes is worse than the
+  // crash we were handling. Stale resolvers on an interface that is about to
+  // disappear harm nothing; the orderly Revert() and the startup sweep both
+  // clear DNS, and neither runs under that constraint.
   DeleteTunnelRoutes(luid);
-  ClearTunnelDns(luid);
 }
 
 int NetworkConfig::SweepOrphanedTunnel(const GUID& tunGuid,
@@ -278,13 +287,33 @@ int NetworkConfig::SweepOrphanedTunnel(const GUID& tunGuid,
   if (::ConvertInterfaceGuidToLuid(&guid, &byGuid) == NO_ERROR) add(byGuid);
 
   // WintunCreateAdapter treats the GUID as a REQUEST; if it was taken, the
-  // adapter exists under another one. The alias is ours either way.
+  // adapter exists under another one, so fall back to the alias.
+  //
+  // The alias alone is NOT sufficient evidence. "URnetwork" is a name any
+  // adapter could carry — a user can rename a NIC to anything — and sweeping a
+  // wrongly-matched interface would delete routes and DNS from a real adapter,
+  // which is the failure this whole file exists to prevent, caused by the code
+  // meant to prevent it. So require the alias match AND a wintun-shaped device.
+  //
+  // Deliberately asymmetric: a false negative means we fail to clean an orphan
+  // that the GUID path and the adapter teardown were already covering; a false
+  // positive means we break the machine's real network. Prefer the miss.
   if (adapterName && *adapterName) {
     PMIB_IF_TABLE2 table = nullptr;
     if (::GetIfTable2(&table) == NO_ERROR && table) {
       for (ULONG i = 0; i < table->NumEntries; ++i) {
-        if (::wcscmp(table->Table[i].Alias, adapterName) == 0)
-          add(table->Table[i].InterfaceLuid);
+        const MIB_IF_ROW2& row = table->Table[i];
+        if (::wcscmp(row.Alias, adapterName) != 0) continue;
+        const bool virtualDevice = row.Type == IF_TYPE_PROP_VIRTUAL ||
+                                   row.Type == IF_TYPE_TUNNEL;
+        const bool wintunDevice = ::wcsstr(row.Description, L"Wintun") != nullptr;
+        if (!virtualDevice && !wintunDevice) {
+          LogWarn("netcfg: interface \"{}\" matches our adapter name but is not a "
+                  "tunnel device ({}); leaving it alone",
+                  Narrow(row.Alias), Narrow(row.Description));
+          continue;
+        }
+        add(row.InterfaceLuid);
       }
       ::FreeMibTable(table);
     }
@@ -326,8 +355,18 @@ EgressInterfaces NetworkConfig::DiscoverEgress(NET_LUID tunLuid) {
     PMIB_IPFORWARD_TABLE2 table = nullptr;
     if (::GetIpForwardTable2(family, &table) != NO_ERROR || !table) continue;
 
+    // Two elections at once. A default route can outlive the link that owns it
+    // (unplugged ethernet keeps its route for a while, and a low metric is
+    // exactly what a wired adapter has), so a disconnected NIC can win on
+    // metric and we would pin every socket to a link with no carrier. Prefer a
+    // CONNECTED interface always, and fall back to the best disconnected one
+    // only when nothing connected has a default route — the fallback is still
+    // better than 0, which means "follow the route table" and, with the tunnel
+    // up, means the tun.
     ULONG bestMetric = ~0u;
     uint32_t bestIndex = 0;
+    ULONG bestLinkDownMetric = ~0u;
+    uint32_t bestLinkDownIndex = 0;
     for (ULONG i = 0; i < table->NumEntries; ++i) {
       const MIB_IPFORWARD_ROW2& row = table->Table[i];
       if (row.DestinationPrefix.PrefixLength != 0) continue;  // default only
@@ -339,12 +378,32 @@ EgressInterfaces NetworkConfig::DiscoverEgress(NET_LUID tunLuid) {
       ULONG ifMetric = 0;
       if (::GetIpInterfaceEntry(&ifRow) == NO_ERROR) ifMetric = ifRow.Metric;
       ULONG metric = row.Metric + ifMetric;
-      if (metric < bestMetric) {
-        bestMetric = metric;
-        bestIndex = row.InterfaceIndex;
+
+      MIB_IF_ROW2 ifEntry{};
+      ifEntry.InterfaceLuid = row.InterfaceLuid;
+      // Unknown state counts as connected: never let a lookup failure demote a
+      // working adapter.
+      bool connected = true;
+      if (::GetIfEntry2(&ifEntry) == NO_ERROR)
+        connected = ifEntry.MediaConnectState != MediaConnectStateDisconnected;
+
+      if (connected) {
+        if (metric < bestMetric) {
+          bestMetric = metric;
+          bestIndex = row.InterfaceIndex;
+        }
+      } else if (metric < bestLinkDownMetric) {
+        bestLinkDownMetric = metric;
+        bestLinkDownIndex = row.InterfaceIndex;
       }
     }
     ::FreeMibTable(table);
+    if (bestIndex == 0 && bestLinkDownIndex != 0) {
+      LogWarn("egress: no CONNECTED default route for family {}; falling back to "
+              "interface {}, whose link is down",
+              family == AF_INET ? "ipv4" : "ipv6", bestLinkDownIndex);
+      bestIndex = bestLinkDownIndex;
+    }
     if (family == AF_INET)
       result.index4 = bestIndex;
     else

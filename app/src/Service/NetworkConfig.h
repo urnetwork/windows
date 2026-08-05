@@ -55,15 +55,21 @@ class NetworkConfig {
   //
   // The three below are defence in depth for the cases where that does not
   // happen (an adapter that outlives the process, a driver that leaks the
-  // device node), and to make the situation visible when it does.
+  // device node), and to make the situation visible when it does. Note how
+  // little the FIRST of them actually covers — the SDK embeds the Go runtime,
+  // whose vectored handler preempts a top-level exception filter, a Go panic
+  // raises no SEH at all, and TerminateProcess runs nothing. The sweep is the
+  // one that runs regardless of how the last process died.
 
-  // Delete every route Apply() installs from tunLuid. Allocation-free and
-  // lock-free; safe from an unhandled-exception filter. Returns how many
-  // entries were actually removed.
+  // Delete every route Apply() installs from tunLuid. Allocates nothing, takes
+  // no lock, and calls only into the tcpip stack; safe from an
+  // unhandled-exception filter. Returns how many entries were actually removed.
   static int DeleteTunnelRoutes(NET_LUID tunLuid);
 
-  // Clear the DNS servers set on tunLuid. Allocation-free (no server list to
-  // marshal), so it too is safe from a crash path.
+  // Clear the DNS servers and search list set on tunLuid.
+  // NOT crash-path safe: SetInterfaceDnsSettings is an RPC to the dnscache
+  // service and can block, and blocking inside an exception filter leaves the
+  // process wedged rather than dead. Orderly paths only.
   static void ClearTunnelDns(NET_LUID tunLuid);
 
   // Publish/withdraw the LUID that CrashRevert() should clean. Armed by Apply()
@@ -72,11 +78,12 @@ class NetworkConfig {
   static void ArmCrashRevert(NET_LUID tunLuid);
   static void DisarmCrashRevert();
 
-  // Last-chance revert for abnormal termination. Idempotent, does nothing when
-  // nothing is armed, and takes no lock and no allocation — it runs from the
-  // unhandled-exception filter and the console control handler, where the
-  // process may already be in an undefined state. NOT the mechanism we rely on:
-  // see the note above.
+  // Last-chance ROUTE revert for abnormal termination. Idempotent, does nothing
+  // when nothing is armed, takes no lock and allocates nothing — it runs from
+  // the unhandled-exception filter and the console control handler, where the
+  // process may already be in an undefined state and where blocking is worse
+  // than doing less. Routes only, deliberately: see ClearTunnelDns above. NOT
+  // the mechanism we rely on — see the note at the top of this block.
   static void CrashRevert();
 
   // Startup sweep. If an interface carrying the pinned tun GUID — or, in case

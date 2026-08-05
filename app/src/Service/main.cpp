@@ -160,14 +160,18 @@ BOOL WINAPI OnConsoleControl(DWORD type) {
     case CTRL_CLOSE_EVENT:
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
-      // Windows kills the process when this handler returns (roughly 5s of
-      // grace), so the teardown has to finish here rather than on the main
-      // thread. Wait for it, then sweep whatever it did not get to.
-      LogWarn("console: window closed / session ending — reverting");
+      // Windows kills the process when this handler returns, and the grace
+      // period is about 5s TOTAL for everything this handler does — not 5s on
+      // top of what we have already spent. So: revert first, log second, and
+      // budget the wait well inside the window rather than at its edge. A
+      // 4000ms wait plus a route sweep plus the logging around it can exceed
+      // the budget and get us killed mid-revert, which is the one outcome this
+      // handler exists to avoid.
       if (g_stopEvent) ::SetEvent(g_stopEvent);
       if (g_consoleDrainedEvent)
-        ::WaitForSingleObject(g_consoleDrainedEvent, 4000);
-      NetworkConfig::CrashRevert();
+        ::WaitForSingleObject(g_consoleDrainedEvent, 2500);
+      NetworkConfig::CrashRevert();  // no-op if the orderly teardown got there
+      LogWarn("console: window closed / session ending — routes reverted");
       return TRUE;
     default:
       return FALSE;
