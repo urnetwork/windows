@@ -36,7 +36,10 @@ Everything on the startup path is logged, from the first instruction of
 ```
 
 and any failure before the tray icon exists is also shown in a message box
-naming the cause and that path — a tray app has no other channel.
+naming the cause and that path — a tray app has no other channel. The file is
+UTF-8 with a BOM, so `Get-Content` reads it correctly on Windows PowerShell 5.1
+(whose default is otherwise the ANSI code page); `-Encoding UTF8` forces it for
+any file that predates this.
 
 ### One command to see what happened
 
@@ -55,18 +58,40 @@ same text in a message box. Paste that output into any bug report.
 > before the output lands under it. To get it in order, pipe it —
 > `.\URnetwork.exe --diagnose | Out-String` — or redirect it to a file.
 
-### An unpackaged WinUI 3 app needs the Windows App Runtime installed
+### Nothing at all happened — runtime missing, or never ran?
+
+On a first-ever run those two look identical, so here is how to tell them apart.
 
 `WindowsPackageType=None` (App.vcxproj) makes the Windows App SDK bootstrapper
-auto-initialize, but it can only bootstrap a runtime that is **already on the
-machine**. If it is missing, the bootstrapper terminates the process from a CRT
-initializer — *before* `wWinMain`, so nothing in this app can log or report it.
+auto-initialize, but it can only bootstrap a Windows App Runtime that is
+**already on the machine**, and it runs from a CRT initializer — *before*
+`wWinMain` — so nothing this app owns can log or report what it does.
 
-> **The tell:** you ran the exe and `urnetwork-app.log` does not exist, or has no
-> new `startup: wWinMain` line for that launch. That means the process died
-> before its own entry point; the runtime is the first thing to check.
-> (Windows Error Reporting also logs it: Event Viewer → Windows Logs →
-> Application.)
+What it does is now known rather than assumed: `MDDBOOTSTRAPAUTOINITIALIZER.OBJ`
+is in our link line (CI run 31025594279's msbuild log), the build defines none of
+the `WindowsAppSDKBootstrapAutoInitializeOptions_*` properties, and with no
+options set the SDK's own `MddBootstrapAutoInitializer.cpp` uses its default —
+`MddBootstrapInitializeOptions_OnNoMatch_ShowUI` — and then, on any failure at
+all, calls `exit(hr)`.
+
+| What you see | What it is |
+|---|---|
+| A Microsoft dialog offering to install the Windows App Runtime | No matching runtime. Install it (below). |
+| No dialog, **no log file**, exit code a large `0x8007…`-style number | The bootstrapper failed for some other reason and called `exit(hr)` — that exit code *is* the HRESULT. |
+| No dialog, no log file, exit code 0 | The process never reached its own code: wrong file, blocked by policy/SmartScreen, or a missing dependency (Windows shows its own "code execution cannot proceed" dialog for that one). |
+| A log file with a fresh `startup: wWinMain` line | It ran. Whatever went wrong is *after* startup: read the log and the message box the app showed. |
+
+A GUI app does not set `$LASTEXITCODE` usefully, so ask for the code explicitly:
+
+```powershell
+$p = Start-Process .\URnetwork.exe -ArgumentList '--diagnose' -PassThru -Wait
+'{0} (0x{0:X8})' -f $p.ExitCode
+```
+
+**`--diagnose` always prints something when the process reaches its own code.**
+If it prints nothing at all, the process is dying before `wWinMain` — that is the
+sharp version of "there is no log file". Windows Error Reporting also records the
+death: Event Viewer → Windows Logs → Application.
 
 Install it, matching **the same major.minor the app was built against**
 (`Microsoft.WindowsAppSDK` in `app/src/App/App.vcxproj` — currently **2.2**) and
@@ -84,8 +109,14 @@ Verify:
 
 ```powershell
 Get-AppxPackage -Name Microsoft.WindowsAppRuntime.* | Select-Object Name, Version
-.\URnetwork.exe --diagnose      # "app runtime : present: <path with the version>"
+.\URnetwork.exe --diagnose | Out-String
+#   built against    : Windows App SDK 2.2.0
+#   app runtime      : present: ...\Microsoft.WindowsAppRuntime.2.2_<ver>_<arch>...
 ```
+
+Those two lines are printed next to each other on purpose: a major.minor
+mismatch between them has no symptom of its own, and this is the only place it
+is visible.
 
 Also required next to `URnetwork.exe`: `URnetworkSdk.dll`, `resources.pri`, and
 `Microsoft.WindowsAppRuntime.Bootstrap.dll`. `--diagnose` reports each one.

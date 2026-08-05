@@ -7,9 +7,13 @@
 
 #include <windowsx.h>  // GET_X_LPARAM / GET_Y_LPARAM
 
+#include <exception>
+
 #include "Ids.h"
 #include "Localization.h"
 #include "Log.h"
+#include "Startup.h"  // FailVisible, at the window-procedure boundary
+#include "Strings.h"
 #include "resource.h"
 
 namespace urnw {
@@ -39,6 +43,8 @@ bool IsDarkTaskbar() {
 }
 
 }  // namespace
+
+TrayIcon::~TrayIcon() { Destroy(); }
 
 bool TrayIcon::Create(HINSTANCE instance, Callbacks callbacks) {
   instance_ = instance;
@@ -99,8 +105,20 @@ bool TrayIcon::AddIcon() {
     ::Shell_NotifyIconW(NIM_DELETE, &nid);
     if (::Shell_NotifyIconW(NIM_ADD, &nid)) {
       nid.uVersion = NOTIFYICON_VERSION_4;
-      if (!::Shell_NotifyIconW(NIM_SETVERSION, &nid))
-        LogWarn("tray: Shell_NotifyIcon(SETVERSION) failed — clicks may not report an anchor");
+      if (!::Shell_NotifyIconW(NIM_SETVERSION, &nid)) {
+        // NOT cosmetic. Without NOTIFYICON_VERSION_4 the shell sends the v0
+        // callback convention — lParam is the mouse message and wParam is the
+        // icon id — so WndProc's LOWORD(lParam) test never matches and the
+        // anchor read out of wParam is garbage. Both clicks would be dead: an
+        // icon that is visibly there, does nothing, and offers no way into or
+        // out of the app. Reporting that as "icon added" would be the same lie
+        // this work package exists to remove, so take the icon back down and
+        // fail.
+        LogError("tray: Shell_NotifyIcon(SETVERSION) failed — the icon would not "
+                 "respond to clicks; removing it");
+        ::Shell_NotifyIconW(NIM_DELETE, &nid);
+        return false;
+      }
       LogInfo("tray: icon added ({} identity)", useGuid_ ? "guid" : "hwnd+id");
       return true;
     }
@@ -130,6 +148,11 @@ void TrayIcon::Destroy() {
   FillIdentity(nid);
   if (!::Shell_NotifyIconW(NIM_DELETE, &nid))
     LogWarn("tray: Shell_NotifyIcon(DELETE) failed — the icon may linger until hover");
+  // Cut the back-pointer BEFORE destroying the window: DestroyWindow dispatches
+  // WM_DESTROY/WM_NCDESTROY synchronously, and anything still queued for this
+  // window must find a null `self` and fall through to DefWindowProc rather
+  // than call into an object that is going away.
+  ::SetWindowLongPtrW(hwnd_, GWLP_USERDATA, 0);
   ::DestroyWindow(hwnd_);
   hwnd_ = nullptr;
   LogInfo("tray: icon removed");
@@ -164,9 +187,25 @@ void TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& text) 
 
 HICON TrayIcon::CurrentIcon() {
   // Resource ids: light and dark variants of each of the four states.
-  int base = darkTaskbar_ ? IDI_TRAY_DARK_BASE : IDI_TRAY_LIGHT_BASE;
-  int id = base + static_cast<int>(state_);
-  return ::LoadIconW(instance_, MAKEINTRESOURCEW(id));
+  const int base = darkTaskbar_ ? IDI_TRAY_DARK_BASE : IDI_TRAY_LIGHT_BASE;
+  const int id = base + static_cast<int>(state_);
+  // LoadImage at the small-icon metric, not LoadIcon: the notification area is
+  // a SM_CXSMICON slot, and LoadIcon hands back the large image for the shell to
+  // downscale, which is the usual cause of a fuzzy tray icon (and is wrong again
+  // at every non-96dpi scale). LR_SHARED keeps the module's own shared handle —
+  // the icon must stay valid for as long as it is displayed, and a per-call
+  // handle here would leak one icon per state change.
+  HICON icon = static_cast<HICON>(::LoadImageW(instance_, MAKEINTRESOURCEW(id), IMAGE_ICON,
+                                               ::GetSystemMetrics(SM_CXSMICON),
+                                               ::GetSystemMetrics(SM_CYSMICON),
+                                               LR_DEFAULTCOLOR | LR_SHARED));
+  if (!icon) {
+    // The icon resources are compiled into the exe (App.rc), so this means the
+    // binary is not the one it was built as. Without an icon the shell shows a
+    // blank slot, which reads as "nothing happened".
+    LogError("tray: icon resource {} could not be loaded: {}", id, ::GetLastError());
+  }
+  return icon;
 }
 
 void TrayIcon::UpdateIcon() {
@@ -220,31 +259,54 @@ LRESULT CALLBACK TrayIcon::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
   auto* self = reinterpret_cast<TrayIcon*>(::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
   if (!self) return ::DefWindowProcW(hwnd, msg, wParam, lParam);
 
-  if (msg == self->wmTaskbarCreated_ && self->wmTaskbarCreated_ != 0) {
-    LogInfo("tray: TaskbarCreated — re-adding the icon");
-    self->AddIcon();  // Explorer restarted; re-add the icon
-    return 0;
-  }
-
-  switch (msg) {
-    case kTrayCallbackMsg: {
-      // With NOTIFYICON_VERSION_4 the event is LOWORD(lParam) and the anchor is
-      // in (x, y) = GET_X/Y_LPARAM(wParam).
-      const WORD event = LOWORD(lParam);
-      POINT anchor{GET_X_LPARAM(wParam), GET_Y_LPARAM(wParam)};
-      if (event == NIN_SELECT || event == NIN_KEYSELECT) {
-        if (self->cb_.onLeftClick) self->cb_.onLeftClick(anchor);
-      } else if (event == WM_CONTEXTMENU) {
-        self->ShowContextMenu(anchor);
-      }
+  // Everything below runs the app's own callbacks — opening the window, talking
+  // to the SDK, quitting — and any of them can throw. Unwinding a C++ exception
+  // out of a window procedure is unsupported by Windows (the exception crosses
+  // the kernel's dispatch frame), so the outcome is a crash with no explanation
+  // rather than the error. Catch it here, at the boundary, and say what
+  // happened.
+  try {
+    if (msg == self->wmTaskbarCreated_ && self->wmTaskbarCreated_ != 0) {
+      LogInfo("tray: TaskbarCreated — re-adding the icon");
+      // Try the stable GUID identity again: the fallback may have been taken
+      // because Explorer was mid-restart, and staying on hwnd+uID forever would
+      // permanently lose the user's "always show this icon" pin.
+      self->useGuid_ = true;
+      self->AddIcon();  // Explorer restarted; re-add the icon
       return 0;
     }
-    case WM_SETTINGCHANGE:
-      if (lParam && wcscmp(reinterpret_cast<const wchar_t*>(lParam), L"ImmersiveColorSet") == 0)
-        self->OnThemeChanged();
-      return 0;
-    default:
-      return ::DefWindowProcW(hwnd, msg, wParam, lParam);
+
+    switch (msg) {
+      case kTrayCallbackMsg: {
+        // With NOTIFYICON_VERSION_4 the event is LOWORD(lParam) and the anchor is
+        // in (x, y) = GET_X/Y_LPARAM(wParam). AddIcon fails the whole icon if
+        // that version could not be set, so this convention is the only one that
+        // can reach here.
+        const WORD event = LOWORD(lParam);
+        POINT anchor{GET_X_LPARAM(wParam), GET_Y_LPARAM(wParam)};
+        if (event == NIN_SELECT || event == NIN_KEYSELECT) {
+          if (self->cb_.onLeftClick) self->cb_.onLeftClick(anchor);
+        } else if (event == WM_CONTEXTMENU) {
+          self->ShowContextMenu(anchor);
+        }
+        return 0;
+      }
+      case WM_SETTINGCHANGE:
+        if (lParam && wcscmp(reinterpret_cast<const wchar_t*>(lParam), L"ImmersiveColorSet") == 0)
+          self->OnThemeChanged();
+        return 0;
+      default:
+        return ::DefWindowProcW(hwnd, msg, wParam, lParam);
+    }
+  } catch (const std::exception& e) {
+    LogError("tray: exception from a tray action (msg {}): {}", msg, e.what());
+    FailVisible(L"URnetwork could not complete that action.", Widen(e.what()));
+    return 0;
+  } catch (...) {
+    LogError("tray: unknown exception from a tray action (msg {})", msg);
+    FailVisible(L"URnetwork could not complete that action.",
+                L"An unknown exception reached the tray icon's window procedure.");
+    return 0;
   }
 }
 

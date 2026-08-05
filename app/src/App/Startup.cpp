@@ -13,9 +13,19 @@
 #include <optional>
 
 #include "Ids.h"
+#include "Localization.h"
 #include "Log.h"
 #include "Paths.h"
 #include "Strings.h"
+
+// The Windows App SDK version this binary was BUILT against, injected from the
+// single MSBuild property that also drives the PackageReference (App.vcxproj),
+// so the two cannot drift. Printed next to the runtime actually loaded: a
+// major.minor mismatch is then one line to read instead of an invisible
+// incompatibility.
+#if !defined(URN_WINDOWSAPPSDK_VERSION)
+#define URN_WINDOWSAPPSDK_VERSION L"(not injected by the build)"
+#endif
 
 namespace urnw {
 namespace {
@@ -40,6 +50,10 @@ std::optional<bool> g_logOpened;
 // owner gets told anything is not the place to be clever.
 std::atomic<bool> g_launched{false};
 
+// Set by FailVisible, which can fire from the UI thread, a tray WndProc or the
+// XAML unhandled-exception handler.
+std::atomic<bool> g_failed{false};
+
 std::filesystem::path ExePath() {
   wchar_t path[MAX_PATH]{};
   const DWORD n = ::GetModuleFileNameW(nullptr, path, MAX_PATH);
@@ -54,6 +68,21 @@ std::wstring Presence(const std::filesystem::path& file) {
   const auto size = std::filesystem::file_size(file, ec);
   if (ec) return L"MISSING";
   return std::format(L"present ({} bytes)", size);
+}
+
+// Where a dll the exe imports at LOAD TIME actually came from. "MISSING" is
+// unreachable for these — the process could not have reached wWinMain without
+// them — so the question worth answering is WHICH copy is loaded when there is
+// more than one drop on disk.
+std::wstring LoadedModule(const wchar_t* name, const std::filesystem::path& beside) {
+  if (HMODULE mod = ::GetModuleHandleW(name)) {
+    wchar_t path[MAX_PATH]{};
+    const DWORD n = ::GetModuleFileNameW(mod, path, MAX_PATH);
+    if (n) return L"loaded from " + std::wstring(path, n);
+    return L"loaded (path unavailable)";
+  }
+  return std::format(L"NOT LOADED (unexpected for a load-time import) — on disk: {}",
+                     Presence(beside));
 }
 
 std::wstring OsVersion() {
@@ -168,18 +197,43 @@ std::vector<std::wstring> CollectDiagnostics() {
   lines.push_back(std::format(L"  log file         : {}", logLine));
   lines.push_back(std::format(L"  storage root     : {}",
                               StorageRoot(/*isService=*/false).wstring()));
+  lines.push_back(std::format(L"  built against    : Windows App SDK {}",
+                              URN_WINDOWSAPPSDK_VERSION));
   lines.push_back(std::format(L"  app runtime      : {}", AppRuntimeProbe()));
-  lines.push_back(std::format(L"  bootstrap dll    : {}", Presence(dir / kBootstrapDll)));
-  // resources.pri missing is cause 4's cheap half: the app still runs but every
-  // string renders as its key id (Localization.cpp falls back to the key).
+  lines.push_back(std::format(L"  bootstrap dll    : {}",
+                              LoadedModule(kBootstrapDll, dir / kBootstrapDll)));
+  // The file check only answers half of cause 4 — see ResourceProbe(), which
+  // answers the half that matters (does MRT actually resolve a key) once there
+  // is an apartment to ask from.
   lines.push_back(std::format(L"  resources.pri    : {}", Presence(dir / L"resources.pri")));
-  lines.push_back(std::format(L"  URnetworkSdk.dll : {}", Presence(dir / L"URnetworkSdk.dll")));
+  lines.push_back(std::format(L"  URnetworkSdk.dll : {}",
+                              LoadedModule(L"URnetworkSdk.dll", dir / L"URnetworkSdk.dll")));
   lines.push_back(std::format(L"  service pipe     : {}", ServicePipeProbe()));
   return lines;
 }
 
 void LogDiagnostics(const std::vector<std::wstring>& lines) {
   for (const auto& line : lines) LogInfo("startup: {}", Narrow(line));
+}
+
+std::wstring ResourceProbe() {
+  // The app's own honest test. Localized() returns the key id itself when MRT
+  // could not resolve it (Localization.cpp), so "app_name" coming back as
+  // "app_name" means the pri did not load — the UI would render raw keys where
+  // the product name and every button label belong. A file-size check cannot
+  // tell that apart from a working one.
+  std::wstring value;
+  try {
+    value = Localized("app_name");
+  } catch (...) {
+    return L"  resources (mrt)  : FAILED — the resource loader threw";
+  }
+  if (value == L"app_name") {
+    return L"  resources (mrt)  : NOT RESOLVING — the UI would render key ids "
+           L"(\"app_name\") instead of text; resources.pri is missing, unindexed, "
+           L"or not beside the exe";
+  }
+  return std::format(L"  resources (mrt)  : resolving (app_name -> \"{}\")", value);
 }
 
 int WriteDiagnosticsToConsole(const std::vector<std::wstring>& lines) {
@@ -234,8 +288,10 @@ bool WantsDiagnose() {
 
 void MarkLaunched() { g_launched.store(true); }
 bool WasLaunched() { return g_launched.load(); }
+bool HadVisibleFailure() { return g_failed.load(); }
 
 void FailVisible(std::wstring_view cause, std::wstring_view detail) {
+  g_failed.store(true);
   LogError("startup: FAILED: {}{}{}", Narrow(cause), detail.empty() ? "" : " | ",
            Narrow(detail));
 

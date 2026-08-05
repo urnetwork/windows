@@ -40,11 +40,14 @@ class AppController {
   void HandleDeepLink(const std::string& url);
 
   // Show/position the main window; anchor != nullptr positions it near the tray
-  // (left-click flyout behavior), otherwise it centers.
+  // (left-click flyout behavior), otherwise it centers. Reached from the tray's
+  // window procedure, so this is the catching wrapper around ShowWindowImpl —
+  // an exception must not unwind out of a WndProc.
   void ShowWindow(const POINT* anchor = nullptr);
   void HideWindow();
 
  private:
+  void ShowWindowImpl(const POINT* anchor);
   void OnAuthState(AuthState state, const std::string& error);
   void OnTunnelState(const proto::TunnelStatus& status);
   void OnStats(const LiveStats& stats);

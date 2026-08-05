@@ -41,6 +41,14 @@ std::vector<std::wstring> CollectDiagnostics();
 // Log every line at info, under the "startup:" prefix the rest of the path uses.
 void LogDiagnostics(const std::vector<std::wstring>& lines);
 
+// Whether the app's localized resources actually RESOLVE — not merely whether
+// resources.pri exists, which is all a file check can tell. Localized() falls
+// back to the key id, so a present-but-unindexed pri renders every string in the
+// UI as "app_name" / "connect": that is cause 4 of the four look-alikes, and a
+// file size cannot see it. MRT Core is a WinRT API, so this must be called AFTER
+// init_apartment. Returns a ready-formatted diagnostics line.
+std::wstring ResourceProbe();
+
 // --diagnose: print the lines to the console this process was launched from (a
 // /SUBSYSTEM:WINDOWS process has none of its own, so it attaches to the
 // parent's), and to a message box when there is no console at all — a
@@ -62,5 +70,11 @@ bool WasLaunched();
 // naming the cause, the mechanical detail (hresult / GetLastError / path) and
 // the log file. Blocks until dismissed; callers exit afterwards.
 void FailVisible(std::wstring_view cause, std::wstring_view detail);
+
+// True once FailVisible has shown anything. wWinMain returns non-zero then, even
+// when the message loop went on to exit normally: a process that told the user
+// it failed must not also tell the shell (and any script wrapping it) that it
+// succeeded.
+bool HadVisibleFailure();
 
 }  // namespace urnw

@@ -22,7 +22,9 @@
 #include <objbase.h>  // CoWaitForMultipleObjects
 #include <shobjidl_core.h>
 
+#include <atomic>
 #include <format>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -40,59 +42,145 @@ namespace {
 // Key for the single instance. Stable, like the other app identities (Ids.h).
 constexpr wchar_t kInstanceKey[] = L"URnetwork.Desktop";
 
+// How long a second launch waits for the running instance to accept its
+// activation. This wait used to be INFINITE: if the primary is wedged — or if
+// the wait itself fails, which also removes the message pumping this
+// cross-apartment call depends on — the second launch hangs forever with no
+// window, no message and no exit. That is a process which MANUFACTURES the
+// symptom this work package exists to remove, and "nothing happened, so I ran
+// it again" is exactly how a user gets there.
+constexpr DWORD kRedirectTimeoutMs = 15000;
+
 std::wstring HresultDetail(winrt::hresult_error const& e) {
   return std::format(L"HRESULT 0x{:08X}: {}",
                      static_cast<uint32_t>(static_cast<int32_t>(e.code())),
                      std::wstring_view(e.message()));
 }
 
-// Hand this launch's activation to the instance that owns the key, then exit.
+// Hand this launch's activation to the instance that owns the key. True when it
+// was accepted; false means it was not, and the user has already been told.
+//
 // RedirectActivationToAsync must not be waited on directly from this STA thread
 // (it would deadlock), so it runs on a worker while this thread keeps pumping —
 // the pattern from the Windows App SDK instancing sample.
-void RedirectActivation(AppInstance const& primary, AppActivationArguments const& args) {
-  winrt::handle redirected{::CreateEventW(nullptr, TRUE, FALSE, nullptr)};
-  if (!redirected) {
-    urnw::LogError("startup: redirect event could not be created: {}", ::GetLastError());
-    return;
+bool RedirectActivation(AppInstance const& primary, AppActivationArguments const& args) {
+  // The worker can outlive a wait that timed out, so everything it touches is
+  // owned by shared state rather than by this stack frame.
+  struct Redirect {
+    winrt::handle done;
+    std::atomic<bool> ok{false};
+  };
+  auto state = std::make_shared<Redirect>();
+  state->done.attach(::CreateEventW(nullptr, TRUE, FALSE, nullptr));
+  if (!state->done) {
+    urnw::FailVisible(
+        L"URnetwork is already running, but this launch could not hand over to it.",
+        std::format(L"CreateEvent failed: {}", ::GetLastError()));
+    return false;
   }
-  // The worker owns the only call that can throw here, and an exception on a
-  // std::thread is std::terminate — i.e. the "second launch does nothing at
-  // all" bug. Catch it, log it, and let the wait below finish.
-  std::thread worker([&] {
+
+  // The winrt objects are copied into the worker (refcounted handles), so a
+  // worker that outlives this frame still holds valid references. An exception
+  // escaping a std::thread is std::terminate — the "second launch does nothing
+  // at all" bug — so it catches everything.
+  std::thread worker([state, primary, args] {
     try {
       primary.RedirectActivationToAsync(args).get();
+      state->ok.store(true);
     } catch (winrt::hresult_error const& e) {
       urnw::LogError("startup: redirect to the running instance failed: {}",
                      urnw::Narrow(HresultDetail(e)));
     } catch (...) {
       urnw::LogError("startup: redirect to the running instance failed (unknown)");
     }
-    ::SetEvent(redirected.get());
+    ::SetEvent(state->done.get());
   });
-  HANDLE handles[] = {redirected.get()};
+
+  HANDLE handles[] = {state->done.get()};
   DWORD index = 0;
-  ::CoWaitForMultipleObjects(CWMO_DEFAULT, INFINITE, 1, handles, &index);
-  worker.join();
+  const HRESULT hr =
+      ::CoWaitForMultipleObjects(CWMO_DEFAULT, kRedirectTimeoutMs, 1, handles, &index);
+
+  if (SUCCEEDED(hr) && state->ok.load()) {
+    worker.join();  // signalled: the worker has only ::SetEvent left to run
+    return true;
+  }
+
+  // Never join a wait that did not complete: join() does not pump messages, so
+  // it would block the apartment the redirect needs and turn a slow redirect
+  // into the permanent hang this timeout exists to prevent. The caller ends the
+  // process without unwinding instead (see wWinMain).
+  worker.detach();
+  if (hr == RPC_S_CALLPENDING) {
+    urnw::FailVisible(
+        L"URnetwork is already running, but it did not respond.\n\n"
+        L"Look for its icon in the notification area. If it is not responding, "
+        L"end URnetwork.exe from Task Manager and start it again.",
+        std::format(L"The activation redirect timed out after {} ms.",
+                    kRedirectTimeoutMs));
+  } else if (FAILED(hr)) {
+    urnw::FailVisible(
+        L"URnetwork is already running, but this launch could not reach it.",
+        std::format(L"CoWaitForMultipleObjects failed: HRESULT 0x{:08X}",
+                    static_cast<uint32_t>(hr)));
+  } else {
+    urnw::FailVisible(
+        L"URnetwork is already running, but it refused this launch's request.",
+        L"The activation redirect reported a failure; see the log.");
+  }
+  return false;
+}
+
+// Is another instance holding the single-instance key? Answered WITHOUT
+// registering anything: a --diagnose run must not briefly become the app's
+// primary instance and have a real launch redirected to it.
+std::wstring InstanceProbe() {
+  try {
+    for (auto const& instance : AppInstance::GetInstances()) {
+      const winrt::hstring key = instance.Key();
+      if (std::wstring_view(key) == kInstanceKey)
+        return L"  app instance     : another instance holds the key — the app is running";
+    }
+    return L"  app instance     : no instance holds the key — the app is not running";
+  } catch (winrt::hresult_error const& e) {
+    // The App SDK itself is unusable: cause 3 of the four look-alikes.
+    return L"  app instance     : FAILED (the Windows App SDK is not usable) — " +
+           HresultDetail(e);
+  }
 }
 
 }  // namespace
 
 int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
-  // First instruction. The log line this writes is the proof the process got
-  // this far: if a launch the user reports leaves no "startup: wWinMain" line,
-  // the process died BEFORE its own entry point, which for an unpackaged WinUI 3
-  // app means the Windows App SDK bootstrapper found no Windows App Runtime (it
-  // runs from a CRT initializer, ahead of everything here). See NEXTSTEPS.md.
-  urnw::StartupLogInit();
+  std::vector<std::wstring> diagnostics;
+  bool diagnose = false;
 
-  std::vector<std::wstring> diagnostics = urnw::CollectDiagnostics();
-  urnw::LogDiagnostics(diagnostics);
-  const bool diagnose = urnw::WantsDiagnose();
+  // The first instructions, and themselves guarded: they do filesystem work,
+  // formatting and a LoadLibrary, and an exception escaping wWinMain is
+  // std::terminate — a silent exit produced by the very code whose job is to
+  // make failure visible. The fallback box is hard-coded and allocates nothing.
+  try {
+    // The log line this writes is the proof the process got this far: if a
+    // launch the user reports leaves no "startup: wWinMain" line, the process
+    // died BEFORE its own entry point, which for an unpackaged WinUI 3 app
+    // means the Windows App SDK bootstrapper found no usable Windows App
+    // Runtime (it runs from a CRT initializer, ahead of everything here).
+    // NEXTSTEPS.md §0 has how to tell that apart from "it never ran at all".
+    urnw::StartupLogInit();
+    diagnostics = urnw::CollectDiagnostics();
+    urnw::LogDiagnostics(diagnostics);
+    diagnose = urnw::WantsDiagnose();
+  } catch (...) {
+    ::MessageBoxW(nullptr,
+                  L"URnetwork could not start: its own startup diagnostics failed.\n\n"
+                  L"This usually means %LOCALAPPDATA% is not writable for this user.",
+                  L"URnetwork could not start",
+                  MB_OK | MB_ICONERROR | MB_SETFOREGROUND | MB_TOPMOST);
+    return 1;
+  }
 
-  // COM/WinRT for this thread. An exception escaping wWinMain is std::terminate
-  // — a silent exit, the symptom this path exists to remove — so every WinRT
-  // call below is inside a catch that ends in a message box.
+  // COM/WinRT for this thread. Everything past here can throw hresult_error, so
+  // every call is inside a catch that ends in a message box.
   try {
     winrt::init_apartment(winrt::apartment_type::single_threaded);
   } catch (winrt::hresult_error const& e) {
@@ -104,24 +192,30 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     return 1;
   }
 
-  // The Windows App SDK's single-instance registration. This is the first call
-  // into the App SDK proper: if the runtime is present but broken, or the
-  // package is not usable by this user, it throws here — one of the four causes
-  // of "opened it, saw nothing".
+  // Needs the apartment, so it joins the diagnostics here rather than in
+  // CollectDiagnostics: this is the probe that can see cause 4 (resources
+  // present on disk but not resolving), which no file check can.
+  const std::wstring resources = urnw::ResourceProbe();
+  diagnostics.push_back(resources);
+  urnw::LogInfo("startup: {}", urnw::Narrow(resources));
+
+  // --diagnose exits here, before the single-instance registration.
+  if (diagnose) {
+    diagnostics.push_back(InstanceProbe());
+    return urnw::WriteDiagnosticsToConsole(diagnostics);
+  }
+
+  // The Windows App SDK's single-instance registration — the first call into
+  // the App SDK proper. If the runtime is present but broken, or unusable by
+  // this user, it throws here.
   AppActivationArguments args{nullptr};
   AppInstance primary{nullptr};
-  std::wstring instanceLine;
+  bool isPrimary = false;
   try {
     args = AppInstance::GetCurrent().GetActivatedEventArgs();
     primary = AppInstance::FindOrRegisterForKey(kInstanceKey);
-    instanceLine = primary.IsCurrent()
-                       ? L"this process owns the key (no other instance running)"
-                       : L"another instance already owns the key — the app is running";
+    isPrimary = primary.IsCurrent();
   } catch (winrt::hresult_error const& e) {
-    if (diagnose) {
-      diagnostics.push_back(L"  app instance     : FAILED: " + HresultDetail(e));
-      return urnw::WriteDiagnosticsToConsole(diagnostics);
-    }
     urnw::FailVisible(
         L"The Windows App SDK is not available, so the app cannot start.\n"
         L"AppInstance::FindOrRegisterForKey failed.\n\n"
@@ -130,19 +224,22 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         HresultDetail(e));
     return 1;
   }
-  urnw::LogInfo("startup: single instance: {}", urnw::Narrow(instanceLine));
-
-  if (diagnose) {
-    diagnostics.push_back(L"  app instance     : " + instanceLine);
-    return urnw::WriteDiagnosticsToConsole(diagnostics);
-  }
+  urnw::LogInfo("startup: single instance: this process {}",
+                isPrimary ? "owns the key" : "is a second launch");
 
   // The first launch owns the key; every later launch redirects its activation
   // (a urnetwork:// wallet callback, or a plain relaunch) to it and exits.
-  if (!primary.IsCurrent()) {
-    urnw::LogInfo("startup: redirecting this activation to the running instance");
-    RedirectActivation(primary, args);
-    urnw::LogInfo("startup: redirected; exiting this launch");
+  if (!isPrimary) {
+    const bool redirected = RedirectActivation(primary, args);
+    urnw::LogInfo("startup: second launch exiting ({})",
+                  redirected ? "redirected" : "redirect FAILED");
+    if (!redirected) {
+      // A worker thread may still be blocked inside the redirect call. Ending
+      // the process outright is the honest close for a launch that has already
+      // shown its error: unwinding would race that thread against the CRT
+      // teardown it logs through.
+      ::ExitProcess(1);
+    }
     return 0;
   }
 
@@ -188,5 +285,7 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     return 1;
   }
   urnw::LogInfo("startup: message loop exited; process ending normally");
-  return 0;
+  // A run that showed the user a failure box must not also report success to
+  // the shell, or to whatever script launched it.
+  return urnw::HadVisibleFailure() ? 1 : 0;
 }

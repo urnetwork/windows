@@ -120,7 +120,18 @@ void AppController::Start() {
   });
 
   LogInfo("app: initializing the sdk host");
-  sdk_.Initialize();
+  if (!sdk_.Initialize()) {
+    // The tray icon is up by now, so from outside the app looks fine: an icon,
+    // a menu, and nothing behind them — sign-in and connect would each fail
+    // later, separately, with no explanation. Say it once, here, where the
+    // cause is still known.
+    LogError("app: sdk host initialization FAILED");
+    FailVisible(
+        L"URnetwork started, but its network SDK could not be initialized.\n\n"
+        L"Signing in and connecting will not work. The app is in the "
+        L"notification area — quit it from there.",
+        L"SdkHost::Initialize returned false; the SDK's own error is in the log.");
+  }
   UpdateTray();
   LogInfo("app: started");
 }
@@ -187,22 +198,35 @@ void AppController::UpdateTray() {
 }
 
 void AppController::ShowWindow(const POINT* anchor) {
+  // Every caller of this arrives from the tray icon's window procedure, and a
+  // C++ exception must not unwind out of one (TrayIcon::WndProc catches as the
+  // last resort, but by then the message is generic). Everything this path does
+  // — creating the window, asking it for its HWND, wiring its events, moving it,
+  // and starting the presentation controllers in ReconcileWindowPresentation —
+  // is a WinRT call that can throw.
+  try {
+    ShowWindowImpl(anchor);
+  } catch (winrt::hresult_error const& e) {
+    LogError("app: showing the window failed: {}", Narrow(std::wstring{e.message()}));
+    FailVisible(L"URnetwork's window could not be opened.\n\n"
+                L"The app is still running in the notification area.",
+                std::wstring{e.message()});
+  } catch (const std::exception& e) {
+    LogError("app: showing the window failed: {}", e.what());
+    FailVisible(L"URnetwork's window could not be opened.\n\n"
+                L"The app is still running in the notification area.",
+                Widen(e.what()));
+  }
+}
+
+void AppController::ShowWindowImpl(const POINT* anchor) {
   if (!window_) {
     // First open. This is where XAML actually parses MainWindow.xaml and the
     // resource lookups run, so it is the second place the app can fail with
     // nothing on screen (the first is the tray icon): a click that produces no
     // window and no message would send the owner back to guessing.
     LogInfo("app: creating the main window");
-    try {
-      window_ = winrt::make<winrt::URnetwork::implementation::MainWindow>();
-    } catch (winrt::hresult_error const& e) {
-      LogError("app: main window creation failed: {}", Narrow(std::wstring{e.message()}));
-      FailVisible(
-          L"URnetwork's window could not be created.\n\n"
-          L"The app is still running in the notification area.",
-          std::wstring{e.message()});
-      return;
-    }
+    window_ = winrt::make<winrt::URnetwork::implementation::MainWindow>();
     // Closing the window hides to tray (the tunnel keeps running); the tray
     // "Quit" is the only real exit (macOS parity). Wired once, on creation.
     if (auto native = window_.try_as<::IWindowNative>()) {

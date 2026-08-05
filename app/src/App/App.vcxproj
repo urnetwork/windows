@@ -11,9 +11,18 @@
        auto-imported from obj\*.nuget.g.props / .nuget.g.targets - no manual <Import>.
        GeneratePathProperty on SDK.BuildTools exposes $(PkgMicrosoft_Windows_SDK_BuildTools)
        for the MakePri path below. Versions track the installed Windows App SDK. -->
+  <!-- One place for the Windows App SDK version: it drives the PackageReference
+       below AND is compiled into the binary (URN_WINDOWSAPPSDK_VERSION, printed
+       by --diagnose beside the runtime that actually loaded). An unpackaged app
+       needs a matching Windows App Runtime installed on the machine, and a
+       major.minor mismatch has no symptom of its own, so the version the app was
+       built against has to be readable FROM the app. -->
+  <PropertyGroup>
+    <UrnWindowsAppSdkVersion>2.2.0</UrnWindowsAppSdkVersion>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.CppWinRT" Version="3.0.260520.1" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="$(UrnWindowsAppSdkVersion)" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" GeneratePathProperty="true" />
   </ItemGroup>
@@ -127,7 +136,7 @@
            WINRT_GetActivationFactory / WINRT_CanUnloadNow (LNK2001, normally defined by the
            module.g.cpp we don't compile) - defining this compiles the whole block out, and
            since ONLY that generated unit referenced those symbols, both errors clear. -->
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;URN_WINDOWSAPPSDK_VERSION=L\"$(UrnWindowsAppSdkVersion)\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebugDLL</RuntimeLibrary>
       <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreadedDLL</RuntimeLibrary>
       <Optimization Condition="'$(Configuration)'=='Release'">MaxSpeed</Optimization>

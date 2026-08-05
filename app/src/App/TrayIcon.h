@@ -29,6 +29,17 @@ class TrayIcon {
     std::function<void()> onQuit;                    // menu: Quit
   };
 
+  TrayIcon() = default;
+  // The hidden window holds a pointer to this object in GWLP_USERDATA, so the
+  // window must never outlive it: a click or a TaskbarCreated broadcast
+  // afterwards would re-enter WndProc on freed memory. Not hypothetical — a
+  // failure anywhere after Create() shows a MODAL message box, and a modal box
+  // pumps the message queue while the owning AppController is being destroyed.
+  ~TrayIcon();
+
+  TrayIcon(const TrayIcon&) = delete;
+  TrayIcon& operator=(const TrayIcon&) = delete;
+
   bool Create(HINSTANCE instance, Callbacks callbacks);
   void Destroy();
 
