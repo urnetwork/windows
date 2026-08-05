@@ -6,6 +6,9 @@
 #include <iphlpapi.h>
 #include <netioapi.h>
 
+#include <atomic>
+#include <cwchar>
+
 #include "Log.h"
 #include "Strings.h"
 
@@ -43,7 +46,9 @@ bool AddTunRoute(NET_LUID tun, uint32_t network, uint8_t prefix) {
   return true;
 }
 
-void DeleteTunRoute(NET_LUID tun, uint32_t network, uint8_t prefix) {
+// Returns true when a route was actually removed (ERROR_NOT_FOUND just means
+// it was never there, which is the normal case on a second revert).
+bool DeleteTunRoute(NET_LUID tun, uint32_t network, uint8_t prefix) {
   MIB_IPFORWARD_ROW2 row;
   ::InitializeIpForwardEntry(&row);
   row.InterfaceLuid = tun;
@@ -51,8 +56,13 @@ void DeleteTunRoute(NET_LUID tun, uint32_t network, uint8_t prefix) {
   row.DestinationPrefix.Prefix.Ipv4.sin_family = AF_INET;
   row.DestinationPrefix.Prefix.Ipv4.sin_addr.S_un.S_addr = htonl(network);
   row.DestinationPrefix.PrefixLength = prefix;
-  ::DeleteIpForwardEntry2(&row);
+  return ::DeleteIpForwardEntry2(&row) == NO_ERROR;
 }
+
+// The interface whose routes CrashRevert() must remove, or 0 when the tunnel is
+// down. A plain atomic so the crash path reads it without taking a lock that
+// the crashing thread might already hold.
+std::atomic<uint64_t> g_armedTunLuid{0};
 
 // The whole ipv4 space EXCEPT the private ranges (10.0.0.0/8, 172.16.0.0/12,
 // 192.168.0.0/16), captured through the tun so LAN traffic bypasses the tunnel —
@@ -112,6 +122,10 @@ bool SetTunDns(NET_LUID tun, const std::vector<std::string>& servers,
 bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
   settings_ = settings;
 
+  // Arm the crash path before the FIRST mutation, not after the last one: a
+  // crash halfway through the route loop must still be cleanable.
+  ArmCrashRevert(tunLuid_);
+
   // --- tun local address ---
   IN_ADDR addr{};
   if (!ParseV4(settings.local_address_v4, addr)) {
@@ -146,18 +160,28 @@ bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
   }
 
   // --- split-default routes through the tun, EXCLUDING the local network ---
+  // From here on the host's traffic is being redirected, so every exit from
+  // this function must either leave a complete route set or none at all.
   bool routesOk = true;
   for (const auto& r : kIncludedV4Routes) {
     routesOk = routesOk && AddTunRoute(tunLuid_, r.network, r.prefix);
   }
   if (!routesOk) {
+    LogError("netcfg: route install incomplete, reverting the partial set");
     Revert();
     return false;
   }
+  LogInfo("netcfg: installed {} tun routes (private ranges excluded)",
+          std::size(kIncludedV4Routes));
 
   // --- DNS (R6: also needs a leak guard against other adapters' resolvers) ---
   if (!settings.dns_servers.empty()) {
-    SetTunDns(tunLuid_, settings.dns_servers, settings.dns_search);
+    bool dnsOk = SetTunDns(tunLuid_, settings.dns_servers, settings.dns_search);
+    // Not fatal: the tunnel still carries traffic, DNS just leaks to the
+    // physical adapter's resolver. Loud, because that IS the R6 leak.
+    if (!dnsOk) LogWarn("netcfg: tun DNS not set — queries will use the physical resolver (R6)");
+  } else {
+    LogWarn("netcfg: no tun DNS servers supplied");
   }
 
   applied_ = true;
@@ -167,15 +191,129 @@ bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
 }
 
 void NetworkConfig::Revert() {
-  if (!applied_ && settings_.local_address_v4.empty()) return;
-  for (const auto& r : kIncludedV4Routes) {
-    DeleteTunRoute(tunLuid_, r.network, r.prefix);
+  if (!applied_ && settings_.local_address_v4.empty()) {
+    DisarmCrashRevert();
+    return;
   }
+  int removed = DeleteTunnelRoutes(tunLuid_);
   // Address and DNS go away with the adapter on session end; clearing DNS
   // explicitly avoids a stale resolver if the adapter lingers.
-  SetTunDns(tunLuid_, {}, {});
+  ClearTunnelDns(tunLuid_);
+  // Drop the address too rather than trusting the adapter teardown to do it.
+  // ERROR_NOT_FOUND here is fine — it means the adapter already went away.
+  IN_ADDR addr{};
+  if (ParseV4(settings_.local_address_v4, addr)) {
+    MIB_UNICASTIPADDRESS_ROW ipRow;
+    ::InitializeUnicastIpAddressEntry(&ipRow);
+    ipRow.InterfaceLuid = tunLuid_;
+    ipRow.Address.Ipv4.sin_family = AF_INET;
+    ipRow.Address.Ipv4.sin_addr = addr;
+    ::DeleteUnicastIpAddressEntry(&ipRow);
+  }
   applied_ = false;
-  LogInfo("netcfg: reverted");
+  DisarmCrashRevert();
+  LogInfo("netcfg: reverted ({} of {} routes removed, dns cleared)", removed,
+          std::size(kIncludedV4Routes));
+}
+
+// --- crash safety ----------------------------------------------------------
+
+int NetworkConfig::DeleteTunnelRoutes(NET_LUID tunLuid) {
+  int removed = 0;
+  for (const auto& r : kIncludedV4Routes) {
+    if (DeleteTunRoute(tunLuid, r.network, r.prefix)) ++removed;
+  }
+  return removed;
+}
+
+void NetworkConfig::ClearTunnelDns(NET_LUID tunLuid) {
+  GUID guid{};
+  if (::ConvertInterfaceLuidToGuid(&tunLuid, &guid) != NO_ERROR) return;
+  DNS_INTERFACE_SETTINGS settings{};
+  settings.Version = DNS_INTERFACE_SETTINGS_VERSION1;
+  settings.Flags = DNS_SETTING_NAMESERVER;
+  settings.NameServer = nullptr;  // no list to marshal -> no allocation
+  ::SetInterfaceDnsSettings(guid, &settings);
+}
+
+void NetworkConfig::ArmCrashRevert(NET_LUID tunLuid) {
+  g_armedTunLuid.store(tunLuid.Value);
+}
+
+void NetworkConfig::DisarmCrashRevert() { g_armedTunLuid.store(0); }
+
+void NetworkConfig::CrashRevert() {
+  // exchange, not load+store: two termination paths can fire at once (an
+  // unhandled exception on one thread while the control handler runs on
+  // another) and only one of them should do the work.
+  uint64_t value = g_armedTunLuid.exchange(0);
+  if (value == 0) return;
+  NET_LUID luid{};
+  luid.Value = value;
+  DeleteTunnelRoutes(luid);
+  ClearTunnelDns(luid);
+}
+
+int NetworkConfig::SweepOrphanedTunnel(const GUID& tunGuid,
+                                       const wchar_t* adapterName) {
+  // Collect candidate LUIDs first, then sweep, so a rename or a GUID fallback
+  // cannot make us miss the interface that is holding the machine's traffic.
+  uint64_t candidates[8] = {0};
+  int candidateCount = 0;
+  auto add = [&](NET_LUID luid) {
+    if (luid.Value == 0) return;
+    for (int i = 0; i < candidateCount; ++i)
+      if (candidates[i] == luid.Value) return;
+    if (candidateCount < 8) candidates[candidateCount++] = luid.Value;
+  };
+
+  // ConvertInterfaceGuidToLuid resolves against the live interface table, so a
+  // success here means an interface with our pinned GUID exists right now.
+  NET_LUID byGuid{};
+  GUID guid = tunGuid;
+  if (::ConvertInterfaceGuidToLuid(&guid, &byGuid) == NO_ERROR) add(byGuid);
+
+  // WintunCreateAdapter treats the GUID as a REQUEST; if it was taken, the
+  // adapter exists under another one. The alias is ours either way.
+  if (adapterName && *adapterName) {
+    PMIB_IF_TABLE2 table = nullptr;
+    if (::GetIfTable2(&table) == NO_ERROR && table) {
+      for (ULONG i = 0; i < table->NumEntries; ++i) {
+        if (::wcscmp(table->Table[i].Alias, adapterName) == 0)
+          add(table->Table[i].InterfaceLuid);
+      }
+      ::FreeMibTable(table);
+    }
+  }
+
+  for (int i = 0; i < candidateCount; ++i) {
+    NET_LUID luid{};
+    luid.Value = candidates[i];
+    MIB_IF_ROW2 row{};
+    row.InterfaceLuid = luid;
+    std::string alias = (::GetIfEntry2(&row) == NO_ERROR) ? Narrow(row.Alias)
+                                                          : std::string("<gone>");
+    int removed = DeleteTunnelRoutes(luid);
+    ClearTunnelDns(luid);
+    LogWarn(
+        "netcfg: ORPHANED tun interface \"{}\" (luid {:#x}) present at startup — "
+        "a previous run did not revert; removed {} stale routes and cleared its "
+        "DNS",
+        alias, luid.Value, removed);
+  }
+  return candidateCount;
+}
+
+std::string NetworkConfig::DescribeInterface(uint32_t ifIndex) {
+  if (ifIndex == 0) return "none";
+  MIB_IF_ROW2 row{};
+  row.InterfaceIndex = ifIndex;
+  if (::GetIfEntry2(&row) != NO_ERROR) return std::format("{} <unknown>", ifIndex);
+  return std::format("{} \"{}\" ({}, type={}, {})", ifIndex, Narrow(row.Alias),
+                     Narrow(row.Description), row.Type,
+                     row.MediaConnectState == MediaConnectStateConnected
+                         ? "connected"
+                         : "disconnected");
 }
 
 EgressInterfaces NetworkConfig::DiscoverEgress(NET_LUID tunLuid) {
