@@ -287,21 +287,50 @@ bool ControlPipeInUse() {
 // Give the machine its network back without starting anything. The escape hatch
 // for the one failure this service must never leave unfixable: a tun adapter
 // that outlived the process that owned it, still holding the default routes.
-int RevertNetwork() {
+//
+// It REFUSES while a urnetworkd is running, and that refusal is the whole
+// safety of the command. SweepOrphanedTunnel resolves the pinned GUID against
+// the LIVE interface table, so a healthy tunnel matches it exactly as an
+// orphan does: running this against a live tunnel deletes all 31 routes and
+// clears the tun DNS underneath it, and nothing notices. The controller still
+// reports Up, the pump keeps pumping, the tray still says Connected — and every
+// packet leaves in the clear. A command the owner reaches for while confused
+// must not be able to silently unprotect them.
+int RevertNetwork(bool force) {
   LogSetConsoleEcho(true);
-  std::wprintf(L"urnetworkd: reverting any leftover tunnel network state\n");
   if (!TokenHas(WinLocalSystemSid) && !TokenHas(WinBuiltinAdministratorsSid)) {
-    std::fwprintf(stderr, L"must run elevated to change routes\n");
+    LogError("revert: must run elevated to change routes");
     return 1;
   }
-  const bool marker = TunnelController::TakeActiveMarker();
+  if (ControlPipeInUse()) {
+    if (!force) {
+      LogError(
+          "revert: REFUSED — a urnetworkd is running (it is serving {}). This "
+          "command cannot tell a live tunnel from an orphaned one: it would "
+          "delete the routes and DNS out from under a tunnel that keeps "
+          "running, and your traffic would leave unencrypted with nothing "
+          "reporting it. Stop the service first (sc stop urnetworkd), then "
+          "re-run. Use `urnetworkd revert --force` only if you know the tunnel "
+          "is already dead.",
+          Narrow(ids::kControlPipeName));
+      return 1;
+    }
+    LogWarn("revert: --force with a urnetworkd RUNNING. If its tunnel is up, "
+            "traffic will fall back to the clear while it still reports "
+            "Connected. Stop the service and check the tray.");
+  }
+  LogInfo("revert: reverting any leftover tunnel network state");
+  // Only consume the marker when nothing is running: the marker belongs to the
+  // live process, and taking it would make its next start report a clean exit
+  // it did not have.
+  const bool marker = ControlPipeInUse() ? false : TunnelController::TakeActiveMarker();
   const int orphans = NetworkConfig::SweepOrphanedTunnel(ids::kTunAdapterGuid,
                                                          ids::kTunAdapterName);
-  std::wprintf(L"marker=%s orphaned_interfaces=%d\n", marker ? L"yes" : L"no",
-               orphans);
+  LogInfo("revert: marker={} orphaned_interfaces={}", marker ? "yes" : "no",
+          orphans);
   if (orphans == 0)
-    std::wprintf(L"no URnetwork tun interface present; nothing of ours is in "
-                 L"the route table\n");
+    LogInfo("revert: no URnetwork tun interface present; nothing of ours is in "
+            "the route table");
   return 0;
 }
 
@@ -364,7 +393,11 @@ int Usage() {
       L"  urnetworkd install        register the service (elevated)\n"
       L"  urnetworkd uninstall      stop and deregister the service (elevated)\n"
       L"  urnetworkd revert         take back any leftover tunnel routes/DNS\n"
-      L"                            without starting anything (elevated)\n"
+      L"                            without starting anything (elevated).\n"
+      L"                            Refuses while a urnetworkd is running --\n"
+      L"                            it cannot tell a live tunnel from a dead\n"
+      L"                            one, and reverting a live one drops your\n"
+      L"                            traffic to the clear. --force overrides.\n"
       L"\n"
       L"log: %s\n",
       LogFilePath().c_str());
@@ -409,7 +442,11 @@ int wmain(int argc, wchar_t** argv) {
   if (cmd == L"install") return InstallService();
   if (cmd == L"uninstall") return UninstallService();
   if (cmd == L"console" || cmd == L"--console") return RunConsole();
-  if (cmd == L"revert" || cmd == L"--revert") return RevertNetwork();
+  if (cmd == L"revert" || cmd == L"--revert") {
+    const bool force = argc >= 3 && (std::wstring(argv[2]) == L"--force" ||
+                                     std::wstring(argv[2]) == L"-f");
+    return RevertNetwork(force);
+  }
   if (cmd == L"help" || cmd == L"--help" || cmd == L"-h" || cmd == L"/?") return Usage();
   if (!cmd.empty()) {
     std::fwprintf(stderr, L"unknown command: %s\n", cmd.c_str());
