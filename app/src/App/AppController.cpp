@@ -3,6 +3,7 @@
 
 #include "AppController.h"
 
+#include <algorithm>
 #include <string_view>
 
 #include <winrt/Microsoft.UI.Windowing.h>
@@ -259,8 +260,36 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       auto appWindow = winrt::Microsoft::UI::Windowing::AppWindow::GetFromWindowId(windowId);
       auto size = appWindow.Size();
       // place the window's bottom-right near the tray icon (bottom-right corner)
-      winrt::Windows::Graphics::PointInt32 pos{anchor->x - size.Width,
-                                               anchor->y - size.Height};
+      int x = anchor->x - size.Width;
+      int y = anchor->y - size.Height;
+
+      // ...then clamp into the WORK AREA of the monitor the anchor is on, or
+      // the window lands where nobody can see it. Unclamped, this put the
+      // window at (-1136,-875) on a two-monitor desktop -- entirely off both
+      // screens, with the tray still saying the app was open. Every anchor
+      // near a top or left edge does it: the taskbar is not always bottom
+      // right (it can be moved, and the icon may live in the overflow flyout),
+      // a secondary monitor can sit at negative coordinates, and the window
+      // can be taller than the screen it is anchored on. MONITOR_DEFAULTTONEAREST
+      // keeps a bogus anchor on a real monitor rather than failing.
+      POINT anchorPt{anchor->x, anchor->y};
+      HMONITOR mon = ::MonitorFromPoint(anchorPt, MONITOR_DEFAULTTONEAREST);
+      MONITORINFO mi{};
+      mi.cbSize = sizeof(mi);
+      if (mon && ::GetMonitorInfoW(mon, &mi)) {
+        const RECT& work = mi.rcWork;
+        // max() after min() so a window larger than the work area still has
+        // its TOP-LEFT on screen (the title bar and close button) rather than
+        // its bottom-right
+        x = (std::max)(static_cast<long>(work.left),
+                       (std::min)(x, work.right - size.Width));
+        y = (std::max)(static_cast<long>(work.top),
+                       (std::min)(y, work.bottom - size.Height));
+      }
+
+      winrt::Windows::Graphics::PointInt32 pos{x, y};
+      LogInfo("app: window anchor ({},{}) size {}x{} -> position ({},{})",
+              anchor->x, anchor->y, size.Width, size.Height, pos.X, pos.Y);
       appWindow.Move(pos);
     }
   }
