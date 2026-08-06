@@ -195,6 +195,10 @@
     <value>0 split apps</value>
     <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
   </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>This app is older than the installed URnetwork system service. Update the app to connect.</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
   <data name="apple" xml:space="preserve">
     <value>Apple</value>
     <comment>A method of adding a sign-in method.</comment>
@@ -805,6 +809,18 @@ right way</value>
   <data name="custom_dns" xml:space="preserve">
     <value>Custom DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>The app and the URnetwork system service are different builds. Update both to the same version.</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>The URnetwork system service is out of date. Update it to connect.</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>The URnetwork system service is not running. Install or start it, then try again.</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>Daily Data Balance:</value>
@@ -3767,6 +3783,10 @@ as it should be.</value>
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>Try guest mode</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>Could not start the connection</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>Unencrypted DNS</value>
