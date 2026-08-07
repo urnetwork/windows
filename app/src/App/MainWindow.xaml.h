@@ -142,6 +142,12 @@ struct MainWindow : MainWindowT<MainWindow> {
       winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
   void OnConnectWallet(winrt::Windows::Foundation::IInspectable const&,
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // wallet: Seeker-token multiplier verification. leaderboard: the
+  // public/private switch.
+  void OnVerifySeeker(winrt::Windows::Foundation::IInspectable const&,
+                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnLeaderboardPublicToggled(winrt::Windows::Foundation::IInspectable const&,
+                                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // Connect drawer handlers (forwarded to ConnectPage)
   void OnConnectionModeChanged(

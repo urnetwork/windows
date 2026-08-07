@@ -324,6 +324,19 @@ class SdkHost {
   // to authLogin{wallet_auth{blockchain=TAO}}.
   void SignInWithBittensor(std::function<void(AuthResult)> done);
 
+  // Sign `message` with a Solana wallet through the same browser bridge and hand
+  // the address and signature back WITHOUT authenticating. The Seeker multiplier
+  // is the caller (android SettingsScreen.signAndVerifySeekerHolder): it verifies
+  // the signed pair against the api rather than logging in with it.
+  //
+  // Only one wallet flow can be in flight, because the bridge exposes a single
+  // pair of callbacks: starting a sign-in supersedes a pending signature request
+  // and vice versa. `done` runs on whichever thread delivered the deep link, so
+  // a UI caller marshals.
+  void SignWithSolanaWallet(WalletConnect::Provider provider, const std::string& message,
+                            std::function<void(bool ok, std::string address,
+                                               std::string signature, std::string error)> done);
+
   // Route a urnetwork:// deep link (wallet callback; later OAuth) into the host.
   // Called from the app's protocol-activation handler.
   void HandleDeepLink(const std::string& url);
@@ -627,6 +640,11 @@ class SdkHost {
 
   WalletConnect wallet_;
   std::function<void(AuthResult)> walletAuthDone_;
+  // A bare signature request (SignWithSolanaWallet) rather than a sign-in. Non-
+  // null is what tells the shared bridge callbacks which flow they are in, so
+  // both are cleared whenever the other starts.
+  std::function<void(bool, std::string, std::string, std::string)> walletSignDone_;
+  std::string walletSignMessage_;
   // the signed wallet auth of a wallet that has no network yet, held for the
   // create-network step (cleared on success, logout, or a new wallet sign-in)
   std::optional<urnet::WalletAuthArgs> pendingWalletAuth_;

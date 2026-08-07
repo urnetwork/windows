@@ -168,6 +168,10 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   // wallet error must PERSIST, the support acknowledgement must time out.
   if (destination == "wallet") wallet_->ShowPreviewSnackbar();
   if (destination == "support") settings_->ShowPreviewSnackbar();
+  // The wallet destination's eight API loads are skipped with the rest, so
+  // settle its panels on their empty states rather than leaving every one of
+  // them on "Loading..." — which is what a hang looks like.
+  if (destination == "wallet") wallet_->ShowPreviewWalletState();
   // The leaderboard's fetch is skipped along with the other loads, so put its
   // panel into the settled empty state rather than leaving it on "Loading..."
   // forever, which would look exactly like a hang.
@@ -532,6 +536,12 @@ void MainWindow::OnWalletAddressChanged(IInspectable const& s,
 }
 void MainWindow::OnConnectWallet(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnConnectWallet(s, e);
+}
+void MainWindow::OnVerifySeeker(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnVerifySeeker(s, e);
+}
+void MainWindow::OnLeaderboardPublicToggled(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnLeaderboardPublicToggled(s, e);
 }
 
 void MainWindow::OnManageAppSplitTunnel(IInspectable const& s, RoutedEventArgs const& e) {
