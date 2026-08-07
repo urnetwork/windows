@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- URnetwork tray app: WinUI 3 (Windows App SDK), C++/WinRT, unpackaged.
      WindowsPackageType=None auto-initializes the Windows App SDK bootstrapper;
      the installer must still deploy the WindowsAppRuntime (see installer/).
@@ -247,6 +247,7 @@
     <ClCompile Include="MainWindow.xaml.cpp"><DependentUpon>MainWindow.xaml</DependentUpon></ClCompile>
     <!-- per-destination units split out of MainWindow.xaml.cpp -->
     <ClCompile Include="AccountPage.cpp" />
+    <ClCompile Include="ConnectCanvas.cpp" />
     <ClCompile Include="ConnectPage.cpp" />
     <ClCompile Include="DeveloperPage.cpp" />
     <ClCompile Include="LoginPage.cpp" />
@@ -296,6 +297,7 @@
     <ClInclude Include="LoginCarousel.h" />
     <ClInclude Include="Localization.h" />
     <ClInclude Include="LocationSheets.h" />
+    <ClInclude Include="ConnectCanvas.h" />
     <ClInclude Include="SdkHost.h" />
     <ClInclude Include="StatsFormat.h" />
     <ClInclude Include="StatsSheets.h" />

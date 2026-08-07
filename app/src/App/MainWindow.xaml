@@ -509,6 +509,41 @@
                         <!-- Connection controls -->
                         <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="12">
+                                <!-- The connect hero (P6). A Button, so it is focusable,
+                                     keyboard-invokable and carries pressed states; its
+                                     content is the decorative ConnectCanvas host, marked
+                                     AccessibilityView="Raw" because a Button whose Content
+                                     is a Panel gets NO automatic name — the explicit one,
+                                     which states the connection state, is set from
+                                     ConnectPage::ApplyConnectStatus.
+                                     The button chrome is suppressed by the resource
+                                     overrides below rather than by a local Background,
+                                     which the template's visual states would win over on
+                                     hover; the hero draws its own hover and focus
+                                     affordances. Pointer and focus events are wired in
+                                     code (ConnectPage::Initialize), so the hero adds no
+                                     new MainWindow handlers. -->
+                                <Button x:Name="ConnectHero"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Stretch"
+                                        Padding="0" BorderThickness="0"
+                                        UseSystemFocusVisuals="False"
+                                        Click="OnConnectToggle">
+                                    <Button.Resources>
+                                        <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent" />
+                                    </Button.Resources>
+                                    <Grid x:Name="ConnectCanvasHost"
+                                          HorizontalAlignment="Stretch"
+                                          AutomationProperties.AccessibilityView="Raw" />
+                                </Button>
                                 <!-- connect status (android ConnectStatusIndicator
                                      parity): a state-coloured dot + the four-state
                                      status line. Driven by the SDK's own connection

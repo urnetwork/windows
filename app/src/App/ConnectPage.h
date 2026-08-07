@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <optional>
 #include <string>
@@ -21,6 +22,7 @@
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
+#include "ConnectCanvas.h"
 #include "LocationSheets.h"
 #include "SdkHost.h"
 #include "StatsSheets.h"
@@ -50,6 +52,13 @@ class ConnectPage {
   void SetNetworkIdentity(std::string const& networkName, bool guestMode);
   void ResyncDrawer();     // seed the caches/cards from SdkHost snapshots
   void AnimateDrawerIn();  // fade + slide-up entrance, staggered across cards
+
+  // Status line + status dot + hero canvas + connect button, from connectStatus_
+  // (the SDK), connected_ (the service tunnel) and the window's balance state.
+  // The single place any of them is written. Public because the balance inputs
+  // live on MainWindow: UpdateBalanceWarning calls this so the hero's error and
+  // processing states and the InfoBar can never disagree.
+  void ApplyConnectStatus();
 
   // ---- XAML event handlers (forwarded from MainWindow) ----
   void OnConnectToggle(winrt::Windows::Foundation::IInspectable const&,
@@ -88,9 +97,6 @@ class ConnectPage {
   // one has a "connecting" value to show.
   enum class ConnectStatus { Disconnected, Connecting, DestinationSet, Connected };
 
-  // Status line + status dot + connect button, from connectStatus_ (the SDK) and
-  // connected_ (the service tunnel). The single place any of the three is written.
-  void ApplyConnectStatus();
   static ConnectStatus ParseConnectStatus(std::string const& value);
   // What the connect button does right now, from the SDK status only (NOT the
   // tunnel — see the definition): anything other than a settled disconnected
@@ -98,6 +104,12 @@ class ConnectPage {
   bool ConnectActionIsDisconnect() const;
 
   void BuildCharts();
+  void BuildHero();        // the ConnectCanvas plus the hero's desktop affordances
+  // --preview-ui + URNETWORK_PREVIEW_HERO only: a locally generated grid and a
+  // state walk, so the hero's populated states can be looked at without a
+  // session. Makes no network request of any kind — nothing here touches Sdk().
+  bool PreviewHeroActive() const;
+  void PreviewHeroTick();
   void WireDrawerFeeds();  // SdkHost push handlers -> UI thread -> caches/cards
   void SeedConnectControls();  // performance profile + blocker toggle state
   void PushPerformanceSettings();
@@ -138,6 +150,15 @@ class ConnectPage {
   // copy. Read once per auth change, not per stats push (ParsedJwt re-parses).
   std::string networkName_;
   bool guestMode_ = false;
+
+  // the hero canvas (UI thread only; stepped from chartTimer_)
+  std::unique_ptr<urnw::ConnectCanvas> canvas_;
+  // When the SDK reports CONNECTING the connect action is disabled: the press
+  // has been accepted and a second one would fire a duplicate connect. It is a
+  // WATCHDOG, not a latch — see ApplyConnectStatus — so a connect that hangs
+  // re-enables the control instead of trapping the user in a dead screen.
+  std::chrono::steady_clock::time_point connectingSince_{};
+  bool connectWatchdogFired_ = false;
 
   // drawer state (UI thread only)
   std::unique_ptr<urnw::TransferChart> remoteChart_;
