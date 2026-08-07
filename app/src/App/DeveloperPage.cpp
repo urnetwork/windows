@@ -209,15 +209,64 @@ DeveloperPage::DeveloperPage(winrt::URnetwork::implementation::MainWindow& windo
       if (auto self = weak.get()) self->developer().OnModeNotice(notice);
     });
   });
+  bridge_ = std::thread([this] { BridgeLoop(); });
+
   // What a view does when it is constructed. Gated on session existence, so a
   // logged-out launch correctly gets an empty notice rather than a fabricated
   // claim that the service is clamped.
-  Sdk().RefreshModeNotice();
+  //
+  // ON THE BRIDGE, not here. RefreshModeNotice takes SdkHost::mutex_, and the
+  // bootstrap thread holds that across the WHOLE of BootstrapSession — several
+  // synchronous service rpcs. This ctor runs inside MainWindow's constructor on
+  // the UI thread, so calling it directly makes the first tray click produce a
+  // window that does not appear until the service handshake finishes or times
+  // out. The notice comes back through the handler above either way.
+  Submit([] { Sdk().RefreshModeNotice(); });
 }
 
 DeveloperPage::~DeveloperPage() {
-  alive_->store(false);
+  {
+    std::scoped_lock lock(bridgeMutex_);
+    bridgeStop_ = true;
+    bridgeJobs_.clear();  // nothing queued needs to run; we are going away
+  }
+  bridgeCv_.notify_all();
+  // Joining is the point: after this returns, no job can be inside SdkHost or
+  // holding a reference to this page. See the note on Submit in the header.
+  if (bridge_.joinable()) bridge_.join();
   if (pollTimer_) pollTimer_.Stop();
+}
+
+void DeveloperPage::Submit(std::function<void()> job) {
+  {
+    std::scoped_lock lock(bridgeMutex_);
+    if (bridgeStop_) return;
+    bridgeJobs_.push_back(std::move(job));
+  }
+  bridgeCv_.notify_one();
+}
+
+void DeveloperPage::BridgeLoop() {
+  for (;;) {
+    std::function<void()> job;
+    {
+      std::unique_lock<std::mutex> lock(bridgeMutex_);
+      bridgeCv_.wait(lock, [this] { return bridgeStop_ || !bridgeJobs_.empty(); });
+      if (bridgeStop_) return;
+      job = std::move(bridgeJobs_.front());
+      bridgeJobs_.pop_front();
+    }
+    // Nothing may escape: an uncaught exception on a std::thread is
+    // std::terminate, and winrt::hresult_error does NOT derive from
+    // std::exception, so the catch-all is not decoration.
+    try {
+      job();
+    } catch (const std::exception& e) {
+      LogWarn("developer: bridge job failed: {}", e.what());
+    } catch (...) {
+      LogWarn("developer: bridge job failed");
+    }
+  }
 }
 
 void DeveloperPage::ApplyStrings() {
@@ -412,54 +461,70 @@ void DeveloperPage::ReconcilePolling() {
 
 void DeveloperPage::Poll() {
   if (!built_) return;
-  // One read at a time. A poll that took longer than the interval would
-  // otherwise stack rpcs behind SdkHost's lock.
+  // Polls coalesce: one queued or running at a time. A read slower than the
+  // interval would otherwise stack behind SdkHost's lock, and the newest of the
+  // pile is the only one anyone wants.
   bool expected = false;
-  if (!inFlight_->compare_exchange_strong(expected, true)) return;
+  if (!pollPending_.compare_exchange_strong(expected, true)) return;
 
   auto queue = w_.DispatcherQueue();
-  std::thread([weak = w_.get_weak(), queue, alive = alive_, inFlight = inFlight_] {
-    ReliabilitySnapshot snap;
-    if (alive->load()) snap = Sdk().ReadReliability();
-    queue.TryEnqueue([weak, snap = std::move(snap)] {
-      if (auto self = weak.get()) self->developer().ApplySnapshot(snap);
-    });
-    inFlight->store(false);
-  }).detach();
-}
+  Submit([this, weak = w_.get_weak(), queue] {
+    // Cleared on EVERY path. Leaving it true wedges both the 5s poll and the
+    // Refresh button for the life of the process, and the screen would then
+    // look merely stale rather than broken. (`this` is safe: the dtor joins the
+    // bridge, and it drops queued jobs before it does.)
+    struct ClearOnExit {
+      std::atomic<bool>& flag;
+      ~ClearOnExit() { flag.store(false); }
+    } clear{pollPending_};
 
-void DeveloperPage::EditSettings(std::function<void(urnet::ReliabilitySettings&)> mutate) {
-  auto queue = w_.DispatcherQueue();
-  std::thread([weak = w_.get_weak(), queue, alive = alive_, mutate = std::move(mutate)] {
-    if (!alive->load()) return;
-    // Fresh whole-struct read-modify-write, inside SdkHost under its lock, so
-    // two edits cannot interleave and revert each other. A nil read is a no-op
-    // there — never a write of a zeroed struct.
-    Sdk().UpdateReliabilitySettings(mutate);
-    // Read everything back: the device may not have applied what was asked.
     ReliabilitySnapshot snap = Sdk().ReadReliability();
     queue.TryEnqueue([weak, snap = std::move(snap)] {
       if (auto self = weak.get()) self->developer().ApplySnapshot(snap);
     });
-  }).detach();
+  });
+}
+
+void DeveloperPage::EditSettings(std::function<void(urnet::ReliabilitySettings&)> mutate) {
+  auto queue = w_.DispatcherQueue();
+  Submit([weak = w_.get_weak(), queue, mutate = std::move(mutate)] {
+    // Fresh whole-struct read-modify-write inside SdkHost under its lock. A nil
+    // read is a no-op there — never a write of a zeroed struct — and it comes
+    // back as nullopt, which is the difference between "applied" and "there was
+    // nothing to apply it to".
+    const bool applied = Sdk().UpdateReliabilitySettings(mutate).has_value();
+    // Read everything back: the device may not have applied what was asked.
+    ReliabilitySnapshot snap = Sdk().ReadReliability();
+    queue.TryEnqueue([weak, snap = std::move(snap), applied] {
+      auto self = weak.get();
+      if (!self) return;
+      self->developer().ApplySnapshot(snap);
+      // A failed write used to be visible only in a log file that a WinUI app
+      // never shows anyone, so the control would just spring back with no
+      // explanation.
+      if (!applied)
+        self->developer().SetLastAction(DevW(
+            "dev_not_applied",
+            L"Not applied: there is no reliability override in force to change."));
+    });
+  });
 }
 
 void DeveloperPage::RunAction(ReliabilityAction action, std::wstring const& described,
                               std::string const& exitClientId) {
   // "Requested", not "done": every one of these returns void over the C ABI
-  // (migrateExit and probeAllExits drop their int32 counts on the way across)
+  // (migrateExit and probeAllExits drop their int64 counts on the way across)
   // and silently no-ops with no multi client. What can be reported is what was
   // asked for; the counters and exit rows underneath are where it is confirmed.
   SetLastAction(DevW("dev_requested", L"Requested:") + L" " + described);
   auto queue = w_.DispatcherQueue();
-  std::thread([weak = w_.get_weak(), queue, alive = alive_, action, exitClientId] {
-    if (!alive->load()) return;
+  Submit([weak = w_.get_weak(), queue, action, exitClientId] {
     Sdk().RunReliabilityAction(action, exitClientId);
     ReliabilitySnapshot snap = Sdk().ReadReliability();
     queue.TryEnqueue([weak, snap = std::move(snap)] {
       if (auto self = weak.get()) self->developer().ApplySnapshot(snap);
     });
-  }).detach();
+  });
 }
 
 void DeveloperPage::SetLastAction(std::wstring const& text) {
@@ -690,6 +755,14 @@ void DeveloperPage::Build() {
     NumberBox box;
     box.Width(120);
     box.Minimum(0);
+    // A Maximum as well as a Minimum. Without one, a typed value above
+    // INT32_MAX wraps NEGATIVE through the int32 cast and writes a negative
+    // MaxFlowsPerExit / RemovalBudgetCount into the live reliability stack —
+    // the `raw < 0` check in OnNumChanged catches a typed minus sign, not a
+    // wrap. The int64 ceiling is ~35 years in milliseconds, which is past any
+    // meaningful value and short of the range where the double->int64 cast is
+    // undefined.
+    box.Maximum(i32 ? 2147483647.0 : 1.0e12);
     box.SpinButtonPlacementMode(NumberBoxSpinButtonPlacementMode::Compact);
     // A rejected edit snaps back to the value that IS in force rather than
     // leaving an unapplied number on screen claiming to be one.
@@ -902,22 +975,46 @@ void DeveloperPage::ApplySnapshot(ReliabilitySnapshot const& snap) {
 }
 
 void DeveloperPage::ApplySnapshotNow(ReliabilitySnapshot const& snap) {
-  ApplySettings(snap.settings);
+  ApplySettings(snap);
   ApplyMetrics(snap.metrics);
   ApplyExits(snap);
 }
 
-void DeveloperPage::ApplySettings(std::optional<urnet::ReliabilitySettings> const& settings) {
+void DeveloperPage::ApplySettings(ReliabilitySnapshot const& snap) {
+  auto const& settings = snap.settings;
   // NIL IS "NOTHING IS IN FORCE", NOT "EVERYTHING IS OFF". The controls are
   // hidden rather than shown at zero, because a screen full of zeroed switches
   // reads as a configuration and is not one.
   const bool inForce = settings.has_value();
+
+  // Three different reasons the controls can be absent, and a diagnostic screen
+  // is the one place that must not collapse them into one sentence. This is
+  // what ReliabilitySnapshot::haveDevice and remoteConnected are for.
+  connectHint_.Text(
+      !snap.haveDevice
+          ? Dev("dev_no_device", L"No session. Sign in and connect to use these tools.")
+          : (!snap.remoteConnected
+                 ? Dev("dev_service_detached",
+                       L"The URnetwork service is not attached, so the live connection "
+                       L"cannot be read.")
+                 : (inForce ? hstring{}
+                            : Dev("dev_nothing_in_force",
+                                  L"Connected, but no reliability override is in force "
+                                  L"yet. Connect to a provider to use these tools."))));
   connectHint_.Visibility(inForce ? Visibility::Collapsed : Visibility::Visible);
   for (auto const& card : liveCards_)
     card.Visibility(inForce ? Visibility::Visible : Visibility::Collapsed);
   if (!inForce) return;
 
-  applying_ = true;
+  // RAII, not a bare pair of assignments. There are ~46 WinRT property sets and
+  // a dozen std::format calls between the two, and a throw in any of them would
+  // leave the flag stuck true — after which OnBoolToggled and OnNumChanged
+  // early-return forever and the whole settings surface is silently read-only.
+  struct ApplyingGuard {
+    bool& flag;
+    explicit ApplyingGuard(bool& f) : flag(f) { flag = true; }
+    ~ApplyingGuard() { flag = false; }
+  } guard{applying_};
   for (auto const& row : boolRows_) row.toggle.IsOn(settings.value().*(row.field));
   for (auto const& row : numRows_) {
     const int64_t value = row.i64 ? settings.value().*(row.i64)
@@ -931,7 +1028,6 @@ void DeveloperPage::ApplySettings(std::optional<urnet::ReliabilitySettings> cons
             ? row.zeroLabel
             : (row.millis ? FormatDurationMillis(value) : std::format(L"{}", value))});
   }
-  applying_ = false;
 }
 
 void DeveloperPage::ApplyMetrics(std::optional<urnet::ReliabilityMetrics> const& metrics) {
@@ -981,20 +1077,22 @@ void DeveloperPage::ApplyMetrics(std::optional<urnet::ReliabilityMetrics> const&
 }
 
 void DeveloperPage::ApplyExits(ReliabilitySnapshot const& snap) {
-  // ---- exits ----
-  std::wstring signature;
+  // Rebuild the ROWS only when the set of exits changes; update the CELLS every
+  // time. The first version keyed the rebuild on a signature that included
+  // FlowCount, which moves constantly on a live session — so every 5s poll tore
+  // down and rebuilt the table, destroying and recreating each row's Migrate
+  // button under the pointer. Identity is the client-id sequence; everything
+  // else is a text write into a cell that is already there.
+  std::wstring identity;
   for (auto const& e : snap.exits) {
-    signature += std::format(L"{}|{}|{}|{}|{}|{}|{}|{}|{}|{};",
-                             urnw::Widen(e.ClientId.value_or(std::string{})),
-                             urnw::Widen(e.WindowType), e.Tier, e.EffectiveTier, e.FlowCount,
-                             e.DialFailureCount, static_cast<int>(e.Warning),
-                             static_cast<int>(e.Quarantined), static_cast<int>(e.Done),
-                             urnw::Widen(e.WarningCause));
+    if (!e.ClientId || e.ClientId->empty()) continue;  // no identity, no row
+    identity += urnw::Widen(*e.ClientId) + L";";
   }
-  if (signature != exitsSignature_) {
-    exitsSignature_ = signature;
+  if (!exitsIdentity_ || *exitsIdentity_ != identity) {
+    exitsIdentity_ = identity;
+    exitRows_.clear();
     exitsBody_.Children().Clear();
-    if (snap.exits.empty()) {
+    if (identity.empty()) {
       exitsBody_.Children().Append(
           MakeText(Dev("dev_no_exits", L"No exits. Connect first."), 13, MutedBrush(), true));
     }
@@ -1004,46 +1102,23 @@ void DeveloperPage::ApplyExits(ReliabilitySnapshot const& snap) {
       if (!e.ClientId || e.ClientId->empty()) continue;
       const std::string clientId = *e.ClientId;
       Grid row = MakeTableRow({-2, -2, -1, -1, -1, -3, 90});
+      ExitRow cells;
+      cells.clientId = clientId;
+      cells.root = row;
+
       auto mono = MakeText(hstring{ShortId(clientId)}, 13, colors::TextBrush());
       mono.FontFamily(FontFamily{L"Consolas"});
       PutCell(row, 0, mono);
-      PutCell(row, 1,
-              MakeText(hstring{e.WindowType.empty() ? std::wstring{L"auto"}
-                                                    : urnw::Widen(e.WindowType)},
-                       12, MutedBrush()));
-      // tier N->M when live demotion has moved it
-      PutCell(row, 2,
-              MakeText(hstring{e.Tier < e.EffectiveTier
-                                   ? std::format(L"{}\u2192{}", e.Tier, e.EffectiveTier)
-                                   : std::format(L"{}", e.Tier)},
-                       12, MutedBrush()));
-      PutCell(row, 3, MakeText(hstring{std::format(L"{}", e.FlowCount)}, 12, MutedBrush()));
-      PutCell(row, 4,
-              MakeText(hstring{std::format(L"{}", e.DialFailureCount)}, 12,
-                       0 < e.DialFailureCount ? colors::DangerBrush() : MutedBrush()));
-
-      // The state line, joined the way iOS joins it. WarningCause is passed
-      // through VERBATIM so a new go-side cause renders without an app update.
-      std::vector<std::wstring> state;
-      if (e.Quarantined) {
-        state.push_back(DevW("dev_state_benched", L"benched"));
-      } else if (e.Warning) {
-        state.push_back(e.WarningCause.empty() ? DevW("dev_state_warned", L"warned")
-                                               : urnw::Widen(e.WarningCause));
-      }
-      if (e.Done) state.push_back(DevW("dev_state_done", L"done"));
-      if (e.P2pOnly) state.push_back(DevW("dev_state_p2p", L"p2p"));
-      // absence of `proven` means "not yet proven", never "bad"
-      if (e.Proven) state.push_back(DevW("dev_state_proven", L"proven"));
-      std::wstring joined;
-      for (auto const& part : state) {
-        if (!joined.empty()) joined += L" \u00B7 ";  // middle dot
-        joined += part;
-      }
-      PutCell(row, 5,
-              MakeText(hstring{joined}, 12,
-                       e.Quarantined || e.Warning ? colors::DangerBrush() : MutedBrush(),
-                       true));
+      cells.window = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 1, cells.window);
+      cells.tier = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 2, cells.tier);
+      cells.flows = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 3, cells.flows);
+      cells.dials = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 4, cells.dials);
+      cells.state = MakeText(hstring{}, 12, MutedBrush(), true);
+      PutCell(row, 5, cells.state);
 
       Button migrate = MakeActionButton(Dev("dev_migrate", L"Migrate"));
       migrate.Click([weak = w_.get_weak(), clientId](auto const&, auto const&) {
@@ -1054,35 +1129,84 @@ void DeveloperPage::ApplyExits(ReliabilitySnapshot const& snap) {
       });
       PutCell(row, 6, migrate);
       exitsBody_.Children().Append(row);
+      exitRows_.push_back(std::move(cells));
     }
   }
 
+  // Cell values, every poll. exitRows_ is in the same order as the exits that
+  // have an id, which is what identity is built from, so index tracks.
+  size_t i = 0;
+  for (auto const& e : snap.exits) {
+    if (!e.ClientId || e.ClientId->empty()) continue;
+    if (i >= exitRows_.size()) break;
+    auto const& cells = exitRows_[i++];
+    cells.window.Text(hstring{e.WindowType.empty() ? std::wstring{L"auto"}
+                                                   : urnw::Widen(e.WindowType)});
+    // tier N->M when live demotion has moved it
+    cells.tier.Text(hstring{e.Tier < e.EffectiveTier
+                                ? std::format(L"{}\u2192{}", e.Tier, e.EffectiveTier)
+                                : std::format(L"{}", e.Tier)});
+    cells.flows.Text(hstring{std::format(L"{}", e.FlowCount)});
+    cells.dials.Text(hstring{std::format(L"{}", e.DialFailureCount)});
+    cells.dials.Foreground(0 < e.DialFailureCount ? colors::DangerBrush() : MutedBrush());
+
+    // The state line, joined the way iOS joins it. WarningCause is passed
+    // through VERBATIM so a new go-side cause renders without an app update.
+    std::vector<std::wstring> state;
+    if (e.Quarantined) {
+      state.push_back(DevW("dev_state_benched", L"benched"));
+    } else if (e.Warning) {
+      state.push_back(e.WarningCause.empty() ? DevW("dev_state_warned", L"warned")
+                                             : urnw::Widen(e.WarningCause));
+    }
+    if (e.Done) state.push_back(DevW("dev_state_done", L"done"));
+    if (e.P2pOnly) state.push_back(DevW("dev_state_p2p", L"p2p"));
+    // absence of `proven` means "not yet proven", never "bad"
+    if (e.Proven) state.push_back(DevW("dev_state_proven", L"proven"));
+    std::wstring joined;
+    for (auto const& part : state) {
+      if (!joined.empty()) joined += L" \u00B7 ";  // middle dot
+      joined += part;
+    }
+    cells.state.Text(hstring{joined});
+    cells.state.Foreground(e.Quarantined || e.Warning ? colors::DangerBrush() : MutedBrush());
+  }
+
   // ---- destinations ----
-  std::wstring dstSignature;
-  for (auto const& d : snap.destinationExits) {
-    dstSignature += std::format(L"{}|{}|{};", urnw::Widen(d.DestinationIp),
-                                urnw::Widen(d.ClientId.value_or(std::string{})), d.FlowCount);
+  // Same split: the destination ip sequence is the identity, the exit and the
+  // flow count are cells. This table carries no buttons, but a live session
+  // churns it faster than the exits table and a full rebuild every poll would
+  // make it unreadable.
+  std::wstring dstIdentity;
+  for (auto const& d : snap.destinationExits) dstIdentity += urnw::Widen(d.DestinationIp) + L";";
+  if (!destinationsIdentity_ || *destinationsIdentity_ != dstIdentity) {
+    destinationsIdentity_ = dstIdentity;
+    destinationRows_.clear();
+    destinationsBody_.Children().Clear();
+    if (snap.destinationExits.empty()) {
+      destinationsBody_.Children().Append(MakeText(
+          Dev("dev_no_destinations", L"No destinations yet."), 13, MutedBrush(), true));
+    }
+    for (auto const& d : snap.destinationExits) {
+      Grid row = MakeTableRow({-3, -2, -1});
+      auto ip = MakeText(hstring{urnw::Widen(d.DestinationIp)}, 13, colors::TextBrush());
+      ip.FontFamily(FontFamily{L"Consolas"});
+      PutCell(row, 0, ip);
+      DestinationRow cells;
+      cells.exit = MakeText(hstring{}, 12, MutedBrush());
+      cells.exit.FontFamily(FontFamily{L"Consolas"});
+      PutCell(row, 1, cells.exit);
+      cells.flows = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 2, cells.flows);
+      destinationsBody_.Children().Append(row);
+      destinationRows_.push_back(std::move(cells));
+    }
   }
-  if (dstSignature == destinationsSignature_) return;
-  destinationsSignature_ = dstSignature;
-  destinationsBody_.Children().Clear();
-  if (snap.destinationExits.empty()) {
-    destinationsBody_.Children().Append(MakeText(
-        Dev("dev_no_destinations", L"No destinations yet."), 13, MutedBrush(), true));
-    return;
-  }
-  for (auto const& d : snap.destinationExits) {
-    Grid row = MakeTableRow({-3, -2, -1});
-    auto ip = MakeText(hstring{urnw::Widen(d.DestinationIp)}, 13, colors::TextBrush());
-    ip.FontFamily(FontFamily{L"Consolas"});
-    PutCell(row, 0, ip);
-    auto exit = MakeText(
-        hstring{d.ClientId && !d.ClientId->empty() ? ShortId(*d.ClientId) : std::wstring{L"\u2014"}},
-        12, MutedBrush());
-    exit.FontFamily(FontFamily{L"Consolas"});
-    PutCell(row, 1, exit);
-    PutCell(row, 2, MakeText(hstring{std::format(L"{}", d.FlowCount)}, 12, MutedBrush()));
-    destinationsBody_.Children().Append(row);
+  for (size_t j = 0; j < snap.destinationExits.size() && j < destinationRows_.size(); ++j) {
+    auto const& d = snap.destinationExits[j];
+    destinationRows_[j].exit.Text(hstring{
+        d.ClientId && !d.ClientId->empty() ? ShortId(*d.ClientId) : std::wstring{L"\u2014"}});
+    destinationRows_[j].flows.Text(hstring{std::format(L"{}", d.FlowCount)});
   }
 }
 
@@ -1100,9 +1224,15 @@ void DeveloperPage::OnNumChanged(size_t index) {
   const double raw = numRows_[index].box.Value();
   // NumberBox reports NaN for a cleared field. Nothing to write.
   if (std::isnan(raw) || raw < 0) return;
-  const int64_t value = static_cast<int64_t>(raw);
   auto i64 = numRows_[index].i64;
   auto i32 = numRows_[index].i32;
+  // NumberBox has a Minimum but no Maximum, and it carries a double: casting a
+  // typed 1e30 straight to an integer is undefined behaviour, not a big number.
+  // Clamp per destination type. The ceiling is far past any meaningful value
+  // (kMaxMillis is ~35 years), so this only ever catches a typo.
+  constexpr double kMaxMillis = 1.0e12;
+  const double ceiling = i32 ? 2147483647.0 : kMaxMillis;
+  const int64_t value = static_cast<int64_t>(raw < ceiling ? raw : ceiling);
   EditSettings([i64, i32, value](urnet::ReliabilitySettings& s) {
     if (i64)
       s.*i64 = value;

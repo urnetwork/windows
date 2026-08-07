@@ -247,8 +247,9 @@ struct ReliabilitySnapshot {
 
 // The void actions on the reliability bridge. Every one of them silently
 // no-ops when there is no multi client, and none returns anything the C ABI
-// preserves — migrateExit and probeAllExits drop their int32 counts on the way
-// across — so a caller can report what it ASKED FOR and nothing more.
+// preserves — DeviceLocal::migrateExit and probeAllExits return an int64 count,
+// the DeviceRemote forms return void, so the count never crosses — and a caller
+// can therefore report what it ASKED FOR and nothing more.
 enum class ReliabilityAction {
   ResetMetrics,
   ResetSettings,
@@ -560,7 +561,24 @@ class SdkHost {
     std::string message;
   };
   using ModeNoticeHandler = std::function<void(const ModeNotice&)>;
-  void SetModeNoticeHandler(ModeNoticeHandler h) { onModeNotice_ = std::move(h); }
+  // Guarded by its OWN small lock, not mutex_, for two reasons that pull in
+  // opposite directions:
+  //
+  //   - It cannot be unguarded. The bootstrap thread calls PublishSessionFailure
+  //     OUTSIDE mutex_ (SdkHost::Initialize), so it reads and invokes this
+  //     std::function while the view is assigning it from the UI thread. That is
+  //     a concurrent write and copy of a std::function: undefined behaviour, and
+  //     the trigger is the default dev-box state — signed in, service not
+  //     running, so the bootstrap fails fast — plus a tray click at startup.
+  //   - It must not be mutex_. The bootstrap thread holds mutex_ across the
+  //     WHOLE of BootstrapSession, which is several synchronous service rpcs; a
+  //     setter that waited on it would block the UI thread inside MainWindow's
+  //     constructor and the first tray click would produce a frozen window.
+  //
+  // noticeMutex_ is therefore held only for the assignment and for copying the
+  // handler out before it is invoked — never across the invocation, and never
+  // together with mutex_ in the other order.
+  void SetModeNoticeHandler(ModeNoticeHandler h);
   // Re-push the current notice. Safe at any time, including from an ordinary
   // logged-out launch: with no session it publishes an INACTIVE notice. (It
   // used to derive purely from sessionMode_, whose default is RpcOnly, so
@@ -669,6 +687,9 @@ class SdkHost {
   // Push a "there is no session, and here is why" notice. The user stays
   // signed in; see ModeNotice::Kind::SessionFailed.
   void PublishSessionFailure(const std::string& why);
+  // A copy of the handler, taken under noticeMutex_. Invoke the COPY, so the
+  // lock is never held across the call.
+  ModeNoticeHandler ModeNoticeHandlerCopy() const;
 
   ServiceClient service_;
   // Set once in Initialize() from URNETWORK_RPC_ONLY; never changes after.
@@ -701,6 +722,10 @@ class SdkHost {
   BlockActionsHandler onBlockActions_;
   BlockStatsHandler onBlockStats_;
   SplitRulesHandler onSplitRules_;
+  // See SetModeNoticeHandler: this one is written from the UI thread and read
+  // from the bootstrap thread, so it has its own lock. Read it through
+  // ModeNoticeHandlerCopy(), never directly.
+  mutable std::mutex noticeMutex_;
   ModeNoticeHandler onModeNotice_;
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;

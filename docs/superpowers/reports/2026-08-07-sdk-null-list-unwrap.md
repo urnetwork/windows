@@ -141,9 +141,12 @@ listener's rate. Sites covered:
 | `ConnectedProvidePeers` | `PeerViewController::getPeers` |
 | `ReadReliability` | `DeviceRemote::getExits`, `getDestinationExits` |
 
-Two sites already had a try/catch that degrades to `LogWarn` — the offline
-app-rule merge and `PushLocalOverrideAppsToDriver` — and were left as they are;
-the helper matches their behaviour.
+Five functions already had a try/catch that degrades to `LogWarn` — the offline
+app-rule merge in `SubscribeDrawer`, `PushLocalOverrideAppsToDriver`,
+`UpdateSplitRule`, `SetAppRule`/`RemoveAppRule` and `CurrentAppRules` — and were
+left as they are; the helper matches their behaviour. Coverage across the two
+mechanisms is complete: every member of the SDK header returning a `*List` alias
+is either wrapped, inside one of those handlers, or not called from this app.
 
 **These guards should stay after the upstream fix lands.** They cost nothing,
 and they cover the general shape (any getter that throws for any reason no

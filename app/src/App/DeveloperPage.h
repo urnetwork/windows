@@ -29,10 +29,14 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
+#include <deque>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -100,6 +104,7 @@ class DeveloperPage {
                  std::string const& exitClientId = {});
   void OnBoolToggled(size_t index);
   void OnNumChanged(size_t index);
+  void SetLastAction(std::wstring const& text);
 
  private:
   using ToggleSwitch = winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch;
@@ -129,18 +134,72 @@ class DeveloperPage {
     FrameworkElement root{nullptr};
     TextBlock value{nullptr};
   };
+  // A table row is built once per change of IDENTITY (which exits exist) and
+  // its cells are written on every poll. Keying the rebuild on the values
+  // instead would tear the table down every 5s on any live session, because
+  // FlowCount never stops moving — and it would destroy the Migrate button
+  // under the user's pointer.
+  struct ExitRow {
+    std::string clientId;
+    FrameworkElement root{nullptr};
+    TextBlock window{nullptr};
+    TextBlock tier{nullptr};
+    TextBlock flows{nullptr};
+    TextBlock dials{nullptr};
+    TextBlock state{nullptr};
+  };
+  struct DestinationRow {
+    TextBlock exit{nullptr};
+    TextBlock flows{nullptr};
+  };
 
   void Build();
   void EnsureBuilt();
   void ApplySnapshotNow(ReliabilitySnapshot const& snap);
   void ApplyMetrics(std::optional<urnet::ReliabilityMetrics> const& metrics);
-  void ApplySettings(std::optional<urnet::ReliabilitySettings> const& settings);
+  // Takes the whole snapshot, not just the settings: "no device", "device but
+  // the service is detached" and "connected but nothing in force" are three
+  // different states and a diagnostic screen has to tell them apart.
+  void ApplySettings(ReliabilitySnapshot const& snap);
   void ApplyExits(ReliabilitySnapshot const& snap);
 
   void ReconcilePolling();
-  // Run `mutate` over a FRESH whole-struct read on a worker, then re-poll.
+  // Run `mutate` over a FRESH whole-struct read on the bridge, then re-read.
   void EditSettings(std::function<void(urnet::ReliabilitySettings&)> mutate);
-  void SetLastAction(std::wstring const& text);
+
+  // ---- the bridge --------------------------------------------------------
+  // ONE serial worker thread carries every rpc this screen makes. It is the
+  // port of iOS ReliabilityStore.bridgeQueue, and it is load-bearing three
+  // times over — the first version used a detached std::thread per call and got
+  // all three wrong:
+  //
+  //   ORDER. Every settings edit is a read-modify-write that writes an
+  //   ABSOLUTE value for its field. Two edits in flight at once (two clicks on
+  //   a NumberBox spinner, a switch toggled twice) are serialised by SdkHost's
+  //   lock but NOT ordered, so the device could end up holding the older value
+  //   while the screen shows the newer one. FIFO on one thread fixes it.
+  //
+  //   STALE PAINT. A poll that read before an edit committed could be delivered
+  //   to the UI after the edit's own snapshot and repaint the pre-edit value.
+  //   One queue means results reach the UI in the order they were produced.
+  //
+  //   LIFETIME. A detached worker tested an `alive` flag and then called into
+  //   the process-wide SdkHost — a TOCTOU that, at tray-Quit, can land inside a
+  //   half-destroyed AppController. The dtor now joins this thread, so no job
+  //   can be inside SdkHost once ~DeveloperPage has returned. The cost is that
+  //   quitting waits for at most one in-flight rpc; polling is already stopped
+  //   whenever the window is not presenting, so the bridge is normally idle.
+  void Submit(std::function<void()> job);
+  void BridgeLoop();
+
+  std::thread bridge_;
+  std::mutex bridgeMutex_;
+  std::condition_variable bridgeCv_;
+  std::deque<std::function<void()>> bridgeJobs_;
+  bool bridgeStop_ = false;
+  // A poll is queued or running. Polls coalesce (a slow read must not stack
+  // more behind it); edits and actions never do.
+  std::atomic<bool> pollPending_{false};
 
   winrt::URnetwork::implementation::MainWindow& w_;
 
@@ -159,11 +218,6 @@ class DeveloperPage {
   // not wipe it. Never set in a normal run.
   bool previewData_ = false;
 
-  // Cleared by the dtor. A detached poll thread checks it before touching the
-  // process-wide SdkHost, which is torn down at shutdown.
-  std::shared_ptr<std::atomic<bool>> alive_ = std::make_shared<std::atomic<bool>>(true);
-  std::shared_ptr<std::atomic<bool>> inFlight_ = std::make_shared<std::atomic<bool>>(false);
-
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer pollTimer_{nullptr};
 
   // ---- the built tree ----
@@ -176,10 +230,16 @@ class DeveloperPage {
   TextBlock noFailures_{nullptr};
   StackPanel exitsBody_{nullptr};
   StackPanel destinationsBody_{nullptr};
-  // last rendered table content, so a 5s poll does not rebuild (and drop the
-  // pointer out of) rows that have not changed
-  std::wstring exitsSignature_;
-  std::wstring destinationsSignature_;
+  // The client-id / destination-ip sequences the current rows were built from.
+  // OPTIONAL, not a bare string: an empty table has an empty identity, so with
+  // a plain std::wstring the very first apply of an empty exit list compares
+  // equal to the initial value, the rebuild is skipped, and the "No exits.
+  // Connect first." row is never created. That state is reachable — connected,
+  // settings in force, no exits yet.
+  std::optional<std::wstring> exitsIdentity_;
+  std::optional<std::wstring> destinationsIdentity_;
+  std::vector<ExitRow> exitRows_;
+  std::vector<DestinationRow> destinationRows_;
   std::vector<BoolRow> boolRows_;
   std::vector<NumRow> numRows_;
 };
