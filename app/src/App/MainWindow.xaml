@@ -646,14 +646,66 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- ==== THE WIDE COMPOSITION (D4) =========================
+                       This is the reference instance of the shape every
+                       destination now uses; read this one and you have read all
+                       seven. Two nested grids and a two-state group:
+
+                         OUTER   * | 1000* MaxWidth | *   the centring column
+                                 above. Its cap is what the Wide state RAISES:
+                                 the narrow layout is a 600px column, the wide
+                                 one is a 1440px composition.
+
+                         INNER   main * | side (0 at narrow)  and three Auto
+                                 rows. Every panel below is parked in the main
+                                 column, stacked, in the order the flyout wants
+                                 them. The Wide state moves ONE of them - the
+                                 rail - into the side column.
+
+                         STATES  Narrow is the default and carries no setters,
+                                 so the flyout layout is what the markup plainly
+                                 says. Wide is an AdaptiveTrigger on
+                                 UrWideBreakpoint (App.xaml, one number for the
+                                 whole app).
+
+                       Connect is Proton's shape: ONE canvas where the hero
+                       lives, the secondary controls in a rail BESIDE it rather
+                       than stacked under it, and the status that belongs to the
+                       whole window in the strip at the bottom.
+
+                       The rail spans all three rows at wide, top-aligned, so it
+                       is free to be taller than the hero without pushing the
+                       charts down the page. It carries Provide, Connect options
+                       and the plan card: the three things on this screen that
+                       are DECISIONS rather than status, which is exactly the
+                       cut Proton's NetShield / Kill switch / Split tunnelling
+                       rail makes.
+
+                       Row 1 is deliberately empty. It exists so the rail's
+                       row span has somewhere to give, and so an Advanced Mode
+                       region under the hero (a raw-status line, an event feed)
+                       has a row waiting for it that needs no re-layout. -->
+                  <Grid x:Name="ConnectLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="600" />
+                        <ColumnDefinition x:Name="ConnectCapColumn"
+                                          Width="1000*" MaxWidth="600" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" x:Name="DrawerStack" Spacing="16"
-                                HorizontalAlignment="Stretch" Margin="0,0,0,24">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="ConnectRailColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="DrawerStack" Spacing="16"
+                                HorizontalAlignment="Stretch">
 
                         <!-- Connection controls -->
                         <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}">
@@ -778,6 +830,16 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
+                    </StackPanel>
+
+                    <!-- THE RAIL. Narrow: row 1 of the main column, i.e.
+                         directly under the hero card, which is where the
+                         flyout has always had it. Wide: the side column,
+                         spanning every row, top-aligned. -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="ConnectRail" Spacing="16"
+                                VerticalAlignment="Top"
+                                Margin="0,16,0,0">
 
                         <!-- PROVIDE. Was buried in the middle of the hero card,
                              between the peers line and the connect options, with
@@ -915,6 +977,58 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Plan + usage (macOS ConnectActions.swift:169-204).
+                             In the rail with the other two: the plan is a
+                             decision (upgrade / redeem), not a reading of the
+                             live connection, and it is the one card on this
+                             screen that stays useful while disconnected. -->
+                        <Border x:Name="DrawerPlanCard" Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="8">
+                                <TextBlock x:Name="DrawerPlanLabel" Style="{StaticResource UrLabelStyle}" />
+                                <Grid>
+                                    <TextBlock x:Name="DrawerPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
+                                               FontWeight="SemiBold" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center">
+                                        <muxc:ProgressRing x:Name="DrawerPlanRing" Width="16" Height="16"
+                                                           IsActive="False" Visibility="Collapsed" />
+                                        <Button x:Name="DrawerGetProButton" Click="OnOpenUpgrade" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid x:Name="DrawerUsageBarHost" Height="32" />
+                                <StackPanel x:Name="DrawerUsageLegend" Orientation="Horizontal"
+                                            Spacing="16" />
+                                <Grid Margin="0,4,0,0">
+                                    <TextBlock x:Name="DrawerDailyLabel" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="DrawerDailyValue" FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </Grid>
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <Grid>
+                                    <TextBlock x:Name="DrawerReferralTotals" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="DrawerReferralBonus" FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- THE STATUS COLUMN. Charts and the dns summary: what the
+                         connection is DOING, as opposed to what it has been
+                         told to do. Stays in the main column at every width,
+                         under the hero, where Portmaster puts its chart. At
+                         desktop widths these are ~900px wide rather than 600,
+                         which is the whole reason a transfer chart is worth
+                         drawing at all. -->
+                    <StackPanel Grid.Row="2" Grid.Column="0"
+                                x:Name="ConnectStatusStack" Spacing="16"
+                                Margin="0,16,0,24">
+
                         <!-- Card 1: client statistics (remote + blocked charts) -->
                         <Button x:Name="ClientStatsCard" Style="{StaticResource UrCardButtonStyle}"
                                 Click="OnClientStatsCardClick">
@@ -1049,43 +1163,9 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- Plan + usage (macOS ConnectActions.swift:169-204) -->
-                        <Border x:Name="DrawerPlanCard" Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="8">
-                                <TextBlock x:Name="DrawerPlanLabel" Style="{StaticResource UrLabelStyle}" />
-                                <Grid>
-                                    <TextBlock x:Name="DrawerPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
-                                               FontWeight="SemiBold" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                                HorizontalAlignment="Right"
-                                                VerticalAlignment="Center">
-                                        <muxc:ProgressRing x:Name="DrawerPlanRing" Width="16" Height="16"
-                                                           IsActive="False" Visibility="Collapsed" />
-                                        <Button x:Name="DrawerGetProButton" Click="OnOpenUpgrade" />
-                                    </StackPanel>
-                                </Grid>
-                                <Grid x:Name="DrawerUsageBarHost" Height="32" />
-                                <StackPanel x:Name="DrawerUsageLegend" Orientation="Horizontal"
-                                            Spacing="16" />
-                                <Grid Margin="0,4,0,0">
-                                    <TextBlock x:Name="DrawerDailyLabel" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="DrawerDailyValue" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                                <Border Height="1" Background="{StaticResource UrBorderBrush}" />
-                                <Grid>
-                                    <TextBlock x:Name="DrawerReferralTotals" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="DrawerReferralBonus" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-
                     </StackPanel>
+                    </Grid>
+
                   </Grid>
                 </ScrollViewer>
 

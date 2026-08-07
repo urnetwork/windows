@@ -26,6 +26,48 @@
 
 namespace urnw::kit {
 
+// ---- the one desktop breakpoint --------------------------------------------
+//
+// The app has exactly two layouts and this number decides which:
+//
+//   below  kWideBreakpointDip   the 1:1000:1 centred single column - the
+//                               flyout / narrow-window shape
+//   at or above                 the horizontal composition: a main pane, a
+//                               side pane BESIDE it, and a full-width row
+//                               under both
+//
+// Every destination in MainWindow.xaml instantiates the SAME shape - a capped
+// centring column, a two-column pane grid inside it, and a two-state
+// VisualStateGroup named Narrow/Wide whose Wide state raises the cap, opens the
+// side column and moves the side panel from the row BELOW the main panel to the
+// column BESIDE it. Only the cap and the side width differ per destination.
+// Read ConnectView and you have read all seven.
+//
+// 1000 rather than 900: the pane grid sits inside a 24px page margin and a 48px
+// nav rail, so a 1000dip window leaves the two panes ~900dip between them,
+// which is where a ~340dip rail beside a main column stops being cramped.
+//
+// The markup carries the SHAPE - named columns, named panes, and the narrow
+// reading as the plain reading - and MainWindow::ApplyBreakpoint carries the
+// differences. One function at window level, not seven page-level SizeChanged
+// handlers: there is exactly one place where this app decides what "wide"
+// means.
+//
+// VisualStateManager + AdaptiveTrigger is the mechanism this should have been
+// and it does not work in this shell. Measured, not read in a doc:
+// AdaptiveTrigger listens for size changes on Window.Current, which is null in
+// a WinUI 3 desktop app, so a trigger with MinWindowWidth="1" and one Margin
+// setter changed nothing at 1400px; and with a plain boolean StateTrigger
+// flipped from code the trigger went active while the Setters still did
+// nothing, because VisualStateGroups attached to a plain layout Grid are never
+// processed. GoToState cannot reach them either (it takes a Control and reads
+// the groups off that control's TEMPLATE root) and WinUI 3 has no
+// GoToElementState. Wrapping every destination in a templated ContentControl
+// would work and would move every x:Name in MainWindow.xaml into a template
+// namescope - i.e. delete every accessor the seven page units are written
+// against. See MainWindow::ApplyBreakpoint.
+inline constexpr double kWideBreakpointDip = 1000.0;
+
 // Set a line's text AND its visibility in one call: an empty string collapses
 // the element instead of leaving a row of nothing behind.
 //

@@ -238,6 +238,14 @@ struct MainWindow : MainWindowT<MainWindow> {
   void LoadCurrentDestination();
   void ApplyAuthState(urnw::AuthState state, std::string const& error);
 
+  // ---- the one responsive switch (D4) ----
+  // Every destination declares a Narrow and a Wide visual state in markup; this
+  // is the only thing that changes between them, and it runs on one SizeChanged
+  // at window level rather than seven per-page handlers. AdaptiveTrigger would
+  // have been the native mechanism and does not work here - see
+  // kit::kWideBreakpointDip for what was measured.
+  void ApplyBreakpoint();
+
   // ---- the persistent status strip ----
   // Built once, from kit::MakeStatusField, so the fields Advanced Mode adds
   // later (egress interface, rpc port, session mode, the raw pre-clamp
@@ -300,6 +308,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the sample above owns the strip's values: the real relays keep running
   // (there is no session, so they push emptiness) and must not overwrite it
   bool statusSamplePinned_ = false;
+  // last state ApplyBreakpoint drove, so a resize that does not cross the
+  // breakpoint costs nothing (SizeChanged fires on every pixel of a drag)
+  bool wideLayout_ = false;
+  bool breakpointApplied_ = false;
 };
 
 }  // namespace winrt::URnetwork::implementation

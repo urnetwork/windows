@@ -21,6 +21,33 @@ using namespace winrt::Microsoft::UI::Xaml::Controls;
 using namespace urnw::pages;
 
 namespace winrt::URnetwork::implementation {
+namespace {
+
+// Where one pane sits: which cell of its page's pane grid, how many rows it may
+// span, and what gap it keeps. Every destination's wide reading is two of these
+// - one for the flyout, one for the desktop - and nothing else.
+struct PanePlacement {
+  int row = 0;
+  int column = 0;
+  int rowSpan = 1;
+  Thickness margin{};
+};
+
+void Place(FrameworkElement const& pane, PanePlacement const& at) {
+  if (!pane) return;
+  Grid::SetRow(pane, at.row);
+  Grid::SetColumn(pane, at.column);
+  Grid::SetRowSpan(pane, at.rowSpan);
+  pane.Margin(at.margin);
+}
+
+// A column's width, as a fixed number of DIPs. Zero collapses it, which is how
+// a side column stops existing at flyout widths.
+void SetWidth(Controls::ColumnDefinition const& column, double dips) {
+  if (column) column.Width(GridLengthHelper::FromPixels(dips));
+}
+
+}  // namespace
 
 MainWindow::MainWindow() {
   InitializeComponent();
@@ -43,6 +70,15 @@ MainWindow::MainWindow() {
   // Last: its ctor binds SdkHost's mode-notice handler and asks for a refresh,
   // so everything it may paint over must already exist.
   developer_ = std::make_unique<urnw::DeveloperPage>(*this);
+
+  // The responsive switch. SizeChanged on the window's own content root fires
+  // on the first layout pass, so this also seeds the initial state; the handler
+  // is cheap on the resizes that do not cross the breakpoint.
+  if (auto root = Content().try_as<FrameworkElement>()) {
+    root.SizeChanged([weak = get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) self->ApplyBreakpoint();
+    });
+  }
 
   ApplyStrings();
   // Before connect_->Initialize(): ConnectPage::ApplyConnectStatus pushes the
@@ -167,6 +203,71 @@ void MainWindow::ApplyStrings() {
   wallet_->ApplyStrings();
   settings_->ApplyStrings();
   developer_->ApplyStrings();
+}
+
+// ---- the one responsive switch (D4) ----------------------------------------
+//
+// Every destination declares the SAME two states in markup - Narrow (what the
+// markup plainly says) and Wide (the horizontal composition) - and this is the
+// only thing in the app that switches between them. One handler, one number,
+// seven groups: a per-page SizeChanged would be seven places for the app to
+// stop agreeing with itself about what "wide" means.
+//
+// It is code, and VisualStateManager was tried first and does not work in this
+// shell. Both halves were measured, not read in a doc:
+//
+//   * AdaptiveTrigger never fires. It listens for size changes on
+//     Window.Current, which is null in a WinUI 3 desktop app. A trigger with
+//     MinWindowWidth="1" and one Margin setter changed nothing at 1400px.
+//   * With a plain boolean StateTrigger flipped from here, the trigger DID go
+//     active (the log line below proved it) and the Setters still did not
+//     apply: VisualStateGroups attached to a plain layout Grid are never
+//     processed, because nothing bootstraps them. GoToState is no help - it
+//     takes a Control and reads the groups off that control's TEMPLATE root -
+//     and WinUI 3 has no GoToElementState. Wrapping each destination in a
+//     templated ContentControl would work and would also move every x:Name in
+//     this file into a template namescope, i.e. delete every accessor the
+//     seven page units are written against.
+//
+// So the markup keeps the SHAPE (named columns, named panes, the narrow
+// reading as the plain reading) and this one function carries the differences.
+// One function rather than seven page-level SizeChanged handlers is the point:
+// there is exactly one place where the app decides what "wide" means.
+
+void MainWindow::ApplyBreakpoint() {
+  auto root = Content().try_as<FrameworkElement>();
+  if (!root) return;
+  // ActualWidth is in DIPs, which is what the breakpoint is stated in: on this
+  // machine's 125% display a "1400px" window is 1120dip, and a breakpoint
+  // compared against physical pixels would fire in the wrong place on every
+  // machine with a different scale.
+  const double width = root.ActualWidth();
+  if (width <= 0) return;
+  const bool wide = urnw::kit::kWideBreakpointDip <= width;
+  if (breakpointApplied_ && wide == wideLayout_) return;
+  breakpointApplied_ = true;
+  wideLayout_ = wide;
+
+  // ---- Connect: Proton's shape ---------------------------------------------
+  // The hero keeps the main canvas; Provide, Connect options and the plan card
+  // become a rail BESIDE it rather than a stack under it. 1440 rather than "as
+  // wide as the window": a 2560px hero is not composed, it is stretched.
+  ConnectCapColumn().MaxWidth(wide ? 1440 : 600);
+  SetWidth(ConnectRailColumn(), wide ? 360 : 0);
+  Place(ConnectRail(), wide
+            // Beside the hero, in the hero's OWN row and spanning nothing.
+            // RowSpan=3 was tried and is wrong: WinUI spreads a spanning
+            // element's desired height across every Auto row it covers, so a
+            // rail taller than the hero inflated the two rows under it and
+            // opened ~120px of blank between the hero card and the charts.
+            // In one row the columns simply run ragged, which is what a
+            // two-column page does.
+            ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
+            // directly under the hero card, which is where the flyout has
+            // always had it
+            : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});
+
+  urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
 }
 
 // ---- the persistent status strip (D4) --------------------------------------

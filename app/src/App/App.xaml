@@ -181,35 +181,6 @@
             <FontFamily x:Key="UrBodyFontFamily">ms-appx:///Assets/Fonts/pp_neue_montreal_regular.ttf#PP Neue Montreal</FontFamily>
             <FontFamily x:Key="UrWordmarkFontFamily">ms-appx:///Assets/Fonts/pp_neue_bit_bold.ttf#PP NeueBit</FontFamily>
 
-            <!-- ================= the desktop breakpoint =======================
-                 ONE number, in one place, read by every destination's
-                 AdaptiveTrigger. The app has exactly two layouts:
-
-                   below  UrWideBreakpoint  the 1:1000:1 centred single column
-                                            (the flyout / narrow-window shape)
-                   at or above              the horizontal composition: a main
-                                            pane, a side pane beside it, and a
-                                            full-width row under both
-
-                 Every destination in MainWindow.xaml instantiates the SAME
-                 shape - a capped centring column, a two-column pane grid
-                 inside it, and a two-state VisualStateGroup whose Wide state
-                 raises the cap, opens the side column and moves the side panel
-                 from the row BELOW the main panel to the column BESIDE it.
-                 Only the cap and the side width differ per destination. Read
-                 one of them (ConnectView is the reference) and you have read
-                 all seven.
-
-                 1000 rather than 900: the pane grid lives inside a 24px page
-                 margin and a 48px nav rail, so a 1000px window gives the two
-                 panes ~900px between them - which is the width at which a
-                 340px rail beside a main column stops being cramped. Measured
-                 at 900 first; the rail crowded the connect hero. -->
-            <x:Double x:Key="UrWideBreakpoint">1000</x:Double>
-            <!-- the gap between the two panes, and the height reserved for the
-                 side pane's own top alignment with the main pane -->
-            <Thickness x:Key="UrPaneGap">20,0,0,0</Thickness>
-
             <!-- brand palette (mirrors UrColors.h) -->
             <SolidColorBrush x:Key="UrBackgroundBrush" Color="#101010" />
             <!-- sheet surface: android SheetBlack = Black.lighten(0.03), which
