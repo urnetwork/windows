@@ -561,11 +561,17 @@ void DeveloperPage::EnsureBuilt() {
 }
 
 void DeveloperPage::Build() {
-  root_ = StackPanel();
-  root_.Spacing(16);
-  root_.MaxWidth(1000);
-  root_.HorizontalAlignment(HorizontalAlignment::Left);
-  root_.Margin(Thickness{0, 0, 0, 24});
+  // The four hosts D4 put in the markup. This page used to build its own
+  // 1000-wide left-aligned column and hand it to DeveloperView as Content; the
+  // width and the placement now come from the same shape the other six
+  // destinations use, so this unit only decides WHICH host each card belongs
+  // to. That decision is Portmaster's: the tables at the top, full width; what
+  // the session has measured and what it has been told to do in two columns
+  // under them.
+  auto top = w_.DeveloperTopStack();
+  auto tables = w_.DeveloperTablesStack();
+  auto measured = w_.DeveloperMainStack();
+  auto overrides = w_.DeveloperSideStack();
 
   // ---- intro + the always-available actions --------------------------------
   {
@@ -624,15 +630,17 @@ void DeveloperPage::Build() {
             L"refresh underneath."),
         11, FaintBrush(), true));
 
-    root_.Children().Append(card);
+    top.Children().Append(card);
   }
 
-  // A card that needs a SESSION: measurements, exits, destinations.
-  auto deviceCard = [&](hstring const& heading, StackPanel& body) {
+  // A card that needs a SESSION: measurements, exits, destinations. The host is
+  // explicit because the three do not go to the same place any more - the two
+  // tables want the width and the measurements do not.
+  auto deviceCard = [&](Panel const& host, hstring const& heading, StackPanel& body) {
     Border card = MakeCard(heading, body);
     card.Visibility(Visibility::Collapsed);
     deviceCards_.push_back(card);
-    root_.Children().Append(card);
+    host.Children().Append(card);
     return card;
   };
   // A card that needs a live ReliabilitySettings: the five override sections.
@@ -640,14 +648,14 @@ void DeveloperPage::Build() {
     Border card = MakeCard(heading, body);
     card.Visibility(Visibility::Collapsed);
     settingsCards_.push_back(card);
-    root_.Children().Append(card);
+    overrides.Children().Append(card);
     return card;
   };
 
   // ---- measurements --------------------------------------------------------
   {
     StackPanel body{nullptr};
-    deviceCard(Dev("dev_measurements", L"Measurements"), body);
+    deviceCard(measured, Dev("dev_measurements", L"Measurements"), body);
     body.Children().Append(MakeText(
         Dev("dev_measurements_detail",
             L"What a provider failure costs. Reset, run a test, read back."),
@@ -710,7 +718,7 @@ void DeveloperPage::Build() {
   // than a stack of two-line rows.
   {
     StackPanel body{nullptr};
-    deviceCard(Dev("dev_exits", L"Exits"), body);
+    deviceCard(tables, Dev("dev_exits", L"Exits"), body);
     Grid header = MakeTableRow({-2, -2, -1, -1, -1, -3, 90});
     auto head = [&](int column, std::string_view key, const wchar_t* label) {
       auto tb = MakeText(Dev(key, label), 11, FaintBrush());
@@ -734,7 +742,7 @@ void DeveloperPage::Build() {
   // show it.
   {
     StackPanel body{nullptr};
-    deviceCard(Dev("dev_destinations", L"Destinations"), body);
+    deviceCard(tables, Dev("dev_destinations", L"Destinations"), body);
     body.Children().Append(MakeText(
         Dev("dev_destinations_detail",
             L"Which exit each destination's flows are landing on. A site spread over "
@@ -989,7 +997,6 @@ void DeveloperPage::Build() {
     section.Children().Append(reset);
   }
 
-  w_.DeveloperView().Content(root_);
   LogInfo("developer: built {} toggles, {} numeric rows, {} metric rows", boolRows_.size(),
           numRows_.size(), metricRows_.size());
 }

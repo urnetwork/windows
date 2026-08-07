@@ -115,6 +115,16 @@ void SettingsPage::ApplyStrings() {
   // automatic automation name, so it needs an explicit one or the only way to
   // submit this form is nameless to a screen reader.
   w_.SendFeedbackText().Text(Loc("send"));
+  // The contact card beside the form (D4). The feedback form is one-way; this
+  // is the other way, and both strings already shipped with no call site.
+  // SetMarkdownLinkText keeps the whole sentence and turns support@ur.io and
+  // the Discord invite into real Hyperlinks, which is what puts them in the
+  // tab order.
+  w_.SupportContactHeading().Text(Loc("support"));
+  urnw::SetMarkdownLinkText(
+      w_.SupportContactText(),
+      Localized("if_the_problem_persists_contact_us_at_support_ur"), 14);
+  w_.SupportProtocolLink().Content(LocBox("learn_more_protocol_page"));
   winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
       w_.SendFeedbackButton(), Loc("send"));
 
@@ -133,15 +143,21 @@ void SettingsPage::BuildSections() {
   if (built_) return;
   built_ = true;
 
+  // TWO hosts, not one. At desktop widths they are two card columns (D4); at
+  // flyout width the second stacks under the first, so the split has to be by
+  // SUBJECT rather than by length, or the narrow reading order comes out
+  // shuffled. Left is what this account and this device ARE; right is how they
+  // connect and who they talk to.
   auto host = w_.SettingsSections();
+  auto right = w_.SettingsSectionsRight();
   BuildAccountSection(host);
   BuildDeviceSection(host);
-  BuildConnectionsSection(host);
-  BuildIdentitySection(host);
-  BuildStayInTouchSection(host);
   BuildSubscriptionSection(host);
-  BuildLogsSection(host);
-  BuildVersionSection(host);
+  BuildConnectionsSection(right);
+  BuildIdentitySection(right);
+  BuildStayInTouchSection(right);
+  BuildLogsSection(right);
+  BuildVersionSection(right);
   BuildDangerSection();
 
   // Everything that can be read without a round trip, so the page is not blank

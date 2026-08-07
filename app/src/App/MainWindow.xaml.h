@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "AccountPage.h"
 #include "BalanceSheets.h"
@@ -20,6 +21,7 @@
 #include "SdkHost.h"
 #include "SettingsPage.h"
 #include "SubscriptionBalance.h"
+#include "UrComponents.h"
 #include "UsageBar.h"
 #include "WalletPage.h"
 
@@ -68,6 +70,18 @@ struct MainWindow : MainWindowT<MainWindow> {
   void ApplyBalance();
   // last ContractStatus push (ConnectPage::ApplyStats) -> the warning InfoBar
   void SetInsufficientBalance(bool insufficient);
+  // ---- the persistent status strip (D4) ----
+  // ProtonVPN's bottom line, at window level: it is true whichever destination
+  // is on screen, so it cannot live on a page.
+  //
+  // The CONNECTION half is pushed in by ConnectPage::ApplyConnectStatus rather
+  // than recomputed here, on the same principle that already keeps the hero and
+  // the balance InfoBar in step: one function derives the state, colour and
+  // wording, and every surface that shows them reads that one derivation. A
+  // second switch over LiveStats.connectionStatus in this file would be a
+  // second place for the strip and the connect screen to disagree.
+  void ApplyStatusStripConnection(winrt::hstring const& text,
+                                  winrt::Windows::UI::Color dot);
   // The hero canvas's two non-connection states (iOS ConnectButtonView parity).
   // Deliberately the SAME two expressions UpdateBalanceWarning gates the InfoBar
   // on, read from here rather than recomputed in ConnectPage, so the hero and
@@ -224,6 +238,33 @@ struct MainWindow : MainWindowT<MainWindow> {
   void LoadCurrentDestination();
   void ApplyAuthState(urnw::AuthState state, std::string const& error);
 
+  // ---- the one responsive switch (D4) ----
+  // Every destination declares a Narrow and a Wide visual state in markup; this
+  // is the only thing that changes between them, and it runs on one SizeChanged
+  // at window level rather than seven per-page handlers. AdaptiveTrigger would
+  // have been the native mechanism and does not work here - see
+  // kit::kWideBreakpointDip for what was measured.
+  void ApplyBreakpoint();
+
+  // ---- the persistent status strip ----
+  // Built once, from kit::MakeStatusField, so the fields Advanced Mode adds
+  // later (egress interface, rpc port, session mode, the raw pre-clamp
+  // connection status) cost one more call each and no layout change.
+  void BuildStatusStrip();
+  // Writes the state field unconditionally. The three callers each decide
+  // whether they are ALLOWED to write it (ApplyStatusStripConnection refuses a
+  // signed-out push; the preview sample refuses nothing); this just renders.
+  void RenderStatusState(winrt::hstring const& text,
+                         winrt::Windows::UI::Color dot);
+  // Re-renders the fields the strip owns itself (network, provider, traffic)
+  // and gates the whole strip on there being a session to describe.
+  void ApplyStatusStrip();
+  // --preview-ui + URNETWORK_PREVIEW_SAMPLE only: one obviously synthetic
+  // snapshot through the SAME apply path, so a POPULATED strip can be looked
+  // at from a build with no account. Same two gates and the same log warning
+  // as WalletPage's sample rows; touches no network and no stored state.
+  void PreviewSampleStatusStrip();
+
   // ---- balance / plan (SubscriptionBalanceStore relay) ----
   void UpdateBalanceWarning();  // insufficient-balance InfoBar gating
   winrt::fire_and_forget ShowUpgradeSheet();
@@ -248,6 +289,29 @@ struct MainWindow : MainWindowT<MainWindow> {
   bool sheetOpen_ = false;  // only one ContentDialog can show at a time
   // --preview-ui: the home view is pinned regardless of auth state
   bool previewUi_ = false;
+
+  // ---- status strip state (UI thread only) ----
+  urnw::kit::StatusField statusState_;     // dot + the connection wording
+  urnw::kit::StatusField statusNetwork_;
+  urnw::kit::StatusField statusProvider_;
+  urnw::kit::StatusField statusTraffic_;
+  // Everything after the state field, hidden as a group when there is no
+  // session: three captions over three blanks says less than one honest line.
+  std::vector<winrt::Microsoft::UI::Xaml::UIElement> statusSessionParts_;
+  std::string statusNetworkName_;
+  bool statusGuest_ = false;
+  bool statusSignedIn_ = false;
+  bool statusConnected_ = false;
+  std::string statusLocationName_;
+  int64_t statusDownBps_ = 0;
+  int64_t statusUpBps_ = 0;
+  // the sample above owns the strip's values: the real relays keep running
+  // (there is no session, so they push emptiness) and must not overwrite it
+  bool statusSamplePinned_ = false;
+  // last state ApplyBreakpoint drove, so a resize that does not cross the
+  // breakpoint costs nothing (SizeChanged fires on every pixel of a drag)
+  bool wideLayout_ = false;
+  bool breakpointApplied_ = false;
 };
 
 }  // namespace winrt::URnetwork::implementation

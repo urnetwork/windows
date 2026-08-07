@@ -6,6 +6,7 @@
 #include "MainWindow.g.cpp"
 #endif
 
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Windows.Foundation.h>
 
 #include "AppController.h"
@@ -20,6 +21,41 @@ using namespace winrt::Microsoft::UI::Xaml::Controls;
 using namespace urnw::pages;
 
 namespace winrt::URnetwork::implementation {
+namespace {
+
+// Where one pane sits: which cell of its page's pane grid, how many rows it may
+// span, and what gap it keeps. Every destination's wide reading is two of these
+// - one for the flyout, one for the desktop - and nothing else.
+struct PanePlacement {
+  int row = 0;
+  int column = 0;
+  int rowSpan = 1;
+  Thickness margin{};
+};
+
+void Place(FrameworkElement const& pane, PanePlacement const& at) {
+  if (!pane) return;
+  Grid::SetRow(pane, at.row);
+  Grid::SetColumn(pane, at.column);
+  Grid::SetRowSpan(pane, at.rowSpan);
+  pane.Margin(at.margin);
+}
+
+// A column's width, as a fixed number of DIPs. Zero collapses it, which is how
+// a side column stops existing at flyout widths.
+void SetWidth(Controls::ColumnDefinition const& column, double dips) {
+  if (column) column.Width(GridLengthHelper::FromPixels(dips));
+}
+
+// A column's width as a share of what is left, for the two destinations whose
+// split is a PROPORTION rather than a rail: a table and the panels beside it
+// should both grow when the window does, and a fixed side column would leave
+// all of the extra to one of them.
+void SetStar(Controls::ColumnDefinition const& column, double weight) {
+  if (column) column.Width(GridLengthHelper::FromValueAndType(weight, GridUnitType::Star));
+}
+
+}  // namespace
 
 MainWindow::MainWindow() {
   InitializeComponent();
@@ -43,7 +79,19 @@ MainWindow::MainWindow() {
   // so everything it may paint over must already exist.
   developer_ = std::make_unique<urnw::DeveloperPage>(*this);
 
+  // The responsive switch. SizeChanged on the window's own content root fires
+  // on the first layout pass, so this also seeds the initial state; the handler
+  // is cheap on the resizes that do not cross the breakpoint.
+  if (auto root = Content().try_as<FrameworkElement>()) {
+    root.SizeChanged([weak = get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) self->ApplyBreakpoint();
+    });
+  }
+
   ApplyStrings();
+  // Before connect_->Initialize(): ConnectPage::ApplyConnectStatus pushes the
+  // connection half of the strip, and it must have somewhere to push it to.
+  BuildStatusStrip();
   connect_->Initialize();  // charts, SDK feeds, card affordances, drawer clock
 
   // plan + usage cards (account panel and connect drawer)
@@ -165,16 +213,344 @@ void MainWindow::ApplyStrings() {
   developer_->ApplyStrings();
 }
 
+// ---- the one responsive switch (D4) ----------------------------------------
+//
+// Every destination declares the SAME two states in markup - Narrow (what the
+// markup plainly says) and Wide (the horizontal composition) - and this is the
+// only thing in the app that switches between them. One handler, one number,
+// seven groups: a per-page SizeChanged would be seven places for the app to
+// stop agreeing with itself about what "wide" means.
+//
+// It is code, and VisualStateManager was tried first and does not work in this
+// shell. Both halves were measured, not read in a doc:
+//
+//   * AdaptiveTrigger never fires. It listens for size changes on
+//     Window.Current, which is null in a WinUI 3 desktop app. A trigger with
+//     MinWindowWidth="1" and one Margin setter changed nothing at 1400px.
+//   * With a plain boolean StateTrigger flipped from here, the trigger DID go
+//     active (the log line below proved it) and the Setters still did not
+//     apply: VisualStateGroups attached to a plain layout Grid are never
+//     processed, because nothing bootstraps them. GoToState is no help - it
+//     takes a Control and reads the groups off that control's TEMPLATE root -
+//     and WinUI 3 has no GoToElementState. Wrapping each destination in a
+//     templated ContentControl would work and would also move every x:Name in
+//     this file into a template namescope, i.e. delete every accessor the
+//     seven page units are written against.
+//
+// So the markup keeps the SHAPE (named columns, named panes, the narrow
+// reading as the plain reading) and this one function carries the differences.
+// One function rather than seven page-level SizeChanged handlers is the point:
+// there is exactly one place where the app decides what "wide" means.
+
+void MainWindow::ApplyBreakpoint() {
+  auto root = Content().try_as<FrameworkElement>();
+  if (!root) return;
+  // ActualWidth is in DIPs, which is what the breakpoint is stated in: on this
+  // machine's 125% display a "1400px" window is 1120dip, and a breakpoint
+  // compared against physical pixels would fire in the wrong place on every
+  // machine with a different scale.
+  const double width = root.ActualWidth();
+  if (width <= 0) return;
+  const bool wide = urnw::kit::kWideBreakpointDip <= width;
+  if (breakpointApplied_ && wide == wideLayout_) return;
+  breakpointApplied_ = true;
+  wideLayout_ = wide;
+
+  // ---- Connect: Proton's shape ---------------------------------------------
+  // The hero keeps the main canvas; Provide, Connect options and the plan card
+  // become a rail BESIDE it rather than a stack under it. 1440 rather than "as
+  // wide as the window": a 2560px hero is not composed, it is stretched.
+  ConnectCapColumn().MaxWidth(wide ? 1440 : 600);
+  SetWidth(ConnectRailColumn(), wide ? 360 : 0);
+  Place(ConnectRail(), wide
+            // Beside the hero, in the hero's OWN row and spanning nothing.
+            // RowSpan=3 was tried and is wrong: WinUI spreads a spanning
+            // element's desired height across every Auto row it covers, so a
+            // rail taller than the hero inflated the two rows under it and
+            // opened ~120px of blank between the hero card and the charts.
+            // In one row the columns simply run ragged, which is what a
+            // two-column page does.
+            ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
+            // directly under the hero card, which is where the flyout has
+            // always had it
+            : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});
+
+  // ---- Wallet: Portmaster's master-detail ----------------------------------
+  // The figures across the top; the sources of the money on the left (wallets,
+  // points, multipliers, reliability); the ledger on the right. The split is a
+  // proportion rather than a rail because BOTH sides want the extra: a payouts
+  // table with four columns and a row of wallet cards both read better wider.
+  WalletCapColumn().MaxWidth(wide ? 1720 : 820);
+  if (wide) {
+    SetStar(WalletSideColumn(), 0.85);
+  } else {
+    SetWidth(WalletSideColumn(), 0);
+  }
+  Place(WalletSideStack(), wide ? PanePlacement{1, 1, 1, Thickness{20, 4, 0, 24}}
+                                : PanePlacement{2, 0, 1, Thickness{0, 4, 0, 24}});
+  // The three header figures: a row at desktop widths, a column at flyout
+  // width. Three tiles across 560dip read "Unpaid data provid..." and
+  // "1234.50..." - a KPI that cannot be read is not a KPI.
+  SetStar(WalletStatsColumn2(), wide ? 1 : 0);
+  SetStar(WalletStatsColumn3(), wide ? 1 : 0);
+  Place(WalletPendingTile(),
+        wide ? PanePlacement{0, 1, 1, Thickness{12, 0, 0, 0}}
+             : PanePlacement{1, 0, 1, Thickness{0, 8, 0, 0}});
+  Place(WalletReferralsTile(),
+        wide ? PanePlacement{0, 2, 1, Thickness{12, 0, 0, 0}}
+             : PanePlacement{2, 0, 1, Thickness{0, 8, 0, 0}});
+
+  // ---- Account: the plan beside the identity -------------------------------
+  // The usage bar is the widest thing on this destination and the only one that
+  // reads better for it, so the plan card keeps the main column; redeemed
+  // codes, the profile form and referrals go beside it instead of a screenful
+  // below it. 1180 rather than Wallet's 1720: there is no table here, and two
+  // ~580dip card columns is as wide as a column of form rows should ever get.
+  AccountCapColumn().MaxWidth(wide ? 1180 : 560);
+  if (wide) {
+    SetStar(AccountSideColumn(), 1);
+  } else {
+    SetWidth(AccountSideColumn(), 0);
+  }
+  Place(AccountSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
+                                 : PanePlacement{1, 0, 1, Thickness{0, 0, 0, 24}});
+
+  // ---- Leaderboard: the table, with your own rank beside it ----------------
+  // The plainest cut in the app. BOTH panes move here, because the reading
+  // order inverts: at flyout width the one thing you came for is your own
+  // number, so the rank card is first; at desktop widths the table is the page
+  // and the rank card is the note beside it.
+  // 1360, not Wallet's 1720: these rows carry three fields, and past about a
+  // thousand dips the gap between a network's name and its figure stops being
+  // a table and starts being two lists.
+  LeaderboardCapColumn().MaxWidth(wide ? 1360 : 820);
+  if (wide) {
+    SetWidth(LeaderboardSideColumn(), 360);
+  } else {
+    SetWidth(LeaderboardSideColumn(), 0);
+  }
+  Place(LeaderboardMainStack(), wide ? PanePlacement{0, 0, 1, Thickness{0, 0, 0, 24}}
+                                     : PanePlacement{1, 0, 1, Thickness{0, 12, 0, 24}});
+  Place(LeaderboardSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
+                                     : PanePlacement{0, 0, 1, Thickness{}});
+
+  // ---- Settings: two card columns ------------------------------------------
+  // A wall of cards and nothing else, so the wide reading is simply two
+  // columns of them. Same 1180 cap as Account, and for the same reason: a
+  // settings row is a label and a control, and past ~580dip they stop looking
+  // like they belong to each other. The destructive end stays full width under
+  // both columns - see the markup.
+  SettingsCapColumn().MaxWidth(wide ? 1180 : 560);
+  if (wide) {
+    SetStar(SettingsSideColumn(), 1);
+  } else {
+    SetWidth(SettingsSideColumn(), 0);
+  }
+  Place(SettingsSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 0}}
+                                  : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});
+
+  // ---- Support: the form, and the way to reach a human beside it -----------
+  // 1080 and an even split. This destination has one form and no data, so the
+  // cap is the narrowest of the wide readings: a feedback box 540dip across is
+  // already generous, and stretching it further would be the "one column in a
+  // 2000px window" complaint in a different shape.
+  SupportCapColumn().MaxWidth(wide ? 1080 : 560);
+  if (wide) {
+    SetStar(SupportSideColumn(), 1);
+  } else {
+    SetWidth(SupportSideColumn(), 0);
+  }
+  Place(SupportSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
+                                 : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 24}});
+
+  // ---- Developer: the tables full width, the rest in two columns -----------
+  // Portmaster's reading. Exits carries seven columns and Destinations three,
+  // and both were living inside a 1000dip left-aligned column; they now take
+  // the whole composition. What the session HAS MEASURED and what it has been
+  // TOLD TO DO go side by side under them, which is the pairing you actually
+  // read them in - change a threshold on the right, watch a count on the left.
+  DeveloperCapColumn().MaxWidth(wide ? 1800 : 1000);
+  if (wide) {
+    SetStar(DeveloperSideColumn(), 1);
+  } else {
+    SetWidth(DeveloperSideColumn(), 0);
+  }
+  Place(DeveloperSideStack(), wide ? PanePlacement{2, 1, 1, Thickness{20, 16, 0, 24}}
+                                   : PanePlacement{3, 0, 1, Thickness{0, 16, 0, 24}});
+
+  // ---- the status strip ----------------------------------------------------
+  // Captions off below the breakpoint. The app's minimum window is 400dip
+  // (WindowShell kMinWidthDips) and four captioned fields want ~600, so at the
+  // flyout sizes the right-hand fields were simply running off the edge -
+  // silently, which is the one thing a status line must not do. Without the
+  // captions the same four fields fit from ~520dip, and they are still the
+  // values' accessible names, so a screen reader loses nothing. Advanced Mode's
+  // extra fields inherit this for free.
+  for (auto const* field : {&statusNetwork_, &statusProvider_, &statusTraffic_}) {
+    if (field->caption) {
+      field->caption.Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+    }
+  }
+
+  urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
+}
+
+// ---- the persistent status strip (D4) --------------------------------------
+//
+// ProtonVPN pins an IP / country / provider line to the bottom of the window on
+// every destination. This app had no equivalent: the connection state existed
+// only on Connect, so on five of the seven destinations there was no way at all
+// to tell whether traffic was flowing without navigating away from what you
+// were doing.
+//
+// Three facts, in the order Proton reads them: WHAT the client is doing (a
+// state-coloured dot and the same wording the connect screen uses), WHOSE
+// network it is doing it on, and THROUGH WHOM. The traffic field closes it,
+// because "connected" and "carrying packets" are different claims and this
+// client can be the first without being the second (an rpc-only session is
+// exactly that, and LiveStats clamps its counters to say so).
+//
+// Built rather than declared: the product tiering decision (spec 511c26c) makes
+// this the flagship Advanced Mode surface, and four more fields must cost four
+// more calls to MakeStatusField.
+
+void MainWindow::BuildStatusStrip() {
+  auto fields = StatusStripFields();
+  fields.Children().Clear();
+  statusSessionParts_.clear();
+
+  // The strip as a whole is a landmark: one accessible name over the row, so a
+  // screen reader announces "URnetwork Status" and then the fields, instead of
+  // four unrelated values at the end of every page.
+  Automation::AutomationProperties::SetName(StatusStrip(), Loc("urnetwork_status"));
+
+  // Field 1 carries NO caption. The dot and the word beside it already say what
+  // they are, and "URnetwork Status: Connected" in a 12sp strip is the caption
+  // spending more room than the fact. Its accessible name supplies what the
+  // caption would have.
+  statusState_ = urnw::kit::MakeStatusField(hstring{}, /*withDot=*/true,
+                                            Loc("urnetwork_status"));
+  fields.Children().Append(statusState_.root);
+
+  auto section = [&](urnw::kit::StatusField& field, std::string_view labelKey) {
+    auto rule = urnw::kit::MakeStatusSeparator();
+    fields.Children().Append(rule);
+    field = urnw::kit::MakeStatusField(Loc(labelKey));
+    fields.Children().Append(field.root);
+    statusSessionParts_.push_back(rule);
+    statusSessionParts_.push_back(field.root);
+  };
+  section(statusNetwork_, "network");
+  section(statusProvider_, "selected_provider");
+  section(statusTraffic_, "data");
+
+  ApplyStatusStrip();
+}
+
+void MainWindow::RenderStatusState(hstring const& text,
+                                   winrt::Windows::UI::Color dot) {
+  if (!statusState_.value) return;
+  urnw::kit::SetStatusFieldValue(statusState_, text);
+  // The state field is the one line on the strip that is never muted: it is the
+  // fact the other three qualify.
+  statusState_.value.Foreground(urnw::colors::TextBrush());
+  if (statusState_.dot) statusState_.dot.Fill(urnw::colors::MakeBrush(dot));
+}
+
+void MainWindow::ApplyStatusStripConnection(hstring const& text,
+                                            winrt::Windows::UI::Color dot) {
+  if (statusSamplePinned_) return;
+  // With no session the connect page still has a status line, and its idle
+  // wording is "Ready to connect" - which on the strip would be a standing
+  // claim that the client is one press away from carrying traffic when it has
+  // no account at all. Measured on a signed-out preview run: the strip read
+  // "Ready to connect" under a Wallet page with nothing on it. The signed-out
+  // reading belongs to ApplyStatusStrip and wins here.
+  if (!statusSignedIn_) return;
+  RenderStatusState(text, dot);
+}
+
+void MainWindow::ApplyStatusStrip() {
+  if (!statusNetwork_.value) return;  // not built yet
+
+  // The strip belongs to the signed-in shell. On the sign-in flow it would be a
+  // status line about a session that does not exist, under a screen whose whole
+  // subject is creating one.
+  const bool home = HomeNav().Visibility() == Visibility::Visible;
+  StatusStrip().Visibility(home ? Visibility::Visible : Visibility::Collapsed);
+  if (!home) return;
+
+  // No session (a signed-out shell, which is what --preview-ui shows): say so
+  // once and hide the three fields that would be captions over blanks. The
+  // store has no "Not signed in" string, so this uses the instruction it does
+  // have; see the D4 report.
+  if (!statusSignedIn_) {
+    RenderStatusState(Loc("sign_in"), urnw::colors::kTextFaint);
+    for (auto const& part : statusSessionParts_) part.Visibility(Visibility::Collapsed);
+    return;
+  }
+  for (auto const& part : statusSessionParts_) part.Visibility(Visibility::Visible);
+
+  urnw::kit::SetStatusFieldValue(statusNetwork_,
+                                 statusGuest_ || statusNetworkName_.empty()
+                                     ? Loc("guest")
+                                     : H(statusNetworkName_));
+  urnw::kit::SetStatusFieldValue(statusProvider_,
+                                 statusLocationName_.empty()
+                                     ? Loc("best_available_provider")
+                                     : H(statusLocationName_));
+  // "Connected" and "carrying traffic" are different claims. An rpc-only
+  // session reports the first and none of the second, and LiveStats has already
+  // clamped its counters to zero for exactly that reason - so this reads the
+  // clamped values and says what they mean rather than printing two zeroes.
+  urnw::kit::SetStatusFieldValue(
+      statusTraffic_,
+      statusConnected_ ? H("↓ " + urnw::FormatBitRate(statusDownBps_) + "   ↑ " +
+                           urnw::FormatBitRate(statusUpBps_))
+                       : Loc("site_app_no_traffic"));
+}
+
+// Two gates, as WalletPage's sample rows have: --preview-ui says there is no
+// session, and URNETWORK_PREVIEW_SAMPLE says the operator asked for synthetic
+// content. Without this the strip could only ever be screenshotted in its
+// signed-out state, which is the one state that does not exercise its layout.
+void MainWindow::PreviewSampleStatusStrip() {
+  if (!previewUi_) return;
+  size_t len = 0;
+  char value[16]{};
+  if (getenv_s(&len, value, sizeof(value), "URNETWORK_PREVIEW_SAMPLE") != 0 || len == 0) {
+    return;
+  }
+  if (std::string_view(value) != "1") return;
+  urnw::LogWarn(
+      "preview-sample: rendering a SYNTHETIC status strip - no session, no api, "
+      "none of these values came from the network");
+  statusSignedIn_ = true;
+  statusNetworkName_ = "sample-network";
+  statusGuest_ = false;
+  statusConnected_ = true;
+  statusLocationName_ = "Frankfurt, Germany";
+  statusDownBps_ = 24'600'000;
+  statusUpBps_ = 3'100'000;
+  ApplyStatusStrip();
+  RenderStatusState(Loc("connected"), urnw::colors::kUrGreen);
+  // Pinned LAST: the two calls above are the ones that must land, and every
+  // real push after this point is a push from a session that does not exist.
+  statusSamplePinned_ = true;
+}
+
 // ---- login / home roots ----------------------------------------------------
 
 void MainWindow::ShowLoginRoot() {
   HomeNav().Visibility(Visibility::Collapsed);
   LoginRoot().Visibility(Visibility::Visible);
+  ApplyStatusStrip();
 }
 
 void MainWindow::ShowHomeRoot() {
   LoginRoot().Visibility(Visibility::Collapsed);
   HomeNav().Visibility(Visibility::Visible);
+  ApplyStatusStrip();
 }
 
 // --preview-ui. This does not authenticate: no token is read or written and no
@@ -193,6 +569,10 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   urnw::LogInfo("preview-ui: showing the signed-in shell at '{}' with no session",
                 destination);
   ShowHomeRoot();
+  // The strip's signed-out reading is the one a preview run would otherwise be
+  // stuck in, and it is the one that does not exercise its layout. This is
+  // gated a second time, on URNETWORK_PREVIEW_SAMPLE.
+  PreviewSampleStatusStrip();
 
   // "seedphrase" is a modal, not a destination: show the connect drawer behind
   // it and raise the sheet. It is the only surface in the app that cannot be
@@ -499,6 +879,21 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
     }
   }
   connect_->SetNetworkIdentity(networkName, guestMode);  // re-renders the status
+  // ...and the same identity onto the status strip, which states it on every
+  // destination rather than only on Connect.
+  if (!statusSamplePinned_) {
+    statusSignedIn_ = loggedIn;
+    statusNetworkName_ = networkName;
+    statusGuest_ = guestMode;
+    if (!loggedIn) {
+      // a signed-out shell describes no provider and carries no traffic; leave
+      // nothing of the previous session's session behind it
+      statusLocationName_.clear();
+      statusConnected_ = false;
+      statusDownBps_ = statusUpBps_ = 0;
+    }
+    ApplyStatusStrip();
+  }
   // The title-bar avatar + its menu (iOS AccountMenu): same jwt, one more
   // reader. `showHome`, NOT `loggedIn` — EnterPreviewUi used to reveal the
   // avatar itself and the very next auth push hid it again, so the one surface
@@ -539,6 +934,19 @@ void MainWindow::OnTunnelStateChanged(urnw::proto::TunnelStatus const& status) {
 
 void MainWindow::OnStatsChanged(urnw::LiveStats const& stats) {
   connect_->ApplyStats(stats);
+  // The status strip's three page-independent facts. The connection half is
+  // pushed by ConnectPage out of the SAME ApplyConnectStatus that draws the
+  // hero, so the strip and the connect screen cannot disagree about the state.
+  //
+  // `connected` here is the CLAMPED field: in an rpc-only session it is false
+  // and the counters are zero, and the strip says "No traffic yet" rather than
+  // printing two honest-looking zero rates under the word Connected.
+  if (statusSamplePinned_) return;
+  statusConnected_ = stats.connected;
+  statusLocationName_ = stats.locationName;
+  statusDownBps_ = stats.downBitsPerSecond;
+  statusUpBps_ = stats.upBitsPerSecond;
+  ApplyStatusStrip();
 }
 
 // ---- XAML event handlers ---------------------------------------------------

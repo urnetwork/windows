@@ -22,6 +22,12 @@
                  rather than inserted so no existing element's Grid.Row moves:
                  four phases share this file. -->
             <RowDefinition Height="Auto" />
+            <!-- Row 3: the persistent status strip (D4). Appended for the same
+                 reason, and it is the LAST row on purpose - Proton pins theirs
+                 to the bottom edge of the window, under everything including
+                 the standing mode notice, because it is the least urgent and
+                 the most permanent thing on screen. -->
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- The title bar. ExtendsContentIntoTitleBar puts the window's content
@@ -640,14 +646,66 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- ==== THE WIDE COMPOSITION (D4) =========================
+                       This is the reference instance of the shape every
+                       destination now uses; read this one and you have read all
+                       seven. Two nested grids and a two-state group:
+
+                         OUTER   * | 1000* MaxWidth | *   the centring column
+                                 above. Its cap is what the Wide state RAISES:
+                                 the narrow layout is a 600px column, the wide
+                                 one is a 1440px composition.
+
+                         INNER   main * | side (0 at narrow)  and three Auto
+                                 rows. Every panel below is parked in the main
+                                 column, stacked, in the order the flyout wants
+                                 them. The Wide state moves ONE of them - the
+                                 rail - into the side column.
+
+                         STATES  Narrow is the default and carries no setters,
+                                 so the flyout layout is what the markup plainly
+                                 says. Wide is an AdaptiveTrigger on
+                                 UrWideBreakpoint (App.xaml, one number for the
+                                 whole app).
+
+                       Connect is Proton's shape: ONE canvas where the hero
+                       lives, the secondary controls in a rail BESIDE it rather
+                       than stacked under it, and the status that belongs to the
+                       whole window in the strip at the bottom.
+
+                       The rail spans all three rows at wide, top-aligned, so it
+                       is free to be taller than the hero without pushing the
+                       charts down the page. It carries Provide, Connect options
+                       and the plan card: the three things on this screen that
+                       are DECISIONS rather than status, which is exactly the
+                       cut Proton's NetShield / Kill switch / Split tunnelling
+                       rail makes.
+
+                       Row 1 is deliberately empty. It exists so the rail's
+                       row span has somewhere to give, and so an Advanced Mode
+                       region under the hero (a raw-status line, an event feed)
+                       has a row waiting for it that needs no re-layout. -->
+                  <Grid x:Name="ConnectLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="600" />
+                        <ColumnDefinition x:Name="ConnectCapColumn"
+                                          Width="1000*" MaxWidth="600" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" x:Name="DrawerStack" Spacing="16"
-                                HorizontalAlignment="Stretch" Margin="0,0,0,24">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="ConnectRailColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="DrawerStack" Spacing="16"
+                                HorizontalAlignment="Stretch">
 
                         <!-- Connection controls -->
                         <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}">
@@ -772,6 +830,16 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
+                    </StackPanel>
+
+                    <!-- THE RAIL. Narrow: row 1 of the main column, i.e.
+                         directly under the hero card, which is where the
+                         flyout has always had it. Wide: the side column,
+                         spanning every row, top-aligned. -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="ConnectRail" Spacing="16"
+                                VerticalAlignment="Top"
+                                Margin="0,16,0,0">
 
                         <!-- PROVIDE. Was buried in the middle of the hero card,
                              between the peers line and the connect options, with
@@ -909,6 +977,58 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Plan + usage (macOS ConnectActions.swift:169-204).
+                             In the rail with the other two: the plan is a
+                             decision (upgrade / redeem), not a reading of the
+                             live connection, and it is the one card on this
+                             screen that stays useful while disconnected. -->
+                        <Border x:Name="DrawerPlanCard" Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="8">
+                                <TextBlock x:Name="DrawerPlanLabel" Style="{StaticResource UrLabelStyle}" />
+                                <Grid>
+                                    <TextBlock x:Name="DrawerPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
+                                               FontWeight="SemiBold" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center">
+                                        <muxc:ProgressRing x:Name="DrawerPlanRing" Width="16" Height="16"
+                                                           IsActive="False" Visibility="Collapsed" />
+                                        <Button x:Name="DrawerGetProButton" Click="OnOpenUpgrade" />
+                                    </StackPanel>
+                                </Grid>
+                                <Grid x:Name="DrawerUsageBarHost" Height="32" />
+                                <StackPanel x:Name="DrawerUsageLegend" Orientation="Horizontal"
+                                            Spacing="16" />
+                                <Grid Margin="0,4,0,0">
+                                    <TextBlock x:Name="DrawerDailyLabel" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="DrawerDailyValue" FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </Grid>
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <Grid>
+                                    <TextBlock x:Name="DrawerReferralTotals" FontSize="12"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="DrawerReferralBonus" FontSize="12"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- THE STATUS COLUMN. Charts and the dns summary: what the
+                         connection is DOING, as opposed to what it has been
+                         told to do. Stays in the main column at every width,
+                         under the hero, where Portmaster puts its chart. At
+                         desktop widths these are ~900px wide rather than 600,
+                         which is the whole reason a transfer chart is worth
+                         drawing at all. -->
+                    <StackPanel Grid.Row="2" Grid.Column="0"
+                                x:Name="ConnectStatusStack" Spacing="16"
+                                Margin="0,16,0,24">
+
                         <!-- Card 1: client statistics (remote + blocked charts) -->
                         <Button x:Name="ClientStatsCard" Style="{StaticResource UrCardButtonStyle}"
                                 Click="OnClientStatsCardClick">
@@ -1043,43 +1163,9 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- Plan + usage (macOS ConnectActions.swift:169-204) -->
-                        <Border x:Name="DrawerPlanCard" Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="8">
-                                <TextBlock x:Name="DrawerPlanLabel" Style="{StaticResource UrLabelStyle}" />
-                                <Grid>
-                                    <TextBlock x:Name="DrawerPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
-                                               FontWeight="SemiBold" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                                HorizontalAlignment="Right"
-                                                VerticalAlignment="Center">
-                                        <muxc:ProgressRing x:Name="DrawerPlanRing" Width="16" Height="16"
-                                                           IsActive="False" Visibility="Collapsed" />
-                                        <Button x:Name="DrawerGetProButton" Click="OnOpenUpgrade" />
-                                    </StackPanel>
-                                </Grid>
-                                <Grid x:Name="DrawerUsageBarHost" Height="32" />
-                                <StackPanel x:Name="DrawerUsageLegend" Orientation="Horizontal"
-                                            Spacing="16" />
-                                <Grid Margin="0,4,0,0">
-                                    <TextBlock x:Name="DrawerDailyLabel" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="DrawerDailyValue" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                                <Border Height="1" Background="{StaticResource UrBorderBrush}" />
-                                <Grid>
-                                    <TextBlock x:Name="DrawerReferralTotals" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="DrawerReferralBonus" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-
                     </StackPanel>
+                    </Grid>
+
                   </Grid>
                 </ScrollViewer>
 
@@ -1101,13 +1187,29 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <Grid x:Name="AccountLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="560" />
+                        <ColumnDefinition x:Name="AccountCapColumn"
+                                          Width="1000*" MaxWidth="560" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="16" Margin="0,0,0,24">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="AccountSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <!-- WHAT THE PLAN IS. Its own column at desktop widths: the
+                         usage bar is the widest thing on this destination and
+                         the only one that reads better for it. -->
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="AccountMainStack" Spacing="16"
+                                VerticalAlignment="Top" Margin="0,0,0,24">
 
                         <!-- Plan + usage card -->
                         <Border Style="{StaticResource UrCardStyle}">
@@ -1159,6 +1261,14 @@
                                 </Button>
                             </StackPanel>
                         </Border>
+                    </StackPanel>
+
+                    <!-- WHO THE ACCOUNT IS. The identity half - redeemed codes,
+                         the profile form, referrals - beside the plan rather
+                         than a screenful below it. -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="AccountSideStack" Spacing="16"
+                                VerticalAlignment="Top" Margin="0,0,0,24">
 
                         <!-- Redeemed balance codes -->
                         <Border Style="{StaticResource UrCardStyle}">
@@ -1210,6 +1320,7 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 
@@ -1252,46 +1363,109 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- The same shape ConnectView carries; see the long note
+                       there. Wallet's cut is Portmaster's: the numbers across
+                       the top, then the SOURCES of money on the left (wallets,
+                       points, multipliers, reliability) and the LEDGER on the
+                       right. A table earns width, and the payouts table was the
+                       thing squeezed into 820dip in the owner's screenshot. -->
+                  <Grid x:Name="WalletLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="820" />
+                        <ColumnDefinition x:Name="WalletCapColumn"
+                                          Width="1000*" MaxWidth="820" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="12">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="WalletSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <!-- The header, across the whole composition at every
+                         width: the plan action, the destination's snackbar and
+                         the three figures the rest of the page explains. -->
+                    <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                x:Name="WalletTopStack" Spacing="12">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xEB05;" Style="{StaticResource UrRowIconStyle}" />
                             <TextBlock x:Name="PlanHeading" Style="{StaticResource UrPanelHeadingStyle}" />
                         </StackPanel>
-                        <Button x:Name="UpgradeButton"
+                        <!-- the upgrade action does not need the full width of a
+                             desktop window; capped so it reads as a button
+                             rather than as a banner -->
+                        <Button x:Name="UpgradeButton" MaxWidth="420"
+                                HorizontalAlignment="Left"
                                 Style="{StaticResource AccentButtonStyle}" Click="OnOpenUpgrade" />
                         <muxc:InfoBar x:Name="WalletInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
 
                         <!-- Header stats (iOS WalletsHeader): unpaid data provided,
                              the pending USDC balance the payout threshold is measured
-                             against, and total referrals. -->
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <Grid ColumnSpacing="24">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
+                             against, and total referrals.
+
+                             THREE TILES, not three columns of one card. The
+                             single card was right at 600dip and wrong at 1700:
+                             three captions and three numbers spread across a
+                             seventeen-hundred-pixel slab, with two thirds of it
+                             empty. UrStatTileStyle is exactly this shape and D1
+                             built it for exactly this. -->
+                        <!-- A row at desktop widths, a column at flyout width.
+                             Three tiles across 560dip left "Unpaid data
+                             provid..." and "1234.50..." on screen - a KPI that
+                             cannot be read is not a KPI - and the responsive
+                             rule for this app is a single column down there
+                             anyway. Same Place() helper the panes use. -->
+                        <!-- Gaps come from the tiles' own margins, NOT from
+                             ColumnSpacing/RowSpacing: a Grid spends its spacing
+                             between every pair of definitions whether or not
+                             they have any width, so a collapsed column still
+                             costs its gap and the visible tiles shrink by it. -->
+                        <Grid x:Name="WalletStatsGrid">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="WalletStatsColumn2" Width="0" />
+                                <ColumnDefinition x:Name="WalletStatsColumn3" Width="0" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource UrStatTileStyle}">
+                                <StackPanel>
                                     <TextBlock x:Name="WalletUnpaidLabel" Style="{StaticResource UrStatLabelStyle}" />
                                     <TextBlock x:Name="WalletUnpaidValue" Style="{StaticResource UrStatValueStyle}" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="1">
+                            </Border>
+                            <Border x:Name="WalletPendingTile" Grid.Row="1" Grid.Column="0"
+                                    Style="{StaticResource UrStatTileStyle}">
+                                <StackPanel>
                                     <TextBlock x:Name="WalletPendingLabel" Style="{StaticResource UrStatLabelStyle}" />
                                     <TextBlock x:Name="WalletPendingValue" Style="{StaticResource UrStatValueStyle}" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="2">
+                            </Border>
+                            <Border x:Name="WalletReferralsTile" Grid.Row="2" Grid.Column="0"
+                                    Style="{StaticResource UrStatTileStyle}">
+                                <StackPanel>
                                     <TextBlock x:Name="WalletReferralsLabel" Style="{StaticResource UrStatLabelStyle}" />
                                     <TextBlock x:Name="WalletReferralsValue" Style="{StaticResource UrStatValueStyle}" />
                                 </StackPanel>
-                            </Grid>
-                        </Border>
+                            </Border>
+                        </Grid>
                         <TextBlock x:Name="PayoutsThresholdText" Style="{StaticResource UrSupportingTextStyle}" />
+                    </StackPanel>
+
+                    <!-- WHERE THE MONEY COMES FROM: the wallets it is paid to,
+                         the form that adds one, and the three surfaces that
+                         explain the amount (points, multipliers, reliability). -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="WalletMainStack" Spacing="12"
+                                VerticalAlignment="Top" Margin="0,4,0,0">
 
                         <!-- Wallets: one card per account wallet, scrolling
                              horizontally (iOS PopulatedWalletsView). WalletsStatusText
@@ -1393,7 +1567,21 @@
                                 Visibility="Collapsed">
                             <StackPanel x:Name="ReliabilityPanel" Spacing="8" />
                         </Border>
+                    </StackPanel>
 
+                    <!-- THE LEDGER. Its own column at desktop widths, because a
+                         table is the one thing on this destination that gets
+                         better with width and it was the thing squeezed
+                         hardest: four columns - date, amount, wallet,
+                         transaction - inside an 820dip page that also had to
+                         hold the wallet cards. Portmaster gives its detail pane
+                         the same treatment.
+                         Advanced Mode will add id / raw columns here; the
+                         column strategy in WalletPage is stars with minimums,
+                         so they fit by narrowing rather than by clipping. -->
+                    <StackPanel Grid.Row="2" Grid.Column="0"
+                                x:Name="WalletSideStack" Spacing="12"
+                                VerticalAlignment="Top" Margin="0,4,0,0">
                         <!-- Payouts ledger: a real desktop table, one row per
                              payment, each row opening the payout detail sheet. -->
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
@@ -1403,6 +1591,7 @@
                         <TextBlock x:Name="PayoutsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
                         <StackPanel x:Name="PayoutsPanel" Spacing="0" />
                     </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 
@@ -1426,13 +1615,33 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- The same shape ConnectView carries. The leaderboard's
+                       cut is the plainest in the app: a TABLE, which wants the
+                       width, and one card describing where you are in it, which
+                       does not. Portmaster would call it list-and-detail. -->
+                  <Grid x:Name="LeaderboardLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="820" />
+                        <ColumnDefinition x:Name="LeaderboardCapColumn"
+                                          Width="1000*" MaxWidth="820" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="8">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="LeaderboardSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <!-- OWN RANK. First in the flyout, because at 560dip the
+                         one thing you came for is your own number; beside the
+                         table at desktop widths, where the table comes first. -->
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="LeaderboardSideStack" Spacing="8"
+                                VerticalAlignment="Top">
                         <!-- No section heading here: NavigationView's Header already
                              shows the destination name ("Leaderboard"), and a panel
                              heading with the same word under it read as a stutter.
@@ -1487,6 +1696,15 @@
 
                         <TextBlock x:Name="LeaderboardDescription"
                                    Style="{StaticResource UrSupportingTextStyle}" />
+                    </StackPanel>
+
+                    <!-- THE TABLE. Full width of the main column at every size;
+                         at desktop widths that is ~1000dip of rows instead of
+                         820 shared with the rank card. Advanced Mode will add
+                         network-id columns here. -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="LeaderboardMainStack" Spacing="8"
+                                VerticalAlignment="Top" Margin="0,12,0,24">
                         <!-- Loading / empty / failed. Without it the panel drew one
                              heading and nothing else whether the fetch was in
                              flight, had returned nothing, or had failed - three
@@ -1506,6 +1724,7 @@
                         <muxc:InfoBar x:Name="LeaderboardInfo" Style="{StaticResource UrSnackbarStyle}"
                                       IsOpen="False" Margin="0,12,0,0" />
                     </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 
@@ -1532,13 +1751,34 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- The same shape ConnectView carries. Support has ONE
+                       form and no data, so at desktop widths the right half was
+                       simply black - measured at 8% non-background pixels
+                       maximized, the emptiest surface in the app. It now
+                       carries the OTHER half of what this destination is for:
+                       the form sends feedback to us, and the card beside it is
+                       how you reach a human. Both strings already ship and were
+                       used nowhere. -->
+                  <Grid x:Name="SupportLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="560" />
+                        <ColumnDefinition x:Name="SupportCapColumn"
+                                          Width="1000*" MaxWidth="560" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="12">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="SupportSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="SupportMainStack" Spacing="12"
+                                VerticalAlignment="Top">
                         <!-- section header: glyph + name, the pattern every
                              destination now uses above its first card -->
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -1581,6 +1821,35 @@
                         </Border>
                         <muxc:InfoBar x:Name="SupportInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
                     </StackPanel>
+
+                    <!-- REACHING A HUMAN. The feedback form is one-way; this is
+                         the other way, and support@ur.io and the Discord invite
+                         were already in the store
+                         (if_the_problem_persists_contact_us_at_support_ur) with
+                         no call site anywhere in the client. Rendered with its
+                         links inline by urnw::SetMarkdownLinkText, so the whole
+                         shipped sentence survives and both links are real
+                         Hyperlinks in the tab order. -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="SupportSideStack" Spacing="12"
+                                VerticalAlignment="Top" Margin="0,16,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE939;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="SupportContactHeading"
+                                       Style="{StaticResource UrPanelHeadingStyle}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="SupportContactText" TextWrapping="Wrap" />
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <HyperlinkButton x:Name="SupportProtocolLink"
+                                                 NavigateUri="https://ur.xyz"
+                                                 FontSize="12" Padding="0"
+                                                 HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 
@@ -1601,18 +1870,53 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- The same shape ConnectView carries. Settings is a wall
+                       of cards and nothing else, so its wide reading is simply
+                       TWO columns of them - with the destructive end (sign out,
+                       delete account) kept full width UNDER both, because
+                       "irreversible" belongs at the bottom of the page at every
+                       size, not halfway down one of two columns. -->
+                  <Grid x:Name="SettingsLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="560" />
+                        <ColumnDefinition x:Name="SettingsCapColumn"
+                                          Width="1000*" MaxWidth="560" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="16" Margin="0,0,0,24">
-                        <!-- Every section above the split rules is built in code
-                             (SettingsPage::BuildSections): connection, device,
-                             account, blocked locations, identity, preferences,
-                             logs, links. -->
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="SettingsSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <!-- Every section here is built in code
+                         (SettingsPage::BuildSections), into TWO hosts: this one
+                         and SettingsSectionsRight below. The split is by
+                         subject - what the account is and what this device is
+                         on the left, how it connects and who it talks to on the
+                         right - so that at flyout width, where the two hosts
+                         stack, the reading order is still by subject. -->
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="SettingsMainStack" Spacing="16"
+                                VerticalAlignment="Top">
                         <StackPanel x:Name="SettingsSections" Spacing="16" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="SettingsSideStack" Spacing="16"
+                                VerticalAlignment="Top" Margin="0,16,0,0">
+                        <StackPanel x:Name="SettingsSectionsRight" Spacing="16" />
+                    </StackPanel>
+
+                    <!-- Full width under both columns at every size. -->
+                    <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                x:Name="SettingsBottomStack" Spacing="16"
+                                Margin="0,16,0,24">
 
                         <!-- split tunnel: header glyph + a card, so it stops
                              being three loose controls after eight carded
@@ -1645,15 +1949,61 @@
                         <HyperlinkButton x:Name="ProtocolLink" NavigateUri="https://ur.xyz"
                                          FontSize="12" Padding="0" Margin="0,8,0,0" />
                     </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 
-                <!-- Developer / reliability (P2). Empty on purpose: the ~40
-                     controls are built by urnw::DeveloperPage in code, which
-                     keeps this shared file to one host element. -->
+                <!-- Developer / reliability (P2). The ~40 controls are still
+                     built by urnw::DeveloperPage in code; what lives here is
+                     only the SHAPE, because D4 made that shape the same on all
+                     seven destinations and it belongs where the other six are.
+                     The page appends its cards into the four named hosts.
+
+                     Portmaster's reading: the wide tables at the top, then
+                     key-value material in columns under them. Exits has seven
+                     columns and Destinations three; both take the full width of
+                     the composition at every size, and both will grow id / raw
+                     columns under Advanced Mode. -->
                 <ScrollViewer x:Name="DeveloperView" Visibility="Collapsed"
                               HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto" />
+                              VerticalScrollBarVisibility="Auto">
+                  <Grid x:Name="DeveloperLayout">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="DeveloperCapColumn"
+                                          Width="1000*" MaxWidth="1000" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="DeveloperSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+                      <!-- what these tools are, and the two actions that need
+                           no session -->
+                      <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                  x:Name="DeveloperTopStack" Spacing="16" />
+                      <!-- the two tables, full width -->
+                      <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                  x:Name="DeveloperTablesStack" Spacing="16"
+                                  Margin="0,16,0,0" />
+                      <!-- what the session has measured -->
+                      <StackPanel Grid.Row="2" Grid.Column="0"
+                                  x:Name="DeveloperMainStack" Spacing="16"
+                                  VerticalAlignment="Top" Margin="0,16,0,24" />
+                      <!-- the five override sections -->
+                      <StackPanel Grid.Row="3" Grid.Column="0"
+                                  x:Name="DeveloperSideStack" Spacing="16"
+                                  VerticalAlignment="Top" Margin="0,16,0,24" />
+                    </Grid>
+                  </Grid>
+                </ScrollViewer>
             </Grid>
         </muxc:NavigationView>
 
@@ -1675,5 +2025,34 @@
                       Style="{StaticResource UrSnackbarStyle}"
                       VerticalAlignment="Bottom" HorizontalAlignment="Center"
                       Margin="24" MaxWidth="480" IsOpen="False" />
+
+        <!-- THE STATUS STRIP (D4). ProtonVPN's bottom line - IP / country /
+             provider - is the one piece of their chrome that is neither
+             navigation nor hero: a quiet, always-true statement of what the
+             client is doing, which does not go away when the user wanders off
+             to Wallet. This app had no such thing; the connection state existed
+             only on Connect, so five of the seven destinations gave no way at
+             all to tell whether traffic was flowing.
+             It is WINDOW level, like ModeNoticeBar above it, because that is
+             what "regardless of destination" means.
+
+             The fields are built in code (MainWindow::BuildStatusStrip) from
+             kit::MakeStatusField rather than spelled out here, because the
+             product tiering decision makes this the flagship Advanced Mode
+             surface: Normal is the three fields below, Advanced adds egress
+             interface, rpc port, session mode and the raw pre-clamp connection
+             status to the SAME row. A horizontal panel of uniform fields takes
+             four more; a hand-built Grid of fixed columns would not.
+
+             HorizontalScrollMode is Disabled and every value trims rather than
+             wraps: a status strip that becomes two rows tall, or that scrolls,
+             has stopped being chrome. -->
+        <!-- Border is not a Control, so it carries no FontFamily to inherit
+             from: the two field styles name the body face themselves. -->
+        <Border x:Name="StatusStrip" Grid.Row="3" Visibility="Collapsed"
+                Style="{StaticResource UrStatusStripStyle}">
+            <StackPanel x:Name="StatusStripFields" Orientation="Horizontal"
+                        Spacing="0" VerticalAlignment="Center" />
+        </Border>
     </Grid>
 </Window>
