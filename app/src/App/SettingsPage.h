@@ -31,6 +31,10 @@ class SettingsPage {
   void OnSendFeedback(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
+  // --preview-ui only (Startup.h): raise the feedback acknowledgement, the
+  // severity that SHOULD time out, so both snackbar behaviours are visible.
+  void ShowPreviewSnackbar();
+
  private:
   winrt::fire_and_forget ShowAppRulesSheet();
 

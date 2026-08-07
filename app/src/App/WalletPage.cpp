@@ -208,6 +208,10 @@ void WalletPage::ApplyWalletConnectResult(bool ok, std::string const& serverErro
   LoadWallet();                     // refresh the list with the new wallet
 }
 
+void WalletPage::ShowPreviewSnackbar() {
+  snackbar_.Show(Loc("wallet_connect_failed"), InfoBarSeverity::Error);
+}
+
 // ---- leaderboard ---------------------------------------------------------
 
 void WalletPage::LoadLeaderboard() {

@@ -32,6 +32,11 @@ class WalletPage {
   void LoadWallet();
   void LoadLeaderboard();
 
+  // --preview-ui only (Startup.h): raise the connect-wallet snackbar so the
+  // component can be seen without an account. Same call, same store keys as
+  // the real path; the ERROR severity, which is the one that must persist.
+  void ShowPreviewSnackbar();
+
   void OnWalletAddressChanged(
       winrt::Windows::Foundation::IInspectable const&,
       winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);

@@ -52,6 +52,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the login flow over the home view, and back
   void ShowLoginRoot();
   void ShowHomeRoot();
+  // --preview-ui (see Startup.h): show the signed-in shell at `destination`
+  // with no session, so a screen behind sign-in can actually be looked at.
+  // Pins the home view — a later auth push must not yank it away.
+  void EnterPreviewUi(std::string const& destination);
   // the SubscriptionBalanceStore relay: it paints the account panel AND the
   // connect drawer from one snapshot, so it stays at window level
   void ApplyBalance();
@@ -193,6 +197,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::shared_ptr<urnw::RedeemCodeSheet> redeemSheet_;
 
   bool sheetOpen_ = false;  // only one ContentDialog can show at a time
+  // --preview-ui: the home view is pinned regardless of auth state
+  bool previewUi_ = false;
 };
 
 }  // namespace winrt::URnetwork::implementation

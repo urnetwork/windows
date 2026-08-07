@@ -69,6 +69,41 @@ int WriteDiagnosticsToConsole(const std::vector<std::wstring>& lines);
 // --diagnose, -diagnose, /diagnose or a bare diagnose.
 bool WantsDiagnose();
 
+// ---- signed-out preview of the signed-in UI --------------------------------
+//
+// READ THIS IF YOU ARE BUILDING A SCREEN THAT LIVES BEHIND SIGN-IN.
+//
+// Almost every surface in this app — the connect drawer, account, wallet,
+// payouts, points, leaderboard, settings, the developer screen — only renders
+// after a successful login, and this codebase's history is that "reads correct"
+// is not evidence: the defects here have been found by running, never by
+// review. Without a way in, a screen can be written, reviewed, merged and
+// shipped without a single pixel of it ever having been drawn.
+//
+// So: launch with --preview-ui and the app shows the signed-in shell with no
+// session at all. Nothing logs in, no token is read or written, the SDK is not
+// asked for anything; only the LoginRoot/HomeNav swap is forced, and the panels
+// render against the (empty) local snapshots.
+//
+//   URnetwork.exe --preview-ui              the connect drawer
+//   URnetwork.exe --preview-ui=account      account
+//   URnetwork.exe --preview-ui=wallet       wallet   (also raises its snackbar)
+//   URnetwork.exe --preview-ui=leaderboard  leaderboard
+//   URnetwork.exe --preview-ui=support      support  (also raises its snackbar)
+//   URnetwork.exe --preview-ui=settings     settings
+//
+// or set URNETWORK_PREVIEW_UI to the same tag. The tags are the NavigationView
+// item tags in MainWindow.xaml; an unknown one falls back to connect and says so
+// in the log.
+//
+// The window still only appears on a tray click, exactly as in a normal run, so
+// drive it the way the verification protocol describes: post WM_APP+1 with
+// NIN_SELECT in LOWORD(lParam) to the hidden URnetworkTrayWindow, then capture.
+//
+// Returns an empty string when the switch is absent, which is every real run.
+// This grants nothing: there is no account to read.
+std::string PreviewUiDestination();
+
 // Set by App::OnLaunched, read by wWinMain after Application::Start returns. A
 // message loop that ends without OnLaunched ever having run means XAML gave up
 // without throwing — the fourth look-alike, and the one nothing else can see.

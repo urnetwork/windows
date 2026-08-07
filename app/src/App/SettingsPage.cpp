@@ -62,6 +62,10 @@ void SettingsPage::OnSignOut(IInspectable const&, RoutedEventArgs const&) {
   Sdk().Logout();
 }
 
+void SettingsPage::ShowPreviewSnackbar() {
+  snackbar_.Show(Loc("thanks_for_the_feedback"), InfoBarSeverity::Success);
+}
+
 // ---- support -------------------------------------------------------------
 
 void SettingsPage::OnSendFeedback(IInspectable const&, RoutedEventArgs const&) {

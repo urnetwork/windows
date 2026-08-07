@@ -9,6 +9,7 @@
 #include <winrt/Windows.Foundation.h>
 
 #include "AppController.h"
+#include "Log.h"
 #include "PageContext.h"
 #include "StatsFormat.h"
 #include "UrColors.h"
@@ -130,6 +131,36 @@ void MainWindow::ShowLoginRoot() {
 void MainWindow::ShowHomeRoot() {
   LoginRoot().Visibility(Visibility::Collapsed);
   HomeNav().Visibility(Visibility::Visible);
+}
+
+// --preview-ui. Nothing here touches the SDK, reads a token or makes a request:
+// it forces the root swap and picks a destination, and the panels then render
+// against whatever the empty local snapshots hold. That is the point — it is
+// the state a signed-in user's FIRST frame is in, before any response lands.
+void MainWindow::EnterPreviewUi(std::string const& destination) {
+  previewUi_ = true;
+  urnw::LogInfo("preview-ui: showing the signed-in shell at '{}' with no session",
+                destination);
+  ShowHomeRoot();
+
+  const hstring tag = H(destination);
+  for (auto const& item : {ConnectNavItem(), AccountNavItem(), WalletNavItem(),
+                           LeaderboardNavItem(), SupportNavItem(), SettingsNavItem()}) {
+    if (winrt::unbox_value_or<hstring>(item.Tag(), L"") == tag) {
+      HomeNav().SelectedItem(item);  // the SelectionChanged relay shows the panel
+      break;
+    }
+  }
+
+  connect_->ResyncDrawer();
+  if (ConnectView().Visibility() == Visibility::Visible) connect_->AnimateDrawerIn();
+
+  // Both snackbar call sites are signed-in-only and had never rendered. Raise
+  // the one belonging to the destination being previewed, and deliberately pick
+  // opposite severities across the two so both behaviours are visible: the
+  // wallet error must PERSIST, the support acknowledgement must time out.
+  if (destination == "wallet") wallet_->ShowPreviewSnackbar();
+  if (destination == "support") settings_->ShowPreviewSnackbar();
 }
 
 // ---- navigation ----------------------------------------------------------
@@ -310,8 +341,11 @@ void MainWindow::OnAuthStateChanged(urnw::AuthState state, std::string const& er
 void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error) {
   const bool loggedIn = (state == urnw::AuthState::LoggedIn);
   const bool wasVisible = HomeNav().Visibility() == Visibility::Visible;
-  LoginRoot().Visibility(loggedIn ? Visibility::Collapsed : Visibility::Visible);
-  HomeNav().Visibility(loggedIn ? Visibility::Visible : Visibility::Collapsed);
+  // --preview-ui pins the home view; every other branch below still keys off
+  // the real auth state, because preview never logs in.
+  const bool showHome = loggedIn || previewUi_;
+  LoginRoot().Visibility(showHome ? Visibility::Collapsed : Visibility::Visible);
+  HomeNav().Visibility(showHome ? Visibility::Visible : Visibility::Collapsed);
   if (!error.empty()) {
     // surface the error on the sign-in step the user is looking at
     login_->ShowErrorOnCurrentStep(H(error));

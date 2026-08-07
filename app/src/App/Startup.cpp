@@ -295,6 +295,48 @@ bool WantsDiagnose() {
   return wants;
 }
 
+// --preview-ui[=<tag>], or URNETWORK_PREVIEW_UI=<tag>. See the long note in
+// Startup.h: this is how a screen that is otherwise behind sign-in gets looked
+// at before it is called done.
+std::string PreviewUiDestination() {
+  // the NavigationView item tags in MainWindow.xaml. An unknown tag must not
+  // silently show the wrong screen and let someone verify the wrong thing.
+  auto normalize = [](std::wstring_view tag) -> std::string {
+    static constexpr std::wstring_view kKnown[] = {
+        L"connect", L"account", L"wallet", L"leaderboard", L"support", L"settings"};
+    if (tag.empty()) return "connect";
+    for (auto const& known : kKnown) {
+      if (tag == known) return Narrow(std::wstring{tag});
+    }
+    LogError("preview-ui: unknown destination '{}' - falling back to connect",
+             Narrow(std::wstring{tag}));
+    return "connect";
+  };
+
+  int argc = 0;
+  wchar_t** argv = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
+  if (argv) {
+    std::optional<std::wstring> found;
+    constexpr std::wstring_view kPrefix = L"--preview-ui=";
+    for (int i = 1; i < argc && !found; ++i) {
+      const std::wstring_view arg = argv[i];
+      if (arg == L"--preview-ui") {
+        found = std::wstring{};
+      } else if (arg.starts_with(kPrefix)) {
+        found = std::wstring{arg.substr(kPrefix.size())};
+      }
+    }
+    ::LocalFree(argv);
+    if (found) return normalize(*found);
+  }
+
+  wchar_t buffer[64]{};
+  const DWORD length =
+      ::GetEnvironmentVariableW(L"URNETWORK_PREVIEW_UI", buffer, ARRAYSIZE(buffer));
+  if (0 < length && length < ARRAYSIZE(buffer)) return normalize({buffer, length});
+  return {};
+}
+
 void MarkLaunched() { g_launched.store(true); }
 bool WasLaunched() { return g_launched.load(); }
 bool HadVisibleFailure() { return g_failed.load(); }

@@ -251,6 +251,12 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
             HideWindow();
           });
     }
+    // --preview-ui: the signed-in shell with no session, so the screens behind
+    // sign-in can be looked at before they are called done (Startup.h).
+    if (const std::string preview = PreviewUiDestination(); !preview.empty()) {
+      if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+        self->EnterPreviewUi(preview);
+    }
     window_.Activated([this](auto const&, auto const& args) {
       windowActivated_ =
           args.WindowActivationState() != WindowActivationState::Deactivated;
