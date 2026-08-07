@@ -1187,13 +1187,29 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <Grid x:Name="AccountLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="560" />
+                        <ColumnDefinition x:Name="AccountCapColumn"
+                                          Width="1000*" MaxWidth="560" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="16" Margin="0,0,0,24">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="AccountSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <!-- WHAT THE PLAN IS. Its own column at desktop widths: the
+                         usage bar is the widest thing on this destination and
+                         the only one that reads better for it. -->
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="AccountMainStack" Spacing="16"
+                                VerticalAlignment="Top" Margin="0,0,0,24">
 
                         <!-- Plan + usage card -->
                         <Border Style="{StaticResource UrCardStyle}">
@@ -1245,6 +1261,14 @@
                                 </Button>
                             </StackPanel>
                         </Border>
+                    </StackPanel>
+
+                    <!-- WHO THE ACCOUNT IS. The identity half - redeemed codes,
+                         the profile form, referrals - beside the plan rather
+                         than a screenful below it. -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="AccountSideStack" Spacing="16"
+                                VerticalAlignment="Top" Margin="0,0,0,24">
 
                         <!-- Redeemed balance codes -->
                         <Border Style="{StaticResource UrCardStyle}">
@@ -1296,6 +1320,7 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 

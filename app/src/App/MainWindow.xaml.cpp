@@ -300,6 +300,21 @@ void MainWindow::ApplyBreakpoint() {
         wide ? PanePlacement{0, 2, 1, Thickness{12, 0, 0, 0}}
              : PanePlacement{2, 0, 1, Thickness{0, 8, 0, 0}});
 
+  // ---- Account: the plan beside the identity -------------------------------
+  // The usage bar is the widest thing on this destination and the only one that
+  // reads better for it, so the plan card keeps the main column; redeemed
+  // codes, the profile form and referrals go beside it instead of a screenful
+  // below it. 1180 rather than Wallet's 1720: there is no table here, and two
+  // ~580dip card columns is as wide as a column of form rows should ever get.
+  AccountCapColumn().MaxWidth(wide ? 1180 : 560);
+  if (wide) {
+    SetStar(AccountSideColumn(), 1);
+  } else {
+    SetWidth(AccountSideColumn(), 0);
+  }
+  Place(AccountSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
+                                 : PanePlacement{1, 0, 1, Thickness{0, 0, 0, 24}});
+
   urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
 }
 
