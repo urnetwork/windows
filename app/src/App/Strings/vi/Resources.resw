@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>Một cụm từ khôi phục mới sẽ được tạo và liên kết với tài khoản của bạn.</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>Cụm từ khôi phục giúp bạn khôi phục tài khoản nếu mất quyền truy cập.</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>Cụm từ khôi phục giúp bạn khôi phục tài khoản nếu mất quyền truy cập. Hãy cất giữ ở nơi an toàn.</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>Để truy cập mã xác thực, hãy tạo tài khoản và đăng nhập vào {link}ur.io{/link}. Vào Tài khoản -&gt; Cài đặt -&gt; Tạo/Sao chép mã xác thực -&gt; Dán -&gt; Xong!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>Thêm</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>Thêm phương thức đăng nhập</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>Thêm vị trí bị chặn</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>Thêm mã giới thiệu để nhận thêm phần thưởng</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>Thêm phương thức đăng nhập</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>Thêm phương thức đăng nhập</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>Thêm ví</value>
@@ -144,6 +165,10 @@
     <value>{} sẽ đi qua VPN</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>{} sẽ dùng một nhà cung cấp duy nhất</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>Đang loại trừ — các ứng dụng bị loại trừ sẽ bỏ qua VPN</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>Quy tắc phân chia ứng dụng</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>0 ứng dụng phân chia</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>Ứng dụng này cũ hơn dịch vụ hệ thống URnetwork đã cài đặt. Hãy cập nhật ứng dụng để kết nối.</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>Đã thêm phương thức đăng nhập Apple</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>Áp dụng tiền thưởng</value>
@@ -188,6 +225,9 @@
     <value>Bạn có chắc chắn muốn xóa tài khoản của mình không?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>Bạn có chắc muốn xóa {} khỏi các phương thức đăng nhập?</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>Bạn có chắc chắn muốn xóa ví này không?</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -195,6 +235,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>Mã xác thực</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>Mã xác thực 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>Tạo mã xác thực</value>
@@ -386,6 +432,10 @@ cách đúng đắn</value>
     <value>Bằng cách đăng ký, bạn đồng ý với [Điều khoản và Dịch vụ](https://ur.io/terms) và [Chính sách Bảo mật](https://ur.io/privacy) của URnetwork</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>Bỏ qua VPN</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>Hủy</value>
     <comment>Call to action</comment>
@@ -526,6 +576,10 @@ cách đúng đắn</value>
     <value>Kết nối</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>Kết nối ví Solana (Phantom hoặc Solflare) để thêm làm phương thức đăng nhập.</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>Kết nối ví</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -574,6 +628,10 @@ cách đúng đắn</value>
     <value>Đã kết nối</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>Đã kết nối: {}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.other" xml:space="preserve">
     <value>Đã kết nối với {} nhà cung cấp</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -581,6 +639,10 @@ cách đúng đắn</value>
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>Đang kết nối với nhà cung cấp</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>Đang kết nối với ví...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>Chế độ kết nối</value>
@@ -622,6 +684,10 @@ cách đúng đắn</value>
     <value>Đóng góp băng thông</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>Đã sao chép!</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>Sao chép</value>
     <comment>Call to action</comment>
@@ -633,6 +699,10 @@ cách đúng đắn</value>
   <data name="copy_client_id" xml:space="preserve">
     <value>Sao chép ID máy khách</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>Sao chép vào bộ nhớ tạm</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>Không thể mở ví. Vui lòng cài đặt và thử lại.</value>
@@ -674,6 +744,10 @@ cách đúng đắn</value>
     <value>Tạo tài khoản</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>Tạo tài khoản tức thì</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>Đã xảy ra sự cố. Thử lại.</value>
     <comment>Call to action</comment>
@@ -681,6 +755,14 @@ cách đúng đắn</value>
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>Mã xác thực được tạo sẽ hết hạn sau 5 phút</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>API hiện tại: {}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>Kết nối hiện tại: {}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>Mạng giới thiệu hiện tại</value>
@@ -697,6 +779,18 @@ cách đúng đắn</value>
   <data name="custom_dns" xml:space="preserve">
     <value>DNS tùy chỉnh</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>Ứng dụng và dịch vụ hệ thống URnetwork là hai bản dựng khác nhau. Hãy cập nhật cả hai lên cùng một phiên bản.</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>Dịch vụ hệ thống URnetwork đã lỗi thời. Hãy cập nhật để kết nối.</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>Dịch vụ hệ thống URnetwork không chạy. Hãy cài đặt hoặc khởi động dịch vụ, rồi thử lại.</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>Số dư dữ liệu hàng ngày:</value>
@@ -725,6 +819,10 @@ cách đúng đắn</value>
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>Mặc định bạn nhận được {} GiB/tháng. Đây là cách bạn có thể kiếm thêm băng thông:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>Mặc định</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>MẶC ĐỊNH</value>
@@ -814,6 +912,10 @@ cách đúng đắn</value>
     <value>DNS qua HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>Cài đặt an toàn mặc định chưa được áp dụng</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>Cài đặt an toàn mặc định chưa được áp dụng</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -834,6 +936,10 @@ cách đúng đắn</value>
     <value>Cài đặt DNS không khả dụng</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>Có cài đặt được đề xuất chưa áp dụng cho {}</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>Đang dùng cài đặt khuyến nghị theo khu vực</value>
     <comment>dns settings</comment>
@@ -841,6 +947,10 @@ cách đúng đắn</value>
   <data name="dns_using_secure" xml:space="preserve">
     <value>Đang dùng cài đặt mặc định an toàn nhất</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>Xong</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>Không thấy?</value>
@@ -902,6 +1012,10 @@ cách đúng đắn</value>
     <value>Nhập tên cho mạng của bạn</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>Nhập mật khẩu</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>Nhập địa chỉ ví Solana hoặc Bittensor</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -912,6 +1026,10 @@ cách đúng đắn</value>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Nhập mã số dư</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>Nhập tên mạng</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>Nhập mã giới thiệu mạng</value>
@@ -924,6 +1042,10 @@ cách đúng đắn</value>
   <data name="enter_wallet_address" xml:space="preserve">
     <value>Nhập địa chỉ ví</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>Lỗi khi thay đổi tên mạng</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>Rất tiếc, đã xảy ra lỗi khi yêu cầu hệ số nhân.</value>
@@ -1065,6 +1187,15 @@ cách đúng đắn</value>
     <value>Chung</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>Tạo</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>Tạo cụm từ khôi phục?</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>Tạo cụm từ khôi phục</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>Kết nối</value>
     <comment>Call to action</comment>
@@ -1084,6 +1215,10 @@ cách đúng đắn</value>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Đăng nhập bằng Google</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>Đã thêm phương thức đăng nhập Google</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>Đã hiểu</value>
@@ -1121,6 +1256,14 @@ cách đúng đắn</value>
     <value>Tôi đồng ý với [Điều khoản và Dịch vụ](https://ur.io/terms) và [Chính sách Bảo mật](https://ur.io/privacy) của URnetwork</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>Tôi đã lưu cụm từ khôi phục</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>Đã sao chép hash khóa danh tính</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>Nếu vấn đề vẫn tiếp diễn, hãy liên hệ với chúng tôi tại [support@ur.io](mailto:support@ur.io) hoặc [tham gia Discord của chúng tôi](https://discord.com/invite/RUNZXMwPRK) để được hỗ trợ trực tiếp.</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1140,6 +1283,10 @@ cách đúng đắn</value>
   <data name="include_app_description" xml:space="preserve">
     <value>Chỉ các ứng dụng được bao gồm mới dùng đường hầm.</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>Đưa vào VPN</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>Đã bao gồm</value>
@@ -1181,6 +1328,10 @@ cách đúng đắn</value>
     <value>Địa chỉ IP</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1217,6 +1368,10 @@ cách đúng đắn</value>
     <value>Tham gia URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>chú giải</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>Kill switch</value>
     <comment>Call to action</comment>
@@ -1245,9 +1400,16 @@ cách đúng đắn</value>
     <value>Tìm hiểu thêm tại trang giao thức</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>Liên kết một cách khác để đăng nhập vào tài khoản của bạn.</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>Đang tải...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>Đang tải phương thức đăng nhập...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>Cục bộ</value>
@@ -1284,6 +1446,34 @@ cách đúng đắn</value>
   <data name="local_statistics" xml:space="preserve">
     <value>Thống kê cục bộ</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
+  </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>URnetwork không thể xóa tệp vị trí của hệ thống, nên máy này có thể vẫn đang báo cáo vị trí của một nhà cung cấp. Hãy khởi động dịch vụ hệ thống URnetwork rồi tắt tùy chọn này, hoặc xóa /etc/geolocation với quyền quản trị.</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>Tính năng này không bao phủ mọi thứ. Chrome và KDE Plasma không bao giờ hỏi GeoClue, và mọi ứng dụng tự suy ra vị trí của bạn từ địa chỉ IP đều không bị ảnh hưởng. Firefox sẽ chuyển sang tra cứu riêng của nó nếu hệ thống không phản hồi nhanh.</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>Các ứng dụng hỏi hệ thống về vị trí của bạn thông qua GeoClue — bao gồm GNOME Settings and Maps, Firefox, và các ứng dụng Flatpak và Snap chạy trong hộp cát — sẽ báo cáo vị trí của nhà cung cấp thay vì vị trí của bạn.</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>Đã sẵn sàng. Bật công tắc để báo cáo vị trí của nhà cung cấp đang kết nối làm vị trí của máy này.</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>Cài đặt GeoClue 2.7 trở lên. Không phải hệ thống nào cũng có, và Ubuntu 22.04 cùng Debian 12 đi kèm phiên bản cũ hơn không làm được việc này.</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>Cài đặt dịch vụ hệ thống URnetwork. Tệp vị trí của hệ thống nằm trong /etc nên phải có một trình trợ giúp đặc quyền ghi tệp đó — URnetwork không bao giờ yêu cầu bạn chạy chính ứng dụng với quyền quản trị.</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>Hãy để nguồn vị trí tĩnh của GeoClue ở trạng thái bật. Theo mặc định nó đã bật; hãy kiểm tra /etc/geoclue/geoclue.conf nếu bạn từng thay đổi.</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
   </data>
   <data name="login_client_error" xml:space="preserve">
     <value>Đã xảy ra sự cố khi xác thực máy khách. Thử lại.</value>
@@ -1323,13 +1513,25 @@ gặp lại bạn</value>
     <value>Đặt làm mặc định</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>Quản lý ứng dụng</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>Quản lý gói đăng ký</value>
     <comment>Call to action</comment>
   </data>
+  <data name="max_n" xml:space="preserve">
+    <value>tối đa {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
+  </data>
   <data name="member" xml:space="preserve">
     <value>Thành viên</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+  </data>
+  <data name="method" xml:space="preserve">
+    <value>Phương thức</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
   </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>{} phút trước</value>
@@ -1419,9 +1621,17 @@ gặp lại bạn</value>
     <value>Phổ biến nhất</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>Nhiều IP</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>Hệ số nhân</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/ngày</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>Tên</value>
@@ -1446,6 +1656,10 @@ gặp lại bạn</value>
   <data name="net_provided" xml:space="preserve">
     <value>Mạng cung cấp (ròng)</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>Mạng</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>Để trống để suy ra từ tên miền mạng.</value>
@@ -1520,6 +1734,10 @@ Nhận thưởng bằng cách tạo mạng!</value>
     <value>Thu nhập mạng</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>Đã đổi tên mạng thành {}</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>Không khả dụng. Phải khác ít nhất 3 ký tự so với mạng hiện có. Hãy đặt tên độc đáo hoặc dài hơn.</value>
     <comment>Call to action</comment>
@@ -1551,6 +1769,10 @@ Nhận thưởng bằng cách tạo mạng!</value>
   <data name="network_name_unavailable" xml:space="preserve">
     <value>Tên mạng không khả dụng</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>Bạn có {} thiết bị khác đang trực tuyến</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>Nút mạng ngang hàng</value>
@@ -1595,6 +1817,14 @@ Nhận thưởng bằng cách tạo mạng!</value>
   <data name="no_blocked_locations" xml:space="preserve">
     <value>Không có vị trí bị chặn</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>Không cần email, số điện thoại hay mật khẩu. Tài khoản của bạn được bảo vệ bằng cụm từ khôi phục.</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>Không tìm thấy ứng dụng nào đã cài đặt. (Ứng dụng từ Store không được liệt kê.)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>Không tìm thấy vị trí nào</value>
@@ -1721,6 +1951,10 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>Mật khẩu phải có ít nhất 12 ký tự</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>Dán cụm từ khôi phục 24 từ của bạn vào đây</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>Thanh toán bằng ví Solana</value>
     <comment>Call to action</comment>
@@ -1757,6 +1991,18 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>Thanh toán diễn ra vào mỗi Chủ Nhật lúc 00:00 UTC và yêu cầu đạt ngưỡng USDC tối thiểu.</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>1 nút ngang hàng</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d nút ngang hàng</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>Tính năng phát hiện nút ngang hàng bị tắt cho đến khi kết nối</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>Đang chờ</value>
     <comment>Call to action</comment>
@@ -1768,6 +2014,22 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
   <data name="pending_payout" xml:space="preserve">
     <value>Thanh toán đang chờ</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>Ghim vào một nhà cung cấp</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>Giữ tất cả kết nối của ứng dụng này trên một nhà cung cấp duy nhất, để API và hình ảnh của nó dùng chung một địa chỉ IP. Dùng cho các ứng dụng có nội dung không tải được qua VPN</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>Đã ghim</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>Chỗ dành sẵn</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>Kế hoạch</value>
@@ -1800,6 +2062,22 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
   <data name="points_breakdown" xml:space="preserve">
     <value>Phân tích điểm</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>Mã hóa hậu lượng tử</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>Đã bật dự phòng (tạm thời)</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>Danh tính hậu lượng tử</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>Khóa danh tính của bạn được lưu cục bộ trên thiết bị này. Nếu khóa của bất kỳ nút ngang hàng nào khác với khóa đã lưu cục bộ, điều đó có nghĩa là không thể tin tưởng nhà vận hành mạng.</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>Giá được hiển thị khi thanh toán.</value>
@@ -1860,6 +2138,10 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} nhà cung cấp</value>
   </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>Danh tính nhà cung cấp</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
   <data name="provider_location_unknown" xml:space="preserve">
     <value>Không rõ vị trí</value>
     <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
@@ -1871,6 +2153,10 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
   <data name="provider_locations_title" xml:space="preserve">
     <value>Vị trí nhà cung cấp</value>
     <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>Không có thông tin nhà cung cấp cho đến khi kết nối</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>Thống kê nhà cung cấp</value>
@@ -1952,6 +2238,10 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>Giới thiệu bạn bè = +30 GiB/tháng</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
   </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>Giới thiệu bạn bè = +3 GiB/ngày</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
+  </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>Giới thiệu và kiếm tiền</value>
     <comment>Account Screen</comment>
@@ -2028,6 +2318,9 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>Giới thiệu</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>Tạo lại cụm từ khôi phục</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>Khu vực</value>
     <comment>Provider list group title for regions</comment>
@@ -2079,6 +2372,9 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
   <data name="remove_rule" xml:space="preserve">
     <value>Xóa quy tắc</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>Xóa phương thức đăng nhập này?</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>Xóa ví</value>
@@ -2136,6 +2432,10 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>Quy tắc</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>Gấp 2 lần dữ liệu miễn phí và dữ liệu giới thiệu</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>Lưu</value>
     <comment>Profile</comment>
@@ -2164,6 +2464,10 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>{} giây trước</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>Bảo mật tài khoản của bạn</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>Xem tất cả
 nội dung thế giới</value>
@@ -2173,6 +2477,10 @@ nội dung thế giới</value>
     <value>Xem tất cả nội dung thế giới với URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>Cụm từ khôi phục</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Đã xác minh Mã thông báo Seeker!</value>
     <comment>Call to action</comment>
@@ -2180,6 +2488,10 @@ nội dung thế giới</value>
   <data name="select_country_to_block" xml:space="preserve">
     <value>Chọn quốc gia để chặn</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>Quả địa cầu: chọn vị trí nhà cung cấp</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>Vị trí đã chọn</value>
@@ -2269,6 +2581,10 @@ nội dung thế giới</value>
     <value>Đăng nhập</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>Đăng nhập</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>Đăng nhập bằng dGEN1</value>
     <comment>Call to action</comment>
@@ -2276,6 +2592,13 @@ nội dung thế giới</value>
   <data name="sign_in_failed" xml:space="preserve">
     <value>Đăng nhập thất bại</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>Đã thêm phương thức đăng nhập thành công</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>Phương thức đăng nhập</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>Đăng nhập bằng mã</value>
@@ -2285,13 +2608,172 @@ nội dung thế giới</value>
     <value>Đăng nhập bằng Google</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>Đăng nhập bằng Google để thêm làm phương thức đăng nhập.</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>Đăng nhập bằng cụm từ khôi phục</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>Đăng nhập bằng Apple ID của bạn để thêm làm phương thức đăng nhập.</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>Đăng xuất</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>Ký bằng ví</value>
+    <comment>Button text for signing in with a wallet.</comment>
+  </data>
   <data name="signed_in" xml:space="preserve">
     <value>Đã đăng nhập</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>Độ tin cậy trung bình</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>Máy khách</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>Tùy chọn kết nối</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>Kết nối để xem hoạt động trực tiếp</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>Quốc gia</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>Hệ số quốc gia</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>IP cố định</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>Quản lý gói đăng ký</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>Tự động</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>Phát trực tuyến</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>Web</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>Hệ số nhân</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>Chưa có lưu lượng</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>Gói</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>Proxy</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>Trọng số độ tin cậy</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>Ẩn danh mạnh</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>Truyền tải</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>Thiết lập tiện ích mở rộng để kết nối</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>Tiện ích mở rộng đã đăng nhập vào một mạng khác:</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork định tuyến trình duyệt này qua tiện ích mở rộng. Hãy cài đặt để bắt đầu kết nối.</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>Cài đặt tiện ích mở rộng để kết nối</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>Đã phát hiện tiện ích mở rộng và đã đăng nhập</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>Tiện ích mở rộng đã được cài đặt nhưng chưa đăng nhập. Hãy thiết lập với mạng của bạn để kết nối.</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>Sẵn sàng kết nối</value>
+    <comment>Connect: disconnected status line</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>Cài đặt ứng dụng</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>Bạn đang dùng gói Free. Nâng cấp lên Pro để có thêm dữ liệu và tính năng.</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>Gói Free</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>Quản lý trong {platform}</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>Quản lý trong App Store</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>Quản lý trong Google Play</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>một nền tảng khác</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>Gói đăng ký Pro của bạn được thanh toán qua {platform}. Để thay đổi hoặc hủy, hãy quản lý các gói đăng ký của bạn qua {platform}.</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>Gói đăng ký Pro của bạn được thanh toán qua App Store. Để thay đổi hoặc hủy, hãy quản lý các gói đăng ký của bạn trong App Store.</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>Gói đăng ký Pro của bạn được thanh toán qua Google Play. Để thay đổi hoặc hủy, hãy quản lý các gói đăng ký của bạn trong Google Play.</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>Gói đăng ký Pro của bạn được thanh toán qua Stripe. Cập nhật thông tin thanh toán hoặc hủy bất cứ lúc nào ở bên dưới.</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>Vui lòng đảm bảo bạn có đủ USDC trong ví. Trong một số trường hợp, yêu cầu thanh toán sẽ thất bại nếu ví không đủ tiền.</value>
@@ -2485,9 +2967,21 @@ như nó vốn phải thế.</value>
     <value>Các ví này không liên kết hoặc được kiểm soát bởi URnetwork. Chúng tôi sẽ gửi thu nhập vào ví đã kết nối.</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ Đây là lần duy nhất bạn nhìn thấy nó.</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>khu vực này</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>Đã kết nối</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>Đã ngắt kết nối</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Đăng nhập</value>
@@ -2563,6 +3057,10 @@ như nó vốn phải thế.</value>
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>Thử chế độ khách</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>Không thể khởi động kết nối</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>DNS không mã hóa</value>
@@ -2761,9 +3259,17 @@ như nó vốn phải thế.</value>
     <value>Thông tin phiên bản và bản dựng</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>qua {}</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>Đang chờ phê duyệt</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>Đang chờ chữ ký ví...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>Ví</value>
@@ -2803,6 +3309,10 @@ như nó vốn phải thế.</value>
     <value>Đăng nhập bằng ví thất bại</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>Đã thêm phương thức đăng nhập bằng ví</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>Ví</value>
     <comment>Wallets Screen</comment>
@@ -2835,6 +3345,10 @@ như nó vốn phải thế.</value>
     <value>cùng URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>Hãy ghi lại và cất giữ ở nơi an toàn. Nếu làm mất, bạn sẽ mất quyền truy cập vào tài khoản.</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>Hằng năm</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -2846,6 +3360,16 @@ như nó vốn phải thế.</value>
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>Bạn nhận được 30 GiB/tháng trọn đời</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>Bạn nhận 3 GiB/ngày trọn đời</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>Bạn có 1 thiết bị khác đang trực tuyến</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>Bạn có {} thiết bị khác đang trực tuyến</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>Bạn sẽ mở khóa tốc độ nhanh hơn và được ưu tiên trải nghiệm các tính năng mới như biện pháp chống kiểm duyệt mạnh mẽ và kiểm soát dữ liệu.</value>
@@ -2871,6 +3395,10 @@ như nó vốn phải thế.</value>
     <value>Bạn của bạn nhận được 30 GiB/tháng trọn đời</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>Bạn của bạn nhận 3 GiB/ngày trọn đời</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>Giao dịch của bạn cần được phê duyệt trước khi hoàn tất. UR Pro sẽ tự bật ngay khi được duyệt — bạn không cần mua lại.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -2878,5 +3406,9 @@ như nó vốn phải thế.</value>
   <data name="your_referral_link" xml:space="preserve">
     <value>Liên kết giới thiệu của bạn</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>Cụm từ khôi phục của bạn</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>

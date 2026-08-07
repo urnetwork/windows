@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>एक नया सीड फ़्रेज़ बनाया जाएगा और आपके खाते से जोड़ा जाएगा।</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>अगर आपकी पहुंच खो जाती है, तो सीड फ़्रेज़ से आप अपना खाता वापस पा सकते हैं।</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>अगर आपकी पहुंच खो जाती है, तो सीड फ़्रेज़ से आप अपना खाता वापस पा सकते हैं। इसे किसी सुरक्षित जगह पर रखें।</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>अपने ऑथ कोड तक पहुंचने के लिए, एक खाता बनाएं और {link}ur.io{/link} में साइन इन करें। अकाउंट -&gt; सेटिंग्स -&gt; ऑथ कोड बनाएं/कॉपी करें -&gt; पेस्ट करें -&gt; हो गया!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>जोड़ें</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>साइन-इन विधि जोड़ें</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>अवरुद्ध स्थान जोड़ें</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>अतिरिक्त पुरस्कार पाने के लिए रेफरल कोड जोड़ें</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>साइन-इन विधि जोड़ें</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>साइन-इन विधि जोड़ें</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>वॉलेट जोड़ें</value>
@@ -144,6 +165,10 @@
     <value>{} VPN से रूट होगा</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>{} एक ही प्रदाता का उपयोग करेगा</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>एक्सक्लूड चालू — बाहर रखे गए ऐप्स VPN को बायपास करते हैं</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>ऐप स्प्लिट नियम</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>0 स्प्लिट ऐप्स</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>यह ऐप्लिकेशन इंस्टॉल की गई URnetwork सिस्टम सेवा से पुराना है। कनेक्ट करने के लिए ऐप्लिकेशन को अपडेट करें।</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>Apple साइन-इन विधि जोड़ी गई</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>बोनस लागू करें</value>
@@ -196,6 +233,9 @@
     <value>क्या आप वाकई अपना अकाउंट डिलीट करना चाहते हैं?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>क्या आप वाकई {} को साइन-इन विधि के रूप में हटाना चाहते हैं?</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>क्या आप वाकई इस वॉलेट को हटाना चाहते हैं?</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -203,6 +243,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>ऑथ कोड</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>ऑथ कोड 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>प्रमाणीकरण कोड बनाएं</value>
@@ -393,6 +439,10 @@
     <value>सदस्यता लेने पर, आप URnetwork के [नियम और सेवाएँ](https://ur.io/terms) और [गोपनीयता नीति](https://ur.io/privacy) से सहमत हैं</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>VPN बायपास करें</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>रद्द करें</value>
     <comment>Call to action</comment>
@@ -533,6 +583,10 @@
     <value>कनेक्ट करें</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>Solana वॉलेट (Phantom या Solflare) कनेक्ट करें और उसे साइन-इन विधि के रूप में जोड़ें।</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>एक वॉलेट कनेक्ट करें</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -581,6 +635,10 @@
     <value>कनेक्टेड</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>कनेक्टेड: {}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.one" xml:space="preserve">
     <value>{} प्रदाता से कनेक्ट किया गया</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -592,6 +650,10 @@
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>प्रदाताओं से कनेक्ट हो रहा है</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>वॉलेट से कनेक्ट हो रहा है...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>कनेक्शन मोड</value>
@@ -637,6 +699,10 @@
     <value>बैंडविड्थ में योगदान दें</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>कॉपी हो गया!</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>कॉपी करें</value>
     <comment>Call to action</comment>
@@ -648,6 +714,10 @@
   <data name="copy_client_id" xml:space="preserve">
     <value>क्लाइंट ID कॉपी करें</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>क्लिपबोर्ड पर कॉपी करें</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>वॉलेट खोला नहीं जा सका। कृपया इसे इंस्टॉल करें और पुनः प्रयास करें।</value>
@@ -689,6 +759,10 @@
     <value>खाता बनाएं</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>इंस्टेंट खाता बनाएं</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>कुछ गलत हो गया. पुनः प्रयास करें.</value>
     <comment>Call to action</comment>
@@ -696,6 +770,14 @@
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>निर्मित प्रमाणीकरण कोड 5 मिनट बाद समाप्त हो जाते हैं</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>वर्तमान API: {}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>वर्तमान कनेक्ट: {}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>वर्तमान रेफ़रल नेटवर्क</value>
@@ -712,6 +794,18 @@
   <data name="custom_dns" xml:space="preserve">
     <value>कस्टम DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>ऐप्लिकेशन और URnetwork सिस्टम सेवा अलग-अलग बिल्ड हैं। दोनों को एक ही वर्शन पर अपडेट करें।</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>URnetwork सिस्टम सेवा पुरानी है। कनेक्ट करने के लिए इसे अपडेट करें।</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>URnetwork सिस्टम सेवा नहीं चल रही है। इसे इंस्टॉल या शुरू करें, फिर दोबारा कोशिश करें।</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>दैनिक डेटा बैलेंस:</value>
@@ -740,6 +834,10 @@
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>डिफ़ॉल्ट रूप से, आपको {} GiB/महीना मिलता है। ऐसे आप अतिरिक्त बैंडविड्थ कमा सकते हैं:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>डिफ़ॉल्ट</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>डिफ़ॉल्ट</value>
@@ -829,6 +927,10 @@
     <value>HTTPS पर DNS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>डिफ़ॉल्ट सुरक्षित सेटिंग्स लागू नहीं हैं</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>डिफ़ॉल्ट सुरक्षित सेटिंग्स लागू नहीं हैं</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -849,6 +951,10 @@
     <value>DNS सेटिंग्स उपलब्ध नहीं</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>{} के लिए अनुशंसित सेटिंग्स लागू नहीं हैं</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>अनुशंसित क्षेत्रीय सेटिंग्स का उपयोग हो रहा है</value>
     <comment>dns settings</comment>
@@ -856,6 +962,10 @@
   <data name="dns_using_secure" xml:space="preserve">
     <value>सबसे सुरक्षित डिफ़ॉल्ट सेटिंग्स का उपयोग हो रहा है</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>हो गया</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>आपको यह दिखाई नहीं दे रहा है?</value>
@@ -917,6 +1027,10 @@
     <value>अपने नेटवर्क के लिए एक नाम दर्ज करें</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>पासवर्ड दर्ज करें</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>Solana या Bittensor वॉलेट पता दर्ज करें</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -927,6 +1041,10 @@
   <data name="enter_balance_code" xml:space="preserve">
     <value>बैलेंस कोड दर्ज करें</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>नेटवर्क का नाम दर्ज करें</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>नेटवर्क रेफ़रल कोड दर्ज करें</value>
@@ -939,6 +1057,10 @@
   <data name="enter_wallet_address" xml:space="preserve">
     <value>वॉलेट पता दर्ज करें</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>नेटवर्क का नाम बदलने में त्रुटि</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>क्षमा करें, गुणक का दावा करते समय त्रुटि हुई।</value>
@@ -1080,6 +1202,15 @@
     <value>सामान्य</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>बनाएं</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>रिकवरी सीड फ़्रेज़ बनाएं?</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>सीड फ़्रेज़ बनाएं</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>कनेक्ट करें</value>
     <comment>Call to action</comment>
@@ -1099,6 +1230,10 @@
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Google से लॉग इन करें</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>Google साइन-इन विधि जोड़ी गई</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>समझ गया</value>
@@ -1140,6 +1275,14 @@
     <value>मैं URnetwork के [नियम और सेवाएँ](https://ur.io/terms) और [गोपनीयता नीति](https://ur.io/privacy) से सहमत हूँ</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>मैंने अपना सीड फ़्रेज़ सहेज लिया</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>पहचान कुंजी का हैश कॉपी किया गया</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>यदि समस्या बनी रहती है, तो [support@ur.io](mailto:support@ur.io) पर हमसे संपर्क करें या सीधे सहायता के लिए [हमारे Discord से जुड़ें](https://discord.com/invite/RUNZXMwPRK)।</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1159,6 +1302,10 @@
   <data name="include_app_description" xml:space="preserve">
     <value>केवल शामिल ऐप्स ही टनल का उपयोग करते हैं।</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>VPN में शामिल करें</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>शामिल</value>
@@ -1200,6 +1347,14 @@
     <value>IP पता</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.one" xml:space="preserve">
+    <value>{} IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1236,6 +1391,10 @@
     <value>शामिल हों URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>कुंजी</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>किल स्विच</value>
     <comment>Call to action</comment>
@@ -1264,9 +1423,16 @@
     <value>प्रोटोकॉल पेज पर और जानें</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>अपने खाते में साइन इन करने का एक और तरीका लिंक करें।</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>लोड हो रहा है...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>साइन-इन विधियाँ लोड हो रही हैं...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>स्थानीय</value>
@@ -1303,6 +1469,34 @@
   <data name="local_statistics" xml:space="preserve">
     <value>स्थानीय आँकड़े</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
+  </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>URnetwork सिस्टम लोकेशन फ़ाइल नहीं हटा सका, इसलिए यह मशीन अब भी किसी प्रदाता का स्थान बता सकती है। URnetwork सिस्टम सेवा शुरू करें और इसे बंद करें, या व्यवस्थापक के रूप में /etc/geolocation हटाएं।</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>यह सब कुछ कवर नहीं करता। Chrome और KDE Plasma कभी GeoClue से नहीं पूछते, और ऐसा कोई भी ऐप्लिकेशन जो आपके IP पते से खुद ही आपका स्थान निकाल लेता है, उस पर कोई असर नहीं पड़ता। अगर सिस्टम जल्दी जवाब नहीं देता तो Firefox अपनी खुद की लुकअप पर लौट जाता है।</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>जो ऐप्लिकेशन GeoClue के ज़रिए सिस्टम से आपका स्थान मांगते हैं — जिनमें GNOME Settings and Maps, Firefox, और सैंडबॉक्स में चलने वाले Flatpak और Snap ऐप्लिकेशन शामिल हैं — वे आपके बजाय प्रदाता का स्थान बताते हैं।</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>तैयार है। कनेक्ट किए गए प्रदाता के स्थान को इस मशीन के स्थान के रूप में बताने के लिए टॉगल चालू करें।</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>GeoClue 2.7 या नया वर्शन इंस्टॉल करें। यह हर सिस्टम पर नहीं होता, और Ubuntu 22.04 तथा Debian 12 में जो पुराना वर्शन आता है वह यह नहीं कर सकता।</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>URnetwork सिस्टम सेवा इंस्टॉल करें। सिस्टम लोकेशन फ़ाइल /etc के अंदर होती है, इसलिए उसे लिखने के लिए विशेषाधिकार वाले हेल्पर की ज़रूरत होती है — URnetwork आपसे कभी ऐप्लिकेशन को व्यवस्थापक के रूप में चलाने के लिए नहीं कहता।</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>GeoClue का स्टैटिक लोकेशन स्रोत चालू रहने दें। यह डिफ़ॉल्ट रूप से चालू होता है; अगर आपने इसे बदला है तो /etc/geoclue/geoclue.conf देखें।</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
   </data>
   <data name="login_client_error" xml:space="preserve">
     <value>क्लाइंट को प्रमाणित करते समय कुछ गड़बड़ हो गई. पुनः प्रयास करें.</value>
@@ -1341,13 +1535,25 @@
     <value>डिफ़ॉल्ट बनाएं</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>ऐप्लिकेशन प्रबंधित करें</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>सदस्यता प्रबंधित करें</value>
     <comment>Call to action</comment>
   </data>
+  <data name="max_n" xml:space="preserve">
+    <value>अधिकतम {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
+  </data>
   <data name="member" xml:space="preserve">
     <value>सदस्य</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+  </data>
+  <data name="method" xml:space="preserve">
+    <value>विधि</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
   </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>{} मि. पहले</value>
@@ -1437,9 +1643,17 @@
     <value>सबसे लोकप्रिय</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>एकाधिक IP</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>गुणक</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/दिन</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>नाम</value>
@@ -1464,6 +1678,10 @@
   <data name="net_provided" xml:space="preserve">
     <value>प्रदान किया गया नेट</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>नेटवर्क</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>नेटवर्क डोमेन से प्राप्त करने के लिए खाली छोड़ें।</value>
@@ -1537,6 +1755,10 @@
     <value>नेटवर्क आय</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>नेटवर्क का नाम बदलकर {} कर दिया गया</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>उपलब्ध नहीं है। किसी मौजूदा नेटवर्क से कम से कम 3 वर्ण अलग होने चाहिए। इसे अद्वितीय या लंबा बनाएं।</value>
     <comment>Call to action</comment>
@@ -1568,6 +1790,14 @@
   <data name="network_name_unavailable" xml:space="preserve">
     <value>नेटवर्क नाम उपलब्ध नहीं है</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.one" xml:space="preserve">
+    <value>आपका {} अन्य डिवाइस ऑनलाइन है</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>आपके {} अन्य डिवाइस ऑनलाइन हैं</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>नेटवर्क पीयर</value>
@@ -1616,6 +1846,14 @@
   <data name="no_blocked_locations" xml:space="preserve">
     <value>कोई अवरुद्ध स्थान नहीं</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>किसी ईमेल, फ़ोन या पासवर्ड की ज़रूरत नहीं। आपका खाता सीड फ़्रेज़ से सुरक्षित रहता है।</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>कोई इंस्टॉल किया गया ऐप्लिकेशन नहीं मिला। (Store के ऐप्लिकेशन सूची में नहीं आते।)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>कोई स्थान नहीं मिला</value>
@@ -1742,6 +1980,10 @@
     <value>पासवर्ड कम से कम 12 वर्णों का होना चाहिए</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>अपना 24-शब्द वाला सीड फ़्रेज़ यहां पेस्ट करें</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>Solana वॉलेट से भुगतान करें</value>
     <comment>Call to action</comment>
@@ -1778,6 +2020,18 @@
     <value>भुगतान हर रविवार 00:00 UTC पर होते हैं, और न्यूनतम USDC सीमा पूरी करनी होती है।</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>1 पीयर</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d पीयर</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>कनेक्ट होने तक पीयर खोज बंद है</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>लंबित</value>
     <comment>Call to action</comment>
@@ -1789,6 +2043,22 @@
   <data name="pending_payout" xml:space="preserve">
     <value>लंबित भुगतान</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>एक प्रदाता पर पिन करें</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>इस ऐप के सभी कनेक्शन एक ही प्रदाता पर रखता है, ताकि इसका API और इमेज एक ही IP पता साझा करें। उन ऐप्स के लिए उपयोग करें जिनकी सामग्री VPN के ज़रिए लोड नहीं होती</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>पिन किया गया</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>प्लेसहोल्डर</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>योजना</value>
@@ -1825,6 +2095,22 @@
   <data name="points_breakdown" xml:space="preserve">
     <value>अंक विवरण</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>पोस्ट-क्वांटम एन्क्रिप्शन</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>फ़ॉलबैक चालू (अस्थायी)</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>पोस्ट-क्वांटम पहचान</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>आपकी पहचान कुंजी इस डिवाइस पर स्थानीय रूप से संग्रहीत होती है। अगर किसी पीयर की कुंजी स्थानीय रूप से संग्रहीत कुंजी से अलग दिखती है, तो इसका मतलब है कि नेटवर्क ऑपरेटर पर भरोसा नहीं किया जा सकता।</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>कीमत चेकआउट पर दिखाई जाती है।</value>
@@ -1889,6 +2175,10 @@
   <data name="provider_count_int" xml:space="preserve">
     <value>{} प्रदाता</value>
   </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>प्रदाताओं की पहचान</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
   <data name="provider_location_unknown" xml:space="preserve">
     <value>स्थान अज्ञात</value>
     <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
@@ -1900,6 +2190,10 @@
   <data name="provider_locations_title" xml:space="preserve">
     <value>प्रदाताओं के स्थान</value>
     <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>कनेक्ट होने तक प्रदाता का विवरण उपलब्ध नहीं है</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>प्रदाता आँकड़े</value>
@@ -1985,6 +2279,10 @@
     <value>मित्र को रेफ़र करें = +30 GiB/माह</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
   </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>मित्र को रेफ़र करें = +3 GiB/दिन</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
+  </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>रेफ़र करें और कमाएँ</value>
     <comment>Account Screen</comment>
@@ -2061,6 +2359,9 @@
     <value>रेफ़रल</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>सीड फ़्रेज़ दोबारा बनाएं</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>क्षेत्र</value>
     <comment>Provider list group title for regions</comment>
@@ -2112,6 +2413,9 @@
   <data name="remove_rule" xml:space="preserve">
     <value>नियम हटाएं</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>इस साइन-इन विधि को हटाएं?</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>वॉलेट हटाएं</value>
@@ -2169,6 +2473,10 @@
     <value>नियम</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>मुफ़्त और रेफ़रल डेटा 2 गुना</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>सहेजें</value>
     <comment>Profile</comment>
@@ -2197,6 +2505,10 @@
     <value>{} से. पहले</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>अपना खाता सुरक्षित करें</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>दुनिया की सभी
 सामग्री देखें</value>
@@ -2206,6 +2518,10 @@
     <value>URnetwork के साथ दुनिया की सभी सामग्री देखें</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>सीड फ़्रेज़</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker टोकन सत्यापित हुआ!</value>
     <comment>Call to action</comment>
@@ -2213,6 +2529,10 @@
   <data name="select_country_to_block" xml:space="preserve">
     <value>ब्लॉक करने के लिए देश चुनें</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>ग्लोब: प्रदाता का स्थान चुनें</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>चयनित स्थान</value>
@@ -2302,6 +2622,10 @@
     <value>साइन इन करें</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>साइन इन करें</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>dGEN1 से साइन इन करें</value>
     <comment>Call to action</comment>
@@ -2309,6 +2633,13 @@
   <data name="sign_in_failed" xml:space="preserve">
     <value>साइन इन विफल</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>साइन-इन विधि सफलतापूर्वक जोड़ी गई</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>साइन-इन विधियाँ</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>कोड से साइन इन करें</value>
@@ -2318,13 +2649,172 @@
     <value>Google से साइन इन करें</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>Google से साइन इन करें और उसे साइन-इन विधि के रूप में जोड़ें।</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>सीड फ़्रेज़ से साइन इन करें</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>अपने Apple ID से साइन इन करें और उसे साइन-इन विधि के रूप में जोड़ें।</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>साइन आउट</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>वॉलेट से हस्ताक्षर करें</value>
+    <comment>Button text for signing in with a wallet.</comment>
+  </data>
   <data name="signed_in" xml:space="preserve">
     <value>साइन इन हो गए</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>औसत विश्वसनीयता</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>क्लाइंट्स</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>कनेक्शन विकल्प</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>लाइव गतिविधि देखने के लिए कनेक्ट करें</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>देश</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>देश गुणक</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>स्थिर IP</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>सदस्यता प्रबंधित करें</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>स्वचालित</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>स्ट्रीमिंग</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>वेब</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>गुणक</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>अभी तक कोई ट्रैफ़िक नहीं</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>योजना</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>प्रॉक्सी</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>विश्वसनीयता भार</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>मजबूत गुमनामीकरण</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>ट्रांसफर</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>कनेक्ट करने के लिए एक्सटेंशन सेट करें</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>एक्सटेंशन किसी दूसरे नेटवर्क में साइन इन है:</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork इस ब्राउज़र को एक्सटेंशन के ज़रिए रूट करता है। कनेक्ट करना शुरू करने के लिए इसे इंस्टॉल करें।</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>कनेक्ट करने के लिए एक्सटेंशन इंस्टॉल करें</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>एक्सटेंशन मिला और साइन इन है</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>एक्सटेंशन इंस्टॉल है लेकिन साइन आउट है। कनेक्ट करने के लिए इसे अपने नेटवर्क के साथ सेट करें।</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>कनेक्ट करने के लिए तैयार</value>
+    <comment>Connect: disconnected status line</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>ऐप इंस्टॉल करें</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>आप Free योजना पर हैं। ज़्यादा डेटा और सुविधाओं के लिए Pro में अपग्रेड करें।</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>Free योजना</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>{platform} में प्रबंधित करें</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>App Store में प्रबंधित करें</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>Google Play में प्रबंधित करें</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>किसी अन्य प्लेटफ़ॉर्म</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>आपकी Pro सदस्यता {platform} के माध्यम से बिल की जाती है। इसे बदलने या रद्द करने के लिए, अपनी सदस्यताएँ {platform} के माध्यम से प्रबंधित करें।</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>आपकी Pro सदस्यता App Store के माध्यम से बिल की जाती है। इसे बदलने या रद्द करने के लिए, अपनी सदस्यताएँ App Store में प्रबंधित करें।</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>आपकी Pro सदस्यता Google Play के माध्यम से बिल की जाती है। इसे बदलने या रद्द करने के लिए, अपनी सदस्यताएँ Google Play में प्रबंधित करें।</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>आपकी Pro सदस्यता Stripe के माध्यम से बिल की जाती है। नीचे कभी भी अपने भुगतान विवरण अपडेट करें या सदस्यता रद्द करें।</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>कृपया सुनिश्चित करें कि आपके वॉलेट में पर्याप्त USDC फंड्स हैं। कुछ मामलों में, यदि वॉलेट में पर्याप्त फंड्स नहीं हैं तो भुगतान अनुरोध विफल हो सकता है।</value>
@@ -2521,9 +3011,21 @@
     <value>ये वॉलेट URnetwork से संबद्ध या नियंत्रित नहीं हैं। हम कनेक्टेड वॉलेट में कमाई भेजेंगे।</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ यह आपको सिर्फ़ इसी एक बार दिखाई देगा।</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>इस क्षेत्र</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>कनेक्टेड</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>डिस्कनेक्टेड</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>लॉग इन करें</value>
@@ -2603,6 +3105,10 @@
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>गेस्ट मोड आज़माएं</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>कनेक्शन शुरू नहीं हो सका</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>अनएन्क्रिप्टेड DNS</value>
@@ -2801,9 +3307,17 @@
     <value>संस्करण और बिल्ड जानकारी</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>{} के ज़रिए</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>अनुमोदन की प्रतीक्षा है</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>वॉलेट हस्ताक्षर की प्रतीक्षा है...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>वॉलेट</value>
@@ -2843,6 +3357,10 @@
     <value>वॉलेट से साइन इन विफल</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>वॉलेट साइन-इन विधि जोड़ी गई</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>वॉलेट</value>
     <comment>Wallets Screen</comment>
@@ -2875,6 +3393,10 @@
     <value>URnetwork के साथ</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>इसे लिखकर किसी सुरक्षित जगह पर रखें। अगर यह खो गया, तो आप अपने खाते तक पहुंच खो देंगे।</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>वार्षिक</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -2886,6 +3408,16 @@
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>आपको जीवनभर के लिए 30 GiB/माह मिलता है</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>आपको जीवनभर 3 GiB/दिन मिलते हैं</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>आपका 1 अन्य डिवाइस ऑनलाइन है</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>आपके {} अन्य डिवाइस ऑनलाइन हैं</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>आप और भी तेज़ गति को अनलॉक करेंगे, और सेंसरशिप-विरोधी उपायों और डेटा नियंत्रण जैसी नई सुविधाओं तक पहले पहुंच प्राप्त करेंगे।</value>
@@ -2911,6 +3443,10 @@
     <value>आपके मित्र को जीवनभर के लिए 30 GiB/माह मिलता है</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>आपके मित्र को जीवनभर 3 GiB/दिन मिलते हैं</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>आपकी खरीद पूरी होने से पहले उसे मंज़ूरी मिलनी ज़रूरी है। मंज़ूरी मिलते ही UR Pro अपने आप चालू हो जाएगा — दोबारा खरीदने की ज़रूरत नहीं।</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -2918,5 +3454,9 @@
   <data name="your_referral_link" xml:space="preserve">
     <value>आपका रेफ़रल लिंक</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>आपका सीड फ़्रेज़</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>

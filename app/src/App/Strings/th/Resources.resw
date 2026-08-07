@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>ระบบจะสร้างวลีกู้คืนใหม่และเชื่อมกับบัญชีของคุณ</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>วลีกู้คืนช่วยให้คุณกู้บัญชีคืนได้หากเข้าถึงไม่ได้</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>วลีกู้คืนช่วยให้คุณกู้บัญชีคืนได้หากเข้าถึงไม่ได้ เก็บไว้ในที่ปลอดภัย</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>ในการเข้าถึงรหัสยืนยันของคุณ ให้สร้างบัญชีและลงชื่อเข้าใช้ที่ {link}ur.io{/link} ไปที่ บัญชี -&gt; การตั้งค่า -&gt; สร้าง/คัดลอกรหัสยืนยัน -&gt; วาง -&gt; เสร็จสิ้น!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>เพิ่ม</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>เพิ่มวิธีลงชื่อเข้าใช้</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>เพิ่มตำแหน่งที่ถูกบล็อก</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>เพิ่มรหัสการแนะนำเพื่อรับรางวัลเสริม</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>เพิ่มวิธีลงชื่อเข้าใช้</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>เพิ่มวิธีลงชื่อเข้าใช้</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>เพิ่มกระเป๋า</value>
@@ -144,6 +165,10 @@
     <value>{} จะใช้งานผ่าน VPN</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>{} จะใช้ผู้ให้บริการรายเดียว</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>โหมดยกเว้นทำงานอยู่ — แอปที่ยกเว้นจะไม่ใช้ VPN</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>กฎแยกเส้นทางแอป</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>แอปที่แยกเส้นทาง 0 แอป</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>แอปนี้เก่ากว่าบริการระบบ URnetwork ที่ติดตั้งไว้ อัปเดตแอปเพื่อเชื่อมต่อ</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>เพิ่มวิธีลงชื่อเข้าใช้ Apple แล้ว</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>รับโบนัส</value>
@@ -188,6 +225,9 @@
     <value>คุณยืนยันที่จะลบบัญชีของคุณหรือไม่?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>แน่ใจหรือไม่ว่าต้องการลบ {} ออกจากวิธีลงชื่อเข้าใช้</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>คุณแน่ใจหรือไม่ว่าต้องการลบกระเป๋าเงินนี้?</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -195,6 +235,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>รหัสยืนยัน</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>รหัสยืนยัน 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>สร้างรหัสยืนยันตัวตน</value>
@@ -386,6 +432,10 @@
     <value>ในการสมัครสมาชิก แสดงว่าคุณยอมรับ [ข้อกำหนดในการให้บริการ](https://ur.io/terms) และ [นโยบายความเป็นส่วนตัว](https://ur.io/privacy) ของ URnetwork</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>ข้าม VPN</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>ยกเลิก</value>
     <comment>Call to action</comment>
@@ -526,6 +576,10 @@
     <value>เชื่อมต่อ</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>เชื่อมต่อกระเป๋าเงิน Solana (Phantom หรือ Solflare) เพื่อเพิ่มเป็นวิธีลงชื่อเข้าใช้</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>เชื่อมต่อกระเป๋าเงิน</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -574,6 +628,10 @@
     <value>เชื่อมต่อแล้ว</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>เชื่อมต่อแล้ว: {}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.other" xml:space="preserve">
     <value>เชื่อมต่อกับผู้ให้บริการ {} แล้ว</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -581,6 +639,10 @@
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>กำลังเชื่อมต่อกับผู้ให้บริการ</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>กำลังเชื่อมต่อกระเป๋าเงิน...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>โหมดการเชื่อมต่อ</value>
@@ -622,6 +684,10 @@
     <value>แบ่งปันแบนด์วิดท์</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>คัดลอกแล้ว!</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>คัดลอก</value>
     <comment>Call to action</comment>
@@ -633,6 +699,10 @@
   <data name="copy_client_id" xml:space="preserve">
     <value>คัดลอก ID ไคลเอ็นต์</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>คัดลอกไปยังคลิปบอร์ด</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>ไม่สามารถเปิดกระเป๋าเงินได้ กรุณาติดตั้งแล้วลองใหม่อีกครั้ง</value>
@@ -674,6 +744,10 @@
     <value>สร้างบัญชี</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>สร้างบัญชีทันที</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>มีบางอย่างผิดปกติ ลองใหม่อีกครั้ง</value>
     <comment>Call to action</comment>
@@ -681,6 +755,14 @@
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>รหัสยืนยันตัวตนที่สร้างขึ้นจะหมดอายุหลังจาก 5 นาที</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>API ปัจจุบัน: {}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>การเชื่อมต่อปัจจุบัน: {}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>รหัสการแนะนำเครือข่ายปัจจุบัน</value>
@@ -697,6 +779,18 @@
   <data name="custom_dns" xml:space="preserve">
     <value>DNS ที่กำหนดเอง</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>แอปกับบริการระบบ URnetwork เป็นบิลด์คนละตัว อัปเดตทั้งสองให้เป็นเวอร์ชันเดียวกัน</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>บริการระบบ URnetwork ล้าสมัย อัปเดตเพื่อเชื่อมต่อ</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>บริการระบบ URnetwork ไม่ได้ทำงานอยู่ ติดตั้งหรือเริ่มบริการ แล้วลองใหม่อีกครั้ง</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>ยอดคงเหลือข้อมูลรายวัน:</value>
@@ -725,6 +819,10 @@
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>โดยค่าเริ่มต้น คุณจะได้รับ {} GiB/เดือน นี่คือวิธีที่คุณสามารถรับแบนด์วิดท์เพิ่มเติม:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>ค่าเริ่มต้น</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>ค่าเริ่มต้น</value>
@@ -814,6 +912,10 @@
     <value>DNS ผ่าน HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>การตั้งค่าปลอดภัยเริ่มต้นยังไม่ถูกนำมาใช้</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>การตั้งค่าปลอดภัยเริ่มต้นยังไม่ถูกนำมาใช้</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -834,6 +936,10 @@
     <value>ไม่สามารถตั้งค่า DNS ได้</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>มีการตั้งค่าที่แนะนำสำหรับ {} ที่ยังไม่ถูกนำมาใช้</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>กำลังใช้การตั้งค่าที่แนะนำสำหรับภูมิภาค</value>
     <comment>dns settings</comment>
@@ -841,6 +947,10 @@
   <data name="dns_using_secure" xml:space="preserve">
     <value>กำลังใช้การตั้งค่าเริ่มต้นที่ปลอดภัยที่สุด</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>เสร็จสิ้น</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>ไม่เห็นใช่ไหม?</value>
@@ -902,6 +1012,10 @@
     <value>ป้อนชื่อสำหรับเครือข่ายของคุณ</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>กรอกรหัสผ่าน</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>กรอกที่อยู่กระเป๋าเงิน Solana หรือ Bittensor</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -912,6 +1026,10 @@
   <data name="enter_balance_code" xml:space="preserve">
     <value>ป้อนรหัสยอดเงิน</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>กรอกชื่อเครือข่าย</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>กรอกรหัสการแนะนำเครือข่าย</value>
@@ -924,6 +1042,10 @@
   <data name="enter_wallet_address" xml:space="preserve">
     <value>ป้อนที่อยู่กระเป๋าเงิน</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>เกิดข้อผิดพลาดขณะเปลี่ยนชื่อเครือข่าย</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>ขออภัย เกิดข้อผิดพลาดในการรับสิทธิ์ตัวคูณ</value>
@@ -1065,6 +1187,15 @@
     <value>ทั่วไป</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>สร้าง</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>สร้างวลีกู้คืนหรือไม่</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>สร้างวลีกู้คืน</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>เชื่อมต่อ</value>
     <comment>Call to action</comment>
@@ -1084,6 +1215,10 @@
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>เข้าสู่ระบบด้วยบัญชี Google</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>เพิ่มวิธีลงชื่อเข้าใช้ Google แล้ว</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>รับทราบ</value>
@@ -1121,6 +1256,14 @@
     <value>ฉันยอมรับ[ข้อกำหนดในการให้บริการ](https://ur.io/terms) และ[นโยบายความเป็นส่วนตัว](https://ur.io/privacy) ของ URnetwork</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>ฉันบันทึกวลีกู้คืนแล้ว</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>คัดลอกแฮชของคีย์ระบุตัวตนแล้ว</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>หากปัญหายังคงอยู่ โปรดติดต่อเราได้ที่ [support@ur.io](mailto:support@ur.io) หรือ [เข้าร่วม Discord ของเรา](https://discord.com/invite/RUNZXMwPRK) เพื่อรับการสนับสนุนโดยตรง</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1140,6 +1283,10 @@
   <data name="include_app_description" xml:space="preserve">
     <value>เฉพาะแอปที่รวมไว้เท่านั้นที่ใช้อุโมงค์</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>รวมไว้ใน VPN</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>รวมไว้</value>
@@ -1181,6 +1328,10 @@
     <value>ที่อยู่ IP</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1217,6 +1368,10 @@
     <value>เข้าร่วมกับ URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>คำอธิบาย</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>สวิตช์หยุดการเชื่อมต่อ</value>
     <comment>Call to action</comment>
@@ -1245,9 +1400,16 @@
     <value>เรียนรู้เพิ่มเติมที่หน้าข้อมูลโปรโตคอล</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>เชื่อมโยงอีกวิธีหนึ่งสำหรับลงชื่อเข้าใช้บัญชีของคุณ</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>กำลังโหลด...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>กำลังโหลดวิธีลงชื่อเข้าใช้...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>ภายในเครื่อง</value>
@@ -1284,6 +1446,34 @@
   <data name="local_statistics" xml:space="preserve">
     <value>สถิติภายในเครื่อง</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
+  </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>URnetwork ไม่สามารถลบไฟล์ตำแหน่งของระบบได้ เครื่องนี้จึงอาจยังรายงานตำแหน่งของผู้ให้บริการอยู่ ให้เริ่มบริการระบบ URnetwork แล้วปิดตัวเลือกนี้ หรือลบ /etc/geolocation ในฐานะผู้ดูแลระบบ</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>ฟีเจอร์นี้ไม่ครอบคลุมทุกอย่าง Chrome และ KDE Plasma ไม่เคยสอบถาม GeoClue และแอปใดก็ตามที่คำนวณตำแหน่งของคุณเองจากที่อยู่ IP จะไม่ได้รับผลกระทบ ส่วน Firefox จะย้อนไปใช้การค้นหาของตัวเองหากระบบตอบไม่เร็วพอ</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>แอปที่ขอตำแหน่งของคุณจากระบบผ่าน GeoClue — รวมถึง GNOME Settings and Maps, Firefox และแอป Flatpak และ Snap ที่ทำงานในแซนด์บ็อกซ์ — จะรายงานตำแหน่งของผู้ให้บริการแทนตำแหน่งของคุณ</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>พร้อมแล้ว เปิดสวิตช์เพื่อรายงานตำแหน่งของผู้ให้บริการที่เชื่อมต่ออยู่เป็นตำแหน่งของเครื่องนี้</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>ติดตั้ง GeoClue 2.7 หรือใหม่กว่า ไม่ใช่ทุกระบบจะมี และ Ubuntu 22.04 กับ Debian 12 มาพร้อมเวอร์ชันเก่าที่ทำสิ่งนี้ไม่ได้</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>ติดตั้งบริการระบบ URnetwork ไฟล์ตำแหน่งของระบบอยู่ภายใต้ /etc จึงต้องให้ตัวช่วยที่มีสิทธิ์สูงเป็นผู้เขียน — URnetwork ไม่เคยขอให้คุณเรียกใช้ตัวแอปเองในฐานะผู้ดูแลระบบ</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>เปิดใช้แหล่งตำแหน่งแบบคงที่ของ GeoClue ไว้ตลอด โดยปกติจะเปิดอยู่แล้ว หากคุณเคยเปลี่ยน ให้ตรวจสอบ /etc/geoclue/geoclue.conf</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
   </data>
   <data name="login_client_error" xml:space="preserve">
     <value>มีบางอย่างผิดปกติเกี่ยวกับการตรวจสอบสิทธิ์เข้าถึง ลองใหม่อีกครั้ง</value>
@@ -1323,13 +1513,25 @@
     <value>ตั้งเป็นกระเป๋ารับยอด</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>จัดการแอป</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>จัดการระบบรายเดือน</value>
     <comment>Call to action</comment>
   </data>
+  <data name="max_n" xml:space="preserve">
+    <value>สูงสุด {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
+  </data>
   <data name="member" xml:space="preserve">
     <value>รูปแบบสมาชิก</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+  </data>
+  <data name="method" xml:space="preserve">
+    <value>วิธี</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
   </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>{} นาทีที่แล้ว</value>
@@ -1419,9 +1621,17 @@
     <value>ได้รับความนิยมสูงสุด</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>หลาย IP</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>ตัวคูณ</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/วัน</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>ชื่อ</value>
@@ -1446,6 +1656,10 @@
   <data name="net_provided" xml:space="preserve">
     <value>แบนด์วิธที่ให้บริการแล้ว</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>เครือข่าย</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>เว้นว่างไว้เพื่อให้ได้มาจากโดเมนเครือข่าย</value>
@@ -1520,6 +1734,10 @@
     <value>รายได้ของเครือข่าย</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>เปลี่ยนชื่อเครือข่ายเป็น {} แล้ว</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>ไม่สามารถใช้ได้ จะต้องมีตัวอักษรอย่างน้อย 3 ตัวที่แตกต่างจากชื่อเน็ตเวิร์กเดิม ลองตั้งใหม่ให้แตกต่างหรือยาวขึ้น</value>
     <comment>Call to action</comment>
@@ -1551,6 +1769,10 @@
   <data name="network_name_unavailable" xml:space="preserve">
     <value>ชื่อเครือข่ายนี้ไม่พร้อมใช้งาน</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>คุณมีอุปกรณ์อื่นออนไลน์อยู่ {} เครื่อง</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>เพียร์ในเครือข่าย</value>
@@ -1595,6 +1817,14 @@
   <data name="no_blocked_locations" xml:space="preserve">
     <value>ไม่มีตำแหน่งที่ถูกบล็อก</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>ไม่ต้องใช้อีเมล เบอร์โทร หรือรหัสผ่าน บัญชีของคุณได้รับการปกป้องด้วยวลีกู้คืน</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>ไม่พบแอปที่ติดตั้งไว้ (แอปจาก Store จะไม่แสดงในรายการ)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>ไม่พบที่อยู่ดังกล่าว</value>
@@ -1721,6 +1951,10 @@
     <value>รหัสผ่านต้องมีความยาวอย่างน้อย 12 ตัวอักษร</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>วางวลีกู้คืน 24 คำของคุณที่นี่</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>ชำระเงินด้วยกระเป๋าเงิน Solana</value>
     <comment>Call to action</comment>
@@ -1757,6 +1991,18 @@
     <value>การจ่ายเงินจะเกิดขึ้นทุกวันอาทิตย์ เวลา 00:00 UTC และต้องถึงขั้นต่ำขั้นต่ำของ USDC</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>1 เพียร์</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d เพียร์</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>การค้นหาเพียร์ถูกปิดไว้จนกว่าจะเชื่อมต่อ</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>รอดำเนินการ</value>
     <comment>Call to action</comment>
@@ -1768,6 +2014,22 @@
   <data name="pending_payout" xml:space="preserve">
     <value>ยอดที่รอจ่าย</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>ปักหมุดกับผู้ให้บริการรายเดียว</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>เก็บการเชื่อมต่อทั้งหมดของแอปนี้ไว้กับผู้ให้บริการรายเดียว เพื่อให้ API และรูปภาพใช้ที่อยู่ IP เดียวกัน ใช้กับแอปที่เนื้อหาโหลดไม่ขึ้นเมื่อผ่าน VPN</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>ปักหมุดแล้ว</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>ตัวยึดตำแหน่ง</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>แพ็กเกจ</value>
@@ -1800,6 +2062,22 @@
   <data name="points_breakdown" xml:space="preserve">
     <value>รายละเอียดคะแนน</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>การเข้ารหัสแบบโพสต์ควอนตัม</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>เปิดใช้โหมดสำรอง (ชั่วคราว)</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>ข้อมูลระบุตัวตนแบบโพสต์ควอนตัม</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>คีย์ระบุตัวตนของคุณถูกเก็บไว้ในเครื่องนี้ หากคีย์ของเพียร์ใดแตกต่างจากคีย์ที่เก็บไว้ในเครื่อง แสดงว่าผู้ดำเนินการเครือข่ายไม่น่าเชื่อถือ</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>ราคาจะแสดงในขั้นตอนชำระเงิน</value>
@@ -1860,6 +2138,10 @@
   <data name="provider_count_int" xml:space="preserve">
     <value>{} ผู้ให้บริการ</value>
   </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>ข้อมูลระบุตัวตนของผู้ให้บริการ</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
   <data name="provider_location_unknown" xml:space="preserve">
     <value>ไม่ทราบตำแหน่ง</value>
     <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
@@ -1871,6 +2153,10 @@
   <data name="provider_locations_title" xml:space="preserve">
     <value>ตำแหน่งผู้ให้บริการ</value>
     <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>รายละเอียดผู้ให้บริการจะไม่แสดงจนกว่าจะเชื่อมต่อ</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>สถิติผู้ให้บริการ</value>
@@ -1952,6 +2238,10 @@
     <value>แนะนำเพื่อน = +30 GiB/เดือน</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
   </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>แนะนำเพื่อน = +3 GiB/วัน</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
+  </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>แนะนำและรับรางวัล</value>
     <comment>Account Screen</comment>
@@ -2028,6 +2318,9 @@
     <value>การแนะนำ</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>สร้างวลีกู้คืนใหม่</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>ภูมิภาค</value>
     <comment>Provider list group title for regions</comment>
@@ -2079,6 +2372,9 @@
   <data name="remove_rule" xml:space="preserve">
     <value>ลบกฎ</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>ลบวิธีลงชื่อเข้าใช้นี้หรือไม่</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>ลบกระเป๋าเงิน</value>
@@ -2136,6 +2432,10 @@
     <value>กฎ</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>เพิ่มดาต้าฟรีและดาต้าจากการแนะนำเป็น 2 เท่า</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>บันทึก</value>
     <comment>Profile</comment>
@@ -2164,6 +2464,10 @@
     <value>{} วิ.ที่แล้ว</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>ปกป้องบัญชีของคุณ</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>เข้าถึงทุกคอนเทนต์
 จากทั่วทุกมุมโลก</value>
@@ -2173,6 +2477,10 @@
     <value>เข้าถึงทุกคอนเทนต์จากทั่วโลกด้วย URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>วลีกู้คืน</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>ยืนยัน Seeker Token สำเร็จ</value>
     <comment>Call to action</comment>
@@ -2180,6 +2488,10 @@
   <data name="select_country_to_block" xml:space="preserve">
     <value>เลือกประเทศที่จะบล็อก</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>ลูกโลก: เลือกตำแหน่งผู้ให้บริการ</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>ตำแหน่งที่เลือก</value>
@@ -2269,6 +2581,10 @@
     <value>ลงชื่อเข้าใช้</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>ลงชื่อเข้าใช้</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>ลงชื่อเข้าใช้ด้วย dGEN1</value>
     <comment>Call to action</comment>
@@ -2276,6 +2592,13 @@
   <data name="sign_in_failed" xml:space="preserve">
     <value>ลงชื่อเข้าใช้ไม่สำเร็จ</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>เพิ่มวิธีลงชื่อเข้าใช้สำเร็จแล้ว</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>วิธีลงชื่อเข้าใช้</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>เข้าสู่ระบบด้วยรหัส</value>
@@ -2285,13 +2608,172 @@
     <value>เข้าสู่ระบบด้วย Google</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>ลงชื่อเข้าใช้ด้วย Google เพื่อเพิ่มเป็นวิธีลงชื่อเข้าใช้</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>ลงชื่อเข้าใช้ด้วยวลีกู้คืน</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>ลงชื่อเข้าใช้ด้วย Apple ID ของคุณเพื่อเพิ่มเป็นวิธีลงชื่อเข้าใช้</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>ออกจากระบบ</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>ลงนามด้วยกระเป๋าเงิน</value>
+    <comment>Button text for signing in with a wallet.</comment>
+  </data>
   <data name="signed_in" xml:space="preserve">
     <value>ลงชื่อเข้าใช้แล้ว</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>ความน่าเชื่อถือเฉลี่ย</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>ไคลเอ็นต์</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>ตัวเลือกการเชื่อมต่อ</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>เชื่อมต่อเพื่อดูกิจกรรมแบบเรียลไทม์</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>ประเทศ</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>ตัวคูณตามประเทศ</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>IP แบบคงที่</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>จัดการระบบรายเดือน</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>อัตโนมัติ</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>สตรีมมิง</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>เว็บ</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>ตัวคูณ</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>ยังไม่มีการรับส่งข้อมูล</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>แพ็กเกจ</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>พร็อกซี</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>น้ำหนักความน่าเชื่อถือ</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>การทำให้ไม่สามารถระบุตัวตนได้แบบเข้มงวด</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>การรับส่งข้อมูล</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>ตั้งค่าส่วนขยายเพื่อเชื่อมต่อ</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>ส่วนขยายลงชื่อเข้าใช้เครือข่ายอื่นอยู่:</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork กำหนดเส้นทางเบราว์เซอร์นี้ผ่านส่วนขยาย ติดตั้งส่วนขยายเพื่อเริ่มเชื่อมต่อ</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>ติดตั้งส่วนขยายเพื่อเชื่อมต่อ</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>ตรวจพบส่วนขยายและลงชื่อเข้าใช้แล้ว</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>ติดตั้งส่วนขยายแล้วแต่ยังไม่ได้ลงชื่อเข้าใช้ ตั้งค่าด้วยเครือข่ายของคุณเพื่อเชื่อมต่อ</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>พร้อมเชื่อมต่อ</value>
+    <comment>Connect: disconnected status line</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>ติดตั้งแอป</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>คุณกำลังใช้แพ็กเกจ Free อัปเกรดเป็น Pro เพื่อรับข้อมูลและฟีเจอร์เพิ่มเติม</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>แพ็กเกจ Free</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>จัดการใน {platform}</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>จัดการใน App Store</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>จัดการใน Google Play</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>แพลตฟอร์มอื่น</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>ระบบเรียกเก็บเงินการสมัคร Pro ของคุณผ่าน {platform} หากต้องการเปลี่ยนหรือยกเลิก ให้จัดการการสมัครของคุณผ่าน {platform}</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>ระบบเรียกเก็บเงินการสมัคร Pro ของคุณผ่าน App Store หากต้องการเปลี่ยนหรือยกเลิก ให้จัดการการสมัครของคุณใน App Store</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>ระบบเรียกเก็บเงินการสมัคร Pro ของคุณผ่าน Google Play หากต้องการเปลี่ยนหรือยกเลิก ให้จัดการการสมัครของคุณใน Google Play</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>ระบบเรียกเก็บเงินการสมัคร Pro ของคุณผ่าน Stripe อัปเดตรายละเอียดการชำระเงินหรือยกเลิกได้ทุกเมื่อด้านล่าง</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>โปรดตรวจสอบให้แน่ใจว่าคุณมีเงิน USDC เพียงพอในกระเป๋าเงินของคุณ ในบางกรณี การแจ้งเตือนการชำระเงินจะล้มเหลวหากมีเงินไม่เพียงพอในกระเป๋าเงิน</value>
@@ -2485,9 +2967,21 @@
     <value>กระเป๋าเงินเหล่านี้ไม่ได้เป็นพันธมิตรหรือควบคุมโดย URnetwork เราจะส่งรายได้ไปยังกระเป๋าเงินที่เชื่อมต่อ</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ นี่เป็นครั้งเดียวเท่านั้นที่คุณจะเห็นวลีนี้</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>ภูมิภาคนี้</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>เชื่อมต่อแล้ว</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>ตัดการเชื่อมต่อแล้ว</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>เข้าสู่ระบบ</value>
@@ -2563,6 +3057,10 @@
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>ลองใช้โหมดผู้เยี่ยมชม</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>ไม่สามารถเริ่มการเชื่อมต่อได้</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>DNS ที่ไม่เข้ารหัส</value>
@@ -2761,9 +3259,17 @@
     <value>เวอร์ชั่นและข้อมูล build</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>ผ่าน {}</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>รอการอนุมัติ</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>กำลังรอลายเซ็นจากกระเป๋าเงิน...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>กระเป๋า</value>
@@ -2803,6 +3309,10 @@
     <value>เข้าสู่ระบบด้วยกระเป๋าเงินไม่สำเร็จ</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>เพิ่มวิธีลงชื่อเข้าใช้ด้วยกระเป๋าเงินแล้ว</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>รายชื่อกระเป๋า</value>
     <comment>Wallets Screen</comment>
@@ -2835,6 +3345,10 @@
     <value>ด้วยกันกับ URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>จดไว้และเก็บในที่ปลอดภัย หากทำหาย คุณจะเข้าถึงบัญชีของคุณไม่ได้อีก</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>รายปี</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -2846,6 +3360,16 @@
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>คุณได้รับ 30 GiB/เดือนตลอดชีวิต</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>คุณได้รับ 3 GiB/วัน ตลอดชีพ</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>คุณมีอุปกรณ์อื่นออนไลน์อยู่ 1 เครื่อง</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>คุณมีอุปกรณ์อื่นออนไลน์อยู่ {} เครื่อง</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>คุณจะได้รับความเร็วที่เร็วขึ้น และสิทธิ์แรกในการใช้ฟีเจอร์ใหม่ เช่น มาตรการต่อต้านการเซ็นเซอร์ที่แข็งแกร่งและการควบคุมข้อมูล</value>
@@ -2871,6 +3395,10 @@
     <value>เพื่อนของคุณได้รับ 30 GiB/เดือนตลอดชีวิต</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>เพื่อนของคุณได้รับ 3 GiB/วัน ตลอดชีพ</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>การซื้อของคุณต้องได้รับการอนุมัติก่อนจึงจะสำเร็จ เมื่ออนุมัติแล้ว UR Pro จะเปิดใช้งานเองโดยอัตโนมัติ — ไม่ต้องซื้อซ้ำ</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -2878,5 +3406,9 @@
   <data name="your_referral_link" xml:space="preserve">
     <value>ลิงก์แนะนำของคุณ</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>วลีกู้คืนของคุณ</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>

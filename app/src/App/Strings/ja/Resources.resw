@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>新しいシードフレーズが生成され、アカウントに紐付けられます。</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>シードフレーズがあれば、アクセスできなくなってもアカウントを復元できます。</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>シードフレーズがあれば、アクセスできなくなってもアカウントを復元できます。安全な場所に保管してください。</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>認証コードにアクセスするには、アカウントを作成して{link}ur.io{/link}にサインインしてください。アカウント -&gt; 設定 -&gt; 認証コード作成/コピー -&gt; 貼り付け -&gt; 完了！</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>追加</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>サインイン方法を追加</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>ブロックされた場所を追加</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>紹介コードを追加して追加の特典を獲得</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>サインイン方法を追加</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>サインイン方法を追加</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>ウォレットを追加</value>
@@ -144,6 +165,10 @@
     <value>{}はVPN経由でルーティングされます</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>{}は1つのプロバイダーを使用します</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>除外モードが有効 — 除外したアプリはVPNを迂回</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>アプリ分割ルール</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>分割アプリ 0 件</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>このアプリはインストールされている URnetwork システムサービスより古いバージョンです。接続するにはアプリを更新してください。</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>Appleのサインイン方法を追加しました</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>ボーナスを適用</value>
@@ -188,6 +225,9 @@
     <value>本当にアカウントを削除しますか？</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>{} をサインイン方法から削除してもよろしいですか？</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>このウォレットを削除してもよろしいですか？</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -195,6 +235,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>認証コード</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>認証コード 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>認証コード作成</value>
@@ -386,6 +432,10 @@
     <value>サブスクライブすると、URnetworkの[利用規約](https://ur.io/terms)および[プライバシーポリシー](https://ur.io/privacy)に同意したことになります</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>VPNを迂回</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>キャンセル</value>
     <comment>Call to action</comment>
@@ -526,6 +576,10 @@
     <value>接続</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>Solanaウォレット（PhantomまたはSolflare）を接続して、サインイン方法として追加します。</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>ウォレットを接続</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -574,6 +628,10 @@
     <value>接続済み</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>接続済み: {}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.other" xml:space="preserve">
     <value>{} プロバイダーに接続済み</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -581,6 +639,10 @@
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>プロバイダーに接続中</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>ウォレットに接続中...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>接続モード</value>
@@ -622,6 +684,10 @@
     <value>帯域幅の提供</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>コピーしました！</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>コピー</value>
     <comment>Call to action</comment>
@@ -633,6 +699,10 @@
   <data name="copy_client_id" xml:space="preserve">
     <value>クライアントIDをコピー</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>クリップボードにコピー</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>ウォレットを開けませんでした。インストールしてからもう一度お試しください。</value>
@@ -674,6 +744,10 @@
     <value>アカウントを作成</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>インスタントアカウントを作成</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>エラーが発生しました。もう一度お試しください。</value>
     <comment>Call to action</comment>
@@ -681,6 +755,14 @@
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>作成された認証コードは5分後に失効します</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>現在のAPI: {}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>現在の接続: {}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>現在の紹介ネットワーク</value>
@@ -697,6 +779,18 @@
   <data name="custom_dns" xml:space="preserve">
     <value>カスタムDNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>アプリと URnetwork システムサービスのビルドが異なります。両方を同じバージョンに更新してください。</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>URnetwork システムサービスが古くなっています。接続するには更新してください。</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>URnetwork システムサービスが実行されていません。インストールまたは起動してから、もう一度お試しください。</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>毎日のデータ残高：</value>
@@ -725,6 +819,10 @@
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>デフォルトでは、{} GiB/月が付与されます。追加の帯域幅を獲得する方法はこちらです：</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>デフォルト</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>デフォルト</value>
@@ -814,6 +912,10 @@
     <value>DNS over HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>デフォルトの安全な設定が適用されていません</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>デフォルトの安全な設定が適用されていません</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -834,6 +936,10 @@
     <value>DNS設定は利用できません</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>{} 向けの推奨設定が適用されていません</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>地域の推奨設定を使用中</value>
     <comment>dns settings</comment>
@@ -841,6 +947,10 @@
   <data name="dns_using_secure" xml:space="preserve">
     <value>最も安全なデフォルト設定を使用中</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>完了</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>メールが見つかりませんか？</value>
@@ -902,6 +1012,10 @@
     <value>ネットワーク名を入力</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>パスワードを入力</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>SolanaまたはBittensorのウォレットアドレスを入力</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -912,6 +1026,10 @@
   <data name="enter_balance_code" xml:space="preserve">
     <value>残高コードを入力</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>ネットワーク名を入力</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>ネットワーク紹介コードを入力してください</value>
@@ -924,6 +1042,10 @@
   <data name="enter_wallet_address" xml:space="preserve">
     <value>ウォレットアドレスを入力</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>ネットワーク名の変更中にエラーが発生しました</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>申し訳ありません。乗数の受け取り中にエラーが発生しました。</value>
@@ -1065,6 +1187,15 @@
     <value>一般</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>生成</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>復元用のシードフレーズを生成しますか？</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>シードフレーズを生成</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>接続する</value>
     <comment>Call to action</comment>
@@ -1084,6 +1215,10 @@
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Googleでログイン</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>Googleのサインイン方法を追加しました</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>了解</value>
@@ -1121,6 +1256,14 @@
     <value>URnetworkの[利用規約](https://ur.io/terms)および[プライバシーポリシー](https://ur.io/privacy)に同意します</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>シードフレーズを保存しました</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>IDキーのハッシュをコピーしました</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>問題が解決しない場合は、[support@ur.io](mailto:support@ur.io) までご連絡いただくか、直接サポートを受けるために[Discordに参加](https://discord.com/invite/RUNZXMwPRK)してください。</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1140,6 +1283,10 @@
   <data name="include_app_description" xml:space="preserve">
     <value>含めたアプリのみトンネルを使用します。</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>VPNに含める</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>含める</value>
@@ -1181,6 +1328,10 @@
     <value>IPアドレス</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} 個の IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1217,6 +1368,10 @@
     <value>参加する URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>凡例</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>キルスイッチ</value>
     <comment>Call to action</comment>
@@ -1245,9 +1400,16 @@
     <value>プロトコルページでさらに詳しく</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>アカウントにサインインする別の方法をリンクします。</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>読み込み中...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>サインイン方法を読み込み中...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>ローカル</value>
@@ -1285,6 +1447,34 @@
     <value>ローカル統計</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
   </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>URnetwork はシステムの位置情報ファイルを削除できませんでした。そのため、このマシンはプロバイダーの位置情報を報告し続けている可能性があります。URnetwork システムサービスを起動してこの機能をオフにするか、管理者として /etc/geolocation を削除してください。</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>すべてを網羅するわけではありません。Chrome と KDE Plasma は GeoClue に問い合わせることがなく、IP アドレスから独自に位置を割り出すアプリには影響しません。システムがすぐに応答しない場合、Firefox は独自の位置検索にフォールバックします。</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>GeoClue を通じてシステムに位置情報を問い合わせるアプリ — GNOME の「設定」と「地図」、Firefox、サンドボックス化された Flatpak および Snap アプリなど — は、あなたの位置情報ではなくプロバイダーの位置情報を報告します。</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>準備完了。トグルをオンにすると、接続中のプロバイダーの位置情報がこのマシンの位置情報として報告されます。</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>GeoClue 2.7 以降をインストールしてください。すべてのシステムに入っているわけではなく、Ubuntu 22.04 と Debian 12 に付属するのはこれに対応していない古いバージョンです。</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>URnetwork システムサービスをインストールしてください。システムの位置情報ファイルは /etc 以下にあるため、書き込みには特権ヘルパーが必要です — URnetwork がアプリ自体を管理者として実行するよう求めることはありません。</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>GeoClue の静的位置情報ソースを有効のままにしてください。既定では有効です。変更したことがある場合は /etc/geoclue/geoclue.conf を確認してください。</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
+  </data>
   <data name="login_client_error" xml:space="preserve">
     <value>クライアントの認証中にエラーが発生しました。もう一度お試しください。</value>
     <comment>Call to action</comment>
@@ -1321,13 +1511,25 @@
     <value>デフォルトに設定</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>アプリを管理</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>サブスクリプションを管理</value>
     <comment>Call to action</comment>
   </data>
+  <data name="max_n" xml:space="preserve">
+    <value>最大 {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
+  </data>
   <data name="member" xml:space="preserve">
     <value>メンバー</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+  </data>
+  <data name="method" xml:space="preserve">
+    <value>方法</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
   </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>{}分前</value>
@@ -1417,9 +1619,17 @@
     <value>最も人気</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>複数のIP</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>倍率</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/日</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>名前</value>
@@ -1444,6 +1654,10 @@
   <data name="net_provided" xml:space="preserve">
     <value>提供済みネット</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>ネットワーク</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>空欄にするとネットワークドメインから導出されます。</value>
@@ -1517,6 +1731,10 @@
     <value>ネットワーク収益</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>ネットワーク名を {} に変更しました</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>利用できません。既存のネットワークとは少なくとも3文字異なる必要があります。ユニークにするか、長くしてください。</value>
     <comment>Call to action</comment>
@@ -1548,6 +1766,10 @@
   <data name="network_name_unavailable" xml:space="preserve">
     <value>ネットワーク名を使用できません</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>他に{}台のデバイスがオンラインです</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>ネットワークピア</value>
@@ -1592,6 +1814,14 @@
   <data name="no_blocked_locations" xml:space="preserve">
     <value>ブロックされた場所はありません</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>メールアドレスも電話番号もパスワードも不要です。アカウントはシードフレーズで保護されます。</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>インストール済みのアプリが見つかりません。(Store アプリは一覧に表示されません。)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>場所が見つかりません</value>
@@ -1718,6 +1948,10 @@
     <value>パスワードは12文字以上である必要があります</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>24単語のシードフレーズをここに貼り付け</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>Solanaウォレットで支払う</value>
     <comment>Call to action</comment>
@@ -1754,6 +1988,18 @@
     <value>支払いは毎週日曜日の00:00 UTCに行われ、最低USDC基準を満たす必要があります。</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>1 ピア</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d ピア</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>接続するまでピア検出は無効です</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>保留中</value>
     <comment>Call to action</comment>
@@ -1765,6 +2011,22 @@
   <data name="pending_payout" xml:space="preserve">
     <value>保留中の支払い</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>1つのプロバイダーに固定</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>このアプリのすべての接続を1つのプロバイダーにまとめ、APIと画像が同じIPアドレスを使うようにします。VPN経由でコンテンツが読み込めないアプリに使用してください</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>固定済み</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>プレースホルダ</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>プラン</value>
@@ -1797,6 +2059,22 @@
   <data name="points_breakdown" xml:space="preserve">
     <value>ポイントの内訳</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>ポスト量子暗号</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>フォールバック有効（一時的）</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>ポスト量子ID</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>あなたのIDキーはこのデバイスにローカル保存されます。いずれかのピアのキーがローカルに保存されたキーと異なって表示される場合、そのネットワーク運営者は信頼できません。</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>価格はチェックアウト時に表示されます。</value>
@@ -1857,6 +2135,10 @@
   <data name="provider_count_int" xml:space="preserve">
     <value>{} プロバイダー</value>
   </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>プロバイダーのID</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
   <data name="provider_location_unknown" xml:space="preserve">
     <value>場所は不明</value>
     <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
@@ -1868,6 +2150,10 @@
   <data name="provider_locations_title" xml:space="preserve">
     <value>プロバイダーの場所</value>
     <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>接続するまでプロバイダーの詳細は利用できません</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>プロバイダー統計</value>
@@ -1949,6 +2235,10 @@
     <value>友達を紹介 = +30 GiB/月</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
   </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>友達を紹介 = +3 GiB/日</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
+  </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>紹介して稼ぐ</value>
     <comment>Account Screen</comment>
@@ -2025,6 +2315,9 @@
     <value>紹介</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>シードフレーズを再生成</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>地域</value>
     <comment>Provider list group title for regions</comment>
@@ -2076,6 +2369,9 @@
   <data name="remove_rule" xml:space="preserve">
     <value>ルールを削除</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>このサインイン方法を削除しますか？</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>ウォレットを削除</value>
@@ -2133,6 +2429,10 @@
     <value>ルール</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>無料データと紹介データが2倍</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>保存</value>
     <comment>Profile</comment>
@@ -2161,6 +2461,10 @@
     <value>{}秒前</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>アカウントを保護</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>世界中のコンテンツを
 見る</value>
@@ -2170,6 +2474,10 @@
     <value>URnetworkで世界中のコンテンツを見る</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>シードフレーズ</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seekerトークンが認証されました！</value>
     <comment>Call to action</comment>
@@ -2177,6 +2485,10 @@
   <data name="select_country_to_block" xml:space="preserve">
     <value>ブロックする国を選択</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>地球儀: プロバイダーの場所を選択</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>選択した場所</value>
@@ -2266,6 +2578,10 @@
     <value>サインイン</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>サインイン</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>dGEN1でサインイン</value>
     <comment>Call to action</comment>
@@ -2273,6 +2589,13 @@
   <data name="sign_in_failed" xml:space="preserve">
     <value>サインインに失敗しました</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>サインイン方法が正常に追加されました</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>サインイン方法</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>コードでサインイン</value>
@@ -2282,13 +2605,172 @@
     <value>Google でサインイン</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>Googleでサインインして、サインイン方法として追加します。</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>シードフレーズでサインイン</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>Apple IDでサインインして、サインイン方法として追加します。</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>サインアウト</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>ウォレットで署名</value>
+    <comment>Button text for signing in with a wallet.</comment>
+  </data>
   <data name="signed_in" xml:space="preserve">
     <value>サインインしました</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>平均信頼性</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>クライアント</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>接続オプション</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>接続するとリアルタイムのアクティビティが表示されます</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>国</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>国別倍率</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>固定IP</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>サブスクリプションを管理</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>自動</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>ストリーミング</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>ウェブ</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>倍率</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>まだトラフィックはありません</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>プラン</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>プロキシ</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>信頼性の重み</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>強力な匿名化</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>転送量</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>接続するには拡張機能をセットアップしてください</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>拡張機能は別のネットワークにサインインしています：</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork は拡張機能を通じてこのブラウザーをルーティングします。接続を始めるにはインストールしてください。</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>接続するには拡張機能をインストールしてください</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>拡張機能を検出、サインイン済み</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>拡張機能はインストールされていますが、サインアウトしています。接続するにはご自分のネットワークでセットアップしてください。</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>接続準備完了</value>
+    <comment>Connect: disconnected status line</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>アプリをインストール</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>現在は Free プランです。データと機能を増やすには Pro にアップグレードしてください。</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>Free プラン</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>{platform}で管理</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>App Storeで管理</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>Google Playで管理</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>別のプラットフォーム</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>Pro サブスクリプションは {platform} 経由で請求されています。変更または解約するには、{platform} 経由でサブスクリプションを管理してください。</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>Pro サブスクリプションは App Store 経由で請求されています。変更または解約するには、App Store でサブスクリプションを管理してください。</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>Pro サブスクリプションは Google Play 経由で請求されています。変更または解約するには、Google Play でサブスクリプションを管理してください。</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>Pro サブスクリプションは Stripe 経由で請求されています。以下でいつでもお支払い情報の更新や解約ができます。</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>ウォレットに十分なUSDC資金があることを確認してください。場合によっては、ウォレットの資金が不足していると支払いが失敗することがあります。</value>
@@ -2482,9 +2964,21 @@
     <value>これらのウォレットはURnetworkと提携しておらず、URnetworkによって管理されていません。収益は接続されたウォレットに送金されます。</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ 表示されるのはこの一度きりです。</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>この地域</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>接続済み</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>未接続</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>ログイン</value>
@@ -2560,6 +3054,10 @@
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>ゲストモードを試す</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>接続を開始できませんでした</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>暗号化なしのDNS</value>
@@ -2758,9 +3256,17 @@
     <value>バージョンおよびビルド情報</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>{} 経由</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>承認待ち</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>ウォレットの署名を待っています...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>ウォレット</value>
@@ -2800,6 +3306,10 @@
     <value>ウォレットでのサインインに失敗しました</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>ウォレットのサインイン方法を追加しました</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>ウォレット</value>
     <comment>Wallets Screen</comment>
@@ -2832,6 +3342,10 @@
     <value>URnetworkで</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>書き留めて安全な場所に保管してください。紛失すると、アカウントにアクセスできなくなります。</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>年払い</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -2843,6 +3357,16 @@
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>30 GiB/月を一生獲得</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>あなたは生涯 3 GiB/日 を獲得できます</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>他に1台のデバイスがオンラインです</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>他に{}台のデバイスがオンラインです</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>さらに高速な通信速度と、強力な検閲対策やデータ制御などの新機能への優先アクセスが解除されます。</value>
@@ -2868,6 +3392,10 @@
     <value>友達は30 GiB/月を一生獲得</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>友達は生涯 3 GiB/日 を獲得できます</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>購入を完了するには承認が必要です。承認されるとUR Proは自動的に有効になります。もう一度購入する必要はありません。</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -2875,5 +3403,9 @@
   <data name="your_referral_link" xml:space="preserve">
     <value>あなたの紹介リンク</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>あなたのシードフレーズ</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>

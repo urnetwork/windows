@@ -3965,6 +3965,10 @@ world's content</value>
     <value>Username is the token in the URL; password is empty.</value>
     <comment>Account panel: SOCKS credential note</comment>
   </data>
+  <data name="site_sub_active_body" xml:space="preserve">
+    <value>Your Pro plan is active. There's no store subscription to manage on this account.</value>
+    <comment>Subscription: body for a Pro account with no store subscription to cancel (e.g. Pro from a balance code or a grant)</comment>
+  </data>
   <data name="site_sub_free_body" xml:space="preserve">
     <value>You're on the Free plan. Upgrade to Pro for more data and features.</value>
     <comment>Subscription: free plan body</comment>
@@ -3977,6 +3981,22 @@ world's content</value>
     <value>Manage in {platform}</value>
     <comment>Subscription: manage-on-platform button ({platform})</comment>
   </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>Manage in the App Store</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>Manage in Google Play</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_multiple_note" xml:space="preserve">
+    <value>You're being billed for more than one subscription. Each one has to be cancelled where it was purchased.</value>
+    <comment>Subscription: warning shown when a network is billed by more than one store, because cancelling one does not cancel the others</comment>
+  </data>
+  <data name="site_sub_multiple_title" xml:space="preserve">
+    <value>Your subscriptions</value>
+    <comment>Subscription: heading above the list, shown only when more than one store is billing the network</comment>
+  </data>
   <data name="site_sub_other_platform" xml:space="preserve">
     <value>another platform</value>
     <comment>Subscription: unknown platform fallback</comment>
@@ -3984,6 +4004,14 @@ world's content</value>
   <data name="site_sub_platform_body" xml:space="preserve">
     <value>Your Pro subscription is billed through {platform}. To change or cancel it, manage your subscriptions in {platform}.</value>
     <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>Your Pro subscription is billed through the App Store. To change or cancel it, manage your subscriptions in the App Store.</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>Your Pro subscription is billed through Google Play. To change or cancel it, manage your subscriptions in Google Play.</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
   </data>
   <data name="site_sub_stripe_body" xml:space="preserve">
     <value>Your Pro subscription is billed through Stripe. Update your payment details or cancel anytime below.</value>
