@@ -56,6 +56,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // with no session, so a screen behind sign-in can actually be looked at.
   // Pins the home view — a later auth push must not yank it away.
   void EnterPreviewUi(std::string const& destination);
+  // True while --preview-ui is showing the shell with no session. Read by the
+  // navigation relay, which must not fire the per-destination API loads: there
+  // is no token, so every one of them would be an unauthenticated request to
+  // the production API from whatever machine this is running on.
+  bool previewUi() const { return previewUi_; }
   // the SubscriptionBalanceStore relay: it paints the account panel AND the
   // connect drawer from one snapshot, so it stays at window level
   void ApplyBalance();

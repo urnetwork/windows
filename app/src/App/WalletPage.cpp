@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdio>
 
+#include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
 
@@ -64,8 +65,9 @@ void WalletPage::ApplyStrings() {
   w_.WalletAddressBox().PlaceholderText(Loc("enter_wallet_address"));
   w_.ConnectWalletButton().Content(LocBox("connect"));
 
-  // leaderboard
-  w_.LeaderboardHeading().Text(Loc("leaderboard"));
+  // leaderboard (its title comes from the NavigationView header)
+  w_.LeaderboardDescription().Text(Loc("leaderboard_description"));
+  w_.LeaderboardStatusText().Text(Loc("loading"));
 }
 
 // ---- wallet --------------------------------------------------------------
@@ -214,22 +216,58 @@ void WalletPage::ShowPreviewSnackbar() {
 
 // ---- leaderboard ---------------------------------------------------------
 
+void WalletPage::ShowPreviewLeaderboardState() {
+  ApplyLeaderboard({}, /*ok=*/true);
+}
+
+// The panel used to draw one heading and nothing else whether the fetch was in
+// flight, had come back empty, or had failed - and a failure was silent in the
+// log too, so there was no way at all to tell "this screen is broken" from
+// "there is no data". All three now say which they are.
+void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, bool ok) {
+  w_.LeaderboardList().Items().Clear();
+  if (!ok) {
+    w_.LeaderboardStatusText().Text(Loc("something_went_wrong"));
+    w_.LeaderboardStatusText().Visibility(Visibility::Visible);
+    return;
+  }
+  if (earners.empty()) {
+    w_.LeaderboardStatusText().Text(Loc("none"));
+    w_.LeaderboardStatusText().Visibility(Visibility::Visible);
+    return;
+  }
+  w_.LeaderboardStatusText().Visibility(Visibility::Collapsed);
+  int rank = 1;
+  for (auto const& e : earners) {
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%d.  %s  —  %.1f MiB", rank++,
+                  e.network_name.c_str(), e.net_mib_count);
+    w_.LeaderboardList().Items().Append(winrt::box_value(winrt::to_hstring(buf)));
+  }
+}
+
 void WalletPage::LoadLeaderboard() {
+  w_.LeaderboardStatusText().Text(Loc("loading"));
+  w_.LeaderboardStatusText().Visibility(Visibility::Visible);
+
   urnet::GetLeaderboardArgs args;
+  // [queue, weak], like every other SDK callback in this file. This one used to
+  // capture a raw `this` and call w_.DispatcherQueue() from the SDK thread -
+  // the only two places in the split that did (the other is OnSendFeedback).
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
   Sdk().api().getLeaderboard(
-      args, [this](std::optional<urnet::LeaderboardResult> result,
-                   std::optional<std::string>) {
-        if (!result || !result->earners) return;
-        urnet::LeaderboardEarnersList earners = *result->earners;
-        w_.DispatcherQueue().TryEnqueue([this, earners] {
-          w_.LeaderboardList().Items().Clear();
-          int rank = 1;
-          for (auto const& e : earners) {
-            char buf[64];
-            std::snprintf(buf, sizeof(buf), "%d.  %s  —  %.1f MiB", rank++,
-                          e.network_name.c_str(), e.net_mib_count);
-            w_.LeaderboardList().Items().Append(winrt::box_value(winrt::to_hstring(buf)));
-          }
+      args, [queue, weak](std::optional<urnet::LeaderboardResult> result,
+                          std::optional<std::string> err) {
+        const bool ok = result && result->earners && !err;
+        urnet::LeaderboardEarnersList earners;
+        if (ok) earners = *result->earners;
+        if (!ok) {
+          urnw::LogError("leaderboard: fetch failed{}",
+                         err ? (": " + *err) : std::string());
+        }
+        queue.TryEnqueue([weak, earners = std::move(earners), ok] {
+          if (auto self = weak.get()) self->wallet().ApplyLeaderboard(earners, ok);
         });
       });
 }

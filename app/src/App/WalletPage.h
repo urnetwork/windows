@@ -36,6 +36,10 @@ class WalletPage {
   // component can be seen without an account. Same call, same store keys as
   // the real path; the ERROR severity, which is the one that must persist.
   void ShowPreviewSnackbar();
+  // --preview-ui only: the leaderboard fetch is skipped with the other API
+  // loads, so settle its panel on the empty state instead of leaving it on
+  // "Loading..." — which is indistinguishable from a hang.
+  void ShowPreviewLeaderboardState();
 
   void OnWalletAddressChanged(
       winrt::Windows::Foundation::IInspectable const&,
@@ -44,6 +48,8 @@ class WalletPage {
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
  private:
+  // loading / empty / failed, in one place
+  void ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, bool ok);
   void ApplyWallets(urnet::AccountWalletsList const& wallets);
   void ValidateWalletAddress();  // debounced; the server validates per chain
   void ApplyWalletValidation(std::string const& chain, uint32_t generation, bool valid);

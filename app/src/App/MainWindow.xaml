@@ -272,9 +272,15 @@
 
         <!-- Home -->
         <!-- same body-face inheritance as LoginRoot, for the whole home tree -->
+        <!-- IsSettingsVisible="False" is load-bearing: NavigationView adds its OWN
+             settings gear by default, IN ADDITION to the explicit SettingsNavItem
+             below. That gear's Tag matches none of the six destinations, so
+             selecting it collapsed every panel and showed an empty window with no
+             way back except picking another destination. -->
         <muxc:NavigationView x:Name="HomeNav" Grid.Row="1" Visibility="Collapsed"
                              FontFamily="{StaticResource UrBodyFontFamily}"
-                             IsBackButtonVisible="Collapsed" PaneDisplayMode="Top"
+                             IsBackButtonVisible="Collapsed" PaneDisplayMode="LeftMinimal"
+                             IsSettingsVisible="False"
                              SelectionChanged="OnNavSelectionChanged">
             <muxc:NavigationView.MenuItems>
                 <muxc:NavigationViewItem x:Name="ConnectNavItem" Tag="connect" IsSelected="True" />
@@ -739,7 +745,19 @@
                 <!-- Leaderboard -->
                 <ScrollViewer x:Name="LeaderboardView" Visibility="Collapsed">
                     <StackPanel Spacing="8" MaxWidth="640">
-                        <TextBlock x:Name="LeaderboardHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
+                        <!-- No section heading here: NavigationView's Header already
+                             shows the destination name ("Leaderboard"), and a panel
+                             heading with the same word under it read as a stutter.
+                             The other destinations keep theirs because their headings
+                             name a SECTION ("Plan", "Feedback"), not the destination. -->
+                        <TextBlock x:Name="LeaderboardDescription"
+                                   Style="{StaticResource UrSupportingTextStyle}" />
+                        <!-- Loading / empty / failed. Without it the panel drew one
+                             heading and nothing else whether the fetch was in
+                             flight, had returned nothing, or had failed - three
+                             very different situations, one blank screen. -->
+                        <TextBlock x:Name="LeaderboardStatusText"
+                                   Style="{StaticResource UrSupportingTextStyle}" />
                         <ListView x:Name="LeaderboardList" />
                     </StackPanel>
                 </ScrollViewer>

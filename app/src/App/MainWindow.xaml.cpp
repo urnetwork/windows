@@ -133,10 +133,17 @@ void MainWindow::ShowHomeRoot() {
   HomeNav().Visibility(Visibility::Visible);
 }
 
-// --preview-ui. Nothing here touches the SDK, reads a token or makes a request:
-// it forces the root swap and picks a destination, and the panels then render
-// against whatever the empty local snapshots hold. That is the point — it is
-// the state a signed-in user's FIRST frame is in, before any response lands.
+// --preview-ui. This does not authenticate: no token is read or written and no
+// session is created. It forces the root swap, picks a destination, and lets the
+// panels render against the empty local snapshots — which is the state a real
+// signed-in user's FIRST frame is in, before any response lands.
+//
+// It is NOT a promise of "no network". Selecting a destination runs the same
+// navigation relay a real user does, and that relay is what would issue the
+// per-destination API loads; those are skipped explicitly in
+// OnNavSelectionChanged, because there is no token and the only thing they
+// could produce is a 401. The drawer's own EnsureLocations still runs, exactly
+// as it does on a normal signed-out launch.
 void MainWindow::EnterPreviewUi(std::string const& destination) {
   previewUi_ = true;
   urnw::LogInfo("preview-ui: showing the signed-in shell at '{}' with no session",
@@ -161,6 +168,10 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   // wallet error must PERSIST, the support acknowledgement must time out.
   if (destination == "wallet") wallet_->ShowPreviewSnackbar();
   if (destination == "support") settings_->ShowPreviewSnackbar();
+  // The leaderboard's fetch is skipped along with the other loads, so put its
+  // panel into the settled empty state rather than leaving it on "Loading..."
+  // forever, which would look exactly like a hang.
+  if (destination == "leaderboard") wallet_->ShowPreviewLeaderboardState();
 }
 
 // ---- navigation ----------------------------------------------------------
@@ -170,6 +181,11 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   auto item = args.SelectedItem().try_as<NavigationViewItem>();
   if (!item) return;
   const auto tag = winrt::unbox_value_or<hstring>(item.Tag(), L"connect");
+  // LeftMinimal collapses the destination list behind the pane toggle, so the
+  // header is the only thing telling the user where they are. The item's own
+  // Content is already the localized name (ApplyStrings), so this needs no new
+  // string and cannot drift from the menu.
+  HomeNav().Header(item.Content());
 
   const bool wasConnectVisible = ConnectView().Visibility() == Visibility::Visible;
   ConnectView().Visibility(tag == L"connect" ? Visibility::Visible : Visibility::Collapsed);
@@ -181,6 +197,16 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
 
   if (tag == L"connect" && !wasConnectVisible) connect_->AnimateDrawerIn();
 
+  // --preview-ui has no session. apiReady() is NOT the guard for that: it is
+  // api_.has_value(), set at SDK INIT, not at login — so without this the
+  // preview fired LoadAccount, Balance().Refresh(), LoadWallet() and
+  // LoadLeaderboard() with no token, and the API answered 401 four times. A
+  // development switch that ships in Release must not talk to production.
+  if (previewUi_) {
+    urnw::LogInfo("preview-ui: '{}' selected - skipping its API loads (no session)",
+                  urnw::Narrow(std::wstring{tag}));
+    return;
+  }
   if (!Sdk().apiReady()) return;
   if (tag == L"account") {
     account_->LoadAccount();
