@@ -52,6 +52,26 @@ ApplyAdvancedMode() the way it has ApplyStrings(). The DeviceLocal-only
 holes (dropExit, stallExit, shuffleExits, probe-suite getters) become
 in-scope to bridge, since Advanced Mode is where they would surface.
 
+**Scope settled (owner, 2026-08-08): Advanced Mode is read AND write.**
+The owner's words: *"advanced mode can let users tune the SDK themselves
+with all the settings and such we made. Along with log views and advanced
+details. For normal mode we assume the VPN just works normally and is
+optimized to work as is."* So:
+
+- **Advanced** = the full reliability-settings surface (all 34, live),
+  the fault-injection and probe actions, log views (app log + service
+  glog + the `[rel]` event grammar), raw values and IDs everywhere.
+- **Normal** = curated defaults, no tuning. The VPN presents as a thing
+  that works, not a thing you operate.
+- Consequence drawn here (overrule if wrong): the **Developer destination
+  folds behind the Advanced Mode toggle**. The earlier "leave it visible"
+  decision predates the toggle existing; a Normal user whose VPN "just
+  works" has no 34-knob destination in the nav. Advanced Mode shows it
+  and adds the inline surfaces everywhere else.
+- The SDK bridge work (dropExit/stallExit/shuffleExits, the probe-suite
+  getters, and the int32 action counts the bridge currently drops) is a
+  prerequisite and proceeds in the sdk repo as its own phase.
+
 ## Ground truth (verified 2026-08-06, not inherited from docs)
 
 - `app/tools/build-local.ps1` builds the solution here in **4s incremental**,
