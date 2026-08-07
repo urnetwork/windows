@@ -47,6 +47,14 @@ void SetWidth(Controls::ColumnDefinition const& column, double dips) {
   if (column) column.Width(GridLengthHelper::FromPixels(dips));
 }
 
+// A column's width as a share of what is left, for the two destinations whose
+// split is a PROPORTION rather than a rail: a table and the panels beside it
+// should both grow when the window does, and a fixed side column would leave
+// all of the extra to one of them.
+void SetStar(Controls::ColumnDefinition const& column, double weight) {
+  if (column) column.Width(GridLengthHelper::FromValueAndType(weight, GridUnitType::Star));
+}
+
 }  // namespace
 
 MainWindow::MainWindow() {
@@ -266,6 +274,31 @@ void MainWindow::ApplyBreakpoint() {
             // directly under the hero card, which is where the flyout has
             // always had it
             : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});
+
+  // ---- Wallet: Portmaster's master-detail ----------------------------------
+  // The figures across the top; the sources of the money on the left (wallets,
+  // points, multipliers, reliability); the ledger on the right. The split is a
+  // proportion rather than a rail because BOTH sides want the extra: a payouts
+  // table with four columns and a row of wallet cards both read better wider.
+  WalletCapColumn().MaxWidth(wide ? 1720 : 820);
+  if (wide) {
+    SetStar(WalletSideColumn(), 0.85);
+  } else {
+    SetWidth(WalletSideColumn(), 0);
+  }
+  Place(WalletSideStack(), wide ? PanePlacement{1, 1, 1, Thickness{20, 4, 0, 24}}
+                                : PanePlacement{2, 0, 1, Thickness{0, 4, 0, 24}});
+  // The three header figures: a row at desktop widths, a column at flyout
+  // width. Three tiles across 560dip read "Unpaid data provid..." and
+  // "1234.50..." - a KPI that cannot be read is not a KPI.
+  SetStar(WalletStatsColumn2(), wide ? 1 : 0);
+  SetStar(WalletStatsColumn3(), wide ? 1 : 0);
+  Place(WalletPendingTile(),
+        wide ? PanePlacement{0, 1, 1, Thickness{12, 0, 0, 0}}
+             : PanePlacement{1, 0, 1, Thickness{0, 8, 0, 0}});
+  Place(WalletReferralsTile(),
+        wide ? PanePlacement{0, 2, 1, Thickness{12, 0, 0, 0}}
+             : PanePlacement{2, 0, 1, Thickness{0, 8, 0, 0}});
 
   urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
 }

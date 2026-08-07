@@ -1338,46 +1338,109 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- The same shape ConnectView carries; see the long note
+                       there. Wallet's cut is Portmaster's: the numbers across
+                       the top, then the SOURCES of money on the left (wallets,
+                       points, multipliers, reliability) and the LEDGER on the
+                       right. A table earns width, and the payouts table was the
+                       thing squeezed into 820dip in the owner's screenshot. -->
+                  <Grid x:Name="WalletLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="820" />
+                        <ColumnDefinition x:Name="WalletCapColumn"
+                                          Width="1000*" MaxWidth="820" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="12">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="WalletSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <!-- The header, across the whole composition at every
+                         width: the plan action, the destination's snackbar and
+                         the three figures the rest of the page explains. -->
+                    <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                x:Name="WalletTopStack" Spacing="12">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xEB05;" Style="{StaticResource UrRowIconStyle}" />
                             <TextBlock x:Name="PlanHeading" Style="{StaticResource UrPanelHeadingStyle}" />
                         </StackPanel>
-                        <Button x:Name="UpgradeButton"
+                        <!-- the upgrade action does not need the full width of a
+                             desktop window; capped so it reads as a button
+                             rather than as a banner -->
+                        <Button x:Name="UpgradeButton" MaxWidth="420"
+                                HorizontalAlignment="Left"
                                 Style="{StaticResource AccentButtonStyle}" Click="OnOpenUpgrade" />
                         <muxc:InfoBar x:Name="WalletInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
 
                         <!-- Header stats (iOS WalletsHeader): unpaid data provided,
                              the pending USDC balance the payout threshold is measured
-                             against, and total referrals. -->
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <Grid ColumnSpacing="24">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
+                             against, and total referrals.
+
+                             THREE TILES, not three columns of one card. The
+                             single card was right at 600dip and wrong at 1700:
+                             three captions and three numbers spread across a
+                             seventeen-hundred-pixel slab, with two thirds of it
+                             empty. UrStatTileStyle is exactly this shape and D1
+                             built it for exactly this. -->
+                        <!-- A row at desktop widths, a column at flyout width.
+                             Three tiles across 560dip left "Unpaid data
+                             provid..." and "1234.50..." on screen - a KPI that
+                             cannot be read is not a KPI - and the responsive
+                             rule for this app is a single column down there
+                             anyway. Same Place() helper the panes use. -->
+                        <!-- Gaps come from the tiles' own margins, NOT from
+                             ColumnSpacing/RowSpacing: a Grid spends its spacing
+                             between every pair of definitions whether or not
+                             they have any width, so a collapsed column still
+                             costs its gap and the visible tiles shrink by it. -->
+                        <Grid x:Name="WalletStatsGrid">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="WalletStatsColumn2" Width="0" />
+                                <ColumnDefinition x:Name="WalletStatsColumn3" Width="0" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource UrStatTileStyle}">
+                                <StackPanel>
                                     <TextBlock x:Name="WalletUnpaidLabel" Style="{StaticResource UrStatLabelStyle}" />
                                     <TextBlock x:Name="WalletUnpaidValue" Style="{StaticResource UrStatValueStyle}" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="1">
+                            </Border>
+                            <Border x:Name="WalletPendingTile" Grid.Row="1" Grid.Column="0"
+                                    Style="{StaticResource UrStatTileStyle}">
+                                <StackPanel>
                                     <TextBlock x:Name="WalletPendingLabel" Style="{StaticResource UrStatLabelStyle}" />
                                     <TextBlock x:Name="WalletPendingValue" Style="{StaticResource UrStatValueStyle}" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="2">
+                            </Border>
+                            <Border x:Name="WalletReferralsTile" Grid.Row="2" Grid.Column="0"
+                                    Style="{StaticResource UrStatTileStyle}">
+                                <StackPanel>
                                     <TextBlock x:Name="WalletReferralsLabel" Style="{StaticResource UrStatLabelStyle}" />
                                     <TextBlock x:Name="WalletReferralsValue" Style="{StaticResource UrStatValueStyle}" />
                                 </StackPanel>
-                            </Grid>
-                        </Border>
+                            </Border>
+                        </Grid>
                         <TextBlock x:Name="PayoutsThresholdText" Style="{StaticResource UrSupportingTextStyle}" />
+                    </StackPanel>
+
+                    <!-- WHERE THE MONEY COMES FROM: the wallets it is paid to,
+                         the form that adds one, and the three surfaces that
+                         explain the amount (points, multipliers, reliability). -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="WalletMainStack" Spacing="12"
+                                VerticalAlignment="Top" Margin="0,4,0,0">
 
                         <!-- Wallets: one card per account wallet, scrolling
                              horizontally (iOS PopulatedWalletsView). WalletsStatusText
@@ -1479,7 +1542,21 @@
                                 Visibility="Collapsed">
                             <StackPanel x:Name="ReliabilityPanel" Spacing="8" />
                         </Border>
+                    </StackPanel>
 
+                    <!-- THE LEDGER. Its own column at desktop widths, because a
+                         table is the one thing on this destination that gets
+                         better with width and it was the thing squeezed
+                         hardest: four columns - date, amount, wallet,
+                         transaction - inside an 820dip page that also had to
+                         hold the wallet cards. Portmaster gives its detail pane
+                         the same treatment.
+                         Advanced Mode will add id / raw columns here; the
+                         column strategy in WalletPage is stars with minimums,
+                         so they fit by narrowing rather than by clipping. -->
+                    <StackPanel Grid.Row="2" Grid.Column="0"
+                                x:Name="WalletSideStack" Spacing="12"
+                                VerticalAlignment="Top" Margin="0,4,0,0">
                         <!-- Payouts ledger: a real desktop table, one row per
                              payment, each row opening the payout detail sheet. -->
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
@@ -1489,6 +1566,7 @@
                         <TextBlock x:Name="PayoutsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
                         <StackPanel x:Name="PayoutsPanel" Spacing="0" />
                     </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 
