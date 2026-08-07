@@ -31,6 +31,21 @@ void SetMarkdownLinkText(winrt::Microsoft::UI::Xaml::Controls::TextBlock const& 
 void SetTermsMarkerText(winrt::Microsoft::UI::Xaml::Controls::TextBlock const& text,
                         std::wstring const& value, double fontSize);
 
+// Pair a terms CHECKBOX with the sentence beside it, for UIA, without the
+// sentence being announced twice.
+//
+// AutomationProperties.LabeledBy gives the checkbox its name — it has no
+// content of its own and without it the control is nameless — but the label
+// TextBlock ALSO stays in the control view carrying the identical string, so
+// a screen reader read the whole terms sentence, then read it again. This
+// takes the label out of the control view and puts its Hyperlinks BACK in
+// individually, because the links are the only way to reach the terms and the
+// privacy policy from the keyboard and a subtree hide would take them with it.
+//
+// Call AFTER SetTermsMarkerText: it works on the inlines that call produces.
+void PairTermsLabel(winrt::Microsoft::UI::Xaml::Controls::CheckBox const& box,
+                    winrt::Microsoft::UI::Xaml::Controls::TextBlock const& label);
+
 // ---- Redeem balance code ----------------------------------------------------
 // 26-character code entry with inline validation, a where-to-get-codes note,
 // and a success state. On success the owner re-polls the balance and refreshes

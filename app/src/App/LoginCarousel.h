@@ -48,11 +48,17 @@ class LoginCarousel {
 
  private:
   void Build();
+  // fit the globe to whatever height the slot ended up with, and the headline
+  // type to the globe, so the words stay inside the mask at every window size
+  void ApplyMetrics();
   void ShowSlide(size_t index);   // paint text + image for a slide, no animation
   void Advance();                 // timer tick: animate out, swap, animate in
   void AnimateTextOut();
   void AnimateTextIn();
   void CrossfadeTo(size_t index);
+  // stop and drop every running board, so nothing holds a property or a
+  // Completed callback past this point
+  void StopAnimations();
 
   winrt::Microsoft::UI::Xaml::Controls::Grid host_{nullptr};
   winrt::Microsoft::UI::Dispatching::DispatcherQueue queue_{nullptr};
@@ -64,9 +70,18 @@ class LoginCarousel {
   winrt::Microsoft::UI::Xaml::Controls::TextBlock bottomLine_{nullptr};
   winrt::Microsoft::UI::Xaml::Media::TranslateTransform headlineShift_{nullptr};
   winrt::Microsoft::UI::Xaml::Media::TranslateTransform bottomShift_{nullptr};
-  // one storyboard at a time; a new phase stops the previous one so a slow
+  // one TEXT storyboard at a time; a new phase stops the previous one so a slow
   // machine cannot leave two animations fighting over the same property
   winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard running_{nullptr};
+  // The image crossfade, tracked for exactly the same reasons and separately
+  // because it overlaps the text animations by design. It used to be a bare
+  // local that nothing could stop: while it ran it HELD the two Opacity
+  // properties, so SetActive(false)'s ShowSlide() wrote values the animation
+  // immediately overrode — the window came back showing slide N+1's image
+  // under slide N's headline, and the Completed handler's `if (!active_)
+  // return` guaranteed it never corrected itself. Its Completed also captured
+  // a raw `this` that outlived nothing in particular for 700ms after quit.
+  winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard crossfade_{nullptr};
 
   size_t index_ = 0;
   bool active_ = false;

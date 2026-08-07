@@ -91,7 +91,7 @@
                      child, so MaxWidth never binds and the column came out about
                      230px wide instead of android's 512. Stretch takes the whole
                      slot, MaxWidth clamps it, and the layout centres the rest. -->
-                <StackPanel x:Name="LoginPanel" Margin="16" Spacing="16"
+                <StackPanel x:Name="LoginPanel" Margin="16" Spacing="12"
                             MaxWidth="512" HorizontalAlignment="Stretch"
                             VerticalAlignment="Center">
 
@@ -102,8 +102,18 @@
                          supplies the headline": without it the top third of the
                          signed-out screen was empty and the screen carried no
                          heading at all. Built and animated from code
-                         (LoginCarousel.cpp); this is only its slot. -->
-                    <Grid x:Name="LoginCarouselHost" Height="200" Margin="0,0,0,4" />
+                         (LoginCarousel.cpp); this is only its slot.
+
+                         MaxHeight, not Height, and driven from code
+                         (LoginPage::ApplyLoginLayout). At 200 fixed it pushed
+                         Sign in with Seedphrase, Create Instant Account and
+                         Change Network API - the three affordances the owner
+                         asked for by name - off the bottom of the window, at
+                         every size from the ~480x760 default up. The hero may
+                         not cost the screen its purpose: it takes the space
+                         that is left over and shrinks, to zero if it must. -->
+                    <Grid x:Name="LoginCarouselHost" Height="200" MinHeight="0"
+                          Margin="0,0,0,4" />
 
                     <!-- URTextInput: label, then the underlined field. Spacing is 0
                          here because the label style carries android's 8dp gap and
@@ -127,13 +137,22 @@
 
                     <!-- Sign in with Google, through the SYSTEM BROWSER (OAuth
                          authorization code + PKCE on a loopback redirect; see
-                         GoogleSignIn.h). Shown whenever the active network space
-                         reports sso_google, matching iOS, whose login screen
-                         carries this button. A build with no OAuth client id
-                         compiled in (Config.h) still SHOWS it and fails loudly
-                         on the inline error line - a silently missing button
-                         reads as "windows dropped Google sign-in". -->
-                    <Button x:Name="GoogleSignInButton"
+                         GoogleSignIn.h). Starts Collapsed and is shown only when
+                         SdkHost::SsoGoogleEnabled() says BOTH halves are true:
+                         the active network space reports sso_google AND an
+                         OAuth client id was compiled in (Config.h).
+
+                         An earlier note here argued the opposite - that a build
+                         with no client id should still SHOW the button and fail
+                         loudly, because "a silently missing button reads as
+                         windows dropped Google sign-in". It lost. The default
+                         build has no client id, so that reading shipped a
+                         button that was visible and failing for every user of
+                         every default build, which reads worse than an absent
+                         one. GoogleSignIn.h, Config.h and
+                         SdkHost::SignInWithGoogle all already described the
+                         hide; the code now agrees with them. -->
+                    <Button x:Name="GoogleSignInButton" Visibility="Collapsed"
                             Style="{StaticResource UrSecondaryButtonStyle}"
                             Click="OnSignInWithGoogle">
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -403,10 +422,17 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <!-- A bare CheckBox with no content has NO accessible name -
-                             it does not even appear in the UIA tree with one, so a
-                             screen reader announces "checkbox" and nothing else.
-                             LabeledBy borrows the sentence beside it, the same way
-                             the connect drawer's toggles do. -->
+                             a screen reader announces "checkbox" and nothing else -
+                             so LabeledBy borrows the sentence beside it, the same
+                             way the connect drawer's toggles do.
+
+                             LabeledBy ALONE is not the whole fix: the label stays
+                             in the control view with the identical string, so the
+                             sentence was announced twice. urnw::PairTermsLabel
+                             (called from LoginPage::ApplyStrings) takes the label
+                             out of the control view and puts its two Hyperlinks
+                             back individually - they are the only keyboard route
+                             to the terms and the privacy policy. -->
                         <CheckBox x:Name="InstantTermsCheck" MinWidth="0" VerticalAlignment="Top"
                                   AutomationProperties.LabeledBy="{Binding ElementName=InstantTermsText}"
                                   Checked="OnInstantTermsChanged" Unchecked="OnInstantTermsChanged" />

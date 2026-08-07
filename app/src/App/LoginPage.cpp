@@ -4,6 +4,7 @@
 #include "LoginPage.h"
 
 #include <chrono>
+#include <cmath>
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Windows.System.h>
@@ -35,6 +36,13 @@ constexpr size_t kMinNetworkNameLength = 6;
 constexpr size_t kMinPasswordLength = 12;
 // a verification code is 6 digits (macOS CreateNetworkVerifyViewModel)
 constexpr size_t kVerifyCodeLength = 6;
+
+// The carousel's slot is elastic (LoginPage::ApplyLoginLayout): it never grows
+// past the first number, and below the second it is hidden rather than shown
+// as a squashed sliver.
+constexpr double kCarouselMaxHeight = 200;
+constexpr double kCarouselMinHeight = 80;   // hide below this once shown
+constexpr double kCarouselShowHeight = 96;  // show again only above this
 
 // A BIP-39 seedphrase is 12 or 24 words; nothing between is valid and the
 // server would only reject it (macOS LoginSeedphraseViewModel.isSeedphraseValid).
@@ -97,14 +105,106 @@ void LoginPage::Initialize() {
   // the hero carousel; ApplyStrings has already run, so paint its first slide
   carousel_ = std::make_unique<urnw::LoginCarousel>(w_.LoginCarouselHost(), queue);
   carousel_->ApplyStrings();
+
+  // Keep the sign-in affordances on screen (see ApplyLoginLayout). Both hooks
+  // are needed: the ScrollViewer tells us how much room there is, and the panel
+  // tells us how much the content wants — which changes with the window WIDTH
+  // as the terms sentence and the error line re-wrap, not only with its height.
+  w_.LoginRoot().SizeChanged([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->login().ApplyLoginLayout();
+  });
+  w_.LoginPanel().SizeChanged([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->login().ApplyLoginLayout();
+  });
+  ApplyLoginLayout();
+}
+
+// THE THREE AFFORDANCES THE OWNER ASKED FOR BY NAME — Sign in with Seedphrase,
+// Create Instant Account and Change Network API — MUST BE REACHABLE WITHOUT
+// SCROLLING. They are the last three things on the initial step, so they are
+// the first three things a too-tall column loses, and the carousel's fixed
+// 200px slot was enough on its own to lose all three: at the ~480x760 default
+// and still at 1300x800, they sat below the fold.
+//
+// The fix is an order of precedence rather than a magic number. The affordances
+// are content and get their height first; the carousel is the hero and takes
+// whatever is left, down to nothing. Everything is measured, so it holds at
+// window sizes nobody tried — which matters here because the shell PERSISTS
+// window placement, so "correct at the default" is not correct.
+void LoginPage::ApplyLoginLayout() {
+  auto root = w_.LoginRoot();
+  auto panel = w_.LoginPanel();
+  auto host = w_.LoginCarouselHost();
+  if (!root || !panel || !host) return;
+  // Only the initial step owns this panel; the later steps collapse it.
+  if (panel.Visibility() != Visibility::Visible) return;
+  if (inLayoutPass_) return;  // re-entrancy: setting a height raises SizeChanged
+
+  const double viewport =
+      root.ViewportHeight() > 0 ? root.ViewportHeight() : root.ActualHeight();
+  if (viewport <= 0) return;
+
+  // What the column needs WITHOUT the hero, from the children's DESIRED sizes
+  // and NOT from panel.ActualHeight() - host.ActualHeight().
+  //
+  // The ActualHeight form is the obvious one and it is a layout cycle: both
+  // terms move while the pass this runs inside is still settling, so `rest`
+  // jittered, `want` jittered with it, and every SizeChanged set a new height
+  // that provoked the next. XAML caught it exactly as it should —
+  // "Layout cycle detected. Layout could not complete." — and took the process
+  // with it on the first resize. Desired sizes of the OTHER children do not
+  // depend on what the hero's height is, so this converges in one pass.
+  const double spacing = panel.Spacing();
+  double rest = 0;
+  int visibleOthers = 0;
+  for (auto const& child : panel.Children()) {
+    auto element = child.try_as<FrameworkElement>();
+    if (!element || element.Visibility() != Visibility::Visible) continue;
+    if (element == host.try_as<FrameworkElement>()) continue;
+    rest += element.DesiredSize().Height;
+    ++visibleOthers;
+  }
+  if (visibleOthers == 0 || rest <= 0) return;  // nothing measured yet
+
+  const double margins = panel.Margin().Top + panel.Margin().Bottom;
+  const double hostMargins = host.Margin().Top + host.Margin().Bottom;
+  // gaps between the others, plus the one the hero would add
+  const double gaps = spacing * visibleOthers;
+  double want = viewport - rest - gaps - margins - hostMargins;
+  if (want < 0) want = 0;
+  if (want > kCarouselMaxHeight) want = kCarouselMaxHeight;
+
+  // A sliver of globe with a headline crushed on top of it is worse than no
+  // hero at all, so below the floor it goes away entirely — collapsing it, not
+  // just zeroing it, because a Grid does not clip and a zero-height slot would
+  // spill its headline over the field below. Hysteresis between the two
+  // thresholds: hiding the slot also removes its StackPanel gap, which gives
+  // `want` back more than the gap is worth and would otherwise flap.
+  const bool showing = host.Visibility() == Visibility::Visible;
+  const bool show = showing ? (want >= kCarouselMinHeight) : (want >= kCarouselShowHeight);
+
+  inLayoutPass_ = true;
+  if (showing != show) host.Visibility(show ? Visibility::Visible : Visibility::Collapsed);
+  // Epsilon, so an unchanged answer does not write the property at all.
+  if (show && std::abs(host.Height() - want) > 0.5) host.Height(want);
+  inLayoutPass_ = false;
+  UpdateCarouselRunning();
 }
 
 void LoginPage::SetPresentationActive(bool active) {
   presentationActive_ = active;
-  // Only the initial step shows the carousel; the later steps collapse the
-  // whole panel, so leaving the timer running there would animate a tree
-  // nobody can see.
-  if (carousel_) carousel_->SetActive(active && loginStep_ == LoginStep::Initial);
+  UpdateCarouselRunning();
+}
+
+// Only the initial step shows the carousel; the later steps collapse the whole
+// panel, and a short window collapses the slot itself (ApplyLoginLayout). In
+// any of those cases the timer would be animating a tree nobody can see.
+void LoginPage::UpdateCarouselRunning() {
+  if (!carousel_) return;
+  const bool slotVisible = w_.LoginCarouselHost() &&
+                           w_.LoginCarouselHost().Visibility() == Visibility::Visible;
+  carousel_->SetActive(presentationActive_ && loginStep_ == LoginStep::Initial &&
+                       slotVisible);
 }
 
 // ---- strings ---------------------------------------------------------------
@@ -137,11 +237,7 @@ void LoginPage::ApplyStrings() {
   // is no carousel yet; Initialize paints it once it exists.
   if (carousel_) carousel_->ApplyStrings();
 
-  // The Google button shows whenever the active network space claims Google
-  // SSO. A build with no client id keeps it on screen and fails loudly when
-  // pressed (SdkHost::SignInWithGoogle) — see the note in MainWindow.xaml.
-  w_.GoogleSignInButton().Visibility(Sdk().apiReady() ? Visibility::Visible
-                                                      : Visibility::Collapsed);
+  UpdateGoogleSignInVisibility();
 
   // sign in — seedphrase step
   w_.SeedphraseBackButton().Content(LocBox("back"));
@@ -154,6 +250,9 @@ void LoginPage::ApplyStrings() {
   w_.InstantHeading().Text(Loc("create_instant_account"));
   w_.InstantExplanationText().Text(Loc("instant_account_explainer"));
   urnw::SetTermsMarkerText(w_.InstantTermsText(), urnw::Localized("terms_checkbox"), 12);
+  // after SetTermsMarkerText: it is the inlines that call built which get put
+  // back into the content view (see PairTermsLabel)
+  urnw::PairTermsLabel(w_.InstantTermsCheck(), w_.InstantTermsText());
   w_.InstantCreateButton().Content(LocBox("create_account_2"));
 
   // sign in — password step
@@ -180,6 +279,7 @@ void LoginPage::ApplyStrings() {
   w_.CreatePasswordHint().Text(Loc("password_must_be_at_least_12_characters_long"));
   // tappable terms / privacy links inside the checkbox label
   urnw::SetTermsMarkerText(w_.TermsText(), urnw::Localized("terms_checkbox"), 12);
+  urnw::PairTermsLabel(w_.TermsCheck(), w_.TermsText());
   w_.BonusCodeBox().Header(LocBox("bonus_referral_code_label"));
   w_.BonusCodeBox().PlaceholderText(Loc("enter_a_bonus_referral_code"));
   w_.CreateButton().Content(LocBox("continue_txt"));
@@ -200,9 +300,63 @@ void LoginPage::ApplyStrings() {
   w_.SendResetButton().Content(LocBox("send_reset_link_2"));
 }
 
+// Whether "Sign in with Google" is offered at all.
+//
+// SdkHost::SsoGoogleEnabled() is the purpose-built answer — GoogleSignIn::
+// Configured() (is an OAuth client id compiled in?) AND the active network
+// space's getSsoGoogle() (does this server offer it?). It had ZERO callers;
+// the gate here was apiReady(), which is api_.has_value(), true from SDK init
+// on every build. The result was a Google button shipped visible and always
+// failing in every default build, and three comments (GoogleSignIn.h,
+// Config.h, SdkHost::SignInWithGoogle) that all described the opposite. Those
+// three were right, so this now agrees with them.
+//
+// Called from ApplyStrings AND after a network-server switch: the space is
+// what supplies half the answer, and switching spaces replaces it.
+void LoginPage::UpdateGoogleSignInVisibility() {
+  const bool enabled = Sdk().SsoGoogleEnabled();
+  w_.GoogleSignInButton().Visibility(enabled ? Visibility::Visible
+                                             : Visibility::Collapsed);
+  // The button's content is a Viewbox + a TextBlock inside a StackPanel, not a
+  // string, so ContentControl derived NO name from it and UIA announced it as
+  // an unnamed button. Every other pill on this screen has the same shape.
+  Automation::AutomationProperties::SetName(w_.GoogleSignInButton(),
+                                            Loc("sign_in_with_google"));
+  Automation::AutomationProperties::SetName(w_.BittensorSignInButton(),
+                                            Loc("bittensor_sign_in"));
+  Automation::AutomationProperties::SetName(w_.SolanaSignInButton(),
+                                            Loc("solana_sign_in"));
+  Automation::AutomationProperties::SetName(w_.AuthCodeButton(),
+                                            Loc("auth_code_login_button_text"));
+}
+
 // ---- window-level calls ----------------------------------------------------
 
-void LoginPage::ResetToInitialStep() { ShowLoginStep(LoginStep::Initial); }
+// "This app is not carrying traffic, and here is why." The message is composed
+// by SdkHost and is already a complete sentence in the app's own words — it is
+// NOT from the localization store, which is why nothing is looked up here and
+// why this adds no new store key.
+void LoginPage::ShowModeNotice(hstring const& message, bool failed) {
+  if (!snackbar_ || message.empty()) return;
+  snackbar_->Show(message, failed ? InfoBarSeverity::Error
+                                  : InfoBarSeverity::Informational);
+}
+
+void LoginPage::ResetToInitialStep() {
+  // Anything that resets the flow — a sign-out, a network-server switch —
+  // must not leave a seedphrase behind in the field for the next person at
+  // this machine, or for anything reading the UIA tree.
+  ClearSeedphraseField();
+  ShowLoginStep(LoginStep::Initial);
+}
+
+// The one place the credential field is emptied, so every caller gets the same
+// treatment. TextBox has no "zero the backing buffer" API — the hstring it
+// holds is immutable and refcounted — so replacing the value is the whole of
+// what is available here.
+void LoginPage::ClearSeedphraseField() {
+  if (w_.SeedphraseBox()) w_.SeedphraseBox().Text(L"");
+}
 
 void LoginPage::ShowErrorOnCurrentStep(hstring const& message) {
   ShowLoginErrorFor(loginStep_, message);
@@ -232,9 +386,6 @@ void LoginPage::BeginGuestUpgrade() {
 
 void LoginPage::ShowLoginStep(LoginStep step) {
   loginStep_ = step;
-  if (carousel_) {
-    carousel_->SetActive(presentationActive_ && step == LoginStep::Initial);
-  }
   w_.LoginPanel().Visibility(step == LoginStep::Initial ? Visibility::Visible
                                                         : Visibility::Collapsed);
   w_.PasswordPanel().Visibility(step == LoginStep::Password ? Visibility::Visible
@@ -249,6 +400,8 @@ void LoginPage::ShowLoginStep(LoginStep step) {
                                                                 : Visibility::Collapsed);
   w_.InstantPanel().Visibility(step == LoginStep::Instant ? Visibility::Visible
                                                           : Visibility::Collapsed);
+  UpdateCarouselRunning();
+  if (step == LoginStep::Initial) ApplyLoginLayout();
 }
 
 // The initial step shows android's URInlineErrorText - a line of Red400 body
@@ -783,7 +936,12 @@ winrt::fire_and_forget LoginPage::OnUseCode(IInspectable const&, RoutedEventArgs
   ContentDialogResult result{ContentDialogResult::None};
   try {
     result = co_await dialog.ShowAsync();
-  } catch (...) {
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("auth code sheet: {} (0x{:08x})",
+                   urnw::Narrow(std::wstring{e.message()}),
+                   static_cast<uint32_t>(e.code()));
+  } catch (std::exception const& e) {
+    urnw::LogError("auth code sheet: {}", e.what());
   }
   w_.SetSheetOpen(false);
   if (result != ContentDialogResult::Primary) co_return;
@@ -825,7 +983,12 @@ winrt::fire_and_forget LoginPage::ShowGuestModeSheet() {
   try {
     guestSheet_ = urnw::GuestModeSheet::Create(self->Content().XamlRoot(), Sdk());
     co_await guestSheet_->Dialog().ShowAsync();
-  } catch (...) {
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("guest mode sheet: {} (0x{:08x})",
+                   urnw::Narrow(std::wstring{e.message()}),
+                   static_cast<uint32_t>(e.code()));
+  } catch (std::exception const& e) {
+    urnw::LogError("guest mode sheet: {}", e.what());
   }
   guestSheet_.reset();
   w_.SetSheetOpen(false);
@@ -872,7 +1035,12 @@ winrt::fire_and_forget LoginPage::OnSignInWithSolana(IInspectable const&,
   ContentDialogResult result{ContentDialogResult::None};
   try {
     result = co_await dialog.ShowAsync();
-  } catch (...) {
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("solana wallet picker: {} (0x{:08x})",
+                   urnw::Narrow(std::wstring{e.message()}),
+                   static_cast<uint32_t>(e.code()));
+  } catch (std::exception const& e) {
+    urnw::LogError("solana wallet picker: {}", e.what());
   }
   w_.SetSheetOpen(false);
   if (result == ContentDialogResult::None) co_return;
@@ -951,7 +1119,7 @@ void LoginPage::OnSignInWithGoogle(IInspectable const&, RoutedEventArgs const&) 
 
 void LoginPage::OnSignInWithSeedphrase(IInspectable const&, RoutedEventArgs const&) {
   SetInitialLoginError(hstring());
-  w_.SeedphraseBox().Text(L"");
+  ClearSeedphraseField();
   w_.SeedphraseErrorText().Visibility(Visibility::Collapsed);
   seedphraseLoggingIn_ = false;
   ValidateSeedphrase();
@@ -995,6 +1163,14 @@ void LoginPage::OnSeedphraseSubmit(IInspectable const&, RoutedEventArgs const&) 
   seedphraseLoggingIn_ = true;
   w_.SeedphraseSubmitButton().IsEnabled(false);
   w_.SeedphraseErrorText().Visibility(Visibility::Collapsed);
+  // CLEAR THE FIELD NOW, not on the next entry to this step. A TextBox holds
+  // its value for any process that asks UIA for it — read back verbatim from
+  // an unrelated unprivileged process as `Edit id='SeedphraseBox' VALUE=[...]`,
+  // and writable through the same pattern. A successful sign-in never returns
+  // to this step, so "cleared on re-entry" meant "never cleared". The cost is
+  // that a rejected phrase has to be pasted again; a credential sitting in an
+  // automation-readable control is not a trade worth making.
+  ClearSeedphraseField();
 
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
@@ -1049,7 +1225,9 @@ void LoginPage::OnCreateInstantSubmit(IInspectable const&, RoutedEventArgs const
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().CreateInstantAccount([queue, weak](urnw::SdkHost::InstantAccount account) {
-    queue.TryEnqueue([weak, account = std::move(account)] {
+    // `mutable`: the captured account carries the credential, and this lambda
+    // is the last thing holding it once the sheet has taken its own copy.
+    queue.TryEnqueue([weak, account = std::move(account)]() mutable {
       auto self = weak.get();
       if (!self) return;
       auto& page = self->login();
@@ -1065,6 +1243,8 @@ void LoginPage::OnCreateInstantSubmit(IInspectable const&, RoutedEventArgs const
         return;
       }
       page.ShowSeedphraseSheet(account.seedphrase);
+      account.seedphrase.assign(account.seedphrase.size(), '\0');
+      account.seedphrase.clear();
     });
   });
 }
@@ -1137,10 +1317,19 @@ winrt::fire_and_forget LoginPage::ShowSeedphraseSheet(std::string seedphrase) {
   }
   seedphraseSheet_.reset();
   w_.SetSheetOpen(false);
+  // The phrase was passed in by value; this frame is the app's last copy of it
+  // outside the sheet, which is already gone.
+  seedphrase.assign(seedphrase.size(), '\0');
+  seedphrase.clear();
   if (!*confirmed) {
-    // The sheet went away without a confirmation (a crash of the dialog, or a
-    // future path that adds one): drop the jwt rather than leave it pending.
+    // The sheet went away without a confirmation. The sheet itself now refuses
+    // Esc (SeedphraseDisplaySheet's Closing handler), so this is the residual
+    // path only — a torn-down XamlRoot, or a ShowAsync that threw. Drop the
+    // pending jwt AND SAY SO: the account is gone, and the previous silence
+    // dumped the user back onto the Instant panel with the terms still ticked
+    // and no clue that anything had happened.
     Sdk().DiscardInstantAccount();
+    ShowLoginErrorFor(LoginStep::Instant, Loc("instant_account_failed"));
   }
 }
 
@@ -1155,12 +1344,19 @@ winrt::fire_and_forget LoginPage::OnChangeNetworkServer(IInspectable const&,
     networkServerSheet_ =
         urnw::NetworkServerSheet::Create(self->Content().XamlRoot(), Sdk());
     co_await networkServerSheet_->Dialog().ShowAsync();
-  } catch (...) {
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("network server sheet: {} (0x{:08x})",
+                   urnw::Narrow(std::wstring{e.message()}),
+                   static_cast<uint32_t>(e.code()));
+  } catch (std::exception const& e) {
+    urnw::LogError("network server sheet: {}", e.what());
   }
   networkServerSheet_.reset();
   w_.SetSheetOpen(false);
   // A switch re-derives the Api and the LocalState, so the flow starts over on
-  // whatever the new server says about this client.
+  // whatever the new server says about this client — including whether that
+  // server offers Google SSO, which is otherwise only read once at startup.
+  UpdateGoogleSignInVisibility();
   ResetToInitialStep();
 }
 

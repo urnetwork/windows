@@ -3,6 +3,7 @@
 
 #include "LoginCarousel.h"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 
@@ -12,6 +13,8 @@
 #include <winrt/Windows.Foundation.h>
 
 #include "Localization.h"
+#include "Log.h"
+#include "Strings.h"
 #include "UrColors.h"
 
 using namespace winrt;
@@ -50,6 +53,17 @@ constexpr std::array<Slide, 3> kSlides{{
     {"build_right", L"ms-appx:///Assets/LoginCarousel3.jpg"},
 }};
 
+// The globe never grows past this, and the type is derived from whatever the
+// globe actually ends up at (ApplyMetrics), so the headline stays INSIDE the
+// mask at every slot size. It used to be a 190px globe with a 26px headline
+// clamped to MaxWidth(300) — 110px wider than the thing it was meant to sit in.
+constexpr double kGlobeMaxSide = 220;
+// headline width as a fraction of the globe, and the type scale that follows
+constexpr double kHeadlineWidthRatio = 0.86;
+constexpr double kHeadlineSizeDivisor = 9.0;
+constexpr double kHeadlineMinSize = 12;
+constexpr double kHeadlineMaxSize = 26;
+
 // iOS timings, kept in the same units so the two can be diffed.
 constexpr int kSlideIntervalMs = 5000;
 constexpr int kCrossfadeMs = 700;
@@ -60,8 +74,19 @@ constexpr int kBottomDelayMs = 400;
 ImageBrush BrushFor(std::wstring_view uri) {
   ImageBrush brush;
   brush.Stretch(Stretch::UniformToFill);
-  brush.ImageSource(
-      Imaging::BitmapImage(winrt::Windows::Foundation::Uri{winrt::hstring{uri}}));
+  Imaging::BitmapImage bitmap{winrt::Windows::Foundation::Uri{winrt::hstring{uri}}};
+  // A carousel that silently renders no image is indistinguishable from a
+  // carousel that is working — the headline still animates over an empty
+  // globe. Say which it is, once per load, on the only channel this app has.
+  const std::wstring name{uri};
+  bitmap.ImageFailed([name](auto const&, ExceptionRoutedEventArgs const& args) {
+    LogError("carousel: image '{}' failed to load: {}", Narrow(name),
+             Narrow(std::wstring{args.ErrorMessage()}));
+  });
+  bitmap.ImageOpened([name](auto const&, auto const&) {
+    LogInfo("carousel: image '{}' loaded", Narrow(name));
+  });
+  brush.ImageSource(bitmap);
   return brush;
 }
 
@@ -90,7 +115,22 @@ LoginCarousel::LoginCarousel(Grid const& host,
 
 LoginCarousel::~LoginCarousel() {
   if (timer_) timer_.Stop();
-  if (running_) running_.Stop();
+  // Every storyboard, not just the text one. Storyboard::Stop() detaches the
+  // board from the timing tree and its Completed will not fire afterwards,
+  // which is what makes the raw `this` those handlers capture safe: nothing
+  // can call back into an object that is being destroyed.
+  StopAnimations();
+}
+
+void LoginCarousel::StopAnimations() {
+  if (running_) {
+    running_.Stop();
+    running_ = nullptr;
+  }
+  if (crossfade_) {
+    crossfade_.Stop();
+    crossfade_ = nullptr;
+  }
 }
 
 void LoginCarousel::Build() {
@@ -109,8 +149,8 @@ void LoginCarousel::Build() {
     path.Stretch(Stretch::Uniform);
     path.HorizontalAlignment(HorizontalAlignment::Center);
     path.VerticalAlignment(VerticalAlignment::Center);
-    path.Width(190);
-    path.Height(190);
+    path.Width(kGlobeMaxSide);   // ApplyMetrics re-sizes both to fit the slot
+    path.Height(kGlobeMaxSide);
     return path;
   };
   currentImage_ = makeImage();
@@ -118,6 +158,12 @@ void LoginCarousel::Build() {
   nextImage_.Opacity(0);
   host_.Children().Append(currentImage_);
   host_.Children().Append(nextImage_);
+  // The globe and the type are sized from the slot, not from constants: the
+  // slot itself is now elastic (LoginPage::ApplyLoginLayout gives the carousel
+  // whatever height is left after the sign-in affordances have theirs), and a
+  // fixed 190px globe under a fixed 26px headline clamped at MaxWidth(300) put
+  // the words well outside the mask they are supposed to sit inside.
+  host_.SizeChanged([this](auto const&, auto const&) { ApplyMetrics(); });
 
   // The headline sits OVER the globe, as on iOS. Pure white and the display
   // face: these are the only headlines on the signed-out screen.
@@ -132,8 +178,9 @@ void LoginCarousel::Build() {
   // longest of them ("Stay completely private and anonymous") still needs to
   // wrap, and unclamped it ran well past the edges of the globe behind it.
   headline_.TextWrapping(TextWrapping::Wrap);
-  headline_.MaxWidth(300);
-  headline_.FontSize(26);
+  // both re-derived from the globe by ApplyMetrics; these are only a first frame
+  headline_.MaxWidth(kGlobeMaxSide * kHeadlineWidthRatio);
+  headline_.FontSize(kHeadlineMaxSize);
   headline_.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
   headline_.Foreground(colors::MakeBrush(winrt::Windows::UI::Color{255, 0xFF, 0xFF, 0xFF}));
   if (auto family = Application::Current()
@@ -149,7 +196,9 @@ void LoginCarousel::Build() {
   bottomLine_ = TextBlock();
   bottomLine_.TextAlignment(TextAlignment::Center);
   bottomLine_.HorizontalAlignment(HorizontalAlignment::Center);
-  bottomLine_.FontSize(26);
+  bottomLine_.TextWrapping(TextWrapping::Wrap);
+  bottomLine_.MaxWidth(kGlobeMaxSide * kHeadlineWidthRatio);
+  bottomLine_.FontSize(kHeadlineMaxSize);
   bottomLine_.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
   bottomLine_.Foreground(colors::MakeBrush(winrt::Windows::UI::Color{255, 0xFF, 0xFF, 0xFF}));
   if (auto family = Application::Current()
@@ -175,6 +224,36 @@ void LoginCarousel::ApplyStrings() {
   ShowSlide(index_);
 }
 
+// Fit the globe to the slot, and the type to the globe. The slot is elastic
+// now (the sign-in affordances get their height first), so nothing here can be
+// a constant: a headline wider than the mask reads as a layout accident, and a
+// globe taller than the slot pushes the buttons below it off the screen.
+void LoginCarousel::ApplyMetrics() {
+  const double slotH = host_.ActualHeight();
+  const double slotW = host_.ActualWidth();
+  const double slot = std::min(slotH, slotW);
+  if (slot <= 0) return;
+  // A Grid does not clip its children, and a headline that turns out one line
+  // taller than the slot would render straight over the field below it. Clip
+  // the slot so that failure mode is structurally impossible rather than a
+  // property of the arithmetic below being right.
+  RectangleGeometry clip;
+  clip.Rect(winrt::Windows::Foundation::Rect{0, 0, static_cast<float>(slotW),
+                                             static_cast<float>(slotH)});
+  host_.Clip(clip);
+  const double side = std::min(slot, kGlobeMaxSide);
+  currentImage_.Width(side);
+  currentImage_.Height(side);
+  nextImage_.Width(side);
+  nextImage_.Height(side);
+  const double font =
+      std::clamp(side / kHeadlineSizeDivisor, kHeadlineMinSize, kHeadlineMaxSize);
+  headline_.FontSize(font);
+  headline_.MaxWidth(side * kHeadlineWidthRatio);
+  bottomLine_.FontSize(font);
+  bottomLine_.MaxWidth(side * kHeadlineWidthRatio);
+}
+
 void LoginCarousel::ShowSlide(size_t index) {
   index_ = index % kSlides.size();
   headline_.Text(winrt::hstring{Localized(kSlides[index_].headlineKey)});
@@ -195,10 +274,12 @@ void LoginCarousel::SetActive(bool active) {
     timer_.Start();
   } else {
     timer_.Stop();
-    if (running_) {
-      running_.Stop();
-      running_ = nullptr;
-    }
+    // BOTH boards, and BEFORE ShowSlide. A running animation holds the
+    // property it targets: with the crossfade still live, ShowSlide's
+    // Opacity writes were overridden a frame later and the fade carried on to
+    // completion, leaving the NEXT slide's image showing under the CURRENT
+    // slide's headline for as long as the window stayed on this screen.
+    StopAnimations();
     // Land on a clean frame rather than freezing mid-transition: a hidden
     // window that comes back should show a whole slide, not half of one.
     ShowSlide(index_);
@@ -224,13 +305,17 @@ void LoginCarousel::AnimateTextOut() {
 }
 
 void LoginCarousel::CrossfadeTo(size_t index) {
+  if (crossfade_) crossfade_.Stop();  // never two fades over the same Opacity
   nextImage_.Fill(BrushFor(kSlides[index % kSlides.size()].image));
 
   Storyboard board;
   board.Children().Append(Anim(currentImage_, L"Opacity", 1, 0, kCrossfadeMs));
   board.Children().Append(Anim(nextImage_, L"Opacity", 0, 1, kCrossfadeMs));
   // Swap the sources once the fade has landed, so the next transition starts
-  // from the same state this one did. Completed fires on the UI thread.
+  // from the same state this one did. Completed fires on the UI thread, and
+  // only for a board that ran to completion — Stop() (SetActive(false), the
+  // destructor, the line above) suppresses it, which is what keeps this raw
+  // `this` from outliving the carousel.
   board.Completed([this, index](auto const&, auto const&) {
     if (!active_) return;
     index_ = index % kSlides.size();
@@ -240,6 +325,7 @@ void LoginCarousel::CrossfadeTo(size_t index) {
     headline_.Text(winrt::hstring{Localized(kSlides[index_].headlineKey)});
     AnimateTextIn();
   });
+  crossfade_ = board;
   board.Begin();
 }
 

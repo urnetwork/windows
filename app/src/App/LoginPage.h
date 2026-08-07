@@ -43,6 +43,9 @@ class LoginPage {
 
   // ---- window-level calls ----
   void ResetToInitialStep();
+  // Raise SdkHost's "nothing is connected, and here is why" on the window-level
+  // snackbar. The sentence comes from SdkHost, already composed.
+  void ShowModeNotice(winrt::hstring const& message, bool failed);
   // The carousel animates only while the window is on screen AND the flow is on
   // the initial step. A tray app is hidden most of its life, and a slideshow
   // nobody can see is pure wakeups (iOS gates the same timer on
@@ -168,11 +171,29 @@ class LoginPage {
   void ApplyWalletSignInResult(urnw::AuthResult const& result);
   // seedphrase step: word count -> the warning line + the submit gate
   void ValidateSeedphrase();
+  // Empty the seedphrase field. It is UIA-readable (and writable) by any
+  // process for as long as it holds anything, so nothing may leave a phrase
+  // sitting in it.
+  void ClearSeedphraseField();
+  // Give the sign-in affordances their height FIRST and the hero carousel
+  // whatever is left, so Sign in with Seedphrase / Create Instant Account /
+  // Change Network API are never pushed below the fold. Re-run on every size
+  // change of the scroll viewport or the column.
+  void ApplyLoginLayout();
+  // run the carousel only when it is on the initial step, on screen, and its
+  // slot has not been collapsed by the layout above
+  void UpdateCarouselRunning();
+  // Show or hide "Sign in with Google" from SdkHost::SsoGoogleEnabled(), and
+  // name the icon-plus-text sign-in buttons for UIA. Re-run after a
+  // network-server switch: the space supplies half the answer.
+  void UpdateGoogleSignInVisibility();
 
   winrt::URnetwork::implementation::MainWindow& w_;
 
   // sign-in flow state (UI thread only)
   LoginStep loginStep_ = LoginStep::Initial;
+  // guards ApplyLoginLayout against the SizeChanged its own writes raise
+  bool inLayoutPass_ = false;
   std::string loginUserAuth_;      // the echoed user auth driving the current step
   bool discoveringLogin_ = false;  // authLogin discovery in flight
   CreateMode createMode_ = CreateMode::Password;  // what the create step submits

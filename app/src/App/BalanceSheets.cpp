@@ -258,6 +258,30 @@ void SetTermsMarkerText(TextBlock const& text, std::wstring const& value,
   }
 }
 
+void PairTermsLabel(CheckBox const& box, TextBlock const& label) {
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  using automation::Peers::AccessibilityView;
+  if (!box || !label) return;
+  // The checkbox takes its name from the sentence — it has no content of its
+  // own, so without this it is a nameless CheckBox in the UIA tree...
+  automation::AutomationProperties::SetLabeledBy(box, label);
+  // ...and the sentence itself then has to LEAVE the control view, or it is
+  // announced once as the checkbox's name and immediately again as the text
+  // sitting beside it. Verified in the tree before this existed:
+  //   CheckBox 'I agree to URnetwork's Terms ... Privacy Policy'
+  //   Text     'I agree to URnetwork's Terms ... Privacy Policy'
+  automation::AutomationProperties::SetAccessibilityView(label, AccessibilityView::Raw);
+  // PER-ELEMENT, not a subtree hide. The two Hyperlinks inside that sentence
+  // are the only way to reach the terms and the privacy policy without a
+  // mouse, and they are children of the element just hidden — so each is put
+  // back into the content view explicitly.
+  for (auto const& run : label.Inlines()) {
+    if (auto link = run.try_as<Hyperlink>()) {
+      automation::AutomationProperties::SetAccessibilityView(link, AccessibilityView::Content);
+    }
+  }
+}
+
 // ---- RedeemCodeSheet --------------------------------------------------------
 
 std::shared_ptr<RedeemCodeSheet> RedeemCodeSheet::Create(XamlRoot const& root,
