@@ -1,49 +1,57 @@
 // The connect hero canvas — the app's signature visual, and the consumer for
-// `ConnectGrid::getProviderGridPointList()`, which until now had none anywhere
-// in the client (the grid listener has been subscribed since the first build and
-// `SdkHost::ReadStats` kept only `getWindowCurrentSize()`).
+// `ConnectGrid::getProviderGridPointList()`.
 //
-// Built the way `TransferChart` is built: XAML shapes assembled into a host Grid
-// from code, laid out in code on SizeChanged, and stepped from the ConnectPage's
-// existing ~10 fps `chartTimer_` rather than a second clock. It renders the five
-// states iOS's `ConnectButton/` carries — disconnected, connecting, connected,
-// error, processing-subscription — from the same brand palette.
+// This is a port of iOS's `Main/Connect/ConnectButton/`, not a reinterpretation
+// of it. Every metric below is expressed in iOS's own 256pt canvas space and
+// scaled by `s = side_ / 256`, so a reader can diff this file against
+// ConnectButtonView.swift line for line:
 //
-// It is NOT a transliteration of the phone screen. The differences are
-// deliberate, and each is a desktop property the phone does not have:
+//   ConnectButtonView            -> the globe mask, the layer order, the states
+//   ConnectCanvasDisconnected    -> 48/50/52/56pt electric-blue core + pulse
+//   ConnectCanvasConnecting(+VM) -> GlobeConnector lines + the provider grid
+//   ConnectCanvasConnectedState  -> five 180pt brand circles that slide in
+//   ConnectErrorState            -> a faint warning glyph, 500ms delayed
+//   ConnectProcessingSubscription-> a faint waiting glyph, 500ms delayed
 //
-//   * It scales with the window instead of sitting at iOS's fixed 256pt. The
-//     disc tracks the host width and clamps to [kMinDisc, kMaxDisc] so it stays
-//     legible at the 480-dip default and does not become a billboard maximized.
-//   * A wide ambient wash spans the full hero band. This is the part that
-//     answers "it feels like buttons on a black screen": a phone canvas is
-//     nearly as wide as its screen, a desktop window is not, and a bare circle
-//     floating in black leaves the width empty.
-//   * Hover and keyboard focus exist here and are drawn (the disc lifts on
-//     pointer-over; a real focus ring appears on keyboard focus only).
-//   * A faint lattice always underlies the live points, so an EMPTY grid — the
-//     normal state for a session that carries no traffic, including every
-//     rpc-only session — reads as "the grid is there and nothing is in it yet"
-//     rather than as a blank or a failure.
+// THE MASK. iOS writes `.mask { Image("ur.symbols.globe") }` around the whole
+// ZStack; android draws `R.drawable.connect_mask` over the whole Box after
+// `clipToBounds()`. WinUI 3 has neither: `UIElement.Clip` takes only a
+// RectangleGeometry, and `CompositionGeometricClip` needs a `CompositionPath`,
+// which needs an `IGeometrySource2D`, which only Win2D implements — and this
+// app does not carry Win2D. So the canvas uses android's construction exactly,
+// which turns out to be the same two primitives WinUI does have:
 //
-// Nothing here is clipped to the disc, deliberately: `UIElement.Clip` takes only
-// a RectangleGeometry, so a circular clip would need an opaque donut mask over
-// the wash. Instead the two things that could overflow are contained at the
-// source — grid dots outside the inscribed circle are culled in
-// `LayoutPoints`, and the connected-state blobs are radial gradients that reach
-// zero alpha before the rim.
+//   * `globe_.Clip = RectangleGeometry(0,0,side,side)` is android's
+//     `clipToBounds()`. This is what makes iOS's slide-in motion possible at
+//     all: the connected-state circles start a full canvas-width off-centre and
+//     the square clip eats them until they arrive.
+//   * `mask_` is android's `connect_mask`: one Path, fill rule EvenOdd, data =
+//     an outer square MINUS the globe silhouette, filled opaque kBackground and
+//     drawn last. The four scalloped corners of the square are painted back out
+//     to the page colour, leaving the globe.
+//
+// The globe outline is `kGlobePath`, the same 32x32 path LoginCarousel already
+// uses for the sign-in globe (Assets.xcassets/Icons/ur.symbols.globe.svg), so
+// the two globes in this app are the same shape by construction.
+//
+// The cost of the overlay is that it assumes the hero sits on kBackground. It
+// does, on every page this app has; if the hero is ever moved onto a card, this
+// one Fill is the thing to change.
 //
 // Motion budget. This runs behind a tray icon, so an idle animation is a real
-// cost and the rules are strict:
+// cost. iOS animates its idle pulse `repeatForever` on a phone screen that
+// sleeps; a desktop tray app cannot:
 //
 //   * Every repeating animation is a `Storyboard` over independently animatable
-//     properties (Opacity, RotateTransform.Angle, ScaleTransform.Scale*), which
-//     the compositor runs off the UI thread. Nothing repeating is per-frame.
+//     properties, which the compositor runs off the UI thread.
 //   * `Tick()` is the ONLY per-frame path and returns immediately unless a grid
 //     point transition is actually in flight (TransferChart's rule).
-//   * `SetPresentationActive(false)` stops every storyboard and the progress
-//     ring. The page already tracks presentation state for the charts; the hero
-//     uses the same signal, so a hidden window animates nothing.
+//   * The disconnected pulse runs a BOUNDED burst and then the hero is still.
+//     The connected state settles the instant its circles land — iOS does not
+//     animate it either. Connecting is the one genuinely transient state, and
+//     it animates for exactly as long as the grid is churning.
+//   * `SetPresentationActive(false)` stops every storyboard, so a hidden window
+//     animates nothing.
 //   * `UISettings::AnimationsEnabled() == false` means no repeating animation is
 //     ever started and states land on their settled values immediately.
 //
@@ -51,6 +59,7 @@
 #pragma once
 
 #include <cstdint>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -69,10 +78,11 @@ namespace urnw {
 
 class ConnectCanvas {
  public:
-  // The five states the hero renders. The first three are the connect status
-  // (DESTINATION_SET folds into Connecting, exactly as android's ConnectStatus
-  // does); Error and Processing are the balance states iOS's ConnectButtonView
-  // layers on top, and they take priority over the connection state.
+  // The five states the hero renders, in iOS's own branch order: Processing and
+  // Error are balance states that REPLACE the connection canvas (they are the
+  // first two arms of ConnectButtonView's if/else), and the remaining three are
+  // the connection status (DESTINATION_SET folds into Connecting, exactly as
+  // android's ConnectStatus does).
   enum class State { Disconnected, Connecting, Connected, Error, Processing };
 
   // Builds every visual into `host` (a Grid). `host` is expected to be
@@ -86,15 +96,17 @@ class ConnectCanvas {
 
   // The live provider grid. `points` may legitimately be empty (no session, an
   // rpc-only session, a connection carrying no traffic yet) — that is a normal
-  // state, not an error, and it renders as the bare lattice.
+  // state, not an error, and it renders as the bare GlobeConnector lines, which
+  // is exactly what iOS shows in the same situation.
   void SetGrid(std::vector<urnet::ProviderGridPoint> const& points, int64_t width,
                int64_t height);
 
   // Window hidden / another page selected: stops every storyboard. Idempotent.
   void SetPresentationActive(bool active);
 
-  // Desktop affordances. Hover lifts the disc; the focus ring is drawn only for
-  // KEYBOARD focus, matching how the platform draws focus visuals elsewhere.
+  // Desktop affordances neither phone client has. Hover lifts and warms the
+  // globe; the focus ring is drawn only for KEYBOARD focus, matching how the
+  // platform draws focus visuals elsewhere.
   void SetHovered(bool hovered);
   void SetFocusRingVisible(bool visible);
 
@@ -103,8 +115,9 @@ class ConnectCanvas {
   void Tick();
 
  private:
-  // The SDK's ProviderGridPoint::State strings. `Removed` is ours: a point that
-  // has left the grid fades out over one transition rather than vanishing.
+  // The SDK's ProviderGridPoint::State strings. `Removed` is iOS's own extra
+  // case: a point that has left the grid fades out over one transition rather
+  // than vanishing between frames.
   enum class PointState { InEvaluation, EvaluationFailed, NotAdded, Added, Removed };
 
   // named GridDot, not Point: `Point` is winrt::Windows::Foundation::Point
@@ -121,107 +134,107 @@ class ConnectCanvas {
     PointState previous = PointState::InEvaluation;
     double colorProgress = 1;  // 0..1, 1 = settled
     double sizeProgress = 1;
-    bool seen = false;   // marked during a SetGrid diff
-    bool culled = false; // outside the inscribed circle; kept in the map, not drawn
+    bool seen = false;  // marked during a SetGrid diff
     bool Animating() const { return colorProgress < 1 || sizeProgress < 1; }
   };
 
+  // One of iOS's five connected-state circles. Opaque, canvas-width offsets,
+  // colour and entry vector re-paired on every connect (ConnectCanvasConnected
+  // shuffles both arrays in `onChange(of: isActive)`).
+  struct Blob {
+    winrt::Microsoft::UI::Xaml::Shapes::Ellipse shape{nullptr};
+    winrt::Microsoft::UI::Xaml::Media::SolidColorBrush fill{nullptr};
+    winrt::Microsoft::UI::Xaml::Media::TranslateTransform shift{nullptr};
+    double fx = 0, fy = 0;  // settled offset, in canvas widths
+    double ix = 0, iy = 0;  // off-canvas entry offset, same units
+  };
+
   void BuildVisuals(winrt::Microsoft::UI::Xaml::Controls::Grid const& host);
-  void Layout();        // recompute all geometry for the current host size
-  void LayoutLattice(); // rebuild the faint substrate for the current cell size
-  void LayoutPoints();  // place and size the live dots
+  // The colour the hero is actually drawn on, read off the visual tree. The
+  // mask is an opaque overlay, so it has to be painted in the ground colour or
+  // it reads as four black notches; and iOS's globe is one surface step ABOVE
+  // its ground, so the silhouette has to be derived from the same value. Both
+  // are resolved at layout time rather than assumed, because the page around
+  // this hero is not ours and moves.
+  void ApplyGround();
+  winrt::Windows::UI::Color ResolveGround() const;
+  void Layout();       // recompute all geometry for the current host size
+  void LayoutPoints(); // place and size the live dots
   void ApplyPoint(GridDot& p);  // push colour + scale for the point's progress
   void ApplyStateVisuals();
-  void StopAll();
-  void StartIdle();     // start whatever the current state repeats, if allowed
+  void ClearPoints();
+  void Fade(winrt::Microsoft::UI::Xaml::UIElement const& element, double to, int64_t ms);
+  void ShuffleBlobs();
   void RunBlobs(bool in);
+  void StopAll();
+  void StartIdle();
   bool AnimationsEnabled() const;
 
   static PointState ParsePointState(std::string const& value);
   static winrt::Windows::UI::Color ColorForPointState(PointState state);
   static winrt::Windows::UI::Color Blend(winrt::Windows::UI::Color from,
                                          winrt::Windows::UI::Color to, double t);
-  static winrt::Windows::UI::Color AccentForState(State state);
 
   winrt::Microsoft::UI::Xaml::Controls::Grid host_{nullptr};
 
-  // ---- layers (bottom to top) ----
-  // two wash ellipses cross-faded on a state change: RadialGradientBrush derives
-  // from XamlCompositionBrushBase, so its stops are not a Storyboard target —
-  // the brush is rebuilt and the two elements swap opacity instead
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse washA_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse washB_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse activeWash_{nullptr};  // the visible one
+  // ---- the globe, and everything the mask contains ----
+  winrt::Microsoft::UI::Xaml::Controls::Grid globe_{nullptr};
+  winrt::Microsoft::UI::Xaml::Media::ScaleTransform globeScale_{nullptr};
+  winrt::Microsoft::UI::Xaml::Media::RectangleGeometry globeClip_{nullptr};
+  // the globe silhouette in tintedBackgroundBase — iOS's `.background(...)`
+  winrt::Microsoft::UI::Xaml::Shapes::Path globeFill_{nullptr};
 
-  // everything inside the disc, so hover scales the whole thing at once
-  winrt::Microsoft::UI::Xaml::Controls::Grid disc_{nullptr};
-  winrt::Microsoft::UI::Xaml::Media::ScaleTransform discScale_{nullptr};
-  // the grid layer, dimmed by the error / processing states. A separate layer
-  // from the glyph and the progress ring so dimming the grid does not dim the
-  // thing those states are asking the user to read.
-  winrt::Microsoft::UI::Xaml::Controls::Grid substrate_{nullptr};
-
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse ring0_{nullptr};  // outer
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse ring1_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse ring2_{nullptr};  // inner
-
-  winrt::Microsoft::UI::Xaml::Controls::Canvas latticeCanvas_{nullptr};
-  std::vector<winrt::Microsoft::UI::Xaml::Shapes::Ellipse> lattice_;
-
-  // connected: five soft brand blobs that slide in (iOS ConnectCanvasConnected
-  // parity). Radial gradients, so they need no clip.
-  struct Blob {
-    winrt::Microsoft::UI::Xaml::Shapes::Ellipse shape{nullptr};
-    winrt::Microsoft::UI::Xaml::Media::TranslateTransform shift{nullptr};
-    double fx = 0, fy = 0;  // settled offset, as a fraction of the disc diameter
-    double ix = 0, iy = 0;  // off-disc entry offset, same units
-  };
-  std::vector<Blob> blobs_;
-
+  // GlobeConnector.svg + the live grid, as one fadeable layer: iOS mounts them
+  // together in ConnectCanvasConnectingStateView and fades that view in and out
+  winrt::Microsoft::UI::Xaml::Controls::Grid gridLayer_{nullptr};
+  winrt::Microsoft::UI::Xaml::Shapes::Path connectorBg_{nullptr};   // white @ 4%
+  winrt::Microsoft::UI::Xaml::Shapes::Rectangle equator_{nullptr};  // the y=127 line
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse meridian_{nullptr};   // the r=51.5 ellipse
   winrt::Microsoft::UI::Xaml::Controls::Canvas pointCanvas_{nullptr};
   std::unordered_map<std::string, GridDot> points_;
 
-  // connecting: two counter-rotating arcs. Drawn as stroked Ellipses with a
-  // single long dash rather than Path/ArcSegment, so the rotation centre is the
-  // element's own centre and no geometry has to be rebuilt to spin them.
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse arcOuter_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse arcInner_{nullptr};
-  winrt::Microsoft::UI::Xaml::Media::RotateTransform arcOuterSpin_{nullptr};
-  winrt::Microsoft::UI::Xaml::Media::RotateTransform arcInnerSpin_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Grid blobLayer_{nullptr};
+  std::vector<Blob> blobs_;
 
-  // disconnected: a solid core with an expanding pulse ring behind it
+  // disconnected: the electric-blue core, its two rings, and the pulse behind it
+  winrt::Microsoft::UI::Xaml::Controls::Grid idleLayer_{nullptr};
   winrt::Microsoft::UI::Xaml::Shapes::Ellipse pulse_{nullptr};
   winrt::Microsoft::UI::Xaml::Media::ScaleTransform pulseScale_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse coreRing_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse core_{nullptr};
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse coreRing_{nullptr};  // 52pt, blue, 4pt
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse coreGap_{nullptr};   // 50pt, base, 2pt
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse core_{nullptr};      // 48pt, blue
 
-  winrt::Microsoft::UI::Xaml::Controls::FontIcon glyph_{nullptr};        // error
-  winrt::Microsoft::UI::Xaml::Controls::ProgressRing progress_{nullptr}; // processing
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse focusRing_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::FontIcon glyph_{nullptr};  // error / processing
+
+  // android's connect_mask: the square minus the globe, opaque, drawn last
+  winrt::Microsoft::UI::Xaml::Shapes::Path mask_{nullptr};
+  // outside the mask, so the ring is not eaten by it
+  winrt::Microsoft::UI::Xaml::Shapes::Path focusRing_{nullptr};
 
   // ---- storyboards ----
   winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard pulseSb_{nullptr};
-  winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard spinSb_{nullptr};
-  winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard breatheSb_{nullptr};
   winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard blobSb_{nullptr};
 
   State state_ = State::Disconnected;
   bool presentationActive_ = false;
   bool hovered_ = false;
-  bool blobsIn_ = false;  // the connected blobs sit at their settled offsets
+  bool blobsIn_ = false;  // the connected circles sit at their settled offsets
 
   // layout, recomputed on SizeChanged
   double width_ = 0;
-  double disc_d_ = 0;   // disc diameter
-  double cell_ = 0;     // grid cell edge
-  double originX_ = 0;  // grid origin inside the point canvas
-  double originY_ = 0;
+  double side_ = 0;  // the globe's edge, iOS's `canvasWidth`
+  double cell_ = 0;  // iOS's `maxPointSize` = side_ / gridWidth
   int32_t cols_ = 0;
-  int32_t rows_ = 0;
+
+  // the resolved page/card colour under the hero, and a sentinel that means
+  // "not resolved yet" (alpha 0 never occurs on a real background)
+  winrt::Windows::UI::Color ground_{0, 0, 0, 0};
 
   int64_t gridWidth_ = 0;
   int64_t gridHeight_ = 0;
   bool animating_ = false;  // a point transition is in flight
+
+  std::mt19937 rng_{0x5EED0BE};
 };
 
 }  // namespace urnw
