@@ -73,6 +73,7 @@ void WalletPage::ApplyStrings() {
 // ---- wallet --------------------------------------------------------------
 
 void WalletPage::LoadWallet() {
+  if (!Sdk().IsLoggedIn()) return;  // the caller's guard is not the only one
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().api().getAccountWallets(
@@ -121,7 +122,12 @@ void WalletPage::OnWalletAddressChanged(IInspectable const&, TextChangedEventArg
 void WalletPage::ValidateWalletAddress() {
   const std::string address = urnw::Narrow(w_.WalletAddressBox().Text().c_str());
   // the shortest supported address (solana base58) is 32 characters
-  if (address.size() < 32 || !Sdk().apiReady()) return;
+  //
+  // IsLoggedIn(), not apiReady(): apiReady is api_.has_value(), set at SDK INIT
+  // rather than at login. Demonstrated at the socket - with no session, typing
+  // an address here opened a TLS connection to the API and made three
+  // walletValidate calls per burst.
+  if (address.size() < 32 || !Sdk().IsLoggedIn()) return;
   const uint32_t generation = ++walletValidateGeneration_;
 
   auto queue = w_.DispatcherQueue();
@@ -247,6 +253,7 @@ void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, 
 }
 
 void WalletPage::LoadLeaderboard() {
+  if (!Sdk().IsLoggedIn()) return;  // the caller's guard is not the only one
   w_.LeaderboardStatusText().Text(Loc("loading"));
   w_.LeaderboardStatusText().Visibility(Visibility::Visible);
 

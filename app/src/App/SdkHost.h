@@ -410,6 +410,20 @@ class SdkHost {
   void SetPerformanceSettings(const PerformanceSettings& settings);
   // Ad/tracker blocker: the device applies and persists it; the app stores nothing.
   void SetBlockerEnabled(bool on);
+  // Kill switch (settings). The SDK stores the INVERSE: routeLocal=true means
+  // "when the tunnel is down, let traffic route out the local interface", so the
+  // kill switch is on exactly when routeLocal is off. Kept as the inversion here
+  // rather than in the view so no screen has to remember which way it runs.
+  //
+  // Readable and writable with no tunnel: the preference lives in the app
+  // LocalState and DeviceLocal restores it at construction, so a signed-in user
+  // with no service session still sees and sets the real value. Without the
+  // LocalState leg this control would be permanently dead outside a live tunnel.
+  bool CurrentKillSwitch();
+  // Returns false when the setting did NOT fully apply. Callers must read
+  // CurrentKillSwitch() back and show the real state: a toggle left On over a
+  // setting that did not take is the one failure mode here that costs privacy.
+  bool SetKillSwitch(bool on);
   // Provide/earn control mode: "never"|"always"|"network"|"auto"|"manual".
   // "network" is the private provider: the provider is always on, but provides
   // ONLY to same-network peers — never publicly. Persisted in LocalState like
@@ -437,6 +451,10 @@ class SdkHost {
   urnet::DeviceRemote& device() { return *device_; }
   // Account page opens billing/upgrade in the browser at this host.
   std::string linkHostName() const { return "ur.io"; }
+  // The version this app reports to the SDK/server. Settings shows it because
+  // urnet::version() is empty in this SDK build, so it is the only build
+  // identifier the version row can actually display.
+  std::string appVersion() const { return appVersion_; }
 
   // ---- start mode ----------------------------------------------------------
   // Which kind of service session this app asks for, and which kind it got.

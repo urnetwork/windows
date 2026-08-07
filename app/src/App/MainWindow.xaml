@@ -690,6 +690,9 @@
                                 <Button x:Name="SaveNameButton" Click="OnSaveNetworkName" />
                                 <TextBlock x:Name="AccountAuthText"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <!-- name-availability line, change password, auth
+                                     methods (AccountPage::BuildProfileExtra) -->
+                                <StackPanel x:Name="AccountProfileExtra" Spacing="8" />
                             </StackPanel>
                         </Border>
 
@@ -775,6 +778,10 @@
                         <muxc:RatingControl x:Name="FeedbackRating" />
                         <TextBox x:Name="FeedbackText" AcceptsReturn="True" TextWrapping="Wrap"
                                  MinHeight="80" />
+                        <!-- apple FeedbackView: logs go to the server ONLY from
+                             here, only when this is ticked, and only with the
+                             server-issued feedback id (SettingsPage). -->
+                        <CheckBox x:Name="FeedbackIncludeLogs" />
                         <Button x:Name="SendFeedbackButton" Click="OnSendFeedback" />
                         <muxc:InfoBar x:Name="SupportInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
                     </StackPanel>
@@ -783,6 +790,11 @@
                 <!-- Settings -->
                 <ScrollViewer x:Name="SettingsView" Visibility="Collapsed">
                     <StackPanel Spacing="16" MaxWidth="520">
+                        <!-- Every section above the split rules is built in code
+                             (SettingsPage::BuildSections): connection, device,
+                             account, blocked locations, identity, preferences,
+                             logs, links. -->
+                        <StackPanel x:Name="SettingsSections" Spacing="16" />
                         <TextBlock x:Name="SplitTunnelHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                         <TextBlock x:Name="SplitTunnelDescription"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -791,6 +803,8 @@
                         <TextBlock x:Name="SettingsAccountHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold"
                                    Margin="0,16,0,0" />
                         <Button x:Name="SignOutButton" Click="OnSignOut" />
+                        <!-- delete account (SettingsPage::BuildDangerSection) -->
+                        <StackPanel x:Name="SettingsDangerSection" Spacing="8" />
                         <HyperlinkButton x:Name="ProtocolLink" NavigateUri="https://ur.xyz"
                                          FontSize="12" Padding="0" Margin="0,16,0,0" />
                     </StackPanel>

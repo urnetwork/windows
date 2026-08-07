@@ -179,6 +179,10 @@ struct MainWindow : MainWindowT<MainWindow> {
  private:
   // every label in the window: the window's own chrome and nav, then each page's
   void ApplyStrings();
+  // The selected destination's API loads. Called by the navigation relay AND by
+  // the auth relay - the selection survives a sign-out, so a new session must
+  // re-read whatever page is already on screen (see the definition).
+  void LoadCurrentDestination();
   void ApplyAuthState(urnw::AuthState state, std::string const& error);
 
   // ---- balance / plan (SubscriptionBalanceStore relay) ----
