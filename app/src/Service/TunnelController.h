@@ -8,6 +8,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -28,9 +29,24 @@ class TunnelController {
   TunnelController();
   ~TunnelController();
 
-  // Bring the tunnel up from the app's config. Stops any prior session first.
+  // Bring a session up from the app's config. Stops any prior session first.
   // Returns a status; on failure state == Error with error set.
+  //
+  // config.mode selects what "up" means:
+  //   StartMode::Tunnel  — all eight steps; rewrites routes and DNS.
+  //   StartMode::RpcOnly — steps 2-5 only (no wintun adapter, so no elevation
+  //                        needed), ending at the RPC listener. It returns
+  //                        BEFORE step 6/8, the first call that touches the
+  //                        machine's network, and reports state RpcOnly.
   proto::TunnelStatus Start(const proto::StartTunnel& config);
+
+  // Force every subsequent Start into StartMode::RpcOnly regardless of what was
+  // asked for. One-way and irreversible by design: `urnetworkd console
+  // --rpc-only` calls this before the control pipe is served, so from then on
+  // no client request of any shape can make this process reach step 6. The
+  // downgrade is reported in the log and in TunnelStatus::mode, so a caller
+  // that wanted a tunnel can see it did not get one.
+  void ClampToRpcOnly();
 
   // Tear the tunnel down and restore the network.
   void Stop();
@@ -53,9 +69,24 @@ class TunnelController {
   static void SetActiveMarker(bool active);
   // True if a marker was left behind; clears it either way.
   static bool TakeActiveMarker();
+  // True if a marker was left behind, WITHOUT clearing it. For a run that is
+  // only observing — the unelevated rpc-only mode — which must not consume the
+  // evidence that an earlier elevated run died with routes installed. Taking it
+  // there makes the next real start report a clean exit it did not have, and
+  // that report is the only way the owner learns a crash cost them their
+  // network.
+  static bool PeekActiveMarker();
 
  private:
   proto::TunnelStatus StartLocked(const proto::StartTunnel& config);
+  // Steps 6-8: network settings, split tunnel, packet pump. Split out of
+  // StartLocked so the destructive half of the sequence is a named unit with
+  // its OWN precondition, checked against the stored mode rather than against
+  // the caller's argument. StartLocked already returns before reaching it in
+  // rpc-only mode; this is the second, independent gate, and the one a future
+  // caller cannot get wrong. Caller holds mutex_; `step` is the diagnostic
+  // cursor StartLocked reports on failure.
+  void BringUpTunnelLocked(const proto::StartTunnel& config, const char*& step);
   void StopLocked();
   // Load persisted DeviceLocalKeyMaterial blobs, or return nullopt on first run.
   std::optional<urnet::DeviceLocalKeyMaterial> LoadKeyMaterial();
@@ -76,6 +107,13 @@ class TunnelController {
   // call into the egress monitor.
   std::mutex splitMutex_;
   proto::TunnelState state_ = proto::TunnelState::Stopped;
+  // The mode of the session being started / running. Set once at the top of
+  // StartLocked and read by BringUpTunnelLocked's precondition and by Status();
+  // both the reported state and the reported mode derive from this one value,
+  // so they cannot disagree.
+  proto::StartMode startMode_ = proto::StartMode::Tunnel;
+  // Process-level clamp (see ClampToRpcOnly). Atomic and never cleared.
+  std::atomic<bool> rpcOnlyClamp_{false};
   std::string error_;
   std::string rpcHostPort_;
   int64_t upSinceMillis_ = 0;

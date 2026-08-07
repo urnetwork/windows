@@ -32,9 +32,20 @@ $app = (Resolve-Path "$PSScriptRoot\..").Path
 # A running instance holds resources.pri and the exe open, and the failure it
 # produces names neither: msbuild reports PRI210 0x800704c8 "File move failed"
 # from a temp guid to the output dir. Just close it.
-$running = Get-Process URnetwork, urnetworkd -ErrorAction SilentlyContinue
+#
+# Scoped to THIS worktree's output BY PATH. Killing by name alone terminated
+# every URnetwork/urnetworkd on the machine, so a build in one worktree killed
+# the app another agent was driving in theirs. Several agents work this repo
+# concurrently from separate worktrees, so that is not a rare collision — it is
+# every build.
+$outPrefix = Join-Path $app 'build'
+$running = Get-Process URnetwork, urnetworkd -ErrorAction SilentlyContinue | Where-Object {
+  $path = $null
+  try { $path = $_.MainModule.FileName } catch { }  # access denied for foreign/elevated procs
+  $path -and $path.StartsWith($outPrefix, [System.StringComparison]::OrdinalIgnoreCase)
+}
 if ($running) {
-  Write-Host "stopping running instance(s): $($running.Name -join ', ')" -ForegroundColor Yellow
+  Write-Host "stopping running instance(s) from ${outPrefix}: $($running.Name -join ', ')" -ForegroundColor Yellow
   $running | Stop-Process -Force -Confirm:$false
   Start-Sleep -Milliseconds 600
 }

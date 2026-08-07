@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -24,7 +25,22 @@
 namespace urnw::proto {
 
 // bump when the wire format changes incompatibly; hello negotiates it
-inline constexpr int kProtocolVersion = 1;
+//
+// 2: StartTunnel::mode / TunnelStatus::mode + TunnelState::RpcOnly.
+//    This bump is load-bearing, not bookkeeping. A version-1 service has no
+//    `mode` handler in its from_json, so it SILENTLY DROPS the field: an
+//    rpc-only request arrives as a plain start_tunnel, all eight steps run, and
+//    the machine's routes and DNS are rewritten by a request that asked for
+//    exactly the opposite. `mode` cannot be made safe by its own absence — the
+//    only thing that distinguishes "this peer honours mode" from "this peer
+//    ignores mode" is the version. Anything requesting RpcOnly MUST refuse to
+//    proceed against a peer reporting < kFirstStartModeVersion.
+//    See SdkHost::BootstrapSession.
+inline constexpr int kProtocolVersion = 2;
+
+// The first version that understands StartTunnel::mode. Below this, an absent
+// `mode` on the wire means "ignored", not "defaulted".
+inline constexpr int kFirstStartModeVersion = 2;
 
 // ---- message type tags ----------------------------------------------------
 
@@ -39,6 +55,38 @@ inline constexpr const char* kReply = "reply";                   // service -> a
 inline constexpr const char* kEvent = "event";                   // service -> app (unsolicited)
 }  // namespace msg
 
+// What a `start_tunnel` is asking the service to bring up.
+//
+// RpcOnly exists so the app can be driven end to end before the tunnel itself
+// is written: it runs steps 1-5 of TunnelController::StartLocked minus the
+// wintun adapter (NetworkSpace, DeviceLocal, the mTLS RPC listener) and STOPS
+// before step 6/8, which is the first call that rewrites the machine's routes
+// and DNS. Nothing in an RpcOnly session touches the routing table, and because
+// no adapter is created it needs no elevation at all.
+enum class StartMode {
+  Tunnel,   // the real thing: adapter, routes, DNS, packet pump
+  RpcOnly,  // DeviceLocal + RPC listener only; the network is not touched
+};
+
+inline const char* ToString(StartMode m) {
+  switch (m) {
+    case StartMode::Tunnel: return "tunnel";
+    case StartMode::RpcOnly: return "rpc_only";
+  }
+  return "tunnel";
+}
+
+// Absent parses as Tunnel — that is what every pre-mode client means. An
+// unrecognized string returns nullopt rather than falling back: a request that
+// meant "do not touch my network" and was misspelled must not be answered with
+// a real tunnel. StartTunnel's from_json turns that nullopt into a throw, which
+// the ControlServer answers as a failed reply.
+inline std::optional<StartMode> StartModeFromString(const std::string& s) {
+  if (s == "tunnel") return StartMode::Tunnel;
+  if (s == "rpc_only") return StartMode::RpcOnly;
+  return std::nullopt;
+}
+
 // tunnel lifecycle state, reported in replies and state-change events
 enum class TunnelState {
   Stopped,
@@ -46,6 +94,12 @@ enum class TunnelState {
   Up,       // wintun adapter up, DeviceLocal running, RPC listener ready
   Stopping,
   Error,
+  // An rpc-only session is serving: DeviceLocal + RPC listener are live and NO
+  // routes exist. Deliberately NOT `Up` — every `state == Up` test in the app
+  // means "connected", and this is the state in which the app must not say so.
+  // An older peer that does not know this string parses it as `Stopped`, which
+  // is the safe direction to be wrong in.
+  RpcOnly,
 };
 
 inline const char* ToString(TunnelState s) {
@@ -55,6 +109,7 @@ inline const char* ToString(TunnelState s) {
     case TunnelState::Up: return "up";
     case TunnelState::Stopping: return "stopping";
     case TunnelState::Error: return "error";
+    case TunnelState::RpcOnly: return "rpc_only";
   }
   return "unknown";
 }
@@ -64,8 +119,19 @@ inline TunnelState TunnelStateFromString(const std::string& s) {
   if (s == "up") return TunnelState::Up;
   if (s == "stopping") return TunnelState::Stopping;
   if (s == "error") return TunnelState::Error;
+  if (s == "rpc_only") return TunnelState::RpcOnly;
   return TunnelState::Stopped;
 }
+
+// "The service has a live DeviceLocal and RPC listener the app can dial." True
+// for both modes. Use this for session/reattach decisions.
+inline bool IsSessionLive(TunnelState s) {
+  return s == TunnelState::Up || s == TunnelState::RpcOnly;
+}
+
+// "Traffic is actually being carried." Use this, never IsSessionLive, for
+// anything the user reads as "connected".
+inline bool IsTunnelUp(TunnelState s) { return s == TunnelState::Up; }
 
 // ---- request payloads -----------------------------------------------------
 
@@ -89,6 +155,9 @@ struct StartTunnel {
   // else bypasses) - mirrors Android's "inclusions take precedence".
   std::vector<std::string> excluded_app_paths;
   bool allowlist_mode = false;
+  // Tunnel unless the app explicitly asks otherwise, so an absent field on the
+  // wire keeps its pre-mode meaning. See StartMode.
+  StartMode mode = StartMode::Tunnel;
 };
 
 struct SetSplitTunnel {
@@ -106,6 +175,20 @@ struct TunnelStatus {
   int protocol_version = kProtocolVersion;
   // best-effort counters (authoritative stats come over the device RPC)
   int64_t tunnel_local_up_millis = 0;
+  // The mode of the session this status describes. Reported separately from
+  // `state` so it survives Starting/Stopping/Error, where `state` says nothing
+  // about which kind of session was asked for. In a live session the two agree
+  // by construction: the controller derives both from one stored mode.
+  //
+  // Defaults to Tunnel, and that is right even for an absent field: a peer old
+  // enough not to send `mode` is a peer that only ever built real tunnels, so
+  // reading its silence as "Tunnel" is honest. What is NOT safe is asking such
+  // a peer for RpcOnly — see kFirstStartModeVersion.
+  StartMode mode = StartMode::Tunnel;
+  // True only when routes and DNS are actually installed right now. This is the
+  // field to trust for "is my traffic going through the tunnel"; it is false for
+  // the whole life of an rpc-only session.
+  bool routes_installed = false;
 };
 
 struct Reply {
@@ -132,6 +215,7 @@ inline void to_json(nlohmann::json& j, const StartTunnel& v) {
       {"rpc_listen_hostport", v.rpc_listen_hostport},
       {"excluded_app_paths", v.excluded_app_paths},
       {"allowlist_mode", v.allowlist_mode},
+      {"mode", ToString(v.mode)},
   };
 }
 
@@ -139,6 +223,14 @@ inline void from_json(const nlohmann::json& j, StartTunnel& v) {
   auto get = [&](const char* k, auto& out) {
     if (auto it = j.find(k); it != j.end() && !it->is_null()) it->get_to(out);
   };
+  if (auto it = j.find("mode"); it != j.end() && it->is_string()) {
+    const std::string raw = it->get<std::string>();
+    auto mode = StartModeFromString(raw);
+    // Deliberately fatal. Silently defaulting an unrecognized mode to Tunnel
+    // would answer "do not touch my network" with a rewritten route table.
+    if (!mode) throw std::runtime_error("unknown start mode: " + raw);
+    v.mode = *mode;
+  }
   get("by_jwt", v.by_jwt);
   get("network_space_json", v.network_space_json);
   get("instance_id", v.instance_id);
@@ -172,12 +264,19 @@ inline void to_json(nlohmann::json& j, const TunnelStatus& v) {
       {"service_version", v.service_version},
       {"protocol_version", v.protocol_version},
       {"tunnel_local_up_millis", v.tunnel_local_up_millis},
+      {"mode", ToString(v.mode)},
+      {"routes_installed", v.routes_installed},
   };
 }
 
 inline void from_json(const nlohmann::json& j, TunnelStatus& v) {
   if (auto it = j.find("state"); it != j.end() && it->is_string())
     v.state = TunnelStateFromString(it->get<std::string>());
+  // A status is a report, so an unreadable mode degrades rather than throws —
+  // but it degrades to RpcOnly, the mode that claims LESS. (The service always
+  // writes a valid one; this is for a peer we do not control.)
+  if (auto it = j.find("mode"); it != j.end() && it->is_string())
+    v.mode = StartModeFromString(it->get<std::string>()).value_or(StartMode::RpcOnly);
   auto get = [&](const char* k, auto& out) {
     if (auto it = j.find(k); it != j.end() && !it->is_null()) it->get_to(out);
   };
@@ -186,6 +285,7 @@ inline void from_json(const nlohmann::json& j, TunnelStatus& v) {
   get("service_version", v.service_version);
   get("protocol_version", v.protocol_version);
   get("tunnel_local_up_millis", v.tunnel_local_up_millis);
+  get("routes_installed", v.routes_installed);
 }
 
 inline void to_json(nlohmann::json& j, const Reply& v) {

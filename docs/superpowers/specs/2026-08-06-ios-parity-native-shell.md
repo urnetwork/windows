@@ -81,6 +81,35 @@ parallel and what carries risk.
   provide, DNS, split rules. `DeviceRemote` already exposes the complete
   `open*ViewController` set plus the reliability bridge ported for iOS
   (sdk#135) — **no SDK work is required for any of it**.
+
+  **How to actually run it** (landed in P1):
+
+  ```powershell
+  .\urnetworkd.exe console --rpc-only    # unelevated, no UAC prompt
+  .\URnetwork.exe                         # no environment variable needed
+  ```
+
+  One switch is enough. The clamped service serves every `start_tunnel` as
+  rpc-only and the app **adopts** that session rather than refusing it, so the
+  app comes up driveable. `URNETWORK_RPC_ONLY=1` exists to request rpc-only from
+  an *unclamped* service and is not required for the workflow above. (It is
+  parsed as an explicit allow-list — `1`/`true`/`yes`/`on`; anything else is
+  off and logs a warning.)
+
+  Two properties hold for every rpc-only session, and a Class-B screen must not
+  assume it can ignore either: the connect surface is **clamped at the source**
+  — `SdkHost::ReadStats` forces `connectionStatus` to the unrecognised
+  `"RPC_ONLY"` and zeroes `connected`, provider count and throughput, so nothing
+  downstream can render "Connected" — and a **persistent, non-dismissible
+  notice** is pushed through `SdkHost::SetModeNoticeHandler` saying no traffic
+  is carried. Any screen that renders connection state binds that handler and
+  keeps the notice visible for the life of the session. **P2 owns the view for
+  it; P1 shipped the signal only** (see P1's report).
+
+  P1 also makes the mode impossible to enter by accident: the service is clamped
+  for the life of the process, and the app refuses to ask a service older than
+  control-protocol v2 for rpc-only, because such a service silently ignores the
+  field and builds a real tunnel.
 - **Class C — the tunnel.** Routes, DNS, packet pump. The owner's to run.
 
 Known Class-B holes, flagged so nobody assumes them: `dropExit`, `stallExit`,
@@ -131,12 +160,63 @@ hero, the brand colour dots.
 | P6 | Connect hero canvas | B | P1, P2 |
 | P7 | Connect logic / tunnel | C | all |
 
-P0 and P1 are disjoint (`src/App/` vs `src/Service/`) and run in parallel.
+P0 and P1 ran in parallel but were **not** disjoint, as originally assumed. P1
+needed the app to request and report the session mode, so it added ~420 lines to
+`src/App/SdkHost.{h,cpp}` on top of its `src/Service/` work. It touched no view
+file — `MainWindow.*`, `AppController.*`, `App.xaml*`, `TrayIcon.*`, none of
+P0's new page units — so the two still merge cleanly: the overlap is `SdkHost`
+only, and P1's connect-status clamp survives P0's page split because it lives at
+the source in `SdkHost::ReadStats`, not in the view.
+
 P3, P4 and P5 are Class A and run in parallel once P0 lands.
+
+**Running several phases at once on one machine.** Every worktree builds the
+same executable names and, by default, shares one per-user storage root — one
+SDK LocalState (JWT, instance id), one `rpc_session.json`, one log. Two
+concurrent agents therefore corrupt each other's state and read each other's
+evidence. P1 added the escape hatch; use it:
+
+```powershell
+$env:URNETWORK_APP_ROOT = 'C:\Users\...\wt-pN\.localstate'
+```
+
+`app/tools/build-local.ps1` also used to kill every `URnetwork`/`urnetworkd` on
+the machine by name, so one agent's build terminated another's running app; it
+is now scoped to its own worktree's output by path. And a screenshot harness
+must select the app **by executable path** (`MainModule.FileName`), never by
+process name, window title or class — all three are identical across worktrees,
+so a harness picking the first match reports on somebody else's binary.
 
 ### Per-phase surface mapping (iOS file → Windows target)
 
 **P2** — `Developer/DeveloperView.swift` (742), `ReliabilityStore.swift` (543).
+
+> **P2 will hit this first — a live `device_` crashes the app on a null list.**
+> `parseJson<ThroughputPointList>` (`urnetwork_sdk.hpp:16272`) guards a NULL
+> `char*` at `:16269` but not the four-byte string `"null"`, so it throws
+> `json.exception.type_error.302 "type must be array, but is null"` out of an
+> ordinary getter — unhandled, the app dies at startup. Go-side cause:
+> `GetThroughputPoints` returns a non-nil list whose `values` slice is nil,
+> `MarshalJSON` renders that as `null`, and `exports_gen.go` short-circuits only
+> on a nil pointer. The same unguarded shape is at `SdkHost.cpp:1280`, `:1311`,
+> `:1338`, `:1392` and `:1773`.
+>
+> This is pre-existing and P1 did not fix it, but **P1 changed its
+> reachability**: auto-adopt is the first configuration that reliably produces a
+> live `device_` without a real tunnel, so P2 is where it starts firing. Fix it
+> at the SDK wrapper (treat `"null"` as an empty list) rather than at each call
+> site.
+>
+> **Bind the session notice.** P1 ships the signal only —
+> `SdkHost::SetModeNoticeHandler`, delivering `ModeNotice{active, kind,
+> requestedTunnel, message}`. There is **no consumer on any branch**, so an
+> adopted rpc-only session currently shows no banner and a failed session
+> resume shows nothing at all. `Kind::RpcOnly` means a live session carrying no
+> traffic; `Kind::SessionFailed` means there is no session and the user is
+> **still signed in** — it must not route anyone to the sign-in screen. Render
+> `message` verbatim (it is a complete sentence; adding a title duplicates the
+> words), keep it visible, and give it no dismiss control. The handler may be
+> invoked with `SdkHost`'s lock held: marshal to the UI thread and return.
 
 **P3** — `SettingsForm-macOS.swift` (621), `SettingsView.swift` (356),
 `SettingsViewModel.swift` (365), `AddAuthSheet.swift` (529), `AuthMethods.swift`,

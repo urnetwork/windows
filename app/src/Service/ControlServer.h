@@ -11,6 +11,13 @@ namespace urnw {
 
 class ControlServer {
  public:
+  // Clamp this whole process to rpc-only: every start_tunnel is served as
+  // StartMode::RpcOnly whatever it asked for, so no request from any client can
+  // make this instance write a route. Set from `urnetworkd console --rpc-only`
+  // BEFORE Start(). The clamp is one-way — nothing turns it back off — so a
+  // process launched this way cannot become able to touch the network later.
+  void ClampToRpcOnly() { tunnel_.ClampToRpcOnly(); }
+
   bool Start();
   void Stop();
 

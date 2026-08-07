@@ -268,7 +268,7 @@ void NetworkConfig::CrashRevert() {
 }
 
 int NetworkConfig::SweepOrphanedTunnel(const GUID& tunGuid,
-                                       const wchar_t* adapterName) {
+                                       const wchar_t* adapterName, bool remove) {
   // Collect candidate LUIDs first, then sweep, so a rename or a GUID fallback
   // cannot make us miss the interface that is holding the machine's traffic.
   uint64_t candidates[8] = {0};
@@ -326,6 +326,16 @@ int NetworkConfig::SweepOrphanedTunnel(const GUID& tunGuid,
     row.InterfaceLuid = luid;
     std::string alias = (::GetIfEntry2(&row) == NO_ERROR) ? Narrow(row.Alias)
                                                           : std::string("<gone>");
+    if (!remove) {
+      LogWarn("netcfg: ORPHANED tun interface \"{}\" (luid {:#x}) present at "
+              "startup — a previous run did not revert. NOT cleaning it: this "
+              "process is observe-only (rpc-only mode) and removing routes "
+              "needs elevation. To take the routes back: STOP THIS PROCESS "
+              "FIRST, then run `urnetworkd revert` from an elevated prompt — "
+              "revert refuses while a urnetworkd holds the control pipe.",
+              alias, luid.Value);
+      continue;
+    }
     int removed = DeleteTunnelRoutes(luid);
     ClearTunnelDns(luid);
     LogWarn(

@@ -86,6 +86,14 @@ void TunnelController::PersistKeyMaterial(const urnet::DeviceLocalKeyMaterial& k
   WriteFileBytes(storageDir_ / L"provide_key.pem", km.getProvideTlsPrivateKeyPem());
 }
 
+void TunnelController::ClampToRpcOnly() {
+  rpcOnlyClamp_.store(true);
+  LogWarn("tunnel: CLAMPED TO RPC-ONLY for the life of this process. Every "
+          "start_tunnel will be served as rpc-only whatever it requests: no "
+          "wintun adapter, and this process will not write a route or a dns "
+          "entry no matter what any client asks for.");
+}
+
 proto::TunnelStatus TunnelController::Start(const proto::StartTunnel& config) {
   std::scoped_lock lock(mutex_);
   return StartLocked(config);
@@ -94,18 +102,42 @@ proto::TunnelStatus TunnelController::Start(const proto::StartTunnel& config) {
 proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& config) {
   StopLocked();  // idempotent restart
   state_ = proto::TunnelState::Starting;
+  // The clamp wins over the request, and it is applied HERE, once, before
+  // anything reads the mode. Everything downstream — the fence, the step-6
+  // precondition, the reported state and mode — reads startMode_, so a clamped
+  // process cannot have a Tunnel-mode session by any route.
+  if (rpcOnlyClamp_.load() && config.mode != proto::StartMode::RpcOnly) {
+    LogWarn("tunnel: start requested mode={} but this process is clamped to "
+            "rpc-only; serving it as rpc-only. The reply reports mode=rpc_only "
+            "and state=rpc_only, so the caller can see it did not get a tunnel.",
+            proto::ToString(config.mode));
+    startMode_ = proto::StartMode::RpcOnly;
+  } else {
+    startMode_ = config.mode;
+  }
+  const bool rpcOnly = startMode_ == proto::StartMode::RpcOnly;
   error_.clear();
 
   // Named so a failure says which step threw. Nothing here has run before, so
   // "it stopped after step 3" is the whole diagnosis on the first real start.
   const char* step = "init";
   const int64_t startedAtMillis = NowMillis();
-  LogInfo("tunnel: starting (rpc={} device=\"{}\" spec=\"{}\" app={} jwt={}B "
-          "split={} paths={})",
-          config.rpc_listen_hostport, config.device_description,
-          config.device_spec, config.app_version, config.by_jwt.size(),
-          config.allowlist_mode ? "allowlist" : "denylist",
+  LogInfo("tunnel: starting mode={} (rpc={} device=\"{}\" spec=\"{}\" app={} "
+          "jwt={}B split={} paths={})",
+          proto::ToString(startMode_), config.rpc_listen_hostport,
+          config.device_description, config.device_spec, config.app_version,
+          config.by_jwt.size(), config.allowlist_mode ? "allowlist" : "denylist",
           config.excluded_app_paths.size());
+  if (rpcOnly) {
+    // Loud, and at the top, because every line after this one has to be read in
+    // this light: no adapter is created, no address, no route and no DNS entry
+    // is written, and the sequence RETURNS after step 5. Nothing below can
+    // reach step 6.
+    LogWarn("tunnel: RPC-ONLY MODE — no wintun adapter, and the machine's "
+            "ROUTES AND DNS WILL NOT BE TOUCHED. Steps 1, 6, 7 and 8 are "
+            "skipped; the session ends at the rpc listener (step 5) and reports "
+            "state 'rpc_only', never 'up'. No traffic is carried.");
+  }
 
   try {
     // --- 1/8 wintun adapter (installs the driver on first use; needs SYSTEM) ---
@@ -113,33 +145,44 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     // binding below has to exclude, and it carries no address or route yet so
     // it cannot attract traffic while we set the rest up.
     step = "1/8 wintun";
-    const std::filesystem::path dll = ExeDir() / L"wintun.dll";
-    LogInfo("tunnel: [1/8] loading wintun from {}", dll.string());
-    wintun_ = Wintun::Load(dll);
-    if (!wintun_) throw std::runtime_error("failed to load wintun.dll (is it next to urnetworkd.exe?)");
-    adapter_ = WintunAdapter::Create(*wintun_, ids::kTunAdapterName,
-                                     ids::kTunAdapterGuid, kRingCapacity);
-    if (!adapter_)
-      throw std::runtime_error(
-          "failed to create the wintun adapter (needs LocalSystem/admin and a "
-          "loadable wintun driver)");
-    NET_IFINDEX tunIndex = 0;
-    NET_LUID tunLuid = adapter_->Luid();
-    ::ConvertInterfaceLuidToIndex(&tunLuid, &tunIndex);
-    // Log the GUID and alias wintun ACTUALLY assigned, not the ones we asked
-    // for. WintunCreateAdapter treats the GUID as a request, and those two
-    // values are exactly what the startup orphan sweep matches on — if a sweep
-    // ever fails to find a stranded adapter, this line is where the answer is.
-    GUID assignedGuid{};
-    const std::string requestedGuid = GuidText(ids::kTunAdapterGuid);
-    std::string guidText = "?";
-    if (::ConvertInterfaceLuidToGuid(&tunLuid, &assignedGuid) == NO_ERROR)
-      guidText = GuidText(assignedGuid);
-    LogInfo("tunnel: [1/8] adapter up: luid {:#x}, guid {} ({}), interface {}",
-            tunLuid.Value, guidText,
-            guidText == requestedGuid ? "as requested"
-                                      : "NOT the requested " + requestedGuid,
-            NetworkConfig::DescribeInterface(tunIndex));
+    if (rpcOnly) {
+      // Step 1 is the ONLY one of steps 1-5 that needs elevation, and the only
+      // thing steps 2-5 want from it is the LUID step 2 excludes — which a zero
+      // LUID expresses exactly (see EgressMonitor's ctor). Skipping it is what
+      // lets this mode run unelevated.
+      LogInfo("tunnel: [1/8] SKIPPED (rpc-only): no wintun adapter is created, "
+              "so this mode needs no elevation");
+    } else {
+      const std::filesystem::path dll = ExeDir() / L"wintun.dll";
+      LogInfo("tunnel: [1/8] loading wintun from {}", dll.string());
+      wintun_ = Wintun::Load(dll);
+      if (!wintun_)
+        throw std::runtime_error(
+            "failed to load wintun.dll (is it next to urnetworkd.exe?)");
+      adapter_ = WintunAdapter::Create(*wintun_, ids::kTunAdapterName,
+                                       ids::kTunAdapterGuid, kRingCapacity);
+      if (!adapter_)
+        throw std::runtime_error(
+            "failed to create the wintun adapter (needs LocalSystem/admin and a "
+            "loadable wintun driver)");
+      NET_IFINDEX tunIndex = 0;
+      NET_LUID tunLuid = adapter_->Luid();
+      ::ConvertInterfaceLuidToIndex(&tunLuid, &tunIndex);
+      // Log the GUID and alias wintun ACTUALLY assigned, not the ones we asked
+      // for. WintunCreateAdapter treats the GUID as a request, and those two
+      // values are exactly what the startup orphan sweep matches on — if a
+      // sweep ever fails to find a stranded adapter, this line is the answer.
+      GUID assignedGuid{};
+      const std::string requestedGuid = GuidText(ids::kTunAdapterGuid);
+      std::string guidText = "?";
+      if (::ConvertInterfaceLuidToGuid(&tunLuid, &assignedGuid) == NO_ERROR)
+        guidText = GuidText(assignedGuid);
+      LogInfo("tunnel: [1/8] adapter up: luid {:#x}, guid {} ({}), interface {}",
+              tunLuid.Value, guidText,
+              guidText == requestedGuid ? "as requested"
+                                        : "NOT the requested " + requestedGuid,
+              NetworkConfig::DescribeInterface(tunIndex));
+    }
 
     // --- 2/8 R1: bind the SDK's egress to the physical interface. ---
     // Ordering is the whole mechanism, and it is load-bearing twice over:
@@ -150,8 +193,15 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     //     clean table and picks the physical default route.
     // Do not move this below the NetworkSpace/DeviceLocal construction.
     step = "2/8 egress (R1)";
-    LogInfo("tunnel: [2/8] binding sdk egress to the physical interface (R1)");
-    egress_ = std::make_unique<EgressMonitor>(adapter_->Luid());
+    // No adapter in rpc-only mode, so there is no tun to exclude: a zero LUID
+    // says so literally, and DiscoverEgress's `luid == tunLuid` test then
+    // matches nothing. Nothing is faked.
+    const NET_LUID egressExcludeLuid = adapter_ ? adapter_->Luid() : NET_LUID{};
+    LogInfo("tunnel: [2/8] binding sdk egress to the physical interface ({})",
+            rpcOnly ? "rpc-only: no tun to exclude, so this is a preference, "
+                      "not R1 protection"
+                    : "R1");
+    egress_ = std::make_unique<EgressMonitor>(egressExcludeLuid);
     // Set before Start(), which refreshes synchronously. The handler takes only
     // splitMutex_ — see the note on it in the header; it must not take mutex_,
     // which this thread is holding right now and StopLocked holds while waiting
@@ -161,8 +211,14 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     if (egress_->Current().index4 == 0) {
       // Not fatal — there may genuinely be no network yet, and the monitor will
       // bind as soon as one appears — but it is the R1 hazard, so it is loud.
-      LogError("tunnel: [2/8] no physical ipv4 egress interface; R1 protection "
-               "is NOT in force yet");
+      // With no tun there is no loop to fall into, so it is only a note.
+      if (rpcOnly) {
+        LogWarn("tunnel: [2/8] no physical ipv4 egress interface (rpc-only: no "
+                "tun exists, so there is nothing to loop into)");
+      } else {
+        LogError("tunnel: [2/8] no physical ipv4 egress interface; R1 protection "
+                 "is NOT in force yet");
+      }
     }
 
     // --- 3/8 NetworkSpace (own storage; import the app's space json) ---
@@ -202,49 +258,28 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
                           config.rpc_listen_hostport);
     rpcHostPort_ = config.rpc_listen_hostport;
 
-    // --- 6/8 network settings (address/MTU/routes/DNS), from the device ---
-    step = "6/8 network config";
-    TunnelNetworkSettings settings;
-    settings.local_address_v4 = device_->tunnelLocalAddress();
-    if (settings.local_address_v4.empty()) settings.local_address_v4 = "169.254.2.1";
-    settings.prefix_v4 = 24;
-    settings.mtu = kTunnelMtu;
-    // dns from the device: the dns settings' unencrypted local servers when set,
-    // otherwise the distinct plain-DNS UpgradeMux mask. always plain :53, never OS-level
-    // encrypted DNS: the mux performs the unencrypted-DNS -> DoH upgrade in-tunnel.
-    // the tunnel is ipv4-only, so only the ipv4 resolvers apply
-    if (auto dns = device_->tunnelDnsAddressesIpv4(); dns && !dns->empty()) {
-      settings.dns_servers = *dns;
-    } else {
-      // Keep the exceptional fallback coupled to the SDK's separately tested
-      // URnetwork-owned UpgradeMux identity.
-      settings.dns_servers = {urnet::getDefaultTunnelDnsAddressIpv4()};
+    // === THE FENCE ==========================================================
+    // Everything above this line is inert with respect to the machine's
+    // network. Step 6, below, is the first call that rewrites routes and DNS.
+    //
+    // In rpc-only mode the sequence ends HERE, by returning out of the
+    // function — not by skipping a block, not by a conditional wrapped around
+    // the destructive steps, and not by a flag consulted further down. There is
+    // no control path from this point to step 6 in this mode.
+    if (rpcOnly) {
+      state_ = proto::TunnelState::RpcOnly;
+      upSinceMillis_ = NowMillis();
+      EgressInterfaces bound = egress_->Current();
+      LogInfo("tunnel: RPC-ONLY UP in {}ms (rpc={} egress_v4_ifindex={}). Steps "
+              "6/8 (routes+dns), 7/8 (split tunnel) and 8/8 (packet pump) were "
+              "NOT run: no route, no dns entry and no address were written, and "
+              "no active marker was set. The machine's network is untouched and "
+              "no traffic is carried.",
+              upSinceMillis_ - startedAtMillis, rpcHostPort_, bound.index4);
+      return Status();
     }
-    LogInfo("tunnel: [6/8] applying network settings addr={}/{} mtu={} dns=[{}]",
-            settings.local_address_v4, settings.prefix_v4, settings.mtu,
-            Join(settings.dns_servers));
-    netConfig_ = std::make_unique<NetworkConfig>(adapter_->Luid());
-    // Mark the machine as "routes installed" BEFORE installing them. The next
-    // start reads this to tell an orderly shutdown from a crash; a marker left
-    // by a run that died between the two is exactly the case we want reported.
-    SetActiveMarker(true);
-    if (!netConfig_->Apply(settings)) throw std::runtime_error("network config failed");
 
-    // --- 7/8 split tunneling (driver optional) ---
-    step = "7/8 split tunnel";
-    LogInfo("tunnel: [7/8] split tunnel: {} path(s), {} mode",
-            config.excluded_app_paths.size(),
-            config.allowlist_mode ? "allowlist" : "denylist");
-    splitTunnel_.Open();
-    excludedPaths_ = config.excluded_app_paths;
-    allowlist_ = config.allowlist_mode;
-    PushExcludedToDriver(excludedPaths_, allowlist_);
-
-    // --- 8/8 packet pump ---
-    step = "8/8 pump";
-    LogInfo("tunnel: [8/8] starting the packet pump");
-    pump_ = std::make_unique<PacketPump>(*adapter_, *device_);
-    if (!pump_->Start()) throw std::runtime_error("packet pump failed to start");
+    BringUpTunnelLocked(config, step);
 
     state_ = proto::TunnelState::Up;
     upSinceMillis_ = NowMillis();
@@ -255,12 +290,81 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
   } catch (const std::exception& e) {
     error_ = e.what();
     state_ = proto::TunnelState::Error;
-    LogError("tunnel: start FAILED at step {}: {}", step, error_);
+    LogError("tunnel: start FAILED at step {} (mode={}): {}", step,
+             proto::ToString(startMode_), error_);
     StopLocked();
     state_ = proto::TunnelState::Error;  // StopLocked resets to Stopped
   }
 
   return Status();
+}
+
+// Steps 6-8 — the destructive half. Called from exactly one place, immediately
+// after the fence in StartLocked. Caller holds mutex_.
+void TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
+                                           const char*& step) {
+  // The second, independent gate. StartLocked already returned before reaching
+  // this call in rpc-only mode; this checks the STORED mode rather than the
+  // caller's argument, so a future caller that reaches here with the wrong mode
+  // throws instead of rewriting the route table. It is not reachable today, and
+  // that is the point: this function must be impossible to misuse, not merely
+  // unused incorrectly.
+  if (startMode_ != proto::StartMode::Tunnel) {
+    throw std::runtime_error(
+        "refusing to apply network settings: session mode is '" +
+        std::string(proto::ToString(startMode_)) + "', not 'tunnel'");
+  }
+  // Steps 6 and 8 dereference the adapter. It only exists if step 1 ran, which
+  // only happens in tunnel mode — belt to the braces above, and it makes the
+  // dependency explicit rather than a latent null deref.
+  if (!adapter_)
+    throw std::runtime_error(
+        "refusing to apply network settings: no wintun adapter (step 1 did not "
+        "run)");
+
+  // --- 6/8 network settings (address/MTU/routes/DNS), from the device ---
+  step = "6/8 network config";
+  TunnelNetworkSettings settings;
+  settings.local_address_v4 = device_->tunnelLocalAddress();
+  if (settings.local_address_v4.empty()) settings.local_address_v4 = "169.254.2.1";
+  settings.prefix_v4 = 24;
+  settings.mtu = kTunnelMtu;
+  // dns from the device: the dns settings' unencrypted local servers when set,
+  // otherwise the distinct plain-DNS UpgradeMux mask. always plain :53, never OS-level
+  // encrypted DNS: the mux performs the unencrypted-DNS -> DoH upgrade in-tunnel.
+  // the tunnel is ipv4-only, so only the ipv4 resolvers apply
+  if (auto dns = device_->tunnelDnsAddressesIpv4(); dns && !dns->empty()) {
+    settings.dns_servers = *dns;
+  } else {
+    // Keep the exceptional fallback coupled to the SDK's separately tested
+    // URnetwork-owned UpgradeMux identity.
+    settings.dns_servers = {urnet::getDefaultTunnelDnsAddressIpv4()};
+  }
+  LogInfo("tunnel: [6/8] applying network settings addr={}/{} mtu={} dns=[{}]",
+          settings.local_address_v4, settings.prefix_v4, settings.mtu,
+          Join(settings.dns_servers));
+  netConfig_ = std::make_unique<NetworkConfig>(adapter_->Luid());
+  // Mark the machine as "routes installed" BEFORE installing them. The next
+  // start reads this to tell an orderly shutdown from a crash; a marker left
+  // by a run that died between the two is exactly the case we want reported.
+  SetActiveMarker(true);
+  if (!netConfig_->Apply(settings)) throw std::runtime_error("network config failed");
+
+  // --- 7/8 split tunneling (driver optional) ---
+  step = "7/8 split tunnel";
+  LogInfo("tunnel: [7/8] split tunnel: {} path(s), {} mode",
+          config.excluded_app_paths.size(),
+          config.allowlist_mode ? "allowlist" : "denylist");
+  splitTunnel_.Open();
+  excludedPaths_ = config.excluded_app_paths;
+  allowlist_ = config.allowlist_mode;
+  PushExcludedToDriver(excludedPaths_, allowlist_);
+
+  // --- 8/8 packet pump ---
+  step = "8/8 pump";
+  LogInfo("tunnel: [8/8] starting the packet pump");
+  pump_ = std::make_unique<PacketPump>(*adapter_, *device_);
+  if (!pump_->Start()) throw std::runtime_error("packet pump failed to start");
 }
 
 void TunnelController::Stop() {
@@ -271,7 +375,12 @@ void TunnelController::Stop() {
 void TunnelController::StopLocked() {
   const proto::TunnelState priorState = state_;
   const bool wasRunning = priorState != proto::TunnelState::Stopped;
-  if (state_ == proto::TunnelState::Up || state_ == proto::TunnelState::Starting)
+  // Whether THIS teardown has routes to give back. netConfig_ exists only if
+  // step 6 ran, which only happens in tunnel mode — so it is also the honest
+  // answer to "was the machine's network touched", and it is read from state
+  // rather than from the mode flag.
+  const bool hadRoutes = netConfig_ != nullptr;
+  if (proto::IsSessionLive(state_) || state_ == proto::TunnelState::Starting)
     state_ = proto::TunnelState::Stopping;
   if (wasRunning) LogInfo("tunnel: stopping (was {})", proto::ToString(priorState));
 
@@ -303,7 +412,14 @@ void TunnelController::StopLocked() {
   rpcHostPort_.clear();
   upSinceMillis_ = 0;
   state_ = proto::TunnelState::Stopped;
-  if (wasRunning) LogInfo("tunnel: stopped, network restored");
+  // Do NOT say "network restored" when nothing was ever changed: an rpc-only
+  // session that claims to have restored the network is a claim the reader
+  // would use to rule out a network problem this service did not cause.
+  if (wasRunning)
+    LogInfo("tunnel: stopped, {}", hadRoutes
+                                       ? "network restored"
+                                       : "no network state to restore (nothing "
+                                         "was applied)");
 }
 
 // --- crash/orderly-exit bookkeeping ---------------------------------------
@@ -332,6 +448,11 @@ bool TunnelController::TakeActiveMarker() {
   if (!std::filesystem::exists(ActiveMarkerPath(), ec)) return false;
   std::filesystem::remove(ActiveMarkerPath(), ec);
   return true;
+}
+
+bool TunnelController::PeekActiveMarker() {
+  std::error_code ec;
+  return std::filesystem::exists(ActiveMarkerPath(), ec);
 }
 
 void TunnelController::PushPhysicalAddressesLocked(const EgressInterfaces& egress) {
@@ -367,8 +488,12 @@ void TunnelController::PushExcludedToDriver(const std::vector<std::string>& path
   // Take it from the monitor rather than rediscovering: the monitor holds the
   // last known good interface across a momentary loss of the default route, and
   // the driver and the sdk must agree on which nic is "physical".
-  EgressInterfaces egress = egress_ ? egress_->Current()
-                                    : NetworkConfig::DiscoverEgress(adapter_->Luid());
+  // A zero LUID when there is no adapter — the rpc-only case, where there is no
+  // tun to exclude. Unreachable today (the driver is only ever open in tunnel
+  // mode, and IsAvailable() above returns first), but the deref was latent.
+  const NET_LUID excludeLuid = adapter_ ? adapter_->Luid() : NET_LUID{};
+  EgressInterfaces egress =
+      egress_ ? egress_->Current() : NetworkConfig::DiscoverEgress(excludeLuid);
   PushPhysicalAddressesLocked(egress);
   splitTunnel_.SetMode(allowlist);
   splitTunnel_.SetExcludedPaths(paths);
@@ -382,7 +507,9 @@ bool TunnelController::SetSplitTunnel(const std::vector<std::string>& excludedPa
   std::scoped_lock lock(mutex_);
   excludedPaths_ = excludedPaths;
   allowlist_ = allowlist;
-  if (state_ != proto::TunnelState::Up) return true;  // applied on next Start
+  // Only a real tunnel has a split-tunnel driver open; in every other state,
+  // including rpc_only, the rules are stored and applied on the next Start.
+  if (state_ != proto::TunnelState::Up) return true;
   PushExcludedToDriver(excludedPaths_, allowlist_);
   return true;
 }
@@ -402,6 +529,12 @@ void TunnelController::Logout() {
 proto::TunnelStatus TunnelController::Status() {
   proto::TunnelStatus s;
   s.state = state_;
+  s.mode = startMode_;
+  // Reported from the object that OWNS the routes, not from the mode: it is
+  // true exactly while an applied-and-not-yet-reverted NetworkConfig exists,
+  // including the window where Apply partially succeeded. The app reads this
+  // rather than inferring "connected" from the mode.
+  s.routes_installed = netConfig_ != nullptr;
   s.rpc_listen_hostport = rpcHostPort_;
   s.error = error_;
   s.service_version = urnet::version();

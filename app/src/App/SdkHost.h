@@ -66,11 +66,24 @@ struct CreateNetworkParams {
 // Snapshot of live connection / throughput / provide stats. Pushed to the UI on
 // SDK listener callbacks (macOS parity: listener-push, not polling).
 struct LiveStats {
-  std::string connectionStatus;   // getConnectionStatus() (CONNECTED/CONNECTING/...)
-  bool connected = false;
+  // getConnectionStatus() (CONNECTED/CONNECTING/DESTINATION_SET/DISCONNECTED)
+  // -- EXCEPT in an rpc-only session, where it is forced to the deliberately
+  // unrecognised "RPC_ONLY" so the connect page renders as disconnected. There
+  // is no tunnel in that mode and nothing may claim otherwise. See the clamp at
+  // the end of SdkHost::ReadStats.
+  std::string connectionStatus;
+  bool connected = false;         // forced false in an rpc-only session
   int64_t providerCount = 0;      // grid window current size (providers in window)
   int64_t downBitsPerSecond = 0;  // remote (tunneled) ingress bit rate
   int64_t upBitsPerSecond = 0;    // remote (tunneled) egress bit rate
+  // This snapshot came from an rpc-only session: no tunnel exists, nothing is
+  // carried, and the four fields above have been clamped to say so.
+  bool rpcOnly = false;
+  // What the SDK actually reported before the clamp. For the developer surface
+  // (P2), which is the one place that should see through it. Empty/false unless
+  // rpcOnly.
+  std::string rawConnectionStatus;
+  bool rawConnected = false;
   bool insufficientBalance = false;
   bool provideEnabled = false;
   bool providePaused = false;
@@ -425,6 +438,85 @@ class SdkHost {
   // Account page opens billing/upgrade in the browser at this host.
   std::string linkHostName() const { return "ur.io"; }
 
+  // ---- start mode ----------------------------------------------------------
+  // Which kind of service session this app asks for, and which kind it got.
+  //
+  // RpcOnly is the development mode (spec P1): the service brings up the
+  // DeviceLocal and the mTLS rpc listener and STOPS before it would touch the
+  // machine's routes or DNS, so device() below is live and every Class-B
+  // surface — developer/reliability screen, connect controls, locations,
+  // provide, DNS, split rules — can be driven with no tunnel and no elevation.
+  // Nothing is connected in this mode and the UI must not say it is:
+  // sessionMode() == RpcOnly means TunnelState::Up is never reported, so the
+  // existing `state == Up` tests already read it as "not connected".
+  //
+  // Requested by the URNETWORK_RPC_ONLY environment variable, read once at
+  // Initialize(). The value is an explicit allow-list: "1"/"true"/"yes"/"on"
+  // (case-insensitive, surrounding whitespace ignored) turn it ON; empty,
+  // "0"/"false"/"no"/"off" turn it off; ANYTHING ELSE is off and logs a
+  // warning. Do not assume a value like "enable" works — it does not.
+  //
+  // Setting it is NOT required to get an rpc-only session. A service started
+  // with `urnetworkd console --rpc-only` serves every request as rpc-only, and
+  // the app ADOPTS that (see BootstrapSession) and raises a persistent notice.
+  // The env var is for asking explicitly when the service is unclamped.
+  proto::StartMode requestedStartMode() const { return requestedMode_; }
+  // The mode the live session actually runs in, as reported by the service.
+  // It can differ from the requested one: a service clamped with `urnetworkd
+  // console --rpc-only` serves rpc-only whatever was asked, and the app adopts
+  // it. (Reattaching cannot cause a difference — reattach requires an exact
+  // mode match.) Defaults to RpcOnly, the mode that claims less, so a read with
+  // no session in force can never render as connected.
+  proto::StartMode sessionMode() const { return sessionMode_.load(); }
+
+  // ---- persistent session notice -------------------------------------------
+  // The standing reason this app is NOT carrying traffic. A property of the
+  // current state rather than an event: whatever renders it keeps it visible
+  // until it is replaced, and must NOT offer a dismiss control. `active ==
+  // false` means there is nothing to show, and is the normal case.
+  //
+  // THREADING: invoked on the bootstrap thread, and MAY be called while
+  // SdkHost's internal lock is held. Marshal to the UI thread and return
+  // immediately — a handler that calls back into SdkHost synchronously
+  // deadlocks. Every other handler on this class already does that through
+  // AppController::OnUi / DispatcherQueue; do the same.
+  struct ModeNotice {
+    enum class Kind {
+      // A live session that deliberately carries no traffic (rpc-only).
+      RpcOnly,
+      // No session at all: the service is unreachable, too old, or refused.
+      // The user is still SIGNED IN — this is not an authentication failure
+      // and must not route anyone to the sign-in screen.
+      SessionFailed,
+    };
+    bool active = false;
+    Kind kind = Kind::RpcOnly;
+    // RpcOnly only: the app asked for a real tunnel and the service refused to
+    // build one (it is clamped). Worth saying separately — the user did not
+    // choose this.
+    bool requestedTunnel = false;
+    // A complete sentence, already self-describing. Render it as-is; do NOT
+    // add a "Developer mode" title on top, or the words appear twice.
+    std::string message;
+  };
+  using ModeNoticeHandler = std::function<void(const ModeNotice&)>;
+  void SetModeNoticeHandler(ModeNoticeHandler h) { onModeNotice_ = std::move(h); }
+  // Re-push the current notice. Safe at any time, including from an ordinary
+  // logged-out launch: with no session it publishes an INACTIVE notice. (It
+  // used to derive purely from sessionMode_, whose default is RpcOnly, so
+  // calling it without a session fabricated a claim that the service was
+  // running with --rpc-only.)
+  //
+  // Takes the lock: this is a public entry point, it reads `device_`, and a
+  // session teardown can be running concurrently on the bootstrap thread —
+  // observed in testing, where a logout destroyed the session while a refresh
+  // was in flight. The handler is therefore invoked with the lock held on this
+  // path as well as from bootstrap; see the threading note above.
+  void RefreshModeNotice() {
+    std::scoped_lock lock(mutex_);
+    PublishModeNotice();
+  }
+
  private:
   urnet::NetworkSpace BuildNetworkSpace();
   // After obtaining a network JWT, register this device and store the client JWT.
@@ -506,7 +598,31 @@ class SdkHost {
   int64_t lastBlockedCount_ = 0;
   std::vector<SplitRule> lastSplitRules_;
 
+  // The session status to report for "we have a device, and it is/isn't on a
+  // location" — derived from sessionMode_ so an rpc-only session can never
+  // surface TunnelState::Up. Every place that used to hand-build such a status
+  // goes through here.
+  proto::TunnelStatus SessionStatus(bool haveLocation) const;
+  // Build and push the persistent notice from the CURRENT session state.
+  // Caller holds mutex_ (it reads device_).
+  void PublishModeNotice();
+  // Push a "there is no session, and here is why" notice. The user stays
+  // signed in; see ModeNotice::Kind::SessionFailed.
+  void PublishSessionFailure(const std::string& why);
+
   ServiceClient service_;
+  // Set once in Initialize() from URNETWORK_RPC_ONLY; never changes after.
+  proto::StartMode requestedMode_ = proto::StartMode::Tunnel;
+  // Set from the service's reply/hello whenever a session is established, and
+  // reset here when one is torn down. Defaults to RpcOnly — the mode that
+  // CLAIMS LESS — matching the policy TunnelStatus::from_json states for an
+  // unreadable mode. With no session there is certainly no tunnel, so a stray
+  // read before or after one must not be able to render "connected".
+  std::atomic<proto::StartMode> sessionMode_{proto::StartMode::RpcOnly};
+  // Why the last BootstrapSession() returned false, in words a user can act on.
+  // Set on every failure path and read by both callers; guarded by mutex_, which
+  // BootstrapSession's callers already hold.
+  std::string bootstrapError_;
   std::string appVersion_ = "0.0.1";
 
   WalletConnect wallet_;
@@ -525,6 +641,7 @@ class SdkHost {
   BlockActionsHandler onBlockActions_;
   BlockStatsHandler onBlockStats_;
   SplitRulesHandler onSplitRules_;
+  ModeNoticeHandler onModeNotice_;
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;
   LocationsHandler onLocations_;

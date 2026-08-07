@@ -74,6 +74,12 @@ void EgressMonitor::Refresh() {
   EgressInterfaces egress;
   bool changed = false;
 
+  // Zero LUID == the rpc-only mode's "no tun exists" (see the ctor). Every R1
+  // claim below is about looping into the tunnel, so with no tunnel they are
+  // not merely quieter, they are untrue — and a log that cries R1 when R1 does
+  // not apply is how a real one gets ignored later.
+  const bool hasTun = tunLuid_.Value != 0;
+
   {
     std::scoped_lock lock(mutex_);
     egress = NetworkConfig::DiscoverEgress(tunLuid_);
@@ -94,15 +100,21 @@ void EgressMonitor::Refresh() {
     if (egress.index4 == 0 && current_.index4 != 0) {
       if (InterfaceExists(current_.index4)) {
         LogWarn("egress: no ipv4 default route right now — keeping the last "
-                "physical interface {} bound rather than unbinding (R1)",
-                current_.index4);
+                "physical interface {} bound rather than unbinding ({})",
+                current_.index4, hasTun ? "R1" : "no tun, so this is only a "
+                                                 "preference, not R1");
         egress.index4 = current_.index4;
-      } else {
+      } else if (hasTun) {
         LogError("egress: the retained ipv4 interface {} no longer exists, so it "
                  "cannot stay pinned. The sdk's sockets are unbound and will "
                  "follow the route table — R1 exposure while the tunnel is up, "
                  "until an interface reappears.",
                  current_.index4);
+      } else {
+        LogWarn("egress: the retained ipv4 interface {} no longer exists; "
+                "unbinding. With no tun, the sdk's sockets following the route "
+                "table is the correct behaviour, not an exposure.",
+                current_.index4);
       }
     }
     if (egress.index6 == 0 && current_.index6 != 0 &&
@@ -126,9 +138,16 @@ void EgressMonitor::Refresh() {
 
     if (egress.index4 == 0) {
       // Nothing to pin to at all. Harmless before the tun routes exist; once
-      // they do it is the R1 loop condition, so it is an error either way.
-      LogError("egress: NO physical ipv4 interface bound — the sdk's own sockets "
-               "will follow the route table (R1 exposure once tun routes are up)");
+      // they do it is the R1 loop condition, so it is an error in tunnel mode.
+      if (hasTun) {
+        LogError("egress: NO physical ipv4 interface bound — the sdk's own "
+                 "sockets will follow the route table (R1 exposure once tun "
+                 "routes are up)");
+      } else {
+        LogWarn("egress: no physical ipv4 default route — the sdk's own sockets "
+                "will follow the route table. With no tun that is normal; it "
+                "usually just means this machine has no network right now.");
+      }
     }
     handler = onChange_;
   }

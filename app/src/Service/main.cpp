@@ -108,10 +108,36 @@ std::string DescribeIdentity() {
 // interface that outlived it. Both are expected to be absent; both are loud
 // when they are not, because between them they are the only way the owner
 // learns that a crash cost them their network.
-void ReportAndClearPriorState() {
-  const bool crashed = TunnelController::TakeActiveMarker();
-  const int orphans = NetworkConfig::SweepOrphanedTunnel(ids::kTunAdapterGuid,
-                                                         ids::kTunAdapterName);
+//
+// observeOnly (the unelevated rpc-only mode) REPORTS without mutating: it
+// deletes no route, clears no DNS and does not consume the marker. Both halves
+// matter. The sweep's DeleteTunnelRoutes/ClearTunnelDns need privilege this
+// process does not have, and a mode whose entire promise is "this will not
+// touch your network" must not open by rewriting the route table. Consuming the
+// marker would be worse than useless: an unelevated developer run would eat the
+// evidence that an earlier ELEVATED run died with routes installed, and the
+// next real start would then report a clean exit that never happened.
+void ReportAndClearPriorState(bool observeOnly) {
+  const bool crashed = observeOnly ? TunnelController::PeekActiveMarker()
+                                   : TunnelController::TakeActiveMarker();
+  const int orphans = NetworkConfig::SweepOrphanedTunnel(
+      ids::kTunAdapterGuid, ids::kTunAdapterName, /*remove=*/!observeOnly);
+  if (observeOnly) {
+    if (crashed || orphans > 0) {
+      LogWarn("service: leftover tunnel state from a previous run (marker={} "
+              "orphaned_interfaces={}) — this process is OBSERVE-ONLY "
+              "(rpc-only), so nothing was cleaned and the marker was LEFT IN "
+              "PLACE for the next real start. If your network is wrong: STOP "
+              "THIS PROCESS FIRST, then run `urnetworkd revert` from an "
+              "elevated prompt — revert REFUSES while any urnetworkd is serving "
+              "the control pipe, including this one.",
+              crashed ? "yes" : "no", orphans);
+    } else {
+      LogInfo("service: no leftover tunnel state from a previous run "
+              "(observe-only: nothing swept, no marker consumed)");
+    }
+    return;
+  }
   if (crashed) {
     LogWarn("service: the previous run exited with tunnel routes installed "
             "(crash, kill, or power loss) — {}",
@@ -182,7 +208,7 @@ void Run() {
   // Sweep before anything else can fail or block: if a previous run left the
   // machine pointed at a tun that is gone, giving the routes back is more
   // urgent than getting the sdk up.
-  ReportAndClearPriorState();
+  ReportAndClearPriorState(/*observeOnly=*/false);
   SdkInit(/*isService=*/true, kServiceMemoryLimit);
 
   ControlServer server;
@@ -339,14 +365,29 @@ int RevertNetwork(bool force) {
 }
 
 // Run the service logic in the console for local debugging (not under SCM).
-int RunConsole() {
+//
+// rpcOnly clamps the process so that no start_tunnel from any client can reach
+// the destructive half of TunnelController::StartLocked. That is what makes it
+// safe — and useful — to run unelevated: the app gets a live DeviceRemote and
+// the machine's routes and DNS are never written.
+int RunConsole(bool rpcOnly) {
   LogSetConsoleEcho(true);
-  LogInfo("console: starting as {}", DescribeIdentity());
-  if (!TokenHas(WinLocalSystemSid) && !TokenHas(WinBuiltinAdministratorsSid)) {
+  LogInfo("console: starting as {}{}", DescribeIdentity(),
+          rpcOnly ? " in RPC-ONLY mode" : "");
+  if (rpcOnly) {
+    LogWarn("console: --rpc-only — this process will bring up the DeviceLocal "
+            "and the mTLS rpc listener the app dials, and will NOT create a "
+            "wintun adapter, write a route, set a dns server or move a packet. "
+            "The startup sweep is observe-only here, so it will not delete a "
+            "stale route or consume the crash marker either. No elevation is "
+            "needed and none is used. Nothing here can connect you to anything; "
+            "the app will report state 'rpc_only', not 'up'.");
+  } else if (!TokenHas(WinLocalSystemSid) && !TokenHas(WinBuiltinAdministratorsSid)) {
     LogError("console: NOT elevated — creating the wintun adapter and writing "
              "routes both require LocalSystem/administrator, so a start_tunnel "
              "will fail at step 1. Re-run from an elevated prompt (or use "
-             "`urnetworkd install` + `sc start urnetworkd`).");
+             "`urnetworkd install` + `sc start urnetworkd`), or run "
+             "`urnetworkd console --rpc-only`, which needs no elevation.");
   }
   if (ControlPipeInUse()) {
     LogError("console: {} is already served — another urnetworkd (probably the "
@@ -363,17 +404,23 @@ int RunConsole() {
   }
   ::SetConsoleCtrlHandler(&OnConsoleControl, TRUE);
 
-  ReportAndClearPriorState();  // see Run(): routes back before anything else
+  // See Run(): routes back before anything else — except in rpc-only, where
+  // this process has neither the privilege nor the mandate to give them back,
+  // and says so rather than trying and half-failing.
+  ReportAndClearPriorState(/*observeOnly=*/rpcOnly);
   SdkInit(/*isService=*/true, kServiceMemoryLimit);
 
   ControlServer server;
   g_server = &server;
+  // Before Start(), so the clamp is in force before the pipe can accept a
+  // single request.
+  if (rpcOnly) server.ClampToRpcOnly();
   if (!server.Start()) {
     LogError("console: control server failed to start");
     return 1;
   }
-  LogInfo("console: running on {}; press Ctrl+C to stop",
-          Narrow(ids::kControlPipeName));
+  LogInfo("console: running on {} (mode={}); press Ctrl+C to stop",
+          Narrow(ids::kControlPipeName), rpcOnly ? "rpc-only" : "tunnel");
 
   ::WaitForSingleObject(g_stopEvent, INFINITE);
 
@@ -381,7 +428,10 @@ int RunConsole() {
   server.Stop();  // stops the tunnel, which reverts routes and DNS
   g_server = nullptr;
   ::SetEvent(g_consoleDrainedEvent);
-  LogInfo("console: stopped cleanly, network restored");
+  LogInfo("console: stopped cleanly{}",
+          rpcOnly ? " (this process wrote no network state, so there is nothing "
+                    "to restore)"
+                  : ", network restored");
 
   ::CloseHandle(g_stopEvent);
   g_stopEvent = nullptr;
@@ -394,6 +444,21 @@ int Usage() {
       L"\n"
       L"  urnetworkd                run under the SCM (what the SCM invokes)\n"
       L"  urnetworkd console        run in this console for development\n"
+      L"  urnetworkd console --rpc-only\n"
+      L"                            same, but clamped so no start_tunnel from\n"
+      L"                            any client can create the wintun adapter or\n"
+      L"                            write a route or dns entry. Brings up the\n"
+      L"                            DeviceLocal + mTLS rpc listener only, so the\n"
+      L"                            app has a live DeviceRemote to drive.\n"
+      L"                            NEEDS NO ELEVATION and carries no traffic.\n"
+      L"                            The startup sweep is observe-only here: it\n"
+      L"                            reports leftover state but cleans nothing\n"
+      L"                            and does not consume the crash marker.\n"
+      L"                            This is a SAFETY NET, not a switch: the app\n"
+      L"                            must ask for rpc-only itself (set\n"
+      L"                            URNETWORK_RPC_ONLY=1), because a client that\n"
+      L"                            asked for a tunnel is refused rather than\n"
+      L"                            silently downgraded.\n"
       L"  urnetworkd install        register the service (elevated)\n"
       L"  urnetworkd uninstall      stop and deregister the service (elevated)\n"
       L"  urnetworkd revert         take back any leftover tunnel routes/DNS\n"
@@ -443,9 +508,37 @@ int wmain(int argc, wchar_t** argv) {
                   logFile.c_str());
   }
 
+  // --rpc-only is accepted only alongside `console`. It is deliberately NOT a
+  // flag on the SCM path: the installed service exists to run tunnels, and a
+  // mode that silently makes it not do so would be indistinguishable from a
+  // broken tunnel.
+  const bool rpcOnlyFlag = argc >= 3 && std::wstring(argv[2]) == L"--rpc-only";
   if (cmd == L"install") return InstallService();
   if (cmd == L"uninstall") return UninstallService();
-  if (cmd == L"console" || cmd == L"--console") return RunConsole();
+  if (cmd == L"console" || cmd == L"--console") {
+    // Check EVERY extra argument, not just argv[2]: `console --rpc-only --xyz`
+    // used to ignore argv[3] silently while `console --xyz` errored, so a typo
+    // was swallowed exactly when the flag most needed to be read carefully.
+    for (int i = 2; i < argc; ++i) {
+      if (std::wstring(argv[i]) == L"--rpc-only") continue;
+      std::fwprintf(stderr, L"unknown option for console: %s\n", argv[i]);
+      Usage();
+      return 2;
+    }
+    return RunConsole(rpcOnlyFlag);
+  }
+  // `urnetworkd --rpc-only` with no subcommand: the obvious shorthand, and it
+  // resolves to the mode that does less, so honouring it is safe. Extra
+  // arguments are rejected here too — hardening only the `console` spelling
+  // left this entry point silently swallowing a typo.
+  if (cmd == L"--rpc-only") {
+    if (argc >= 3) {
+      std::fwprintf(stderr, L"unknown option: %s\n", argv[2]);
+      Usage();
+      return 2;
+    }
+    return RunConsole(true);
+  }
   if (cmd == L"revert" || cmd == L"--revert") {
     const bool force = argc >= 3 && (std::wstring(argv[2]) == L"--force" ||
                                      std::wstring(argv[2]) == L"-f");
@@ -467,7 +560,7 @@ int wmain(int argc, wchar_t** argv) {
       // mistake. Fall through to console mode rather than exiting silently.
       LogInfo("service: not started by the SCM; falling back to console mode "
               "(use `urnetworkd console` to be explicit)");
-      return RunConsole();
+      return RunConsole(/*rpcOnly=*/false);
     }
     LogError("service: StartServiceCtrlDispatcher failed: {}", err);
     return 1;

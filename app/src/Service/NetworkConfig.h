@@ -91,7 +91,15 @@ class NetworkConfig {
   // exists when the service starts, a previous run died without unwinding (or
   // the adapter outlived it). Delete our route set and DNS from each and say so
   // loudly. Returns how many orphaned interfaces were found.
-  static int SweepOrphanedTunnel(const GUID& tunGuid, const wchar_t* adapterName);
+  //
+  // remove=false makes it OBSERVE ONLY: it still finds and reports orphans but
+  // deletes no route and clears no DNS. That is what the unelevated rpc-only
+  // mode uses — the removal needs privilege it does not have, and a mode whose
+  // entire promise is "this will not touch your network" must not open by
+  // rewriting the route table. Reporting an orphan it cannot clean is still
+  // worth doing: it tells the owner to run `urnetworkd revert` elevated.
+  static int SweepOrphanedTunnel(const GUID& tunGuid, const wchar_t* adapterName,
+                                 bool remove = true);
 
   // Find the best default-route interface indices that are NOT the tun. Used to
   // set the SDK egress binding. Recomputed on every network change.
