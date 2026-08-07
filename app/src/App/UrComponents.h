@@ -130,7 +130,15 @@ winrt::Microsoft::UI::Xaml::FrameworkElement MakeSectionHeader(winrt::hstring co
 struct StatusField {
   winrt::Microsoft::UI::Xaml::FrameworkElement root{nullptr};
   winrt::Microsoft::UI::Xaml::Shapes::Ellipse dot{nullptr};  // null unless withDot
+  // The field's name. Handed back so the strip can HIDE it at narrow widths:
+  // the app's minimum window is 400dip and four captioned fields need ~600, so
+  // below the breakpoint the captions go and the values stand alone. They are
+  // still the values' accessible names, so nothing is lost to a screen reader.
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock caption{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};
+  // What the field IS, kept so SetStatusFieldValue can rebuild the announced
+  // name as "Network, sample-network" every time the value changes.
+  winrt::hstring name;
 };
 
 // `label` may be empty for a field whose value speaks for itself (the state
@@ -140,6 +148,16 @@ struct StatusField {
 // `label`.
 StatusField MakeStatusField(winrt::hstring const& label, bool withDot = false,
                             winrt::hstring const& accessibleName = {});
+
+// Write a field's value, and its announced name with it.
+//
+// Text alone is NOT enough and the difference was visible in the UIA tree: the
+// caption is marked Raw (it would otherwise be announced as a separate item
+// beside the thing it names), so the field's only accessible node is the value,
+// and a value whose Name says "Network" tells a screen reader the label and
+// hides the fact. This sets the name to "Network, sample-network" - the same
+// shape ConnectPage::ApplyLocationRowName already uses for the provider row.
+void SetStatusFieldValue(StatusField const& field, winrt::hstring const& value);
 
 // The hairline between two fields of the strip. Vertical, unlike MakeDivider:
 // the strip is a row, so its rules run the other way.

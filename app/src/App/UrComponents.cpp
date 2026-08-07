@@ -103,25 +103,36 @@ StatusField MakeStatusField(winrt::hstring const& label, bool withDot,
   }
 
   if (!label.empty()) {
-    TextBlock caption;
-    caption.Text(label);
-    if (auto style = StyleByKey(L"UrStatusFieldLabelStyle")) caption.Style(style);
+    field.caption = TextBlock();
+    field.caption.Text(label);
+    if (auto style = StyleByKey(L"UrStatusFieldLabelStyle")) field.caption.Style(style);
     // The caption is the field's NAME and the value is its content: announcing
     // "Selected provider" as a separate static-text item beside "Berlin" makes
-    // the strip six unrelated fragments instead of three facts.
+    // the strip six unrelated fragments instead of three facts. This is also
+    // why hiding the caption at narrow widths costs a screen reader nothing.
     Automation::AutomationProperties::SetAccessibilityView(
-        caption, Automation::Peers::AccessibilityView::Raw);
-    row.Children().Append(caption);
+        field.caption, Automation::Peers::AccessibilityView::Raw);
+    row.Children().Append(field.caption);
   }
 
   field.value = TextBlock();
   if (auto style = StyleByKey(L"UrStatusFieldValueStyle")) field.value.Style(style);
-  Automation::AutomationProperties::SetName(
-      field.value, accessibleName.empty() ? label : accessibleName);
+  field.name = accessibleName.empty() ? label : accessibleName;
+  // Seeded here and rewritten by SetStatusFieldValue on every update; a field
+  // with no value yet announces at least what it is.
+  Automation::AutomationProperties::SetName(field.value, field.name);
   row.Children().Append(field.value);
 
   field.root = row;
   return field;
+}
+
+void SetStatusFieldValue(StatusField const& field, winrt::hstring const& value) {
+  if (!field.value) return;
+  field.value.Text(value);
+  Automation::AutomationProperties::SetName(
+      field.value,
+      field.name.empty() ? value : field.name + winrt::hstring{L", "} + value);
 }
 
 Controls::Border MakeStatusSeparator() {

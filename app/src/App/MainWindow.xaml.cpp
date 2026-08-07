@@ -378,6 +378,20 @@ void MainWindow::ApplyBreakpoint() {
   Place(DeveloperSideStack(), wide ? PanePlacement{2, 1, 1, Thickness{20, 16, 0, 24}}
                                    : PanePlacement{3, 0, 1, Thickness{0, 16, 0, 24}});
 
+  // ---- the status strip ----------------------------------------------------
+  // Captions off below the breakpoint. The app's minimum window is 400dip
+  // (WindowShell kMinWidthDips) and four captioned fields want ~600, so at the
+  // flyout sizes the right-hand fields were simply running off the edge -
+  // silently, which is the one thing a status line must not do. Without the
+  // captions the same four fields fit from ~520dip, and they are still the
+  // values' accessible names, so a screen reader loses nothing. Advanced Mode's
+  // extra fields inherit this for free.
+  for (auto const* field : {&statusNetwork_, &statusProvider_, &statusTraffic_}) {
+    if (field->caption) {
+      field->caption.Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+    }
+  }
+
   urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
 }
 
@@ -436,7 +450,7 @@ void MainWindow::BuildStatusStrip() {
 void MainWindow::RenderStatusState(hstring const& text,
                                    winrt::Windows::UI::Color dot) {
   if (!statusState_.value) return;
-  statusState_.value.Text(text);
+  urnw::kit::SetStatusFieldValue(statusState_, text);
   // The state field is the one line on the strip that is never muted: it is the
   // fact the other three qualify.
   statusState_.value.Foreground(urnw::colors::TextBrush());
@@ -477,17 +491,20 @@ void MainWindow::ApplyStatusStrip() {
   }
   for (auto const& part : statusSessionParts_) part.Visibility(Visibility::Visible);
 
-  statusNetwork_.value.Text(statusGuest_ || statusNetworkName_.empty()
-                                ? Loc("guest")
-                                : H(statusNetworkName_));
-  statusProvider_.value.Text(statusLocationName_.empty()
-                                 ? Loc("best_available_provider")
-                                 : H(statusLocationName_));
+  urnw::kit::SetStatusFieldValue(statusNetwork_,
+                                 statusGuest_ || statusNetworkName_.empty()
+                                     ? Loc("guest")
+                                     : H(statusNetworkName_));
+  urnw::kit::SetStatusFieldValue(statusProvider_,
+                                 statusLocationName_.empty()
+                                     ? Loc("best_available_provider")
+                                     : H(statusLocationName_));
   // "Connected" and "carrying traffic" are different claims. An rpc-only
   // session reports the first and none of the second, and LiveStats has already
   // clamped its counters to zero for exactly that reason - so this reads the
   // clamped values and says what they mean rather than printing two zeroes.
-  statusTraffic_.value.Text(
+  urnw::kit::SetStatusFieldValue(
+      statusTraffic_,
       statusConnected_ ? H("↓ " + urnw::FormatBitRate(statusDownBps_) + "   ↑ " +
                            urnw::FormatBitRate(statusUpBps_))
                        : Loc("site_app_no_traffic"));
