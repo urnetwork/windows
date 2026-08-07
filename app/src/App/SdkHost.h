@@ -450,16 +450,43 @@ class SdkHost {
   // sessionMode() == RpcOnly means TunnelState::Up is never reported, so the
   // existing `state == Up` tests already read it as "not connected".
   //
-  // Selected by the URNETWORK_RPC_ONLY environment variable (any value other
-  // than empty/"0"/"false"), read once at Initialize(). An env var rather than
-  // a UI control on purpose: a developer affordance must not become a switch a
-  // user can find.
+  // Requested by the URNETWORK_RPC_ONLY environment variable, read once at
+  // Initialize(). The value is an explicit allow-list: "1"/"true"/"yes"/"on"
+  // (case-insensitive, surrounding whitespace ignored) turn it ON; empty,
+  // "0"/"false"/"no"/"off" turn it off; ANYTHING ELSE is off and logs a
+  // warning. Do not assume a value like "enable" works — it does not.
+  //
+  // Setting it is NOT required to get an rpc-only session. A service started
+  // with `urnetworkd console --rpc-only` serves every request as rpc-only, and
+  // the app ADOPTS that (see BootstrapSession) and raises a persistent notice.
+  // The env var is for asking explicitly when the service is unclamped.
   proto::StartMode requestedStartMode() const { return requestedMode_; }
-  // The mode the live session actually runs in, as reported by the service —
-  // which can differ from the requested one (the service can be clamped with
-  // `urnetworkd console --rpc-only`, and reattaching to an already-running
-  // tunnel yields a tunnel session). Tunnel until a session exists.
+  // The mode the live session actually runs in, as reported by the service.
+  // It can differ from the requested one: a service clamped with `urnetworkd
+  // console --rpc-only` serves rpc-only whatever was asked, and the app adopts
+  // it. (Reattaching cannot cause a difference — reattach requires an exact
+  // mode match.) Defaults to RpcOnly, the mode that claims less, so a read with
+  // no session in force can never render as connected.
   proto::StartMode sessionMode() const { return sessionMode_.load(); }
+
+  // ---- persistent mode notice ---------------------------------------------
+  // Raised once a session is up and the session carries no traffic. It is a
+  // property of the session, not an event: whatever renders it must keep it
+  // visible until the app is restarted, and must NOT offer a dismiss control.
+  // `active == false` means there is nothing to show.
+  struct ModeNotice {
+    bool active = false;
+    // The app asked for a real tunnel and the service refused to build one
+    // (it is clamped). Worth saying separately: the user did not choose this.
+    bool requestedTunnel = false;
+    // A complete sentence, already self-describing. Render it as-is; do NOT
+    // add a "Developer mode" title on top, or the words appear twice.
+    std::string message;
+  };
+  using ModeNoticeHandler = std::function<void(const ModeNotice&)>;
+  void SetModeNoticeHandler(ModeNoticeHandler h) { onModeNotice_ = std::move(h); }
+  // Re-push the current notice (e.g. when a view is created after bootstrap).
+  void RefreshModeNotice() { PublishModeNotice(); }
 
  private:
   urnet::NetworkSpace BuildNetworkSpace();
@@ -547,6 +574,8 @@ class SdkHost {
   // surface TunnelState::Up. Every place that used to hand-build such a status
   // goes through here.
   proto::TunnelStatus SessionStatus(bool haveLocation) const;
+  // Build and push the persistent mode notice from sessionMode_/requestedMode_.
+  void PublishModeNotice();
 
   ServiceClient service_;
   // Set once in Initialize() from URNETWORK_RPC_ONLY; never changes after.
@@ -557,6 +586,10 @@ class SdkHost {
   // unreadable mode. With no session there is certainly no tunnel, so a stray
   // read before or after one must not be able to render "connected".
   std::atomic<proto::StartMode> sessionMode_{proto::StartMode::RpcOnly};
+  // Why the last BootstrapSession() returned false, in words a user can act on.
+  // Set on every failure path and read by both callers; guarded by mutex_, which
+  // BootstrapSession's callers already hold.
+  std::string bootstrapError_;
   std::string appVersion_ = "0.0.1";
 
   WalletConnect wallet_;
@@ -575,6 +608,7 @@ class SdkHost {
   BlockActionsHandler onBlockActions_;
   BlockStatsHandler onBlockStats_;
   SplitRulesHandler onSplitRules_;
+  ModeNoticeHandler onModeNotice_;
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;
   LocationsHandler onLocations_;

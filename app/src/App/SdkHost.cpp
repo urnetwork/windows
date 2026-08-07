@@ -171,10 +171,28 @@ bool SdkHost::Initialize() {
 
     if (!localState_->getByClientJwt().empty()) {
       SetAuthState(AuthState::LoggedIn);
-      // resume the session (reattach or restart the tunnel) off the UI path
+      // Resume the session off the UI path.
+      //
+      // The result is CONSUMED. It used to be discarded, so every bootstrap
+      // failure on resume — service down, service too old, a mode refusal —
+      // produced a logged-in home screen with no DeviceRemote, no dialog and no
+      // error state, with the only evidence a LogError in a file a WinUI3 app
+      // never shows anyone. A failure the user cannot see is a failure that
+      // gets reported as "the app just doesn't work".
       std::thread([this] {
-        std::scoped_lock lock(mutex_);
-        BootstrapSession();
+        bool ok = false;
+        std::string why;
+        {
+          std::scoped_lock lock(mutex_);
+          ok = BootstrapSession();
+          why = bootstrapError_;
+        }
+        if (!ok) {
+          SetAuthState(AuthState::Error,
+                       why.empty() ? "could not start a session with the "
+                                     "URnetwork service"
+                                   : why);
+        }
       }).detach();
     } else {
       SetAuthState(AuthState::LoggedOut);
@@ -590,11 +608,19 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
         LogWarn("sdkhost: persist jwt failed: {}", e.what());
       }
       bool ok = false;
+      std::string why;
       {
         std::scoped_lock lock(mutex_);
         ok = BootstrapSession();
+        why = bootstrapError_;
       }
-      AuthResult r{ok, false, ok ? "" : "failed to start tunnel session"};
+      // Name the ACTUAL cause. The old hardcoded "failed to start tunnel
+      // session" was misleading for a mode mismatch or an out-of-date service,
+      // and it was the only thing the user ever saw.
+      AuthResult r{ok, false,
+                   ok ? "" : (why.empty() ? "failed to start a session with the "
+                                            "URnetwork service"
+                                          : why)};
       SetAuthState(ok ? AuthState::LoggedIn : AuthState::Error, r.error);
       if (done) done(r);
     } else {
@@ -759,6 +785,26 @@ static void UrstRemoveAppRule(urnet::BlockActionOverrideList& list,
 // what keeps every `state == TunnelState::Up` test in the UI reading false,
 // which is the whole reason RpcOnly is a distinct state and not a flag beside
 // Up.
+// The persistent "this session carries no traffic" notice. Pushed once a
+// session is up; empty message means "no notice". Anything rendering it must
+// keep it visible for the life of the session — it is a property, not an event.
+void SdkHost::PublishModeNotice() {
+  if (!onModeNotice_) return;
+  ModeNotice n;
+  if (sessionMode_.load() == proto::StartMode::RpcOnly) {
+    n.active = true;
+    n.requestedTunnel = requestedMode_ == proto::StartMode::Tunnel;
+    n.message =
+        n.requestedTunnel
+            ? "Developer mode: the service is running with --rpc-only, so this "
+              "app asked for a tunnel and did not get one. Nothing is "
+              "connected and no traffic is carried."
+            : "Developer mode: rpc-only session. Nothing is connected and no "
+              "traffic is carried.";
+  }
+  onModeNotice_(n);
+}
+
 proto::TunnelStatus SdkHost::SessionStatus(bool haveLocation) const {
   proto::TunnelStatus st;
   const proto::StartMode mode = sessionMode_.load();
@@ -778,11 +824,21 @@ proto::TunnelStatus SdkHost::SessionStatus(bool haveLocation) const {
 
 bool SdkHost::BootstrapSession() {
   // caller holds mutex_
+  // Cleared on entry and set on every failure path, so a caller that gets false
+  // can tell the user WHY. Both callers used to report the same hardcoded
+  // "failed to start tunnel session", which is actively misleading for a mode
+  // mismatch or an out-of-date service.
+  bootstrapError_.clear();
   const std::string clientJwt = localState_->getByClientJwt();
-  if (clientJwt.empty()) return false;
+  if (clientJwt.empty()) {
+    bootstrapError_ = "no client credentials are stored for this device";
+    return false;
+  }
   const std::string instanceId = localState_->getInstanceId();
 
   if (!service_.IsConnected() && !service_.Connect()) {
+    bootstrapError_ =
+        "the URnetwork service is not running or cannot be reached";
     LogError("sdkhost: service not reachable");
     return false;
   }
@@ -808,6 +864,12 @@ bool SdkHost::BootstrapSession() {
                  "and dns. Update the installed service, or run `urnetworkd "
                  "console --rpc-only` from this build.",
                  hello.protocol_version, proto::kFirstStartModeVersion);
+        bootstrapError_ = std::format(
+            "URNETWORK_RPC_ONLY is set, but the running service is too old to "
+            "honour it (control protocol v{}, needs v{}+). It would build a "
+            "real tunnel. Update the service, or run `urnetworkd console "
+            "--rpc-only` from this build.",
+            hello.protocol_version, proto::kFirstStartModeVersion);
         return false;
       }
       // A live TUNNEL when we asked for rpc-only. Attaching would be honestly
@@ -825,6 +887,10 @@ bool SdkHost::BootstrapSession() {
                  "tunnel first, or unset URNETWORK_RPC_ONLY.",
                  proto::ToString(hello.state),
                  hello.routes_installed ? "yes" : "no");
+        bootstrapError_ =
+            "URNETWORK_RPC_ONLY is set, but the service is running a real "
+            "tunnel. This app could stop it, so it will not attach. Stop the "
+            "tunnel first, or unset URNETWORK_RPC_ONLY.";
         return false;
       }
     }
@@ -875,40 +941,63 @@ bool SdkHost::BootstrapSession() {
       // and not from what we asked for — the service can be clamped to
       // rpc-only, in which case the two differ.
       if (!proto::IsSessionLive(st.state)) {
+        bootstrapError_ = st.error.empty()
+                              ? std::string("the service could not start a ") +
+                                    proto::ToString(cfg.mode) + " session"
+                              : st.error;
         LogError("sdkhost: service failed to start a {} session: {}",
                  proto::ToString(cfg.mode), st.error);
         return false;
       }
-      sessionMode_.store(st.mode);
-      // A mode mismatch is never benign, and the two directions are NOT the
-      // same event. The old code logged the harmless one's message for both.
+      // The mode we GOT, stored only once the mismatch below has been resolved.
+      // Storing it above the check left the refusal branch with sessionMode_ ==
+      // Tunnel and no session, which is exactly the state SessionStatus() reads
+      // to report routes_installed = true.
       if (st.mode != cfg.mode) {
         if (cfg.mode == proto::StartMode::RpcOnly) {
           // The dangerous direction. We asked for no network changes and the
           // service built a tunnel: routes and DNS have ALREADY been rewritten.
           // The version gate above should make this unreachable, so reaching it
           // means a peer is misreporting its version — give the routes back
-          // rather than keep a tunnel nobody asked for.
+          // rather than keep a tunnel nobody asked for. This one stays a
+          // refusal: adopting it would mean keeping a tunnel that the user
+          // explicitly asked not to have.
+          bootstrapError_ =
+              "the service built a real tunnel for a request that asked for "
+              "rpc-only; it has been stopped. Update the service.";
           LogError("sdkhost: the service returned a TUNNEL for an rpc-only "
                    "request (routes_installed={}). This machine's routes and "
                    "dns have already been rewritten by a request that asked for "
                    "the opposite. Stopping it and refusing the session.",
                    st.routes_installed ? "yes" : "no");
           service_.StopTunnel();
+          sessionMode_.store(proto::StartMode::RpcOnly);  // no session; claim less
           return false;
         }
         // The safe direction: we asked for a tunnel and the service is clamped
-        // to rpc-only, so nothing was written. Refuse rather than silently run
-        // a session the caller did not ask for.
-        LogError("sdkhost: asked the service for a {} session and it served {} "
-                 "— the service is clamped (`urnetworkd console --rpc-only`). "
-                 "No tunnel was created and no routes were touched. Set "
-                 "URNETWORK_RPC_ONLY=1 to ask for rpc-only explicitly, or run "
-                 "an unclamped service.",
-                 proto::ToString(cfg.mode), proto::ToString(st.mode));
-        service_.StopTunnel();
-        return false;
+        // to rpc-only, so NOTHING was written to this machine.
+        //
+        // ADOPT it rather than refuse. Refusing was the wrong trade: the spec
+        // defines the whole Class-B workflow as "needs the service in
+        // --rpc-only mode", so a UI agent who starts that console and launches
+        // the app must get a driveable app, not a dead one — and the previous
+        // behaviour put the explanation in the SERVICE's help text, where
+        // somebody debugging a dead APP has no reason to look.
+        //
+        // This is not a silent downgrade, which is the thing S3 exists to
+        // prevent. Two independent mechanisms make it loud: every rendered
+        // connect value is clamped at the source (see the end of ReadStats), and
+        // the persistent notice raised here cannot be dismissed. Adopting also
+        // writes nothing and can only happen when somebody deliberately started
+        // a console with --rpc-only; the installed service never does.
+        LogWarn("sdkhost: asked the service for a {} session and it served {} — "
+                "the service is clamped (`urnetworkd console --rpc-only`). "
+                "ADOPTING the rpc-only session: nothing was written to this "
+                "machine and no traffic will be carried. Raising a persistent "
+                "in-app notice so this is not a silent downgrade.",
+                proto::ToString(cfg.mode), proto::ToString(st.mode));
       }
+      sessionMode_.store(st.mode);
       if (st.mode == proto::StartMode::RpcOnly) {
         LogWarn("sdkhost: RPC-ONLY session at {} — the DeviceRemote is live and "
                 "every screen is driveable, but no routes exist and no traffic "
@@ -966,10 +1055,18 @@ bool SdkHost::BootstrapSession() {
 
     if (onTunnel_) onTunnel_(SessionStatus(device_->getConnectLocation().has_value()));
 
+    // Raise the persistent notice LAST, once the session is actually usable, so
+    // it can never appear on a bootstrap that then failed. It is deliberately
+    // not dismissible: it describes a property of the whole session, not an
+    // event, and it stays true until the app is restarted against a normal
+    // service.
+    PublishModeNotice();
+
     LogInfo("sdkhost: session bootstrapped (mode={} rpc={})",
             proto::ToString(sessionMode_.load()), hostPort);
     return true;
   } catch (const std::exception& e) {
+    bootstrapError_ = e.what();
     LogError("sdkhost: bootstrap failed: {}", e.what());
     return false;
   }

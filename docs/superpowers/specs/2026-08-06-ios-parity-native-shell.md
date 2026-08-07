@@ -81,6 +81,35 @@ parallel and what carries risk.
   provide, DNS, split rules. `DeviceRemote` already exposes the complete
   `open*ViewController` set plus the reliability bridge ported for iOS
   (sdk#135) — **no SDK work is required for any of it**.
+
+  **How to actually run it** (landed in P1):
+
+  ```powershell
+  .\urnetworkd.exe console --rpc-only    # unelevated, no UAC prompt
+  .\URnetwork.exe                         # no environment variable needed
+  ```
+
+  One switch is enough. The clamped service serves every `start_tunnel` as
+  rpc-only and the app **adopts** that session rather than refusing it, so the
+  app comes up driveable. `URNETWORK_RPC_ONLY=1` exists to request rpc-only from
+  an *unclamped* service and is not required for the workflow above. (It is
+  parsed as an explicit allow-list — `1`/`true`/`yes`/`on`; anything else is
+  off and logs a warning.)
+
+  Two properties hold for every rpc-only session, and a Class-B screen must not
+  assume it can ignore either: the connect surface is **clamped at the source**
+  — `SdkHost::ReadStats` forces `connectionStatus` to the unrecognised
+  `"RPC_ONLY"` and zeroes `connected`, provider count and throughput, so nothing
+  downstream can render "Connected" — and a **persistent, non-dismissible
+  notice** is pushed through `SdkHost::SetModeNoticeHandler` saying no traffic
+  is carried. Any screen that renders connection state binds that handler and
+  keeps the notice visible for the life of the session. **P2 owns the view for
+  it; P1 shipped the signal only** (see P1's report).
+
+  P1 also makes the mode impossible to enter by accident: the service is clamped
+  for the life of the process, and the app refuses to ask a service older than
+  control-protocol v2 for rpc-only, because such a service silently ignores the
+  field and builds a real tunnel.
 - **Class C — the tunnel.** Routes, DNS, packet pump. The owner's to run.
 
 Known Class-B holes, flagged so nobody assumes them: `dropExit`, `stallExit`,

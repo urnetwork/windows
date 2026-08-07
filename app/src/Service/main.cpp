@@ -127,8 +127,10 @@ void ReportAndClearPriorState(bool observeOnly) {
       LogWarn("service: leftover tunnel state from a previous run (marker={} "
               "orphaned_interfaces={}) — this process is OBSERVE-ONLY "
               "(rpc-only), so nothing was cleaned and the marker was LEFT IN "
-              "PLACE for the next real start. If your network is wrong, run "
-              "`urnetworkd revert` from an elevated prompt.",
+              "PLACE for the next real start. If your network is wrong: STOP "
+              "THIS PROCESS FIRST, then run `urnetworkd revert` from an "
+              "elevated prompt — revert REFUSES while any urnetworkd is serving "
+              "the control pipe, including this one.",
               crashed ? "yes" : "no", orphans);
     } else {
       LogInfo("service: no leftover tunnel state from a previous run "
@@ -526,8 +528,17 @@ int wmain(int argc, wchar_t** argv) {
     return RunConsole(rpcOnlyFlag);
   }
   // `urnetworkd --rpc-only` with no subcommand: the obvious shorthand, and it
-  // resolves to the mode that does less, so honouring it is safe.
-  if (cmd == L"--rpc-only") return RunConsole(true);
+  // resolves to the mode that does less, so honouring it is safe. Extra
+  // arguments are rejected here too — hardening only the `console` spelling
+  // left this entry point silently swallowing a typo.
+  if (cmd == L"--rpc-only") {
+    if (argc >= 3) {
+      std::fwprintf(stderr, L"unknown option: %s\n", argv[2]);
+      Usage();
+      return 2;
+    }
+    return RunConsole(true);
+  }
   if (cmd == L"revert" || cmd == L"--revert") {
     const bool force = argc >= 3 && (std::wstring(argv[2]) == L"--force" ||
                                      std::wstring(argv[2]) == L"-f");

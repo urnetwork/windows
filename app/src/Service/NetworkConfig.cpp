@@ -330,8 +330,9 @@ int NetworkConfig::SweepOrphanedTunnel(const GUID& tunGuid,
       LogWarn("netcfg: ORPHANED tun interface \"{}\" (luid {:#x}) present at "
               "startup — a previous run did not revert. NOT cleaning it: this "
               "process is observe-only (rpc-only mode) and removing routes "
-              "needs elevation. Run `urnetworkd revert` from an elevated prompt "
-              "to take the routes back.",
+              "needs elevation. To take the routes back: STOP THIS PROCESS "
+              "FIRST, then run `urnetworkd revert` from an elevated prompt — "
+              "revert refuses while a urnetworkd holds the control pipe.",
               alias, luid.Value);
       continue;
     }
