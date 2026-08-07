@@ -30,6 +30,22 @@ struct RpcSession {
   std::string host_port;
 };
 
+// URNETWORK_RPC_ONLY: ask the service for a session that stops before it would
+// touch the machine's routes or DNS (spec P1). Empty, "0" and "false" mean off;
+// anything else means on, so `set URNETWORK_RPC_ONLY=1` is enough.
+proto::StartMode StartModeFromEnvironment() {
+  constexpr DWORD kMax = 64;
+  wchar_t buf[kMax] = {0};
+  const DWORD n = ::GetEnvironmentVariableW(L"URNETWORK_RPC_ONLY", buf, kMax);
+  // n == 0: unset. n >= kMax: a value too long to be one of ours; treat it as
+  // unset rather than truncating into a comparison.
+  if (n == 0 || n >= kMax) return proto::StartMode::Tunnel;
+  std::wstring v(buf, n);
+  if (v == L"0" || v == L"false" || v == L"FALSE" || v == L"False")
+    return proto::StartMode::Tunnel;
+  return proto::StartMode::RpcOnly;
+}
+
 void SaveRpcSession(const RpcSession& s) {
   nlohmann::json j = {{"client_pem", s.client_pem},
                       {"server_cert_pem", s.server_cert_pem},
@@ -110,6 +126,13 @@ urnet::NetworkSpace SdkHost::BuildNetworkSpace() {
 
 bool SdkHost::Initialize() {
   std::scoped_lock lock(mutex_);
+  requestedMode_ = StartModeFromEnvironment();
+  if (requestedMode_ == proto::StartMode::RpcOnly) {
+    LogWarn("sdkhost: URNETWORK_RPC_ONLY is set — asking the service for an "
+            "RPC-ONLY session. The DeviceRemote will be live and every screen "
+            "driveable, but NO tunnel is created and no traffic is carried; the "
+            "connect state will never report 'up'.");
+  }
   try {
     spaceManager_ =
         urnet::newNetworkSpaceManager(Narrow(SdkStorageDir(false).wstring()));
@@ -709,6 +732,31 @@ static void UrstRemoveAppRule(urnet::BlockActionOverrideList& list,
              list.end());
 }
 
+// "The device says it is on a location" -> the status the UI should see.
+//
+// In an rpc-only session there is no tunnel, so being on a location does NOT
+// mean connected: the DeviceLocal will happily negotiate with providers, but no
+// route exists and no packet is carried. Reporting RpcOnly rather than Up is
+// what keeps every `state == TunnelState::Up` test in the UI reading false,
+// which is the whole reason RpcOnly is a distinct state and not a flag beside
+// Up.
+proto::TunnelStatus SdkHost::SessionStatus(bool haveLocation) const {
+  proto::TunnelStatus st;
+  const proto::StartMode mode = sessionMode_.load();
+  st.mode = mode;
+  // True for the whole life of a tunnel session: step 6 ran before the service
+  // ever reported it live. Not inferred from the location — a tunnel with no
+  // location selected still has its routes installed.
+  st.routes_installed = mode == proto::StartMode::Tunnel;
+  if (!haveLocation) {
+    st.state = proto::TunnelState::Stopped;
+  } else {
+    st.state = mode == proto::StartMode::RpcOnly ? proto::TunnelState::RpcOnly
+                                                 : proto::TunnelState::Up;
+  }
+  return st;
+}
+
 bool SdkHost::BootstrapSession() {
   // caller holds mutex_
   const std::string clientJwt = localState_->getByClientJwt();
@@ -723,15 +771,26 @@ bool SdkHost::BootstrapSession() {
   try {
     std::string clientPem, serverCertPem, hostPort;
 
-    // Reattach to a live tunnel if the service reports one and we have a session.
+    // Reattach to a live session if the service reports one and we have the key
+    // material for it. A live session is reusable when it is at LEAST as
+    // capable as what we asked for: a tunnel serves an rpc-only request fine,
+    // but an rpc-only session does not serve a tunnel request — and tearing
+    // down a running tunnel because this process happens to be in rpc-only mode
+    // would disconnect the user to make a developer's life easier.
     proto::TunnelStatus hello = service_.Hello();
     auto saved = LoadRpcSession();
-    if (hello.state == proto::TunnelState::Up && saved &&
-        hello.rpc_listen_hostport == saved->host_port) {
+    const bool liveIsSufficient =
+        proto::IsSessionLive(hello.state) &&
+        !(requestedMode_ == proto::StartMode::Tunnel &&
+          hello.mode == proto::StartMode::RpcOnly);
+    if (liveIsSufficient && saved && hello.rpc_listen_hostport == saved->host_port) {
       clientPem = saved->client_pem;
       serverCertPem = saved->server_cert_pem;
       hostPort = saved->host_port;
-      LogInfo("sdkhost: reattaching to live tunnel at {}", hostPort);
+      sessionMode_.store(hello.mode);
+      LogInfo("sdkhost: reattaching to live {} session at {} (routes_installed={})",
+              proto::ToString(hello.mode), hostPort,
+              hello.routes_installed ? "yes" : "no");
     } else {
       // fresh session: generate per-session RPC key material
       urnet::DeviceRpcKeyMaterial km = urnet::generateDeviceRpcKeyMaterial();
@@ -747,6 +806,7 @@ bool SdkHost::BootstrapSession() {
       cfg.rpc_server_pem = km.getServerPem();
       cfg.rpc_client_cert_pem = km.getClientCertPem();
       cfg.rpc_listen_hostport = hostPort;
+      cfg.mode = requestedMode_;
       // Seed split tunneling from the persisted per-app overrides so the driver is
       // correct at tunnel-up (device_ isn't connected yet - read the app LocalState).
       // PushLocalOverrideAppsToDriver re-applies it live once the device is up.
@@ -756,9 +816,27 @@ bool SdkHost::BootstrapSession() {
       }
 
       proto::TunnelStatus st = service_.StartTunnel(cfg);
-      if (st.state != proto::TunnelState::Up) {
-        LogError("sdkhost: service failed to start tunnel: {}", st.error);
+      // Live, not "up": an rpc-only session reports state rpc_only and that is
+      // success for this call. What the app must never do is treat it as a
+      // tunnel, which is why sessionMode_ is taken from the SERVICE's answer
+      // and not from what we asked for — the service can be clamped to
+      // rpc-only, in which case the two differ.
+      if (!proto::IsSessionLive(st.state)) {
+        LogError("sdkhost: service failed to start a {} session: {}",
+                 proto::ToString(cfg.mode), st.error);
         return false;
+      }
+      sessionMode_.store(st.mode);
+      if (st.mode != cfg.mode) {
+        LogWarn("sdkhost: asked the service for a {} session and got {} — the "
+                "service is clamped. Nothing will be connected.",
+                proto::ToString(cfg.mode), proto::ToString(st.mode));
+      }
+      if (st.mode == proto::StartMode::RpcOnly) {
+        LogWarn("sdkhost: RPC-ONLY session at {} — the DeviceRemote is live and "
+                "every screen is driveable, but no routes exist and no traffic "
+                "is carried (routes_installed={}).",
+                hostPort, st.routes_installed ? "yes" : "no");
       }
       clientPem = km.getClientPem();
       serverCertPem = km.getServerCertPem();
@@ -780,9 +858,7 @@ bool SdkHost::BootstrapSession() {
     subs_.push_back(device_->addConnectLocationChangeListener(
         [this](std::optional<urnet::ConnectLocation> location) {
           if (!onTunnel_) return;
-          proto::TunnelStatus st;
-          st.state = location ? proto::TunnelState::Up : proto::TunnelState::Stopped;
-          onTunnel_(st);
+          onTunnel_(SessionStatus(location.has_value()));
         }));
     subs_.push_back(device_->addRemoteChangeListener([this](bool remoteConnected) {
       // availability for the peers status line: with the rpc down the peer
@@ -811,14 +887,10 @@ bool SdkHost::BootstrapSession() {
       SubscribeDrawer();
     }
 
-    if (onTunnel_) {
-      proto::TunnelStatus st;
-      st.state = device_->getConnectLocation() ? proto::TunnelState::Up
-                                               : proto::TunnelState::Stopped;
-      onTunnel_(st);
-    }
+    if (onTunnel_) onTunnel_(SessionStatus(device_->getConnectLocation().has_value()));
 
-    LogInfo("sdkhost: session bootstrapped (rpc={})", hostPort);
+    LogInfo("sdkhost: session bootstrapped (mode={} rpc={})",
+            proto::ToString(sessionMode_.load()), hostPort);
     return true;
   } catch (const std::exception& e) {
     LogError("sdkhost: bootstrap failed: {}", e.what());
@@ -1640,6 +1712,9 @@ void SdkHost::TeardownSessionLocked() {
   if (service_.IsConnected()) {
     service_.StopTunnel();
   }
+  // No session, so no session mode. Back to the default rather than leaving the
+  // last one to be read by a status built before the next bootstrap sets it.
+  sessionMode_.store(proto::StartMode::Tunnel);
   ClearRpcSession();
 }
 

@@ -26,6 +26,18 @@ namespace urnw {
 
 class EgressMonitor {
  public:
+  // tunLuid is the interface to EXCLUDE from egress selection. A zero LUID
+  // means "there is no tun" — the rpc-only start mode, which creates no
+  // adapter. That is not a sentinel bolted on: DiscoverEgress excludes by
+  // `row.InterfaceLuid.Value == tunLuid.Value`, and no real interface has LUID
+  // 0 (NET_LUID packs a non-zero IANA ifType into its high bits), so a zero
+  // LUID excludes exactly nothing, which is exactly right when nothing needs
+  // excluding. No LUID is faked and no invariant is papered over.
+  //
+  // With no tun, R1 does not apply — the SDK's sockets cannot loop into a
+  // tunnel that does not exist — so the binding is a plain "prefer the physical
+  // default route", and the retention behaviour in Refresh() is conservative
+  // rather than load-bearing.
   explicit EgressMonitor(NET_LUID tunLuid) : tunLuid_(tunLuid) {}
   ~EgressMonitor();
 

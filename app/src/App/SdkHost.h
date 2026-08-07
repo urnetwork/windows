@@ -425,6 +425,29 @@ class SdkHost {
   // Account page opens billing/upgrade in the browser at this host.
   std::string linkHostName() const { return "ur.io"; }
 
+  // ---- start mode ----------------------------------------------------------
+  // Which kind of service session this app asks for, and which kind it got.
+  //
+  // RpcOnly is the development mode (spec P1): the service brings up the
+  // DeviceLocal and the mTLS rpc listener and STOPS before it would touch the
+  // machine's routes or DNS, so device() below is live and every Class-B
+  // surface — developer/reliability screen, connect controls, locations,
+  // provide, DNS, split rules — can be driven with no tunnel and no elevation.
+  // Nothing is connected in this mode and the UI must not say it is:
+  // sessionMode() == RpcOnly means TunnelState::Up is never reported, so the
+  // existing `state == Up` tests already read it as "not connected".
+  //
+  // Selected by the URNETWORK_RPC_ONLY environment variable (any value other
+  // than empty/"0"/"false"), read once at Initialize(). An env var rather than
+  // a UI control on purpose: a developer affordance must not become a switch a
+  // user can find.
+  proto::StartMode requestedStartMode() const { return requestedMode_; }
+  // The mode the live session actually runs in, as reported by the service —
+  // which can differ from the requested one (the service can be clamped with
+  // `urnetworkd console --rpc-only`, and reattaching to an already-running
+  // tunnel yields a tunnel session). Tunnel until a session exists.
+  proto::StartMode sessionMode() const { return sessionMode_.load(); }
+
  private:
   urnet::NetworkSpace BuildNetworkSpace();
   // After obtaining a network JWT, register this device and store the client JWT.
@@ -506,7 +529,17 @@ class SdkHost {
   int64_t lastBlockedCount_ = 0;
   std::vector<SplitRule> lastSplitRules_;
 
+  // The session status to report for "we have a device, and it is/isn't on a
+  // location" — derived from sessionMode_ so an rpc-only session can never
+  // surface TunnelState::Up. Every place that used to hand-build such a status
+  // goes through here.
+  proto::TunnelStatus SessionStatus(bool haveLocation) const;
+
   ServiceClient service_;
+  // Set once in Initialize() from URNETWORK_RPC_ONLY; never changes after.
+  proto::StartMode requestedMode_ = proto::StartMode::Tunnel;
+  // Set from the service's reply/hello whenever a session is established.
+  std::atomic<proto::StartMode> sessionMode_{proto::StartMode::Tunnel};
   std::string appVersion_ = "0.0.1";
 
   WalletConnect wallet_;

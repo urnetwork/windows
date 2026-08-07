@@ -339,14 +339,27 @@ int RevertNetwork(bool force) {
 }
 
 // Run the service logic in the console for local debugging (not under SCM).
-int RunConsole() {
+//
+// rpcOnly clamps the process so that no start_tunnel from any client can reach
+// the destructive half of TunnelController::StartLocked. That is what makes it
+// safe — and useful — to run unelevated: the app gets a live DeviceRemote and
+// the machine's routes and DNS are never written.
+int RunConsole(bool rpcOnly) {
   LogSetConsoleEcho(true);
-  LogInfo("console: starting as {}", DescribeIdentity());
-  if (!TokenHas(WinLocalSystemSid) && !TokenHas(WinBuiltinAdministratorsSid)) {
+  LogInfo("console: starting as {}{}", DescribeIdentity(),
+          rpcOnly ? " in RPC-ONLY mode" : "");
+  if (rpcOnly) {
+    LogWarn("console: --rpc-only — this process will bring up the DeviceLocal "
+            "and the mTLS rpc listener the app dials, and will NOT create a "
+            "wintun adapter, write a route, set a dns server or move a packet. "
+            "No elevation is needed and none is used. Nothing here can connect "
+            "you to anything; the app will report state 'rpc_only', not 'up'.");
+  } else if (!TokenHas(WinLocalSystemSid) && !TokenHas(WinBuiltinAdministratorsSid)) {
     LogError("console: NOT elevated — creating the wintun adapter and writing "
              "routes both require LocalSystem/administrator, so a start_tunnel "
              "will fail at step 1. Re-run from an elevated prompt (or use "
-             "`urnetworkd install` + `sc start urnetworkd`).");
+             "`urnetworkd install` + `sc start urnetworkd`), or run "
+             "`urnetworkd console --rpc-only`, which needs no elevation.");
   }
   if (ControlPipeInUse()) {
     LogError("console: {} is already served — another urnetworkd (probably the "
@@ -368,12 +381,15 @@ int RunConsole() {
 
   ControlServer server;
   g_server = &server;
+  // Before Start(), so the clamp is in force before the pipe can accept a
+  // single request.
+  if (rpcOnly) server.ClampToRpcOnly();
   if (!server.Start()) {
     LogError("console: control server failed to start");
     return 1;
   }
-  LogInfo("console: running on {}; press Ctrl+C to stop",
-          Narrow(ids::kControlPipeName));
+  LogInfo("console: running on {} (mode={}); press Ctrl+C to stop",
+          Narrow(ids::kControlPipeName), rpcOnly ? "rpc-only" : "tunnel");
 
   ::WaitForSingleObject(g_stopEvent, INFINITE);
 
@@ -381,7 +397,9 @@ int RunConsole() {
   server.Stop();  // stops the tunnel, which reverts routes and DNS
   g_server = nullptr;
   ::SetEvent(g_consoleDrainedEvent);
-  LogInfo("console: stopped cleanly, network restored");
+  LogInfo("console: stopped cleanly{}",
+          rpcOnly ? " (nothing to restore: no network state was written)"
+                  : ", network restored");
 
   ::CloseHandle(g_stopEvent);
   g_stopEvent = nullptr;
@@ -394,6 +412,13 @@ int Usage() {
       L"\n"
       L"  urnetworkd                run under the SCM (what the SCM invokes)\n"
       L"  urnetworkd console        run in this console for development\n"
+      L"  urnetworkd console --rpc-only\n"
+      L"                            same, but clamped so no start_tunnel from\n"
+      L"                            any client can create the wintun adapter or\n"
+      L"                            write a route or dns entry. Brings up the\n"
+      L"                            DeviceLocal + mTLS rpc listener only, so the\n"
+      L"                            app has a live DeviceRemote to drive.\n"
+      L"                            NEEDS NO ELEVATION and carries no traffic.\n"
       L"  urnetworkd install        register the service (elevated)\n"
       L"  urnetworkd uninstall      stop and deregister the service (elevated)\n"
       L"  urnetworkd revert         take back any leftover tunnel routes/DNS\n"
@@ -443,9 +468,24 @@ int wmain(int argc, wchar_t** argv) {
                   logFile.c_str());
   }
 
+  // --rpc-only is accepted only alongside `console`. It is deliberately NOT a
+  // flag on the SCM path: the installed service exists to run tunnels, and a
+  // mode that silently makes it not do so would be indistinguishable from a
+  // broken tunnel.
+  const bool rpcOnlyFlag = argc >= 3 && std::wstring(argv[2]) == L"--rpc-only";
   if (cmd == L"install") return InstallService();
   if (cmd == L"uninstall") return UninstallService();
-  if (cmd == L"console" || cmd == L"--console") return RunConsole();
+  if (cmd == L"console" || cmd == L"--console") {
+    if (argc >= 3 && !rpcOnlyFlag) {
+      std::fwprintf(stderr, L"unknown option for console: %s\n", argv[2]);
+      Usage();
+      return 2;
+    }
+    return RunConsole(rpcOnlyFlag);
+  }
+  // `urnetworkd --rpc-only` with no subcommand: the obvious shorthand, and it
+  // resolves to the mode that does less, so honouring it is safe.
+  if (cmd == L"--rpc-only") return RunConsole(true);
   if (cmd == L"revert" || cmd == L"--revert") {
     const bool force = argc >= 3 && (std::wstring(argv[2]) == L"--force" ||
                                      std::wstring(argv[2]) == L"-f");
@@ -467,7 +507,7 @@ int wmain(int argc, wchar_t** argv) {
       // mistake. Fall through to console mode rather than exiting silently.
       LogInfo("service: not started by the SCM; falling back to console mode "
               "(use `urnetworkd console` to be explicit)");
-      return RunConsole();
+      return RunConsole(/*rpcOnly=*/false);
     }
     LogError("service: StartServiceCtrlDispatcher failed: {}", err);
     return 1;

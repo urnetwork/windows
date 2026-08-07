@@ -26,7 +26,12 @@ nlohmann::json ControlServer::Handle(const nlohmann::json& request) {
     } else if (type == proto::msg::kStartTunnel) {
       proto::StartTunnel cfg = request.get<proto::StartTunnel>();
       proto::TunnelStatus st = tunnel_.Start(cfg);
-      reply.ok = (st.state == proto::TunnelState::Up);
+      // "ok" means "the session you asked for is live", which for an rpc-only
+      // request is state rpc_only, not up. The caller still has to read
+      // st.state / st.mode to know what it got — ok alone never implies a
+      // tunnel. (An unknown mode string throws out of the get<> above and is
+      // answered as a failed reply, so a garbled mode never starts anything.)
+      reply.ok = proto::IsSessionLive(st.state);
       reply.error = st.error;
       reply.status = st;
       PushState();
