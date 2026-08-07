@@ -6,6 +6,7 @@
 #include "SdkHost.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cwctype>
 #include <fstream>
 #include <random>
@@ -222,7 +223,30 @@ bool SdkHost::Initialize() {
     });
     service_.Connect();  // ok if the service isn't up yet; retried on demand
 
-    if (!localState_->getByClientJwt().empty()) {
+    // RESTORE THE API'S AUTHORIZATION FROM THE PERSISTED SESSION.
+    //
+    // Duplicated from P3's da90da1 (feat/p3, not yet merged) so that the login
+    // surfaces on this branch could be verified against a real session at all;
+    // the manager resolves the duplicate at merge. Without it api_->setByJwt
+    // was called in exactly ONE place — RegisterNetworkClient, on the fresh
+    // login path — so the token lived only in the Api object of the process
+    // that did the login. Every LATER launch rebuilt the Api with no token
+    // while the app still looked signed in, and every authenticated call came
+    // back 401.
+    //
+    // It matters here specifically: it is the reason "sign in worked" and
+    // "the app works after a restart" were two different questions on this
+    // surface, and why S5's first-sign-in failure looked like the whole story.
+    //
+    // getByJwt() is the USER jwt, which is what the Api authorizes with;
+    // getByClientJwt() is the device credential the tunnel session needs.
+    if (const std::string byJwt = localState_->getByJwt(); !byJwt.empty()) {
+      api_->setByJwt(byJwt);
+      LogInfo("sdkhost: restored the api session from local state");
+    }
+
+    loggedIn_.store(!localState_->getByClientJwt().empty(), std::memory_order_release);
+    if (loggedIn_.load(std::memory_order_acquire)) {
       SetAuthState(AuthState::LoggedIn);
       // Resume the session off the UI path.
       //
@@ -269,10 +293,22 @@ bool SdkHost::Initialize() {
   }
 }
 
-bool SdkHost::IsLoggedIn() {
-  std::scoped_lock lock(mutex_);
-  return localState_ && !localState_->getByClientJwt().empty();
-}
+// LOCK-FREE ON PURPOSE. This used to take mutex_ and read
+// localState_->getByClientJwt(), which put it behind whatever else held the
+// lock — and on a resume that is the detached bootstrap thread, holding mutex_
+// for the WHOLE of BootstrapSession (service connect, Hello, start_tunnel:
+// seconds, and on a machine with no service running, the full timeout).
+// MainWindow's constructor calls this, so the main window did not appear until
+// the tunnel bootstrap had finished, measured at roughly ten seconds. The
+// answer to "is there a stored session" cannot be worth waiting on a network
+// round trip for.
+//
+// loggedIn_ is written wherever the stored client jwt changes: Initialize,
+// RegisterNetworkClient's success, ApplyNetworkServer's re-derive, and Logout.
+// Note that Logout's own commit is asynchronous (asyncLocalState_->logout),
+// so the old lock-taking version ALSO returned stale-true for a while after a
+// sign-out; the flag is if anything the more accurate of the two.
+bool SdkHost::IsLoggedIn() { return loggedIn_.load(std::memory_order_acquire); }
 
 void SdkHost::SetAuthState(AuthState s, const std::string& error) {
   authState_ = s;
@@ -733,6 +769,10 @@ SdkHost::NetworkServer SdkHost::CurrentNetworkServer() {
   std::scoped_lock lock(mutex_);
   NetworkServer out;
   out.managerAvailable = spaceManager_.has_value();
+  // The same resolution BuildNetworkSpace does, so "Use default network" means
+  // the network this process was started against and not, silently, production.
+  out.defaultHostName = EnvVar(L"URNETWORK_NETWORK_HOST");
+  if (out.defaultHostName.empty()) out.defaultHostName = std::string(ids::kNetworkSpaceHostName);
   if (!networkSpace_) return out;
   try {
     out.hostName = networkSpace_->getHostName();
@@ -812,6 +852,12 @@ bool SdkHost::ApplyNetworkServer(const std::string& hostName, const std::string&
       networkNameVc_ = urnet::newNetworkNameValidationViewController(*api_);
       networkNameVc_->start();
       loggedIn = !localState_->getByClientJwt().empty();
+      loggedIn_.store(loggedIn, std::memory_order_release);
+      // the new space's Api needs the new space's jwt, for the same reason
+      // Initialize() does (see the note there)
+      if (const std::string byJwt = localState_->getByJwt(); !byJwt.empty()) {
+        api_->setByJwt(byJwt);
+      }
       ok = true;
     } catch (const std::exception& e) {
       LogError("sdkhost: switch network space to '{}' failed: {}", hostName, e.what());
@@ -911,28 +957,57 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
       return;
     }
     if (result->by_client_jwt) {
-      try {
-        // persist the network + client JWT for the device
-        asyncLocalState_->setByJwt(byJwt, [](bool) {});
-        asyncLocalState_->setByClientJwt(*result->by_client_jwt, [](bool) {});
-      } catch (const std::exception& e) {
-        LogWarn("sdkhost: persist jwt failed: {}", e.what());
-      }
       bool ok = false;
       std::string why;
       {
         std::scoped_lock lock(mutex_);
+        try {
+          // SYNCHRONOUS setters, taken under the SAME lock as the bootstrap
+          // that reads them straight back.
+          //
+          // These were asyncLocalState_->set*(..., [](bool){}): hand the
+          // commit to the SDK's own thread and carry on. The very next
+          // statement was BootstrapSession(), whose first act is
+          // localState_->getByClientJwt() on THIS thread. On a fresh install
+          // there is no earlier value to read, so the FIRST sign-in lost that
+          // race and reported "no client credentials are stored for this
+          // device" over an authLogin and an authNetworkClient that had both
+          // just succeeded. Pressing sign in again worked, because by then the
+          // async commit had landed — which is exactly what made it look like
+          // a flaky server rather than our own ordering.
+          localState_->setByJwt(byJwt);
+          localState_->setByClientJwt(*result->by_client_jwt);
+          loggedIn_.store(true, std::memory_order_release);
+        } catch (const std::exception& e) {
+          LogWarn("sdkhost: persist jwt failed: {}", e.what());
+        }
         ok = BootstrapSession();
         why = bootstrapError_;
       }
-      // Name the ACTUAL cause. The old hardcoded "failed to start tunnel
-      // session" was misleading for a mode mismatch or an out-of-date service,
-      // and it was the only thing the user ever saw.
-      AuthResult r{ok, false,
-                   ok ? "" : (why.empty() ? "failed to start a session with the "
-                                            "URnetwork service"
-                                          : why)};
-      SetAuthState(ok ? AuthState::LoggedIn : AuthState::Error, r.error);
+      // THE SIGN-IN SUCCEEDED. Say so.
+      //
+      // This used to report AuthResult{ok=false} and AuthState::Error whenever
+      // the TUNNEL BOOTSTRAP failed — service not running, service too old, a
+      // mode refusal — over an authLogin and an authNetworkClient that had both
+      // returned 200 and a jwt that is now on disk. On the seedphrase step that
+      // surfaced as "There was an error signing in with your seedphrase",
+      // which is the single most alarming thing this app can say to somebody
+      // whose credential has no reset path: it reads as "your phrase is wrong".
+      // It is not. The phrase was right and the account is fine.
+      //
+      // The resume path in Initialize() already got this right and explains
+      // why (AuthState::Error makes the window derive loggedIn=false and dumps
+      // an authenticated user onto the sign-in screen, and it LATCHES). The
+      // login path now does the same thing: auth state goes LoggedIn, and the
+      // reason the app is not carrying traffic goes out on the notice channel,
+      // which is what that channel is for.
+      SetAuthState(AuthState::LoggedIn);
+      if (!ok) {
+        LogError("sdkhost: signed in, but the session bootstrap failed: {}",
+                 why.empty() ? "unknown" : why);
+        PublishSessionFailure(why);
+      }
+      AuthResult r{true, false, ""};
       if (done) done(r);
     } else {
       AuthResult r{false, false, "device registration returned no client jwt"};
@@ -1044,6 +1119,22 @@ void SdkHost::AuthLoginWithGoogle(const std::string& idToken,
   urnet::AuthLoginArgs args;
   args.auth_jwt_type = "google";
   args.auth_jwt = idToken;
+  // UNDER mutex_, unlike every other caller here, because this one is the odd
+  // one out: it runs on a GoogleSignIn WORKER thread, minutes after the button
+  // was pressed, while the user is free to open Change Network API on the UI
+  // thread — and ApplyNetworkServer reassigns api_ under this same lock, which
+  // RELEASES the handle this line is about to call through. urnet::Api is
+  // move-only (detail::Handle deletes its copy constructor), so there is no
+  // way to take a private reference to it; holding the lock across the
+  // dispatch is what there is. authLogin queues its callback onto an SDK
+  // thread rather than running it inline, so this does not re-enter.
+  std::scoped_lock lock(mutex_);
+  if (!api_) {
+    AuthResult r{false, false, "the network session went away during sign-in"};
+    SetAuthState(AuthState::Error, r.error);
+    if (done) done(r);
+    return;
+  }
   // The id token is a bearer credential; nothing below logs the args.
   api_->authLogin(args, [this, idToken, done](std::optional<urnet::AuthLoginResult> result,
                                               std::optional<std::string> err) {
@@ -1191,9 +1282,26 @@ void SdkHost::PublishModeNotice() {
   // RefreshModeNotice() is public and is exactly what a view calls when it is
   // constructed, which makes that the common path, not an edge case.
   if (!device_) {
+    // A STANDING failure outlives the moment it happened. PublishSessionFailure
+    // used to be a pure event: it fired, found onModeNotice_ null because the
+    // window does not exist until the first tray click, and the reason was
+    // gone. Worse, when the window did arrive it called RefreshModeNotice(),
+    // which landed here with no device and published an EMPTY notice — so the
+    // one surface that could have said why nothing is connected actively
+    // cleared itself. Anything produced before there is anyone to receive it
+    // has to be state, not an event.
+    if (!sessionFailure_.empty()) {
+      ModeNotice failed;
+      failed.active = true;
+      failed.kind = ModeNotice::Kind::SessionFailed;
+      failed.message = sessionFailure_;
+      onModeNotice_(failed);
+      return;
+    }
     onModeNotice_(ModeNotice{});
     return;
   }
+  sessionFailure_.clear();  // a live session supersedes any earlier failure
   ModeNotice n;
   if (sessionMode_.load() == proto::StartMode::RpcOnly) {
     n.active = true;
@@ -1214,15 +1322,34 @@ void SdkHost::PublishModeNotice() {
 // a transport/service failure, not an authentication one, and routing them to
 // the sign-in screen would destroy a perfectly good session.
 void SdkHost::PublishSessionFailure(const std::string& why) {
-  if (!onModeNotice_) return;
   ModeNotice n;
   n.active = true;
   n.kind = ModeNotice::Kind::SessionFailed;
-  n.message = why.empty()
-                  ? "Could not start a session with the URnetwork service. "
-                    "Nothing is connected."
-                  : why + " Nothing is connected.";
-  onModeNotice_(n);
+  if (why.empty()) {
+    n.message =
+        "Could not start a session with the URnetwork service. Nothing is connected.";
+  } else {
+    // The reasons in bootstrapError_ are sentence fragments with no terminator
+    // ("the URnetwork service is not running or cannot be reached"), and this
+    // concatenation used to run them straight into the next sentence — visible
+    // on screen the moment the notice had somewhere to go: "...cannot be
+    // reached Nothing is connected."
+    std::string reason = why;
+    if (reason.back() != '.' && reason.back() != '!' && reason.back() != '?') {
+      reason.push_back('.');
+    }
+    reason[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(reason[0])));
+    n.message = reason + " Nothing is connected.";
+  }
+  // RECORD IT FIRST, and record it even when nobody is listening — which on a
+  // resume is the normal case, because bootstrap runs from Initialize() and
+  // the window (and so the handler) does not exist until the first tray click.
+  // PublishModeNotice replays this for whoever turns up later.
+  {
+    std::scoped_lock lock(mutex_);
+    sessionFailure_ = n.message;
+  }
+  if (onModeNotice_) onModeNotice_(n);
 }
 
 proto::TunnelStatus SdkHost::SessionStatus(bool haveLocation) const {
@@ -2390,6 +2517,10 @@ void SdkHost::Logout() {
     // login starts with a fresh identity.
     if (service_.IsConnected()) service_.Logout();
     if (asyncLocalState_) asyncLocalState_->logout([](bool) {});
+    // Before SetAuthState, and not waiting on the async logout above: the auth
+    // handler runs synchronously from here and the window asks IsLoggedIn().
+    loggedIn_.store(false, std::memory_order_release);
+    sessionFailure_.clear();  // belongs to the session that just ended
     SetAuthState(AuthState::LoggedOut);
     LogInfo("sdkhost: logged out");
   } catch (const std::exception& e) {

@@ -129,11 +129,20 @@ void OpenBrowser(const std::string& url) {
 // The one-line page the browser is left on. Deliberately plain text with no
 // script and no link: it is shown by the user's browser, not by this app, and
 // nothing here is localized because the localization store is the app's.
-constexpr const char* kDonePage =
-    "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"
-    "Connection: close\r\nContent-Length: 118\r\n\r\n"
+constexpr const char* kDoneBody =
     "<!doctype html><meta charset=utf-8><title>URnetwork</title>"
     "<body style=\"font-family:sans-serif\">You can close this tab.</body>";
+
+// Content-Length MEASURED, never written down. The literal said 118 while the
+// body is 126 bytes, so the browser stopped reading eight bytes early and the
+// page ended mid-tag. Hand-counting a string literal is a thing that is wrong
+// the first time somebody edits the string; std::strlen is not.
+std::string DonePage() {
+  const std::string body(kDoneBody);
+  return "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"
+         "Connection: close\r\nContent-Length: " +
+         std::to_string(body.size()) + "\r\n\r\n" + body;
+}
 
 // Pull `name` out of an HTTP request line's query string.
 std::string QueryParam(const std::string& requestLine, const std::string& name) {
@@ -227,21 +236,37 @@ std::string ExchangeCode(const std::string& code, const std::string& verifier,
 
 }  // namespace
 
-// One attempt. The listening socket is the cancellation handle: closesocket()
-// from Cancel() makes the worker's accept() fail immediately, which is the only
-// way to interrupt a blocking accept portably.
+// One attempt.
+//
+// The listening socket used to double as the cancellation handle: Cancel() (UI
+// thread) called closesocket() on it while the worker held the same SOCKET
+// value by copy. Windows RECYCLES socket descriptors, so between that close
+// and the worker's next syscall the value could already belong to the NEXT
+// attempt's listener — one press of Google, a cancel, another press, and the
+// stale worker accepts on the live listener while the live worker waits
+// forever. That is the reported "the second attempt never completes".
+//
+// So ownership is now single-writer: the LISTENER belongs to the worker and
+// only the worker ever closes it, and cancellation travels over a separate
+// WSAEVENT owned by this Attempt, which outlives both sides because both hold
+// the shared_ptr. Nothing can be closed out from under anybody.
 struct GoogleSignIn::Attempt {
   std::mutex mutex;
-  SOCKET listener = INVALID_SOCKET;
   std::atomic<bool> cancelled{false};
+  WSAEVENT cancelEvent = WSA_INVALID_EVENT;
   Done done;
 
-  void Close() {
-    std::scoped_lock lock(mutex);
-    if (listener != INVALID_SOCKET) {
-      ::closesocket(listener);
-      listener = INVALID_SOCKET;
-    }
+  Attempt() : cancelEvent(::WSACreateEvent()) {}
+  ~Attempt() {
+    if (cancelEvent != WSA_INVALID_EVENT) ::WSACloseEvent(cancelEvent);
+  }
+  Attempt(Attempt const&) = delete;
+  Attempt& operator=(Attempt const&) = delete;
+
+  // Wake the worker without touching its socket.
+  void CancelNow() {
+    cancelled = true;
+    if (cancelEvent != WSA_INVALID_EVENT) ::WSASetEvent(cancelEvent);
   }
   // Deliver exactly once, whichever of the worker or Cancel gets there first.
   void Finish(std::string idToken, std::string error) {
@@ -265,8 +290,7 @@ void GoogleSignIn::Cancel() {
   auto attempt = attempt_;
   attempt_.reset();
   if (!attempt) return;
-  attempt->cancelled = true;
-  attempt->Close();
+  attempt->CancelNow();
   // Drop the callback without invoking it: the caller asked to abandon this.
   std::scoped_lock lock(attempt->mutex);
   attempt->done = nullptr;
@@ -306,15 +330,19 @@ void GoogleSignIn::Start(Done done) {
     return;
   }
   const int port = ::ntohs(addr.sin_port);
-  {
-    std::scoped_lock lock(attempt->mutex);
-    attempt->listener = listener;
+  // From here to the std::thread below, `listener` is owned by THIS function
+  // and is closed on every early return. After the thread starts it belongs to
+  // the worker and nothing else ever closes it — see the note on Attempt.
+  if (attempt->cancelEvent == WSA_INVALID_EVENT) {
+    ::closesocket(listener);
+    attempt->Finish("", "could not create the cancellation event");
+    return;
   }
 
   const auto verifierBytes = RandomBytes(32);
   const auto stateBytes = RandomBytes(16);
   if (verifierBytes.empty() || stateBytes.empty()) {
-    attempt->Close();
+    ::closesocket(listener);
     attempt->Finish("", "the system random number generator is unavailable");
     return;
   }
@@ -322,7 +350,7 @@ void GoogleSignIn::Start(Done done) {
   const std::string state = Base64Url(stateBytes.data(), stateBytes.size());
   const auto challengeBytes = Sha256(verifier);
   if (challengeBytes.empty()) {
-    attempt->Close();
+    ::closesocket(listener);
     attempt->Finish("", "the system hash provider is unavailable");
     return;
   }
@@ -339,33 +367,54 @@ void GoogleSignIn::Start(Done done) {
   OpenBrowser(authUrl);
 
   std::thread([attempt, listener, verifier, state, redirectUri] {
+    // This thread is the listener's ONLY owner and its only closer.
+    struct OwnedSocket {
+      SOCKET s;
+      ~OwnedSocket() {
+        if (s != INVALID_SOCKET) ::closesocket(s);
+      }
+    } owned{listener};
+
+    // Wait on two things at once: an inbound connection, and a cancel. The
+    // cancel arrives as a WSAEVENT rather than as a closesocket() from another
+    // thread, so there is never a window in which this thread can name a
+    // descriptor that Winsock has already handed to somebody else.
+    WSAEVENT netEvent = ::WSACreateEvent();
+    if (netEvent == WSA_INVALID_EVENT ||
+        ::WSAEventSelect(listener, netEvent, FD_ACCEPT) == SOCKET_ERROR) {
+      if (netEvent != WSA_INVALID_EVENT) ::WSACloseEvent(netEvent);
+      if (!attempt->cancelled) attempt->Finish("", "could not arm the loopback callback socket");
+      return;
+    }
+    WSAEVENT events[2] = {netEvent, attempt->cancelEvent};
     // Bound the wait: a user who abandons the browser tab must not leave a
     // thread and a listening socket alive for the life of the process.
-    DWORD timeout = kAcceptTimeoutMs;
-    ::setsockopt(listener, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout),
-                 sizeof(timeout));
-
-    fd_set readable;
-    FD_ZERO(&readable);
-    FD_SET(listener, &readable);
-    timeval tv{static_cast<long>(kAcceptTimeoutMs / 1000), 0};
-    const int ready = ::select(0, &readable, nullptr, nullptr, &tv);
-    if (ready <= 0) {
-      attempt->Close();
-      if (!attempt->cancelled) attempt->Finish("", "the Google sign-in timed out");
+    const DWORD waited =
+        ::WSAWaitForMultipleEvents(2, events, FALSE, kAcceptTimeoutMs, FALSE);
+    ::WSACloseEvent(netEvent);
+    if (waited == WSA_WAIT_EVENT_0 + 1 || attempt->cancelled) return;  // cancelled
+    if (waited != WSA_WAIT_EVENT_0) {
+      attempt->Finish("", "the Google sign-in timed out");
       return;
     }
 
+    // WSAEventSelect left the socket non-blocking; put it back so the accept
+    // and the reads below behave as they read.
+    u_long blocking = 0;
+    ::WSAEventSelect(listener, nullptr, 0);
+    ::ioctlsocket(listener, FIONBIO, &blocking);
+
     SOCKET client = ::accept(listener, nullptr, nullptr);
     if (client == INVALID_SOCKET) {
-      attempt->Close();
-      // A cancel closed the socket out from under us; that is not an error.
       if (!attempt->cancelled) attempt->Finish("", "the loopback callback was interrupted");
       return;
     }
 
     // The request line is all we need and it always arrives in the first
     // segment; read one buffer and stop.
+    DWORD recvTimeout = kAcceptTimeoutMs;
+    ::setsockopt(client, SOL_SOCKET, SO_RCVTIMEO,
+                 reinterpret_cast<const char*>(&recvTimeout), sizeof(recvTimeout));
     char buffer[4096];
     const int n = ::recv(client, buffer, sizeof(buffer) - 1, 0);
     std::string requestLine;
@@ -374,22 +423,27 @@ void GoogleSignIn::Start(Done done) {
       const std::string request(buffer, static_cast<size_t>(n));
       requestLine = request.substr(0, request.find("\r\n"));
     }
-    ::send(client, kDonePage, static_cast<int>(std::strlen(kDonePage)), 0);
+    const std::string page = DonePage();
+    ::send(client, page.data(), static_cast<int>(page.size()), 0);
     ::shutdown(client, SD_BOTH);
     ::closesocket(client);
-    attempt->Close();
     if (attempt->cancelled) return;
 
-    const std::string oauthError = QueryParam(requestLine, "error");
-    if (!oauthError.empty()) {
-      attempt->Finish("", oauthError);
-      return;
-    }
+    // STATE FIRST, always. `error` used to be read and reported before the
+    // CSRF check, so any local process could hit the loopback port with
+    // ?error=<anything>, abort a sign-in it had no part in, and put a string
+    // of its choosing on the login screen's error line. Nothing that failed
+    // the state check may influence what the user is told.
     const std::string returnedState = QueryParam(requestLine, "state");
     if (returnedState != state) {
       // CSRF guard: a callback we did not initiate. Refuse it loudly rather
       // than exchanging a code that may not be ours.
       attempt->Finish("", "the Google sign-in callback did not match this request");
+      return;
+    }
+    const std::string oauthError = QueryParam(requestLine, "error");
+    if (!oauthError.empty()) {
+      attempt->Finish("", oauthError);
       return;
     }
     const std::string code = QueryParam(requestLine, "code");

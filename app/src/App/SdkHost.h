@@ -307,10 +307,33 @@ class SdkHost {
   void SendPasswordResetLink(const std::string& userAuth, std::function<void(bool ok)> done);
 
   // ---- seedphrase ----------------------------------------------------------
-  // A seedphrase is a CREDENTIAL with no recovery path. Nothing in this class
-  // logs one, and nothing writes one anywhere but the SDK's own request body:
-  // the only copy the app ever holds is the one the display sheet is rendering,
-  // and that lives for the life of the sheet.
+  // A seedphrase is a CREDENTIAL with no recovery path. What is true of it in
+  // this app, stated precisely — the previous wording here ("the only copy the
+  // app ever holds is the one the display sheet is rendering") was NOT true,
+  // and a false claim in a header is worse than no claim:
+  //
+  //   * Nothing logs one. Canary-tested across the app root: zero hits.
+  //   * Nothing persists one. The only outbound copies are the SDK request
+  //     body and, when the user asks for it, the clipboard — and that copy is
+  //     excluded from Clipboard History and from the cloud clipboard
+  //     (SeedphraseDisplaySheet::CopyToClipboard).
+  //   * The in-memory copies, and what happens to each:
+  //       - SeedphraseDisplaySheet::seedphrase_ — overwritten and cleared on
+  //         confirm.
+  //       - the by-value parameter of LoginPage::ShowSeedphraseSheet (a
+  //         coroutine frame) and the InstantAccount captured by the create
+  //         callback — overwritten and cleared once the sheet is done.
+  //       - LoginPage's SeedphraseBox on the sign-in step — emptied on submit
+  //         and on every reset of the flow. It is UIA-readable while it holds
+  //         anything, which is why it is not left populated.
+  //       - the SeedWords() vector and the 24 word-grid TextBlock texts.
+  //         These are NOT zeroed and CANNOT be: winrt::hstring is immutable
+  //         and refcounted, and XAML keeps its own copies inside the text
+  //         layout. They die with the dialog's visual tree, whenever the
+  //         allocator gets to them.
+  //
+  //   So: zeroed wherever zeroing is possible, and honest about where it is
+  //   not. Do not restore the stronger claim.
 
   // Sign in with a 12- or 24-word seedphrase (macOS LoginSeedphraseView
   // parity): authLogin{seedphrase}. `seedphrase` is normalized here (lowercase,
@@ -367,6 +390,12 @@ class SdkHost {
     // the EXPLICIT overrides in force, or empty when the urls are derived
     std::string configuredApiUrl;
     std::string configuredConnectUrl;
+    // What "the default network" means for THIS process: normally the
+    // compiled-in ids::kNetworkSpaceHostName, but URNETWORK_NETWORK_HOST
+    // when that is set. The sheet's "Use default network" hardcoded
+    // "ur.network", so pressing it in a test-network session silently moved
+    // the client to PRODUCTION — the one place a mistake is unrecoverable.
+    std::string defaultHostName;
     bool managerAvailable = false;
   };
   NetworkServer CurrentNetworkServer();
@@ -738,12 +767,23 @@ class SdkHost {
   BlockStatsHandler onBlockStats_;
   SplitRulesHandler onSplitRules_;
   ModeNoticeHandler onModeNotice_;
+  // The last "there is no session, and here is why" reason, held as STANDING
+  // STATE rather than delivered once as an event: a bootstrap failure on
+  // resume happens before the window (and so the handler) exists, and it must
+  // still be there when somebody finally looks. Guarded by mutex_; cleared
+  // once a session is live, and on logout.
+  std::string sessionFailure_;
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;
   LocationsHandler onLocations_;
   PeersHandler onPeers_;
   RemoteChangedHandler onRemoteChanged_;
   AuthState authState_ = AuthState::LoggedOut;
+  // "Is there a stored device session?" — cached so IsLoggedIn() does not have
+  // to take mutex_, which on a resume meant waiting out the whole tunnel
+  // bootstrap before the main window could be created. Written wherever the
+  // stored client jwt changes; see IsLoggedIn().
+  std::atomic<bool> loggedIn_{false};
 };
 
 }  // namespace urnw

@@ -53,13 +53,19 @@ class GoogleSignIn {
   using Done = std::function<void(std::string idToken, std::string error)>;
   void Start(Done done);
 
-  // Abandon an in-flight round trip: closes the loopback socket, which makes
-  // the waiting accept() return, and drops the callback.
+  // Abandon an in-flight round trip: signals the attempt's cancel event, which
+  // wakes the worker out of its wait, and drops the callback.
+  //
+  // It does NOT close the loopback socket. It used to, from this thread, while
+  // the worker held the same SOCKET by value — and Windows recycles socket
+  // descriptors, so the closed value could already be the NEXT attempt's
+  // listener by the time the stale worker used it. See the note on Attempt.
   void Cancel();
 
  private:
-  // One attempt's state, owned by the worker thread through a shared_ptr so
-  // Cancel() (UI thread) and the worker cannot race the socket's lifetime.
+  // One attempt's state, held by both the UI thread and the worker through a
+  // shared_ptr. The listening socket is NOT in here: it belongs to the worker
+  // alone, which is what keeps its lifetime unraceable.
   struct Attempt;
   std::shared_ptr<Attempt> attempt_;
 };

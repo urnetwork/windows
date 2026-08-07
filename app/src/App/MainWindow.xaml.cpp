@@ -79,6 +79,39 @@ MainWindow::MainWindow() {
                  "");
   if (Sdk().IsLoggedIn() && Sdk().apiReady()) account_->LoadReferralInfo();
   connect_->ResyncDrawer();
+
+  // THE MODE NOTICE CHANNEL HAD NO CONSUMER. SdkHost::SetModeNoticeHandler was
+  // never called anywhere in the app, so onModeNotice_ was permanently null and
+  // every notice ever published — the rpc-only banner AND every "there is no
+  // session, and here is why" — went into the void. It was found from the other
+  // end: after RegisterNetworkClient stopped reporting a tunnel-bootstrap
+  // failure as an AUTHENTICATION failure, the replacement signal turned out not
+  // to exist, and a seedphrase sign-in with no service running landed silently
+  // on a home screen that could never connect.
+  //
+  // The window-level snackbar is what this app has. It is transient where a
+  // standing banner would be better, and that is worth doing properly — but a
+  // transient signal beats the nothing that was there.
+  //
+  // Marshalled: SdkHost invokes this with mutex_ HELD on the RefreshModeNotice
+  // path, so touching XAML or calling back into SdkHost inline would deadlock.
+  {
+    auto queue = DispatcherQueue();
+    Sdk().SetModeNoticeHandler([weak = get_weak(), queue](
+                                   urnw::SdkHost::ModeNotice const& notice) {
+      const bool active = notice.active;
+      const bool failed = notice.kind == urnw::SdkHost::ModeNotice::Kind::SessionFailed;
+      auto message = winrt::to_hstring(notice.message);
+      queue.TryEnqueue([weak, active, failed, message] {
+        auto self = weak.get();
+        if (!self || !active || message.empty()) return;
+        self->login().ShowModeNotice(message, failed);
+      });
+    });
+    // Anything that failed BEFORE this handler existed is standing state in
+    // SdkHost (sessionFailure_); this is what replays it.
+    Sdk().RefreshModeNotice();
+  }
 }
 
 MainWindow::~MainWindow() {
@@ -218,7 +251,11 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
                   urnw::Narrow(std::wstring{tag}));
     return;
   }
-  if (!Sdk().apiReady()) return;
+  // IsLoggedIn(), NOT apiReady() — the comment three lines above says exactly
+  // why, and the guard underneath it was still the wrong one. Every load below
+  // needs a SESSION; apiReady() only says the Api object exists, which it does
+  // from SDK init with no token at all.
+  if (!Sdk().IsLoggedIn()) return;
   if (tag == L"account") {
     account_->LoadAccount();
     Balance().Refresh();  // macOS AccountRootView onAppear parity
