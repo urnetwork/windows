@@ -23,64 +23,71 @@ namespace urnw::shell {
 
 namespace {
 
-// HKCU\Software\URnetwork\Window — four DWORDs in PHYSICAL pixels. The registry
-// rather than a file: window placement is exactly what it is for, each value is
-// written atomically, and there is nothing to parse (so there is no
-// half-written state to defend against).
+// HKCU\Software\URnetwork\Window, value "Placement": ONE REG_BINARY blob.
+//
+// It was five DWORDs. Registry writes are atomic per value, not per set, so a
+// failure part-way through left three fresh values and one stale that a reader
+// would happily accept and restore to a rect that never existed - and the
+// cleanup path that defended against it could itself fail, silently. A single
+// blob has no such state: the write either replaces the previous good placement
+// or leaves it untouched, and a short/garbage/foreign read is rejected whole.
 constexpr wchar_t kPlacementKey[] = L"Software\\URnetwork\\Window";
+constexpr wchar_t kPlacementValue[] = L"Placement";
 
-std::optional<uint32_t> ReadDword(wchar_t const* name) {
-  DWORD value = 0;
-  DWORD size = sizeof(value);
-  if (::RegGetValueW(HKEY_CURRENT_USER, kPlacementKey, name, RRF_RT_REG_DWORD, nullptr,
-                     &value, &size) != ERROR_SUCCESS) {
-    return std::nullopt;
-  }
-  return value;
-}
+#pragma pack(push, 1)
+struct StoredPlacement {
+  uint32_t magic;    // kPlacementMagic
+  uint32_t version;  // kPlacementVersion
+  int32_t x;
+  int32_t y;
+  int32_t width;
+  int32_t height;
+  // The DPI the SIZE was measured at. Everything here is physical pixels, so
+  // without this a user who changes their display scale gets the old physical
+  // size reinterpreted at the new one - a window that grows or shrinks by the
+  // ratio for no reason they can see. (Moving to a differently-scaled MONITOR
+  // is self-correcting: the window manager sends WM_DPICHANGED with a suggested
+  // rect. Rescaling the same monitor does not.)
+  uint32_t dpi;
+};
+#pragma pack(pop)
 
-bool WriteDword(HKEY key, wchar_t const* name, int32_t value) {
-  const DWORD stored = static_cast<DWORD>(value);
-  return ::RegSetValueExW(key, name, 0, REG_DWORD,
-                          reinterpret_cast<const BYTE*>(&stored),
-                          sizeof(stored)) == ERROR_SUCCESS;
-}
-
-// Position is stored as an offset from a sentinel so a legitimately negative
-// coordinate (a monitor to the left of the primary) round-trips through a DWORD.
-constexpr int32_t kPositionBias = 100000;
+constexpr uint32_t kPlacementMagic = 0x574E5255;  // 'URNW'
+constexpr uint32_t kPlacementVersion = 1;
 
 struct Placement {
   int32_t x = 0;
   int32_t y = 0;
   int32_t width = 0;
   int32_t height = 0;
-  // The DPI the size was MEASURED at. Everything here is physical pixels, so
-  // without this a user who changes their display scale gets the old physical
-  // size reinterpreted at the new one - a window that grows or shrinks by the
-  // ratio for no reason they can see. (Moving to a differently-scaled MONITOR
-  // is self-correcting: the window manager sends WM_DPICHANGED with a suggested
-  // rect. Rescaling the same monitor does not.) 0 means "not recorded".
-  uint32_t dpi = 96;
+  uint32_t dpi = 0;  // 0 = not recorded, which skips the rescale
 };
 
 std::optional<Placement> LoadPlacement() {
-  auto w = ReadDword(L"Width");
-  auto h = ReadDword(L"Height");
-  auto x = ReadDword(L"X");
-  auto y = ReadDword(L"Y");
-  auto dpi = ReadDword(L"Dpi");
-  if (!w || !h || !x || !y) return std::nullopt;
-  Placement p;
-  p.width = static_cast<int32_t>(*w);
-  p.height = static_cast<int32_t>(*h);
-  p.x = static_cast<int32_t>(*x) - kPositionBias;
-  p.y = static_cast<int32_t>(*y) - kPositionBias;
-  // absent (an older build wrote this) or nonsense: 0, which skips the rescale
-  p.dpi = (dpi && 0 < *dpi) ? *dpi : 0;
+  StoredPlacement stored{};
+  DWORD size = sizeof(stored);
+  DWORD type = 0;
+  if (::RegGetValueW(HKEY_CURRENT_USER, kPlacementKey, kPlacementValue,
+                     RRF_RT_REG_BINARY, &type, &stored, &size) != ERROR_SUCCESS) {
+    return std::nullopt;
+  }
+  // A blob of the wrong length, magic or version is not ours (or not this
+  // version of ours) and is discarded whole rather than partly believed.
+  if (size != sizeof(stored) || stored.magic != kPlacementMagic ||
+      stored.version != kPlacementVersion) {
+    LogInfo("shell: stored placement is not readable by this build - using the default");
+    return std::nullopt;
+  }
   // A saved size of zero (a minimized or otherwise degenerate window) must not
   // become the size we restore to.
-  if (p.width <= 0 || p.height <= 0) return std::nullopt;
+  if (stored.width <= 0 || stored.height <= 0) return std::nullopt;
+
+  Placement p;
+  p.x = stored.x;
+  p.y = stored.y;
+  p.width = stored.width;
+  p.height = stored.height;
+  p.dpi = stored.dpi;
   return p;
 }
 
@@ -162,9 +169,23 @@ bool ApplyBackdrop(winrtx::Window const& window) {
     state->controller.SetSystemBackdropConfiguration(state->config);
     state->controller.AddSystemBackdropTarget(target);
 
+    // Read the fallback BACK rather than logging what we meant to set. This is
+    // the colour the window becomes whenever Mica degrades at runtime while
+    // still being "supported", and the opaque root background has been cleared
+    // by then - so it is the app background, and a silent default here would be
+    // the system fill, not the brand one.
+    const auto applied = state->controller.FallbackColor();
+
+    // RELEASE BEFORE REGISTERING. The handler below captures the MicaState by
+    // raw pointer; while `state` is still a unique_ptr, anything that throws
+    // between the registration and the release unwinds, destroys the MicaState,
+    // and leaves a live handler dereferencing freed memory on the next
+    // activation. Once it is released it is immortal and the capture is safe.
+    g_mica = state.release();  // see the comment on MicaState
+
     // Native behaviour: Mica dims while the window is not the active one. The
     // configuration is what carries that, and nothing updates it by itself.
-    auto* raw = state.get();
+    auto* raw = g_mica;
     window.Activated([raw](auto const&, winrtx::WindowActivatedEventArgs const& args) {
       if (raw->config) {
         raw->config.IsInputActive(args.WindowActivationState() !=
@@ -172,15 +193,8 @@ bool ApplyBackdrop(winrtx::Window const& window) {
       }
     });
 
-    // Read the fallback BACK rather than logging what we meant to set. This is
-    // the colour the window becomes whenever Mica degrades at runtime while
-    // still being "supported", and the opaque root background has been cleared
-    // by then - so it is the app background, and a silent default here would be
-    // the system fill, not the brand one.
-    const auto applied = state->controller.FallbackColor();
     LogInfo("shell: mica backdrop applied (fallback #{:02X}{:02X}{:02X})", applied.R,
             applied.G, applied.B);
-    g_mica = state.release();  // see the comment on MicaState
   } catch (winrt::hresult_error const& e) {
     // Not fatal: the solid background is a complete look on its own.
     LogError("shell: mica backdrop refused ({}) - keeping the solid background",
@@ -254,6 +268,12 @@ bool ApplyNativeShell(winrtx::Window const& window, HWND hwnd) {
   bool restored = false;
   if (auto saved = LoadPlacement()) {
     p = *saved;
+    // Move to the saved POSITION first, then read the DPI. GetDpiForWindow
+    // answers for the monitor the window is currently on, which at this point
+    // is wherever it was created - so on a mixed-DPI desktop, reading it before
+    // the move rescales by the wrong monitor's scale. Position is unaffected by
+    // scale, so moving first is safe and costs one call.
+    appWindow.Move({p.x, p.y});
     const UINT dpi = ::GetDpiForWindow(hwnd);
     if (0 < p.dpi && 0 < dpi && p.dpi != dpi) {
       // the display scale changed under a saved SIZE: keep the LOGICAL size
@@ -315,24 +335,26 @@ bool SaveWindowPlacement(HWND hwnd) {
     return false;
   }
   const UINT dpi = ::GetDpiForWindow(hwnd);
-  bool ok = WriteDword(key, L"X", rc.left + kPositionBias);
-  ok = WriteDword(key, L"Y", rc.top + kPositionBias) && ok;
-  ok = WriteDword(key, L"Width", width) && ok;
-  ok = WriteDword(key, L"Height", height) && ok;
-  ok = WriteDword(key, L"Dpi", static_cast<int32_t>(dpi == 0 ? 96 : dpi)) && ok;
-  if (!ok) {
-    // A partial write is worse than none: LoadPlacement would accept three
-    // fresh values and one stale one and restore a rect that never existed.
-    // Drop the lot so the next run falls back to the compact default.
-    for (auto const* name : {L"X", L"Y", L"Width", L"Height", L"Dpi"}) {
-      ::RegDeleteValueW(key, name);
-    }
-    ::RegCloseKey(key);
-    LogError("shell: placement write failed part-way - cleared the saved values "
-             "rather than leave a mixed set");
+  StoredPlacement stored{};
+  stored.magic = kPlacementMagic;
+  stored.version = kPlacementVersion;
+  stored.x = static_cast<int32_t>(rc.left);
+  stored.y = static_cast<int32_t>(rc.top);
+  stored.width = width;
+  stored.height = height;
+  stored.dpi = (dpi == 0 ? 96u : dpi);
+  // One value, one write: it either lands whole or leaves the previous good
+  // placement in place. There is no partial state, so there is no cleanup path
+  // to get wrong.
+  const LSTATUS wrote =
+      ::RegSetValueExW(key, kPlacementValue, 0, REG_BINARY,
+                       reinterpret_cast<const BYTE*>(&stored), sizeof(stored));
+  ::RegCloseKey(key);
+  if (wrote != ERROR_SUCCESS) {
+    LogError("shell: placement write failed ({}) - the previous saved placement "
+             "is untouched", static_cast<int32_t>(wrote));
     return false;
   }
-  ::RegCloseKey(key);
   LogInfo("shell: saved placement {}x{} at ({},{}) at {} dpi", width, height,
           static_cast<int32_t>(rc.left), static_cast<int32_t>(rc.top), dpi);
   return true;

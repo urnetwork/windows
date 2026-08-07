@@ -48,6 +48,10 @@ class AppController {
 
  private:
   void ShowWindowImpl(const POINT* anchor);
+  // AppWindow.Changed relay: notices a move or resize the user made.
+  void OnWindowPlacementChanged();
+  // Record the rect we just applied ourselves, so the relay can ignore it.
+  void NoteAppliedPlacement();
   void OnAuthState(AuthState state, const std::string& error);
   void OnTunnelState(const proto::TunnelStatus& status);
   void OnStats(const LiveStats& stats);
@@ -65,10 +69,26 @@ class AppController {
   // placement without re-deriving it from the projection each time
   HWND windowHwnd_ = nullptr;
   // The window has a placement the USER chose - restored from a previous run,
-  // or saved during this one. While false the tray anchor places the window
-  // (the flyout-by-the-icon default); once true the anchor stops overriding a
-  // position the user picked. See ShowWindowImpl.
+  // saved during this one, or observed being dragged/resized right now. While
+  // false the tray anchor places the window (the flyout-by-the-icon default);
+  // once true the anchor stops overriding a position the user picked. See
+  // ShowWindowImpl and OnWindowPlacementChanged.
   bool ownPlacement_ = false;
+  // AppWindow.Changed cannot say WHO moved the window, and our own moves raise
+  // it too, so a programmatic move is told from a user one two ways:
+  //   applyingPlacement_  set around our own moves. AppWindow.Changed is raised
+  //                       SYNCHRONOUSLY from inside Move(), so this catches the
+  //                       normal case - without it the tray anchor's own move
+  //                       marked itself as "the user's placement" and the
+  //                       anchor then never applied again.
+  //   lastAppliedRect_    the backstop for anything raised later, out from
+  //                       under the guard: the rect we last applied ourselves.
+  bool applyingPlacement_ = false;
+  RECT lastAppliedRect_{};
+  // Saving on every frame of a drag would be a registry write per pixel; saving
+  // only on hide/quit loses a first-ever placement if the process is killed.
+  // This fires shortly after the user stops moving.
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer placementSaveTimer_{nullptr};
 
   AuthState authState_ = AuthState::LoggedOut;
   std::string authError_;
