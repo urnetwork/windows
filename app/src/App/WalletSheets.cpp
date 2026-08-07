@@ -10,6 +10,7 @@
 #include <winrt/Windows.UI.Text.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 
@@ -283,10 +284,9 @@ UIElement BuildPointsBreakdown(PointsBreakdown const& points, bool seekerHolder)
 std::shared_ptr<WalletDetailSheet> WalletDetailSheet::Create(
     XamlRoot const& root, SdkHost& sdk, urnet::AccountWallet const& wallet,
     bool isPayoutWallet, std::vector<urnet::AccountPayment> const& payments,
-    std::function<void()> onChanged,
-    std::function<void(hstring, bool)> onMessage) {
+    std::function<void()> onChanged, std::function<void(hstring)> onSuccess) {
   auto sheet = std::shared_ptr<WalletDetailSheet>(new WalletDetailSheet(
-      sdk, wallet, isPayoutWallet, payments, std::move(onChanged), std::move(onMessage)));
+      sdk, wallet, isPayoutWallet, payments, std::move(onChanged), std::move(onSuccess)));
   sheet->Build(root);
   return sheet;
 }
@@ -369,6 +369,11 @@ void WalletDetailSheet::Build(XamlRoot const& root) {
   confirmText_.Visibility(Visibility::Collapsed);
   content.Children().Append(confirmText_);
 
+  // A refusal renders HERE, on the sheet, not on the page behind it.
+  errorText_ = MakeText(hstring{}, 12, colors::DangerBrush(), true);
+  errorText_.Visibility(Visibility::Collapsed);
+  content.Children().Append(errorText_);
+
   // this wallet's payouts
   content.Children().Append(HairLine());
   content.Children().Append(MakeText(Loc("earnings"), 15, colors::TextBrush()));
@@ -417,14 +422,39 @@ void WalletDetailSheet::SetBusy(bool busy) {
   busy_ = busy;
   if (makeDefaultButton_) makeDefaultButton_.IsEnabled(!busy);
   if (removeButton_) removeButton_.IsEnabled(!busy);
+
+  if (!busy) {
+    if (watchdog_) watchdog_.Stop();
+    return;
+  }
+  if (!watchdog_) {
+    watchdog_ = dialog_.DispatcherQueue().CreateTimer();
+    watchdog_.IsRepeating(false);
+    watchdog_.Interval(std::chrono::milliseconds(kRequestTimeoutMs));
+    watchdog_.Tick([weak = weak_from_this()](auto const&, auto const&) {
+      auto self = weak.lock();
+      if (!self || !self->busy_) return;
+      urnw::LogError("wallet: request timed out with no callback after {} ms",
+                     kRequestTimeoutMs);
+      self->SetBusy(false);
+      self->ShowError(Loc("something_went_wrong"));
+    });
+  }
+  watchdog_.Start();
+}
+
+void WalletDetailSheet::ShowError(hstring const& message) {
+  errorText_.Text(message);
+  errorText_.Visibility(Visibility::Visible);
 }
 
 void WalletDetailSheet::MakeDefault() {
   if (busy_ || !wallet_.wallet_id || wallet_.wallet_id->empty()) {
-    if (onMessage_) onMessage_(Loc("error_setting_default_wallet"), false);
+    ShowError(Loc("error_setting_default_wallet"));
     return;
   }
   SetBusy(true);
+  errorText_.Visibility(Visibility::Collapsed);
   urnet::SetPayoutWalletArgs args;
   args.wallet_id = *wallet_.wallet_id;
 
@@ -440,16 +470,16 @@ void WalletDetailSheet::MakeDefault() {
           auto self = weak.lock();
           if (!self) return;
           self->SetBusy(false);
-          if (self->onMessage_) {
-            self->onMessage_(ok ? Loc("payout_wallet_updated")
-                                : (error.empty()
-                                       ? Loc("error_setting_default_wallet")
-                                       : hstring{urnw::Format(
-                                             "error_setting_default_wallet_with_reason",
-                                             urnw::Widen(error))}),
-                             ok);
+          if (!ok) {
+            self->ShowError(error.empty()
+                                ? Loc("error_setting_default_wallet")
+                                : hstring{urnw::Format(
+                                      "error_setting_default_wallet_with_reason",
+                                      urnw::Widen(error))});
+            return;
           }
-          if (!ok) return;
+          // the sheet closes, so the confirmation belongs on the page
+          if (self->onSuccess_) self->onSuccess_(Loc("payout_wallet_updated"));
           if (self->onChanged_) self->onChanged_();
           self->dialog_.Hide();
         });
@@ -469,10 +499,11 @@ void WalletDetailSheet::RemoveWallet() {
 
 void WalletDetailSheet::CommitRemoveWallet() {
   if (!wallet_.wallet_id || wallet_.wallet_id->empty()) {
-    if (onMessage_) onMessage_(Loc("something_went_wrong"), false);
+    ShowError(Loc("something_went_wrong"));
     return;
   }
   SetBusy(true);
+  errorText_.Visibility(Visibility::Collapsed);
   urnet::RemoveWalletArgs args;
   args.wallet_id = *wallet_.wallet_id;
 
@@ -490,11 +521,9 @@ void WalletDetailSheet::CommitRemoveWallet() {
           if (!self) return;
           self->SetBusy(false);
           if (!ok) {
-            if (self->onMessage_) {
-              self->onMessage_(error.empty() ? Loc("something_went_wrong")
-                                             : hstring{urnw::Widen(error)},
-                               false);
-            }
+            // the server's message is not localizable; show it when there is one
+            self->ShowError(error.empty() ? Loc("something_went_wrong")
+                                          : hstring{urnw::Widen(error)});
             return;
           }
           if (self->onChanged_) self->onChanged_();

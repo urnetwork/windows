@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
@@ -80,13 +81,20 @@ winrt::Microsoft::UI::Xaml::UIElement BuildPointsBreakdown(PointsBreakdown const
 class WalletDetailSheet : public std::enable_shared_from_this<WalletDetailSheet> {
  public:
   // `onChanged` fires after the payout wallet moved or this wallet was removed
-  // (the page reloads); `onMessage` raises the page's snackbar with an outcome.
+  // (the page reloads); `onSuccess` raises the page's snackbar, and is only
+  // reached on a path that also CLOSES this sheet.
+  //
+  // A failure never goes to the page: the sheet is modal and covers it, so a
+  // snackbar raised behind it is a message the user cannot read. Screenshotted:
+  // pressing Remove with an expired session left the sheet open, unchanged, with
+  // "401 Unauthorized" drawn underneath the dialog. Failures render on the
+  // sheet's own line instead.
   static std::shared_ptr<WalletDetailSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
       urnet::AccountWallet const& wallet, bool isPayoutWallet,
       std::vector<urnet::AccountPayment> const& payments,
       std::function<void()> onChanged,
-      std::function<void(winrt::hstring message, bool ok)> onMessage);
+      std::function<void(winrt::hstring message)> onSuccess);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
 
@@ -94,31 +102,45 @@ class WalletDetailSheet : public std::enable_shared_from_this<WalletDetailSheet>
   WalletDetailSheet(SdkHost& sdk, urnet::AccountWallet const& wallet, bool isPayoutWallet,
                     std::vector<urnet::AccountPayment> const& payments,
                     std::function<void()> onChanged,
-                    std::function<void(winrt::hstring, bool)> onMessage)
+                    std::function<void(winrt::hstring)> onSuccess)
       : sdk_(sdk),
         wallet_(wallet),
         isPayoutWallet_(isPayoutWallet),
         payments_(payments),
         onChanged_(std::move(onChanged)),
-        onMessage_(std::move(onMessage)) {}
+        onSuccess_(std::move(onSuccess)) {}
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void MakeDefault();
   void RemoveWallet();       // arms the confirmation; the second press commits
   void CommitRemoveWallet();
+  // Disables the actions for the life of a request AND arms the watchdog below.
   void SetBusy(bool busy);
+  void ShowError(winrt::hstring const& message);
 
   SdkHost& sdk_;
   urnet::AccountWallet wallet_;
   bool isPayoutWallet_ = false;
   std::vector<urnet::AccountPayment> payments_;
   std::function<void()> onChanged_;
-  std::function<void(winrt::hstring, bool)> onMessage_;
+  std::function<void(winrt::hstring)> onSuccess_;
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button makeDefaultButton_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button removeButton_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock confirmText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock errorText_{nullptr};
+  // A request that never answers must not be able to leave this sheet dead.
+  //
+  // Found by running: Api::setPayoutWallet DROPS the call and never invokes its
+  // callback when wallet_id is not a UUID - no result, no error, nothing in the
+  // log - so the sheet sat with both actions greyed out and no message, forever,
+  // with no way back but Close. Every id the UI passes comes from
+  // getAccountWallets and is well-formed, so this is a guard rather than a
+  // routine path; but "the caller always passes a good id" is an invariant
+  // nothing enforces, and a dead dialog is the worst possible way to find out.
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer watchdog_{nullptr};
+  static constexpr int kRequestTimeoutMs = 20000;
   bool removeArmed_ = false;
   bool busy_ = false;
 };

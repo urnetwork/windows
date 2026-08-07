@@ -800,7 +800,10 @@
                         <TextBlock x:Name="AccountPointsHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
                                    Margin="0,12,0,0" />
                         <TextBlock x:Name="AccountPointsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
-                        <Border Style="{StaticResource UrCardStyle}">
+                        <!-- named so the page can collapse it: an empty card is a
+                             bar of nothing sitting under its own error message -->
+                        <Border x:Name="AccountPointsCard" Style="{StaticResource UrCardStyle}"
+                                Visibility="Collapsed">
                             <StackPanel x:Name="AccountPointsPanel" Spacing="0" />
                         </Border>
 
@@ -820,7 +823,8 @@
                         <TextBlock x:Name="NetworkReliabilityHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
                                    Margin="0,12,0,0" />
                         <TextBlock x:Name="ReliabilityStatusText" Style="{StaticResource UrSupportingTextStyle}" />
-                        <Border Style="{StaticResource UrCardStyle}">
+                        <Border x:Name="ReliabilityCard" Style="{StaticResource UrCardStyle}"
+                                Visibility="Collapsed">
                             <StackPanel x:Name="ReliabilityPanel" Spacing="8" />
                         </Border>
 

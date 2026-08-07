@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+﻿// SPDX-License-Identifier: MPL-2.0
 #include "pch.h"
 
 #include "WalletPage.h"
@@ -11,8 +11,10 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cwchar>
 #include <iterator>
+#include <string_view>
 
 #include "Log.h"
 #include "MainWindow.xaml.h"
@@ -189,6 +191,167 @@ UIElement BuildReliabilityChart(std::vector<double> weights, std::vector<double>
   });
 
   return host;
+}
+
+// ---- --preview-ui sample data ----------------------------------------------
+//
+// WHY THIS EXISTS. --preview-ui deliberately makes no API call (Startup.h): with
+// no token every request would be an unauthenticated hit on the production API,
+// so every panel on this destination renders EMPTY. That is worth looking at and
+// it is not the populated one - and a wallet card, a payouts table, a points
+// breakdown, a reliability chart and a leaderboard row are exactly the things
+// where "reads correct" has never been evidence on this project. Without this
+// they could ship having never been drawn.
+//
+// So: with --preview-ui ALREADY on, URNETWORK_PREVIEW_SAMPLE=1 pushes obviously
+// synthetic rows through the SAME Apply* functions the API path uses. Two gates,
+// no network, and a warning in the log every time, because data on screen that
+// did not come from the server is the one thing a screenshot cannot show you.
+//
+// The values are deliberately not plausible as anybody's account: the wallet
+// addresses spell what they are.
+constexpr const char* kSampleOwnNetworkId = "sample-network-self";
+
+bool PreviewSample() {
+  static const bool on = [] {
+    size_t len = 0;
+    char value[16]{};
+    if (getenv_s(&len, value, sizeof(value), "URNETWORK_PREVIEW_SAMPLE") != 0 || len == 0) {
+      return false;
+    }
+    const bool enabled = std::string_view(value) == "1";
+    if (enabled) {
+      urnw::LogWarn(
+          "preview-sample: rendering SYNTHETIC wallet/leaderboard rows - none of "
+          "this came from the api");
+    }
+    return enabled;
+  }();
+  return on;
+}
+
+std::vector<urnet::AccountWallet> SampleWallets() {
+  urnet::AccountWallet sol;
+  sol.wallet_id = "5a3e0000-0000-4000-8000-00000000501a";
+  sol.blockchain = urnet::SOL;
+  sol.wallet_address = "SAMPLEwa11etADDRESSnotREALsolana000000SAMPLE";
+  sol.default_token_type = "USDC";
+  sol.active = true;
+  sol.has_seeker_token = true;
+
+  urnet::AccountWallet matic;
+  matic.wallet_id = "5a3e0000-0000-4000-8000-0000000a71c0";
+  matic.blockchain = urnet::MATIC;
+  matic.wallet_address = "0xSAMPLEwa11etADDRESSnotREALpolygonSAMPLE";
+  matic.default_token_type = "USDC";
+  matic.active = true;
+
+  urnet::AccountWallet tao;
+  tao.wallet_id = "5a3e0000-0000-4000-8000-00000000007a";
+  tao.blockchain = urnet::TAO;
+  tao.wallet_address = "5SAMPLEwa11etADDRESSnotREALbittensorSAMPLE";
+  tao.default_token_type = "USDC";
+  tao.active = true;
+  return {sol, matic, tao};
+}
+
+std::vector<urnet::AccountPayment> SamplePayments() {
+  auto make = [](const char* id, const char* wallet, const char* chain, double amount,
+                 const char* when, const char* tx, bool completed) {
+    urnet::AccountPayment p;
+    p.payment_id = id;
+    p.wallet_id = wallet;
+    p.blockchain = chain;
+    p.token_type = "USDC";
+    p.token_amount = amount;
+    p.complete_time = completed ? std::optional<std::string>(when) : std::nullopt;
+    p.create_time = when;
+    p.completed = completed;
+    p.wallet_address = "SAMPLEwa11etADDRESSnotREALsolana000000SAMPLE";
+    if (tx) p.tx_hash = tx;
+    p.payout_byte_count = 8'123'456'789;
+    return p;
+  };
+  return {
+      make("5a3e0000-0000-4000-8000-0000000000a1", "5a3e0000-0000-4000-8000-00000000501a", urnet::SOL, 0, "2026-08-02T00:00:00Z", nullptr,
+           false),
+      make("5a3e0000-0000-4000-8000-0000000000a2", "5a3e0000-0000-4000-8000-00000000501a", urnet::SOL, 12.34, "2026-07-26T00:00:00Z",
+           "SAMPLEtxHASHnotREAL2222222222222222", true),
+      make("5a3e0000-0000-4000-8000-0000000000a3", "5a3e0000-0000-4000-8000-0000000a71c0", urnet::MATIC, 8.90, "2026-07-19T00:00:00Z",
+           "0xSAMPLEtxHASHnotREAL33333333333333", true),
+  };
+}
+
+std::vector<urnet::AccountPoint> SamplePoints() {
+  auto make = [](const char* event, int64_t nanoPoints, const char* paymentId) {
+    urnet::AccountPoint p;
+    p.event = event;
+    p.point_value = nanoPoints;
+    p.account_payment_id = paymentId;
+    return p;
+  };
+  const int64_t nano = 1'000'000'000;
+  return {
+      make(kEventPayout, 12'340 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
+      make(kEventReferral, 2'100 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
+      make(kEventReliability, 860 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
+      make(kEventMultiplier, 12'340 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
+      make(kEventPayout, 8'900 * nano, "5a3e0000-0000-4000-8000-0000000000a3"),
+      make(kEventReliability, 415 * nano, "5a3e0000-0000-4000-8000-0000000000a3"),
+  };
+}
+
+urnet::ReliabilityWindow SampleReliability() {
+  urnet::ReliabilityWindow rw;
+  rw.mean_reliability_weight = 0.62;
+  rw.max_total_client_count = 18;
+  rw.max_client_count = 11;
+  rw.bucket_duration_seconds = 3600;
+  std::vector<double> weights;
+  std::vector<int64_t> totals;
+  for (int i = 0; i < 24; ++i) {
+    weights.push_back(0.35 + 0.45 * std::sin(i * 0.5) * std::sin(i * 0.5) + 0.05 * (i % 3));
+    totals.push_back(4 + (i * 7) % 15);
+  }
+  rw.reliability_weights = weights;
+  rw.total_client_counts = totals;
+  rw.client_counts = totals;
+
+  urnet::CountryMultiplierList countries;
+  auto country = [](const char* name, const char* code, double multiplier) {
+    urnet::CountryMultiplier cm;
+    cm.country_location_id = std::string("sample-") + code;
+    cm.country = name;
+    cm.country_code = code;
+    cm.reliability_multiplier = multiplier;
+    return cm;
+  };
+  countries.push_back(country("Sample Republic", "SR", 3.25));
+  countries.push_back(country("Sampleland", "SL", 2.00));
+  countries.push_back(country("Samplia", "SA", 1.40));
+  countries.push_back(country("Not Multiplied", "NM", 1.00));  // filtered out
+  rw.country_multipliers = countries;
+  return rw;
+}
+
+urnet::LeaderboardEarnersList SampleEarners() {
+  auto make = [](const char* id, const char* name, float mib, bool isPublic,
+                 bool profanity = false) {
+    urnet::LeaderboardEarner e;
+    e.network_id = id;
+    e.network_name = name;
+    e.net_mib_count = mib;
+    e.is_public = isPublic;
+    e.contains_profanity = profanity;
+    return e;
+  };
+  return {
+      make("sample-net-1", "sample-alpha", 4'194'304.0f, true),
+      make("sample-net-2", "hidden-should-not-render", 2'097'152.0f, /*isPublic=*/false),
+      make(kSampleOwnNetworkId, "sample-my-network", 786'432.0f, true),
+      make("sample-net-4", "profane-should-not-render", 524'288.0f, true, /*profanity=*/true),
+      make("sample-net-5", "sample-epsilon", 131'072.0f, true),
+  };
 }
 
 }  // namespace
@@ -519,10 +682,10 @@ winrt::fire_and_forget WalletPage::ShowWalletDetail(urnet::AccountWallet wallet)
         [weak] {
           if (auto w = weak.get()) w->wallet().RefreshAfterWalletChange();
         },
-        [weak](hstring message, bool ok) {
+        [weak](hstring message) {
+          // success only: the sheet is gone by the time this runs
           if (auto w = weak.get()) {
-            w->wallet().snackbar_.Show(message, ok ? InfoBarSeverity::Success
-                                                   : InfoBarSeverity::Error);
+            w->wallet().snackbar_.Show(message, InfoBarSeverity::Success);
           }
         });
     co_await self->wallet().walletSheet_->Dialog().ShowAsync();
@@ -571,9 +734,11 @@ void WalletPage::ApplyPoints(std::vector<urnet::AccountPoint> const& points, Fet
     w_.AccountPointsStatusText().Text(Loc("something_went_wrong"));
     w_.AccountPointsStatusText().Visibility(Visibility::Visible);
     w_.AccountPointsPanel().Children().Clear();
+    w_.AccountPointsCard().Visibility(Visibility::Collapsed);
     return;
   }
   w_.AccountPointsStatusText().Visibility(Visibility::Collapsed);
+  w_.AccountPointsCard().Visibility(Visibility::Visible);
   RebuildPointsCard();
   RebuildWalletCards();  // the per-wallet totals do not move, but the seeker row does
 }
@@ -736,6 +901,8 @@ void WalletPage::ApplyReliability(std::optional<urnet::ReliabilityWindow> window
   reliability_ = window;
   auto panel = w_.ReliabilityPanel();
   panel.Children().Clear();
+  // an empty card is a bar of nothing sitting under its own status line
+  w_.ReliabilityCard().Visibility(Visibility::Collapsed);
 
   if (state == Fetch::Failed) {
     w_.ReliabilityStatusText().Text(Loc("something_went_wrong"));
@@ -748,6 +915,7 @@ void WalletPage::ApplyReliability(std::optional<urnet::ReliabilityWindow> window
     return;
   }
   w_.ReliabilityStatusText().Visibility(Visibility::Collapsed);
+  w_.ReliabilityCard().Visibility(Visibility::Visible);
   auto const& rw = *reliability_;
 
   // the two figures the window is summarised by
@@ -856,7 +1024,7 @@ void WalletPage::ApplySeekerState() {
 // Claim the 2x multiplier by proving the wallet holds the Seeker / Saga token
 // (android SettingsScreen.signAndVerifySeekerHolder). The wallet signs a
 // timestamped challenge through the ur.io/wallet-connect browser bridge and the
-// signed triple goes to Api.verifySeekerHolder — the address alone proves
+// signed triple goes to Api.verifySeekerHolder â€” the address alone proves
 // nothing, so there is no shortcut past the signature.
 //
 // android puts up its wallet picker through Mobile Wallet Adapter; the browser
@@ -949,7 +1117,7 @@ void WalletPage::ApplySeekerResult(bool ok, std::string const& serverError) {
 // ---- connect wallet (external wallet, by address) -------------------------
 // Paste an address; the server validates it per chain and the first chain that
 // accepts it wins. Bittensor connects by address only (no signature), matching
-// apple/android — the signed bridge flow is sign-in, not wallet connect.
+// apple/android â€” the signed bridge flow is sign-in, not wallet connect.
 
 void WalletPage::OnWalletAddressChanged(IInspectable const&, TextChangedEventArgs const&) {
   walletValidation_ = {};
@@ -1063,6 +1231,17 @@ void WalletPage::ShowPreviewSnackbar() {
 // otherwise sit on "Loading..." forever - which is exactly what a hang looks
 // like. Settle them all on their empty state instead.
 void WalletPage::ShowPreviewWalletState() {
+  if (PreviewSample()) {
+    ApplyWallets(SampleWallets(), Fetch::Ready);
+    ApplyPayoutWalletId("5a3e0000-0000-4000-8000-00000000501a");
+    ApplyTransferStats(41'237'481'984, /*ok=*/true);
+    ApplyWalletBalance(1'234'500'000'000, /*ok=*/true);
+    ApplyReferrals(7, /*ok=*/true);
+    ApplyPayments(SamplePayments(), Fetch::Ready);
+    ApplyPoints(SamplePoints(), Fetch::Ready);
+    ApplyReliability(SampleReliability(), Fetch::Ready);
+    return;
+  }
   ApplyWallets({}, Fetch::Ready);
   ApplyTransferStats(0, /*ok=*/false);
   ApplyWalletBalance(0, /*ok=*/false);
@@ -1075,6 +1254,16 @@ void WalletPage::ShowPreviewWalletState() {
 // ---- leaderboard ---------------------------------------------------------
 
 void WalletPage::ShowPreviewLeaderboardState() {
+  if (PreviewSample()) {
+    ownNetworkId_ = kSampleOwnNetworkId;
+    urnet::NetworkRanking ranking;
+    ranking.leaderboard_rank = 42;
+    ranking.net_mib_count = 786432.0f;  // 768 GiB
+    ranking.leaderboard_public = true;
+    ApplyRanking(ranking, /*ok=*/true);
+    ApplyLeaderboard(SampleEarners(), Fetch::Ready);
+    return;
+  }
   ApplyRanking({}, /*ok=*/false);
   ApplyLeaderboard({}, Fetch::Ready);
 }

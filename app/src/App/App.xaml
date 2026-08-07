@@ -86,6 +86,26 @@
                                  keeps 1dp and only changes its colour -->
                             <Thickness x:Key="TextControlBorderThemeThickness">0,0,0,1</Thickness>
                             <Thickness x:Key="TextControlBorderThemeThicknessFocused">0,0,0,1</Thickness>
+
+                            <!-- NavigationView paints its own content region with
+                                 NavigationViewContentBackground, which in the dark theme is
+                                 LayerFillColorDefaultBrush: white at 5.36%. Over the brand
+                                 #101010 that composites to #1C1C1C — EXACTLY UrCardBrush.
+                                 The result was that every UrCard in the app (the connect
+                                 drawer's controls card, the account panel's, all of the
+                                 wallet destination's) drew its background in the same
+                                 colour as the page behind it and had no edge at all;
+                                 screen-captured and sampled, page and card both read
+                                 (28,28,28). Verified across two destinations, so it is the
+                                 shell, not one screen.
+
+                                 Transparent lets the root grid's brand #101010 through,
+                                 which is the value every other client uses for the page and
+                                 the one the card colour was chosen against. Nothing else
+                                 depends on the layer tint: the app pins RequestedTheme=Dark
+                                 and has no light variant to keep in step. -->
+                            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
+                            <SolidColorBrush x:Key="NavigationViewContentGridBorderBrush" Color="Transparent" />
                         </ResourceDictionary>
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
