@@ -315,6 +315,25 @@ void MainWindow::ApplyBreakpoint() {
   Place(AccountSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
                                  : PanePlacement{1, 0, 1, Thickness{0, 0, 0, 24}});
 
+  // ---- Leaderboard: the table, with your own rank beside it ----------------
+  // The plainest cut in the app. BOTH panes move here, because the reading
+  // order inverts: at flyout width the one thing you came for is your own
+  // number, so the rank card is first; at desktop widths the table is the page
+  // and the rank card is the note beside it.
+  // 1360, not Wallet's 1720: these rows carry three fields, and past about a
+  // thousand dips the gap between a network's name and its figure stops being
+  // a table and starts being two lists.
+  LeaderboardCapColumn().MaxWidth(wide ? 1360 : 820);
+  if (wide) {
+    SetWidth(LeaderboardSideColumn(), 360);
+  } else {
+    SetWidth(LeaderboardSideColumn(), 0);
+  }
+  Place(LeaderboardMainStack(), wide ? PanePlacement{0, 0, 1, Thickness{0, 0, 0, 24}}
+                                     : PanePlacement{1, 0, 1, Thickness{0, 12, 0, 24}});
+  Place(LeaderboardSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
+                                     : PanePlacement{0, 0, 1, Thickness{}});
+
   urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
 }
 

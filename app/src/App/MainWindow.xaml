@@ -1615,13 +1615,33 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- The same shape ConnectView carries. The leaderboard's
+                       cut is the plainest in the app: a TABLE, which wants the
+                       width, and one card describing where you are in it, which
+                       does not. Portmaster would call it list-and-detail. -->
+                  <Grid x:Name="LeaderboardLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="820" />
+                        <ColumnDefinition x:Name="LeaderboardCapColumn"
+                                          Width="1000*" MaxWidth="820" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="8">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="LeaderboardSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <!-- OWN RANK. First in the flyout, because at 560dip the
+                         one thing you came for is your own number; beside the
+                         table at desktop widths, where the table comes first. -->
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="LeaderboardSideStack" Spacing="8"
+                                VerticalAlignment="Top">
                         <!-- No section heading here: NavigationView's Header already
                              shows the destination name ("Leaderboard"), and a panel
                              heading with the same word under it read as a stutter.
@@ -1676,6 +1696,15 @@
 
                         <TextBlock x:Name="LeaderboardDescription"
                                    Style="{StaticResource UrSupportingTextStyle}" />
+                    </StackPanel>
+
+                    <!-- THE TABLE. Full width of the main column at every size;
+                         at desktop widths that is ~1000dip of rows instead of
+                         820 shared with the rank card. Advanced Mode will add
+                         network-id columns here. -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="LeaderboardMainStack" Spacing="8"
+                                VerticalAlignment="Top" Margin="0,12,0,24">
                         <!-- Loading / empty / failed. Without it the panel drew one
                              heading and nothing else whether the fetch was in
                              flight, had returned nothing, or had failed - three
@@ -1695,6 +1724,7 @@
                         <muxc:InfoBar x:Name="LeaderboardInfo" Style="{StaticResource UrSnackbarStyle}"
                                       IsOpen="False" Margin="0,12,0,0" />
                     </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 
