@@ -33,7 +33,7 @@ std::wstring ChainName(std::string const& blockchain) {
 }  // namespace
 
 WalletPage::WalletPage(winrt::URnetwork::implementation::MainWindow& window)
-    : w_(window) {}
+    : w_(window), snackbar_(window.WalletInfo(), window.DispatcherQueue()) {}
 
 WalletPage::~WalletPage() {
   if (walletValidateTimer_) walletValidateTimer_.Stop();
@@ -196,12 +196,10 @@ void WalletPage::OnConnectWallet(IInspectable const&, RoutedEventArgs const&) {
 
 void WalletPage::ApplyWalletConnectResult(bool ok, std::string const& serverError) {
   connectingWallet_ = false;
-  w_.WalletInfo().Severity(ok ? InfoBarSeverity::Success : InfoBarSeverity::Error);
   // a server error is not localizable; show it when there is one
-  w_.WalletInfo().Message(ok ? Loc("wallet_connected")
-                             : (serverError.empty() ? Loc("wallet_connect_failed")
-                                                    : H(serverError)));
-  w_.WalletInfo().IsOpen(true);
+  snackbar_.Show(ok ? Loc("wallet_connected")
+                    : (serverError.empty() ? Loc("wallet_connect_failed") : H(serverError)),
+                 ok ? InfoBarSeverity::Success : InfoBarSeverity::Error);
   if (!ok) {
     w_.ConnectWalletButton().IsEnabled(!walletChain_.empty());
     return;

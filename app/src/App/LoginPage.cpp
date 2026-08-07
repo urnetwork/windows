@@ -11,6 +11,7 @@
 #include "PageContext.h"
 #include "Strings.h"
 #include "UrColors.h"
+#include "UrComponents.h"
 #include "WalletConnect.h"
 
 using namespace winrt;
@@ -368,8 +369,8 @@ void LoginPage::EnterCreateStep(std::string const& userAuth, CreateMode mode) {
   w_.TermsCheck().IsChecked(false);
   w_.BonusCodeBox().Text(L"");
   w_.BonusStatusText().Text(L"");
-  w_.CreateNameStatusText().Text(Loc("network_name_length_error"));
-  w_.CreateNameStatusText().Foreground(urnw::colors::MutedBrush());
+  kit::ApplySupportingText(w_.CreateNameStatusText(), Loc("network_name_length_error"),
+                           kit::ValidationState::NotChecked);
   nameAvailable_ = false;
   nameChecking_ = false;
   ++nameCheckGeneration_;
@@ -395,11 +396,12 @@ void LoginPage::OnCreateNameChanged(IInspectable const&, TextChangedEventArgs co
   const std::string name = TrimWhitespace(urnw::Narrow(w_.CreateNameBox().Text().c_str()));
   if (name.size() < kMinNetworkNameLength) {
     nameChecking_ = false;
-    w_.CreateNameStatusText().Text(Loc("network_name_length_error"));
-    w_.CreateNameStatusText().Foreground(urnw::colors::MutedBrush());
+    kit::ApplySupportingText(w_.CreateNameStatusText(), Loc("network_name_length_error"),
+                             kit::ValidationState::NotChecked);
   } else {
     nameChecking_ = true;
-    w_.CreateNameStatusText().Text(L"");
+    kit::ApplySupportingText(w_.CreateNameStatusText(), hstring(),
+                             kit::ValidationState::Validating);
     if (nameCheckTimer_) nameCheckTimer_.Start();  // debounce, then check
   }
   ValidateCreateForm();
@@ -422,18 +424,18 @@ void LoginPage::CheckCreateNameNow() {
 void LoginPage::ApplyNameCheck(uint32_t generation, bool ok, bool available) {
   if (generation != nameCheckGeneration_) return;  // a later edit superseded this
   nameChecking_ = false;
+  auto const line = w_.CreateNameStatusText();
   if (!ok) {
     nameAvailable_ = false;
-    w_.CreateNameStatusText().Text(Loc("there_was_an_error_checking_the_network_name"));
-    w_.CreateNameStatusText().Foreground(urnw::colors::DangerBrush());
+    kit::ApplySupportingText(line, Loc("there_was_an_error_checking_the_network_name"),
+                             kit::ValidationState::Invalid);
   } else if (available) {
     nameAvailable_ = true;
-    w_.CreateNameStatusText().Text(Loc("nice_this_network_name_is_available"));
-    w_.CreateNameStatusText().Foreground(urnw::colors::MakeBrush(urnw::colors::kUrGreen));
+    kit::ApplySupportingText(line, Loc("nice_this_network_name_is_available"),
+                             kit::ValidationState::Valid);
   } else {
     nameAvailable_ = false;
-    w_.CreateNameStatusText().Text(Loc("network_name_taken"));
-    w_.CreateNameStatusText().Foreground(urnw::colors::DangerBrush());
+    kit::ApplySupportingText(line, Loc("network_name_taken"), kit::ValidationState::Invalid);
   }
   ValidateCreateForm();
 }
@@ -457,7 +459,8 @@ void LoginPage::OnBonusCodeChanged(IInspectable const&, TextChangedEventArgs con
   ++bonusCheckGeneration_;  // drop any validation still in flight
   bonusValid_ = false;
   bonusCapped_ = false;
-  w_.BonusStatusText().Text(L"");
+  kit::ApplySupportingText(w_.BonusStatusText(), hstring(),
+                           kit::ValidationState::NotChecked);
   if (bonusCheckTimer_) {
     bonusCheckTimer_.Stop();
     const std::string code = TrimWhitespace(urnw::Narrow(w_.BonusCodeBox().Text().c_str()));
@@ -492,18 +495,15 @@ void LoginPage::ApplyBonusValidation(uint32_t generation, bool ok, bool valid,
   if (generation != bonusCheckGeneration_) return;
   bonusValid_ = ok && valid;
   bonusCapped_ = ok && capped;
+  auto const line = w_.BonusStatusText();
   if (!ok) {
-    w_.BonusStatusText().Text(Loc("something_went_wrong"));
-    w_.BonusStatusText().Foreground(urnw::colors::DangerBrush());
+    kit::ApplySupportingText(line, Loc("something_went_wrong"), kit::ValidationState::Invalid);
   } else if (bonusValid_ && !bonusCapped_) {
-    w_.BonusStatusText().Text(Loc("referral_bonus_applied_2"));
-    w_.BonusStatusText().Foreground(urnw::colors::MakeBrush(urnw::colors::kUrGreen));
+    kit::ApplySupportingText(line, Loc("referral_bonus_applied_2"), kit::ValidationState::Valid);
   } else if (bonusCapped_) {
-    w_.BonusStatusText().Text(Loc("referral_code_capped"));
-    w_.BonusStatusText().Foreground(urnw::colors::DangerBrush());
+    kit::ApplySupportingText(line, Loc("referral_code_capped"), kit::ValidationState::Invalid);
   } else {
-    w_.BonusStatusText().Text(Loc("invalid_referral_code"));
-    w_.BonusStatusText().Foreground(urnw::colors::DangerBrush());
+    kit::ApplySupportingText(line, Loc("invalid_referral_code"), kit::ValidationState::Invalid);
   }
 }
 

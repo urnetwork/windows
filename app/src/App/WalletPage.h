@@ -13,6 +13,7 @@
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
 #include "SdkHost.h"
+#include "UrComponents.h"
 
 namespace winrt::URnetwork::implementation {
 struct MainWindow;
@@ -45,6 +46,9 @@ class WalletPage {
   void ApplyWalletConnectResult(bool ok, std::string const& serverError);
 
   winrt::URnetwork::implementation::MainWindow& w_;
+  // "Wallet connected" / the server's refusal: a transient message, so it
+  // dismisses itself (iOS UrSnackBar). The bar used to stay open forever.
+  urnw::kit::Snackbar snackbar_;
 
   // connect-wallet state (UI thread only). The address is validated against each
   // supported chain; the generation drops results from a superseded edit.

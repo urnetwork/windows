@@ -10,6 +10,7 @@
 #include <winrt/Microsoft.UI.Xaml.h>
 
 #include "StatsSheets.h"
+#include "UrComponents.h"
 
 namespace winrt::URnetwork::implementation {
 struct MainWindow;
@@ -34,6 +35,8 @@ class SettingsPage {
   winrt::fire_and_forget ShowAppRulesSheet();
 
   winrt::URnetwork::implementation::MainWindow& w_;
+  // "Thanks for the feedback": a transient acknowledgement (iOS UrSnackBar)
+  urnw::kit::Snackbar snackbar_;
   std::shared_ptr<urnw::AppRulesSheet> appRulesSheet_;
 };
 

@@ -37,7 +37,7 @@ class ConnectPage {
   explicit ConnectPage(winrt::URnetwork::implementation::MainWindow& window);
   ~ConnectPage();
 
-  // charts, SDK feed subscriptions, card hover affordances and the drawer clock
+  // charts, SDK feed subscriptions and the drawer clock
   void Initialize();
   void SetPresentationActive(bool active);
   void ApplyStrings();
@@ -68,16 +68,16 @@ class ConnectPage {
                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnBlockerToggled(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnClientStatsCardTapped(winrt::Windows::Foundation::IInspectable const&,
-                               winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnLocalStatsCardTapped(winrt::Windows::Foundation::IInspectable const&,
-                              winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnDnsCardTapped(winrt::Windows::Foundation::IInspectable const&,
-                       winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnLocationRowTapped(winrt::Windows::Foundation::IInspectable const&,
-                           winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnPeersLineTapped(winrt::Windows::Foundation::IInspectable const&,
-                         winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
+  void OnClientStatsCardClick(winrt::Windows::Foundation::IInspectable const&,
+                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnLocalStatsCardClick(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnDnsCardClick(winrt::Windows::Foundation::IInspectable const&,
+                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnLocationRowClick(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnPeersLineClick(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
  private:
   // The SDK's own connection status (ConnectViewController.getConnectionStatus,
@@ -98,8 +98,7 @@ class ConnectPage {
   bool ConnectActionIsDisconnect() const;
 
   void BuildCharts();
-  void WireDrawerFeeds();      // SdkHost push handlers -> UI thread -> caches/cards
-  void WireCardAffordances();  // hover/pressed feedback on the tappable cards
+  void WireDrawerFeeds();  // SdkHost push handlers -> UI thread -> caches/cards
   void SeedConnectControls();  // performance profile + blocker toggle state
   void PushPerformanceSettings();
   // Non-const: reads the ConnectionModeBar / ModeWebItem / ModeStreamingItem x:Name

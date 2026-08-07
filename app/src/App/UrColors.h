@@ -21,7 +21,9 @@ inline constexpr winrt::Windows::UI::Color kBackground{255, 0x10, 0x10, 0x10};
 inline constexpr winrt::Windows::UI::Color kSheet{255, 0x15, 0x15, 0x15};
 // card background (tintedBackgroundBase)
 inline constexpr winrt::Windows::UI::Color kCard{255, 0x1C, 0x1C, 0x1C};
-// card hover / pressed (desktop affordance)
+// card hover / pressed (desktop affordance). Spent by the UrCardButton template
+// in App.xaml (UrCardHoverBrush / UrCardPressedBrush) rather than by code:
+// hover and press are control states, so the platform draws them.
 inline constexpr winrt::Windows::UI::Color kCardHover{255, 0x24, 0x24, 0x24};
 inline constexpr winrt::Windows::UI::Color kCardPressed{255, 0x2A, 0x2A, 0x2A};
 // border / chart axis: white at 12% alpha

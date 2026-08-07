@@ -19,7 +19,7 @@ namespace urnw {
 using winrt::Windows::Foundation::IInspectable;
 
 SettingsPage::SettingsPage(winrt::URnetwork::implementation::MainWindow& window)
-    : w_(window) {}
+    : w_(window), snackbar_(window.SupportInfo(), window.DispatcherQueue()) {}
 
 void SettingsPage::ApplyStrings() {
   // support
@@ -76,9 +76,7 @@ void SettingsPage::OnSendFeedback(IInspectable const&, RoutedEventArgs const&) {
   Sdk().api().sendFeedback(
       args, [this](std::optional<urnet::FeedbackSendResult>, std::optional<std::string>) {
         w_.DispatcherQueue().TryEnqueue([this] {
-          w_.SupportInfo().Severity(InfoBarSeverity::Success);
-          w_.SupportInfo().Message(Loc("thanks_for_the_feedback"));
-          w_.SupportInfo().IsOpen(true);
+          snackbar_.Show(Loc("thanks_for_the_feedback"), InfoBarSeverity::Success);
           w_.FeedbackText().Text(L"");
         });
       });

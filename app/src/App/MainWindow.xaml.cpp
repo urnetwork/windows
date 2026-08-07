@@ -435,25 +435,25 @@ void MainWindow::OnPostQuantumToggled(IInspectable const& s, RoutedEventArgs con
 void MainWindow::OnBlockerToggled(IInspectable const& s, RoutedEventArgs const& e) {
   connect_->OnBlockerToggled(s, e);
 }
-void MainWindow::OnClientStatsCardTapped(IInspectable const& s,
-                                         Input::TappedRoutedEventArgs const& e) {
-  connect_->OnClientStatsCardTapped(s, e);
+void MainWindow::OnClientStatsCardClick(IInspectable const& s,
+                                         RoutedEventArgs const& e) {
+  connect_->OnClientStatsCardClick(s, e);
 }
-void MainWindow::OnLocalStatsCardTapped(IInspectable const& s,
-                                        Input::TappedRoutedEventArgs const& e) {
-  connect_->OnLocalStatsCardTapped(s, e);
+void MainWindow::OnLocalStatsCardClick(IInspectable const& s,
+                                        RoutedEventArgs const& e) {
+  connect_->OnLocalStatsCardClick(s, e);
 }
-void MainWindow::OnDnsCardTapped(IInspectable const& s,
-                                 Input::TappedRoutedEventArgs const& e) {
-  connect_->OnDnsCardTapped(s, e);
+void MainWindow::OnDnsCardClick(IInspectable const& s,
+                                 RoutedEventArgs const& e) {
+  connect_->OnDnsCardClick(s, e);
 }
-void MainWindow::OnLocationRowTapped(IInspectable const& s,
-                                     Input::TappedRoutedEventArgs const& e) {
-  connect_->OnLocationRowTapped(s, e);
+void MainWindow::OnLocationRowClick(IInspectable const& s,
+                                     RoutedEventArgs const& e) {
+  connect_->OnLocationRowClick(s, e);
 }
-void MainWindow::OnPeersLineTapped(IInspectable const& s,
-                                   Input::TappedRoutedEventArgs const& e) {
-  connect_->OnPeersLineTapped(s, e);
+void MainWindow::OnPeersLineClick(IInspectable const& s,
+                                   RoutedEventArgs const& e) {
+  connect_->OnPeersLineClick(s, e);
 }
 
 void MainWindow::OnSaveNetworkName(IInspectable const& s, RoutedEventArgs const& e) {

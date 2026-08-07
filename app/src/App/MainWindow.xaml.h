@@ -149,16 +149,16 @@ struct MainWindow : MainWindowT<MainWindow> {
                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnBlockerToggled(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnClientStatsCardTapped(winrt::Windows::Foundation::IInspectable const&,
-                               winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnLocalStatsCardTapped(winrt::Windows::Foundation::IInspectable const&,
-                              winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnDnsCardTapped(winrt::Windows::Foundation::IInspectable const&,
-                       winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnLocationRowTapped(winrt::Windows::Foundation::IInspectable const&,
-                           winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnPeersLineTapped(winrt::Windows::Foundation::IInspectable const&,
-                         winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
+  void OnClientStatsCardClick(winrt::Windows::Foundation::IInspectable const&,
+                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnLocalStatsCardClick(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnDnsCardClick(winrt::Windows::Foundation::IInspectable const&,
+                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnLocationRowClick(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnPeersLineClick(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // Called by AppController (already marshaled onto the UI thread).
   void OnAuthStateChanged(urnw::AuthState state, std::string const& error);

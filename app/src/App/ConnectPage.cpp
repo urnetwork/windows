@@ -91,7 +91,6 @@ ConnectPage::~ConnectPage() {
 void ConnectPage::Initialize() {
   BuildCharts();
   WireDrawerFeeds();
-  WireCardAffordances();
 
   // shared drawer clock: ~10 fps chart redraw, plus 1s relative-time refresh
   chartTimer_ = w_.DispatcherQueue().CreateTimer();
@@ -496,33 +495,6 @@ void ConnectPage::WireDrawerFeeds() {
   });
 }
 
-void ConnectPage::WireCardAffordances() {
-  // desktop hover/pressed feedback for the tappable cards; resolve the card
-  // from the sender so the handlers hold no strong element refs
-  auto wire = [](Border const& card) {
-    auto setBg = [](IInspectable const& sender, winrt::Windows::UI::Color color) {
-      if (auto border = sender.try_as<Border>()) {
-        border.Background(urnw::colors::MakeBrush(color));
-      }
-    };
-    card.PointerEntered(
-        [setBg](IInspectable const& sender, auto const&) { setBg(sender, urnw::colors::kCardHover); });
-    card.PointerExited(
-        [setBg](IInspectable const& sender, auto const&) { setBg(sender, urnw::colors::kCard); });
-    card.PointerPressed(
-        [setBg](IInspectable const& sender, auto const&) { setBg(sender, urnw::colors::kCardPressed); });
-    card.PointerReleased(
-        [setBg](IInspectable const& sender, auto const&) { setBg(sender, urnw::colors::kCardHover); });
-    card.PointerCanceled(
-        [setBg](IInspectable const& sender, auto const&) { setBg(sender, urnw::colors::kCard); });
-  };
-  wire(w_.LocationRow());
-  wire(w_.PeersLine());
-  wire(w_.ClientStatsCard());
-  wire(w_.LocalStatsCard());
-  wire(w_.DnsCard());
-}
-
 void ConnectPage::ResyncDrawer() {
   auto& sdk = Sdk();
   // open the locations + peers feeds so the drawer's "N network peers" label is
@@ -798,25 +770,25 @@ void ConnectPage::AnimateDrawerIn() {
 
 // ---- drawer sheets (ContentDialogs) ----------------------------------------
 
-void ConnectPage::OnClientStatsCardTapped(IInspectable const&,
-                                          Input::TappedRoutedEventArgs const&) {
+void ConnectPage::OnClientStatsCardClick(IInspectable const&,
+                                          RoutedEventArgs const&) {
   ShowClientContractsSheet();
 }
 
-void ConnectPage::OnLocalStatsCardTapped(IInspectable const&,
-                                         Input::TappedRoutedEventArgs const&) {
+void ConnectPage::OnLocalStatsCardClick(IInspectable const&,
+                                         RoutedEventArgs const&) {
   ShowSplitRulesSheet();
 }
 
-void ConnectPage::OnDnsCardTapped(IInspectable const&, Input::TappedRoutedEventArgs const&) {
+void ConnectPage::OnDnsCardClick(IInspectable const&, RoutedEventArgs const&) {
   ShowDnsSheet();
 }
 
-void ConnectPage::OnLocationRowTapped(IInspectable const&, Input::TappedRoutedEventArgs const&) {
+void ConnectPage::OnLocationRowClick(IInspectable const&, RoutedEventArgs const&) {
   ShowLocationChooserSheet();
 }
 
-void ConnectPage::OnPeersLineTapped(IInspectable const&, Input::TappedRoutedEventArgs const&) {
+void ConnectPage::OnPeersLineClick(IInspectable const&, RoutedEventArgs const&) {
   ShowLocationChooserSheet();
 }
 

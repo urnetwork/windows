@@ -247,6 +247,7 @@
     <ClCompile Include="WalletConnect.cpp" />
     <ClCompile Include="ServiceClient.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
+    <ClCompile Include="UrComponents.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -272,6 +273,7 @@
     <ClInclude Include="TransferChart.h" />
     <ClInclude Include="UsageBar.h" />
     <ClInclude Include="UrColors.h" />
+    <ClInclude Include="UrComponents.h" />
     <ClInclude Include="WalletConnect.h" />
     <ClInclude Include="ServiceClient.h" />
     <ClInclude Include="TrayIcon.h" />
