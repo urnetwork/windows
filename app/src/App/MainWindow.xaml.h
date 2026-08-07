@@ -9,29 +9,57 @@
 #include "MainWindow.g.h"
 
 #include <memory>
-#include <optional>
 #include <string>
-#include <vector>
 
-#include "AuthSheets.h"
+#include "AccountPage.h"
 #include "BalanceSheets.h"
-#include "LocationSheets.h"
+#include "ConnectPage.h"
+#include "LoginPage.h"
 #include "Protocol.h"
 #include "SdkHost.h"
-#include "StatsSheets.h"
+#include "SettingsPage.h"
 #include "SubscriptionBalance.h"
-#include "TransferChart.h"
 #include "UsageBar.h"
+#include "WalletPage.h"
 
 namespace winrt::URnetwork::implementation {
 
+// The window itself: navigation between the six destinations, the auth and
+// subscription-balance relays that write across more than one of them, the
+// shared one-dialog-at-a-time guard, and the login/home root swap.
+//
+// Every per-destination surface lives in its own unit (LoginPage, ConnectPage,
+// AccountPage, WalletPage, SettingsPage). The XAML event handlers stay here
+// because the markup binds to them by name; each is a one-line forwarder.
 struct MainWindow : MainWindowT<MainWindow> {
   MainWindow();
   ~MainWindow();
   void SetPresentationActive(bool active);
 
+  // ---- page units ----
+  // Public because the pages' own UI-thread callbacks resolve the window's weak
+  // reference and then reach back for their page.
+  urnw::LoginPage& login() { return *login_; }
+  urnw::ConnectPage& connect() { return *connect_; }
+  urnw::AccountPage& account() { return *account_; }
+  urnw::WalletPage& wallet() { return *wallet_; }
+  urnw::SettingsPage& settings() { return *settings_; }
+
+  // ---- shared window-level state the pages need ----
+  // only one ContentDialog can show at a time
+  bool sheetOpen() const { return sheetOpen_; }
+  void SetSheetOpen(bool open) { sheetOpen_ = open; }
+  // the login flow over the home view, and back
+  void ShowLoginRoot();
+  void ShowHomeRoot();
+  // the SubscriptionBalanceStore relay: it paints the account panel AND the
+  // connect drawer from one snapshot, so it stays at window level
+  void ApplyBalance();
+  // last ContractStatus push (ConnectPage::ApplyStats) -> the warning InfoBar
+  void SetInsufficientBalance(bool insufficient);
+
   // XAML event handlers — sign-in flow (initial → password / create / verify /
-  // reset; macOS Authenticate/** parity)
+  // reset; macOS Authenticate/** parity). Forwarded to LoginPage.
   void OnGetStarted(winrt::Windows::Foundation::IInspectable const&,
                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignIn(winrt::Windows::Foundation::IInspectable const&,
@@ -66,9 +94,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnResendCode(winrt::Windows::Foundation::IInspectable const&,
                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // opens android's AuthCodeLoginSheet as a dialog
-  winrt::fire_and_forget OnUseCode(
-      winrt::Windows::Foundation::IInspectable const&,
-      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnUseCode(winrt::Windows::Foundation::IInspectable const&,
+                 winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // guest mode: opens the terms-consent sheet (macOS GuestModeSheet parity).
   // No longer reachable from the login screen - the android login has no guest
   // affordance and guest mode is superseded by the seedphrase system - but the
@@ -79,9 +106,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // one Solana button, as android has; the wallet is chosen in a dialog because
   // the browser bridge needs the provider before it can build its deeplink
-  winrt::fire_and_forget OnSignInWithSolana(
-      winrt::Windows::Foundation::IInspectable const&,
-      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnSignInWithSolana(winrt::Windows::Foundation::IInspectable const&,
+                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // XAML event handlers — home
   void OnConnectToggle(winrt::Windows::Foundation::IInspectable const&,
@@ -108,7 +134,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnConnectWallet(winrt::Windows::Foundation::IInspectable const&,
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
-  // Connect drawer handlers
+  // Connect drawer handlers (forwarded to ConnectPage)
   void OnConnectionModeChanged(
       winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
       winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
@@ -142,188 +168,31 @@ struct MainWindow : MainWindowT<MainWindow> {
                         urnw::BalancePollState const& poll);
 
  private:
-  // ---- sign-in flow ----
-  enum class LoginStep { Initial, Password, Create, Verify, Reset };
-  // What the create step submits: a fresh network with email + password, one
-  // with the retained wallet auth, or the guest network's upgrade to a full
-  // account (Api::upgradeGuest; linux CreateNetworkPage::Mode parity).
-  enum class CreateMode { Password, Wallet, GuestUpgrade };
-
-  // The SDK's own connection status (ConnectViewController.getConnectionStatus,
-  // surfaced as LiveStats.connectionStatus). Mirrors android's
-  // ui/shared/models/ConnectStatus. This is a DIFFERENT signal from the service
-  // tunnel state that drives connected_: the tunnel says whether packets can
-  // flow, this says what the connect controller is doing about it, and only this
-  // one has a "connecting" value to show.
-  enum class ConnectStatus { Disconnected, Connecting, DestinationSet, Connected };
-
-  // every label in the window, from the shared localization store (Localization.h)
+  // every label in the window: the window's own chrome and nav, then each page's
   void ApplyStrings();
   void ApplyAuthState(urnw::AuthState state, std::string const& error);
-  void ShowLoginStep(LoginStep step);
-  void ApplyLoginRouting(urnw::LoginRouting const& routing);
-  void EnterCreateStep(std::string const& userAuth, CreateMode mode);
-  void EnterVerifyStep(std::string const& userAuth);
-  void ShowLoginErrorFor(LoginStep step, winrt::hstring const& message);
-  // the initial step's URInlineErrorText; empty message hides it
-  void SetInitialLoginError(winrt::hstring const& message);
-  void CheckCreateNameNow();   // debounce elapsed: run the availability check
-  void ApplyNameCheck(uint32_t generation, bool ok, bool available);
-  void ValidateBonusCodeNow();
-  void ApplyBonusValidation(uint32_t generation, bool ok, bool valid, bool capped);
-  void ValidateCreateForm();   // gates the Continue button
-  void SubmitVerifyCode();
-
-  void SetConnectedUi(bool connected);
-  // Status line + status dot + connect button, from connectStatus_ (the SDK) and
-  // connected_ (the service tunnel). The single place any of the three is written.
-  void ApplyConnectStatus();
-  static ConnectStatus ParseConnectStatus(std::string const& value);
-  // What the connect button does right now, from the SDK status only (NOT the
-  // tunnel — see the definition): anything other than a settled disconnected
-  // state means the press disconnects, and in a transition aborts.
-  bool ConnectActionIsDisconnect() const;
-  void ApplyStats(urnw::LiveStats const& stats);
-  void LoadAccount();
-  void LoadBalanceCodes();     // redeemed-codes list (account panel)
-  void LoadReferralInfo();     // referral code + totals (usage-bar rows)
-  void LoadWallet();
-  void LoadLeaderboard();
 
   // ---- balance / plan (SubscriptionBalanceStore relay) ----
-  void ApplyBalance();          // snapshot + poll state -> both plan cards
   void UpdateBalanceWarning();  // insufficient-balance InfoBar gating
   winrt::fire_and_forget ShowUpgradeSheet();
   winrt::fire_and_forget ShowRedeemSheet();
 
-  // ---- guest mode ----
-  winrt::fire_and_forget ShowGuestModeSheet();  // terms consent -> LoginAsGuest
-  // The plan card's create-account affordance for a guest: the create step in
-  // guest-upgrade mode, shown over the login flow while the session stays live.
-  void BeginGuestUpgrade();
-
-  // ---- wallet sign in (ur.io/wallet-connect bridge) ----
-  void SetWalletSignInEnabled(bool enabled);
-  void ApplyWalletSignInResult(urnw::AuthResult const& result);
-
-  // ---- connect wallet (external wallet, by address) ----
-  void ApplyWallets(urnet::AccountWalletsList const& wallets);
-  void ValidateWalletAddress();  // debounced; the server validates per chain
-  void ApplyWalletValidation(std::string const& chain, uint32_t generation, bool valid);
-  // `serverError` is the api's own (unlocalizable) message, empty when there is none
-  void ApplyWalletConnectResult(bool ok, std::string const& serverError);
-
-  // ---- connect drawer (macOS ConnectActions parity) ----
-  void BuildCharts();
-  void WireDrawerFeeds();      // SdkHost push handlers -> UI thread -> caches/cards
-  void WireCardAffordances();  // hover/pressed feedback on the tappable cards
-  void ResyncDrawer();         // seed the caches/cards from SdkHost snapshots
-  void SeedConnectControls();  // performance profile + blocker toggle state
-  void PushPerformanceSettings();
-  // Non-const: reads the ConnectionModeBar / ModeWebItem / ModeStreamingItem x:Name
-  // accessors, which C++/WinRT generates as non-const members of the .xaml.g.h base.
-  urnw::ConnectionMode SelectedMode();
-  // provide control mode picker <-> the SDK's mode string (same non-const note)
-  std::string SelectedProvideMode();
-  void ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& settings);
-  // The unapplied-recommendation pill atop the dns card: compares the applied dns
-  // settings against the connected country's regional recommendation (else the
-  // safe defaults) and shows/collapses the pill. Recomputed on dns-setting changes
-  // (ApplyDnsCard) and connected-country changes (ApplyStats).
-  void ApplyDnsRecommendationPill();
-  void ApplySplitRuleCount();
-  void ApplyBlockerUi(bool on);
-  void OnChartTick();
-  void AnimateDrawerIn();  // fade + slide-up entrance, staggered across cards
-  winrt::fire_and_forget ShowClientContractsSheet();
-  winrt::fire_and_forget ShowSplitRulesSheet();
-  winrt::fire_and_forget ShowAppRulesSheet();
-  winrt::fire_and_forget ShowDnsSheet();
-  winrt::fire_and_forget ShowLocationChooserSheet();
-  // drawer "N network peers" sub-label (req1); space-preserved (blank + Opacity
-  // 0 when there are none) so the location row never jumps
-  void ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers);
-
-  // the SERVICE tunnel is up (OnTunnelStateChanged, fed by both the SDK's
-  // connect-location listener and the service pipe). Held for the
-  // reconnect-tunnel affordance; NOT what the connect button reads -- see
-  // ConnectActionIsDisconnect.
-  bool connected_ = false;
-  // the SDK connect controller's own status (ApplyStats); see ConnectStatus
-  ConnectStatus connectStatus_ = ConnectStatus::Disconnected;
-  // network name off the stored jwt, for the idle "{name} is ready to connect"
-  // copy. Read once per auth change, not per stats push (ParsedJwt re-parses).
-  std::string networkName_;
-  bool guestMode_ = false;
-
-  // sign-in flow state (UI thread only)
-  LoginStep loginStep_ = LoginStep::Initial;
-  std::string loginUserAuth_;      // the echoed user auth driving the current step
-  bool discoveringLogin_ = false;  // authLogin discovery in flight
-  CreateMode createMode_ = CreateMode::Password;  // what the create step submits
-  bool creatingNetwork_ = false;
-  bool verifying_ = false;
-  bool sendingReset_ = false;
-  // create-network name availability (debounced; the generation drops stale checks)
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer nameCheckTimer_{nullptr};
-  uint32_t nameCheckGeneration_ = 0;
-  bool nameChecking_ = false;
-  bool nameAvailable_ = false;
-  // bonus referral code validation (debounced)
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer bonusCheckTimer_{nullptr};
-  uint32_t bonusCheckGeneration_ = 0;
-  bool bonusValid_ = false;
-  bool bonusCapped_ = false;
-  // resend-code cooldown (15s, macOS parity)
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer resendCooldownTimer_{nullptr};
+  std::unique_ptr<urnw::LoginPage> login_;
+  std::unique_ptr<urnw::ConnectPage> connect_;
+  std::unique_ptr<urnw::AccountPage> account_;
+  std::unique_ptr<urnw::WalletPage> wallet_;
+  std::unique_ptr<urnw::SettingsPage> settings_;
 
   // balance / plan state (UI thread only; pushed by the store via AppController)
   urnw::BalanceSnapshot balance_;
   urnw::BalancePollState balancePoll_;
   std::unique_ptr<urnw::UsageBar> accountUsageBar_;
   std::unique_ptr<urnw::UsageBar> drawerUsageBar_;
-  int64_t totalReferrals_ = 0;
-  std::string referralCode_;
   bool insufficientBalance_ = false;  // last ContractStatus push
   std::shared_ptr<urnw::UpgradeSheet> upgradeSheet_;
   std::shared_ptr<urnw::RedeemCodeSheet> redeemSheet_;
-  std::shared_ptr<urnw::GuestModeSheet> guestSheet_;
 
-  // connect-wallet state (UI thread only). The address is validated against each
-  // supported chain; the generation drops results from a superseded edit.
-  struct WalletValidation {
-    bool sol = false;
-    bool matic = false;
-    bool tao = false;
-  };
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer walletValidateTimer_{nullptr};
-  WalletValidation walletValidation_;
-  uint32_t walletValidateGeneration_ = 0;
-  std::string walletChain_;          // the chain that accepted the address ("" = none)
-  bool connectingWallet_ = false;
-
-  // drawer state (UI thread only)
-  std::unique_ptr<urnw::TransferChart> remoteChart_;
-  std::unique_ptr<urnw::TransferChart> blockedChart_;
-  std::unique_ptr<urnw::TransferChart> localChart_;
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer chartTimer_{nullptr};
-  uint32_t chartTickCount_ = 0;
-  std::vector<urnw::ContractPeerRow> contractRows_;
-  std::vector<urnw::BlockActionItem> blockActions_;
-  std::vector<urnw::SplitRule> splitRules_;
-  int64_t allowedCount_ = 0;
-  int64_t blockedCount_ = 0;
-  std::optional<urnet::DnsResolverSettings> dnsSettings_;
-  std::string countryCode_;  // selected location country (dns recommendations)
-  std::string countryName_;
-  bool updatingControls_ = false;  // guards programmatic toggle/segment updates
-  bool drawerAnimated_ = false;    // entrance plays once per window
-  bool sheetOpen_ = false;         // only one ContentDialog can show at a time
-  std::shared_ptr<urnw::ClientContractsSheet> contractsSheet_;
-  std::shared_ptr<urnw::SplitRulesSheet> splitRulesSheet_;
-  std::shared_ptr<urnw::AppRulesSheet> appRulesSheet_;
-  std::shared_ptr<urnw::DnsEditorSheet> dnsSheet_;
-  std::shared_ptr<urnw::LocationChooserSheet> locationSheet_;
+  bool sheetOpen_ = false;  // only one ContentDialog can show at a time
 };
 
 }  // namespace winrt::URnetwork::implementation
