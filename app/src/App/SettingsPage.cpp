@@ -251,9 +251,17 @@ void SettingsPage::BuildStayInTouchSection(Panel const& host) {
   Heading(host, Loc("stay_in_touch"));
   auto card = Card(host);
 
+  productUpdatesState_ = TextBlock();
+  productUpdatesState_.FontSize(12);
+  productUpdatesState_.TextWrapping(TextWrapping::Wrap);
   productUpdates_ = ToggleRow(card, Loc("send_product_updates"), hstring{});
   productUpdates_.IsEnabled(false);  // until the current value has been read
   productUpdates_.Toggled([this](auto const&, auto const&) { OnProductUpdatesToggled(); });
+  // This was the ONE async field with no FieldState: a failed read left the
+  // toggle disabled, byte-identical on screen to "no session" and to "still
+  // loading". The line under it says which.
+  card.Children().Append(productUpdatesState_);
+  ApplyFieldState(productUpdatesState_, FieldState::NoSession);
 
   Divider(card);
 
@@ -284,15 +292,21 @@ void SettingsPage::BuildSubscriptionSection(Panel const& host) {
 void SettingsPage::BuildLogsSection(Panel const& host) {
   Heading(host, Loc("export_logs"));
   auto card = Card(host);
-  // Saving is always available: the log file exists whether or not there is a
-  // session, and it is the artefact a bug report needs.
+  // Saving to a file the user picks is the ONLY log affordance here now.
+  //
+  // There used to be a second row labelled "Share logs" that called
+  // Device::uploadLogs. Three things were wrong with it and all three matter:
+  // "Share logs" is apple's label for its LOCAL share sheet, not a server
+  // upload, so it disclosed nothing about what left the machine; the feedback
+  // id was minted client-side with newId(), so the upload correlated with
+  // nothing and support could never find it; and it acknowledged with "Thanks
+  // for the feedback!" when no feedback had been sent.
+  //
+  // Uploading now happens where apple does it - inside the feedback flow, with
+  // the SERVER-issued feedback id, and only when the user ticks the box (see
+  // OnSendFeedback). That makes the upload correlated, disclosed and consented.
   auto save = ButtonRow(card, Loc("save_logs"), hstring{}, Loc("save"));
   save.Click([this](auto const&, auto const&) { SaveLogsToFile(); });
-  Divider(card);
-  // Uploading goes through the device, so it needs a live session.
-  uploadLogsButton_ = ButtonRow(card, Loc("share_logs"), hstring{}, Loc("send"));
-  uploadLogsButton_.IsEnabled(false);
-  uploadLogsButton_.Click([this](auto const&, auto const&) { UploadLogs(); });
 }
 
 void SettingsPage::BuildVersionSection(Panel const& host) {
@@ -312,6 +326,33 @@ void SettingsPage::BuildDangerSection() {
 
 // ---- loads -----------------------------------------------------------------
 
+void SettingsPage::ResetForSignOut() {
+  // Identity first: every one of these describes the account that just left.
+  // networkName_ is the dangerous one - it is what the delete gate compares
+  // against, and networkDelete acts on whatever JWT is current.
+  clientId_.clear();
+  referralCode_.clear();
+  networkName_.clear();
+  deviceName_.clear();
+  authTypes_.clear();
+  preferencesLoaded_ = false;
+
+  // Then the visible state, so nothing on screen still claims to describe it.
+  ApplyFieldState(clientIdValue_, FieldState::NoSession);
+  ApplyFieldState(referralCodeValue_, FieldState::NoSession);
+  ApplyFieldState(referralNetworkValue_, FieldState::NoSession);
+  ApplyFieldState(deviceNameValue_, FieldState::NoSession);
+  ApplyFieldState(deviceSpecValue_, FieldState::NoSession);
+  RenderAuthMethods(FieldState::NoSession);
+  clientIdCopy_.IsEnabled(false);
+  referralCodeCopy_.IsEnabled(false);
+  applyingPreference_ = true;
+  productUpdates_.IsOn(false);
+  applyingPreference_ = false;
+  productUpdates_.IsEnabled(false);
+  ApplyFieldState(productUpdatesState_, FieldState::NoSession);
+}
+
 void SettingsPage::LoadSettings() {
   ApplyLocalDeviceState();
   if (!Sdk().IsLoggedIn()) {
@@ -325,6 +366,7 @@ void SettingsPage::LoadSettings() {
     ApplyFieldState(deviceSpecValue_, FieldState::NoSession);
     RenderAuthMethods(FieldState::NoSession);
     productUpdates_.IsEnabled(false);
+    ApplyFieldState(productUpdatesState_, FieldState::NoSession);
     return;
   }
   LoadNetworkUser();
@@ -353,7 +395,6 @@ void SettingsPage::ApplyLocalDeviceState() {
     ApplyFieldState(clientIdValue_, FieldState::Loaded, winrt::to_hstring(clientId_));
   }
   clientIdCopy_.IsEnabled(!clientId_.empty());
-  uploadLogsButton_.IsEnabled(Sdk().hasDevice());
 
   applyingKillSwitch_ = true;
   killSwitch_.IsOn(Sdk().CurrentKillSwitch());
@@ -513,6 +554,7 @@ void SettingsPage::LoadReferral() {
 }
 
 void SettingsPage::LoadPreferences() {
+  ApplyFieldState(productUpdatesState_, FieldState::Loading);
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().api().accountPreferencesGet(
@@ -521,8 +563,14 @@ void SettingsPage::LoadPreferences() {
         const bool failed = !result || err.has_value();
         if (failed) {
           // The toggle stays disabled, which is honest - we do not know what
-          // the server holds, so offering to change it would be a guess.
+          // the server holds, so offering to change it would be a guess - but
+          // it now SAYS that rather than looking like it is still loading.
           LogWarn("settings: accountPreferencesGet failed: {}", err ? *err : std::string());
+          queue.TryEnqueue([weak] {
+            auto self = weak.get();
+            if (!self) return;
+            ApplyFieldState(self->settings().productUpdatesState_, FieldState::Failed);
+          });
           return;
         }
         const bool allow = result->product_updates && *result->product_updates;
@@ -538,6 +586,7 @@ void SettingsPage::LoadPreferences() {
           page.applyingPreference_ = false;
           page.preferencesLoaded_ = true;
           page.productUpdates_.IsEnabled(true);
+          page.productUpdatesState_.Text(L"");  // the toggle itself is the state now
         });
       });
 }
@@ -558,33 +607,60 @@ void SettingsPage::RenderAuthMethods(rows::FieldState state) {
     Button remove;
     remove.Content(winrt::box_value(Loc("remove")));
     remove.Foreground(colors::DangerBrush());
-    // Two clicks: the first arms, the second removes. Removing the only way you
-    // can sign in locks you out of the network, and there is no client-side
-    // check for that anywhere (apple relies entirely on the server refusing).
-    // MISSING STRING: the store has no "Remove this sign-in method?" /
-    // "Are you sure you want to remove {} as a sign-in method?" pair, so the
-    // second click reuses the shipped "Delete". Reported rather than
-    // hardcoded; add the key to urnetwork/localizations and swap it here.
-    auto armed = std::make_shared<bool>(false);
-    remove.Click([this, authType, armed](IInspectable const& sender, auto const&) {
-      auto button = sender.try_as<Button>();
-      if (!*armed) {
-        *armed = true;
-        if (button) button.Content(winrt::box_value(Loc("delete")));
-        return;
-      }
-      if (button) button.IsEnabled(false);
-      RemoveAuth(authType);
-    });
+    // A modal confirm, as apple's SettingsView does it - NOT the two-click arm
+    // this used to be. That arm had three faults at once: a double-click armed
+    // and committed in a single gesture, it never disarmed, and it offered no
+    // way to back out once armed. Removing your only sign-in method locks you
+    // out of the network permanently, so the confirmation has to be a distinct
+    // deliberate act with an explicit Cancel.
+    remove.Click([this, authType](auto const&, auto const&) { ConfirmRemoveAuth(authType); });
     Row(authMethodsPanel_, winrt::to_hstring(AuthMethodLabel(authType)), hstring{}, remove);
   }
+}
+
+// apple SettingsView's confirmationDialog: names the method, defaults to
+// Cancel, and commits only on the destructive button.
+winrt::fire_and_forget SettingsPage::ConfirmRemoveAuth(std::string authType) {
+  if (w_.sheetOpen()) co_return;
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    auto dialog = rows::MakeSheet(self->Content().XamlRoot(), Loc("site_app_login_methods"));
+    dialog.PrimaryButtonText(Loc("remove"));
+    dialog.CloseButtonText(Loc("cancel"));
+    dialog.DefaultButton(ContentDialogButton::Close);  // Enter must not remove
+    // WHICH method is going. The auth type is server data, not a UI string.
+    TextBlock body;
+    body.Text(winrt::to_hstring(AuthMethodLabel(authType)));
+    body.FontSize(14);
+    body.TextWrapping(TextWrapping::Wrap);
+    body.MinWidth(320);
+    dialog.Content(body);
+    if (co_await dialog.ShowAsync() == ContentDialogResult::Primary) {
+      RemoveAuth(authType);
+    }
+  } catch (...) {
+  }
+  w_.SetSheetOpen(false);
 }
 
 // ---- actions ---------------------------------------------------------------
 
 void SettingsPage::OnKillSwitchToggled() {
   if (applyingKillSwitch_) return;  // the load wrote it; do not echo it back
-  Sdk().SetKillSwitch(killSwitch_.IsOn());
+  const bool wanted = killSwitch_.IsOn();
+  const bool applied = Sdk().SetKillSwitch(wanted);
+  // Read it BACK rather than trusting the write. The product-updates toggle
+  // already reverts and says so on failure; this is the toggle where a wrong
+  // state costs privacy rather than an email, so it gets the stronger check -
+  // the value the SDK actually holds now, not the return code alone.
+  const bool actual = Sdk().CurrentKillSwitch();
+  if (applied && actual == wanted) return;
+  LogWarn("settings: kill switch did not apply (wanted={} actual={})", wanted, actual);
+  applyingKillSwitch_ = true;
+  killSwitch_.IsOn(actual);
+  applyingKillSwitch_ = false;
+  snackbar_.Show(Loc("something_went_wrong"), InfoBarSeverity::Error);
 }
 
 void SettingsPage::OnProductUpdatesToggled() {
@@ -647,7 +723,12 @@ void SettingsPage::RemoveAuth(std::string const& authType) {
 
 winrt::fire_and_forget SettingsPage::OpenCustomerPortal() {
   auto self = w_.get_strong();  // keep the window alive across the call
-  if (!Sdk().IsLoggedIn()) co_return;
+  if (!Sdk().IsLoggedIn()) {
+    // co_return alone made this row a control that swallowed the click and
+    // said nothing at all.
+    snackbar_.Show(Loc("please_login_to_urnetwork"), InfoBarSeverity::Warning);
+    co_return;
+  }
   manageSubscription_.IsEnabled(false);
 
   auto queue = w_.DispatcherQueue();
@@ -709,38 +790,37 @@ winrt::fire_and_forget SettingsPage::SaveLogsToFile() {
   }
 }
 
-void SettingsPage::UploadLogs() {
-  if (!Sdk().hasDevice()) return;
-  uploadLogsButton_.IsEnabled(false);
+// Attach the SDK's log directory to a feedback report the server has already
+// accepted, identified by ITS id. Called only from OnSendFeedback, only when
+// the user ticked the box - apple's FeedbackView contract. Never a standalone
+// affordance: an upload the user did not ask for, correlated with nothing, is
+// exfiltration with a friendly label.
+//
+// Failure is silent BY DESIGN here and only here: the feedback itself was
+// accepted, so telling the user their report failed would be false, and the
+// attachment is an extra. It is logged.
+void SettingsPage::UploadLogs(std::string const& feedbackId) {
+  if (feedbackId.empty() || !Sdk().hasDevice()) {
+    LogWarn("settings: log attach skipped (feedbackId={} device={})",
+            feedbackId.empty() ? "none" : "present", Sdk().hasDevice());
+    return;
+  }
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   try {
-    // The feedback id ties an upload to a support conversation; with no
-    // conversation to tie it to, a fresh id is what the SDK expects.
-    Sdk().device().uploadLogs(urnet::newId(),
+    Sdk().device().uploadLogs(feedbackId,
                               [queue, weak](std::optional<urnet::UploadLogsResult> result,
                                             std::optional<std::string> err) {
                                 std::string error;
                                 if (result && result->error) error = result->error->message;
                                 else if (err) error = *err;
-                                queue.TryEnqueue([weak, error] {
-                                  auto window = weak.get();
-                                  if (!window) return;
-                                  auto& page = window->settings();
-                                  page.uploadLogsButton_.IsEnabled(true);
-                                  page.settingsSnackbar().Show(
-                                      error.empty()
-                                          ? Loc("thanks_for_the_feedback")
-                                          : winrt::to_hstring(error),
-                                      error.empty() ? InfoBarSeverity::Success
-                                                    : InfoBarSeverity::Error);
-                                });
+                                if (!error.empty()) {
+                                  LogWarn("settings: log attach failed: {}", error);
+                                }
                               });
   } catch (const std::exception& e) {
     // Device::uploadLogs throws synchronously when the C call fails.
-    LogWarn("settings: upload logs failed: {}", e.what());
-    uploadLogsButton_.IsEnabled(true);
-    snackbar_.Show(Loc("something_went_wrong"), InfoBarSeverity::Error);
+    LogWarn("settings: log attach threw: {}", e.what());
   }
 }
 
@@ -845,8 +925,9 @@ winrt::fire_and_forget SettingsPage::ShowDeleteAccountSheet() {
   auto self = w_.get_strong();
   w_.SetSheetOpen(true);
   try {
-    deleteSheet_ =
-        urnw::DeleteAccountSheet::Create(self->Content().XamlRoot(), Sdk(), networkName_);
+    // No cached name is handed over: the sheet reads the CURRENT session's own
+    // name and refuses to arm without it (SettingsSheets.h).
+    deleteSheet_ = urnw::DeleteAccountSheet::Create(self->Content().XamlRoot(), Sdk());
     co_await deleteSheet_->Dialog().ShowAsync();
   } catch (...) {
   }
@@ -886,6 +967,12 @@ void SettingsPage::ShowPreviewSnackbar() {
 // ---- support ---------------------------------------------------------------
 
 void SettingsPage::OnSendFeedback(IInspectable const&, RoutedEventArgs const&) {
+  // This had NO session guard at all and reported success unconditionally: a
+  // 401 rendered as "Thanks for the feedback!" while nothing had been sent.
+  if (!Sdk().IsLoggedIn()) {
+    snackbar_.Show(Loc("please_login_to_urnetwork"), InfoBarSeverity::Warning);
+    return;
+  }
   urnet::FeedbackSendArgs args;
   args.star_count = static_cast<int64_t>(w_.FeedbackRating().Value());
   const std::string text = urnw::Narrow(w_.FeedbackText().Text().c_str());
@@ -894,16 +981,42 @@ void SettingsPage::OnSendFeedback(IInspectable const&, RoutedEventArgs const&) {
     needs.other = text;
     args.needs = needs;
   }
+  const bool attachLogs =
+      w_.FeedbackIncludeLogs().IsChecked() && w_.FeedbackIncludeLogs().IsChecked().Value();
+
+  w_.SendFeedbackButton().IsEnabled(false);
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().api().sendFeedback(
-      args, [queue, weak](std::optional<urnet::FeedbackSendResult>, std::optional<std::string>) {
-        queue.TryEnqueue([weak] {
+      args, [queue, weak, attachLogs](std::optional<urnet::FeedbackSendResult> result,
+                                      std::optional<std::string> err) {
+        // FeedbackSendResult carries NO error field - only feedback_id - so a
+        // result plus no transport error is the whole success test. Reporting
+        // success unconditionally, as this used to, turned a 401 into "Thanks
+        // for the feedback!".
+        const std::string error = err ? *err : std::string();
+        const bool ok = error.empty() && result.has_value();
+        if (!ok) LogWarn("settings: sendFeedback failed: {}", error);
+        // The SERVER's feedback id is what ties an upload to the report support
+        // will actually read. A client-minted id correlates with nothing.
+        std::string feedbackId;
+        if (ok && result->feedback_id) feedbackId = *result->feedback_id;
+        queue.TryEnqueue([weak, ok, error, attachLogs, feedbackId] {
           auto self = weak.get();
           if (!self) return;
-          self->settings().settingsSnackbar().Show(Loc("thanks_for_the_feedback"),
-                                                   InfoBarSeverity::Success);
+          auto& page = self->settings();
+          self->SendFeedbackButton().IsEnabled(true);
+          if (!ok) {
+            page.settingsSnackbar().Show(
+                error.empty() ? Loc("error_sending_feedback") : winrt::to_hstring(error),
+                InfoBarSeverity::Error);
+            return;
+          }
+          page.settingsSnackbar().Show(Loc("thanks_for_the_feedback"),
+                                       InfoBarSeverity::Success);
           self->FeedbackText().Text(L"");
+          self->FeedbackIncludeLogs().IsChecked(false);
+          if (attachLogs && !feedbackId.empty()) page.UploadLogs(feedbackId);
         });
       });
 }

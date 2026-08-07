@@ -778,6 +778,10 @@
                         <muxc:RatingControl x:Name="FeedbackRating" />
                         <TextBox x:Name="FeedbackText" AcceptsReturn="True" TextWrapping="Wrap"
                                  MinHeight="80" />
+                        <!-- apple FeedbackView: logs go to the server ONLY from
+                             here, only when this is ticked, and only with the
+                             server-issued feedback id (SettingsPage). -->
+                        <CheckBox x:Name="FeedbackIncludeLogs" />
                         <Button x:Name="SendFeedbackButton" Click="OnSendFeedback" />
                         <muxc:InfoBar x:Name="SupportInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
                     </StackPanel>

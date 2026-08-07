@@ -420,7 +420,10 @@ class SdkHost {
   // with no service session still sees and sets the real value. Without the
   // LocalState leg this control would be permanently dead outside a live tunnel.
   bool CurrentKillSwitch();
-  void SetKillSwitch(bool on);
+  // Returns false when the setting did NOT fully apply. Callers must read
+  // CurrentKillSwitch() back and show the real state: a toggle left On over a
+  // setting that did not take is the one failure mode here that costs privacy.
+  bool SetKillSwitch(bool on);
   // Provide/earn control mode: "never"|"always"|"network"|"auto"|"manual".
   // "network" is the private provider: the provider is always on, but provides
   // ONLY to same-network peers — never publicly. Persisted in LocalState like

@@ -63,6 +63,13 @@ class SettingsPage {
   // method, and by the remove path after it unlinks one.
   void LoadNetworkUser();
 
+  // Drop everything describing the account that just signed out, and put every
+  // field back to NoSession. The network name is the dangerous one: it is what
+  // the delete-account gate compares against, and Api::networkDelete acts on
+  // the CURRENT JWT, so a name left over from the previous session turns the
+  // confirmation ritual into a way to destroy a different network.
+  void ResetForSignOut();
+
  private:
   winrt::fire_and_forget ShowAppRulesSheet();
 
@@ -90,10 +97,15 @@ class SettingsPage {
   // ---- actions ----
   void OnKillSwitchToggled();
   void OnProductUpdatesToggled();
+  // modal confirm, then RemoveAuth (apple SettingsView's confirmationDialog)
+  winrt::fire_and_forget ConfirmRemoveAuth(std::string authType);
   void RemoveAuth(std::string const& authType);
   winrt::fire_and_forget OpenCustomerPortal();
   winrt::fire_and_forget SaveLogsToFile();
-  void UploadLogs();
+  // Attaches the SDK log directory to an ALREADY-ACCEPTED feedback report,
+  // using the server's own feedback id. Only OnSendFeedback calls it, and only
+  // when the user ticked the box.
+  void UploadLogs(std::string const& feedbackId);
 
   // ---- sheets (one at a time, through the window's sheetOpen_ guard) ----
   winrt::fire_and_forget ShowDeviceNameSheet();
@@ -122,8 +134,9 @@ class SettingsPage {
   winrt::Microsoft::UI::Xaml::Controls::TextBlock deviceSpecValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch killSwitch_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch productUpdates_{nullptr};
+  // why the toggle above is disabled, when it is (S4)
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock productUpdatesState_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button manageSubscription_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::Button uploadLogsButton_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock versionValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button deleteAccountButton_{nullptr};
 

@@ -42,6 +42,12 @@ class AccountPage {
   void OnSaveNetworkName(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
+  // Drop the signed-out account's identity. userAuth_ is the dangerous one:
+  // SendPasswordReset mails a link to it, so a leftover value mails the
+  // PREVIOUS account's owner. needsNameClaim_ would likewise pick the previous
+  // account's branch on the next save.
+  void ResetForSignOut();
+
  private:
   // The controls the markup cannot carry: the name status line and the
   // password-reset affordance, built into the AccountProfileExtra host panel.

@@ -207,7 +207,27 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
                   urnw::Narrow(std::wstring{tag}));
     return;
   }
-  if (!Sdk().apiReady()) return;
+  LoadCurrentDestination();
+}
+
+// The per-destination API loads, keyed off whatever destination is selected NOW.
+//
+// This is called from the navigation relay AND from the auth relay, and the
+// second caller is the load-bearing one. Selecting a destination was the only
+// thing that ever ran these, and the selection SURVIVES a sign-out: the sign-out
+// button is itself on the Settings page, so signing out of A and into B returned
+// to a still-selected Settings rendering A's data, against B's session. For the
+// delete-account gate that was not a stale label but a way to destroy the wrong
+// network, since Api::networkDelete acts on the current JWT and takes no
+// arguments.
+void MainWindow::LoadCurrentDestination() {
+  if (previewUi_) return;  // no session; the relay already said so
+  // IsLoggedIn(), not apiReady(): apiReady is api_.has_value(), set at SDK INIT
+  // rather than at login, so it is true with no token at all.
+  if (!Sdk().IsLoggedIn()) return;
+  auto item = HomeNav().SelectedItem().try_as<NavigationViewItem>();
+  if (!item) return;
+  const auto tag = winrt::unbox_value_or<hstring>(item.Tag(), L"connect");
   if (tag == L"account") {
     account_->LoadAccount();
     Balance().Refresh();  // macOS AccountRootView onAppear parity
@@ -394,12 +414,21 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
   if (loggedIn && !wasVisible) {
     // the drawer just appeared: refresh its state and play the entrance
     connect_->ResyncDrawer();
-    if (Sdk().apiReady()) account_->LoadReferralInfo();  // usage-bar referral rows
+    if (Sdk().IsLoggedIn()) account_->LoadReferralInfo();  // usage-bar referral rows
     if (ConnectView().Visibility() == Visibility::Visible) connect_->AnimateDrawerIn();
+    // Whatever destination is still selected from the PREVIOUS session is now
+    // showing that session's data against this one's token. Re-read it.
+    LoadCurrentDestination();
   }
   if (!loggedIn && wasVisible) {
     // signed out: the flow starts over
     login_->ResetToInitialStep();
+    // ...and every page drops the account it was describing. Without this the
+    // next sign-in inherits the previous network's name, auth and referral
+    // state - which for delete-account and password-reset are acts on the
+    // WRONG account, not merely stale text.
+    settings_->ResetForSignOut();
+    account_->ResetForSignOut();
   }
   if (!loggedIn && !wasVisible && login_->IsGuestUpgrade() && !Sdk().IsLoggedIn()) {
     // the guest session ended under the upgrade form (server-side

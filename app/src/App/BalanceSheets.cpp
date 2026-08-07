@@ -336,7 +336,8 @@ void RedeemCodeSheet::Build(XamlRoot const& root) {
 
 void RedeemCodeSheet::Submit() {
   const std::string secret = TrimWhitespace(urnw::Narrow(codeBox_.Text().c_str()));
-  if (redeeming_ || secret.size() != kBalanceCodeLength || !sdk_.apiReady()) return;
+  // IsLoggedIn(), not apiReady() - see WalletPage::ValidateWalletAddress.
+  if (redeeming_ || secret.size() != kBalanceCodeLength || !sdk_.IsLoggedIn()) return;
   redeeming_ = true;
   dialog_.IsPrimaryButtonEnabled(false);
   codeBox_.IsEnabled(false);
@@ -675,7 +676,7 @@ void UpgradeSheet::ShowCheckoutError(hstring const& message) {
 }
 
 void UpgradeSheet::BeginCheckout() {
-  if (checkingOut_ || !sdk_.apiReady()) return;
+  if (checkingOut_ || !sdk_.IsLoggedIn()) return;
   checkingOut_ = true;
   hostedFallbackTried_ = false;
   subscribeButton_.IsEnabled(false);
@@ -690,7 +691,7 @@ void UpgradeSheet::BeginCheckout() {
 }
 
 void UpgradeSheet::RequestSession(bool embedded) {
-  if (!sdk_.apiReady()) {
+  if (!sdk_.IsLoggedIn()) {
     ShowCheckoutError(Loc("something_went_wrong"));
     return;
   }

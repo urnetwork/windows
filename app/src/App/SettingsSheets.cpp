@@ -7,6 +7,7 @@
 #include <cctype>
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
+#include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 #include <winrt/Windows.Storage.Streams.h>
 
@@ -152,18 +153,29 @@ Grid Row(Panel const& host, hstring const& label, hstring const& note,
   if (trailing) {
     Grid::SetColumn(trailing, 1);
     trailing.VerticalAlignment(VerticalAlignment::Center);
-    // Accessibility: the trailing control's own content is the VERB ("Copy",
-    // "Save"), which is not a name - the UIA tree showed two bare "Copy"
-    // buttons with nothing to tell them apart. Point them at the row's label so
-    // they announce as "Copy, Client ID" / "Copy, Bonus referral code". Uses
-    // the label already on screen, so it needs no new string and cannot drift.
-    Automation::AutomationProperties::SetLabeledBy(trailing, labelBlock);
+    // Accessibility. The trailing control's own content is a VERB ("Copy",
+    // "Save"), which does not say what it acts on - the UIA tree showed two
+    // bare "Copy" buttons with nothing to tell them apart.
+    //
+    // FullDescription, NOT LabeledBy. LabeledBy REPLACES the name, which cost
+    // more than it bought: on a ValueRow the trailing element IS the value
+    // TextBlock, so its name became the row label and the device spec, the
+    // version and every field's state became unreadable to a screen reader.
+    // FullDescription appends instead, so the button keeps "Copy" and gains
+    // "Client ID", and a value TextBlock is never touched at all.
+    auto describe = [&label](FrameworkElement const& element) {
+      // Only controls take a description; a TextBlock's name is its text and
+      // that is exactly what a screen-reader user needs to hear.
+      if (element.try_as<Control>()) {
+        Automation::AutomationProperties::SetFullDescription(element, label);
+      }
+    };
+    describe(trailing);
     if (auto panel = trailing.try_as<Panel>()) {
-      // ValueActionRow's trailing is a value + button stack; label the button.
+      // ValueActionRow's trailing is a value + button stack: describe the
+      // button, leave the value readable.
       for (auto const& child : panel.Children()) {
-        if (auto control = child.try_as<Control>()) {
-          Automation::AutomationProperties::SetLabeledBy(control, labelBlock);
-        }
+        if (auto element = child.try_as<FrameworkElement>()) describe(element);
       }
     }
     row.Children().Append(trailing);
@@ -226,6 +238,11 @@ Button NavRow(Panel const& host, hstring const& label, TextBlock& outValue) {
   button.Style(Lookup(L"UrCardRowButtonStyle"));
   button.HorizontalAlignment(HorizontalAlignment::Stretch);
   button.HorizontalContentAlignment(HorizontalAlignment::Stretch);
+  // N8: UrCardRowButtonStyle pads 12px, Row starts at 0, so a NavRow and a Row
+  // in the SAME card were visibly out of line. Negative margin of the same 12
+  // puts the content back on Row's left edge while leaving the hover/pressed
+  // surface full-bleed, which is what a tappable row should look like.
+  button.Margin(ThicknessHelper::FromLengths(-12, 0, -12, 0));
 
   Grid content;
   ColumnDefinition c0, c1, c2;
@@ -266,6 +283,13 @@ Button NavRow(Panel const& host, hstring const& label, TextBlock& outValue) {
   // reach Referral network, Blocked locations, Provider Identities or Manage
   // Subscription at all. Name it with the label it already shows.
   Automation::AutomationProperties::SetName(button, label);
+  // ...and take the label and the chevron OUT of the tree, or the button's name
+  // is read and then its own child repeats it. Per-element, not a subtree
+  // sweep: outValue must stay readable, it is the row's data.
+  Automation::AutomationProperties::SetAccessibilityView(
+      labelBlock, Automation::Peers::AccessibilityView::Raw);
+  Automation::AutomationProperties::SetAccessibilityView(
+      chevron, Automation::Peers::AccessibilityView::Raw);
   host.Children().Append(button);
   return button;
 }
@@ -705,8 +729,11 @@ void ReferralNetworkSheet::Build(XamlRoot const& root) {
     if (!self) return;
     // apple UpdateReferralNetworkSheet gates Update on 6+ characters
     const std::string code = Trim(Narrow(self->codeBox_.Text().c_str()));
-    self->dialog_.IsPrimaryButtonEnabled(6 <= code.size() && !self->busy_);
-    self->errorText_.Visibility(Visibility::Collapsed);
+    // ...and a session. Without this the button armed at 6 characters with no
+    // token, and pressing it produced no request and no message whatsoever.
+    self->dialog_.IsPrimaryButtonEnabled(6 <= code.size() && !self->busy_ &&
+                                         self->sdk_.IsLoggedIn());
+    if (self->sdk_.IsLoggedIn()) self->errorText_.Visibility(Visibility::Collapsed);
   });
   content.Children().Append(codeBox_);
 
@@ -718,7 +745,7 @@ void ReferralNetworkSheet::Build(XamlRoot const& root) {
   unlinkButton_.HorizontalAlignment(HorizontalAlignment::Left);
   unlinkButton_.Visibility(Visibility::Collapsed);
   unlinkButton_.Click([weak = weak_from_this()](auto const&, auto const&) {
-    if (auto self = weak.lock()) self->Unlink();
+    if (auto self = weak.lock()) self->ArmUnlink();
   });
   content.Children().Append(unlinkButton_);
 
@@ -733,8 +760,20 @@ void ReferralNetworkSheet::Build(XamlRoot const& root) {
   dialog_.PrimaryButtonClick(
       [weak = weak_from_this()](auto const&, ContentDialogButtonClickEventArgs const& args) {
         args.Cancel(true);
-        if (auto self = weak.lock()) self->Submit();
+        auto self = weak.lock();
+        if (!self) return;
+        // In confirm mode the primary IS the destructive commit; otherwise it
+        // is the ordinary update.
+        if (self->unlinkArmed_) self->Unlink();
+        else self->Submit();
       });
+
+  if (!sdk_.IsLoggedIn()) {
+    codeBox_.IsEnabled(false);
+    unlinkButton_.IsEnabled(false);
+    ApplyFieldState(errorText_, FieldState::NoSession);
+    errorText_.Visibility(Visibility::Visible);
+  }
 }
 
 void ReferralNetworkSheet::Load() {
@@ -772,7 +811,7 @@ void ReferralNetworkSheet::ApplyCurrent(rows::FieldState state, std::string cons
   currentName_ = state == FieldState::Loaded ? name : std::string();
   ApplyFieldState(currentText_, state, H(name));
   unlinkButton_.Visibility(currentName_.empty() ? Visibility::Collapsed : Visibility::Visible);
-  unlinkArmed_ = false;
+  if (unlinkArmed_) DisarmUnlink();
   unlinkButton_.Content(winrt::box_value(Loc("unlink_referral_network")));
 }
 
@@ -810,22 +849,41 @@ void ReferralNetworkSheet::Submit() {
       });
 }
 
+// Arm the confirm. A ContentDialog cannot open a second ContentDialog, so the
+// confirmation cannot be the modal apple uses - but it must still be a separate
+// deliberate act on a DIFFERENT control, or a double-click arms and commits in
+// one gesture. So arming switches the SHEET into confirm mode: the warning that
+// names what is being forfeited, the primary relabelled to the destructive
+// action, and the dialog's own close button as the explicit Cancel.
+void ReferralNetworkSheet::ArmUnlink() {
+  if (busy_ || currentName_.empty() || unlinkArmed_) return;
+  unlinkArmed_ = true;
+  ShowError(hstring{urnw::Format("when_unlinking_your_referral_network_you_will_no",
+                                 urnw::Widen(currentName_))});
+  errorText_.Foreground(colors::DangerBrush());
+  // The update field has nothing to do with the pending decision.
+  codeBox_.IsEnabled(false);
+  unlinkButton_.IsEnabled(false);
+  dialog_.PrimaryButtonText(Loc("unlink_referral_network"));
+  dialog_.IsPrimaryButtonEnabled(true);
+  dialog_.DefaultButton(ContentDialogButton::Close);  // Enter must not commit
+}
+
+void ReferralNetworkSheet::DisarmUnlink() {
+  unlinkArmed_ = false;
+  errorText_.Visibility(Visibility::Collapsed);
+  codeBox_.IsEnabled(sdk_.IsLoggedIn());
+  unlinkButton_.IsEnabled(true);
+  dialog_.PrimaryButtonText(Loc("update"));
+  dialog_.DefaultButton(ContentDialogButton::None);
+  const std::string code = Trim(Narrow(codeBox_.Text().c_str()));
+  dialog_.IsPrimaryButtonEnabled(6 <= code.size() && !busy_ && sdk_.IsLoggedIn());
+}
+
 void ReferralNetworkSheet::Unlink() {
-  if (busy_ || currentName_.empty()) return;
-  // Two clicks, because unlinking silently forfeits future points. The first
-  // turns the button into the warning that names what is being given up; the
-  // second commits. iOS uses an alert for this; a ContentDialog cannot open a
-  // second ContentDialog, so the confirmation is in the row.
-  if (!unlinkArmed_) {
-    unlinkArmed_ = true;
-    unlinkButton_.Content(winrt::box_value(Loc("unlink_referral_network")));
-    ShowError(hstring{urnw::Format("when_unlinking_your_referral_network_you_will_no",
-                                   urnw::Widen(currentName_))});
-    errorText_.Foreground(colors::MutedBrush());
-    return;
-  }
-  if (!sdk_.IsLoggedIn()) return;
+  if (busy_ || currentName_.empty() || !unlinkArmed_ || !sdk_.IsLoggedIn()) return;
   busy_ = true;
+  dialog_.IsPrimaryButtonEnabled(false);
   unlinkButton_.IsEnabled(false);
 
   auto queue = dialog_.DispatcherQueue();
@@ -841,7 +899,7 @@ void ReferralNetworkSheet::Unlink() {
           auto self = weak.lock();
           if (!self) return;
           self->busy_ = false;
-          self->unlinkButton_.IsEnabled(true);
+          self->DisarmUnlink();  // back to the normal sheet either way
           if (ok) {
             self->errorText_.Visibility(Visibility::Collapsed);
             self->Load();
@@ -1244,7 +1302,11 @@ void PostQuantumIdentitySheet::Build(XamlRoot const& root) {
   dialog_.Content(content);
 }
 
-void PostQuantumIdentitySheet::Load() {
+// N3: these are three DeviceRemote calls, i.e. three synchronous RPCs to the
+// service, and they used to run on the UI thread BEFORE ShowAsync - so a wedged
+// or slow service froze the whole app with no dialog on screen to explain it.
+// The dialog now shows first and the reads happen on a background thread.
+winrt::fire_and_forget PostQuantumIdentitySheet::Load() {
   // DeviceRemote, so this needs a live service session. With none, say so:
   // an empty provider list would otherwise read as "no peer has an identity",
   // which is a claim about the network rather than about this app.
@@ -1253,11 +1315,19 @@ void PostQuantumIdentitySheet::Load() {
     // leave Copy disabled - there is nothing to put on the clipboard.
     ApplyFieldState(hashText_, FieldState::NoSession);
     ApplyFieldState(statusText_, FieldState::NoSession);
-    return;
+    co_return;
   }
+  ApplyFieldState(hashText_, FieldState::Loading);
+  ApplyFieldState(statusText_, FieldState::Loading);
+
+  auto weak = weak_from_this();
+  auto queue = dialog_.DispatcherQueue();
   std::string hash;
   std::vector<uint8_t> key;
   std::optional<urnet::ProviderIdentityList> providers;
+  bool failed = false;
+
+  co_await winrt::resume_background();
   try {
     auto& device = sdk_.device();
     hash = device.getPublicIdentityKeyHash();
@@ -1265,6 +1335,23 @@ void PostQuantumIdentitySheet::Load() {
     providers = device.getProviderIdentities();
   } catch (const std::exception& e) {
     LogWarn("settings: post quantum identity read failed: {}", e.what());
+    failed = true;
+  } catch (...) {
+    LogWarn("settings: post quantum identity read failed");
+    failed = true;
+  }
+  // Back to the UI thread the way every other callback in this file does it -
+  // there is no resume_foreground overload for Microsoft.UI.Dispatching.
+  queue.TryEnqueue([weak, failed, hash, key, providers] {
+    // The sheet may have been dismissed while the RPCs were in flight.
+    if (auto self = weak.lock()) self->ApplyIdentity(failed, hash, key, providers);
+  });
+}
+
+void PostQuantumIdentitySheet::ApplyIdentity(
+    bool failed, std::string const& hash, std::vector<uint8_t> const& key,
+    std::optional<urnet::ProviderIdentityList> const& providers) {
+  if (failed) {
     ApplyFieldState(hashText_, FieldState::Failed);
     ApplyFieldState(statusText_, FieldState::Failed);
     return;
@@ -1313,6 +1400,7 @@ void PostQuantumIdentitySheet::Load() {
     }
   }
   statusText_.Text(hstring{urnw::Plural("connected_provider_count", count)});
+  statusText_.Foreground(colors::FaintBrush());
 }
 
 // Feeding PNG bytes to a BitmapImage means an IRandomAccessStream, and every
@@ -1346,11 +1434,58 @@ winrt::fire_and_forget PostQuantumIdentitySheet::SetIdenticon(std::vector<uint8_
 
 // ---- DeleteAccountSheet ----------------------------------------------------
 
-std::shared_ptr<DeleteAccountSheet> DeleteAccountSheet::Create(XamlRoot const& root, SdkHost& sdk,
-                                                               std::string const& networkName) {
-  auto sheet = std::shared_ptr<DeleteAccountSheet>(new DeleteAccountSheet(sdk, networkName));
+std::shared_ptr<DeleteAccountSheet> DeleteAccountSheet::Create(XamlRoot const& root,
+                                                               SdkHost& sdk) {
+  auto sheet = std::shared_ptr<DeleteAccountSheet>(new DeleteAccountSheet(sdk));
   sheet->Build(root);
+  sheet->LoadNetworkName();  // the gate arms only on a fresh read
   return sheet;
+}
+
+// Read the network name of the session that is current RIGHT NOW. Nothing is
+// passed in and nothing cached is trusted: see the header for why.
+void DeleteAccountSheet::LoadNetworkName() {
+  if (!sdk_.IsLoggedIn()) {
+    ApplyName(FieldState::NoSession, {});
+    return;
+  }
+  ApplyName(FieldState::Loading, {});
+  auto queue = dialog_.DispatcherQueue();
+  auto weak = weak_from_this();
+  sdk_.api().getNetworkUser([queue, weak](std::optional<urnet::GetNetworkUserResult> result,
+                                          std::optional<std::string> err) {
+    std::string error;
+    if (result && result->error) error = result->error->message;
+    else if (err) error = *err;
+    const bool failed = !error.empty() || !result || !result->network_user;
+    if (failed) LogWarn("settings: delete-account name read failed: {}", error);
+    std::string name;
+    if (!failed) name = result->network_user->network_name;
+    queue.TryEnqueue([weak, failed, name] {
+      auto self = weak.lock();
+      if (!self) return;
+      // A failed read leaves the gate closed. Refusing to offer the action is
+      // the only safe answer when we cannot say WHICH network would go.
+      self->ApplyName(failed || name.empty() ? FieldState::Failed : FieldState::Loaded, name);
+    });
+  });
+}
+
+void DeleteAccountSheet::ApplyName(rows::FieldState state, std::string const& name) {
+  networkName_ = state == FieldState::Loaded ? name : std::string();
+  ApplyFieldState(nameText_, state, H(name));
+  // The placeholder is the name to type, so it must never show a stale one.
+  confirmBox_.PlaceholderText(H(networkName_));
+  confirmBox_.IsEnabled(!networkName_.empty());
+  UpdateGate();
+}
+
+// The single place the primary is allowed to become enabled. Fails closed on an
+// empty networkName_, which is the state after any failure and before any read.
+void DeleteAccountSheet::UpdateGate() {
+  const std::string typed = Trim(Narrow(confirmBox_.Text().c_str()));
+  dialog_.IsPrimaryButtonEnabled(!deleting_ && !networkName_.empty() &&
+                                 typed == networkName_);
 }
 
 void DeleteAccountSheet::Build(XamlRoot const& root) {
@@ -1373,6 +1508,14 @@ void DeleteAccountSheet::Build(XamlRoot const& root) {
   warning.Foreground(colors::DangerBrush());
   content.Children().Append(warning);
 
+  // WHICH network is about to go. Shown as its own line rather than only as a
+  // placeholder, because the name is the whole basis of the decision and a
+  // placeholder disappears the moment the user starts typing.
+  nameText_ = TextBlock();
+  nameText_.FontSize(14);
+  nameText_.TextWrapping(TextWrapping::Wrap);
+  content.Children().Append(nameText_);
+
   // The typed-name gate. Api::networkDelete takes no arguments and cannot be
   // undone, so this is the only thing between a mis-click and a destroyed
   // network. iOS ships a one-tap destructive confirmation here; this is
@@ -1380,13 +1523,9 @@ void DeleteAccountSheet::Build(XamlRoot const& root) {
   confirmBox_ = TextBox();
   confirmBox_.Style(Lookup(L"UrTextInputStyle"));
   confirmBox_.Header(winrt::box_value(Loc("site_app_delete_confirm")));
-  confirmBox_.PlaceholderText(H(networkName_));
+  confirmBox_.IsEnabled(false);  // until a fresh name lands
   confirmBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
-    auto self = weak.lock();
-    if (!self) return;
-    const std::string typed = Trim(Narrow(self->confirmBox_.Text().c_str()));
-    self->dialog_.IsPrimaryButtonEnabled(!self->deleting_ && !self->networkName_.empty() &&
-                                         typed == self->networkName_);
+    if (auto self = weak.lock()) self->UpdateGate();
   });
   content.Children().Append(confirmBox_);
 

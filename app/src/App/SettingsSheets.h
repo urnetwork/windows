@@ -228,6 +228,11 @@ class ReferralNetworkSheet : public std::enable_shared_from_this<ReferralNetwork
   void Load();
   void ApplyCurrent(rows::FieldState state, std::string const& name);
   void Submit();
+  // Unlink is a two-step on DIFFERENT controls: the inline button arms, the
+  // dialog's primary commits, the dialog's close button cancels. One control
+  // doing both let a double-click commit in a single gesture.
+  void ArmUnlink();
+  void DisarmUnlink();
   void Unlink();
   void ShowError(winrt::hstring const& message);
 
@@ -303,7 +308,11 @@ class PostQuantumIdentitySheet
  private:
   explicit PostQuantumIdentitySheet(SdkHost& sdk) : sdk_(sdk) {}
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
-  void Load();
+  // Three DeviceRemote RPCs; runs them off the UI thread (see the definition).
+  winrt::fire_and_forget Load();
+  // The UI half of Load, run back on the UI thread with what the RPCs returned.
+  void ApplyIdentity(bool failed, std::string const& hash, std::vector<uint8_t> const& key,
+                     std::optional<urnet::ProviderIdentityList> const& providers);
   // PNG bytes -> BitmapImage is async at every step; see the definition.
   winrt::fire_and_forget SetIdenticon(std::vector<uint8_t> png);
 
@@ -327,20 +336,35 @@ class PostQuantumIdentitySheet
 // name exactly.
 class DeleteAccountSheet : public std::enable_shared_from_this<DeleteAccountSheet> {
  public:
+  // Takes NO network name. The sheet reads it itself, from the session that is
+  // current when the sheet opens, and refuses to arm until that read succeeds.
+  //
+  // This is the fix for a real way to destroy the wrong network. The page's
+  // cached name survived a sign-out, the sign-out button is on this very page,
+  // and the per-destination loads only ran on navigation - so signing out of A
+  // and into B left A's name in the gate, on screen, ready to be copied into
+  // the confirm box. Api::networkDelete takes no arguments and acts on the
+  // CURRENT JWT, so satisfying that gate would have deleted B. A gate is only
+  // as good as the freshness of what it compares against, so it now owns that
+  // freshness rather than trusting a caller.
   static std::shared_ptr<DeleteAccountSheet> Create(
-      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
-      std::string const& networkName);
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
 
  private:
-  DeleteAccountSheet(SdkHost& sdk, std::string networkName)
-      : sdk_(sdk), networkName_(std::move(networkName)) {}
+  explicit DeleteAccountSheet(SdkHost& sdk) : sdk_(sdk) {}
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  void LoadNetworkName();
+  void ApplyName(rows::FieldState state, std::string const& name);
+  void UpdateGate();
   void Submit();
 
   SdkHost& sdk_;
+  // Empty until a fresh read of THIS session's network name lands. The gate
+  // fails closed on empty, so an unresolved name can never arm the primary.
   std::string networkName_;
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock nameText_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBox confirmBox_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock errorText_{nullptr};

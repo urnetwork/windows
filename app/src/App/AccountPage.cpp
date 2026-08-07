@@ -83,6 +83,24 @@ void AccountPage::BuildProfileExtra() {
   host.Children().Append(changePasswordButton_);
 }
 
+void AccountPage::ResetForSignOut() {
+  // userAuth_ is the dangerous one: SendPasswordReset mails a link to it, so a
+  // value left over from the previous session mails the PREVIOUS account's
+  // owner. needsNameClaim_ would likewise pick that account's save branch.
+  userAuth_.clear();
+  referralCode_.clear();
+  totalReferrals_ = 0;
+  needsNameClaim_ = false;
+  w_.NetworkNameBox().Text(L"");
+  w_.AccountAuthText().Text(L"");
+  ApplyAccountState(FieldState::NoSession);
+  ApplyFieldState(w_.ReferralText(), FieldState::NoSession);
+  w_.RoyaltyBadge().Visibility(Visibility::Collapsed);
+  w_.BalanceCodesPanel().Children().Clear();
+  w_.BalanceCodesEmptyText().Visibility(Visibility::Visible);
+  ApplyFieldState(w_.BalanceCodesEmptyText(), FieldState::NoSession);
+}
+
 void AccountPage::ApplyAccountState(rows::FieldState state) {
   ApplyFieldState(nameStatus_, state);
   // Nothing on this card is actionable without the account behind it.
