@@ -20,14 +20,23 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- the wordmark. Android sets its top-bar title in PP NeueBit Bold at
-             24sp (Type.kt TopBarTitleTextStyle); this line is the desktop
-             equivalent, and was rendering in Segoe UI Semibold. The file carries
-             only a Bold face, so the weight is stated rather than left to be
+        <!-- The title bar. ExtendsContentIntoTitleBar puts the window's content
+             under the system caption buttons; SetTitleBar(AppTitleBar) is what
+             makes this strip the DRAG region, which is the difference between a
+             wordmark drawn where a title bar would be and an actual title bar.
+             Height 40 leaves the caption buttons (32 tall, drawn by the system
+             at the top right) clear of the wordmark's descenders.
+
+             The wordmark itself: android sets its top-bar title in PP NeueBit
+             Bold at 24sp (Type.kt TopBarTitleTextStyle). The file carries only a
+             Bold face, so the weight is stated rather than left to be
              synthesised. -->
-        <TextBlock x:Name="BrandText" Grid.Row="0" Margin="16,12"
-                   FontFamily="{StaticResource UrWordmarkFontFamily}"
-                   FontSize="24" FontWeight="Bold" />
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Background="Transparent">
+            <TextBlock x:Name="BrandText" Margin="16,0" VerticalAlignment="Center"
+                       FontFamily="{StaticResource UrWordmarkFontFamily}"
+                       FontSize="24" FontWeight="Bold"
+                       IsHitTestVisible="False" />
+        </Grid>
 
         <!-- Sign-in flow: one step visible at a time (ShowLoginStep).
              FontFamily here is the BODY face for everything inside: font
@@ -153,15 +162,15 @@
                     <TextBlock x:Name="PasswordHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
                     <TextBlock x:Name="PasswordEmailText"
                                Foreground="{StaticResource UrTextMutedBrush}" />
-                    <PasswordBox x:Name="PasswordBox" KeyDown="OnPasswordKeyDown" />
+                    <PasswordBox x:Name="PasswordBox" Style="{StaticResource UrPasswordInputStyle}"
+                                 KeyDown="OnPasswordKeyDown" />
                     <Button x:Name="SignInButton"
                             Style="{StaticResource AccentButtonStyle}"
                             HorizontalAlignment="Stretch" Click="OnSignIn" />
                     <muxc:InfoBar x:Name="PasswordError" Severity="Error" IsOpen="False" IsClosable="False" />
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock x:Name="ForgotPasswordLabel" FontSize="12"
-                                   VerticalAlignment="Center"
-                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                        <TextBlock x:Name="ForgotPasswordLabel" Style="{StaticResource UrLabelStyle}"
+                                   VerticalAlignment="Center" />
                         <Button x:Name="ForgotResetButton" FontSize="12" Padding="4,2"
                                 Background="Transparent" BorderThickness="0"
                                 Click="OnForgotPassword" />
@@ -177,25 +186,27 @@
                             Visibility="Collapsed">
                     <Button x:Name="CreateBackButton" Tag="initial" Click="OnLoginBack" />
                     <TextBlock x:Name="CreateHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock x:Name="WalletCreateNote" FontSize="12" TextWrapping="Wrap"
+                    <TextBlock x:Name="WalletCreateNote" Style="{StaticResource UrSupportingTextStyle}"
                                Visibility="Collapsed"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
+                               />
                     <!-- guest upgrade (the plan card's create-account affordance):
                          status + call to action, and an editable email in place of
                          the echoed one -->
-                    <TextBlock x:Name="GuestUpgradeNote" FontSize="12" TextWrapping="Wrap"
+                    <TextBlock x:Name="GuestUpgradeNote" Style="{StaticResource UrSupportingTextStyle}"
                                Visibility="Collapsed"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
+                               />
                     <TextBlock x:Name="CreateEmailText"
                                Foreground="{StaticResource UrTextMutedBrush}" />
-                    <TextBox x:Name="CreateEmailBox" Visibility="Collapsed"
-                             TextChanged="OnCreateEmailChanged" />
-                    <TextBox x:Name="CreateNameBox" TextChanged="OnCreateNameChanged" />
-                    <TextBlock x:Name="CreateNameStatusText" FontSize="12" TextWrapping="Wrap"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
-                    <PasswordBox x:Name="CreatePasswordBox" PasswordChanged="OnCreatePasswordChanged" />
-                    <TextBlock x:Name="CreatePasswordHint" FontSize="12" TextWrapping="Wrap"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <TextBox x:Name="CreateEmailBox" Style="{StaticResource UrTextInputStyle}"
+                             Visibility="Collapsed" TextChanged="OnCreateEmailChanged" />
+                    <TextBox x:Name="CreateNameBox" Style="{StaticResource UrTextInputStyle}"
+                             TextChanged="OnCreateNameChanged" />
+                    <TextBlock x:Name="CreateNameStatusText" Style="{StaticResource UrSupportingTextStyle}"
+                               />
+                    <PasswordBox x:Name="CreatePasswordBox" Style="{StaticResource UrPasswordInputStyle}"
+                                 PasswordChanged="OnCreatePasswordChanged" />
+                    <TextBlock x:Name="CreatePasswordHint" Style="{StaticResource UrSupportingTextStyle}"
+                               />
                     <Grid ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -208,9 +219,10 @@
                                    VerticalAlignment="Center"
                                    Foreground="{StaticResource UrTextMutedBrush}" />
                     </Grid>
-                    <TextBox x:Name="BonusCodeBox" TextChanged="OnBonusCodeChanged" />
-                    <TextBlock x:Name="BonusStatusText" FontSize="12" TextWrapping="Wrap"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <TextBox x:Name="BonusCodeBox" Style="{StaticResource UrTextInputStyle}"
+                             TextChanged="OnBonusCodeChanged" />
+                    <TextBlock x:Name="BonusStatusText" Style="{StaticResource UrSupportingTextStyle}"
+                               />
                     <Button x:Name="CreateButton" IsEnabled="False"
                             Style="{StaticResource AccentButtonStyle}"
                             HorizontalAlignment="Stretch" Click="OnCreateNetwork" />
@@ -225,15 +237,14 @@
                     <TextBlock x:Name="VerifyHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
                     <TextBlock x:Name="VerifyExplanationText" TextWrapping="Wrap"
                                Foreground="{StaticResource UrTextMutedBrush}" />
-                    <TextBox x:Name="VerifyCodeBox" MaxLength="6"
-                             TextChanged="OnVerifyCodeChanged" />
+                    <TextBox x:Name="VerifyCodeBox" Style="{StaticResource UrTextInputStyle}"
+                             MaxLength="6" TextChanged="OnVerifyCodeChanged" />
                     <Button x:Name="VerifyButton" IsEnabled="False"
                             Style="{StaticResource AccentButtonStyle}"
                             HorizontalAlignment="Stretch" Click="OnVerifySubmit" />
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock x:Name="DontSeeItLabel" FontSize="12"
-                                   VerticalAlignment="Center"
-                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                        <TextBlock x:Name="DontSeeItLabel" Style="{StaticResource UrLabelStyle}"
+                                   VerticalAlignment="Center" />
                         <Button x:Name="ResendCodeButton" FontSize="12" Padding="4,2"
                                 Background="Transparent" BorderThickness="0"
                                 Click="OnResendCode" />
@@ -249,8 +260,7 @@
                     <TextBlock x:Name="ResetHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
                     <TextBlock x:Name="ResetEmailText"
                                Foreground="{StaticResource UrTextMutedBrush}" />
-                    <TextBlock x:Name="ResetSpamNote" FontSize="12" TextWrapping="Wrap"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <TextBlock x:Name="ResetSpamNote" Style="{StaticResource UrSupportingTextStyle}" />
                     <Button x:Name="SendResetButton"
                             Style="{StaticResource AccentButtonStyle}"
                             HorizontalAlignment="Stretch" Click="OnSendResetLink" />
@@ -262,9 +272,15 @@
 
         <!-- Home -->
         <!-- same body-face inheritance as LoginRoot, for the whole home tree -->
+        <!-- IsSettingsVisible="False" is load-bearing: NavigationView adds its OWN
+             settings gear by default, IN ADDITION to the explicit SettingsNavItem
+             below. That gear's Tag matches none of the six destinations, so
+             selecting it collapsed every panel and showed an empty window with no
+             way back except picking another destination. -->
         <muxc:NavigationView x:Name="HomeNav" Grid.Row="1" Visibility="Collapsed"
                              FontFamily="{StaticResource UrBodyFontFamily}"
-                             IsBackButtonVisible="Collapsed" PaneDisplayMode="Top"
+                             IsBackButtonVisible="Collapsed" PaneDisplayMode="LeftMinimal"
+                             IsSettingsVisible="False"
                              SelectionChanged="OnNavSelectionChanged">
             <muxc:NavigationView.MenuItems>
                 <muxc:NavigationViewItem x:Name="ConnectNavItem" Tag="connect" IsSelected="True" />
@@ -289,8 +305,7 @@
                                 HorizontalAlignment="Stretch" Margin="0,0,0,24">
 
                         <!-- Connection controls -->
-                        <Border x:Name="ControlsCard" Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16">
+                        <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="12">
                                 <!-- connect status (android ConnectStatusIndicator
                                      parity): a state-coloured dot + the four-state
@@ -315,10 +330,9 @@
                                                VerticalAlignment="Center" />
                                 </Grid>
                                 <!-- selected location; the whole row opens the provider chooser -->
-                                <Border x:Name="LocationRow"
-                                        Background="{StaticResource UrCardBrush}"
-                                        CornerRadius="8" Padding="12,8"
-                                        Tapped="OnLocationRowTapped">
+                                <Button x:Name="LocationRow"
+                                        Style="{StaticResource UrCardRowButtonStyle}"
+                                        Click="OnLocationRowClick">
                                     <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -326,46 +340,46 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" Spacing="2">
                                             <TextBlock x:Name="SelectedProviderLabel" FontSize="12"
+                                               AutomationProperties.AccessibilityView="Raw"
                                                        Foreground="{StaticResource UrTextMutedBrush}" />
-                                            <TextBlock x:Name="LocationText" FontSize="15" />
+                                            <TextBlock x:Name="LocationText" FontSize="15"
+                                                       AutomationProperties.AccessibilityView="Raw" />
                                         </StackPanel>
                                         <FontIcon Grid.Column="1" Glyph="&#xE76C;" FontSize="14"
                                                   VerticalAlignment="Center"
                                                   Foreground="{StaticResource UrTextMutedBrush}" />
                                     </Grid>
-                                </Border>
+                                </Button>
                                 <Button x:Name="ConnectButton"
                                         Style="{StaticResource AccentButtonStyle}"
                                         HorizontalAlignment="Stretch" Click="OnConnectToggle" />
                                 <!-- network peers status line (apple ConnectActions parity): a
                                      filled dot (green when providing peers are online, coral at
                                      zero) + "{n} peers", always shown; tapping opens the chooser -->
-                                <Border x:Name="PeersLine" Background="{StaticResource UrCardBrush}"
-                                        CornerRadius="8" Padding="12,8"
-                                        Tapped="OnPeersLineTapped">
+                                <Button x:Name="PeersLine"
+                                        Style="{StaticResource UrCardRowButtonStyle}"
+                                        Click="OnPeersLineClick">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <Ellipse x:Name="PeerDot" Width="8" Height="8"
                                                  VerticalAlignment="Center" />
                                         <TextBlock x:Name="PeerCountText" FontSize="12"
+                                                   AutomationProperties.AccessibilityView="Raw"
                                                    VerticalAlignment="Center"
                                                    Foreground="{StaticResource UrTextMutedBrush}" />
                                     </StackPanel>
-                                </Border>
+                                </Button>
                                 <!-- discoverability (apple/android parity): whether this device
                                      is itself connectable as a same-network peer -->
-                                <TextBlock x:Name="DiscoverableText" FontSize="12"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <TextBlock x:Name="DiscoverableText" Style="{StaticResource UrLabelStyle}" />
                                 <!-- out of balance: the action button opens the upgrade flow -->
                                 <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
                                          Severity="Warning" />
                                 <!-- live stats (macOS parity): providers, throughput, provide -->
-                                <TextBlock x:Name="ProviderCountText" FontSize="12"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <TextBlock x:Name="ProviderCountText" Style="{StaticResource UrLabelStyle}" />
                                 <TextBlock x:Name="ThroughputText" FontSize="12"
                                            FontFamily="Consolas"
                                            Foreground="{StaticResource UrTextMutedBrush}" />
-                                <TextBlock x:Name="ProvideStatsText" FontSize="12"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <TextBlock x:Name="ProvideStatsText" Style="{StaticResource UrLabelStyle}" />
                                 <!-- Provide control mode: Auto | Always | Network | Never.
                                      "Network" is the private provider (always on, provides
                                      only to same-network peers, never publicly). -->
@@ -400,15 +414,17 @@
                                 <Grid>
                                     <TextBlock x:Name="FixedIpLabel" FontSize="14"
                                                VerticalAlignment="Center" />
-                                    <ToggleSwitch x:Name="FixedIpToggle" OnContent="" OffContent=""
-                                                  MinWidth="0" HorizontalAlignment="Right"
+                                    <ToggleSwitch x:Name="FixedIpToggle"
+                                                  Style="{StaticResource UrSwitchToggleStyle}"
+                                                  AutomationProperties.LabeledBy="{Binding ElementName=FixedIpLabel}"
                                                   Toggled="OnFixedIpToggled" />
                                 </Grid>
                                 <Grid>
                                     <TextBlock x:Name="StrongAnonLabel" FontSize="14"
                                                VerticalAlignment="Center" />
-                                    <ToggleSwitch x:Name="StrongAnonToggle" OnContent="" OffContent=""
-                                                  MinWidth="0" HorizontalAlignment="Right"
+                                    <ToggleSwitch x:Name="StrongAnonToggle"
+                                                  Style="{StaticResource UrSwitchToggleStyle}"
+                                                  AutomationProperties.LabeledBy="{Binding ElementName=StrongAnonLabel}"
                                                   Toggled="OnStrongAnonToggled" />
                                 </Grid>
                                 <!-- Post quantum encryption: opportunistic e2e; providers
@@ -421,19 +437,20 @@
                                     <TextBlock x:Name="PostQuantumLabel" FontSize="14"
                                                TextWrapping="Wrap" VerticalAlignment="Center" />
                                     <ToggleSwitch x:Name="PostQuantumToggle" Grid.Column="1"
-                                                  OnContent="" OffContent="" MinWidth="0"
-                                                  HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                  Style="{StaticResource UrSwitchToggleStyle}"
+                                                  AutomationProperties.LabeledBy="{Binding ElementName=PostQuantumLabel}"
                                                   Toggled="OnPostQuantumToggled" />
                                 </Grid>
                             </StackPanel>
                         </Border>
 
                         <!-- Card 1: client statistics (remote + blocked charts) -->
-                        <Border x:Name="ClientStatsCard" Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16" Tapped="OnClientStatsCardTapped">
+                        <Button x:Name="ClientStatsCard" Style="{StaticResource UrCardButtonStyle}"
+                                Click="OnClientStatsCardClick">
                             <StackPanel Spacing="12">
                                 <Grid>
                                     <TextBlock x:Name="ClientStatsLabel" FontSize="12"
+                                               AutomationProperties.AccessibilityView="Raw"
                                                Foreground="{StaticResource UrTextMutedBrush}" />
                                     <FontIcon Glyph="&#xE76C;" FontSize="12"
                                               HorizontalAlignment="Right"
@@ -442,14 +459,15 @@
                                 <Grid x:Name="RemoteChartHost" Height="128" />
                                 <Grid x:Name="BlockedChartHost" Height="128" />
                             </StackPanel>
-                        </Border>
+                        </Button>
 
                         <!-- Card 2: local statistics (local chart + split rules) -->
-                        <Border x:Name="LocalStatsCard" Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16" Tapped="OnLocalStatsCardTapped">
+                        <Button x:Name="LocalStatsCard" Style="{StaticResource UrCardButtonStyle}"
+                                Click="OnLocalStatsCardClick">
                             <StackPanel Spacing="12">
                                 <Grid>
                                     <TextBlock x:Name="LocalStatsLabel" FontSize="12"
+                                               AutomationProperties.AccessibilityView="Raw"
                                                Foreground="{StaticResource UrTextMutedBrush}" />
                                     <FontIcon Glyph="&#xE76C;" FontSize="12"
                                               HorizontalAlignment="Right"
@@ -458,14 +476,15 @@
                                 <Grid x:Name="LocalChartHost" Height="128" />
                                 <TextBlock x:Name="SplitRuleCountText" FontSize="12" />
                             </StackPanel>
-                        </Border>
+                        </Button>
 
                         <!-- Card 3: custom dns summary -->
-                        <Border x:Name="DnsCard" Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16" Tapped="OnDnsCardTapped">
+                        <Button x:Name="DnsCard" Style="{StaticResource UrCardButtonStyle}"
+                                Click="OnDnsCardClick">
                             <StackPanel Spacing="8">
                                 <Grid Margin="0,0,0,4">
                                     <TextBlock x:Name="DnsCardLabel" FontSize="12"
+                                               AutomationProperties.AccessibilityView="Raw"
                                                Foreground="{StaticResource UrTextMutedBrush}" />
                                     <FontIcon Glyph="&#xE76C;" FontSize="12"
                                               HorizontalAlignment="Right"
@@ -542,26 +561,24 @@
                                            Visibility="Collapsed"
                                            Foreground="{StaticResource UrTextFaintBrush}" />
                             </StackPanel>
-                        </Border>
+                        </Button>
 
                         <!-- Block ads and trackers: the device applies and persists it -->
-                        <Border x:Name="BlockerCard" Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16,8,16,8">
+                        <Border x:Name="BlockerCard" Style="{StaticResource UrCardStyle}" Padding="16,8,16,8">
                             <Grid>
                                 <TextBlock x:Name="BlockerLabel" FontSize="14"
                                            VerticalAlignment="Center" />
-                                <ToggleSwitch x:Name="BlockerToggle" OnContent="" OffContent=""
-                                              MinWidth="0" HorizontalAlignment="Right"
+                                <ToggleSwitch x:Name="BlockerToggle"
+                                              Style="{StaticResource UrSwitchToggleStyle}"
+                                              AutomationProperties.LabeledBy="{Binding ElementName=BlockerLabel}"
                                               Toggled="OnBlockerToggled" />
                             </Grid>
                         </Border>
 
                         <!-- Plan + usage (macOS ConnectActions.swift:169-204) -->
-                        <Border x:Name="DrawerPlanCard" Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16">
+                        <Border x:Name="DrawerPlanCard" Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="8">
-                                <TextBlock x:Name="DrawerPlanLabel" FontSize="12"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <TextBlock x:Name="DrawerPlanLabel" Style="{StaticResource UrLabelStyle}" />
                                 <Grid>
                                     <TextBlock x:Name="DrawerPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
                                                FontWeight="SemiBold" />
@@ -603,11 +620,9 @@
                     <StackPanel Spacing="16" MaxWidth="520" Margin="0,0,0,24">
 
                         <!-- Plan + usage card -->
-                        <Border Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16">
+                        <Border Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="8">
-                                <TextBlock x:Name="AccountPlanLabel" FontSize="12"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <TextBlock x:Name="AccountPlanLabel" Style="{StaticResource UrLabelStyle}" />
                                 <Grid>
                                     <TextBlock x:Name="AccountPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
                                                FontWeight="SemiBold" />
@@ -656,11 +671,9 @@
                         </Border>
 
                         <!-- Redeemed balance codes -->
-                        <Border Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16">
+                        <Border Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="8">
-                                <TextBlock x:Name="BalanceCodesLabel" FontSize="12"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <TextBlock x:Name="BalanceCodesLabel" Style="{StaticResource UrLabelStyle}" />
                                 <!-- header + rows built in code (LoadBalanceCodes) -->
                                 <StackPanel x:Name="BalanceCodesPanel" Spacing="6" />
                                 <TextBlock x:Name="BalanceCodesEmptyText" FontSize="12"
@@ -670,8 +683,7 @@
                         </Border>
 
                         <!-- Profile -->
-                        <Border Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16">
+                        <Border Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="12">
                                 <TextBlock x:Name="AccountHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                                 <TextBox x:Name="NetworkNameBox" />
@@ -682,8 +694,7 @@
                         </Border>
 
                         <!-- Referrals -->
-                        <Border Background="{StaticResource UrCardBrush}"
-                                CornerRadius="12" Padding="16">
+                        <Border Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="12">
                                 <TextBlock x:Name="ReferralsHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock x:Name="ReferralText" TextWrapping="Wrap" />
@@ -708,7 +719,7 @@
                         <TextBlock x:Name="PlanHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                         <Button x:Name="UpgradeButton"
                                 Style="{StaticResource AccentButtonStyle}" Click="OnOpenUpgrade" />
-                        <muxc:InfoBar x:Name="WalletInfo" IsOpen="False" IsClosable="True" />
+                        <muxc:InfoBar x:Name="WalletInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
                         <TextBlock x:Name="PayoutWalletsHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
                                    Margin="0,12,0,0" />
                         <ListView x:Name="WalletsList" MaxHeight="200" BorderThickness="1"
@@ -740,7 +751,19 @@
                 <!-- Leaderboard -->
                 <ScrollViewer x:Name="LeaderboardView" Visibility="Collapsed">
                     <StackPanel Spacing="8" MaxWidth="640">
-                        <TextBlock x:Name="LeaderboardHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
+                        <!-- No section heading here: NavigationView's Header already
+                             shows the destination name ("Leaderboard"), and a panel
+                             heading with the same word under it read as a stutter.
+                             The other destinations keep theirs because their headings
+                             name a SECTION ("Plan", "Feedback"), not the destination. -->
+                        <TextBlock x:Name="LeaderboardDescription"
+                                   Style="{StaticResource UrSupportingTextStyle}" />
+                        <!-- Loading / empty / failed. Without it the panel drew one
+                             heading and nothing else whether the fetch was in
+                             flight, had returned nothing, or had failed - three
+                             very different situations, one blank screen. -->
+                        <TextBlock x:Name="LeaderboardStatusText"
+                                   Style="{StaticResource UrSupportingTextStyle}" />
                         <ListView x:Name="LeaderboardList" />
                     </StackPanel>
                 </ScrollViewer>
@@ -753,7 +776,7 @@
                         <TextBox x:Name="FeedbackText" AcceptsReturn="True" TextWrapping="Wrap"
                                  MinHeight="80" />
                         <Button x:Name="SendFeedbackButton" Click="OnSendFeedback" />
-                        <muxc:InfoBar x:Name="SupportInfo" IsOpen="False" IsClosable="True" />
+                        <muxc:InfoBar x:Name="SupportInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
                     </StackPanel>
                 </ScrollViewer>
 

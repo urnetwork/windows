@@ -69,6 +69,73 @@ int WriteDiagnosticsToConsole(const std::vector<std::wstring>& lines);
 // --diagnose, -diagnose, /diagnose or a bare diagnose.
 bool WantsDiagnose();
 
+// ---- signed-out preview of the signed-in UI --------------------------------
+//
+// READ THIS IF YOU ARE BUILDING A SCREEN THAT LIVES BEHIND SIGN-IN.
+//
+// Almost every surface in this app — the connect drawer, account, wallet,
+// payouts, points, leaderboard, settings, the developer screen — only renders
+// after a successful login, and this codebase's history is that "reads correct"
+// is not evidence: the defects here have been found by running, never by
+// review. Without a way in, a screen can be written, reviewed, merged and
+// shipped without a single pixel of it ever having been drawn.
+//
+// So: launch with --preview-ui and the app shows the signed-in shell with no
+// session at all. Nothing logs in, no token is read or written, the SDK is not
+// asked for anything; only the LoginRoot/HomeNav swap is forced, and the panels
+// render against the (empty) local snapshots.
+//
+//   URnetwork.exe --preview-ui              the connect drawer
+//   URnetwork.exe --preview-ui=account      account
+//   URnetwork.exe --preview-ui=wallet       wallet   (also raises its snackbar)
+//   URnetwork.exe --preview-ui=leaderboard  leaderboard
+//   URnetwork.exe --preview-ui=support      support  (also raises its snackbar)
+//   URnetwork.exe --preview-ui=settings     settings
+//
+// or set URNETWORK_PREVIEW_UI to the same tag. The tags are the NavigationView
+// item tags in MainWindow.xaml; an unknown one falls back to connect and says so
+// in the log.
+//
+// The window still only appears on a tray click, exactly as in a normal run, so
+// drive it the way the verification protocol describes: post WM_APP+1 with
+// NIN_SELECT in LOWORD(lParam) to the hidden URnetworkTrayWindow, then capture.
+//
+// WHAT THIS CANNOT SHOW YOU. Read this part too: a gap you know about is one
+// you can work around; a gap you assume is covered is how something ships
+// having never been drawn.
+//
+//   - Anything behind a ContentDialog. The location chooser, DNS editor, split
+//     rules, app rules, upgrade and redeem sheets all open from a click, and
+//     synthesized input does not reach them — a XAML island takes pointer input
+//     through its own InputSite, not the window's message queue, so a posted
+//     WM_* message is not enough. Those need a real click.
+//   - Plan variants. There is no session, so the balance snapshot is the
+//     default: the plan reads "Free" and cannot be made Guest or Pro. The
+//     guest-upgrade affordance and the Pro-gold entitlement path are both
+//     unreachable this way.
+//   - Live data of any kind. The per-destination API loads are deliberately
+//     SKIPPED (MainWindow::OnNavSelectionChanged) — with no token they could
+//     only return 401 — so every list is empty, the charts are blank
+//     rectangles, and the peers line reads "discovery disabled". You are
+//     looking at the EMPTY state. That is worth looking at, and it is not the
+//     populated one.
+//   - More than one destination or one state per launch. Relaunch with another
+//     tag; there is no way to vary state within a run.
+//
+// Two harness facts that cost real time here. A synthesized WM_MOUSEWHEEL
+// posted to the top-level HWND scrolls nothing (same InputSite reason), and
+// MoveWindow is clamped to SM_CYMAXTRACK — so to capture a whole scrolling
+// column, grow the window past the monitor with SetWindowPos +
+// SWP_NOSENDCHANGING and render it with PrintWindow(PW_RENDERFULLCONTENT),
+// which draws the off-screen part and is immune to z-order. PrintWindow does
+// NOT composite the system backdrop, so use a screen capture when the backdrop
+// itself is what you are checking — and note that a LOCKED session makes screen
+// capture useless (it returns the lock screen) while PrintWindow keeps working.
+//
+// Returns an empty string when the switch is absent, which is every real run.
+// This grants nothing: there is no account to read.
+std::string PreviewUiDestination();
+
 // Set by App::OnLaunched, read by wWinMain after Application::Start returns. A
 // message loop that ends without OnLaunched ever having run means XAML gave up
 // without throwing — the fourth look-alike, and the one nothing else can see.

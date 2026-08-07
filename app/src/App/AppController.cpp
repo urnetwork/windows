@@ -16,6 +16,7 @@
 #include "MainWindow.xaml.h"
 #include "Startup.h"
 #include "Strings.h"
+#include "WindowShell.h"
 
 using namespace winrt;
 using namespace winrt::Microsoft::UI::Xaml;
@@ -54,7 +55,9 @@ AppController::AppController() {
   uiThread_ = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread();
 }
 
-AppController::~AppController() = default;
+AppController::~AppController() {
+  if (placementSaveTimer_) placementSaveTimer_.Stop();
+}
 
 template <class F>
 void AppController::OnUi(F&& f) {
@@ -120,6 +123,17 @@ void AppController::Start() {
     }
   });
 
+  // Debounced placement save. Restarted on every move/resize the user makes,
+  // so it lands once they settle rather than once per drag frame.
+  if (uiThread_) {
+    placementSaveTimer_ = uiThread_.CreateTimer();
+    placementSaveTimer_.Interval(std::chrono::milliseconds(700));
+    placementSaveTimer_.IsRepeating(false);
+    placementSaveTimer_.Tick([this](auto const&, auto const&) {
+      if (shell::SaveWindowPlacement(windowHwnd_)) ownPlacement_ = true;
+    });
+  }
+
   LogInfo("app: initializing the sdk host");
   if (!sdk_.Initialize()) {
     // The tray icon is up by now, so from outside the app looks fine: an icon,
@@ -139,6 +153,8 @@ void AppController::Start() {
 
 void AppController::Shutdown() {
   LogInfo("app: shutdown requested (tray quit)");
+  // ...and quitting is the other
+  if (shell::SaveWindowPlacement(windowHwnd_)) ownPlacement_ = true;
   quitting_ = true;  // let the window's Closing handler close instead of hiding
   tray_.Destroy();
   if (window_) window_.Close();
@@ -233,7 +249,17 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
     if (auto native = window_.try_as<::IWindowNative>()) {
       HWND hwnd = nullptr;
       native->get_WindowHandle(&hwnd);
+      windowHwnd_ = hwnd;
       LogInfo("app: main window created (hwnd {})", reinterpret_cast<uintptr_t>(hwnd));
+      // The native shell: Mica (or the solid fallback), brand caption buttons,
+      // the compact default size and the saved placement. Before this the window
+      // was never sized at all and opened filling the whole work area.
+      //
+      // The return value matters: if it restored a position the user chose, the
+      // anchor block below must not overwrite it one statement later.
+      applyingPlacement_ = true;
+      ownPlacement_ = shell::ApplyNativeShell(window_, hwnd);
+      applyingPlacement_ = false;
       auto windowId = winrt::Microsoft::UI::GetWindowIdFromWindow(hwnd);
       auto appWindow = winrt::Microsoft::UI::Windowing::AppWindow::GetFromWindowId(windowId);
       appWindow.Closing(
@@ -243,6 +269,24 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
             args.Cancel(true);      // otherwise closing hides to tray
             HideWindow();
           });
+      // The user moving or resizing the window is what makes the placement
+      // THEIRS - and that happens long before the first save. Without this the
+      // anchor kept overriding a drag on a first run, which is the state every
+      // new user is in.
+      appWindow.Changed(
+          [this](winrt::Microsoft::UI::Windowing::AppWindow const&,
+                 winrt::Microsoft::UI::Windowing::AppWindowChangedEventArgs const& args) {
+            if (!args.DidPositionChange() && !args.DidSizeChange()) return;
+            OnWindowPlacementChanged();
+          });
+      // whatever ApplyNativeShell just did was OURS, not the user's
+      NoteAppliedPlacement();
+    }
+    // --preview-ui: the signed-in shell with no session, so the screens behind
+    // sign-in can be looked at before they are called done (Startup.h).
+    if (const std::string preview = PreviewUiDestination(); !preview.empty()) {
+      if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+        self->EnterPreviewUi(preview);
     }
     window_.Activated([this](auto const&, auto const& args) {
       windowActivated_ =
@@ -250,9 +294,17 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       ReconcileWindowPresentation();
     });
   }
-  // Position near the tray anchor for the flyout-style left-click; otherwise
-  // let it appear at its default location.
-  if (anchor) {
+
+  // Position near the tray anchor for the flyout-style left-click - but ONLY
+  // while the user has not placed the window themselves.
+  //
+  // This app is not a volume-flyout: it has a title bar, caption buttons and a
+  // resize border, so moving it is an expression of intent. Re-anchoring on
+  // every tray click threw that away, and threw away the position half of
+  // placement persistence with it: the shell would restore (300,200), log that
+  // it had, and this block would move the window to the tray corner in the same
+  // call. The anchor is the DEFAULT placement, not an override.
+  if (anchor && !ownPlacement_) {
     if (auto native = window_.try_as<::IWindowNative>()) {
       HWND hwnd = nullptr;
       native->get_WindowHandle(&hwnd);
@@ -294,7 +346,24 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       winrt::Windows::Graphics::PointInt32 pos{x, y};
       LogInfo("app: window anchor ({},{}) size {}x{} -> position ({},{})",
               anchor->x, anchor->y, size.Width, size.Height, pos.X, pos.Y);
+      // ours, not the user's: Changed is raised from inside Move()
+      applyingPlacement_ = true;
       appWindow.Move(pos);
+      applyingPlacement_ = false;
+      NoteAppliedPlacement();
+    }
+  }
+  // What the window actually did, as opposed to what any one step intended.
+  // The shell's "restored placement" line was true when it was written and
+  // false a moment later, which is the failure mode this project keeps paying
+  // for: a mechanism whose signal describes an intermediate state.
+  if (windowHwnd_) {
+    RECT rc{};
+    if (::GetWindowRect(windowHwnd_, &rc)) {
+      LogInfo("app: window shown at ({},{}) {}x{} - {}", rc.left, rc.top,
+              rc.right - rc.left, rc.bottom - rc.top,
+              ownPlacement_ ? "the placement the user chose"
+                            : (anchor ? "tray anchor" : "default placement"));
     }
   }
   windowShown_ = true;
@@ -303,7 +372,49 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
   ReconcileWindowPresentation();
 }
 
+void AppController::NoteAppliedPlacement() {
+  if (!windowHwnd_) return;
+  ::GetWindowRect(windowHwnd_, &lastAppliedRect_);
+}
+
+// The window moved or resized. AppWindow.Changed cannot say WHO did it, and our
+// own moves raise it too, so the test is by result: if the rect is the one we
+// last applied, it was us.
+//
+// This is the half of placement persistence that was missing. ownPlacement_ was
+// only ever set by a restore or a save, so on a FIRST run - no saved placement
+// yet - a user could drag the window somewhere, click the tray icon again, and
+// be yanked straight back to the anchor. That is the exact state every new user
+// is in, and it is the defect this whole mechanism exists to prevent.
+void AppController::OnWindowPlacementChanged() {
+  if (applyingPlacement_) return;  // a move we made
+  if (!windowHwnd_) return;
+  RECT rc{};
+  if (!::GetWindowRect(windowHwnd_, &rc)) return;
+  if (rc.left == lastAppliedRect_.left && rc.top == lastAppliedRect_.top &&
+      rc.right == lastAppliedRect_.right && rc.bottom == lastAppliedRect_.bottom) {
+    return;  // our own move
+  }
+  if (::IsIconic(windowHwnd_)) return;  // minimize is not a placement
+
+  if (!ownPlacement_) {
+    LogInfo("app: the window was moved or resized - its placement is the user's now");
+  }
+  ownPlacement_ = true;
+  // ...and persist it shortly, so a process that is killed rather than closed
+  // does not silently lose a placement it had already started honouring.
+  if (placementSaveTimer_) {
+    placementSaveTimer_.Stop();
+    placementSaveTimer_.Start();
+  }
+}
+
 void AppController::HideWindow() {
+  // Hiding to the tray is one of the two ways this window goes away; record
+  // where the user left it before it does. A successful save means there is now
+  // a placement worth honouring, so the anchor stops moving the window on the
+  // next tray click - within this session as well as across restarts.
+  if (shell::SaveWindowPlacement(windowHwnd_)) ownPlacement_ = true;
   windowShown_ = false;
   windowActivated_ = false;
   ReconcileWindowPresentation();

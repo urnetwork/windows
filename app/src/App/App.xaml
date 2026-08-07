@@ -120,6 +120,13 @@
                  Compose lerps in Oklab, so #101010 lifts to #151515 -->
             <SolidColorBrush x:Key="UrSheetBrush" Color="#151515" />
             <SolidColorBrush x:Key="UrCardBrush" Color="#1C1C1C" />
+            <!-- card hover / pressed. These two values used to be applied from
+                 code, by a WireCardAffordances helper that hand-wired
+                 PointerEntered/Exited/Pressed on plain Borders; that helper is
+                 gone and the UrCardButton template below is the only thing that
+                 spends them. -->
+            <SolidColorBrush x:Key="UrCardHoverBrush" Color="#242424" />
+            <SolidColorBrush x:Key="UrCardPressedBrush" Color="#2A2A2A" />
             <SolidColorBrush x:Key="UrBorderBrush" Color="#1FFFFFFF" />
             <SolidColorBrush x:Key="UrTextBrush" Color="#F8F8F8" />
             <SolidColorBrush x:Key="UrTextMutedBrush" Color="#989898" />
@@ -262,6 +269,178 @@
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="Foreground" Value="{StaticResource UrErrorTextBrush}" />
                 <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
+            <!-- ================= the rest of the component kit ===================
+                 iOS ships UrButton, UrCard, UrTextField, UrSwitchToggle, UrSnackbar
+                 and UrLabel (Shared/Views/Components/). Windows had only URButton.
+                 These are the others, as the same thing URButton is: NATIVE WinUI
+                 controls and metrics — real visual states, real focus, real
+                 automation peers — wearing the brand palette and faces. Nothing
+                 here reimplements a control; where iOS hand-draws a switch track,
+                 this skins the platform one.
+
+                 Colours come from the Ur* tokens above (mirrored from UrColors.h).
+                 Do not put a literal colour in a style below. -->
+
+            <!-- ==== UrLabel (Components/UrLabel.swift) ========================
+                 secondaryBodyFont in textMuted. The caption above a value, the
+                 supporting line under a field, a card's section label. -->
+            <Style x:Key="UrLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
+            </Style>
+
+            <!-- UrTextField's supporting text: the same label role, but it wraps
+                 (it carries sentences like "Network names must be 6 characters or
+                 more") and its colour is driven by the validation state at
+                 runtime — see urnw::kit::ApplySupportingText (UrComponents.h),
+                 which is the ValidationState.swift port. -->
+            <Style x:Key="UrSupportingTextStyle" TargetType="TextBlock" BasedOn="{StaticResource UrLabelStyle}">
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
+            <!-- ==== UrCard (Components/UrCard.swift) ==========================
+                 tintedBackgroundBase, 12dp radius, one padding step. The optional
+                 label ABOVE the surface is PP NeueBit 22 bold in the text colour
+                 (iOS UrCard cardLabel), not the muted 12sp caption most of the
+                 current cards use inside themselves. -->
+            <Style x:Key="UrCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource UrCardBrush}" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="16" />
+            </Style>
+
+            <Style x:Key="UrCardLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrWordmarkFontFamily}" />
+                <Setter Property="FontSize" Value="22" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+            </Style>
+
+            <!-- A card the user can ACTIVATE is a Button, not a Border with a
+                 Tapped handler. That is the whole difference between the two
+                 styles here, and it is not cosmetic: a Border is not in the tab
+                 order, cannot be reached or fired from the keyboard, draws no
+                 focus rectangle, and exposes no automation peer, so a screen
+                 reader never learns the card is actionable. A Button gets all
+                 four from the platform, and its CommonStates give the hover and
+                 press feedback that MainWindow used to hand-wire with five
+                 pointer-event handlers per card.
+
+                 UseSystemFocusVisuals is left on so the focus rectangle is the
+                 system's, at the system's thickness. -->
+            <Style x:Key="UrCardButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource UrCardBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid x:Name="Root"
+                                  CornerRadius="{TemplateBinding CornerRadius}"
+                                  Background="{TemplateBinding Background}"
+                                  BorderBrush="{TemplateBinding BorderBrush}"
+                                  BorderThickness="{TemplateBinding BorderThickness}">
+                                <!-- FontSize and FontWeight are template-bound for the same
+                                     reason UrButtonBaseStyle spells out above: ContentPresenter
+                                     declares its own defaults for all three font properties, so
+                                     they do not inherit from the templated parent and a Style
+                                     setter would silently never reach the content. -->
+                                <ContentPresenter x:Name="Presenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Padding="{TemplateBinding Padding}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  FontFamily="{TemplateBinding FontFamily}"
+                                                  FontSize="{TemplateBinding FontSize}"
+                                                  FontWeight="{TemplateBinding FontWeight}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{StaticResource UrCardHoverBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{StaticResource UrCardPressedBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Opacity" Value="0.38" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- the same card, at row scale: a tappable line inside another card
+                 (the selected-provider row, the peers line) -->
+            <Style x:Key="UrCardRowButtonStyle" TargetType="Button" BasedOn="{StaticResource UrCardButtonStyle}">
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Padding" Value="12,8" />
+            </Style>
+
+            <!-- ==== UrSwitchToggle (Components/UrSwitchToggle.swift) ==========
+                 iOS hand-draws a 40x22 track. Windows does NOT: the platform
+                 ToggleSwitch already has the right metrics, the right pointer and
+                 focus states and a real automation peer, and its on-state fill is
+                 already the brand blue through the ToggleSwitchFillOn* theme keys
+                 above. All this style does is drop the On/Off word labels (the
+                 row's own TextBlock is the label) and stop the control reserving
+                 WinUI's default 154px minimum width for them.
+
+                 Pair every instance with AutomationProperties.LabeledBy pointing
+                 at that TextBlock, or the switch is nameless to a screen reader. -->
+            <Style x:Key="UrSwitchToggleStyle" TargetType="ToggleSwitch">
+                <Setter Property="OnContent" Value="" />
+                <Setter Property="OffContent" Value="" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <!-- ==== UrTextField, secure variant ===============================
+                 UrTextInputStyle above is the TextBox half; a PasswordBox is a
+                 different TargetType and so needs its own, with the same
+                 underline treatment (the colours come from the TextControl*
+                 theme keys, which both controls read). -->
+            <Style x:Key="UrPasswordInputStyle" TargetType="PasswordBox">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="Padding" Value="0,0,0,8" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+            </Style>
+
+            <!-- ==== UrSnackbar (Components/UrSnackbar/UrSnackBar.swift) =======
+                 iOS slides a transient bar up from the bottom. The Windows idiom
+                 for a transient, non-blocking status message is InfoBar, so that
+                 is what this is — but InfoBar has no dismissal timer of its own,
+                 which is the one thing that makes a snackbar a snackbar. The
+                 timer lives in urnw::kit::Snackbar (UrComponents.h); this style
+                 is the surface it shows on. -->
+            <Style x:Key="UrSnackbarStyle" TargetType="InfoBar">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="IsClosable" Value="True" />
+                <Setter Property="CornerRadius" Value="8" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>
