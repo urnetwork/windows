@@ -68,6 +68,12 @@ struct MainWindow : MainWindowT<MainWindow> {
   void ApplyBalance();
   // last ContractStatus push (ConnectPage::ApplyStats) -> the warning InfoBar
   void SetInsufficientBalance(bool insufficient);
+  // The hero canvas's two non-connection states (iOS ConnectButtonView parity).
+  // Deliberately the SAME two expressions UpdateBalanceWarning gates the InfoBar
+  // on, read from here rather than recomputed in ConnectPage, so the hero and
+  // the InfoBar cannot end up disagreeing about the account's state.
+  bool balanceConfirming() const { return balancePoll_.confirming; }
+  bool balanceBlocked() const { return insufficientBalance_ && !balance_.isPro; }
 
   // XAML event handlers — sign-in flow (initial → password / create / verify /
   // reset; macOS Authenticate/** parity). Forwarded to LoginPage.

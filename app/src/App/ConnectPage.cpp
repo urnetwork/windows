@@ -12,8 +12,10 @@
 #include <cctype>
 #include <chrono>
 
+#include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
+#include "Strings.h"
 #include "StatsFormat.h"
 #include "UrColors.h"
 #include "UrComponents.h"  // kit::SetTextOrCollapse
@@ -92,6 +94,7 @@ ConnectPage::~ConnectPage() {
 
 void ConnectPage::Initialize() {
   BuildCharts();
+  BuildHero();
   WireDrawerFeeds();
 
   // shared drawer clock: ~10 fps chart redraw, plus 1s relative-time refresh
@@ -103,6 +106,10 @@ void ConnectPage::Initialize() {
 }
 
 void ConnectPage::SetPresentationActive(bool active) {
+  // the hero's repeating storyboards run on the compositor, so they keep
+  // presenting frames for a window nobody is looking at unless they are stopped
+  // here as well as the per-frame clock
+  if (canvas_) canvas_->SetPresentationActive(active);
   if (!chartTimer_) return;
   if (active) {
     if (!chartTimer_.IsRunning()) chartTimer_.Start();
@@ -260,6 +267,13 @@ bool ConnectPage::ConnectActionIsDisconnect() const {
 void ConnectPage::ApplyConnectStatus() {
   hstring text;
   winrt::Windows::UI::Color dot = urnw::colors::kStatusIdle;
+  // The two balance states iOS's ConnectButtonView layers OVER the connection
+  // state, read from the same two fields MainWindow::UpdateBalanceWarning gates
+  // the InfoBar on, so the hero and the InfoBar cannot disagree. A running
+  // post-checkout confirmation poll wins over an out-of-balance account: the
+  // balance is mid-flight, and showing a warning for it would be wrong.
+  const bool processing = w_.balanceConfirming();
+  const bool outOfBalance = !processing && w_.balanceBlocked();
   switch (connectStatus_) {
     case ConnectStatus::Connected:
       // the provider count lives in its own line below (ProviderCountText),
@@ -286,12 +300,70 @@ void ConnectPage::ApplyConnectStatus() {
   }
   w_.StatusText().Text(text);
   w_.StatusDot().Fill(urnw::colors::MakeBrush(dot));
-  // The button no longer lets a second press fire a duplicate connect while one
-  // is in flight (android gates on DISCONNECTED). It stays ENABLED through the
-  // transition on purpose: this client has never run, and a connect that hangs
-  // must leave the owner a way out rather than a dead control.
   w_.ConnectButton().Content(ConnectActionIsDisconnect() ? LocBox("disconnect")
                                                          : LocBox("connect"));
+
+  // ---- the hero -----------------------------------------------------------
+  // Same inputs, same instant, one function: the canvas is not allowed to lag
+  // the line above it.
+  auto heroState = urnw::ConnectCanvas::State::Disconnected;
+  if (processing) {
+    heroState = urnw::ConnectCanvas::State::Processing;
+  } else if (outOfBalance) {
+    heroState = urnw::ConnectCanvas::State::Error;
+  } else {
+    switch (connectStatus_) {
+      case ConnectStatus::Connected:
+        heroState = urnw::ConnectCanvas::State::Connected;
+        break;
+      case ConnectStatus::Connecting:
+      case ConnectStatus::DestinationSet:
+        heroState = urnw::ConnectCanvas::State::Connecting;
+        break;
+      case ConnectStatus::Disconnected:
+        heroState = urnw::ConnectCanvas::State::Disconnected;
+        break;
+    }
+  }
+  // --preview-ui drives the walk itself; letting the real status overwrite it
+  // would pin the preview to Disconnected forever (there is no session).
+  if (canvas_ && !PreviewHeroActive()) canvas_->SetState(heroState);
+
+  // A Button whose Content is a Panel gets NO automatic name (this project
+  // already paid for that lesson on PeersLine), and the hero's content is a
+  // decorative canvas marked Raw. Name it after the state it is showing, which
+  // is the one thing it is for.
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(w_.ConnectHero(),
+                                                                       text);
+
+  // ---- the transition -----------------------------------------------------
+  // The connect action is disabled while the SDK reports CONNECTING: the press
+  // has been accepted, and a second one fires a duplicate connect (android
+  // gates on DISCONNECTED for the same reason). DESTINATION_SET and CONNECTED
+  // are settled — Disconnect is a legitimate action in both — so only the
+  // genuinely transitional state disables.
+  //
+  // It is a WATCHDOG, not a latch. The earlier code kept the button enabled
+  // throughout on the grounds that a connect which hangs must not leave a dead
+  // control, and that reasoning is right; it is preserved here by re-enabling
+  // after kConnectWatchdog rather than by never disabling at all.
+  constexpr auto kConnectWatchdog = std::chrono::seconds(8);
+  const bool transitional = connectStatus_ == ConnectStatus::Connecting;
+  if (!transitional) {
+    connectingSince_ = {};
+    connectWatchdogFired_ = false;
+  } else if (connectingSince_ == std::chrono::steady_clock::time_point{}) {
+    connectingSince_ = std::chrono::steady_clock::now();
+    connectWatchdogFired_ = false;
+  } else if (kConnectWatchdog < std::chrono::steady_clock::now() - connectingSince_) {
+    connectWatchdogFired_ = true;
+  }
+  // out of balance / mid-poll: there is nothing a connect press can do, and iOS
+  // blocks the tap in exactly these two cases
+  const bool blocked = processing || outOfBalance;
+  const bool enabled = !blocked && (!transitional || connectWatchdogFired_);
+  w_.ConnectButton().IsEnabled(enabled);
+  w_.ConnectHero().IsEnabled(enabled);
 }
 
 // ---- live stats (macOS parity) -------------------------------------------
@@ -320,6 +392,14 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // The SDK's connection status: the only signal in the client that carries a
   // CONNECTING state. It was read into LiveStats and never used.
   connectStatus_ = ParseConnectStatus(stats.connectionStatus);
+  // The provider grid, into the hero. This is the first consumer
+  // getProviderGridPointList() has ever had in this client. An empty list is
+  // normal (no session, rpc-only, or a connection that has not placed a
+  // provider yet) and the canvas renders it as its bare lattice, so it is fed
+  // through unconditionally rather than gated on non-empty.
+  if (canvas_ && !PreviewHeroActive()) {
+    canvas_->SetGrid(stats.gridPoints, stats.gridWidth, stats.gridHeight);
+  }
   ApplyConnectStatus();
   ApplyPeerCount(peers);  // the peers status line below the connect button (req1)
   // the connected country drives the dns-card recommendation pill; only refresh
@@ -401,6 +481,104 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
 // macOS ConnectActions parity: three stats cards over live SDK feeds, the
 // blocker toggle, the connect options (performance profile), and the plan +
 // usage card.
+
+// ---- hero canvas ----------------------------------------------------------
+
+void ConnectPage::BuildHero() {
+  // The hero is decorative. If building it throws, the connect page must still
+  // come up: an exception escaping here takes Initialize() with it, and the
+  // drawer feeds and the chart clock are wired AFTER this call — so a broken
+  // hero would silently cost the whole page its live data. (That is exactly
+  // what happened once during development, and the symptom was not "no hero",
+  // it was "no hero and nothing updates".)
+  try {
+    canvas_ = std::make_unique<urnw::ConnectCanvas>(w_.ConnectCanvasHost());
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("connect: hero canvas failed to build (hresult 0x{:08x}): {}",
+                   static_cast<uint32_t>(e.code()), urnw::Narrow(e.message().c_str()));
+    canvas_.reset();
+    return;
+  } catch (std::exception const& e) {
+    urnw::LogError("connect: hero canvas failed to build: {}", e.what());
+    canvas_.reset();
+    return;
+  }
+  urnw::LogInfo("connect: hero canvas built");
+
+  // Desktop affordances, wired here rather than in the markup so the hero adds
+  // no new MainWindow handler surface. `this` outlives these handlers: the page
+  // is owned by the window that owns the button, and the whole tree goes at
+  // once.
+  auto hero = w_.ConnectHero();
+  hero.PointerEntered([this](IInspectable const&, auto const&) {
+    if (canvas_) canvas_->SetHovered(true);
+  });
+  hero.PointerExited([this](IInspectable const&, auto const&) {
+    if (canvas_) canvas_->SetHovered(false);
+  });
+  hero.GotFocus([this](IInspectable const&, RoutedEventArgs const&) {
+    // keyboard focus only. A focus ring drawn on a mouse press is noise; the
+    // platform draws its own focus visuals the same way.
+    if (canvas_) {
+      canvas_->SetFocusRingVisible(w_.ConnectHero().FocusState() == FocusState::Keyboard);
+    }
+  });
+  hero.LostFocus([this](IInspectable const&, RoutedEventArgs const&) {
+    if (canvas_) canvas_->SetFocusRingVisible(false);
+  });
+}
+
+// --preview-ui only, and only with URNETWORK_PREVIEW_HERO set. Two gates, both
+// required: the preview flag says there is no session, and the env var says the
+// operator explicitly asked for synthetic content. Nothing below touches Sdk(),
+// the network, or any stored state — it generates points in this process.
+bool ConnectPage::PreviewHeroActive() const {
+  if (!w_.previewUi()) return false;
+  wchar_t buffer[8]{};
+  const DWORD n = ::GetEnvironmentVariableW(L"URNETWORK_PREVIEW_HERO", buffer, 8);
+  return 0 < n && n < 8;
+}
+
+void ConnectPage::PreviewHeroTick() {
+  if (!canvas_) return;
+  // Walk the five states on a 4s cadence and churn a synthetic grid underneath
+  // them, because a still frame cannot show whether the motion is right.
+  static uint32_t frame = 0;
+  ++frame;
+  const uint32_t phase = (frame / 40) % 5;
+  const std::array<urnw::ConnectCanvas::State, 5> walk = {
+      urnw::ConnectCanvas::State::Disconnected, urnw::ConnectCanvas::State::Connecting,
+      urnw::ConnectCanvas::State::Connected, urnw::ConnectCanvas::State::Error,
+      urnw::ConnectCanvas::State::Processing};
+  canvas_->SetState(walk[phase]);
+
+  // one synthetic grid push per second, so the point transitions are visible
+  if (frame % 10 != 0) return;
+  constexpr int32_t kCols = 14;
+  std::vector<urnet::ProviderGridPoint> points;
+  // a cheap deterministic hash, so the walk is reproducible across runs
+  auto hash = [](uint32_t v) { return v * 2654435761u; };
+  const uint32_t seed = frame / 10;
+  for (int32_t y = 0; y < kCols; ++y) {
+    for (int32_t x = 0; x < kCols; ++x) {
+      const uint32_t h = hash(static_cast<uint32_t>(x * 131 + y * 17) ^ hash(seed));
+      if ((h >> 8) % 100 < 42) continue;  // not every cell is occupied
+      urnet::ProviderGridPoint p;
+      p.X = x;
+      p.Y = y;
+      p.ClientId = "preview-" + std::to_string(x) + "-" + std::to_string(y);
+      switch ((h >> 3) % 8) {
+        case 0: p.State = "InEvaluation"; break;
+        case 1: p.State = "EvaluationFailed"; break;
+        case 2: p.State = "NotAdded"; break;
+        default: p.State = "Added"; break;
+      }
+      p.Active = true;
+      points.push_back(p);
+    }
+  }
+  canvas_->SetGrid(points, kCols, kCols);
+}
 
 void ConnectPage::BuildCharts() {
   remoteChart_ = std::make_unique<urnw::TransferChart>(
@@ -755,6 +933,15 @@ void ConnectPage::OnChartTick() {
     remoteChart_->Tick();
     blockedChart_->Tick();
     localChart_->Tick();
+    // the hero's only per-frame path; it returns immediately unless a point
+    // transition is in flight
+    if (canvas_) canvas_->Tick();
+    if (PreviewHeroActive()) PreviewHeroTick();
+    // the connect watchdog: re-render so a transition that has outlived
+    // kConnectWatchdog gives the control back
+    if (connectStatus_ == ConnectStatus::Connecting && !connectWatchdogFired_) {
+      ApplyConnectStatus();
+    }
   }
   if (contractsSheet_) contractsSheet_->Tick();  // ring/disc easing + slide animations
   if (++chartTickCount_ % 10 == 0) {  // ~1s cadence

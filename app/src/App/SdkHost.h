@@ -107,6 +107,20 @@ struct LiveStats {
   std::string locationName;       // selected connect location (empty = best available)
   std::string countryCode;        // selected location country code (dns recommendations)
   std::string countryName;
+
+  // ---- provider grid (ConnectGrid) ----
+  // The grid listener has been subscribed since the first build and
+  // getProviderGridPointList() had NO consumer anywhere in the app: ReadStats
+  // fetched the grid and kept only getWindowCurrentSize(). These three carry it
+  // to the connect hero canvas, which is what finally reads it.
+  //
+  // An EMPTY list is a normal state, not a failure: no session, an rpc-only
+  // session, or a connection that has not placed a provider yet all report one,
+  // and the Go side marshals a nil slice as the four-byte document `null`, which
+  // ReadSdkList turns into nullopt. The hero renders that as its bare lattice.
+  std::vector<urnet::ProviderGridPoint> gridPoints;
+  int64_t gridWidth = 0;   // grid columns; 0 until the grid has a point
+  int64_t gridHeight = 0;  // grid rows
 };
 
 // ---- connect drawer snapshots (macOS ConnectStatsSections parity) ----------

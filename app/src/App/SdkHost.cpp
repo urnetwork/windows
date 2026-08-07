@@ -1758,6 +1758,20 @@ LiveStats SdkHost::ReadStats() {
     s.connected = connectVc_->getConnected();
     auto grid = connectVc_->getGrid();
     s.providerCount = grid.getWindowCurrentSize();
+    // The provider grid itself, for the hero canvas. getWidth/getHeight return
+    // scalars and cannot throw; the point LIST goes through ReadSdkList like
+    // every other list getter, because a nil Go slice marshals as the four-byte
+    // document `null` and seven of eleven list getters were observed throwing
+    // type_error.302 against a live session. An empty grid is a normal state
+    // here, so a nullopt simply leaves the vector empty and the hero renders
+    // its bare lattice.
+    s.gridWidth = grid.getWidth();
+    s.gridHeight = grid.getHeight();
+    static std::atomic<bool> gridLogged{false};
+    if (auto pts = ReadSdkList(gridLogged, "getProviderGridPointList",
+                               [&] { return grid.getProviderGridPointList(); })) {
+      s.gridPoints = std::move(*pts);
+    }
   } else if (device_) {
     s.connected = device_->getConnectLocation().has_value();
     s.connectionStatus = s.connected ? "DESTINATION_SET" : "DISCONNECTED";
@@ -1832,6 +1846,13 @@ LiveStats SdkHost::ReadStats() {
     s.providerCount = 0;
     s.downBitsPerSecond = 0;
     s.upBitsPerSecond = 0;
+    // and the grid, for the same reason: the hero canvas renders provider
+    // points, and an rpc-only session's DeviceLocal negotiates provider
+    // transports normally, so an unclamped grid would draw a live, populated
+    // provider window for a mode that carries no traffic.
+    s.gridPoints.clear();
+    s.gridWidth = 0;
+    s.gridHeight = 0;
   }
   return s;
 }
