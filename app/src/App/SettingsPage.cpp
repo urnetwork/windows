@@ -7,6 +7,7 @@
 #include <cctype>
 #include <filesystem>
 
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Windows.Storage.h>
 #include <winrt/Windows.Storage.Pickers.h>
 
@@ -102,9 +103,20 @@ void SettingsPage::ApplyStrings() {
 
   // support
   w_.FeedbackHeading().Text(Loc("feedback"));
+  // Why the screen exists. Already in the store, used nowhere until now: the
+  // panel opened on five bare controls and no sentence.
+  w_.SupportIntroText().Text(Loc("site_app_support_intro"));
   w_.FeedbackRating().Caption(Loc("how_are_we_doing"));
   w_.FeedbackText().Header(LocBox("anything_else"));
-  w_.SendFeedbackButton().Content(LocBox("send"));
+  // The box shipped with no content whatsoever - an unlabelled tick offering to
+  // upload the user's logs. The string existed the whole time.
+  w_.FeedbackIncludeLogs().Content(LocBox("feedback_include_logs"));
+  // Send is now glyph + label, and a Button whose Content is a Panel gets NO
+  // automatic automation name, so it needs an explicit one or the only way to
+  // submit this form is nameless to a screen reader.
+  w_.SendFeedbackText().Text(Loc("send"));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      w_.SendFeedbackButton(), Loc("send"));
 
   // settings
   w_.SplitTunnelHeading().Text(Loc("app_split_rules"));
@@ -211,7 +223,7 @@ void SettingsPage::BuildAccountSection(Panel const& host) {
 }
 
 void SettingsPage::BuildDeviceSection(Panel const& host) {
-  Heading(host, Loc("device"));
+  Heading(host, Loc("device"), L"");
   auto card = Card(host);
   auto nameButton = NavRow(card, Loc("device_name_label"), deviceNameValue_);
   nameButton.Click([this](auto const&, auto const&) { ShowDeviceNameSheet(); });
@@ -223,7 +235,7 @@ void SettingsPage::BuildDeviceSection(Panel const& host) {
 }
 
 void SettingsPage::BuildConnectionsSection(Panel const& host) {
-  Heading(host, Loc("site_app_connections"));
+  Heading(host, Loc("site_app_connections"), L"");
   auto card = Card(host);
 
   // Kill switch. The note is the shipped one-liner for what it actually does,
@@ -239,7 +251,7 @@ void SettingsPage::BuildConnectionsSection(Panel const& host) {
 }
 
 void SettingsPage::BuildIdentitySection(Panel const& host) {
-  Heading(host, Loc("post_quantum_identity"));
+  Heading(host, Loc("post_quantum_identity"), L"");
   auto card = Card(host);
   TextBlock unused{nullptr};
   auto button = NavRow(card, Loc("provider_identities"), unused);
@@ -248,7 +260,7 @@ void SettingsPage::BuildIdentitySection(Panel const& host) {
 }
 
 void SettingsPage::BuildStayInTouchSection(Panel const& host) {
-  Heading(host, Loc("stay_in_touch"));
+  Heading(host, Loc("stay_in_touch"), L"");
   auto card = Card(host);
 
   productUpdatesState_ = TextBlock();
@@ -290,7 +302,7 @@ void SettingsPage::BuildSubscriptionSection(Panel const& host) {
 }
 
 void SettingsPage::BuildLogsSection(Panel const& host) {
-  Heading(host, Loc("export_logs"));
+  Heading(host, Loc("export_logs"), L"");
   auto card = Card(host);
   // Saving to a file the user picks is the ONLY log affordance here now.
   //

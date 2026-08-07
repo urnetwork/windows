@@ -282,25 +282,34 @@
 
                 <!-- Password: an existing account signs in -->
                 <StackPanel x:Name="PasswordPanel" Margin="24" Spacing="12"
-                            MaxWidth="360" VerticalAlignment="Center"
+                            MaxWidth="420" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="PasswordBackButton" Tag="initial" Click="OnLoginBack" />
-                    <TextBlock x:Name="PasswordHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PasswordEmailText"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
-                    <PasswordBox x:Name="PasswordBox" Style="{StaticResource UrPasswordInputStyle}"
-                                 KeyDown="OnPasswordKeyDown" />
-                    <Button x:Name="SignInButton"
-                            Style="{StaticResource AccentButtonStyle}"
-                            HorizontalAlignment="Stretch" Click="OnSignIn" />
-                    <muxc:InfoBar x:Name="PasswordError" Severity="Error" IsOpen="False" IsClosable="False" />
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock x:Name="ForgotPasswordLabel" Style="{StaticResource UrLabelStyle}"
-                                   VerticalAlignment="Center" />
-                        <Button x:Name="ForgotResetButton" FontSize="12" Padding="4,2"
-                                Background="Transparent" BorderThickness="0"
-                                Click="OnForgotPassword" />
-                    </StackPanel>
+                    <!-- the step's fields on a card. Every sign-in step was a bare
+                         column floating on the page: at 1000px tall the seedphrase
+                         step was ~330px of black, a 400px-wide run of controls, and
+                         ~300px more black, with nothing saying where the form began
+                         or ended. -->
+                    <Border Style="{StaticResource UrCardStyle}" Padding="24">
+                        <StackPanel Spacing="12">
+                        <TextBlock x:Name="PasswordHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock x:Name="PasswordEmailText"
+                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                        <PasswordBox x:Name="PasswordBox" Style="{StaticResource UrPasswordInputStyle}"
+                                     KeyDown="OnPasswordKeyDown" />
+                        <Button x:Name="SignInButton"
+                                Style="{StaticResource AccentButtonStyle}"
+                                HorizontalAlignment="Stretch" Click="OnSignIn" />
+                        <muxc:InfoBar x:Name="PasswordError" Severity="Error" IsOpen="False" IsClosable="False" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock x:Name="ForgotPasswordLabel" Style="{StaticResource UrLabelStyle}"
+                                       VerticalAlignment="Center" />
+                            <Button x:Name="ForgotResetButton" FontSize="12" Padding="4,2"
+                                    Background="Transparent" BorderThickness="0"
+                                    Click="OnForgotPassword" />
+                        </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Create network: sign-up (email + password), a wallet that
@@ -308,75 +317,93 @@
                      guest network's upgrade to a full account (editable email;
                      MainWindow::EnterCreateStep drives the per-mode visibility) -->
                 <StackPanel x:Name="CreatePanel" Margin="24" Spacing="12"
-                            MaxWidth="360" VerticalAlignment="Center"
+                            MaxWidth="420" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="CreateBackButton" Tag="initial" Click="OnLoginBack" />
-                    <TextBlock x:Name="CreateHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock x:Name="WalletCreateNote" Style="{StaticResource UrSupportingTextStyle}"
-                               Visibility="Collapsed"
-                               />
-                    <!-- guest upgrade (the plan card's create-account affordance):
-                         status + call to action, and an editable email in place of
-                         the echoed one -->
-                    <TextBlock x:Name="GuestUpgradeNote" Style="{StaticResource UrSupportingTextStyle}"
-                               Visibility="Collapsed"
-                               />
-                    <TextBlock x:Name="CreateEmailText"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
-                    <TextBox x:Name="CreateEmailBox" Style="{StaticResource UrTextInputStyle}"
-                             Visibility="Collapsed" TextChanged="OnCreateEmailChanged" />
-                    <TextBox x:Name="CreateNameBox" Style="{StaticResource UrTextInputStyle}"
-                             TextChanged="OnCreateNameChanged" />
-                    <TextBlock x:Name="CreateNameStatusText" Style="{StaticResource UrSupportingTextStyle}"
-                               />
-                    <PasswordBox x:Name="CreatePasswordBox" Style="{StaticResource UrPasswordInputStyle}"
-                                 PasswordChanged="OnCreatePasswordChanged" />
-                    <TextBlock x:Name="CreatePasswordHint" Style="{StaticResource UrSupportingTextStyle}"
-                               />
-                    <Grid ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <CheckBox x:Name="TermsCheck" MinWidth="0" VerticalAlignment="Top"
-                                  AutomationProperties.LabeledBy="{Binding ElementName=TermsText}"
-                                  Checked="OnTermsChanged" Unchecked="OnTermsChanged" />
-                        <!-- inlines with tappable terms/privacy links, set in code -->
-                        <TextBlock x:Name="TermsText" Grid.Column="1" TextWrapping="Wrap"
-                                   VerticalAlignment="Center"
+                    <!-- the step's fields on a card. Every sign-in step was a bare
+                         column floating on the page: at 1000px tall the seedphrase
+                         step was ~330px of black, a 400px-wide run of controls, and
+                         ~300px more black, with nothing saying where the form began
+                         or ended. -->
+                    <Border Style="{StaticResource UrCardStyle}" Padding="24">
+                        <StackPanel Spacing="12">
+                        <TextBlock x:Name="CreateHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock x:Name="WalletCreateNote" Style="{StaticResource UrSupportingTextStyle}"
+                                   Visibility="Collapsed"
+                                   />
+                        <!-- guest upgrade (the plan card's create-account affordance):
+                             status + call to action, and an editable email in place of
+                             the echoed one -->
+                        <TextBlock x:Name="GuestUpgradeNote" Style="{StaticResource UrSupportingTextStyle}"
+                                   Visibility="Collapsed"
+                                   />
+                        <TextBlock x:Name="CreateEmailText"
                                    Foreground="{StaticResource UrTextMutedBrush}" />
-                    </Grid>
-                    <TextBox x:Name="BonusCodeBox" Style="{StaticResource UrTextInputStyle}"
-                             TextChanged="OnBonusCodeChanged" />
-                    <TextBlock x:Name="BonusStatusText" Style="{StaticResource UrSupportingTextStyle}"
-                               />
-                    <Button x:Name="CreateButton" IsEnabled="False"
-                            Style="{StaticResource AccentButtonStyle}"
-                            HorizontalAlignment="Stretch" Click="OnCreateNetwork" />
-                    <muxc:InfoBar x:Name="CreateError" Severity="Error" IsOpen="False" IsClosable="False" />
+                        <TextBox x:Name="CreateEmailBox" Style="{StaticResource UrTextInputStyle}"
+                                 Visibility="Collapsed" TextChanged="OnCreateEmailChanged" />
+                        <TextBox x:Name="CreateNameBox" Style="{StaticResource UrTextInputStyle}"
+                                 TextChanged="OnCreateNameChanged" />
+                        <TextBlock x:Name="CreateNameStatusText" Style="{StaticResource UrSupportingTextStyle}"
+                                   />
+                        <PasswordBox x:Name="CreatePasswordBox" Style="{StaticResource UrPasswordInputStyle}"
+                                     PasswordChanged="OnCreatePasswordChanged" />
+                        <TextBlock x:Name="CreatePasswordHint" Style="{StaticResource UrSupportingTextStyle}"
+                                   />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox x:Name="TermsCheck" MinWidth="0" VerticalAlignment="Top"
+                                      AutomationProperties.LabeledBy="{Binding ElementName=TermsText}"
+                                      Checked="OnTermsChanged" Unchecked="OnTermsChanged" />
+                            <!-- inlines with tappable terms/privacy links, set in code -->
+                            <TextBlock x:Name="TermsText" Grid.Column="1" TextWrapping="Wrap"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource UrTextMutedBrush}" />
+                        </Grid>
+                        <TextBox x:Name="BonusCodeBox" Style="{StaticResource UrTextInputStyle}"
+                                 TextChanged="OnBonusCodeChanged" />
+                        <TextBlock x:Name="BonusStatusText" Style="{StaticResource UrSupportingTextStyle}"
+                                   />
+                        <Button x:Name="CreateButton" IsEnabled="False"
+                                Style="{StaticResource AccentButtonStyle}"
+                                HorizontalAlignment="Stretch" Click="OnCreateNetwork" />
+                        <muxc:InfoBar x:Name="CreateError" Severity="Error" IsOpen="False" IsClosable="False" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Verify: the emailed / texted one-time code -->
                 <StackPanel x:Name="VerifyPanel" Margin="24" Spacing="12"
-                            MaxWidth="360" VerticalAlignment="Center"
+                            MaxWidth="420" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="VerifyBackButton" Tag="initial" Click="OnLoginBack" />
-                    <TextBlock x:Name="VerifyHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock x:Name="VerifyExplanationText" TextWrapping="Wrap"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
-                    <TextBox x:Name="VerifyCodeBox" Style="{StaticResource UrTextInputStyle}"
-                             MaxLength="6" TextChanged="OnVerifyCodeChanged" />
-                    <Button x:Name="VerifyButton" IsEnabled="False"
-                            Style="{StaticResource AccentButtonStyle}"
-                            HorizontalAlignment="Stretch" Click="OnVerifySubmit" />
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock x:Name="DontSeeItLabel" Style="{StaticResource UrLabelStyle}"
-                                   VerticalAlignment="Center" />
-                        <Button x:Name="ResendCodeButton" FontSize="12" Padding="4,2"
-                                Background="Transparent" BorderThickness="0"
-                                Click="OnResendCode" />
-                    </StackPanel>
-                    <muxc:InfoBar x:Name="VerifyInfo" IsOpen="False" IsClosable="False" />
+                    <!-- the step's fields on a card. Every sign-in step was a bare
+                         column floating on the page: at 1000px tall the seedphrase
+                         step was ~330px of black, a 400px-wide run of controls, and
+                         ~300px more black, with nothing saying where the form began
+                         or ended. -->
+                    <Border Style="{StaticResource UrCardStyle}" Padding="24">
+                        <StackPanel Spacing="12">
+                        <TextBlock x:Name="VerifyHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock x:Name="VerifyExplanationText" TextWrapping="Wrap"
+                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                        <TextBox x:Name="VerifyCodeBox" Style="{StaticResource UrTextInputStyle}"
+                                 MaxLength="6" TextChanged="OnVerifyCodeChanged" />
+                        <Button x:Name="VerifyButton" IsEnabled="False"
+                                Style="{StaticResource AccentButtonStyle}"
+                                HorizontalAlignment="Stretch" Click="OnVerifySubmit" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock x:Name="DontSeeItLabel" Style="{StaticResource UrLabelStyle}"
+                                       VerticalAlignment="Center" />
+                            <Button x:Name="ResendCodeButton" FontSize="12" Padding="4,2"
+                                    Background="Transparent" BorderThickness="0"
+                                    Click="OnResendCode" />
+                        </StackPanel>
+                        <muxc:InfoBar x:Name="VerifyInfo" IsOpen="False" IsClosable="False" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Seedphrase: sign in with a 12- or 24-word phrase (macOS
@@ -389,24 +416,33 @@
                      rewrites the credential, and a prediction service would be
                      handed a live seedphrase. -->
                 <StackPanel x:Name="SeedphrasePanel" Margin="24" Spacing="12"
-                            MaxWidth="400" VerticalAlignment="Center"
+                            MaxWidth="440" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="SeedphraseBackButton" Tag="initial" Click="OnLoginBack" />
-                    <TextBlock x:Name="SeedphraseHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBox x:Name="SeedphraseBox" Style="{StaticResource UrTextInputStyle}"
-                             AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120"
-                             FontFamily="Consolas"
-                             IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
-                             TextChanged="OnSeedphraseChanged" />
-                    <TextBlock x:Name="SeedphraseWordCountText"
-                               Style="{StaticResource UrSupportingTextStyle}"
-                               TextWrapping="Wrap" />
-                    <Button x:Name="SeedphraseSubmitButton" IsEnabled="False"
-                            Style="{StaticResource AccentButtonStyle}"
-                            HorizontalAlignment="Stretch" Click="OnSeedphraseSubmit" />
-                    <TextBlock x:Name="SeedphraseErrorText"
-                               Style="{StaticResource UrInlineErrorTextStyle}"
-                               Visibility="Collapsed" />
+                    <!-- the step's fields on a card. Every sign-in step was a bare
+                         column floating on the page: at 1000px tall the seedphrase
+                         step was ~330px of black, a 400px-wide run of controls, and
+                         ~300px more black, with nothing saying where the form began
+                         or ended. -->
+                    <Border Style="{StaticResource UrCardStyle}" Padding="24">
+                        <StackPanel Spacing="12">
+                        <TextBlock x:Name="SeedphraseHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
+                        <TextBox x:Name="SeedphraseBox" Style="{StaticResource UrTextInputStyle}"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120"
+                                 FontFamily="Consolas"
+                                 IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
+                                 TextChanged="OnSeedphraseChanged" />
+                        <TextBlock x:Name="SeedphraseWordCountText"
+                                   Style="{StaticResource UrSupportingTextStyle}"
+                                   TextWrapping="Wrap" />
+                        <Button x:Name="SeedphraseSubmitButton" IsEnabled="False"
+                                Style="{StaticResource AccentButtonStyle}"
+                                HorizontalAlignment="Stretch" Click="OnSeedphraseSubmit" />
+                        <TextBlock x:Name="SeedphraseErrorText"
+                                   Style="{StaticResource UrInlineErrorTextStyle}"
+                                   Visibility="Collapsed" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Instant account: terms consent and one button (macOS
@@ -414,58 +450,76 @@
                      returns is shown in a sheet before the device is
                      registered - see SeedphraseDisplaySheet. -->
                 <StackPanel x:Name="InstantPanel" Margin="24" Spacing="12"
-                            MaxWidth="400" VerticalAlignment="Center"
+                            MaxWidth="440" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="InstantBackButton" Tag="initial" Click="OnLoginBack" />
-                    <TextBlock x:Name="InstantHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock x:Name="InstantExplanationText" TextWrapping="Wrap"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
-                    <Grid ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <!-- A bare CheckBox with no content has NO accessible name -
-                             a screen reader announces "checkbox" and nothing else -
-                             so LabeledBy borrows the sentence beside it, the same
-                             way the connect drawer's toggles do.
-
-                             LabeledBy ALONE is not the whole fix: the label stays
-                             in the control view with the identical string, so the
-                             sentence was announced twice. urnw::PairTermsLabel
-                             (called from LoginPage::ApplyStrings) takes the label
-                             out of the control view and puts its two Hyperlinks
-                             back individually - they are the only keyboard route
-                             to the terms and the privacy policy. -->
-                        <CheckBox x:Name="InstantTermsCheck" MinWidth="0" VerticalAlignment="Top"
-                                  AutomationProperties.LabeledBy="{Binding ElementName=InstantTermsText}"
-                                  Checked="OnInstantTermsChanged" Unchecked="OnInstantTermsChanged" />
-                        <!-- inlines with tappable terms/privacy links, set in code -->
-                        <TextBlock x:Name="InstantTermsText" Grid.Column="1" TextWrapping="Wrap"
-                                   VerticalAlignment="Center"
+                    <!-- the step's fields on a card. Every sign-in step was a bare
+                         column floating on the page: at 1000px tall the seedphrase
+                         step was ~330px of black, a 400px-wide run of controls, and
+                         ~300px more black, with nothing saying where the form began
+                         or ended. -->
+                    <Border Style="{StaticResource UrCardStyle}" Padding="24">
+                        <StackPanel Spacing="12">
+                        <TextBlock x:Name="InstantHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock x:Name="InstantExplanationText" TextWrapping="Wrap"
                                    Foreground="{StaticResource UrTextMutedBrush}" />
-                    </Grid>
-                    <Button x:Name="InstantCreateButton" IsEnabled="False"
-                            Style="{StaticResource AccentButtonStyle}"
-                            HorizontalAlignment="Stretch" Click="OnCreateInstantSubmit" />
-                    <TextBlock x:Name="InstantErrorText"
-                               Style="{StaticResource UrInlineErrorTextStyle}"
-                               Visibility="Collapsed" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <!-- A bare CheckBox with no content has NO accessible name -
+                                 a screen reader announces "checkbox" and nothing else -
+                                 so LabeledBy borrows the sentence beside it, the same
+                                 way the connect drawer's toggles do.
+
+                                 LabeledBy ALONE is not the whole fix: the label stays
+                                 in the control view with the identical string, so the
+                                 sentence was announced twice. urnw::PairTermsLabel
+                                 (called from LoginPage::ApplyStrings) takes the label
+                                 out of the control view and puts its two Hyperlinks
+                                 back individually - they are the only keyboard route
+                                 to the terms and the privacy policy. -->
+                            <CheckBox x:Name="InstantTermsCheck" MinWidth="0" VerticalAlignment="Top"
+                                      AutomationProperties.LabeledBy="{Binding ElementName=InstantTermsText}"
+                                      Checked="OnInstantTermsChanged" Unchecked="OnInstantTermsChanged" />
+                            <!-- inlines with tappable terms/privacy links, set in code -->
+                            <TextBlock x:Name="InstantTermsText" Grid.Column="1" TextWrapping="Wrap"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource UrTextMutedBrush}" />
+                        </Grid>
+                        <Button x:Name="InstantCreateButton" IsEnabled="False"
+                                Style="{StaticResource AccentButtonStyle}"
+                                HorizontalAlignment="Stretch" Click="OnCreateInstantSubmit" />
+                        <TextBlock x:Name="InstantErrorText"
+                                   Style="{StaticResource UrInlineErrorTextStyle}"
+                                   Visibility="Collapsed" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Password reset: send the reset link -->
                 <StackPanel x:Name="ResetPanel" Margin="24" Spacing="12"
-                            MaxWidth="360" VerticalAlignment="Center"
+                            MaxWidth="420" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <Button x:Name="ResetBackButton" Tag="password" Click="OnLoginBack" />
-                    <TextBlock x:Name="ResetHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock x:Name="ResetEmailText"
-                               Foreground="{StaticResource UrTextMutedBrush}" />
-                    <TextBlock x:Name="ResetSpamNote" Style="{StaticResource UrSupportingTextStyle}" />
-                    <Button x:Name="SendResetButton"
-                            Style="{StaticResource AccentButtonStyle}"
-                            HorizontalAlignment="Stretch" Click="OnSendResetLink" />
-                    <muxc:InfoBar x:Name="ResetInfo" IsOpen="False" IsClosable="False" />
+                    <!-- the step's fields on a card. Every sign-in step was a bare
+                         column floating on the page: at 1000px tall the seedphrase
+                         step was ~330px of black, a 400px-wide run of controls, and
+                         ~300px more black, with nothing saying where the form began
+                         or ended. -->
+                    <Border Style="{StaticResource UrCardStyle}" Padding="24">
+                        <StackPanel Spacing="12">
+                        <TextBlock x:Name="ResetHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock x:Name="ResetEmailText"
+                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                        <TextBlock x:Name="ResetSpamNote" Style="{StaticResource UrSupportingTextStyle}" />
+                        <Button x:Name="SendResetButton"
+                                Style="{StaticResource AccentButtonStyle}"
+                                HorizontalAlignment="Stretch" Click="OnSendResetLink" />
+                        <muxc:InfoBar x:Name="ResetInfo" IsOpen="False" IsClosable="False" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
             </Grid>
@@ -473,6 +527,24 @@
 
         <!-- Home -->
         <!-- same body-face inheritance as LoginRoot, for the whole home tree -->
+        <!-- PaneDisplayMode="LeftCompact" - an ICON RAIL, always on screen,
+             rather than LeftMinimal's hamburger over nothing. Three things at
+             once:
+               * it is permanent structure. LeftMinimal drew a 48px hamburger on
+                 an otherwise empty left margin and the seven destinations only
+                 existed while a flyout was open, so the app had no visible
+                 chrome at all - which is most of why it read as buttons on
+                 black.
+               * it makes the destinations reachable in one click instead of two.
+               * it shrinks the light-pane problem: the docked rail is the
+                 common case and the acrylic overlay is now the exception. (The
+                 overlay is fixed too - see NavigationViewExpandedPaneBackground
+                 in App.xaml.)
+             Compact/Expanded thresholds are pinned so the mode does NOT change
+             with the window width: NavigationView otherwise auto-expands the
+             pane past ~1008px, which moves the whole page sideways when the user
+             resizes and was how "correct at the default width" kept being wrong
+             at another one. The toggle button still opens the labelled overlay. -->
         <!-- IsSettingsVisible="False" is load-bearing: NavigationView adds its OWN
              settings gear by default, IN ADDITION to the explicit SettingsNavItem
              below. That gear's Tag matches none of the six destinations, so
@@ -480,17 +552,58 @@
              way back except picking another destination. -->
         <muxc:NavigationView x:Name="HomeNav" Grid.Row="1" Visibility="Collapsed"
                              FontFamily="{StaticResource UrBodyFontFamily}"
-                             IsBackButtonVisible="Collapsed" PaneDisplayMode="LeftMinimal"
+                             IsBackButtonVisible="Collapsed" PaneDisplayMode="LeftCompact"
+                             CompactModeThresholdWidth="0" ExpandedModeThresholdWidth="100000"
+                             OpenPaneLength="220" IsPaneToggleButtonVisible="True"
                              IsSettingsVisible="False"
                              SelectionChanged="OnNavSelectionChanged">
             <muxc:NavigationView.MenuItems>
-                <muxc:NavigationViewItem x:Name="ConnectNavItem" Tag="connect" IsSelected="True" />
-                <muxc:NavigationViewItem x:Name="AccountNavItem" Tag="account" />
-                <muxc:NavigationViewItem x:Name="WalletNavItem" Tag="wallet" />
-                <muxc:NavigationViewItem x:Name="LeaderboardNavItem" Tag="leaderboard" />
-                <muxc:NavigationViewItem x:Name="SupportNavItem" Tag="support" />
-                <muxc:NavigationViewItem x:Name="SettingsNavItem" Tag="settings" />
-                <muxc:NavigationViewItem x:Name="DeveloperNavItem" Tag="developer" />
+                <!-- Segoe Fluent Icons, which Windows 11 ships: the rail above
+                     needs a glyph per destination or LeftCompact is seven blank
+                     48px squares. Chosen for what the destination IS, not for
+                     decoration:
+                       E774 Globe        connect      (the network)
+                       E77B Contact      account
+                       E8C7 Wallet       wallet
+                       EAFC TrendingUp   leaderboard
+                       E9CE Help         support
+                       E713 Settings     settings
+                       EBE8 DeveloperTools developer -->
+                <muxc:NavigationViewItem x:Name="ConnectNavItem" Tag="connect" IsSelected="True">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE774;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem x:Name="AccountNavItem" Tag="account">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE77B;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem x:Name="WalletNavItem" Tag="wallet">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE8C7;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem x:Name="LeaderboardNavItem" Tag="leaderboard">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xEAFC;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem x:Name="SupportNavItem" Tag="support">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE9CE;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem x:Name="SettingsNavItem" Tag="settings">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE713;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem x:Name="DeveloperNavItem" Tag="developer">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xEBE8;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
             </muxc:NavigationView.MenuItems>
 
             <Grid Margin="24">
@@ -503,7 +616,37 @@
                      (UsageBar). -->
                 <ScrollViewer x:Name="ConnectView" HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="DrawerStack" Spacing="16" MaxWidth="600"
+                  <!-- THE WIDTH CAP IS A COLUMN, NOT A MaxWidth ON THE PANEL -
+                       see the long note on WalletView. MaxWidth on a Stretch
+                       child of a ScrollViewer offsets from the child's DESIRED
+                       width while laying it out at the cap, so the column is
+                       pushed right by the slack and its right side falls off
+                       the viewport. Measured here at 1100px before the fix:
+                       300px of dead gutter on the left, 48px on the right, and
+                       the Connect button clipped from 900px up. Wallet and
+                       Leaderboard were fixed this way in P4; Connect, Account,
+                       Support and Settings had not been. -->
+                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
+                       middle one. The middle star is greedy enough to always
+                       reach its MaxWidth when the window has the room, and the
+                       two hairline stars split whatever is left - so the column
+                       is CENTRED at wide widths and simply fills the viewport
+                       at narrow ones, with no breakpoint and no branch.
+
+                       Why not MaxWidth on the panel: that is the arrange-split
+                       bug (the offset comes out of the child's DESIRED width
+                       while it is laid out at the cap). Why not the single
+                       capped column P4 used: it pins the content to x=0, which
+                       is right at 1100 and lopsided when maximized - measured
+                       2578px wide with 600px of content and ~1900px of void on
+                       one side. -->
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1000*" MaxWidth="600" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="1" x:Name="DrawerStack" Spacing="16"
                                 HorizontalAlignment="Stretch" Margin="0,0,0,24">
 
                         <!-- Connection controls -->
@@ -570,22 +713,40 @@
                                                    Foreground="{StaticResource UrTextMutedBrush}" />
                                     </StackPanel>
                                 </Button>
-                                <!-- discoverability (apple/android parity): whether this device
-                                     is itself connectable as a same-network peer -->
-                                <TextBlock x:Name="DiscoverableText" Style="{StaticResource UrLabelStyle}" />
                                 <!-- out of balance: the action button opens the upgrade flow -->
                                 <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
                                          Severity="Warning" />
-                                <!-- live stats (macOS parity): providers, throughput, provide -->
-                                <TextBlock x:Name="ProviderCountText" Style="{StaticResource UrLabelStyle}" />
-                                <TextBlock x:Name="ThroughputText" FontSize="12"
-                                           FontFamily="Consolas"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
-                                <TextBlock x:Name="ProvideStatsText" Style="{StaticResource UrLabelStyle}" />
-                                <!-- Provide control mode: Auto | Always | Network | Never.
-                                     "Network" is the private provider (always on, provides
-                                     only to same-network peers, never publicly). -->
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0" Spacing="6">
+                                <!-- Live stats, connected only. THESE FOUR ROWS WERE THE
+                                     VOID. Every one of them is empty while disconnected -
+                                     which is the state the app opens in - but a
+                                     StackPanel row with an empty TextBlock still
+                                     consumes its Spacing, so four blanks at
+                                     Spacing="12" left ~120px of nothing in the middle
+                                     of the hero card with no way to tell it apart from
+                                     a layout bug. ConnectPage now sets text and
+                                     visibility together (kit::SetTextOrCollapse), so an
+                                     empty row costs no height. The divider is inside
+                                     the same collapsing group: a rule over nothing is
+                                     the same defect one pixel tall. -->
+                                <StackPanel x:Name="LiveStatsGroup" Spacing="8" Visibility="Collapsed">
+                                    <Border Style="{StaticResource UrDividerStyle}" />
+                                    <TextBlock x:Name="ProviderCountText" Style="{StaticResource UrLabelStyle}" />
+                                    <TextBlock x:Name="ThroughputText" FontSize="12"
+                                               FontFamily="Consolas"
+                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- PROVIDE. Was buried in the middle of the hero card,
+                             between the peers line and the connect options, with
+                             nothing marking where one subject ended and the next
+                             began - the card ran ~800px and carried five unrelated
+                             topics. Provide is its own decision (am I giving
+                             bandwidth back, and to whom), so it is its own module. -->
+                        <Border x:Name="ProvideCard" Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
                                     <!-- provide indicator (apple parity): solid dot = Network
                                          provide tier; dot + outer ring = Public tier -->
                                     <Grid Width="14" Height="14" VerticalAlignment="Center">
@@ -593,10 +754,12 @@
                                                  StrokeThickness="1.5" Visibility="Collapsed" />
                                         <Ellipse x:Name="ProvideModeDot" Width="8" Height="8" />
                                     </Grid>
-                                    <TextBlock x:Name="ProvideModeLabel" FontSize="12"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <TextBlock x:Name="ProvideModeLabel"
+                                               Style="{StaticResource UrSectionHeadingStyle}" />
                                 </StackPanel>
+                                <!-- Provide control mode: Auto | Always | Network | Never.
+                                     "Network" is the private provider (always on, provides
+                                     only to same-network peers, never publicly). -->
                                 <muxc:SelectorBar x:Name="ProvideModeBar"
                                                   SelectionChanged="OnProvideModeChanged">
                                     <muxc:SelectorBarItem x:Name="ProvideAutoItem" />
@@ -604,8 +767,40 @@
                                     <muxc:SelectorBarItem x:Name="ProvideNetworkItem" />
                                     <muxc:SelectorBarItem x:Name="ProvideNeverItem" />
                                 </muxc:SelectorBar>
-                                <TextBlock x:Name="ConnectOptionsLabel" FontSize="12" Margin="0,12,0,0"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <!-- discoverability (apple/android parity): whether this device
+                                     is itself connectable as a same-network peer -->
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xE704;" Style="{StaticResource UrRowIconStyle}"
+                                              FontSize="14" />
+                                    <TextBlock x:Name="DiscoverableText" Grid.Column="1"
+                                               TextWrapping="Wrap"
+                                               Style="{StaticResource UrLabelStyle}" />
+                                </Grid>
+                                <!-- "N clients connected", empty when provide is off:
+                                     collapses rather than leaving a gap (see LiveStatsGroup) -->
+                                <TextBlock x:Name="ProvideStatsText" Style="{StaticResource UrLabelStyle}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- CONNECT OPTIONS. Four independent switches that used to
+                             be four bare Grids stacked on the same surface as the
+                             connect button, with no rules between them: the reason
+                             the owner could not tell where one setting stopped. The
+                             ad/tracker blocker joins them - it was its own one-row
+                             card for no reason other than the order it was added -
+                             so every per-connection switch is in one place. -->
+                        <Border x:Name="ConnectOptionsCard" Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE9E9;" Style="{StaticResource UrRowIconStyle}" />
+                                    <TextBlock x:Name="ConnectOptionsLabel"
+                                               Style="{StaticResource UrSectionHeadingStyle}" />
+                                </StackPanel>
                                 <!-- Connection Mode: device performance profile -->
                                 <muxc:SelectorBar x:Name="ConnectionModeBar"
                                                   SelectionChanged="OnConnectionModeChanged">
@@ -613,35 +808,68 @@
                                     <muxc:SelectorBarItem x:Name="ModeWebItem" />
                                     <muxc:SelectorBarItem x:Name="ModeStreamingItem" />
                                 </muxc:SelectorBar>
-                                <Grid>
-                                    <TextBlock x:Name="FixedIpLabel" FontSize="14"
-                                               VerticalAlignment="Center" />
-                                    <ToggleSwitch x:Name="FixedIpToggle"
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xE71B;" Style="{StaticResource UrRowIconStyle}" />
+                                    <TextBlock x:Name="FixedIpLabel" Grid.Column="1" FontSize="14"
+                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <ToggleSwitch x:Name="FixedIpToggle" Grid.Column="2"
                                                   Style="{StaticResource UrSwitchToggleStyle}"
                                                   AutomationProperties.LabeledBy="{Binding ElementName=FixedIpLabel}"
                                                   Toggled="OnFixedIpToggled" />
                                 </Grid>
-                                <Grid>
-                                    <TextBlock x:Name="StrongAnonLabel" FontSize="14"
-                                               VerticalAlignment="Center" />
-                                    <ToggleSwitch x:Name="StrongAnonToggle"
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xEA18;" Style="{StaticResource UrRowIconStyle}" />
+                                    <TextBlock x:Name="StrongAnonLabel" Grid.Column="1" FontSize="14"
+                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <ToggleSwitch x:Name="StrongAnonToggle" Grid.Column="2"
                                                   Style="{StaticResource UrSwitchToggleStyle}"
                                                   AutomationProperties.LabeledBy="{Binding ElementName=StrongAnonLabel}"
                                                   Toggled="OnStrongAnonToggled" />
                                 </Grid>
+                                <Border Style="{StaticResource UrDividerStyle}" />
                                 <!-- Post quantum encryption: opportunistic e2e; providers
                                      without support fall back to plaintext at this layer -->
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock x:Name="PostQuantumLabel" FontSize="14"
+                                    <FontIcon Glyph="&#xE72E;" Style="{StaticResource UrRowIconStyle}" />
+                                    <TextBlock x:Name="PostQuantumLabel" Grid.Column="1" FontSize="14"
                                                TextWrapping="Wrap" VerticalAlignment="Center" />
-                                    <ToggleSwitch x:Name="PostQuantumToggle" Grid.Column="1"
+                                    <ToggleSwitch x:Name="PostQuantumToggle" Grid.Column="2"
                                                   Style="{StaticResource UrSwitchToggleStyle}"
                                                   AutomationProperties.LabeledBy="{Binding ElementName=PostQuantumLabel}"
                                                   Toggled="OnPostQuantumToggled" />
+                                </Grid>
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <!-- Block ads and trackers: the device applies and persists it -->
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Glyph="&#xEA39;" Style="{StaticResource UrRowIconStyle}" />
+                                    <TextBlock x:Name="BlockerLabel" Grid.Column="1" FontSize="14"
+                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <ToggleSwitch x:Name="BlockerToggle" Grid.Column="2"
+                                                  Style="{StaticResource UrSwitchToggleStyle}"
+                                                  AutomationProperties.LabeledBy="{Binding ElementName=BlockerLabel}"
+                                                  Toggled="OnBlockerToggled" />
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -651,9 +879,14 @@
                                 Click="OnClientStatsCardClick">
                             <StackPanel Spacing="12">
                                 <Grid>
-                                    <TextBlock x:Name="ClientStatsLabel" FontSize="12"
-                                               AutomationProperties.AccessibilityView="Raw"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE9D2;" Style="{StaticResource UrRowIconStyle}"
+                                                  FontSize="14" />
+                                        <TextBlock x:Name="ClientStatsLabel" FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   AutomationProperties.AccessibilityView="Raw"
+                                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                                    </StackPanel>
                                     <FontIcon Glyph="&#xE76C;" FontSize="12"
                                               HorizontalAlignment="Right"
                                               Foreground="{StaticResource UrTextFaintBrush}" />
@@ -668,9 +901,14 @@
                                 Click="OnLocalStatsCardClick">
                             <StackPanel Spacing="12">
                                 <Grid>
-                                    <TextBlock x:Name="LocalStatsLabel" FontSize="12"
-                                               AutomationProperties.AccessibilityView="Raw"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE7F4;" Style="{StaticResource UrRowIconStyle}"
+                                                  FontSize="14" />
+                                        <TextBlock x:Name="LocalStatsLabel" FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   AutomationProperties.AccessibilityView="Raw"
+                                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                                    </StackPanel>
                                     <FontIcon Glyph="&#xE76C;" FontSize="12"
                                               HorizontalAlignment="Right"
                                               Foreground="{StaticResource UrTextFaintBrush}" />
@@ -685,9 +923,14 @@
                                 Click="OnDnsCardClick">
                             <StackPanel Spacing="8">
                                 <Grid Margin="0,0,0,4">
-                                    <TextBlock x:Name="DnsCardLabel" FontSize="12"
-                                               AutomationProperties.AccessibilityView="Raw"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE774;" Style="{StaticResource UrRowIconStyle}"
+                                                  FontSize="14" />
+                                        <TextBlock x:Name="DnsCardLabel" FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   AutomationProperties.AccessibilityView="Raw"
+                                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                                    </StackPanel>
                                     <FontIcon Glyph="&#xE76C;" FontSize="12"
                                               HorizontalAlignment="Right"
                                               Foreground="{StaticResource UrTextFaintBrush}" />
@@ -765,18 +1008,6 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- Block ads and trackers: the device applies and persists it -->
-                        <Border x:Name="BlockerCard" Style="{StaticResource UrCardStyle}" Padding="16,8,16,8">
-                            <Grid>
-                                <TextBlock x:Name="BlockerLabel" FontSize="14"
-                                           VerticalAlignment="Center" />
-                                <ToggleSwitch x:Name="BlockerToggle"
-                                              Style="{StaticResource UrSwitchToggleStyle}"
-                                              AutomationProperties.LabeledBy="{Binding ElementName=BlockerLabel}"
-                                              Toggled="OnBlockerToggled" />
-                            </Grid>
-                        </Border>
-
                         <!-- Plan + usage (macOS ConnectActions.swift:169-204) -->
                         <Border x:Name="DrawerPlanCard" Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="8">
@@ -814,12 +1045,34 @@
                         </Border>
 
                     </StackPanel>
+                  </Grid>
                 </ScrollViewer>
 
                 <!-- Account (macOS AccountRootView parity: plan card + usage bar,
                      redeem, redeemed codes, profile, referrals) -->
                 <ScrollViewer x:Name="AccountView" Visibility="Collapsed">
-                    <StackPanel Spacing="16" MaxWidth="520" Margin="0,0,0,24">
+                  <!-- capped star column, not MaxWidth on the panel: see ConnectView -->
+                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
+                       middle one. The middle star is greedy enough to always
+                       reach its MaxWidth when the window has the room, and the
+                       two hairline stars split whatever is left - so the column
+                       is CENTRED at wide widths and simply fills the viewport
+                       at narrow ones, with no breakpoint and no branch.
+
+                       Why not MaxWidth on the panel: that is the arrange-split
+                       bug (the offset comes out of the child's DESIRED width
+                       while it is laid out at the cap). Why not the single
+                       capped column P4 used: it pins the content to x=0, which
+                       is right at 1100 and lopsided when maximized - measured
+                       2578px wide with 600px of content and ~1900px of void on
+                       one side. -->
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1000*" MaxWidth="560" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="1" Spacing="16" Margin="0,0,0,24">
 
                         <!-- Plan + usage card -->
                         <Border Style="{StaticResource UrCardStyle}">
@@ -887,8 +1140,11 @@
                         <!-- Profile -->
                         <Border Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="12">
-                                <TextBlock x:Name="AccountHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
-                                <TextBox x:Name="NetworkNameBox" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE77B;" Style="{StaticResource UrRowIconStyle}" />
+                                    <TextBlock x:Name="AccountHeading" Style="{StaticResource UrPanelHeadingStyle}" />
+                                </StackPanel>
+                                <TextBox x:Name="NetworkNameBox" Style="{StaticResource UrTextInputStyle}" />
                                 <Button x:Name="SaveNameButton" Click="OnSaveNetworkName" />
                                 <TextBlock x:Name="AccountAuthText"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -901,7 +1157,10 @@
                         <!-- Referrals -->
                         <Border Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="12">
-                                <TextBlock x:Name="ReferralsHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE902;" Style="{StaticResource UrRowIconStyle}" />
+                                    <TextBlock x:Name="ReferralsHeading" Style="{StaticResource UrPanelHeadingStyle}" />
+                                </StackPanel>
                                 <TextBlock x:Name="ReferralText" TextWrapping="Wrap" />
 
                                 <!-- referral royalty: networks with at least one referral get
@@ -916,6 +1175,7 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
+                  </Grid>
                 </ScrollViewer>
 
                 <!-- Wallet.
@@ -943,12 +1203,31 @@
                      fills the viewport, the column takes min(820, viewport) at
                      x=0, and the content stretches inside it at every width. -->
                 <ScrollViewer x:Name="WalletView" Visibility="Collapsed">
+                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
+                       middle one. The middle star is greedy enough to always
+                       reach its MaxWidth when the window has the room, and the
+                       two hairline stars split whatever is left - so the column
+                       is CENTRED at wide widths and simply fills the viewport
+                       at narrow ones, with no breakpoint and no branch.
+
+                       Why not MaxWidth on the panel: that is the arrange-split
+                       bug (the offset comes out of the child's DESIRED width
+                       while it is laid out at the cap). Why not the single
+                       capped column P4 used: it pins the content to x=0, which
+                       is right at 1100 and lopsided when maximized - measured
+                       2578px wide with 600px of content and ~1900px of void on
+                       one side. -->
                   <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MaxWidth="820" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1000*" MaxWidth="820" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Spacing="12">
-                        <TextBlock x:Name="PlanHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
+                    <StackPanel Grid.Column="1" Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xEB05;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="PlanHeading" Style="{StaticResource UrPanelHeadingStyle}" />
+                        </StackPanel>
                         <Button x:Name="UpgradeButton"
                                 Style="{StaticResource AccentButtonStyle}" Click="OnOpenUpgrade" />
                         <muxc:InfoBar x:Name="WalletInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
@@ -964,19 +1243,16 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock x:Name="WalletUnpaidLabel" Style="{StaticResource UrLabelStyle}" />
-                                    <TextBlock x:Name="WalletUnpaidValue" FontFamily="{StaticResource UrHeadingCondensedFontFamily}"
-                                               FontSize="26" Foreground="{StaticResource UrTextBrush}" />
+                                    <TextBlock x:Name="WalletUnpaidLabel" Style="{StaticResource UrStatLabelStyle}" />
+                                    <TextBlock x:Name="WalletUnpaidValue" Style="{StaticResource UrStatValueStyle}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock x:Name="WalletPendingLabel" Style="{StaticResource UrLabelStyle}" />
-                                    <TextBlock x:Name="WalletPendingValue" FontFamily="{StaticResource UrHeadingCondensedFontFamily}"
-                                               FontSize="26" Foreground="{StaticResource UrTextBrush}" />
+                                    <TextBlock x:Name="WalletPendingLabel" Style="{StaticResource UrStatLabelStyle}" />
+                                    <TextBlock x:Name="WalletPendingValue" Style="{StaticResource UrStatValueStyle}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock x:Name="WalletReferralsLabel" Style="{StaticResource UrLabelStyle}" />
-                                    <TextBlock x:Name="WalletReferralsValue" FontFamily="{StaticResource UrHeadingCondensedFontFamily}"
-                                               FontSize="26" Foreground="{StaticResource UrTextBrush}" />
+                                    <TextBlock x:Name="WalletReferralsLabel" Style="{StaticResource UrStatLabelStyle}" />
+                                    <TextBlock x:Name="WalletReferralsValue" Style="{StaticResource UrStatValueStyle}" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -986,8 +1262,10 @@
                              horizontally (iOS PopulatedWalletsView). WalletsStatusText
                              carries loading / failed; the empty state is its own
                              panel because it is onboarding copy, not a status line. -->
-                        <TextBlock x:Name="PayoutWalletsHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
-                                   Margin="0,12,0,0" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                            <FontIcon Glyph="&#xE8C7;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="PayoutWalletsHeading" Style="{StaticResource UrSectionHeadingStyle}" />
+                        </StackPanel>
                         <TextBlock x:Name="WalletsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
                         <ScrollViewer x:Name="WalletCardsScroller" HorizontalScrollMode="Auto"
                                       HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled"
@@ -995,35 +1273,59 @@
                             <StackPanel x:Name="WalletCardsPanel" Orientation="Horizontal" Spacing="12"
                                         Padding="0,0,0,8" />
                         </ScrollViewer>
-                        <StackPanel x:Name="WalletsEmptyPanel" Spacing="8" Visibility="Collapsed">
-                            <TextBlock x:Name="WalletsEmptyText" Style="{StaticResource UrSupportingTextStyle}" />
-                            <TextBlock x:Name="WalletsEmptyNote" Style="{StaticResource UrSupportingTextStyle}" />
-                        </StackPanel>
+                        <!-- "no wallets yet" is onboarding copy, so it gets a
+                             surface and a mark rather than two grey sentences on
+                             the page background. -->
+                        <Border x:Name="WalletsEmptyPanel" Style="{StaticResource UrCardStyle}"
+                                Visibility="Collapsed">
+                            <StackPanel Spacing="8" HorizontalAlignment="Center"
+                                        Padding="8,12">
+                                <FontIcon Glyph="&#xE8C7;" Style="{StaticResource UrEmptyGlyphStyle}" />
+                                <TextBlock x:Name="WalletsEmptyText" TextAlignment="Center"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                                <TextBlock x:Name="WalletsEmptyNote" TextAlignment="Center"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                            </StackPanel>
+                        </Border>
 
                         <!-- Connect an external wallet by address. The server
                              validates it per chain; Bittensor (TAO) wallets are
                              recorded for future use only and can never be the
                              payout wallet. -->
-                        <TextBlock x:Name="ConnectWalletHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
-                                   Margin="0,12,0,0" />
-                        <TextBlock x:Name="ConnectWalletChainsText" FontSize="12" TextWrapping="Wrap"
-                                   Foreground="{StaticResource UrTextMutedBrush}" />
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="WalletAddressBox" Grid.Column="0"
-                                     TextChanged="OnWalletAddressChanged" />
-                            <Button x:Name="ConnectWalletButton" Grid.Column="1"
-                                    IsEnabled="False" Click="OnConnectWallet" />
-                        </Grid>
-                        <TextBlock x:Name="WalletChainText" FontSize="12"
-                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                            <FontIcon Glyph="&#xE71B;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="ConnectWalletHeading" Style="{StaticResource UrSectionHeadingStyle}" />
+                        </StackPanel>
+                        <!-- a form is a module: the chain note, the field and its
+                             verdict belong on one surface, not loose on the page
+                             between two headings -->
+                        <Border Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="ConnectWalletChainsText" FontSize="12" TextWrapping="Wrap"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="WalletAddressBox" Grid.Column="0"
+                                             Style="{StaticResource UrTextInputStyle}"
+                                             TextChanged="OnWalletAddressChanged" />
+                                    <Button x:Name="ConnectWalletButton" Grid.Column="1"
+                                            VerticalAlignment="Bottom"
+                                            IsEnabled="False" Click="OnConnectWallet" />
+                                </Grid>
+                                <TextBlock x:Name="WalletChainText" FontSize="12"
+                                           Foreground="{StaticResource UrTextMutedBrush}" />
+                            </StackPanel>
+                        </Border>
 
                         <!-- Account points (iOS AccountPointsBreakdown) -->
-                        <TextBlock x:Name="AccountPointsHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
-                                   Margin="0,12,0,0" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                            <FontIcon Glyph="&#xE734;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="AccountPointsHeading" Style="{StaticResource UrSectionHeadingStyle}" />
+                        </StackPanel>
                         <TextBlock x:Name="AccountPointsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
                         <!-- named so the page can collapse it: an empty card is a
                              bar of nothing sitting under its own error message -->
@@ -1033,8 +1335,10 @@
                         </Border>
 
                         <!-- Earning multipliers / Seeker token -->
-                        <TextBlock x:Name="EarningMultipliersHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
-                                   Margin="0,12,0,0" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                            <FontIcon Glyph="&#xEAFC;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="EarningMultipliersHeading" Style="{StaticResource UrSectionHeadingStyle}" />
+                        </StackPanel>
                         <Border Style="{StaticResource UrCardStyle}">
                             <StackPanel Spacing="8">
                                 <TextBlock x:Name="SeekerStatusText" Style="{StaticResource UrSupportingTextStyle}" />
@@ -1045,8 +1349,10 @@
 
                         <!-- Network reliability: the mean, the per-bucket weights and
                              client counts, and the country multiplier table. -->
-                        <TextBlock x:Name="NetworkReliabilityHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
-                                   Margin="0,12,0,0" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                            <FontIcon Glyph="&#xE9D2;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="NetworkReliabilityHeading" Style="{StaticResource UrSectionHeadingStyle}" />
+                        </StackPanel>
                         <TextBlock x:Name="ReliabilityStatusText" Style="{StaticResource UrSupportingTextStyle}" />
                         <Border x:Name="ReliabilityCard" Style="{StaticResource UrCardStyle}"
                                 Visibility="Collapsed">
@@ -1055,8 +1361,10 @@
 
                         <!-- Payouts ledger: a real desktop table, one row per
                              payment, each row opening the payout detail sheet. -->
-                        <TextBlock x:Name="PayoutsHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="16" FontWeight="SemiBold"
-                                   Margin="0,12,0,0" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                            <FontIcon Glyph="&#xE9D5;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="PayoutsHeading" Style="{StaticResource UrSectionHeadingStyle}" />
+                        </StackPanel>
                         <TextBlock x:Name="PayoutsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
                         <StackPanel x:Name="PayoutsPanel" Spacing="0" />
                     </StackPanel>
@@ -1069,11 +1377,27 @@
                      ~1100px, taking the per-row net-provided figures - the point
                      of a leaderboard - and half the switch with it. -->
                 <ScrollViewer x:Name="LeaderboardView" Visibility="Collapsed">
+                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
+                       middle one. The middle star is greedy enough to always
+                       reach its MaxWidth when the window has the room, and the
+                       two hairline stars split whatever is left - so the column
+                       is CENTRED at wide widths and simply fills the viewport
+                       at narrow ones, with no breakpoint and no branch.
+
+                       Why not MaxWidth on the panel: that is the arrange-split
+                       bug (the offset comes out of the child's DESIRED width
+                       while it is laid out at the cap). Why not the single
+                       capped column P4 used: it pins the content to x=0, which
+                       is right at 1100 and lopsided when maximized - measured
+                       2578px wide with 600px of content and ~1900px of void on
+                       one side. -->
                   <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" MaxWidth="820" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1000*" MaxWidth="820" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Spacing="8">
+                    <StackPanel Grid.Column="1" Spacing="8">
                         <!-- No section heading here: NavigationView's Header already
                              shows the destination name ("Leaderboard"), and a panel
                              heading with the same word under it read as a stutter.
@@ -1086,17 +1410,31 @@
                             <StackPanel Spacing="8">
                                 <StackPanel>
                                     <TextBlock x:Name="LeaderboardRankLabel" Style="{StaticResource UrLabelStyle}" />
-                                    <TextBlock x:Name="LeaderboardRankValue" FontFamily="{StaticResource UrHeadingCondensedFontFamily}"
-                                               FontSize="30" Foreground="{StaticResource UrTextBrush}" />
+                                    <TextBlock x:Name="LeaderboardRankValue" Style="{StaticResource UrStatValueStyle}"
+                                               FontSize="30" />
                                 </StackPanel>
                                 <Border Height="1" Background="{StaticResource UrBorderBrush}" />
                                 <StackPanel>
                                     <TextBlock x:Name="LeaderboardNetProvidedLabel" Style="{StaticResource UrLabelStyle}" />
-                                    <TextBlock x:Name="LeaderboardNetProvidedValue" FontFamily="{StaticResource UrHeadingCondensedFontFamily}"
-                                               FontSize="30" Foreground="{StaticResource UrTextBrush}" />
+                                    <TextBlock x:Name="LeaderboardNetProvidedValue" Style="{StaticResource UrStatValueStyle}"
+                                               FontSize="30" />
                                 </StackPanel>
                                 <Border Height="1" Background="{StaticResource UrBorderBrush}" />
-                                <Grid>
+                                <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
+                       middle one. The middle star is greedy enough to always
+                       reach its MaxWidth when the window has the room, and the
+                       two hairline stars split whatever is left - so the column
+                       is CENTRED at wide widths and simply fills the viewport
+                       at narrow ones, with no breakpoint and no branch.
+
+                       Why not MaxWidth on the panel: that is the arrange-split
+                       bug (the offset comes out of the child's DESIRED width
+                       while it is laid out at the cap). Why not the single
+                       capped column P4 used: it pins the content to x=0, which
+                       is right at 1100 and lopsided when maximized - measured
+                       2578px wide with 600px of content and ~1900px of void on
+                       one side. -->
+                  <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -1136,43 +1474,143 @@
                   </Grid>
                 </ScrollViewer>
 
-                <!-- Support -->
+                <!-- Support. Measured before this change: 0% card surface and
+                     83% blank rows - the stars, the box and Send floated
+                     directly on the page background with nothing holding them
+                     together, which is the owner's "just buttons on a black
+                     screen" in its purest form. It is now one card with a
+                     glyphed header, an intro line and rules between the three
+                     steps (rate, write, send), which is the shape Settings
+                     already uses and the shape that reads best in the app. -->
                 <ScrollViewer x:Name="SupportView" Visibility="Collapsed">
-                    <StackPanel Spacing="12" MaxWidth="520">
-                        <TextBlock x:Name="FeedbackHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
-                        <muxc:RatingControl x:Name="FeedbackRating" />
-                        <TextBox x:Name="FeedbackText" AcceptsReturn="True" TextWrapping="Wrap"
-                                 MinHeight="80" />
-                        <!-- apple FeedbackView: logs go to the server ONLY from
-                             here, only when this is ticked, and only with the
-                             server-issued feedback id (SettingsPage). -->
-                        <CheckBox x:Name="FeedbackIncludeLogs" />
-                        <Button x:Name="SendFeedbackButton" Click="OnSendFeedback" />
+                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
+                       middle one. The middle star is greedy enough to always
+                       reach its MaxWidth when the window has the room, and the
+                       two hairline stars split whatever is left - so the column
+                       is CENTRED at wide widths and simply fills the viewport
+                       at narrow ones, with no breakpoint and no branch.
+
+                       Why not MaxWidth on the panel: that is the arrange-split
+                       bug (the offset comes out of the child's DESIRED width
+                       while it is laid out at the cap). Why not the single
+                       capped column P4 used: it pins the content to x=0, which
+                       is right at 1100 and lopsided when maximized - measured
+                       2578px wide with 600px of content and ~1900px of void on
+                       one side. -->
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1000*" MaxWidth="560" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="1" Spacing="12">
+                        <!-- section header: glyph + name, the pattern every
+                             destination now uses above its first card -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE9CE;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="FeedbackHeading" Style="{StaticResource UrPanelHeadingStyle}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="12">
+                                <!-- why this screen exists, in one sentence.
+                                     site_app_support_intro already ships and was
+                                     used nowhere. -->
+                                <TextBlock x:Name="SupportIntroText"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <muxc:RatingControl x:Name="FeedbackRating" />
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <TextBox x:Name="FeedbackText" AcceptsReturn="True" TextWrapping="Wrap"
+                                         Style="{StaticResource UrTextInputStyle}"
+                                         MinHeight="96" />
+                                <!-- apple FeedbackView: logs go to the server ONLY from
+                                     here, only when this is ticked, and only with the
+                                     server-issued feedback id (SettingsPage).
+                                     This box shipped with NO CONTENT AT ALL - an
+                                     unlabelled checkbox offering to upload the
+                                     user's logs, announced by a screen reader as
+                                     "checkbox" and nothing else. The string
+                                     (feedback_include_logs) was already in the
+                                     store. -->
+                                <CheckBox x:Name="FeedbackIncludeLogs" />
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <Button x:Name="SendFeedbackButton" Click="OnSendFeedback"
+                                        HorizontalAlignment="Right">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE724;" Style="{StaticResource UrRowIconStyle}"
+                                                  FontSize="14" />
+                                        <TextBlock x:Name="SendFeedbackText" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
                         <muxc:InfoBar x:Name="SupportInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
                     </StackPanel>
+                  </Grid>
                 </ScrollViewer>
 
                 <!-- Settings -->
                 <ScrollViewer x:Name="SettingsView" Visibility="Collapsed">
-                    <StackPanel Spacing="16" MaxWidth="520">
+                  <!-- capped star column, not MaxWidth on the panel: see ConnectView -->
+                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
+                       middle one. The middle star is greedy enough to always
+                       reach its MaxWidth when the window has the room, and the
+                       two hairline stars split whatever is left - so the column
+                       is CENTRED at wide widths and simply fills the viewport
+                       at narrow ones, with no breakpoint and no branch.
+
+                       Why not MaxWidth on the panel: that is the arrange-split
+                       bug (the offset comes out of the child's DESIRED width
+                       while it is laid out at the cap). Why not the single
+                       capped column P4 used: it pins the content to x=0, which
+                       is right at 1100 and lopsided when maximized - measured
+                       2578px wide with 600px of content and ~1900px of void on
+                       one side. -->
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1000*" MaxWidth="560" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="1" Spacing="16" Margin="0,0,0,24">
                         <!-- Every section above the split rules is built in code
                              (SettingsPage::BuildSections): connection, device,
                              account, blocked locations, identity, preferences,
                              logs, links. -->
                         <StackPanel x:Name="SettingsSections" Spacing="16" />
-                        <TextBlock x:Name="SplitTunnelHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock x:Name="SplitTunnelDescription"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <Button x:Name="ManageAppSplitButton" Click="OnManageAppSplitTunnel"
-                                Style="{StaticResource AccentButtonStyle}" />
-                        <TextBlock x:Name="SettingsAccountHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold"
-                                   Margin="0,16,0,0" />
-                        <Button x:Name="SignOutButton" Click="OnSignOut" />
-                        <!-- delete account (SettingsPage::BuildDangerSection) -->
-                        <StackPanel x:Name="SettingsDangerSection" Spacing="8" />
+
+                        <!-- split tunnel: header glyph + a card, so it stops
+                             being three loose controls after eight carded
+                             sections -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xECA5;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="SplitTunnelHeading" Style="{StaticResource UrSectionHeadingStyle}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="SplitTunnelDescription" TextWrapping="Wrap"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                                <Button x:Name="ManageAppSplitButton" Click="OnManageAppSplitTunnel"
+                                        HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                            <FontIcon Glyph="&#xE77B;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="SettingsAccountHeading" Style="{StaticResource UrSectionHeadingStyle}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="12">
+                                <Button x:Name="SignOutButton" Click="OnSignOut"
+                                        HorizontalAlignment="Left" />
+                                <!-- delete account (SettingsPage::BuildDangerSection) -->
+                                <StackPanel x:Name="SettingsDangerSection" Spacing="8" />
+                            </StackPanel>
+                        </Border>
                         <HyperlinkButton x:Name="ProtocolLink" NavigateUri="https://ur.xyz"
-                                         FontSize="12" Padding="0" Margin="0,16,0,0" />
+                                         FontSize="12" Padding="0" Margin="0,8,0,0" />
                     </StackPanel>
+                  </Grid>
                 </ScrollViewer>
 
                 <!-- Developer / reliability (P2). Empty on purpose: the ~40

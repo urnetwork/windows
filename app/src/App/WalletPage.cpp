@@ -24,6 +24,7 @@
 #include "StatsFormat.h"
 #include "Strings.h"
 #include "UrColors.h"
+#include "UrComponents.h"  // kit::MakeEmptyStateCard
 #include "WalletSheets.h"
 
 using namespace winrt;
@@ -40,6 +41,18 @@ namespace urnw {
 using winrt::Windows::Foundation::IInspectable;
 
 namespace {
+
+// A stat tile's value, in the colour its state deserves. The dash is a
+// PLACEHOLDER, not a number, and it was rendering in the full text colour at
+// 26pt condensed - three big bright dashes across the top of Wallet that read
+// as "the answer is nothing" rather than "no answer yet". Faint for the
+// placeholder, text colour for a real figure.
+void SetStatValue(TextBlock const& value, hstring const& text, bool loaded) {
+  if (!value) return;
+  value.Text(text);
+  value.Foreground(loaded ? urnw::colors::TextBrush() : urnw::colors::FaintBrush());
+}
+
 
 using ShapeEllipse = winrt::Microsoft::UI::Xaml::Shapes::Ellipse;
 using ShapePolyline = winrt::Microsoft::UI::Xaml::Shapes::Polyline;
@@ -507,17 +520,17 @@ void WalletPage::ApplyStrings() {
   w_.ReliabilityStatusText().Text(loading);
   w_.PayoutsStatusText().Text(loading);
   const hstring dash{L"-"};
-  w_.WalletUnpaidValue().Text(dash);
-  w_.WalletPendingValue().Text(dash);
-  w_.WalletReferralsValue().Text(dash);
+  SetStatValue(w_.WalletUnpaidValue(), dash, false);
+  SetStatValue(w_.WalletPendingValue(), dash, false);
+  SetStatValue(w_.WalletReferralsValue(), dash, false);
   ApplySeekerState();
 
   // leaderboard (its title comes from the NavigationView header)
   w_.LeaderboardRankLabel().Text(Loc("current_ranking"));
   w_.LeaderboardNetProvidedLabel().Text(Loc("net_provided"));
   w_.LeaderboardPublicLabel().Text(Loc("display_network_on_leaderboard"));
-  w_.LeaderboardRankValue().Text(dash);
-  w_.LeaderboardNetProvidedValue().Text(dash);
+  SetStatValue(w_.LeaderboardRankValue(), dash, false);
+  SetStatValue(w_.LeaderboardNetProvidedValue(), dash, false);
   w_.LeaderboardDescription().Text(Loc("leaderboard_description"));
   w_.LeaderboardStatusText().Text(loading);
 }
@@ -823,22 +836,27 @@ winrt::fire_and_forget WalletPage::ShowWalletDetail(urnet::AccountWallet wallet)
 // ---- header stats --------------------------------------------------------
 
 void WalletPage::ApplyTransferStats(int64_t unpaidBytes, bool ok) {
-  w_.WalletUnpaidValue().Text(
-      ok ? hstring{urnw::Widen(urnw::FormatByteCountCompact(unpaidBytes))} : hstring{L"-"});
+  SetStatValue(w_.WalletUnpaidValue(),
+               ok ? hstring{urnw::Widen(urnw::FormatByteCountCompact(unpaidBytes))}
+                  : hstring{L"-"},
+               ok);
 }
 
 void WalletPage::ApplyWalletBalance(int64_t balanceUsdcNanoCents, bool ok) {
   // The pending balance the payout threshold is measured against. The threshold
   // sentence itself sits under the card (payouts_amount_threshold): the server
   // does not report the figure, so naming a number here would be an invention.
-  w_.WalletPendingValue().Text(
+  SetStatValue(
+      w_.WalletPendingValue(),
       ok ? hstring{urnw::Format("amount_usdc",
                                 FormatUsdcAmount(urnet::nanoCentsToUsd(balanceUsdcNanoCents)))}
-         : hstring{L"-"});
+         : hstring{L"-"},
+      ok);
 }
 
 void WalletPage::ApplyReferrals(int64_t totalReferrals, bool ok) {
-  w_.WalletReferralsValue().Text(ok ? hstring{std::to_wstring(totalReferrals)} : hstring{L"-"});
+  SetStatValue(w_.WalletReferralsValue(),
+               ok ? hstring{std::to_wstring(totalReferrals)} : hstring{L"-"}, ok);
 }
 
 // ---- account points ------------------------------------------------------
@@ -923,9 +941,10 @@ void WalletPage::ApplyPayments(std::vector<urnet::AccountPayment> const& payment
     return;
   }
   if (payments_.empty()) {
-    w_.PayoutsStatusText().Text(Loc("site_app_no_payouts"));
-    w_.PayoutsStatusText().Visibility(Visibility::Visible);
+    w_.PayoutsStatusText().Visibility(Visibility::Collapsed);
     w_.PayoutsPanel().Children().Clear();
+    w_.PayoutsPanel().Children().Append(
+        urnw::kit::MakeEmptyStateCard(L"", Loc("site_app_no_payouts")));
     RebuildWalletCards();
     return;
   }
@@ -1503,8 +1522,13 @@ void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, 
     return;
   }
   if (earners.empty()) {
-    w_.LeaderboardStatusText().Text(Loc("site_app_leaderboard_empty"));
-    w_.LeaderboardStatusText().Visibility(Visibility::Visible);
+    // A glyph and a sentence on a card, not a lone grey line on the page. This
+    // destination measured 60% blank rows: below the header card there was one
+    // muted sentence and ~500px of nothing, which reads as a screen that failed
+    // to draw rather than a leaderboard with no entries yet.
+    w_.LeaderboardStatusText().Visibility(Visibility::Collapsed);
+    rows.Children().Append(
+        urnw::kit::MakeEmptyStateCard(L"", Loc("site_app_leaderboard_empty")));
     return;
   }
   w_.LeaderboardStatusText().Visibility(Visibility::Collapsed);
@@ -1557,16 +1581,18 @@ void WalletPage::ApplyRanking(urnet::NetworkRanking const& ranking, bool ok) {
   if (!ok) {
     // The card keeps its "-" placeholders; the list's own status line carries
     // the failure, and two failure messages for one screen is noise.
-    w_.LeaderboardRankValue().Text(L"-");
-    w_.LeaderboardNetProvidedValue().Text(L"-");
+    SetStatValue(w_.LeaderboardRankValue(), L"-", false);
+    SetStatValue(w_.LeaderboardNetProvidedValue(), L"-", false);
     return;
   }
   leaderboardRank_ = ranking.leaderboard_rank;
-  w_.LeaderboardRankValue().Text(
-      ranking.leaderboard_rank > 0
-          ? hstring{L"#" + std::to_wstring(ranking.leaderboard_rank)}
-          : hstring{L"-"});
-  w_.LeaderboardNetProvidedValue().Text(hstring{FormatMiB(ranking.net_mib_count)});
+  const bool ranked = ranking.leaderboard_rank > 0;
+  SetStatValue(w_.LeaderboardRankValue(),
+               ranked ? hstring{L"#" + std::to_wstring(ranking.leaderboard_rank)}
+                      : hstring{L"-"},
+               ranked);
+  SetStatValue(w_.LeaderboardNetProvidedValue(), hstring{FormatMiB(ranking.net_mib_count)},
+               true);
   rankingPublic_ = ranking.leaderboard_public;
   SetRankingToggle(rankingPublic_);
 }

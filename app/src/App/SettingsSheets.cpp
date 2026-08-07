@@ -95,11 +95,12 @@ StackPanel Card(Panel const& host, double spacing) {
   return inner;
 }
 
-void Heading(Panel const& host, hstring const& text) {
+void Heading(Panel const& host, hstring const& text, hstring const& glyph) {
   TextBlock block;
   block.Text(text);
   block.FontSize(18);
   block.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+  block.VerticalAlignment(VerticalAlignment::Center);
   auto app = Application::Current();
   if (app) {
     auto boxed = winrt::box_value(hstring{L"UrHeadingFontFamily"});
@@ -109,7 +110,26 @@ void Heading(Panel const& host, hstring const& text) {
       }
     }
   }
-  host.Children().Append(block);
+  if (glyph.empty()) {
+    host.Children().Append(block);
+    return;
+  }
+  StackPanel row;
+  row.Orientation(Orientation::Horizontal);
+  row.Spacing(8);
+  FontIcon icon;
+  // Segoe Fluent Icons by name: FontIcon otherwise defaults to the older Segoe
+  // MDL2 Assets and the screen ends up with two icon weights on it.
+  icon.FontFamily(Media::FontFamily(L"Segoe Fluent Icons"));
+  icon.Glyph(glyph);
+  icon.FontSize(16);
+  icon.Foreground(urnw::colors::MutedBrush());
+  icon.VerticalAlignment(VerticalAlignment::Center);
+  Automation::AutomationProperties::SetAccessibilityView(
+      icon, Automation::Peers::AccessibilityView::Raw);
+  row.Children().Append(icon);
+  row.Children().Append(block);
+  host.Children().Append(row);
 }
 
 TextBlock Supporting(Panel const& host, hstring const& text) {

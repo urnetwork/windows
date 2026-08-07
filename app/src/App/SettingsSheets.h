@@ -48,9 +48,16 @@ winrt::Microsoft::UI::Xaml::Style Lookup(std::wstring_view key);
 winrt::Microsoft::UI::Xaml::Controls::StackPanel Card(
     winrt::Microsoft::UI::Xaml::Controls::Panel const& host, double spacing = 12);
 
-// The 18pt brand heading the markup sections use above each card.
+// The 18pt brand heading the markup sections use above each card, with a
+// leading Segoe Fluent glyph.
+//
+// The glyph is not decoration: these headings are the only thing separating
+// eight stacked cards on Settings, and a column of same-weight words reads as
+// one undifferentiated run. `glyph` is a Segoe Fluent Icons codepoint; pass an
+// empty string for a heading that genuinely has no mark. Marked Raw for
+// automation - it says nothing the label beside it does not.
 void Heading(winrt::Microsoft::UI::Xaml::Controls::Panel const& host,
-             winrt::hstring const& text);
+             winrt::hstring const& text, winrt::hstring const& glyph = {});
 
 // muted 12pt supporting copy
 winrt::Microsoft::UI::Xaml::Controls::TextBlock Supporting(
