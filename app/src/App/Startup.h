@@ -91,6 +91,10 @@ bool WantsDiagnose();
 //   URnetwork.exe --preview-ui=leaderboard  leaderboard
 //   URnetwork.exe --preview-ui=support      support  (also raises its snackbar)
 //   URnetwork.exe --preview-ui=settings     settings
+//   URnetwork.exe --preview-ui=developer    developer / reliability (also
+//                                           raises a synthetic rpc-only mode
+//                                           notice, which no preview run can
+//                                           produce on its own)
 //
 // or set URNETWORK_PREVIEW_UI to the same tag. The tags are the NavigationView
 // item tags in MainWindow.xaml; an unknown one falls back to connect and says so

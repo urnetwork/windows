@@ -65,6 +65,46 @@ proto::StartMode StartModeFromEnvironment() {
   return proto::StartMode::Tunnel;
 }
 
+// ---- guarded reads of list-shaped SDK getters ------------------------------
+//
+// The generated C-ABI wrapper turns a getter's JSON into a value with
+// `detail::parseJson<T>` (urnetwork_sdk.hpp:81). It guards a NULL `char*`
+// (takeStringOpt -> nullopt) but NOT the four-byte document `null`, which is
+// exactly what the Go side marshals for a non-nil list whose backing slice is
+// nil: MarshalJSON renders a nil slice as `null`, and exports_gen.go
+// short-circuits only on a nil POINTER. `json::parse("null").get<
+// std::vector<T>>()` then throws type_error.302 ("type must be array, but is
+// null") out of an ordinary, non-throwing-looking getter — and the throw
+// escapes through the Activated -> ReconcileWindowPresentation ->
+// SetPresentationActive -> SubscribeStats -> PublishStats -> ReadStats chain,
+// which is dispatched and therefore NOT inside ShowWindow's try/catch. The app
+// dies unhandled the moment a live device_ exists.
+//
+// Struct-shaped getters are safe: the generated from_json for a struct reads
+// each field with `.value(...)` and tolerates a null document. Only the
+// top-level unwrap of the `*List` vector aliases is unguarded, so only those
+// call sites need this.
+//
+// The real fix is one line in the generator, upstream; see
+// docs/superpowers/reports/2026-08-07-sdk-null-list-unwrap.md. It cannot be
+// made here — app/third_party is a build artifact unpacked from the SDK zip and
+// is not tracked in this repo, so a fix in the header would be silently
+// discarded by the next unpack.
+//
+// Every one of these call sites is a listener callback or a poll, so logging
+// each failure would fill the log at the listener's rate. `logged` is a
+// per-call-site latch: say it once, then stay quiet.
+template <typename Fn>
+auto ReadList(std::atomic<bool>& logged, const char* what, Fn&& fn) -> decltype(fn()) {
+  try {
+    return fn();
+  } catch (const std::exception& e) {
+    if (!logged.exchange(true))
+      LogWarn("sdkhost: {} failed, treating it as empty (logged once): {}", what, e.what());
+    return std::nullopt;
+  }
+}
+
 void SaveRpcSession(const RpcSession& s) {
   nlohmann::json j = {{"client_pem", s.client_pem},
                       {"server_cert_pem", s.server_cert_pem},
@@ -966,7 +1006,9 @@ bool SdkHost::BootstrapSession() {
       // correct at tunnel-up (device_ isn't connected yet - read the app LocalState).
       // PushLocalOverrideAppsToDriver re-applies it live once the device is up.
       if (localState_) {
-        if (auto ov = localState_->getBlockActionOverrides())
+        static std::atomic<bool> logged{false};
+        if (auto ov = ReadList(logged, "getBlockActionOverrides (local seed)",
+                               [&] { return localState_->getBlockActionOverrides(); }))
           ComputeAppSplit(*ov, cfg.excluded_app_paths, cfg.allowlist_mode);
       }
 
@@ -1187,7 +1229,12 @@ LiveStats SdkHost::ReadStats() {
   }
   if (contractVc_) {
     // Most recent throughput point that has a Remote (tunneled) sample.
-    if (auto pts = contractVc_->getThroughputPoints(); pts && !pts->empty()) {
+    // Guarded: see ReadList. This is the site the spec predicted would fire
+    // first, because it is on the window-activation path.
+    static std::atomic<bool> logged{false};
+    auto pts = ReadList(logged, "getThroughputPoints (stats)",
+                        [&] { return contractVc_->getThroughputPoints(); });
+    if (pts && !pts->empty()) {
       for (auto it = pts->rbegin(); it != pts->rend(); ++it) {
         if (it->Remote) {
           s.downBitsPerSecond = it->Remote->IngressBitRate;
@@ -1337,7 +1384,10 @@ void SdkHost::SubscribeDrawer() {
 void SdkHost::PublishThroughput() {
   if (!contractVc_) return;
   std::vector<urnet::ThroughputPoint> points;
-  if (auto p = contractVc_->getThroughputPoints()) points = std::move(*p);
+  static std::atomic<bool> logged{false};
+  if (auto p = ReadList(logged, "getThroughputPoints",
+                        [&] { return contractVc_->getThroughputPoints(); }))
+    points = std::move(*p);
   int64_t window = contractVc_->getWindowDurationSeconds();
   if (window <= 0) window = 60;
   {
@@ -1368,7 +1418,9 @@ void SdkHost::PublishContractRows() {
     return out;
   };
   std::vector<ContractPeerRow> rows;
-  if (auto list = contractDetailsVc_->getContractRows()) {
+  static std::atomic<bool> logged{false};
+  if (auto list = ReadList(logged, "getContractRows",
+                           [&] { return contractDetailsVc_->getContractRows(); })) {
     rows.reserve(list->size());
     for (const auto& r : *list) {
       ContractPeerRow row;
@@ -1395,7 +1447,9 @@ void SdkHost::PublishContractRows() {
 void SdkHost::PublishBlockActions() {
   if (!blockVc_) return;
   std::vector<BlockActionItem> items;
-  if (auto list = blockVc_->getBlockActions()) {
+  static std::atomic<bool> logged{false};
+  if (auto list = ReadList(logged, "getBlockActions",
+                           [&] { return blockVc_->getBlockActions(); })) {
     items.reserve(list->size());
     // the sdk window is oldest first; the UI wants newest first
     for (auto it = list->rbegin(); it != list->rend(); ++it) {
@@ -1449,7 +1503,9 @@ void SdkHost::PublishBlockStats() {
 void SdkHost::PublishSplitRules() {
   if (!device_) return;
   std::vector<SplitRule> rules;
-  if (auto list = device_->getBlockActionOverrides()) {
+  static std::atomic<bool> logged{false};
+  if (auto list = ReadList(logged, "getBlockActionOverrides (split rules)",
+                           [&] { return device_->getBlockActionOverrides(); })) {
     rules.reserve(list->size());
     for (const auto& over : *list) {
       if (!over.OverrideId) continue;
@@ -1802,6 +1858,118 @@ std::vector<AppRule> SdkHost::CurrentAppRules() {
   return rules;
 }
 
+// ---- reliability / developer surface ---------------------------------------
+//
+// The bridge ported for iOS (sdk#135) hangs off DeviceRemote, so every one of
+// these works over the rpc with no tunnel — which is the whole point of the
+// rpc-only mode. Reachability holes, deliberate: dropExit, stallExit,
+// shuffleExits and the probe-suite getters exist only on DeviceLocal and have
+// NO DeviceRemote equivalent, so this app cannot offer them. Android can. A
+// button that calls nothing is worse than no button.
+
+ReliabilitySnapshot SdkHost::ReadReliability() {
+  std::scoped_lock lock(mutex_);
+  ReliabilitySnapshot snap;
+  if (!device_) return snap;
+  snap.haveDevice = true;
+  try {
+    snap.remoteConnected = device_->getRemoteConnected();
+    snap.settings = device_->getReliabilitySettings();
+    snap.metrics = device_->getReliabilityMetrics();
+  } catch (const std::exception& e) {
+    static std::atomic<bool> logged{false};
+    if (!logged.exchange(true))
+      LogWarn("sdkhost: read reliability state failed (logged once): {}", e.what());
+  }
+  // The two list-shaped getters: same null-unwrap hazard as everywhere else.
+  {
+    static std::atomic<bool> logged{false};
+    if (auto exits = ReadList(logged, "getExits", [&] { return device_->getExits(); }))
+      snap.exits = std::move(*exits);
+  }
+  {
+    static std::atomic<bool> logged{false};
+    if (auto dst = ReadList(logged, "getDestinationExits",
+                            [&] { return device_->getDestinationExits(); }))
+      snap.destinationExits = std::move(*dst);
+  }
+  return snap;
+}
+
+std::optional<urnet::ReliabilitySettings> SdkHost::UpdateReliabilitySettings(
+    const std::function<void(urnet::ReliabilitySettings&)>& mutate) {
+  std::scoped_lock lock(mutex_);
+  if (!device_ || !mutate) return std::nullopt;
+  try {
+    // FRESH read, every time. Not the snapshot the view is rendering: the whole
+    // struct goes back, so anything the poll has not seen yet would be reverted.
+    auto current = device_->getReliabilitySettings();
+    if (!current) {
+      // Nothing is in force — there is no multi client to override. Writing a
+      // default-constructed struct here would install an all-zero override that
+      // turns the entire reliability stack off, and sync() re-applies it. Do
+      // nothing and say so.
+      LogWarn("sdkhost: reliability settings write skipped: nothing in force "
+              "(no multi client). Writing a zeroed struct here would disable "
+              "the reliability stack.");
+      return std::nullopt;
+    }
+    mutate(*current);
+    device_->setReliabilitySettings(current);
+    // Report what the device APPLIED, not what was asked for.
+    return device_->getReliabilitySettings();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: reliability settings write failed: {}", e.what());
+    return std::nullopt;
+  }
+}
+
+void SdkHost::RunReliabilityAction(ReliabilityAction action, const std::string& exitClientId) {
+  std::scoped_lock lock(mutex_);
+  if (!device_) {
+    LogWarn("sdkhost: reliability action skipped: no device");
+    return;
+  }
+  try {
+    switch (action) {
+      case ReliabilityAction::ResetMetrics:
+        device_->resetReliabilityMetrics();
+        LogInfo("sdkhost: reliability action: reset metrics");
+        break;
+      case ReliabilityAction::ResetSettings:
+        device_->resetReliabilitySettings();
+        LogInfo("sdkhost: reliability action: reset settings to shipped defaults");
+        break;
+      case ReliabilityAction::ProbeAllExits:
+        // The int32 count this returns Go-side does not survive the C ABI, so
+        // there is no "probed N exits" to report. Do not invent one.
+        device_->probeAllExits();
+        LogInfo("sdkhost: reliability action: probe all exits");
+        break;
+      case ReliabilityAction::SimulateNetworkChange:
+        device_->simulateNetworkChange();
+        LogInfo("sdkhost: reliability action: simulate network change");
+        break;
+      case ReliabilityAction::Sync:
+        device_->sync();
+        LogInfo("sdkhost: reliability action: sync");
+        break;
+      case ReliabilityAction::MigrateExit:
+        if (exitClientId.empty()) {
+          LogWarn("sdkhost: migrate exit skipped: no exit client id");
+          return;
+        }
+        // Same story as probeAllExits: the count of flows moved is dropped by
+        // the C ABI, so "Requested" is the honest report.
+        device_->migrateExit(exitClientId);
+        LogInfo("sdkhost: reliability action: migrate exit {}", exitClientId);
+        break;
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: reliability action failed: {}", e.what());
+  }
+}
+
 // ---- location/provider chooser --------------------------------------------
 // The bucketed location feed + the connected, provide-enabled peers pinned atop
 // the chooser. Opened lazily on the first chooser open; start() kicks the
@@ -1830,7 +1998,10 @@ void SdkHost::EnsureLocations() {
     onLocations_(locationsVc_->getFilteredLocations(),
                  locationsVc_->getFilteredLocationState());
   }
-  if (onPeers_) onPeers_(peerVc_->getPeers());
+  if (onPeers_) {
+    static std::atomic<bool> logged{false};
+    onPeers_(ReadList(logged, "getPeers (seed)", [&] { return peerVc_->getPeers(); }));
+  }
 }
 
 void SdkHost::SetLocationFilter(const std::string& query) {
@@ -1852,7 +2023,10 @@ std::string SdkHost::CurrentFilteredLocationState() {
 
 std::optional<urnet::NetworkPeerList> SdkHost::ConnectedProvidePeers() {
   std::scoped_lock lock(mutex_);
-  if (peerVc_) return peerVc_->getPeers();
+  if (peerVc_) {
+    static std::atomic<bool> logged{false};
+    return ReadList(logged, "getPeers", [&] { return peerVc_->getPeers(); });
+  }
   return std::nullopt;
 }
 

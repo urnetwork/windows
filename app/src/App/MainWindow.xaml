@@ -18,6 +18,10 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <!-- Row 2 carries the persistent session-mode notice (P2). Appended
+                 rather than inserted so no existing element's Grid.Row moves:
+                 four phases share this file. -->
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- The title bar. ExtendsContentIntoTitleBar puts the window's content
@@ -289,6 +293,7 @@
                 <muxc:NavigationViewItem x:Name="LeaderboardNavItem" Tag="leaderboard" />
                 <muxc:NavigationViewItem x:Name="SupportNavItem" Tag="support" />
                 <muxc:NavigationViewItem x:Name="SettingsNavItem" Tag="settings" />
+                <muxc:NavigationViewItem x:Name="DeveloperNavItem" Tag="developer" />
             </muxc:NavigationView.MenuItems>
 
             <Grid Margin="24">
@@ -795,7 +800,24 @@
                                          FontSize="12" Padding="0" Margin="0,16,0,0" />
                     </StackPanel>
                 </ScrollViewer>
+
+                <!-- Developer / reliability (P2). Empty on purpose: the ~40
+                     controls are built by urnw::DeveloperPage in code, which
+                     keeps this shared file to one host element. -->
+                <ScrollViewer x:Name="DeveloperView" Visibility="Collapsed"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto" />
             </Grid>
         </muxc:NavigationView>
+
+        <!-- The standing reason this app is not carrying traffic (rpc-only, or
+             a session that could not be started). Driven by DeveloperPage from
+             SdkHost::SetModeNoticeHandler. Window level, not page level: it is
+             true whichever destination is on screen. IsClosable is set in code
+             and is never true - this is a property of the session, not an
+             event, and it stays until it is replaced. -->
+        <muxc:InfoBar x:Name="ModeNoticeBar" Grid.Row="2" IsOpen="False"
+                      IsClosable="False" Margin="12,0,12,12"
+                      FontFamily="{StaticResource UrBodyFontFamily}" />
     </Grid>
 </Window>

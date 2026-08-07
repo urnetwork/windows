@@ -221,6 +221,43 @@ inline bool operator==(const AppRule& a, const AppRule& b) {
 }
 inline bool operator!=(const AppRule& a, const AppRule& b) { return !(a == b); }
 
+// ---- reliability / developer surface ---------------------------------------
+// One read of everything the developer screen shows, taken under a single lock
+// so the four getters cannot disagree with each other about which session they
+// came from (iOS ReliabilityStore.refresh parity: one hop, one publish).
+struct ReliabilitySnapshot {
+  // there is a live DeviceRemote at all
+  bool haveDevice = false;
+  // the service rpc is attached (device_->getRemoteConnected())
+  bool remoteConnected = false;
+  // NULLOPT MEANS "NOTHING IS IN FORCE", NOT "EVERYTHING IS OFF".
+  //
+  // getReliabilitySettings() returns null when the device has no multi client
+  // to override — the reliability stack is running on its own defaults. A
+  // zero-initialised ReliabilitySettings is a DIFFERENT thing: writing one back
+  // installs an all-zero override that disables the whole stack, and the
+  // sync re-apply latches it. This bug has shipped once already. Never
+  // substitute a default-constructed struct for a nullopt read on the WRITE
+  // path; the read path may substitute one for DISPLAY only.
+  std::optional<urnet::ReliabilitySettings> settings;
+  std::optional<urnet::ReliabilityMetrics> metrics;
+  std::vector<urnet::Exit> exits;
+  std::vector<urnet::DestinationExit> destinationExits;
+};
+
+// The void actions on the reliability bridge. Every one of them silently
+// no-ops when there is no multi client, and none returns anything the C ABI
+// preserves — migrateExit and probeAllExits drop their int32 counts on the way
+// across — so a caller can report what it ASKED FOR and nothing more.
+enum class ReliabilityAction {
+  ResetMetrics,
+  ResetSettings,
+  ProbeAllExits,
+  SimulateNetworkChange,
+  Sync,
+  MigrateExit,  // the only one that reads exitClientId
+};
+
 class SdkHost {
  public:
   using AuthStateHandler = std::function<void(AuthState, const std::string& error)>;
@@ -429,6 +466,29 @@ class SdkHost {
   void SetAppRule(const std::string& imagePath, bool includeInTunnel);
   void RemoveAppRule(const std::string& imagePath);
   std::vector<AppRule> CurrentAppRules();
+
+  // ---- reliability / developer surface -------------------------------------
+  // All three take mutex_ and issue synchronous RPCs to the service, so they
+  // BLOCK. Never call them from the UI thread; the developer page runs them on
+  // a worker and marshals the result back. Taking mutex_ is also what
+  // serialises them against each other, which the read-modify-write below
+  // depends on (iOS gets the same property from its serial bridgeQueue).
+  ReliabilitySnapshot ReadReliability();
+
+  // Read-modify-write of the WHOLE ReliabilitySettings struct from a FRESH
+  // read — never from a cached snapshot, because every field the caller does
+  // not touch is written back verbatim and a stale snapshot would revert
+  // whatever changed underneath it.
+  //
+  // A NULLOPT fresh read is a NO-OP, not a write of a zeroed struct: see
+  // ReliabilitySnapshot::settings. Returns the settings the device actually
+  // applied (read back after the write), or nullopt if there was nothing to
+  // write to.
+  std::optional<urnet::ReliabilitySettings> UpdateReliabilitySettings(
+      const std::function<void(urnet::ReliabilitySettings&)>& mutate);
+
+  // Fire-and-forget. `exitClientId` is empty for everything but MigrateExit.
+  void RunReliabilityAction(ReliabilityAction action, const std::string& exitClientId = {});
 
   // Accessors for the UI/view models to drive the SDK directly.
   bool apiReady() { return api_.has_value(); }
