@@ -611,7 +611,12 @@ void ShowAccountMenu(FrameworkElement const& anchor, SdkHost& sdk,
   auto onShared = actions.onShared;
   auto queue = anchor.DispatcherQueue();
   share.Click([&sdk, onShared, queue](auto const&, auto const&) {
-    if (!sdk.apiReady()) return;
+    // IsLoggedIn(), NOT apiReady(). apiReady() is api_.has_value(), set at SDK
+    // INIT and true with no session at all, so guarding on it here would fire
+    // an unauthenticated getNetworkReferralCode at the production API from
+    // whatever machine this is — which is exactly what --preview-ui, now that
+    // it can reach this menu, would have done on every open.
+    if (!sdk.IsLoggedIn()) return;
     sdk.api().getNetworkReferralCode(
         [onShared, queue](std::optional<urnet::GetNetworkReferralCodeResult> result,
                           std::optional<std::string>) {

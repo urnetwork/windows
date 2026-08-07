@@ -393,8 +393,13 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
     }
   }
   connect_->SetNetworkIdentity(networkName, guestMode);  // re-renders the status
-  // the title-bar avatar + its menu (iOS AccountMenu): same jwt, one more reader
-  login_->ApplyAccountIdentity(networkName, guestMode, pro, loggedIn);
+  // The title-bar avatar + its menu (iOS AccountMenu): same jwt, one more
+  // reader. `showHome`, NOT `loggedIn` — EnterPreviewUi used to reveal the
+  // avatar itself and the very next auth push hid it again, so the one surface
+  // that is signed-in-only was the one surface preview could not show. The
+  // identity stays whatever the jwt says (empty in preview); only the
+  // visibility follows the pinned view.
+  login_->ApplyAccountIdentity(networkName, guestMode, pro, showHome);
   if (loggedIn && !wasVisible) {
     // the drawer just appeared: refresh its state and play the entrance
     connect_->ResyncDrawer();

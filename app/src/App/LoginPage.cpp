@@ -5,6 +5,7 @@
 
 #include <chrono>
 
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Windows.System.h>
 
 #include "MainWindow.xaml.h"
@@ -1137,6 +1138,10 @@ void LoginPage::ApplyAccountIdentity(std::string const& networkName, bool guest,
   // show and no action in the menu that would make sense.
   w_.AccountMenuButton().Visibility(signedIn ? Visibility::Visible : Visibility::Collapsed);
   if (!signedIn) return;
+  // The button's content is an avatar with no text, so like the terms
+  // checkboxes it had NO accessible name and did not appear in the UIA tree at
+  // all — it named the destination it opens, and nothing announced it.
+  Automation::AutomationProperties::SetName(w_.AccountMenuButton(), Loc("account"));
   // PersonPicture derives its initials from DisplayName; a guest has no
   // network name to derive from and gets the store's word for it.
   w_.AccountAvatar().DisplayName(networkName.empty() ? Loc("guest") : H(networkName));
