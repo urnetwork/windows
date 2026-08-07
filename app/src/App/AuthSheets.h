@@ -49,15 +49,18 @@ class GuestModeSheet : public std::enable_shared_from_this<GuestModeSheet> {
 // to clipboard, and a confirmation that gates whatever comes next.
 //
 // The security shape is deliberate and matches macOS:
-//   * the sheet has NO close button and cannot be light-dismissed. Confirming
-//     is the only way out, so a stray click cannot skip past a credential the
-//     user has not read.
+//   * the sheet has no close button AND cancels its own Closing event for any
+//     result but Primary. The missing close button is not what does it —
+//     ContentDialog closes on Esc either way, and it did, orphaning a network
+//     the server had already created. Confirming is the only way out because
+//     the Closing handler makes it so.
 //   * `onConfirmed` is what actually registers the device (SdkHost::
 //     ConfirmInstantAccount). Until then no session exists, so an account
 //     nobody can recover is never left signed in.
 //   * the phrase lives in this object for the life of the sheet, is never
 //     logged, and is never written anywhere but the clipboard the user asked
-//     for.
+//     for — and that copy is excluded from Clipboard History and from the
+//     cloud clipboard, so it does not follow the user to another machine.
 class SeedphraseDisplaySheet : public std::enable_shared_from_this<SeedphraseDisplaySheet> {
  public:
   // `onCopied` raises the app's own "copied" acknowledgement (the owner has the
@@ -82,6 +85,9 @@ class SeedphraseDisplaySheet : public std::enable_shared_from_this<SeedphraseDis
   std::function<void()> onCopied_;
   std::function<void()> onConfirmed_;
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
+  // set by the primary button; the Closing handler refuses every close until
+  // it is true
+  bool confirmed_ = false;
 };
 
 // ---- Network server ---------------------------------------------------------
@@ -108,6 +114,9 @@ class NetworkServerSheet : public std::enable_shared_from_this<NetworkServerShee
   void Apply(std::string const& host, std::string const& apiUrl,
              std::string const& connectUrl);
   void UseDefault();
+  // what THIS process calls the default network (SdkHost resolves the
+  // URNETWORK_NETWORK_HOST override); never the compiled-in constant directly
+  std::string DefaultHost() const;
 
   SdkHost& sdk_;
   SdkHost::NetworkServer current_;

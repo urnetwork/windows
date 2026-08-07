@@ -12,6 +12,7 @@
 #include "BalanceSheets.h"  // SetTermsMarkerText (the terms/privacy link inlines)
 #include "Ids.h"
 #include "Localization.h"
+#include "Log.h"
 #include "Strings.h"
 #include "UrColors.h"
 #include "UrComponents.h"
@@ -99,6 +100,9 @@ void GuestModeSheet::Build(XamlRoot const& root) {
   termsText.VerticalAlignment(VerticalAlignment::Center);
   termsText.Foreground(colors::MutedBrush());
   SetTermsMarkerText(termsText, Localized("terms_checkbox"), 12);
+  // this checkbox had no name at all in the UIA tree; same treatment as the
+  // two on the login page
+  PairTermsLabel(termsCheck_, termsText);
   Grid::SetColumn(termsText, 1);
   termsRow.Children().Append(termsText);
   content.Children().Append(termsRow);
@@ -184,9 +188,12 @@ void SeedphraseDisplaySheet::Build(XamlRoot const& root) {
   dialog_.XamlRoot(root);
   dialog_.Title(winrt::box_value(Loc("secure_your_account")));
   dialog_.Background(colors::SheetBrush());
-  // NO CloseButtonText and no secondary escape: confirming is the only way out.
-  // macOS uses .interactiveDismissDisabled(true) for the same reason — a stray
-  // dismiss would step past the only copy of the credential.
+  // Leaving CloseButtonText unset is NOT a dismissal guard. ContentDialog binds
+  // Esc to its own close regardless of whether a close button exists, and the
+  // Esc that resulted dropped a network the server had ALREADY minted — the
+  // seedphrase on screen was the only way back into it and had not been
+  // written down. The Closing handler below is the actual guard; macOS's
+  // .interactiveDismissDisabled(true) is the same idea expressed as a modifier.
   dialog_.PrimaryButtonText(Loc("seedphrase_saved_confirm"));
   dialog_.SecondaryButtonText(Loc("copy_to_clipboard"));
   dialog_.DefaultButton(ContentDialogButton::Primary);
@@ -283,6 +290,7 @@ void SeedphraseDisplaySheet::Build(XamlRoot const& root) {
       });
   dialog_.PrimaryButtonClick([weak = weak_from_this()](auto const&, auto const&) {
     if (auto self = weak.lock()) {
+      self->confirmed_ = true;  // lets Closing through; see the handler below
       auto confirmed = self->onConfirmed_;
       // Drop the app's copy of the credential the moment the sheet is done
       // with it; the dialog is about to close and nothing else may read it.
@@ -291,12 +299,45 @@ void SeedphraseDisplaySheet::Build(XamlRoot const& root) {
       if (confirmed) confirmed();
     }
   });
+
+  // THE dismissal guard. Esc (and any other route that closes without a
+  // button) raises Closing with Result::None; cancelling it is the only thing
+  // that actually keeps this sheet on screen. Without it the account behind
+  // the sheet was already created server-side and the phrase that was its one
+  // credential went with the dialog.
+  //
+  // Gated on confirmed_ rather than on the Result alone so that a
+  // PrimaryButtonClick handler which cancelled its own args (none does today)
+  // could not deadlock the sheet shut.
+  dialog_.Closing([weak = weak_from_this()](
+                      auto const&, ContentDialogClosingEventArgs const& args) {
+    auto self = weak.lock();
+    if (!self) return;
+    if (args.Result() == ContentDialogResult::None && !self->confirmed_) {
+      args.Cancel(true);
+    }
+  });
 }
 
 void SeedphraseDisplaySheet::CopyToClipboard() {
-  winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
+  namespace dt = winrt::Windows::ApplicationModel::DataTransfer;
+  dt::DataPackage package;
   package.SetText(H(seedphrase_));
-  winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
+  // A seedphrase must not enter Clipboard History (Win+V, readable by anything
+  // that asks) and must not be uploaded to the cloud clipboard, which syncs it
+  // to the signed-in Microsoft account and off this machine entirely. Both
+  // flags are what password managers set, and both are OFF by default — plain
+  // Clipboard::SetContent opts into both.
+  dt::ClipboardContentOptions options;
+  options.IsAllowedInHistory(false);
+  options.IsRoamable(false);
+  if (!dt::Clipboard::SetContentWithOptions(package, options)) {
+    // Do NOT fall back to SetContent: that is the leak this exists to close.
+    // No acknowledgement either — a snackbar over an empty clipboard is worse
+    // than silence.
+    urnw::LogError("seedphrase sheet: the clipboard refused a history-excluded copy");
+    return;
+  }
   if (onCopied_) onCopied_();
 }
 
@@ -340,6 +381,14 @@ std::string NormalizeHost(std::string const& raw) {
   // A bare IPv6 address is left alone on purpose: its colons are
   // indistinguishable from a port separator, and mangling one silently points
   // the client at the wrong server.
+  //
+  // This field is a HOST NAME — the SDK derives "api.<host>" and
+  // "connect.<host>" from it, and a port has no meaning in that derivation, so
+  // one typed here is dropped rather than carried into a name it cannot be
+  // part of. A deployment that does not listen on 443 is reached through the
+  // explicit API URL / Connect URL fields instead: NormalizeApiUrl and
+  // NormalizeConnectUrl preserve a port ("https://api.example.com:8443" stays
+  // exactly that), and an explicit url bypasses the derivation entirely.
   if (const auto at = value.rfind("]:"); at != std::string::npos) {
     value = value.substr(0, at) + "]";
   } else if (value.find('[') == std::string::npos) {
@@ -455,7 +504,7 @@ void NetworkServerSheet::Build(XamlRoot const& root) {
 
   const std::string initialHost = netserver::NormalizeHost(current_.hostName);
   field(hostBox_, "network_api_domain_label", "network_api_domain_help",
-        initialHost.empty() ? std::string(ids::kNetworkSpaceHostName) : initialHost);
+        initialHost.empty() ? DefaultHost() : initialHost);
   field(apiBox_, "network_api_api_url_label", "network_api_api_url_help",
         current_.configuredApiUrl);
   field(connectBox_, "network_api_connect_url_label", "network_api_connect_url_help",
@@ -465,7 +514,14 @@ void NetworkServerSheet::Build(XamlRoot const& root) {
   insecureText_.Text(Loc("network_api_insecure_warning"));
   insecureText_.FontSize(11);
   insecureText_.TextWrapping(TextWrapping::Wrap);
-  insecureText_.Foreground(colors::DangerBrush());
+  // AMBER, not danger red. This line is ADVISORY and always was: Apply goes
+  // ahead with an http:// or ws:// endpoint, because a self-hosted deployment
+  // behind a local reverse proxy is a real thing people do. Painted in the
+  // colour this app uses for refusals it read as a block, so the one case it
+  // is meant to catch — a typo'd scheme against a public host — looked
+  // indistinguishable from one the sheet had already stopped. Same amber the
+  // seedphrase sheet's "this is the ONLY time" warning uses.
+  insecureText_.Foreground(colors::MakeBrush(colors::kUrAmber));
   insecureText_.Visibility(Visibility::Collapsed);
   content.Children().Append(insecureText_);
 
@@ -527,14 +583,15 @@ void NetworkServerSheet::Build(XamlRoot const& root) {
 
 void NetworkServerSheet::ApplyDerivedPlaceholders() {
   const std::string typed = netserver::NormalizeHost(urnw::Narrow(hostBox_.Text().c_str()));
-  const std::string host = typed.empty() ? std::string(ids::kNetworkSpaceHostName) : typed;
+  const std::string host = typed.empty() ? DefaultHost() : typed;
+  // "official" means the PRODUCTION host specifically, not whatever this
+  // process treats as its default — only production carries the migration
+  // domain. A custom or test deployment derives straight off its own name.
   const bool official = (host == std::string(ids::kNetworkSpaceHostName));
-  // Only the official host carries the migration domain; a custom deployment
-  // derives straight off its own name.
   const std::string migration = official ? std::string("bringyour.com") : std::string();
   const std::string env(ids::kNetworkSpaceEnvName);
 
-  hostBox_.PlaceholderText(H(std::string(ids::kNetworkSpaceHostName)));
+  hostBox_.PlaceholderText(H(DefaultHost()));
   apiBox_.PlaceholderText(
       H(netserver::DerivedServiceUrl(host, migration, env, "https", "api")));
   connectBox_.PlaceholderText(
@@ -573,10 +630,22 @@ void NetworkServerSheet::Apply(std::string const& host, std::string const& apiUr
 }
 
 void NetworkServerSheet::UseDefault() {
-  hostBox_.Text(H(std::string(ids::kNetworkSpaceHostName)));
+  // current_.defaultHostName, NOT ids::kNetworkSpaceHostName. This used to be
+  // the compiled-in "ur.network" both times, so on a session started against a
+  // test network (URNETWORK_NETWORK_HOST) the button labelled "Use default
+  // network" moved the client to PRODUCTION without saying so.
+  const std::string host = DefaultHost();
+  hostBox_.Text(H(host));
   apiBox_.Text(L"");
   connectBox_.Text(L"");
-  Apply(std::string(ids::kNetworkSpaceHostName), "", "");
+  Apply(host, "", "");
+}
+
+// What this process considers the default network. SdkHost resolves it; the
+// fallback is only for a sheet built before the space manager came up.
+std::string NetworkServerSheet::DefaultHost() const {
+  return current_.defaultHostName.empty() ? std::string(ids::kNetworkSpaceHostName)
+                                          : current_.defaultHostName;
 }
 
 // ---- Account menu (iOS Shared/Views/AccountMenu.swift) ----------------------
