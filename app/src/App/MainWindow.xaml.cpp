@@ -382,13 +382,17 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
   // call, and the status line is rewritten on every stats push).
   std::string networkName;
   bool guestMode = false;
+  bool pro = false;
   if (loggedIn) {
     if (auto jwt = Sdk().ParsedJwt()) {
       networkName = jwt->NetworkName;
       guestMode = jwt->GuestMode;
+      pro = jwt->Pro;
     }
   }
   connect_->SetNetworkIdentity(networkName, guestMode);  // re-renders the status
+  // the title-bar avatar + its menu (iOS AccountMenu): same jwt, one more reader
+  login_->ApplyAccountIdentity(networkName, guestMode, pro, loggedIn);
   if (loggedIn && !wasVisible) {
     // the drawer just appeared: refresh its state and play the entrance
     connect_->ResyncDrawer();
@@ -476,6 +480,36 @@ void MainWindow::OnSignInWithBittensor(IInspectable const& s, RoutedEventArgs co
 }
 void MainWindow::OnSignInWithSolana(IInspectable const& s, RoutedEventArgs const& e) {
   login_->OnSignInWithSolana(s, e);
+}
+void MainWindow::OnUserAuthChanged(IInspectable const& s, TextChangedEventArgs const& e) {
+  login_->OnUserAuthChanged(s, e);
+}
+void MainWindow::OnSignInWithGoogle(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnSignInWithGoogle(s, e);
+}
+void MainWindow::OnSignInWithSeedphrase(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnSignInWithSeedphrase(s, e);
+}
+void MainWindow::OnSeedphraseChanged(IInspectable const& s, TextChangedEventArgs const& e) {
+  login_->OnSeedphraseChanged(s, e);
+}
+void MainWindow::OnSeedphraseSubmit(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnSeedphraseSubmit(s, e);
+}
+void MainWindow::OnCreateInstantAccount(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnCreateInstantAccount(s, e);
+}
+void MainWindow::OnInstantTermsChanged(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnInstantTermsChanged(s, e);
+}
+void MainWindow::OnCreateInstantSubmit(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnCreateInstantSubmit(s, e);
+}
+void MainWindow::OnChangeNetworkServer(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnChangeNetworkServer(s, e);
+}
+void MainWindow::OnAccountMenu(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnAccountMenu(s, e);
 }
 
 void MainWindow::OnConnectToggle(IInspectable const& s, RoutedEventArgs const& e) {

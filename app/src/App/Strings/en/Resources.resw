@@ -670,6 +670,10 @@ right way</value>
     <value>Copy client ID</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
   </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>Copy to Clipboard</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/SeedphraseDisplayView.swift.</comment>
+  </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>Couldn't open wallet. Please install it and try again.</value>
     <comment>Snackbar shown when the external wallet app could not be opened. Used in Shared/Views/SolanaSignMessageSheet.swift and Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
@@ -709,6 +713,10 @@ right way</value>
   <data name="create_an_account" xml:space="preserve">
     <value>Create an account</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
+  </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>Create Instant Account</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/CreateNetworkInstantView.swift.</comment>
   </data>
   <data name="create_network_error" xml:space="preserve">
     <value>Something went wrong. Try again.</value>
@@ -1214,6 +1222,14 @@ right way</value>
   <data name="includes_2_week_free_trial" xml:space="preserve">
     <value>Includes 2 week free trial</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
+  </data>
+  <data name="instant_account_explainer" xml:space="preserve">
+    <value>No email, phone, or password needed. Your account is secured by a seedphrase.</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/CreateNetworkInstantView.swift.</comment>
+  </data>
+  <data name="instant_account_failed" xml:space="preserve">
+    <value>There was an error creating your account. Please try again.</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/CreateNetworkInstantViewModel.swift.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Insufficient balance</value>
@@ -2232,6 +2248,10 @@ and most decentralized ingress and egress protocol.</value>
     <value>{}s ago</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>Secure Your Account</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/SeedphraseDisplayView.swift.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>See all the
 world's content</value>
@@ -2240,6 +2260,34 @@ world's content</value>
   <data name="see_world_content_description" xml:space="preserve">
     <value>See all the world's content with URnetwork</value>
     <comment>Onboarding Carousel</comment>
+  </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>Seedphrase copied to clipboard</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/SeedphraseDisplayView.swift.</comment>
+  </data>
+  <data name="seedphrase_input_placeholder" xml:space="preserve">
+    <value>Paste your 12- or 24-word seedphrase here</value>
+    <comment>Used in Authenticate/LoginSeedphrase/LoginSeedphraseView.swift.</comment>
+  </data>
+  <data name="seedphrase_login_failed" xml:space="preserve">
+    <value>There was an error signing in with your seedphrase. Please try again.</value>
+    <comment>Used in Authenticate/LoginSeedphrase/LoginSeedphraseView.swift.</comment>
+  </data>
+  <data name="seedphrase_only_time" xml:space="preserve">
+    <value>This is the ONLY time you'll see this.</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/SeedphraseDisplayView.swift.</comment>
+  </data>
+  <data name="seedphrase_saved_confirm" xml:space="preserve">
+    <value>I've saved my seedphrase</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/SeedphraseDisplayView.swift.</comment>
+  </data>
+  <data name="seedphrase_store_safely" xml:space="preserve">
+    <value>Write it down and store it somewhere safe. If you lose it, you'll lose access to your account.</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/SeedphraseDisplayView.swift.</comment>
+  </data>
+  <data name="seedphrase_word_count_warning" xml:space="preserve">
+    <value>Seedphrase should be 12 or 24 words (you entered {})</value>
+    <comment>Used in Authenticate/LoginSeedphrase/LoginSeedphraseViewModel.swift.</comment>
   </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker Token Verified!</value>
@@ -2356,6 +2404,10 @@ world's content</value>
   <data name="sign_in_with_google" xml:space="preserve">
     <value>Sign in with Google</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>Sign in with Seedphrase</value>
+    <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
   <data name="sign_out" xml:space="preserve">
     <value>Sign out</value>
@@ -3751,6 +3803,10 @@ as it should be.</value>
   <data name="your_referral_link" xml:space="preserve">
     <value>Your referral link</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>Your Seedphrase</value>
+    <comment>Used in Authenticate/CreateNetworkInstant/SeedphraseDisplayView.swift.</comment>
   </data>
   <data name="zero" xml:space="preserve">
     <value>0</value>

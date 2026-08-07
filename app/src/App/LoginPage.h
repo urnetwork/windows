@@ -20,6 +20,7 @@
 
 #include "AuthSheets.h"
 #include "SdkHost.h"
+#include "UrComponents.h"
 
 namespace winrt::URnetwork::implementation {
 struct MainWindow;
@@ -41,6 +42,11 @@ class LoginPage {
 
   // ---- window-level calls ----
   void ResetToInitialStep();
+  // The title-bar account menu's identity: avatar initials, the Pro ring, and
+  // whether the menu offers "Create account". Pushed from the window's auth
+  // relay, which already parses the jwt.
+  void ApplyAccountIdentity(std::string const& networkName, bool guest, bool pro,
+                            bool signedIn);
   // surfaces an auth error on whichever step the user is looking at
   void ShowErrorOnCurrentStep(winrt::hstring const& message);
   bool IsGuestUpgrade() const;
@@ -89,13 +95,40 @@ class LoginPage {
   winrt::fire_and_forget OnSignInWithSolana(
       winrt::Windows::Foundation::IInspectable const&,
       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // gates Get started on a non-empty field (iOS/android parity)
+  void OnUserAuthChanged(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+  void OnSignInWithGoogle(winrt::Windows::Foundation::IInspectable const&,
+                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // seedphrase sign-in step
+  void OnSignInWithSeedphrase(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnSeedphraseChanged(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+  void OnSeedphraseSubmit(winrt::Windows::Foundation::IInspectable const&,
+                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // instant (seedphrase-only) account step
+  void OnCreateInstantAccount(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnInstantTermsChanged(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCreateInstantSubmit(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the bottom-left "Change Network API" affordance
+  winrt::fire_and_forget OnChangeNetworkServer(
+      winrt::Windows::Foundation::IInspectable const&,
+      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the title-bar avatar
+  void OnAccountMenu(winrt::Windows::Foundation::IInspectable const&,
+                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
  private:
-  enum class LoginStep { Initial, Password, Create, Verify, Reset };
+  enum class LoginStep { Initial, Password, Create, Verify, Reset, Seedphrase, Instant };
   // What the create step submits: a fresh network with email + password, one
-  // with the retained wallet auth, or the guest network's upgrade to a full
-  // account (Api::upgradeGuest; linux CreateNetworkPage::Mode parity).
-  enum class CreateMode { Password, Wallet, GuestUpgrade };
+  // with the retained wallet auth or SSO id token, or the guest network's
+  // upgrade to a full account (Api::upgradeGuest; linux CreateNetworkPage::Mode
+  // parity).
+  enum class CreateMode { Password, Wallet, AuthJwt, GuestUpgrade };
 
   void ShowLoginStep(LoginStep step);
   void ApplyLoginRouting(urnw::LoginRouting const& routing);
@@ -104,6 +137,10 @@ class LoginPage {
   void ShowLoginErrorFor(LoginStep step, winrt::hstring const& message);
   // the initial step's URInlineErrorText; empty message hides it
   void SetInitialLoginError(winrt::hstring const& message);
+  // Get started is enabled only for a non-empty field with no discovery in
+  // flight; several paths re-enable the sign-in affordances and all of them go
+  // through here rather than writing `true`.
+  void UpdateGetStartedEnabled();
   void CheckCreateNameNow();   // debounce elapsed: run the availability check
   void ApplyNameCheck(uint32_t generation, bool ok, bool available);
   void ValidateBonusCodeNow();
@@ -113,6 +150,10 @@ class LoginPage {
   winrt::fire_and_forget ShowGuestModeSheet();  // terms consent -> LoginAsGuest
   void SetWalletSignInEnabled(bool enabled);
   void ApplyWalletSignInResult(urnw::AuthResult const& result);
+  // seedphrase step: word count -> the warning line + the submit gate
+  void ValidateSeedphrase();
+  // the newly minted phrase, shown once, gating the device registration
+  winrt::fire_and_forget ShowSeedphraseSheet(std::string seedphrase);
 
   winrt::URnetwork::implementation::MainWindow& w_;
 
@@ -137,7 +178,17 @@ class LoginPage {
   // resend-code cooldown (15s, macOS parity)
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer resendCooldownTimer_{nullptr};
 
+  // seedphrase / instant-account step state (UI thread only)
+  bool seedphraseLoggingIn_ = false;
+  bool creatingInstant_ = false;
+  // what the title-bar account menu should offer (pushed by ApplyAccountIdentity)
+  bool accountGuest_ = false;
+  std::string accountNetworkName_;
   std::shared_ptr<urnw::GuestModeSheet> guestSheet_;
+  std::shared_ptr<urnw::SeedphraseDisplaySheet> seedphraseSheet_;
+  std::shared_ptr<urnw::NetworkServerSheet> networkServerSheet_;
+  // "Seedphrase copied" / "Referral link copied" acknowledgements
+  std::unique_ptr<urnw::kit::Snackbar> snackbar_;
 };
 
 }  // namespace urnw

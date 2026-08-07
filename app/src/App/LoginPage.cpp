@@ -33,6 +33,24 @@ constexpr size_t kMinNetworkNameLength = 6;
 constexpr size_t kMinPasswordLength = 12;
 // a verification code is 6 digits (macOS CreateNetworkVerifyViewModel)
 constexpr size_t kVerifyCodeLength = 6;
+
+// A BIP-39 seedphrase is 12 or 24 words; nothing between is valid and the
+// server would only reject it (macOS LoginSeedphraseViewModel.isSeedphraseValid).
+constexpr size_t kShortSeedphraseWords = 12;
+constexpr size_t kLongSeedphraseWords = 24;
+
+// How many whitespace-separated words are in `value`. Counting rather than
+// splitting: the phrase itself is a credential and is not copied around here.
+size_t CountWords(std::string const& value) {
+  size_t count = 0;
+  bool inWord = false;
+  for (unsigned char c : value) {
+    const bool space = (c == ' ' || c == '\t' || c == '\r' || c == '\n');
+    if (!space && !inWord) ++count;
+    inWord = !space;
+  }
+  return count;
+}
 }  // namespace
 
 LoginPage::LoginPage(winrt::URnetwork::implementation::MainWindow& window)
@@ -70,6 +88,9 @@ void LoginPage::Initialize() {
   resendCooldownTimer_.Tick([weak = w_.get_weak()](auto const&, auto const&) {
     if (auto self = weak.get()) self->ResendCodeButton().IsEnabled(true);
   });
+
+  // window-level acknowledgements (the account menu's referral copy)
+  snackbar_ = std::make_unique<urnw::kit::Snackbar>(w_.AccountSnackbar(), queue);
 }
 
 // ---- strings ---------------------------------------------------------------
@@ -83,10 +104,40 @@ void LoginPage::ApplyStrings() {
   w_.EmailBox().PlaceholderText(Loc("user_auth_input_placeholder"));
   w_.GetStartedButton().Content(LocBox("get_started"));
   w_.OrDivider().Text(Loc("or"));
+  w_.GoogleSignInText().Text(Loc("sign_in_with_google"));
   w_.BittensorSignInText().Text(Loc("bittensor_sign_in"));
   w_.SolanaSignInText().Text(Loc("solana_sign_in"));
   // SdkHost::LoginWithCode is the auth-code login the other platforms ship
   w_.AuthCodeButtonText().Text(Loc("auth_code_login_button_text"));
+  // The seedphrase pair (macOS LoginSeedphrase / CreateNetworkInstant). Every
+  // seedphrase / instant-account string was ABSENT from the shared store —
+  // macOS hardcodes all fourteen as Swift literals, so `npm run gen` has never
+  // seen them — and they were added to Strings/en/Resources.resw here. They
+  // still have to land in urnetwork/localizations for the other 27 locales;
+  // see this branch's report.
+  w_.SeedphraseSignInButton().Content(LocBox("sign_in_with_seedphrase"));
+  w_.InstantAccountButton().Content(LocBox("create_instant_account"));
+  // bottom-left, quiet text: point the client at another network API
+  w_.NetworkServerLink().Content(LocBox("change_network_api"));
+
+  // The Google button shows whenever the active network space claims Google
+  // SSO. A build with no client id keeps it on screen and fails loudly when
+  // pressed (SdkHost::SignInWithGoogle) — see the note in MainWindow.xaml.
+  w_.GoogleSignInButton().Visibility(Sdk().apiReady() ? Visibility::Visible
+                                                      : Visibility::Collapsed);
+
+  // sign in — seedphrase step
+  w_.SeedphraseBackButton().Content(LocBox("back"));
+  w_.SeedphraseHeading().Text(Loc("sign_in_with_seedphrase"));
+  w_.SeedphraseBox().PlaceholderText(Loc("seedphrase_input_placeholder"));
+  w_.SeedphraseSubmitButton().Content(LocBox("sign_in"));
+
+  // sign in — instant account step
+  w_.InstantBackButton().Content(LocBox("back"));
+  w_.InstantHeading().Text(Loc("create_instant_account"));
+  w_.InstantExplanationText().Text(Loc("instant_account_explainer"));
+  urnw::SetTermsMarkerText(w_.InstantTermsText(), urnw::Localized("terms_checkbox"), 12);
+  w_.InstantCreateButton().Content(LocBox("create_account_2"));
 
   // sign in — password step
   w_.PasswordBackButton().Content(LocBox("back"));
@@ -174,6 +225,10 @@ void LoginPage::ShowLoginStep(LoginStep step) {
                                                         : Visibility::Collapsed);
   w_.ResetPanel().Visibility(step == LoginStep::Reset ? Visibility::Visible
                                                       : Visibility::Collapsed);
+  w_.SeedphrasePanel().Visibility(step == LoginStep::Seedphrase ? Visibility::Visible
+                                                                : Visibility::Collapsed);
+  w_.InstantPanel().Visibility(step == LoginStep::Instant ? Visibility::Visible
+                                                          : Visibility::Collapsed);
 }
 
 // The initial step shows android's URInlineErrorText - a line of Red400 body
@@ -195,13 +250,35 @@ void LoginPage::ShowLoginErrorFor(LoginStep step, hstring const& message) {
     bar.Message(message);
     bar.IsOpen(true);
   };
+  // the seedphrase / instant steps use android's URInlineErrorText, like the
+  // initial step, rather than an InfoBar
+  auto showInline = [&message](TextBlock const& line) {
+    line.Text(message);
+    line.Visibility(message.empty() ? Visibility::Collapsed : Visibility::Visible);
+  };
   switch (step) {
     case LoginStep::Password: show(w_.PasswordError()); break;
     case LoginStep::Create: show(w_.CreateError()); break;
     case LoginStep::Verify: show(w_.VerifyInfo()); break;
     case LoginStep::Reset: show(w_.ResetInfo()); break;
+    case LoginStep::Seedphrase: showInline(w_.SeedphraseErrorText()); break;
+    case LoginStep::Instant: showInline(w_.InstantErrorText()); break;
     default: SetInitialLoginError(message); break;
   }
+}
+
+// Get started is gated on the field having something in it (iOS/android): an
+// enabled primary button over an empty field promises an action that cannot
+// happen. The shape check stays where it was — on submit — so a half-typed
+// address does not flicker the button on and off as it is entered.
+void LoginPage::UpdateGetStartedEnabled() {
+  const std::string value = TrimWhitespace(urnw::Narrow(w_.EmailBox().Text().c_str()));
+  w_.GetStartedButton().IsEnabled(!value.empty() && !discoveringLogin_);
+}
+
+void LoginPage::OnUserAuthChanged(IInspectable const&, TextChangedEventArgs const&) {
+  UpdateGetStartedEnabled();
+  SetInitialLoginError(hstring());
 }
 
 void LoginPage::OnGetStarted(IInspectable const&, RoutedEventArgs const&) {
@@ -222,7 +299,7 @@ void LoginPage::OnGetStarted(IInspectable const&, RoutedEventArgs const&) {
 
 void LoginPage::ApplyLoginRouting(urnw::LoginRouting const& routing) {
   discoveringLogin_ = false;
-  w_.GetStartedButton().IsEnabled(true);
+  UpdateGetStartedEnabled();
   switch (routing.route) {
     case urnw::LoginRoute::Login:
       // the auth state relay swaps the panel for the home view
@@ -346,7 +423,10 @@ void LoginPage::OnSendResetLink(IInspectable const&, RoutedEventArgs const&) {
 void LoginPage::EnterCreateStep(std::string const& userAuth, CreateMode mode) {
   loginUserAuth_ = userAuth;
   createMode_ = mode;
-  const bool walletMode = (mode == CreateMode::Wallet);
+  // wallet auth and an SSO id token are the same shape on this step: the
+  // credential is already held by SdkHost, so all the form collects is a
+  // network name and the terms consent.
+  const bool walletMode = (mode == CreateMode::Wallet || mode == CreateMode::AuthJwt);
   const bool guestUpgrade = (mode == CreateMode::GuestUpgrade);
   // wallet mode: the wallet signature is the credential — name + terms only.
   // guest upgrade: the guest enters an email here (nothing was carried in).
@@ -510,6 +590,7 @@ void LoginPage::ApplyBonusValidation(uint32_t generation, bool ok, bool valid,
 void LoginPage::ValidateCreateForm() {
   const std::string password = urnw::Narrow(w_.CreatePasswordBox().Password().c_str());
   const bool passwordOk = createMode_ == CreateMode::Wallet ||
+                          createMode_ == CreateMode::AuthJwt ||
                           password.size() >= kMinPasswordLength;
   // the guest upgrade collects the email on this step (the other modes carry a
   // discovered / wallet credential in); the server is the real validator
@@ -560,6 +641,8 @@ void LoginPage::OnCreateNetwork(IInspectable const&, RoutedEventArgs const&) {
   params.terms = w_.TermsCheck().IsChecked() && w_.TermsCheck().IsChecked().Value();
   if (createMode_ == CreateMode::Wallet) {
     params.useWalletAuth = true;
+  } else if (createMode_ == CreateMode::AuthJwt) {
+    params.useAuthJwt = true;
   } else {
     params.userAuth = loginUserAuth_;
     params.password = password;
@@ -793,7 +876,17 @@ void LoginPage::SetWalletSignInEnabled(bool enabled) {
   w_.BittensorSignInButton().IsEnabled(enabled);
   w_.SolanaSignInButton().IsEnabled(enabled);
   w_.AuthCodeButton().IsEnabled(enabled);
-  w_.GetStartedButton().IsEnabled(enabled);
+  w_.GoogleSignInButton().IsEnabled(enabled);
+  w_.SeedphraseSignInButton().IsEnabled(enabled);
+  w_.InstantAccountButton().IsEnabled(enabled);
+  // NOT a flat `IsEnabled(enabled)`: Get started also depends on the field
+  // having something in it, and writing true here re-enabled it over an empty
+  // box every time another sign-in method finished.
+  if (enabled) {
+    UpdateGetStartedEnabled();
+  } else {
+    w_.GetStartedButton().IsEnabled(false);
+  }
 }
 
 void LoginPage::ApplyWalletSignInResult(urnw::AuthResult const& result) {
@@ -804,10 +897,254 @@ void LoginPage::ApplyWalletSignInResult(urnw::AuthResult const& result) {
     EnterCreateStep(std::string(), CreateMode::Wallet);
     return;
   }
+  // the same shape for an SSO identity, with the retained id token instead
+  if (result.auth_needs_network) {
+    EnterCreateStep(std::string(), CreateMode::AuthJwt);
+    return;
+  }
   // on success ApplyAuthState swaps the panel for the home view; only an error
   // needs to be surfaced here
   if (result.ok || result.error.empty()) return;
   ShowLoginErrorFor(LoginStep::Initial, H(result.error));
+}
+
+// ---- Sign in with Google (system browser) ----------------------------------
+// The round trip is GoogleSignIn's: it opens the browser, waits on a loopback
+// socket and exchanges the code. Everything here does is disable the sign-in
+// affordances while that is happening and surface whatever comes back.
+
+void LoginPage::OnSignInWithGoogle(IInspectable const&, RoutedEventArgs const&) {
+  SetInitialLoginError(hstring());
+  SetWalletSignInEnabled(false);
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().SignInWithGoogle([queue, weak](urnw::AuthResult r) {
+    queue.TryEnqueue([weak, r] {
+      // ApplyWalletSignInResult already handles "authenticated but no network
+      // yet" for both credentials and re-enables the buttons.
+      if (auto self = weak.get()) self->login().ApplyWalletSignInResult(r);
+    });
+  });
+}
+
+// ---- Sign in with a seedphrase (macOS LoginSeedphraseView) -----------------
+
+void LoginPage::OnSignInWithSeedphrase(IInspectable const&, RoutedEventArgs const&) {
+  SetInitialLoginError(hstring());
+  w_.SeedphraseBox().Text(L"");
+  w_.SeedphraseErrorText().Visibility(Visibility::Collapsed);
+  seedphraseLoggingIn_ = false;
+  ValidateSeedphrase();
+  ShowLoginStep(LoginStep::Seedphrase);
+  w_.SeedphraseBox().Focus(FocusState::Programmatic);
+}
+
+void LoginPage::OnSeedphraseChanged(IInspectable const&, TextChangedEventArgs const&) {
+  w_.SeedphraseErrorText().Visibility(Visibility::Collapsed);
+  ValidateSeedphrase();
+}
+
+void LoginPage::ValidateSeedphrase() {
+  const size_t words = CountWords(urnw::Narrow(w_.SeedphraseBox().Text().c_str()));
+  const bool valid = (words == kShortSeedphraseWords || words == kLongSeedphraseWords);
+  w_.SeedphraseSubmitButton().IsEnabled(valid && !seedphraseLoggingIn_);
+
+  auto const line = w_.SeedphraseWordCountText();
+  if (words == 0) {
+    // nothing typed yet: no verdict to give
+    kit::ApplySupportingText(line, hstring(), kit::ValidationState::NotChecked);
+  } else if (valid) {
+    kit::ApplySupportingText(line, hstring(), kit::ValidationState::Valid);
+  } else {
+    // The count is the whole diagnostic — "invalid seedphrase" would not tell
+    // anyone that they pasted 23 words.
+    kit::ApplySupportingText(
+        line, hstring{urnw::Format("seedphrase_word_count_warning", words)},
+        kit::ValidationState::Invalid);
+  }
+}
+
+void LoginPage::OnSeedphraseSubmit(IInspectable const&, RoutedEventArgs const&) {
+  // The phrase leaves the box, goes to the SDK and is not retained here.
+  const std::string phrase = urnw::Narrow(w_.SeedphraseBox().Text().c_str());
+  const size_t words = CountWords(phrase);
+  if (seedphraseLoggingIn_ ||
+      (words != kShortSeedphraseWords && words != kLongSeedphraseWords)) {
+    return;
+  }
+  seedphraseLoggingIn_ = true;
+  w_.SeedphraseSubmitButton().IsEnabled(false);
+  w_.SeedphraseErrorText().Visibility(Visibility::Collapsed);
+
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().LoginWithSeedphrase(phrase, [queue, weak](urnw::AuthResult r) {
+    queue.TryEnqueue([weak, r] {
+      auto self = weak.get();
+      if (!self) return;
+      auto& page = self->login();
+      page.seedphraseLoggingIn_ = false;
+      page.ValidateSeedphrase();
+      if (!r.ok) {
+        page.ShowLoginErrorFor(LoginStep::Seedphrase,
+                               r.error.empty() ? Loc("seedphrase_login_failed") : H(r.error));
+      }
+      // success: the auth state relay swaps the panel for the home view
+    });
+  });
+}
+
+// ---- Create an instant account (macOS CreateNetworkInstantView) -------------
+// networkCreate with nothing but the terms consent mints a network whose only
+// credential is a seedphrase. The seedphrase sheet is shown BEFORE the device
+// is registered (SdkHost::CreateInstantAccount / ConfirmInstantAccount), so a
+// dismissed sheet cannot leave a signed-in account nobody can ever recover.
+
+void LoginPage::OnCreateInstantAccount(IInspectable const&, RoutedEventArgs const&) {
+  SetInitialLoginError(hstring());
+  w_.InstantTermsCheck().IsChecked(false);
+  w_.InstantTermsCheck().IsEnabled(true);
+  w_.InstantErrorText().Visibility(Visibility::Collapsed);
+  creatingInstant_ = false;
+  w_.InstantCreateButton().IsEnabled(false);
+  ShowLoginStep(LoginStep::Instant);
+}
+
+void LoginPage::OnInstantTermsChanged(IInspectable const&, RoutedEventArgs const&) {
+  const bool agreed =
+      w_.InstantTermsCheck().IsChecked() && w_.InstantTermsCheck().IsChecked().Value();
+  w_.InstantCreateButton().IsEnabled(agreed && !creatingInstant_);
+  w_.InstantErrorText().Visibility(Visibility::Collapsed);
+}
+
+void LoginPage::OnCreateInstantSubmit(IInspectable const&, RoutedEventArgs const&) {
+  const bool agreed =
+      w_.InstantTermsCheck().IsChecked() && w_.InstantTermsCheck().IsChecked().Value();
+  if (creatingInstant_ || !agreed || !Sdk().apiReady()) return;
+  creatingInstant_ = true;
+  w_.InstantCreateButton().IsEnabled(false);
+  w_.InstantTermsCheck().IsEnabled(false);
+  w_.InstantErrorText().Visibility(Visibility::Collapsed);
+
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().CreateInstantAccount([queue, weak](urnw::SdkHost::InstantAccount account) {
+    queue.TryEnqueue([weak, account = std::move(account)] {
+      auto self = weak.get();
+      if (!self) return;
+      auto& page = self->login();
+      page.creatingInstant_ = false;
+      self->InstantTermsCheck().IsEnabled(true);
+      const bool agreed = self->InstantTermsCheck().IsChecked() &&
+                          self->InstantTermsCheck().IsChecked().Value();
+      self->InstantCreateButton().IsEnabled(agreed);
+      if (!account.ok) {
+        page.ShowLoginErrorFor(LoginStep::Instant, account.error.empty()
+                                                       ? Loc("instant_account_failed")
+                                                       : H(account.error));
+        return;
+      }
+      page.ShowSeedphraseSheet(account.seedphrase);
+    });
+  });
+}
+
+winrt::fire_and_forget LoginPage::ShowSeedphraseSheet(std::string seedphrase) {
+  if (w_.sheetOpen()) {
+    // Nothing else can be open on this screen, but if it somehow is, the
+    // account must not be silently abandoned with its phrase unread.
+    Sdk().DiscardInstantAccount();
+    ShowLoginErrorFor(LoginStep::Instant, Loc("something_went_wrong"));
+    co_return;
+  }
+  auto self = w_.get_strong();
+  auto weak = w_.get_weak();
+  w_.SetSheetOpen(true);
+  // shared, not a captured local: the confirm callback fires while this
+  // coroutine is suspended inside ShowAsync, and a reference into a coroutine
+  // frame is exactly the kind of lifetime nobody should have to reason about.
+  auto confirmed = std::make_shared<bool>(false);
+  try {
+    seedphraseSheet_ = urnw::SeedphraseDisplaySheet::Create(
+        self->Content().XamlRoot(), seedphrase,
+        [weak] {
+          if (auto self = weak.get()) {
+            self->login().snackbar_->Show(Loc("seedphrase_copied_to_clipboard"),
+                                          InfoBarSeverity::Success);
+          }
+        },
+        [confirmed] {
+          *confirmed = true;
+          // Only now does a session exist. The auth-state relay swaps the
+          // panel for the home view when registration lands.
+          Sdk().ConfirmInstantAccount([](urnw::AuthResult) {});
+        });
+    co_await seedphraseSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  seedphraseSheet_.reset();
+  w_.SetSheetOpen(false);
+  if (!*confirmed) {
+    // The sheet went away without a confirmation (a crash of the dialog, or a
+    // future path that adds one): drop the jwt rather than leave it pending.
+    Sdk().DiscardInstantAccount();
+  }
+}
+
+// ---- Change Network API (iOS NetworkServerSheet) ---------------------------
+
+winrt::fire_and_forget LoginPage::OnChangeNetworkServer(IInspectable const&,
+                                                        RoutedEventArgs const&) {
+  if (w_.sheetOpen()) co_return;  // only one ContentDialog can show at a time
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    networkServerSheet_ =
+        urnw::NetworkServerSheet::Create(self->Content().XamlRoot(), Sdk());
+    co_await networkServerSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  networkServerSheet_.reset();
+  w_.SetSheetOpen(false);
+  // A switch re-derives the Api and the LocalState, so the flow starts over on
+  // whatever the new server says about this client.
+  ResetToInitialStep();
+}
+
+// ---- Account menu (iOS Shared/Views/AccountMenu.swift) ----------------------
+
+void LoginPage::ApplyAccountIdentity(std::string const& networkName, bool guest, bool pro,
+                                     bool signedIn) {
+  // The avatar only exists for a session: signed out there is no identity to
+  // show and no action in the menu that would make sense.
+  w_.AccountMenuButton().Visibility(signedIn ? Visibility::Visible : Visibility::Collapsed);
+  if (!signedIn) return;
+  // PersonPicture derives its initials from DisplayName; a guest has no
+  // network name to derive from and gets the store's word for it.
+  w_.AccountAvatar().DisplayName(networkName.empty() ? Loc("guest") : H(networkName));
+  w_.AccountProRing().Stroke(urnw::colors::ProGoldBrush());
+  w_.AccountProRing().Visibility(pro ? Visibility::Visible : Visibility::Collapsed);
+  accountGuest_ = guest;
+  accountNetworkName_ = networkName;
+}
+
+void LoginPage::OnAccountMenu(IInspectable const&, RoutedEventArgs const&) {
+  auto weak = w_.get_weak();
+  urnw::AccountMenuActions actions;
+  if (accountGuest_) {
+    actions.onCreateAccount = [weak] {
+      if (auto self = weak.get()) self->login().BeginGuestUpgrade();
+    };
+  }
+  actions.onSignOut = [] { Sdk().Logout(); };
+  actions.onShared = [weak] {
+    if (auto self = weak.get()) {
+      self->login().snackbar_->Show(Loc("bonus_referral_code_copied_to_clipboard"),
+                                    InfoBarSeverity::Success);
+    }
+  };
+  urnw::ShowAccountMenu(w_.AccountMenuButton(), Sdk(), accountNetworkName_, accountGuest_,
+                        std::move(actions));
 }
 
 }  // namespace urnw

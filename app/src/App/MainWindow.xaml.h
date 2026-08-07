@@ -117,6 +117,31 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the browser bridge needs the provider before it can build its deeplink
   void OnSignInWithSolana(winrt::Windows::Foundation::IInspectable const&,
                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // gates Get started on a non-empty field
+  void OnUserAuthChanged(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+  // Google SSO through the system browser (loopback OAuth + PKCE)
+  void OnSignInWithGoogle(winrt::Windows::Foundation::IInspectable const&,
+                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // seedphrase sign-in, and the instant (seedphrase-only) account
+  void OnSignInWithSeedphrase(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnSeedphraseChanged(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+  void OnSeedphraseSubmit(winrt::Windows::Foundation::IInspectable const&,
+                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCreateInstantAccount(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnInstantTermsChanged(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCreateInstantSubmit(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the bottom-left "Change Network API" text affordance
+  void OnChangeNetworkServer(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the title-bar avatar's menu (identity, create account, share, sign out)
+  void OnAccountMenu(winrt::Windows::Foundation::IInspectable const&,
+                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // XAML event handlers — home
   void OnConnectToggle(winrt::Windows::Foundation::IInspectable const&,
