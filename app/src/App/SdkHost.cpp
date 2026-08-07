@@ -219,6 +219,35 @@ bool SdkHost::Initialize() {
     });
     service_.Connect();  // ok if the service isn't up yet; retried on demand
 
+    // RESTORE THE API'S AUTHORIZATION FROM THE PERSISTED SESSION.
+    //
+    // Without this every authenticated Api call 401s on the second and every
+    // subsequent launch, for every signed-in user. api_->setByJwt was called in
+    // exactly ONE place - RegisterNetworkClient, on the fresh-login path - so
+    // the token lived only in the Api object of the process that did the login.
+    // Relaunch rebuilt the Api with no token while the app still LOOKED signed
+    // in: the client jwt is on disk, the by jwt parses locally, the home view
+    // renders and the network name is right, and then every request comes back
+    // "401 Unauthorized: Not authorized."
+    //
+    // Measured on the beta test network: sign in, restart, and getNetworkUser,
+    // getNetworkReferralCode, getReferralNetwork, accountPreferencesGet and
+    // subscriptionBalance all 401. This is why no screen in this client had
+    // ever rendered a 200 - every Class A surface was being judged against
+    // "empty states" that were really auth failures.
+    //
+    // getByJwt() is the USER jwt, which is what the Api authorizes with;
+    // getByClientJwt() is the device credential the tunnel session needs.
+    //
+    // NOTE FOR THE MERGE: this hunk is a duplicate of P3's da90da1, taken
+    // verbatim from it. P4 hit the same wall independently (the whole wallet
+    // destination 401'd on a session it had just created) and needs it to
+    // verify anything at all; whichever lands first, the other is a no-op.
+    if (const std::string byJwt = localState_->getByJwt(); !byJwt.empty()) {
+      api_->setByJwt(byJwt);
+      LogInfo("sdkhost: restored the api session from local state");
+    }
+
     if (!localState_->getByClientJwt().empty()) {
       SetAuthState(AuthState::LoggedIn);
       // Resume the session off the UI path.
@@ -723,11 +752,38 @@ void SdkHost::SetupWalletCallbacks() {
       signDone(false, std::string(), std::string(), err);
       return;
     }
-    auto done = walletAuthDone_;
-    walletAuthDone_ = nullptr;
+    // NO FLOW IS IN FLIGHT. The bridge is a pair of process-wide callbacks with
+    // no request id, so a deep link arriving late - from an attempt the user
+    // abandoned, or one already answered - lands here looking exactly like a
+    // fresh failure. It must not be able to move the auth state: doing that is
+    // how a signed-in user gets thrown back to the login screen by a browser tab
+    // they closed ten minutes ago.
+    if (!walletAuthDone_) {
+      LogWarn("sdkhost: a wallet-bridge error arrived with no flow in flight, "
+              "ignoring it: {}",
+              err);
+      return;
+    }
+    auto done = std::exchange(walletAuthDone_, nullptr);
     SetAuthState(AuthState::Error, err);
-    if (done) done({false, false, err});
+    done({false, false, err});
   };
+}
+
+// The bridge exposes ONE pair of callbacks, so starting either flow supersedes
+// the other. Superseding it must ANSWER it: dropping the callback on the floor
+// left whatever was waiting on it - a busy flag, a greyed-out button - waiting
+// for a reply that could no longer come. Neither caller can see that from
+// where it stands.
+void SdkHost::CancelPendingWalletFlows(const char* reason) {
+  if (auto signDone = std::exchange(walletSignDone_, nullptr)) {
+    LogWarn("sdkhost: a wallet signature request was superseded ({})", reason);
+    signDone(false, std::string(), std::string(), reason);
+  }
+  if (auto authDone = std::exchange(walletAuthDone_, nullptr)) {
+    LogWarn("sdkhost: a wallet sign-in was superseded ({})", reason);
+    authDone({false, false, reason});
+  }
 }
 
 void SdkHost::SignInWithSolana(WalletConnect::Provider provider,
@@ -737,7 +793,8 @@ void SdkHost::SignInWithSolana(WalletConnect::Provider provider,
     std::scoped_lock lock(mutex_);
     pendingWalletAuth_.reset();  // a fresh sign-in supersedes any retained auth
   }
-  walletSignDone_ = nullptr;  // ...and any pending bare signature request
+  // ...and any pending bare signature request, which is TOLD it was superseded
+  CancelPendingWalletFlows("superseded by a wallet sign-in");
   walletAuthDone_ = std::move(done);
   wallet_.Connect(provider);  // opens the browser; the rest continues on the deep-link callback
 }
@@ -748,7 +805,7 @@ void SdkHost::SignInWithBittensor(std::function<void(AuthResult)> done) {
     std::scoped_lock lock(mutex_);
     pendingWalletAuth_.reset();  // a fresh sign-in supersedes any retained auth
   }
-  walletSignDone_ = nullptr;
+  CancelPendingWalletFlows("superseded by a wallet sign-in");
   walletAuthDone_ = std::move(done);
   // one step: the bridge returns the address and the signature together
   wallet_.SignMessageBittensor(kWalletSignInMessage);
@@ -759,7 +816,7 @@ void SdkHost::SignWithSolanaWallet(
     std::function<void(bool, std::string, std::string, std::string)> done) {
   // No SetAuthState here on purpose: this is not a sign-in and the session must
   // not move (see on_error above).
-  walletAuthDone_ = nullptr;  // a signature request supersedes a pending sign-in
+  CancelPendingWalletFlows("superseded by a wallet signature request");
   walletSignMessage_ = message;
   walletSignDone_ = std::move(done);
   wallet_.Connect(provider);  // continues on the deep-link callback

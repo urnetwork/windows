@@ -638,6 +638,12 @@ class SdkHost {
   std::string bootstrapError_;
   std::string appVersion_ = "0.0.1";
 
+  // Answer and clear whichever wallet-bridge flow is outstanding. Called when a
+  // new one starts: the bridge has a single pair of callbacks, so the new flow
+  // takes them over and the old one has to be TOLD rather than abandoned - an
+  // abandoned callback is a busy flag nothing will ever clear.
+  void CancelPendingWalletFlows(const char* reason);
+
   WalletConnect wallet_;
   std::function<void(AuthResult)> walletAuthDone_;
   // A bare signature request (SignWithSolanaWallet) rather than a sign-in. Non-
