@@ -1953,12 +1953,57 @@
                   </Grid>
                 </ScrollViewer>
 
-                <!-- Developer / reliability (P2). Empty on purpose: the ~40
-                     controls are built by urnw::DeveloperPage in code, which
-                     keeps this shared file to one host element. -->
+                <!-- Developer / reliability (P2). The ~40 controls are still
+                     built by urnw::DeveloperPage in code; what lives here is
+                     only the SHAPE, because D4 made that shape the same on all
+                     seven destinations and it belongs where the other six are.
+                     The page appends its cards into the four named hosts.
+
+                     Portmaster's reading: the wide tables at the top, then
+                     key-value material in columns under them. Exits has seven
+                     columns and Destinations three; both take the full width of
+                     the composition at every size, and both will grow id / raw
+                     columns under Advanced Mode. -->
                 <ScrollViewer x:Name="DeveloperView" Visibility="Collapsed"
                               HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto" />
+                              VerticalScrollBarVisibility="Auto">
+                  <Grid x:Name="DeveloperLayout">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="DeveloperCapColumn"
+                                          Width="1000*" MaxWidth="1000" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="DeveloperSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+                      <!-- what these tools are, and the two actions that need
+                           no session -->
+                      <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                  x:Name="DeveloperTopStack" Spacing="16" />
+                      <!-- the two tables, full width -->
+                      <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                  x:Name="DeveloperTablesStack" Spacing="16"
+                                  Margin="0,16,0,0" />
+                      <!-- what the session has measured -->
+                      <StackPanel Grid.Row="2" Grid.Column="0"
+                                  x:Name="DeveloperMainStack" Spacing="16"
+                                  VerticalAlignment="Top" Margin="0,16,0,24" />
+                      <!-- the five override sections -->
+                      <StackPanel Grid.Row="3" Grid.Column="0"
+                                  x:Name="DeveloperSideStack" Spacing="16"
+                                  VerticalAlignment="Top" Margin="0,16,0,24" />
+                    </Grid>
+                  </Grid>
+                </ScrollViewer>
             </Grid>
         </muxc:NavigationView>
 

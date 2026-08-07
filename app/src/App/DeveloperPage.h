@@ -227,7 +227,10 @@ class DeveloperPage {
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer pollTimer_{nullptr};
 
   // ---- the built tree ----
-  StackPanel root_{nullptr};
+  // No root_ any more: this page used to build its own 1000-wide left-aligned
+  // column and hand it to DeveloperView as Content. The width and the placement
+  // now come from the four named hosts in MainWindow.xaml, which carry the same
+  // shape the other six destinations use (D4).
   TextBlock connectHint_{nullptr};
   TextBlock lastAction_{nullptr};
   // The two intro-card actions that touch the device. Held because they are the

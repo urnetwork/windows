@@ -363,6 +363,21 @@ void MainWindow::ApplyBreakpoint() {
   Place(SupportSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
                                  : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 24}});
 
+  // ---- Developer: the tables full width, the rest in two columns -----------
+  // Portmaster's reading. Exits carries seven columns and Destinations three,
+  // and both were living inside a 1000dip left-aligned column; they now take
+  // the whole composition. What the session HAS MEASURED and what it has been
+  // TOLD TO DO go side by side under them, which is the pairing you actually
+  // read them in - change a threshold on the right, watch a count on the left.
+  DeveloperCapColumn().MaxWidth(wide ? 1800 : 1000);
+  if (wide) {
+    SetStar(DeveloperSideColumn(), 1);
+  } else {
+    SetWidth(DeveloperSideColumn(), 0);
+  }
+  Place(DeveloperSideStack(), wide ? PanePlacement{2, 1, 1, Thickness{20, 16, 0, 24}}
+                                   : PanePlacement{3, 0, 1, Thickness{0, 16, 0, 24}});
+
   urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
 }
 
