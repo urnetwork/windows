@@ -94,6 +94,20 @@ FrameworkElement MakeEmptyState(winrt::hstring const& glyph, winrt::hstring cons
   return column;
 }
 
+FrameworkElement MakeEmptyStateCard(winrt::hstring const& glyph, winrt::hstring const& text) {
+  Controls::Border card;
+  // by key rather than by hand, so the empty state inherits whatever UrCardStyle
+  // says a card is - including the hairline it grew in this pass
+  if (auto app = Application::Current()) {
+    auto boxed = winrt::box_value(winrt::hstring{L"UrCardStyle"});
+    if (app.Resources().HasKey(boxed)) {
+      if (auto style = app.Resources().Lookup(boxed).try_as<Style>()) card.Style(style);
+    }
+  }
+  card.Child(MakeEmptyState(glyph, text));
+  return card;
+}
+
 void ApplySupportingText(TextBlock const& line, winrt::hstring const& text,
                          ValidationState state) {
   if (!line) return;

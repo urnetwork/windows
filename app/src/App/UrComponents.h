@@ -47,6 +47,15 @@ void SetTextOrCollapse(winrt::Microsoft::UI::Xaml::Controls::TextBlock const& li
 winrt::Microsoft::UI::Xaml::FrameworkElement MakeEmptyState(winrt::hstring const& glyph,
                                                             winrt::hstring const& text);
 
+// The same empty state on its own card surface, for a panel that has no card
+// around it already - the leaderboard's rows, the payouts ledger. "Nothing
+// here" still has to be a MODULE, or the destination renders as a single grey
+// sentence adrift on the page, which is how the leaderboard read at 60% blank.
+// Do NOT use this inside a card: a card in a card reads as two edges 16px
+// apart. MakeEmptyState is the one for that.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakeEmptyStateCard(winrt::hstring const& glyph,
+                                                                winrt::hstring const& text);
+
 // A 1px rule in the border token, for row groups that are built in code rather
 // than in markup (Settings sections, the payouts ledger, the points breakdown).
 // The markup equivalent is UrDividerStyle in App.xaml; keep the two in step.
