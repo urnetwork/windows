@@ -334,6 +334,21 @@ void MainWindow::ApplyBreakpoint() {
   Place(LeaderboardSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
                                      : PanePlacement{0, 0, 1, Thickness{}});
 
+  // ---- Settings: two card columns ------------------------------------------
+  // A wall of cards and nothing else, so the wide reading is simply two
+  // columns of them. Same 1180 cap as Account, and for the same reason: a
+  // settings row is a label and a control, and past ~580dip they stop looking
+  // like they belong to each other. The destructive end stays full width under
+  // both columns - see the markup.
+  SettingsCapColumn().MaxWidth(wide ? 1180 : 560);
+  if (wide) {
+    SetStar(SettingsSideColumn(), 1);
+  } else {
+    SetWidth(SettingsSideColumn(), 0);
+  }
+  Place(SettingsSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 0}}
+                                  : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});
+
   urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
 }
 

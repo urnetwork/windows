@@ -133,15 +133,21 @@ void SettingsPage::BuildSections() {
   if (built_) return;
   built_ = true;
 
+  // TWO hosts, not one. At desktop widths they are two card columns (D4); at
+  // flyout width the second stacks under the first, so the split has to be by
+  // SUBJECT rather than by length, or the narrow reading order comes out
+  // shuffled. Left is what this account and this device ARE; right is how they
+  // connect and who they talk to.
   auto host = w_.SettingsSections();
+  auto right = w_.SettingsSectionsRight();
   BuildAccountSection(host);
   BuildDeviceSection(host);
-  BuildConnectionsSection(host);
-  BuildIdentitySection(host);
-  BuildStayInTouchSection(host);
   BuildSubscriptionSection(host);
-  BuildLogsSection(host);
-  BuildVersionSection(host);
+  BuildConnectionsSection(right);
+  BuildIdentitySection(right);
+  BuildStayInTouchSection(right);
+  BuildLogsSection(right);
+  BuildVersionSection(right);
   BuildDangerSection();
 
   // Everything that can be read without a round trip, so the page is not blank

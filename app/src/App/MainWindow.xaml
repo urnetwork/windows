@@ -1820,18 +1820,53 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- The same shape ConnectView carries. Settings is a wall
+                       of cards and nothing else, so its wide reading is simply
+                       TWO columns of them - with the destructive end (sign out,
+                       delete account) kept full width UNDER both, because
+                       "irreversible" belongs at the bottom of the page at every
+                       size, not halfway down one of two columns. -->
+                  <Grid x:Name="SettingsLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="560" />
+                        <ColumnDefinition x:Name="SettingsCapColumn"
+                                          Width="1000*" MaxWidth="560" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="16" Margin="0,0,0,24">
-                        <!-- Every section above the split rules is built in code
-                             (SettingsPage::BuildSections): connection, device,
-                             account, blocked locations, identity, preferences,
-                             logs, links. -->
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="SettingsSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <!-- Every section here is built in code
+                         (SettingsPage::BuildSections), into TWO hosts: this one
+                         and SettingsSectionsRight below. The split is by
+                         subject - what the account is and what this device is
+                         on the left, how it connects and who it talks to on the
+                         right - so that at flyout width, where the two hosts
+                         stack, the reading order is still by subject. -->
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="SettingsMainStack" Spacing="16"
+                                VerticalAlignment="Top">
                         <StackPanel x:Name="SettingsSections" Spacing="16" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="SettingsSideStack" Spacing="16"
+                                VerticalAlignment="Top" Margin="0,16,0,0">
+                        <StackPanel x:Name="SettingsSectionsRight" Spacing="16" />
+                    </StackPanel>
+
+                    <!-- Full width under both columns at every size. -->
+                    <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                x:Name="SettingsBottomStack" Spacing="16"
+                                Margin="0,16,0,24">
 
                         <!-- split tunnel: header glyph + a card, so it stops
                              being three loose controls after eight carded
@@ -1864,6 +1899,7 @@
                         <HyperlinkButton x:Name="ProtocolLink" NavigateUri="https://ur.xyz"
                                          FontSize="12" Padding="0" Margin="0,8,0,0" />
                     </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 
