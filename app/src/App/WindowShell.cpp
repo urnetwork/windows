@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+﻿// SPDX-License-Identifier: MPL-2.0
 #include "pch.h"
 
 #include "WindowShell.h"
@@ -6,8 +6,6 @@
 #include <algorithm>
 #include <optional>
 
-#include <winrt/Microsoft.UI.Composition.h>
-#include <winrt/Microsoft.UI.Composition.SystemBackdrops.h>
 #include <winrt/Microsoft.UI.Interop.h>
 #include <winrt/Microsoft.UI.Windowing.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
@@ -121,89 +119,6 @@ Placement ClampToWorkArea(Placement p) {
   return p;
 }
 
-namespace backdrops = winrt::Microsoft::UI::Composition::SystemBackdrops;
-
-// The controller and its configuration must outlive this call - releasing the
-// controller tears the backdrop down - and there is exactly one main window for
-// the life of the process. Deliberately leaked rather than held in a static
-// unique_ptr: destroying a WinRT object during static destruction runs after
-// COM has been torn down.
-struct MicaState {
-  backdrops::MicaController controller{nullptr};
-  backdrops::SystemBackdropConfiguration config{nullptr};
-};
-MicaState* g_mica = nullptr;
-
-// Mica is a Windows 11 feature. MicaController::IsSupported() is the OS's own
-// answer, so this needs no version check of its own and no build-number table.
-//
-// This drives MicaController directly rather than handing XAML a MicaBackdrop,
-// for one reason: FALLBACK COLOUR. IsSupported() answers "does this OS have
-// Mica", NOT "is Mica compositing right now" - transparency effects off,
-// battery saver, RDP and several VM/GPU paths all keep it supported while the
-// backdrop collapses to its fallback. By then the opaque root background has
-// been cleared, so the fallback IS the app background, and MicaController's
-// default is the system base fill (measured at #202020 here), not the brand
-// #101010. Microsoft.UI.Xaml.Media.MicaBackdrop exposes no FallbackColor at
-// all - only Kind - so it cannot express this; the controller can.
-bool ApplyBackdrop(winrtx::Window const& window) {
-  try {
-    if (!backdrops::MicaController::IsSupported()) {
-      LogInfo("shell: mica not supported by this OS - keeping the solid #101010 background");
-      return false;
-    }
-    auto target =
-        window.try_as<winrt::Microsoft::UI::Composition::ICompositionSupportsSystemBackdrop>();
-    if (!target) {
-      LogError("shell: this window cannot host a system backdrop - keeping the solid background");
-      return false;
-    }
-
-    auto state = std::make_unique<MicaState>();
-    state->config = backdrops::SystemBackdropConfiguration();
-    // the app requests Dark unconditionally (App.xaml RequestedTheme)
-    state->config.Theme(backdrops::SystemBackdropTheme::Dark);
-    state->config.IsInputActive(true);
-    state->controller = backdrops::MicaController();
-    state->controller.FallbackColor(urnw::colors::kBackground);
-    state->controller.SetSystemBackdropConfiguration(state->config);
-    state->controller.AddSystemBackdropTarget(target);
-
-    // Read the fallback BACK rather than logging what we meant to set. This is
-    // the colour the window becomes whenever Mica degrades at runtime while
-    // still being "supported", and the opaque root background has been cleared
-    // by then - so it is the app background, and a silent default here would be
-    // the system fill, not the brand one.
-    const auto applied = state->controller.FallbackColor();
-
-    // RELEASE BEFORE REGISTERING. The handler below captures the MicaState by
-    // raw pointer; while `state` is still a unique_ptr, anything that throws
-    // between the registration and the release unwinds, destroys the MicaState,
-    // and leaves a live handler dereferencing freed memory on the next
-    // activation. Once it is released it is immortal and the capture is safe.
-    g_mica = state.release();  // see the comment on MicaState
-
-    // Native behaviour: Mica dims while the window is not the active one. The
-    // configuration is what carries that, and nothing updates it by itself.
-    auto* raw = g_mica;
-    window.Activated([raw](auto const&, winrtx::WindowActivatedEventArgs const& args) {
-      if (raw->config) {
-        raw->config.IsInputActive(args.WindowActivationState() !=
-                                  winrtx::WindowActivationState::Deactivated);
-      }
-    });
-
-    LogInfo("shell: mica backdrop applied (fallback #{:02X}{:02X}{:02X})", applied.R,
-            applied.G, applied.B);
-  } catch (winrt::hresult_error const& e) {
-    // Not fatal: the solid background is a complete look on its own.
-    LogError("shell: mica backdrop refused ({}) - keeping the solid background",
-             urnw::Narrow(std::wstring{e.message()}));
-    return false;
-  }
-  return true;
-}
-
 // The caption buttons are drawn by the SYSTEM on top of our extended content,
 // so they do not inherit anything from XAML. Left alone they render on the
 // default light-theme plate over a near-black window.
@@ -231,18 +146,36 @@ void ApplyCaptionButtonColors(windowing::AppWindow const& appWindow) {
 bool ApplyNativeShell(winrtx::Window const& window, HWND hwnd) {
   if (!window || !hwnd) return false;
 
-  const bool mica = ApplyBackdrop(window);
-  if (mica) {
-    // Mica is drawn BEHIND the XAML content. The root grid paints an opaque
-    // #101010 over the whole window, so without this the backdrop is applied,
-    // costs its composition work, and is invisible.
-    if (auto root = window.Content().try_as<winrtx::Controls::Panel>()) {
-      root.Background(nullptr);
-    } else {
-      LogError("shell: mica applied but the root element is not a Panel - "
-               "its background could not be cleared, so the backdrop will not show");
-    }
-  }
+  // NO MICA. Removed 2026-08-07 after the owner reported the window rendering
+  // bright pink-white while focused and black once it lost focus.
+  //
+  // The two are mutually exclusive here, and the removed code said so without
+  // drawing the conclusion: Mica draws BEHIND the XAML content, so the only way
+  // to see it was to clear the root grid's opaque #101010 - and once that is
+  // cleared, the DESKTOP WALLPAPER is the app's background. Not a tint over the
+  // brand colour; its replacement. How bad it looks is a function of what the
+  // window happens to be sitting on top of, which is why it survived review:
+  // measured here over a dark region the surface read #242428 against a brand
+  // #101010 (already wrong, just not obviously), while over a bright region of
+  // the same wallpaper it goes near-white and the login form stops being
+  // legible. The focus dependence the owner saw is SystemBackdropConfiguration
+  // .IsInputActive doing exactly what it is meant to - Mica dims when
+  // deactivated, which is why "hover away and it looks normal".
+  //
+  // This app is a full-bleed fixed-dark brand surface: RequestedTheme is pinned
+  // Dark and the palette is byte-correct against the other clients. It has no
+  // empty chrome for a backdrop to fill, so Mica could never be decoration
+  // here - only a replacement for the brand colour. The native-shell win the
+  // owner asked for comes from the sizing, the placement persistence, the real
+  // title bar, the caption colours and the control metrics, none of which need
+  // a backdrop. So the root keeps its opaque #101010 from App.xaml.
+  //
+  // Also note the earlier verification gap that let this ship: the session was
+  // locked, so only PrintWindow captures were possible, and PrintWindow asks
+  // the window to draw ITSELF - it never composites the backdrop. The API-level
+  // check (reading FallbackColor back off the controller) passed and proved
+  // nothing about the pixels. A backdrop change is only verified by a real
+  // screen capture of an ACTIVE window.
 
   auto windowId = winrt::Microsoft::UI::GetWindowIdFromWindow(hwnd);
   auto appWindow = windowing::AppWindow::GetFromWindowId(windowId);
