@@ -65,12 +65,20 @@ jobs:
       - name: Check out goidenticons dependency
         run: git clone --depth 1 https://github.com/urnetwork/goidenticons.git goidenticons
 
-      # upstream sdk main references RenderPngV2, which the published
-      # goidenticons does not have; delegate to the published renderer
-      - name: Shim unpublished goidenticons RenderPngV2
+      # The sdk references RenderPngV2. goidenticons did not publish it when
+      # this workflow was written, so we shimmed it; it does now (same
+      # signature), and an unconditional shim is a REDECLARATION that fails the
+      # build. Write it only when the symbol is genuinely absent, so this works
+      # against either version of the dependency.
+      - name: Shim goidenticons RenderPngV2 if unpublished
         run: |
-          echo 'package goidenticons' > goidenticons/render_v2_ci_shim.go
-          echo 'func RenderPngV2(data []byte, size int) ([]byte, error) { return RenderPng(data, size) }' >> goidenticons/render_v2_ci_shim.go
+          if grep -qR '^func RenderPngV2(' goidenticons/; then
+            echo "goidenticons publishes RenderPngV2 -- no shim needed"
+          else
+            echo "goidenticons lacks RenderPngV2 -- shimming to RenderPng"
+            echo 'package goidenticons' > goidenticons/render_v2_ci_shim.go
+            echo 'func RenderPngV2(data []byte, size int) ([]byte, error) { return RenderPng(data, size) }' >> goidenticons/render_v2_ci_shim.go
+          fi
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -102,7 +110,42 @@ jobs:
           if [ ! -f go.sum ]; then go mod download all; fi
           make build_windows
           ls -la build/windows/amd64 build/windows/arm64
-          test -s build/URnetworkSdkWindows.zip
+
+      # The Makefile chains its recipe with `; \`, so a failing `go build` does
+      # NOT fail the target -- the trailing `cp` of the headers succeeds and
+      # make exits 0. That is how a compile error shipped a "successful" SDK
+      # job whose zip contained three headers and no DLL at all, leaving the
+      # app jobs to fail 40 lines later with a confusing missing-file error.
+      # `ls` and `test -s <zip>` both passed on that build, because the dirs
+      # and the zip did exist. Assert on the ARTIFACT THAT MATTERS instead.
+      - name: Verify the SDK actually produced DLLs
+        working-directory: sdk/cgo
+        run: |
+          fail=0
+          for arch in amd64 arm64; do
+            dll="build/windows/$arch/URnetworkSdk.dll"
+            if [ ! -f "$dll" ]; then
+              echo "::error::$dll was not produced -- the cgo build failed (see the make output above)"
+              fail=1
+              continue
+            fi
+            # a real c-shared build of this sdk is tens of MB; anything tiny
+            # means a truncated or stub link, which would fail far downstream
+            size=$(stat -c %s "$dll")
+            echo "$dll: $size bytes"
+            if [ "$size" -lt 5000000 ]; then
+              echo "::error::$dll is only $size bytes -- implausibly small for the sdk"
+              fail=1
+            fi
+          done
+          # and the zip must carry them, since that is what the app jobs unpack
+          for arch in amd64 arm64; do
+            if ! unzip -l build/URnetworkSdkWindows.zip | grep -q "windows/$arch/URnetworkSdk.dll"; then
+              echo "::error::URnetworkSdkWindows.zip is missing windows/$arch/URnetworkSdk.dll"
+              fail=1
+            fi
+          done
+          exit $fail
 
       - name: Upload the SDK zip
         uses: actions/upload-artifact@v4
