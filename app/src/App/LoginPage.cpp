@@ -8,6 +8,7 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Windows.System.h>
 
+#include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
 #include "Strings.h"
@@ -1068,6 +1069,35 @@ void LoginPage::OnCreateInstantSubmit(IInspectable const&, RoutedEventArgs const
   });
 }
 
+void LoginPage::ShowPreviewSeedphraseSheet() {
+  // EnterPreviewUi runs while the window is still being set up: the content
+  // exists but is not in a tree yet, so Content().XamlRoot() is NULL and
+  // ContentDialog::ShowAsync throws "This element does not have a XamlRoot"
+  // — into the catch in ShowSeedphraseSheet, which is why the sheet silently
+  // never appeared. Posting to the dispatcher was not enough; the root is
+  // attached at Loaded, so wait for that. (The real path opens from a button
+  // click long after load and never sees this.)
+  //
+  // The phrase is the all-"abandon" vector from BIP-39's own test suite,
+  // ending in "about": it is printed in the specification, every wallet
+  // library ships it as a fixture, and it secures nothing anywhere. It is not
+  // a credential and there is nothing here to leak.
+  static constexpr const char* kTestVector =
+      "abandon abandon abandon abandon abandon abandon abandon abandon "
+      "abandon abandon abandon about";
+
+  auto root = w_.Content().try_as<FrameworkElement>();
+  if (root && !w_.Content().XamlRoot()) {
+    auto token = std::make_shared<winrt::event_token>();
+    *token = root.Loaded([weak = w_.get_weak(), root, token](auto const&, auto const&) {
+      root.Loaded(*token);  // once
+      if (auto self = weak.get()) self->login().ShowSeedphraseSheet(kTestVector);
+    });
+    return;
+  }
+  ShowSeedphraseSheet(kTestVector);
+}
+
 winrt::fire_and_forget LoginPage::ShowSeedphraseSheet(std::string seedphrase) {
   if (w_.sheetOpen()) {
     // Nothing else can be open on this screen, but if it somehow is, the
@@ -1099,7 +1129,11 @@ winrt::fire_and_forget LoginPage::ShowSeedphraseSheet(std::string seedphrase) {
           Sdk().ConfirmInstantAccount([](urnw::AuthResult) {});
         });
     co_await seedphraseSheet_->Dialog().ShowAsync();
-  } catch (...) {
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("seedphrase sheet: {} (0x{:08x})", urnw::Narrow(std::wstring{e.message()}),
+                   static_cast<uint32_t>(e.code()));
+  } catch (std::exception const& e) {
+    urnw::LogError("seedphrase sheet: {}", e.what());
   }
   seedphraseSheet_.reset();
   w_.SetSheetOpen(false);

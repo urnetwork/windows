@@ -152,6 +152,15 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
                 destination);
   ShowHomeRoot();
 
+  // "seedphrase" is a modal, not a destination: show the connect drawer behind
+  // it and raise the sheet. It is the only surface in the app that cannot be
+  // reached any other way — it appears once, right after an account is
+  // created, and creating one on a dev box is exactly what must not happen.
+  if (destination == "seedphrase") {
+    login_->ShowPreviewSeedphraseSheet();
+    return;
+  }
+
   const hstring tag = H(destination);
   for (auto const& item : {ConnectNavItem(), AccountNavItem(), WalletNavItem(),
                            LeaderboardNavItem(), SupportNavItem(), SettingsNavItem()}) {

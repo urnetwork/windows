@@ -48,6 +48,16 @@ class LoginPage {
   // nobody can see is pure wakeups (iOS gates the same timer on
   // presentationActive).
   void SetPresentationActive(bool active);
+  // --preview-ui=seedphrase (Startup.h). Raise the seedphrase display sheet on
+  // the BIP-39 test vector so its word grid, its refusal to be dismissed and
+  // its copy button can be looked at without creating a real account — the
+  // only way this sheet is otherwise reachable. Confirming does NOT register a
+  // device: there is no pending instant account in preview.
+  void ShowPreviewSeedphraseSheet();
+  // The newly minted phrase, shown once, gating the device registration.
+  // Public only because ShowPreviewSeedphraseSheet posts back into it through
+  // the window's page accessor.
+  winrt::fire_and_forget ShowSeedphraseSheet(std::string seedphrase);
   // The title-bar account menu's identity: avatar initials, the Pro ring, and
   // whether the menu offers "Create account". Pushed from the window's auth
   // relay, which already parses the jwt.
@@ -158,8 +168,6 @@ class LoginPage {
   void ApplyWalletSignInResult(urnw::AuthResult const& result);
   // seedphrase step: word count -> the warning line + the submit gate
   void ValidateSeedphrase();
-  // the newly minted phrase, shown once, gating the device registration
-  winrt::fire_and_forget ShowSeedphraseSheet(std::string seedphrase);
 
   winrt::URnetwork::implementation::MainWindow& w_;
 

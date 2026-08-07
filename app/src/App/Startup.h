@@ -91,6 +91,11 @@ bool WantsDiagnose();
 //   URnetwork.exe --preview-ui=leaderboard  leaderboard
 //   URnetwork.exe --preview-ui=support      support  (also raises its snackbar)
 //   URnetwork.exe --preview-ui=settings     settings
+//   URnetwork.exe --preview-ui=seedphrase  the seedphrase display sheet, over
+//                                          the connect drawer, with the BIP-39
+//                                          all-"abandon" TEST VECTOR - a phrase
+//                                          published in the spec itself, which
+//                                          secures nothing anywhere
 //
 // or set URNETWORK_PREVIEW_UI to the same tag. The tags are the NavigationView
 // item tags in MainWindow.xaml; an unknown one falls back to connect and says so
