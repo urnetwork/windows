@@ -251,22 +251,18 @@ void MainWindow::ApplyStrings() {
   Title(Loc("app_name"));
   BrandText().Text(Loc("app_name"));
 
-  // sign in — initial (account discovery)
-  SignInHeading().Text(Loc("sign_in"));
-  EmailBox().Header(LocBox("user_auth_label"));
+  // sign in — initial (account discovery). Order and wording follow android
+  // ungoogle/LoginInitial.kt: the label sits above the field as its own
+  // URTextInputLabel, and the wallet options are separated from Get started by
+  // a bare centred "or" rather than by a section heading.
+  EmailLabel().Text(Loc("user_auth_label"));
   EmailBox().PlaceholderText(Loc("user_auth_input_placeholder"));
   GetStartedButton().Content(LocBox("get_started"));
-  WalletSignInLabel().Text(Loc("or_use_a_wallet"));
-  TauGlyph().Text(Loc("symbol_tao"));
+  OrDivider().Text(Loc("or"));
   BittensorSignInText().Text(Loc("bittensor_sign_in"));
-  SolanaSignInLabel().Text(Loc("solana_sign_in"));
-  PhantomSignInButton().Content(LocBox("phantom"));
-  SolflareSignInButton().Content(LocBox("solflare"));
+  SolanaSignInText().Text(Loc("solana_sign_in"));
   // SdkHost::LoginWithCode is the auth-code login the other platforms ship
-  AuthCodeLabel().Text(Loc("auth_code_login_sheet_header"));
-  CodeBox().PlaceholderText(Loc("auth_code"));
-  CodeButton().Content(LocBox("auth_code_login_button_text"));
-  GuestModeButton().Content(LocBox("try_guest_mode"));
+  AuthCodeButtonText().Text(Loc("auth_code_login_button_text"));
 
   // sign in — password step
   PasswordBackButton().Content(LocBox("back"));
@@ -421,6 +417,19 @@ void MainWindow::ShowLoginStep(LoginStep step) {
                                                    : Visibility::Collapsed);
 }
 
+// The initial step shows android's URInlineErrorText - a line of Red400 body
+// text under the buttons - rather than an InfoBar. The later steps still use
+// InfoBars; they are not part of the login-parity port.
+void MainWindow::SetInitialLoginError(hstring const& message) {
+  if (message.empty()) {
+    LoginErrorText().Text(L"");
+    LoginErrorText().Visibility(Visibility::Collapsed);
+    return;
+  }
+  LoginErrorText().Text(message);
+  LoginErrorText().Visibility(Visibility::Visible);
+}
+
 void MainWindow::ShowLoginErrorFor(LoginStep step, hstring const& message) {
   auto show = [&message](InfoBar const& bar) {
     bar.Severity(InfoBarSeverity::Error);
@@ -432,7 +441,7 @@ void MainWindow::ShowLoginErrorFor(LoginStep step, hstring const& message) {
     case LoginStep::Create: show(CreateError()); break;
     case LoginStep::Verify: show(VerifyInfo()); break;
     case LoginStep::Reset: show(ResetInfo()); break;
-    default: show(LoginError()); break;
+    default: SetInitialLoginError(message); break;
   }
 }
 
@@ -441,7 +450,7 @@ void MainWindow::OnGetStarted(IInspectable const&, RoutedEventArgs const&) {
   if (discoveringLogin_ || !LooksLikeUserAuth(userAuth)) return;
   discoveringLogin_ = true;
   GetStartedButton().IsEnabled(false);
-  LoginError().IsOpen(false);
+  SetInitialLoginError(hstring());
 
   auto queue = DispatcherQueue();
   auto weak = get_weak();
@@ -880,17 +889,51 @@ void MainWindow::OnResendCode(IInspectable const&, RoutedEventArgs const&) {
 
 // ---- auth code login ----
 
-void MainWindow::OnUseCode(IInspectable const&, RoutedEventArgs const&) {
-  const std::string code = urnw::Narrow(CodeBox().Text().c_str());
-  if (code.empty()) return;
-  CodeButton().IsEnabled(false);
-  auto queue = DispatcherQueue();
-  auto weak = get_weak();
+// android presents AuthCodeLoginSheet - a modal with its own field - instead of
+// an inline box on the login screen. A ContentDialog is the desktop equivalent.
+winrt::fire_and_forget MainWindow::OnUseCode(IInspectable const&,
+                                             RoutedEventArgs const&) {
+  if (sheetOpen_) co_return;  // only one ContentDialog can show at a time
+  auto self = get_strong();
+  self->SetInitialLoginError(hstring());
+
+  TextBox field;
+  field.PlaceholderText(Loc("auth_code"));
+  if (auto style = Application::Current()
+                       .Resources()
+                       .TryLookup(winrt::box_value(L"UrTextInputStyle"))
+                       .try_as<Style>()) {
+    field.Style(style);
+  }
+
+  ContentDialog dialog;
+  dialog.XamlRoot(self->Content().XamlRoot());
+  dialog.Title(winrt::box_value(Loc("auth_code_login_sheet_header")));
+  dialog.Content(field);
+  dialog.PrimaryButtonText(Loc("auth_code_login_button_text"));
+  dialog.CloseButtonText(Loc("cancel"));
+  dialog.DefaultButton(ContentDialogButton::Primary);
+
+  self->sheetOpen_ = true;
+  ContentDialogResult result{ContentDialogResult::None};
+  try {
+    result = co_await dialog.ShowAsync();
+  } catch (...) {
+  }
+  self->sheetOpen_ = false;
+  if (result != ContentDialogResult::Primary) co_return;
+
+  const std::string code = TrimWhitespace(urnw::Narrow(field.Text().c_str()));
+  if (code.empty()) co_return;
+
+  self->SetWalletSignInEnabled(false);
+  auto queue = self->DispatcherQueue();
+  auto weak = self->get_weak();
   Sdk().LoginWithCode(code, [queue, weak](urnw::AuthResult r) {
     queue.TryEnqueue([weak, r] {
       auto self = weak.get();
       if (!self) return;
-      self->CodeButton().IsEnabled(true);
+      self->SetWalletSignInEnabled(true);
       if (!r.ok && !r.error.empty()) {
         self->ShowLoginErrorFor(LoginStep::Initial, H(r.error));
       }
@@ -905,7 +948,7 @@ void MainWindow::OnUseCode(IInspectable const&, RoutedEventArgs const&) {
 // a full account (BeginGuestUpgrade).
 
 void MainWindow::OnTryGuestMode(IInspectable const&, RoutedEventArgs const&) {
-  LoginError().IsOpen(false);
+  SetInitialLoginError(hstring());
   ShowGuestModeSheet();
 }
 
@@ -942,7 +985,7 @@ void MainWindow::BeginGuestUpgrade() {
 // an SDK thread, so hop to the UI thread before touching the panel.
 
 void MainWindow::OnSignInWithBittensor(IInspectable const&, RoutedEventArgs const&) {
-  LoginError().IsOpen(false);
+  SetInitialLoginError(hstring());
   SetWalletSignInEnabled(false);
   auto queue = DispatcherQueue();
   auto weak = get_weak();
@@ -953,16 +996,39 @@ void MainWindow::OnSignInWithBittensor(IInspectable const&, RoutedEventArgs cons
   });
 }
 
-void MainWindow::OnSignInWithSolana(IInspectable const& sender, RoutedEventArgs const&) {
-  auto button = sender.try_as<Button>();
-  if (!button) return;
-  const auto tag = winrt::unbox_value_or<hstring>(button.Tag(), L"phantom");
-  const auto provider = (tag == L"solflare") ? urnw::WalletConnect::Provider::Solflare
-                                             : urnw::WalletConnect::Provider::Phantom;
-  LoginError().IsOpen(false);
-  SetWalletSignInEnabled(false);
-  auto queue = DispatcherQueue();
-  auto weak = get_weak();
+// android shows ONE "Sign in with Solana" button and lets Mobile Wallet Adapter
+// put up the wallet picker. The browser bridge has no such picker - it needs the
+// provider baked into the deeplink it opens - so ask here, which keeps the
+// button list identical to android's and still lets the user choose.
+winrt::fire_and_forget MainWindow::OnSignInWithSolana(IInspectable const&,
+                                                     RoutedEventArgs const&) {
+  if (sheetOpen_) co_return;  // only one ContentDialog can show at a time
+  auto self = get_strong();
+  self->SetInitialLoginError(hstring());
+
+  ContentDialog dialog;
+  dialog.XamlRoot(self->Content().XamlRoot());
+  dialog.Title(winrt::box_value(Loc("solana_sign_in")));
+  dialog.PrimaryButtonText(Loc("phantom"));
+  dialog.SecondaryButtonText(Loc("solflare"));
+  dialog.CloseButtonText(Loc("cancel"));
+  dialog.DefaultButton(ContentDialogButton::Primary);
+
+  self->sheetOpen_ = true;
+  ContentDialogResult result{ContentDialogResult::None};
+  try {
+    result = co_await dialog.ShowAsync();
+  } catch (...) {
+  }
+  self->sheetOpen_ = false;
+  if (result == ContentDialogResult::None) co_return;
+
+  const auto provider = (result == ContentDialogResult::Secondary)
+                            ? urnw::WalletConnect::Provider::Solflare
+                            : urnw::WalletConnect::Provider::Phantom;
+  self->SetWalletSignInEnabled(false);
+  auto queue = self->DispatcherQueue();
+  auto weak = self->get_weak();
   Sdk().SignInWithSolana(provider, [queue, weak](urnw::AuthResult r) {
     queue.TryEnqueue([weak, r] {
       if (auto self = weak.get()) self->ApplyWalletSignInResult(r);
@@ -970,10 +1036,13 @@ void MainWindow::OnSignInWithSolana(IInspectable const& sender, RoutedEventArgs 
   });
 }
 
+// android disables every sign-in affordance while any one of them is in
+// flight (isLoginInProgress), not just the wallet pair
 void MainWindow::SetWalletSignInEnabled(bool enabled) {
   BittensorSignInButton().IsEnabled(enabled);
-  PhantomSignInButton().IsEnabled(enabled);
-  SolflareSignInButton().IsEnabled(enabled);
+  SolanaSignInButton().IsEnabled(enabled);
+  AuthCodeButton().IsEnabled(enabled);
+  GetStartedButton().IsEnabled(enabled);
 }
 
 void MainWindow::ApplyWalletSignInResult(urnw::AuthResult const& result) {

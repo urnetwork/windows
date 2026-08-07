@@ -65,16 +65,23 @@ struct MainWindow : MainWindowT<MainWindow> {
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnResendCode(winrt::Windows::Foundation::IInspectable const&,
                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnUseCode(winrt::Windows::Foundation::IInspectable const&,
-                 winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // guest mode: opens the terms-consent sheet (macOS GuestModeSheet parity)
+  // opens android's AuthCodeLoginSheet as a dialog
+  winrt::fire_and_forget OnUseCode(
+      winrt::Windows::Foundation::IInspectable const&,
+      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // guest mode: opens the terms-consent sheet (macOS GuestModeSheet parity).
+  // No longer reachable from the login screen - the android login has no guest
+  // affordance and guest mode is superseded by the seedphrase system - but the
+  // sheet and BeginGuestUpgrade stay for existing guest sessions.
   void OnTryGuestMode(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignInWithBittensor(winrt::Windows::Foundation::IInspectable const&,
                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // one handler for both Solana wallets; the button Tag carries the provider
-  void OnSignInWithSolana(winrt::Windows::Foundation::IInspectable const&,
-                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // one Solana button, as android has; the wallet is chosen in a dialog because
+  // the browser bridge needs the provider before it can build its deeplink
+  winrt::fire_and_forget OnSignInWithSolana(
+      winrt::Windows::Foundation::IInspectable const&,
+      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // XAML event handlers — home
   void OnConnectToggle(winrt::Windows::Foundation::IInspectable const&,
@@ -158,6 +165,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   void EnterCreateStep(std::string const& userAuth, CreateMode mode);
   void EnterVerifyStep(std::string const& userAuth);
   void ShowLoginErrorFor(LoginStep step, winrt::hstring const& message);
+  // the initial step's URInlineErrorText; empty message hides it
+  void SetInitialLoginError(winrt::hstring const& message);
   void CheckCreateNameNow();   // debounce elapsed: run the availability check
   void ApplyNameCheck(uint32_t generation, bool ok, bool available);
   void ValidateBonusCodeNow();

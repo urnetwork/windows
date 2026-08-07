@@ -60,6 +60,32 @@
                                  - their own style setter beats an inherited value - and
                                  this key is what that setter reads. -->
                             <FontFamily x:Key="ContentControlThemeFontFamily">ms-appx:///Assets/Fonts/pp_neue_montreal_regular.ttf#PP Neue Montreal</FontFamily>
+
+                            <!-- URTextInput (android ui/components/URTextInput.kt) is not
+                                 a filled box: it is a transparent field over a 1dp
+                                 HorizontalDivider that is TextFaint at rest, BlueMedium
+                                 while focused and Transparent when disabled, with the
+                                 placeholder in TextFaint and the text itself LightGray.
+                                 Every text field in the app is that component, so these
+                                 go on the theme resources rather than a single style. -->
+                            <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+                            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+                            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+                            <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent" />
+                            <SolidColorBrush x:Key="TextControlBorderBrush" Color="#5A5A5A" />
+                            <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#5A5A5A" />
+                            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#638BFC" />
+                            <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="Transparent" />
+                            <SolidColorBrush x:Key="TextControlForeground" Color="#D3D3D3" />
+                            <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#D3D3D3" />
+                            <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#D3D3D3" />
+                            <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#5A5A5A" />
+                            <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#5A5A5A" />
+                            <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#5A5A5A" />
+                            <!-- WinUI thickens the underline to 2px on focus; android
+                                 keeps 1dp and only changes its colour -->
+                            <Thickness x:Key="TextControlBorderThemeThickness">0,0,0,1</Thickness>
+                            <Thickness x:Key="TextControlBorderThemeThicknessFocused">0,0,0,1</Thickness>
                         </ResourceDictionary>
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
@@ -209,6 +235,33 @@
             <Style x:Key="UrSecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource UrButtonBaseStyle}">
                 <Setter Property="Background" Value="White" />
                 <Setter Property="Foreground" Value="Black" />
+            </Style>
+
+            <!-- URTextInputLabel: 12sp in TextMuted, 8dp above the field -->
+            <Style x:Key="UrTextInputLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
+                <Setter Property="Margin" Value="0,0,0,8" />
+            </Style>
+
+            <!-- the field itself; the state colours come from the TextControl*
+                 theme resources above -->
+            <Style x:Key="UrTextInputStyle" TargetType="TextBox">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="16" />
+                <!-- an underline must not curve at its ends -->
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="Padding" Value="0,0,0,8" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+            </Style>
+
+            <!-- URInlineErrorText: bodySmall in Red400, full width -->
+            <Style x:Key="UrInlineErrorTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Foreground" Value="{StaticResource UrErrorTextBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>
