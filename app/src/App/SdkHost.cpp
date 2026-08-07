@@ -83,46 +83,6 @@ proto::StartMode StartModeFromEnvironment() {
   return proto::StartMode::Tunnel;
 }
 
-// ---- guarded reads of list-shaped SDK getters ------------------------------
-//
-// The generated C-ABI wrapper turns a getter's JSON into a value with
-// `detail::parseJson<T>` (urnetwork_sdk.hpp:81). It guards a NULL `char*`
-// (takeStringOpt -> nullopt) but NOT the four-byte document `null`, which is
-// exactly what the Go side marshals for a non-nil list whose backing slice is
-// nil: MarshalJSON renders a nil slice as `null`, and exports_gen.go
-// short-circuits only on a nil POINTER. `json::parse("null").get<
-// std::vector<T>>()` then throws type_error.302 ("type must be array, but is
-// null") out of an ordinary, non-throwing-looking getter — and the throw
-// escapes through the Activated -> ReconcileWindowPresentation ->
-// SetPresentationActive -> SubscribeStats -> PublishStats -> ReadStats chain,
-// which is dispatched and therefore NOT inside ShowWindow's try/catch. The app
-// dies unhandled the moment a live device_ exists.
-//
-// Struct-shaped getters are safe: the generated from_json for a struct reads
-// each field with `.value(...)` and tolerates a null document. Only the
-// top-level unwrap of the `*List` vector aliases is unguarded, so only those
-// call sites need this.
-//
-// The real fix is one line in the generator, upstream; see
-// docs/superpowers/reports/2026-08-07-sdk-null-list-unwrap.md. It cannot be
-// made here — app/third_party is a build artifact unpacked from the SDK zip and
-// is not tracked in this repo, so a fix in the header would be silently
-// discarded by the next unpack.
-//
-// Every one of these call sites is a listener callback or a poll, so logging
-// each failure would fill the log at the listener's rate. `logged` is a
-// per-call-site latch: say it once, then stay quiet.
-template <typename Fn>
-auto ReadList(std::atomic<bool>& logged, const char* what, Fn&& fn) -> decltype(fn()) {
-  try {
-    return fn();
-  } catch (const std::exception& e) {
-    if (!logged.exchange(true))
-      LogWarn("sdkhost: {} failed, treating it as empty (logged once): {}", what, e.what());
-    return std::nullopt;
-  }
-}
-
 void SaveRpcSession(const RpcSession& s) {
   nlohmann::json j = {{"client_pem", s.client_pem},
                       {"server_cert_pem", s.server_cert_pem},
@@ -1069,7 +1029,7 @@ bool SdkHost::BootstrapSession() {
       // PushLocalOverrideAppsToDriver re-applies it live once the device is up.
       if (localState_) {
         static std::atomic<bool> logged{false};
-        if (auto ov = ReadList(logged, "getBlockActionOverrides (local seed)",
+        if (auto ov = ReadSdkList(logged, "getBlockActionOverrides (local seed)",
                                [&] { return localState_->getBlockActionOverrides(); }))
           ComputeAppSplit(*ov, cfg.excluded_app_paths, cfg.allowlist_mode);
       }
@@ -1294,7 +1254,7 @@ LiveStats SdkHost::ReadStats() {
     // Guarded: see ReadList. This is the site the spec predicted would fire
     // first, because it is on the window-activation path.
     static std::atomic<bool> logged{false};
-    auto pts = ReadList(logged, "getThroughputPoints (stats)",
+    auto pts = ReadSdkList(logged, "getThroughputPoints (stats)",
                         [&] { return contractVc_->getThroughputPoints(); });
     if (pts && !pts->empty()) {
       for (auto it = pts->rbegin(); it != pts->rend(); ++it) {
@@ -1447,7 +1407,7 @@ void SdkHost::PublishThroughput() {
   if (!contractVc_) return;
   std::vector<urnet::ThroughputPoint> points;
   static std::atomic<bool> logged{false};
-  if (auto p = ReadList(logged, "getThroughputPoints",
+  if (auto p = ReadSdkList(logged, "getThroughputPoints",
                         [&] { return contractVc_->getThroughputPoints(); }))
     points = std::move(*p);
   int64_t window = contractVc_->getWindowDurationSeconds();
@@ -1481,7 +1441,7 @@ void SdkHost::PublishContractRows() {
   };
   std::vector<ContractPeerRow> rows;
   static std::atomic<bool> logged{false};
-  if (auto list = ReadList(logged, "getContractRows",
+  if (auto list = ReadSdkList(logged, "getContractRows",
                            [&] { return contractDetailsVc_->getContractRows(); })) {
     rows.reserve(list->size());
     for (const auto& r : *list) {
@@ -1510,7 +1470,7 @@ void SdkHost::PublishBlockActions() {
   if (!blockVc_) return;
   std::vector<BlockActionItem> items;
   static std::atomic<bool> logged{false};
-  if (auto list = ReadList(logged, "getBlockActions",
+  if (auto list = ReadSdkList(logged, "getBlockActions",
                            [&] { return blockVc_->getBlockActions(); })) {
     items.reserve(list->size());
     // the sdk window is oldest first; the UI wants newest first
@@ -1566,7 +1526,7 @@ void SdkHost::PublishSplitRules() {
   if (!device_) return;
   std::vector<SplitRule> rules;
   static std::atomic<bool> logged{false};
-  if (auto list = ReadList(logged, "getBlockActionOverrides (split rules)",
+  if (auto list = ReadSdkList(logged, "getBlockActionOverrides (split rules)",
                            [&] { return device_->getBlockActionOverrides(); })) {
     rules.reserve(list->size());
     for (const auto& over : *list) {
@@ -1955,12 +1915,12 @@ ReliabilitySnapshot SdkHost::ReadReliability() {
   // The two list-shaped getters: same null-unwrap hazard as everywhere else.
   {
     static std::atomic<bool> logged{false};
-    if (auto exits = ReadList(logged, "getExits", [&] { return device_->getExits(); }))
+    if (auto exits = ReadSdkList(logged, "getExits", [&] { return device_->getExits(); }))
       snap.exits = std::move(*exits);
   }
   {
     static std::atomic<bool> logged{false};
-    if (auto dst = ReadList(logged, "getDestinationExits",
+    if (auto dst = ReadSdkList(logged, "getDestinationExits",
                             [&] { return device_->getDestinationExits(); }))
       snap.destinationExits = std::move(*dst);
   }
@@ -2000,11 +1960,11 @@ std::optional<urnet::ReliabilitySettings> SdkHost::UpdateReliabilitySettings(
   }
 }
 
-void SdkHost::RunReliabilityAction(ReliabilityAction action, const std::string& exitClientId) {
+bool SdkHost::RunReliabilityAction(ReliabilityAction action, const std::string& exitClientId) {
   std::scoped_lock lock(mutex_);
   if (!device_) {
     LogWarn("sdkhost: reliability action skipped: no device");
-    return;
+    return false;
   }
   try {
     switch (action) {
@@ -2034,7 +1994,7 @@ void SdkHost::RunReliabilityAction(ReliabilityAction action, const std::string& 
       case ReliabilityAction::MigrateExit:
         if (exitClientId.empty()) {
           LogWarn("sdkhost: migrate exit skipped: no exit client id");
-          return;
+          return false;
         }
         // Same story as probeAllExits: the count of flows moved is dropped by
         // the C ABI (the DeviceRemote export is void), so "Requested" is the
@@ -2045,7 +2005,9 @@ void SdkHost::RunReliabilityAction(ReliabilityAction action, const std::string& 
     }
   } catch (const std::exception& e) {
     LogWarn("sdkhost: reliability action failed: {}", e.what());
+    return false;
   }
+  return true;
 }
 
 // ---- location/provider chooser --------------------------------------------
@@ -2078,7 +2040,7 @@ void SdkHost::EnsureLocations() {
   }
   if (onPeers_) {
     static std::atomic<bool> logged{false};
-    onPeers_(ReadList(logged, "getPeers (seed)", [&] { return peerVc_->getPeers(); }));
+    onPeers_(ReadSdkList(logged, "getPeers (seed)", [&] { return peerVc_->getPeers(); }));
   }
 }
 
@@ -2103,7 +2065,7 @@ std::optional<urnet::NetworkPeerList> SdkHost::ConnectedProvidePeers() {
   std::scoped_lock lock(mutex_);
   if (peerVc_) {
     static std::atomic<bool> logged{false};
-    return ReadList(logged, "getPeers", [&] { return peerVc_->getPeers(); });
+    return ReadSdkList(logged, "getPeers", [&] { return peerVc_->getPeers(); });
   }
   return std::nullopt;
 }

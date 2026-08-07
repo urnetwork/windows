@@ -1,7 +1,7 @@
 # `parseJson` throws on a `null` list — the fourth C-ABI bug Windows has found
 
 2026-08-07, from P2 (developer / reliability screen). Written here because the
-fix belongs in `Ryanmello07/sdk`, which this repo cannot change, and because
+fix belongs in `Ryanmello07/urnetwork-sdk`, which this repo cannot change, and because
 the defensive half that *did* land here needs a reason recorded next to it.
 
 ## What happens
@@ -73,7 +73,7 @@ per-type audit.
 
 ## The upstream fix
 
-**File:** `Ryanmello07/sdk`, branch `beta/custom-server`,
+**File:** `Ryanmello07/urnetwork-sdk`, branch `beta/custom-server`,
 `cgo/gen/hpp.go` — the `parseJson` template literal at **lines 260-267**, which
 is emitted verbatim into `cgo/include/urnetwork_sdk.hpp`.
 
@@ -117,17 +117,20 @@ the machine this was found on, so the generator could not be run either.
 
 ## What landed here instead
 
-Defensive guards at every list-shaped getter in `app/src/App/SdkHost.cpp`,
-through one helper:
+Defensive guards at every list-shaped getter, through one helper — in
+`app/src/Common/Sdk.h`, beside the wrapper include:
 
 ```cpp
 template <typename Fn>
-auto ReadList(std::atomic<bool>& logged, const char* what, Fn&& fn) -> decltype(fn());
+auto ReadSdkList(std::atomic<bool>& logged, const char* what, Fn&& fn) -> decltype(fn());
 ```
 
-`logged` is a per-call-site latch, because every one of these sites is a
-listener callback or a poll and an unlatched log would fill the file at the
-listener's rate. Sites covered:
+It lives in the shared header rather than in one `.cpp` because the first
+version was a `static` helper inside `SdkHost.cpp`, and a review then found an
+eleventh call site in a different translation unit that consequently could not
+use it. `logged` is a per-call-site latch, because several of these sites are
+listener callbacks or 5s polls and an unlatched log would fill the file at the
+listener's rate.
 
 | Site | Getter |
 | --- | --- |
@@ -137,16 +140,29 @@ listener's rate. Sites covered:
 | `PublishBlockActions` | `BlockActionViewController::getBlockActions` |
 | `PublishSplitRules` | `Device::getBlockActionOverrides` |
 | `BootstrapSession` (split-tunnel seed) | `LocalState::getBlockActionOverrides` |
-| `SubscribeDrawer` (peer seed) | `PeerViewController::getPeers` |
+| `EnsureLocations` (peer seed) | `PeerViewController::getPeers` |
 | `ConnectedProvidePeers` | `PeerViewController::getPeers` |
-| `ReadReliability` | `DeviceRemote::getExits`, `getDestinationExits` |
+| `ReadReliability` | `DeviceRemote::getExits` |
+| `ReadReliability` | `DeviceRemote::getDestinationExits` |
+| `DnsEditorSheet::BuildSuggestionSection` (`StatsSheets.cpp`) | `getRegionalDnsServers` |
 
-Five functions already had a try/catch that degrades to `LogWarn` — the offline
-app-rule merge in `SubscribeDrawer`, `PushLocalOverrideAppsToDriver`,
-`UpdateSplitRule`, `SetAppRule`/`RemoveAppRule` and `CurrentAppRules` — and were
-left as they are; the helper matches their behaviour. Coverage across the two
-mechanisms is complete: every member of the SDK header returning a `*List` alias
-is either wrapped, inside one of those handlers, or not called from this app.
+Eleven sites. Five functions already had a try/catch that degrades to `LogWarn`
+and were left as they are, the helper matching their behaviour: the offline
+app-rule merge in `SubscribeDrawer`, `UpdateSplitRule`, `SetAppRule`,
+`RemoveAppRule` and `CurrentAppRules`. (`PushLocalOverrideAppsToDriver` also has
+one, but `getLocalOverrideAppIds` returns a STRUCT, so it is not a site of this
+class at all.)
+
+**On the coverage claim.** An earlier draft of this report asserted that every
+`*List`-returning member was wrapped, inside one of those handlers, or uncalled.
+That was false, and it is worth recording how: the audit behind it swept
+`SdkHost.cpp`, which is where the SDK surface is *supposed* to live, and the
+`getRegionalDnsServers` call in `StatsSheets.cpp` — a free function, not a
+method on a view controller, called straight from sheet-building code — was
+outside the swept file and outside the mental model of "the getters are on
+`device_`". Moving the helper into `Common/Sdk.h` removes the structural reason
+that site could not be fixed in place; the rule to apply when adding one is
+mechanical and is stated on the helper itself.
 
 **These guards should stay after the upstream fix lands.** They cost nothing,
 and they cover the general shape (any getter that throws for any reason no

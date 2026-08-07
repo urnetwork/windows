@@ -9,6 +9,11 @@
 
 #include <urnetwork_sdk.hpp>
 
+#include <atomic>
+#include <optional>
+
+#include "Log.h"
+
 namespace urnw {
 
 // Initialize the SDK for this process: point glog at the per-process log dir and
@@ -16,5 +21,62 @@ namespace urnw {
 // NetworkSpace/Device. memoryLimitBytes matches the macOS caps (app ~64MB,
 // service 48-64MB); the service is intentionally memory-bounded.
 void SdkInit(bool isService, int64_t memoryLimitBytes);
+
+// ---- guarded reads of list-shaped SDK getters ------------------------------
+//
+// WRAP EVERY GETTER THAT RETURNS A `*List` TYPE IN THIS. The rule is mechanical:
+// if the return type is one of the generated `std::vector<T>` aliases
+// (`ThroughputPointList`, `BlockActionList`, `RegionalDnsServerList`, ...) it
+// can throw; if it returns a struct, it cannot. It lives HERE, next to the
+// wrapper include, rather than in one .cpp, because the first version was a
+// static helper in SdkHost.cpp and a review found a tenth call site in another
+// translation unit that therefore could not use it.
+//
+// The generated wrapper converts a getter's JSON with `detail::parseJson<T>`
+// (urnetwork_sdk.hpp:81). It guards a NULL `char*` (`takeStringOpt` ->
+// nullopt) but NOT the four-byte document `null`, which is exactly what the Go
+// side marshals for a non-nil list whose backing slice is nil: `MarshalJSON`
+// renders a nil slice as `null` and `exports_gen.go` short-circuits only on a
+// nil POINTER. `nlohmann::json::parse("null").get<std::vector<T>>()` then
+// throws `type_error.302` ("type must be array, but is null") out of an
+// ordinary, non-throwing-looking getter.
+//
+// Struct-shaped getters are safe for a specific reason, and it is NOT that
+// their fields are read defensively. Every generated struct `from_json` OPENS
+// with
+//
+//     if (!j.is_object()) {
+//         return;
+//     }
+//
+// (urnetwork_sdk.hpp:5226-5229 for `Exit`), which yields a default-constructed
+// value for a `null` document. The per-field `.value(...)` reads that follow
+// would throw `type_error.306` on a null json if they were ever reached — so
+// the early return is the WHOLE guarantee. Do not restate this as "the fields
+// tolerate null" and then extend that reasoning somewhere it does not hold.
+//
+// Only the top-level unwrap into a `std::vector` alias is unguarded, because
+// that path goes through nlohmann's built-in array conversion, which has no
+// such early return.
+//
+// The real fix is one line in the generator, upstream; see
+// docs/superpowers/reports/2026-08-07-sdk-null-list-unwrap.md. It cannot be
+// made in this repo: app/third_party is a build artifact unpacked from the SDK
+// zip and is not tracked here, so an edit to the header is discarded by the
+// next unpack.
+//
+// `logged` is a per-call-site latch. Several of these sites are listener
+// callbacks or 5s polls, and an unlatched log would fill the file at the
+// listener's rate. Pass a function-local `static std::atomic<bool>`.
+template <typename Fn>
+auto ReadSdkList(std::atomic<bool>& logged, const char* what, Fn&& fn) -> decltype(fn()) {
+  try {
+    return fn();
+  } catch (const std::exception& e) {
+    if (!logged.exchange(true))
+      LogWarn("sdk: {} failed, treating it as empty (logged once): {}", what, e.what());
+    return std::nullopt;
+  }
+}
 
 }  // namespace urnw

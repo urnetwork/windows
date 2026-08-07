@@ -186,9 +186,15 @@ class DeveloperPage {
   //   LIFETIME. A detached worker tested an `alive` flag and then called into
   //   the process-wide SdkHost — a TOCTOU that, at tray-Quit, can land inside a
   //   half-destroyed AppController. The dtor now joins this thread, so no job
-  //   can be inside SdkHost once ~DeveloperPage has returned. The cost is that
-  //   quitting waits for at most one in-flight rpc; polling is already stopped
-  //   whenever the window is not presenting, so the bridge is normally idle.
+  //   can be inside SdkHost once ~DeveloperPage has returned.
+  //
+  // The join's cost, stated honestly: it is NOT bounded by one rpc. A job can
+  // be blocked on SdkHost::mutex_, which BootstrapSession holds across several
+  // synchronous service rpcs, so against a hung or unreachable service a
+  // tray-Quit can freeze for multiple seconds. That is still the right trade
+  // against a use-after-free in a half-torn-down process, and in practice the
+  // bridge is idle at quit — polling stops whenever the window is not
+  // presenting — but it is a real worst case, not a theoretical one.
   void Submit(std::function<void()> job);
   void BridgeLoop();
 
@@ -224,6 +230,11 @@ class DeveloperPage {
   StackPanel root_{nullptr};
   TextBlock connectHint_{nullptr};
   TextBlock lastAction_{nullptr};
+  // The two intro-card actions that touch the device. Held because they are the
+  // only action buttons OUTSIDE liveCards_, so they cannot be hidden wholesale
+  // and are enabled/disabled instead.
+  winrt::Microsoft::UI::Xaml::Controls::Button simulateButton_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button syncButton_{nullptr};
   // every card except the intro: hidden while there is nothing in force
   std::vector<Border> liveCards_;
   std::vector<MetricRow> metricRows_;

@@ -488,8 +488,14 @@ class SdkHost {
   std::optional<urnet::ReliabilitySettings> UpdateReliabilitySettings(
       const std::function<void(urnet::ReliabilitySettings&)>& mutate);
 
-  // Fire-and-forget. `exitClientId` is empty for everything but MigrateExit.
-  void RunReliabilityAction(ReliabilityAction action, const std::string& exitClientId = {});
+  // Returns whether the call was actually ISSUED to the device — false when
+  // there is no session, or when the rpc threw. NOT whether it had an effect:
+  // the counts these return Go-side do not survive the C ABI, so "issued" is
+  // the strongest true statement available and the view must not upgrade it to
+  // "done". A void version of this let the developer screen render
+  // "Requested: sync" on a screen that simultaneously said there was no
+  // session.
+  bool RunReliabilityAction(ReliabilityAction action, const std::string& exitClientId = {});
 
   // Accessors for the UI/view models to drive the SDK directly.
   bool apiReady() { return api_.has_value(); }

@@ -49,9 +49,15 @@ constexpr std::chrono::milliseconds kPollInterval{5000};
 // literal, and Dev() prefers the store the moment the key lands. Localized()
 // already returns the key id itself on a miss (that is how a typo is made
 // visible), and Plural() already uses that same equality as its miss test — so
-// this is the established idiom here, not a new one. Adding the ~90 `dev_*`
-// keys to the store is separate work, tracked in this phase's report; when they
-// land, this screen localizes with no code change.
+// this is the established idiom here, not a new one.
+//
+// Adding the keys to @urnetwork/localizations is separate work. There is no
+// doc listing them and there should not be one — it would go stale the first
+// time a row is added. The list IS this file, and it extracts mechanically:
+//
+//     grep -oE '"dev_[a-z0-9_]+"' DeveloperPage.cpp | sort -u
+//
+// When they land, this screen localizes with no code change.
 hstring Dev(std::string_view key, const wchar_t* english) {
   std::wstring value = urnw::Localized(key);
   if (value == urnw::Widen(key)) return hstring{english};
@@ -512,17 +518,30 @@ void DeveloperPage::EditSettings(std::function<void(urnet::ReliabilitySettings&)
 
 void DeveloperPage::RunAction(ReliabilityAction action, std::wstring const& described,
                               std::string const& exitClientId) {
-  // "Requested", not "done": every one of these returns void over the C ABI
-  // (migrateExit and probeAllExits drop their int64 counts on the way across)
-  // and silently no-ops with no multi client. What can be reported is what was
-  // asked for; the counters and exit rows underneath are where it is confirmed.
-  SetLastAction(DevW("dev_requested", L"Requested:") + L" " + described);
+  // Report the OUTCOME, after the fact. The first version wrote "Requested: x"
+  // unconditionally before the job was even submitted and never corrected it,
+  // so with no session the intro card rendered "Requested: sync" directly under
+  // "No session. Sign in and connect to use these tools." while SdkHost logged
+  // that it had skipped the call. That is this file's own rule about dead
+  // buttons, violated by the file itself — and EditSettings two functions up
+  // already did the right thing.
+  //
+  // "Requested", not "done", is still the ceiling even on success: these return
+  // void over the C ABI (the DeviceLocal forms return an int64 count; the
+  // DeviceRemote exports are void), so the counters and exit rows underneath
+  // are where an action is actually confirmed.
   auto queue = w_.DispatcherQueue();
-  Submit([weak = w_.get_weak(), queue, action, exitClientId] {
-    Sdk().RunReliabilityAction(action, exitClientId);
+  Submit([weak = w_.get_weak(), queue, action, exitClientId, described] {
+    const bool issued = Sdk().RunReliabilityAction(action, exitClientId);
     ReliabilitySnapshot snap = Sdk().ReadReliability();
-    queue.TryEnqueue([weak, snap = std::move(snap)] {
-      if (auto self = weak.get()) self->developer().ApplySnapshot(snap);
+    queue.TryEnqueue([weak, snap = std::move(snap), issued, described] {
+      auto self = weak.get();
+      if (!self) return;
+      self->developer().ApplySnapshot(snap);
+      self->developer().SetLastAction(
+          issued ? DevW("dev_requested", L"Requested:") + L" " + described
+                 : DevW("dev_not_issued",
+                        L"Not issued: there is no live session to act on."));
     });
   });
 }
@@ -571,21 +590,28 @@ void DeveloperPage::Build() {
       });
       actions.Children().Append(refresh);
 
-      Button simulate =
+      // These two act on the device. Every OTHER action button lives inside
+      // liveCards_ and is hidden outright when nothing is in force; these sit
+      // in the always-visible intro card, so they are disabled instead (see
+      // ApplySettings). Refresh above is not gated: it only re-reads, and it is
+      // how a user retries after starting the service.
+      simulateButton_ =
           MakeActionButton(Dev("dev_simulate_network_change", L"Simulate network change"));
-      simulate.Click([weak = w_.get_weak()](auto const&, auto const&) {
+      simulateButton_.IsEnabled(false);
+      simulateButton_.Click([weak = w_.get_weak()](auto const&, auto const&) {
         if (auto self = weak.get())
           self->developer().RunAction(ReliabilityAction::SimulateNetworkChange,
                                       L"simulate network change");
       });
-      actions.Children().Append(simulate);
+      actions.Children().Append(simulateButton_);
 
-      Button sync = MakeActionButton(Dev("dev_sync", L"Sync"));
-      sync.Click([weak = w_.get_weak()](auto const&, auto const&) {
+      syncButton_ = MakeActionButton(Dev("dev_sync", L"Sync"));
+      syncButton_.IsEnabled(false);
+      syncButton_.Click([weak = w_.get_weak()](auto const&, auto const&) {
         if (auto self = weak.get())
           self->developer().RunAction(ReliabilityAction::Sync, L"sync");
       });
-      actions.Children().Append(sync);
+      actions.Children().Append(syncButton_);
     }
     body.Children().Append(actions);
 
@@ -1004,6 +1030,12 @@ void DeveloperPage::ApplySettings(ReliabilitySnapshot const& snap) {
   connectHint_.Visibility(inForce ? Visibility::Collapsed : Visibility::Visible);
   for (auto const& card : liveCards_)
     card.Visibility(inForce ? Visibility::Visible : Visibility::Collapsed);
+  // The two intro-card actions are gated on a DEVICE, not on settings being in
+  // force: simulateNetworkChange and sync are meaningful the moment there is a
+  // session, and are exactly what a developer reaches for before any override
+  // exists.
+  if (simulateButton_) simulateButton_.IsEnabled(snap.haveDevice);
+  if (syncButton_) syncButton_.IsEnabled(snap.haveDevice);
   if (!inForce) return;
 
   // RAII, not a bare pair of assignments. There are ~46 WinRT property sets and
