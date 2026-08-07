@@ -48,8 +48,8 @@
                     <TextBlock x:Name="SignInHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
                     <TextBox x:Name="EmailBox" />
                     <Button x:Name="GetStartedButton"
-                            Style="{StaticResource AccentButtonStyle}"
-                            HorizontalAlignment="Stretch" Click="OnGetStarted" />
+                            Style="{StaticResource UrPrimaryButtonStyle}"
+                            Click="OnGetStarted" />
                     <muxc:InfoBar x:Name="LoginError" Severity="Error" IsOpen="False" IsClosable="False" />
 
                     <!-- Wallet sign in through the ur.io/wallet-connect browser bridge

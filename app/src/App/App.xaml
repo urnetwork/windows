@@ -13,46 +13,57 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-            </ResourceDictionary.MergedDictionaries>
 
-            <ResourceDictionary.ThemeDictionaries>
-                <!-- "Default" is the dark dictionary; the app requests Dark. -->
-                <ResourceDictionary x:Key="Default">
-                    <!-- pale yellow accent for primary buttons (Connect, dialog
-                         primaries), with dark text for contrast -->
-                    <SolidColorBrush x:Key="AccentButtonBackground" Color="#EFF7BB" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#F5FBD1" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#D9E3A3" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundDisabled" Color="#33EFF7BB" />
-                    <SolidColorBrush x:Key="AccentButtonForeground" Color="#101010" />
-                    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#101010" />
-                    <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#101010" />
-                    <SolidColorBrush x:Key="AccentButtonForegroundDisabled" Color="#66101010" />
-                    <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="Transparent" />
-                    <SolidColorBrush x:Key="AccentButtonBorderBrushPointerOver" Color="Transparent" />
-                    <SolidColorBrush x:Key="AccentButtonBorderBrushPressed" Color="Transparent" />
-                    <!-- brand blue switch on-state -->
-                    <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#638BFC" />
-                    <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#7FA0FC" />
-                    <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#5378E0" />
-                    <SolidColorBrush x:Key="ToggleSwitchFillOnDisabled" Color="#33638BFC" />
-                    <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="#638BFC" />
-                    <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="#7FA0FC" />
-                    <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="#5378E0" />
-                    <!-- android's onBackground is OFF-white (#F8F8F8), not pure
-                         white: this is the default foreground every unstyled
-                         TextBlock and control text in the app picks up -->
-                    <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#F8F8F8" />
-                    <!-- the body face as the default for every TEMPLATED control
-                         (buttons, text boxes, list views, ContentDialog chrome).
-                         Those do not pick up a FontFamily set further up the tree
-                         - their own style setter beats an inherited value - and
-                         this key is what that setter reads. Overridden here, next
-                         to the other WinUI keys this app replaces, because that is
-                         the lookup that is already known to work in this file. -->
-                    <FontFamily x:Key="ContentControlThemeFontFamily">ms-appx:///Assets/Fonts/pp_neue_montreal_regular.ttf#PP Neue Montreal</FontFamily>
+                <!-- Overrides of WinUI's OWN theme resources have to be merged
+                     AFTER XamlControlsResources. They used to live in this
+                     dictionary's own ThemeDictionaries, where the entire block
+                     was silently inert: the Get started button rendered #4CC2FF
+                     (the dark-theme system accent, Light2 of the machine's
+                     #0078D4) and every templated control kept Segoe UI - while
+                     top-level keys in this same file, like UrHeadingFontFamily,
+                     resolved fine. Later merged dictionaries win, and this is
+                     the lookup a control template actually reaches. -->
+                <ResourceDictionary>
+                    <ResourceDictionary.ThemeDictionaries>
+                        <!-- "Default" is the dark dictionary; the app requests Dark. -->
+                        <ResourceDictionary x:Key="Default">
+                            <!-- pale yellow accent for primary buttons (Connect, dialog
+                                 primaries), with dark text for contrast. NOTE: the login
+                                 screen does NOT use this - android's URButton PRIMARY is
+                                 BlueMedium, see UrPrimaryButtonStyle below. -->
+                            <SolidColorBrush x:Key="AccentButtonBackground" Color="#EFF7BB" />
+                            <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#F5FBD1" />
+                            <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#D9E3A3" />
+                            <SolidColorBrush x:Key="AccentButtonBackgroundDisabled" Color="#33EFF7BB" />
+                            <SolidColorBrush x:Key="AccentButtonForeground" Color="#101010" />
+                            <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#101010" />
+                            <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#101010" />
+                            <SolidColorBrush x:Key="AccentButtonForegroundDisabled" Color="#66101010" />
+                            <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="Transparent" />
+                            <SolidColorBrush x:Key="AccentButtonBorderBrushPointerOver" Color="Transparent" />
+                            <SolidColorBrush x:Key="AccentButtonBorderBrushPressed" Color="Transparent" />
+                            <!-- brand blue switch on-state -->
+                            <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#638BFC" />
+                            <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#7FA0FC" />
+                            <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#5378E0" />
+                            <SolidColorBrush x:Key="ToggleSwitchFillOnDisabled" Color="#33638BFC" />
+                            <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="#638BFC" />
+                            <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="#7FA0FC" />
+                            <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="#5378E0" />
+                            <!-- android's onBackground is OFF-white (#F8F8F8), not pure
+                                 white: this is the default foreground every unstyled
+                                 TextBlock and control text in the app picks up -->
+                            <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#F8F8F8" />
+                            <!-- the body face as the default for every TEMPLATED control
+                                 (buttons, text boxes, list views, ContentDialog chrome).
+                                 Those do not pick up a FontFamily set further up the tree
+                                 - their own style setter beats an inherited value - and
+                                 this key is what that setter reads. -->
+                            <FontFamily x:Key="ContentControlThemeFontFamily">ms-appx:///Assets/Fonts/pp_neue_montreal_regular.ttf#PP Neue Montreal</FontFamily>
+                        </ResourceDictionary>
+                    </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
+            </ResourceDictionary.MergedDictionaries>
 
             <!-- Brand faces (android ui/theme/Type.kt; files in Assets/Fonts,
                  copied next to the exe by App.vcxproj). The part after '#' is the
@@ -65,13 +76,13 @@
                                                      in "NeueBit"; the Bold face is
                                                      the only one in the file)
                  Get one of these wrong and there is no error - the text silently
-                 renders in the fallback font, which is exactly what it looks like
-                 today. Role mapping, from Type.kt:
-                   headlineSmall  = ABC Gravity Extended        -> section headings
-                   headlineMedium = ABC Gravity Extra Condensed -> the big plan value
-                                    (ConnectActions.kt renders Supporter/Free in it)
-                   TopBarTitle    = PP NeueBit Bold             -> the wordmark
-                   body*          = PP Neue Montreal            -> everything else -->
+                 renders in the fallback font. Role mapping, from Type.kt:
+                   headlineLarge  = ABC Gravity Extended        32sp/36sp
+                   headlineMedium = ABC Gravity Extra Condensed 32sp/32sp
+                   headlineSmall  = ABC Gravity Extended        24sp/32sp
+                   TopBarTitle    = PP NeueBit Bold             24sp -> the wordmark
+                   buttonTextStyle = PP NeueBit Bold            24sp -> every URButton
+                   body*          = PP Neue Montreal            16/14/12sp -->
             <FontFamily x:Key="UrHeadingFontFamily">ms-appx:///Assets/Fonts/abcgravity_extended.otf#ABC Gravity Extended</FontFamily>
             <FontFamily x:Key="UrHeadingCondensedFontFamily">ms-appx:///Assets/Fonts/abcgravity_extra_condensed.otf#ABC Gravity Extra Condensed</FontFamily>
             <FontFamily x:Key="UrBodyFontFamily">ms-appx:///Assets/Fonts/pp_neue_montreal_regular.ttf#PP Neue Montreal</FontFamily>
@@ -92,6 +103,11 @@
             <SolidColorBrush x:Key="UrGreenBrush" Color="#87FB67" />
             <SolidColorBrush x:Key="UrPinkBrush" Color="#ED8FFF" />
             <SolidColorBrush x:Key="UrCoralBrush" Color="#FF6C58" />
+            <!-- android Blue400 / BlueMedium: the URButton PRIMARY container and
+                 the focused URTextInput underline -->
+            <SolidColorBrush x:Key="UrBlueMediumBrush" Color="#638BFC" />
+            <!-- android Red400 / Red: URInlineErrorText -->
+            <SolidColorBrush x:Key="UrErrorTextBrush" Color="#FF6C58" />
             <!-- Pro gold. Reserved for the Pro entitlement across the product and
                  used for NOTHING else, so gold reads as "this account is Pro"
                  rather than as decoration. -->
@@ -103,6 +119,97 @@
             <!-- coral at 15% alpha: the unapplied-dns-recommendation pill background
                  (iOS Color.urCoral.opacity(0.15)) -->
             <SolidColorBrush x:Key="UrCoralSubtleBrush" Color="#26FF6C58" />
+
+            <!-- ================= URButton (android ui/components/URButton.kt) =========
+                 One template, two styles, so the login screen's buttons are the same
+                 component android's are:
+                   PRIMARY   containerColor BlueMedium #638BFC, contentColor White
+                   SECONDARY containerColor White,              contentColor Black
+                 shape RoundedCornerShape(12.dp), defaultMinSize(minHeight = 48.dp),
+                 fillMaxWidth, and buttonTextStyle = ppNeueBitBold at 24.sp.
+
+                 Hover and press are drawn the way Material does it - a translucent
+                 layer of the CONTENT colour over the container - rather than by
+                 swapping the container brush. That is why one template covers both
+                 styles and a Style only has to set Background/Foreground; swapping
+                 brushes would need a separate set of per-state keys per style. -->
+            <Style x:Key="UrButtonBaseStyle" TargetType="Button">
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="MinHeight" Value="48" />
+                <Setter Property="Padding" Value="16,8" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="FontFamily" Value="{StaticResource UrWordmarkFontFamily}" />
+                <Setter Property="FontSize" Value="24" />
+                <!-- pp_neue_bit_bold.ttf carries a single face and it is Bold, so
+                     state the weight rather than leaving it to nearest-match -->
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid x:Name="Root"
+                                  CornerRadius="{TemplateBinding CornerRadius}"
+                                  Background="{TemplateBinding Background}"
+                                  BorderBrush="{TemplateBinding BorderBrush}"
+                                  BorderThickness="{TemplateBinding BorderThickness}">
+                                <Grid x:Name="StateLayer"
+                                      CornerRadius="{TemplateBinding CornerRadius}"
+                                      Background="{TemplateBinding Foreground}"
+                                      Opacity="0" />
+                                <!-- The font properties MUST be template-bound. ContentPresenter
+                                     declares its own FontFamily/FontSize/FontWeight with
+                                     defaults, so they do not inherit from the templated
+                                     parent: without these three lines the Style's
+                                     PP NeueBit setter never reaches the button's content
+                                     and the label silently renders in the body face. -->
+                                <ContentPresenter x:Name="Presenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Padding="{TemplateBinding Padding}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  FontFamily="{TemplateBinding FontFamily}"
+                                                  FontSize="{TemplateBinding FontSize}"
+                                                  FontWeight="{TemplateBinding FontWeight}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  AutomationProperties.AccessibilityView="Raw" />
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="StateLayer.Opacity" Value="0.08" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="StateLayer.Opacity" Value="0.12" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Opacity" Value="0.38" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="UrPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource UrButtonBaseStyle}">
+                <Setter Property="Background" Value="{StaticResource UrBlueMediumBrush}" />
+                <Setter Property="Foreground" Value="White" />
+            </Style>
+
+            <Style x:Key="UrSecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource UrButtonBaseStyle}">
+                <Setter Property="Background" Value="White" />
+                <Setter Property="Foreground" Value="Black" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

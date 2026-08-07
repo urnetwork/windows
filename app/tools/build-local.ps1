@@ -29,6 +29,16 @@ param(
 $ErrorActionPreference = "Stop"
 $app = (Resolve-Path "$PSScriptRoot\..").Path
 
+# A running instance holds resources.pri and the exe open, and the failure it
+# produces names neither: msbuild reports PRI210 0x800704c8 "File move failed"
+# from a temp guid to the output dir. Just close it.
+$running = Get-Process URnetwork, urnetworkd -ErrorAction SilentlyContinue
+if ($running) {
+  Write-Host "stopping running instance(s): $($running.Name -join ', ')" -ForegroundColor Yellow
+  $running | Stop-Process -Force -Confirm:$false
+  Start-Sleep -Milliseconds 600
+}
+
 # --- developer shell ----------------------------------------------------------
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 if (-not (Test-Path $vswhere)) { throw "vswhere not found -- is Visual Studio (or Build Tools) installed?" }
