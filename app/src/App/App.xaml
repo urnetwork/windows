@@ -106,6 +106,53 @@
                             <SolidColorBrush x:Key="NavigationViewContentGridBorderBrush" Color="Transparent" />
                             <Thickness x:Key="NavigationViewContentGridBorderThickness">0</Thickness>
                             <CornerRadius x:Key="NavigationViewContentGridCornerRadius">0</CornerRadius>
+
+                            <!-- THE PANE. The line above only fixed the CONTENT
+                                 layer; the pane itself was never overridden, so
+                                 it kept WinUI's default, which is ACRYLIC. An
+                                 acrylic pane samples the desktop behind the
+                                 window, so on a signed-in app over a bright
+                                 desktop it renders as a pale grey slab with the
+                                 wallpaper's colours smeared through it -
+                                 measured #2E2E2E with a visible yellow-green
+                                 cast off whatever was underneath. That is the
+                                 owner's "bright white when I click on menu".
+                                 The app is a solid-surface dark theme; the pane
+                                 is a surface, so it gets the card colour.
+                                 This survived review because PrintWindow does
+                                 NOT composite acrylic - a PrintWindow capture
+                                 shows a flat dark rectangle and lies. Verify
+                                 with CopyFromScreen of an ACTIVE window.
+                                   Default   = docked pane (Left / LeftCompact)
+                                   Expanded  = the overlay flyout (LeftMinimal,
+                                               and LeftCompact once opened)
+                                   Top       = the horizontal bar
+                                 All three, because the display mode adapts with
+                                 the window width and only one of them was ever
+                                 on screen at a time. -->
+                            <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#151515" />
+                            <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#151515" />
+                            <SolidColorBrush x:Key="NavigationViewTopPaneBackground" Color="#151515" />
+                            <!-- the SplitView the pane is hosted in has its own key -->
+                            <SolidColorBrush x:Key="SplitViewPaneBackground" Color="#151515" />
+                            <!-- the rail needs an EDGE against the page, or a
+                                 #151515 pane on a #101010 page is a difference
+                                 nobody can see -->
+                            <SolidColorBrush x:Key="NavigationViewItemSeparatorForeground" Color="#1FFFFFFF" />
+                            <!-- selected destination: the brand accent bar and a
+                                 card-coloured pill, rather than the system accent -->
+                            <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="#EFF7BB" />
+                            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="#242424" />
+                            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="#2A2A2A" />
+                            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPressed" Color="#2A2A2A" />
+                            <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver" Color="#1C1C1C" />
+                            <SolidColorBrush x:Key="NavigationViewItemBackgroundPressed" Color="#242424" />
+                            <SolidColorBrush x:Key="NavigationViewItemForeground" Color="#989898" />
+                            <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="#F8F8F8" />
+                            <SolidColorBrush x:Key="NavigationViewItemForegroundPointerOver" Color="#F8F8F8" />
+                            <SolidColorBrush x:Key="NavigationViewItemForegroundPressed" Color="#F8F8F8" />
+                            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="#F8F8F8" />
+                            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPressed" Color="#F8F8F8" />
                         </ResourceDictionary>
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
@@ -148,6 +195,10 @@
             <SolidColorBrush x:Key="UrCardHoverBrush" Color="#242424" />
             <SolidColorBrush x:Key="UrCardPressedBrush" Color="#2A2A2A" />
             <SolidColorBrush x:Key="UrBorderBrush" Color="#1FFFFFFF" />
+            <!-- the same edge, one step up, for a card the pointer is over: the
+                 hover fill alone moves #1C1C1C to #242424, which is under the
+                 just-noticeable difference on most panels. -->
+            <SolidColorBrush x:Key="UrBorderStrongBrush" Color="#38FFFFFF" />
             <SolidColorBrush x:Key="UrTextBrush" Color="#F8F8F8" />
             <SolidColorBrush x:Key="UrTextMutedBrush" Color="#989898" />
             <SolidColorBrush x:Key="UrTextFaintBrush" Color="#5A5A5A" />
@@ -326,10 +377,112 @@
                  label ABOVE the surface is PP NeueBit 22 bold in the text colour
                  (iOS UrCard cardLabel), not the muted 12sp caption most of the
                  current cards use inside themselves. -->
+            <!-- THE EDGE. Card fill is #1C1C1C on a #101010 page: 6 levels of
+                 luminance, which is a difference the eye does not reliably
+                 resolve at panel scale. Without a border the cards did not read
+                 as objects at all and the app came out, in the owner's words,
+                 "just buttons on a black screen". kBorder (#1FFFFFFF) has been
+                 in UrColors.h since the palette landed and was applied to
+                 nothing. One hairline is the whole difference between a tint
+                 and a module. -->
             <Style x:Key="UrCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource UrCardBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource UrBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="12" />
                 <Setter Property="Padding" Value="16" />
+            </Style>
+
+            <!-- ==== structure primitives =====================================
+                 The three shapes every panel in the app was open-coding, so that
+                 "a divider" is one decision rather than fourteen. -->
+
+            <!-- a rule between rows inside a card. Was
+                 <Border Height="1" Background="{StaticResource UrBorderBrush}"/>
+                 copy-pasted at each site; Settings had them and read best,
+                 Connect had none and read as a void. -->
+            <Style x:Key="UrDividerStyle" TargetType="Border">
+                <Setter Property="Height" Value="1" />
+                <Setter Property="Background" Value="{StaticResource UrBorderBrush}" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+            </Style>
+
+            <!-- the heading ABOVE a card ("Payout Wallets", "Device"), 16/
+                 SemiBold in the display face. Nine sites spelled these three
+                 setters out inline. -->
+            <Style x:Key="UrSectionHeadingStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrHeadingFontFamily}" />
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <!-- the larger variant that names a whole panel section -->
+            <Style x:Key="UrPanelHeadingStyle" TargetType="TextBlock" BasedOn="{StaticResource UrSectionHeadingStyle}">
+                <Setter Property="FontSize" Value="18" />
+            </Style>
+
+            <!-- ==== icons ====================================================
+                 Windows 11 ships Segoe Fluent Icons, so every standard
+                 affordance in this app - chevron, copy, wallet, shield, gear,
+                 warning, check - is a glyph we already have and do not have to
+                 draw, package or license. The app shipped ZERO of them against
+                 iOS's 16 ur.symbols; a list row with no leading mark is the
+                 single largest reason a panel reads as text on black.
+
+                 Naming the family matters: FontIcon defaults to the OLDER
+                 "Segoe MDL2 Assets", whose metrics differ, so a mixed screen
+                 comes out with two icon weights. -->
+            <FontFamily x:Key="UrIconFontFamily">Segoe Fluent Icons</FontFamily>
+
+            <!-- the leading mark on a row or a section header -->
+            <Style x:Key="UrRowIconStyle" TargetType="FontIcon">
+                <Setter Property="FontFamily" Value="{StaticResource UrIconFontFamily}" />
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <!-- decoration beside a label that already says the same thing -->
+                <Setter Property="AutomationProperties.AccessibilityView" Value="Raw" />
+            </Style>
+
+            <!-- the trailing "this row opens something" chevron. Quieter than a
+                 leading mark on purpose: it is an affordance, not information. -->
+            <Style x:Key="UrChevronIconStyle" TargetType="FontIcon" BasedOn="{StaticResource UrRowIconStyle}">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextFaintBrush}" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+            </Style>
+
+            <!-- the mark over an empty state's sentence -->
+            <Style x:Key="UrEmptyGlyphStyle" TargetType="FontIcon" BasedOn="{StaticResource UrRowIconStyle}">
+                <Setter Property="FontSize" Value="28" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextFaintBrush}" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+            </Style>
+
+            <!-- ==== stat tile ================================================
+                 Wallet's header row and the Developer metric rows are the two
+                 densest surfaces in the app and the two the owner has said work.
+                 The shape is a muted 12sp caption over a big condensed number;
+                 these are that shape, so the rest of the app can use it instead
+                 of re-deriving it. -->
+            <Style x:Key="UrStatLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource UrLabelStyle}">
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            </Style>
+
+            <Style x:Key="UrStatValueStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrHeadingCondensedFontFamily}" />
+                <Setter Property="FontSize" Value="26" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            </Style>
+
+            <!-- the same tile, boxed, for a row of them that needs its own
+                 edges (the metric strip on a page that has no card around it) -->
+            <Style x:Key="UrStatTileStyle" TargetType="Border" BasedOn="{StaticResource UrCardStyle}">
+                <Setter Property="Padding" Value="16,12" />
+                <Setter Property="CornerRadius" Value="8" />
             </Style>
 
             <Style x:Key="UrCardLabelStyle" TargetType="TextBlock">
@@ -354,7 +507,13 @@
             <Style x:Key="UrCardButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{StaticResource UrCardBrush}" />
                 <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
-                <Setter Property="BorderThickness" Value="0" />
+                <!-- the same hairline UrCardStyle carries: an actionable card
+                     and a static one are the same object and must have the same
+                     edge, or the page grows two card species. The template's
+                     Root is a Grid, which in WinUI does render BorderBrush /
+                     BorderThickness / CornerRadius. -->
+                <Setter Property="BorderBrush" Value="{StaticResource UrBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="12" />
                 <Setter Property="Padding" Value="16" />
                 <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -391,11 +550,16 @@
                                         <VisualState x:Name="PointerOver">
                                             <VisualState.Setters>
                                                 <Setter Target="Root.Background" Value="{StaticResource UrCardHoverBrush}" />
+                                                <!-- #1C1C1C -> #242424 is 8 levels;
+                                                     lifting the edge as well is what
+                                                     actually reads as "this one" -->
+                                                <Setter Target="Root.BorderBrush" Value="{StaticResource UrBorderStrongBrush}" />
                                             </VisualState.Setters>
                                         </VisualState>
                                         <VisualState x:Name="Pressed">
                                             <VisualState.Setters>
                                                 <Setter Target="Root.Background" Value="{StaticResource UrCardPressedBrush}" />
+                                                <Setter Target="Root.BorderBrush" Value="{StaticResource UrBorderStrongBrush}" />
                                             </VisualState.Setters>
                                         </VisualState>
                                         <VisualState x:Name="Disabled">
@@ -416,6 +580,24 @@
             <Style x:Key="UrCardRowButtonStyle" TargetType="Button" BasedOn="{StaticResource UrCardButtonStyle}">
                 <Setter Property="CornerRadius" Value="8" />
                 <Setter Property="Padding" Value="12,8" />
+                <!-- NO edge: this row sits INSIDE a card that already has one,
+                     and a bordered box inside a bordered box reads as two
+                     parallel hairlines 16px apart rather than as nesting. The
+                     row's structure comes from the divider above it and its
+                     hover fill; its edge would be noise. -->
+                <Setter Property="BorderThickness" Value="0" />
+            </Style>
+
+            <!-- A row inside a card that is NOT a button: the same 12,8 metrics
+                 so a tappable row and a static one line up on the same left
+                 edge. Without this every static row was inset 12px less than
+                 the tappable one above it, which is visible as a ragged column
+                 of labels. -->
+            <Style x:Key="UrCardRowStyle" TargetType="Border">
+                <Setter Property="Padding" Value="12,8" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
             </Style>
 
             <!-- ==== UrSwitchToggle (Components/UrSwitchToggle.swift) ==========

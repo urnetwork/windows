@@ -16,6 +16,7 @@
 #include "PageContext.h"
 #include "StatsFormat.h"
 #include "UrColors.h"
+#include "UrComponents.h"  // kit::SetTextOrCollapse
 
 using namespace winrt;
 using namespace winrt::Microsoft::UI::Xaml;
@@ -331,16 +332,27 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
 
   // Provider window size ("Connected to N providers"), like macOS. The count is a
   // CLDR plural in the store: select the form, never inflect here.
-  w_.ProviderCountText().Text(
+  //
+  // SetTextOrCollapse, not Text: both of these lines are empty while
+  // disconnected, and an empty TextBlock in a StackPanel still spends the
+  // panel's Spacing. Together with the two below they left ~120px of blank card
+  // in the middle of the screen the app opens on. The whole group carries a
+  // divider, so it is hidden as a unit - a rule with nothing under it is the
+  // same defect, one pixel tall.
+  urnw::kit::SetTextOrCollapse(
+      w_.ProviderCountText(),
       stats.connected
           ? hstring{urnw::Plural("connected_provider_count", stats.providerCount)}
           : hstring{L""});
 
   // Live throughput feed: down / up bit rate. Arrows + rates, no prose.
-  w_.ThroughputText().Text(stats.connected
-                               ? H("↓ " + urnw::FormatBitRate(stats.downBitsPerSecond) +
-                                   "    ↑ " + urnw::FormatBitRate(stats.upBitsPerSecond))
-                               : hstring(L""));
+  urnw::kit::SetTextOrCollapse(
+      w_.ThroughputText(),
+      stats.connected ? H("↓ " + urnw::FormatBitRate(stats.downBitsPerSecond) +
+                          "    ↑ " + urnw::FormatBitRate(stats.upBitsPerSecond))
+                      : hstring(L""));
+  w_.LiveStatsGroup().Visibility(stats.connected ? Visibility::Visible
+                                                 : Visibility::Collapsed);
 
   // Insufficient-balance warning (auto-disconnect happens in the SDK). The
   // action button opens the upgrade flow; Pro / a running confirmation poll
@@ -354,7 +366,7 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
                   ? Loc("providing_paused")
                   : hstring{urnw::Plural("providing_client_count", stats.provideClients)};
   }
-  w_.ProvideStatsText().Text(provide);
+  urnw::kit::SetTextOrCollapse(w_.ProvideStatsText(), provide);
 
   // provide indicator (apple parity). The effective provide mode is a bit set
   // (0 none, 1 network, 2 friends-and-family, 3 public) — per-case only.
@@ -759,9 +771,14 @@ void ConnectPage::AnimateDrawerIn() {
   if (drawerAnimated_) return;
   drawerAnimated_ = true;
   namespace anim = winrt::Microsoft::UI::Xaml::Media::Animation;
-  const std::array<FrameworkElement, 6> cards = {
-      w_.ControlsCard(), w_.ClientStatsCard(), w_.LocalStatsCard(), w_.DnsCard(),
-      w_.BlockerCard(), w_.DrawerPlanCard()};
+  // The drawer's modules, in the order they appear. BlockerCard is gone - the
+  // ad/tracker switch is a row in ConnectOptionsCard now, with the other three
+  // per-connection switches, instead of being a card of its own with one line
+  // in it.
+  const std::array<FrameworkElement, 7> cards = {
+      w_.ControlsCard(),        w_.ProvideCard(),     w_.ConnectOptionsCard(),
+      w_.ClientStatsCard(),     w_.LocalStatsCard(),  w_.DnsCard(),
+      w_.DrawerPlanCard()};
   const auto duration = Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
                                      std::chrono::milliseconds(300)),
                                  DurationType::TimeSpan};

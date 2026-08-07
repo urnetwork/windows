@@ -25,6 +25,39 @@
 
 namespace urnw::kit {
 
+// Set a line's text AND its visibility in one call: an empty string collapses
+// the element instead of leaving a row of nothing behind.
+//
+// This exists because of a measured defect, not as a convenience. A StackPanel
+// gives every child its Spacing whether or not the child drew anything, so four
+// TextBlocks that are empty while disconnected - the state the app OPENS in -
+// cost ~120px of blank card on the Connect screen, in the middle of the panel,
+// indistinguishable from a broken layout. `.Text(...)` alone can never be
+// right for a line whose content is conditional; this is the call that is.
+void SetTextOrCollapse(winrt::Microsoft::UI::Xaml::Controls::TextBlock const& line,
+                       winrt::hstring const& text);
+
+// The Windows idiom for "there is nothing here yet": a large muted Segoe Fluent
+// glyph over one sentence, centred, rather than a bare "-" or an empty panel.
+// A dash cannot distinguish "nothing" from "not loaded" from "failed", and an
+// empty panel says nothing at all - both shipped in this app.
+//
+// `glyph` is a Segoe Fluent Icons codepoint (e.g. L""); `text` must come
+// from the localization store.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakeEmptyState(winrt::hstring const& glyph,
+                                                            winrt::hstring const& text);
+
+// A 1px rule in the border token, for row groups that are built in code rather
+// than in markup (Settings sections, the payouts ledger, the points breakdown).
+// The markup equivalent is UrDividerStyle in App.xaml; keep the two in step.
+winrt::Microsoft::UI::Xaml::Controls::Border MakeDivider();
+
+// A section header above a card: Segoe Fluent glyph + the display face at 16
+// SemiBold. The glyph is marked Raw so it is not announced beside the label
+// that already says the same word.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakeSectionHeader(winrt::hstring const& glyph,
+                                                               winrt::hstring const& text);
+
 // iOS Components/UrTextField/ValidationState.swift.
 enum class ValidationState {
   NotChecked,  // nothing has been asked of the server yet
