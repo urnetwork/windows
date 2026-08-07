@@ -148,8 +148,10 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(UrnSdkDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <!-- crypt32.lib: WalletConnect.cpp uses CryptBinaryToStringA (Base64) -> __imp_CryptBinaryToStringA. -->
-      <AdditionalDependencies>URnetworkSdk.lib;shell32.lib;advapi32.lib;ws2_32.lib;iphlpapi.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <!-- crypt32.lib: WalletConnect.cpp uses CryptBinaryToStringA (Base64) -> __imp_CryptBinaryToStringA.
+           winhttp.lib + bcrypt.lib: GoogleSignIn.cpp's OAuth token exchange (WinHttp*)
+           and its PKCE verifier/challenge (BCryptGenRandom / BCryptHash). -->
+      <AdditionalDependencies>URnetworkSdk.lib;shell32.lib;advapi32.lib;ws2_32.lib;iphlpapi.lib;crypt32.lib;winhttp.lib;bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>app.manifest</AdditionalManifestFiles>
@@ -171,6 +173,24 @@
            would have broken the build for the first person to actually pass a
            project id, which is why it never showed up: CI never sets one. -->
       <PreprocessorDefinitions>URN_WALLETCONNECT_PROJECT_ID_RAW=$(UrnWalletConnectProjectId);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Google OAuth "Desktop app" client (src/App/Config.h), for the
+       system-browser loopback sign-in in GoogleSignIn.cpp:
+       msbuild ... /p:UrnGoogleOAuthClientId=<id>.apps.googleusercontent.com
+                   /p:UrnGoogleOAuthClientSecret=<secret>
+       Unset is fine and is the default: the Google button is HIDDEN and the
+       network space reports sso_google=false. Bare tokens, stringized in
+       Config.h, for the same reason as the two above. -->
+  <ItemDefinitionGroup Condition="'$(UrnGoogleOAuthClientId)'!=''">
+    <ClCompile>
+      <PreprocessorDefinitions>URN_GOOGLE_OAUTH_CLIENT_ID_RAW=$(UrnGoogleOAuthClientId);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(UrnGoogleOAuthClientSecret)'!=''">
+    <ClCompile>
+      <PreprocessorDefinitions>URN_GOOGLE_OAUTH_CLIENT_SECRET_RAW=$(UrnGoogleOAuthClientSecret);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
 
@@ -237,6 +257,8 @@
     <ClCompile Include="WalletSheets.cpp" />
     <ClCompile Include="AppController.cpp" />
     <ClCompile Include="AuthSheets.cpp" />
+    <ClCompile Include="GoogleSignIn.cpp" />
+    <ClCompile Include="LoginCarousel.cpp" />
     <ClCompile Include="BalanceSheets.cpp" />
     <ClCompile Include="Localization.cpp" />
     <ClCompile Include="LocationSheets.cpp" />
@@ -270,6 +292,8 @@
     <ClInclude Include="AuthSheets.h" />
     <ClInclude Include="BalanceSheets.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="GoogleSignIn.h" />
+    <ClInclude Include="LoginCarousel.h" />
     <ClInclude Include="Localization.h" />
     <ClInclude Include="LocationSheets.h" />
     <ClInclude Include="SdkHost.h" />
@@ -294,6 +318,20 @@
   <!-- loose image assets, copied next to the exe for ms-appx:/// XAML sources -->
   <ItemGroup>
     <CopyFileToFolders Include="Assets\ReferralFrog.png">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <!-- The login carousel's three slides (iOS Assets.xcassets/Images/
+         LoginCarousel{1,2,3}.imageset). Exported from the iOS .heic sources,
+         which WinUI cannot decode without the HEIF media extension, and kept at
+         256x256 JPEG - the size the mask actually draws - so the three together
+         are ~63KB rather than the ~1.5MB the originals weigh. -->
+    <CopyFileToFolders Include="Assets\LoginCarousel1.jpg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\LoginCarousel2.jpg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\LoginCarousel3.jpg">
       <DestinationFolders>$(OutDir)Assets</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>

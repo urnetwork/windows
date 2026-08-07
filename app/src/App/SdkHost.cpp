@@ -156,7 +156,10 @@ urnet::NetworkSpace SdkHost::BuildNetworkSpace() {
   values.migration_host_name = "bringyour.com";
   values.store = "";
   values.wallet = "circle";
-  values.sso_google = false;
+  // Only claim Google SSO when this build can actually run the flow. The value
+  // used to be a flat false; it is now tied to the compiled-in OAuth client id
+  // so the space, SsoGoogleEnabled() and the login button can never disagree.
+  values.sso_google = GoogleSignIn::Configured();
   values.env_secret = "";
 
   // URNETWORK_NETWORK_HOST points the client at a different backend, so that a
@@ -244,7 +247,8 @@ bool SdkHost::Initialize() {
       LogInfo("sdkhost: restored the api session from local state");
     }
 
-    if (!localState_->getByClientJwt().empty()) {
+    loggedIn_.store(!localState_->getByClientJwt().empty(), std::memory_order_release);
+    if (loggedIn_.load(std::memory_order_acquire)) {
       SetAuthState(AuthState::LoggedIn);
       // Resume the session off the UI path.
       //
@@ -291,10 +295,22 @@ bool SdkHost::Initialize() {
   }
 }
 
-bool SdkHost::IsLoggedIn() {
-  std::scoped_lock lock(mutex_);
-  return localState_ && !localState_->getByClientJwt().empty();
-}
+// LOCK-FREE ON PURPOSE. This used to take mutex_ and read
+// localState_->getByClientJwt(), which put it behind whatever else held the
+// lock — and on a resume that is the detached bootstrap thread, holding mutex_
+// for the WHOLE of BootstrapSession (service connect, Hello, start_tunnel:
+// seconds, and on a machine with no service running, the full timeout).
+// MainWindow's constructor calls this, so the main window did not appear until
+// the tunnel bootstrap had finished, measured at roughly ten seconds. The
+// answer to "is there a stored session" cannot be worth waiting on a network
+// round trip for.
+//
+// loggedIn_ is written wherever the stored client jwt changes: Initialize,
+// RegisterNetworkClient's success, ApplyNetworkServer's re-derive, and Logout.
+// Note that Logout's own commit is asynchronous (asyncLocalState_->logout),
+// so the old lock-taking version ALSO returned stale-true for a while after a
+// sign-out; the flag is if anything the more accurate of the two.
+bool SdkHost::IsLoggedIn() { return loggedIn_.load(std::memory_order_acquire); }
 
 void SdkHost::SetAuthState(AuthState s, const std::string& error) {
   authState_ = s;
@@ -478,6 +494,16 @@ void SdkHost::CreateNetwork(const CreateNetworkParams& params,
       return;
     }
     args.wallet_auth = *pendingWalletAuth_;
+  } else if (params.useAuthJwt) {
+    std::scoped_lock lock(mutex_);
+    if (!pendingAuthJwt_) {
+      AuthResult r{false, false, "no SSO sign-in is pending"};
+      SetAuthState(AuthState::Error, r.error);
+      if (done) done(r);
+      return;
+    }
+    args.auth_jwt_type = "google";
+    args.auth_jwt = *pendingAuthJwt_;
   } else {
     args.user_auth = params.userAuth;
     args.password = params.password;
@@ -507,7 +533,9 @@ void SdkHost::CreateNetwork(const CreateNetworkParams& params,
     if (result->network && result->network->by_jwt && !result->network->by_jwt->empty()) {
       {
         std::scoped_lock lock(mutex_);
-        pendingWalletAuth_.reset();  // consumed (wallet mode) or unused
+        // consumed by this create, or unused by it
+        pendingWalletAuth_.reset();
+        pendingAuthJwt_.reset();
       }
       RegisterNetworkClient(*result->network->by_jwt, done);
       return;
@@ -604,6 +632,251 @@ void SdkHost::SendPasswordResetLink(const std::string& userAuth,
   });
 }
 
+// ---- seedphrase -------------------------------------------------------------
+// macOS LoginSeedphrase / CreateNetworkInstant parity. A seedphrase is the whole
+// credential and has no reset path, so: it is never written to the log, never
+// persisted by this app, and the instant-account flow refuses to leave a live
+// session behind a seedphrase the user has not been shown.
+
+namespace {
+
+// lowercase, trimmed, single-spaced — the normalization every client applies
+// before sending a seedphrase, so a phrase pasted with newlines or double
+// spaces authenticates (macOS LoginSeedphraseViewModel.normalizedSeedphrase).
+std::string NormalizeSeedphrase(const std::string& raw) {
+  std::string out;
+  out.reserve(raw.size());
+  bool pendingSpace = false;
+  for (unsigned char c : raw) {
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+      pendingSpace = !out.empty();
+      continue;
+    }
+    if (pendingSpace) {
+      out.push_back(' ');
+      pendingSpace = false;
+    }
+    out.push_back(static_cast<char>(std::tolower(c)));
+  }
+  return out;
+}
+
+}  // namespace
+
+void SdkHost::LoginWithSeedphrase(const std::string& seedphrase,
+                                  std::function<void(AuthResult)> done) {
+  SetAuthState(AuthState::Authenticating);
+  urnet::AuthLoginArgs args;
+  args.seedphrase = NormalizeSeedphrase(seedphrase);
+
+  // NOTE: nothing on any path below may echo the args. An error log that
+  // included the request would put the credential in a file on disk.
+  api_->authLogin(args, [this, done](std::optional<urnet::AuthLoginResult> result,
+                                     std::optional<std::string> err) {
+    if (err || !result) {
+      AuthResult r{false, false, err ? *err : "no result"};
+      SetAuthState(AuthState::Error, r.error);
+      if (done) done(r);
+      return;
+    }
+    if (result->error && !result->error->message.empty()) {
+      // a wrong phrase is a form error, not a session error
+      AuthResult r{false, false, result->error->message};
+      SetAuthState(AuthState::LoggedOut);
+      if (done) done(r);
+      return;
+    }
+    if (result->network && !result->network->by_jwt.empty()) {
+      RegisterNetworkClient(result->network->by_jwt, done);
+      return;
+    }
+    AuthResult r{false, false, "seedphrase login returned no network"};
+    SetAuthState(AuthState::LoggedOut);
+    if (done) done(r);
+  });
+}
+
+void SdkHost::CreateInstantAccount(std::function<void(InstantAccount)> done) {
+  // NO user_auth, password, auth_jwt or wallet_auth: that combination is what
+  // makes the server mint a seedphrase-secured network and return the phrase.
+  urnet::NetworkCreateArgs args;
+  args.terms = true;  // the form's button is gated on the terms consent
+
+  api_->networkCreate(args, [this, done](std::optional<urnet::NetworkCreateResult> result,
+                                         std::optional<std::string> err) {
+    InstantAccount out;
+    if (err || !result) {
+      out.error = err ? *err : "no result";
+      if (done) done(out);
+      return;
+    }
+    if (result->error && !result->error->message.empty()) {
+      out.error = result->error->message;
+      if (done) done(out);
+      return;
+    }
+    if (result->verification_required) {
+      // An instant account carries no user auth, so there is nothing to verify
+      // and no step that could take a code. Say so rather than routing the user
+      // to a dead verify screen (macOS parity).
+      out.error = "the server asked to verify an account with no user auth";
+      if (done) done(out);
+      return;
+    }
+    if (!result->seedphrase || result->seedphrase->empty()) {
+      // Refuse to register. A network whose only credential never reached the
+      // user is an account nobody can ever get back into.
+      out.error = "instant account returned no seedphrase";
+      if (done) done(out);
+      return;
+    }
+    if (!result->network || !result->network->by_jwt || result->network->by_jwt->empty()) {
+      out.error = "instant account returned no network";
+      if (done) done(out);
+      return;
+    }
+    {
+      std::scoped_lock lock(mutex_);
+      pendingInstantJwt_ = *result->network->by_jwt;
+    }
+    out.ok = true;
+    out.seedphrase = *result->seedphrase;
+    if (done) done(out);
+  });
+}
+
+void SdkHost::ConfirmInstantAccount(std::function<void(AuthResult)> done) {
+  std::string jwt;
+  {
+    std::scoped_lock lock(mutex_);
+    if (!pendingInstantJwt_) {
+      if (done) done({false, false, "no instant account is pending"});
+      return;
+    }
+    jwt = *pendingInstantJwt_;
+    pendingInstantJwt_.reset();
+  }
+  SetAuthState(AuthState::Authenticating);
+  RegisterNetworkClient(jwt, done);
+}
+
+void SdkHost::DiscardInstantAccount() {
+  std::scoped_lock lock(mutex_);
+  pendingInstantJwt_.reset();
+}
+
+// ---- network server (iOS NetworkServerSheet parity) ------------------------
+
+SdkHost::NetworkServer SdkHost::CurrentNetworkServer() {
+  std::scoped_lock lock(mutex_);
+  NetworkServer out;
+  out.managerAvailable = spaceManager_.has_value();
+  // The same resolution BuildNetworkSpace does, so "Use default network" means
+  // the network this process was started against and not, silently, production.
+  out.defaultHostName = EnvVar(L"URNETWORK_NETWORK_HOST");
+  if (out.defaultHostName.empty()) out.defaultHostName = std::string(ids::kNetworkSpaceHostName);
+  if (!networkSpace_) return out;
+  try {
+    out.hostName = networkSpace_->getHostName();
+    out.apiUrl = networkSpace_->getApiUrl();
+    out.connectUrl = networkSpace_->getPlatformUrl();
+    out.configuredApiUrl = networkSpace_->getConfiguredApiUrl();
+    out.configuredConnectUrl = networkSpace_->getConfiguredPlatformUrl();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read network space failed: {}", e.what());
+  }
+  return out;
+}
+
+bool SdkHost::ApplyNetworkServer(const std::string& hostName, const std::string& apiUrl,
+                                 const std::string& connectUrl) {
+  if (hostName.empty()) return false;
+  bool ok = false;
+  bool loggedIn = false;
+  {
+    std::scoped_lock lock(mutex_);
+    if (!spaceManager_) return false;
+
+    // A different space is a different LocalState and so a different stored
+    // jwt: the running session belongs to the OLD server and cannot survive it.
+    if (device_) {
+      try {
+        TeardownSessionLocked();
+      } catch (const std::exception& e) {
+        LogWarn("sdkhost: teardown before network switch failed: {}", e.what());
+      }
+    }
+    if (networkNameVc_) {
+      try {
+        networkNameVc_->stop();
+        networkNameVc_->close();
+      } catch (...) {
+      }
+      networkNameVc_.reset();
+    }
+    pendingWalletAuth_.reset();
+    pendingAuthJwt_.reset();
+    pendingInstantJwt_.reset();
+
+    try {
+      const bool official = (hostName == std::string(ids::kNetworkSpaceHostName));
+      const bool explicitUrls = !apiUrl.empty() || !connectUrl.empty();
+
+      urnet::NetworkSpaceKey key;
+      key.host_name = hostName;
+      key.env_name = std::string(ids::kNetworkSpaceEnvName);
+
+      // The same value set BuildNetworkSpace writes, with the host-dependent
+      // parts varied (iOS DeviceManager.applyNetworkSpace parity). `bundled` is
+      // true only for the official host with no overrides: a bundled space
+      // carries pinned endpoints a custom deployment does not have.
+      urnet::NetworkSpaceValues values;
+      values.bundled = official && !explicitUrls;
+      values.net_expose_server_ips = true;
+      values.net_expose_server_host_names = true;
+      values.link_host_name = official ? std::string("ur.io") : hostName;
+      values.migration_host_name = official ? std::string("bringyour.com") : std::string();
+      values.store = "";
+      values.wallet = "circle";
+      values.sso_google = GoogleSignIn::Configured();
+      values.env_secret = "";
+      values.api_url = apiUrl;
+      values.platform_url = connectUrl;
+
+      networkSpace_ = spaceManager_->updateNetworkSpaceValues(key, values);
+      spaceManager_->setActiveNetworkSpace(*networkSpace_);
+
+      // Everything derived from the space has to be re-derived: the Api talks
+      // to the new host, and the LocalState holds the new host's jwt.
+      api_ = networkSpace_->getApi();
+      asyncLocalState_ = networkSpace_->getAsyncLocalState();
+      localState_ = asyncLocalState_->getLocalState();
+      networkNameVc_ = urnet::newNetworkNameValidationViewController(*api_);
+      networkNameVc_->start();
+      loggedIn = !localState_->getByClientJwt().empty();
+      loggedIn_.store(loggedIn, std::memory_order_release);
+      // the new space's Api needs the new space's jwt, for the same reason
+      // Initialize() does (see the note there)
+      if (const std::string byJwt = localState_->getByJwt(); !byJwt.empty()) {
+        api_->setByJwt(byJwt);
+      }
+      ok = true;
+    } catch (const std::exception& e) {
+      LogError("sdkhost: switch network space to '{}' failed: {}", hostName, e.what());
+      ok = false;
+    }
+  }
+  if (!ok) return false;
+  LogInfo("sdkhost: active network space is now '{}' (api '{}', connect '{}')", hostName,
+          apiUrl.empty() ? "derived" : apiUrl,
+          connectUrl.empty() ? "derived" : connectUrl);
+  // The new space's stored auth decides what the window shows. It is almost
+  // always LoggedOut — a fresh server has no jwt — and saying so is the point:
+  // the old session is genuinely gone.
+  SetAuthState(loggedIn ? AuthState::LoggedIn : AuthState::LoggedOut);
+  return true;
+}
+
 void SdkHost::CheckNetworkName(const std::string& networkName,
                                std::function<void(bool ok, bool available)> done) {
   if (!networkNameVc_) {
@@ -686,28 +959,57 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
       return;
     }
     if (result->by_client_jwt) {
-      try {
-        // persist the network + client JWT for the device
-        asyncLocalState_->setByJwt(byJwt, [](bool) {});
-        asyncLocalState_->setByClientJwt(*result->by_client_jwt, [](bool) {});
-      } catch (const std::exception& e) {
-        LogWarn("sdkhost: persist jwt failed: {}", e.what());
-      }
       bool ok = false;
       std::string why;
       {
         std::scoped_lock lock(mutex_);
+        try {
+          // SYNCHRONOUS setters, taken under the SAME lock as the bootstrap
+          // that reads them straight back.
+          //
+          // These were asyncLocalState_->set*(..., [](bool){}): hand the
+          // commit to the SDK's own thread and carry on. The very next
+          // statement was BootstrapSession(), whose first act is
+          // localState_->getByClientJwt() on THIS thread. On a fresh install
+          // there is no earlier value to read, so the FIRST sign-in lost that
+          // race and reported "no client credentials are stored for this
+          // device" over an authLogin and an authNetworkClient that had both
+          // just succeeded. Pressing sign in again worked, because by then the
+          // async commit had landed — which is exactly what made it look like
+          // a flaky server rather than our own ordering.
+          localState_->setByJwt(byJwt);
+          localState_->setByClientJwt(*result->by_client_jwt);
+          loggedIn_.store(true, std::memory_order_release);
+        } catch (const std::exception& e) {
+          LogWarn("sdkhost: persist jwt failed: {}", e.what());
+        }
         ok = BootstrapSession();
         why = bootstrapError_;
       }
-      // Name the ACTUAL cause. The old hardcoded "failed to start tunnel
-      // session" was misleading for a mode mismatch or an out-of-date service,
-      // and it was the only thing the user ever saw.
-      AuthResult r{ok, false,
-                   ok ? "" : (why.empty() ? "failed to start a session with the "
-                                            "URnetwork service"
-                                          : why)};
-      SetAuthState(ok ? AuthState::LoggedIn : AuthState::Error, r.error);
+      // THE SIGN-IN SUCCEEDED. Say so.
+      //
+      // This used to report AuthResult{ok=false} and AuthState::Error whenever
+      // the TUNNEL BOOTSTRAP failed — service not running, service too old, a
+      // mode refusal — over an authLogin and an authNetworkClient that had both
+      // returned 200 and a jwt that is now on disk. On the seedphrase step that
+      // surfaced as "There was an error signing in with your seedphrase",
+      // which is the single most alarming thing this app can say to somebody
+      // whose credential has no reset path: it reads as "your phrase is wrong".
+      // It is not. The phrase was right and the account is fine.
+      //
+      // The resume path in Initialize() already got this right and explains
+      // why (AuthState::Error makes the window derive loggedIn=false and dumps
+      // an authenticated user onto the sign-in screen, and it LATCHES). The
+      // login path now does the same thing: auth state goes LoggedIn, and the
+      // reason the app is not carrying traffic goes out on the notice channel,
+      // which is what that channel is for.
+      SetAuthState(AuthState::LoggedIn);
+      if (!ok) {
+        LogError("sdkhost: signed in, but the session bootstrap failed: {}",
+                 why.empty() ? "unknown" : why);
+        PublishSessionFailure(why);
+      }
+      AuthResult r{true, false, ""};
       if (done) done(r);
     } else {
       AuthResult r{false, false, "device registration returned no client jwt"};
@@ -819,7 +1121,107 @@ void SdkHost::SignWithSolanaWallet(
 }
 
 void SdkHost::HandleDeepLink(const std::string& url) {
-  wallet_.HandleDeepLink(url);  // returns false for non-wallet links (future: OAuth)
+  // Google SSO does NOT come back this way: Google issues custom-scheme
+  // redirects to iOS/Android client types only, so the desktop flow uses a
+  // loopback socket instead (GoogleSignIn.h). This stays wallet-only.
+  wallet_.HandleDeepLink(url);
+}
+
+// ---- Sign in with Google (system browser, loopback OAuth + PKCE) ------------
+
+bool SdkHost::SsoGoogleEnabled() {
+  if (!GoogleSignIn::Configured()) return false;
+  std::scoped_lock lock(mutex_);
+  if (!networkSpace_) return false;
+  try {
+    return networkSpace_->getSsoGoogle();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read sso_google failed: {}", e.what());
+    return false;
+  }
+}
+
+bool SdkHost::HasPendingAuthJwt() {
+  std::scoped_lock lock(mutex_);
+  return pendingAuthJwt_.has_value();
+}
+
+void SdkHost::SignInWithGoogle(std::function<void(AuthResult)> done) {
+  if (!GoogleSignIn::Configured()) {
+    // Unreachable from the UI (the button is hidden), but a caller that got
+    // here must not silently do nothing.
+    if (done) done({false, false, "this build has no Google OAuth client id"});
+    return;
+  }
+  SetAuthState(AuthState::Authenticating);
+  {
+    std::scoped_lock lock(mutex_);
+    pendingAuthJwt_.reset();  // a fresh sign-in supersedes any retained token
+  }
+  google_.Start([this, done](std::string idToken, std::string error) {
+    // On a GoogleSignIn worker thread. Errors here are already sentences.
+    if (idToken.empty()) {
+      AuthResult r{false, false, error.empty() ? "Google sign-in failed" : error};
+      SetAuthState(AuthState::LoggedOut, r.error);
+      if (done) done(r);
+      return;
+    }
+    AuthLoginWithGoogle(idToken, done);
+  });
+}
+
+void SdkHost::AuthLoginWithGoogle(const std::string& idToken,
+                                  std::function<void(AuthResult)> done) {
+  urnet::AuthLoginArgs args;
+  args.auth_jwt_type = "google";
+  args.auth_jwt = idToken;
+  // UNDER mutex_, unlike every other caller here, because this one is the odd
+  // one out: it runs on a GoogleSignIn WORKER thread, minutes after the button
+  // was pressed, while the user is free to open Change Network API on the UI
+  // thread — and ApplyNetworkServer reassigns api_ under this same lock, which
+  // RELEASES the handle this line is about to call through. urnet::Api is
+  // move-only (detail::Handle deletes its copy constructor), so there is no
+  // way to take a private reference to it; holding the lock across the
+  // dispatch is what there is. authLogin queues its callback onto an SDK
+  // thread rather than running it inline, so this does not re-enter.
+  std::scoped_lock lock(mutex_);
+  if (!api_) {
+    AuthResult r{false, false, "the network session went away during sign-in"};
+    SetAuthState(AuthState::Error, r.error);
+    if (done) done(r);
+    return;
+  }
+  // The id token is a bearer credential; nothing below logs the args.
+  api_->authLogin(args, [this, idToken, done](std::optional<urnet::AuthLoginResult> result,
+                                              std::optional<std::string> err) {
+    if (err || !result) {
+      AuthResult r{false, false, err ? *err : "no result"};
+      SetAuthState(AuthState::Error, r.error);
+      if (done) done(r);
+      return;
+    }
+    if (result->error && !result->error->message.empty()) {
+      AuthResult r{false, false, result->error->message};
+      SetAuthState(AuthState::LoggedOut);
+      if (done) done(r);
+      return;
+    }
+    if (result->network && !result->network->by_jwt.empty()) {
+      RegisterNetworkClient(result->network->by_jwt, done ? done : [](AuthResult) {});
+      return;
+    }
+    // Authenticated, but this Google identity has no network yet: retain the
+    // token and let the UI route to the create-network step (name + terms, no
+    // password), the same shape the wallet path uses.
+    {
+      std::scoped_lock lock(mutex_);
+      pendingAuthJwt_ = idToken;
+    }
+    AuthResult r;
+    r.auth_needs_network = true;
+    SetAuthState(AuthState::LoggedOut);
+    if (done) done(r);
+  });
 }
 
 void SdkHost::AuthLoginWithWallet(const std::string& address, const std::string& signature,
@@ -961,6 +1363,7 @@ void SdkHost::PublishModeNotice() {
     handler(ModeNotice{});
     return;
   }
+  sessionFailure_.clear();  // a live session supersedes any earlier failure
   ModeNotice n;
   if (sessionMode_.load() == proto::StartMode::RpcOnly) {
     n.active = true;
@@ -2369,12 +2772,21 @@ void SdkHost::Logout() {
   std::scoped_lock lock(mutex_);
   try {
     pendingWalletAuth_.reset();
+    pendingAuthJwt_.reset();
+    // A pending instant network belongs to whoever was mid-signup, not to the
+    // session being ended; dropping it here means a later Confirm cannot
+    // register a device against a stale jwt.
+    pendingInstantJwt_.reset();
     TeardownSessionLocked();
     // Explicit logout deliberately severs the device identity: clear the
     // service-persisted key material (TunnelController::Logout) so the next
     // login starts with a fresh identity.
     if (service_.IsConnected()) service_.Logout();
     if (asyncLocalState_) asyncLocalState_->logout([](bool) {});
+    // Before SetAuthState, and not waiting on the async logout above: the auth
+    // handler runs synchronously from here and the window asks IsLoggedIn().
+    loggedIn_.store(false, std::memory_order_release);
+    sessionFailure_.clear();  // belongs to the session that just ended
     SetAuthState(AuthState::LoggedOut);
     LogInfo("sdkhost: logged out");
   } catch (const std::exception& e) {

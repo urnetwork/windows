@@ -82,6 +82,39 @@ MainWindow::MainWindow() {
                  "");
   if (Sdk().IsLoggedIn() && Sdk().apiReady()) account_->LoadReferralInfo();
   connect_->ResyncDrawer();
+
+  // THE MODE NOTICE CHANNEL HAD NO CONSUMER. SdkHost::SetModeNoticeHandler was
+  // never called anywhere in the app, so onModeNotice_ was permanently null and
+  // every notice ever published — the rpc-only banner AND every "there is no
+  // session, and here is why" — went into the void. It was found from the other
+  // end: after RegisterNetworkClient stopped reporting a tunnel-bootstrap
+  // failure as an AUTHENTICATION failure, the replacement signal turned out not
+  // to exist, and a seedphrase sign-in with no service running landed silently
+  // on a home screen that could never connect.
+  //
+  // The window-level snackbar is what this app has. It is transient where a
+  // standing banner would be better, and that is worth doing properly — but a
+  // transient signal beats the nothing that was there.
+  //
+  // Marshalled: SdkHost invokes this with mutex_ HELD on the RefreshModeNotice
+  // path, so touching XAML or calling back into SdkHost inline would deadlock.
+  {
+    auto queue = DispatcherQueue();
+    Sdk().SetModeNoticeHandler([weak = get_weak(), queue](
+                                   urnw::SdkHost::ModeNotice const& notice) {
+      const bool active = notice.active;
+      const bool failed = notice.kind == urnw::SdkHost::ModeNotice::Kind::SessionFailed;
+      auto message = winrt::to_hstring(notice.message);
+      queue.TryEnqueue([weak, active, failed, message] {
+        auto self = weak.get();
+        if (!self || !active || message.empty()) return;
+        self->login().ShowModeNotice(message, failed);
+      });
+    });
+    // Anything that failed BEFORE this handler existed is standing state in
+    // SdkHost (sessionFailure_); this is what replays it.
+    Sdk().RefreshModeNotice();
+  }
 }
 
 MainWindow::~MainWindow() {
@@ -98,6 +131,8 @@ MainWindow::~MainWindow() {
 void MainWindow::SetPresentationActive(bool active) {
   connect_->SetPresentationActive(active);
   developer_->SetPresentationActive(active);
+  // the login carousel's timer: it runs only while the window is on screen
+  login_->SetPresentationActive(active);
 }
 
 // ---- strings -------------------------------------------------------------
@@ -158,6 +193,15 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   urnw::LogInfo("preview-ui: showing the signed-in shell at '{}' with no session",
                 destination);
   ShowHomeRoot();
+
+  // "seedphrase" is a modal, not a destination: show the connect drawer behind
+  // it and raise the sheet. It is the only surface in the app that cannot be
+  // reached any other way — it appears once, right after an account is
+  // created, and creating one on a dev box is exactly what must not happen.
+  if (destination == "seedphrase") {
+    login_->ShowPreviewSeedphraseSheet();
+    return;
+  }
 
   const hstring tag = H(destination);
   for (auto const& item : {ConnectNavItem(), AccountNavItem(), WalletNavItem(),
@@ -442,13 +486,22 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
   // call, and the status line is rewritten on every stats push).
   std::string networkName;
   bool guestMode = false;
+  bool pro = false;
   if (loggedIn) {
     if (auto jwt = Sdk().ParsedJwt()) {
       networkName = jwt->NetworkName;
       guestMode = jwt->GuestMode;
+      pro = jwt->Pro;
     }
   }
   connect_->SetNetworkIdentity(networkName, guestMode);  // re-renders the status
+  // The title-bar avatar + its menu (iOS AccountMenu): same jwt, one more
+  // reader. `showHome`, NOT `loggedIn` — EnterPreviewUi used to reveal the
+  // avatar itself and the very next auth push hid it again, so the one surface
+  // that is signed-in-only was the one surface preview could not show. The
+  // identity stays whatever the jwt says (empty in preview); only the
+  // visibility follows the pinned view.
+  login_->ApplyAccountIdentity(networkName, guestMode, pro, showHome);
   if (loggedIn && !wasVisible) {
     // the drawer just appeared: refresh its state and play the entrance
     connect_->ResyncDrawer();
@@ -545,6 +598,36 @@ void MainWindow::OnSignInWithBittensor(IInspectable const& s, RoutedEventArgs co
 }
 void MainWindow::OnSignInWithSolana(IInspectable const& s, RoutedEventArgs const& e) {
   login_->OnSignInWithSolana(s, e);
+}
+void MainWindow::OnUserAuthChanged(IInspectable const& s, TextChangedEventArgs const& e) {
+  login_->OnUserAuthChanged(s, e);
+}
+void MainWindow::OnSignInWithGoogle(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnSignInWithGoogle(s, e);
+}
+void MainWindow::OnSignInWithSeedphrase(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnSignInWithSeedphrase(s, e);
+}
+void MainWindow::OnSeedphraseChanged(IInspectable const& s, TextChangedEventArgs const& e) {
+  login_->OnSeedphraseChanged(s, e);
+}
+void MainWindow::OnSeedphraseSubmit(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnSeedphraseSubmit(s, e);
+}
+void MainWindow::OnCreateInstantAccount(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnCreateInstantAccount(s, e);
+}
+void MainWindow::OnInstantTermsChanged(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnInstantTermsChanged(s, e);
+}
+void MainWindow::OnCreateInstantSubmit(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnCreateInstantSubmit(s, e);
+}
+void MainWindow::OnChangeNetworkServer(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnChangeNetworkServer(s, e);
+}
+void MainWindow::OnAccountMenu(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnAccountMenu(s, e);
 }
 
 void MainWindow::OnConnectToggle(IInspectable const& s, RoutedEventArgs const& e) {

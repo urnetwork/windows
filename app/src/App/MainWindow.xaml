@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- URnetwork main window. Sign-in flow (initial → password / create / verify /
      reset — macOS Authenticate/** parity), then a NavigationView home with the
      macOS sections: Connect, Account, Wallet, Leaderboard, Support, Settings.
@@ -42,6 +42,31 @@
                        IsHitTestVisible="False" />
         </Grid>
 
+        <!-- The account menu (iOS Shared/Views/AccountMenu.swift): the avatar in
+             the top bar, opening network name / create account (guests) / sign
+             out / share URnetwork.
+
+             It is a SIBLING of AppTitleBar, not a child, and that is
+             load-bearing. SetTitleBar(AppTitleBar) makes that element the drag
+             region, and a drag region swallows pointer input from everything
+             inside it - a button parented there simply never fires. Sitting in
+             the same Grid row beside it keeps the layout and keeps the clicks.
+             The right margin clears the system caption buttons. -->
+        <Button x:Name="AccountMenuButton" Grid.Row="0" Visibility="Collapsed"
+                HorizontalAlignment="Right" VerticalAlignment="Center"
+                Margin="0,0,150,0" Padding="2" Width="32" Height="32"
+                CornerRadius="16" Background="Transparent" BorderThickness="0"
+                Click="OnAccountMenu">
+            <Grid>
+                <!-- Pro gold ring. Android and iOS spend this colour on the Pro
+                     entitlement and on nothing else, so a gold ring here reads
+                     as "this account is Pro" rather than as decoration. -->
+                <Ellipse x:Name="AccountProRing" Width="30" Height="30"
+                         StrokeThickness="2" Visibility="Collapsed" />
+                <muxc:PersonPicture x:Name="AccountAvatar" Width="26" Height="26" />
+            </Grid>
+        </Button>
+
         <!-- Sign-in flow: one step visible at a time (ShowLoginStep).
              FontFamily here is the BODY face for everything inside: font
              properties inherit down the XAML tree, so the bare TextBlocks in
@@ -70,25 +95,84 @@
                      child, so MaxWidth never binds and the column came out about
                      230px wide instead of android's 512. Stretch takes the whole
                      slot, MaxWidth clamps it, and the layout centres the rest. -->
-                <StackPanel x:Name="LoginPanel" Margin="16" Spacing="16"
+                <StackPanel x:Name="LoginPanel" Margin="16" Spacing="12"
                             MaxWidth="512" HorizontalAlignment="Stretch"
                             VerticalAlignment="Center">
+
+                    <!-- The carousel (iOS LoginCarousel). Three brand images
+                         crossfading inside the ur globe silhouette, with the
+                         headline that belongs to each sliding through. This is
+                         what the comment above means by "the carousel above
+                         supplies the headline": without it the top third of the
+                         signed-out screen was empty and the screen carried no
+                         heading at all. Built and animated from code
+                         (LoginCarousel.cpp); this is only its slot.
+
+                         MaxHeight, not Height, and driven from code
+                         (LoginPage::ApplyLoginLayout). At 200 fixed it pushed
+                         Sign in with Seedphrase, Create Instant Account and
+                         Change Network API - the three affordances the owner
+                         asked for by name - off the bottom of the window, at
+                         every size from the ~480x760 default up. The hero may
+                         not cost the screen its purpose: it takes the space
+                         that is left over and shrinks, to zero if it must. -->
+                    <Grid x:Name="LoginCarouselHost" Height="200" MinHeight="0"
+                          Margin="0,0,0,4" />
 
                     <!-- URTextInput: label, then the underlined field. Spacing is 0
                          here because the label style carries android's 8dp gap and
                          the field owns the padding above its underline. -->
                     <StackPanel Spacing="0">
                         <TextBlock x:Name="EmailLabel" Style="{StaticResource UrTextInputLabelStyle}" />
-                        <TextBox x:Name="EmailBox" Style="{StaticResource UrTextInputStyle}" />
+                        <TextBox x:Name="EmailBox" Style="{StaticResource UrTextInputStyle}"
+                                 TextChanged="OnUserAuthChanged" />
                     </StackPanel>
 
-                    <Button x:Name="GetStartedButton"
+                    <!-- Disabled until the field has something in it, as on iOS
+                         and android: an enabled primary button over an empty
+                         field promises an action that cannot happen. -->
+                    <Button x:Name="GetStartedButton" IsEnabled="False"
                             Style="{StaticResource UrPrimaryButtonStyle}"
                             Click="OnGetStarted" />
 
                     <TextBlock x:Name="OrDivider" HorizontalAlignment="Center"
                                FontFamily="{StaticResource UrBodyFontFamily}"
                                Foreground="{StaticResource UrTextMutedBrush}" />
+
+                    <!-- Sign in with Google, through the SYSTEM BROWSER (OAuth
+                         authorization code + PKCE on a loopback redirect; see
+                         GoogleSignIn.h). Starts Collapsed and is shown only when
+                         SdkHost::SsoGoogleEnabled() says BOTH halves are true:
+                         the active network space reports sso_google AND an
+                         OAuth client id was compiled in (Config.h).
+
+                         An earlier note here argued the opposite - that a build
+                         with no client id should still SHOW the button and fail
+                         loudly, because "a silently missing button reads as
+                         windows dropped Google sign-in". It lost. The default
+                         build has no client id, so that reading shipped a
+                         button that was visible and failing for every user of
+                         every default build, which reads worse than an absent
+                         one. GoogleSignIn.h, Config.h and
+                         SdkHost::SignInWithGoogle all already described the
+                         hide; the code now agrees with them. -->
+                    <Button x:Name="GoogleSignInButton" Visibility="Collapsed"
+                            Style="{StaticResource UrSecondaryButtonStyle}"
+                            Click="OnSignInWithGoogle">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <!-- the Google "G", drawn in its four brand colours;
+                                 the mark may not be recoloured -->
+                            <Viewbox Width="18" Height="18" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#4285F4" Data="M23.49,12.27C23.49,11.48 23.42,10.73 23.3,10H12V14.51H18.47C18.18,15.99 17.33,17.24 16.07,18.09V21.09H19.93C22.19,19 23.49,15.92 23.49,12.27Z" />
+                                    <Path Fill="#34A853" Data="M12,24C15.24,24 17.95,22.92 19.93,21.09L16.07,18.09C14.99,18.81 13.62,19.25 12,19.25C8.87,19.25 6.22,17.14 5.27,14.29H1.29V17.38C3.26,21.3 7.31,24 12,24Z" />
+                                    <Path Fill="#FBBC05" Data="M5.27,14.29C5.02,13.57 4.89,12.8 4.89,12C4.89,11.2 5.03,10.43 5.27,9.71V6.62H1.29C0.47,8.24 0,10.06 0,12C0,13.94 0.47,15.76 1.29,17.38L5.27,14.29Z" />
+                                    <Path Fill="#EA4335" Data="M12,4.75C13.77,4.75 15.35,5.36 16.6,6.55L20.02,3.13C17.95,1.19 15.24,0 12,0C7.31,0 3.26,2.7 1.29,6.62L5.27,9.71C6.22,6.86 8.87,4.75 12,4.75Z" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock x:Name="GoogleSignInText" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
 
                     <!-- Wallet sign in through the ur.io/wallet-connect browser bridge
                          (desktop wallets are browser extensions, not deeplink apps). -->
@@ -152,10 +236,48 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- The seedphrase pair is its OWN group, set off from the
+                         SSO/wallet block above by a deliberately larger gap
+                         (16 parent spacing + 16 margin = double) and held
+                         tighter to each other (8). The two belong together:
+                         Create Instant Account mints a seedphrase-only network
+                         and Sign in with Seedphrase is the only way back into
+                         one. Neither carries an icon, matching iOS. -->
+                    <StackPanel Spacing="8" Margin="0,16,0,0">
+                        <Button x:Name="SeedphraseSignInButton"
+                                Style="{StaticResource UrSecondaryButtonStyle}"
+                                Click="OnSignInWithSeedphrase" />
+                        <Button x:Name="InstantAccountButton"
+                                Style="{StaticResource UrSecondaryButtonStyle}"
+                                Click="OnCreateInstantAccount" />
+                    </StackPanel>
+
                     <!-- URInlineErrorText, not an InfoBar -->
                     <TextBlock x:Name="LoginErrorText"
                                Style="{StaticResource UrInlineErrorTextStyle}"
                                Visibility="Collapsed" />
+
+                    <!-- "Change Network API" (iOS NetworkServerSheet) - the very
+                         last thing on the screen, bottom LEFT, small and muted,
+                         and reading as PLAIN TEXT rather than another pill: it
+                         is a developer/fork affordance, not a sign-in option,
+                         and a sixth white pill would read as one. Left edge
+                         lines up with the "Email or phone number" label above.
+
+                         A HyperlinkButton, NOT a TextBlock with a Tapped
+                         handler. It looks the same either way, but a TextBlock
+                         is not focusable, never reaches the tab order and is
+                         announced as static text - the UIA tree showed this
+                         affordance as plain "Text" with no invoke pattern, i.e.
+                         unreachable without a mouse. The styling below (no
+                         padding, muted foreground, body face) is what makes a
+                         real control render as quiet text. -->
+                    <HyperlinkButton x:Name="NetworkServerLink" HorizontalAlignment="Left"
+                                     FontSize="12" Margin="0,8,0,0" Padding="0"
+                                     Background="Transparent" BorderThickness="0"
+                                     FontFamily="{StaticResource UrBodyFontFamily}"
+                                     Foreground="{StaticResource UrTextMutedBrush}"
+                                     Click="OnChangeNetworkServer" />
                 </StackPanel>
 
                 <!-- Password: an existing account signs in -->
@@ -217,6 +339,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <CheckBox x:Name="TermsCheck" MinWidth="0" VerticalAlignment="Top"
+                                  AutomationProperties.LabeledBy="{Binding ElementName=TermsText}"
                                   Checked="OnTermsChanged" Unchecked="OnTermsChanged" />
                         <!-- inlines with tappable terms/privacy links, set in code -->
                         <TextBlock x:Name="TermsText" Grid.Column="1" TextWrapping="Wrap"
@@ -254,6 +377,80 @@
                                 Click="OnResendCode" />
                     </StackPanel>
                     <muxc:InfoBar x:Name="VerifyInfo" IsOpen="False" IsClosable="False" />
+                </StackPanel>
+
+                <!-- Seedphrase: sign in with a 12- or 24-word phrase (macOS
+                     LoginSeedphraseView). The field is a multi-line monospace
+                     box because a 24-word phrase does not fit on one line and
+                     people paste it with newlines in it.
+
+                     IsSpellCheckEnabled / IsTextPredictionEnabled are OFF on
+                     purpose: autocorrect on a BIP-39 word list silently
+                     rewrites the credential, and a prediction service would be
+                     handed a live seedphrase. -->
+                <StackPanel x:Name="SeedphrasePanel" Margin="24" Spacing="12"
+                            MaxWidth="400" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <Button x:Name="SeedphraseBackButton" Tag="initial" Click="OnLoginBack" />
+                    <TextBlock x:Name="SeedphraseHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
+                    <TextBox x:Name="SeedphraseBox" Style="{StaticResource UrTextInputStyle}"
+                             AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120"
+                             FontFamily="Consolas"
+                             IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
+                             TextChanged="OnSeedphraseChanged" />
+                    <TextBlock x:Name="SeedphraseWordCountText"
+                               Style="{StaticResource UrSupportingTextStyle}"
+                               TextWrapping="Wrap" />
+                    <Button x:Name="SeedphraseSubmitButton" IsEnabled="False"
+                            Style="{StaticResource AccentButtonStyle}"
+                            HorizontalAlignment="Stretch" Click="OnSeedphraseSubmit" />
+                    <TextBlock x:Name="SeedphraseErrorText"
+                               Style="{StaticResource UrInlineErrorTextStyle}"
+                               Visibility="Collapsed" />
+                </StackPanel>
+
+                <!-- Instant account: terms consent and one button (macOS
+                     CreateNetworkInstantView). The seedphrase the server
+                     returns is shown in a sheet before the device is
+                     registered - see SeedphraseDisplaySheet. -->
+                <StackPanel x:Name="InstantPanel" Margin="24" Spacing="12"
+                            MaxWidth="400" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <Button x:Name="InstantBackButton" Tag="initial" Click="OnLoginBack" />
+                    <TextBlock x:Name="InstantHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="InstantExplanationText" TextWrapping="Wrap"
+                               Foreground="{StaticResource UrTextMutedBrush}" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <!-- A bare CheckBox with no content has NO accessible name -
+                             a screen reader announces "checkbox" and nothing else -
+                             so LabeledBy borrows the sentence beside it, the same
+                             way the connect drawer's toggles do.
+
+                             LabeledBy ALONE is not the whole fix: the label stays
+                             in the control view with the identical string, so the
+                             sentence was announced twice. urnw::PairTermsLabel
+                             (called from LoginPage::ApplyStrings) takes the label
+                             out of the control view and puts its two Hyperlinks
+                             back individually - they are the only keyboard route
+                             to the terms and the privacy policy. -->
+                        <CheckBox x:Name="InstantTermsCheck" MinWidth="0" VerticalAlignment="Top"
+                                  AutomationProperties.LabeledBy="{Binding ElementName=InstantTermsText}"
+                                  Checked="OnInstantTermsChanged" Unchecked="OnInstantTermsChanged" />
+                        <!-- inlines with tappable terms/privacy links, set in code -->
+                        <TextBlock x:Name="InstantTermsText" Grid.Column="1" TextWrapping="Wrap"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                    </Grid>
+                    <Button x:Name="InstantCreateButton" IsEnabled="False"
+                            Style="{StaticResource AccentButtonStyle}"
+                            HorizontalAlignment="Stretch" Click="OnCreateInstantSubmit" />
+                    <TextBlock x:Name="InstantErrorText"
+                               Style="{StaticResource UrInlineErrorTextStyle}"
+                               Visibility="Collapsed" />
                 </StackPanel>
 
                 <!-- Password reset: send the reset link -->
@@ -996,5 +1193,14 @@
         <muxc:InfoBar x:Name="ModeNoticeBar" Grid.Row="2" IsOpen="False"
                       IsClosable="False" Margin="12,0,12,12"
                       FontFamily="{StaticResource UrBodyFontFamily}" />
+        <!-- Acknowledgements that belong to the window rather than to a
+             destination - today the account menu's "referral link copied". A
+             copy with no visible result is indistinguishable from a copy that
+             did not happen, which is why this exists at all. It floats over
+             whichever panel is showing and dismisses itself (kit::Snackbar). -->
+        <muxc:InfoBar x:Name="AccountSnackbar" Grid.Row="1"
+                      Style="{StaticResource UrSnackbarStyle}"
+                      VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                      Margin="24" MaxWidth="480" IsOpen="False" />
     </Grid>
 </Window>

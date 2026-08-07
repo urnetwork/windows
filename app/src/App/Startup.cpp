@@ -302,9 +302,13 @@ std::string PreviewUiDestination() {
   // the NavigationView item tags in MainWindow.xaml. An unknown tag must not
   // silently show the wrong screen and let someone verify the wrong thing.
   auto normalize = [](std::wstring_view tag) -> std::string {
+    // The NavigationView item tags, plus "seedphrase": that one is not a
+    // destination but a MODAL, and it is the only surface in the app that
+    // cannot otherwise be looked at without creating a real account, because
+    // it appears exactly once, immediately after one is created.
     static constexpr std::wstring_view kKnown[] = {
-        L"connect", L"account",  L"wallet",   L"leaderboard",
-        L"support", L"settings", L"developer"};
+        L"connect",  L"account",  L"wallet",     L"leaderboard",
+        L"support",  L"settings", L"developer",  L"seedphrase"};
     if (tag.empty()) return "connect";
     for (auto const& known : kKnown) {
       if (tag == known) return Narrow(std::wstring{tag});

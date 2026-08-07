@@ -1,4 +1,4 @@
-// SdkHost is the app's DeviceManager equivalent: it owns the NetworkSpace, Api,
+﻿// SdkHost is the app's DeviceManager equivalent: it owns the NetworkSpace, Api,
 // LocalState, and the DeviceRemote, and coordinates the service to bring up the
 // tunnel. Auth results and tunnel/connection state are surfaced to the UI via
 // handlers (invoked on background threads; the UI marshals to its thread).
@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "GoogleSignIn.h"
 #include "Sdk.h"
 #include "ServiceClient.h"
 #include "WalletConnect.h"
@@ -30,6 +31,12 @@ struct AuthResult {
   // auth is retained (see CreateNetwork), and the UI routes to the
   // create-network step (name + terms, no password).
   bool wallet_needs_network = false;
+  // The same situation for an SSO identity (Google): the id token is retained
+  // (see CreateNetwork{useAuthJwt}) and the UI routes to the same step. Kept
+  // SEPARATE from wallet_needs_network rather than folded into it, because the
+  // create step has to know which credential it is finishing — the two write
+  // different fields of NetworkCreateArgs.
+  bool auth_needs_network = false;
 };
 
 // Outcome of the authLogin account discovery (macOS LoginInitialViewModel
@@ -61,6 +68,9 @@ struct CreateNetworkParams {
   // create with the retained wallet auth from the wallet sign-in instead of
   // user_auth + password
   bool useWalletAuth = false;
+  // create with the retained Google id token from the SSO sign-in instead of
+  // user_auth + password (SdkHost::HasPendingAuthJwt)
+  bool useAuthJwt = false;
 };
 
 // Snapshot of live connection / throughput / provide stats. Pushed to the UI on
@@ -333,6 +343,110 @@ class SdkHost {
 
   // Password reset: emails a reset link to the user auth.
   void SendPasswordResetLink(const std::string& userAuth, std::function<void(bool ok)> done);
+
+  // ---- seedphrase ----------------------------------------------------------
+  // A seedphrase is a CREDENTIAL with no recovery path. What is true of it in
+  // this app, stated precisely — the previous wording here ("the only copy the
+  // app ever holds is the one the display sheet is rendering") was NOT true,
+  // and a false claim in a header is worse than no claim:
+  //
+  //   * Nothing logs one. Canary-tested across the app root: zero hits.
+  //   * Nothing persists one. The only outbound copies are the SDK request
+  //     body and, when the user asks for it, the clipboard — and that copy is
+  //     excluded from Clipboard History and from the cloud clipboard
+  //     (SeedphraseDisplaySheet::CopyToClipboard).
+  //   * The in-memory copies, and what happens to each:
+  //       - SeedphraseDisplaySheet::seedphrase_ — overwritten and cleared on
+  //         confirm.
+  //       - the by-value parameter of LoginPage::ShowSeedphraseSheet (a
+  //         coroutine frame) and the InstantAccount captured by the create
+  //         callback — overwritten and cleared once the sheet is done.
+  //       - LoginPage's SeedphraseBox on the sign-in step — emptied on submit
+  //         and on every reset of the flow. It is UIA-readable while it holds
+  //         anything, which is why it is not left populated.
+  //       - the SeedWords() vector and the 24 word-grid TextBlock texts.
+  //         These are NOT zeroed and CANNOT be: winrt::hstring is immutable
+  //         and refcounted, and XAML keeps its own copies inside the text
+  //         layout. They die with the dialog's visual tree, whenever the
+  //         allocator gets to them.
+  //
+  //   So: zeroed wherever zeroing is possible, and honest about where it is
+  //   not. Do not restore the stronger claim.
+
+  // Sign in with a 12- or 24-word seedphrase (macOS LoginSeedphraseView
+  // parity): authLogin{seedphrase}. `seedphrase` is normalized here (lowercase,
+  // trimmed, single-spaced) exactly as the other clients do, so a pasted phrase
+  // with newlines or double spaces works.
+  void LoginWithSeedphrase(const std::string& seedphrase,
+                           std::function<void(AuthResult)> done);
+
+  // Instant account (macOS CreateNetworkInstant parity): networkCreate{terms}
+  // with NO user auth, password, auth jwt or wallet auth, which is what makes
+  // the server mint a network secured only by a seedphrase and return it.
+  //
+  // Deliberately two steps. The seedphrase is shown exactly once, and the
+  // device is not registered until the user confirms they saved it, so
+  // dismissing the sheet cannot leave behind a signed-in account whose only
+  // credential the user never read. Confirm or Discard must follow a successful
+  // Create; the pending jwt is dropped either way.
+  struct InstantAccount {
+    bool ok = false;
+    std::string error;
+    // shown once by the display sheet; never logged, never persisted here
+    std::string seedphrase;
+  };
+  void CreateInstantAccount(std::function<void(InstantAccount)> done);
+  // Register this device under the instant network. Fails with a clear error if
+  // no instant account is pending.
+  void ConfirmInstantAccount(std::function<void(AuthResult)> done);
+  // Drop the pending instant network jwt without registering (sheet dismissed).
+  void DiscardInstantAccount();
+
+  // ---- Google SSO ----------------------------------------------------------
+  // Whether this build can offer "Sign in with Google" at all: the active
+  // network space says the server supports it AND an OAuth client id was
+  // compiled in (urnw::config::kGoogleOAuthClientId). With no client id there
+  // is no flow to run, so the button is HIDDEN rather than shown-and-broken.
+  bool SsoGoogleEnabled();
+  // OAuth 2.0 authorization-code + PKCE through the SYSTEM BROWSER, with a
+  // loopback redirect (RFC 8252). No native SSO SDK, no embedded webview. The
+  // resulting Google id_token goes to authLogin{auth_jwt_type:"google"}; a
+  // Google identity with no network yet routes to the create-network step the
+  // same way a wallet does.
+  void SignInWithGoogle(std::function<void(AuthResult)> done);
+  // A Google identity authenticated but has no network: the id token is
+  // retained for CreateNetwork (name + terms, no password), like a wallet.
+  bool HasPendingAuthJwt();
+
+  // ---- network server (iOS NetworkServerSheet parity) ----------------------
+  // Which network API this client talks to. On a fork this is the difference
+  // between the official ur.network and a self-hosted deployment.
+  struct NetworkServer {
+    std::string hostName;
+    std::string apiUrl;      // live, derived or overridden
+    std::string connectUrl;  // live platform (connect) url
+    // the EXPLICIT overrides in force, or empty when the urls are derived
+    std::string configuredApiUrl;
+    std::string configuredConnectUrl;
+    // What "the default network" means for THIS process: normally the
+    // compiled-in ids::kNetworkSpaceHostName, but URNETWORK_NETWORK_HOST
+    // when that is set. The sheet's "Use default network" hardcoded
+    // "ur.network", so pressing it in a test-network session silently moved
+    // the client to PRODUCTION — the one place a mistake is unrecoverable.
+    std::string defaultHostName;
+    bool managerAvailable = false;
+  };
+  NetworkServer CurrentNetworkServer();
+  // Point the client at `hostName`, with optional explicit api/connect url
+  // overrides (empty = derive from the host). Mirrors iOS
+  // DeviceManager.applyNetworkSpace / android NetworkServerSelector.
+  //
+  // This changes which LocalState — and so which stored jwt — is in force, so
+  // it tears the live session down and re-derives Api/LocalState. It is offered
+  // from the SIGNED-OUT screen only, matching iOS. Returns false if the space
+  // manager is unavailable or the update failed.
+  bool ApplyNetworkServer(const std::string& hostName, const std::string& apiUrl,
+                          const std::string& connectUrl);
 
   // Debounced-by-the-caller network name availability check, through the SDK's
   // NetworkNameValidationViewController. done(ok, available): ok=false means
@@ -650,6 +764,10 @@ class SdkHost {
   // the chain's verifier expects (base64 for SOL, hex for TAO).
   void AuthLoginWithWallet(const std::string& address, const std::string& signature,
                            const std::string& message, WalletConnect::Provider provider);
+  // The browser returned a Google id token: authLogin{auth_jwt_type:"google"}.
+  // An identity with no network yet is retained in pendingAuthJwt_ and the UI
+  // routes to the create-network step, exactly as the wallet path does.
+  void AuthLoginWithGoogle(const std::string& idToken, std::function<void(AuthResult)> done);
   // Bring up the tunnel (service) and the controlling DeviceRemote.
   bool BootstrapSession();
   void SetAuthState(AuthState s, const std::string& error = {});
@@ -773,6 +891,13 @@ class SdkHost {
   // both are cleared whenever the other starts.
   std::function<void(bool, std::string, std::string, std::string)> walletSignDone_;
   std::string walletSignMessage_;
+  // the instant network's jwt, held between CreateInstantAccount and
+  // ConfirmInstantAccount so the seedphrase is read before the session exists
+  std::optional<std::string> pendingInstantJwt_;
+  // a Google id token whose identity has no network yet, held for the
+  // create-network step (the auth-jwt analogue of pendingWalletAuth_)
+  std::optional<std::string> pendingAuthJwt_;
+  GoogleSignIn google_;
   // the signed wallet auth of a wallet that has no network yet, held for the
   // create-network step (cleared on success, logout, or a new wallet sign-in)
   std::optional<urnet::WalletAuthArgs> pendingWalletAuth_;
@@ -792,12 +917,21 @@ class SdkHost {
   // ModeNoticeHandlerCopy(), never directly.
   mutable std::mutex noticeMutex_;
   ModeNoticeHandler onModeNotice_;
+  // sessionFailure_ is declared above with the field it belongs to. P2 and P5
+  // arrived at the same design independently -- a bootstrap failure is standing
+  // state, not an event, because it happens before any window exists to receive
+  // it -- and the merge briefly carried both declarations.
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;
   LocationsHandler onLocations_;
   PeersHandler onPeers_;
   RemoteChangedHandler onRemoteChanged_;
   AuthState authState_ = AuthState::LoggedOut;
+  // "Is there a stored device session?" — cached so IsLoggedIn() does not have
+  // to take mutex_, which on a resume meant waiting out the whole tunnel
+  // bootstrap before the main window could be created. Written wherever the
+  // stored client jwt changes; see IsLoggedIn().
+  std::atomic<bool> loggedIn_{false};
 };
 
 }  // namespace urnw

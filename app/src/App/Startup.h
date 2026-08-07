@@ -1,4 +1,4 @@
-// Startup diagnostics for the tray app — the code that runs before anything
+﻿// Startup diagnostics for the tray app — the code that runs before anything
 // else, so that a launch which produces no window still produces evidence.
 //
 // "I opened URnetwork.exe and nothing happened" has at least four causes that
@@ -95,6 +95,11 @@ bool WantsDiagnose();
 //                                           raises a synthetic rpc-only mode
 //                                           notice, which no preview run can
 //                                           produce on its own)
+//   URnetwork.exe --preview-ui=seedphrase  the seedphrase display sheet, over
+//                                          the connect drawer, with the BIP-39
+//                                          all-"abandon" TEST VECTOR - a phrase
+//                                          published in the spec itself, which
+//                                          secures nothing anywhere
 //
 // or set URNETWORK_PREVIEW_UI to the same tag. The tags are the NavigationView
 // item tags in MainWindow.xaml; an unknown one falls back to connect and says so

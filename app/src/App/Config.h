@@ -35,4 +35,33 @@ inline constexpr const char* kWalletConnectProjectId =
 inline constexpr const char* kWalletConnectProjectId = "";
 #endif
 
+// Google OAuth client — a "Desktop app" client from the URnetwork Google Cloud
+// project, used by the system-browser loopback flow in GoogleSignIn.cpp.
+//
+// Empty is the default and is NOT a broken state: GoogleSignIn::Configured()
+// returns false, the network space reports sso_google=false, and the login
+// screen HIDES the Google button rather than offering one that cannot work.
+// A build that wants the button injects both on the command line, the same way
+// the WalletConnect project id is injected:
+//   msbuild ... /p:UrnGoogleOAuthClientId=<id>.apps.googleusercontent.com
+//               /p:UrnGoogleOAuthClientSecret=<secret>
+//
+// The "secret" of a Google Desktop client is not confidential — it ships inside
+// every copy of the binary and Google documents it as such. PKCE (RFC 7636) is
+// what actually binds an authorization code to the process that asked for it,
+// and GoogleSignIn always sends a code challenge.
+#if defined(URN_GOOGLE_OAUTH_CLIENT_ID_RAW)
+inline constexpr const char* kGoogleOAuthClientId =
+    URN_CONFIG_STR(URN_GOOGLE_OAUTH_CLIENT_ID_RAW);
+#else
+inline constexpr const char* kGoogleOAuthClientId = "";
+#endif
+
+#if defined(URN_GOOGLE_OAUTH_CLIENT_SECRET_RAW)
+inline constexpr const char* kGoogleOAuthClientSecret =
+    URN_CONFIG_STR(URN_GOOGLE_OAUTH_CLIENT_SECRET_RAW);
+#else
+inline constexpr const char* kGoogleOAuthClientSecret = "";
+#endif
+
 }  // namespace urnw::config
