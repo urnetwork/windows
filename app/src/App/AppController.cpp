@@ -16,6 +16,7 @@
 #include "MainWindow.xaml.h"
 #include "Startup.h"
 #include "Strings.h"
+#include "WindowShell.h"
 
 using namespace winrt;
 using namespace winrt::Microsoft::UI::Xaml;
@@ -139,6 +140,7 @@ void AppController::Start() {
 
 void AppController::Shutdown() {
   LogInfo("app: shutdown requested (tray quit)");
+  shell::SaveWindowPlacement(windowHwnd_);  // ...and quitting is the other
   quitting_ = true;  // let the window's Closing handler close instead of hiding
   tray_.Destroy();
   if (window_) window_.Close();
@@ -233,7 +235,12 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
     if (auto native = window_.try_as<::IWindowNative>()) {
       HWND hwnd = nullptr;
       native->get_WindowHandle(&hwnd);
+      windowHwnd_ = hwnd;
       LogInfo("app: main window created (hwnd {})", reinterpret_cast<uintptr_t>(hwnd));
+      // The native shell: Mica (or the solid fallback), brand caption buttons,
+      // the compact default size and the saved placement. Before this the window
+      // was never sized at all and opened filling the whole work area.
+      shell::ApplyNativeShell(window_, hwnd);
       auto windowId = winrt::Microsoft::UI::GetWindowIdFromWindow(hwnd);
       auto appWindow = winrt::Microsoft::UI::Windowing::AppWindow::GetFromWindowId(windowId);
       appWindow.Closing(
@@ -304,6 +311,9 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
 }
 
 void AppController::HideWindow() {
+  // hiding to the tray is one of the two ways this window goes away; record
+  // where the user left it before it does
+  shell::SaveWindowPlacement(windowHwnd_);
   windowShown_ = false;
   windowActivated_ = false;
   ReconcileWindowPresentation();

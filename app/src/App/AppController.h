@@ -61,6 +61,9 @@ class AppController {
   TrayIcon tray_;
   winrt::Microsoft::UI::Dispatching::DispatcherQueue uiThread_{nullptr};
   winrt::Microsoft::UI::Xaml::Window window_{nullptr};
+  // the window's HWND, held so the native shell can read and save its
+  // placement without re-deriving it from the projection each time
+  HWND windowHwnd_ = nullptr;
 
   AuthState authState_ = AuthState::LoggedOut;
   std::string authError_;

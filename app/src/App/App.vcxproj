@@ -248,6 +248,7 @@
     <ClCompile Include="ServiceClient.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
     <ClCompile Include="UrComponents.cpp" />
+    <ClCompile Include="WindowShell.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -275,6 +276,7 @@
     <ClInclude Include="UrColors.h" />
     <ClInclude Include="UrComponents.h" />
     <ClInclude Include="WalletConnect.h" />
+    <ClInclude Include="WindowShell.h" />
     <ClInclude Include="ServiceClient.h" />
     <ClInclude Include="TrayIcon.h" />
     <ClInclude Include="resource.h" />

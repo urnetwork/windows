@@ -20,14 +20,23 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- the wordmark. Android sets its top-bar title in PP NeueBit Bold at
-             24sp (Type.kt TopBarTitleTextStyle); this line is the desktop
-             equivalent, and was rendering in Segoe UI Semibold. The file carries
-             only a Bold face, so the weight is stated rather than left to be
+        <!-- The title bar. ExtendsContentIntoTitleBar puts the window's content
+             under the system caption buttons; SetTitleBar(AppTitleBar) is what
+             makes this strip the DRAG region, which is the difference between a
+             wordmark drawn where a title bar would be and an actual title bar.
+             Height 40 leaves the caption buttons (32 tall, drawn by the system
+             at the top right) clear of the wordmark's descenders.
+
+             The wordmark itself: android sets its top-bar title in PP NeueBit
+             Bold at 24sp (Type.kt TopBarTitleTextStyle). The file carries only a
+             Bold face, so the weight is stated rather than left to be
              synthesised. -->
-        <TextBlock x:Name="BrandText" Grid.Row="0" Margin="16,12"
-                   FontFamily="{StaticResource UrWordmarkFontFamily}"
-                   FontSize="24" FontWeight="Bold" />
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Background="Transparent">
+            <TextBlock x:Name="BrandText" Margin="16,0" VerticalAlignment="Center"
+                       FontFamily="{StaticResource UrWordmarkFontFamily}"
+                       FontSize="24" FontWeight="Bold"
+                       IsHitTestVisible="False" />
+        </Grid>
 
         <!-- Sign-in flow: one step visible at a time (ShowLoginStep).
              FontFamily here is the BODY face for everything inside: font

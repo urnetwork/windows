@@ -22,7 +22,13 @@ namespace winrt::URnetwork::implementation {
 
 MainWindow::MainWindow() {
   InitializeComponent();
+  // The window chrome: content extends under the system caption buttons, and
+  // AppTitleBar is the DRAG region. Naming a drag region is what separates an
+  // actual title bar from a wordmark drawn where one would be. The rest of the
+  // native shell (backdrop, caption-button colours, size, placement) needs the
+  // HWND and is applied by urnw::shell::ApplyNativeShell from AppController.
   ExtendsContentIntoTitleBar(true);
+  SetTitleBar(AppTitleBar());
 
   // Each destination owns its own translation unit; the window keeps navigation,
   // the auth + balance relays, and the shared sheet guard. Constructed before
