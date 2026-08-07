@@ -221,6 +221,44 @@ inline bool operator==(const AppRule& a, const AppRule& b) {
 }
 inline bool operator!=(const AppRule& a, const AppRule& b) { return !(a == b); }
 
+// ---- reliability / developer surface ---------------------------------------
+// One read of everything the developer screen shows, taken under a single lock
+// so the four getters cannot disagree with each other about which session they
+// came from (iOS ReliabilityStore.refresh parity: one hop, one publish).
+struct ReliabilitySnapshot {
+  // there is a live DeviceRemote at all
+  bool haveDevice = false;
+  // the service rpc is attached (device_->getRemoteConnected())
+  bool remoteConnected = false;
+  // NULLOPT MEANS "NOTHING IS IN FORCE", NOT "EVERYTHING IS OFF".
+  //
+  // getReliabilitySettings() returns null when the device has no multi client
+  // to override — the reliability stack is running on its own defaults. A
+  // zero-initialised ReliabilitySettings is a DIFFERENT thing: writing one back
+  // installs an all-zero override that disables the whole stack, and the
+  // sync re-apply latches it. This bug has shipped once already. Never
+  // substitute a default-constructed struct for a nullopt read on the WRITE
+  // path; the read path may substitute one for DISPLAY only.
+  std::optional<urnet::ReliabilitySettings> settings;
+  std::optional<urnet::ReliabilityMetrics> metrics;
+  std::vector<urnet::Exit> exits;
+  std::vector<urnet::DestinationExit> destinationExits;
+};
+
+// The void actions on the reliability bridge. Every one of them silently
+// no-ops when there is no multi client, and none returns anything the C ABI
+// preserves — DeviceLocal::migrateExit and probeAllExits return an int64 count,
+// the DeviceRemote forms return void, so the count never crosses — and a caller
+// can therefore report what it ASKED FOR and nothing more.
+enum class ReliabilityAction {
+  ResetMetrics,
+  ResetSettings,
+  ProbeAllExits,
+  SimulateNetworkChange,
+  Sync,
+  MigrateExit,  // the only one that reads exitClientId
+};
+
 class SdkHost {
  public:
   using AuthStateHandler = std::function<void(AuthState, const std::string& error)>;
@@ -444,6 +482,35 @@ class SdkHost {
   void RemoveAppRule(const std::string& imagePath);
   std::vector<AppRule> CurrentAppRules();
 
+  // ---- reliability / developer surface -------------------------------------
+  // All three take mutex_ and issue synchronous RPCs to the service, so they
+  // BLOCK. Never call them from the UI thread; the developer page runs them on
+  // a worker and marshals the result back. Taking mutex_ is also what
+  // serialises them against each other, which the read-modify-write below
+  // depends on (iOS gets the same property from its serial bridgeQueue).
+  ReliabilitySnapshot ReadReliability();
+
+  // Read-modify-write of the WHOLE ReliabilitySettings struct from a FRESH
+  // read — never from a cached snapshot, because every field the caller does
+  // not touch is written back verbatim and a stale snapshot would revert
+  // whatever changed underneath it.
+  //
+  // A NULLOPT fresh read is a NO-OP, not a write of a zeroed struct: see
+  // ReliabilitySnapshot::settings. Returns the settings the device actually
+  // applied (read back after the write), or nullopt if there was nothing to
+  // write to.
+  std::optional<urnet::ReliabilitySettings> UpdateReliabilitySettings(
+      const std::function<void(urnet::ReliabilitySettings&)>& mutate);
+
+  // Returns whether the call was actually ISSUED to the device — false when
+  // there is no session, or when the rpc threw. NOT whether it had an effect:
+  // the counts these return Go-side do not survive the C ABI, so "issued" is
+  // the strongest true statement available and the view must not upgrade it to
+  // "done". A void version of this let the developer screen render
+  // "Requested: sync" on a screen that simultaneously said there was no
+  // session.
+  bool RunReliabilityAction(ReliabilityAction action, const std::string& exitClientId = {});
+
   // Accessors for the UI/view models to drive the SDK directly.
   bool apiReady() { return api_.has_value(); }
   urnet::Api& api() { return *api_; }
@@ -518,7 +585,24 @@ class SdkHost {
     std::string message;
   };
   using ModeNoticeHandler = std::function<void(const ModeNotice&)>;
-  void SetModeNoticeHandler(ModeNoticeHandler h) { onModeNotice_ = std::move(h); }
+  // Guarded by its OWN small lock, not mutex_, for two reasons that pull in
+  // opposite directions:
+  //
+  //   - It cannot be unguarded. The bootstrap thread calls PublishSessionFailure
+  //     OUTSIDE mutex_ (SdkHost::Initialize), so it reads and invokes this
+  //     std::function while the view is assigning it from the UI thread. That is
+  //     a concurrent write and copy of a std::function: undefined behaviour, and
+  //     the trigger is the default dev-box state — signed in, service not
+  //     running, so the bootstrap fails fast — plus a tray click at startup.
+  //   - It must not be mutex_. The bootstrap thread holds mutex_ across the
+  //     WHOLE of BootstrapSession, which is several synchronous service rpcs; a
+  //     setter that waited on it would block the UI thread inside MainWindow's
+  //     constructor and the first tray click would produce a frozen window.
+  //
+  // noticeMutex_ is therefore held only for the assignment and for copying the
+  // handler out before it is invoked — never across the invocation, and never
+  // together with mutex_ in the other order.
+  void SetModeNoticeHandler(ModeNoticeHandler h);
   // Re-push the current notice. Safe at any time, including from an ordinary
   // logged-out launch: with no session it publishes an INACTIVE notice. (It
   // used to derive purely from sessionMode_, whose default is RpcOnly, so
@@ -627,6 +711,9 @@ class SdkHost {
   // Push a "there is no session, and here is why" notice. The user stays
   // signed in; see ModeNotice::Kind::SessionFailed.
   void PublishSessionFailure(const std::string& why);
+  // A copy of the handler, taken under noticeMutex_. Invoke the COPY, so the
+  // lock is never held across the call.
+  ModeNoticeHandler ModeNoticeHandlerCopy() const;
 
   ServiceClient service_;
   // Set once in Initialize() from URNETWORK_RPC_ONLY; never changes after.
@@ -637,6 +724,23 @@ class SdkHost {
   // unreadable mode. With no session there is certainly no tunnel, so a stray
   // read before or after one must not be able to render "connected".
   std::atomic<proto::StartMode> sessionMode_{proto::StartMode::RpcOnly};
+  // The STANDING reason there is no session, in words a user can act on, or
+  // empty when there is nothing to report. Distinct from bootstrapError_, which
+  // is per-attempt scratch: this survives the attempt so that a view created
+  // LATER can still be told.
+  //
+  // It has to. The bootstrap runs on a background thread from Initialize(),
+  // which is well before the first tray click — and the main window, and
+  // therefore the notice handler, does not exist until that click. Observed
+  // live: bootstrap failed at 18:01:58 with the service unreachable,
+  // PublishSessionFailure found no handler bound and dropped the message, and
+  // the window created 25 seconds later published an EMPTY notice from
+  // RefreshModeNotice() and showed the user nothing at all. That is exactly the
+  // "the app can fail to reach the service and say nothing on screen" this
+  // notice channel exists to prevent, reintroduced by the ordering.
+  //
+  // Guarded by mutex_. Cleared on a successful bootstrap and on teardown.
+  std::string sessionFailure_;
   // Why the last BootstrapSession() returned false, in words a user can act on.
   // Set on every failure path and read by both callers; guarded by mutex_, which
   // BootstrapSession's callers already hold.
@@ -659,6 +763,10 @@ class SdkHost {
   BlockActionsHandler onBlockActions_;
   BlockStatsHandler onBlockStats_;
   SplitRulesHandler onSplitRules_;
+  // See SetModeNoticeHandler: this one is written from the UI thread and read
+  // from the bootstrap thread, so it has its own lock. Read it through
+  // ModeNoticeHandlerCopy(), never directly.
+  mutable std::mutex noticeMutex_;
   ModeNoticeHandler onModeNotice_;
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;

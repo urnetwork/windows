@@ -303,7 +303,8 @@ std::string PreviewUiDestination() {
   // silently show the wrong screen and let someone verify the wrong thing.
   auto normalize = [](std::wstring_view tag) -> std::string {
     static constexpr std::wstring_view kKnown[] = {
-        L"connect", L"account", L"wallet", L"leaderboard", L"support", L"settings"};
+        L"connect", L"account",  L"wallet",   L"leaderboard",
+        L"support", L"settings", L"developer"};
     if (tag.empty()) return "connect";
     for (auto const& known : kKnown) {
       if (tag == known) return Narrow(std::wstring{tag});

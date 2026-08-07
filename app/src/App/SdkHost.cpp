@@ -6,6 +6,7 @@
 #include "SdkHost.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cwctype>
 #include <fstream>
 #include <random>
@@ -870,9 +871,20 @@ static void UrstRemoveAppRule(urnet::BlockActionOverrideList& list,
 // what keeps every `state == TunnelState::Up` test in the UI reading false,
 // which is the whole reason RpcOnly is a distinct state and not a flag beside
 // Up.
+void SdkHost::SetModeNoticeHandler(ModeNoticeHandler h) {
+  std::scoped_lock lock(noticeMutex_);
+  onModeNotice_ = std::move(h);
+}
+
+SdkHost::ModeNoticeHandler SdkHost::ModeNoticeHandlerCopy() const {
+  std::scoped_lock lock(noticeMutex_);
+  return onModeNotice_;
+}
+
 // The persistent "this app is not carrying traffic" notice.
 void SdkHost::PublishModeNotice() {
-  if (!onModeNotice_) return;
+  auto handler = ModeNoticeHandlerCopy();
+  if (!handler) return;
   // No session, nothing to say about one. This gate is load-bearing rather
   // than defensive: the notice derives from sessionMode_, whose default is
   // RpcOnly (the mode that claims less, so a stray read cannot render as
@@ -881,7 +893,18 @@ void SdkHost::PublishModeNotice() {
   // RefreshModeNotice() is public and is exactly what a view calls when it is
   // constructed, which makes that the common path, not an edge case.
   if (!device_) {
-    onModeNotice_(ModeNotice{});
+    // ...but "no device" is not always "nothing to say". If the last bootstrap
+    // FAILED, that reason stands until a session exists, and it must survive
+    // long enough for a view that did not exist at the time to receive it.
+    if (!sessionFailure_.empty()) {
+      ModeNotice failed;
+      failed.active = true;
+      failed.kind = ModeNotice::Kind::SessionFailed;
+      failed.message = sessionFailure_;
+      handler(failed);
+      return;
+    }
+    handler(ModeNotice{});
     return;
   }
   ModeNotice n;
@@ -897,22 +920,42 @@ void SdkHost::PublishModeNotice() {
             : "Developer mode: rpc-only session. Nothing is connected and no "
               "traffic is carried.";
   }
-  onModeNotice_(n);
+  handler(n);
 }
 
 // "There is no session, and here is why." The user remains SIGNED IN: this is
 // a transport/service failure, not an authentication one, and routing them to
 // the sign-in screen would destroy a perfectly good session.
 void SdkHost::PublishSessionFailure(const std::string& why) {
-  if (!onModeNotice_) return;
+  // RECORD FIRST, PUBLISH SECOND. The publish is best-effort — on the startup
+  // path there is usually no handler yet, because the window is not built until
+  // the first tray click — so the record is what actually reaches the user, via
+  // RefreshModeNotice() when the view is finally constructed.
+  // The reasons are written as clause fragments ("the URnetwork service is not
+  // running or cannot be reached"), because until now nothing ever RENDERED
+  // one — the notice was dropped before it reached a view. Glued naively they
+  // produce "...cannot be reached Nothing is connected.", which is what
+  // actually appeared on screen the first time this was made visible. Make the
+  // fragment a sentence: capitalise it, and give it a full stop if it has no
+  // terminal punctuation of its own.
+  if (why.empty()) {
+    sessionFailure_ =
+        "Could not start a session with the URnetwork service. Nothing is connected.";
+  } else {
+    std::string sentence = why;
+    sentence[0] = static_cast<char>(
+        std::toupper(static_cast<unsigned char>(sentence[0])));
+    const char last = sentence.back();
+    if (last != '.' && last != '!' && last != '?') sentence += '.';
+    sessionFailure_ = sentence + " Nothing is connected.";
+  }
+  auto handler = ModeNoticeHandlerCopy();
+  if (!handler) return;
   ModeNotice n;
   n.active = true;
   n.kind = ModeNotice::Kind::SessionFailed;
-  n.message = why.empty()
-                  ? "Could not start a session with the URnetwork service. "
-                    "Nothing is connected."
-                  : why + " Nothing is connected.";
-  onModeNotice_(n);
+  n.message = sessionFailure_;
+  handler(n);
 }
 
 proto::TunnelStatus SdkHost::SessionStatus(bool haveLocation) const {
@@ -1040,7 +1083,9 @@ bool SdkHost::BootstrapSession() {
       // correct at tunnel-up (device_ isn't connected yet - read the app LocalState).
       // PushLocalOverrideAppsToDriver re-applies it live once the device is up.
       if (localState_) {
-        if (auto ov = localState_->getBlockActionOverrides())
+        static std::atomic<bool> logged{false};
+        if (auto ov = ReadSdkList(logged, "getBlockActionOverrides (local seed)",
+                               [&] { return localState_->getBlockActionOverrides(); }))
           ComputeAppSplit(*ov, cfg.excluded_app_paths, cfg.allowlist_mode);
       }
 
@@ -1194,6 +1239,7 @@ bool SdkHost::BootstrapSession() {
     // not dismissible: it describes a property of the whole session, not an
     // event, and it stays true until the app is restarted against a normal
     // service.
+    sessionFailure_.clear();  // there is a session; the standing reason is gone
     PublishModeNotice();
 
     LogInfo("sdkhost: session bootstrapped (mode={} rpc={})",
@@ -1261,7 +1307,12 @@ LiveStats SdkHost::ReadStats() {
   }
   if (contractVc_) {
     // Most recent throughput point that has a Remote (tunneled) sample.
-    if (auto pts = contractVc_->getThroughputPoints(); pts && !pts->empty()) {
+    // Guarded: see ReadList. This is the site the spec predicted would fire
+    // first, because it is on the window-activation path.
+    static std::atomic<bool> logged{false};
+    auto pts = ReadSdkList(logged, "getThroughputPoints (stats)",
+                        [&] { return contractVc_->getThroughputPoints(); });
+    if (pts && !pts->empty()) {
       for (auto it = pts->rbegin(); it != pts->rend(); ++it) {
         if (it->Remote) {
           s.downBitsPerSecond = it->Remote->IngressBitRate;
@@ -1411,7 +1462,10 @@ void SdkHost::SubscribeDrawer() {
 void SdkHost::PublishThroughput() {
   if (!contractVc_) return;
   std::vector<urnet::ThroughputPoint> points;
-  if (auto p = contractVc_->getThroughputPoints()) points = std::move(*p);
+  static std::atomic<bool> logged{false};
+  if (auto p = ReadSdkList(logged, "getThroughputPoints",
+                        [&] { return contractVc_->getThroughputPoints(); }))
+    points = std::move(*p);
   int64_t window = contractVc_->getWindowDurationSeconds();
   if (window <= 0) window = 60;
   {
@@ -1442,7 +1496,9 @@ void SdkHost::PublishContractRows() {
     return out;
   };
   std::vector<ContractPeerRow> rows;
-  if (auto list = contractDetailsVc_->getContractRows()) {
+  static std::atomic<bool> logged{false};
+  if (auto list = ReadSdkList(logged, "getContractRows",
+                           [&] { return contractDetailsVc_->getContractRows(); })) {
     rows.reserve(list->size());
     for (const auto& r : *list) {
       ContractPeerRow row;
@@ -1469,7 +1525,9 @@ void SdkHost::PublishContractRows() {
 void SdkHost::PublishBlockActions() {
   if (!blockVc_) return;
   std::vector<BlockActionItem> items;
-  if (auto list = blockVc_->getBlockActions()) {
+  static std::atomic<bool> logged{false};
+  if (auto list = ReadSdkList(logged, "getBlockActions",
+                           [&] { return blockVc_->getBlockActions(); })) {
     items.reserve(list->size());
     // the sdk window is oldest first; the UI wants newest first
     for (auto it = list->rbegin(); it != list->rend(); ++it) {
@@ -1523,7 +1581,9 @@ void SdkHost::PublishBlockStats() {
 void SdkHost::PublishSplitRules() {
   if (!device_) return;
   std::vector<SplitRule> rules;
-  if (auto list = device_->getBlockActionOverrides()) {
+  static std::atomic<bool> logged{false};
+  if (auto list = ReadSdkList(logged, "getBlockActionOverrides (split rules)",
+                           [&] { return device_->getBlockActionOverrides(); })) {
     rules.reserve(list->size());
     for (const auto& over : *list) {
       if (!over.OverrideId) continue;
@@ -1915,6 +1975,136 @@ std::vector<AppRule> SdkHost::CurrentAppRules() {
   return rules;
 }
 
+// ---- reliability / developer surface ---------------------------------------
+//
+// The bridge ported for iOS (sdk#135) hangs off DeviceRemote, so every one of
+// these works over the rpc with no tunnel — which is the whole point of the
+// rpc-only mode. Reachability holes, deliberate: dropExit, stallExit,
+// shuffleExits and the probe-suite getters exist only on DeviceLocal and have
+// NO DeviceRemote equivalent, so this app cannot offer them. Android can. A
+// button that calls nothing is worse than no button.
+
+ReliabilitySnapshot SdkHost::ReadReliability() {
+  // One lock hold for five rpcs, deliberately: the alternative is five holds,
+  // and then the settings, the metrics and the two exit lists can come from
+  // either side of a session teardown and disagree about which session they
+  // describe. The cost is that a slow or unreachable service holds mutex_ for
+  // the whole batch, and mutex_ is taken by UI-thread readers (RemoteConnected,
+  // CurrentStats, SelectedLocation, ...). That is the shape the rest of this
+  // class already has — those readers hold it across rpcs too — but this is the
+  // biggest single hold in it, so it is the first thing to revisit if the
+  // window is ever seen to stall while the developer screen is open.
+  std::scoped_lock lock(mutex_);
+  ReliabilitySnapshot snap;
+  if (!device_) return snap;
+  snap.haveDevice = true;
+  try {
+    snap.remoteConnected = device_->getRemoteConnected();
+    snap.settings = device_->getReliabilitySettings();
+    snap.metrics = device_->getReliabilityMetrics();
+  } catch (const std::exception& e) {
+    static std::atomic<bool> logged{false};
+    if (!logged.exchange(true))
+      LogWarn("sdkhost: read reliability state failed (logged once): {}", e.what());
+  }
+  // The two list-shaped getters: same null-unwrap hazard as everywhere else.
+  {
+    static std::atomic<bool> logged{false};
+    if (auto exits = ReadSdkList(logged, "getExits", [&] { return device_->getExits(); }))
+      snap.exits = std::move(*exits);
+  }
+  {
+    static std::atomic<bool> logged{false};
+    if (auto dst = ReadSdkList(logged, "getDestinationExits",
+                            [&] { return device_->getDestinationExits(); }))
+      snap.destinationExits = std::move(*dst);
+  }
+  return snap;
+}
+
+std::optional<urnet::ReliabilitySettings> SdkHost::UpdateReliabilitySettings(
+    const std::function<void(urnet::ReliabilitySettings&)>& mutate) {
+  std::scoped_lock lock(mutex_);
+  if (!device_ || !mutate) {
+    // Say it. This is the path a developer-screen edit takes with no session,
+    // and a silent nullopt here is indistinguishable from a write that landed.
+    LogWarn("sdkhost: reliability settings write skipped: no device");
+    return std::nullopt;
+  }
+  try {
+    // FRESH read, every time. Not the snapshot the view is rendering: the whole
+    // struct goes back, so anything the poll has not seen yet would be reverted.
+    auto current = device_->getReliabilitySettings();
+    if (!current) {
+      // Nothing is in force — there is no multi client to override. Writing a
+      // default-constructed struct here would install an all-zero override that
+      // turns the entire reliability stack off, and sync() re-applies it. Do
+      // nothing and say so.
+      LogWarn("sdkhost: reliability settings write skipped: nothing in force "
+              "(no multi client). Writing a zeroed struct here would disable "
+              "the reliability stack.");
+      return std::nullopt;
+    }
+    mutate(*current);
+    device_->setReliabilitySettings(current);
+    // Report what the device APPLIED, not what was asked for.
+    return device_->getReliabilitySettings();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: reliability settings write failed: {}", e.what());
+    return std::nullopt;
+  }
+}
+
+bool SdkHost::RunReliabilityAction(ReliabilityAction action, const std::string& exitClientId) {
+  std::scoped_lock lock(mutex_);
+  if (!device_) {
+    LogWarn("sdkhost: reliability action skipped: no device");
+    return false;
+  }
+  try {
+    switch (action) {
+      case ReliabilityAction::ResetMetrics:
+        device_->resetReliabilityMetrics();
+        LogInfo("sdkhost: reliability action: reset metrics");
+        break;
+      case ReliabilityAction::ResetSettings:
+        device_->resetReliabilitySettings();
+        LogInfo("sdkhost: reliability action: reset settings to shipped defaults");
+        break;
+      case ReliabilityAction::ProbeAllExits:
+        // The int64 count the DeviceLocal form returns does not survive the C
+        // ABI (the DeviceRemote export is void), so there is no "probed N
+        // exits" to report. Do not invent one.
+        device_->probeAllExits();
+        LogInfo("sdkhost: reliability action: probe all exits");
+        break;
+      case ReliabilityAction::SimulateNetworkChange:
+        device_->simulateNetworkChange();
+        LogInfo("sdkhost: reliability action: simulate network change");
+        break;
+      case ReliabilityAction::Sync:
+        device_->sync();
+        LogInfo("sdkhost: reliability action: sync");
+        break;
+      case ReliabilityAction::MigrateExit:
+        if (exitClientId.empty()) {
+          LogWarn("sdkhost: migrate exit skipped: no exit client id");
+          return false;
+        }
+        // Same story as probeAllExits: the count of flows moved is dropped by
+        // the C ABI (the DeviceRemote export is void), so "Requested" is the
+        // honest report.
+        device_->migrateExit(exitClientId);
+        LogInfo("sdkhost: reliability action: migrate exit {}", exitClientId);
+        break;
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: reliability action failed: {}", e.what());
+    return false;
+  }
+  return true;
+}
+
 // ---- location/provider chooser --------------------------------------------
 // The bucketed location feed + the connected, provide-enabled peers pinned atop
 // the chooser. Opened lazily on the first chooser open; start() kicks the
@@ -1943,7 +2133,10 @@ void SdkHost::EnsureLocations() {
     onLocations_(locationsVc_->getFilteredLocations(),
                  locationsVc_->getFilteredLocationState());
   }
-  if (onPeers_) onPeers_(peerVc_->getPeers());
+  if (onPeers_) {
+    static std::atomic<bool> logged{false};
+    onPeers_(ReadSdkList(logged, "getPeers (seed)", [&] { return peerVc_->getPeers(); }));
+  }
 }
 
 void SdkHost::SetLocationFilter(const std::string& query) {
@@ -1965,7 +2158,10 @@ std::string SdkHost::CurrentFilteredLocationState() {
 
 std::optional<urnet::NetworkPeerList> SdkHost::ConnectedProvidePeers() {
   std::scoped_lock lock(mutex_);
-  if (peerVc_) return peerVc_->getPeers();
+  if (peerVc_) {
+    static std::atomic<bool> logged{false};
+    return ReadSdkList(logged, "getPeers", [&] { return peerVc_->getPeers(); });
+  }
   return std::nullopt;
 }
 
@@ -2102,6 +2298,17 @@ void SdkHost::TeardownSessionLocked() {
   // not be able to render "connected".
   sessionMode_.store(proto::StartMode::RpcOnly);
   ClearRpcSession();
+  // Not a failure — a deliberate teardown. Clearing this BEFORE the publish
+  // below is what makes that publish a retraction instead of a re-raise of
+  // whatever the last failure was.
+  sessionFailure_.clear();
+  // Retract the persistent notice. It is deliberately non-dismissible and lives
+  // at window level, so without this a user who saw "Could not start a session
+  // with the URnetwork service. Nothing is connected." and then signed out is
+  // left staring at that sentence on the SIGN-IN screen, where it is meaningless
+  // and there is no control to remove it. device_ is already cleared above, so
+  // this publishes an INACTIVE notice — which is the retraction.
+  PublishModeNotice();
 }
 
 void SdkHost::Logout() {

@@ -14,6 +14,7 @@
 #include "AccountPage.h"
 #include "BalanceSheets.h"
 #include "ConnectPage.h"
+#include "DeveloperPage.h"
 #include "LoginPage.h"
 #include "Protocol.h"
 #include "SdkHost.h"
@@ -44,6 +45,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   urnw::AccountPage& account() { return *account_; }
   urnw::WalletPage& wallet() { return *wallet_; }
   urnw::SettingsPage& settings() { return *settings_; }
+  urnw::DeveloperPage& developer() { return *developer_; }
 
   // ---- shared window-level state the pages need ----
   // only one ContentDialog can show at a time
@@ -195,6 +197,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::unique_ptr<urnw::AccountPage> account_;
   std::unique_ptr<urnw::WalletPage> wallet_;
   std::unique_ptr<urnw::SettingsPage> settings_;
+  std::unique_ptr<urnw::DeveloperPage> developer_;
 
   // balance / plan state (UI thread only; pushed by the store via AppController)
   urnw::BalanceSnapshot balance_;

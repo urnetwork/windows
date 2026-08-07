@@ -39,6 +39,9 @@ MainWindow::MainWindow() {
   account_ = std::make_unique<urnw::AccountPage>(*this);
   wallet_ = std::make_unique<urnw::WalletPage>(*this);
   settings_ = std::make_unique<urnw::SettingsPage>(*this);
+  // Last: its ctor binds SdkHost's mode-notice handler and asks for a refresh,
+  // so everything it may paint over must already exist.
+  developer_ = std::make_unique<urnw::DeveloperPage>(*this);
 
   ApplyStrings();
   connect_->Initialize();  // charts, SDK feeds, card affordances, drawer clock
@@ -89,10 +92,12 @@ MainWindow::~MainWindow() {
   login_.reset();
   account_.reset();
   settings_.reset();
+  developer_.reset();
 }
 
 void MainWindow::SetPresentationActive(bool active) {
   connect_->SetPresentationActive(active);
+  developer_->SetPresentationActive(active);
 }
 
 // ---- strings -------------------------------------------------------------
@@ -113,12 +118,16 @@ void MainWindow::ApplyStrings() {
   LeaderboardNavItem().Content(LocBox("leaderboard"));
   SupportNavItem().Content(LocBox("support"));
   SettingsNavItem().Content(LocBox("settings"));
+  // DeveloperNavItem's label is painted by the page: the store has no key for
+  // the developer surface yet, so it goes through the same fallback the rest of
+  // that screen uses (DeveloperPage.cpp, Dev()).
 
   login_->ApplyStrings();
   connect_->ApplyStrings();
   account_->ApplyStrings();
   wallet_->ApplyStrings();
   settings_->ApplyStrings();
+  developer_->ApplyStrings();
 }
 
 // ---- login / home roots ----------------------------------------------------
@@ -152,7 +161,8 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
 
   const hstring tag = H(destination);
   for (auto const& item : {ConnectNavItem(), AccountNavItem(), WalletNavItem(),
-                           LeaderboardNavItem(), SupportNavItem(), SettingsNavItem()}) {
+                           LeaderboardNavItem(), SupportNavItem(), SettingsNavItem(),
+                           DeveloperNavItem()}) {
     if (winrt::unbox_value_or<hstring>(item.Tag(), L"") == tag) {
       HomeNav().SelectedItem(item);  // the SelectionChanged relay shows the panel
       break;
@@ -172,6 +182,15 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   // panel into the settled empty state rather than leaving it on "Loading..."
   // forever, which would look exactly like a hang.
   if (destination == "leaderboard") wallet_->ShowPreviewLeaderboardState();
+  // The session-mode notice can only fire when there IS a session, so a preview
+  // run would never draw the bar at all. Raise a synthetic one, same reason the
+  // two snackbars above are raised.
+  if (destination == "developer") {
+    developer_->ShowPreviewModeNotice();
+    // and the populated state, which no preview run can otherwise reach: every
+    // card below the intro is gated on a live settings read.
+    developer_->ShowPreviewSnapshot();
+  }
 }
 
 // ---- navigation ----------------------------------------------------------
@@ -194,6 +213,12 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   LeaderboardView().Visibility(tag == L"leaderboard" ? Visibility::Visible : Visibility::Collapsed);
   SupportView().Visibility(tag == L"support" ? Visibility::Visible : Visibility::Collapsed);
   SettingsView().Visibility(tag == L"settings" ? Visibility::Visible : Visibility::Collapsed);
+  DeveloperView().Visibility(tag == L"developer" ? Visibility::Visible
+                                                 : Visibility::Collapsed);
+  // The developer screen's 5s poll is four synchronous rpcs into the service:
+  // it runs only while this destination is selected AND the window is
+  // presenting (SetPresentationActive supplies the other half).
+  developer_->SetSelected(tag == L"developer");
 
   if (tag == L"connect" && !wasConnectVisible) connect_->AnimateDrawerIn();
 
