@@ -22,6 +22,7 @@
 
 #include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
+#include <winrt/Microsoft.UI.Xaml.Shapes.h>
 
 namespace urnw::kit {
 
@@ -66,6 +67,41 @@ winrt::Microsoft::UI::Xaml::Controls::Border MakeDivider();
 // that already says the same word.
 winrt::Microsoft::UI::Xaml::FrameworkElement MakeSectionHeader(winrt::hstring const& glyph,
                                                                winrt::hstring const& text);
+
+// ---- the persistent status strip -------------------------------------------
+//
+// One field of the window's bottom status strip: an optional state dot, an
+// 11sp caption, and the value beside it. ProtonVPN's IP / country / provider
+// line is three of these.
+//
+// It returns the field AND hands back the two elements that change at runtime,
+// because a strip that cannot be updated is a screenshot. `dot` is null unless
+// `withDot`; the caller fills it per state.
+//
+// The shape is deliberately uniform and deliberately cheap to add to. The
+// product tiering decision (spec 511c26c) makes this strip the flagship
+// Advanced Mode surface: Normal shows connection state, network and provider,
+// and Advanced will add egress interface, rpc port, session mode and the raw
+// pre-clamp connection status to the SAME row. Four more fields must cost four
+// more calls to this function and no layout change, which is why the strip is
+// a horizontal panel of these rather than a hand-built Grid of fixed columns.
+struct StatusField {
+  winrt::Microsoft::UI::Xaml::FrameworkElement root{nullptr};
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse dot{nullptr};  // null unless withDot
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};
+};
+
+// `label` may be empty for a field whose value speaks for itself (the state
+// field: a coloured dot and the word "Connected" need no caption saying
+// "Status"). Pass `accessibleName` in that case, or the field reaches a screen
+// reader as a bare value with nothing saying what it is; it defaults to
+// `label`.
+StatusField MakeStatusField(winrt::hstring const& label, bool withDot = false,
+                            winrt::hstring const& accessibleName = {});
+
+// The hairline between two fields of the strip. Vertical, unlike MakeDivider:
+// the strip is a row, so its rules run the other way.
+winrt::Microsoft::UI::Xaml::Controls::Border MakeStatusSeparator();
 
 // iOS Components/UrTextField/ValidationState.swift.
 enum class ValidationState {

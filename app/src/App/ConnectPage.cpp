@@ -300,6 +300,12 @@ void ConnectPage::ApplyConnectStatus() {
   }
   w_.StatusText().Text(text);
   w_.StatusDot().Fill(urnw::colors::MakeBrush(dot));
+  // The window's status strip shows this same state on every OTHER destination.
+  // It reads the derivation rather than repeating it, for the reason the hero
+  // and the balance InfoBar already share one: two switches over
+  // connectionStatus in two files is two places for them to disagree, and the
+  // strip is visible while the connect screen is not.
+  w_.ApplyStatusStripConnection(text, dot);
   w_.ConnectButton().Content(ConnectActionIsDisconnect() ? LocBox("disconnect")
                                                          : LocBox("connect"));
 

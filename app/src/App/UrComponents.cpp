@@ -67,6 +67,73 @@ FrameworkElement MakeSectionHeader(winrt::hstring const& glyph, winrt::hstring c
   return row;
 }
 
+namespace {
+
+// A style out of the app dictionary, by key, or null if it is missing. Applying
+// styles by key rather than by hand is what keeps the strip in step with
+// App.xaml; a missing key must not throw a layout away.
+Style StyleByKey(wchar_t const* key) {
+  auto app = Application::Current();
+  if (!app) return nullptr;
+  auto boxed = winrt::box_value(winrt::hstring{key});
+  if (!app.Resources().HasKey(boxed)) return nullptr;
+  return app.Resources().Lookup(boxed).try_as<Style>();
+}
+
+}  // namespace
+
+StatusField MakeStatusField(winrt::hstring const& label, bool withDot,
+                            winrt::hstring const& accessibleName) {
+  StackPanel row;
+  row.Orientation(Controls::Orientation::Horizontal);
+  row.Spacing(6);
+  row.VerticalAlignment(VerticalAlignment::Center);
+
+  StatusField field;
+  if (withDot) {
+    field.dot = winrt::Microsoft::UI::Xaml::Shapes::Ellipse();
+    field.dot.Width(8);
+    field.dot.Height(8);
+    field.dot.VerticalAlignment(VerticalAlignment::Center);
+    // the colour IS the information, and the text beside it says the same
+    // thing in words, so the shape itself is decoration to a screen reader
+    Automation::AutomationProperties::SetAccessibilityView(
+        field.dot, Automation::Peers::AccessibilityView::Raw);
+    row.Children().Append(field.dot);
+  }
+
+  if (!label.empty()) {
+    TextBlock caption;
+    caption.Text(label);
+    if (auto style = StyleByKey(L"UrStatusFieldLabelStyle")) caption.Style(style);
+    // The caption is the field's NAME and the value is its content: announcing
+    // "Selected provider" as a separate static-text item beside "Berlin" makes
+    // the strip six unrelated fragments instead of three facts.
+    Automation::AutomationProperties::SetAccessibilityView(
+        caption, Automation::Peers::AccessibilityView::Raw);
+    row.Children().Append(caption);
+  }
+
+  field.value = TextBlock();
+  if (auto style = StyleByKey(L"UrStatusFieldValueStyle")) field.value.Style(style);
+  Automation::AutomationProperties::SetName(
+      field.value, accessibleName.empty() ? label : accessibleName);
+  row.Children().Append(field.value);
+
+  field.root = row;
+  return field;
+}
+
+Controls::Border MakeStatusSeparator() {
+  Controls::Border rule;
+  rule.Width(1);
+  rule.Height(14);
+  rule.Margin(ThicknessHelper::FromLengths(14, 0, 14, 0));
+  rule.VerticalAlignment(VerticalAlignment::Center);
+  rule.Background(urnw::colors::BorderBrush());
+  return rule;
+}
+
 FrameworkElement MakeEmptyState(winrt::hstring const& glyph, winrt::hstring const& text) {
   StackPanel column;
   column.Spacing(8);
@@ -98,12 +165,7 @@ FrameworkElement MakeEmptyStateCard(winrt::hstring const& glyph, winrt::hstring 
   Controls::Border card;
   // by key rather than by hand, so the empty state inherits whatever UrCardStyle
   // says a card is - including the hairline it grew in this pass
-  if (auto app = Application::Current()) {
-    auto boxed = winrt::box_value(winrt::hstring{L"UrCardStyle"});
-    if (app.Resources().HasKey(boxed)) {
-      if (auto style = app.Resources().Lookup(boxed).try_as<Style>()) card.Style(style);
-    }
-  }
+  if (auto style = StyleByKey(L"UrCardStyle")) card.Style(style);
   card.Child(MakeEmptyState(glyph, text));
   return card;
 }

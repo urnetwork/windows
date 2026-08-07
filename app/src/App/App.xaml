@@ -181,6 +181,35 @@
             <FontFamily x:Key="UrBodyFontFamily">ms-appx:///Assets/Fonts/pp_neue_montreal_regular.ttf#PP Neue Montreal</FontFamily>
             <FontFamily x:Key="UrWordmarkFontFamily">ms-appx:///Assets/Fonts/pp_neue_bit_bold.ttf#PP NeueBit</FontFamily>
 
+            <!-- ================= the desktop breakpoint =======================
+                 ONE number, in one place, read by every destination's
+                 AdaptiveTrigger. The app has exactly two layouts:
+
+                   below  UrWideBreakpoint  the 1:1000:1 centred single column
+                                            (the flyout / narrow-window shape)
+                   at or above              the horizontal composition: a main
+                                            pane, a side pane beside it, and a
+                                            full-width row under both
+
+                 Every destination in MainWindow.xaml instantiates the SAME
+                 shape - a capped centring column, a two-column pane grid
+                 inside it, and a two-state VisualStateGroup whose Wide state
+                 raises the cap, opens the side column and moves the side panel
+                 from the row BELOW the main panel to the column BESIDE it.
+                 Only the cap and the side width differ per destination. Read
+                 one of them (ConnectView is the reference) and you have read
+                 all seven.
+
+                 1000 rather than 900: the pane grid lives inside a 24px page
+                 margin and a 48px nav rail, so a 1000px window gives the two
+                 panes ~900px between them - which is the width at which a
+                 340px rail beside a main column stops being cramped. Measured
+                 at 900 first; the rail crowded the connect hero. -->
+            <x:Double x:Key="UrWideBreakpoint">1000</x:Double>
+            <!-- the gap between the two panes, and the height reserved for the
+                 side pane's own top alignment with the main pane -->
+            <Thickness x:Key="UrPaneGap">20,0,0,0</Thickness>
+
             <!-- brand palette (mirrors UrColors.h) -->
             <SolidColorBrush x:Key="UrBackgroundBrush" Color="#101010" />
             <!-- sheet surface: android SheetBlack = Black.lighten(0.03), which
@@ -483,6 +512,48 @@
             <Style x:Key="UrStatTileStyle" TargetType="Border" BasedOn="{StaticResource UrCardStyle}">
                 <Setter Property="Padding" Value="16,12" />
                 <Setter Property="CornerRadius" Value="8" />
+            </Style>
+
+            <!-- ==== the persistent status strip ==============================
+                 ProtonVPN keeps an IP / country / provider line pinned to the
+                 bottom of the window on every destination. It is the one piece
+                 of their chrome that is not navigation and not the hero: a
+                 quiet, always-true statement of what the app is doing right
+                 now, which survives the user wandering off to Wallet.
+
+                 It is a SURFACE, not a card: the pane colour with a single
+                 hairline along its top edge, so it reads as chrome belonging to
+                 the window rather than as one more module on the page. -->
+            <Style x:Key="UrStatusStripStyle" TargetType="Border">
+                <Setter Property="Background" Value="#151515" />
+                <Setter Property="BorderBrush" Value="{StaticResource UrBorderBrush}" />
+                <Setter Property="BorderThickness" Value="0,1,0,0" />
+                <Setter Property="Padding" Value="16,7" />
+            </Style>
+
+            <!-- One field of that strip: an 11sp muted caption and a 12sp value
+                 beside it. Deliberately smaller than UrStatLabel/UrStatValue -
+                 the strip must never compete with the page - and deliberately
+                 the SAME two-part shape, so the fields Advanced Mode will add
+                 (egress interface, rpc port, session mode, raw connection
+                 status) drop in without a new species of label.
+                 Built by kit::MakeStatusField; these are what it spends. -->
+            <Style x:Key="UrStatusFieldLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextFaintBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <Style x:Key="UrStatusFieldValueStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <!-- a strip is ONE row: a long provider name shortens, it never
+                     wraps the chrome into two -->
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
             </Style>
 
             <Style x:Key="UrCardLabelStyle" TargetType="TextBlock">

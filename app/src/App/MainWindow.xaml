@@ -22,6 +22,12 @@
                  rather than inserted so no existing element's Grid.Row moves:
                  four phases share this file. -->
             <RowDefinition Height="Auto" />
+            <!-- Row 3: the persistent status strip (D4). Appended for the same
+                 reason, and it is the LAST row on purpose - Proton pins theirs
+                 to the bottom edge of the window, under everything including
+                 the standing mode notice, because it is the least urgent and
+                 the most permanent thing on screen. -->
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- The title bar. ExtendsContentIntoTitleBar puts the window's content
@@ -1675,5 +1681,34 @@
                       Style="{StaticResource UrSnackbarStyle}"
                       VerticalAlignment="Bottom" HorizontalAlignment="Center"
                       Margin="24" MaxWidth="480" IsOpen="False" />
+
+        <!-- THE STATUS STRIP (D4). ProtonVPN's bottom line - IP / country /
+             provider - is the one piece of their chrome that is neither
+             navigation nor hero: a quiet, always-true statement of what the
+             client is doing, which does not go away when the user wanders off
+             to Wallet. This app had no such thing; the connection state existed
+             only on Connect, so five of the seven destinations gave no way at
+             all to tell whether traffic was flowing.
+             It is WINDOW level, like ModeNoticeBar above it, because that is
+             what "regardless of destination" means.
+
+             The fields are built in code (MainWindow::BuildStatusStrip) from
+             kit::MakeStatusField rather than spelled out here, because the
+             product tiering decision makes this the flagship Advanced Mode
+             surface: Normal is the three fields below, Advanced adds egress
+             interface, rpc port, session mode and the raw pre-clamp connection
+             status to the SAME row. A horizontal panel of uniform fields takes
+             four more; a hand-built Grid of fixed columns would not.
+
+             HorizontalScrollMode is Disabled and every value trims rather than
+             wraps: a status strip that becomes two rows tall, or that scrolls,
+             has stopped being chrome. -->
+        <!-- Border is not a Control, so it carries no FontFamily to inherit
+             from: the two field styles name the body face themselves. -->
+        <Border x:Name="StatusStrip" Grid.Row="3" Visibility="Collapsed"
+                Style="{StaticResource UrStatusStripStyle}">
+            <StackPanel x:Name="StatusStripFields" Orientation="Horizontal"
+                        Spacing="0" VerticalAlignment="Center" />
+        </Border>
     </Grid>
 </Window>
