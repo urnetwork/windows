@@ -706,6 +706,23 @@ class SdkHost {
   // unreadable mode. With no session there is certainly no tunnel, so a stray
   // read before or after one must not be able to render "connected".
   std::atomic<proto::StartMode> sessionMode_{proto::StartMode::RpcOnly};
+  // The STANDING reason there is no session, in words a user can act on, or
+  // empty when there is nothing to report. Distinct from bootstrapError_, which
+  // is per-attempt scratch: this survives the attempt so that a view created
+  // LATER can still be told.
+  //
+  // It has to. The bootstrap runs on a background thread from Initialize(),
+  // which is well before the first tray click — and the main window, and
+  // therefore the notice handler, does not exist until that click. Observed
+  // live: bootstrap failed at 18:01:58 with the service unreachable,
+  // PublishSessionFailure found no handler bound and dropped the message, and
+  // the window created 25 seconds later published an EMPTY notice from
+  // RefreshModeNotice() and showed the user nothing at all. That is exactly the
+  // "the app can fail to reach the service and say nothing on screen" this
+  // notice channel exists to prevent, reintroduced by the ordering.
+  //
+  // Guarded by mutex_. Cleared on a successful bootstrap and on teardown.
+  std::string sessionFailure_;
   // Why the last BootstrapSession() returned false, in words a user can act on.
   // Set on every failure path and read by both callers; guarded by mutex_, which
   // BootstrapSession's callers already hold.

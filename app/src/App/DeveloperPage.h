@@ -235,8 +235,23 @@ class DeveloperPage {
   // and are enabled/disabled instead.
   winrt::Microsoft::UI::Xaml::Controls::Button simulateButton_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button syncButton_{nullptr};
-  // every card except the intro: hidden while there is nothing in force
-  std::vector<Border> liveCards_;
+  // Two gates, not one, because the things behind them fail independently.
+  //
+  //   deviceCards_   measurements, exits, destinations. They need a SESSION and
+  //                  nothing more, and they are what a developer opens this
+  //                  screen for during a freeze.
+  //   settingsCards_ the five override sections. They need a live
+  //                  ReliabilitySettings, because rendering a zeroed struct
+  //                  would present defaults as if they were in force.
+  //
+  // The first version gated all of them on settings.has_value(). Observed live
+  // against a real rpc-only session: getReliabilitySettings() returns null
+  // whenever there is no multi client override, which is the ORDINARY state —
+  // so the measurements and the exit table, which were perfectly readable, were
+  // hidden because an unrelated getter returned nil. The screen was blank
+  // exactly when it was wanted.
+  std::vector<Border> deviceCards_;
+  std::vector<Border> settingsCards_;
   std::vector<MetricRow> metricRows_;
   TextBlock noFailures_{nullptr};
   StackPanel exitsBody_{nullptr};

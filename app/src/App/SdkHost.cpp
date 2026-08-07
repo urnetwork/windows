@@ -868,6 +868,17 @@ void SdkHost::PublishModeNotice() {
   // RefreshModeNotice() is public and is exactly what a view calls when it is
   // constructed, which makes that the common path, not an edge case.
   if (!device_) {
+    // ...but "no device" is not always "nothing to say". If the last bootstrap
+    // FAILED, that reason stands until a session exists, and it must survive
+    // long enough for a view that did not exist at the time to receive it.
+    if (!sessionFailure_.empty()) {
+      ModeNotice failed;
+      failed.active = true;
+      failed.kind = ModeNotice::Kind::SessionFailed;
+      failed.message = sessionFailure_;
+      handler(failed);
+      return;
+    }
     handler(ModeNotice{});
     return;
   }
@@ -891,15 +902,20 @@ void SdkHost::PublishModeNotice() {
 // a transport/service failure, not an authentication one, and routing them to
 // the sign-in screen would destroy a perfectly good session.
 void SdkHost::PublishSessionFailure(const std::string& why) {
+  // RECORD FIRST, PUBLISH SECOND. The publish is best-effort — on the startup
+  // path there is usually no handler yet, because the window is not built until
+  // the first tray click — so the record is what actually reaches the user, via
+  // RefreshModeNotice() when the view is finally constructed.
+  sessionFailure_ = why.empty()
+                        ? "Could not start a session with the URnetwork service. "
+                          "Nothing is connected."
+                        : why + " Nothing is connected.";
   auto handler = ModeNoticeHandlerCopy();
   if (!handler) return;
   ModeNotice n;
   n.active = true;
   n.kind = ModeNotice::Kind::SessionFailed;
-  n.message = why.empty()
-                  ? "Could not start a session with the URnetwork service. "
-                    "Nothing is connected."
-                  : why + " Nothing is connected.";
+  n.message = sessionFailure_;
   handler(n);
 }
 
@@ -1184,6 +1200,7 @@ bool SdkHost::BootstrapSession() {
     // not dismissible: it describes a property of the whole session, not an
     // event, and it stays true until the app is restarted against a normal
     // service.
+    sessionFailure_.clear();  // there is a session; the standing reason is gone
     PublishModeNotice();
 
     LogInfo("sdkhost: session bootstrapped (mode={} rpc={})",
@@ -2203,6 +2220,10 @@ void SdkHost::TeardownSessionLocked() {
   // not be able to render "connected".
   sessionMode_.store(proto::StartMode::RpcOnly);
   ClearRpcSession();
+  // Not a failure — a deliberate teardown. Clearing this BEFORE the publish
+  // below is what makes that publish a retraction instead of a re-raise of
+  // whatever the last failure was.
+  sessionFailure_.clear();
   // Retract the persistent notice. It is deliberately non-dismissible and lives
   // at window level, so without this a user who saw "Could not start a session
   // with the URnetwork service. Nothing is connected." and then signed out is

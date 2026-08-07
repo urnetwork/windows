@@ -591,7 +591,7 @@ void DeveloperPage::Build() {
       actions.Children().Append(refresh);
 
       // These two act on the device. Every OTHER action button lives inside
-      // liveCards_ and is hidden outright when nothing is in force; these sit
+      // deviceCards_/settingsCards_ and is hidden outright by its gate; these sit
       // in the always-visible intro card, so they are disabled instead (see
       // ApplySettings). Refresh above is not gated: it only re-reads, and it is
       // how a user retries after starting the service.
@@ -627,11 +627,19 @@ void DeveloperPage::Build() {
     root_.Children().Append(card);
   }
 
-  // A card that only means anything once something is in force.
-  auto liveCard = [&](hstring const& heading, StackPanel& body) {
+  // A card that needs a SESSION: measurements, exits, destinations.
+  auto deviceCard = [&](hstring const& heading, StackPanel& body) {
     Border card = MakeCard(heading, body);
     card.Visibility(Visibility::Collapsed);
-    liveCards_.push_back(card);
+    deviceCards_.push_back(card);
+    root_.Children().Append(card);
+    return card;
+  };
+  // A card that needs a live ReliabilitySettings: the five override sections.
+  auto settingsCard = [&](hstring const& heading, StackPanel& body) {
+    Border card = MakeCard(heading, body);
+    card.Visibility(Visibility::Collapsed);
+    settingsCards_.push_back(card);
     root_.Children().Append(card);
     return card;
   };
@@ -639,7 +647,7 @@ void DeveloperPage::Build() {
   // ---- measurements --------------------------------------------------------
   {
     StackPanel body{nullptr};
-    liveCard(Dev("dev_measurements", L"Measurements"), body);
+    deviceCard(Dev("dev_measurements", L"Measurements"), body);
     body.Children().Append(MakeText(
         Dev("dev_measurements_detail",
             L"What a provider failure costs. Reset, run a test, read back."),
@@ -702,7 +710,7 @@ void DeveloperPage::Build() {
   // than a stack of two-line rows.
   {
     StackPanel body{nullptr};
-    liveCard(Dev("dev_exits", L"Exits"), body);
+    deviceCard(Dev("dev_exits", L"Exits"), body);
     Grid header = MakeTableRow({-2, -2, -1, -1, -1, -3, 90});
     auto head = [&](int column, std::string_view key, const wchar_t* label) {
       auto tb = MakeText(Dev(key, label), 11, FaintBrush());
@@ -726,7 +734,7 @@ void DeveloperPage::Build() {
   // show it.
   {
     StackPanel body{nullptr};
-    liveCard(Dev("dev_destinations", L"Destinations"), body);
+    deviceCard(Dev("dev_destinations", L"Destinations"), body);
     body.Children().Append(MakeText(
         Dev("dev_destinations_detail",
             L"Which exit each destination's flows are landing on. A site spread over "
@@ -819,7 +827,7 @@ void DeveloperPage::Build() {
   using RS = urnet::ReliabilitySettings;
 
   // Detection: how an exit is judged to be failing, and how fast.
-  liveCard(Dev("dev_detection", L"Detection"), section);
+  settingsCard(Dev("dev_detection", L"Detection"), section);
   millisRow("dev_drop_stalled_exits_fast", L"Drop stalled exits fast",
             L"How long an exit may stop delivering before it is dropped, in ms. Off waits 30s",
             &RS::SendStallTimeoutMillis);
@@ -854,7 +862,7 @@ void DeveloperPage::Build() {
           &RS::SoftVerdictDemote);
 
   // Placement: which exit a flow lands on, and how the pool is shaped.
-  liveCard(Dev("dev_placement", L"Placement"), section);
+  settingsCard(Dev("dev_placement", L"Placement"), section);
   boolRow("dev_live_tier_demotion", L"Live tier demotion",
           L"Failing dials and survived verdicts push a provider down the ranking within a "
           L"second; promotion back needs clean minutes and a proven connect",
@@ -903,7 +911,7 @@ void DeveloperPage::Build() {
           &RS::ServerNameAffinityBridge);
 
   // Recovery: getting a flow moving again after its exit fails.
-  liveCard(Dev("dev_recovery", L"Recovery"), section);
+  settingsCard(Dev("dev_recovery", L"Recovery"), section);
   boolRow("dev_rebind_quic_on_exit_loss", L"Rebind QUIC on exit loss",
           L"Re-pin established QUIC flows to a live exit inside the removal instead of "
           L"tearing them down",
@@ -934,7 +942,7 @@ void DeveloperPage::Build() {
             &RS::FormationPollTimeoutMillis);
 
   // Probing: proving an exit can actually reach real destinations.
-  liveCard(Dev("dev_probing", L"Probing"), section);
+  settingsCard(Dev("dev_probing", L"Probing"), section);
   boolRow("dev_probe_providers", L"Probe providers",
           L"Qualify exits by dialing real sites through them. An answer proves the exit; "
           L"silence never counts against it",
@@ -965,7 +973,7 @@ void DeveloperPage::Build() {
   }
 
   // Observability: what the session writes to the log for later forensics.
-  liveCard(Dev("dev_observability", L"Observability"), section);
+  settingsCard(Dev("dev_observability", L"Observability"), section);
   millisRow("dev_state_heartbeat", L"State heartbeat",
             L"How often one line summarizing live state is written to the log for later "
             L"forensics, in ms. Off silences it",
@@ -1025,10 +1033,16 @@ void DeveloperPage::ApplySettings(ReliabilitySnapshot const& snap) {
                        L"cannot be read.")
                  : (inForce ? hstring{}
                             : Dev("dev_nothing_in_force",
-                                  L"Connected, but no reliability override is in force "
-                                  L"yet. Connect to a provider to use these tools."))));
+                                  L"No reliability override is in force, so the settings "
+                                  L"sections are hidden rather than shown at zero. The "
+                                  L"measurements and exit readout below are live."))));
+  // The hint is about the SETTINGS sections, so it stays up while they are
+  // down — but it must not imply the whole screen is dead when the
+  // measurements and exits below it are live.
   connectHint_.Visibility(inForce ? Visibility::Collapsed : Visibility::Visible);
-  for (auto const& card : liveCards_)
+  for (auto const& card : deviceCards_)
+    card.Visibility(snap.haveDevice ? Visibility::Visible : Visibility::Collapsed);
+  for (auto const& card : settingsCards_)
     card.Visibility(inForce ? Visibility::Visible : Visibility::Collapsed);
   // The two intro-card actions are gated on a DEVICE, not on settings being in
   // force: simulateNetworkChange and sync are meaningful the moment there is a
