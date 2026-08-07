@@ -277,14 +277,18 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       MONITORINFO mi{};
       mi.cbSize = sizeof(mi);
       if (mon && ::GetMonitorInfoW(mon, &mi)) {
-        const RECT& work = mi.rcWork;
+        // RECT is LONG and AppWindow's size is int32_t; std::min/max deduce a
+        // single T and will not mix the two. Narrow the work area to int once,
+        // here, instead of casting at each call.
+        const int workLeft = static_cast<int>(mi.rcWork.left);
+        const int workTop = static_cast<int>(mi.rcWork.top);
+        const int workRight = static_cast<int>(mi.rcWork.right);
+        const int workBottom = static_cast<int>(mi.rcWork.bottom);
         // max() after min() so a window larger than the work area still has
         // its TOP-LEFT on screen (the title bar and close button) rather than
         // its bottom-right
-        x = (std::max)(static_cast<long>(work.left),
-                       (std::min)(x, work.right - size.Width));
-        y = (std::max)(static_cast<long>(work.top),
-                       (std::min)(y, work.bottom - size.Height));
+        x = (std::max)(workLeft, (std::min)(x, workRight - size.Width));
+        y = (std::max)(workTop, (std::min)(y, workBottom - size.Height));
       }
 
       winrt::Windows::Graphics::PointInt32 pos{x, y};

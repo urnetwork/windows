@@ -1,1 +1,4 @@
 out
+
+# SDK zips pulled from a CI run for tools/build-local.ps1
+.local-deps/
