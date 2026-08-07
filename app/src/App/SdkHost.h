@@ -469,15 +469,31 @@ class SdkHost {
   // no session in force can never render as connected.
   proto::StartMode sessionMode() const { return sessionMode_.load(); }
 
-  // ---- persistent mode notice ---------------------------------------------
-  // Raised once a session is up and the session carries no traffic. It is a
-  // property of the session, not an event: whatever renders it must keep it
-  // visible until the app is restarted, and must NOT offer a dismiss control.
-  // `active == false` means there is nothing to show.
+  // ---- persistent session notice -------------------------------------------
+  // The standing reason this app is NOT carrying traffic. A property of the
+  // current state rather than an event: whatever renders it keeps it visible
+  // until it is replaced, and must NOT offer a dismiss control. `active ==
+  // false` means there is nothing to show, and is the normal case.
+  //
+  // THREADING: invoked on the bootstrap thread, and MAY be called while
+  // SdkHost's internal lock is held. Marshal to the UI thread and return
+  // immediately — a handler that calls back into SdkHost synchronously
+  // deadlocks. Every other handler on this class already does that through
+  // AppController::OnUi / DispatcherQueue; do the same.
   struct ModeNotice {
+    enum class Kind {
+      // A live session that deliberately carries no traffic (rpc-only).
+      RpcOnly,
+      // No session at all: the service is unreachable, too old, or refused.
+      // The user is still SIGNED IN — this is not an authentication failure
+      // and must not route anyone to the sign-in screen.
+      SessionFailed,
+    };
     bool active = false;
-    // The app asked for a real tunnel and the service refused to build one
-    // (it is clamped). Worth saying separately: the user did not choose this.
+    Kind kind = Kind::RpcOnly;
+    // RpcOnly only: the app asked for a real tunnel and the service refused to
+    // build one (it is clamped). Worth saying separately — the user did not
+    // choose this.
     bool requestedTunnel = false;
     // A complete sentence, already self-describing. Render it as-is; do NOT
     // add a "Developer mode" title on top, or the words appear twice.
@@ -485,8 +501,21 @@ class SdkHost {
   };
   using ModeNoticeHandler = std::function<void(const ModeNotice&)>;
   void SetModeNoticeHandler(ModeNoticeHandler h) { onModeNotice_ = std::move(h); }
-  // Re-push the current notice (e.g. when a view is created after bootstrap).
-  void RefreshModeNotice() { PublishModeNotice(); }
+  // Re-push the current notice. Safe at any time, including from an ordinary
+  // logged-out launch: with no session it publishes an INACTIVE notice. (It
+  // used to derive purely from sessionMode_, whose default is RpcOnly, so
+  // calling it without a session fabricated a claim that the service was
+  // running with --rpc-only.)
+  //
+  // Takes the lock: this is a public entry point, it reads `device_`, and a
+  // session teardown can be running concurrently on the bootstrap thread —
+  // observed in testing, where a logout destroyed the session while a refresh
+  // was in flight. The handler is therefore invoked with the lock held on this
+  // path as well as from bootstrap; see the threading note above.
+  void RefreshModeNotice() {
+    std::scoped_lock lock(mutex_);
+    PublishModeNotice();
+  }
 
  private:
   urnet::NetworkSpace BuildNetworkSpace();
@@ -574,8 +603,12 @@ class SdkHost {
   // surface TunnelState::Up. Every place that used to hand-build such a status
   // goes through here.
   proto::TunnelStatus SessionStatus(bool haveLocation) const;
-  // Build and push the persistent mode notice from sessionMode_/requestedMode_.
+  // Build and push the persistent notice from the CURRENT session state.
+  // Caller holds mutex_ (it reads device_).
   void PublishModeNotice();
+  // Push a "there is no session, and here is why" notice. The user stays
+  // signed in; see ModeNotice::Kind::SessionFailed.
+  void PublishSessionFailure(const std::string& why);
 
   ServiceClient service_;
   // Set once in Initialize() from URNETWORK_RPC_ONLY; never changes after.

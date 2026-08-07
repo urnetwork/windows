@@ -188,10 +188,21 @@ bool SdkHost::Initialize() {
           why = bootstrapError_;
         }
         if (!ok) {
-          SetAuthState(AuthState::Error,
-                       why.empty() ? "could not start a session with the "
-                                     "URnetwork service"
-                                   : why);
+          // NOT AuthState::Error. That enum means "authentication failed", and
+          // the window derives `loggedIn = (state == LoggedIn)` from it — so
+          // reporting a transport failure that way dumps a user whose JWT is
+          // completely intact onto the sign-in screen, and it LATCHES: nothing
+          // re-runs the bootstrap, and the stored state is re-applied on every
+          // window show, so starting the service does not recover it. The
+          // trigger is the default state of a dev box: signed in once, service
+          // not running.
+          //
+          // The auth state stays LoggedIn (already set above) and the reason
+          // goes out on the notice channel, which exists precisely to carry
+          // "why this app is not carrying traffic" without touching auth.
+          LogError("sdkhost: session bootstrap failed on resume: {}",
+                   why.empty() ? "unknown" : why);
+          PublishSessionFailure(why);
         }
       }).detach();
     } else {
@@ -785,14 +796,24 @@ static void UrstRemoveAppRule(urnet::BlockActionOverrideList& list,
 // what keeps every `state == TunnelState::Up` test in the UI reading false,
 // which is the whole reason RpcOnly is a distinct state and not a flag beside
 // Up.
-// The persistent "this session carries no traffic" notice. Pushed once a
-// session is up; empty message means "no notice". Anything rendering it must
-// keep it visible for the life of the session — it is a property, not an event.
+// The persistent "this app is not carrying traffic" notice.
 void SdkHost::PublishModeNotice() {
   if (!onModeNotice_) return;
+  // No session, nothing to say about one. This gate is load-bearing rather
+  // than defensive: the notice derives from sessionMode_, whose default is
+  // RpcOnly (the mode that claims less, so a stray read cannot render as
+  // connected) — so without it an ordinary LOGGED-OUT launch publishes a
+  // confident claim that the service is running with --rpc-only.
+  // RefreshModeNotice() is public and is exactly what a view calls when it is
+  // constructed, which makes that the common path, not an edge case.
+  if (!device_) {
+    onModeNotice_(ModeNotice{});
+    return;
+  }
   ModeNotice n;
   if (sessionMode_.load() == proto::StartMode::RpcOnly) {
     n.active = true;
+    n.kind = ModeNotice::Kind::RpcOnly;
     n.requestedTunnel = requestedMode_ == proto::StartMode::Tunnel;
     n.message =
         n.requestedTunnel
@@ -802,6 +823,21 @@ void SdkHost::PublishModeNotice() {
             : "Developer mode: rpc-only session. Nothing is connected and no "
               "traffic is carried.";
   }
+  onModeNotice_(n);
+}
+
+// "There is no session, and here is why." The user remains SIGNED IN: this is
+// a transport/service failure, not an authentication one, and routing them to
+// the sign-in screen would destroy a perfectly good session.
+void SdkHost::PublishSessionFailure(const std::string& why) {
+  if (!onModeNotice_) return;
+  ModeNotice n;
+  n.active = true;
+  n.kind = ModeNotice::Kind::SessionFailed;
+  n.message = why.empty()
+                  ? "Could not start a session with the URnetwork service. "
+                    "Nothing is connected."
+                  : why + " Nothing is connected.";
   onModeNotice_(n);
 }
 
@@ -974,8 +1010,29 @@ bool SdkHost::BootstrapSession() {
           sessionMode_.store(proto::StartMode::RpcOnly);  // no session; claim less
           return false;
         }
-        // The safe direction: we asked for a tunnel and the service is clamped
-        // to rpc-only, so NOTHING was written to this machine.
+        // The safe direction: we asked for a tunnel and the service says it
+        // served rpc-only — but VERIFY that rather than assume it. `mode` is
+        // the peer's label; `routes_installed` is the field Protocol.h
+        // designates as the one to trust for "was this machine's network
+        // touched". They can disagree: an unrecognised mode string on the wire
+        // degrades to RpcOnly, which was fail-safe while a mismatch meant
+        // refusal and is NOT fail-safe under adopt. Refusing to check here
+        // while checking in the branch above would apply "the peer may be
+        // misreporting" to only one direction.
+        if (st.routes_installed) {
+          bootstrapError_ =
+              "the service reported an rpc-only session but also reported that "
+              "it installed routes; it has been stopped.";
+          LogError("sdkhost: REFUSING to adopt. The service reports "
+                   "mode=rpc_only but routes_installed=yes — those cannot both "
+                   "be true, and an rpc-only session is defined by having "
+                   "written nothing. Stopping it rather than adopting a session "
+                   "that may be carrying traffic.");
+          service_.StopTunnel();
+          sessionMode_.store(proto::StartMode::RpcOnly);  // no session; claim less
+          return false;
+        }
+        // Nothing was written to this machine.
         //
         // ADOPT it rather than refuse. Refusing was the wrong trade: the spec
         // defines the whole Class-B workflow as "needs the service in
@@ -985,9 +1042,12 @@ bool SdkHost::BootstrapSession() {
         // somebody debugging a dead APP has no reason to look.
         //
         // This is not a silent downgrade, which is the thing S3 exists to
-        // prevent. Two independent mechanisms make it loud: every rendered
-        // connect value is clamped at the source (see the end of ReadStats), and
-        // the persistent notice raised here cannot be dismissed. Adopting also
+        // prevent. The mechanism that makes it loud TODAY is the clamp at the
+        // source: every rendered connect value says disconnected (see the end
+        // of ReadStats). The persistent notice raised below is the second
+        // mechanism and has NO CONSUMER on this branch — P2 binds it — so as
+        // merged an adopted session shows no banner. Do not describe this as
+        // two working mechanisms until that binding exists. Adopting also
         // writes nothing and can only happen when somebody deliberately started
         // a console with --rpc-only; the installed service never does.
         LogWarn("sdkhost: asked the service for a {} session and it served {} — "
