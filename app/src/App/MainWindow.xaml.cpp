@@ -349,6 +349,20 @@ void MainWindow::ApplyBreakpoint() {
   Place(SettingsSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 0}}
                                   : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});
 
+  // ---- Support: the form, and the way to reach a human beside it -----------
+  // 1080 and an even split. This destination has one form and no data, so the
+  // cap is the narrowest of the wide readings: a feedback box 540dip across is
+  // already generous, and stretching it further would be the "one column in a
+  // 2000px window" complaint in a different shape.
+  SupportCapColumn().MaxWidth(wide ? 1080 : 560);
+  if (wide) {
+    SetStar(SupportSideColumn(), 1);
+  } else {
+    SetWidth(SupportSideColumn(), 0);
+  }
+  Place(SupportSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
+                                 : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 24}});
+
   urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
 }
 

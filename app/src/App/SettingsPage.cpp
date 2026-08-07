@@ -115,6 +115,16 @@ void SettingsPage::ApplyStrings() {
   // automatic automation name, so it needs an explicit one or the only way to
   // submit this form is nameless to a screen reader.
   w_.SendFeedbackText().Text(Loc("send"));
+  // The contact card beside the form (D4). The feedback form is one-way; this
+  // is the other way, and both strings already shipped with no call site.
+  // SetMarkdownLinkText keeps the whole sentence and turns support@ur.io and
+  // the Discord invite into real Hyperlinks, which is what puts them in the
+  // tab order.
+  w_.SupportContactHeading().Text(Loc("support"));
+  urnw::SetMarkdownLinkText(
+      w_.SupportContactText(),
+      Localized("if_the_problem_persists_contact_us_at_support_ur"), 14);
+  w_.SupportProtocolLink().Content(LocBox("learn_more_protocol_page"));
   winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
       w_.SendFeedbackButton(), Loc("send"));
 

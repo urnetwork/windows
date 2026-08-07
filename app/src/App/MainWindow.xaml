@@ -1751,13 +1751,34 @@
                        is right at 1100 and lopsided when maximized - measured
                        2578px wide with 600px of content and ~1900px of void on
                        one side. -->
-                  <Grid>
+                  <!-- The same shape ConnectView carries. Support has ONE
+                       form and no data, so at desktop widths the right half was
+                       simply black - measured at 8% non-background pixels
+                       maximized, the emptiest surface in the app. It now
+                       carries the OTHER half of what this destination is for:
+                       the form sends feedback to us, and the card beside it is
+                       how you reach a human. Both strings already ship and were
+                       used nowhere. -->
+                  <Grid x:Name="SupportLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="560" />
+                        <ColumnDefinition x:Name="SupportCapColumn"
+                                          Width="1000*" MaxWidth="560" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="12">
+                    <Grid Grid.Column="1">
+                      <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="SupportSideColumn" Width="0" />
+                      </Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="Auto" />
+                      </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0"
+                                x:Name="SupportMainStack" Spacing="12"
+                                VerticalAlignment="Top">
                         <!-- section header: glyph + name, the pattern every
                              destination now uses above its first card -->
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -1800,6 +1821,35 @@
                         </Border>
                         <muxc:InfoBar x:Name="SupportInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
                     </StackPanel>
+
+                    <!-- REACHING A HUMAN. The feedback form is one-way; this is
+                         the other way, and support@ur.io and the Discord invite
+                         were already in the store
+                         (if_the_problem_persists_contact_us_at_support_ur) with
+                         no call site anywhere in the client. Rendered with its
+                         links inline by urnw::SetMarkdownLinkText, so the whole
+                         shipped sentence survives and both links are real
+                         Hyperlinks in the tab order. -->
+                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                x:Name="SupportSideStack" Spacing="12"
+                                VerticalAlignment="Top" Margin="0,16,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE939;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="SupportContactHeading"
+                                       Style="{StaticResource UrPanelHeadingStyle}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource UrCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="SupportContactText" TextWrapping="Wrap" />
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <HyperlinkButton x:Name="SupportProtocolLink"
+                                                 NavigateUri="https://ur.xyz"
+                                                 FontSize="12" Padding="0"
+                                                 HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    </Grid>
                   </Grid>
                 </ScrollViewer>
 
