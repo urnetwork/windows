@@ -6,6 +6,7 @@
 #include "SdkHost.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cwctype>
 #include <fstream>
 #include <random>
@@ -906,10 +907,24 @@ void SdkHost::PublishSessionFailure(const std::string& why) {
   // path there is usually no handler yet, because the window is not built until
   // the first tray click — so the record is what actually reaches the user, via
   // RefreshModeNotice() when the view is finally constructed.
-  sessionFailure_ = why.empty()
-                        ? "Could not start a session with the URnetwork service. "
-                          "Nothing is connected."
-                        : why + " Nothing is connected.";
+  // The reasons are written as clause fragments ("the URnetwork service is not
+  // running or cannot be reached"), because until now nothing ever RENDERED
+  // one — the notice was dropped before it reached a view. Glued naively they
+  // produce "...cannot be reached Nothing is connected.", which is what
+  // actually appeared on screen the first time this was made visible. Make the
+  // fragment a sentence: capitalise it, and give it a full stop if it has no
+  // terminal punctuation of its own.
+  if (why.empty()) {
+    sessionFailure_ =
+        "Could not start a session with the URnetwork service. Nothing is connected.";
+  } else {
+    std::string sentence = why;
+    sentence[0] = static_cast<char>(
+        std::toupper(static_cast<unsigned char>(sentence[0])));
+    const char last = sentence.back();
+    if (last != '.' && last != '!' && last != '?') sentence += '.';
+    sessionFailure_ = sentence + " Nothing is connected.";
+  }
   auto handler = ModeNoticeHandlerCopy();
   if (!handler) return;
   ModeNotice n;
