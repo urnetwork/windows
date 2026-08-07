@@ -19,6 +19,39 @@ Two owner decisions set the shape of this work:
 The consequence is that the plan must deliver a driveable, verifiable client
 *before* a single packet moves.
 
+## The product tiering (owner decision, 2026-08-08)
+
+The owner's words: *"iOS and Android apps was built simple. Windows, linux and
+other desktop apps we will make will be more advanced in nature. … For the
+Normal windows app I wanna make it slightly more advanced in nature and feature
+rich and also develop an Advanced Mode view that changes everything in view."*
+Portmaster is the named reference: one switch that surfaces advanced logs and
+configs EVERYWHERE in the UI, for people who know what they are doing.
+
+So iOS parity is the FLOOR of this client, not its ceiling. Three tiers:
+
+1. **Mobile parity** — everything iOS has. (The original goal; largely done.)
+2. **Windows Normal** — parity plus desktop-grade depth by default: the
+   developer/reliability destination, real tables, the status strip, richer
+   diagnostics than mobile ships. This is where the client already is.
+3. **Advanced Mode** — a persisted app-wide toggle (Settings, developer
+   section). Not a separate page: it changes what EVERY surface shows.
+   Inline diagnostics, raw values, IDs and event streams appear across the
+   app; Normal hides them. Same pages, deeper view.
+
+Design rule that follows: every surface built from here on has a Normal
+reading and an Advanced reading, and pages built earlier gain their Advanced
+reading when the mode lands. `LiveStats.rawConnectionStatus`/`rawConnected`
+(built for "the one place that should see through the clamp") generalise:
+Advanced Mode is that idea applied everywhere.
+
+Known implementation anchors for the mode: standing state like the mode
+notice (a bootstrap-time reason must survive until a view exists to show
+it); persisted in LocalState alongside routeLocal; every page gets an
+ApplyAdvancedMode() the way it has ApplyStrings(). The DeviceLocal-only
+holes (dropExit, stallExit, shuffleExits, probe-suite getters) become
+in-scope to bridge, since Advanced Mode is where they would surface.
+
 ## Ground truth (verified 2026-08-06, not inherited from docs)
 
 - `app/tools/build-local.ps1` builds the solution here in **4s incremental**,
