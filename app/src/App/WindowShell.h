@@ -20,7 +20,7 @@ namespace urnw::shell {
 // A tray flyout, not a workspace.
 inline constexpr int kDefaultWidthDips = 480;
 inline constexpr int kDefaultHeightDips = 760;
-// Below this the drawer's 600-wide card column has nothing left to give.
+// Below this the drawer's card column has nothing left to give.
 inline constexpr int kMinWidthDips = 400;
 inline constexpr int kMinHeightDips = 480;
 
@@ -30,17 +30,25 @@ inline constexpr int kMinHeightDips = 480;
 // - System backdrop: Mica where the OS supports it (Windows 11), which also
 //   means clearing the root element's opaque background, or the Mica is drawn
 //   and then painted over — a mechanism with no signal. On Windows 10 the
-//   solid #101010 stays and nothing else changes.
+//   solid #101010 stays and nothing else changes. Mica also carries the brand
+//   background as its FallbackColor, for the several ways it can degrade at
+//   runtime while still being "supported".
 // - Title bar: the caption buttons are drawn by the system over the extended
 //   content, so their colours are set to match the brand surface. The drag
 //   region itself is the window's own AppTitleBar element (MainWindow sets it).
 // - Placement: restores the last saved size and position, else the compact
-//   default, clamped onto a monitor that actually exists.
-void ApplyNativeShell(winrt::Microsoft::UI::Xaml::Window const& window, HWND hwnd);
+//   default centred on the current monitor; either way clamped onto a monitor
+//   that actually exists.
+//
+// RETURNS true when a SAVED placement was restored, which the caller must
+// honour: the tray-anchor flyout move would otherwise overwrite the position
+// the user chose, one statement after this function applied it. The anchor is
+// a default, not an override — see AppController::ShowWindowImpl.
+bool ApplyNativeShell(winrt::Microsoft::UI::Xaml::Window const& window, HWND hwnd);
 
 // Record the window's current size and position. Called on the two ways the
 // window goes away — hidden to the tray, and quit — rather than on every frame
-// of a drag.
-void SaveWindowPlacement(HWND hwnd);
+// of a drag. Returns whether a complete placement was written.
+bool SaveWindowPlacement(HWND hwnd);
 
 }  // namespace urnw::shell

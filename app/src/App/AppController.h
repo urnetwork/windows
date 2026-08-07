@@ -64,6 +64,11 @@ class AppController {
   // the window's HWND, held so the native shell can read and save its
   // placement without re-deriving it from the projection each time
   HWND windowHwnd_ = nullptr;
+  // The window has a placement the USER chose - restored from a previous run,
+  // or saved during this one. While false the tray anchor places the window
+  // (the flyout-by-the-icon default); once true the anchor stops overriding a
+  // position the user picked. See ShowWindowImpl.
+  bool ownPlacement_ = false;
 
   AuthState authState_ = AuthState::LoggedOut;
   std::string authError_;

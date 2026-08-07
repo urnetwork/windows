@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <optional>
 
+#include <winrt/Microsoft.UI.Composition.h>
 #include <winrt/Microsoft.UI.Composition.SystemBackdrops.h>
 #include <winrt/Microsoft.UI.Interop.h>
 #include <winrt/Microsoft.UI.Windowing.h>
@@ -38,10 +39,11 @@ std::optional<uint32_t> ReadDword(wchar_t const* name) {
   return value;
 }
 
-void WriteDword(HKEY key, wchar_t const* name, int32_t value) {
+bool WriteDword(HKEY key, wchar_t const* name, int32_t value) {
   const DWORD stored = static_cast<DWORD>(value);
-  ::RegSetValueExW(key, name, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&stored),
-                   sizeof(stored));
+  return ::RegSetValueExW(key, name, 0, REG_DWORD,
+                          reinterpret_cast<const BYTE*>(&stored),
+                          sizeof(stored)) == ERROR_SUCCESS;
 }
 
 // Position is stored as an offset from a sentinel so a legitimately negative
@@ -53,6 +55,13 @@ struct Placement {
   int32_t y = 0;
   int32_t width = 0;
   int32_t height = 0;
+  // The DPI the size was MEASURED at. Everything here is physical pixels, so
+  // without this a user who changes their display scale gets the old physical
+  // size reinterpreted at the new one - a window that grows or shrinks by the
+  // ratio for no reason they can see. (Moving to a differently-scaled MONITOR
+  // is self-correcting: the window manager sends WM_DPICHANGED with a suggested
+  // rect. Rescaling the same monitor does not.) 0 means "not recorded".
+  uint32_t dpi = 96;
 };
 
 std::optional<Placement> LoadPlacement() {
@@ -60,12 +69,15 @@ std::optional<Placement> LoadPlacement() {
   auto h = ReadDword(L"Height");
   auto x = ReadDword(L"X");
   auto y = ReadDword(L"Y");
+  auto dpi = ReadDword(L"Dpi");
   if (!w || !h || !x || !y) return std::nullopt;
   Placement p;
   p.width = static_cast<int32_t>(*w);
   p.height = static_cast<int32_t>(*h);
   p.x = static_cast<int32_t>(*x) - kPositionBias;
   p.y = static_cast<int32_t>(*y) - kPositionBias;
+  // absent (an older build wrote this) or nonsense: 0, which skips the rescale
+  p.dpi = (dpi && 0 < *dpi) ? *dpi : 0;
   // A saved size of zero (a minimized or otherwise degenerate window) must not
   // become the size we restore to.
   if (p.width <= 0 || p.height <= 0) return std::nullopt;
@@ -102,23 +114,79 @@ Placement ClampToWorkArea(Placement p) {
   return p;
 }
 
+namespace backdrops = winrt::Microsoft::UI::Composition::SystemBackdrops;
+
+// The controller and its configuration must outlive this call - releasing the
+// controller tears the backdrop down - and there is exactly one main window for
+// the life of the process. Deliberately leaked rather than held in a static
+// unique_ptr: destroying a WinRT object during static destruction runs after
+// COM has been torn down.
+struct MicaState {
+  backdrops::MicaController controller{nullptr};
+  backdrops::SystemBackdropConfiguration config{nullptr};
+};
+MicaState* g_mica = nullptr;
+
 // Mica is a Windows 11 feature. MicaController::IsSupported() is the OS's own
 // answer, so this needs no version check of its own and no build-number table.
+//
+// This drives MicaController directly rather than handing XAML a MicaBackdrop,
+// for one reason: FALLBACK COLOUR. IsSupported() answers "does this OS have
+// Mica", NOT "is Mica compositing right now" - transparency effects off,
+// battery saver, RDP and several VM/GPU paths all keep it supported while the
+// backdrop collapses to its fallback. By then the opaque root background has
+// been cleared, so the fallback IS the app background, and MicaController's
+// default is the system base fill (measured at #202020 here), not the brand
+// #101010. Microsoft.UI.Xaml.Media.MicaBackdrop exposes no FallbackColor at
+// all - only Kind - so it cannot express this; the controller can.
 bool ApplyBackdrop(winrtx::Window const& window) {
-  namespace backdrops = winrt::Microsoft::UI::Composition::SystemBackdrops;
   try {
     if (!backdrops::MicaController::IsSupported()) {
       LogInfo("shell: mica not supported by this OS - keeping the solid #101010 background");
       return false;
     }
-    window.SystemBackdrop(winrtx::Media::MicaBackdrop{});
+    auto target =
+        window.try_as<winrt::Microsoft::UI::Composition::ICompositionSupportsSystemBackdrop>();
+    if (!target) {
+      LogError("shell: this window cannot host a system backdrop - keeping the solid background");
+      return false;
+    }
+
+    auto state = std::make_unique<MicaState>();
+    state->config = backdrops::SystemBackdropConfiguration();
+    // the app requests Dark unconditionally (App.xaml RequestedTheme)
+    state->config.Theme(backdrops::SystemBackdropTheme::Dark);
+    state->config.IsInputActive(true);
+    state->controller = backdrops::MicaController();
+    state->controller.FallbackColor(urnw::colors::kBackground);
+    state->controller.SetSystemBackdropConfiguration(state->config);
+    state->controller.AddSystemBackdropTarget(target);
+
+    // Native behaviour: Mica dims while the window is not the active one. The
+    // configuration is what carries that, and nothing updates it by itself.
+    auto* raw = state.get();
+    window.Activated([raw](auto const&, winrtx::WindowActivatedEventArgs const& args) {
+      if (raw->config) {
+        raw->config.IsInputActive(args.WindowActivationState() !=
+                                  winrtx::WindowActivationState::Deactivated);
+      }
+    });
+
+    // Read the fallback BACK rather than logging what we meant to set. This is
+    // the colour the window becomes whenever Mica degrades at runtime while
+    // still being "supported", and the opaque root background has been cleared
+    // by then - so it is the app background, and a silent default here would be
+    // the system fill, not the brand one.
+    const auto applied = state->controller.FallbackColor();
+    LogInfo("shell: mica backdrop applied (fallback #{:02X}{:02X}{:02X})", applied.R,
+            applied.G, applied.B);
+    g_mica = state.release();  // see the comment on MicaState
   } catch (winrt::hresult_error const& e) {
     // Not fatal: the solid background is a complete look on its own.
     LogError("shell: mica backdrop refused ({}) - keeping the solid background",
              urnw::Narrow(std::wstring{e.message()}));
     return false;
   }
-  LogInfo("shell: mica backdrop applied");
   return true;
 }
 
@@ -146,8 +214,8 @@ void ApplyCaptionButtonColors(windowing::AppWindow const& appWindow) {
 
 }  // namespace
 
-void ApplyNativeShell(winrtx::Window const& window, HWND hwnd) {
-  if (!window || !hwnd) return;
+bool ApplyNativeShell(winrtx::Window const& window, HWND hwnd) {
+  if (!window || !hwnd) return false;
 
   const bool mica = ApplyBackdrop(window);
   if (mica) {
@@ -167,7 +235,7 @@ void ApplyNativeShell(winrtx::Window const& window, HWND hwnd) {
   if (!appWindow) {
     LogError("shell: no AppWindow for hwnd {} - size and chrome left at their defaults",
              reinterpret_cast<uintptr_t>(hwnd));
-    return;
+    return false;
   }
 
   ApplyCaptionButtonColors(appWindow);
@@ -183,48 +251,91 @@ void ApplyNativeShell(winrtx::Window const& window, HWND hwnd) {
   }
 
   Placement p;
+  bool restored = false;
   if (auto saved = LoadPlacement()) {
-    p = ClampToWorkArea(*saved);
+    p = *saved;
+    const UINT dpi = ::GetDpiForWindow(hwnd);
+    if (0 < p.dpi && 0 < dpi && p.dpi != dpi) {
+      // the display scale changed under a saved SIZE: keep the LOGICAL size
+      const double ratio = static_cast<double>(dpi) / p.dpi;
+      const int32_t wasW = p.width;
+      const int32_t wasH = p.height;
+      p.width = static_cast<int32_t>(p.width * ratio);
+      p.height = static_cast<int32_t>(p.height * ratio);
+      LogInfo("shell: display scale changed since the placement was saved "
+              "({} -> {} dpi): {}x{} rescaled to {}x{}",
+              p.dpi, dpi, wasW, wasH, p.width, p.height);
+    }
+    p = ClampToWorkArea(p);
+    restored = true;
     LogInfo("shell: restored placement {}x{} at ({},{})", p.width, p.height, p.x, p.y);
   } else {
-    // No saved placement: the compact default, centred on the monitor the
-    // window was created on so the first run is not in a corner.
+    // No saved placement: the compact default, CENTRED on the monitor the
+    // window was created on. AppWindow.Position() is the un-sized window's
+    // top-left, which on this box is the corner - the comment here used to
+    // claim centred while the code took that verbatim.
     p.width = defaultW;
     p.height = defaultH;
-    auto area = appWindow.Position();
-    p.x = area.X;
-    p.y = area.Y;
+    const auto origin = appWindow.Position();
+    POINT here{origin.X, origin.Y};
+    if (HMONITOR mon = ::MonitorFromPoint(here, MONITOR_DEFAULTTOPRIMARY)) {
+      MONITORINFO mi{};
+      mi.cbSize = sizeof(mi);
+      if (::GetMonitorInfoW(mon, &mi)) {
+        p.x = static_cast<int32_t>(mi.rcWork.left) +
+              (static_cast<int32_t>(mi.rcWork.right - mi.rcWork.left) - p.width) / 2;
+        p.y = static_cast<int32_t>(mi.rcWork.top) +
+              (static_cast<int32_t>(mi.rcWork.bottom - mi.rcWork.top) - p.height) / 2;
+      }
+    }
     p = ClampToWorkArea(p);
-    LogInfo("shell: no saved placement - compact default {}x{} (dpi scale {:.2f})",
-            p.width, p.height, scale);
+    LogInfo("shell: no saved placement - compact default {}x{} centred at ({},{}) "
+            "(dpi scale {:.2f})",
+            p.width, p.height, p.x, p.y, scale);
   }
   appWindow.MoveAndResize({p.x, p.y, p.width, p.height});
+  return restored;
 }
 
-void SaveWindowPlacement(HWND hwnd) {
-  if (!hwnd) return;
+bool SaveWindowPlacement(HWND hwnd) {
+  if (!hwnd) return false;
   // A minimized window reports a bogus rect; saving it would restore to it.
-  if (::IsIconic(hwnd)) return;
+  if (::IsIconic(hwnd)) return false;
   RECT rc{};
-  if (!::GetWindowRect(hwnd, &rc)) return;
+  if (!::GetWindowRect(hwnd, &rc)) return false;
   const int32_t width = rc.right - rc.left;
   const int32_t height = rc.bottom - rc.top;
-  if (width <= 0 || height <= 0) return;
+  if (width <= 0 || height <= 0) return false;
 
   HKEY key = nullptr;
-  if (::RegCreateKeyExW(HKEY_CURRENT_USER, kPlacementKey, 0, nullptr, 0, KEY_SET_VALUE,
-                        nullptr, &key, nullptr) != ERROR_SUCCESS) {
+  if (::RegCreateKeyExW(HKEY_CURRENT_USER, kPlacementKey, 0, nullptr, 0,
+                        KEY_SET_VALUE, nullptr, &key, nullptr) != ERROR_SUCCESS) {
     LogError("shell: could not open {} for writing - placement not saved",
              urnw::Narrow(std::wstring{kPlacementKey}));
-    return;
+    return false;
   }
-  WriteDword(key, L"X", rc.left + kPositionBias);
-  WriteDword(key, L"Y", rc.top + kPositionBias);
-  WriteDword(key, L"Width", width);
-  WriteDword(key, L"Height", height);
+  const UINT dpi = ::GetDpiForWindow(hwnd);
+  bool ok = WriteDword(key, L"X", rc.left + kPositionBias);
+  ok = WriteDword(key, L"Y", rc.top + kPositionBias) && ok;
+  ok = WriteDword(key, L"Width", width) && ok;
+  ok = WriteDword(key, L"Height", height) && ok;
+  ok = WriteDword(key, L"Dpi", static_cast<int32_t>(dpi == 0 ? 96 : dpi)) && ok;
+  if (!ok) {
+    // A partial write is worse than none: LoadPlacement would accept three
+    // fresh values and one stale one and restore a rect that never existed.
+    // Drop the lot so the next run falls back to the compact default.
+    for (auto const* name : {L"X", L"Y", L"Width", L"Height", L"Dpi"}) {
+      ::RegDeleteValueW(key, name);
+    }
+    ::RegCloseKey(key);
+    LogError("shell: placement write failed part-way - cleared the saved values "
+             "rather than leave a mixed set");
+    return false;
+  }
   ::RegCloseKey(key);
-  LogInfo("shell: saved placement {}x{} at ({},{})", width, height,
-          static_cast<int32_t>(rc.left), static_cast<int32_t>(rc.top));
+  LogInfo("shell: saved placement {}x{} at ({},{}) at {} dpi", width, height,
+          static_cast<int32_t>(rc.left), static_cast<int32_t>(rc.top), dpi);
+  return true;
 }
 
 }  // namespace urnw::shell

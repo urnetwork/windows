@@ -120,10 +120,11 @@
                  Compose lerps in Oklab, so #101010 lifts to #151515 -->
             <SolidColorBrush x:Key="UrSheetBrush" Color="#151515" />
             <SolidColorBrush x:Key="UrCardBrush" Color="#1C1C1C" />
-            <!-- card hover / pressed. These two values were invented inline in
-                 MainWindow's WireCardAffordances (which hand-wired PointerEntered/
-                 Exited/Pressed on plain Borders); they are tokens now, and the
-                 UrCardButton template below is what spends them. -->
+            <!-- card hover / pressed. These two values used to be applied from
+                 code, by a WireCardAffordances helper that hand-wired
+                 PointerEntered/Exited/Pressed on plain Borders; that helper is
+                 gone and the UrCardButton template below is the only thing that
+                 spends them. -->
             <SolidColorBrush x:Key="UrCardHoverBrush" Color="#242424" />
             <SolidColorBrush x:Key="UrCardPressedBrush" Color="#2A2A2A" />
             <SolidColorBrush x:Key="UrBorderBrush" Color="#1FFFFFFF" />
@@ -349,12 +350,19 @@
                                   Background="{TemplateBinding Background}"
                                   BorderBrush="{TemplateBinding BorderBrush}"
                                   BorderThickness="{TemplateBinding BorderThickness}">
+                                <!-- FontSize and FontWeight are template-bound for the same
+                                     reason UrButtonBaseStyle spells out above: ContentPresenter
+                                     declares its own defaults for all three font properties, so
+                                     they do not inherit from the templated parent and a Style
+                                     setter would silently never reach the content. -->
                                 <ContentPresenter x:Name="Presenter"
                                                   Content="{TemplateBinding Content}"
                                                   ContentTemplate="{TemplateBinding ContentTemplate}"
                                                   Padding="{TemplateBinding Padding}"
                                                   Foreground="{TemplateBinding Foreground}"
                                                   FontFamily="{TemplateBinding FontFamily}"
+                                                  FontSize="{TemplateBinding FontSize}"
+                                                  FontWeight="{TemplateBinding FontWeight}"
                                                   HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                   VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
                                 <VisualStateManager.VisualStateGroups>

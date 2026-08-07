@@ -17,6 +17,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <memory>
+#include <optional>
+
 #include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
@@ -40,14 +43,28 @@ enum class ValidationState {
 void ApplySupportingText(winrt::Microsoft::UI::Xaml::Controls::TextBlock const& line,
                          winrt::hstring const& text, ValidationState state);
 
-// An InfoBar that closes itself after a few seconds.
+// An InfoBar that closes itself after a few seconds — but only when what it is
+// saying is safe to miss.
 //
-// Non-copyable and non-movable: it hands its own address to a timer callback.
+// The timer is the whole point of the pattern AND its whole danger. An
+// acknowledgement ("Thanks for the feedback!") should go away on its own; an
+// ERROR must not, because it is usually the only diagnostic the user will ever
+// get — the wallet-connect failure's message is a raw server string that exists
+// nowhere else in the product. So the timer is gated on severity: Informational
+// and Success time out, Warning and Error stay until dismissed. A call site
+// that needs something else passes an explicit duration.
+//
+// This is not hypothetical. Before the gate, --preview-ui rendered "Failed to
+// connect the wallet." on screen at 2.2s and nothing at all at 12s.
+//
+// Non-copyable and non-movable: it hands its own identity to a timer callback.
 // Hold it by value in the owning page, or by unique_ptr.
 class Snackbar {
  public:
   // ~4s, the Material/WinUI convention for a message with no action
   static constexpr int kDefaultDurationMs = 4000;
+  // "do not dismiss yourself"
+  static constexpr int kPersistent = 0;
 
   Snackbar(winrt::Microsoft::UI::Xaml::Controls::InfoBar bar,
            winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
@@ -57,14 +74,24 @@ class Snackbar {
   Snackbar(Snackbar const&) = delete;
   Snackbar& operator=(Snackbar const&) = delete;
 
+  // `durationMs`: omit to let the severity decide (see above), kPersistent to
+  // pin the bar open, or any positive value to override the default.
   void Show(winrt::hstring const& message,
             winrt::Microsoft::UI::Xaml::Controls::InfoBarSeverity severity =
-                winrt::Microsoft::UI::Xaml::Controls::InfoBarSeverity::Informational);
+                winrt::Microsoft::UI::Xaml::Controls::InfoBarSeverity::Informational,
+            std::optional<int> durationMs = std::nullopt);
   void Hide();
 
  private:
   winrt::Microsoft::UI::Xaml::Controls::InfoBar bar_{nullptr};
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer timer_{nullptr};
+  int defaultDurationMs_ = kDefaultDurationMs;
+  // The Tick would otherwise capture a raw `this`, and "the page owns both, so
+  // the timer cannot outlive the Snackbar" is an invariant nothing enforces —
+  // it was also the one raw-this-across-a-callback this branch introduced. The
+  // destructor clears this token, so a tick that somehow outlives its Snackbar
+  // finds a null instead of a dangling pointer.
+  std::shared_ptr<Snackbar*> self_;
 };
 
 }  // namespace urnw::kit

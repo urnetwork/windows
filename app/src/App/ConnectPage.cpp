@@ -3,6 +3,7 @@
 
 #include "ConnectPage.h"
 
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>  // PeerDot Ellipse.Fill
 
@@ -133,6 +134,20 @@ void ConnectPage::ApplyStrings() {
   w_.ClientStatsLabel().Text(Loc("client_statistics"));
   w_.LocalStatsLabel().Text(Loc("local_statistics"));
   w_.DnsCardLabel().Text(Loc("custom_dns"));
+  // Each tappable card is a Button now, so it has an automation peer — but with
+  // no explicit name UIA falls back to concatenating the entire content
+  // subtree, which for the DNS card is nine TextBlocks read as one run-on
+  // "name". Name them from the same store keys as their visible labels.
+  //
+  // Deliberately NOT AccessibilityView="Raw" on the template's presenter (which
+  // URButton does use): these cards' contents are DATA — throughput figures,
+  // per-resolver on/off states — and hiding the subtree would name the card
+  // correctly while making everything inside it unreadable.
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  automation::AutomationProperties::SetName(w_.ClientStatsCard(), Loc("client_statistics"));
+  automation::AutomationProperties::SetName(w_.LocalStatsCard(), Loc("local_statistics"));
+  automation::AutomationProperties::SetName(w_.DnsCard(), Loc("custom_dns"));
+  automation::AutomationProperties::SetName(w_.LocationRow(), Loc("selected_provider"));
   w_.DohLabel().Text(Loc("dns_over_https"));
   w_.UdnsLabel().Text(Loc("unencrypted_dns"));
   w_.LdnsLabel().Text(Loc("local_dns"));
@@ -868,13 +883,20 @@ void ConnectPage::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& pe
   if (!Sdk().RemoteConnected()) {
     w_.PeerCountText().Text(Loc("peer_discovery_disabled"));
     w_.PeerDot().Fill(urnw::colors::MutedBrush());
+    // the row's automation name IS its text: it changes with the count, so it
+    // is set here rather than once in ApplyStrings
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+        w_.PeersLine(), Loc("peer_discovery_disabled"));
     return;
   }
   const int64_t count = Sdk().ConnectedPeerCount();
   // the standalone peers status line below the connect button, always shown:
   // "{n} peers" + a filled dot, green when providing peers are online and amber
   // at zero (apple ConnectActions parity)
-  w_.PeerCountText().Text(hstring{urnw::Plural("network_peer_count", count)});
+  const hstring peerText{urnw::Plural("network_peer_count", count)};
+  w_.PeerCountText().Text(peerText);
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(w_.PeersLine(),
+                                                                       peerText);
   w_.PeerDot().Fill(urnw::colors::MakeBrush(0 < count ? urnw::colors::kUrGreen
                                                       : urnw::colors::kUrAmber));
 }

@@ -140,7 +140,8 @@ void AppController::Start() {
 
 void AppController::Shutdown() {
   LogInfo("app: shutdown requested (tray quit)");
-  shell::SaveWindowPlacement(windowHwnd_);  // ...and quitting is the other
+  // ...and quitting is the other
+  if (shell::SaveWindowPlacement(windowHwnd_)) ownPlacement_ = true;
   quitting_ = true;  // let the window's Closing handler close instead of hiding
   tray_.Destroy();
   if (window_) window_.Close();
@@ -240,7 +241,10 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       // The native shell: Mica (or the solid fallback), brand caption buttons,
       // the compact default size and the saved placement. Before this the window
       // was never sized at all and opened filling the whole work area.
-      shell::ApplyNativeShell(window_, hwnd);
+      //
+      // The return value matters: if it restored a position the user chose, the
+      // anchor block below must not overwrite it one statement later.
+      ownPlacement_ = shell::ApplyNativeShell(window_, hwnd);
       auto windowId = winrt::Microsoft::UI::GetWindowIdFromWindow(hwnd);
       auto appWindow = winrt::Microsoft::UI::Windowing::AppWindow::GetFromWindowId(windowId);
       appWindow.Closing(
@@ -263,9 +267,16 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       ReconcileWindowPresentation();
     });
   }
-  // Position near the tray anchor for the flyout-style left-click; otherwise
-  // let it appear at its default location.
-  if (anchor) {
+  // Position near the tray anchor for the flyout-style left-click - but ONLY
+  // while the user has not placed the window themselves.
+  //
+  // This app is not a volume-flyout: it has a title bar, caption buttons and a
+  // resize border, so moving it is an expression of intent. Re-anchoring on
+  // every tray click threw that away, and threw away the position half of
+  // placement persistence with it: the shell would restore (300,200), log that
+  // it had, and this block would move the window to the tray corner in the same
+  // call. The anchor is the DEFAULT placement, not an override.
+  if (anchor && !ownPlacement_) {
     if (auto native = window_.try_as<::IWindowNative>()) {
       HWND hwnd = nullptr;
       native->get_WindowHandle(&hwnd);
@@ -310,6 +321,19 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       appWindow.Move(pos);
     }
   }
+  // What the window actually did, as opposed to what any one step intended.
+  // The shell's "restored placement" line was true when it was written and
+  // false a moment later, which is the failure mode this project keeps paying
+  // for: a mechanism whose signal describes an intermediate state.
+  if (windowHwnd_) {
+    RECT rc{};
+    if (::GetWindowRect(windowHwnd_, &rc)) {
+      LogInfo("app: window shown at ({},{}) {}x{} - {}", rc.left, rc.top,
+              rc.right - rc.left, rc.bottom - rc.top,
+              ownPlacement_ ? "the placement the user chose"
+                            : (anchor ? "tray anchor" : "default placement"));
+    }
+  }
   windowShown_ = true;
   windowActivated_ = true;
   window_.Activate();
@@ -317,9 +341,11 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
 }
 
 void AppController::HideWindow() {
-  // hiding to the tray is one of the two ways this window goes away; record
-  // where the user left it before it does
-  shell::SaveWindowPlacement(windowHwnd_);
+  // Hiding to the tray is one of the two ways this window goes away; record
+  // where the user left it before it does. A successful save means there is now
+  // a placement worth honouring, so the anchor stops moving the window on the
+  // next tray click - within this session as well as across restarts.
+  if (shell::SaveWindowPlacement(windowHwnd_)) ownPlacement_ = true;
   windowShown_ = false;
   windowActivated_ = false;
   ReconcileWindowPresentation();

@@ -33,7 +33,9 @@ void ApplySupportingText(TextBlock const& line, winrt::hstring const& text,
 Snackbar::Snackbar(InfoBar bar,
                    winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
                    int durationMs)
-    : bar_(std::move(bar)) {
+    : bar_(std::move(bar)),
+      defaultDurationMs_(durationMs),
+      self_(std::make_shared<Snackbar*>(this)) {
   if (!bar_ || !queue) {
     // A snackbar with no bar is a message that goes nowhere. Say so once here
     // rather than let every later Show() silently do nothing.
@@ -42,26 +44,37 @@ Snackbar::Snackbar(InfoBar bar,
     return;
   }
   timer_ = queue.CreateTimer();
-  timer_.Interval(std::chrono::milliseconds(durationMs));
   timer_.IsRepeating(false);
-  // The timer outlives no one: it is stopped in the destructor, and both it and
-  // the bar are owned by the same page, so `this` is valid for every tick.
-  timer_.Tick([this](auto const&, auto const&) { Hide(); });
+  // `self_` rather than a raw `this`: the destructor nulls it, so a tick that
+  // outlives its Snackbar does nothing instead of writing through a dangling
+  // pointer. The interval is set per Show(), since it depends on severity.
+  timer_.Tick([self = self_](auto const&, auto const&) {
+    if (auto* snackbar = *self) snackbar->Hide();
+  });
 }
 
 Snackbar::~Snackbar() {
   if (timer_) timer_.Stop();
+  if (self_) *self_ = nullptr;
 }
 
-void Snackbar::Show(winrt::hstring const& message, InfoBarSeverity severity) {
+void Snackbar::Show(winrt::hstring const& message, InfoBarSeverity severity,
+                    std::optional<int> durationMs) {
   if (!bar_) return;
   bar_.Severity(severity);
   bar_.Message(message);
   bar_.IsOpen(true);
-  if (timer_) {
-    timer_.Stop();  // a second message restarts the window rather than inheriting it
-    timer_.Start();
-  }
+  if (!timer_) return;
+  timer_.Stop();  // a second message restarts the window rather than inheriting it
+
+  // An error is usually the only diagnostic the user gets; it waits for them.
+  const bool safeToMiss = (severity == InfoBarSeverity::Informational ||
+                           severity == InfoBarSeverity::Success);
+  const int duration =
+      durationMs.value_or(safeToMiss ? defaultDurationMs_ : kPersistent);
+  if (duration <= kPersistent) return;
+  timer_.Interval(std::chrono::milliseconds(duration));
+  timer_.Start();
 }
 
 void Snackbar::Hide() {
