@@ -19,6 +19,7 @@
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 #include "AuthSheets.h"
+#include "LoginCarousel.h"
 #include "SdkHost.h"
 #include "UrComponents.h"
 
@@ -42,6 +43,11 @@ class LoginPage {
 
   // ---- window-level calls ----
   void ResetToInitialStep();
+  // The carousel animates only while the window is on screen AND the flow is on
+  // the initial step. A tray app is hidden most of its life, and a slideshow
+  // nobody can see is pure wakeups (iOS gates the same timer on
+  // presentationActive).
+  void SetPresentationActive(bool active);
   // The title-bar account menu's identity: avatar initials, the Pro ring, and
   // whether the menu offers "Create account". Pushed from the window's auth
   // relay, which already parses the jwt.
@@ -184,6 +190,8 @@ class LoginPage {
   // what the title-bar account menu should offer (pushed by ApplyAccountIdentity)
   bool accountGuest_ = false;
   std::string accountNetworkName_;
+  std::unique_ptr<urnw::LoginCarousel> carousel_;
+  bool presentationActive_ = false;
   std::shared_ptr<urnw::GuestModeSheet> guestSheet_;
   std::shared_ptr<urnw::SeedphraseDisplaySheet> seedphraseSheet_;
   std::shared_ptr<urnw::NetworkServerSheet> networkServerSheet_;

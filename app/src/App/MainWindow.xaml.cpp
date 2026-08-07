@@ -93,6 +93,8 @@ MainWindow::~MainWindow() {
 
 void MainWindow::SetPresentationActive(bool active) {
   connect_->SetPresentationActive(active);
+  // the login carousel's timer: it runs only while the window is on screen
+  login_->SetPresentationActive(active);
 }
 
 // ---- strings -------------------------------------------------------------

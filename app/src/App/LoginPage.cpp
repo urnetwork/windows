@@ -91,6 +91,18 @@ void LoginPage::Initialize() {
 
   // window-level acknowledgements (the account menu's referral copy)
   snackbar_ = std::make_unique<urnw::kit::Snackbar>(w_.AccountSnackbar(), queue);
+
+  // the hero carousel; ApplyStrings has already run, so paint its first slide
+  carousel_ = std::make_unique<urnw::LoginCarousel>(w_.LoginCarouselHost(), queue);
+  carousel_->ApplyStrings();
+}
+
+void LoginPage::SetPresentationActive(bool active) {
+  presentationActive_ = active;
+  // Only the initial step shows the carousel; the later steps collapse the
+  // whole panel, so leaving the timer running there would animate a tree
+  // nobody can see.
+  if (carousel_) carousel_->SetActive(active && loginStep_ == LoginStep::Initial);
 }
 
 // ---- strings ---------------------------------------------------------------
@@ -119,6 +131,9 @@ void LoginPage::ApplyStrings() {
   w_.InstantAccountButton().Content(LocBox("create_instant_account"));
   // bottom-left, quiet text: point the client at another network API
   w_.NetworkServerLink().Content(LocBox("change_network_api"));
+  // MainWindow calls ApplyStrings BEFORE Initialize, so on the first pass there
+  // is no carousel yet; Initialize paints it once it exists.
+  if (carousel_) carousel_->ApplyStrings();
 
   // The Google button shows whenever the active network space claims Google
   // SSO. A build with no client id keeps it on screen and fails loudly when
@@ -215,6 +230,9 @@ void LoginPage::BeginGuestUpgrade() {
 
 void LoginPage::ShowLoginStep(LoginStep step) {
   loginStep_ = step;
+  if (carousel_) {
+    carousel_->SetActive(presentationActive_ && step == LoginStep::Initial);
+  }
   w_.LoginPanel().Visibility(step == LoginStep::Initial ? Visibility::Visible
                                                         : Visibility::Collapsed);
   w_.PasswordPanel().Visibility(step == LoginStep::Password ? Visibility::Visible

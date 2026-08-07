@@ -255,6 +255,7 @@
     <ClCompile Include="AppController.cpp" />
     <ClCompile Include="AuthSheets.cpp" />
     <ClCompile Include="GoogleSignIn.cpp" />
+    <ClCompile Include="LoginCarousel.cpp" />
     <ClCompile Include="BalanceSheets.cpp" />
     <ClCompile Include="Localization.cpp" />
     <ClCompile Include="LocationSheets.cpp" />
@@ -286,6 +287,7 @@
     <ClInclude Include="BalanceSheets.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="GoogleSignIn.h" />
+    <ClInclude Include="LoginCarousel.h" />
     <ClInclude Include="Localization.h" />
     <ClInclude Include="LocationSheets.h" />
     <ClInclude Include="SdkHost.h" />
@@ -310,6 +312,20 @@
   <!-- loose image assets, copied next to the exe for ms-appx:/// XAML sources -->
   <ItemGroup>
     <CopyFileToFolders Include="Assets\ReferralFrog.png">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <!-- The login carousel's three slides (iOS Assets.xcassets/Images/
+         LoginCarousel{1,2,3}.imageset). Exported from the iOS .heic sources,
+         which WinUI cannot decode without the HEIF media extension, and kept at
+         256x256 JPEG - the size the mask actually draws - so the three together
+         are ~63KB rather than the ~1.5MB the originals weigh. -->
+    <CopyFileToFolders Include="Assets\LoginCarousel1.jpg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\LoginCarousel2.jpg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\LoginCarousel3.jpg">
       <DestinationFolders>$(OutDir)Assets</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>

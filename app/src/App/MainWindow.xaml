@@ -95,6 +95,16 @@
                             MaxWidth="512" HorizontalAlignment="Stretch"
                             VerticalAlignment="Center">
 
+                    <!-- The carousel (iOS LoginCarousel). Three brand images
+                         crossfading inside the ur globe silhouette, with the
+                         headline that belongs to each sliding through. This is
+                         what the comment above means by "the carousel above
+                         supplies the headline": without it the top third of the
+                         signed-out screen was empty and the screen carried no
+                         heading at all. Built and animated from code
+                         (LoginCarousel.cpp); this is only its slot. -->
+                    <Grid x:Name="LoginCarouselHost" Height="200" Margin="0,0,0,4" />
+
                     <!-- URTextInput: label, then the underlined field. Spacing is 0
                          here because the label style carries android's 8dp gap and
                          the field owns the padding above its underline. -->
