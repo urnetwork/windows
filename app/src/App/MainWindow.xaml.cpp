@@ -215,6 +215,8 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
     wallet_->LoadWallet();
   } else if (tag == L"leaderboard") {
     wallet_->LoadLeaderboard();
+  } else if (tag == L"settings") {
+    settings_->LoadSettings();
   }
 }
 

@@ -1641,6 +1641,30 @@ void SdkHost::SetBlockerEnabled(bool on) {
   }
 }
 
+bool SdkHost::CurrentKillSwitch() {
+  try {
+    // kill switch == !routeLocal (SdkHost.h)
+    if (device_) return !device_->getRouteLocal();
+    // tunnel down: the persisted preference is still the truth
+    if (localState_) return !localState_->getRouteLocal();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: get route local failed: {}", e.what());
+  }
+  return false;  // no state at all: claim the permissive default, not the strict one
+}
+
+void SdkHost::SetKillSwitch(bool on) {
+  std::scoped_lock lock(mutex_);
+  try {
+    if (device_) device_->setRouteLocal(!on);
+    // Persist alongside the device write, as SetProvideControlMode does: the
+    // device is gone between sessions and the bootstrap restores from here.
+    if (localState_) localState_->setRouteLocal(!on);
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: set route local failed: {}", e.what());
+  }
+}
+
 std::string SdkHost::CurrentProvideControlMode() {
   try {
     if (device_) return device_->getProvideControlMode();
