@@ -168,6 +168,40 @@ mechanical and is stated on the helper itself.
 and they cover the general shape (any getter that throws for any reason no
 longer takes the process down), not just this instance.
 
+## Confirmed live, and it is worse than a crash
+
+2026-08-07, against a real `DeviceRemote` on the beta network (an rpc-only
+service, so no routes were touched). Within milliseconds of the session coming
+up, **seven** of the eleven guarded getters threw:
+
+```
+WRN: sdk: getThroughputPoints (stats) failed, treating it as empty (logged once):
+     urnet: json: [json.exception.type_error.302] type must be array, but is null
+WRN: sdk: getContractRows failed, ...
+WRN: sdk: getThroughputPoints failed, ...
+WRN: sdk: getBlockActions failed, ...
+WRN: sdk: getBlockActionOverrides (split rules) failed, ...
+WRN: sdk: getExits failed, ...
+WRN: sdk: getDestinationExits failed, ...
+```
+
+Two things this settles.
+
+**It was never one getter.** The spec predicted `ThroughputPointList` on the
+window-activation path. In practice every list-shaped getter that is read at
+session start fails at once, because they all start with an empty backing slice.
+An audit that had fixed only the predicted site would have moved the crash, not
+removed it.
+
+**The guard buys a live app, not live data.** `getExits` and
+`getDestinationExits` are the entire input to the developer screen's exit
+readout, and they return nothing. The exit table therefore CANNOT work on
+Windows until the generator fix lands — it renders "No exits. Connect first."
+while the service log shows a multi client routing across eight distinct exits.
+That is the concrete cost of leaving this upstream fix undone, and it is a
+stronger argument for it than the crash was: a crash gets noticed, a
+permanently-empty diagnostic table gets misread as "no exits".
+
 ## The pattern worth naming
 
 This is the **fourth** defect found in the C-ABI wrapper by this client, and all
