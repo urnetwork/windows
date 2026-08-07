@@ -34,16 +34,35 @@ C-ABI consumer. All work in this plan commits to `beta/custom-server`.
 
 ## Verification reality
 
-- **CI is the only compiler for the solution** (`beta-build.yml`: push, PR,
-  manual). ~7 min per round, both arches, msbuild log uploaded on failure.
-- **A local MSVC exists** at `Microsoft Visual Studio\18\BuildTools` — usable
-  to syntax-check individual translation units and the SDK header without CI.
-  Use it before pushing; it is far cheaper than a round trip.
-- **Nobody here can run the app.** No Windows box with admin rights is
-  available to this session, and the service needs LocalSystem + a tun device.
-  Runtime verification is the OWNER's, so every runtime-affecting change must
-  ship with a way for the owner to see what happened (logs, visible errors) —
-  a change the owner cannot observe is not done.
+**Corrected 2026-08-06.** The two bullets that used to head this section were
+wrong, and being wrong about them cost roughly a day. Both are now settled by
+having actually done the thing:
+
+- **The session runs on Windows, and the app runs here.** It launches, its
+  tray icon appears, its window opens, and its log is readable at
+  `%LOCALAPPDATA%\URnetwork\app\logs\urnetwork-app.log`. Synthetic tray clicks
+  can be posted to the `URnetworkTrayWindow` hidden window
+  (`WM_APP+1`, `NIN_SELECT` in `LOWORD(lParam)`, anchor packed in `wParam`),
+  which makes a launch → click → inspect loop take about 40 seconds. Three
+  crashes were found this way that no amount of reading had found.
+- **CI is not the only compiler.** `app/tools/build-local.ps1` builds the whole
+  solution here in ~60s for one arch. It reuses an SDK zip from a green CI run
+  (`gh run download <id> -n urnetwork-sdk-windows -D .local-deps`) instead of
+  cross-building Go + mingw, and overrides the toolset/SDK pins in
+  `Directory.Build.props` with whatever the box has (v145 here, v143 in CI).
+  **Build locally before pushing.** CI is the reference build — both arches,
+  the pinned toolset — not the inner loop.
+- CI is still ~7 min per round plus queue, and has twice stalled entirely on
+  GitHub-side faults. Do not use it to find compile errors.
+- **The DPI trap.** The app is per-monitor-DPI-aware and works in *physical*
+  pixels. A test harness that is not DPI-aware reads window rects through the
+  virtualization layer (1536×875 where the app says 1920×1094 at 125%) and
+  cannot be compared against the app's own log. Call
+  `SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2)` in the harness first.
+- **The service is still the owner's to verify.** `urnetworkd` needs
+  LocalSystem and a tun device, and has never run. Everything above applies to
+  the app only. Runtime-affecting service changes must still ship with a way
+  to see what happened — a change nobody can observe is not done.
 
 ## The rule this project keeps relearning
 
