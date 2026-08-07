@@ -340,8 +340,10 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" Spacing="2">
                                             <TextBlock x:Name="SelectedProviderLabel" FontSize="12"
+                                               AutomationProperties.AccessibilityView="Raw"
                                                        Foreground="{StaticResource UrTextMutedBrush}" />
-                                            <TextBlock x:Name="LocationText" FontSize="15" />
+                                            <TextBlock x:Name="LocationText" FontSize="15"
+                                                       AutomationProperties.AccessibilityView="Raw" />
                                         </StackPanel>
                                         <FontIcon Grid.Column="1" Glyph="&#xE76C;" FontSize="14"
                                                   VerticalAlignment="Center"
@@ -361,6 +363,7 @@
                                         <Ellipse x:Name="PeerDot" Width="8" Height="8"
                                                  VerticalAlignment="Center" />
                                         <TextBlock x:Name="PeerCountText" FontSize="12"
+                                                   AutomationProperties.AccessibilityView="Raw"
                                                    VerticalAlignment="Center"
                                                    Foreground="{StaticResource UrTextMutedBrush}" />
                                     </StackPanel>
@@ -447,6 +450,7 @@
                             <StackPanel Spacing="12">
                                 <Grid>
                                     <TextBlock x:Name="ClientStatsLabel" FontSize="12"
+                                               AutomationProperties.AccessibilityView="Raw"
                                                Foreground="{StaticResource UrTextMutedBrush}" />
                                     <FontIcon Glyph="&#xE76C;" FontSize="12"
                                               HorizontalAlignment="Right"
@@ -463,6 +467,7 @@
                             <StackPanel Spacing="12">
                                 <Grid>
                                     <TextBlock x:Name="LocalStatsLabel" FontSize="12"
+                                               AutomationProperties.AccessibilityView="Raw"
                                                Foreground="{StaticResource UrTextMutedBrush}" />
                                     <FontIcon Glyph="&#xE76C;" FontSize="12"
                                               HorizontalAlignment="Right"
@@ -479,6 +484,7 @@
                             <StackPanel Spacing="8">
                                 <Grid Margin="0,0,0,4">
                                     <TextBlock x:Name="DnsCardLabel" FontSize="12"
+                                               AutomationProperties.AccessibilityView="Raw"
                                                Foreground="{StaticResource UrTextMutedBrush}" />
                                     <FontIcon Glyph="&#xE76C;" FontSize="12"
                                               HorizontalAlignment="Right"

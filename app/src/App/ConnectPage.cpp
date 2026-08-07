@@ -139,15 +139,23 @@ void ConnectPage::ApplyStrings() {
   // subtree, which for the DNS card is nine TextBlocks read as one run-on
   // "name". Name them from the same store keys as their visible labels.
   //
-  // Deliberately NOT AccessibilityView="Raw" on the template's presenter (which
-  // URButton does use): these cards' contents are DATA — throughput figures,
-  // per-resolver on/off states — and hiding the subtree would name the card
-  // correctly while making everything inside it unreadable.
+  // The card's LABEL child is marked AccessibilityView="Raw" in the markup so
+  // it is not then announced a second time straight after the button's name.
+  // Only the label: AccessibilityView is per-element, and the cards' other
+  // children are DATA — throughput figures, per-resolver on/off states — which
+  // must stay readable. (Blanket Raw on the template's presenter, which
+  // URButton does use, would have hidden those too.)
+  //
+  // PeersLine IS named, from ApplyPeerCount, because its text changes with the
+  // count. It looked like it could be dropped - one text child, so surely the
+  // automatic name is that text - but dumping the UIA tree said otherwise: a
+  // Button whose Content is a Panel gets NO automatic name, and the row came
+  // back as an unnamed button. Assumption checked, assumption wrong.
   namespace automation = winrt::Microsoft::UI::Xaml::Automation;
   automation::AutomationProperties::SetName(w_.ClientStatsCard(), Loc("client_statistics"));
   automation::AutomationProperties::SetName(w_.LocalStatsCard(), Loc("local_statistics"));
   automation::AutomationProperties::SetName(w_.DnsCard(), Loc("custom_dns"));
-  automation::AutomationProperties::SetName(w_.LocationRow(), Loc("selected_provider"));
+  ApplyLocationRowName();
   w_.DohLabel().Text(Loc("dns_over_https"));
   w_.UdnsLabel().Text(Loc("unencrypted_dns"));
   w_.LdnsLabel().Text(Loc("local_dns"));
@@ -307,6 +315,7 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   }
   w_.LocationText().Text(locationName.empty() ? Loc("best_available_provider")
                                               : H(locationName));
+  ApplyLocationRowName();  // the row's name carries the provider, not just the label
   // The SDK's connection status: the only signal in the client that carries a
   // CONNECTING state. It was read into LiveStats and never used.
   connectStatus_ = ParseConnectStatus(stats.connectionStatus);
@@ -638,6 +647,17 @@ void ConnectPage::ApplyBlockerUi(bool on) {
   updatingControls_ = false;
 }
 
+// "Selected provider, Berlin". Naming the row after its LABEL alone left a
+// screen reader announcing "Selected provider, button" — the label is already
+// on screen and marked Raw, and the one thing the row is actually for, which
+// provider is selected, was the part it omitted.
+void ConnectPage::ApplyLocationRowName() {
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      w_.LocationRow(),
+      hstring{urnw::Localized("selected_provider") + L", " +
+              std::wstring{w_.LocationText().Text()}});
+}
+
 void ConnectPage::ApplySplitRuleCount() {
   w_.SplitRuleCountText().Text(
       hstring{urnw::Plural("split_rule_count", static_cast<int64_t>(splitRules_.size()))});
@@ -881,12 +901,13 @@ void ConnectPage::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& pe
   // fact, so the line goes gray and says discovery is disabled (apple
   // ConnectActions parity).
   if (!Sdk().RemoteConnected()) {
-    w_.PeerCountText().Text(Loc("peer_discovery_disabled"));
+    const hstring disabled = Loc("peer_discovery_disabled");
+    w_.PeerCountText().Text(disabled);
+    // the row's automation name IS its text, and its text changes: set both
+    // together so they can never disagree
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(w_.PeersLine(),
+                                                                         disabled);
     w_.PeerDot().Fill(urnw::colors::MutedBrush());
-    // the row's automation name IS its text: it changes with the count, so it
-    // is set here rather than once in ApplyStrings
-    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
-        w_.PeersLine(), Loc("peer_discovery_disabled"));
     return;
   }
   const int64_t count = Sdk().ConnectedPeerCount();

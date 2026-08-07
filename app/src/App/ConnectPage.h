@@ -112,6 +112,8 @@ class ConnectPage {
   // safe defaults) and shows/collapses the pill. Recomputed on dns-setting changes
   // (ApplyDnsCard) and connected-country changes (ApplyStats).
   void ApplyDnsRecommendationPill();
+  // the row's automation name: the label plus the provider it names
+  void ApplyLocationRowName();
   void ApplySplitRuleCount();
   void ApplyBlockerUi(bool on);
   void OnChartTick();
