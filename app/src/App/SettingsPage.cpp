@@ -387,10 +387,11 @@ void SettingsPage::ApplyLocalDeviceState() {
       LogWarn("settings: client id read failed: {}", e.what());
     }
   }
-  // The client id comes off the device, so no session means no id - and that
-  // is a different thing from "the server returned nothing".
+  // The client id comes off the DEVICE, so a signed-in user with no service
+  // running has no id - and telling them to log in would be a lie.
   if (clientId_.empty()) {
-    ApplyFieldState(clientIdValue_, FieldState::NoSession);
+    ApplyFieldState(clientIdValue_,
+                    Sdk().IsLoggedIn() ? FieldState::NoDevice : FieldState::NoSession);
   } else {
     ApplyFieldState(clientIdValue_, FieldState::Loaded, winrt::to_hstring(clientId_));
   }
@@ -446,8 +447,12 @@ void SettingsPage::LoadDeviceInfo() {
   // client list and read its name and spec off it. Without a client id there is
   // nothing to match on, and that is a session problem, not an empty result.
   if (clientId_.empty()) {
-    ApplyFieldState(deviceNameValue_, FieldState::NoSession);
-    ApplyFieldState(deviceSpecValue_, FieldState::NoSession);
+    // Same distinction: with a session but no device there is no client id to
+    // match this machine against in the network's client list.
+    const FieldState state =
+        Sdk().IsLoggedIn() ? FieldState::NoDevice : FieldState::NoSession;
+    ApplyFieldState(deviceNameValue_, state);
+    ApplyFieldState(deviceSpecValue_, state);
     return;
   }
   ApplyFieldState(deviceNameValue_, FieldState::Loading);
@@ -531,13 +536,16 @@ void SettingsPage::LoadReferral() {
   Sdk().api().getReferralNetwork([queue, weak](
                                      std::optional<urnet::GetReferralNetworkResult> result,
                                      std::optional<std::string> err) {
-    // Having no referral network is NORMAL and is not an error; a failed call
-    // is. GetReferralNetworkResult carries both channels, so tell them apart.
-    std::string error;
-    if (result && result->error) error = result->error->message;
-    else if (err) error = *err;
-    const bool failed = !error.empty() || !result;
-    if (failed) LogWarn("settings: getReferralNetwork failed: {}", error);
+    // "No referral network found" is how the server says NONE - it answers on
+    // the error channel of a lookup that succeeded. Verified against the beta
+    // network: an account with no referral network returns exactly that, and
+    // rendering it as "Something went wrong." was wrong on screen. Only a
+    // TRANSPORT failure (err) is a real failure here; a structured response,
+    // error or not, means the server answered.
+    const bool failed = !result || err.has_value();
+    if (failed) {
+      LogWarn("settings: getReferralNetwork failed: {}", err ? *err : std::string("no result"));
+    }
     std::string name;
     if (!failed && result->network) name = result->network->name;
     queue.TryEnqueue([weak, failed, name] {

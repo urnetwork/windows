@@ -219,6 +219,30 @@ bool SdkHost::Initialize() {
     });
     service_.Connect();  // ok if the service isn't up yet; retried on demand
 
+    // RESTORE THE API'S AUTHORIZATION FROM THE PERSISTED SESSION.
+    //
+    // Without this every authenticated Api call 401s on the second and every
+    // subsequent launch, for every signed-in user. api_->setByJwt was called in
+    // exactly ONE place - RegisterNetworkClient, on the fresh-login path - so
+    // the token lived only in the Api object of the process that did the login.
+    // Relaunch rebuilt the Api with no token while the app still LOOKED signed
+    // in: the client jwt is on disk, the by jwt parses locally, the home view
+    // renders and the network name is right, and then every request comes back
+    // "401 Unauthorized: Not authorized."
+    //
+    // Measured on the beta test network: sign in, restart, and getNetworkUser,
+    // getNetworkReferralCode, getReferralNetwork, accountPreferencesGet and
+    // subscriptionBalance all 401. This is why no screen in this client had
+    // ever rendered a 200 - every Class A surface was being judged against
+    // "empty states" that were really auth failures.
+    //
+    // getByJwt() is the USER jwt, which is what the Api authorizes with;
+    // getByClientJwt() is the device credential the tunnel session needs.
+    if (const std::string byJwt = localState_->getByJwt(); !byJwt.empty()) {
+      api_->setByJwt(byJwt);
+      LogInfo("sdkhost: restored the api session from local state");
+    }
+
     if (!localState_->getByClientJwt().empty()) {
       SetAuthState(AuthState::LoggedIn);
       // Resume the session off the UI path.

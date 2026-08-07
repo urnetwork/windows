@@ -97,11 +97,16 @@ winrt::Microsoft::UI::Xaml::Controls::Button NavRow(
 // observable signal does not exist.
 //
 //   NoSession  the load cannot run: there is no token (signed out, --preview-ui)
+//   NoDevice   there IS a session, but the value comes off the DeviceRemote and
+//              the service is not up. Distinct from NoSession because telling a
+//              signed-in user to log in is a lie - seen on the beta network,
+//              where the client id and the device rows read "Please login to
+//              URnetwork" while the account was plainly signed in.
 //   Loading    a request is in flight
 //   Loaded     a value came back; the caller supplies it
 //   Empty      the request succeeded and there is genuinely nothing
 //   Failed     the request failed; ALSO log the underlying error at the callsite
-enum class FieldState { NoSession, Loading, Loaded, Empty, Failed };
+enum class FieldState { NoSession, NoDevice, Loading, Loaded, Empty, Failed };
 
 // Writes `state` onto a value TextBlock, using `loadedText` only for Loaded.
 // Failure is the danger colour; the other non-value states are faint, so

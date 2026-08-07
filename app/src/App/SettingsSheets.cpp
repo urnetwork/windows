@@ -164,11 +164,21 @@ Grid Row(Panel const& host, hstring const& label, hstring const& note,
     // FullDescription appends instead, so the button keeps "Copy" and gains
     // "Client ID", and a value TextBlock is never touched at all.
     auto describe = [&label](FrameworkElement const& element) {
-      // Only controls take a description; a TextBlock's name is its text and
-      // that is exactly what a screen-reader user needs to hear.
-      if (element.try_as<Control>()) {
-        Automation::AutomationProperties::SetFullDescription(element, label);
+      // A TextBlock's name is its text, which is exactly what a screen-reader
+      // user needs to hear - never touch it. That was the ValueRow regression.
+      if (!element.try_as<Control>()) return;
+      if (element.try_as<ToggleSwitch>()) {
+        // A UrSwitchToggleStyle switch has empty On/Off content, so it has NO
+        // name of its own - FullDescription supplements a name that is not
+        // there, and the toggle vanished from the tree as an unnamed control.
+        // Verified live: "Send me product updates" had no TogglePattern target
+        // to drive. It needs the label AS its name.
+        Automation::AutomationProperties::SetName(element, label);
+        return;
       }
+      // Buttons carry a VERB ("Copy", "Save"). FullDescription appends the
+      // object without destroying the verb, which is what LabeledBy did.
+      Automation::AutomationProperties::SetFullDescription(element, label);
     };
     describe(trailing);
     if (auto panel = trailing.try_as<Panel>()) {
@@ -311,6 +321,11 @@ void ApplyFieldState(TextBlock const& value, FieldState state, hstring const& lo
       return;
     case FieldState::NoSession:
       value.Text(Loc("please_login_to_urnetwork"));
+      value.Foreground(colors::FaintBrush());
+      return;
+    case FieldState::NoDevice:
+      // signed in, but the device controls are not attached yet
+      value.Text(Loc("site_app_device_attaching"));
       value.Foreground(colors::FaintBrush());
       return;
     case FieldState::Failed:
@@ -787,11 +802,17 @@ void ReferralNetworkSheet::Load() {
   auto weak = weak_from_this();
   sdk_.api().getReferralNetwork([queue, weak](std::optional<urnet::GetReferralNetworkResult> result,
                                               std::optional<std::string> err) {
-    std::string error;
-    if (result && result->error) error = result->error->message;
-    else if (err) error = *err;
-    const bool failed = !error.empty() || !result;
-    if (failed) LogWarn("settings: getReferralNetwork (sheet) failed: {}", error);
+    // "No referral network found" is how the server says NONE - it answers on
+    // the error channel of a lookup that succeeded. Verified against the beta
+    // network: an account with no referral network returns exactly that, and
+    // rendering it as "Something went wrong." was wrong on screen. Only a
+    // TRANSPORT failure (err) is a real failure here; a structured response,
+    // error or not, means the server answered.
+    const bool failed = !result || err.has_value();
+    if (failed) {
+      LogWarn("settings: getReferralNetwork (sheet) failed: {}",
+              err ? *err : std::string("no result"));
+    }
     std::string name;
     if (!failed && result->network) name = result->network->name;
     queue.TryEnqueue([weak, failed, name] {
@@ -1313,8 +1334,10 @@ winrt::fire_and_forget PostQuantumIdentitySheet::Load() {
   if (!sdk_.hasDevice()) {
     // Say it where the hash would be, not only under the provider list, and
     // leave Copy disabled - there is nothing to put on the clipboard.
-    ApplyFieldState(hashText_, FieldState::NoSession);
-    ApplyFieldState(statusText_, FieldState::NoSession);
+    const FieldState state =
+        sdk_.IsLoggedIn() ? FieldState::NoDevice : FieldState::NoSession;
+    ApplyFieldState(hashText_, state);
+    ApplyFieldState(statusText_, state);
     co_return;
   }
   ApplyFieldState(hashText_, FieldState::Loading);
