@@ -66,11 +66,24 @@ struct CreateNetworkParams {
 // Snapshot of live connection / throughput / provide stats. Pushed to the UI on
 // SDK listener callbacks (macOS parity: listener-push, not polling).
 struct LiveStats {
-  std::string connectionStatus;   // getConnectionStatus() (CONNECTED/CONNECTING/...)
-  bool connected = false;
+  // getConnectionStatus() (CONNECTED/CONNECTING/DESTINATION_SET/DISCONNECTED)
+  // -- EXCEPT in an rpc-only session, where it is forced to the deliberately
+  // unrecognised "RPC_ONLY" so the connect page renders as disconnected. There
+  // is no tunnel in that mode and nothing may claim otherwise. See the clamp at
+  // the end of SdkHost::ReadStats.
+  std::string connectionStatus;
+  bool connected = false;         // forced false in an rpc-only session
   int64_t providerCount = 0;      // grid window current size (providers in window)
   int64_t downBitsPerSecond = 0;  // remote (tunneled) ingress bit rate
   int64_t upBitsPerSecond = 0;    // remote (tunneled) egress bit rate
+  // This snapshot came from an rpc-only session: no tunnel exists, nothing is
+  // carried, and the four fields above have been clamped to say so.
+  bool rpcOnly = false;
+  // What the SDK actually reported before the clamp. For the developer surface
+  // (P2), which is the one place that should see through it. Empty/false unless
+  // rpcOnly.
+  std::string rawConnectionStatus;
+  bool rawConnected = false;
   bool insufficientBalance = false;
   bool provideEnabled = false;
   bool providePaused = false;
@@ -538,8 +551,12 @@ class SdkHost {
   ServiceClient service_;
   // Set once in Initialize() from URNETWORK_RPC_ONLY; never changes after.
   proto::StartMode requestedMode_ = proto::StartMode::Tunnel;
-  // Set from the service's reply/hello whenever a session is established.
-  std::atomic<proto::StartMode> sessionMode_{proto::StartMode::Tunnel};
+  // Set from the service's reply/hello whenever a session is established, and
+  // reset here when one is torn down. Defaults to RpcOnly — the mode that
+  // CLAIMS LESS — matching the policy TunnelStatus::from_json states for an
+  // unreadable mode. With no session there is certainly no tunnel, so a stray
+  // read before or after one must not be able to render "connected".
+  std::atomic<proto::StartMode> sessionMode_{proto::StartMode::RpcOnly};
   std::string appVersion_ = "0.0.1";
 
   WalletConnect wallet_;

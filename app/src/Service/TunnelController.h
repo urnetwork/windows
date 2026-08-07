@@ -69,6 +69,13 @@ class TunnelController {
   static void SetActiveMarker(bool active);
   // True if a marker was left behind; clears it either way.
   static bool TakeActiveMarker();
+  // True if a marker was left behind, WITHOUT clearing it. For a run that is
+  // only observing — the unelevated rpc-only mode — which must not consume the
+  // evidence that an earlier elevated run died with routes installed. Taking it
+  // there makes the next real start report a clean exit it did not have, and
+  // that report is the only way the owner learns a crash cost them their
+  // network.
+  static bool PeekActiveMarker();
 
  private:
   proto::TunnelStatus StartLocked(const proto::StartTunnel& config);

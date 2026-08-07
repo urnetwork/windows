@@ -26,12 +26,18 @@ nlohmann::json ControlServer::Handle(const nlohmann::json& request) {
     } else if (type == proto::msg::kStartTunnel) {
       proto::StartTunnel cfg = request.get<proto::StartTunnel>();
       proto::TunnelStatus st = tunnel_.Start(cfg);
-      // "ok" means "the session you asked for is live", which for an rpc-only
-      // request is state rpc_only, not up. The caller still has to read
-      // st.state / st.mode to know what it got — ok alone never implies a
-      // tunnel. (An unknown mode string throws out of the get<> above and is
-      // answered as a failed reply, so a garbled mode never starts anything.)
-      reply.ok = proto::IsSessionLive(st.state);
+      // "ok" means "I did what you asked" — live AND in the mode requested.
+      // A clamped process serving a tunnel request produces a live session, but
+      // not the one the caller asked for, and reporting ok for that is how a
+      // caller ends up believing it has a tunnel. The status carries the mode
+      // actually served, so the caller can see which way it differed.
+      // (An unknown mode string throws out of the get<> above and is answered
+      // as a failed reply, so a garbled mode never starts anything.)
+      reply.ok = proto::IsSessionLive(st.state) && st.mode == cfg.mode;
+      // Left EMPTY on a pure mode mismatch, deliberately: the status already
+      // says what happened, and ServiceClient::CallStatus overwrites state with
+      // Error whenever !ok carries an error string — which would erase the very
+      // mode the caller needs in order to react correctly.
       reply.error = st.error;
       reply.status = st;
       PushState();

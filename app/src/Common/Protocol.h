@@ -25,7 +25,22 @@
 namespace urnw::proto {
 
 // bump when the wire format changes incompatibly; hello negotiates it
-inline constexpr int kProtocolVersion = 1;
+//
+// 2: StartTunnel::mode / TunnelStatus::mode + TunnelState::RpcOnly.
+//    This bump is load-bearing, not bookkeeping. A version-1 service has no
+//    `mode` handler in its from_json, so it SILENTLY DROPS the field: an
+//    rpc-only request arrives as a plain start_tunnel, all eight steps run, and
+//    the machine's routes and DNS are rewritten by a request that asked for
+//    exactly the opposite. `mode` cannot be made safe by its own absence — the
+//    only thing that distinguishes "this peer honours mode" from "this peer
+//    ignores mode" is the version. Anything requesting RpcOnly MUST refuse to
+//    proceed against a peer reporting < kFirstStartModeVersion.
+//    See SdkHost::BootstrapSession.
+inline constexpr int kProtocolVersion = 2;
+
+// The first version that understands StartTunnel::mode. Below this, an absent
+// `mode` on the wire means "ignored", not "defaulted".
+inline constexpr int kFirstStartModeVersion = 2;
 
 // ---- message type tags ----------------------------------------------------
 
@@ -164,6 +179,11 @@ struct TunnelStatus {
   // `state` so it survives Starting/Stopping/Error, where `state` says nothing
   // about which kind of session was asked for. In a live session the two agree
   // by construction: the controller derives both from one stored mode.
+  //
+  // Defaults to Tunnel, and that is right even for an absent field: a peer old
+  // enough not to send `mode` is a peer that only ever built real tunnels, so
+  // reading its silence as "Tunnel" is honest. What is NOT safe is asking such
+  // a peer for RpcOnly — see kFirstStartModeVersion.
   StartMode mode = StartMode::Tunnel;
   // True only when routes and DNS are actually installed right now. This is the
   // field to trust for "is my traffic going through the tunnel"; it is false for

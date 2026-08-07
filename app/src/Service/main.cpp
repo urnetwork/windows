@@ -108,10 +108,34 @@ std::string DescribeIdentity() {
 // interface that outlived it. Both are expected to be absent; both are loud
 // when they are not, because between them they are the only way the owner
 // learns that a crash cost them their network.
-void ReportAndClearPriorState() {
-  const bool crashed = TunnelController::TakeActiveMarker();
-  const int orphans = NetworkConfig::SweepOrphanedTunnel(ids::kTunAdapterGuid,
-                                                         ids::kTunAdapterName);
+//
+// observeOnly (the unelevated rpc-only mode) REPORTS without mutating: it
+// deletes no route, clears no DNS and does not consume the marker. Both halves
+// matter. The sweep's DeleteTunnelRoutes/ClearTunnelDns need privilege this
+// process does not have, and a mode whose entire promise is "this will not
+// touch your network" must not open by rewriting the route table. Consuming the
+// marker would be worse than useless: an unelevated developer run would eat the
+// evidence that an earlier ELEVATED run died with routes installed, and the
+// next real start would then report a clean exit that never happened.
+void ReportAndClearPriorState(bool observeOnly) {
+  const bool crashed = observeOnly ? TunnelController::PeekActiveMarker()
+                                   : TunnelController::TakeActiveMarker();
+  const int orphans = NetworkConfig::SweepOrphanedTunnel(
+      ids::kTunAdapterGuid, ids::kTunAdapterName, /*remove=*/!observeOnly);
+  if (observeOnly) {
+    if (crashed || orphans > 0) {
+      LogWarn("service: leftover tunnel state from a previous run (marker={} "
+              "orphaned_interfaces={}) — this process is OBSERVE-ONLY "
+              "(rpc-only), so nothing was cleaned and the marker was LEFT IN "
+              "PLACE for the next real start. If your network is wrong, run "
+              "`urnetworkd revert` from an elevated prompt.",
+              crashed ? "yes" : "no", orphans);
+    } else {
+      LogInfo("service: no leftover tunnel state from a previous run "
+              "(observe-only: nothing swept, no marker consumed)");
+    }
+    return;
+  }
   if (crashed) {
     LogWarn("service: the previous run exited with tunnel routes installed "
             "(crash, kill, or power loss) — {}",
@@ -182,7 +206,7 @@ void Run() {
   // Sweep before anything else can fail or block: if a previous run left the
   // machine pointed at a tun that is gone, giving the routes back is more
   // urgent than getting the sdk up.
-  ReportAndClearPriorState();
+  ReportAndClearPriorState(/*observeOnly=*/false);
   SdkInit(/*isService=*/true, kServiceMemoryLimit);
 
   ControlServer server;
@@ -352,8 +376,10 @@ int RunConsole(bool rpcOnly) {
     LogWarn("console: --rpc-only — this process will bring up the DeviceLocal "
             "and the mTLS rpc listener the app dials, and will NOT create a "
             "wintun adapter, write a route, set a dns server or move a packet. "
-            "No elevation is needed and none is used. Nothing here can connect "
-            "you to anything; the app will report state 'rpc_only', not 'up'.");
+            "The startup sweep is observe-only here, so it will not delete a "
+            "stale route or consume the crash marker either. No elevation is "
+            "needed and none is used. Nothing here can connect you to anything; "
+            "the app will report state 'rpc_only', not 'up'.");
   } else if (!TokenHas(WinLocalSystemSid) && !TokenHas(WinBuiltinAdministratorsSid)) {
     LogError("console: NOT elevated — creating the wintun adapter and writing "
              "routes both require LocalSystem/administrator, so a start_tunnel "
@@ -376,7 +402,10 @@ int RunConsole(bool rpcOnly) {
   }
   ::SetConsoleCtrlHandler(&OnConsoleControl, TRUE);
 
-  ReportAndClearPriorState();  // see Run(): routes back before anything else
+  // See Run(): routes back before anything else — except in rpc-only, where
+  // this process has neither the privilege nor the mandate to give them back,
+  // and says so rather than trying and half-failing.
+  ReportAndClearPriorState(/*observeOnly=*/rpcOnly);
   SdkInit(/*isService=*/true, kServiceMemoryLimit);
 
   ControlServer server;
@@ -398,7 +427,8 @@ int RunConsole(bool rpcOnly) {
   g_server = nullptr;
   ::SetEvent(g_consoleDrainedEvent);
   LogInfo("console: stopped cleanly{}",
-          rpcOnly ? " (nothing to restore: no network state was written)"
+          rpcOnly ? " (this process wrote no network state, so there is nothing "
+                    "to restore)"
                   : ", network restored");
 
   ::CloseHandle(g_stopEvent);
@@ -419,6 +449,14 @@ int Usage() {
       L"                            DeviceLocal + mTLS rpc listener only, so the\n"
       L"                            app has a live DeviceRemote to drive.\n"
       L"                            NEEDS NO ELEVATION and carries no traffic.\n"
+      L"                            The startup sweep is observe-only here: it\n"
+      L"                            reports leftover state but cleans nothing\n"
+      L"                            and does not consume the crash marker.\n"
+      L"                            This is a SAFETY NET, not a switch: the app\n"
+      L"                            must ask for rpc-only itself (set\n"
+      L"                            URNETWORK_RPC_ONLY=1), because a client that\n"
+      L"                            asked for a tunnel is refused rather than\n"
+      L"                            silently downgraded.\n"
       L"  urnetworkd install        register the service (elevated)\n"
       L"  urnetworkd uninstall      stop and deregister the service (elevated)\n"
       L"  urnetworkd revert         take back any leftover tunnel routes/DNS\n"
@@ -476,8 +514,12 @@ int wmain(int argc, wchar_t** argv) {
   if (cmd == L"install") return InstallService();
   if (cmd == L"uninstall") return UninstallService();
   if (cmd == L"console" || cmd == L"--console") {
-    if (argc >= 3 && !rpcOnlyFlag) {
-      std::fwprintf(stderr, L"unknown option for console: %s\n", argv[2]);
+    // Check EVERY extra argument, not just argv[2]: `console --rpc-only --xyz`
+    // used to ignore argv[3] silently while `console --xyz` errored, so a typo
+    // was swallowed exactly when the flag most needed to be read carefully.
+    for (int i = 2; i < argc; ++i) {
+      if (std::wstring(argv[i]) == L"--rpc-only") continue;
+      std::fwprintf(stderr, L"unknown option for console: %s\n", argv[i]);
       Usage();
       return 2;
     }

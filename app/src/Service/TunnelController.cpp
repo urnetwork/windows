@@ -450,6 +450,11 @@ bool TunnelController::TakeActiveMarker() {
   return true;
 }
 
+bool TunnelController::PeekActiveMarker() {
+  std::error_code ec;
+  return std::filesystem::exists(ActiveMarkerPath(), ec);
+}
+
 void TunnelController::PushPhysicalAddressesLocked(const EgressInterfaces& egress) {
   uint8_t addr4[4] = {0};
   uint8_t addr6[16] = {0};
