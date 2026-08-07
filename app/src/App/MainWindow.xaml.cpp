@@ -168,14 +168,15 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   // wallet error must PERSIST, the support acknowledgement must time out.
   if (destination == "wallet") wallet_->ShowPreviewSnackbar();
   if (destination == "support") settings_->ShowPreviewSnackbar();
-  // The wallet destination's eight API loads are skipped with the rest, so
-  // settle its panels on their empty states rather than leaving every one of
-  // them on "Loading..." — which is what a hang looks like.
-  if (destination == "wallet") wallet_->ShowPreviewWalletState();
-  // The leaderboard's fetch is skipped along with the other loads, so put its
-  // panel into the settled empty state rather than leaving it on "Loading..."
-  // forever, which would look exactly like a hang.
-  if (destination == "leaderboard") wallet_->ShowPreviewLeaderboardState();
+  // The per-destination preview states are NOT raised here any more. They
+  // belong to whichever destination is selected, at the moment it is selected,
+  // and this function runs exactly once — so gating them on the LAUNCH tag left
+  // every other destination stranded: `--preview-ui=leaderboard`, then click
+  // Wallet, and Payout Wallets / Account points / Network reliability / Payouts
+  // all sat on "Loading..." for good, which is precisely the hang this switch
+  // exists to rule out (screenshotted). OnNavSelectionChanged settles them on
+  // every navigation instead, and the SelectedItem assignment above has already
+  // been through it.
 }
 
 // ---- navigation ----------------------------------------------------------
@@ -209,6 +210,13 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   if (previewUi_) {
     urnw::LogInfo("preview-ui: '{}' selected - skipping its API loads (no session)",
                   urnw::Narrow(std::wstring{tag}));
+    // Skipping the loads is only half of it: a panel whose fetch never runs sits
+    // on "Loading..." for good, which is indistinguishable from a hang. Settle
+    // the destination the user just navigated TO, every time - not only the one
+    // named on the command line, which is what EnterPreviewUi used to do and
+    // which left Wallet stranded for anyone who arrived from another tag.
+    if (tag == L"wallet") wallet_->ShowPreviewWalletState();
+    if (tag == L"leaderboard") wallet_->ShowPreviewLeaderboardState();
     return;
   }
   if (!Sdk().apiReady()) return;

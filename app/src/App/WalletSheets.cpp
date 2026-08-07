@@ -284,11 +284,24 @@ UIElement BuildPointsBreakdown(PointsBreakdown const& points, bool seekerHolder)
 std::shared_ptr<WalletDetailSheet> WalletDetailSheet::Create(
     XamlRoot const& root, SdkHost& sdk, urnet::AccountWallet const& wallet,
     bool isPayoutWallet, std::vector<urnet::AccountPayment> const& payments,
-    std::function<void()> onChanged, std::function<void(hstring)> onSuccess) {
-  auto sheet = std::shared_ptr<WalletDetailSheet>(new WalletDetailSheet(
-      sdk, wallet, isPayoutWallet, payments, std::move(onChanged), std::move(onSuccess)));
+    bool allowActions, std::function<void()> onChanged,
+    std::function<void(hstring)> onSuccess) {
+  auto sheet = std::shared_ptr<WalletDetailSheet>(
+      new WalletDetailSheet(sdk, wallet, isPayoutWallet, payments, allowActions,
+                            std::move(onChanged), std::move(onSuccess)));
   sheet->Build(root);
   return sheet;
+}
+
+// Checked at the moment of the press, not only at Build: the buttons are
+// already disabled without a session, so reaching this is a bug rather than a
+// user path - which is exactly why it says so out loud instead of returning.
+bool WalletDetailSheet::CanAct() {
+  if (allowActions_) return true;
+  urnw::LogError("wallet sheet: refusing an api write - the sheet was opened "
+                 "with no session");
+  ShowError(Loc("please_login_to_urnetwork"));
+  return false;
 }
 
 void WalletDetailSheet::Build(XamlRoot const& root) {
@@ -348,6 +361,7 @@ void WalletDetailSheet::Build(XamlRoot const& root) {
     makeDefaultButton_ = Button();
     makeDefaultButton_.Content(LocBox("make_default"));
     makeDefaultButton_.HorizontalAlignment(HorizontalAlignment::Stretch);
+    makeDefaultButton_.IsEnabled(allowActions_);
     makeDefaultButton_.Click([weak = weak_from_this()](auto const&, auto const&) {
       if (auto self = weak.lock()) self->MakeDefault();
     });
@@ -357,6 +371,10 @@ void WalletDetailSheet::Build(XamlRoot const& root) {
   removeButton_ = Button();
   removeButton_.Content(LocBox("remove_wallet"));
   removeButton_.HorizontalAlignment(HorizontalAlignment::Stretch);
+  // Disabled is the signal. With no session these two are the only controls on
+  // the sheet that would talk to the server, and they are the reason a sample
+  // wallet card could reach the api at all.
+  removeButton_.IsEnabled(allowActions_);
   removeButton_.Click([weak = weak_from_this()](auto const&, auto const&) {
     if (auto self = weak.lock()) self->RemoveWallet();
   });
@@ -418,22 +436,31 @@ void WalletDetailSheet::Build(XamlRoot const& root) {
   dialog_.Content(scroll);
 }
 
-void WalletDetailSheet::SetBusy(bool busy) {
+uint32_t WalletDetailSheet::SetBusy(bool busy) {
   busy_ = busy;
-  if (makeDefaultButton_) makeDefaultButton_.IsEnabled(!busy);
-  if (removeButton_) removeButton_.IsEnabled(!busy);
+  // Never re-enable what has no session behind it: !busy must not undo the
+  // disable that Build() applied.
+  if (makeDefaultButton_) makeDefaultButton_.IsEnabled(!busy && allowActions_);
+  if (removeButton_) removeButton_.IsEnabled(!busy && allowActions_);
 
   if (!busy) {
     if (watchdog_) watchdog_.Stop();
-    return;
+    return requestGeneration_;
   }
+  const uint32_t generation = ++requestGeneration_;
   if (!watchdog_) {
     watchdog_ = dialog_.DispatcherQueue().CreateTimer();
     watchdog_.IsRepeating(false);
     watchdog_.Interval(std::chrono::milliseconds(kRequestTimeoutMs));
+    // Registered ONCE. busy_ is only true for the current generation, so the
+    // handler needs no captured one of its own.
     watchdog_.Tick([weak = weak_from_this()](auto const&, auto const&) {
       auto self = weak.lock();
       if (!self || !self->busy_) return;
+      // Bumping it here is what makes giving up final: a late success can no
+      // longer hide the sheet and reload the page behind a message that told
+      // the user the request had failed.
+      ++self->requestGeneration_;
       urnw::LogError("wallet: request timed out with no callback after {} ms",
                      kRequestTimeoutMs);
       self->SetBusy(false);
@@ -441,6 +468,16 @@ void WalletDetailSheet::SetBusy(bool busy) {
     });
   }
   watchdog_.Start();
+  return generation;
+}
+
+bool WalletDetailSheet::SettleRequest(uint32_t generation) {
+  if (requestGeneration_ != generation) {
+    urnw::LogWarn("wallet sheet: dropping an answer to a request already given up on");
+    return false;
+  }
+  SetBusy(false);
+  return true;
 }
 
 void WalletDetailSheet::ShowError(hstring const& message) {
@@ -449,11 +486,16 @@ void WalletDetailSheet::ShowError(hstring const& message) {
 }
 
 void WalletDetailSheet::MakeDefault() {
-  if (busy_ || !wallet_.wallet_id || wallet_.wallet_id->empty()) {
+  // Busy is not an error. A second press while the first request is in flight
+  // used to draw "Error setting default wallet" under a request that was still
+  // perfectly alive and about to succeed.
+  if (busy_) return;
+  if (!CanAct()) return;
+  if (!wallet_.wallet_id || wallet_.wallet_id->empty()) {
     ShowError(Loc("error_setting_default_wallet"));
     return;
   }
-  SetBusy(true);
+  const uint32_t generation = SetBusy(true);
   errorText_.Visibility(Visibility::Collapsed);
   urnet::SetPayoutWalletArgs args;
   args.wallet_id = *wallet_.wallet_id;
@@ -461,15 +503,15 @@ void WalletDetailSheet::MakeDefault() {
   auto queue = dialog_.DispatcherQueue();
   auto weak = weak_from_this();
   sdk_.api().setPayoutWallet(
-      args, [queue, weak](std::optional<urnet::SetPayoutWalletResult> result,
-                          std::optional<std::string> err) {
+      args, [queue, weak, generation](std::optional<urnet::SetPayoutWalletResult> result,
+                                      std::optional<std::string> err) {
         const bool ok = result.has_value() && !err;
         const std::string error = err ? *err : std::string();
         if (!ok) urnw::LogError("wallet: setPayoutWallet failed: {}", error);
-        queue.TryEnqueue([weak, ok, error] {
+        queue.TryEnqueue([weak, ok, error, generation] {
           auto self = weak.lock();
           if (!self) return;
-          self->SetBusy(false);
+          if (!self->SettleRequest(generation)) return;
           if (!ok) {
             self->ShowError(error.empty()
                                 ? Loc("error_setting_default_wallet")
@@ -498,11 +540,12 @@ void WalletDetailSheet::RemoveWallet() {
 }
 
 void WalletDetailSheet::CommitRemoveWallet() {
+  if (!CanAct()) return;
   if (!wallet_.wallet_id || wallet_.wallet_id->empty()) {
     ShowError(Loc("something_went_wrong"));
     return;
   }
-  SetBusy(true);
+  const uint32_t generation = SetBusy(true);
   errorText_.Visibility(Visibility::Collapsed);
   urnet::RemoveWalletArgs args;
   args.wallet_id = *wallet_.wallet_id;
@@ -510,22 +553,30 @@ void WalletDetailSheet::CommitRemoveWallet() {
   auto queue = dialog_.DispatcherQueue();
   auto weak = weak_from_this();
   sdk_.api().removeWallet(
-      args, [queue, weak](std::optional<urnet::RemoveWalletResult> result,
-                          std::optional<std::string> err) {
+      args, [queue, weak, generation](std::optional<urnet::RemoveWalletResult> result,
+                                      std::optional<std::string> err) {
         const bool ok = result && result->success && !err;
         std::string error = err ? *err : std::string();
         if (error.empty() && result && result->error) error = result->error->message;
         if (!ok) urnw::LogError("wallet: removeWallet failed: {}", error);
-        queue.TryEnqueue([weak, ok, error] {
+        queue.TryEnqueue([weak, ok, error, generation] {
           auto self = weak.lock();
           if (!self) return;
-          self->SetBusy(false);
+          if (!self->SettleRequest(generation)) return;
           if (!ok) {
             // the server's message is not localizable; show it when there is one
             self->ShowError(error.empty() ? Loc("something_went_wrong")
                                           : hstring{urnw::Widen(error)});
             return;
           }
+          // NO SNACKBAR HERE, deliberately, unlike MakeDefault - which raises
+          // "Payout wallet updated" because the store HAS that sentence. There
+          // is no "wallet removed" in it: all 931 en keys were read looking for
+          // one, and the nearest, "Saved", is about settings and would be a lie
+          // about a deletion. Inventing English is not on the table, so removal
+          // reports itself the way the rest of the product reports one (blocked
+          // locations, split rules): the sheet closes and the card is gone from
+          // the list underneath. Raised in the P4 report as a missing string.
           if (self->onChanged_) self->onChanged_();
           self->dialog_.Hide();
         });
@@ -587,12 +638,32 @@ std::shared_ptr<PayoutDetailSheet> PayoutDetailSheet::Create(
     } else {
       // the hash IS the link; a separate "view on explorer" row would be a new
       // string the store does not carry
-      HyperlinkButton link;
-      link.Padding(Thickness{0, 0, 0, 0});
-      link.NavigateUri(Uri(hstring{urnw::Widen(url)}));
-      auto hashText = MakeText(hstring{urnw::Widen(hash)}, 13, nullptr, true);
-      link.Content(hashText);
-      tx.Children().Append(link);
+      //
+      // Uri THROWS on anything it cannot parse, and the hash it is built from
+      // is a server string this client does not validate. The throw escaped
+      // Create(), unwound into ShowPayoutDetail's catch(...), and the row the
+      // user clicked did nothing whatsoever - no sheet, no message, no log
+      // line. One unencodable character in one tx_hash and that payout is
+      // simply unopenable, silently. Fall back to the hash as plain text: the
+      // sheet is worth having without a working link, and the link is worth
+      // nothing without the sheet.
+      bool linked = false;
+      try {
+        HyperlinkButton link;
+        link.Padding(Thickness{0, 0, 0, 0});
+        link.NavigateUri(Uri(hstring{urnw::Widen(url)}));
+        link.Content(MakeText(hstring{urnw::Widen(hash)}, 13, nullptr, true));
+        tx.Children().Append(link);
+        linked = true;
+      } catch (winrt::hresult_error const& e) {
+        urnw::LogError("payout: transaction url is not a uri ({}) - showing the hash "
+                       "as plain text",
+                       urnw::Narrow(std::wstring{e.message()}));
+      }
+      if (!linked) {
+        tx.Children().Append(MakeText(hstring{urnw::Widen(hash)}, 13, colors::TextBrush(),
+                                      true));
+      }
     }
     content.Children().Append(tx);
   } else {

@@ -720,9 +720,29 @@
                      country multipliers - which iOS stacks into a phone column
                      and a desktop window does not have to. Everything dynamic in
                      here is built by WalletPage/WalletSheets into the named empty
-                     panels below; the markup carries only the static structure. -->
+                     panels below; the markup carries only the static structure.
+
+                     THE WIDTH CAP IS A COLUMN, NOT A MaxWidth ON THE PANEL. Put
+                     MaxWidth on a Stretch-aligned child of a ScrollViewer and
+                     the arrange offset comes out of the child's DESIRED width
+                     while the child is laid out at the cap: the column gets
+                     pushed right by half the slack and its right-hand side falls
+                     off the viewport. That is how the leaderboard lost its
+                     net-provided figures and half of its switch at 1200px. This
+                     panel only escaped because its widest child is a long
+                     unwrapped sentence that happens to measure the full 820,
+                     making the two widths equal and the offset a true centre -
+                     luck, and luck that changes with the sentence.
+
+                     A star column capped by MaxWidth has no such split: the Grid
+                     fills the viewport, the column takes min(820, viewport) at
+                     x=0, and the content stretches inside it at every width. -->
                 <ScrollViewer x:Name="WalletView" Visibility="Collapsed">
-                    <StackPanel Spacing="12" MaxWidth="820">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MaxWidth="820" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="12">
                         <TextBlock x:Name="PlanHeading" FontFamily="{StaticResource UrHeadingFontFamily}" FontSize="18" FontWeight="SemiBold" />
                         <Button x:Name="UpgradeButton"
                                 Style="{StaticResource AccentButtonStyle}" Click="OnOpenUpgrade" />
@@ -835,11 +855,20 @@
                         <TextBlock x:Name="PayoutsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
                         <StackPanel x:Name="PayoutsPanel" Spacing="0" />
                     </StackPanel>
+                  </Grid>
                 </ScrollViewer>
 
-                <!-- Leaderboard -->
+                <!-- Leaderboard. Same capped star column as Wallet, and for a
+                     reason this panel demonstrated: with MaxWidth on the panel
+                     itself the whole column arranged off the right edge above
+                     ~1100px, taking the per-row net-provided figures - the point
+                     of a leaderboard - and half the switch with it. -->
                 <ScrollViewer x:Name="LeaderboardView" Visibility="Collapsed">
-                    <StackPanel Spacing="8" MaxWidth="820">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MaxWidth="820" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="8">
                         <!-- No section heading here: NavigationView's Header already
                              shows the destination name ("Leaderboard"), and a panel
                              heading with the same word under it read as a stutter.
@@ -887,7 +916,19 @@
                         <TextBlock x:Name="LeaderboardStatusText"
                                    Style="{StaticResource UrSupportingTextStyle}" />
                         <StackPanel x:Name="LeaderboardRows" Spacing="0" />
+
+                        <!-- This destination's own snackbar. WalletInfo lives
+                             inside the WalletView ScrollViewer, which is
+                             Collapsed while the user is here, so the switch's
+                             401 snapped the toggle back and put its message on a
+                             panel nobody was looking at - it turned up later,
+                             out of context, on Wallet. Screenshotted both ways
+                             (P4 report). WalletPage::Notify picks the visible
+                             one. -->
+                        <muxc:InfoBar x:Name="LeaderboardInfo" Style="{StaticResource UrSnackbarStyle}"
+                                      IsOpen="False" Margin="0,12,0,0" />
                     </StackPanel>
+                  </Grid>
                 </ScrollViewer>
 
                 <!-- Support -->

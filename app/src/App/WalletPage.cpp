@@ -3,6 +3,8 @@
 
 #include "WalletPage.h"
 
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
+#include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 #include <winrt/Windows.UI.Text.h>
@@ -175,19 +177,32 @@ UIElement BuildReliabilityChart(std::vector<double> weights, std::vector<double>
   // A Canvas has no layout size of its own, so the series can only be plotted
   // once the host has been measured - and again on every resize, which a
   // resizable desktop window does have.
-  auto redraw = [weights, clients, mean, meanLine, weightLine, clientLine](
-                    double width, double height) {
+  //
+  // The three lines are held WEAKLY. Holding them by value made the handler own
+  // strong references to three Polylines that are descendants of the very Grid
+  // raising the event: host -> canvas -> line -> handler -> line, a cycle
+  // neither end of which can ever be collected. LoadWallet() rebuilds this
+  // panel on every visit to the destination and after every wallet change, so
+  // it was one leaked chart per load for the life of the process.
+  auto weakMean = winrt::make_weak(meanLine);
+  auto weakWeight = winrt::make_weak(weightLine);
+  auto weakClient = winrt::make_weak(clientLine);
+  host.SizeChanged([weights, clients, mean, weakMean, weakWeight, weakClient](
+                       IInspectable const&, SizeChangedEventArgs const& args) {
+    auto meanShape = weakMean.get();
+    auto weightShape = weakWeight.get();
+    auto clientShape = weakClient.get();
+    if (!meanShape || !weightShape || !clientShape) return;  // the chart is gone
+    const double width = args.NewSize().Width;
+    const double height = args.NewSize().Height;
     double weightMax = mean;
     for (double v : weights) weightMax = (std::max)(weightMax, v);
     double clientMax = 0;
     for (double v : clients) clientMax = (std::max)(clientMax, v);
     std::vector<double> meanSeries(weights.size(), mean);
-    PlotSeries(meanLine, meanSeries, weightMax, width, height);
-    PlotSeries(weightLine, weights, weightMax, width, height);
-    PlotSeries(clientLine, clients, clientMax, width, height);
-  };
-  host.SizeChanged([redraw](IInspectable const& sender, SizeChangedEventArgs const& args) {
-    redraw(args.NewSize().Width, args.NewSize().Height);
+    PlotSeries(meanShape, meanSeries, weightMax, width, height);
+    PlotSeries(weightShape, weights, weightMax, width, height);
+    PlotSeries(clientShape, clients, clientMax, width, height);
   });
 
   return host;
@@ -204,13 +219,29 @@ UIElement BuildReliabilityChart(std::vector<double> weights, std::vector<double>
 // they could ship having never been drawn.
 //
 // So: with --preview-ui ALREADY on, URNETWORK_PREVIEW_SAMPLE=1 pushes obviously
-// synthetic rows through the SAME Apply* functions the API path uses. Two gates,
-// no network, and a warning in the log every time, because data on screen that
-// did not come from the server is the one thing a screenshot cannot show you.
+// synthetic rows through the SAME Apply* functions the API path uses. Two gates
+// and a warning in the log every time, because data on screen that did not come
+// from the server is the one thing a screenshot cannot show you.
+//
+// THIS COMMENT USED TO SAY "no network", AND THAT WAS FALSE. The sample makes
+// the cards and rows interactive, and interactive meant a real sheet with a
+// real Remove behind it: two clicks put an authenticated-looking removeWallet
+// on the wire from a build with no account. The gates keep the api at arm's
+// length from the LOAD paths only; what actually holds the line is
+// WalletPage::CanCallApi(), which every action on this destination now passes
+// through. See its comment in WalletPage.h.
 //
 // The values are deliberately not plausible as anybody's account: the wallet
 // addresses spell what they are.
 constexpr const char* kSampleOwnNetworkId = "sample-network-self";
+// The addresses spell what they are, and their LAST SIX characters differ per
+// chain on purpose: every surface in this destination shows a wallet as
+// MaskAddress's "***" + last six, so three samples ending in the same word made
+// all three cards, all three ledger rows and both sheets read "***SAMPLE" -
+// which is exactly the thing the masked address exists to tell apart.
+constexpr const char* kSampleSolAddress = "SAMPLEwa11etADDRESSnotREALsolana00SOLSMP";
+constexpr const char* kSampleMaticAddress = "0xSAMPLEwa11etADDRESSnotREALpolygonMATSMP";
+constexpr const char* kSampleTaoAddress = "5SAMPLEwa11etADDRESSnotREALbittensorTAOSMP";
 
 bool PreviewSample() {
   static const bool on = [] {
@@ -234,7 +265,7 @@ std::vector<urnet::AccountWallet> SampleWallets() {
   urnet::AccountWallet sol;
   sol.wallet_id = "5a3e0000-0000-4000-8000-00000000501a";
   sol.blockchain = urnet::SOL;
-  sol.wallet_address = "SAMPLEwa11etADDRESSnotREALsolana000000SAMPLE";
+  sol.wallet_address = kSampleSolAddress;
   sol.default_token_type = "USDC";
   sol.active = true;
   sol.has_seeker_token = true;
@@ -242,22 +273,27 @@ std::vector<urnet::AccountWallet> SampleWallets() {
   urnet::AccountWallet matic;
   matic.wallet_id = "5a3e0000-0000-4000-8000-0000000a71c0";
   matic.blockchain = urnet::MATIC;
-  matic.wallet_address = "0xSAMPLEwa11etADDRESSnotREALpolygonSAMPLE";
+  matic.wallet_address = kSampleMaticAddress;
   matic.default_token_type = "USDC";
   matic.active = true;
 
   urnet::AccountWallet tao;
   tao.wallet_id = "5a3e0000-0000-4000-8000-00000000007a";
   tao.blockchain = urnet::TAO;
-  tao.wallet_address = "5SAMPLEwa11etADDRESSnotREALbittensorSAMPLE";
+  tao.wallet_address = kSampleTaoAddress;
   tao.default_token_type = "USDC";
   tao.active = true;
   return {sol, matic, tao};
 }
 
 std::vector<urnet::AccountPayment> SamplePayments() {
-  auto make = [](const char* id, const char* wallet, const char* chain, double amount,
-                 const char* when, const char* tx, bool completed) {
+  // The address travels WITH the payment. It used to be hardcoded to the solana
+  // one for all three, so the polygon payout rendered under a solana address -
+  // in the ledger, in the wallet sheet and in the payout detail. A sample whose
+  // whole job is to show what a populated screen looks like must not show a
+  // wrong one.
+  auto make = [](const char* id, const char* wallet, const char* chain, const char* address,
+                 double amount, const char* when, const char* tx, bool completed) {
     urnet::AccountPayment p;
     p.payment_id = id;
     p.wallet_id = wallet;
@@ -267,17 +303,19 @@ std::vector<urnet::AccountPayment> SamplePayments() {
     p.complete_time = completed ? std::optional<std::string>(when) : std::nullopt;
     p.create_time = when;
     p.completed = completed;
-    p.wallet_address = "SAMPLEwa11etADDRESSnotREALsolana000000SAMPLE";
+    p.wallet_address = address;
     if (tx) p.tx_hash = tx;
     p.payout_byte_count = 8'123'456'789;
     return p;
   };
   return {
-      make("5a3e0000-0000-4000-8000-0000000000a1", "5a3e0000-0000-4000-8000-00000000501a", urnet::SOL, 0, "2026-08-02T00:00:00Z", nullptr,
-           false),
-      make("5a3e0000-0000-4000-8000-0000000000a2", "5a3e0000-0000-4000-8000-00000000501a", urnet::SOL, 12.34, "2026-07-26T00:00:00Z",
+      make("5a3e0000-0000-4000-8000-0000000000a1", "5a3e0000-0000-4000-8000-00000000501a",
+           urnet::SOL, kSampleSolAddress, 0, "2026-08-02T00:00:00Z", nullptr, false),
+      make("5a3e0000-0000-4000-8000-0000000000a2", "5a3e0000-0000-4000-8000-00000000501a",
+           urnet::SOL, kSampleSolAddress, 12.34, "2026-07-26T00:00:00Z",
            "SAMPLEtxHASHnotREAL2222222222222222", true),
-      make("5a3e0000-0000-4000-8000-0000000000a3", "5a3e0000-0000-4000-8000-0000000a71c0", urnet::MATIC, 8.90, "2026-07-19T00:00:00Z",
+      make("5a3e0000-0000-4000-8000-0000000000a3", "5a3e0000-0000-4000-8000-0000000a71c0",
+           urnet::MATIC, kSampleMaticAddress, 8.90, "2026-07-19T00:00:00Z",
            "0xSAMPLEtxHASHnotREAL33333333333333", true),
   };
 }
@@ -290,7 +328,11 @@ std::vector<urnet::AccountPoint> SamplePoints() {
     p.account_payment_id = paymentId;
     return p;
   };
-  const int64_t nano = 1'000'000'000;
+  // urnet::nanoPointsToPoints divides by 1e6, not 1e9. At 1e9 this sample drew
+  // 36,955,000 net points against a $21 lifetime payout - a thousand times the
+  // real scale, on the one screen whose entire job is to show what the real
+  // scale looks like.
+  const int64_t nano = 1'000'000;
   return {
       make(kEventPayout, 12'340 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
       make(kEventReferral, 2'100 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
@@ -357,10 +399,67 @@ urnet::LeaderboardEarnersList SampleEarners() {
 }  // namespace
 
 WalletPage::WalletPage(winrt::URnetwork::implementation::MainWindow& window)
-    : w_(window), snackbar_(window.WalletInfo(), window.DispatcherQueue()) {}
+    : w_(window),
+      snackbar_(window.WalletInfo(), window.DispatcherQueue()),
+      leaderboardSnackbar_(window.LeaderboardInfo(), window.DispatcherQueue()) {}
 
 WalletPage::~WalletPage() {
   if (walletValidateTimer_) walletValidateTimer_.Stop();
+  if (seekerFlow_.timer) seekerFlow_.timer.Stop();
+  if (connectFlow_.timer) connectFlow_.timer.Stop();
+  if (rankingFlow_.timer) rankingFlow_.timer.Stop();
+}
+
+// See the long note on the declaration (WalletPage.h): guarding the LOAD paths
+// left every ACTION on this destination able to reach the api with no session.
+bool WalletPage::CanCallApi() const {
+  return !w_.previewUi() && Sdk().apiReady() && Sdk().IsLoggedIn();
+}
+
+void WalletPage::RefuseNoSession() {
+  urnw::LogWarn("wallet: refusing an api call - no session (preview={})",
+                w_.previewUi());
+  Notify(Loc("please_login_to_urnetwork"), InfoBarSeverity::Error);
+}
+
+// The bar the user can SEE. Each destination's InfoBar lives inside that
+// destination's own ScrollViewer, and the other one is Collapsed.
+void WalletPage::Notify(hstring const& message, InfoBarSeverity severity) {
+  if (w_.LeaderboardView().Visibility() == Visibility::Visible) {
+    leaderboardSnackbar_.Show(message, severity);
+    return;
+  }
+  snackbar_.Show(message, severity);
+}
+
+uint32_t WalletPage::BeginFlow(Flow& flow, int timeoutMs, std::function<void()> onTimeout) {
+  const uint32_t generation = ++flow.generation;
+  if (!flow.timer) {
+    flow.timer = w_.DispatcherQueue().CreateTimer();
+    flow.timer.IsRepeating(false);
+  }
+  flow.timer.Stop();
+  flow.timer.Interval(std::chrono::milliseconds(timeoutMs));
+  // Bumping the generation is what makes the give-up final: the real answer,
+  // whenever it turns up, no longer matches and is dropped. Without that a
+  // watchdog that has already told the user it failed could be contradicted
+  // minutes later by a success that re-enables and reloads under them.
+  flow.timer.Tick([weak = w_.get_weak(), &flow, generation,
+                   onTimeout = std::move(onTimeout)](auto const&, auto const&) {
+    auto self = weak.get();
+    if (!self || flow.generation != generation) return;
+    ++flow.generation;
+    urnw::LogError("wallet: a request never answered - giving up on it");
+    onTimeout();
+  });
+  flow.timer.Start();
+  return generation;
+}
+
+bool WalletPage::SettleFlow(Flow& flow, uint32_t generation) {
+  if (flow.generation != generation) return false;  // timed out, or superseded
+  if (flow.timer) flow.timer.Stop();
+  return true;
 }
 
 void WalletPage::Initialize() {
@@ -653,6 +752,22 @@ UIElement WalletPage::BuildWalletCard(urnet::AccountWallet const& wallet) {
   Grid::SetColumnSpan(footer, 2);
   body.Children().Append(footer);
 
+  // A Button whose Content is a Panel gets NO automatic name (6fdacf8, checked
+  // against the UIA tree, and checked again here: all three cards came back as
+  // `[Button] id='' name=''`). Name it after what the card IS - the chain and
+  // the wallet it identifies - exactly as LocationRow names itself from its
+  // label plus its one datum. The two children that name now carries are marked
+  // Raw so a reader does not hear them twice; the payout total, its caption and
+  // the DEFAULT chip stay in the content view, because those are data.
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  automation::AutomationProperties::SetName(
+      card, hstring{urnw::Format("wallet_provider", ChainDisplayName(wallet.blockchain)) +
+                    L", " + MaskAddress(wallet.wallet_address)});
+  automation::AutomationProperties::SetAccessibilityView(
+      chain, automation::Peers::AccessibilityView::Raw);
+  automation::AutomationProperties::SetAccessibilityView(
+      address, automation::Peers::AccessibilityView::Raw);
+
   card.Content(body);
   card.Click([weak = w_.get_weak(), wallet](auto const&, auto const&) {
     if (auto self = weak.get()) self->wallet().ShowWalletDetail(wallet);
@@ -663,6 +778,10 @@ UIElement WalletPage::BuildWalletCard(urnet::AccountWallet const& wallet) {
 winrt::fire_and_forget WalletPage::ShowWalletDetail(urnet::AccountWallet wallet) {
   if (w_.sheetOpen()) co_return;  // only one ContentDialog can show at a time
   auto self = w_.get_strong();
+  // The sheet is READABLE with no session (that is the point of the preview)
+  // but not ACTABLE: its two buttons write. This is the flag that stops a
+  // sample card's Remove reaching the api.
+  const bool allowActions = CanCallApi();
   const bool isPayout =
       wallet.wallet_id && !wallet.wallet_id->empty() && *wallet.wallet_id == payoutWalletId_;
 
@@ -678,18 +797,23 @@ winrt::fire_and_forget WalletPage::ShowWalletDetail(urnet::AccountWallet wallet)
   self->SetSheetOpen(true);
   try {
     walletSheet_ = urnw::WalletDetailSheet::Create(
-        self->Content().XamlRoot(), Sdk(), wallet, isPayout, mine,
+        self->Content().XamlRoot(), Sdk(), wallet, isPayout, mine, allowActions,
         [weak] {
           if (auto w = weak.get()) w->wallet().RefreshAfterWalletChange();
         },
         [weak](hstring message) {
           // success only: the sheet is gone by the time this runs
           if (auto w = weak.get()) {
-            w->wallet().snackbar_.Show(message, InfoBarSeverity::Success);
+            w->wallet().Notify(message, InfoBarSeverity::Success);
           }
         });
     co_await self->wallet().walletSheet_->Dialog().ShowAsync();
+  } catch (winrt::hresult_error const& e) {
+    // Silence here is how a click that opens nothing stays a mystery.
+    urnw::LogError("wallet: the wallet sheet failed to open: {}",
+                   urnw::Narrow(std::wstring{e.message()}));
   } catch (...) {
+    urnw::LogError("wallet: the wallet sheet failed to open");
   }
   self->wallet().walletSheet_.reset();
   self->SetSheetOpen(false);
@@ -785,16 +909,23 @@ void WalletPage::ApplyPayments(std::vector<urnet::AccountPayment> const& payment
               return PaymentTime(a) > PaymentTime(b);
             });
 
+  // RebuildWalletCards() on EVERY path, not just the happy one. The per-wallet
+  // "total payouts" figure is computed from payments_, so a failed or empty
+  // fetch that cleared the ledger while leaving the cards alone left last
+  // load's totals on screen underneath a "Something went wrong" - stale numbers
+  // presented as current, which is worse than no numbers.
   if (state == Fetch::Failed) {
     w_.PayoutsStatusText().Text(Loc("something_went_wrong"));
     w_.PayoutsStatusText().Visibility(Visibility::Visible);
     w_.PayoutsPanel().Children().Clear();
+    RebuildWalletCards();
     return;
   }
   if (payments_.empty()) {
     w_.PayoutsStatusText().Text(Loc("site_app_no_payouts"));
     w_.PayoutsStatusText().Visibility(Visibility::Visible);
     w_.PayoutsPanel().Children().Clear();
+    RebuildWalletCards();
     return;
   }
   w_.PayoutsStatusText().Visibility(Visibility::Collapsed);
@@ -871,6 +1002,22 @@ void WalletPage::RebuildPayouts() {
     Grid::SetColumn(tx, 3);
     cells.Children().Append(tx);
 
+    // Same as the wallet cards: a Button over a Grid has no automatic name, so
+    // all three ledger rows were unnamed buttons. The row is named after the
+    // payout it opens - the same title its detail sheet carries, so the two
+    // cannot drift - and the date cell alone goes Raw, because the name now
+    // says it. Amount, wallet and transaction stay readable: they are data.
+    //
+    // By DATE for every row, pending included. Naming a pending row "Pending
+    // payout" duplicated its own amount cell, which already says exactly that -
+    // the double read this pass exists to avoid - and it left the row without
+    // the one thing that tells it apart from the other pending rows.
+    namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+    automation::AutomationProperties::SetName(
+        row, hstring{urnw::Format("date_payout", ShortDate(PaymentTime(payment)))});
+    automation::AutomationProperties::SetAccessibilityView(
+        date, automation::Peers::AccessibilityView::Raw);
+
     row.Content(cells);
     row.Click([weak = w_.get_weak(), payment](auto const&, auto const&) {
       if (auto self = weak.get()) self->wallet().ShowPayoutDetail(payment);
@@ -889,7 +1036,11 @@ winrt::fire_and_forget WalletPage::ShowPayoutDetail(urnet::AccountPayment paymen
     payoutSheet_ = urnw::PayoutDetailSheet::Create(self->Content().XamlRoot(), payment,
                                                    breakdown, seeker);
     co_await self->wallet().payoutSheet_->Dialog().ShowAsync();
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("payout: the payout sheet failed to open: {}",
+                   urnw::Narrow(std::wstring{e.message()}));
   } catch (...) {
+    urnw::LogError("payout: the payout sheet failed to open");
   }
   self->wallet().payoutSheet_.reset();
   self->SetSheetOpen(false);
@@ -1016,7 +1167,12 @@ void WalletPage::ApplySeekerState() {
     w_.VerifySeekerButton().Visibility(Visibility::Collapsed);
     return;
   }
-  w_.SeekerStatusText().Text(Loc("connect_seeker_wallet"));
+  // "Waiting" is a state the user must be able to SEE. The button greyed itself
+  // out for the length of the bridge round trip and said nothing, which is
+  // indistinguishable from broken - and, before the watchdog below, it was
+  // permanent whenever the browser tab was simply closed.
+  w_.SeekerStatusText().Text(verifyingSeeker_ ? Loc("opening_wallet_in_browser")
+                                              : Loc("connect_seeker_wallet"));
   w_.VerifySeekerButton().Visibility(Visibility::Visible);
   w_.VerifySeekerButton().IsEnabled(!verifyingSeeker_);
 }
@@ -1032,6 +1188,12 @@ void WalletPage::ApplySeekerState() {
 // dialog here, exactly as the Solana sign-in does it (LoginPage).
 winrt::fire_and_forget WalletPage::OnVerifySeeker(IInspectable const&, RoutedEventArgs const&) {
   if (w_.sheetOpen() || verifyingSeeker_) co_return;
+  // Before the wallet picker, not after: with no session this ends in
+  // verifySeekerHolder, and it opens a BROWSER on the way there.
+  if (!CanCallApi()) {
+    RefuseNoSession();
+    co_return;
+  }
   auto self = w_.get_strong();
 
   ContentDialog dialog;
@@ -1060,6 +1222,19 @@ winrt::fire_and_forget WalletPage::OnVerifySeeker(IInspectable const&, RoutedEve
   self->wallet().verifyingSeeker_ = true;
   self->wallet().ApplySeekerState();
 
+  // WalletConnect has no timeout, and its on_error only fires when the deep
+  // link comes BACK carrying an error. A closed browser tab produces nothing at
+  // all - so this flag stayed true forever and Verify Seeker was dead until the
+  // app was restarted, with nothing on screen to say why.
+  const uint32_t generation = self->wallet().BeginFlow(
+      self->wallet().seekerFlow_, kBridgeTimeoutMs, [weak = self->get_weak()] {
+        if (auto w = weak.get()) {
+          w->wallet().verifyingSeeker_ = false;
+          w->wallet().ApplySeekerState();
+          w->wallet().Notify(Loc("error_claiming_multiplier"), InfoBarSeverity::Error);
+        }
+      });
+
   // android's challenge shape, timestamp and all: a fixed string would be
   // replayable
   const std::string message =
@@ -1072,12 +1247,12 @@ winrt::fire_and_forget WalletPage::OnVerifySeeker(IInspectable const&, RoutedEve
   auto weak = self->get_weak();
   Sdk().SignWithSolanaWallet(
       provider, message,
-      [queue, weak, message](bool ok, std::string address, std::string signature,
-                             std::string error) {
+      [queue, weak, message, generation](bool ok, std::string address, std::string signature,
+                                         std::string error) {
         if (!ok) {
           urnw::LogError("seeker: wallet signature failed: {}", error);
-          queue.TryEnqueue([weak, error] {
-            if (auto w = weak.get()) w->wallet().ApplySeekerResult(false, error);
+          queue.TryEnqueue([weak, error, generation] {
+            if (auto w = weak.get()) w->wallet().ApplySeekerResult(generation, false, error);
           });
           return;
         }
@@ -1086,27 +1261,36 @@ winrt::fire_and_forget WalletPage::OnVerifySeeker(IInspectable const&, RoutedEve
         args.wallet_signature = signature;
         args.wallet_message = message;
         Sdk().api().verifySeekerHolder(
-            args, [queue, weak](std::optional<urnet::VerifySeekerNftHolderResult> result,
-                                std::optional<std::string> err) {
+            args, [queue, weak, generation](
+                      std::optional<urnet::VerifySeekerNftHolderResult> result,
+                      std::optional<std::string> err) {
               std::string failure = err ? *err : std::string();
               if (failure.empty() && result && result->error) failure = result->error->message;
               const bool verified = result && result->success && failure.empty();
               if (!verified) urnw::LogError("seeker: verifySeekerHolder failed: {}", failure);
-              queue.TryEnqueue([weak, verified, failure] {
-                if (auto w = weak.get()) w->wallet().ApplySeekerResult(verified, failure);
+              queue.TryEnqueue([weak, verified, failure, generation] {
+                if (auto w = weak.get())
+                  w->wallet().ApplySeekerResult(generation, verified, failure);
               });
             });
       });
 }
 
-void WalletPage::ApplySeekerResult(bool ok, std::string const& serverError) {
+void WalletPage::ApplySeekerResult(uint32_t generation, bool ok,
+                                   std::string const& serverError) {
+  // The watchdog already gave up on this one and said so: do not now contradict
+  // it by reporting the outcome of a request the user was told had failed.
+  if (!SettleFlow(seekerFlow_, generation)) {
+    urnw::LogWarn("seeker: dropping a result for an abandoned verification (ok={})", ok);
+    return;
+  }
   verifyingSeeker_ = false;
-  snackbar_.Show(ok ? Loc("successfully_claimed_multiplier")
-                    : (serverError.empty()
-                           ? Loc("error_claiming_multiplier")
-                           : hstring{urnw::Format("error_claiming_multiplier_with_reason",
-                                                  urnw::Widen(serverError))}),
-                 ok ? InfoBarSeverity::Success : InfoBarSeverity::Error);
+  Notify(ok ? Loc("successfully_claimed_multiplier")
+            : (serverError.empty()
+                   ? Loc("error_claiming_multiplier")
+                   : hstring{urnw::Format("error_claiming_multiplier_with_reason",
+                                          urnw::Widen(serverError))}),
+         ok ? InfoBarSeverity::Success : InfoBarSeverity::Error);
   if (ok) {
     LoadWallet();  // has_seeker_token now reads true on the verified wallet
     return;
@@ -1134,7 +1318,14 @@ void WalletPage::OnWalletAddressChanged(IInspectable const&, TextChangedEventArg
 void WalletPage::ValidateWalletAddress() {
   const std::string address = urnw::Narrow(w_.WalletAddressBox().Text().c_str());
   // the shortest supported address (solana base58) is 32 characters
-  if (address.size() < 32 || !Sdk().apiReady()) return;
+  //
+  // apiReady() was the only gate here and it is not a session check - it is
+  // api_.has_value(), true from SDK init - so typing 32 characters under
+  // --preview-ui put THREE walletValidateAddress calls on the wire, one per
+  // chain, with no token. This is a question asked of the server; it goes
+  // through the same guard as every other one. Silently: the user did not ask
+  // for anything, they typed.
+  if (address.size() < 32 || !CanCallApi()) return;
   const uint32_t generation = ++walletValidateGeneration_;
 
   auto queue = w_.DispatcherQueue();
@@ -1147,7 +1338,16 @@ void WalletPage::ValidateWalletAddress() {
     Sdk().api().walletValidateAddress(
         args, [queue, weak, chain, generation](
                   std::optional<urnet::WalletValidateAddressResult> result,
-                  std::optional<std::string>) {
+                  std::optional<std::string> err) {
+          // The error was DISCARDED here, and it is the only difference between
+          // "the server says this is not a $chain address" and "the question
+          // never got an answer". Both drew an empty verdict line and a dead
+          // Connect button, so a validator that was failing outright looked
+          // exactly like a user typo. Found the hard way: three genuinely valid
+          // addresses in a row came back with nothing to say.
+          if (err) {
+            urnw::LogError("wallet: walletValidateAddress({}) failed: {}", chain, *err);
+          }
           const bool valid = result && result->valid && *result->valid;
           queue.TryEnqueue([weak, chain, generation, valid] {
             if (auto self = weak.get())
@@ -1183,8 +1383,24 @@ void WalletPage::ApplyWalletValidation(std::string const& chain, uint32_t genera
 void WalletPage::OnConnectWallet(IInspectable const&, RoutedEventArgs const&) {
   const std::string address = urnw::Narrow(w_.WalletAddressBox().Text().c_str());
   if (address.empty() || walletChain_.empty() || connectingWallet_) return;
+  if (!CanCallApi()) {
+    RefuseNoSession();
+    return;
+  }
   connectingWallet_ = true;
   w_.ConnectWalletButton().IsEnabled(false);
+
+  // createAccountWallet with no answer left connectingWallet_ true forever and
+  // the Connect button greyed out for the life of the process.
+  const uint32_t generation =
+      BeginFlow(connectFlow_, kApiTimeoutMs, [weak = w_.get_weak()] {
+        if (auto self = weak.get()) {
+          self->wallet().connectingWallet_ = false;
+          self->wallet().w_.ConnectWalletButton().IsEnabled(
+              !self->wallet().walletChain_.empty());
+          self->wallet().Notify(Loc("wallet_connect_failed"), InfoBarSeverity::Error);
+        }
+      });
 
   // WalletViewController::addExternalWallet parity: the account wallet is created
   // on the chain the server validated, with the USDC token type.
@@ -1196,25 +1412,30 @@ void WalletPage::OnConnectWallet(IInspectable const&, RoutedEventArgs const&) {
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().api().createAccountWallet(
-      args, [queue, weak](std::optional<urnet::CreateAccountWalletResult> result,
-                          std::optional<std::string> err) {
+      args, [queue, weak, generation](std::optional<urnet::CreateAccountWalletResult> result,
+                                      std::optional<std::string> err) {
         const bool ok = result && result->wallet_id && !result->wallet_id->empty();
         // this runs on an sdk thread; hand the raw outcome to the ui thread and
         // let it do the lookup (the store is read from the ui thread throughout)
         const std::string error = ok ? std::string() : (err ? *err : std::string());
-        queue.TryEnqueue([weak, ok, error] {
+        queue.TryEnqueue([weak, ok, error, generation] {
           if (auto self = weak.get())
-            self->wallet().ApplyWalletConnectResult(ok, error);
+            self->wallet().ApplyWalletConnectResult(generation, ok, error);
         });
       });
 }
 
-void WalletPage::ApplyWalletConnectResult(bool ok, std::string const& serverError) {
+void WalletPage::ApplyWalletConnectResult(uint32_t generation, bool ok,
+                                          std::string const& serverError) {
+  if (!SettleFlow(connectFlow_, generation)) {
+    urnw::LogWarn("wallet: dropping a connect result for an abandoned request (ok={})", ok);
+    return;
+  }
   connectingWallet_ = false;
   // a server error is not localizable; show it when there is one
-  snackbar_.Show(ok ? Loc("wallet_connected")
-                    : (serverError.empty() ? Loc("wallet_connect_failed") : H(serverError)),
-                 ok ? InfoBarSeverity::Success : InfoBarSeverity::Error);
+  Notify(ok ? Loc("wallet_connected")
+            : (serverError.empty() ? Loc("wallet_connect_failed") : H(serverError)),
+         ok ? InfoBarSeverity::Success : InfoBarSeverity::Error);
   if (!ok) {
     w_.ConnectWalletButton().IsEnabled(!walletChain_.empty());
     return;
@@ -1409,37 +1630,62 @@ void WalletPage::OnLeaderboardPublicToggled(IInspectable const&, RoutedEventArgs
     SetRankingToggle(rankingPublic_);  // one in flight: snap back
     return;
   }
+  // This switch is live under a plain `--preview-ui=leaderboard`, with no env
+  // var and no sample data in sight: one click used to be one
+  // setNetworkLeaderboardPublic at the api. Put the switch back where the
+  // server has it and say why.
+  if (!CanCallApi()) {
+    SetRankingToggle(rankingPublic_);
+    RefuseNoSession();
+    return;
+  }
   settingRankingPublic_ = true;
   w_.LeaderboardPublicToggle().IsEnabled(false);
+
+  const uint32_t generation =
+      BeginFlow(rankingFlow_, kApiTimeoutMs, [weak = w_.get_weak()] {
+        if (auto self = weak.get()) {
+          self->wallet().settingRankingPublic_ = false;
+          self->LeaderboardPublicToggle().IsEnabled(true);
+          self->wallet().SetRankingToggle(self->wallet().rankingPublic_);
+          self->wallet().Notify(Loc("something_went_wrong"), InfoBarSeverity::Error);
+        }
+      });
 
   urnet::SetNetworkRankingPublicArgs args;
   args.is_public = requested;
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().api().setNetworkLeaderboardPublic(
-      args, [queue, weak, requested](std::optional<urnet::SetNetworkRankingPublicResult> result,
-                                     std::optional<std::string> err) {
+      args, [queue, weak, requested,
+             generation](std::optional<urnet::SetNetworkRankingPublicResult> result,
+                         std::optional<std::string> err) {
         std::string error = err ? *err : std::string();
         if (error.empty() && result && result->error) error = result->error->message;
         const bool ok = result && error.empty();
         if (!ok) urnw::LogError("leaderboard: setNetworkLeaderboardPublic failed: {}", error);
-        queue.TryEnqueue([weak, ok, requested, error] {
+        queue.TryEnqueue([weak, ok, requested, error, generation] {
           if (auto self = weak.get())
-            self->wallet().ApplyRankingPublicResult(ok, requested, error);
+            self->wallet().ApplyRankingPublicResult(generation, ok, requested, error);
         });
       });
 }
 
-void WalletPage::ApplyRankingPublicResult(bool ok, bool requested,
+void WalletPage::ApplyRankingPublicResult(uint32_t generation, bool ok, bool requested,
                                           std::string const& serverError) {
+  if (!SettleFlow(rankingFlow_, generation)) {
+    urnw::LogWarn("leaderboard: dropping a ranking result for an abandoned request (ok={})",
+                  ok);
+    return;
+  }
   settingRankingPublic_ = false;
   w_.LeaderboardPublicToggle().IsEnabled(true);
   if (!ok) {
-    // The switch must not keep showing a state the server refused.
+    // The switch must not keep showing a state the server refused - and the
+    // message has to land on the LEADERBOARD's bar, which is the one on screen.
     SetRankingToggle(rankingPublic_);
-    snackbar_.Show(serverError.empty() ? Loc("something_went_wrong")
-                                       : H(serverError),
-                   InfoBarSeverity::Error);
+    Notify(serverError.empty() ? Loc("something_went_wrong") : H(serverError),
+           InfoBarSeverity::Error);
     return;
   }
   rankingPublic_ = requested;

@@ -89,10 +89,17 @@ class WalletDetailSheet : public std::enable_shared_from_this<WalletDetailSheet>
   // pressing Remove with an expired session left the sheet open, unchanged, with
   // "401 Unauthorized" drawn underneath the dialog. Failures render on the
   // sheet's own line instead.
+  // `allowActions` is WalletPage::CanCallApi(): false when there is no session
+  // to act with (--preview-ui, signed out). The sheet still opens and still
+  // READS - that is what the preview is for - but its two buttons, which are
+  // the two api WRITES on this destination, are disabled and refuse. Under
+  // --preview-ui with sample data those buttons used to be fully live: two
+  // clicks put removeWallet on the wire from a build with no account, and on a
+  // machine WITH a stored session they would have run it for real.
   static std::shared_ptr<WalletDetailSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
       urnet::AccountWallet const& wallet, bool isPayoutWallet,
-      std::vector<urnet::AccountPayment> const& payments,
+      std::vector<urnet::AccountPayment> const& payments, bool allowActions,
       std::function<void()> onChanged,
       std::function<void(winrt::hstring message)> onSuccess);
 
@@ -100,13 +107,14 @@ class WalletDetailSheet : public std::enable_shared_from_this<WalletDetailSheet>
 
  private:
   WalletDetailSheet(SdkHost& sdk, urnet::AccountWallet const& wallet, bool isPayoutWallet,
-                    std::vector<urnet::AccountPayment> const& payments,
+                    std::vector<urnet::AccountPayment> const& payments, bool allowActions,
                     std::function<void()> onChanged,
                     std::function<void(winrt::hstring)> onSuccess)
       : sdk_(sdk),
         wallet_(wallet),
         isPayoutWallet_(isPayoutWallet),
         payments_(payments),
+        allowActions_(allowActions),
         onChanged_(std::move(onChanged)),
         onSuccess_(std::move(onSuccess)) {}
 
@@ -115,13 +123,20 @@ class WalletDetailSheet : public std::enable_shared_from_this<WalletDetailSheet>
   void RemoveWallet();       // arms the confirmation; the second press commits
   void CommitRemoveWallet();
   // Disables the actions for the life of a request AND arms the watchdog below.
-  void SetBusy(bool busy);
+  // Returns the generation this request owns; pair it with SettleRequest().
+  uint32_t SetBusy(bool busy);
+  // False when this answer belongs to a request already given up on.
+  bool SettleRequest(uint32_t generation);
   void ShowError(winrt::hstring const& message);
+
+  // False when the caller has no session: the actions are drawn but inert.
+  bool CanAct();
 
   SdkHost& sdk_;
   urnet::AccountWallet wallet_;
   bool isPayoutWallet_ = false;
   std::vector<urnet::AccountPayment> payments_;
+  bool allowActions_ = false;
   std::function<void()> onChanged_;
   std::function<void(winrt::hstring)> onSuccess_;
 
@@ -139,8 +154,15 @@ class WalletDetailSheet : public std::enable_shared_from_this<WalletDetailSheet>
   // getAccountWallets and is well-formed, so this is a guard rather than a
   // routine path; but "the caller always passes a good id" is an invariant
   // nothing enforces, and a dead dialog is the worst possible way to find out.
+  //
+  // The watchdog also has to be able to have the LAST word. When it fired and
+  // the real callback turned up afterwards carrying a success, the sheet hid
+  // itself and fired onChanged_ - reloading the page - after the user had
+  // already been told the request failed. Every request takes a generation on
+  // the way out and the answer is dropped unless it is still the current one.
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer watchdog_{nullptr};
   static constexpr int kRequestTimeoutMs = 20000;
+  uint32_t requestGeneration_ = 0;
   bool removeArmed_ = false;
   bool busy_ = false;
 };
