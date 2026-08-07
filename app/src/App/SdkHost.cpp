@@ -728,18 +728,58 @@ void SdkHost::SetupWalletCallbacks() {
     // Solana connects first, then signs. Bittensor has no connect step (it
     // returns the address with the signature), so nothing to chain here.
     if (provider == WalletConnect::Provider::Bittensor) return;
-    wallet_.SignMessage(kWalletSignInMessage);
+    // a bare signature request carries its own message (Seeker verification);
+    // sign-in signs the fixed challenge
+    wallet_.SignMessage(walletSignDone_ ? walletSignMessage_ : kWalletSignInMessage);
   };
   wallet_.on_signature = [this](std::string publicKey, std::string signature,
                                 WalletConnect::Provider provider) {
+    if (auto done = std::exchange(walletSignDone_, nullptr)) {
+      done(true, std::move(publicKey), std::move(signature), std::string());
+      return;
+    }
     AuthLoginWithWallet(publicKey, signature, kWalletSignInMessage, provider);
   };
   wallet_.on_error = [this](std::string err) {
-    auto done = walletAuthDone_;
-    walletAuthDone_ = nullptr;
+    // A failed signature request is NOT a failed sign-in: the user is signed in
+    // throughout, and pushing AuthState::Error here would tear the session down
+    // because a browser tab was closed.
+    if (auto signDone = std::exchange(walletSignDone_, nullptr)) {
+      signDone(false, std::string(), std::string(), err);
+      return;
+    }
+    // NO FLOW IS IN FLIGHT. The bridge is a pair of process-wide callbacks with
+    // no request id, so a deep link arriving late - from an attempt the user
+    // abandoned, or one already answered - lands here looking exactly like a
+    // fresh failure. It must not be able to move the auth state: doing that is
+    // how a signed-in user gets thrown back to the login screen by a browser tab
+    // they closed ten minutes ago.
+    if (!walletAuthDone_) {
+      LogWarn("sdkhost: a wallet-bridge error arrived with no flow in flight, "
+              "ignoring it: {}",
+              err);
+      return;
+    }
+    auto done = std::exchange(walletAuthDone_, nullptr);
     SetAuthState(AuthState::Error, err);
-    if (done) done({false, false, err});
+    done({false, false, err});
   };
+}
+
+// The bridge exposes ONE pair of callbacks, so starting either flow supersedes
+// the other. Superseding it must ANSWER it: dropping the callback on the floor
+// left whatever was waiting on it - a busy flag, a greyed-out button - waiting
+// for a reply that could no longer come. Neither caller can see that from
+// where it stands.
+void SdkHost::CancelPendingWalletFlows(const char* reason) {
+  if (auto signDone = std::exchange(walletSignDone_, nullptr)) {
+    LogWarn("sdkhost: a wallet signature request was superseded ({})", reason);
+    signDone(false, std::string(), std::string(), reason);
+  }
+  if (auto authDone = std::exchange(walletAuthDone_, nullptr)) {
+    LogWarn("sdkhost: a wallet sign-in was superseded ({})", reason);
+    authDone({false, false, reason});
+  }
 }
 
 void SdkHost::SignInWithSolana(WalletConnect::Provider provider,
@@ -749,6 +789,8 @@ void SdkHost::SignInWithSolana(WalletConnect::Provider provider,
     std::scoped_lock lock(mutex_);
     pendingWalletAuth_.reset();  // a fresh sign-in supersedes any retained auth
   }
+  // ...and any pending bare signature request, which is TOLD it was superseded
+  CancelPendingWalletFlows("superseded by a wallet sign-in");
   walletAuthDone_ = std::move(done);
   wallet_.Connect(provider);  // opens the browser; the rest continues on the deep-link callback
 }
@@ -759,9 +801,21 @@ void SdkHost::SignInWithBittensor(std::function<void(AuthResult)> done) {
     std::scoped_lock lock(mutex_);
     pendingWalletAuth_.reset();  // a fresh sign-in supersedes any retained auth
   }
+  CancelPendingWalletFlows("superseded by a wallet sign-in");
   walletAuthDone_ = std::move(done);
   // one step: the bridge returns the address and the signature together
   wallet_.SignMessageBittensor(kWalletSignInMessage);
+}
+
+void SdkHost::SignWithSolanaWallet(
+    WalletConnect::Provider provider, const std::string& message,
+    std::function<void(bool, std::string, std::string, std::string)> done) {
+  // No SetAuthState here on purpose: this is not a sign-in and the session must
+  // not move (see on_error above).
+  CancelPendingWalletFlows("superseded by a wallet signature request");
+  walletSignMessage_ = message;
+  walletSignDone_ = std::move(done);
+  wallet_.Connect(provider);  // continues on the deep-link callback
 }
 
 void SdkHost::HandleDeepLink(const std::string& url) {

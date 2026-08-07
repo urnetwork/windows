@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+﻿// SPDX-License-Identifier: MPL-2.0
 #include "pch.h"
 
 #include "MainWindow.xaml.h"
@@ -178,19 +178,15 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   // wallet error must PERSIST, the support acknowledgement must time out.
   if (destination == "wallet") wallet_->ShowPreviewSnackbar();
   if (destination == "support") settings_->ShowPreviewSnackbar();
-  // The leaderboard's fetch is skipped along with the other loads, so put its
-  // panel into the settled empty state rather than leaving it on "Loading..."
-  // forever, which would look exactly like a hang.
-  if (destination == "leaderboard") wallet_->ShowPreviewLeaderboardState();
-  // The session-mode notice can only fire when there IS a session, so a preview
-  // run would never draw the bar at all. Raise a synthetic one, same reason the
-  // two snackbars above are raised.
-  if (destination == "developer") {
-    developer_->ShowPreviewModeNotice();
-    // and the populated state, which no preview run can otherwise reach: every
-    // card below the intro is gated on a live settings read.
-    developer_->ShowPreviewSnapshot();
-  }
+  // The per-destination preview states are NOT raised here any more. They
+  // belong to whichever destination is selected, at the moment it is selected,
+  // and this function runs exactly once — so gating them on the LAUNCH tag left
+  // every other destination stranded: `--preview-ui=leaderboard`, then click
+  // Wallet, and Payout Wallets / Account points / Network reliability / Payouts
+  // all sat on "Loading..." for good, which is precisely the hang this switch
+  // exists to rule out (screenshotted). OnNavSelectionChanged settles them on
+  // every navigation instead, and the SelectedItem assignment above has already
+  // been through it.
 }
 
 // ---- navigation ----------------------------------------------------------
@@ -230,6 +226,23 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   if (previewUi_) {
     urnw::LogInfo("preview-ui: '{}' selected - skipping its API loads (no session)",
                   urnw::Narrow(std::wstring{tag}));
+    // Skipping the loads is only half of it: a panel whose fetch never runs sits
+    // on "Loading..." for good, which is indistinguishable from a hang. Settle
+    // the destination the user just navigated TO, every time - not only the one
+    // named on the command line, which is what EnterPreviewUi used to do and
+    // which left Wallet stranded for anyone who arrived from another tag.
+    if (tag == L"wallet") wallet_->ShowPreviewWalletState();
+    if (tag == L"leaderboard") wallet_->ShowPreviewLeaderboardState();
+    // Carried over from EnterPreviewUi at merge. P4 moved the per-destination
+    // preview states here and P2 added the developer surface in parallel, so
+    // taking either side wholesale would have dropped the other's: P4's branch
+    // predates DeveloperPage entirely. The notice needs a session to fire and
+    // every card below the intro is gated on a live settings read, so without
+    // these two a preview run reaches the destination and finds it blank.
+    if (tag == L"developer") {
+      developer_->ShowPreviewModeNotice();
+      developer_->ShowPreviewSnapshot();
+    }
     return;
   }
   LoadCurrentDestination();
@@ -588,6 +601,12 @@ void MainWindow::OnWalletAddressChanged(IInspectable const& s,
 }
 void MainWindow::OnConnectWallet(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnConnectWallet(s, e);
+}
+void MainWindow::OnVerifySeeker(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnVerifySeeker(s, e);
+}
+void MainWindow::OnLeaderboardPublicToggled(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnLeaderboardPublicToggled(s, e);
 }
 
 void MainWindow::OnManageAppSplitTunnel(IInspectable const& s, RoutedEventArgs const& e) {

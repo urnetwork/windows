@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- URnetwork app resources. The app runs the brand dark theme (macOS parity):
      #101010 background, #1C1C1C cards, pale yellow accent for primary actions,
      brand blue for switch on-states. The Ur* brushes mirror UrColors.h - keep

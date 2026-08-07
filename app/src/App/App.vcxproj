@@ -234,6 +234,7 @@
     <ClCompile Include="SettingsPage.cpp" />
     <ClCompile Include="SettingsSheets.cpp" />
     <ClCompile Include="WalletPage.cpp" />
+    <ClCompile Include="WalletSheets.cpp" />
     <ClCompile Include="AppController.cpp" />
     <ClCompile Include="AuthSheets.cpp" />
     <ClCompile Include="BalanceSheets.cpp" />
@@ -264,6 +265,7 @@
     <ClInclude Include="SettingsPage.h" />
     <ClInclude Include="SettingsSheets.h" />
     <ClInclude Include="WalletPage.h" />
+    <ClInclude Include="WalletSheets.h" />
     <ClInclude Include="AppController.h" />
     <ClInclude Include="AuthSheets.h" />
     <ClInclude Include="BalanceSheets.h" />
