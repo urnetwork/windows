@@ -3,12 +3,14 @@
 
 #include "ConnectCanvas.h"
 
+#include <winrt/Microsoft.UI.Xaml.Markup.h>
 #include <winrt/Windows.UI.ViewManagement.h>
 
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <numeric>
 #include <utility>
 
 #include "UrColors.h"
@@ -22,55 +24,79 @@ using namespace winrt::Microsoft::UI::Xaml::Media;
 // GDI function ::Ellipse(HDC, int, int, int, int) from wingdi.h, and every
 // unqualified use becomes ambiguous.
 namespace shapes = winrt::Microsoft::UI::Xaml::Shapes;
-
 namespace anim = winrt::Microsoft::UI::Xaml::Media::Animation;
 
 namespace urnw {
 namespace {
 
-// The disc tracks the host width. The floor keeps it legible in the 480-dip
-// default window; the ceiling stops it becoming a billboard when maximized (the
-// connect column is MaxWidth-capped anyway, so in practice this is the range the
-// hero actually moves through).
-constexpr double kDiscFraction = 0.45;
-constexpr double kMinDisc = 140;
-constexpr double kMaxDisc = 300;
-// vertical breathing room around the disc inside the hero band
-constexpr double kBandPadding = 26;
+// The ur globe silhouette in its own 32x32 box — byte-identical to the copy in
+// LoginCarousel.cpp, which is Assets.xcassets/Icons/ur.symbols.globe.svg. The
+// 256-box GlobeMask/GlobeConnector assets are this same path times eight.
+constexpr const wchar_t* kGlobePath =
+    L"M30 8C28.8955 8 28 7.10453 28 6C28 4.89547 27.1045 4 26 4C24.8955 4 24 3.10453 24 2C24 "
+    L"0.895469 23.1045 0 22 0H10C8.89547 0 8 0.895469 8 2C8 3.10453 7.10453 4 6 4C4.89547 4 4 "
+    L"4.89547 4 6C4 7.10453 3.10453 8 2 8C0.895469 8 0 8.89547 0 10V22C0 23.1045 0.895469 24 2 "
+    L"24C3.10453 24 4 24.8955 4 26C4 27.1045 4.89547 28 6 28C7.10453 28 8 28.8955 8 30C8 31.1045 "
+    L"8.89547 32 10 32H22C23.1045 32 24 31.1045 24 30C24 28.8955 24.8955 28 26 28C27.1045 28 28 "
+    L"27.1045 28 26C28 24.8955 28.8955 24 30 24C31.1045 24 32 23.1045 32 22V10C32 8.89547 31.1045 "
+    L"8 30 8Z";
 
-// The outer rim, at rest and under the pointer. A 3.5% scale lift alone was not
-// legible in a side-by-side capture at this size, and a hover affordance nobody
-// can see is not one; brightening the rim is what actually reads.
-constexpr double kRimAlpha = 0.11;
-constexpr double kRimAlphaHover = 0.34;
+// android's connect_mask, rebuilt rather than shipped: the 32x32 square with the
+// globe punched out of it (F0 = EvenOdd). Filled opaque and drawn last, this is
+// the mask. `F0` and the figure syntax are the XAML path mini-language, which is
+// why it goes through XamlReader below — there is no runtime Geometry.Parse.
+constexpr const wchar_t* kInverseGlobeRect = L"F0 M0,0 L32,0 L32,32 L0,32 Z ";
 
-// How long the idle invitation runs before the hero goes still. See the long
-// note with the measurements in StartIdle: a running storyboard costs real CPU
-// whatever it animates, so these are budgets, not aesthetics. Bounded in BOTH
-// directions — hovering restarts the burst, it does not pin it on, because
-// "pointer resting on the hero" is not a reason to animate forever either.
-constexpr double kIdlePulseBursts = 3;   // ~5.7s of pulse on show / on hover
-constexpr double kConnectedBreaths = 2;  // ~17s of wash breathe on connect
+// iOS's canvas is a fixed 256pt (ConnectButtonView.canvasWidth), and every
+// metric in ConnectButton/ is written against it. Everything here is expressed
+// in those units and scaled by side_/kIosCanvas, so this file diffs against the
+// Swift one.
+constexpr double kIosCanvas = 256.0;
 
-// A grid with no reported width still gets a substrate, so the empty state has
-// structure. 12 is the shape a real connect grid settles near.
-constexpr int32_t kDefaultCols = 12;
-// Above this the substrate is more noise than structure and the element count
-// stops being free; the live points are still drawn.
-constexpr int32_t kMaxLatticeCells = 1600;
+// A desktop window is elastic where a phone is not. The globe tracks the host
+// width between these bounds: below the floor the 12x12 provider grid stops
+// resolving into distinct dots, above the ceiling it becomes a billboard.
+constexpr double kMinSide = 168;
+constexpr double kMaxSide = 288;
+constexpr double kSidePad = 4;    // horizontal breathing room inside the host
+constexpr double kBandPad = 12;   // vertical, iOS's `.padding()`
+
+// iOS metrics, in 256-space.
+constexpr double kCoreD = 48;        // the electric-blue disc
+constexpr double kCoreGapD = 50;     // stroke 2, in tintedBackgroundBase
+constexpr double kCoreRingD = 52;    // stroke 4, in urElectricBlue
+constexpr double kPulseD = 56;       // fill urElectricBlue, scales to 1.5
+constexpr double kPulseScaleTo = 1.5;
+constexpr double kPulseOpacityFrom = 0.5;  // = 1.5 - 1.0
+constexpr int64_t kPulseMs = 1500;
+constexpr double kBlobD = 180;       // the five connected-state circles
+constexpr int64_t kBlobMs = 1000;    // .easeInOut(duration: 1)
+constexpr double kEquatorY = 126;    // GlobeConnector "Line 1": y=127, width 2
+constexpr double kEquatorH = 2;
+constexpr double kMeridianW = 103;   // "Ellipse 54": rx 51.5
+constexpr double kMeridianH = 254;   // ry 127
+constexpr double kConnectorStroke = 2;
+constexpr double kGlyphSize = 32;    // .font(.system(size: 32))
+constexpr int64_t kGlyphDelayMs = 500;
+constexpr int64_t kGlyphFadeMs = 300;
+// `.animation(.easeInOut(duration: 0.5), value: connectionStatus)`
+constexpr int64_t kStateFadeMs = 500;
+
+// How long the idle invitation runs before the hero goes still. iOS writes
+// `.repeatForever(autoreverses: false)`; see the measurements in StartIdle for
+// why a tray app cannot. Bounded in BOTH directions — hovering restarts the
+// burst, it does not pin it on.
+constexpr double kIdlePulseBursts = 3;
+
 // Hard cap on live dots. A grid this large is not something the SDK produces;
 // the cap exists so a malformed push cannot spawn unbounded elements.
 constexpr size_t kMaxPoints = 1024;
 
-// 10 fps * 0.12 = ~0.83s to settle, the same duration iOS reaches at
-// 60 fps * 0.05.
-constexpr double kPointStep = 0.12;
-
-anim::RepeatBehavior Forever() {
-  anim::RepeatBehavior r{};
-  r.Type = anim::RepeatBehaviorType::Forever;
-  return r;
-}
+// 10 fps * 0.15 = ~0.67s to settle. iOS's grid runs at 60fps * 0.05 = 0.33s,
+// but its animation is per-point-arrival and ours is sampled off the page's
+// existing chart clock; a step this size keeps the grow-in legible at 10fps
+// instead of snapping in five frames.
+constexpr double kPointStep = 0.15;
 
 anim::RepeatBehavior Times(double count) {
   anim::RepeatBehavior r{};
@@ -103,7 +129,6 @@ anim::DoubleAnimation MakeDouble(double from, double to, int64_t ms, int64_t beg
   return a;
 }
 
-// Add `animation` to `sb`, targeting `property` on `target`.
 void Add(anim::Storyboard const& sb, anim::Timeline const& animation,
          DependencyObject const& target, wchar_t const* property) {
   anim::Storyboard::SetTarget(animation, target);
@@ -117,52 +142,53 @@ void Stop(anim::Storyboard& sb) {
   sb = nullptr;
 }
 
-// A soft blob / wash: coloured at the centre, zero alpha at the rim. Used for
-// both the ambient wash and the connected-state blobs, which is why nothing in
-// this file needs a circular clip.
-RadialGradientBrush SoftBrush(winrt::Windows::UI::Color color, uint8_t centerAlpha,
-                              double midStop, uint8_t midAlpha) {
-  RadialGradientBrush brush;
-  brush.Center(Point{0.5f, 0.5f});
-  brush.GradientOrigin(Point{0.5f, 0.5f});
-  brush.RadiusX(0.5);
-  brush.RadiusY(0.5);
-  auto stop = [&](double offset, uint8_t alpha) {
-    GradientStop s;
-    s.Offset(offset);
-    s.Color(colors::WithAlpha(color, alpha));
-    brush.GradientStops().Append(s);
-  };
-  stop(0, centerAlpha);
-  stop(midStop, midAlpha);
-  stop(1, 0);
-  return brush;
+// Path.Data's mini-language is parsed by the XAML markup compiler, not by any
+// runtime API a C++ caller can reach: there is no Geometry.Parse, and
+// PathGeometry takes a figure collection rather than a string. Loading a
+// one-element document through XamlReader is how LoginCarousel reaches the same
+// parser at run time, and it is how the globe gets here.
+shapes::Path ParsePath(std::wstring const& data) {
+  const std::wstring markup =
+      L"<Path xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' Data='" + data +
+      L"'/>";
+  auto path = Markup::XamlReader::Load(winrt::hstring{markup}).as<shapes::Path>();
+  // Fill, not Uniform: the geometry box is exactly the square the element is
+  // sized to, so this is an exact 1:1 map and never letterboxes.
+  path.Stretch(Stretch::Fill);
+  path.HorizontalAlignment(HorizontalAlignment::Center);
+  path.VerticalAlignment(VerticalAlignment::Center);
+  path.IsHitTestVisible(false);
+  return path;
 }
 
-shapes::Ellipse MakeEllipse(double size) {
+shapes::Ellipse MakeEllipse() {
   shapes::Ellipse e;
-  e.Width(size);
-  e.Height(size);
   e.HorizontalAlignment(HorizontalAlignment::Center);
   e.VerticalAlignment(VerticalAlignment::Center);
   e.IsHitTestVisible(false);
   return e;
 }
 
-// A single arc drawn as a dashed circle: one dash `fraction` of the way round
-// and one gap covering the rest. StrokeDashArray is in units of the stroke
-// thickness, so the dash length is (fraction * circumference / thickness).
-// Cheaper and far less fragile than a PathGeometry ArcSegment, and it rotates
-// about the element's own centre with no geometry rebuild.
-void SetArc(shapes::Ellipse const& e, double diameter, double thickness, double fraction) {
-  e.Width(diameter);
-  e.Height(diameter);
-  e.StrokeThickness(thickness);
-  const double circumference = 3.14159265358979 * diameter / (std::max)(thickness, 0.1);
-  DoubleCollection dashes;
-  dashes.Append(circumference * fraction);
-  dashes.Append(circumference * (1 - fraction));
-  e.StrokeDashArray(dashes);
+void SizeSquare(FrameworkElement const& e, double size) {
+  e.Width(size);
+  e.Height(size);
+}
+
+// iOS's tintedBackgroundBase (#1C1C1C) is exactly its page background (#101010)
+// lifted 0x0C on every channel. Deriving the globe from the ground rather than
+// hard-coding kCard means the silhouette reads whether the hero sits on the page
+// — where this returns kCard exactly, as iOS does — or inside a card.
+winrt::Windows::UI::Color Lift(winrt::Windows::UI::Color c, int by) {
+  auto up = [by](uint8_t v) {
+    return static_cast<uint8_t>(std::clamp(static_cast<int>(v) + by, 0, 255));
+  };
+  return winrt::Windows::UI::Color{c.A, up(c.R), up(c.G), up(c.B)};
+}
+constexpr int kGlobeLift = 0x0C;
+constexpr int kGlobeLiftHover = 0x14;
+
+bool SameColor(winrt::Windows::UI::Color a, winrt::Windows::UI::Color b) {
+  return a.A == b.A && a.R == b.R && a.G == b.G && a.B == b.B;
 }
 
 }  // namespace
@@ -175,7 +201,7 @@ ConnectCanvas::~ConnectCanvas() { StopAll(); }
 
 bool ConnectCanvas::AnimationsEnabled() const {
   // "Show animations in Windows" off means the user wants motion gone, not
-  // reduced. Every repeating storyboard and the progress ring honour it.
+  // reduced. Every repeating storyboard honours it.
   try {
     return winrt::Windows::UI::ViewManagement::UISettings().AnimationsEnabled();
   } catch (...) {
@@ -186,175 +212,138 @@ bool ConnectCanvas::AnimationsEnabled() const {
 void ConnectCanvas::BuildVisuals(Grid const& host) {
   host_ = host;
 
-  // ---- ambient wash: the widest element, and the one that stops the hero
-  // reading as a circle floating in black on a desktop-width window ----
-  auto makeWash = [] {
-    shapes::Ellipse e;
-    e.HorizontalAlignment(HorizontalAlignment::Center);
-    e.VerticalAlignment(VerticalAlignment::Center);
-    e.IsHitTestVisible(false);
-    e.Opacity(0);
-    return e;
-  };
-  washA_ = makeWash();
-  washB_ = makeWash();
-  activeWash_ = washA_;
-  host_.Children().Append(washA_);
-  host_.Children().Append(washB_);
+  // ---- the globe container -------------------------------------------------
+  // android's `Modifier.size(256.dp).clipToBounds()`. The rect clip is the half
+  // of the mask that WinUI gives directly, and it is what lets the connected
+  // circles start a whole canvas-width off-centre without leaking.
+  globe_ = Grid();
+  globe_.HorizontalAlignment(HorizontalAlignment::Center);
+  globe_.VerticalAlignment(VerticalAlignment::Center);
+  globe_.IsHitTestVisible(false);
+  globeClip_ = RectangleGeometry();
+  globe_.Clip(globeClip_);
+  globeScale_ = ScaleTransform();
+  globeScale_.ScaleX(1);
+  globeScale_.ScaleY(1);
+  globe_.RenderTransformOrigin(Point{0.5f, 0.5f});
+  globe_.RenderTransform(globeScale_);
+  host_.Children().Append(globe_);
 
-  // ---- the disc ----
-  disc_ = Grid();
-  disc_.HorizontalAlignment(HorizontalAlignment::Center);
-  disc_.VerticalAlignment(VerticalAlignment::Center);
-  disc_.IsHitTestVisible(false);
-  discScale_ = ScaleTransform();
-  discScale_.ScaleX(1);
-  discScale_.ScaleY(1);
-  disc_.RenderTransformOrigin(Point{0.5f, 0.5f});
-  disc_.RenderTransform(discScale_);
-  host_.Children().Append(disc_);
+  // iOS: `.background(themeManager.currentTheme.tintedBackgroundBase)` under the
+  // whole ZStack, which the globe mask then cuts to shape.
+  globeFill_ = ParsePath(kGlobePath);
+  globeFill_.Fill(colors::CardBrush());
+  globe_.Children().Append(globeFill_);
 
-  // The grid substrate is a separate layer from the glyph/progress/focus ring
-  // so the error and processing states can dim the grid WITHOUT dimming the
-  // thing they are asking the user to read.
-  substrate_ = Grid();
-  substrate_.IsHitTestVisible(false);
-  disc_.Children().Append(substrate_);
+  // ---- GlobeConnector + the provider grid ---------------------------------
+  // One layer, because iOS mounts them as one view and cross-fades that view.
+  gridLayer_ = Grid();
+  gridLayer_.IsHitTestVisible(false);
+  gridLayer_.Opacity(0);
+  gridLayer_.Visibility(Visibility::Collapsed);
+  globe_.Children().Append(gridLayer_);
 
-  auto makeRing = [&](double alpha) {
-    shapes::Ellipse e = MakeEllipse(0);
-    e.Stroke(colors::MakeBrush(
-        colors::WithAlpha(colors::kOffWhite, static_cast<uint8_t>(alpha * 255))));
-    e.StrokeThickness(1);
-    substrate_.Children().Append(e);
-    return e;
-  };
-  ring0_ = makeRing(kRimAlpha);
-  ring1_ = makeRing(0.08);
-  ring2_ = makeRing(0.06);
+  connectorBg_ = ParsePath(kGlobePath);
+  connectorBg_.Fill(colors::MakeBrush(
+      winrt::Windows::UI::Color{0x0A, 0xFF, 0xFF, 0xFF}));  // fill-opacity 0.04
+  gridLayer_.Children().Append(connectorBg_);
 
-  latticeCanvas_ = Canvas();
-  latticeCanvas_.HorizontalAlignment(HorizontalAlignment::Center);
-  latticeCanvas_.VerticalAlignment(VerticalAlignment::Center);
-  latticeCanvas_.IsHitTestVisible(false);
-  substrate_.Children().Append(latticeCanvas_);
+  // The two connector lines are drawn in the PAGE colour, not a light one: in
+  // GlobeConnector.svg they are stroke="#101010" over the 4% white wash, so they
+  // read as grooves cut out of the globe rather than as lines laid on it.
+  equator_ = shapes::Rectangle();
+  equator_.Fill(colors::BackgroundBrush());
+  equator_.HorizontalAlignment(HorizontalAlignment::Stretch);
+  equator_.VerticalAlignment(VerticalAlignment::Top);
+  equator_.IsHitTestVisible(false);
+  gridLayer_.Children().Append(equator_);
 
-  // Connected-state blobs, under the points so the providers stay readable.
-  // The colours and the sliding entrance are iOS's ConnectCanvasConnectedState;
-  // the entry vectors are FIXED here rather than shuffled per connect, because
-  // a desktop window is re-shown far more often than a phone screen is opened
-  // and a hero that rearranges itself on every glance reads as instability.
-  const std::array<winrt::Windows::UI::Color, 5> blobColors = {
-      colors::kUrCoral, colors::kUrGreen, colors::kToggleAccent, colors::kAccent,
-      colors::kUrPink};
-  // Kept inside the rim on purpose: max extent is blobRadius (0.31) + offset
-  // (0.18) = 0.49 of the diameter, just short of 0.5. The first version used
-  // iOS's proportions, which rely on a globe MASK this canvas does not have, and
-  // the capture showed the colour smeared well past the disc.
-  // Spread, not stacked. iOS's circles are OPAQUE and occlude one another, so
-  // overlap there produces clean colour fields; these are additive gradients, so
-  // five of them piled near the centre blend to near-white — which is what the
-  // capture showed. The fifth sits out to the right (iOS's own (w/4, 0)) instead
-  // of at the middle.
-  const std::array<std::pair<double, double>, 5> finals = {
-      std::pair{-0.17, -0.15}, std::pair{0.16, -0.17}, std::pair{-0.17, 0.15},
-      std::pair{0.14, 0.18}, std::pair{0.19, 0.0}};
-  // The colour blooms OUTWARD FROM THE CENTRE, where iOS slides it in from off
-  // the canvas. iOS can do that because its canvas is masked by the globe
-  // symbol; this one is not, and the motion burst showed the blobs plainly
-  // visible outside the disc for ~300ms of the entrance. Starting them stacked
-  // at the centre and letting them spread keeps the gesture — colour arriving
-  // and filling the grid — with nothing ever outside the rim.
-  const std::array<std::pair<double, double>, 5> entries = {
-      std::pair{0.0, 0.0}, std::pair{0.0, 0.0}, std::pair{0.0, 0.0},
-      std::pair{0.0, 0.0}, std::pair{0.0, 0.0}};
-  for (size_t i = 0; i < blobColors.size(); ++i) {
-    Blob blob;
-    blob.shape = MakeEllipse(0);
-    blob.shape.Fill(SoftBrush(blobColors[i], 132, 0.45, 52));
-    blob.shift = TranslateTransform();
-    blob.shape.RenderTransform(blob.shift);
-    blob.shape.Opacity(0);
-    blob.fx = finals[i].first;
-    blob.fy = finals[i].second;
-    blob.ix = entries[i].first;
-    blob.iy = entries[i].second;
-    substrate_.Children().Append(blob.shape);
-    blobs_.push_back(blob);
-  }
+  meridian_ = MakeEllipse();
+  meridian_.Stroke(colors::BackgroundBrush());
+  gridLayer_.Children().Append(meridian_);
 
   pointCanvas_ = Canvas();
   pointCanvas_.HorizontalAlignment(HorizontalAlignment::Center);
   pointCanvas_.VerticalAlignment(VerticalAlignment::Center);
   pointCanvas_.IsHitTestVisible(false);
-  substrate_.Children().Append(pointCanvas_);
+  gridLayer_.Children().Append(pointCanvas_);
 
-  // ---- connecting arcs ----
-  auto makeArc = [&](winrt::Windows::UI::Color color, RotateTransform& spin) {
-    shapes::Ellipse e = MakeEllipse(0);
-    e.Stroke(colors::MakeBrush(color));
-    e.StrokeDashCap(PenLineCap::Round);
-    e.Visibility(Visibility::Collapsed);
-    spin = RotateTransform();
-    e.RenderTransformOrigin(Point{0.5f, 0.5f});
-    e.RenderTransform(spin);
-    substrate_.Children().Append(e);
-    return e;
-  };
-  arcOuter_ = makeArc(colors::kAccent, arcOuterSpin_);
-  arcInner_ = makeArc(colors::kToggleAccent, arcInnerSpin_);
+  // ---- the connected state -------------------------------------------------
+  // ConnectCanvasConnectedStateView: five 180pt circles, OPAQUE, that slide in
+  // from off-canvas and occlude one another. Above the grid, exactly as iOS
+  // stacks them (globe -> dots -> circles).
+  blobLayer_ = Grid();
+  blobLayer_.IsHitTestVisible(false);
+  globe_.Children().Append(blobLayer_);
+  for (int i = 0; i < 5; ++i) {
+    Blob blob;
+    blob.shape = MakeEllipse();
+    blob.fill = colors::MakeBrush(colors::kUrCoral);
+    blob.shape.Fill(blob.fill);
+    blob.shift = TranslateTransform();
+    blob.shape.RenderTransform(blob.shift);
+    blob.shape.Visibility(Visibility::Collapsed);
+    blobLayer_.Children().Append(blob.shape);
+    blobs_.push_back(blob);
+  }
+  ShuffleBlobs();
 
-  // ---- disconnected core ----
-  pulse_ = MakeEllipse(0);
-  pulse_.Fill(colors::MakeBrush(colors::WithAlpha(colors::kStatusIdle, 150)));
+  // ---- the disconnected state ---------------------------------------------
+  idleLayer_ = Grid();
+  idleLayer_.IsHitTestVisible(false);
+  globe_.Children().Append(idleLayer_);
+
+  pulse_ = MakeEllipse();
+  pulse_.Fill(colors::MakeBrush(colors::kUrElectricBlue));
   pulseScale_ = ScaleTransform();
   pulseScale_.ScaleX(1);
   pulseScale_.ScaleY(1);
   pulse_.RenderTransformOrigin(Point{0.5f, 0.5f});
   pulse_.RenderTransform(pulseScale_);
   pulse_.Opacity(0);
-  substrate_.Children().Append(pulse_);
+  idleLayer_.Children().Append(pulse_);
 
-  // iOS draws the idle core as an electric-blue disc inside an electric-blue
-  // ring with a background-coloured gap between them; the ring here is the same
-  // idea, with the gap coming from the stroke sitting outside the fill.
-  coreRing_ = MakeEllipse(0);
+  // 52pt blue ring, then a 50pt ring in the base colour, then the 48pt disc:
+  // the middle one is what puts a hairline of background between the disc and
+  // its ring. Three elements because iOS draws three.
+  coreRing_ = MakeEllipse();
   coreRing_.Stroke(colors::MakeBrush(colors::kUrElectricBlue));
-  coreRing_.StrokeThickness(3);
-  substrate_.Children().Append(coreRing_);
+  idleLayer_.Children().Append(coreRing_);
 
-  core_ = MakeEllipse(0);
-  core_.Fill(colors::MakeBrush(colors::kStatusIdle));
-  substrate_.Children().Append(core_);
+  coreGap_ = MakeEllipse();
+  coreGap_.Stroke(colors::CardBrush());
+  idleLayer_.Children().Append(coreGap_);
 
-  // ---- error / processing (siblings of the substrate, never dimmed) ----
+  core_ = MakeEllipse();
+  core_.Fill(colors::MakeBrush(colors::kUrElectricBlue));
+  idleLayer_.Children().Append(core_);
+
+  // ---- error / processing --------------------------------------------------
+  // Both are a single faint glyph on the bare globe: on iOS these two states
+  // REPLACE the canvas rather than overlaying it, so nothing else is drawn.
   glyph_ = FontIcon();
   glyph_.FontFamily(FontFamily(L"Segoe Fluent Icons"));
   glyph_.Glyph(L"\uE7BA");  // Segoe Fluent "Warning" (escaped: private-use area)
-  glyph_.Foreground(colors::MakeBrush(colors::kUrCoral));
+  glyph_.Foreground(colors::FaintBrush());
   glyph_.HorizontalAlignment(HorizontalAlignment::Center);
   glyph_.VerticalAlignment(VerticalAlignment::Center);
   glyph_.IsHitTestVisible(false);
   glyph_.Opacity(0);
-  disc_.Children().Append(glyph_);
+  glyph_.Visibility(Visibility::Collapsed);
+  globe_.Children().Append(glyph_);
 
-  // the native Windows idiom for "we are waiting on something", instead of
-  // iOS's static hourglass glyph
-  progress_ = ProgressRing();
-  progress_.IsActive(false);
-  progress_.Visibility(Visibility::Collapsed);
-  progress_.HorizontalAlignment(HorizontalAlignment::Center);
-  progress_.VerticalAlignment(VerticalAlignment::Center);
-  progress_.IsHitTestVisible(false);
-  progress_.Foreground(colors::MakeBrush(colors::kAccent));
-  disc_.Children().Append(progress_);
+  // ---- the mask, last ------------------------------------------------------
+  mask_ = ParsePath(std::wstring(kInverseGlobeRect) + kGlobePath);
+  mask_.Fill(colors::BackgroundBrush());
+  globe_.Children().Append(mask_);
 
-  // ---- keyboard focus ring ----
-  focusRing_ = MakeEllipse(0);
+  // ---- keyboard focus, OUTSIDE the mask ------------------------------------
+  focusRing_ = ParsePath(kGlobePath);
+  focusRing_.Fill(nullptr);
   focusRing_.Stroke(colors::MakeBrush(colors::kOffWhite));
   focusRing_.StrokeThickness(2);
   focusRing_.Visibility(Visibility::Collapsed);
-  disc_.Children().Append(focusRing_);
+  host_.Children().Append(focusRing_);
 
   host_.SizeChanged([this](IInspectable const&, SizeChangedEventArgs const& args) {
     // width only: Layout() writes the host's Height, and reacting to that would
@@ -367,131 +356,127 @@ void ConnectCanvas::BuildVisuals(Grid const& host) {
   ApplyStateVisuals();
 }
 
+// ---- the ground -----------------------------------------------------------
+
+winrt::Windows::UI::Color ConnectCanvas::ResolveGround() const {
+  // Walk out until something opaque is painting behind us. The hero Button
+  // itself is deliberately transparent (its chrome is suppressed in the
+  // markup), so alpha is the test, not the first Background we meet.
+  DependencyObject node = host_;
+  for (int depth = 0; depth < 16 && node; ++depth) {
+    node = VisualTreeHelper::GetParent(node);
+    if (!node) break;
+    Brush background{nullptr};
+    if (auto panel = node.try_as<Panel>()) {
+      background = panel.Background();
+    } else if (auto border = node.try_as<Border>()) {
+      background = border.Background();
+    } else if (auto control = node.try_as<Control>()) {
+      background = control.Background();
+    }
+    if (!background) continue;
+    if (auto solid = background.try_as<SolidColorBrush>()) {
+      const auto color = solid.Color();
+      if (color.A == 255) return color;
+    }
+  }
+  // Nothing opaque found (the hero is not parented yet, or the page paints
+  // through to the window): the app background is what the window is cleared to.
+  return colors::kBackground;
+}
+
+void ConnectCanvas::ApplyGround() {
+  const auto ground = ResolveGround();
+  if (SameColor(ground, ground_)) return;
+  ground_ = ground;
+  // The overlay must vanish into whatever is behind the hero. This is the one
+  // line to change if the hero is ever moved onto a surface this walk cannot
+  // see — a gradient, or an image.
+  mask_.Fill(colors::MakeBrush(ground));
+  const auto base = Lift(ground, hovered_ ? kGlobeLiftHover : kGlobeLift);
+  globeFill_.Fill(colors::MakeBrush(base));
+  // iOS strokes the 50pt gap ring in tintedBackgroundBase, i.e. in the globe's
+  // own base colour, so it reads as a slot cut between the disc and its ring.
+  coreGap_.Stroke(colors::MakeBrush(base));
+}
+
 // ---- layout ---------------------------------------------------------------
 
 void ConnectCanvas::Layout() {
   if (width_ <= 0) return;
-  disc_d_ = std::clamp(width_ * kDiscFraction, kMinDisc, kMaxDisc);
+  ApplyGround();
+  side_ = std::clamp(width_ - kSidePad * 2, kMinSide, kMaxSide);
+  const double s = side_ / kIosCanvas;
 
-  // The band height is derived from the disc, not the other way round: the host
+  // The band height is derived from the globe, not the other way round: the host
   // is stretched horizontally by its parent, so width is the driven dimension
   // and height is ours to set.
-  const double bandHeight = disc_d_ + kBandPadding * 2;
+  const double bandHeight = side_ + kBandPad * 2;
   // An unset FrameworkElement.Height is NaN, and EVERY comparison against NaN is
   // false — so a plain `abs(current - target) > 0.5` guard silently never fires
-  // on the first pass, and the band then auto-sizes to its tallest child (the
-  // wash), which is half again too tall. Found by looking at the first capture,
-  // not by reading this back.
+  // on the first pass, and the band then auto-sizes to its tallest child.
   const double currentHeight = host_.Height();
   if (std::isnan(currentHeight) || std::abs(currentHeight - bandHeight) > 0.5) {
     host_.Height(bandHeight);
   }
 
-  // The wash fills the band exactly and no more. A Grid does not clip its
-  // children, so an oversized wash bleeds into the rows above and below; and
-  // letting the ScrollViewer trim it instead would cut a gradient mid-fade and
-  // leave a hard edge.
-  for (auto const& wash : {washA_, washB_}) {
-    wash.Width(width_);
-    wash.Height(bandHeight);
-  }
+  SizeSquare(globe_, side_);
+  globeClip_.Rect(Rect{0, 0, static_cast<float>(side_), static_cast<float>(side_)});
+  SizeSquare(globeFill_, side_);
+  SizeSquare(connectorBg_, side_);
+  SizeSquare(mask_, side_);
 
-  disc_.Width(disc_d_);
-  disc_.Height(disc_d_);
-  ring0_.Width(disc_d_);
-  ring0_.Height(disc_d_);
-  ring1_.Width(disc_d_ * 0.72);
-  ring1_.Height(disc_d_ * 0.72);
-  ring2_.Width(disc_d_ * 0.44);
-  ring2_.Height(disc_d_ * 0.44);
+  equator_.Height(kEquatorH * s);
+  equator_.Margin(Thickness{0, kEquatorY * s, 0, 0});
+  meridian_.Width(kMeridianW * s);
+  meridian_.Height(kMeridianH * s);
+  meridian_.StrokeThickness(kConnectorStroke * s);
 
-  SetArc(arcOuter_, disc_d_ * 0.9, 5, 0.3);
-  SetArc(arcInner_, disc_d_ * 0.64, 3.5, 0.2);
+  SizeSquare(pointCanvas_, side_);
 
-  const double coreD = (std::max)(disc_d_ * 0.19, 34.0);
-  core_.Width(coreD);
-  core_.Height(coreD);
-  coreRing_.Width(coreD + 9);
-  coreRing_.Height(coreD + 9);
-  pulse_.Width(coreD);
-  pulse_.Height(coreD);
-
-  const double blobD = disc_d_ * 0.62;
+  const double blobD = kBlobD * s;
   for (auto& blob : blobs_) {
-    blob.shape.Width(blobD);
-    blob.shape.Height(blobD);
-    blob.shift.X((blobsIn_ ? blob.fx : blob.ix) * disc_d_);
-    blob.shift.Y((blobsIn_ ? blob.fy : blob.iy) * disc_d_);
-    blob.shape.Opacity(blobsIn_ ? 1.0 : 0.0);
+    SizeSquare(blob.shape, blobD);
+    blob.shift.X((blobsIn_ ? blob.fx : blob.ix) * side_);
+    blob.shift.Y((blobsIn_ ? blob.fy : blob.iy) * side_);
   }
 
-  glyph_.FontSize((std::max)(disc_d_ * 0.21, 32.0));
-  progress_.Width(disc_d_ * 0.34);
-  progress_.Height(disc_d_ * 0.34);
+  SizeSquare(pulse_, kPulseD * s);
+  SizeSquare(coreRing_, kCoreRingD * s);
+  coreRing_.StrokeThickness(4 * s);
+  SizeSquare(coreGap_, kCoreGapD * s);
+  coreGap_.StrokeThickness(2 * s);
+  SizeSquare(core_, kCoreD * s);
 
-  focusRing_.Width(disc_d_ + 10);
-  focusRing_.Height(disc_d_ + 10);
+  glyph_.FontSize(kGlyphSize * s);
 
-  latticeCanvas_.Width(disc_d_);
-  latticeCanvas_.Height(disc_d_);
-  pointCanvas_.Width(disc_d_);
-  pointCanvas_.Height(disc_d_);
+  SizeSquare(focusRing_, side_ + 8);
+  focusRing_.StrokeThickness(2);
 
-  const int32_t cols = 0 < gridWidth_ ? static_cast<int32_t>(gridWidth_) : kDefaultCols;
-  const int32_t rows = 0 < gridHeight_ ? static_cast<int32_t>(gridHeight_) : cols;
-  cols_ = (std::max)(cols, 1);
-  rows_ = (std::max)(rows, 1);
-  cell_ = disc_d_ / (std::max)(cols_, rows_);
-  originX_ = (disc_d_ - cols_ * cell_) / 2;
-  originY_ = (disc_d_ - rows_ * cell_) / 2;
+  cols_ = 0 < gridWidth_ ? static_cast<int32_t>(gridWidth_) : 0;
+  if (0 < gridHeight_ && cols_ < static_cast<int32_t>(gridHeight_)) {
+    // iOS scales by gridWidth alone; taking the larger of the two means a
+    // non-square grid still lands entirely inside the globe rather than running
+    // off the bottom of it.
+    cols_ = static_cast<int32_t>(gridHeight_);
+  }
+  cell_ = 0 < cols_ ? side_ / cols_ : 0;
 
-  LayoutLattice();
   LayoutPoints();
-}
-
-void ConnectCanvas::LayoutLattice() {
-  latticeCanvas_.Children().Clear();
-  lattice_.clear();
-  if (cell_ <= 0) return;
-  if (kMaxLatticeCells < cols_ * rows_) return;
-
-  const double dotD = (std::max)(cell_ * 0.22, 1.5);
-  const double radius = disc_d_ / 2;
-  const auto brush = colors::MakeBrush(colors::WithAlpha(colors::kTextFaint, 130));
-  for (int32_t y = 0; y < rows_; ++y) {
-    for (int32_t x = 0; x < cols_; ++x) {
-      const double cx = originX_ + (x + 0.5) * cell_;
-      const double cy = originY_ + (y + 0.5) * cell_;
-      // culled rather than clipped: UIElement.Clip takes a RectangleGeometry only
-      if (radius - dotD < std::hypot(cx - radius, cy - radius)) continue;
-      shapes::Ellipse dot;
-      dot.Width(dotD);
-      dot.Height(dotD);
-      dot.Fill(brush);
-      dot.IsHitTestVisible(false);
-      Canvas::SetLeft(dot, cx - dotD / 2);
-      Canvas::SetTop(dot, cy - dotD / 2);
-      latticeCanvas_.Children().Append(dot);
-      lattice_.push_back(dot);
-    }
-  }
 }
 
 void ConnectCanvas::LayoutPoints() {
   if (cell_ <= 0) return;
-  const double dotD = (std::max)(cell_ * 0.66, 2.0);
-  const double radius = disc_d_ / 2;
   for (auto& entry : points_) {
     GridDot& p = entry.second;
-    const double cx = originX_ + (p.x + 0.5) * cell_;
-    const double cy = originY_ + (p.y + 0.5) * cell_;
-    p.culled = radius - dotD / 2 < std::hypot(cx - radius, cy - radius);
-    p.dot.Visibility(p.culled ? Visibility::Collapsed : Visibility::Visible);
-    if (p.culled) continue;
-    p.dot.Width(dotD);
-    p.dot.Height(dotD);
-    Canvas::SetLeft(p.dot, cx - dotD / 2);
-    Canvas::SetTop(p.dot, cy - dotD / 2);
+    // ConnectCanvasConnectingStateView: centre = x * maxPointSize +
+    // maxPointSize/2, and the dot's diameter IS maxPointSize, so neighbouring
+    // dots touch. Nothing is culled at the rim — the mask does that now.
+    const double cx = p.x * cell_ + cell_ / 2;
+    const double cy = p.y * cell_ + cell_ / 2;
+    SizeSquare(p.dot, cell_);
+    Canvas::SetLeft(p.dot, cx - cell_ / 2);
+    Canvas::SetTop(p.dot, cy - cell_ / 2);
     ApplyPoint(p);
   }
 }
@@ -510,21 +495,18 @@ ConnectCanvas::PointState ConnectCanvas::ParsePointState(std::string const& valu
 }
 
 winrt::Windows::UI::Color ConnectCanvas::ColorForPointState(PointState state) {
+  // ConnectCanvasConnectingStateViewModel.colorForState, exactly. NotAdded and
+  // EvaluationFailed really are the same coral on iOS: the grid says "this cell
+  // is not carrying traffic", not why.
   switch (state) {
-    // amber: under evaluation. iOS uses its light yellow here; kUrAmber is this
-    // palette's equivalent step and is already the app's "working on it" colour
-    // (the peers line at zero uses it).
-    case PointState::InEvaluation: return colors::kUrAmber;
+    case PointState::InEvaluation: return colors::kAccent;  // urLightYellow #EFF7BB
     case PointState::EvaluationFailed: return colors::kUrCoral;
-    // iOS paints NotAdded the same coral as EvaluationFailed. A desktop canvas
-    // has the room to tell them apart, and they mean different things — "this
-    // provider failed" against "this provider was fine and not chosen" — so
-    // NotAdded takes the muted coral step.
-    case PointState::NotAdded: return colors::kUrMutedCoral;
+    case PointState::NotAdded: return colors::kUrCoral;
     case PointState::Added: return colors::kUrGreen;
-    case PointState::Removed: return colors::WithAlpha(colors::kUrGreen, 0);
+    // .urBlack.opacity(0) — the RGB matters, because the blend runs through it
+    case PointState::Removed: return winrt::Windows::UI::Color{0, 0x10, 0x10, 0x10};
   }
-  return colors::kUrAmber;
+  return colors::kAccent;
 }
 
 winrt::Windows::UI::Color ConnectCanvas::Blend(winrt::Windows::UI::Color from,
@@ -537,21 +519,15 @@ winrt::Windows::UI::Color ConnectCanvas::Blend(winrt::Windows::UI::Color from,
                                    mix(from.B, to.B)};
 }
 
-winrt::Windows::UI::Color ConnectCanvas::AccentForState(State state) {
-  switch (state) {
-    // the same tokens the status dot directly above the hero uses, so the two
-    // can never disagree about what colour a state is
-    case State::Disconnected: return colors::kStatusIdle;
-    case State::Connecting: return colors::kStatusConnecting;
-    case State::Connected: return colors::kUrGreen;
-    case State::Error: return colors::kUrCoral;
-    case State::Processing: return colors::kTextMuted;
-  }
-  return colors::kStatusIdle;
-}
-
 void ConnectCanvas::SetGrid(std::vector<urnet::ProviderGridPoint> const& incoming,
                             int64_t width, int64_t height) {
+  // iOS freezes the grid the moment the connection lands: the connecting view
+  // stays mounted as the background layer under the connected circles, but stops
+  // taking updates ("if isConnecting"). The dots are almost entirely occluded by
+  // then, and freezing is also what lets the connected state settle to no work
+  // at all on a machine that leaves the window open all day.
+  if (state_ != State::Connecting) return;
+
   const bool shapeChanged = gridWidth_ != width || gridHeight_ != height;
   gridWidth_ = width;
   gridHeight_ = height;
@@ -626,7 +602,7 @@ void ConnectCanvas::ApplyPoint(GridDot& p) {
   p.brush.Color(p.colorProgress < 1
                     ? Blend(ColorForPointState(p.previous), target, p.colorProgress)
                     : target);
-  // cubic ease-in-out on the grow-in, matching iOS's easeInOut point animation
+  // the view model's own easeInOut, applied to the grow-in
   const double t = p.sizeProgress;
   const double eased = t < 0.5 ? 4 * t * t * t : 1 - std::pow(-2 * t + 2, 3) / 2;
   p.scale.ScaleX(eased);
@@ -644,7 +620,7 @@ void ConnectCanvas::Tick() {
     GridDot& p = entry.second;
     if (p.colorProgress < 1) p.colorProgress = (std::min)(1.0, p.colorProgress + kPointStep);
     if (p.sizeProgress < 1) p.sizeProgress = (std::min)(1.0, p.sizeProgress + kPointStep);
-    if (!p.culled) ApplyPoint(p);
+    ApplyPoint(p);
     if (p.state == PointState::Removed && !p.Animating()) {
       settled.push_back(entry.first);
       continue;
@@ -663,101 +639,103 @@ void ConnectCanvas::Tick() {
   animating_ = stillAnimating;
 }
 
+void ConnectCanvas::ClearPoints() {
+  pointCanvas_.Children().Clear();
+  points_.clear();
+  animating_ = false;
+}
+
 // ---- state ----------------------------------------------------------------
 
 void ConnectCanvas::SetState(State state) {
   if (state_ == state) return;
+  const bool wasLive = state_ == State::Connecting || state_ == State::Connected;
   state_ = state;
+  const bool live = state_ == State::Connecting || state_ == State::Connected;
+  // iOS unmounts the connecting view whenever the connection is neither in
+  // flight nor up, which drops its whole animated-point map — so the next
+  // connect grows the grid in from nothing instead of resuming a stale one.
+  if (wasLive && !live) ClearPoints();
   ApplyStateVisuals();
 }
 
-void ConnectCanvas::ApplyStateVisuals() {
-  const bool connecting = state_ == State::Connecting;
-  const bool connected = state_ == State::Connected;
-  const bool disconnected = state_ == State::Disconnected;
-  const bool blocked = state_ == State::Error || state_ == State::Processing;
-
-  // the wash cross-fade: the new brush is built on the hidden ellipse and the
-  // two swap opacity. RadialGradientBrush derives from XamlCompositionBrushBase,
-  // so its stops are not Storyboard targets and the colour cannot be animated
-  // in place.
-  auto const outgoing = activeWash_;
-  auto const incoming = activeWash_ == washA_ ? washB_ : washA_;
-  activeWash_ = incoming;
-  incoming.Fill(
-      SoftBrush(AccentForState(state_), connected ? 92 : 68, 0.5, connected ? 34 : 24));
-  incoming.Visibility(Visibility::Visible);
-  if (AnimationsEnabled()) {
-    anim::Storyboard sb;
-    Add(sb, MakeDouble(outgoing.Opacity(), 0, 420, 0, Ease(anim::EasingMode::EaseOut)),
-        outgoing, L"Opacity");
-    Add(sb, MakeDouble(0, 1, 420, 0, Ease(anim::EasingMode::EaseOut)), incoming, L"Opacity");
-    // Collapse the faded-out wash rather than leaving it at Opacity 0. A
-    // RadialGradientBrush is a composition effect brush and a zero-opacity
-    // element still carries one; Collapsed takes it out of the render pass
-    // entirely. Measured: the hero's static cost was 7.5% of a core against a
-    // 3.0% page without it, and seven of these brushes were the reason.
-    sb.Completed([outgoing](auto const&, auto const&) {
-      if (outgoing.Opacity() <= 0.01) outgoing.Visibility(Visibility::Collapsed);
+void ConnectCanvas::Fade(UIElement const& element, double to, int64_t ms) {
+  const bool show = 0 < to;
+  if (show) element.Visibility(Visibility::Visible);
+  if (!AnimationsEnabled() || !presentationActive_) {
+    element.Opacity(to);
+    // Collapsed, not merely Opacity 0: a zero-opacity element is still walked
+    // and still composited. Measured on this hero, that difference was worth
+    // several points of a core.
+    if (!show) element.Visibility(Visibility::Collapsed);
+    return;
+  }
+  if (std::abs(element.Opacity() - to) < 0.01) {
+    if (!show) element.Visibility(Visibility::Collapsed);
+    return;
+  }
+  anim::Storyboard sb;
+  Add(sb, MakeDouble(element.Opacity(), to, ms, 0, Ease(anim::EasingMode::EaseInOut)), element,
+      L"Opacity");
+  if (!show) {
+    sb.Completed([element](auto const&, auto const&) {
+      if (element.Opacity() <= 0.01) element.Visibility(Visibility::Collapsed);
     });
-    sb.Begin();
-  } else {
-    outgoing.Opacity(0);
-    outgoing.Visibility(Visibility::Collapsed);
-    incoming.Opacity(1);
   }
+  sb.Begin();
+}
 
-  // error / processing dim the GRID, not the glyph: the substrate is a separate
-  // layer precisely so the thing being read stays at full contrast
-  substrate_.Opacity(blocked ? 0.45 : 1.0);
+void ConnectCanvas::ShuffleBlobs() {
+  // ConnectCanvasConnectedStateView: five colours and five (initial, final)
+  // offset pairs, both shuffled, so the overlaps differ on every connect. The
+  // offsets are in canvas widths, which is how the Swift writes them
+  // (canvasWidth / 3.5 and so on).
+  std::array<winrt::Windows::UI::Color, 5> palette = {
+      colors::kUrCoral,
+      colors::kUrGreen,
+      // urLightBlue (#D6E6F4) is the one blob colour with no token of its own in
+      // UrColors.h, which is byte-matched across the clients and not ours to
+      // extend. Two existing tokens blended land on #D9E1F8 — the same pale ice
+      // blue to the eye, and no new palette entry.
+      Blend(colors::kOffWhite, colors::kToggleAccent, 0.2),
+      colors::kAccent,  // urLightYellow
+      colors::kUrPink,  // .accent (#ED8FFF)
+  };
+  std::array<std::pair<double, double>, 5> initials = {
+      std::pair{-1.0, -1.0}, std::pair{1.0, -1.0}, std::pair{-1.0, 1.0}, std::pair{1.0, 1.0},
+      std::pair{1.0, 0.0}};
+  std::array<std::pair<double, double>, 5> finals = {
+      std::pair{-1.0 / 3.5, -1.0 / 4}, std::pair{1.0 / 4, -1.0 / 3},
+      std::pair{-1.0 / 3, 1.0 / 4},    std::pair{1.0 / 5, 1.0 / 2.5},
+      std::pair{1.0 / 4, 0.0}};
 
-  // the live points are the SDK's providers: they mean nothing while
-  // disconnected, and nothing while a balance state is blocking the connection
-  pointCanvas_.Visibility(connecting || connected ? Visibility::Visible
-                                                  : Visibility::Collapsed);
-
-  arcOuter_.Visibility(connecting ? Visibility::Visible : Visibility::Collapsed);
-  arcInner_.Visibility(connecting ? Visibility::Visible : Visibility::Collapsed);
-
-  core_.Visibility(disconnected ? Visibility::Visible : Visibility::Collapsed);
-  coreRing_.Visibility(disconnected ? Visibility::Visible : Visibility::Collapsed);
-  pulse_.Opacity(0);
-
-  glyph_.Opacity(0);
-  glyph_.Visibility(state_ == State::Error ? Visibility::Visible : Visibility::Collapsed);
-  progress_.Visibility(state_ == State::Processing ? Visibility::Visible
-                                                   : Visibility::Collapsed);
-
-  if (state_ == State::Error) {
-    // iOS delays the warning 500ms and then fades it in, so a transient balance
-    // blip never flashes a warning triangle at anyone
-    if (AnimationsEnabled()) {
-      anim::Storyboard sb;
-      Add(sb, MakeDouble(0, 1, 300, 500, Ease(anim::EasingMode::EaseInOut)), glyph_,
-          L"Opacity");
-      sb.Begin();
-    } else {
-      glyph_.Opacity(1);
-    }
+  std::array<int, 5> order = {0, 1, 2, 3, 4};
+  std::shuffle(palette.begin(), palette.end(), rng_);
+  std::shuffle(order.begin(), order.end(), rng_);
+  for (size_t i = 0; i < blobs_.size() && i < order.size(); ++i) {
+    blobs_[i].fill.Color(palette[i]);
+    blobs_[i].ix = initials[order[i]].first;
+    blobs_[i].iy = initials[order[i]].second;
+    blobs_[i].fx = finals[order[i]].first;
+    blobs_[i].fy = finals[order[i]].second;
   }
-
-  RunBlobs(connected);
-  StopAll();
-  StartIdle();
 }
 
 void ConnectCanvas::RunBlobs(bool in) {
   const bool wasIn = blobsIn_;
   blobsIn_ = in;
   Stop(blobSb_);
-  if (disc_d_ <= 0) return;
-  // Settle immediately when there is nothing to animate between, when the user
-  // has animations off, or when nobody is looking.
+  if (side_ <= 0) return;
+  // A fresh pairing on every connect, as iOS reshuffles in onChange(of:isActive)
+  if (in && !wasIn) ShuffleBlobs();
+
   auto settle = [&] {
     for (auto& blob : blobs_) {
-      blob.shift.X((in ? blob.fx : blob.ix) * disc_d_);
-      blob.shift.Y((in ? blob.fy : blob.iy) * disc_d_);
-      blob.shape.Opacity(in ? 1.0 : 0.0);
+      blob.shift.X((in ? blob.fx : blob.ix) * side_);
+      blob.shift.Y((in ? blob.fy : blob.iy) * side_);
+      // The circles are opaque and never fade on iOS — off-canvas is how they
+      // hide. Collapsing them there as well is ours: five sprites parked outside
+      // the clip still cost a walk on every frame the window presents.
       blob.shape.Visibility(in ? Visibility::Visible : Visibility::Collapsed);
     }
   };
@@ -769,22 +747,15 @@ void ConnectCanvas::RunBlobs(bool in) {
 
   anim::Storyboard sb;
   const auto ease = Ease(anim::EasingMode::EaseInOut);
-  int index = 0;
   for (auto& blob : blobs_) {
-    const double fromX = (in ? blob.ix : blob.fx) * disc_d_;
-    const double toX = (in ? blob.fx : blob.ix) * disc_d_;
-    const double fromY = (in ? blob.iy : blob.fy) * disc_d_;
-    const double toY = (in ? blob.fy : blob.iy) * disc_d_;
-    const int64_t begin = in ? 60 * index : 0;
-    Add(sb, MakeDouble(fromX, toX, 1000, begin, ease), blob.shift, L"X");
-    Add(sb, MakeDouble(fromY, toY, 1000, begin, ease), blob.shift, L"Y");
-    Add(sb, MakeDouble(in ? 0.0 : 1.0, in ? 1.0 : 0.0, in ? 500 : 350, begin, ease),
-        blob.shape, L"Opacity");
-    ++index;
+    const double fromX = (in ? blob.ix : blob.fx) * side_;
+    const double toX = (in ? blob.fx : blob.ix) * side_;
+    const double fromY = (in ? blob.iy : blob.fy) * side_;
+    const double toY = (in ? blob.fy : blob.iy) * side_;
+    Add(sb, MakeDouble(fromX, toX, kBlobMs, 0, ease), blob.shift, L"X");
+    Add(sb, MakeDouble(fromY, toY, kBlobMs, 0, ease), blob.shift, L"Y");
   }
   if (!in) {
-    // Out: take the five radial-gradient brushes out of the render pass once
-    // they have faded, not merely down to Opacity 0. Same reason as the wash.
     sb.Completed([this](auto const&, auto const&) {
       if (blobsIn_) return;
       for (auto& blob : blobs_) blob.shape.Visibility(Visibility::Collapsed);
@@ -794,91 +765,85 @@ void ConnectCanvas::RunBlobs(bool in) {
   sb.Begin();
 }
 
+void ConnectCanvas::ApplyStateVisuals() {
+  const bool connecting = state_ == State::Connecting;
+  const bool connected = state_ == State::Connected;
+  const bool disconnected = state_ == State::Disconnected;
+  const bool blocked = state_ == State::Error || state_ == State::Processing;
+
+  // ConnectButtonView's branches, in its order. Error and Processing are not an
+  // overlay on the canvas: they REPLACE it, so nothing else is drawn under them.
+  Fade(idleLayer_, disconnected ? 1.0 : 0.0, kStateFadeMs);
+  Fade(gridLayer_, (connecting || connected) ? 1.0 : 0.0, kStateFadeMs);
+
+  RunBlobs(connected);
+
+  if (blocked) {
+    glyph_.Glyph(state_ == State::Error ? L"\uE7BA"     // Warning
+                                        : L"\uE823");   // Recent (the waiting dial)
+    glyph_.Visibility(Visibility::Visible);
+    glyph_.Opacity(0);
+    // iOS delays both glyphs 500ms and then fades them in, so a transient
+    // balance blip never flashes a warning at anyone
+    if (AnimationsEnabled() && presentationActive_) {
+      anim::Storyboard sb;
+      Add(sb, MakeDouble(0, 1, kGlyphFadeMs, kGlyphDelayMs, Ease(anim::EasingMode::EaseInOut)),
+          glyph_, L"Opacity");
+      sb.Begin();
+    } else {
+      glyph_.Opacity(1);
+    }
+  } else {
+    glyph_.Opacity(0);
+    glyph_.Visibility(Visibility::Collapsed);
+  }
+
+  StopAll();
+  StartIdle();
+}
+
 void ConnectCanvas::StopAll() {
   Stop(pulseSb_);
-  Stop(spinSb_);
-  Stop(breatheSb_);
-  if (progress_) progress_.IsActive(false);
+  if (pulse_) pulse_.Opacity(0);
 }
 
 void ConnectCanvas::StartIdle() {
   // A hidden window animates nothing: this is a tray app and the common case is
   // that nobody is looking at it.
   if (!presentationActive_ || !AnimationsEnabled()) {
-    pulse_.Opacity(0);
-    if (activeWash_) activeWash_.Opacity(1);
+    if (pulse_) pulse_.Opacity(0);
     return;
   }
+  if (state_ != State::Disconnected) return;
 
-  if (state_ == State::Disconnected) {
-    // An expanding, fading ring behind the core — iOS's idle pulse, but NOT
-    // repeatForever.
-    //
-    // Measured on this machine, connect page, window visible and idle:
-    //     no hero at all ................ 2.95% of one core
-    //     hero, nothing animating ....... 7.54%
-    //     hero + a repeatForever pulse .. 16.05%
-    //
-    // The +8.5 points is not the ring; it is the flat cost of ANY running
-    // storyboard, which keeps the island presenting every frame. A tray app
-    // that burns a third of a core to draw one breathing dot at somebody who
-    // has walked away is not paying for what it costs.
-    //
-    // So the invitation is bounded: kIdlePulseBursts cycles when the page is
-    // shown, and again whenever the pointer comes over the hero — which is
-    // exactly when a desktop user is deciding whether this thing is clickable.
-    // Between those, the hero is still, and still is fine: it is a dense grid
-    // with a lit core, not an empty screen.
-    const auto easeOut = Ease(anim::EasingMode::EaseOut);
-    anim::Storyboard sb;
-    auto repeating = [&](double from, double to) {
-      auto a = MakeDouble(from, to, 1900, 0, easeOut);
-      a.RepeatBehavior(Times(kIdlePulseBursts));
-      return a;
-    };
-    Add(sb, repeating(1.0, 2.7), pulseScale_, L"ScaleX");
-    Add(sb, repeating(1.0, 2.7), pulseScale_, L"ScaleY");
-    Add(sb, repeating(0.55, 0.0), pulse_, L"Opacity");
-    pulseSb_ = sb;
-    sb.Begin();
-    return;
-  }
-
-  if (state_ == State::Connecting) {
-    // Two counter-rotating arcs. Angle on a RotateTransform is independently
-    // animatable, so the compositor runs this off the UI thread and it costs
-    // nothing per frame.
-    anim::Storyboard sb;
-    auto spin = [](double from, double to, int64_t ms) {
-      // linear on purpose: an eased spin visibly stutters once per revolution
-      auto a = MakeDouble(from, to, ms, 0, anim::EasingFunctionBase{nullptr});
-      a.RepeatBehavior(Forever());
-      return a;
-    };
-    Add(sb, spin(0, 360, 2600), arcOuterSpin_, L"Angle");
-    Add(sb, spin(360, 0, 3900), arcInnerSpin_, L"Angle");
-    spinSb_ = sb;
-    sb.Begin();
-    return;
-  }
-
-  if (state_ == State::Connected) {
-    // A slow wash breathe. Bounded for the same measured reason as the pulse,
-    // and bounded harder: connected is the state this app spends most of its
-    // life in, and it is already the richest thing on the screen — five brand
-    // fields and a live provider grid. It does not need to shimmer at anyone
-    // indefinitely to prove it is working.
-    anim::Storyboard sb;
-    auto a = MakeDouble(1.0, 0.78, 4200, 0, Ease(anim::EasingMode::EaseInOut));
-    a.AutoReverse(true);
-    a.RepeatBehavior(Times(kConnectedBreaths));
-    Add(sb, a, activeWash_, L"Opacity");
-    breatheSb_ = sb;
-    sb.Begin();
-    return;
-  }
-
-  if (state_ == State::Processing) progress_.IsActive(true);
+  // ConnectCanvasDisconnectedStateView: a 56pt disc that scales to 1.5 while its
+  // opacity runs 1.5 - scale, easeOut over 1.5s, `.repeatForever`.
+  //
+  // NOT repeatForever here. A running storyboard keeps the XAML island
+  // presenting every frame whatever it animates, and that cost is flat. Measured
+  // by interleaving both conditions inside ONE process (absolute percentages on
+  // this box swing several points between runs, so only a paired A/B is worth
+  // anything): pointer parked off the hero against the pointer re-entering it
+  // every 3s, which restarts this burst and keeps it running for the sample —
+  //     settled ....... 0.42% / 0.62% of one core
+  //     animating ..... +0.8 to +3.3 points on top
+  // A phone screen sleeps; a tray app's window does not, so the invitation is
+  // bounded: three cycles when the page is shown, and three more whenever the
+  // pointer arrives over the hero — which is exactly when a desktop user is
+  // deciding whether this thing is clickable. In between, the hero is still, and
+  // still is fine: it is a lit globe, not an empty screen.
+  const auto easeOut = Ease(anim::EasingMode::EaseOut);
+  anim::Storyboard sb;
+  auto repeating = [&](double from, double to) {
+    auto a = MakeDouble(from, to, kPulseMs, 0, easeOut);
+    a.RepeatBehavior(Times(kIdlePulseBursts));
+    return a;
+  };
+  Add(sb, repeating(1.0, kPulseScaleTo), pulseScale_, L"ScaleX");
+  Add(sb, repeating(1.0, kPulseScaleTo), pulseScale_, L"ScaleY");
+  Add(sb, repeating(kPulseOpacityFrom, 0.0), pulse_, L"Opacity");
+  pulseSb_ = sb;
+  sb.Begin();
 }
 
 void ConnectCanvas::SetPresentationActive(bool active) {
@@ -890,12 +855,12 @@ void ConnectCanvas::SetPresentationActive(bool active) {
     return;
   }
   if (blobsIn_) {
-    // re-shown while connected: settle the blobs where they belong rather than
+    // re-shown while connected: settle the circles where they belong rather than
     // replaying the entrance every time the window comes back from the tray
     for (auto& blob : blobs_) {
-      blob.shift.X(blob.fx * disc_d_);
-      blob.shift.Y(blob.fy * disc_d_);
-      blob.shape.Opacity(1);
+      blob.shift.X(blob.fx * side_);
+      blob.shift.Y(blob.fy * side_);
+      blob.shape.Visibility(Visibility::Visible);
     }
   }
   StartIdle();
@@ -904,25 +869,25 @@ void ConnectCanvas::SetPresentationActive(bool active) {
 void ConnectCanvas::SetHovered(bool hovered) {
   if (hovered_ == hovered) return;
   hovered_ = hovered;
-  // the rim brightens (the legible part) and the disc lifts (the tactile part)
-  ring0_.Stroke(colors::MakeBrush(colors::WithAlpha(
-      colors::kOffWhite,
-      static_cast<uint8_t>((hovered ? kRimAlphaHover : kRimAlpha) * 255))));
-  // Replay the bounded idle burst on ARRIVAL only. Hover is precisely when the
-  // invitation is worth paying for; leaving is not, so the pointer going away
-  // just stops it rather than starting one more round nobody asked for.
+  // Neither phone client has a pointer, so this affordance is ours. It stays
+  // inside the shape language: the globe warms one card step and lifts, rather
+  // than growing chrome iOS does not have.
+  globeFill_.Fill(
+      colors::MakeBrush(Lift(ground_, hovered ? kGlobeLiftHover : kGlobeLift)));
+  // Replay the bounded idle burst on ARRIVAL only. Leaving is not a reason to
+  // start one more round nobody asked for.
   StopAll();
   if (hovered) StartIdle();
-  const double target = hovered ? 1.05 : 1.0;
+  const double target = hovered ? 1.03 : 1.0;
   if (!AnimationsEnabled()) {
-    discScale_.ScaleX(target);
-    discScale_.ScaleY(target);
+    globeScale_.ScaleX(target);
+    globeScale_.ScaleY(target);
     return;
   }
   anim::Storyboard sb;
   const auto ease = Ease(anim::EasingMode::EaseOut);
-  Add(sb, MakeDouble(discScale_.ScaleX(), target, 180, 0, ease), discScale_, L"ScaleX");
-  Add(sb, MakeDouble(discScale_.ScaleY(), target, 180, 0, ease), discScale_, L"ScaleY");
+  Add(sb, MakeDouble(globeScale_.ScaleX(), target, 180, 0, ease), globeScale_, L"ScaleX");
+  Add(sb, MakeDouble(globeScale_.ScaleY(), target, 180, 0, ease), globeScale_, L"ScaleY");
   sb.Begin();
 }
 
