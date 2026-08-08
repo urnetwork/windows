@@ -15,6 +15,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -27,6 +28,7 @@
 #include "SdkHost.h"
 #include "StatsSheets.h"
 #include "TransferChart.h"
+#include "UrComponents.h"  // kit::PaneListRowButton (the selectable activity row)
 
 namespace winrt::URnetwork::implementation {
 struct MainWindow;
@@ -43,6 +45,20 @@ class ConnectPage {
   void Initialize();
   void SetPresentationActive(bool active);
   void ApplyStrings();
+  // Advanced Mode changed (D5). The sibling of ApplyStrings: one call, after
+  // which every surface on this page has re-read itself in the new mode. Home's
+  // two readings are
+  //
+  //   Normal    the activity rows are static, the third pane is the statistics
+  //             pane, and the session figures are the five a user cares about.
+  //   Advanced  every activity row is SELECTABLE and the third pane leads with a
+  //             connection inspector for the selection; the session figures gain
+  //             the raw pre-clamp status and the session mode; contract rows show
+  //             full client ids.
+  //
+  // Cheap and idempotent: it re-renders from the caches this page already holds
+  // and issues no RPC of its own.
+  void ApplyAdvancedMode(bool on);
 
   // ---- window-level relays ----
   void ApplyStats(urnw::LiveStats const& stats);
@@ -93,6 +109,9 @@ class ConnectPage {
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnPeersLineClick(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the inspector's "clear the selection" action (Advanced Mode)
+  void OnInspectorClear(winrt::Windows::Foundation::IInspectable const&,
+                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
  private:
   // The SDK's own connection status (ConnectViewController.getConnectionStatus,
@@ -108,6 +127,11 @@ class ConnectPage {
   // tunnel — see the definition): anything other than a settled disconnected
   // state means the press disconnects, and in a transition aborts.
   bool ConnectActionIsDisconnect() const;
+  // The connect action's two forms (App.xaml UrPaneActionPrimaryStyle /
+  // ...SecondaryStyle): filled blue while there is something to do, outlined
+  // once the tunnel is up. Called only from ApplyConnectStatus, which is the
+  // single place the connect state is rendered.
+  void ApplyConnectButtonStyle(std::wstring_view key);
 
   void BuildCharts();
   void BuildHero();        // the ConnectCanvas plus the hero's desktop affordances
@@ -151,6 +175,55 @@ class ConnectPage {
   //                     ApplySplitRulesList   one row per split rule
   void ApplyConnectionsList();
   void ApplySessionRows();
+
+  // ---- D5: the connection inspector -----------------------------------------
+  //
+  // Advanced Mode turns the activity pane's rows into a SELECTION and the third
+  // pane into the detail for it. Everything the inspector prints comes from a
+  // feed this page or SdkHost already holds — nothing here fabricates a field
+  // the SDK cannot supply, and the fields it CANNOT supply (protocol, port,
+  // per-direction counters, ASN, per-connection duration) are absent rather than
+  // guessed. See the report; they need bridging or upstream SDK work.
+  //
+  // Selection is held by the block action's ID, not by its index. The feed is a
+  // live rebuild on every push and rows move; an index selection follows the
+  // POSITION and quietly starts inspecting a different connection, which is the
+  // worst failure available to a tool whose whole job is to tell you what a
+  // given connection is doing.
+  void SelectConnection(std::string const& id);
+  void ApplyInspector();
+  // Paint the selected/unselected state across the rows already on screen,
+  // without rebuilding them: a rebuild on every click loses focus mid-keyboard-
+  // navigation, which makes the list unusable from the keyboard.
+  void ApplyConnectionSelectionVisuals();
+  // The exit a destination ip routed through, and that exit's health, joined out
+  // of the reliability snapshot (DestinationExit.DestinationIp -> ClientId ->
+  // Exit). Returns nullopt when the ip is not in the snapshot, which is the
+  // normal case for a host whose addresses the block action never recorded.
+  struct ExitRouting {
+    std::string clientId;
+    int32_t flowCount = 0;
+    bool haveExit = false;  // the clientId was also found in the exits list
+    int32_t tier = 0;
+    int32_t effectiveTier = 0;
+    int32_t exitFlowCount = 0;
+    int32_t dialFailureCount = 0;
+    bool quarantined = false;
+    bool warning = false;
+    std::string warningCause;
+    bool proven = false;
+    int64_t probeAgeSeconds = 0;
+  };
+  std::optional<ExitRouting> RoutingForAddresses(
+      std::vector<std::string> const& addresses) const;
+  // Refresh the exits / destination-exits cache the inspector joins against.
+  //
+  // ReadReliability() is several SYNCHRONOUS rpcs into the service, so it runs on
+  // a background thread and marshals back — never on the UI thread. Driven from
+  // the drawer clock at a low cadence and ONLY while Advanced Mode is on and the
+  // window is presenting, because a background poll for a pane nobody is looking
+  // at is the cost of the feature with none of the value.
+  winrt::fire_and_forget RefreshExitRouting();
   void ApplyContractsList();
   void ApplySplitRulesList();
   //   connect pane   ApplyPeersList  the other devices on this network. It is
@@ -222,6 +295,27 @@ class ConnectPage {
   std::optional<urnet::DnsResolverSettings> dnsSettings_;
   std::string countryCode_;  // selected location country (dns recommendations)
   std::string countryName_;
+  // ---- D5: Advanced Mode ----
+  // Pushed from MainWindow::ApplyAdvancedMode, which is itself driven by
+  // SdkHost's standing value — this page never reads the preference itself, so
+  // there is one authority and one apply path.
+  bool advancedMode_ = false;
+  // The selected connection, by BlockActionItem::id. Empty means "nothing
+  // selected", which in Advanced Mode is a real state with its own inspector
+  // reading, not an error.
+  std::string selectedConnectionId_;
+  // The rows currently on screen, parallel to the visible slice of
+  // blockActions_, so a selection change repaints instead of rebuilding.
+  std::vector<urnw::kit::PaneListRowButton> connectionRows_;
+  std::vector<std::string> connectionRowIds_;
+  // The reliability snapshot's routing tables, refreshed off-thread. Exits are
+  // keyed by client id; destination exits map a destination ip to the exit
+  // carrying its flows. This is the ONLY per-connection "which exit" the SDK has.
+  std::vector<urnet::Exit> exits_;
+  std::vector<urnet::DestinationExit> destinationExits_;
+  bool exitRefreshInFlight_ = false;
+  uint32_t exitRefreshTick_ = 0;
+
   bool updatingControls_ = false;  // guards programmatic toggle/segment updates
   bool drawerAnimated_ = false;    // entrance plays once per window
   std::shared_ptr<urnw::ClientContractsSheet> contractsSheet_;

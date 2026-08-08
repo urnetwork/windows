@@ -168,6 +168,28 @@ MainWindow::MainWindow() {
     // SdkHost (sessionFailure_); this is what replays it.
     Sdk().RefreshModeNotice();
   }
+
+  // ---- Advanced Mode (D5) ----
+  // The SAME two-line pair, for the same reason. The preference is read off
+  // disk in SdkHost::Initialize(), which runs at startup; this window is not
+  // built until the first tray click, 25 seconds later in the case that is
+  // written up on sessionFailure_. Binding a handler and waiting for a change
+  // notification would mean an Advanced user's window opens Normal and stays
+  // Normal, because nothing changed and no event is coming. Bind, then REPLAY
+  // the standing value.
+  {
+    auto queue = DispatcherQueue();
+    Sdk().SetAdvancedModeHandler([weak = get_weak(), queue](bool on) {
+      queue.TryEnqueue([weak, on] {
+        if (auto self = weak.get()) self->ApplyAdvancedMode(on);
+      });
+    });
+    // Synchronous, not the enqueue above: this runs inside the constructor and
+    // everything built after it would otherwise render its Normal reading first
+    // and be corrected a frame later, which is a visible flash on the one
+    // screen the mode is most obvious on.
+    ApplyAdvancedMode(Sdk().CurrentAdvancedMode());
+  }
 }
 
 MainWindow::~MainWindow() {
@@ -417,13 +439,24 @@ void MainWindow::ApplyBreakpoint() {
   // flyout sizes the right-hand fields were simply running off the edge -
   // silently, which is the one thing a status line must not do. Without the
   // captions the same four fields fit from ~520dip, and they are still the
-  // values' accessible names, so a screen reader loses nothing. Advanced Mode's
-  // extra fields inherit this for free.
-  for (auto const* field : {&statusNetwork_, &statusProvider_, &statusTraffic_}) {
+  // values' accessible names, so a screen reader loses nothing.
+  //
+  // D5: the four Advanced fields are in this loop too, but captions were NOT
+  // enough for them. Measured at the 720x520 minimum with the mode on: eight
+  // fields ran off the right edge and RPC and Raw were cut in half -- the exact
+  // silent overflow the caption rule exists to stop, just four fields later. So
+  // below the breakpoint the Advanced fields are dropped ENTIRELY rather than
+  // shortened; the same values are on the Developer destination, which is
+  // revealed in this mode anyway. ApplyStatusStrip owns that (it is also the
+  // signed-out gate) and is called from here so a resize applies it.
+  for (auto const* field : {&statusNetwork_, &statusProvider_, &statusTraffic_,
+                            &statusMode_, &statusRoutes_, &statusRpcPort_,
+                            &statusRaw_}) {
     if (field->caption) {
       field->caption.Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
     }
   }
+  ApplyStatusStrip();
 
   urnw::LogInfo("layout: {} at {:.0f}dip",
                 ultra ? "ultra (Home in three columns)" : wide ? "wide" : "narrow",
@@ -453,6 +486,7 @@ void MainWindow::BuildStatusStrip() {
   auto fields = StatusStripFields();
   fields.Children().Clear();
   statusSessionParts_.clear();
+  statusAdvancedParts_.clear();
 
   // The strip as a whole is a landmark: one accessible name over the row, so a
   // screen reader announces "URnetwork Status" and then the fields, instead of
@@ -479,11 +513,64 @@ void MainWindow::BuildStatusStrip() {
   section(statusProvider_, "selected_provider");
   section(statusTraffic_, "data");
 
+  // ---- ADVANCED DENSITY (D5) ----------------------------------------------
+  // The promise this strip was built to keep: four more facts cost four more
+  // calls to MakeStatusField and no layout change. They do.
+  //
+  // These four are what an operator asks when the three above look fine and the
+  // client still is not carrying traffic, and NOT ONE of them is inferable from
+  // the Normal reading: which KIND of session the service granted, whether
+  // routes and DNS are installed RIGHT NOW, where the rpc endpoint is, and what
+  // the SDK said before LiveStats clamped it. `mode` and `routes_installed` in
+  // particular are the difference between "connected" and "carrying packets",
+  // which is the distinction this strip exists to keep visible.
+  //
+  // Their labels are Adv() ids — the store has 945 keys and no word for any of
+  // them. See pages::Adv in PageContext.h.
+  //
+  // NOT here, and reported rather than invented: the egress interface index.
+  // The spec's advanced list names it, the driver knows it, and nothing on the
+  // app side of the pipe carries it — proto::TunnelStatus has state, mode,
+  // rpc_listen_hostport, routes_installed, service_version and two counters, and
+  // no interface at all. A field that would have to be made up is not a field.
+  if (advancedMode_) {
+    auto advSection = [&](urnw::kit::StatusField& field, hstring const& label) {
+      auto rule = urnw::kit::MakeStatusSeparator();
+      fields.Children().Append(rule);
+      field = urnw::kit::MakeStatusField(label);
+      fields.Children().Append(field.root);
+      statusSessionParts_.push_back(rule);
+      statusSessionParts_.push_back(field.root);
+      // ...and separately, so the breakpoint can drop these four without
+      // touching the three the Normal reading needs.
+      statusAdvancedParts_.push_back(rule);
+      statusAdvancedParts_.push_back(field.root);
+    };
+    advSection(statusMode_, Adv("adv_session_mode", L"Session"));
+    advSection(statusRoutes_, Adv("adv_routes", L"Routes"));
+    advSection(statusRpcPort_, Adv("adv_rpc", L"RPC"));
+    advSection(statusRaw_, Adv("adv_raw_status", L"Raw"));
+  } else {
+    statusMode_ = {};
+    statusRoutes_ = {};
+    statusRpcPort_ = {};
+    statusRaw_ = {};
+  }
+
   ApplyStatusStrip();
+  // A rebuild is not a state push, so nothing else redraws the one field the
+  // strip is named after — and under a pinned preview sample no push is ever
+  // coming. Replay what was last drawn. (Same lesson as sessionFailure_, one
+  // layer up: a value produced before the view existed has to be replayable.)
+  if (!statusStateText_.empty()) RenderStatusState(statusStateText_, statusStateDot_);
 }
 
 void MainWindow::RenderStatusState(hstring const& text,
                                    winrt::Windows::UI::Color dot) {
+  // Recorded before the null check, so a rebuild can replay it even if the very
+  // first push landed before the strip existed.
+  statusStateText_ = text;
+  statusStateDot_ = dot;
   if (!statusState_.value) return;
   urnw::kit::SetStatusFieldValue(statusState_, text);
   // The state field is the one line on the strip that is never muted: it is the
@@ -525,6 +612,13 @@ void MainWindow::ApplyStatusStrip() {
     return;
   }
   for (auto const& part : statusSessionParts_) part.Visibility(Visibility::Visible);
+  // ...and then the Advanced four back off again below the breakpoint. See the
+  // note in ApplyBreakpoint: eight fields do not fit a 720dip window even with
+  // every caption hidden, and a status line that silently runs off the edge is
+  // worse than one that admits it has no room.
+  for (auto const& part : statusAdvancedParts_) {
+    part.Visibility(wideLayout_ ? Visibility::Visible : Visibility::Collapsed);
+  }
 
   urnw::kit::SetStatusFieldValue(statusNetwork_,
                                  statusGuest_ || statusNetworkName_.empty()
@@ -543,6 +637,87 @@ void MainWindow::ApplyStatusStrip() {
       statusConnected_ ? H("↓ " + urnw::FormatBitRate(statusDownBps_) + "   ↑ " +
                            urnw::FormatBitRate(statusUpBps_))
                        : Loc("site_app_no_traffic"));
+
+  // ---- the advanced four (D5) ---------------------------------------------
+  // Only built when the mode is on, so a null field is "Normal", not an error.
+  if (!statusMode_.value) return;
+  urnw::kit::SetStatusFieldValue(
+      statusMode_, statusSessionMode_ == urnw::proto::StartMode::RpcOnly
+                       ? Adv("adv_mode_rpc_only", L"rpc-only")
+                       : Adv("adv_mode_tunnel", L"tunnel"));
+  urnw::kit::SetStatusFieldValue(statusRoutes_,
+                                 statusRoutesInstalled_ ? Loc("on") : Loc("off"));
+  urnw::kit::SetStatusFieldValue(
+      statusRpcPort_, statusRpcHostPort_.empty() ? Adv("adv_none", L"none")
+                                                 : H(statusRpcHostPort_));
+  // The PRE-CLAMP status. LiveStats.rawConnectionStatus is populated ONLY in an
+  // rpc-only session — it exists to see through that one clamp, not as a general
+  // mirror — so outside that session the clamped value IS the raw one and
+  // printing it is honest. Getting this backwards would put an empty field on
+  // every ordinary session and make the one case it was built for look broken.
+  urnw::kit::SetStatusFieldValue(statusRaw_,
+                                 statusRawConnection_.empty()
+                                     ? Adv("adv_none", L"none")
+                                     : H(statusRawConnection_));
+}
+
+// ---- Advanced Mode (D5) ----------------------------------------------------
+//
+// Not a page. A reading that EVERY surface has two of: Normal assumes the VPN
+// just works and hides everything that operating it would need; Advanced reveals
+// raw values, ids, the tuning surface and the Developer destination. So this is
+// the ApplyStrings() of the mode — one function, called once per change, after
+// which every surface has re-read itself — and each page grows an
+// ApplyAdvancedMode() the way it already has an ApplyStrings().
+
+void MainWindow::ApplyAdvancedMode(bool on) {
+  advancedMode_ = on;
+
+  // THE DEVELOPER DESTINATION FOLDS. A Normal user whose VPN "just works" has no
+  // 34-knob destination in the nav (spec 2026-08-06, "Scope settled"); Advanced
+  // reveals it and the inline surfaces everywhere else.
+  DeveloperNavItem().Visibility(on ? Visibility::Visible : Visibility::Collapsed);
+  // ...and if it is the destination the user is STANDING ON when the mode goes
+  // off, move them. Collapsing the item alone leaves the developer surface on
+  // screen with no selected item in the nav and no way back to it — the page
+  // would be simultaneously hidden and showing.
+  if (!on) {
+    if (auto item = HomeNav().SelectedItem().try_as<NavigationViewItem>()) {
+      if (winrt::unbox_value_or<hstring>(item.Tag(), L"") == L"developer") {
+        HomeNav().SelectedItem(ConnectNavItem());
+      }
+    }
+  }
+
+  // The strip gains or loses four fields. Rebuilt rather than toggled, because
+  // the separators belong to the fields and hiding a field without its rule
+  // leaves a hairline against nothing.
+  BuildStatusStrip();
+
+  // The pages. Each re-reads its own surfaces; none of them polls this.
+  connect_->ApplyAdvancedMode(on);
+  developer_->ApplyAdvancedMode(on);
+  // Settings owns the toggle, so it has to be told as well — otherwise a mode
+  // restored from disk leaves the very control that sets it reading Off.
+  settings_->ApplyAdvancedMode(on);
+  // R4 HOOK — Account / Wallet.
+  // Those two pages are owned by the concurrent R4 branch, so their
+  // ApplyAdvancedMode() is theirs to add and this is where the calls go:
+  //
+  //     account_->ApplyAdvancedMode(on);
+  //     wallet_->ApplyAdvancedMode(on);
+  //
+  // Their Advanced readings are already scoped in the markup — MainWindow.xaml
+  // carries "Advanced Mode will add id / raw columns here" on the payouts table
+  // and the leaderboard rank card, and on the transfer table's id columns.
+  // Adding the two calls is the whole integration; nothing else here changes.
+}
+
+void MainWindow::SetAdvancedMode(bool on) {
+  // Persist only. SdkHost publishes back through the handler bound in the
+  // constructor, which is what calls ApplyAdvancedMode — so there is exactly one
+  // apply path, and it is the same one a value restored from disk takes.
+  Sdk().SetAdvancedMode(on);
 }
 
 // Two gates, as WalletPage's sample rows have: --preview-ui says there is no
@@ -616,6 +791,19 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   if (destination == "seedphrase") {
     login_->ShowPreviewSeedphraseSheet();
     return;
+  }
+
+  // D5: the Developer destination lives behind Advanced Mode now, and a
+  // collapsed nav item cannot be selected — so `--preview-ui=developer` against
+  // a Normal profile would silently land on Home. Asking for that destination IS
+  // asking for the advanced surface. Applied in memory only; nothing is
+  // persisted, so a preview run does not change the operator's saved preference.
+  if (destination == "developer" && !advancedMode_) {
+    urnw::LogInfo(
+        "preview-ui: '{}' lives behind Advanced Mode; turning it on for this "
+        "process only (not persisted)",
+        destination);
+    ApplyAdvancedMode(true);
   }
 
   const hstring tag = H(destination);
@@ -967,6 +1155,14 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
 
 void MainWindow::OnTunnelStateChanged(urnw::proto::TunnelStatus const& status) {
   connect_->SetConnectedUi(status.state == urnw::proto::TunnelState::Up);
+  // D5: the three status-strip facts that come off the SERVICE rather than the
+  // SDK. Cached unconditionally, not only while Advanced Mode is on, so turning
+  // the mode on mid-session shows the current values instead of three blanks
+  // waiting for a push that a settled session will never send.
+  statusRpcHostPort_ = status.rpc_listen_hostport;
+  statusSessionMode_ = status.mode;
+  statusRoutesInstalled_ = status.routes_installed;
+  if (advancedMode_) ApplyStatusStrip();
 }
 
 void MainWindow::OnStatsChanged(urnw::LiveStats const& stats) {
@@ -983,6 +1179,12 @@ void MainWindow::OnStatsChanged(urnw::LiveStats const& stats) {
   statusLocationName_ = stats.locationName;
   statusDownBps_ = stats.downBitsPerSecond;
   statusUpBps_ = stats.upBitsPerSecond;
+  // D5: the pre-clamp reading, for the strip's advanced Raw field. rpcOnly is
+  // the ONLY session in which rawConnectionStatus is populated (it exists to see
+  // through that one clamp); in every other session the clamped value is the raw
+  // one, so this is not a fallback, it is the same fact by a shorter route.
+  statusRawConnection_ =
+      stats.rpcOnly ? stats.rawConnectionStatus : stats.connectionStatus;
   ApplyStatusStrip();
 }
 
@@ -1117,6 +1319,9 @@ void MainWindow::OnDnsCardClick(IInspectable const& s,
 void MainWindow::OnLocationRowClick(IInspectable const& s,
                                      RoutedEventArgs const& e) {
   connect_->OnLocationRowClick(s, e);
+}
+void MainWindow::OnInspectorClear(IInspectable const& s, RoutedEventArgs const& e) {
+  connect_->OnInspectorClear(s, e);
 }
 void MainWindow::OnPeersLineClick(IInspectable const& s,
                                    RoutedEventArgs const& e) {

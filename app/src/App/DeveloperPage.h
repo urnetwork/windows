@@ -66,6 +66,10 @@ class DeveloperPage {
   // The window became visible+active, or stopped being so (AppController's
   // presentation lifecycle). Polling needs BOTH this and SetSelected.
   void SetPresentationActive(bool active);
+  // Advanced Mode changed (D5). This screen has no Normal reading — it IS the
+  // Advanced one — so what the mode buys here is that the five-second reliability
+  // poll stops when the destination is not reachable. See the definition.
+  void ApplyAdvancedMode(bool on);
 
   // ---- the persistent session-mode notice ----------------------------------
   // SdkHost::SetModeNoticeHandler is bound here, in the ctor. Already marshaled
@@ -212,6 +216,11 @@ class DeveloperPage {
   bool built_ = false;
   bool selected_ = false;
   bool presentationActive_ = false;
+  // D5: this destination exists only while Advanced Mode is on, so the mode is
+  // a fourth term of the polling gate. Seeded true-by-omission would be wrong —
+  // MainWindow::ApplyAdvancedMode runs in its constructor and pushes the real
+  // value before anything can poll.
+  bool advancedMode_ = false;
   // Set while a poll result is being written into the controls, so the
   // ValueChanged/Toggled handlers can tell a user edit from a refresh. Without
   // it every refresh would write the value back to the device it just read it

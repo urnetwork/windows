@@ -38,6 +38,10 @@ class SettingsPage {
 
   // Builds the code-built sections on first call, then (re)labels everything.
   void ApplyStrings();
+  // Advanced Mode changed (D5): reflect it in the toggle. Called from
+  // MainWindow::ApplyAdvancedMode, which is the one apply path — the toggle
+  // itself only writes, it never applies.
+  void ApplyAdvancedMode(bool on);
 
   // The settings destination's API loads: network user (sign-in methods,
   // network name), device info, referral code + network, account preferences.
@@ -82,6 +86,9 @@ class SettingsPage {
   void BuildStayInTouchSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildSubscriptionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildLogsSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  // D5. R4 HOOK: fold this row into R4's Settings > Advanced section when that
+  // branch lands and delete this function; see the definition.
+  void BuildAdvancedSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildVersionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildDangerSection();
 
@@ -132,6 +139,11 @@ class SettingsPage {
   winrt::Microsoft::UI::Xaml::Controls::StackPanel authMethodsPanel_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock deviceNameValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock deviceSpecValue_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch advancedMode_{nullptr};
+  // IsOn assignment raises Toggled, so a push from the apply path would be
+  // written straight back through SdkHost without this. Same guard, same reason,
+  // as applyingKillSwitch_.
+  bool applyingAdvancedMode_ = false;
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch killSwitch_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch productUpdates_{nullptr};
   // why the toggle above is disabled, when it is (S4)

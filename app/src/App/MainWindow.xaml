@@ -799,11 +799,16 @@
                                                   Style="{StaticResource UrChevronIconStyle}" />
                                     </Grid>
                                 </Button>
-                                <!-- THE primary action: a full-bleed bar the width of its
-                                     pane, square with it. Loud because it spans a column,
-                                     not because it floats. -->
+                                <!-- THE primary action. Its STYLE is assigned from
+                                     ConnectPage::ApplyConnectStatus, not fixed here: the
+                                     disconnected state is a filled blue Connect and the
+                                     connected state is an outlined Disconnect, and the one
+                                     function that already derives the status word, the dot
+                                     colour and the hero state derives this too. See
+                                     UrPaneActionPrimaryStyle in App.xaml for why the
+                                     full-bleed lime slab that used to be here is gone. -->
                                 <Button x:Name="ConnectButton"
-                                        Style="{StaticResource UrPaneAccentButtonStyle}"
+                                        Style="{StaticResource UrPaneActionPrimaryStyle}"
                                         Click="OnConnectToggle" />
                                 <!-- network peers (apple ConnectActions parity) -->
                                 <Button x:Name="PeersLine" MinHeight="36"
@@ -1055,6 +1060,73 @@
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel>
+                                <!-- ==== THE CONNECTION INSPECTOR (D5) ==================
+                                     The Portmaster ask, and the reason the spec called
+                                     this column "detail/inspector for the selection"
+                                     from the start. It is Advanced Mode only: in Normal
+                                     the whole group is collapsed and the pane is the
+                                     statistics pane it has always been. In Advanced the
+                                     Activity pane's rows become selectable and this
+                                     paints whatever is selected.
+
+                                     It sits ABOVE the charts on purpose. The selection
+                                     is the most specific thing on the screen and the
+                                     charts are the least; a detail pane that makes you
+                                     scroll past two charts to reach the detail is a
+                                     statistics pane with an inspector bolted on.
+
+                                     A LANDMARK, named from code (a landmark with no
+                                     name is an unlabelled region, which is worse for a
+                                     screen reader than no landmark at all). Every row
+                                     inside is built by ConnectPage::ApplyInspector on
+                                     the same key/value rhythm as the session figures. -->
+                                <StackPanel x:Name="InspectorGroup" Visibility="Collapsed"
+                                            AutomationProperties.LandmarkType="Custom">
+                                    <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="InspectorLabel"
+                                                       Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                            <!-- clear the selection; collapsed until
+                                                 there is one to clear -->
+                                            <Button x:Name="InspectorClearButton" Grid.Column="1"
+                                                    Visibility="Collapsed"
+                                                    Style="{StaticResource UrPaneActionButtonStyle}"
+                                                    Click="OnInspectorClear">
+                                                <FontIcon Glyph="&#xE711;" FontSize="12"
+                                                          Style="{StaticResource UrRowIconStyle}" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                    <!-- the selection's headline: what it is, and the
+                                         verdict, which are the two facts the row in the
+                                         other pane was already showing -->
+                                    <Border x:Name="InspectorHeadline"
+                                            Style="{StaticResource UrPaneRowStyle}"
+                                            MinHeight="0" Padding="12,10">
+                                        <StackPanel Spacing="3">
+                                            <TextBlock x:Name="InspectorTitle" FontSize="15"
+                                                       FontWeight="SemiBold"
+                                                       FontFamily="{StaticResource UrBodyFontFamily}"
+                                                       Foreground="{StaticResource UrTextBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       TextWrapping="NoWrap" />
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <Ellipse x:Name="InspectorDot" Width="8" Height="8"
+                                                         VerticalAlignment="Center"
+                                                         AutomationProperties.AccessibilityView="Raw" />
+                                                <TextBlock x:Name="InspectorVerdict" FontSize="12"
+                                                           Style="{StaticResource UrKeyTextStyle}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- and the fields, from ConnectPage::ApplyInspector -->
+                                    <StackPanel x:Name="InspectorRowsHost" />
+                                </StackPanel>
+
                                 <!-- two charts, the SAME height, full width of the pane -->
                                 <Border BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,0">

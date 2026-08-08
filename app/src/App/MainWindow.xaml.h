@@ -89,6 +89,22 @@ struct MainWindow : MainWindowT<MainWindow> {
   bool balanceConfirming() const { return balancePoll_.confirming; }
   bool balanceBlocked() const { return insufficientBalance_ && !balance_.isPro; }
 
+  // ---- Advanced Mode (D5) ----
+  // The window's copy of SdkHost's standing value, kept so a page can ask
+  // synchronously while it is BUILDING a row rather than having to have been
+  // listening. SdkHost stays the authority (SdkHost::CurrentAdvancedMode); this
+  // is seeded from it and then written only by the handler that fans the mode
+  // out to the pages, so the two cannot drift.
+  bool advancedMode() const { return advancedMode_; }
+  // Fan the mode out across the whole app. Not a page — a reading every surface
+  // has two of — so this is the ApplyStrings() of Advanced Mode: one function,
+  // called once per change, after which every surface has re-read itself.
+  void ApplyAdvancedMode(bool on);
+  // The Settings toggle's write path. Persists through SdkHost, which publishes
+  // back through the handler, which lands in ApplyAdvancedMode — so the toggle
+  // never applies the mode itself and there is exactly one apply path.
+  void SetAdvancedMode(bool on);
+
   // XAML event handlers — sign-in flow (initial → password / create / verify /
   // reset; macOS Authenticate/** parity). Forwarded to LoginPage.
   void OnGetStarted(winrt::Windows::Foundation::IInspectable const&,
@@ -219,6 +235,9 @@ struct MainWindow : MainWindowT<MainWindow> {
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnLocationRowClick(winrt::Windows::Foundation::IInspectable const&,
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // D5: the connection inspector's "clear the selection" action.
+  void OnInspectorClear(winrt::Windows::Foundation::IInspectable const&,
+                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnPeersLineClick(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
@@ -294,9 +313,38 @@ struct MainWindow : MainWindowT<MainWindow> {
   urnw::kit::StatusField statusNetwork_;
   urnw::kit::StatusField statusProvider_;
   urnw::kit::StatusField statusTraffic_;
+  // ---- the strip's ADVANCED density (D5) ----
+  // Four more fields, four more MakeStatusField calls and no layout change,
+  // which is exactly what the strip was built as a horizontal panel of fields
+  // for. Present only while Advanced Mode is on; BuildStatusStrip rebuilds.
+  urnw::kit::StatusField statusMode_;      // session mode: tunnel / rpc-only
+  urnw::kit::StatusField statusRoutes_;    // are routes+DNS actually installed
+  urnw::kit::StatusField statusRpcPort_;   // the service rpc endpoint
+  urnw::kit::StatusField statusRaw_;       // the PRE-CLAMP connection status
+  // The last TunnelStatus, for the three advanced fields that read it. Cached
+  // because the strip is rebuilt on a mode change, which is not a tunnel event:
+  // without this a rebuild would show three blanks until the service next
+  // happened to push, and on a settled session that is never.
+  std::string statusRpcHostPort_;
+  urnw::proto::StartMode statusSessionMode_ = urnw::proto::StartMode::Tunnel;
+  bool statusRoutesInstalled_ = false;
+  // LiveStats' pre-clamp reading, likewise cached across a rebuild.
+  std::string statusRawConnection_;
+  // What RenderStatusState last drew. The state field is written by callers that
+  // are ALLOWED to write it (and the preview sample pins itself), so a rebuild
+  // that did not replay it would blank the one field the strip is named after
+  // until the next push — which under a pinned preview sample never comes. Same
+  // lesson as sessionFailure_, one layer up.
+  winrt::hstring statusStateText_;
+  winrt::Windows::UI::Color statusStateDot_{};
   // Everything after the state field, hidden as a group when there is no
   // session: three captions over three blanks says less than one honest line.
   std::vector<winrt::Microsoft::UI::Xaml::UIElement> statusSessionParts_;
+  // D5: the Advanced four and their separators, tracked separately so the
+  // breakpoint can drop exactly those. They are in statusSessionParts_ as well
+  // (they are session facts, so signing out must hide them too); this is the
+  // narrower handle for the width rule.
+  std::vector<winrt::Microsoft::UI::Xaml::UIElement> statusAdvancedParts_;
   std::string statusNetworkName_;
   bool statusGuest_ = false;
   bool statusSignedIn_ = false;
@@ -309,6 +357,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   bool statusSamplePinned_ = false;
   // last state ApplyBreakpoint drove, so a resize that does not cross the
   // breakpoint costs nothing (SizeChanged fires on every pixel of a drag)
+  // ---- Advanced Mode (D5) ----
+  // Seeded from SdkHost::CurrentAdvancedMode() in the ctor and written only by
+  // ApplyAdvancedMode. See the accessor above.
+  bool advancedMode_ = false;
+
   bool wideLayout_ = false;
   // Home's second breakpoint (kUltraWideDip): the third column. Tracked
   // separately so a drag across 1800 re-runs the layout even though `wide` did

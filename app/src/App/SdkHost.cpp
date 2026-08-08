@@ -113,6 +113,32 @@ void ClearRpcSession() {
   std::filesystem::remove(RpcSessionFile(), ec);
 }
 
+// ---- the app's own preferences (D5) ----------------------------------------
+//
+// See Paths.h AppPrefsFile for why this is not the SDK LocalState. It reads and
+// writes the WHOLE object rather than one key, because this file will acquire a
+// second preference eventually and a writer that serialises only its own key
+// silently deletes every other one. An unreadable or corrupt file is an empty
+// object, never a throw: a preference is not worth taking the app down for.
+
+nlohmann::json LoadAppPrefs() {
+  std::ifstream f(AppPrefsFile());
+  if (!f) return nlohmann::json::object();
+  try {
+    nlohmann::json j = nlohmann::json::parse(f);
+    if (j.is_object()) return j;
+  } catch (...) {
+  }
+  return nlohmann::json::object();
+}
+
+void SaveAppPref(const char* key, const nlohmann::json& value) {
+  nlohmann::json j = LoadAppPrefs();
+  j[key] = value;
+  std::ofstream f(AppPrefsFile(), std::ios::trunc);
+  if (f) f << j.dump();
+}
+
 }  // namespace
 
 SdkHost::~SdkHost() {
@@ -199,6 +225,14 @@ urnet::NetworkSpace SdkHost::BuildNetworkSpace() {
 
 bool SdkHost::Initialize() {
   std::scoped_lock lock(mutex_);
+  // Advanced Mode, BEFORE anything else here. It is a preference on disk, and
+  // this function runs on startup — the main window, and therefore any handler
+  // that could receive an "advanced mode is on" event, does not exist until the
+  // first tray click. Loading it into standing state now is what lets a window
+  // built thirty seconds later ask, rather than having to have been listening.
+  // See the field comment on advancedMode_ in SdkHost.h.
+  advancedMode_.store(LoadAppPrefs().value("advanced_mode", false),
+                      std::memory_order_release);
   requestedMode_ = StartModeFromEnvironment();
   if (requestedMode_ == proto::StartMode::RpcOnly) {
     LogWarn("sdkhost: URNETWORK_RPC_ONLY is set â€” asking the service for an "
@@ -1335,6 +1369,40 @@ void SdkHost::SetModeNoticeHandler(ModeNoticeHandler h) {
 SdkHost::ModeNoticeHandler SdkHost::ModeNoticeHandlerCopy() const {
   std::scoped_lock lock(noticeMutex_);
   return onModeNotice_;
+}
+
+// ---- Advanced Mode (D5) ----------------------------------------------------
+//
+// The same shape as the mode notice above, for the same reason: the value
+// exists before any view does. See the block on CurrentAdvancedMode in SdkHost.h.
+
+void SdkHost::SetAdvancedModeHandler(AdvancedModeHandler h) {
+  std::scoped_lock lock(advancedMutex_);
+  onAdvancedMode_ = std::move(h);
+}
+
+SdkHost::AdvancedModeHandler SdkHost::AdvancedModeHandlerCopy() const {
+  std::scoped_lock lock(advancedMutex_);
+  return onAdvancedMode_;
+}
+
+void SdkHost::SetAdvancedMode(bool on) {
+  // PERSIST FIRST, PUBLISH SECOND — the order PublishSessionFailure uses, and
+  // for the same reason. The publish is best-effort; the recorded value is what
+  // actually reaches a surface built later, through RefreshAdvancedMode().
+  advancedMode_.store(on, std::memory_order_release);
+  SaveAppPref("advanced_mode", on);
+  LogInfo("sdkhost: advanced mode {}", on ? "on" : "off");
+  RefreshAdvancedMode();
+}
+
+void SdkHost::RefreshAdvancedMode() {
+  // No mutex_ anywhere on this path. It reads one atomic and copies one
+  // std::function, and taking mutex_ here would put a UI-thread call behind
+  // whatever BootstrapSession is doing.
+  auto handler = AdvancedModeHandlerCopy();
+  if (!handler) return;
+  handler(CurrentAdvancedMode());
 }
 
 // The persistent "this app is not carrying traffic" notice.

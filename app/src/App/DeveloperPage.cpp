@@ -58,15 +58,19 @@ constexpr std::chrono::milliseconds kPollInterval{5000};
 //     grep -oE '"dev_[a-z0-9_]+"' DeveloperPage.cpp | sort -u
 //
 // When they land, this screen localizes with no code change.
+//
+// D5: the implementation moved to pages::Adv in PageContext.h, because Advanced
+// Mode's inline labels are the same category and needed the same mechanism, and
+// two copies of a rule this load-bearing is one copy too many. These two names
+// stay as the local spelling — 88 call sites in this file say `Dev`, and `Dev`
+// is what the extraction grep keys on.
 hstring Dev(std::string_view key, const wchar_t* english) {
-  std::wstring value = urnw::Localized(key);
-  if (value == urnw::Widen(key)) return hstring{english};
-  return hstring{value};
+  return urnw::pages::Adv(key, english);
 }
 
 // The same, as a std::wstring, for the places that compose text.
 std::wstring DevW(std::string_view key, const wchar_t* english) {
-  return std::wstring{Dev(key, english).c_str()};
+  return urnw::pages::AdvW(key, english);
 }
 
 // ---- small builders --------------------------------------------------------
@@ -442,8 +446,21 @@ void DeveloperPage::SetPresentationActive(bool active) {
   ReconcilePolling();
 }
 
+// D5. This whole screen IS the Advanced reading — it has no Normal one, which is
+// why it folds behind the toggle rather than dimming half its rows. What it owes
+// the mode is that it stops WORKING when the mode is off: the poll is four
+// synchronous rpcs into the service every five seconds, and a destination the
+// user cannot navigate to must not still be paying for them. The nav item's
+// visibility and the "you are standing on it when it disappears" case are
+// MainWindow::ApplyAdvancedMode's.
+void DeveloperPage::ApplyAdvancedMode(bool on) {
+  if (advancedMode_ == on) return;
+  advancedMode_ = on;
+  ReconcilePolling();
+}
+
 void DeveloperPage::ReconcilePolling() {
-  const bool want = selected_ && presentationActive_ && built_;
+  const bool want = advancedMode_ && selected_ && presentationActive_ && built_;
   if (!pollTimer_) {
     if (!want) return;
     pollTimer_ = w_.DispatcherQueue().CreateTimer();

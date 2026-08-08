@@ -760,6 +760,48 @@ class SdkHost {
     PublishModeNotice();
   }
 
+  // ---- Advanced Mode (D5) ---------------------------------------------------
+  //
+  // The persisted app-wide toggle: Normal assumes the VPN just works and hides
+  // everything that operating it would need; Advanced reveals raw values, ids,
+  // the tuning surface and the Developer destination on EVERY page. Not a page —
+  // a reading that every page has two of.
+  //
+  // IT IS STANDING STATE, NOT AN EVENT, and that is the whole design of this
+  // block. The value is loaded from disk in Initialize(), which runs at startup;
+  // the main window is not built until the first tray click, which on this
+  // machine has been observed 25 SECONDS later. A pure "advanced mode changed"
+  // notification produced at load time has no handler to receive it, is dropped,
+  // and the window then builds its NORMAL reading over a preference the user set
+  // days ago — with no second event ever coming to correct it, because nothing
+  // changed. That is precisely the failure sessionFailure_ / PublishModeNotice
+  // exist to prevent (read the field comment on sessionFailure_ for the
+  // timestamps), and this project has now been bitten by that shape twice.
+  //
+  // So the contract is the mode notice's contract:
+  //   CurrentAdvancedMode()      valid at ANY time, including before any view
+  //                              exists. This is the authority.
+  //   SetAdvancedModeHandler()   an optimisation for changes AFTER a view binds.
+  //   RefreshAdvancedMode()      replays the standing value to a view that was
+  //                              built later. A new surface binds, then refreshes
+  //                              — the same two-line pair MainWindow already uses
+  //                              with SetModeNoticeHandler/RefreshModeNotice.
+  //
+  // THREADING: advancedMode_ is atomic, so the read costs nothing and needs no
+  // lock; the handler has its own small lock (advancedMutex_) which is NEVER
+  // held across the invocation and NEVER taken together with mutex_, for the
+  // reasons spelled out on SetModeNoticeHandler. Handlers are invoked on the
+  // caller's thread and must marshal.
+  bool CurrentAdvancedMode() const {
+    return advancedMode_.load(std::memory_order_acquire);
+  }
+  // Persist and publish. Writing the same value still publishes: a caller that
+  // has just built a surface may be using this as its seed.
+  void SetAdvancedMode(bool on);
+  using AdvancedModeHandler = std::function<void(bool)>;
+  void SetAdvancedModeHandler(AdvancedModeHandler h);
+  void RefreshAdvancedMode();
+
  private:
   urnet::NetworkSpace BuildNetworkSpace();
   // After obtaining a network JWT, register this device and store the client JWT.
@@ -935,6 +977,21 @@ class SdkHost {
   // arrived at the same design independently -- a bootstrap failure is standing
   // state, not an event, because it happens before any window exists to receive
   // it -- and the merge briefly carried both declarations.
+  // ---- Advanced Mode (D5) ----
+  // THE STANDING VALUE. Loaded from app_prefs.json in Initialize(), which runs
+  // long before the main window exists, and read by every surface that has two
+  // readings. Atomic rather than mutex_-guarded on purpose: it is read on the UI
+  // thread from inside layout passes, and a getter that could block behind a
+  // BootstrapSession holding mutex_ across several synchronous rpcs would freeze
+  // the window. It is one bool and it is never read together with anything else.
+  std::atomic<bool> advancedMode_{false};
+  // The handler's own lock, on the same reasoning as noticeMutex_: never held
+  // across the invocation, and never taken together with mutex_ in either order.
+  // Read the handler through AdvancedModeHandlerCopy(), never directly.
+  mutable std::mutex advancedMutex_;
+  AdvancedModeHandler onAdvancedMode_;
+  AdvancedModeHandler AdvancedModeHandlerCopy() const;
+
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;
   LocationsHandler onLocations_;

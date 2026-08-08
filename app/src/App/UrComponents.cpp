@@ -198,19 +198,45 @@ PaneKeyValueRow MakePaneKeyValueRow(winrt::hstring const& key, winrt::hstring co
   return out;
 }
 
-PaneListRow MakePaneListRow(double height) {
-  PaneListRow out;
-  out.root = MakePaneRow(height);
+namespace {
+// The three elements and the grid that carries them. Shared by the static row
+// and the selectable one so the two CANNOT drift: they are the same row species
+// with two different roots, which is the whole claim.
+//
+// `marker` is the selection's 2px leading bar. It is built for both forms (it is
+// zero-width and transparent until SetPaneListRowSelected paints it) so the two
+// forms measure identically and a list does not shift by 2px the moment it
+// becomes selectable.
+struct PaneListRowParts {
+  Controls::Grid grid{nullptr};
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse dot{nullptr};
+  TextBlock title{nullptr};
+  TextBlock meta{nullptr};
+  Controls::Border marker{nullptr};
+};
 
-  Controls::Grid grid;
-  grid.ColumnSpacing(10);
-  Controls::ColumnDefinition dotColumn, titleColumn, metaColumn;
+PaneListRowParts BuildPaneListRowParts() {
+  PaneListRowParts out;
+  out.grid = Controls::Grid();
+  out.grid.ColumnSpacing(10);
+  Controls::ColumnDefinition markerColumn, dotColumn, titleColumn, metaColumn;
+  markerColumn.Width(GridLengthHelper::Auto());
   dotColumn.Width(GridLengthHelper::Auto());
   titleColumn.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star));
   metaColumn.Width(GridLengthHelper::Auto());
-  grid.ColumnDefinitions().Append(dotColumn);
-  grid.ColumnDefinitions().Append(titleColumn);
-  grid.ColumnDefinitions().Append(metaColumn);
+  out.grid.ColumnDefinitions().Append(markerColumn);
+  out.grid.ColumnDefinitions().Append(dotColumn);
+  out.grid.ColumnDefinitions().Append(titleColumn);
+  out.grid.ColumnDefinitions().Append(metaColumn);
+
+  out.marker = Controls::Border();
+  out.marker.Width(2);
+  out.marker.VerticalAlignment(VerticalAlignment::Stretch);
+  out.marker.Margin(ThicknessHelper::FromLengths(-10, 0, 0, 0));  // undo ColumnSpacing
+  out.marker.Opacity(0);
+  Automation::AutomationProperties::SetAccessibilityView(
+      out.marker, Automation::Peers::AccessibilityView::Raw);
+  out.grid.Children().Append(out.marker);
 
   out.dot = winrt::Microsoft::UI::Xaml::Shapes::Ellipse();
   out.dot.Width(7);
@@ -219,21 +245,67 @@ PaneListRow MakePaneListRow(double height) {
   // the colour is a restatement of what the row's text already says
   Automation::AutomationProperties::SetAccessibilityView(
       out.dot, Automation::Peers::AccessibilityView::Raw);
-  grid.Children().Append(out.dot);
+  Controls::Grid::SetColumn(out.dot, 1);
+  out.grid.Children().Append(out.dot);
 
   out.title = TextBlock();
   if (auto style = StyleByKey(L"UrRowTitleStyle")) out.title.Style(style);
-  Controls::Grid::SetColumn(out.title, 1);
-  grid.Children().Append(out.title);
+  Controls::Grid::SetColumn(out.title, 2);
+  out.grid.Children().Append(out.title);
 
   out.meta = TextBlock();
   if (auto style = StyleByKey(L"UrValueTextStyle")) out.meta.Style(style);
   out.meta.Foreground(urnw::colors::MutedBrush());
-  Controls::Grid::SetColumn(out.meta, 2);
-  grid.Children().Append(out.meta);
-
-  out.root.Child(grid);
+  Controls::Grid::SetColumn(out.meta, 3);
+  out.grid.Children().Append(out.meta);
   return out;
+}
+}  // namespace
+
+PaneListRow MakePaneListRow(double height) {
+  PaneListRow out;
+  out.root = MakePaneRow(height);
+  auto parts = BuildPaneListRowParts();
+  out.dot = parts.dot;
+  out.title = parts.title;
+  out.meta = parts.meta;
+  out.root.Child(parts.grid);
+  return out;
+}
+
+PaneListRowButton MakePaneListRowButton(double height) {
+  PaneListRowButton out;
+  out.root = Controls::Button();
+  if (auto style = StyleByKey(L"UrPaneRowButtonStyle")) out.root.Style(style);
+  // Height, not MinHeight, for the reason MakePaneRow states: a minimum is what
+  // lets one row of a list grow and the list stop being uniform. The style sets
+  // a MinHeight; this pins the actual one.
+  out.root.Height(height);
+  out.root.MinHeight(height);
+
+  auto parts = BuildPaneListRowParts();
+  out.dot = parts.dot;
+  out.title = parts.title;
+  out.meta = parts.meta;
+  out.marker = parts.marker;
+  out.root.Content(parts.grid);
+  // The row's own name is the whole announcement (the caller sets it); the three
+  // children would otherwise each be announced again straight after it.
+  Automation::AutomationProperties::SetAccessibilityView(
+      parts.title, Automation::Peers::AccessibilityView::Raw);
+  Automation::AutomationProperties::SetAccessibilityView(
+      parts.meta, Automation::Peers::AccessibilityView::Raw);
+  return out;
+}
+
+void SetPaneListRowSelected(PaneListRowButton const& row, bool selected) {
+  if (!row.root) return;
+  row.root.Background(selected ? urnw::colors::CardBrush()
+                               : urnw::colors::MakeBrush({0, 0, 0, 0}));
+  if (row.marker) {
+    row.marker.Background(urnw::colors::AccentBrush());
+    row.marker.Opacity(selected ? 1.0 : 0.0);
+  }
 }
 
 FrameworkElement MakeEmptyState(winrt::hstring const& glyph, winrt::hstring const& text) {

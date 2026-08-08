@@ -72,4 +72,8 @@ std::filesystem::path RpcSessionFile() {
   return StorageRoot(/*isService=*/false) / L"rpc_session.json";
 }
 
+std::filesystem::path AppPrefsFile() {
+  return StorageRoot(/*isService=*/false) / L"app_prefs.json";
+}
+
 }  // namespace urnw
