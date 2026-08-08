@@ -161,6 +161,11 @@ class ConnectPage {
   void ApplyPeersList();
 
   bool PreviewSampleActive() const;
+  // A minute of synthetic throughput ending NOW. Regenerated on a cadence from
+  // OnChartTick, not pushed once: the charts hold a 60s window, so a single push
+  // at startup has scrolled off the left edge by the time anyone looks at the
+  // build, and the review screenshot is of three flat lines.
+  void PreviewSampleCharts();
   void OnChartTick();
   winrt::fire_and_forget ShowClientContractsSheet();
   winrt::fire_and_forget ShowSplitRulesSheet();

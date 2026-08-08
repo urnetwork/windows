@@ -639,6 +639,32 @@ void ConnectPage::PreviewHeroTick() {
   canvas_->SetGrid(points, kCols, kCols);
 }
 
+namespace {
+// Keep a chart inside its pane.
+//
+// TransferChart draws into a Canvas, and a Canvas does not clip: its curves and
+// its edge labels run a few pixels past the host and, in a pane layout, straight
+// across the 1px rule into the NEXT pane. It did - the activity chart put a
+// green sliver and a stray peak marker inside the statistics pane, right at the
+// boundary. A Grid column does not clip its children either, so the clip has to
+// be stated, and re-stated on every resize because Clip is a fixed rectangle.
+void ClipToBounds(winrt::Microsoft::UI::Xaml::Controls::Grid const& host) {
+  if (!host) return;
+  auto apply = [](winrt::Microsoft::UI::Xaml::FrameworkElement const& element,
+                  winrt::Windows::Foundation::Size const& size) {
+    winrt::Microsoft::UI::Xaml::Media::RectangleGeometry clip;
+    clip.Rect({0, 0, static_cast<float>(size.Width), static_cast<float>(size.Height)});
+    element.Clip(clip);
+  };
+  host.SizeChanged([apply](winrt::Windows::Foundation::IInspectable const& sender,
+                           SizeChangedEventArgs const& args) {
+    if (auto element = sender.try_as<winrt::Microsoft::UI::Xaml::FrameworkElement>()) {
+      apply(element, args.NewSize());
+    }
+  });
+}
+}  // namespace
+
 void ConnectPage::BuildCharts() {
   remoteChart_ = std::make_unique<urnw::TransferChart>(
       w_.RemoteChartHost(), urnw::Localized("remote"), urnw::ThroughputRoute::Remote,
@@ -649,6 +675,11 @@ void ConnectPage::BuildCharts() {
   localChart_ = std::make_unique<urnw::TransferChart>(
       w_.LocalChartHost(), urnw::Localized("local"), urnw::ThroughputRoute::Local,
       urnw::colors::kUrGreen, urnw::colors::kUrPink);
+  // R3: a chart is now full-bleed to its pane's edge, so anything it overdraws
+  // lands in the pane next door.
+  ClipToBounds(w_.RemoteChartHost());
+  ClipToBounds(w_.BlockedChartHost());
+  ClipToBounds(w_.LocalChartHost());
 }
 
 void ConnectPage::WireDrawerFeeds() {
@@ -1180,6 +1211,8 @@ void ConnectPage::OnChartTick() {
     }
   }
   if (contractsSheet_) contractsSheet_->Tick();  // ring/disc easing + slide animations
+  // the preview sample's 60s window scrolls off if it is only pushed once
+  if (PreviewSampleActive() && chartTickCount_ % 20 == 0) PreviewSampleCharts();
   if (++chartTickCount_ % 10 == 0) {  // ~1s cadence
     if (splitRulesSheet_) splitRulesSheet_->RefreshTimes();  // "Ns ago" labels
   }
@@ -1223,6 +1256,41 @@ bool ConnectPage::PreviewSampleActive() const {
   wchar_t buffer[8]{};
   const DWORD n = ::GetEnvironmentVariableW(L"URNETWORK_PREVIEW_SAMPLE", buffer, 8);
   return 0 < n && n < 8;
+}
+
+// A minute of synthetic throughput ending NOW.
+void ConnectPage::PreviewSampleCharts() {
+  constexpr int64_t kWindowSeconds = 60;
+  auto hash = [](uint32_t v) { return v * 2654435761u; };
+  const int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count();
+  // the series has to MOVE between pushes or the chart reads as a still image;
+  // one bucket per second of wall clock does it and stays deterministic
+  const uint32_t phase = static_cast<uint32_t>(now / 1000);
+  std::vector<urnet::ThroughputPoint> points;
+  for (int64_t i = kWindowSeconds; 0 <= i; --i) {
+    urnet::ThroughputPoint point;
+    point.Time = now - i * 1000;
+    auto sample = [&](uint32_t salt, int64_t scale) {
+      urnet::ThroughputSample s;
+      const uint32_t v = hash((phase - static_cast<uint32_t>(i)) * 131 + salt);
+      s.EgressByteCount = static_cast<int64_t>(v % 100) * scale;
+      s.IngressByteCount = static_cast<int64_t>((v >> 8) % 100) * scale * 3;
+      s.EgressPacketCount = static_cast<int64_t>((v >> 16) % 90) + 4;
+      s.IngressPacketCount = static_cast<int64_t>((v >> 20) % 140) + 6;
+      s.EgressBitRate = s.EgressByteCount * 8;
+      s.IngressBitRate = s.IngressByteCount * 8;
+      return s;
+    };
+    point.Remote = sample(1, 40000);
+    point.Local = sample(2, 6000);
+    point.Block = sample(3, 3000);
+    points.push_back(point);
+  }
+  if (remoteChart_) remoteChart_->SetPoints(points, kWindowSeconds);
+  if (blockedChart_) blockedChart_->SetPoints(points, kWindowSeconds);
+  if (localChart_) localChart_->SetPoints(points, kWindowSeconds);
 }
 
 // Fill the panes with obviously synthetic rows.
@@ -1313,37 +1381,7 @@ void ConnectPage::ApplyPreviewSample() {
   connectStatus_ = ConnectStatus::Connected;
   connected_ = true;
 
-  // a minute of synthetic throughput, so the three charts have a curve rather
-  // than a flat line across an empty grid
-  constexpr int64_t kWindowSeconds = 60;
-  const int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
-                          std::chrono::system_clock::now().time_since_epoch())
-                          .count();
-  std::vector<urnet::ThroughputPoint> points;
-  for (int64_t i = kWindowSeconds; 0 <= i; --i) {
-    const uint32_t h = hash(static_cast<uint32_t>(i) + 31);
-    urnet::ThroughputPoint point;
-    point.Time = now - i * 1000;
-    auto sample = [&](uint32_t salt, int64_t scale) {
-      urnet::ThroughputSample s;
-      const uint32_t v = hash(static_cast<uint32_t>(i) * 131 + salt);
-      s.EgressByteCount = static_cast<int64_t>(v % 100) * scale;
-      s.IngressByteCount = static_cast<int64_t>((v >> 8) % 100) * scale * 3;
-      s.EgressPacketCount = static_cast<int64_t>((v >> 16) % 90) + 4;
-      s.IngressPacketCount = static_cast<int64_t>((v >> 20) % 140) + 6;
-      s.EgressBitRate = s.EgressByteCount * 8;
-      s.IngressBitRate = s.IngressByteCount * 8;
-      return s;
-    };
-    (void)h;
-    point.Remote = sample(1, 40000);
-    point.Local = sample(2, 6000);
-    point.Block = sample(3, 3000);
-    points.push_back(point);
-  }
-  if (remoteChart_) remoteChart_->SetPoints(points, kWindowSeconds);
-  if (blockedChart_) blockedChart_->SetPoints(points, kWindowSeconds);
-  if (localChart_) localChart_->SetPoints(points, kWindowSeconds);
+  PreviewSampleCharts();
 
   ApplyConnectStatus();
   urnw::kit::SetTextOrCollapse(

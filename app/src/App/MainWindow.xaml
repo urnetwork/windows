@@ -1007,7 +1007,7 @@
                         </Border>
                         <!-- the chart runs the FULL WIDTH of the pane, edge to edge -->
                         <Border Grid.Row="1" BorderBrush="{StaticResource UrBorderBrush}"
-                                BorderThickness="0,0,0,1">
+                                BorderThickness="0,0,0,1" Padding="12,0">
                             <Grid x:Name="RemoteChartHost" Height="150" />
                         </Border>
                         <Border Grid.Row="2" Style="{StaticResource UrGroupHeaderStyle}">
@@ -1057,11 +1057,11 @@
                             <StackPanel>
                                 <!-- two charts, the SAME height, full width of the pane -->
                                 <Border BorderBrush="{StaticResource UrBorderBrush}"
-                                        BorderThickness="0,0,0,1">
+                                        BorderThickness="0,0,0,1" Padding="12,0">
                                     <Grid x:Name="BlockedChartHost" Height="132" />
                                 </Border>
                                 <Border BorderBrush="{StaticResource UrBorderBrush}"
-                                        BorderThickness="0,0,0,1">
+                                        BorderThickness="0,0,0,1" Padding="12,0">
                                     <Grid x:Name="LocalChartHost" Height="132" />
                                 </Border>
 
