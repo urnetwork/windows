@@ -142,6 +142,12 @@ void ConnectPage::ApplyStrings() {
   w_.ClientStatsLabel().Text(Loc("client_statistics"));
   w_.LocalStatsLabel().Text(Loc("local_statistics"));
   w_.DnsCardLabel().Text(Loc("custom_dns"));
+  // R1: the compact session empty state (shown while disconnected in place of
+  // the two zero-value chart cards). "Contracts appear here while connected." is
+  // the shipped string closest to the spec's "session statistics will appear
+  // after you connect"; the exact copy is a reported store addition.
+  w_.SessionEmptyText().Text(Loc("contracts_appear_connected"));
+  ApplySessionCardsVisibility(connected_);
   // Each tappable card is a Button now, so it has an automation peer — but with
   // no explicit name UIA falls back to concatenating the entire content
   // subtree, which for the DNS card is nine TextBlocks read as one run-on
@@ -174,11 +180,9 @@ void ConnectPage::ApplyStrings() {
   w_.FallbackState().Text(Loc("off"));
   w_.DnsUnavailableText().Text(Loc("dns_settings_unavailable"));
   w_.BlockerLabel().Text(Loc("block_ads_and_trackers"));
-  // drawer plan + usage card (macOS ConnectActions parity)
-  w_.DrawerPlanLabel().Text(Loc("plan"));
-  w_.DrawerPlanValueText().Text(Loc("free"));
-  w_.DrawerGetProButton().Content(LocBox("get_pro"));
-  w_.DrawerDailyLabel().Text(Loc("daily_data_balance_label"));
+  // The plan + usage card that used to sit in this rail is gone from Home
+  // (spec §5); its strings now belong only to Account, which paints them from
+  // MainWindow::ApplyBalance.
 }
 
 // ---- connect -------------------------------------------------------------
@@ -288,13 +292,14 @@ void ConnectPage::ApplyConnectStatus() {
       dot = urnw::colors::kStatusConnecting;
       break;
     case ConnectStatus::Disconnected:
-      // idle copy names the network the user is on, which is how they learn it
-      // (android network_name_ready_to_connect); a guest has no name worth
-      // showing, and neither does a signed-out window
-      text = (networkName_.empty() || guestMode_)
-                 ? Loc("ready_to_connect")
-                 : hstring{urnw::Format("network_name_ready_to_connect",
-                                        urnw::Widen(networkName_))};
+      // R1: PROTECTION STATE, not readiness. The owner reconciliation is explicit
+      // that "{network} is ready to connect" reads as backend readiness, not
+      // protection, and must go. The spec's headline is "Not connected" with a
+      // "Your internet traffic is not protected" supporting line; neither ships,
+      // so the closest shipped protection word - "Disconnected" - leads instead,
+      // and the two missing lines are reported for the store. The network name is
+      // no longer folded into the hero headline; it lives in the status strip.
+      text = Loc("disconnected");
       dot = urnw::colors::kStatusIdle;
       break;
   }
@@ -439,6 +444,8 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
                       : hstring(L""));
   w_.LiveStatsGroup().Visibility(stats.connected ? Visibility::Visible
                                                  : Visibility::Collapsed);
+  // R1: the chart cards vs the compact empty state, on the same connected signal.
+  ApplySessionCardsVisibility(stats.connected);
 
   // Insufficient-balance warning (auto-disconnect happens in the SDK). The
   // action button opens the upgrade flow; Pro / a running confirmation poll
@@ -843,6 +850,18 @@ void ConnectPage::ApplyBlockerUi(bool on) {
   updatingControls_ = false;
 }
 
+// R1: the two live-chart cards read as zero-value graphs while disconnected -
+// the spec's oversized empty cards - so they yield to one compact empty state
+// until there is a session to chart. The DNS card stays either way: it shows a
+// device setting, not session data. One writer, from ApplyStats and ApplyStrings.
+void ConnectPage::ApplySessionCardsVisibility(bool connected) {
+  const auto cards = connected ? Visibility::Visible : Visibility::Collapsed;
+  const auto empty = connected ? Visibility::Collapsed : Visibility::Visible;
+  w_.ClientStatsCard().Visibility(cards);
+  w_.LocalStatsCard().Visibility(cards);
+  w_.SessionEmptyCard().Visibility(empty);
+}
+
 // "Selected provider, Berlin". Naming the row after its LABEL alone left a
 // screen reader announcing "Selected provider, button" — the label is already
 // on screen and marked Raw, and the one thing the row is actually for, which
@@ -968,10 +987,9 @@ void ConnectPage::AnimateDrawerIn() {
   // ad/tracker switch is a row in ConnectOptionsCard now, with the other three
   // per-connection switches, instead of being a card of its own with one line
   // in it.
-  const std::array<FrameworkElement, 7> cards = {
-      w_.ControlsCard(),        w_.ProvideCard(),     w_.ConnectOptionsCard(),
-      w_.ClientStatsCard(),     w_.LocalStatsCard(),  w_.DnsCard(),
-      w_.DrawerPlanCard()};
+  const std::array<FrameworkElement, 6> cards = {
+      w_.ControlsCard(),    w_.ProvideCard(),    w_.ConnectOptionsCard(),
+      w_.ClientStatsCard(), w_.LocalStatsCard(), w_.DnsCard()};
   const auto duration = Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
                                      std::chrono::milliseconds(300)),
                                  DurationType::TimeSpan};

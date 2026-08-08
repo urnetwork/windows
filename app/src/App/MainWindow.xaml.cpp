@@ -55,6 +55,56 @@ void SetStar(Controls::ColumnDefinition const& column, double weight) {
   if (column) column.Width(GridLengthHelper::FromValueAndType(weight, GridUnitType::Star));
 }
 
+// Move a pane into `target` at `index`, taking it out of whatever panel holds it
+// now.
+//
+// Home is REPARENTED rather than re-addressed, and the difference is the ~330px
+// hole this fixes. Grid cells cannot express "these three modules stack, and one
+// of them steps sideways when there is room": an Auto row is as tall as the
+// tallest cell in it, so the moment the rail beside the hero was taller than the
+// hero, the panel BELOW the hero started that much further down - a gap in the
+// middle of a column whose only job was to stack, with the last card stranded at
+// the bottom of the viewport. (RowSpan is worse, not better: a spanning child's
+// desired height is spread across every Auto row it covers.) A StackPanel cannot
+// have that defect, so the wide layouts are StackPanels too and the panes change
+// parent.
+//
+// COM identity, not winrt's operator==. `==` compares the interface pointer the
+// wrapper happens to be holding, and the same StackPanel reached as a UIElement
+// out of a UIElementCollection is not the same pointer as one reached through
+// the generated x:Name accessor. QI for IUnknown is the rule that answers "the
+// same object"; the first version of this used == and IndexOf, neither found the
+// pane in the parent it was plainly sitting in, nothing was removed, and
+// InsertAt took the app down on the FIRST layout pass with "Element is already
+// the child of another element" - on every destination, since ApplyBreakpoint is
+// window-level. (Parent() is no good either: it is null until the element is
+// loaded, and the first SizeChanged beats Loaded.)
+bool SameElement(UIElement const& a, UIElement const& b) {
+  if (!a || !b) return false;
+  return a.as<winrt::Windows::Foundation::IUnknown>() ==
+         b.as<winrt::Windows::Foundation::IUnknown>();
+}
+
+// Move `pane` into `target` at `index`, taking it out of whichever of `homes`
+// holds it now. The caller names the homes rather than asking the pane, so this
+// never depends on when the tree became walkable.
+void Reparent(UIElement const& pane, Panel const& target, uint32_t index,
+              std::initializer_list<Panel> homes) {
+  if (!pane || !target) return;
+  for (auto const& home : homes) {
+    if (!home) continue;
+    auto children = home.Children();
+    for (uint32_t i = 0; i < children.Size(); ++i) {
+      if (!SameElement(children.GetAt(i), pane)) continue;
+      if (SameElement(home, target) && i == index) return;  // already in place
+      children.RemoveAt(i);
+      const uint32_t size = target.Children().Size();
+      target.Children().InsertAt(index < size ? index : size, pane);
+      return;
+    }
+  }
+}
+
 }  // namespace
 
 MainWindow::MainWindow() {
@@ -94,11 +144,9 @@ MainWindow::MainWindow() {
   BuildStatusStrip();
   connect_->Initialize();  // charts, SDK feeds, card affordances, drawer clock
 
-  // plan + usage cards (account panel and connect drawer)
+  // plan + usage card (Account; Home's copy of it is gone - spec §5)
   accountUsageBar_ = std::make_unique<urnw::UsageBar>(AccountUsageBarHost(),
                                                       AccountUsageLegend());
-  drawerUsageBar_ = std::make_unique<urnw::UsageBar>(DrawerUsageBarHost(),
-                                                     DrawerUsageLegend());
 
   // the insufficient-balance warning's action opens the upgrade flow (a guest
   // first creates a full account, like the plan card's affordance)
@@ -194,16 +242,25 @@ void MainWindow::ApplyStrings() {
   Title(Loc("app_name"));
   BrandText().Text(Loc("app_name"));
 
-  // navigation
-  ConnectNavItem().Content(LocBox("connect"));
-  AccountNavItem().Content(LocBox("account"));
-  WalletNavItem().Content(LocBox("wallet"));
-  LeaderboardNavItem().Content(LocBox("leaderboard"));
-  SupportNavItem().Content(LocBox("support"));
-  SettingsNavItem().Content(LocBox("settings"));
-  // DeveloperNavItem's label is painted by the page: the store has no key for
-  // the developer surface yet, so it goes through the same fallback the rest of
-  // that screen uses (DeveloperPage.cpp, Dev()).
+  // navigation (R1: 5 destinations + footer). The store has no key yet for
+  // "home", "help" or "diagnostics", so the closest shipped strings stand in
+  // (Connect / Support / Developer) - reported as needed store additions.
+  ConnectNavItem().Content(LocBox("connect"));      // Home
+  NetworkNavItem().Content(LocBox("network"));      // Network
+  WalletNavItem().Content(LocBox("earnings"));      // Earnings (wallet + leaderboard)
+  AccountNavItem().Content(LocBox("account"));      // Account
+  SupportNavItem().Content(LocBox("support"));      // Help (footer)
+  SettingsNavItem().Content(LocBox("settings"));    // Settings (footer)
+  // DeveloperNavItem (Diagnostics, footer) is painted by the page: the store has
+  // no key for the developer surface yet, so it goes through the same fallback
+  // the rest of that screen uses (DeveloperPage.cpp, Dev()).
+
+  // Network destination shell (R1 skeleton; Wave 2 builds the real picker).
+  NetworkHeading().Text(Loc("available_providers"));
+  NetworkIntroText().Visibility(Visibility::Collapsed);  // no shipped intro sentence yet
+  NetworkSelectedLabel().Text(Loc("selected_provider"));
+  NetworkSelectedValue().Text(Loc("best_available_provider"));
+  NetworkBrowseText().Text(Loc("browse_locations"));
 
   login_->ApplyStrings();
   connect_->ApplyStrings();
@@ -252,28 +309,55 @@ void MainWindow::ApplyBreakpoint() {
   const double width = root.ActualWidth();
   if (width <= 0) return;
   const bool wide = urnw::kit::kWideBreakpointDip <= width;
-  if (breakpointApplied_ && wide == wideLayout_) return;
+  const bool ultra = urnw::kit::kUltraWideDip <= width;
+  if (breakpointApplied_ && wide == wideLayout_ && ultra == ultraLayout_) return;
   breakpointApplied_ = true;
   wideLayout_ = wide;
+  ultraLayout_ = ultra;
 
-  // ---- Connect: Proton's shape ---------------------------------------------
-  // The hero keeps the main canvas; Provide, Connect options and the plan card
-  // become a rail BESIDE it rather than a stack under it. 1440 rather than "as
-  // wide as the window": a 2560px hero is not composed, it is stretched.
-  ConnectCapColumn().MaxWidth(wide ? 1440 : 600);
-  SetWidth(ConnectRailColumn(), wide ? 360 : 0);
-  Place(ConnectRail(), wide
-            // Beside the hero, in the hero's OWN row and spanning nothing.
-            // RowSpan=3 was tried and is wrong: WinUI spreads a spanning
-            // element's desired height across every Auto row it covers, so a
-            // rail taller than the hero inflated the two rows under it and
-            // opened ~120px of blank between the hero card and the charts.
-            // In one row the columns simply run ragged, which is what a
-            // two-column page does.
-            ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
-            // directly under the hero card, which is where the flyout has
-            // always had it
-            : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});
+  // ---- Home: Proton's shape, with a third column when the window earns one --
+  //
+  //   narrow  hero / rail / activity, one stack, 600 cap
+  //   wide    hero + activity | rail(360)          1400 cap
+  //   ultra   hero | activity | rail(360)          2100 cap
+  //
+  // The rail is the DECISIONS (provide, connect options) and the activity column
+  // is the STATUS (session, charts, DNS) - the same cut Proton's NetShield /
+  // Kill switch / Split tunnelling rail makes. The plan card was a third rail
+  // module; it is gone from Home per spec §5, which is most of why the rail no
+  // longer out-runs the main column at wide.
+  //
+  // 1400 rather than R1's 1240: 1240 was the spec's reading measure, and on a
+  // 2062dip window it left ~550dip dead. 1400 is as wide as a hero + rail should
+  // read; past that the answer is a third column, not a wider one. 2100 at ultra
+  // is a ceiling for very large displays, not a target - on this box the window
+  // itself (~1790dip of content) is the binding constraint.
+  //
+  // The panes are moved by Reparent, not by Grid.Row: see its comment for the
+  // hole that cost.
+  ConnectCapColumn().MaxWidth(ultra ? 2100 : wide ? 1400 : 600);
+  // At ultra all three columns are EQUAL STARS - thirds, not a main column plus
+  // two leftovers. A 360 rail beside two ~690 columns is the shape the owner
+  // called "modules placed weird": three panels, three widths, no rhythm.
+  // Thirds give the page one vertical rhythm to read down, and each column is
+  // still ~570dip - wider than the 600 the ENTIRE page used to be capped at.
+  // Below ultra the rail is a rail again: 360 beside one main column.
+  if (ultra) {
+    SetStar(ConnectDetailColumn(), 1);
+    SetStar(ConnectRailColumn(), 1);
+  } else {
+    SetWidth(ConnectDetailColumn(), 0);
+    SetWidth(ConnectRailColumn(), wide ? 360 : 0);
+  }
+  const std::initializer_list<Panel> connectHomes = {
+      ConnectMainStack(), ConnectDetailHost(), ConnectRailHost()};
+  // Activity first: at narrow it takes index 1, which pushes the rail to 2, and
+  // the rail's own move then puts it back at 1 - hero, decisions, activity, the
+  // order the flyout has always had.
+  Reparent(ConnectStatusStack(), ultra ? ConnectDetailHost() : ConnectMainStack(),
+           /*index*/ ultra ? 0 : 1, connectHomes);
+  Reparent(ConnectRail(), wide ? ConnectRailHost() : ConnectMainStack(),
+           /*index*/ wide ? 0 : 1, connectHomes);
 
   // ---- Wallet: Portmaster's master-detail ----------------------------------
   // The figures across the top; the sources of the money on the left (wallets,
@@ -392,7 +476,9 @@ void MainWindow::ApplyBreakpoint() {
     }
   }
 
-  urnw::LogInfo("layout: {} at {:.0f}dip", wide ? "wide" : "narrow", width);
+  urnw::LogInfo("layout: {} at {:.0f}dip",
+                ultra ? "ultra (Home in three columns)" : wide ? "wide" : "narrow",
+                width);
 }
 
 // ---- the persistent status strip (D4) --------------------------------------
@@ -584,8 +670,8 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   }
 
   const hstring tag = H(destination);
-  for (auto const& item : {ConnectNavItem(), AccountNavItem(), WalletNavItem(),
-                           LeaderboardNavItem(), SupportNavItem(), SettingsNavItem(),
+  for (auto const& item : {ConnectNavItem(), NetworkNavItem(), WalletNavItem(),
+                           AccountNavItem(), SupportNavItem(), SettingsNavItem(),
                            DeveloperNavItem()}) {
     if (winrt::unbox_value_or<hstring>(item.Tag(), L"") == tag) {
       HomeNav().SelectedItem(item);  // the SelectionChanged relay shows the panel
@@ -628,6 +714,7 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
 
   const bool wasConnectVisible = ConnectView().Visibility() == Visibility::Visible;
   ConnectView().Visibility(tag == L"connect" ? Visibility::Visible : Visibility::Collapsed);
+  NetworkView().Visibility(tag == L"network" ? Visibility::Visible : Visibility::Collapsed);
   AccountView().Visibility(tag == L"account" ? Visibility::Visible : Visibility::Collapsed);
   WalletView().Visibility(tag == L"wallet" ? Visibility::Visible : Visibility::Collapsed);
   LeaderboardView().Visibility(tag == L"leaderboard" ? Visibility::Visible : Visibility::Collapsed);
@@ -703,9 +790,12 @@ void MainWindow::LoadCurrentDestination() {
 }
 
 // ---- balance / plan (SubscriptionBalanceStore relay) -----------------------
-// This is the one surface that spans destinations: the same snapshot paints the
-// account panel's plan card and the connect drawer's, so it stays at window
-// level rather than being duplicated into two pages.
+// This used to paint two plan cards - the account panel's and Home's - which is
+// why it lives at window level rather than in a page. Home's copy is gone (spec
+// §5: the full plan belongs to Account), so what is left here is the Account
+// card, the wallet checkout affordance and the quota warning. It stays at window
+// level because the warning and the checkout button are on other destinations
+// than the card is.
 
 void MainWindow::OnBalanceChanged(urnw::BalanceSnapshot const& snapshot,
                                   urnw::BalancePollState const& poll) {
@@ -720,7 +810,6 @@ void MainWindow::ApplyBalance() {
                        : balance_.isPro ? Loc("supporter")
                                         : Loc("free");
   AccountPlanValueText().Text(plan);
-  DrawerPlanValueText().Text(plan);
   // Pro gold (android theme/Color.kt ProGold). Android spends this colour on the
   // Pro entitlement and on nothing else, so the plan value is the ONE place on
   // these cards that may wear it — until now "Supporter" was a word in the same
@@ -729,7 +818,6 @@ void MainWindow::ApplyBalance() {
   auto planBrush = balance_.isPro ? urnw::colors::ProGoldBrush()
                                   : urnw::colors::TextBrush();
   AccountPlanValueText().Foreground(planBrush);
-  DrawerPlanValueText().Foreground(planBrush);
 
   // the upgrade affordances show for a signed-in free account; a guest gets a
   // create-account affordance on the plan cards instead (macOS AccountRootView,
@@ -739,12 +827,8 @@ void MainWindow::ApplyBalance() {
                                      : Visibility::Collapsed;
   AccountUpgradeButton().Content(
       LocBox(balance_.guest ? "create_an_account" : "upgrade"));
-  DrawerGetProButton().Content(
-      LocBox(balance_.guest ? "create_an_account" : "get_pro"));
   AccountUpgradeButton().Visibility(balance_.guest ? Visibility::Visible
                                                    : upgradeVisibility);
-  DrawerGetProButton().Visibility(balance_.guest ? Visibility::Visible
-                                                 : upgradeVisibility);
   // the wallet panel's checkout stays hidden for guests: an account comes first
   UpgradeButton().Visibility(upgradeVisibility);
 
@@ -752,31 +836,20 @@ void MainWindow::ApplyBalance() {
   AccountPlanRing().IsActive(balancePoll_.confirming);
   AccountPlanRing().Visibility(balancePoll_.confirming ? Visibility::Visible
                                                        : Visibility::Collapsed);
-  DrawerPlanRing().IsActive(balancePoll_.confirming);
-  DrawerPlanRing().Visibility(balancePoll_.confirming ? Visibility::Visible
-                                                      : Visibility::Collapsed);
 
   if (accountUsageBar_) {
     accountUsageBar_->Update(balance_.usedByteCount, balance_.pendingByteCount,
                              balance_.availableByteCount);
   }
-  if (drawerUsageBar_) {
-    drawerUsageBar_->Update(balance_.usedByteCount, balance_.pendingByteCount,
-                            balance_.availableByteCount);
-  }
-
   const hstring daily = H(urnw::FormatByteCountCompact(balance_.startBalanceByteCount));
   AccountDailyValue().Text(daily);
-  DrawerDailyValue().Text(daily);
 
   // referral rows: "Total Referrals: N" and "+N*30 GiB/Month"
   const int64_t totalReferrals = account_ ? account_->totalReferrals() : 0;
   const hstring totals = hstring{urnw::Format("total_referrals_lld", totalReferrals)};
   const hstring bonus = hstring{urnw::Format("referral_bonus", totalReferrals * 30)};
   AccountReferralTotals().Text(totals);
-  DrawerReferralTotals().Text(totals);
   AccountReferralBonus().Text(bonus);
-  DrawerReferralBonus().Text(bonus);
 
   UpdateBalanceWarning();
   // the open upgrade sheet watches for the plan flip / poll timeout

@@ -41,11 +41,20 @@
              Bold at 24sp (Type.kt TopBarTitleTextStyle). The file carries only a
              Bold face, so the weight is stated rather than left to be
              synthesised. -->
-        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Background="Transparent">
-            <TextBlock x:Name="BrandText" Margin="16,0" VerticalAlignment="Center"
-                       FontFamily="{StaticResource UrWordmarkFontFamily}"
-                       FontSize="24" FontWeight="Bold"
-                       IsHitTestVisible="False" />
+        <!-- R1: the integrated title bar is 48epx per the spec (was 40). Left
+             content is a 20epx app icon and the PP NeueBit wordmark; the whole
+             strip is the SetTitleBar drag region. IsHitTestVisible=False on the
+             content so the drag region is not swallowed by the icon or the text. -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="48" Background="Transparent">
+            <StackPanel Orientation="Horizontal" Margin="16,0" Spacing="8"
+                        VerticalAlignment="Center" IsHitTestVisible="False">
+                <Image x:Name="BrandIcon" Width="20" Height="20"
+                       VerticalAlignment="Center"
+                       Source="ms-appx:///Assets/app.ico" />
+                <TextBlock x:Name="BrandText" VerticalAlignment="Center"
+                           FontFamily="{StaticResource UrWordmarkFontFamily}"
+                           FontSize="24" FontWeight="Bold" />
+            </StackPanel>
         </Grid>
 
         <!-- The account menu (iOS Shared/Views/AccountMenu.swift): the avatar in
@@ -556,70 +565,102 @@
              below. That gear's Tag matches none of the six destinations, so
              selecting it collapsed every panel and showed an empty window with no
              way back except picking another destination. -->
+        <!-- R1: THE ADAPTIVE 5-DESTINATION SHELL.
+             PaneDisplayMode="Auto" restores the native NavigationView adaptivity
+             the old build deliberately pinned OFF (LeftCompact at every width):
+               * >=1008 epx  expanded pane, icon + LABEL   (OpenPaneLength 220)
+               *  641-1007   compact icon rail
+               * <=640       overlay pane behind the toggle
+             The pinned thresholds and LeftCompact are gone: an icon-only rail in
+             a 2000px window was the single biggest 'feels like mobile' signal,
+             and the page-shift on expand the old note feared is exactly the
+             adaptive behaviour the spec now wants.
+
+             Five primary destinations, three footer. Wallet + Leaderboard merged
+             into Earnings (leaderboard is a tab on that destination, not its own
+             rail item), and Help / Diagnostics / Settings pinned to the footer
+             per the Windows settings-placement guidance.
+             Glyphs (Segoe Fluent, 20epx), by what the destination IS:
+               E80F Home       home      (connect + protection status)
+               E774 Globe      network   (locations / providers)
+               E8C7 Wallet     earnings  (wallet + leaderboard)
+               E77B Contact    account
+               E897 Help       help      (footer; the feedback/support screen)
+               EBE8 DevTools   diagnostics (footer; developer / reliability)
+               E713 Settings   settings  (footer)
+             Labels: home / help / diagnostics have no store key yet, so the
+             closest shipped strings are used (Connect / Support / Developer) and
+             reported as needed additions. -->
         <muxc:NavigationView x:Name="HomeNav" Grid.Row="1" Visibility="Collapsed"
                              FontFamily="{StaticResource UrBodyFontFamily}"
-                             IsBackButtonVisible="Collapsed" PaneDisplayMode="LeftCompact"
-                             CompactModeThresholdWidth="0" ExpandedModeThresholdWidth="100000"
+                             IsBackButtonVisible="Collapsed" PaneDisplayMode="Auto"
                              OpenPaneLength="220" IsPaneToggleButtonVisible="True"
                              IsSettingsVisible="False"
                              SelectionChanged="OnNavSelectionChanged">
+            <muxc:NavigationView.Resources>
+                <!-- R1: item height 44 (spec), and the selected pill gets the
+                     brand card fill + a 3epx accent indicator (already set as
+                     app-level theme keys in App.xaml). -->
+                <x:Double x:Key="NavigationViewItemOnLeftMinHeight">44</x:Double>
+            </muxc:NavigationView.Resources>
+            <!-- The destination title, in the brand DISPLAY face at Title scale
+                 (ABC Gravity per the reconciliation: titles/hero/wordmark). The
+                 default header renders a plain sans; this makes the page title
+                 a brand title. Content is a boxed hstring set per navigation. -->
+            <muxc:NavigationView.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" Style="{StaticResource UrTitleTextStyle}"
+                               Margin="4,4,0,0" />
+                </DataTemplate>
+            </muxc:NavigationView.HeaderTemplate>
             <muxc:NavigationView.MenuItems>
-                <!-- Segoe Fluent Icons, which Windows 11 ships: the rail above
-                     needs a glyph per destination or LeftCompact is seven blank
-                     48px squares. Chosen for what the destination IS, not for
-                     decoration:
-                       E774 Globe        connect      (the network)
-                       E77B Contact      account
-                       E8C7 Wallet       wallet
-                       EAFC TrendingUp   leaderboard
-                       E9CE Help         support
-                       E713 Settings     settings
-                       EBE8 DeveloperTools developer -->
                 <muxc:NavigationViewItem x:Name="ConnectNavItem" Tag="connect" IsSelected="True">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE774;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE80F;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
-                <muxc:NavigationViewItem x:Name="AccountNavItem" Tag="account">
+                <muxc:NavigationViewItem x:Name="NetworkNavItem" Tag="network">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE77B;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE774;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
                 <muxc:NavigationViewItem x:Name="WalletNavItem" Tag="wallet">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE8C7;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE8C7;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
-                <muxc:NavigationViewItem x:Name="LeaderboardNavItem" Tag="leaderboard">
+                <muxc:NavigationViewItem x:Name="AccountNavItem" Tag="account">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xEAFC;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE77B;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
+            </muxc:NavigationView.MenuItems>
+            <muxc:NavigationView.FooterMenuItems>
                 <muxc:NavigationViewItem x:Name="SupportNavItem" Tag="support">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE9CE;" />
-                    </muxc:NavigationViewItem.Icon>
-                </muxc:NavigationViewItem>
-                <muxc:NavigationViewItem x:Name="SettingsNavItem" Tag="settings">
-                    <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE713;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE897;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
                 <muxc:NavigationViewItem x:Name="DeveloperNavItem" Tag="developer">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xEBE8;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xEBE8;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
-            </muxc:NavigationView.MenuItems>
+                <muxc:NavigationViewItem x:Name="SettingsNavItem" Tag="settings">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE713;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+            </muxc:NavigationView.FooterMenuItems>
 
             <Grid Margin="24">
-                <!-- Connect: the connect drawer (macOS ConnectActions parity).
-                     A scrollable column of cards capped at 600: connection
-                     controls, client statistics, local statistics, custom DNS,
-                     the ad/tracker blocker toggle, and the plan + usage card.
-                     Charts render into the *ChartHost grids from code-behind
-                     (TransferChart); the usage bar into DrawerUsageBarHost
-                     (UsageBar). -->
+                <!-- Home (macOS ConnectActions parity). The modules: the
+                     connection card, Provide, Connect options, client and local
+                     statistics, and Custom DNS. One column at flyout width, two
+                     or three at desktop widths - see the composition note on
+                     ConnectLayout below. Charts render into the *ChartHost grids
+                     from code-behind (TransferChart). The plan + usage card that
+                     used to be here now lives only on Account (spec §5). -->
                 <ScrollViewer x:Name="ConnectView" HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                   <!-- THE WIDTH CAP IS A COLUMN, NOT A MaxWidth ON THE PANEL -
@@ -673,18 +714,32 @@
                        than stacked under it, and the status that belongs to the
                        whole window in the strip at the bottom.
 
-                       The rail spans all three rows at wide, top-aligned, so it
-                       is free to be taller than the hero without pushing the
-                       charts down the page. It carries Provide, Connect options
-                       and the plan card: the three things on this screen that
-                       are DECISIONS rather than status, which is exactly the
-                       cut Proton's NetShield / Kill switch / Split tunnelling
-                       rail makes.
+                       W1 FIX - NO ROWS. This used to be three Auto rows in the
+                       main column with the rail parked in row 0 of the side
+                       column, and that is where the ~330px hole in the middle
+                       of Home came from: an Auto row is as tall as the TALLEST
+                       cell in it, so the rail (Provide + options + plan, ~740)
+                       set row 0's height, the hero card (~450) sat at the top of
+                       it, and the session card in row 2 started ~290px lower
+                       than the hero card ended. Rows are how a hole gets into a
+                       column that only ever wanted to stack.
 
-                       Row 1 is deliberately empty. It exists so the rail's
-                       row span has somewhere to give, and so an Advanced Mode
-                       region under the hero (a raw-status line, an event feed)
-                       has a row waiting for it that needs no re-layout. -->
+                       So: ONE row, three columns, and the panels are REPARENTED
+                       rather than re-addressed (MainWindow::ApplyBreakpoint).
+                       The main column is a plain StackPanel, so its children
+                       are top-aligned and one section gap apart by
+                       construction, at every width, whatever the columns beside
+                       it are doing.
+
+                         narrow   ConnectMainStack = hero / rail / session
+                         wide     hero / session   |                | rail
+                         ultra    hero             | session        | rail
+
+                       The rail carries Provide and Connect options: the
+                       decisions, as opposed to the status, which is the cut
+                       Proton's NetShield / Kill switch / Split tunnelling rail
+                       makes. (The plan card was a third rail module and is gone
+                       from Home per spec §5 - it lives on Account.) -->
                   <Grid x:Name="ConnectLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -695,21 +750,46 @@
                     <Grid Grid.Column="1">
                       <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="ConnectDetailColumn" Width="0" />
                           <ColumnDefinition x:Name="ConnectRailColumn" Width="0" />
                       </Grid.ColumnDefinitions>
-                      <Grid.RowDefinitions>
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                      </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Grid.Column="0"
-                                x:Name="DrawerStack" Spacing="16"
+                    <!-- The main column. Section gap 24 between modules; the
+                         cards inside each module keep the 16 the rest of the app
+                         uses. Nothing here is bottom-anchored and nothing here
+                         is in a row. -->
+                    <StackPanel Grid.Column="0"
+                                x:Name="ConnectMainStack" Spacing="24"
+                                Margin="0,0,0,24"
                                 HorizontalAlignment="Stretch">
+                      <StackPanel x:Name="DrawerStack" Spacing="16"
+                                  HorizontalAlignment="Stretch">
 
                         <!-- Connection controls -->
-                        <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
+                        <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}"
+                                Padding="24">
+                            <StackPanel Spacing="16">
+                                <!-- R1: STATUS LEADS. The protection state is the first
+                                     thing on the card, at Subtitle scale, above the globe
+                                     - the spec's "am I protected" answered before any
+                                     ornament. Was below a ~400px globe; the owner
+                                     reconciliation keeps the globe but sizes it so it never
+                                     out-shouts the status and the Connect action.
+                                     A Grid star column (not a StackPanel): the idle copy
+                                     can carry the network name and must be free to wrap. -->
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse x:Name="StatusDot" Width="12" Height="12"
+                                             VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StatusText" Grid.Column="1"
+                                               FontFamily="{StaticResource UrBodyFontFamily}"
+                                               FontSize="26" LineHeight="30" FontWeight="SemiBold"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                </Grid>
                                 <!-- The connect hero (P6). A Button, so it is focusable,
                                      keyboard-invokable and carries pressed states; its
                                      content is the decorative ConnectCanvas host, marked
@@ -717,13 +797,10 @@
                                      is a Panel gets NO automatic name — the explicit one,
                                      which states the connection state, is set from
                                      ConnectPage::ApplyConnectStatus.
-                                     The button chrome is suppressed by the resource
-                                     overrides below rather than by a local Background,
-                                     which the template's visual states would win over on
-                                     hover; the hero draws its own hover and focus
-                                     affordances. Pointer and focus events are wired in
-                                     code (ConnectPage::Initialize), so the hero adds no
-                                     new MainWindow handlers. -->
+                                     R1: the host is height-capped (was unbounded, ~400px)
+                                     so the globe reads as the brand hero without dominating
+                                     the card. Its mask takes colour from the solid card
+                                     behind it, so it stays on the card, never a gradient. -->
                                 <Button x:Name="ConnectHero"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Stretch"
@@ -741,32 +818,16 @@
                                         <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
                                         <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent" />
                                     </Button.Resources>
-                                    <Grid x:Name="ConnectCanvasHost"
-                                          HorizontalAlignment="Stretch"
+                                    <!-- R1: the globe sizes from the host WIDTH
+                                         (ConnectCanvas clamps side to [168,288] and
+                                         writes the host height itself), so capping the
+                                         width is how the hero is sized down. ~220 gives
+                                         a ~236px globe: present as the brand hero, no
+                                         longer out-shouting the status and Connect. -->
+                                    <Grid x:Name="ConnectCanvasHost" MaxWidth="220"
+                                          HorizontalAlignment="Center"
                                           AutomationProperties.AccessibilityView="Raw" />
                                 </Button>
-                                <!-- connect status (android ConnectStatusIndicator
-                                     parity): a state-coloured dot + the four-state
-                                     status line. Driven by the SDK's own connection
-                                     status, NOT by the service tunnel alone, so
-                                     "Connecting to providers" exists at all —
-                                     see MainWindow::ApplyConnectStatus. -->
-                                <Grid ColumnSpacing="10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Ellipse x:Name="StatusDot" Width="10" Height="10"
-                                             VerticalAlignment="Center" />
-                                    <!-- a Grid star column, not a horizontal StackPanel:
-                                         the idle copy carries the network name, and a
-                                         StackPanel would hand it infinite width so
-                                         TextWrapping could never fire -->
-                                    <TextBlock x:Name="StatusText" Grid.Column="1"
-                                               FontSize="22" FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
-                                               VerticalAlignment="Center" />
-                                </Grid>
                                 <!-- selected location; the whole row opens the provider chooser -->
                                 <Button x:Name="LocationRow"
                                         Style="{StaticResource UrCardRowButtonStyle}"
@@ -832,14 +893,13 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- THE RAIL. Narrow: row 1 of the main column, i.e.
-                         directly under the hero card, which is where the
-                         flyout has always had it. Wide: the side column,
-                         spanning every row, top-aligned. -->
-                    <StackPanel Grid.Row="1" Grid.Column="0"
-                                x:Name="ConnectRail" Spacing="16"
-                                VerticalAlignment="Top"
-                                Margin="0,16,0,0">
+                    <!-- THE RAIL. Declared here, inside the main column, because
+                         that is the narrow layout and the narrow layout is what
+                         the markup should plainly say: directly under the hero
+                         card, where the flyout has always had it. At wide and
+                         ultra ApplyBreakpoint MOVES it into ConnectRailHost. -->
+                    <StackPanel x:Name="ConnectRail" Spacing="16"
+                                VerticalAlignment="Top">
 
                         <!-- PROVIDE. Was buried in the middle of the hero card,
                              between the peers line and the connect options, with
@@ -977,57 +1037,42 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Plan + usage (macOS ConnectActions.swift:169-204).
-                             In the rail with the other two: the plan is a
-                             decision (upgrade / redeem), not a reading of the
-                             live connection, and it is the one card on this
-                             screen that stays useful while disconnected. -->
-                        <Border x:Name="DrawerPlanCard" Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="8">
-                                <TextBlock x:Name="DrawerPlanLabel" Style="{StaticResource UrLabelStyle}" />
-                                <Grid>
-                                    <TextBlock x:Name="DrawerPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
-                                               FontWeight="SemiBold" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                                HorizontalAlignment="Right"
-                                                VerticalAlignment="Center">
-                                        <muxc:ProgressRing x:Name="DrawerPlanRing" Width="16" Height="16"
-                                                           IsActive="False" Visibility="Collapsed" />
-                                        <Button x:Name="DrawerGetProButton" Click="OnOpenUpgrade" />
-                                    </StackPanel>
-                                </Grid>
-                                <Grid x:Name="DrawerUsageBarHost" Height="32" />
-                                <StackPanel x:Name="DrawerUsageLegend" Orientation="Horizontal"
-                                            Spacing="16" />
-                                <Grid Margin="0,4,0,0">
-                                    <TextBlock x:Name="DrawerDailyLabel" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="DrawerDailyValue" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <Grid>
-                                    <TextBlock x:Name="DrawerReferralTotals" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="DrawerReferralBonus" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
+                        <!-- The plan + usage card that used to be the rail's
+                             third module is GONE from Home (spec §5: compact
+                             usage in the nav footer or the Account flyout, the
+                             full plan on Account, a quota InfoBar here only near
+                             the threshold). It was the longest module in the
+                             rail and the reason the rail out-ran the main column
+                             by ~300px; the same card, with the same bindings,
+                             is on Account. Nothing was deleted twice: the
+                             balance snapshot still paints AccountPlan* from
+                             MainWindow::ApplyBalance. -->
                     </StackPanel>
 
                     <!-- THE STATUS COLUMN. Charts and the dns summary: what the
                          connection is DOING, as opposed to what it has been
-                         told to do. Stays in the main column at every width,
-                         under the hero, where Portmaster puts its chart. At
-                         desktop widths these are ~900px wide rather than 600,
-                         which is the whole reason a transfer chart is worth
-                         drawing at all. -->
-                    <StackPanel Grid.Row="2" Grid.Column="0"
-                                x:Name="ConnectStatusStack" Spacing="16"
-                                Margin="0,16,0,24">
+                         told to do. Directly under the hero card at narrow and
+                         wide - one section gap, no row, no anchor - and its own
+                         column at ultra, where there is room for the hero and
+                         the activity to sit side by side instead of the page
+                         ending a third of the way across the window. -->
+                    <StackPanel x:Name="ConnectStatusStack" Spacing="16">
+
+                        <!-- R1: COMPACT SESSION EMPTY STATE. While disconnected - the
+                             state the app opens in - the two big chart cards below were
+                             a screenful of zero-value graphs (the spec's oversized
+                             zero-data cards). This one small card replaces them until
+                             there is a session to chart; ConnectPage toggles it against
+                             the two cards on the connected signal. -->
+                        <Border x:Name="SessionEmptyCard" Style="{StaticResource UrCardStyle}"
+                                Visibility="Collapsed">
+                            <StackPanel Spacing="8" HorizontalAlignment="Center"
+                                        Padding="8,16">
+                                <FontIcon Glyph="&#xE9D2;" Style="{StaticResource UrEmptyGlyphStyle}" />
+                                <TextBlock x:Name="SessionEmptyText" TextAlignment="Center"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                            </StackPanel>
+                        </Border>
 
                         <!-- Card 1: client statistics (remote + blocked charts) -->
                         <Button x:Name="ClientStatsCard" Style="{StaticResource UrCardButtonStyle}"
@@ -1164,8 +1209,72 @@
                         </Button>
 
                     </StackPanel>
+                    </StackPanel>
+
+                    <!-- The two side columns are EMPTY in markup. They are
+                         parked, top-aligned hosts that ApplyBreakpoint moves
+                         ConnectStatusStack and ConnectRail into; at narrow they
+                         are zero-width and hold nothing, so the narrow layout
+                         costs nothing to read. -->
+                    <StackPanel x:Name="ConnectDetailHost" Grid.Column="1"
+                                VerticalAlignment="Top" Margin="24,0,0,24" />
+                    <StackPanel x:Name="ConnectRailHost" Grid.Column="2"
+                                VerticalAlignment="Top" Margin="24,0,0,24" />
                     </Grid>
 
+                  </Grid>
+                </ScrollViewer>
+
+                <!-- Network (R1 skeleton). A first-class destination for the
+                     locations/providers picker that is a drawer/sheet today. This
+                     wave ships the PAGE SHELL - a header and a card that opens the
+                     existing chooser (ShowLocationChooserSheet, via
+                     OnLocationRowClick) - so the destination is real and runnable;
+                     Wave 2 rebuilds the in-page location list, search, favourites
+                     and blocked locations against the component kit. -->
+                <ScrollViewer x:Name="NetworkView" Visibility="Collapsed"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1000*" MaxWidth="820" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="1" Spacing="16" Margin="0,0,0,24">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE774;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="NetworkHeading" Style="{StaticResource UrPanelHeadingStyle}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource UrCardStyle}" Padding="24">
+                            <StackPanel Spacing="16">
+                                <TextBlock x:Name="NetworkIntroText" TextWrapping="Wrap"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock x:Name="NetworkSelectedLabel"
+                                                   Style="{StaticResource UrLabelStyle}" />
+                                        <TextBlock x:Name="NetworkSelectedValue"
+                                                   Style="{StaticResource UrBodyLargeTextStyle}" />
+                                    </StackPanel>
+                                    <Button x:Name="NetworkBrowseButton" Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            Click="OnLocationRowClick">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE774;" Style="{StaticResource UrRowIconStyle}"
+                                                      FontSize="14" />
+                                            <TextBlock x:Name="NetworkBrowseText" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                   </Grid>
                 </ScrollViewer>
 
@@ -1216,7 +1325,17 @@
                             <StackPanel Spacing="8">
                                 <TextBlock x:Name="AccountPlanLabel" Style="{StaticResource UrLabelStyle}" />
                                 <Grid>
-                                    <TextBlock x:Name="AccountPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
+                                    <!-- W1: the last ABC Gravity leak on a card. The
+                                         display face is for page titles, the wordmark
+                                         and the hero; this is a one-word card heading
+                                         ("Free" / "Supporter" / "Guest") and it read as
+                                         a second, louder heading style beside every
+                                         other card header, which is the exact clash the
+                                         type ramp was supposed to end. The condensed
+                                         face keeps the stat tiles (Wallet figures) - a
+                                         number is not a heading. -->
+                                    <TextBlock x:Name="AccountPlanValueText"
+                                               FontFamily="{StaticResource UrBodyFontFamily}" FontSize="22"
                                                FontWeight="SemiBold" />
                                     <StackPanel Orientation="Horizontal" Spacing="8"
                                                 HorizontalAlignment="Right"

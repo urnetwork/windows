@@ -41,7 +41,12 @@ namespace urnw::kit {
 // VisualStateGroup named Narrow/Wide whose Wide state raises the cap, opens the
 // side column and moves the side panel from the row BELOW the main panel to the
 // column BESIDE it. Only the cap and the side width differ per destination.
-// Read ConnectView and you have read all seven.
+// Read WalletView and you have read the six that still work that way.
+//
+// HOME IS THE EXCEPTION and reads differently on purpose: its panes are
+// StackPanel children that get REPARENTED, because the row form put a ~330px
+// hole down the middle of the one screen the owner judges (see Reparent in
+// MainWindow.xaml.cpp), and it has a second breakpoint below.
 //
 // 1000 rather than 900: the pane grid sits inside a 24px page margin and a 48px
 // nav rail, so a 1000dip window leaves the two panes ~900dip between them,
@@ -67,6 +72,27 @@ namespace urnw::kit {
 // namescope - i.e. delete every accessor the seven page units are written
 // against. See MainWindow::ApplyBreakpoint.
 inline constexpr double kWideBreakpointDip = 1000.0;
+
+// ---- the second breakpoint (W1), for Home only ------------------------------
+//
+// Two columns capped at ~1240 is a sane reading measure and, on the display this
+// app is judged on (2560px at 125%, i.e. 2062dip), it reproduced the complaint
+// that started the redesign: the page stopped a third of the way across the
+// window, with ~280dip of dead gutter on each side and a hole down the middle.
+// Widening the cap alone does not fix that - it stretches one hero card and a
+// 360 rail across 1800dip, which is not a composition, it is the same page with
+// longer buttons.
+//
+// So above this width Home gets a THIRD column, and the activity (session,
+// charts, Custom DNS) moves BESIDE the hero instead of under it. 1800 rather
+// than 1600: the third column has to be worth having, and an 1800dip window
+// leaves ~1530dip of content after the 220 nav pane and the 24 page margins -
+// enough for a main column, an activity column and the 360 rail with a 24
+// gutter each, none of them cramped.
+//
+// Home only, deliberately. The other destinations already spend their width on
+// a table or a form; a third column there would be width for its own sake.
+inline constexpr double kUltraWideDip = 1800.0;
 
 // Set a line's text AND its visibility in one call: an empty string collapses
 // the element instead of leaving a row of nothing behind.
@@ -109,6 +135,80 @@ winrt::Microsoft::UI::Xaml::Controls::Border MakeDivider();
 // that already says the same word.
 winrt::Microsoft::UI::Xaml::FrameworkElement MakeSectionHeader(winrt::hstring const& glyph,
                                                                winrt::hstring const& text);
+
+// ============================================================================
+// THE WAVE-2 COMPONENT KIT (R1, spec §12 inventory)
+//
+// Wave 1 owns the shell and Home; Wave 2 rebuilds Network / Earnings / Account /
+// Settings. These builders are the shared vocabulary those four agents build
+// against, so the four destinations come out of one kit rather than four
+// re-inventions. Each realizes a spec §12 component in the brand tokens/faces
+// (styles pulled from App.xaml by key, so the kit tracks the ramp), returns the
+// live parts a page must update, and carries its own accessibility.
+//
+// EmptyState (MakeEmptyState / MakeEmptyStateCard), CopyField's cousin
+// StatusField and the Snackbar already live above. ConnectionHero is realized by
+// ConnectPage's ControlsCard (the ConnectCanvas hero + status-leads layout Wave
+// 1 built); it is Home-only and not duplicated here.
+// ============================================================================
+
+// PageHeader: a page Title in the brand display face + an optional one-line Body
+// description under it. Every Wave-2 destination opens with one.
+//   contract: MakePageHeader(title[, description]) -> a top-aligned column.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakePageHeader(
+    winrt::hstring const& title, winrt::hstring const& description = {});
+
+// MetricCard: a boxed stat tile - a muted caption over a big condensed value -
+// for the KPI rows on Earnings and Account. Returns its two live TextBlocks so
+// the page updates label/value without rebuilding the tile.
+//   contract: MakeMetricCard(label[, value]).{root,label,value}
+struct MetricCard {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock label{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};
+};
+MetricCard MakeMetricCard(winrt::hstring const& label, winrt::hstring const& value = {});
+
+// SettingsCard: one settings row on a card surface - leading 20epx glyph, a
+// title with an optional one-line description, and a trailing slot the caller
+// drops a control (ToggleSwitch, ComboBox) or a chevron into. The trailing
+// control should point AutomationProperties.LabeledBy at `title`.
+//   contract: MakeSettingsCard(glyph, title[, description]).{root,title,description,trailing}
+struct SettingsCard {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock title{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock description{nullptr};
+  // append the control/chevron here; single-cell, right-aligned
+  winrt::Microsoft::UI::Xaml::Controls::Grid trailing{nullptr};
+};
+SettingsCard MakeSettingsCard(winrt::hstring const& glyph, winrt::hstring const& title,
+                              winrt::hstring const& description = {});
+
+// CopyField: a caption, a value (optionally masked for a secret/client id), and
+// a copy button that writes the FULL value to the clipboard with a Raw glyph.
+// The masked display never reaches the clipboard - the real value does.
+//   contract: MakeCopyField(label, value[, masked]).{root,value,copy}
+struct CopyField {
+  winrt::Microsoft::UI::Xaml::FrameworkElement root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button copy{nullptr};
+};
+CopyField MakeCopyField(winrt::hstring const& label, winrt::hstring const& value,
+                        bool masked = false);
+
+// PlanUsageCard: the plan name + value, a host Grid for a UsageBar, and a legend
+// panel - the shape the connect drawer and Account both draw the subscription
+// with. Returns the parts a page wires a urnw::UsageBar into (the bar itself is
+// not a XAML control, so it stays the caller's to construct into usageBarHost).
+//   contract: MakePlanUsageCard(planLabel[, planValue]).{root,planValue,usageBarHost,legend}
+struct PlanUsageCard {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock planValue{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Grid usageBarHost{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel legend{nullptr};
+};
+PlanUsageCard MakePlanUsageCard(winrt::hstring const& planLabel,
+                                winrt::hstring const& planValue = {});
 
 // ---- the persistent status strip -------------------------------------------
 //

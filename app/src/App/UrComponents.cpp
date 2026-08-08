@@ -8,6 +8,7 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
+#include <winrt/Windows.ApplicationModel.DataTransfer.h>
 #include <winrt/Windows.UI.Text.h>
 
 #include "Log.h"
@@ -178,6 +179,194 @@ FrameworkElement MakeEmptyStateCard(winrt::hstring const& glyph, winrt::hstring 
   // says a card is - including the hairline it grew in this pass
   if (auto style = StyleByKey(L"UrCardStyle")) card.Style(style);
   card.Child(MakeEmptyState(glyph, text));
+  return card;
+}
+
+// ---- the Wave-2 component kit (spec §12) -----------------------------------
+
+FrameworkElement MakePageHeader(winrt::hstring const& title,
+                                winrt::hstring const& description) {
+  StackPanel column;
+  column.Spacing(4);
+  column.VerticalAlignment(VerticalAlignment::Top);
+
+  TextBlock titleBlock;
+  titleBlock.Text(title);
+  if (auto style = StyleByKey(L"UrTitleTextStyle")) titleBlock.Style(style);
+  column.Children().Append(titleBlock);
+
+  if (!description.empty()) {
+    TextBlock desc;
+    desc.Text(description);
+    if (auto style = StyleByKey(L"UrBodyTextStyle")) desc.Style(style);
+    desc.Foreground(urnw::colors::MutedBrush());
+    desc.TextWrapping(TextWrapping::Wrap);
+    // ~60ch reading measure, per the spec's page-description rule
+    desc.MaxWidth(560);
+    desc.HorizontalAlignment(HorizontalAlignment::Left);
+    column.Children().Append(desc);
+  }
+  return column;
+}
+
+MetricCard MakeMetricCard(winrt::hstring const& label, winrt::hstring const& value) {
+  MetricCard card;
+  card.root = Controls::Border();
+  if (auto style = StyleByKey(L"UrStatTileStyle")) card.root.Style(style);
+
+  StackPanel column;
+  card.label = TextBlock();
+  card.label.Text(label);
+  if (auto style = StyleByKey(L"UrStatLabelStyle")) card.label.Style(style);
+  column.Children().Append(card.label);
+
+  card.value = TextBlock();
+  card.value.Text(value);
+  if (auto style = StyleByKey(L"UrStatValueStyle")) card.value.Style(style);
+  column.Children().Append(card.value);
+
+  card.root.Child(column);
+  return card;
+}
+
+SettingsCard MakeSettingsCard(winrt::hstring const& glyph, winrt::hstring const& title,
+                              winrt::hstring const& description) {
+  SettingsCard card;
+  card.root = Controls::Border();
+  if (auto style = StyleByKey(L"UrCardStyle")) card.root.Style(style);
+
+  Grid row;
+  row.ColumnSpacing(12);
+  { Controls::ColumnDefinition c; c.Width(GridLengthHelper::Auto()); row.ColumnDefinitions().Append(c); }
+  { Controls::ColumnDefinition c; c.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star)); row.ColumnDefinitions().Append(c); }
+  { Controls::ColumnDefinition c; c.Width(GridLengthHelper::Auto()); row.ColumnDefinitions().Append(c); }
+
+  FontIcon icon;
+  icon.FontFamily(IconFont());
+  icon.Glyph(glyph);
+  icon.FontSize(20);
+  icon.Foreground(urnw::colors::MutedBrush());
+  icon.VerticalAlignment(VerticalAlignment::Center);
+  Automation::AutomationProperties::SetAccessibilityView(
+      icon, Automation::Peers::AccessibilityView::Raw);
+  Grid::SetColumn(icon, 0);
+  row.Children().Append(icon);
+
+  StackPanel text;
+  text.Spacing(2);
+  text.VerticalAlignment(VerticalAlignment::Center);
+  Grid::SetColumn(text, 1);
+  card.title = TextBlock();
+  card.title.Text(title);
+  if (auto style = StyleByKey(L"UrBodyTextStyle")) card.title.Style(style);
+  card.title.TextWrapping(TextWrapping::Wrap);
+  text.Children().Append(card.title);
+  card.description = TextBlock();
+  card.description.Text(description);
+  if (auto style = StyleByKey(L"UrCaptionTextStyle")) card.description.Style(style);
+  card.description.TextWrapping(TextWrapping::Wrap);
+  // an empty description must not spend the panel's spacing on nothing
+  card.description.Visibility(description.empty() ? Visibility::Collapsed
+                                                  : Visibility::Visible);
+  text.Children().Append(card.description);
+  row.Children().Append(text);
+
+  card.trailing = Grid();
+  card.trailing.HorizontalAlignment(HorizontalAlignment::Right);
+  card.trailing.VerticalAlignment(VerticalAlignment::Center);
+  Grid::SetColumn(card.trailing, 2);
+  row.Children().Append(card.trailing);
+
+  card.root.Child(row);
+  return card;
+}
+
+CopyField MakeCopyField(winrt::hstring const& label, winrt::hstring const& value,
+                        bool masked) {
+  CopyField field;
+  StackPanel column;
+  column.Spacing(2);
+
+  TextBlock caption;
+  caption.Text(label);
+  if (auto style = StyleByKey(L"UrLabelStyle")) caption.Style(style);
+  column.Children().Append(caption);
+
+  Grid row;
+  row.ColumnSpacing(8);
+  { Controls::ColumnDefinition c; c.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star)); row.ColumnDefinitions().Append(c); }
+  { Controls::ColumnDefinition c; c.Width(GridLengthHelper::Auto()); row.ColumnDefinitions().Append(c); }
+
+  field.value = TextBlock();
+  // masked DISPLAY only; the real value is captured by the copy button below
+  field.value.Text(masked ? winrt::hstring{L"••••••••"} : value);
+  if (auto style = StyleByKey(L"UrBodyTextStyle")) field.value.Style(style);
+  field.value.TextTrimming(TextTrimming::CharacterEllipsis);
+  field.value.VerticalAlignment(VerticalAlignment::Center);
+  Grid::SetColumn(field.value, 0);
+  row.Children().Append(field.value);
+
+  field.copy = Button();
+  field.copy.Background(nullptr);
+  field.copy.BorderThickness(ThicknessHelper::FromUniformLength(0));
+  field.copy.Padding(ThicknessHelper::FromLengths(8, 4, 8, 4));
+  field.copy.VerticalAlignment(VerticalAlignment::Center);
+  FontIcon copyGlyph;
+  copyGlyph.FontFamily(IconFont());
+  copyGlyph.Glyph(L"");  // Copy
+  copyGlyph.FontSize(16);
+  copyGlyph.Foreground(urnw::colors::MutedBrush());
+  field.copy.Content(copyGlyph);
+  // the button carries the action name a screen reader announces
+  Automation::AutomationProperties::SetName(field.copy, winrt::hstring{L"Copy "} + label);
+  // the full value is copied, never the mask
+  field.copy.Click([value](auto const&, auto const&) {
+    winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
+    package.SetText(value);
+    winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
+  });
+  Grid::SetColumn(field.copy, 1);
+  row.Children().Append(field.copy);
+
+  column.Children().Append(row);
+  field.value.VerticalAlignment(VerticalAlignment::Center);
+  field.root = column;
+  return field;
+}
+
+PlanUsageCard MakePlanUsageCard(winrt::hstring const& planLabel,
+                                winrt::hstring const& planValue) {
+  PlanUsageCard card;
+  card.root = Controls::Border();
+  if (auto style = StyleByKey(L"UrCardStyle")) card.root.Style(style);
+
+  StackPanel column;
+  column.Spacing(8);
+
+  TextBlock caption;
+  caption.Text(planLabel);
+  if (auto style = StyleByKey(L"UrLabelStyle")) caption.Style(style);
+  column.Children().Append(caption);
+
+  card.planValue = TextBlock();
+  card.planValue.Text(planValue);
+  if (auto style = StyleByKey(L"UrStatValueStyle")) card.planValue.Style(style);
+  card.planValue.FontSize(22);
+  column.Children().Append(card.planValue);
+
+  // the caller constructs a urnw::UsageBar into this host (the bar is not a XAML
+  // control), and its legend into the panel below - the same wiring the connect
+  // drawer and Account already do around their own hosts.
+  card.usageBarHost = Grid();
+  card.usageBarHost.Height(32);
+  column.Children().Append(card.usageBarHost);
+
+  card.legend = StackPanel();
+  card.legend.Orientation(Controls::Orientation::Horizontal);
+  card.legend.Spacing(16);
+  column.Children().Append(card.legend);
+
+  card.root.Child(column);
   return card;
 }
 

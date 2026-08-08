@@ -281,7 +281,6 @@ struct MainWindow : MainWindowT<MainWindow> {
   urnw::BalanceSnapshot balance_;
   urnw::BalancePollState balancePoll_;
   std::unique_ptr<urnw::UsageBar> accountUsageBar_;
-  std::unique_ptr<urnw::UsageBar> drawerUsageBar_;
   bool insufficientBalance_ = false;  // last ContractStatus push
   std::shared_ptr<urnw::UpgradeSheet> upgradeSheet_;
   std::shared_ptr<urnw::RedeemCodeSheet> redeemSheet_;
@@ -311,6 +310,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   // last state ApplyBreakpoint drove, so a resize that does not cross the
   // breakpoint costs nothing (SizeChanged fires on every pixel of a drag)
   bool wideLayout_ = false;
+  // Home's second breakpoint (kUltraWideDip): the third column. Tracked
+  // separately so a drag across 1800 re-runs the layout even though `wide` did
+  // not change - the early-out has to test every state it applies, not one.
+  bool ultraLayout_ = false;
   bool breakpointApplied_ = false;
 };
 
