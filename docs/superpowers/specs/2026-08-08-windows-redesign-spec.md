@@ -50,6 +50,47 @@
 > destination folds behind it (it is NOT one of the five primary destinations —
 > it lives under Settings › Advanced, revealed by Advanced Mode).
 >
+> ---
+>
+> ### 5. THE VISUAL MODEL: FULL-BLEED PANES, NOT CARDS (owner, 2026-08-08, after Wave 1)
+>
+> Owner's verdict on Wave 1: *"the UI has barely even changed... I think you're
+> sticking to this style too much. Things need to fit in a fill, I guess go with
+> Portmaster looks, less random sized modules and more fit in."*
+>
+> **This overrides the card-based layout language in this spec's body AND
+> everything built through Wave 1.** Rebalancing cards was never going to fix it:
+> floating cards with gutters, page padding and a max-width cap ARE the mobile
+> model, and no amount of balancing changes that. Adopt Portmaster's structure:
+>
+> - **NO floating cards.** No page padding gutter, no `MaxWidth` content cap, no
+>   card margins, no rounded islands drifting in dark space. Delete
+>   `kWideBreakpointDip`/`kUltraWideDip` centring grids as the layout primitive.
+> - **Full-bleed panes, edge to edge, floor to ceiling.** A destination is 2–3
+>   vertical panes that each stretch the FULL height of the content area and
+>   touch the window edges. The window is always completely covered.
+> - **Hairline separators, not gaps.** 1px `#1F1F1F`-class rules divide panes and
+>   rows. Separation comes from lines and a subtle fill step, never from empty space.
+> - **Each pane owns a header strip** (~40px: title, count, actions) and scrolls
+>   independently under it.
+> - **Uniform rows.** One row height per list (~36–44px), one grid, one rhythm.
+>   "Less random sized modules" means every module is the same shape — no card is
+>   200px tall because that is what its content happened to need.
+> - **Tables and lists FILL.** A list pane grows to the pane's height; empty
+>   states are a centred line inside a full-height pane, never a short card.
+> - **Density over air.** Portmaster shows dozens of rows per screen. Aim for
+>   information density; this is the "advanced desktop" line (see the product
+>   tiering), not the phone.
+>
+> Home in this idiom: left pane = connection state + primary action + options
+> (full height); centre = live activity (connections/exits/throughput, filling
+> vertically); right = detail/inspector for the selection. The hero globe stays
+> (override 3) but lives INSIDE the left pane's flow, sized to the pane, not
+> centred in a void.
+>
+> The bottom status strip (override 4) stays and now reads correctly as a status
+> bar under full-bleed panes — the idiom it always belonged to.
+>
 > Everything below is the adopted design detail, subject to the four overrides
 > above.
 
