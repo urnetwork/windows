@@ -749,6 +749,237 @@
                 <Setter Property="IsClosable" Value="True" />
                 <Setter Property="CornerRadius" Value="8" />
             </Style>
+
+            <!-- ================================================================
+                 THE PANE SHELL (R3) — the SPN/Portmaster idiom
+                 ================================================================
+                 Owner verdict on the card waves: "Things need to fit in a fill,
+                 I guess go with Portmaster looks, less random sized modules and
+                 more fit in." Everything above this line describes a CARD: a
+                 rounded island with a margin, floating on the page. A card model
+                 cannot be made to fill a 2062dip window, because the gutter, the
+                 radius and the max-width cap ARE the phone.
+
+                 So this block is a second, incompatible layout vocabulary, and
+                 Home is built entirely out of it:
+
+                   * a destination is 2-3 vertical PANES, each floor-to-ceiling,
+                     each touching the window edge. No page padding.
+                   * panes are divided by a 1px rule, never by a gap.
+                   * every pane opens with a 40px HEADER STRIP (title, count,
+                     actions) and scrolls independently underneath it.
+                   * inside a pane, content is GROUPS (a 28px header strip) of
+                     uniform ROWS. Every row in a list is the same height. No
+                     module is 200px tall because that is what its content
+                     happened to need.
+                   * a row's separation is its bottom hairline and its hover
+                     fill. Nothing has a radius, a margin or a shadow.
+
+                 No new colours: the fills are the existing #101010 / #151515 /
+                 #1C1C1C ramp out of UrColors.h and the rules are UrBorderBrush,
+                 the same hairline the cards wear. What changed is the SHAPE. -->
+
+            <!-- pane metrics, in one place so every pane is the same construction -->
+            <x:Double x:Key="UrPaneHeaderHeight">40</x:Double>
+            <x:Double x:Key="UrGroupHeaderHeight">28</x:Double>
+            <x:Double x:Key="UrPaneRowHeight">40</x:Double>
+            <x:Double x:Key="UrPaneListRowHeight">36</x:Double>
+
+            <!-- The vertical rule BETWEEN two panes, and the horizontal one
+                 between two rows. One token, two orientations: the whole
+                 structure of a pane layout is these plus the fill step. -->
+            <Style x:Key="UrPaneVRuleStyle" TargetType="Border">
+                <Setter Property="Width" Value="1" />
+                <Setter Property="Background" Value="{StaticResource UrBorderBrush}" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+            </Style>
+
+            <!-- A pane's body. Solid, so the ConnectCanvas mask (which takes its
+                 colour from the surface behind it) still has a surface. -->
+            <Style x:Key="UrPaneStyle" TargetType="Grid">
+                <Setter Property="Background" Value="{StaticResource UrBackgroundBrush}" />
+            </Style>
+
+            <!-- the 40px strip at the top of every pane -->
+            <Style x:Key="UrPaneHeaderStyle" TargetType="Border">
+                <Setter Property="Height" Value="{StaticResource UrPaneHeaderHeight}" />
+                <Setter Property="Background" Value="{StaticResource UrSheetBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource UrBorderBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                <Setter Property="Padding" Value="12,0" />
+            </Style>
+
+            <!-- its title. Montreal, small, letterspaced: chrome that names a
+                 column, deliberately NOT the page-title voice. -->
+            <Style x:Key="UrPaneTitleStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="CharacterSpacing" Value="60" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            </Style>
+
+            <!-- the count / live figure that rides at the right of a pane or
+                 group header -->
+            <Style x:Key="UrPaneMetaStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
+            </Style>
+
+            <!-- a group inside a pane: 28px, rules top and bottom -->
+            <Style x:Key="UrGroupHeaderStyle" TargetType="Border">
+                <Setter Property="Height" Value="{StaticResource UrGroupHeaderHeight}" />
+                <Setter Property="Background" Value="{StaticResource UrSheetBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource UrBorderBrush}" />
+                <Setter Property="BorderThickness" Value="0,1,0,1" />
+                <Setter Property="Padding" Value="12,0" />
+            </Style>
+
+            <Style x:Key="UrGroupHeaderTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="CharacterSpacing" Value="90" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            </Style>
+
+            <!-- ONE row height per list. A static row... -->
+            <Style x:Key="UrPaneRowStyle" TargetType="Border">
+                <Setter Property="MinHeight" Value="{StaticResource UrPaneRowHeight}" />
+                <Setter Property="BorderBrush" Value="{StaticResource UrBorderBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                <Setter Property="Padding" Value="12,0" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+            </Style>
+
+            <!-- ...and the same row as a Button, for the ones that open
+                 something. Same metrics, same hairline, so a tappable row and a
+                 static row line up on one left edge and one baseline grid. The
+                 template is UrCardButton's minus the radius and the box: hover
+                 is a fill step, not an outline. -->
+            <Style x:Key="UrPaneRowButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource UrBorderBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="MinHeight" Value="{StaticResource UrPaneRowHeight}" />
+                <Setter Property="Padding" Value="12,0" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid x:Name="Root"
+                                  Background="{TemplateBinding Background}"
+                                  BorderBrush="{TemplateBinding BorderBrush}"
+                                  BorderThickness="{TemplateBinding BorderThickness}">
+                                <ContentPresenter x:Name="Presenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Padding="{TemplateBinding Padding}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  FontFamily="{TemplateBinding FontFamily}"
+                                                  FontSize="{TemplateBinding FontSize}"
+                                                  FontWeight="{TemplateBinding FontWeight}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{StaticResource UrCardBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{StaticResource UrCardPressedBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Opacity" Value="0.38" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- the icon-only command that rides in a pane or group header (open
+                 the editor, open the full sheet). 28px square, no chrome until
+                 hovered. Every instance MUST carry AutomationProperties.Name:
+                 a glyph is not a name. -->
+            <Style x:Key="UrPaneActionButtonStyle" TargetType="Button" BasedOn="{StaticResource UrPaneRowButtonStyle}">
+                <Setter Property="MinHeight" Value="24" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="MinWidth" Value="28" />
+                <Setter Property="Width" Value="28" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <!-- the two halves of a key/value row in a pane -->
+            <Style x:Key="UrKeyTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
+            </Style>
+
+            <Style x:Key="UrValueTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="TextAlignment" Value="Right" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
+            </Style>
+
+            <!-- the row label in a list pane: the thing the row IS -->
+            <Style x:Key="UrRowTitleStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
+            </Style>
+
+            <!-- The pane's primary command: a full-bleed bar, not a pill. It is
+                 the width of its pane and square with it, so the one loud thing
+                 on Home is loud because it spans a column, not because it
+                 floats. -->
+            <Style x:Key="UrPaneAccentButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="Height" Value="44" />
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

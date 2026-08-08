@@ -11,6 +11,10 @@
 #include <array>
 #include <cctype>
 #include <chrono>
+#include <iterator>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 #include "Log.h"
 #include "MainWindow.xaml.h"
@@ -122,6 +126,23 @@ void ConnectPage::ApplyStrings() {
   // status line, dot and button label all come from ApplyConnectStatus, which
   // is the single writer of the three (seeded here: idle, blue dot, "Connect")
   ApplyConnectStatus();
+  // ---- R3: the three pane headers -----------------------------------------
+  // Every title here is a SHIPPED key. "Details" / "Session" / "Inspector",
+  // which would have named the third pane more exactly, do not exist in the
+  // store (945 keys, ~250 used) and are reported rather than invented.
+  w_.PaneATitle().Text(Loc("connect"));
+  w_.PaneBTitle().Text(Loc("activity"));
+  w_.PaneCTitle().Text(Loc("client_statistics"));
+  w_.ConnectionsLabel().Text(Loc("connections"));
+  w_.DataUsageLabel().Text(Loc("data_usage"));
+  w_.PeersGroupLabel().Text(Loc("network_peers"));
+  // A pane is a landmark: without a name the three columns reach a screen
+  // reader as three unlabelled groups in an arbitrary order.
+  namespace pane_automation = winrt::Microsoft::UI::Xaml::Automation;
+  pane_automation::AutomationProperties::SetName(w_.ConnectPaneA(), Loc("connect"));
+  pane_automation::AutomationProperties::SetName(w_.ConnectPaneB(), Loc("activity"));
+  pane_automation::AutomationProperties::SetName(w_.ConnectPaneC(),
+                                                 Loc("client_statistics"));
   w_.SelectedProviderLabel().Text(Loc("selected_provider"));
   w_.LocationText().Text(Loc("best_available_provider"));
   ApplyPeerCount(std::nullopt);   // seed the peers status line ("0 peers" + dot)
@@ -139,15 +160,20 @@ void ConnectPage::ApplyStrings() {
   w_.FixedIpLabel().Text(Loc("fixed_ip"));
   w_.StrongAnonLabel().Text(Loc("strong_anonymization"));
   w_.PostQuantumLabel().Text(Loc("post_quantum_encryption"));
-  w_.ClientStatsLabel().Text(Loc("client_statistics"));
-  w_.LocalStatsLabel().Text(Loc("local_statistics"));
+  // R3: these three are the STATISTICS pane's group headers now, not three
+  // cards. Their old card bodies became the rows under each group; the card
+  // itself survives only as the group's trailing action, which still opens the
+  // same sheet it always did.
+  w_.ClientStatsLabel().Text(Loc("client_contracts"));
+  w_.LocalStatsLabel().Text(Loc("split_rules"));
   w_.DnsCardLabel().Text(Loc("custom_dns"));
-  // R1: the compact session empty state (shown while disconnected in place of
-  // the two zero-value chart cards). "Contracts appear here while connected." is
-  // the shipped string closest to the spec's "session statistics will appear
-  // after you connect"; the exact copy is a reported store addition.
+  // The activity pane's empty state: a centred line inside the full-height pane.
+  // "Contracts appear here while connected." is the shipped string closest to
+  // the spec's "session statistics will appear after you connect"; the exact
+  // copy is a reported store addition.
   w_.SessionEmptyText().Text(Loc("contracts_appear_connected"));
   ApplySessionCardsVisibility(connected_);
+  ApplySessionRows();
   // Each tappable card is a Button now, so it has an automation peer — but with
   // no explicit name UIA falls back to concatenating the entire content
   // subtree, which for the DNS card is nine TextBlocks read as one run-on
@@ -166,8 +192,8 @@ void ConnectPage::ApplyStrings() {
   // Button whose Content is a Panel gets NO automatic name, and the row came
   // back as an unnamed button. Assumption checked, assumption wrong.
   namespace automation = winrt::Microsoft::UI::Xaml::Automation;
-  automation::AutomationProperties::SetName(w_.ClientStatsCard(), Loc("client_statistics"));
-  automation::AutomationProperties::SetName(w_.LocalStatsCard(), Loc("local_statistics"));
+  automation::AutomationProperties::SetName(w_.ClientStatsCard(), Loc("client_contracts"));
+  automation::AutomationProperties::SetName(w_.LocalStatsCard(), Loc("split_rules"));
   automation::AutomationProperties::SetName(w_.DnsCard(), Loc("custom_dns"));
   ApplyLocationRowName();
   w_.DohLabel().Text(Loc("dns_over_https"));
@@ -236,6 +262,7 @@ void ConnectPage::SetNetworkIdentity(std::string const& networkName, bool guestM
 // here: the service has never run, so a tunnel that simply never reports Up
 // would show a permanent false alarm, which is worse than the omission.
 void ConnectPage::SetConnectedUi(bool connected) {
+  if (PreviewSampleActive()) return;  // see ApplyStats
   connected_ = connected;
   ApplyConnectStatus();
 }
@@ -380,6 +407,11 @@ void ConnectPage::ApplyConnectStatus() {
 // ---- live stats (macOS parity) -------------------------------------------
 
 void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
+  // --preview-ui with a sample loaded: the process has no session, so every push
+  // that reaches here is the empty one, and applying it wipes the synthetic rows
+  // the operator asked for a few hundred milliseconds after they appear. Same
+  // gate, same reason, as PreviewHeroActive on the canvas.
+  if (PreviewSampleActive()) return;
   // Selected provider row. When the selected location is a connected network
   // peer, show its device name instead of the raw client id (req4): resolve it
   // from the live peer list by client id, like the linux drawer does.
@@ -436,15 +468,24 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
           ? hstring{urnw::Plural("connected_provider_count", stats.providerCount)}
           : hstring{L""});
 
-  // Live throughput feed: down / up bit rate. Arrows + rates, no prose.
+  // Live throughput feed: down / up bit rate. This is the ACTIVITY PANE's own
+  // header figure now — the pane whose chart and connections table it describes
+  // — rather than a line inside a card two columns away.
   urnw::kit::SetTextOrCollapse(
       w_.ThroughputText(),
       stats.connected ? H("↓ " + urnw::FormatBitRate(stats.downBitsPerSecond) +
-                          "    ↑ " + urnw::FormatBitRate(stats.upBitsPerSecond))
+                          "   ↑ " + urnw::FormatBitRate(stats.upBitsPerSecond))
                       : hstring(L""));
   w_.LiveStatsGroup().Visibility(stats.connected ? Visibility::Visible
                                                  : Visibility::Collapsed);
-  // R1: the chart cards vs the compact empty state, on the same connected signal.
+  // R3: the statistics pane draws the session as key/value rows, so it needs the
+  // figures rather than only the prose lines above.
+  downBitsPerSecond_ = stats.downBitsPerSecond;
+  upBitsPerSecond_ = stats.upBitsPerSecond;
+  providerCount_ = stats.providerCount;
+  statsConnected_ = stats.connected;
+  ApplySessionRows();
+  // the activity list vs its centred empty line, on the same connected signal
   ApplySessionCardsVisibility(stats.connected);
 
   // Insufficient-balance warning (auto-disconnect happens in the SDK). The
@@ -459,7 +500,12 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
                   ? Loc("providing_paused")
                   : hstring{urnw::Plural("providing_client_count", stats.provideClients)};
   }
-  urnw::kit::SetTextOrCollapse(w_.ProvideStatsText(), provide);
+  // The ROW collapses, not just its text: a fixed-height row wrapped around a
+  // collapsed TextBlock is still a blank row, which is the same "hole in the
+  // middle of the panel" defect one level down.
+  w_.ProvideStatsText().Text(provide);
+  w_.ProvideStatsRow().Visibility(provide.empty() ? Visibility::Collapsed
+                                                  : Visibility::Visible);
 
   // provide indicator (apple parity). The effective provide mode is a bit set
   // (0 none, 1 network, 2 friends-and-family, 3 public) — per-case only.
@@ -634,6 +680,7 @@ void ConnectPage::WireDrawerFeeds() {
       if (auto self = weak.get()) {
         auto& page = self->connect();
         page.contractRows_ = Sdk().CurrentContractRows();
+        page.ApplyContractsList();
         if (page.contractsSheet_) page.contractsSheet_->Update(page.contractRows_);
       }
     });
@@ -643,6 +690,7 @@ void ConnectPage::WireDrawerFeeds() {
       if (auto self = weak.get()) {
         auto& page = self->connect();
         page.blockActions_ = actions;
+        page.ApplyConnectionsList();
         if (page.splitRulesSheet_) {
           page.splitRulesSheet_->Update(page.splitRules_, page.blockActions_,
                                         page.allowedCount_, page.blockedCount_);
@@ -656,6 +704,7 @@ void ConnectPage::WireDrawerFeeds() {
         auto& page = self->connect();
         page.allowedCount_ = allowed;
         page.blockedCount_ = blocked;
+        page.ApplySessionRows();
         if (page.splitRulesSheet_) {
           page.splitRulesSheet_->Update(page.splitRules_, page.blockActions_, allowed,
                                         blocked);
@@ -738,8 +787,11 @@ void ConnectPage::ResyncDrawer() {
   sdk.CurrentBlockCounts(allowedCount_, blockedCount_);
   splitRules_ = sdk.CurrentSplitRules();
   dnsSettings_ = sdk.CurrentDnsSettings();
-  ApplySplitRuleCount();
+  ApplySplitRuleCount();  // also rebuilds the split-rules list
   ApplyDnsCard(dnsSettings_);
+  ApplyConnectionsList();
+  ApplyContractsList();
+  ApplySessionRows();
   SeedConnectControls();
 }
 
@@ -850,16 +902,173 @@ void ConnectPage::ApplyBlockerUi(bool on) {
   updatingControls_ = false;
 }
 
-// R1: the two live-chart cards read as zero-value graphs while disconnected -
-// the spec's oversized empty cards - so they yield to one compact empty state
-// until there is a session to chart. The DNS card stays either way: it shows a
-// device setting, not session data. One writer, from ApplyStats and ApplyStrings.
+// R3: the activity pane's list against its empty state. Both occupy the SAME
+// full-height area (they are the two children of one Grid), so an empty session
+// is a centred sentence in a floor-to-ceiling pane rather than a short card
+// floating in a page. The charts and the statistics pane stay put either way:
+// they are structure, and structure that disappears when a session ends is how
+// the window came to be half empty in the first place.
 void ConnectPage::ApplySessionCardsVisibility(bool connected) {
-  const auto cards = connected ? Visibility::Visible : Visibility::Collapsed;
-  const auto empty = connected ? Visibility::Collapsed : Visibility::Visible;
-  w_.ClientStatsCard().Visibility(cards);
-  w_.LocalStatsCard().Visibility(cards);
-  w_.SessionEmptyCard().Visibility(empty);
+  const bool hasRows = 0 < w_.ConnectionsHost().Children().Size();
+  const bool showList = connected && hasRows;
+  w_.ConnectionsScroll().Visibility(showList ? Visibility::Visible
+                                             : Visibility::Collapsed);
+  w_.SessionEmptyCard().Visibility(showList ? Visibility::Collapsed
+                                            : Visibility::Visible);
+}
+
+// ---- R3: the pane lists ----------------------------------------------------
+//
+// Three lists, one row species (kit::MakePaneListRow), one height per list. The
+// old page put each of these behind a card that opened a ContentDialog; the
+// dialogs are all still there and still reachable from each group's trailing
+// action, but the CONTENT is now on screen, which is the whole difference
+// between a dashboard and a launcher for dialogs.
+
+namespace {
+// the first thing that identifies a routing decision: an override match, then a
+// hostname, then an address. iOS BlockActionItem renders the same precedence.
+std::string BlockActionTitle(urnw::BlockActionItem const& action) {
+  if (!action.matchedHosts.empty()) return action.matchedHosts.front();
+  if (!action.hosts.empty()) return action.hosts.front();
+  if (!action.matchedIps.empty()) return action.matchedIps.front();
+  if (!action.ips.empty()) return action.ips.front();
+  return {};
+}
+
+// A peer client id is 36 characters of uuid and there is no room for it in a
+// 380dip pane. The head is what distinguishes one peer from another on screen;
+// the full value stays in the contracts sheet.
+std::string ShortId(std::string const& id) {
+  return id.size() <= 12 ? id : id.substr(0, 12) + "…";
+}
+}  // namespace
+
+// The activity pane's table: every routing decision the device has made, newest
+// first. Coral = blocked, green = allowed through the tunnel, amber = sent
+// around it (a split rule matched). This is the pane's reason to exist and the
+// list that has to FILL it.
+void ConnectPage::ApplyConnectionsList() {
+  auto host = w_.ConnectionsHost();
+  host.Children().Clear();
+  // A cap, not a scroll budget: the SDK's action feed is unbounded and every row
+  // is a live XAML subtree. 200 rows is ~7000px of pane, well past any window.
+  constexpr size_t kMaxRows = 200;
+  const size_t count = std::min(blockActions_.size(), kMaxRows);
+  for (size_t i = 0; i < count; ++i) {
+    auto const& action = blockActions_[i];
+    auto row = urnw::kit::MakePaneListRow(36);
+    row.dot.Fill(urnw::colors::MakeBrush(action.block   ? urnw::colors::kUrCoral
+                                         : action.local ? urnw::colors::kUrAmber
+                                                        : urnw::colors::kUrGreen));
+    const std::string title = BlockActionTitle(action);
+    row.title.Text(title.empty() ? Loc("unknown") : H(title));
+    row.meta.Text(H(urnw::FormatByteCountCompact(action.byteCount) + "   " +
+                    urnw::FormatCountCompact(action.packetCount) + " pkt"));
+    // the dot is Raw, so the row's own name has to carry the verdict the colour
+    // is showing
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+        row.root, hstring{H(title) + L", " +
+                          std::wstring{Loc(action.block ? "blocked" : "allowed")}});
+    host.Children().Append(row.root);
+  }
+  w_.ConnectionsCount().Text(
+      hstring{urnw::Plural("host_count", static_cast<int64_t>(blockActions_.size()))});
+  ApplySessionCardsVisibility(statsConnected_);
+}
+
+// The session, as key/value rows on the statistics pane's grid. These were four
+// prose lines inside the hero card; a figure belongs in a column beside its
+// label, on the same rhythm as every other figure on the pane.
+void ConnectPage::ApplySessionRows() {
+  auto host = w_.SessionRowsHost();
+  host.Children().Clear();
+  auto add = [&host](winrt::hstring const& key, std::string const& value) {
+    host.Children().Append(urnw::kit::MakePaneKeyValueRow(key, H(value)).root);
+  };
+  const std::string idle = "—";  // an em dash: "no session", not "zero"
+  add(Loc("remote"), statsConnected_
+                         ? "↓ " + urnw::FormatBitRate(downBitsPerSecond_)
+                         : idle);
+  add(Loc("local"), statsConnected_
+                        ? "↑ " + urnw::FormatBitRate(upBitsPerSecond_)
+                        : idle);
+  add(Loc("allowed"), urnw::FormatCountCompact(allowedCount_));
+  add(Loc("blocked"), urnw::FormatCountCompact(blockedCount_));
+  add(Loc("connections"), urnw::FormatCountCompact(static_cast<int64_t>(blockActions_.size())));
+}
+
+// One row per contract peer: which peer, and how much has moved each way.
+void ConnectPage::ApplyContractsList() {
+  auto host = w_.ContractsHost();
+  host.Children().Clear();
+  if (contractRows_.empty()) {
+    // still a ROW, on the same grid — an empty group must not become a hole
+    auto row = urnw::kit::MakePaneKeyValueRow(Loc("contracts_appear_connected"), {}, 34);
+    host.Children().Append(row.root);
+    return;
+  }
+  for (auto const& peer : contractRows_) {
+    auto row = urnw::kit::MakePaneListRow(36);
+    const bool active = 0 < peer.lastActivityMillis && !peer.closing;
+    row.dot.Fill(urnw::colors::MakeBrush(active ? urnw::colors::kUrGreen
+                                                : urnw::colors::kTextFaint));
+    row.title.Text(H(ShortId(peer.clientId)));
+    row.meta.Text(H("↑ " + urnw::FormatByteCountCompact(peer.sendByteCount) + "   ↓ " +
+                    urnw::FormatByteCountCompact(peer.receiveByteCount)));
+    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+        row.root, hstring{std::wstring{Loc("contract")} + L", " + H(peer.clientId)});
+    host.Children().Append(row.root);
+  }
+}
+
+// The connect pane's list: the other devices on this network. This feed already
+// arrived on every peers push and only its COUNT was ever drawn.
+void ConnectPage::ApplyPeersList() {
+  auto host = w_.PeersHost();
+  host.Children().Clear();
+  const int64_t count = peers_ ? static_cast<int64_t>(peers_->size()) : 0;
+  w_.PeersGroupCount().Text(count == 0 ? hstring{L""}
+                                       : H(urnw::FormatCountCompact(count)));
+  if (!peers_ || peers_->empty()) {
+    auto row = urnw::kit::MakePaneKeyValueRow(Loc("peer_discovery_disabled"), {}, 34);
+    host.Children().Append(row.root);
+    return;
+  }
+  for (auto const& peer : *peers_) {
+    auto row = urnw::kit::MakePaneListRow(34);
+    row.dot.Fill(urnw::colors::MakeBrush(peer.ProvideEnabled ? urnw::colors::kUrGreen
+                                                             : urnw::colors::kTextFaint));
+    row.title.Text(H(urnw::PeerDisplayName(peer)));
+    // what the device IS, not what it is called: the spec is the only thing that
+    // distinguishes two phones with the same default name
+    row.meta.Text(H(peer.DeviceSpec));
+    host.Children().Append(row.root);
+  }
+}
+
+// One row per split rule: the host cluster it names, and where it sends it.
+void ConnectPage::ApplySplitRulesList() {
+  auto host = w_.SplitRulesHost();
+  host.Children().Clear();
+  if (splitRules_.empty()) {
+    auto row = urnw::kit::MakePaneKeyValueRow(Loc("app_split_active_none"), {}, 34);
+    host.Children().Append(row.root);
+    return;
+  }
+  for (auto const& rule : splitRules_) {
+    auto row = urnw::kit::MakePaneListRow(36);
+    // routeLocal sends the cluster AROUND the tunnel; amber is the same "not
+    // protected, on purpose" colour the connections table gives that decision.
+    row.dot.Fill(urnw::colors::MakeBrush(rule.routeLocal ? urnw::colors::kUrAmber
+                                                         : urnw::colors::kUrGreen));
+    row.title.Text(rule.hosts.empty() ? Loc("unknown") : H(rule.hosts.front()));
+    row.meta.Text(1 < rule.hosts.size()
+                      ? hstring{urnw::Plural("host_count",
+                                             static_cast<int64_t>(rule.hosts.size()))}
+                      : Loc(rule.routeLocal ? "local" : "remote"));
+    host.Children().Append(row.root);
+  }
 }
 
 // "Selected provider, Berlin". Naming the row after its LABEL alone left a
@@ -876,11 +1085,13 @@ void ConnectPage::ApplyLocationRowName() {
 void ConnectPage::ApplySplitRuleCount() {
   w_.SplitRuleCountText().Text(
       hstring{urnw::Plural("split_rule_count", static_cast<int64_t>(splitRules_.size()))});
+  ApplySplitRulesList();
 }
 
 void ConnectPage::ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& settings) {
   w_.DnsRowsPanel().Visibility(settings ? Visibility::Visible : Visibility::Collapsed);
-  w_.DnsUnavailableText().Visibility(settings ? Visibility::Collapsed : Visibility::Visible);
+  // the ROW, not the text inside it: see ProvideStatsRow
+  w_.DnsUnavailableRow().Visibility(settings ? Visibility::Collapsed : Visibility::Visible);
   // the applied settings just changed: re-evaluate the recommendation pill (it
   // reads dnsSettings_, already updated to `settings` by the caller). Runs in
   // the unavailable path too so the pill collapses with the rows.
@@ -976,59 +1187,190 @@ void ConnectPage::OnChartTick() {
   // the sheet just reports scroll and renders the ordered rows (no local tick)
 }
 
+// The entrance.
+//
+// R1 staggered a fade + slide-up across the six cards. R3 has no cards: the
+// panes ARE the window, and sliding a full-height column up 16px on every visit
+// to Home reads as the layout settling after a failure rather than as polish. So
+// the whole shell fades in once, quickly, and nothing moves.
 void ConnectPage::AnimateDrawerIn() {
-  // fade + slight slide-up, 300ms ease-out, staggered across the cards. Played
-  // once per window: replaying would fight the finished animations' hold
-  // values and flash the cards.
   if (drawerAnimated_) return;
   drawerAnimated_ = true;
   namespace anim = winrt::Microsoft::UI::Xaml::Media::Animation;
-  // The drawer's modules, in the order they appear. BlockerCard is gone - the
-  // ad/tracker switch is a row in ConnectOptionsCard now, with the other three
-  // per-connection switches, instead of being a card of its own with one line
-  // in it.
-  const std::array<FrameworkElement, 6> cards = {
-      w_.ControlsCard(),    w_.ProvideCard(),    w_.ConnectOptionsCard(),
-      w_.ClientStatsCard(), w_.LocalStatsCard(), w_.DnsCard()};
-  const auto duration = Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
-                                     std::chrono::milliseconds(300)),
-                                 DurationType::TimeSpan};
-  int index = 0;
-  for (auto const& card : cards) {
-    auto shift = Media::TranslateTransform();
-    shift.Y(16);
-    card.RenderTransform(shift);
-    card.Opacity(0);
+  auto view = w_.ConnectView();
+  view.Opacity(0);
+  anim::CubicEase ease;
+  ease.EasingMode(anim::EasingMode::EaseOut);
+  anim::Storyboard storyboard;
+  anim::DoubleAnimation fade;
+  fade.From(0.0);
+  fade.To(1.0);
+  fade.Duration(Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+                             std::chrono::milliseconds(180)),
+                         DurationType::TimeSpan});
+  fade.EasingFunction(ease);
+  anim::Storyboard::SetTarget(fade, view);
+  anim::Storyboard::SetTargetProperty(fade, L"Opacity");
+  storyboard.Children().Append(fade);
+  storyboard.Begin();
+}
 
-    anim::CubicEase ease;
-    ease.EasingMode(anim::EasingMode::EaseOut);
-    const auto beginTime = std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
-        std::chrono::milliseconds(50 * index));
+// --preview-ui + URNETWORK_PREVIEW_SAMPLE. Two gates, both required: the preview
+// flag says there is no session, and the env var says the operator explicitly
+// asked for synthetic content. Same contract as PreviewHeroActive.
+bool ConnectPage::PreviewSampleActive() const {
+  if (!w_.previewUi()) return false;
+  wchar_t buffer[8]{};
+  const DWORD n = ::GetEnvironmentVariableW(L"URNETWORK_PREVIEW_SAMPLE", buffer, 8);
+  return 0 < n && n < 8;
+}
 
-    anim::Storyboard storyboard;
-    anim::DoubleAnimation fade;
-    fade.From(0.0);
-    fade.To(1.0);
-    fade.Duration(duration);
-    fade.BeginTime(beginTime);
-    fade.EasingFunction(ease);
-    anim::Storyboard::SetTarget(fade, card);
-    anim::Storyboard::SetTargetProperty(fade, L"Opacity");
-    storyboard.Children().Append(fade);
+// Fill the panes with obviously synthetic rows.
+//
+// This exists because an empty pane proves nothing. The entire claim of the R3
+// layout is that the window is COVERED by dense uniform rows; a review build
+// that renders three empty states is a screenshot of the chrome, not of the
+// design. Nothing here touches Sdk(), the network, or any stored state - it
+// writes this page's own caches and re-renders, exactly as a live feed would.
+void ConnectPage::ApplyPreviewSample() {
+  if (!PreviewSampleActive()) return;
 
-    anim::DoubleAnimation slide;
-    slide.From(16.0);
-    slide.To(0.0);
-    slide.Duration(duration);
-    slide.BeginTime(beginTime);
-    slide.EasingFunction(ease);
-    anim::Storyboard::SetTarget(slide, shift);
-    anim::Storyboard::SetTargetProperty(slide, L"Y");
-    storyboard.Children().Append(slide);
+  // deterministic, so two runs produce the same screenshot
+  auto hash = [](uint32_t v) { return v * 2654435761u; };
 
-    storyboard.Begin();
-    ++index;
+  static const char* kHosts[] = {
+      "api.urnetwork.com",   "cdn.cloudflare.net",     "telemetry.microsoft.com",
+      "s3.amazonaws.com",    "graph.facebook.com",     "fonts.gstatic.com",
+      "doubleclick.net",     "analytics.google.com",   "registry.npmjs.org",
+      "github.com",          "ocsp.digicert.com",      "push.apple.com",
+      "ads.adservice.net",   "mail.protonmail.ch",     "matrix.org",
+      "steamcdn-a.akamaihd.net", "discord.gg",         "wikipedia.org",
+      "192.168.1.1",         "1.1.1.1",                "tracker.example.net",
+      "signal.org",          "update.mozilla.org",     "duckduckgo.com",
+      "metrics.segment.io",  "cdn.jsdelivr.net",       "objects.githubusercontent.com",
+      "pixel.quantserve.com", "static.doubleverify.com", "img.shields.io"};
+  blockActions_.clear();
+  for (uint32_t i = 0; i < static_cast<uint32_t>(std::size(kHosts)); ++i) {
+    const uint32_t h = hash(i + 7);
+    urnw::BlockActionItem action;
+    action.id = "preview-" + std::to_string(i);
+    action.hosts = {kHosts[i]};
+    action.block = (h >> 5) % 5 == 0;
+    action.local = !action.block && (h >> 9) % 7 == 0;
+    action.byteCount = static_cast<int64_t>((h >> 11) % 900000) + 512;
+    action.packetCount = static_cast<int64_t>((h >> 13) % 4000) + 3;
+    blockActions_.push_back(action);
   }
+
+  contractRows_.clear();
+  for (uint32_t i = 0; i < 7; ++i) {
+    const uint32_t h = hash(i + 101);
+    urnw::ContractPeerRow peer;
+    peer.clientId = "0f2a" + std::to_string(1000 + (h % 8999)) + "-c4e1-4b77-9a3d";
+    peer.sendByteCount = static_cast<int64_t>(h % 40000000) + 40000;
+    peer.receiveByteCount = static_cast<int64_t>((h >> 7) % 90000000) + 90000;
+    peer.lastActivityMillis = (h % 4 == 0) ? 0 : 1;
+    contractRows_.push_back(peer);
+  }
+
+  splitRules_.clear();
+  for (auto const& [host, local] : std::initializer_list<std::pair<const char*, bool>>{
+           {"printer.local", true},
+           {"nas.home.arpa", true},
+           {"corp.vpn.example", false},
+           {"chat.internal", false},
+           {"10.0.0.0/8", true}}) {
+    urnw::SplitRule rule;
+    rule.overrideId = host;
+    rule.hosts = {host};
+    rule.routeLocal = local;
+    splitRules_.push_back(rule);
+  }
+
+  urnet::NetworkPeerList samplePeers;
+  for (auto const& [name, spec, providing] :
+       std::initializer_list<std::tuple<const char*, const char*, bool>>{
+           {"workshop-desktop", "windows", true},
+           {"kitchen-pi", "linux/arm64", true},
+           {"pixel-8", "android", false},
+           {"studio-mbp", "darwin/arm64", true},
+           {"attic-nuc", "linux/amd64", false}}) {
+    urnet::NetworkPeer peer;
+    peer.ClientId = std::string("preview-") + name;
+    peer.DeviceName = name;
+    peer.DeviceSpec = spec;
+    peer.ProvideEnabled = providing;
+    samplePeers.push_back(peer);
+  }
+  peers_ = samplePeers;
+
+  allowedCount_ = 18422;
+  blockedCount_ = 1174;
+  downBitsPerSecond_ = 24600000;
+  upBitsPerSecond_ = 3100000;
+  providerCount_ = 4;
+  statsConnected_ = true;
+  connectStatus_ = ConnectStatus::Connected;
+  connected_ = true;
+
+  // a minute of synthetic throughput, so the three charts have a curve rather
+  // than a flat line across an empty grid
+  constexpr int64_t kWindowSeconds = 60;
+  const int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count();
+  std::vector<urnet::ThroughputPoint> points;
+  for (int64_t i = kWindowSeconds; 0 <= i; --i) {
+    const uint32_t h = hash(static_cast<uint32_t>(i) + 31);
+    urnet::ThroughputPoint point;
+    point.Time = now - i * 1000;
+    auto sample = [&](uint32_t salt, int64_t scale) {
+      urnet::ThroughputSample s;
+      const uint32_t v = hash(static_cast<uint32_t>(i) * 131 + salt);
+      s.EgressByteCount = static_cast<int64_t>(v % 100) * scale;
+      s.IngressByteCount = static_cast<int64_t>((v >> 8) % 100) * scale * 3;
+      s.EgressPacketCount = static_cast<int64_t>((v >> 16) % 90) + 4;
+      s.IngressPacketCount = static_cast<int64_t>((v >> 20) % 140) + 6;
+      s.EgressBitRate = s.EgressByteCount * 8;
+      s.IngressBitRate = s.IngressByteCount * 8;
+      return s;
+    };
+    (void)h;
+    point.Remote = sample(1, 40000);
+    point.Local = sample(2, 6000);
+    point.Block = sample(3, 3000);
+    points.push_back(point);
+  }
+  if (remoteChart_) remoteChart_->SetPoints(points, kWindowSeconds);
+  if (blockedChart_) blockedChart_->SetPoints(points, kWindowSeconds);
+  if (localChart_) localChart_->SetPoints(points, kWindowSeconds);
+
+  ApplyConnectStatus();
+  urnw::kit::SetTextOrCollapse(
+      w_.ThroughputText(),
+      H("↓ " + urnw::FormatBitRate(downBitsPerSecond_) + "   ↑ " +
+        urnw::FormatBitRate(upBitsPerSecond_)));
+  w_.LiveStatsGroup().Visibility(Visibility::Visible);
+  w_.ProviderCountText().Text(
+      hstring{urnw::Plural("connected_provider_count", providerCount_)});
+  // the provide block: ApplyStats normally paints these and is gated off here
+  w_.DiscoverableText().Text(Loc("device_discoverable"));
+  w_.ProvideModeDot().Fill(urnw::colors::MakeBrush(urnw::colors::kUrGreen));
+  w_.ProvideModeRing().Stroke(urnw::colors::MakeBrush(urnw::colors::kUrGreen));
+  w_.ProvideModeRing().Visibility(Visibility::Visible);
+  w_.ProvideStatsText().Text(hstring{urnw::Plural("providing_client_count", 3)});
+  w_.ProvideStatsRow().Visibility(Visibility::Visible);
+  // the DNS rows, from the SDK's own defaults. A pure local lookup - it reads a
+  // table compiled into the SDK and makes no request.
+  if (auto defaults = urnet::getDefaultDnsResolverSettings()) {
+    dnsSettings_ = defaults;
+    ApplyDnsCard(dnsSettings_);
+  }
+  ApplyConnectionsList();
+  ApplyContractsList();
+  ApplySplitRuleCount();
+  ApplySessionRows();
+  ApplyPeersList();
 }
 
 // ---- drawer sheets (ContentDialogs) ----------------------------------------
@@ -1123,7 +1465,13 @@ void ConnectPage::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& pe
   // ALL connected devices (online, provide or not); the chooser's peers
   // section stays provide-filtered (connectable only). The list argument is
   // the update trigger; the count reads the unfiltered value.
-  (void)peers;
+  //
+  // R3: the snapshot is KEPT now. Before the pane shell the only thing ever
+  // drawn from it was a count, and a nullopt trigger (a remote attach/detach)
+  // means "re-render what you have", not "there are no peers" - so the cache is
+  // only replaced when a real list arrives.
+  if (peers) peers_ = peers;
+  ApplyPeersList();
   // The peers state lives in the service's device: while the rpc is down
   // (service not running) a zero here would be a stale claim presented as
   // fact, so the line goes gray and says discovery is disabled (apple

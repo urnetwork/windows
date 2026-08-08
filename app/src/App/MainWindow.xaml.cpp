@@ -55,55 +55,12 @@ void SetStar(Controls::ColumnDefinition const& column, double weight) {
   if (column) column.Width(GridLengthHelper::FromValueAndType(weight, GridUnitType::Star));
 }
 
-// Move a pane into `target` at `index`, taking it out of whatever panel holds it
-// now.
-//
-// Home is REPARENTED rather than re-addressed, and the difference is the ~330px
-// hole this fixes. Grid cells cannot express "these three modules stack, and one
-// of them steps sideways when there is room": an Auto row is as tall as the
-// tallest cell in it, so the moment the rail beside the hero was taller than the
-// hero, the panel BELOW the hero started that much further down - a gap in the
-// middle of a column whose only job was to stack, with the last card stranded at
-// the bottom of the viewport. (RowSpan is worse, not better: a spanning child's
-// desired height is spread across every Auto row it covers.) A StackPanel cannot
-// have that defect, so the wide layouts are StackPanels too and the panes change
-// parent.
-//
-// COM identity, not winrt's operator==. `==` compares the interface pointer the
-// wrapper happens to be holding, and the same StackPanel reached as a UIElement
-// out of a UIElementCollection is not the same pointer as one reached through
-// the generated x:Name accessor. QI for IUnknown is the rule that answers "the
-// same object"; the first version of this used == and IndexOf, neither found the
-// pane in the parent it was plainly sitting in, nothing was removed, and
-// InsertAt took the app down on the FIRST layout pass with "Element is already
-// the child of another element" - on every destination, since ApplyBreakpoint is
-// window-level. (Parent() is no good either: it is null until the element is
-// loaded, and the first SizeChanged beats Loaded.)
-bool SameElement(UIElement const& a, UIElement const& b) {
-  if (!a || !b) return false;
-  return a.as<winrt::Windows::Foundation::IUnknown>() ==
-         b.as<winrt::Windows::Foundation::IUnknown>();
-}
-
-// Move `pane` into `target` at `index`, taking it out of whichever of `homes`
-// holds it now. The caller names the homes rather than asking the pane, so this
-// never depends on when the tree became walkable.
-void Reparent(UIElement const& pane, Panel const& target, uint32_t index,
-              std::initializer_list<Panel> homes) {
-  if (!pane || !target) return;
-  for (auto const& home : homes) {
-    if (!home) continue;
-    auto children = home.Children();
-    for (uint32_t i = 0; i < children.Size(); ++i) {
-      if (!SameElement(children.GetAt(i), pane)) continue;
-      if (SameElement(home, target) && i == index) return;  // already in place
-      children.RemoveAt(i);
-      const uint32_t size = target.Children().Size();
-      target.Children().InsertAt(index < size ? index : size, pane);
-      return;
-    }
-  }
-}
+// (Reparent / SameElement lived here. They moved Home's panes between three
+// StackPanel hosts at each breakpoint, because the card layout needed a module
+// to stack under the hero at one width and sit beside it at another. R3's pane
+// shell has no such move: the three panes are declared where they live and the
+// breakpoint only decides how many are visible. Deleted with the layout that
+// needed them.)
 
 }  // namespace
 
@@ -315,49 +272,41 @@ void MainWindow::ApplyBreakpoint() {
   wideLayout_ = wide;
   ultraLayout_ = ultra;
 
-  // ---- Home: Proton's shape, with a third column when the window earns one --
+  // ---- Home: HOW MANY PANES FIT ---------------------------------------------
   //
-  //   narrow  hero / rail / activity, one stack, 600 cap
-  //   wide    hero + activity | rail(360)          1400 cap
-  //   ultra   hero | activity | rail(360)          2100 cap
+  // R3 deleted Home's card layout outright, and with it everything this branch
+  // used to do. There is no centring column, no MaxWidth cap, and no Reparent:
+  // the three panes are declared where they live and they always fill the
+  // window. All that is left to decide is how many of them there is room FOR,
+  // which is a width question and nothing else.
   //
-  // The rail is the DECISIONS (provide, connect options) and the activity column
-  // is the STATUS (session, charts, DNS) - the same cut Proton's NetShield /
-  // Kill switch / Split tunnelling rail makes. The plan card was a third rail
-  // module; it is gone from Home per spec §5, which is most of why the rail no
-  // longer out-runs the main column at wide.
+  //   >= 1000dip   three panes   connect(330) | activity(*) | statistics(380)
+  //   <  1000dip   two panes     connect(330) | activity(*)
   //
-  // 1400 rather than R1's 1240: 1240 was the spec's reading measure, and on a
-  // 2062dip window it left ~550dip dead. 1400 is as wide as a hero + rail should
-  // read; past that the answer is a third column, not a wider one. 2100 at ultra
-  // is a ceiling for very large displays, not a target - on this box the window
-  // itself (~1790dip of content) is the binding constraint.
+  // The statistics pane is the one that folds because it is the inspector: its
+  // charts, session figures, contracts, split rules and DNS are all reachable
+  // from the sheets its group headers open, so nothing becomes unreachable at
+  // flyout width - it just stops being on screen at the same time.
   //
-  // The panes are moved by Reparent, not by Grid.Row: see its comment for the
-  // hole that cost.
-  ConnectCapColumn().MaxWidth(ultra ? 2100 : wide ? 1400 : 600);
-  // At ultra all three columns are EQUAL STARS - thirds, not a main column plus
-  // two leftovers. A 360 rail beside two ~690 columns is the shape the owner
-  // called "modules placed weird": three panels, three widths, no rhythm.
-  // Thirds give the page one vertical rhythm to read down, and each column is
-  // still ~570dip - wider than the 600 the ENTIRE page used to be capped at.
-  // Below ultra the rail is a rail again: 360 beside one main column.
-  if (ultra) {
-    SetStar(ConnectDetailColumn(), 1);
-    SetStar(ConnectRailColumn(), 1);
+  // Below ~640dip the connect pane would leave the activity pane too narrow to
+  // be a table, so it takes the whole window and activity folds too.
+  const bool twoPanes = 640.0 <= width;
+  SetWidth(ConnectPaneCColumn(), wide ? 380 : 0);
+  ConnectPaneCRule().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+  ConnectPaneC().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+  // the connect pane is a fixed rail beside a table, EXCEPT when it is the only
+  // pane left, where it takes the star and the activity pane closes
+  if (twoPanes) {
+    SetWidth(ConnectPaneAColumn(), 330);
+    SetStar(ConnectPaneBColumn(), 1);
+    ConnectPaneB().Visibility(Visibility::Visible);
+    ConnectPaneBRule().Visibility(Visibility::Visible);
   } else {
-    SetWidth(ConnectDetailColumn(), 0);
-    SetWidth(ConnectRailColumn(), wide ? 360 : 0);
+    SetStar(ConnectPaneAColumn(), 1);
+    SetWidth(ConnectPaneBColumn(), 0);
+    ConnectPaneB().Visibility(Visibility::Collapsed);
+    ConnectPaneBRule().Visibility(Visibility::Collapsed);
   }
-  const std::initializer_list<Panel> connectHomes = {
-      ConnectMainStack(), ConnectDetailHost(), ConnectRailHost()};
-  // Activity first: at narrow it takes index 1, which pushes the rail to 2, and
-  // the rail's own move then puts it back at 1 - hero, decisions, activity, the
-  // order the flyout has always had.
-  Reparent(ConnectStatusStack(), ultra ? ConnectDetailHost() : ConnectMainStack(),
-           /*index*/ ultra ? 0 : 1, connectHomes);
-  Reparent(ConnectRail(), wide ? ConnectRailHost() : ConnectMainStack(),
-           /*index*/ wide ? 0 : 1, connectHomes);
 
   // ---- Wallet: Portmaster's master-detail ----------------------------------
   // The figures across the top; the sources of the money on the left (wallets,
@@ -680,6 +629,12 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   }
 
   connect_->ResyncDrawer();
+  // R3: and then, if the operator asked for it, fill Home's panes with synthetic
+  // rows. AFTER ResyncDrawer, which would otherwise overwrite them with the
+  // empty snapshots a session-less process has. Gated the same second time on
+  // URNETWORK_PREVIEW_SAMPLE (ConnectPage::PreviewSampleActive): a pane layout
+  // whose whole claim is density cannot be reviewed empty.
+  connect_->ApplyPreviewSample();
   if (ConnectView().Visibility() == Visibility::Visible) connect_->AnimateDrawerIn();
 
   // Both snackbar call sites are signed-in-only and had never rendered. Raise
@@ -710,7 +665,16 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   // header is the only thing telling the user where they are. The item's own
   // Content is already the localized name (ApplyStrings), so this needs no new
   // string and cannot drift from the menu.
-  HomeNav().Header(item.Content());
+  //
+  // EXCEPT on Home. A 60px page title in the display face above the content is
+  // itself a phone-app signal, and it is the one thing that would stop the R3
+  // panes reaching the ceiling. The panes carry their own 40px header strips and
+  // those name the columns; the destination is named by the selected item in the
+  // nav pane beside them, which is on screen at every width the header is. So
+  // Home clears the header and the pane shell starts at the top of the content
+  // area. (AlwaysShowHeader is not the lever: it hides the header only in the
+  // minimal pane mode. A null Header collapses the presenter at every width.)
+  HomeNav().Header(tag == L"connect" ? IInspectable{nullptr} : item.Content());
 
   const bool wasConnectVisible = ConnectView().Visibility() == Visibility::Visible;
   ConnectView().Visibility(tag == L"connect" ? Visibility::Visible : Visibility::Collapsed);
