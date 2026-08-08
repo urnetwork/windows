@@ -1233,58 +1233,94 @@
                     </Grid>
                 </Grid>
 
-                <!-- Network (R1 skeleton). A first-class destination for the
-                     locations/providers picker that is a drawer/sheet today. This
-                     wave ships the PAGE SHELL - a header and a card that opens the
-                     existing chooser (ShowLocationChooserSheet, via
-                     OnLocationRowClick) - so the destination is real and runnable;
-                     Wave 2 rebuilds the in-page location list, search, favourites
-                     and blocked locations against the component kit. -->
-                <ScrollViewer Margin="24" x:Name="NetworkView" Visibility="Collapsed"
-                              HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto">
-                  <Grid>
+                <!-- ==== NETWORK: THE PANE SHELL (R4) ======================
+                     Was a page shell around one card whose only affordance
+                     opened the ContentDialog chooser - measured at 95% empty
+                     background maximized, the worst screen in the app. It is
+                     now the chooser AS A DESTINATION, in Home's idiom:
+
+                       col 0  LOCATIONS   search over the SDK's own buckets
+                                          (peers / best available / countries /
+                                          regions / cities / devices) as ONE row
+                                          species that fills to the floor
+                       col 2  DETAIL      what the selected provider IS, the
+                                          bucket counts behind the list, and
+                                          blocked locations
+
+                     Everything in both panes is built by urnw::NetworkPage
+                     (LocationSheets.cpp - the locations unit) into the named
+                     hosts below, off the SAME two SDK feeds the chooser sheet
+                     reads (SdkHost::SetLocationsObserver). The sheet still
+                     exists and Home still opens it; this is a second view of
+                     one model, not a fork of it.
+
+                     NOTHING HERE IS INVENTED. ConnectLocation carries name,
+                     provider_count, location_type, city/region/country,
+                     stable, strong_privacy and promoted, and those are exactly
+                     the detail rows. There is no latency and no load figure in
+                     the SDK, so there is no latency and no load column. -->
+                <Grid x:Name="NetworkView" Visibility="Collapsed"
+                      Style="{StaticResource UrPaneStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="1000*" MaxWidth="820" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="NetworkPaneAColumn" Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="NetworkPaneBColumn" Width="400" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="1" Spacing="16" Margin="0,0,0,24">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE774;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="NetworkHeading" Style="{StaticResource UrPanelHeadingStyle}" />
-                        </StackPanel>
-                        <Border Style="{StaticResource UrCardStyle}" Padding="24">
-                            <StackPanel Spacing="16">
-                                <TextBlock x:Name="NetworkIntroText" TextWrapping="Wrap"
-                                           Style="{StaticResource UrSupportingTextStyle}" />
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                                        <TextBlock x:Name="NetworkSelectedLabel"
-                                                   Style="{StaticResource UrLabelStyle}" />
-                                        <TextBlock x:Name="NetworkSelectedValue"
-                                                   Style="{StaticResource UrBodyLargeTextStyle}" />
-                                    </StackPanel>
-                                    <Button x:Name="NetworkBrowseButton" Grid.Column="1"
-                                            VerticalAlignment="Center"
-                                            Click="OnLocationRowClick">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <FontIcon Glyph="&#xE774;" Style="{StaticResource UrRowIconStyle}"
-                                                      FontSize="14" />
-                                            <TextBlock x:Name="NetworkBrowseText" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Button>
-                                </Grid>
-                            </StackPanel>
+
+                    <!-- ============ PANE A: LOCATIONS ============ -->
+                    <Grid Grid.Column="0" x:Name="NetworkPaneA"
+                          AutomationProperties.LandmarkType="Main">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="NetworkPaneATitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                                <TextBlock x:Name="NetworkPaneAMeta" HorizontalAlignment="Right"
+                                           Style="{StaticResource UrPaneMetaStyle}" />
+                            </Grid>
                         </Border>
-                    </StackPanel>
-                  </Grid>
-                </ScrollViewer>
+                        <!-- the search row, built by NetworkPage so the field and
+                             its SDK filter live in one place -->
+                        <Grid Grid.Row="1" x:Name="NetworkSearchHost" />
+                        <!-- The list FILLS the rest of the pane, and its empty
+                             state is a centred line in that same full-height
+                             area - never a short card at the top of it. -->
+                        <Grid Grid.Row="2">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                                <StackPanel x:Name="NetworkListHost" />
+                            </ScrollViewer>
+                            <Grid x:Name="NetworkListEmptyHost" IsHitTestVisible="False" />
+                        </Grid>
+                    </Grid>
+
+                    <Border x:Name="NetworkPaneBRule" Grid.Column="1"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE B: DETAIL ============ -->
+                    <Grid Grid.Column="2" x:Name="NetworkPaneB">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="NetworkPaneBTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                                <TextBlock x:Name="NetworkPaneBMeta" HorizontalAlignment="Right"
+                                           Style="{StaticResource UrPaneMetaStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="NetworkDetailHost" />
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
 
                 <!-- Account (macOS AccountRootView parity: plan card + usage bar,
                      redeem, redeemed codes, profile, referrals) -->

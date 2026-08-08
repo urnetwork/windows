@@ -967,6 +967,64 @@
                 <Setter Property="TextWrapping" Value="NoWrap" />
             </Style>
 
+            <!-- ==== R4 pane additions (Network / Earnings / Account / Settings)
+                 Additive only: nothing above this comment changed. Four keys,
+                 each because a pane needs a shape the R3 vocabulary did not yet
+                 have, and every one of them is built from the SAME metrics as
+                 the R3 block so the four Wave-2 destinations cannot drift from
+                 Home. -->
+
+            <!-- The two-line row height. R3's UrPaneRowHeight (40) is the
+                 SINGLE-line row: a 13px label centred in it. A settings row is
+                 a label AND its one-line explanation, which needs 13px + 11px +
+                 the leading between them, and the whole point of the model is
+                 that a list picks ONE height and holds it. So a list of
+                 explained rows is 44 throughout - including the rows in it that
+                 have no explanation. -->
+            <x:Double x:Key="UrPaneRowTallHeight">44</x:Double>
+
+            <!-- The second line of a two-line pane row. Muted, 11, single line,
+                 trimmed: an explanation that wrapped would break the fixed
+                 height the row species exists to guarantee. -->
+            <Style x:Key="UrRowNoteStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
+            </Style>
+
+            <!-- The search field that rides at the top of a list pane, under its
+                 header strip. A TextBox is a rounded, bordered, padded island by
+                 default - i.e. a card - so this squares it off and gives it the
+                 pane row's exact metrics, and the row's bottom hairline comes
+                 from the Border it sits in. -->
+            <Style x:Key="UrPaneSearchStyle" TargetType="TextBox">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Padding" Value="0,0,0,0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <!-- A column header over a pane's table: the same 28px strip as a
+                 group header, but its cells are the table's column names. Used
+                 by the payouts / leaderboard / balance-code tables so a table
+                 header and a group header sit on ONE rhythm. -->
+            <Style x:Key="UrPaneColumnTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="CharacterSpacing" Value="60" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextFaintBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
+            </Style>
+
             <!-- The pane's primary command: a full-bleed bar, not a pill. It is
                  the width of its pane and square with it, so the one loud thing
                  on Home is loud because it spans a column, not because it

@@ -79,6 +79,7 @@ MainWindow::MainWindow() {
   // ApplyStrings because every page paints its own labels from there.
   login_ = std::make_unique<urnw::LoginPage>(*this);
   connect_ = std::make_unique<urnw::ConnectPage>(*this);
+  network_ = std::make_unique<urnw::NetworkPage>(*this);
   account_ = std::make_unique<urnw::AccountPage>(*this);
   wallet_ = std::make_unique<urnw::WalletPage>(*this);
   settings_ = std::make_unique<urnw::SettingsPage>(*this);
@@ -92,6 +93,29 @@ MainWindow::MainWindow() {
   if (auto root = Content().try_as<FrameworkElement>()) {
     root.SizeChanged([weak = get_weak()](auto const&, auto const&) {
       if (auto self = weak.get()) self->ApplyBreakpoint();
+    });
+  }
+
+  // R4: the Network destination's copy of the locations/peers feeds. A SECOND
+  // subscriber, not a replacement - ConnectPage still owns the handlers that
+  // drive the chooser sheet, and SdkHost::SetLocationsObserver explains why
+  // there are two slots rather than one. Bound here rather than inside the page
+  // so it follows the same rule as every other feed in this window: the SDK
+  // fires on its own thread, the payload is captured by value, and nothing
+  // touches XAML until it is back on the dispatcher with the weak ref resolved.
+  {
+    auto queue = DispatcherQueue();
+    auto weak = get_weak();
+    Sdk().SetLocationsObserver(
+        [queue, weak](std::optional<urnet::FilteredLocations> locations, std::string state) {
+          queue.TryEnqueue([weak, locations = std::move(locations), state = std::move(state)] {
+            if (auto self = weak.get()) self->network().OnLocations(locations, state);
+          });
+        });
+    Sdk().SetPeersObserver([queue, weak](std::optional<urnet::NetworkPeerList> peers) {
+      queue.TryEnqueue([weak, peers = std::move(peers)] {
+        if (auto self = weak.get()) self->network().OnPeers(peers);
+      });
     });
   }
 
@@ -212,15 +236,9 @@ void MainWindow::ApplyStrings() {
   // no key for the developer surface yet, so it goes through the same fallback
   // the rest of that screen uses (DeveloperPage.cpp, Dev()).
 
-  // Network destination shell (R1 skeleton; Wave 2 builds the real picker).
-  NetworkHeading().Text(Loc("available_providers"));
-  NetworkIntroText().Visibility(Visibility::Collapsed);  // no shipped intro sentence yet
-  NetworkSelectedLabel().Text(Loc("selected_provider"));
-  NetworkSelectedValue().Text(Loc("best_available_provider"));
-  NetworkBrowseText().Text(Loc("browse_locations"));
-
   login_->ApplyStrings();
   connect_->ApplyStrings();
+  network_->ApplyStrings();
   account_->ApplyStrings();
   wallet_->ApplyStrings();
   settings_->ApplyStrings();
@@ -307,6 +325,20 @@ void MainWindow::ApplyBreakpoint() {
     ConnectPaneB().Visibility(Visibility::Collapsed);
     ConnectPaneBRule().Visibility(Visibility::Collapsed);
   }
+
+  // ---- Network: the list, and what one row IS ------------------------------
+  // The inverse of Home's rail: here the LIST takes the star and the detail is
+  // the fixed column, because a location row is a name and a figure and gains
+  // nothing past a few hundred dips, while the detail pane is a fixed set of
+  // key/value rows that gains nothing either. 400 rather than Home's 380: the
+  // longest row in it is a country name beside a provider count.
+  //
+  // Below the breakpoint the detail folds and the list takes the window. Nothing
+  // becomes unreachable: selecting a row still connects, which is the only thing
+  // the detail pane's content is about.
+  SetWidth(NetworkPaneBColumn(), wide ? 400 : 0);
+  NetworkPaneBRule().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+  NetworkPaneB().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
 
   // ---- Wallet: Portmaster's master-detail ----------------------------------
   // The figures across the top; the sources of the money on the left (wallets,
@@ -549,14 +581,24 @@ void MainWindow::ApplyStatusStrip() {
 // session, and URNETWORK_PREVIEW_SAMPLE says the operator asked for synthetic
 // content. Without this the strip could only ever be screenshotted in its
 // signed-out state, which is the one state that does not exercise its layout.
-void MainWindow::PreviewSampleStatusStrip() {
-  if (!previewUi_) return;
+// The second of the two gates every synthetic-content path in this window
+// shares: --preview-ui says there is no session, and URNETWORK_PREVIEW_SAMPLE
+// says the operator explicitly asked for made-up content. Both are required,
+// and this is the one place the second one is read.
+bool MainWindow::PreviewSampleRequested() const {
+  if (!previewUi_) return false;
   size_t len = 0;
   char value[16]{};
   if (getenv_s(&len, value, sizeof(value), "URNETWORK_PREVIEW_SAMPLE") != 0 || len == 0) {
-    return;
+    return false;
   }
-  if (std::string_view(value) != "1") return;
+  return std::string_view(value) == "1";
+}
+
+void MainWindow::ShowBlockedLocationsFromNetwork() { settings_->ShowBlockedLocationsSheet(); }
+
+void MainWindow::PreviewSampleStatusStrip() {
+  if (!PreviewSampleRequested()) return;
   urnw::LogWarn(
       "preview-sample: rendering a SYNTHETIC status strip - no session, no api, "
       "none of these values came from the network");
@@ -635,6 +677,9 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   // URNETWORK_PREVIEW_SAMPLE (ConnectPage::PreviewSampleActive): a pane layout
   // whose whole claim is density cannot be reviewed empty.
   connect_->ApplyPreviewSample();
+  // ...and Network's, for the same reason and behind the same two gates: a
+  // location list with nothing in it cannot show whether a location list fills.
+  if (PreviewSampleRequested()) network_->ApplyPreviewSample();
   if (ConnectView().Visibility() == Visibility::Visible) connect_->AnimateDrawerIn();
 
   // Both snackbar call sites are signed-in-only and had never rendered. Raise
@@ -674,7 +719,17 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   // Home clears the header and the pane shell starts at the top of the content
   // area. (AlwaysShowHeader is not the lever: it hides the header only in the
   // minimal pane mode. A null Header collapses the presenter at every width.)
-  HomeNav().Header(tag == L"connect" ? IInspectable{nullptr} : item.Content());
+  //
+  // R4 extends that from Home to every destination REBUILT in the pane shell.
+  // A 60px display-face title above a pane layout is the one thing that stops
+  // the panes reaching the ceiling, and it looked exactly as wrong on Network
+  // as it had on Home - measured side by side against the approved Connect
+  // capture. Support and Developer keep their header because they are still
+  // card-model pages with a page margin, and a card page with no title reads as
+  // content that started halfway down.
+  const bool paneShell = tag == L"connect" || tag == L"network" || tag == L"wallet" ||
+                         tag == L"leaderboard" || tag == L"account" || tag == L"settings";
+  HomeNav().Header(paneShell ? IInspectable{nullptr} : item.Content());
 
   const bool wasConnectVisible = ConnectView().Visibility() == Visibility::Visible;
   ConnectView().Visibility(tag == L"connect" ? Visibility::Visible : Visibility::Collapsed);
@@ -690,6 +745,10 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   // it runs only while this destination is selected AND the window is
   // presenting (SetPresentationActive supplies the other half).
   developer_->SetSelected(tag == L"developer");
+  // R4: opening Network opens the SDK's locations/peer view controllers and
+  // re-renders from whatever snapshot exists now. Same shape as the developer
+  // poll above - a destination that is not on screen does not hold a feed open.
+  network_->SetSelected(tag == L"network");
 
   if (tag == L"connect" && !wasConnectVisible) connect_->AnimateDrawerIn();
 

@@ -3,13 +3,20 @@
 
 #include "LocationSheets.h"
 
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
+#include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 #include <string>
+#include <utility>
 
 #include "Localization.h"
+#include "Log.h"
+#include "MainWindow.xaml.h"
+#include "PageContext.h"
 #include "Strings.h"  // Narrow: the utf-16 search box into the sdk's utf-8 filter
 #include "UrColors.h"
+#include "UrComponents.h"
 
 using namespace winrt;
 using namespace winrt::Windows::Foundation;
@@ -426,6 +433,455 @@ Grid LocationChooserSheet::MakeBestAvailableRow(bool selected) {
     }
   });
   return row;
+}
+
+// ============================================================================
+// THE NETWORK DESTINATION (R4)
+// ============================================================================
+
+namespace {
+
+// The window's SDK host, the same way every other page unit reaches it.
+SdkHost& Sdk() { return urnw::pages::Sdk(); }
+
+int64_t CountOf(std::optional<urnet::ConnectLocationList> const& list) {
+  return list ? static_cast<int64_t>(list->size()) : 0;
+}
+
+// A synthetic location for --preview-ui. Every field is set explicitly so the
+// detail pane exercises all of them; nothing here reaches the network.
+urnet::ConnectLocation SampleLocation(std::string const& name, std::string const& type,
+                                      std::string const& country, std::string const& code,
+                                      int32_t providers, bool stable, bool strongPrivacy,
+                                      bool promoted, std::string const& region = {},
+                                      std::string const& city = {}) {
+  urnet::ConnectLocation location;
+  urnet::ConnectLocationId id;
+  id.location_id = "sample-" + code + "-" + name;
+  location.connect_location_id = id;
+  location.name = name;
+  location.location_type = type;
+  location.country = country;
+  location.country_code = code;
+  if (!region.empty()) location.region = region;
+  if (!city.empty()) location.city = city;
+  location.provider_count = providers;
+  location.stable = stable;
+  location.strong_privacy = strongPrivacy;
+  location.promoted = promoted;
+  return location;
+}
+
+}  // namespace
+
+NetworkPage::NetworkPage(winrt::URnetwork::implementation::MainWindow& window) : w_(window) {}
+
+void NetworkPage::ApplyStrings() {
+  Build();
+  w_.NetworkPaneATitle().Text(Loc("available_providers"));
+  w_.NetworkPaneBTitle().Text(Loc("selected_provider"));
+  // Landmark names. Without them a screen reader announces two unnamed regions
+  // and the user has no way to tell the list from the detail beside it.
+  Automation::AutomationProperties::SetName(w_.NetworkPaneA(), Loc("available_providers"));
+  Automation::AutomationProperties::SetName(w_.NetworkPaneB(), Loc("selected_provider"));
+  if (search_) {
+    search_.PlaceholderText(Loc("search_providers_input_placeholder"));
+    Automation::AutomationProperties::SetName(search_, Loc("search_providers_input_label"));
+  }
+  Render();
+}
+
+void NetworkPage::Build() {
+  if (built_) return;
+  built_ = true;
+  auto row = kit::MakePaneSearchRow(Loc("search_providers_input_placeholder"));
+  search_ = row.box;
+  search_.TextChanged([this](IInspectable const&, auto const&) {
+    query_ = Narrow(search_.Text());
+    // The SDK owns the search: it re-buckets and pushes FilteredLocations back
+    // through the observer, exactly as it does for the sheet. No app-side
+    // filtering, so the page and the sheet can never disagree about a query.
+    Sdk().SetLocationFilter(query_);
+    // The idle/searching branch in Render is app-side, so re-render now rather
+    // than wait for a push that a no-op filter change will not produce.
+    Render();
+  });
+  w_.NetworkSearchHost().Children().Append(row.root);
+}
+
+void NetworkPage::SetSelected(bool selected) {
+  selected_ = selected;
+  if (!selected) return;
+  // Opening the view controllers is idempotent and seeds both feeds; the
+  // chooser sheet calls the same thing.
+  Sdk().EnsureLocations();
+  if (!samplePinned_) {
+    locations_ = Sdk().CurrentFilteredLocations();
+    peers_ = Sdk().ConnectedProvidePeers();
+  }
+  Render();
+}
+
+void NetworkPage::OnLocations(std::optional<urnet::FilteredLocations> locations,
+                              std::string state) {
+  (void)state;
+  if (samplePinned_) return;
+  locations_ = std::move(locations);
+  Render();
+}
+
+void NetworkPage::OnPeers(std::optional<urnet::NetworkPeerList> peers) {
+  if (samplePinned_) return;
+  peers_ = std::move(peers);
+  Render();
+}
+
+Button NetworkPage::MakeRow(hstring const& title, hstring const& meta,
+                            winrt::Windows::UI::Color dotColor, bool selected, bool unstable,
+                            bool strongPrivacy, bool providing) {
+  Button row;
+  if (auto app = Application::Current()) {
+    auto key = winrt::box_value(hstring{L"UrPaneRowButtonStyle"});
+    if (app.Resources().HasKey(key)) {
+      row.Style(app.Resources().Lookup(key).try_as<Style>());
+    }
+  }
+  // ONE height for the whole pane. Home's list rows are 36 and so are these:
+  // the two panes are the same construction, so they read as one app.
+  row.Height(36);
+  row.MinHeight(36);
+
+  Grid grid;
+  grid.ColumnSpacing(10);
+  for (auto width : {GridLengthHelper::Auto(),
+                     GridLengthHelper::FromValueAndType(1, GridUnitType::Star),
+                     GridLengthHelper::Auto(), GridLengthHelper::Auto()}) {
+    ColumnDefinition column;
+    column.Width(width);
+    grid.ColumnDefinitions().Append(column);
+  }
+
+  auto dot = MakeDot(dotColor, 8);
+  Automation::AutomationProperties::SetAccessibilityView(
+      dot, Automation::Peers::AccessibilityView::Raw);
+  grid.Children().Append(dot);
+
+  auto name = MakeName(title);
+  name.FontSize(13);
+  name.VerticalAlignment(VerticalAlignment::Center);
+  Automation::AutomationProperties::SetAccessibilityView(
+      name, Automation::Peers::AccessibilityView::Raw);
+  Grid::SetColumn(name, 1);
+  grid.Children().Append(name);
+
+  StackPanel glyphs;
+  glyphs.Orientation(Orientation::Horizontal);
+  glyphs.Spacing(6);
+  glyphs.VerticalAlignment(VerticalAlignment::Center);
+  if (providing) glyphs.Children().Append(MakeGlyph(kProvidingGlyph, colors::kUrGreen));
+  if (unstable) glyphs.Children().Append(MakeGlyph(kWarningGlyph, kUnstable));
+  if (strongPrivacy) glyphs.Children().Append(MakeGlyph(kPrivacyGlyph, colors::kUrGreen));
+  if (selected) glyphs.Children().Append(MakeGlyph(kCheckGlyph, colors::kToggleAccent));
+  Automation::AutomationProperties::SetAccessibilityView(
+      glyphs, Automation::Peers::AccessibilityView::Raw);
+  Grid::SetColumn(glyphs, 2);
+  grid.Children().Append(glyphs);
+
+  auto figure = MakeText(meta, 12, MutedBrush());
+  figure.VerticalAlignment(VerticalAlignment::Center);
+  figure.TextWrapping(TextWrapping::NoWrap);
+  Automation::AutomationProperties::SetAccessibilityView(
+      figure, Automation::Peers::AccessibilityView::Raw);
+  Grid::SetColumn(figure, 3);
+  grid.Children().Append(figure);
+
+  // A Button whose Content is a Panel gets NO automatic name. Everything inside
+  // is Raw, so this is the row's ONLY accessible node - it has to carry the
+  // whole row, including the state the trailing glyphs draw in colour.
+  std::wstring announced{title};
+  if (!meta.empty()) announced += L", " + std::wstring{meta};
+  if (unstable) announced += L", " + std::wstring{Loc("unstable_providers_warning")};
+  if (strongPrivacy) announced += L", " + std::wstring{Loc("strong_anonymization")};
+  if (providing) announced += L", " + std::wstring{Loc("network_peers")};
+  Automation::AutomationProperties::SetName(row, hstring{announced});
+  if (selected) {
+    Automation::AutomationProperties::SetFullDescription(row, Loc("selected_provider"));
+  }
+
+  row.Content(grid);
+  return row;
+}
+
+void NetworkPage::AppendGroup(hstring const& title, int64_t count) {
+  auto header = kit::MakePaneGroupHeader(
+      title, count <= 0 ? hstring{} : hstring{std::to_wstring(count)});
+  w_.NetworkListHost().Children().Append(header.root);
+}
+
+void NetworkPage::AppendLocationSection(hstring const& title,
+                                        std::optional<urnet::ConnectLocationList> const& items,
+                                        std::optional<urnet::ConnectLocation> const& selected,
+                                        int64_t& runningTotal) {
+  if (!NonEmpty(items)) return;
+  AppendGroup(title, static_cast<int64_t>(items->size()));
+  runningTotal += static_cast<int64_t>(items->size());
+  for (auto const& location : *items) {
+    const int providers = location.provider_count.value_or(0);
+    auto row = MakeRow(H(location.name.value_or(std::string())),
+                       0 < providers
+                           ? hstring{Plural("provider_count", static_cast<int64_t>(providers))}
+                           : hstring{},
+                       LocationColor(location), IsLocationSelected(selected, location),
+                       !location.stable, location.strong_privacy, /*providing=*/false);
+    const urnet::ConnectLocation copy = location;
+    // Same action as the sheet's row: select AND connect. Deliberately not a
+    // new "highlight" concept - one model, one meaning, and the detail pane
+    // then genuinely shows the SELECTED provider rather than a hover state.
+    row.Click([this, copy](IInspectable const&, auto const&) {
+      Sdk().Connect(copy);
+      Render();
+    });
+    w_.NetworkListHost().Children().Append(row);
+  }
+}
+
+void NetworkPage::Render() {
+  if (!w_.NetworkListHost()) return;
+  auto host = w_.NetworkListHost();
+  host.Children().Clear();
+
+  const auto selected = Sdk().SelectedLocation();
+  const bool searching = !query_.empty();
+  int64_t total = 0;
+
+  // 1. network peers, pinned first (mobile parity, and the chooser's order)
+  const int64_t peerCount = peers_ ? static_cast<int64_t>(peers_->size()) : 0;
+  if (0 < peerCount) {
+    AppendGroup(Loc("network_peers"), peerCount);
+    total += peerCount;
+    for (auto const& peer : *peers_) {
+      auto row = MakeRow(H(PeerDisplayName(peer)), H(peer.DeviceSpec),
+                         ColorFromHex(urnet::getColorHex(peer.ClientId.value_or(std::string()))),
+                         IsPeerSelected(selected, peer), /*unstable=*/false,
+                         /*strongPrivacy=*/false, /*providing=*/true);
+      const urnet::NetworkPeer copy = peer;
+      row.Click([this, copy](IInspectable const&, auto const&) {
+        urnet::ConnectLocation location;
+        urnet::ConnectLocationId id;
+        id.client_id = copy.ClientId;
+        location.connect_location_id = id;
+        location.name = PeerDisplayName(copy);
+        Sdk().Connect(location);
+        Render();
+      });
+      host.Children().Append(row);
+    }
+  }
+
+  // 2. searching -> the SDK's best matches; idle -> the single best-available row
+  if (searching) {
+    if (locations_) AppendLocationSection(Loc("top_matches"), locations_->BestMatches, selected, total);
+  } else {
+    AppendGroup(Loc("promoted_locations"), 0);
+    auto row = MakeRow(Loc("best_available_provider"), hstring{}, colors::kUrCoral,
+                       IsBestAvailableSelected(selected), /*unstable=*/false,
+                       /*strongPrivacy=*/false, /*providing=*/false);
+    row.Click([this](IInspectable const&, auto const&) {
+      Sdk().ConnectBestAvailable();
+      Render();
+    });
+    host.Children().Append(row);
+    total += 1;
+  }
+
+  // 3. the SDK's own buckets, in the SDK's own order
+  if (locations_) {
+    AppendLocationSection(Loc("countries"), locations_->Countries, selected, total);
+    AppendLocationSection(Loc("regions"), locations_->Regions, selected, total);
+    AppendLocationSection(Loc("cities"), locations_->Cities, selected, total);
+    AppendLocationSection(Loc("devices"), locations_->Devices, selected, total);
+  }
+
+  // The empty state is a centred line inside the FULL-HEIGHT list area (the
+  // markup overlays this host on the scroller), never a short card at the top.
+  auto empty = w_.NetworkListEmptyHost();
+  empty.Children().Clear();
+  const bool nothing = host.Children().Size() == 0;
+  if (nothing) {
+    empty.Children().Append(kit::MakePaneEmptyLine(
+        searching ? Loc("no_locations_found") : Loc("connecting_status_indicator")));
+  }
+
+  w_.NetworkPaneAMeta().Text(total <= 0 ? hstring{} : hstring{std::to_wstring(total)});
+  RenderDetail();
+}
+
+void NetworkPage::RenderDetail() {
+  auto host = w_.NetworkDetailHost();
+  if (!host) return;
+  host.Children().Clear();
+
+  const auto selected = Sdk().SelectedLocation();
+  const bool best = IsBestAvailableSelected(selected);
+
+  // ---- what the selected provider IS ---------------------------------------
+  host.Children().Append(kit::MakePaneGroupHeader(Loc("selected_location")).root);
+  auto value = [&](std::string_view key, hstring const& text) {
+    if (text.empty()) return;
+    host.Children().Append(kit::MakePaneKeyValueRow(Loc(key), text).root);
+  };
+
+  if (best || !selected) {
+    host.Children().Append(
+        kit::MakePaneKeyValueRow(Loc("name_label"), Loc("best_available_provider")).root);
+    w_.NetworkPaneBMeta().Text(Loc("best_available_provider"));
+  } else {
+    const auto& location = *selected;
+    const hstring name = H(location.name.value_or(std::string()));
+    value("name_label", name);
+    w_.NetworkPaneBMeta().Text(name);
+    const int providers = location.provider_count.value_or(0);
+    if (0 < providers) {
+      host.Children().Append(
+          kit::MakePaneKeyValueRow(
+              Loc("available_providers"),
+              hstring{Plural("provider_count", static_cast<int64_t>(providers))})
+              .root);
+    }
+    value("country", H(location.country.value_or(std::string())));
+    // "Regions"/"Cities" are the store's bucket headers, not field labels, and
+    // there is no singular key for either. Used here rather than inventing
+    // "Region"/"City" - reported for the store.
+    value("regions", H(location.region.value_or(std::string())));
+    value("cities", H(location.city.value_or(std::string())));
+    host.Children().Append(
+        kit::MakePaneKeyValueRow(Loc("strong_anonymization"),
+                                 location.strong_privacy ? Loc("yes") : Loc("no"))
+            .root);
+    host.Children().Append(
+        kit::MakePaneKeyValueRow(Loc("promoted"),
+                                 location.promoted.value_or(false) ? Loc("yes") : Loc("no"))
+            .root);
+    if (!location.stable) {
+      // Amber, and a sentence, rather than a "Stable: No" row: the store has no
+      // "Stable" label and this is the shipped string for the condition.
+      auto warning = kit::MakePaneRow(34);
+      auto text = MakeText(Loc("unstable_providers_warning"), 12,
+                           SolidColorBrush(kUnstable));
+      text.VerticalAlignment(VerticalAlignment::Center);
+      warning.Child(text);
+      host.Children().Append(warning);
+    }
+  }
+
+  // Reset to automatic. Only shown when it would change something.
+  if (!best) {
+    auto reset = MakeRow(Loc("best_available_provider"), hstring{}, colors::kUrCoral,
+                         /*selected=*/false, false, false, false);
+    reset.Click([this](IInspectable const&, auto const&) {
+      Sdk().ConnectBestAvailable();
+      Render();
+    });
+    host.Children().Append(reset);
+  }
+
+  // ---- the buckets behind the list ----------------------------------------
+  // Honest counts, not a second copy of the list: this is what the SDK returned
+  // for the current query, which is the one thing a detail pane can say about a
+  // whole list.
+  host.Children().Append(kit::MakePaneGroupHeader(Loc("available_providers")).root);
+  auto count = [&](std::string_view key, int64_t n) {
+    host.Children().Append(kit::MakePaneKeyValueRow(Loc(key), hstring{std::to_wstring(n)}).root);
+  };
+  count("network_peers", peers_ ? static_cast<int64_t>(peers_->size()) : 0);
+  count("countries", locations_ ? CountOf(locations_->Countries) : 0);
+  count("regions", locations_ ? CountOf(locations_->Regions) : 0);
+  count("cities", locations_ ? CountOf(locations_->Cities) : 0);
+  count("devices", locations_ ? CountOf(locations_->Devices) : 0);
+
+  // ---- blocked locations ---------------------------------------------------
+  // The list of blocked countries is a network API read, which this page does
+  // not own; the row opens the sheet that does. It stays on Settings too - this
+  // is the second door to it, beside the locations it constrains.
+  host.Children().Append(kit::MakePaneGroupHeader(Loc("blocked_locations_2")).root);
+  auto blocked = kit::MakePaneTwoLineRowButton(Loc("blocked_locations_2"),
+                                               Loc("select_country_to_block"));
+  blocked.root.Click([this](IInspectable const&, auto const&) {
+    w_.ShowBlockedLocationsFromNetwork();
+  });
+  host.Children().Append(blocked.root);
+}
+
+void NetworkPage::ApplyPreviewSample() {
+  urnet::FilteredLocations sample;
+  urnet::ConnectLocationList countries;
+  countries.push_back(SampleLocation("Germany", urnet::LocationTypeCountry, "Germany", "DE",
+                                     412, true, true, true));
+  countries.push_back(SampleLocation("United States", urnet::LocationTypeCountry,
+                                     "United States", "US", 1876, true, false, true));
+  countries.push_back(SampleLocation("Japan", urnet::LocationTypeCountry, "Japan", "JP", 233,
+                                     true, false, false));
+  countries.push_back(SampleLocation("Netherlands", urnet::LocationTypeCountry, "Netherlands",
+                                     "NL", 198, true, true, false));
+  countries.push_back(SampleLocation("Brazil", urnet::LocationTypeCountry, "Brazil", "BR", 76,
+                                     false, false, false));
+  countries.push_back(SampleLocation("Singapore", urnet::LocationTypeCountry, "Singapore",
+                                     "SG", 141, true, false, false));
+  countries.push_back(SampleLocation("United Kingdom", urnet::LocationTypeCountry,
+                                     "United Kingdom", "GB", 604, true, false, false));
+  countries.push_back(SampleLocation("Canada", urnet::LocationTypeCountry, "Canada", "CA", 287,
+                                     true, false, false));
+  countries.push_back(SampleLocation("France", urnet::LocationTypeCountry, "France", "FR", 351,
+                                     true, false, false));
+  countries.push_back(SampleLocation("Sweden", urnet::LocationTypeCountry, "Sweden", "SE", 119,
+                                     true, true, false));
+  countries.push_back(SampleLocation("Australia", urnet::LocationTypeCountry, "Australia",
+                                     "AU", 92, false, false, false));
+  countries.push_back(SampleLocation("India", urnet::LocationTypeCountry, "India", "IN", 508,
+                                     true, false, false));
+  sample.Countries = countries;
+
+  urnet::ConnectLocationList regions;
+  for (auto const& entry : {std::pair{"Bavaria", "Germany"}, std::pair{"California", "United States"},
+                            std::pair{"Kanto", "Japan"}, std::pair{"Ontario", "Canada"},
+                            std::pair{"North Holland", "Netherlands"}}) {
+    regions.push_back(SampleLocation(entry.first, urnet::LocationTypeRegion, entry.second, "DE",
+                                     48, true, false, false, entry.first));
+  }
+  sample.Regions = regions;
+
+  urnet::ConnectLocationList cities;
+  for (auto const& entry : {std::pair{"Frankfurt", "Germany"}, std::pair{"Berlin", "Germany"},
+                            std::pair{"Amsterdam", "Netherlands"}, std::pair{"Tokyo", "Japan"},
+                            std::pair{"New York", "United States"},
+                            std::pair{"London", "United Kingdom"}, std::pair{"Paris", "France"},
+                            std::pair{"Toronto", "Canada"}, std::pair{"Sao Paulo", "Brazil"},
+                            std::pair{"Stockholm", "Sweden"}}) {
+    cities.push_back(SampleLocation(entry.first, urnet::LocationTypeCity, entry.second, "DE", 27,
+                                    true, false, false, {}, entry.first));
+  }
+  sample.Cities = cities;
+
+  urnet::NetworkPeerList samplePeers;
+  for (auto const& entry : {std::pair{"workshop-desktop", "windows"},
+                            std::pair{"kitchen-pi", "linux/arm64"},
+                            std::pair{"studio-mbp", "darwin/arm64"}}) {
+    urnet::NetworkPeer peer;
+    peer.ClientId = std::string("peer-") + entry.first;
+    peer.DeviceName = entry.first;
+    peer.DeviceSpec = entry.second;
+    samplePeers.push_back(peer);
+  }
+
+  LogWarn(
+      "preview-sample: rendering SYNTHETIC network locations - no session, no api, none of "
+      "these providers exist");
+  locations_ = sample;
+  peers_ = samplePeers;
+  // Pinned LAST, so the render above lands and every real (empty) push after
+  // this point is ignored rather than blanking the pane.
+  samplePinned_ = true;
+  Render();
 }
 
 }  // namespace urnw

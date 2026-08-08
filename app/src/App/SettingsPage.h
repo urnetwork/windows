@@ -70,6 +70,12 @@ class SettingsPage {
   // confirmation ritual into a way to destroy a different network.
   void ResetForSignOut();
 
+  // The blocked-locations sheet. Public because the Network destination's
+  // detail pane is a second door to it: blocked countries are what the location
+  // list is filtered by, so the list is where a user looks for them. Still
+  // reachable from Settings' VPN group; one sheet, two entry points.
+  winrt::fire_and_forget ShowBlockedLocationsSheet();
+
  private:
   winrt::fire_and_forget ShowAppRulesSheet();
 
@@ -112,7 +118,6 @@ class SettingsPage {
   winrt::fire_and_forget ShowAuthCodeSheet();
   winrt::fire_and_forget ShowAddAuthSheet();
   winrt::fire_and_forget ShowReferralNetworkSheet();
-  winrt::fire_and_forget ShowBlockedLocationsSheet();
   winrt::fire_and_forget ShowIdentitySheet();
   winrt::fire_and_forget ShowDeleteAccountSheet();
 
