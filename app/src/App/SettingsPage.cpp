@@ -157,6 +157,7 @@ void SettingsPage::BuildSections() {
   BuildIdentitySection(right);
   BuildStayInTouchSection(right);
   BuildLogsSection(right);
+  BuildAdvancedSection(right);
   BuildVersionSection(right);
   BuildDangerSection();
 
@@ -335,6 +336,49 @@ void SettingsPage::BuildLogsSection(Panel const& host) {
   // OnSendFeedback). That makes the upload correlated, disclosed and consented.
   auto save = ButtonRow(card, Loc("save_logs"), hstring{}, Loc("save"));
   save.Click([this](auto const&, auto const&) { SaveLogsToFile(); });
+}
+
+// ---- Settings > Advanced (D5) ----------------------------------------------
+//
+// R4 HOOK. The concurrent R4 branch restructures Settings and was to leave a
+// marked row in an "Advanced" section for this toggle; that branch is not in
+// this worktree, so the section is built here in the smallest shape that can
+// merge into it — ONE function, ONE line in BuildSections, and no change to any
+// existing section. When R4's Advanced section lands, move this row into it and
+// delete this function; nothing else in D5 depends on where the row lives,
+// because the write path is MainWindow::SetAdvancedMode and the read path is
+// SdkHost's standing value.
+//
+// The toggle does NOT apply the mode itself. It persists through SdkHost, which
+// publishes back through the handler MainWindow bound in its constructor, which
+// lands in ApplyAdvancedMode — the same path a value restored from disk takes.
+// One apply path, so "set it in Settings" and "it was already on at launch"
+// cannot produce two different screens.
+void SettingsPage::BuildAdvancedSection(Panel const& host) {
+  Heading(host, Adv("adv_advanced", L"Advanced"), L"");
+  auto card = Card(host);
+  advancedMode_ = ToggleRow(
+      card, Adv("adv_advanced_mode", L"Advanced mode"),
+      Adv("adv_advanced_mode_note",
+          L"Show raw values, identifiers, the connection inspector and the "
+          L"reliability tuning surface across the app."));
+  advancedMode_.IsOn(Sdk().CurrentAdvancedMode());
+  advancedMode_.Toggled([this](auto const&, auto const&) {
+    if (applyingAdvancedMode_) return;  // the apply path wrote it; do not echo back
+    w_.SetAdvancedMode(advancedMode_.IsOn());
+  });
+}
+
+// The mode changed — from this toggle, from disk at launch, or from anywhere
+// else. Written into the control with the echo guard held, because assigning
+// IsOn raises Toggled and an unguarded assignment would write the value back
+// through SdkHost on every push.
+void SettingsPage::ApplyAdvancedMode(bool on) {
+  if (!advancedMode_) return;  // the section is not built yet
+  if (advancedMode_.IsOn() == on) return;
+  applyingAdvancedMode_ = true;
+  advancedMode_.IsOn(on);
+  applyingAdvancedMode_ = false;
 }
 
 void SettingsPage::BuildVersionSection(Panel const& host) {
