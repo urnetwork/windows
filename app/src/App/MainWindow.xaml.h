@@ -340,6 +340,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // Everything after the state field, hidden as a group when there is no
   // session: three captions over three blanks says less than one honest line.
   std::vector<winrt::Microsoft::UI::Xaml::UIElement> statusSessionParts_;
+  // D5: the Advanced four and their separators, tracked separately so the
+  // breakpoint can drop exactly those. They are in statusSessionParts_ as well
+  // (they are session facts, so signing out must hide them too); this is the
+  // narrower handle for the width rule.
+  std::vector<winrt::Microsoft::UI::Xaml::UIElement> statusAdvancedParts_;
   std::string statusNetworkName_;
   bool statusGuest_ = false;
   bool statusSignedIn_ = false;

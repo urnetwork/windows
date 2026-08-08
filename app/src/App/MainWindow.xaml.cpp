@@ -439,13 +439,24 @@ void MainWindow::ApplyBreakpoint() {
   // flyout sizes the right-hand fields were simply running off the edge -
   // silently, which is the one thing a status line must not do. Without the
   // captions the same four fields fit from ~520dip, and they are still the
-  // values' accessible names, so a screen reader loses nothing. Advanced Mode's
-  // extra fields inherit this for free.
-  for (auto const* field : {&statusNetwork_, &statusProvider_, &statusTraffic_}) {
+  // values' accessible names, so a screen reader loses nothing.
+  //
+  // D5: the four Advanced fields are in this loop too, but captions were NOT
+  // enough for them. Measured at the 720x520 minimum with the mode on: eight
+  // fields ran off the right edge and RPC and Raw were cut in half -- the exact
+  // silent overflow the caption rule exists to stop, just four fields later. So
+  // below the breakpoint the Advanced fields are dropped ENTIRELY rather than
+  // shortened; the same values are on the Developer destination, which is
+  // revealed in this mode anyway. ApplyStatusStrip owns that (it is also the
+  // signed-out gate) and is called from here so a resize applies it.
+  for (auto const* field : {&statusNetwork_, &statusProvider_, &statusTraffic_,
+                            &statusMode_, &statusRoutes_, &statusRpcPort_,
+                            &statusRaw_}) {
     if (field->caption) {
       field->caption.Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
     }
   }
+  ApplyStatusStrip();
 
   urnw::LogInfo("layout: {} at {:.0f}dip",
                 ultra ? "ultra (Home in three columns)" : wide ? "wide" : "narrow",
@@ -475,6 +486,7 @@ void MainWindow::BuildStatusStrip() {
   auto fields = StatusStripFields();
   fields.Children().Clear();
   statusSessionParts_.clear();
+  statusAdvancedParts_.clear();
 
   // The strip as a whole is a landmark: one accessible name over the row, so a
   // screen reader announces "URnetwork Status" and then the fields, instead of
@@ -529,6 +541,10 @@ void MainWindow::BuildStatusStrip() {
       fields.Children().Append(field.root);
       statusSessionParts_.push_back(rule);
       statusSessionParts_.push_back(field.root);
+      // ...and separately, so the breakpoint can drop these four without
+      // touching the three the Normal reading needs.
+      statusAdvancedParts_.push_back(rule);
+      statusAdvancedParts_.push_back(field.root);
     };
     advSection(statusMode_, Adv("adv_session_mode", L"Session"));
     advSection(statusRoutes_, Adv("adv_routes", L"Routes"));
@@ -596,6 +612,13 @@ void MainWindow::ApplyStatusStrip() {
     return;
   }
   for (auto const& part : statusSessionParts_) part.Visibility(Visibility::Visible);
+  // ...and then the Advanced four back off again below the breakpoint. See the
+  // note in ApplyBreakpoint: eight fields do not fit a 720dip window even with
+  // every caption hidden, and a status line that silently runs off the edge is
+  // worse than one that admits it has no room.
+  for (auto const& part : statusAdvancedParts_) {
+    part.Visibility(wideLayout_ ? Visibility::Visible : Visibility::Collapsed);
+  }
 
   urnw::kit::SetStatusFieldValue(statusNetwork_,
                                  statusGuest_ || statusNetworkName_.empty()
