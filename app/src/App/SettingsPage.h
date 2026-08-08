@@ -87,11 +87,14 @@ class SettingsPage {
   void BuildSecuritySection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildReferralSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildDeviceSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  // R4: the reconciled preference sections. General is the one preference that
+  // ships; Advanced carries export logs and the Advanced Mode host.
+  void BuildGeneralSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  void BuildAdvancedSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildConnectionsSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildIdentitySection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildStayInTouchSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildSubscriptionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
-  void BuildLogsSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildVersionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildDangerSection();
 
@@ -148,6 +151,9 @@ class SettingsPage {
   winrt::Microsoft::UI::Xaml::Controls::Button manageSubscription_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock versionValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button deleteAccountButton_{nullptr};
+  // >>> ADVANCED MODE GOES HERE (D5). <<< The first host in Settings' Advanced
+  // group; see BuildAdvancedSection for the row shape to append.
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel advancedModeHost_{nullptr};
 
   // ---- loaded state ----
   std::string clientId_;

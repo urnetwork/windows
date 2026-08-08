@@ -84,6 +84,23 @@ std::string AuthMethodLabel(std::string const& authType) {
   return label;
 }
 
+// The store key a label SHOULD have, with the English it falls back to until
+// that key lands. This is DeveloperPage's Dev() idiom, verbatim and for the same
+// reason: Localized() returns the key id itself on a miss, so the fallback is
+// taken exactly when the store has nothing, and the screen localizes with no
+// code change the moment @urnetwork/localizations grows the key.
+//
+// Used for TWO section titles and nothing else. 945 keys ship and neither
+// "Advanced" nor "About" is among them, and both are sections the reconciled IA
+// names explicitly. They extract mechanically:
+//
+//     grep -oE 'Missing\("[a-z0-9_]+"' SettingsPage.cpp | sort -u
+hstring Missing(std::string_view key, const wchar_t* english) {
+  std::wstring value = urnw::Localized(key);
+  if (value == urnw::Widen(key)) return hstring{english};
+  return hstring{value};
+}
+
 void OpenUrl(std::wstring_view url) {
   try {
     winrt::Windows::System::Launcher::LaunchUriAsync(
@@ -128,15 +145,19 @@ void SettingsPage::ApplyStrings() {
   winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
       w_.SendFeedbackButton(), Loc("send"));
 
-  // settings
-  w_.SplitTunnelHeading().Text(Loc("app_split_rules"));
-  w_.SplitTunnelDescription().Text(Loc("apps_listed_bypass_vpn"));
-  w_.ManageAppSplitButton().Content(LocBox("manage_apps"));
+  // settings: three pane headers, and a landmark name each so a screen reader
+  // can tell the three regions apart
+  w_.SettingsPaneATitle().Text(Loc("general"));
+  w_.SettingsPaneBTitle().Text(Loc("device"));
+  w_.SettingsPaneCTitle().Text(Missing("about", L"About"));
+  Automation::AutomationProperties::SetName(w_.SettingsPaneA(), Loc("general"));
+  Automation::AutomationProperties::SetName(w_.SettingsPaneB(), Loc("device"));
+  Automation::AutomationProperties::SetName(w_.SettingsPaneC(), Missing("about", L"About"));
+
   // The heading over the destructive end. It sits on ACCOUNT now (the rows under
   // it are Sign out and Delete account), which is why it is painted from here
   // rather than from AccountPage: this class still owns those rows.
   w_.SettingsAccountHeading().Text(Loc("account"));
-  w_.ProtocolLink().Content(LocBox("uses_ur_protocol"));
 }
 
 // ---- section construction --------------------------------------------------
@@ -172,19 +193,23 @@ void SettingsPage::BuildSections() {
   BuildDangerSection();
   rows::SetPaneMode(false);
 
-  // ---- what stays on Settings -------------------------------------------
-  // TWO hosts, not one. At desktop widths they are two card columns (D4); at
-  // flyout width the second stacks under the first, so the split has to be by
-  // SUBJECT rather than by length, or the narrow reading order comes out
-  // shuffled.
-  auto host = w_.SettingsSections();
-  auto right = w_.SettingsSectionsRight();
-  BuildDeviceSection(host);
-  BuildConnectionsSection(right);
-  BuildIdentitySection(right);
-  BuildStayInTouchSection(right);
-  BuildLogsSection(right);
-  BuildVersionSection(right);
+  // ---- what stays on Settings: preferences, in three panes ----------------
+  // col 0 what the app DOES, col 1 what this machine IS, col 2 what the app is.
+  // Each pane is one constrained column of rows, which is how the Windows
+  // single-column settings guidance and the full-bleed pane model reconcile:
+  // three columns of ~660dip in the 2062dip window this app is judged in.
+  rows::SetPaneMode(true);
+  auto general = w_.SettingsSections();
+  auto device = w_.SettingsSectionsRight();
+  auto about = w_.SettingsAboutHost();
+  BuildGeneralSection(general);
+  BuildConnectionsSection(general);
+  BuildDeviceSection(device);
+  BuildIdentitySection(device);
+  BuildAdvancedSection(device);
+  BuildVersionSection(about);
+  BuildStayInTouchSection(about);
+  rows::SetPaneMode(false);
 
   // Everything that can be read without a round trip, so the page is not blank
   // before (or without) a load: the client id and the persisted kill switch.
@@ -258,44 +283,25 @@ void SettingsPage::BuildReferralSection(Panel const& host) {
 }
 
 void SettingsPage::BuildDeviceSection(Panel const& host) {
-  Heading(host, Loc("device"), L"");
+  // No group header: the pane header strip above already carries this word, and
+  // a 28px strip repeating it read as a stutter - the same reason the
+  // leaderboard has no panel heading under its destination title.
   auto card = Card(host);
   auto nameButton = NavRow(card, Loc("device_name_label"), deviceNameValue_);
   nameButton.Click([this](auto const&, auto const&) { ShowDeviceNameSheet(); });
-  Divider(card);
   // Spec is server-assigned and read-only, exactly as on macOS.
   deviceSpecValue_ = ValueRow(card, Loc("device_spec_label"));
   ApplyFieldState(deviceNameValue_, FieldState::NoSession);
   ApplyFieldState(deviceSpecValue_, FieldState::NoSession);
 }
 
-void SettingsPage::BuildConnectionsSection(Panel const& host) {
-  Heading(host, Loc("site_app_connections"), L"");
-  auto card = Card(host);
-
-  // Kill switch. The note is the shipped one-liner for what it actually does,
-  // because "kill switch" alone does not say which way it runs.
-  killSwitch_ = ToggleRow(card, Loc("kill_switch"), Loc("site_app_kill_switch_note"));
-  killSwitch_.Toggled([this](auto const&, auto const&) { OnKillSwitchToggled(); });
-
-  Divider(card);
-
-  TextBlock unused{nullptr};
-  auto blockedButton = NavRow(card, Loc("blocked_locations_2"), unused);
-  blockedButton.Click([this](auto const&, auto const&) { ShowBlockedLocationsSheet(); });
-}
-
-void SettingsPage::BuildIdentitySection(Panel const& host) {
-  Heading(host, Loc("post_quantum_identity"), L"");
-  auto card = Card(host);
-  TextBlock unused{nullptr};
-  auto button = NavRow(card, Loc("provider_identities"), unused);
-  button.Click([this](auto const&, auto const&) { ShowIdentitySheet(); });
-  Supporting(card, Loc("post_quantum_identity_explanation"));
-}
-
-void SettingsPage::BuildStayInTouchSection(Panel const& host) {
-  Heading(host, Loc("stay_in_touch"), L"");
+// GENERAL. One preference ships today - whether the account wants product mail -
+// and it IS a preference, so it opens the settings destination instead of
+// sitting at the bottom of a community card as it used to.
+void SettingsPage::BuildGeneralSection(Panel const& host) {
+  // No group header: the pane header strip above already carries this word, and
+  // a 28px strip repeating it read as a stutter - the same reason the
+  // leaderboard has no panel heading under its destination title.
   auto card = Card(host);
 
   productUpdatesState_ = TextBlock();
@@ -307,39 +313,35 @@ void SettingsPage::BuildStayInTouchSection(Panel const& host) {
   // This was the ONE async field with no FieldState: a failed read left the
   // toggle disabled, byte-identical on screen to "no session" and to "still
   // loading". The line under it says which.
-  card.Children().Append(productUpdatesState_);
+  {
+    Border box;
+    box.Padding(ThicknessHelper::FromLengths(12, 8, 12, 8));
+    box.BorderBrush(colors::BorderBrush());
+    box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+    box.Child(productUpdatesState_);
+    card.Children().Append(box);
+  }
   ApplyFieldState(productUpdatesState_, FieldState::NoSession);
-
-  Divider(card);
-
-  // Both community rows are the store's own markdown strings, rendered with the
-  // link inline (SetMarkdownLinkText). That keeps the whole shipped sentence -
-  // there is no plain-text variant of the DePIN Hub line - and needs no extra
-  // "Open" word beside it.
-  TextBlock discord;
-  SetMarkdownLinkText(discord, Localized("join_the_community_on_discord_https_discord_com"), 14);
-  card.Children().Append(discord);
-
-  Divider(card);
-
-  TextBlock depin;
-  SetMarkdownLinkText(depin, Localized("verified_project_on_depin_hub_https_depinhub_io"), 14);
-  card.Children().Append(depin);
 }
 
-void SettingsPage::BuildSubscriptionSection(Panel const& host) {
+// ADVANCED. The home the Advanced Mode toggle drops into, and export logs.
+void SettingsPage::BuildAdvancedSection(Panel const& host) {
+  Heading(host, Missing("advanced", L"Advanced"), hstring{});
   auto card = Card(host);
-  // Opens the Stripe customer portal in the browser; there is nothing to show
-  // beside the label, so the whole row is the affordance.
-  TextBlock unused{nullptr};
-  manageSubscription_ = NavRow(card, Loc("site_app_manage_subscription"), unused);
-  manageSubscription_.Click([this](auto const&, auto const&) { OpenCustomerPortal(); });
-}
 
-void SettingsPage::BuildLogsSection(Panel const& host) {
-  Heading(host, Loc("export_logs"), L"");
-  auto card = Card(host);
-  // Saving to a file the user picks is the ONLY log affordance here now.
+  // >>> ADVANCED MODE GOES HERE (D5). <<<
+  // FIRST in the Advanced group, above Export logs, because everything else the
+  // flag reveals hangs off it - including the Developer destination, which folds
+  // behind it rather than staying a primary rail item. Append a
+  // kit::MakePaneTwoLineRow whose trailing carries a UrSwitchToggleStyle
+  // ToggleSwitch, exactly the shape BuildConnectionsSection's kill switch has.
+  //
+  // Left EMPTY rather than stubbed: the store ships no "Advanced Mode" key, and
+  // a row wearing an invented English label is worse than no row.
+  advancedModeHost_ = StackPanel();
+  card.Children().Append(advancedModeHost_);
+
+  // Saving to a file the user picks is the ONLY log affordance here.
   //
   // There used to be a second row labelled "Share logs" that called
   // Device::uploadLogs. Three things were wrong with it and all three matter:
@@ -352,25 +354,97 @@ void SettingsPage::BuildLogsSection(Panel const& host) {
   // Uploading now happens where apple does it - inside the feedback flow, with
   // the SERVER-issued feedback id, and only when the user ticks the box (see
   // OnSendFeedback). That makes the upload correlated, disclosed and consented.
-  auto save = ButtonRow(card, Loc("save_logs"), hstring{}, Loc("save"));
+  auto save = ButtonRow(card, Loc("save_logs"), Loc("export_logs"), Loc("save"));
   save.Click([this](auto const&, auto const&) { SaveLogsToFile(); });
 }
 
+void SettingsPage::BuildConnectionsSection(Panel const& host) {
+  Heading(host, Loc("site_app_connections"), hstring{});
+  auto card = Card(host);
+
+  // Kill switch. The note is the shipped one-liner for what it actually does,
+  // because "kill switch" alone does not say which way it runs.
+  killSwitch_ = ToggleRow(card, Loc("kill_switch"), Loc("site_app_kill_switch_note"));
+  killSwitch_.Toggled([this](auto const&, auto const&) { OnKillSwitchToggled(); });
+
+  TextBlock unused{nullptr};
+  auto blockedButton = NavRow(card, Loc("blocked_locations_2"), unused);
+  blockedButton.Click([this](auto const&, auto const&) { ShowBlockedLocationsSheet(); });
+
+  // App split rules, in from the loose heading-plus-card-plus-button that used
+  // to sit under both settings columns. It is a VPN-and-privacy preference like
+  // the two above it, so it is a row like them.
+  auto splitButton = ButtonRow(card, Loc("app_split_rules"), Loc("apps_listed_bypass_vpn"),
+                               Loc("manage_apps"));
+  splitButton.Click(
+      [this](auto const& sender, auto const& args) { OnManageAppSplitTunnel(sender, args); });
+}
+
+void SettingsPage::BuildIdentitySection(Panel const& host) {
+  Heading(host, Loc("post_quantum_identity"), hstring{});
+  auto card = Card(host);
+  TextBlock unused{nullptr};
+  auto button = NavRow(card, Loc("provider_identities"), unused);
+  button.Click([this](auto const&, auto const&) { ShowIdentitySheet(); });
+  Supporting(card, Loc("post_quantum_identity_explanation"));
+}
+
+// The community half of ABOUT. The product-updates preference that used to open
+// this card is a PREFERENCE and moved to General; what is left is the two ways
+// to reach the project and the protocol link, which is About material.
+void SettingsPage::BuildStayInTouchSection(Panel const& host) {
+  Heading(host, Loc("stay_in_touch"), hstring{});
+  auto card = Card(host);
+
+  // Both rows are the store's own markdown strings, rendered with the link
+  // inline (SetMarkdownLinkText). That keeps the whole shipped sentence - there
+  // is no plain-text variant of the DePIN Hub line - and needs no extra "Open"
+  // word beside it. Each sits in a pane row so it shares the left edge and the
+  // hairline grid with everything above it.
+  auto linkRow = [&card](std::string_view key) {
+    TextBlock text;
+    SetMarkdownLinkText(text, Localized(key), 13);
+    text.TextWrapping(TextWrapping::Wrap);
+    Border box;
+    box.Padding(ThicknessHelper::FromLengths(12, 10, 12, 10));
+    box.BorderBrush(colors::BorderBrush());
+    box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+    box.Child(text);
+    card.Children().Append(box);
+  };
+  linkRow("join_the_community_on_discord_https_discord_com");
+  linkRow("verified_project_on_depin_hub_https_depinhub_io");
+
+  // The protocol link, which used to hang off the very bottom of the page under
+  // everything else with nothing holding it there.
+  HyperlinkButton protocol;
+  protocol.Content(winrt::box_value(Loc("uses_ur_protocol")));
+  protocol.NavigateUri(winrt::Windows::Foundation::Uri(L"https://ur.xyz"));
+  protocol.FontSize(13);
+  protocol.Padding(ThicknessHelper::FromLengths(0, 0, 0, 0));
+  protocol.VerticalAlignment(VerticalAlignment::Center);
+  auto protocolRow = kit::MakePaneRow(40);
+  protocolRow.Child(protocol);
+  card.Children().Append(protocolRow);
+}
+
+void SettingsPage::BuildSubscriptionSection(Panel const& host) {
+  auto card = Card(host);
+  // Opens the Stripe customer portal in the browser; there is nothing to show
+  // beside the label, so the whole row is the affordance.
+  TextBlock unused{nullptr};
+  manageSubscription_ = NavRow(card, Loc("site_app_manage_subscription"), unused);
+  manageSubscription_.Click([this](auto const&, auto const&) { OpenCustomerPortal(); });
+}
+
 void SettingsPage::BuildVersionSection(Panel const& host) {
+  // No group header: the pane header strip above already carries this word, and
+  // a 28px strip repeating it read as a stutter - the same reason the
+  // leaderboard has no panel heading under its destination title.
   auto card = Card(host);
   versionValue_ = ValueRow(card, Loc("version_info"));
 }
 
-// THE IRREVERSIBLE END, at the bottom of Account's pane B. Sign out moved here
-// with it: signing out is an account operation, and leaving it on a preferences
-// page while the account it ends lives somewhere else is the split the IA
-// reconciliation exists to remove.
-//
-// Both are BUTTON ROWS, not bright red buttons in a card (spec, Security):
-// "Destructive Remove commands should not appear as bright red buttons in every
-// default row. Show red styling only when the user enters a destructive
-// confirmation context." So Delete account is a normal row whose action word is
-// red, and the red-on-black confirmation lives in DeleteAccountSheet.
 void SettingsPage::BuildDangerSection() {
   auto host = w_.AccountDangerHost();
   // WHOLE-ROW affordances, not a label with a button beside it repeating the

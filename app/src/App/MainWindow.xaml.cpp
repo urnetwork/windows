@@ -411,20 +411,26 @@ void MainWindow::ApplyBreakpoint() {
   Place(LeaderboardSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
                                      : PanePlacement{0, 0, 1, Thickness{}});
 
-  // ---- Settings: two card columns ------------------------------------------
-  // A wall of cards and nothing else, so the wide reading is simply two
-  // columns of them. Same 1180 cap as Account, and for the same reason: a
-  // settings row is a label and a control, and past ~580dip they stop looking
-  // like they belong to each other. The destructive end stays full width under
-  // both columns - see the markup.
-  SettingsCapColumn().MaxWidth(wide ? 1180 : 560);
-  if (wide) {
-    SetStar(SettingsSideColumn(), 1);
-  } else {
-    SetWidth(SettingsSideColumn(), 0);
-  }
-  Place(SettingsSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 0}}
-                                  : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});
+  // ---- Settings: three constrained columns ---------------------------------
+  // Windows guidance says settings is a single column of rows at a constrained
+  // width; the pane model says full bleed with no cap. Three equal star columns
+  // satisfy both: at the 2062dip window this app is judged in each pane is
+  // ~660dip, which IS the constrained settings measure, and the three together
+  // reach both edges with no centring grid.
+  //
+  //   >= 1400dip   three panes   general | device | about
+  //   >=  900dip   two panes     general | device      (About folds; version and
+  //                                                     the community links are
+  //                                                     the least operational)
+  //   <   900dip   one pane      general
+  const bool settingsThree = 1400.0 <= width;
+  const bool settingsTwo = 900.0 <= width;
+  SetStar(SettingsPaneCColumn(), settingsThree ? 1 : 0);
+  SettingsPaneCRule().Visibility(settingsThree ? Visibility::Visible : Visibility::Collapsed);
+  SettingsPaneC().Visibility(settingsThree ? Visibility::Visible : Visibility::Collapsed);
+  SetStar(SettingsPaneBColumn(), settingsTwo ? 1 : 0);
+  SettingsPaneBRule().Visibility(settingsTwo ? Visibility::Visible : Visibility::Collapsed);
+  SettingsPaneB().Visibility(settingsTwo ? Visibility::Visible : Visibility::Collapsed);
 
   // ---- Support: the form, and the way to reach a human beside it -----------
   // 1080 and an even split. This destination has one form and no data, so the

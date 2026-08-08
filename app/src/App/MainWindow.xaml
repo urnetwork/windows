@@ -2128,96 +2128,104 @@
                   </Grid>
                 </ScrollViewer>
 
-                <!-- Settings -->
-                <ScrollViewer Margin="24" x:Name="SettingsView" Visibility="Collapsed">
-                  <!-- capped star column, not MaxWidth on the panel: see ConnectView -->
-                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
-                       middle one. The middle star is greedy enough to always
-                       reach its MaxWidth when the window has the room, and the
-                       two hairline stars split whatever is left - so the column
-                       is CENTRED at wide widths and simply fills the viewport
-                       at narrow ones, with no breakpoint and no branch.
+                <!-- ==== SETTINGS: THE PANE SHELL (R4) ======================
+                     Slimmed to PREFERENCES. Account, subscription, login
+                     methods, the auth code, the client id, referral code,
+                     referral network, sign out and delete account all left for
+                     the Account destination (spec override #2).
 
-                       Why not MaxWidth on the panel: that is the arrange-split
-                       bug (the offset comes out of the child's DESIRED width
-                       while it is laid out at the cap). Why not the single
-                       capped column P4 used: it pins the content to x=0, which
-                       is right at 1100 and lopsided when maximized - measured
-                       2578px wide with 600px of content and ~1900px of void on
-                       one side. -->
-                  <!-- The same shape ConnectView carries. Settings is a wall
-                       of cards and nothing else, so its wide reading is simply
-                       TWO columns of them - with the destructive end (sign out,
-                       delete account) kept full width UNDER both, because
-                       "irreversible" belongs at the bottom of the page at every
-                       size, not halfway down one of two columns. -->
-                  <Grid x:Name="SettingsLayout">
+                     Windows guidance wants settings as a single constrained
+                     column of rows, and the pane model wants full bleed with no
+                     max-width cap. Those are reconciled by making each pane a
+                     constrained column: THREE equal star columns, so at the
+                     2062dip window this app is judged in each one is ~660dip -
+                     which is the settings measure the guidance is asking for -
+                     and together they cover the window edge to edge with no
+                     centring grid and no gutter.
+
+                       col 0  GENERAL   preferences, then VPN and privacy
+                       col 2  DEVICE    this machine, then Advanced
+                       col 4  ABOUT     version, community, the protocol
+
+                     A list-pane-plus-detail reading was the other legitimate
+                     option. It was rejected because there are ~14 preference
+                     rows in the whole product: a navigation column for five
+                     sections of three rows spends a third of the window on a
+                     table of contents for a page that fits on one screen.
+
+                     Every row here is built by SettingsPage into the three
+                     hosts below, through the row kit in pane mode. -->
+                <Grid x:Name="SettingsView" Visibility="Collapsed"
+                      Style="{StaticResource UrPaneStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition x:Name="SettingsCapColumn"
-                                          Width="1000*" MaxWidth="560" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="SettingsPaneAColumn" Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="SettingsPaneBColumn" Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="SettingsPaneCColumn" Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="1">
-                      <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition x:Name="SettingsSideColumn" Width="0" />
-                      </Grid.ColumnDefinitions>
-                      <Grid.RowDefinitions>
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                      </Grid.RowDefinitions>
 
-                    <!-- Every section here is built in code
-                         (SettingsPage::BuildSections), into TWO hosts: this one
-                         and SettingsSectionsRight below. The split is by
-                         subject - what the account is and what this device is
-                         on the left, how it connects and who it talks to on the
-                         right - so that at flyout width, where the two hosts
-                         stack, the reading order is still by subject. -->
-                    <StackPanel Grid.Row="0" Grid.Column="0"
-                                x:Name="SettingsMainStack" Spacing="16"
-                                VerticalAlignment="Top">
-                        <StackPanel x:Name="SettingsSections" Spacing="16" />
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="1" Grid.Column="0"
-                                x:Name="SettingsSideStack" Spacing="16"
-                                VerticalAlignment="Top" Margin="0,16,0,0">
-                        <StackPanel x:Name="SettingsSectionsRight" Spacing="16" />
-                    </StackPanel>
-
-                    <!-- Full width under both columns at every size. -->
-                    <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
-                                x:Name="SettingsBottomStack" Spacing="16"
-                                Margin="0,16,0,24">
-
-                        <!-- split tunnel: header glyph + a card, so it stops
-                             being three loose controls after eight carded
-                             sections -->
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xECA5;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="SplitTunnelHeading" Style="{StaticResource UrSectionHeadingStyle}" />
-                        </StackPanel>
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
-                                <TextBlock x:Name="SplitTunnelDescription" TextWrapping="Wrap"
-                                           Style="{StaticResource UrSupportingTextStyle}" />
-                                <Button x:Name="ManageAppSplitButton" Click="OnManageAppSplitTunnel"
-                                        HorizontalAlignment="Left" />
-                            </StackPanel>
+                    <!-- ============ PANE A: GENERAL / VPN AND PRIVACY ======= -->
+                    <Grid Grid.Column="0" x:Name="SettingsPaneA"
+                          AutomationProperties.LandmarkType="Main">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="SettingsPaneATitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
                         </Border>
-
-                        <!-- R4: Account / Sign out / Delete account MOVED to the
-                             Account destination (spec override #2). What is left
-                             here is preferences. -->
-                        <HyperlinkButton x:Name="ProtocolLink" NavigateUri="https://ur.xyz"
-                                         FontSize="12" Padding="0" Margin="0,8,0,0" />
-                    </StackPanel>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="SettingsSections" />
+                        </ScrollViewer>
                     </Grid>
-                  </Grid>
-                </ScrollViewer>
+
+                    <Border x:Name="SettingsPaneBRule" Grid.Column="1"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE B: DEVICE / ADVANCED =============== -->
+                    <Grid Grid.Column="2" x:Name="SettingsPaneB">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="SettingsPaneBTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="SettingsSectionsRight" />
+                        </ScrollViewer>
+                    </Grid>
+
+                    <Border x:Name="SettingsPaneCRule" Grid.Column="3"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE C: ABOUT =========================== -->
+                    <Grid Grid.Column="4" x:Name="SettingsPaneC">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="SettingsPaneCTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="SettingsAboutHost" />
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
 
                 <!-- Developer / reliability (P2). The ~40 controls are still
                      built by urnw::DeveloperPage in code; what lives here is
