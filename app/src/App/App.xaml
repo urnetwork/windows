@@ -181,6 +181,62 @@
             <FontFamily x:Key="UrBodyFontFamily">ms-appx:///Assets/Fonts/pp_neue_montreal_regular.ttf#PP Neue Montreal</FontFamily>
             <FontFamily x:Key="UrWordmarkFontFamily">ms-appx:///Assets/Fonts/pp_neue_bit_bold.ttf#PP NeueBit</FontFamily>
 
+            <!-- ================= THE TYPE RAMP (R1) =============================
+                 The spec's Windows type ramp (Caption / Body / Body strong /
+                 Subtitle / Title), realized in the BRAND faces per the owner
+                 reconciliation, not Segoe UI Variable:
+                   * Title / Title large  -> ABC Gravity Extended. The display
+                     face is reserved for page titles, the hero and the wordmark,
+                     where a heavy brand voice belongs.
+                   * everything below Title -> PP Neue Montreal. This is the fix
+                     for the "two clashing heading styles" complaint: card SECTION
+                     HEADERS drop out of ABC Gravity (where "Provide mode" and
+                     "Connect options" were shouting at display weight beside body
+                     copy) and into Montreal at Subtitle scale, so the hierarchy
+                     is one voice sized down, not two faces competing.
+                 Sizes/line-heights are the spec's epx ramp. Montreal ships a
+                 single regular face; SemiBold is DirectWrite-synthesised, which
+                 is deliberately the only weight step used for emphasis (the spec:
+                 "semibold rather than bold"). -->
+            <Style x:Key="UrCaptionTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="LineHeight" Value="16" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
+            </Style>
+            <Style x:Key="UrBodyTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="LineHeight" Value="20" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+            </Style>
+            <Style x:Key="UrBodyStrongTextStyle" TargetType="TextBlock" BasedOn="{StaticResource UrBodyTextStyle}">
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+            <Style x:Key="UrBodyLargeTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="18" />
+                <Setter Property="LineHeight" Value="24" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+            </Style>
+            <Style x:Key="UrSubtitleTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="20" />
+                <Setter Property="LineHeight" Value="28" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+            </Style>
+            <Style x:Key="UrTitleTextStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrHeadingFontFamily}" />
+                <Setter Property="FontSize" Value="28" />
+                <Setter Property="LineHeight" Value="36" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+            </Style>
+            <Style x:Key="UrTitleLargeTextStyle" TargetType="TextBlock" BasedOn="{StaticResource UrTitleTextStyle}">
+                <Setter Property="FontSize" Value="40" />
+                <Setter Property="LineHeight" Value="52" />
+            </Style>
+
             <!-- brand palette (mirrors UrColors.h) -->
             <SolidColorBrush x:Key="UrBackgroundBrush" Color="#101010" />
             <!-- sheet surface: android SheetBlack = Black.lighten(0.03), which
@@ -407,18 +463,25 @@
                 <Setter Property="HorizontalAlignment" Value="Stretch" />
             </Style>
 
-            <!-- the heading ABOVE a card ("Payout Wallets", "Device"), 16/
-                 SemiBold in the display face. Nine sites spelled these three
-                 setters out inline. -->
+            <!-- the heading ABOVE a card ("Payout Wallets", "Device").
+                 R1: THIS IS THE "STOP SHOUTING" FIX. These were ABC Gravity
+                 Extended - the heavy DISPLAY face - at 16 SemiBold, so every
+                 micro-header on every card ("Provide mode", "Connect options",
+                 "Device") competed with the page title and the hero, which is
+                 exactly the "two clashing heading styles" the owner reconciliation
+                 calls out. Per the reconciliation, card section headers move to
+                 PP Neue Montreal (body face) at Body-strong scale: one voice,
+                 sized for hierarchy, not a second face. -->
             <Style x:Key="UrSectionHeadingStyle" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="{StaticResource UrHeadingFontFamily}" />
-                <Setter Property="FontSize" Value="16" />
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="15" />
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
                 <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
 
-            <!-- the larger variant that names a whole panel section -->
+            <!-- the larger variant that names a whole panel section: Subtitle
+                 scale, still Montreal. -->
             <Style x:Key="UrPanelHeadingStyle" TargetType="TextBlock" BasedOn="{StaticResource UrSectionHeadingStyle}">
                 <Setter Property="FontSize" Value="18" />
             </Style>
