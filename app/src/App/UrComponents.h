@@ -302,6 +302,42 @@ struct PaneListRow {
 };
 PaneListRow MakePaneListRow(double height = 36);
 
+// The SAME row, SELECTABLE (D5 / Advanced Mode). Identical grid, identical
+// height, identical three elements — the only difference is that the root is a
+// Button on UrPaneRowButtonStyle instead of a Border, so the row can be clicked,
+// reached with Tab and invoked with Enter or Space.
+//
+// A separate builder rather than a flag on MakePaneListRow because the root
+// TYPES differ (Button vs Border), and one function returning either would hand
+// every caller an element it has to test before it can use it. It shares
+// MakePaneListRow's content construction, so "one row species per pane layout"
+// survives: a selectable connections row and a static contracts row are the same
+// shape on the same rhythm and neither can drift from the other.
+//
+// The caller MUST set AutomationProperties::Name on `root`. A Button whose
+// Content is a Panel gets NO automatic name — this project has paid for that
+// lesson twice, on PeersLine and on ConnectHero — so an unnamed row reaches a
+// screen reader as "button" and nothing else.
+struct PaneListRowButton {
+  winrt::Microsoft::UI::Xaml::Controls::Button root{nullptr};
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse dot{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock title{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock meta{nullptr};
+  // the 2px leading accent bar; owned here so SetPaneListRowSelected can find it
+  winrt::Microsoft::UI::Xaml::Controls::Border marker{nullptr};
+};
+PaneListRowButton MakePaneListRowButton(double height = 36);
+
+// Paint a selectable row as the selected one. Called on every row of a list on
+// every selection change, with `selected` true for exactly one of them.
+//
+// Selection is carried on THREE channels, and it has to be. A fill step alone is
+// #1C1C1C over #101010 — a two-step lift that is invisible on a dim panel and to
+// anyone with low contrast vision. So there is also a 2px leading accent bar,
+// which is a SHAPE change and not colour-alone, and the row's automation Name
+// gains its selected state so a screen reader is told rather than shown.
+void SetPaneListRowSelected(PaneListRowButton const& row, bool selected);
+
 // iOS Components/UrTextField/ValidationState.swift.
 enum class ValidationState {
   NotChecked,  // nothing has been asked of the server yet

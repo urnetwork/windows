@@ -1009,30 +1009,71 @@ std::string ShortId(std::string const& id) {
 void ConnectPage::ApplyConnectionsList() {
   auto host = w_.ConnectionsHost();
   host.Children().Clear();
+  connectionRows_.clear();
+  connectionRowIds_.clear();
   // A cap, not a scroll budget: the SDK's action feed is unbounded and every row
   // is a live XAML subtree. 200 rows is ~7000px of pane, well past any window.
   constexpr size_t kMaxRows = 200;
   const size_t count = std::min(blockActions_.size(), kMaxRows);
   for (size_t i = 0; i < count; ++i) {
     auto const& action = blockActions_[i];
-    auto row = urnw::kit::MakePaneListRow(36);
-    row.dot.Fill(urnw::colors::MakeBrush(action.block   ? urnw::colors::kUrCoral
-                                         : action.local ? urnw::colors::kUrAmber
-                                                        : urnw::colors::kUrGreen));
     const std::string title = BlockActionTitle(action);
-    row.title.Text(title.empty() ? Loc("unknown") : H(title));
-    row.meta.Text(H(urnw::FormatByteCountCompact(action.byteCount) + "   " +
-                    urnw::FormatCountCompact(action.packetCount) + " pkt"));
-    // the dot is Raw, so the row's own name has to carry the verdict the colour
-    // is showing
+    const hstring titleText = title.empty() ? Loc("unknown") : H(title);
+    const auto verdictColor = action.block   ? urnw::colors::kUrCoral
+                              : action.local ? urnw::colors::kUrAmber
+                                             : urnw::colors::kUrGreen;
+    // The verdict in WORDS, for the row's accessible name. The dot is Raw, so
+    // the name is the only place the colour's meaning exists for a screen
+    // reader — and `local` is a THIRD verdict the old two-way name folded into
+    // "allowed": traffic sent around the tunnel is allowed and unprotected, and
+    // those are not the same thing to anyone reading this list.
+    const hstring verdict = action.block  ? Loc("blocked")
+                            : action.local ? Loc("local")
+                                           : Loc("allowed");
+    const hstring meta = H(urnw::FormatByteCountCompact(action.byteCount) + "   " +
+                           urnw::FormatCountCompact(action.packetCount) + " pkt");
+
+    if (!advancedMode_) {
+      // NORMAL. Exactly what shipped: a static row, not focusable, not
+      // selectable. A Normal user is being told what their VPN is doing, not
+      // handed 200 tab stops on the way to the Connect button.
+      auto row = urnw::kit::MakePaneListRow(36);
+      row.dot.Fill(urnw::colors::MakeBrush(verdictColor));
+      row.title.Text(titleText);
+      row.meta.Text(meta);
+      winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+          row.root, hstring{std::wstring{titleText} + L", " + std::wstring{verdict}});
+      host.Children().Append(row.root);
+      continue;
+    }
+
+    // ADVANCED. The same row, selectable: clickable, in the tab order, and
+    // invokable with Enter or Space because it is a real Button rather than a
+    // Border with a pointer handler bolted on.
+    auto row = urnw::kit::MakePaneListRowButton(36);
+    row.dot.Fill(urnw::colors::MakeBrush(verdictColor));
+    row.title.Text(titleText);
+    row.meta.Text(meta);
     winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
-        row.root, hstring{H(title) + L", " +
-                          std::wstring{Loc(action.block ? "blocked" : "allowed")}});
+        row.root, hstring{std::wstring{titleText} + L", " + std::wstring{verdict}});
+    // By ID, never by index — see SelectConnection. The id is captured by value
+    // so the handler does not reach back into a vector that has been rebuilt.
+    const std::string id = action.id;
+    row.root.Click([weak = w_.get_weak(), id](auto const&, auto const&) {
+      if (auto self = weak.get()) self->connect().SelectConnection(id);
+    });
     host.Children().Append(row.root);
+    connectionRows_.push_back(row);
+    connectionRowIds_.push_back(id);
   }
   w_.ConnectionsCount().Text(
       hstring{urnw::Plural("host_count", static_cast<int64_t>(blockActions_.size()))});
   ApplySessionCardsVisibility(statsConnected_);
+  // The list was just rebuilt underneath the selection. If what was selected is
+  // no longer in the feed, the inspector must say so rather than keep printing a
+  // connection that has aged out.
+  ApplyConnectionSelectionVisuals();
+  ApplyInspector();
 }
 
 // The session, as key/value rows on the statistics pane's grid. These were four
@@ -1054,6 +1095,411 @@ void ConnectPage::ApplySessionRows() {
   add(Loc("allowed"), urnw::FormatCountCompact(allowedCount_));
   add(Loc("blocked"), urnw::FormatCountCompact(blockedCount_));
   add(Loc("connections"), urnw::FormatCountCompact(static_cast<int64_t>(blockActions_.size())));
+  if (!advancedMode_) return;
+  // ---- the Advanced reading of the same group (D5) --------------------------
+  // Two rows a Normal user has no use for and an operator cannot work without.
+  //
+  // `raw` is the PRE-CLAMP connection status. LiveStats clamps connectionStatus
+  // to the unrecognised "RPC_ONLY" in an rpc-only session precisely so no screen
+  // can claim a tunnel that does not exist — and this is the one place in the
+  // product that is supposed to see through that clamp, which is why
+  // rawConnectionStatus was built. (It is populated ONLY in that session; in
+  // every other one the clamped value IS the raw one.)
+  //
+  // `exits` is how many exits the reliability stack currently holds, which is
+  // the denominator for every "via" line the inspector prints.
+  const std::string raw = Sdk().CurrentStats().rpcOnly
+                              ? Sdk().CurrentStats().rawConnectionStatus
+                              : Sdk().CurrentStats().connectionStatus;
+  host.Children().Append(
+      urnw::kit::MakePaneKeyValueRow(Adv("adv_raw_status", L"Raw status"),
+                                     raw.empty() ? Adv("adv_none", L"none") : H(raw))
+          .root);
+  host.Children().Append(
+      urnw::kit::MakePaneKeyValueRow(
+          Adv("adv_exits", L"Exits"),
+          H(urnw::FormatCountCompact(static_cast<int64_t>(exits_.size()))))
+          .root);
+}
+
+// ---- D5: the connection inspector ------------------------------------------
+//
+// THE PORTMASTER ASK. Advanced Mode makes the activity pane's rows selectable
+// and turns the third pane into the detail for the selection.
+//
+// What it can honestly show, and where each field comes from, because the
+// tempting thing here is to print a Portmaster screenshot's field list and fill
+// the gaps with plausible values:
+//
+//   host / addresses     BlockActionItem::hosts / ips / matchedHosts / matchedIps
+//   verdict              BlockActionItem::block, ::local  (THREE states, not two:
+//                        blocked, tunnelled, and sent AROUND the tunnel)
+//   reason               BlockActionItem::overrideId + hasBlockOverride /
+//                        hasRouteOverride. The SDK has no free-text reason; an
+//                        override id and which KIND it was is the whole of it.
+//   packets / bytes      BlockActionItem::packetCount / ::byteCount. TOTALS.
+//                        There is no per-direction split on a block action and
+//                        the labels do not pretend there is — the directional
+//                        counters in the SDK (ThroughputSample, PacketStats) are
+//                        device-wide, so printing them per row would be a lie
+//                        with the right shape.
+//   tunnelled            derived from the same two verdict bits, which is what
+//                        RouteOverride::Local means.
+//   first seen           BlockActionItem::timeMillis
+//   via exit             DestinationExit{DestinationIp -> ClientId}, joined on
+//                        the action's recorded ips. This is the ONLY per-
+//                        connection "which exit" the SDK has.
+//   exit health          Exit{Tier, EffectiveTier, FlowCount, DialFailureCount,
+//                        Quarantined, Warning, WarningCause, Proven,
+//                        ProbeAgeSeconds}, joined on that client id.
+//   exit country         LiveStats::countryName — and labelled as the SESSION's
+//                        exit, because that is what it is. Per-exit geo exists
+//                        in the SDK (ConnectedProviderLocation) and is not
+//                        bridged; claiming it per connection would be inventing.
+//
+// What it does NOT show, deliberately: protocol, port, per-direction counters,
+// ASN/org, per-connection duration and per-connection RTT. None of those exists
+// on any feed this client can reach. They are in the report as bridging work.
+//
+// Every label here is an Adv() id — see pages::Adv. The store has 945 keys and
+// not one of them names a field of a connection inspector.
+
+void ConnectPage::SelectConnection(std::string const& id) {
+  // A second click on the selected row clears it. The alternative is a selection
+  // that can be moved but never removed, and the inspector then permanently
+  // occupies the top of the pane over a connection the user stopped caring about.
+  selectedConnectionId_ = (selectedConnectionId_ == id) ? std::string{} : id;
+  ApplyConnectionSelectionVisuals();
+  ApplyInspector();
+}
+
+void ConnectPage::OnInspectorClear(IInspectable const&, RoutedEventArgs const&) {
+  selectedConnectionId_.clear();
+  ApplyConnectionSelectionVisuals();
+  ApplyInspector();
+}
+
+// Repaint, do not rebuild. Rebuilding the list on a click destroys the element
+// that has keyboard focus, which drops focus to the top of the pane and makes
+// the list unusable with Tab — the exact opposite of what making the rows
+// focusable was for.
+void ConnectPage::ApplyConnectionSelectionVisuals() {
+  for (size_t i = 0; i < connectionRows_.size(); ++i) {
+    const bool selected =
+        !selectedConnectionId_.empty() && connectionRowIds_[i] == selectedConnectionId_;
+    urnw::kit::SetPaneListRowSelected(connectionRows_[i], selected);
+    // A screen reader is TOLD, not shown. Without this the fill and the accent
+    // bar carry the selection to sighted users only.
+    auto const& row = connectionRows_[i];
+    auto name = winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::GetName(
+        row.root);
+    std::wstring base{name};
+    const std::wstring suffix = L", " + AdvW("adv_selected", L"selected");
+    const bool hasSuffix = base.size() >= suffix.size() &&
+                           base.compare(base.size() - suffix.size(), suffix.size(),
+                                        suffix) == 0;
+    if (selected && !hasSuffix) {
+      winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+          row.root, hstring{base + suffix});
+    } else if (!selected && hasSuffix) {
+      winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+          row.root, hstring{base.substr(0, base.size() - suffix.size())});
+    }
+  }
+}
+
+std::optional<ConnectPage::ExitRouting> ConnectPage::RoutingForAddresses(
+    std::vector<std::string> const& addresses) const {
+  for (auto const& ip : addresses) {
+    for (auto const& dest : destinationExits_) {
+      if (dest.DestinationIp != ip) continue;
+      ExitRouting out;
+      out.clientId = dest.ClientId ? *dest.ClientId : std::string{};
+      out.flowCount = dest.FlowCount;
+      for (auto const& exit : exits_) {
+        if (!exit.ClientId || *exit.ClientId != out.clientId) continue;
+        out.haveExit = true;
+        out.tier = exit.Tier;
+        out.effectiveTier = exit.EffectiveTier;
+        out.exitFlowCount = exit.FlowCount;
+        out.dialFailureCount = exit.DialFailureCount;
+        out.quarantined = exit.Quarantined;
+        out.warning = exit.Warning;
+        out.warningCause = exit.WarningCause;
+        out.proven = exit.Proven;
+        out.probeAgeSeconds = exit.ProbeAgeSeconds;
+        break;
+      }
+      return out;
+    }
+  }
+  return std::nullopt;
+}
+
+void ConnectPage::ApplyInspector() {
+  // Normal mode: the group is not merely empty, it is gone. The third pane is
+  // the statistics pane it has always been, with no vestigial header.
+  if (!advancedMode_) {
+    w_.InspectorGroup().Visibility(Visibility::Collapsed);
+    return;
+  }
+  w_.InspectorGroup().Visibility(Visibility::Visible);
+  w_.InspectorLabel().Text(Adv("adv_inspector", L"Inspector"));
+  // A landmark with no name is an unlabelled region, which is worse than no
+  // landmark at all. Set here rather than in markup because the name is an Adv()
+  // id, which markup cannot resolve.
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      w_.InspectorGroup(), Adv("adv_inspector", L"Inspector"));
+
+  auto host = w_.InspectorRowsHost();
+  host.Children().Clear();
+
+  // Find the selection in the CURRENT feed. It may have aged out of the SDK's
+  // window since it was picked, and if it has, saying so is the honest reading —
+  // the alternative is a detail pane frozen on a connection that no longer
+  // exists, which is indistinguishable from a hung inspector.
+  const urnw::BlockActionItem* action = nullptr;
+  if (!selectedConnectionId_.empty()) {
+    for (auto const& candidate : blockActions_) {
+      if (candidate.id == selectedConnectionId_) {
+        action = &candidate;
+        break;
+      }
+    }
+  }
+
+  w_.InspectorClearButton().Visibility(action ? Visibility::Visible
+                                              : Visibility::Collapsed);
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      w_.InspectorClearButton(), Adv("adv_clear_selection", L"Clear selection"));
+
+  if (!action) {
+    // The empty reading. Not a hole and not an empty card: the headline row says
+    // what to do, on the same rhythm as every other row in the pane.
+    w_.InspectorHeadline().Visibility(Visibility::Visible);
+    w_.InspectorTitle().Text(
+        selectedConnectionId_.empty()
+            ? Adv("adv_no_selection", L"No connection selected")
+            : Adv("adv_selection_gone", L"That connection is no longer listed"));
+    w_.InspectorDot().Fill(urnw::colors::MakeBrush(urnw::colors::kTextFaint));
+    w_.InspectorVerdict().Text(
+        Adv("adv_select_a_row", L"Select a row in Activity to inspect it"));
+    return;
+  }
+
+  // ---- the headline: what it is, and the verdict --------------------------
+  const std::string title = BlockActionTitle(*action);
+  w_.InspectorHeadline().Visibility(Visibility::Visible);
+  w_.InspectorTitle().Text(title.empty() ? Loc("unknown") : H(title));
+  // THREE verdicts, not two. "Blocked" and "allowed" lose the one the user most
+  // needs to see: traffic a split rule sent AROUND the tunnel is allowed and
+  // unprotected, and a privacy tool that files that under "allowed" is hiding
+  // the fact it exists to surface.
+  const auto verdictColor = action->block   ? urnw::colors::kUrCoral
+                            : action->local ? urnw::colors::kUrAmber
+                                            : urnw::colors::kUrGreen;
+  w_.InspectorDot().Fill(urnw::colors::MakeBrush(verdictColor));
+  w_.InspectorVerdict().Text(
+      action->block ? Adv("adv_verdict_blocked", L"Blocked — no packets sent")
+      : action->local
+          ? Adv("adv_verdict_local", L"Bypassed the tunnel — not protected")
+          : Adv("adv_verdict_tunnelled", L"Tunnelled through URnetwork"));
+
+  auto add = [&host](winrt::hstring const& key, winrt::hstring const& value) {
+    host.Children().Append(urnw::kit::MakePaneKeyValueRow(key, value).root);
+  };
+  auto addText = [&add](winrt::hstring const& key, std::string const& value) {
+    add(key, value.empty() ? Adv("adv_none", L"none") : H(value));
+  };
+  auto join = [](std::vector<std::string> const& parts) {
+    std::string out;
+    for (auto const& part : parts) {
+      if (!out.empty()) out += ", ";
+      out += part;
+    }
+    return out;
+  };
+
+  // ---- identity -----------------------------------------------------------
+  addText(Adv("adv_host", L"Host"), join(action->hosts));
+  addText(Adv("adv_addresses", L"Addresses"), join(action->ips));
+  // What actually matched an override, which is disjoint from hosts/ips and is
+  // the difference between "a rule named this" and "a rule named its parent".
+  const std::string matched = join(action->matchedHosts).empty()
+                                  ? join(action->matchedIps)
+                                  : join(action->matchedHosts);
+  if (!matched.empty()) addText(Adv("adv_matched", L"Matched"), matched);
+
+  // ---- the decision -------------------------------------------------------
+  add(Adv("adv_protected", L"Protected"),
+      action->block ? Adv("adv_na", L"—")
+      : action->local ? Loc("off")
+                      : Loc("on"));
+  // The SDK has no free-text reason. An override id, and WHICH KIND of override
+  // it was, is the entirety of what it can say — so that is what this prints
+  // rather than a sentence someone made up.
+  if (action->overrideId.empty()) {
+    add(Adv("adv_reason", L"Reason"), Adv("adv_reason_default", L"Default policy"));
+  } else {
+    add(Adv("adv_reason", L"Reason"),
+        action->hasBlockOverride  ? Adv("adv_reason_block", L"Block override")
+        : action->hasRouteOverride ? Adv("adv_reason_route", L"Route override")
+                                   : Adv("adv_reason_override", L"Override"));
+    addText(Adv("adv_override_id", L"Override"), action->overrideId);
+  }
+
+  // ---- volume -------------------------------------------------------------
+  // TOTALS, and the labels say so. There is no per-direction split on a block
+  // action; the SDK's directional counters (ThroughputSample, PacketStats) are
+  // device-wide, so an "in / out" pair here would be the right shape around the
+  // wrong number. Reported as bridging work instead.
+  add(Adv("adv_packets_total", L"Packets (total)"),
+      H(urnw::FormatCountCompact(action->packetCount)));
+  add(Adv("adv_bytes_total", L"Bytes (total)"),
+      H(urnw::FormatByteCountCompact(action->byteCount)));
+
+  // ---- timing -------------------------------------------------------------
+  // The action's own timestamp, as an age. NOT a duration: the SDK records when
+  // a routing decision was MADE and nothing anywhere records when a connection
+  // closed, so a "Duration" field would have to be invented.
+  if (0 < action->timeMillis) {
+    const int64_t nowMillis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                  std::chrono::system_clock::now().time_since_epoch())
+                                  .count();
+    add(Adv("adv_last_decision", L"Last decision"),
+        H(urnw::RelativeTime(action->timeMillis, nowMillis)));
+  }
+
+  // ---- the exit it routed through -----------------------------------------
+  // Joined out of the reliability snapshot. Absent rather than guessed when the
+  // action recorded no addresses, or when none of them is in the snapshot: that
+  // is the normal case for a host that resolved after the last refresh, and an
+  // inspector that answers "which exit" with a plausible wrong exit is worse
+  // than one that says it does not know.
+  if (!action->block) {
+    if (auto routing = RoutingForAddresses(action->ips)) {
+      addText(Adv("adv_via_exit", L"Via exit"), routing->clientId);
+      add(Adv("adv_exit_flows", L"Flows to this destination"),
+          H(urnw::FormatCountCompact(routing->flowCount)));
+      if (routing->haveExit) {
+        add(Adv("adv_exit_tier", L"Exit tier"),
+            H(std::to_string(routing->effectiveTier) + " / " +
+              std::to_string(routing->tier)));
+        add(Adv("adv_exit_flows_total", L"Exit flows"),
+            H(urnw::FormatCountCompact(routing->exitFlowCount)));
+        add(Adv("adv_exit_dial_failures", L"Dial failures"),
+            H(urnw::FormatCountCompact(routing->dialFailureCount)));
+        add(Adv("adv_exit_state", L"Exit state"),
+            routing->quarantined ? Adv("adv_exit_quarantined", L"Quarantined")
+            : routing->warning   ? Adv("adv_exit_warning", L"Warning")
+            : routing->proven    ? Adv("adv_exit_proven", L"Proven")
+                                 : Adv("adv_exit_ok", L"OK"));
+        if (routing->warning && !routing->warningCause.empty()) {
+          addText(Adv("adv_exit_warning_cause", L"Warning cause"), routing->warningCause);
+        }
+        if (0 < routing->probeAgeSeconds) {
+          add(Adv("adv_probe_age", L"Probe age"),
+              H(std::to_string(routing->probeAgeSeconds) + "s"));
+        }
+      }
+    } else {
+      add(Adv("adv_via_exit", L"Via exit"), Adv("adv_unknown_exit", L"Not in the routing table"));
+    }
+    // The SESSION's exit country, labelled as the session's. Per-exit geo exists
+    // in the SDK (ConnectedProviderLocation: country, region, city, lat/lon,
+    // connected-since) and is not bridged into this client at all; attaching the
+    // session's country to a per-connection row as though it were that
+    // connection's would be exactly the fabrication this pane must not do.
+    if (!countryName_.empty()) {
+      addText(Adv("adv_session_exit_country", L"Session exit country"), countryName_);
+    }
+  }
+
+  // ---- identity, last, and copyable ---------------------------------------
+  // Ids are the thing an operator pastes into a bug report. The entity ids on
+  // this client were made copyable for that reason; a 36-character id you can
+  // read but not copy is a screenshot.
+  {
+    auto row = urnw::kit::MakePaneKeyValueRow(Adv("adv_action_id", L"Action id"),
+                                              H(ShortId(action->id)));
+    row.value.IsTextSelectionEnabled(true);
+    host.Children().Append(row.root);
+  }
+}
+
+// ReadReliability() is several SYNCHRONOUS rpcs into the service. It must never
+// run on the UI thread — the settled shape for that in this codebase is
+// resume_background + the queue, because there is no resume_foreground overload
+// for Microsoft.UI.Dispatching (see PostQuantumIdentitySheet).
+winrt::fire_and_forget ConnectPage::RefreshExitRouting() {
+  // Same gate, same reason, as ApplyStats: with a preview sample loaded the
+  // process has NO session, so every read that reaches here is the empty one,
+  // and applying it wipes the synthetic routing tables the operator asked for.
+  // Measured: the inspector rendered "Via exit: not in the routing table" five
+  // seconds after showing the join correctly.
+  if (PreviewSampleActive()) co_return;
+  if (exitRefreshInFlight_) co_return;
+  exitRefreshInFlight_ = true;
+  auto weak = w_.get_weak();
+  auto queue = w_.DispatcherQueue();
+
+  co_await winrt::resume_background();
+  std::vector<urnet::Exit> exits;
+  std::vector<urnet::DestinationExit> destinationExits;
+  try {
+    // ReadReliability already guards both list unwraps with ReadSdkList — the
+    // Go side marshals a nil slice as the four-byte document `null`, which the
+    // top-level vector unwrap turns into type_error.302. Seven of eleven list
+    // getters were observed throwing that against a live session.
+    auto snapshot = Sdk().ReadReliability();
+    exits = std::move(snapshot.exits);
+    destinationExits = std::move(snapshot.destinationExits);
+  } catch (std::exception const& e) {
+    urnw::LogWarn("connect: exit routing refresh failed: {}", e.what());
+  } catch (...) {
+    urnw::LogWarn("connect: exit routing refresh failed");
+  }
+
+  queue.TryEnqueue([weak, exits = std::move(exits),
+                    destinationExits = std::move(destinationExits)]() mutable {
+    auto self = weak.get();
+    if (!self) return;
+    auto& page = self->connect();
+    page.exitRefreshInFlight_ = false;
+    // Re-checked HERE, not only on the way in. The entry gate reads
+    // MainWindow::previewUi(), which is false while the window is still in its
+    // constructor — and ApplyAdvancedMode runs there — so a refresh started at
+    // construction passes the gate, completes on a worker, and lands AFTER
+    // EnterPreviewUi has filled the caches. Measured: the inspector joined
+    // correctly and then read "Not in the routing table" a moment later. Every
+    // push into this page's caches has to test the sample gate on arrival, the
+    // way ApplyStats already does.
+    if (page.PreviewSampleActive()) return;
+    page.exits_ = std::move(exits);
+    page.destinationExits_ = std::move(destinationExits);
+    // Only the inspector reads these, and only when something is selected.
+    if (page.advancedMode_ && !page.selectedConnectionId_.empty()) page.ApplyInspector();
+  });
+}
+
+// The page's Advanced reading. One call, and every surface here has re-rendered
+// itself in the new mode — the ApplyStrings() shape, for the same reason: a mode
+// that each surface consults independently is a mode that half the surfaces
+// forget to consult.
+void ConnectPage::ApplyAdvancedMode(bool on) {
+  if (advancedMode_ == on) return;
+  advancedMode_ = on;
+  if (!on) selectedConnectionId_.clear();
+  // The activity rows change TYPE (Border <-> Button), so this one genuinely has
+  // to rebuild rather than repaint.
+  ApplyConnectionsList();
+  ApplySessionRows();
+  ApplyContractsList();
+  ApplyInspector();
+  // Seed the routing tables the moment the mode comes on, rather than waiting
+  // for the first slow tick: the user who just enabled Advanced Mode is looking
+  // at the pane now.
+  if (on) RefreshExitRouting();
 }
 
 // One row per contract peer: which peer, and how much has moved each way.
@@ -1071,7 +1517,16 @@ void ConnectPage::ApplyContractsList() {
     const bool active = 0 < peer.lastActivityMillis && !peer.closing;
     row.dot.Fill(urnw::colors::MakeBrush(active ? urnw::colors::kUrGreen
                                                 : urnw::colors::kTextFaint));
-    row.title.Text(H(ShortId(peer.clientId)));
+    // D5: Advanced shows the WHOLE client id and lets it be selected. The
+    // elision exists because a 36-character uuid does not fit a 380dip pane —
+    // but the operator who turned Advanced Mode on is the one person who needs
+    // the other 24 characters, and truncating them means opening a sheet to
+    // read a value that is already on screen.
+    row.title.Text(H(advancedMode_ ? peer.clientId : ShortId(peer.clientId)));
+    if (advancedMode_) {
+      row.title.IsTextSelectionEnabled(true);
+      row.title.TextTrimming(winrt::Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+    }
     row.meta.Text(H("↑ " + urnw::FormatByteCountCompact(peer.sendByteCount) + "   ↓ " +
                     urnw::FormatByteCountCompact(peer.receiveByteCount)));
     winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
@@ -1242,6 +1697,16 @@ void ConnectPage::OnChartTick() {
   if (PreviewSampleActive() && chartTickCount_ % 20 == 0) PreviewSampleCharts();
   if (++chartTickCount_ % 10 == 0) {  // ~1s cadence
     if (splitRulesSheet_) splitRulesSheet_->RefreshTimes();  // "Ns ago" labels
+    // D5: the inspector's exit-routing tables, every 5s. THREE gates, and all
+    // three earn their place — the mode is on (nothing else reads these), the
+    // window is presenting (this function already returned otherwise), and the
+    // Home pane is the visible one. It is several synchronous rpcs into the
+    // service; running it for a pane nobody is looking at is the whole cost of
+    // the feature with none of its value.
+    if (advancedMode_ && w_.ConnectView().Visibility() == Visibility::Visible &&
+        ++exitRefreshTick_ % 5 == 0) {
+      RefreshExitRouting();
+    }
   }
   // the contract-details activity resort now lives in the SDK view controller;
   // the sheet just reports scroll and renders the ordered rows (no local tick)
@@ -1332,6 +1797,9 @@ void ConnectPage::ApplyPreviewSample() {
 
   // deterministic, so two runs produce the same screenshot
   auto hash = [](uint32_t v) { return v * 2654435761u; };
+  const int64_t nowMillis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::system_clock::now().time_since_epoch())
+                                .count();
 
   static const char* kHosts[] = {
       "api.urnetwork.com",   "cdn.cloudflare.net",     "telemetry.microsoft.com",
@@ -1354,7 +1822,52 @@ void ConnectPage::ApplyPreviewSample() {
     action.local = !action.block && (h >> 9) % 7 == 0;
     action.byteCount = static_cast<int64_t>((h >> 11) % 900000) + 512;
     action.packetCount = static_cast<int64_t>((h >> 13) % 4000) + 3;
+    // D5: the fields the Advanced-Mode inspector reads. Without them a preview
+    // run can only ever screenshot the inspector's "nothing to join against"
+    // reading, which is the one reading that does not exercise it. Deterministic
+    // and obviously synthetic, like everything else in this function.
+    action.ips = {"203.0.113." + std::to_string(1 + (h % 200))};
+    // Ages relative to NOW, oldest last. An absolute constant here would be an
+    // epoch offset and the inspector would print "496159h ago", which is what
+    // the first version of this did.
+    action.timeMillis = nowMillis - 1'000 * static_cast<int64_t>(11 * i + (h % 7));
+    if ((h >> 17) % 6 == 0) {
+      action.overrideId = "preview-override-" + std::to_string(i);
+      action.hasBlockOverride = action.block;
+      action.hasRouteOverride = action.local;
+      action.matchedHosts = {kHosts[i]};
+    }
     blockActions_.push_back(action);
+  }
+  // ...and the routing tables the inspector joins those addresses against. In a
+  // real session these come off ReadReliability (DestinationExit -> Exit); here
+  // they are generated so the join has something to find. RFC 5737 / TEST-NET-3
+  // addresses, so nothing in this block can be mistaken for a real destination.
+  exits_.clear();
+  destinationExits_.clear();
+  for (uint32_t i = 0; i < 4; ++i) {
+    const uint32_t h = hash(i + 313);
+    urnet::Exit exit;
+    exit.ClientId = "preview-exit-" + std::to_string(i);
+    exit.Tier = static_cast<int32_t>(1 + (h % 3));
+    exit.EffectiveTier = exit.Tier;
+    exit.FlowCount = static_cast<int32_t>(4 + (h % 40));
+    exit.DialFailureCount = static_cast<int32_t>((h >> 5) % 3);
+    exit.Quarantined = i == 3;
+    exit.Warning = i == 2;
+    exit.WarningCause = i == 2 ? "probe timeout" : "";
+    exit.Proven = i < 2;
+    exit.ProbeAgeSeconds = static_cast<int64_t>(5 + (h % 90));
+    exits_.push_back(exit);
+  }
+  for (auto const& action : blockActions_) {
+    if (action.block || action.ips.empty()) continue;
+    urnet::DestinationExit dest;
+    dest.DestinationIp = action.ips.front();
+    dest.ClientId = exits_[hash(static_cast<uint32_t>(action.ips.front().size())) % 4]
+                        .ClientId;
+    dest.FlowCount = 1 + static_cast<int32_t>(action.packetCount % 5);
+    destinationExits_.push_back(dest);
   }
 
   contractRows_.clear();
