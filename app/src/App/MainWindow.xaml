@@ -565,61 +565,93 @@
              below. That gear's Tag matches none of the six destinations, so
              selecting it collapsed every panel and showed an empty window with no
              way back except picking another destination. -->
+        <!-- R1: THE ADAPTIVE 5-DESTINATION SHELL.
+             PaneDisplayMode="Auto" restores the native NavigationView adaptivity
+             the old build deliberately pinned OFF (LeftCompact at every width):
+               * >=1008 epx  expanded pane, icon + LABEL   (OpenPaneLength 220)
+               *  641-1007   compact icon rail
+               * <=640       overlay pane behind the toggle
+             The pinned thresholds and LeftCompact are gone: an icon-only rail in
+             a 2000px window was the single biggest 'feels like mobile' signal,
+             and the page-shift on expand the old note feared is exactly the
+             adaptive behaviour the spec now wants.
+
+             Five primary destinations, three footer. Wallet + Leaderboard merged
+             into Earnings (leaderboard is a tab on that destination, not its own
+             rail item), and Help / Diagnostics / Settings pinned to the footer
+             per the Windows settings-placement guidance.
+             Glyphs (Segoe Fluent, 20epx), by what the destination IS:
+               E80F Home       home      (connect + protection status)
+               E774 Globe      network   (locations / providers)
+               E8C7 Wallet     earnings  (wallet + leaderboard)
+               E77B Contact    account
+               E897 Help       help      (footer; the feedback/support screen)
+               EBE8 DevTools   diagnostics (footer; developer / reliability)
+               E713 Settings   settings  (footer)
+             Labels: home / help / diagnostics have no store key yet, so the
+             closest shipped strings are used (Connect / Support / Developer) and
+             reported as needed additions. -->
         <muxc:NavigationView x:Name="HomeNav" Grid.Row="1" Visibility="Collapsed"
                              FontFamily="{StaticResource UrBodyFontFamily}"
-                             IsBackButtonVisible="Collapsed" PaneDisplayMode="LeftCompact"
-                             CompactModeThresholdWidth="0" ExpandedModeThresholdWidth="100000"
+                             IsBackButtonVisible="Collapsed" PaneDisplayMode="Auto"
                              OpenPaneLength="220" IsPaneToggleButtonVisible="True"
                              IsSettingsVisible="False"
                              SelectionChanged="OnNavSelectionChanged">
+            <muxc:NavigationView.Resources>
+                <!-- R1: item height 44 (spec), and the selected pill gets the
+                     brand card fill + a 3epx accent indicator (already set as
+                     app-level theme keys in App.xaml). -->
+                <x:Double x:Key="NavigationViewItemOnLeftMinHeight">44</x:Double>
+            </muxc:NavigationView.Resources>
+            <!-- The destination title, in the brand DISPLAY face at Title scale
+                 (ABC Gravity per the reconciliation: titles/hero/wordmark). The
+                 default header renders a plain sans; this makes the page title
+                 a brand title. Content is a boxed hstring set per navigation. -->
+            <muxc:NavigationView.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" Style="{StaticResource UrTitleTextStyle}"
+                               Margin="4,4,0,0" />
+                </DataTemplate>
+            </muxc:NavigationView.HeaderTemplate>
             <muxc:NavigationView.MenuItems>
-                <!-- Segoe Fluent Icons, which Windows 11 ships: the rail above
-                     needs a glyph per destination or LeftCompact is seven blank
-                     48px squares. Chosen for what the destination IS, not for
-                     decoration:
-                       E774 Globe        connect      (the network)
-                       E77B Contact      account
-                       E8C7 Wallet       wallet
-                       EAFC TrendingUp   leaderboard
-                       E9CE Help         support
-                       E713 Settings     settings
-                       EBE8 DeveloperTools developer -->
                 <muxc:NavigationViewItem x:Name="ConnectNavItem" Tag="connect" IsSelected="True">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE774;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE80F;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
-                <muxc:NavigationViewItem x:Name="AccountNavItem" Tag="account">
+                <muxc:NavigationViewItem x:Name="NetworkNavItem" Tag="network">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE77B;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE774;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
                 <muxc:NavigationViewItem x:Name="WalletNavItem" Tag="wallet">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE8C7;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE8C7;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
-                <muxc:NavigationViewItem x:Name="LeaderboardNavItem" Tag="leaderboard">
+                <muxc:NavigationViewItem x:Name="AccountNavItem" Tag="account">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xEAFC;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE77B;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
+            </muxc:NavigationView.MenuItems>
+            <muxc:NavigationView.FooterMenuItems>
                 <muxc:NavigationViewItem x:Name="SupportNavItem" Tag="support">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE9CE;" />
-                    </muxc:NavigationViewItem.Icon>
-                </muxc:NavigationViewItem>
-                <muxc:NavigationViewItem x:Name="SettingsNavItem" Tag="settings">
-                    <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xE713;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE897;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
                 <muxc:NavigationViewItem x:Name="DeveloperNavItem" Tag="developer">
                     <muxc:NavigationViewItem.Icon>
-                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" Glyph="&#xEBE8;" />
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xEBE8;" />
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
-            </muxc:NavigationView.MenuItems>
+                <muxc:NavigationViewItem x:Name="SettingsNavItem" Tag="settings">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource UrIconFontFamily}" FontSize="20" Glyph="&#xE713;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+            </muxc:NavigationView.FooterMenuItems>
 
             <Grid Margin="24">
                 <!-- Connect: the connect drawer (macOS ConnectActions parity).
@@ -1175,6 +1207,59 @@
                     </StackPanel>
                     </Grid>
 
+                  </Grid>
+                </ScrollViewer>
+
+                <!-- Network (R1 skeleton). A first-class destination for the
+                     locations/providers picker that is a drawer/sheet today. This
+                     wave ships the PAGE SHELL - a header and a card that opens the
+                     existing chooser (ShowLocationChooserSheet, via
+                     OnLocationRowClick) - so the destination is real and runnable;
+                     Wave 2 rebuilds the in-page location list, search, favourites
+                     and blocked locations against the component kit. -->
+                <ScrollViewer x:Name="NetworkView" Visibility="Collapsed"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1000*" MaxWidth="820" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="1" Spacing="16" Margin="0,0,0,24">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE774;" Style="{StaticResource UrRowIconStyle}" />
+                            <TextBlock x:Name="NetworkHeading" Style="{StaticResource UrPanelHeadingStyle}" />
+                        </StackPanel>
+                        <Border Style="{StaticResource UrCardStyle}" Padding="24">
+                            <StackPanel Spacing="16">
+                                <TextBlock x:Name="NetworkIntroText" TextWrapping="Wrap"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                                <Border Style="{StaticResource UrDividerStyle}" />
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                        <TextBlock x:Name="NetworkSelectedLabel"
+                                                   Style="{StaticResource UrLabelStyle}" />
+                                        <TextBlock x:Name="NetworkSelectedValue"
+                                                   Style="{StaticResource UrBodyLargeTextStyle}" />
+                                    </StackPanel>
+                                    <Button x:Name="NetworkBrowseButton" Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            Click="OnLocationRowClick">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE774;" Style="{StaticResource UrRowIconStyle}"
+                                                      FontSize="14" />
+                                            <TextBlock x:Name="NetworkBrowseText" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                   </Grid>
                 </ScrollViewer>
 

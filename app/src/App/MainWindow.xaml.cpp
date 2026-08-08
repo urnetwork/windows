@@ -194,16 +194,25 @@ void MainWindow::ApplyStrings() {
   Title(Loc("app_name"));
   BrandText().Text(Loc("app_name"));
 
-  // navigation
-  ConnectNavItem().Content(LocBox("connect"));
-  AccountNavItem().Content(LocBox("account"));
-  WalletNavItem().Content(LocBox("wallet"));
-  LeaderboardNavItem().Content(LocBox("leaderboard"));
-  SupportNavItem().Content(LocBox("support"));
-  SettingsNavItem().Content(LocBox("settings"));
-  // DeveloperNavItem's label is painted by the page: the store has no key for
-  // the developer surface yet, so it goes through the same fallback the rest of
-  // that screen uses (DeveloperPage.cpp, Dev()).
+  // navigation (R1: 5 destinations + footer). The store has no key yet for
+  // "home", "help" or "diagnostics", so the closest shipped strings stand in
+  // (Connect / Support / Developer) - reported as needed store additions.
+  ConnectNavItem().Content(LocBox("connect"));      // Home
+  NetworkNavItem().Content(LocBox("network"));      // Network
+  WalletNavItem().Content(LocBox("earnings"));      // Earnings (wallet + leaderboard)
+  AccountNavItem().Content(LocBox("account"));      // Account
+  SupportNavItem().Content(LocBox("support"));      // Help (footer)
+  SettingsNavItem().Content(LocBox("settings"));    // Settings (footer)
+  // DeveloperNavItem (Diagnostics, footer) is painted by the page: the store has
+  // no key for the developer surface yet, so it goes through the same fallback
+  // the rest of that screen uses (DeveloperPage.cpp, Dev()).
+
+  // Network destination shell (R1 skeleton; Wave 2 builds the real picker).
+  NetworkHeading().Text(Loc("available_providers"));
+  NetworkIntroText().Visibility(Visibility::Collapsed);  // no shipped intro sentence yet
+  NetworkSelectedLabel().Text(Loc("selected_provider"));
+  NetworkSelectedValue().Text(Loc("best_available_provider"));
+  NetworkBrowseText().Text(Loc("browse_locations"));
 
   login_->ApplyStrings();
   connect_->ApplyStrings();
@@ -584,8 +593,8 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   }
 
   const hstring tag = H(destination);
-  for (auto const& item : {ConnectNavItem(), AccountNavItem(), WalletNavItem(),
-                           LeaderboardNavItem(), SupportNavItem(), SettingsNavItem(),
+  for (auto const& item : {ConnectNavItem(), NetworkNavItem(), WalletNavItem(),
+                           AccountNavItem(), SupportNavItem(), SettingsNavItem(),
                            DeveloperNavItem()}) {
     if (winrt::unbox_value_or<hstring>(item.Tag(), L"") == tag) {
       HomeNav().SelectedItem(item);  // the SelectionChanged relay shows the panel
@@ -628,6 +637,7 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
 
   const bool wasConnectVisible = ConnectView().Visibility() == Visibility::Visible;
   ConnectView().Visibility(tag == L"connect" ? Visibility::Visible : Visibility::Collapsed);
+  NetworkView().Visibility(tag == L"network" ? Visibility::Visible : Visibility::Collapsed);
   AccountView().Visibility(tag == L"account" ? Visibility::Visible : Visibility::Collapsed);
   WalletView().Visibility(tag == L"wallet" ? Visibility::Visible : Visibility::Collapsed);
   LeaderboardView().Visibility(tag == L"leaderboard" ? Visibility::Visible : Visibility::Collapsed);

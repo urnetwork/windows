@@ -307,8 +307,8 @@ std::string PreviewUiDestination() {
     // cannot otherwise be looked at without creating a real account, because
     // it appears exactly once, immediately after one is created.
     static constexpr std::wstring_view kKnown[] = {
-        L"connect",  L"account",  L"wallet",     L"leaderboard",
-        L"support",  L"settings", L"developer",  L"seedphrase"};
+        L"connect",  L"network",   L"account",   L"wallet",   L"leaderboard",
+        L"support",  L"settings",  L"developer", L"seedphrase"};
     if (tag.empty()) return "connect";
     for (auto const& known : kKnown) {
       if (tag == known) return Narrow(std::wstring{tag});
