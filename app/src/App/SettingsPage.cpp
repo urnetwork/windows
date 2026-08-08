@@ -746,13 +746,29 @@ void SettingsPage::RenderAuthMethods(rows::FieldState state) {
     note.FontSize(12);
     note.TextWrapping(TextWrapping::Wrap);
     ApplyFieldState(note, state == FieldState::Loaded ? FieldState::Empty : state);
+    // In a pane the state line has to sit on the pane's grid like everything
+    // else: bare, it read as a caption floating above the row below it, with
+    // neither the 12px inset nor the hairline the rows around it carry.
+    if (rows::PaneMode()) {
+      Border box;
+      box.Padding(ThicknessHelper::FromLengths(12, 8, 12, 8));
+      box.BorderBrush(colors::BorderBrush());
+      box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+      box.Child(note);
+      authMethodsPanel_.Children().Append(box);
+      return;
+    }
     authMethodsPanel_.Children().Append(note);
     return;
   }
   for (auto const& authType : authTypes_) {
     Button remove;
     remove.Content(winrt::box_value(Loc("remove")));
-    remove.Foreground(colors::DangerBrush());
+    // NOT red. The spec is explicit that Remove must not be a bright red control
+    // in every default row, and that red belongs to the destructive confirmation
+    // context - which for this one is ConfirmRemoveAuth's dialog, where removing
+    // the only sign-in method is spelled out.
+    if (!rows::PaneMode()) remove.Foreground(colors::DangerBrush());
     // A modal confirm, as apple's SettingsView does it - NOT the two-click arm
     // this used to be. That arm had three faults at once: a double-click armed
     // and committed in a single gesture, it never disarmed, and it offered no
