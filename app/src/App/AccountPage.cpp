@@ -5,6 +5,9 @@
 
 #include <algorithm>
 #include <array>
+#include <vector>
+
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 
 #include "Log.h"
 #include "MainWindow.xaml.h"
@@ -72,15 +75,76 @@ void AccountPage::BuildProfileExtra() {
   nameStatus_ = TextBlock();
   nameStatus_.FontSize(12);
   nameStatus_.TextWrapping(TextWrapping::Wrap);
-  host.Children().Append(nameStatus_);
+  {
+    // Prose, so it may wrap - but it still carries the pane row's inset and
+    // bottom hairline, or a verdict about the name appears to float between two
+    // rows belonging to neither.
+    Border box;
+    box.Padding(ThicknessHelper::FromLengths(12, 8, 12, 8));
+    box.BorderBrush(urnw::colors::BorderBrush());
+    box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+    box.Child(nameStatus_);
+    host.Children().Append(box);
+  }
 
+  // The password row is a ROW like every other one in this pane, not a loose
+  // button under a card: the label says what it is and the trailing word says
+  // what pressing it does.
+  auto row = kit::MakePaneTwoLineRow(Loc("update_password"));
   changePasswordButton_ = Button();
-  changePasswordButton_.Content(winrt::box_value(Loc("update_password")));
-  changePasswordButton_.HorizontalAlignment(HorizontalAlignment::Left);
+  changePasswordButton_.Content(winrt::box_value(Loc("send")));
   // No auth to send a link to yet; enabled once the account load says otherwise.
   changePasswordButton_.IsEnabled(false);
   changePasswordButton_.Click([this](auto const&, auto const&) { SendPasswordReset(); });
-  host.Children().Append(changePasswordButton_);
+  Automation::AutomationProperties::SetFullDescription(changePasswordButton_,
+                                                       Loc("update_password"));
+  row.trailing.Children().Append(changePasswordButton_);
+  host.Children().Append(row.root);
+}
+
+// ---- the profile name's explicit edit mode (R4) ----------------------------
+//
+// The spec's Profile section asks for inline edit with Save appearing only while
+// editing. What shipped was a permanently-open TextBox with a permanently-live
+// Save button under it: no way to tell whether the name on screen was the saved
+// one or something half-typed, and a Save that was always inviting a write.
+//
+// So the row has two states and exactly one of them is visible. Entering edit
+// seeds the box from the value the last load wrote, which is also what Cancel
+// restores - the box is never the source of truth for the name.
+void AccountPage::SetEditingName(bool editing) {
+  editingName_ = editing;
+  w_.NetworkNameRow().Visibility(editing ? Visibility::Collapsed : Visibility::Visible);
+  w_.NetworkNameEditPanel().Visibility(editing ? Visibility::Visible : Visibility::Collapsed);
+  if (editing) {
+    w_.NetworkNameBox().Text(H(networkName_));
+    w_.NetworkNameBox().Focus(FocusState::Programmatic);
+  }
+}
+
+// The row AND its text: a fixed-height row wrapped around an empty TextBlock is
+// still an empty row, and it drew a 38px hole in the middle of the profile group
+// on every signed-out frame.
+void AccountPage::SetAuthText(winrt::hstring const& text) {
+  w_.AccountAuthText().Text(text);
+  w_.AccountAuthRow().Visibility(text.empty() ? Visibility::Collapsed : Visibility::Visible);
+}
+
+void AccountPage::ApplyNetworkName(std::string const& name) {
+  networkName_ = name;
+  kit::SetTextOrCollapse(w_.NetworkNameValue(), H(name));
+}
+
+void AccountPage::OnEditNetworkName(IInspectable const&, RoutedEventArgs const&) {
+  // The row is only actionable with an account behind it; ApplyAccountState
+  // disables it otherwise, and this is the second guard for the keyboard path.
+  if (!Sdk().IsLoggedIn()) return;
+  SetEditingName(true);
+}
+
+void AccountPage::OnCancelNetworkName(IInspectable const&, RoutedEventArgs const&) {
+  SetEditingName(false);
+  nameStatus_.Text(L"");
 }
 
 void AccountPage::ResetForSignOut() {
@@ -92,40 +156,55 @@ void AccountPage::ResetForSignOut() {
   totalReferrals_ = 0;
   needsNameClaim_ = false;
   w_.NetworkNameBox().Text(L"");
-  w_.AccountAuthText().Text(L"");
+  ApplyNetworkName({});
+  SetEditingName(false);
+  SetAuthText({});
   ApplyAccountState(FieldState::NoSession);
   ApplyFieldState(w_.ReferralText(), FieldState::NoSession);
   w_.RoyaltyBadge().Visibility(Visibility::Collapsed);
-  w_.BalanceCodesPanel().Children().Clear();
-  w_.BalanceCodesEmptyText().Visibility(Visibility::Visible);
-  ApplyFieldState(w_.BalanceCodesEmptyText(), FieldState::NoSession);
+  RenderBalanceCodes({}, FieldState::NoSession);
 }
 
 void AccountPage::ApplyAccountState(rows::FieldState state) {
   ApplyFieldState(nameStatus_, state);
   // Nothing on this card is actionable without the account behind it.
   const bool loaded = state == FieldState::Loaded;
+  w_.NetworkNameRow().IsEnabled(loaded);
   w_.NetworkNameBox().IsEnabled(loaded);
   w_.SaveNameButton().IsEnabled(loaded);
   changePasswordButton_.IsEnabled(loaded && !userAuth_.empty());
+  // Leaving the editor open over a card that has just lost its account would
+  // offer a Save that cannot run.
+  if (!loaded && editingName_) SetEditingName(false);
 }
 
 void AccountPage::ApplyStrings() {
   BuildProfileExtra();  // idempotent
 
-  // account — plan + usage card, redeemed codes, profile, referrals
-  w_.AccountPlanLabel().Text(Loc("plan"));
+  // the three pane headers
+  w_.AccountPaneATitle().Text(Loc("plan"));
+  w_.AccountPaneBTitle().Text(Loc("account"));
+  w_.AccountPaneCTitle().Text(Loc("balance_codes_title"));
+  // Landmark names, so a screen reader can tell three regions apart.
+  Automation::AutomationProperties::SetName(w_.AccountPaneA(), Loc("plan"));
+  Automation::AutomationProperties::SetName(w_.AccountPaneB(), Loc("account"));
+  Automation::AutomationProperties::SetName(w_.AccountPaneC(), Loc("balance_codes_title"));
+
+  // pane A: plan + usage
   w_.AccountPlanValueText().Text(Loc("free"));
   w_.AccountUpgradeButton().Content(LocBox("upgrade"));
+  w_.AccountUsageGroupLabel().Text(Loc("data_usage"));
   w_.AccountDailyLabel().Text(Loc("daily_data_balance_label"));
   w_.RedeemRowText().Text(Loc("redeem_balance_code"));
-  w_.BalanceCodesLabel().Text(Loc("balance_codes_title"));
-  // NOT "no balance codes found" here: that is a claim about the server's
-  // answer, and at this point nothing has been asked. LoadBalanceCodes owns it.
-  w_.AccountHeading().Text(Loc("account"));
+  Automation::AutomationProperties::SetName(w_.RedeemRowButton(), Loc("redeem_balance_code"));
+
+  // pane B: profile
+  w_.AccountProfileGroupLabel().Text(Loc("profile"));
+  w_.AccountNetworkNameLabel().Text(Loc("network_name_label"));
+  Automation::AutomationProperties::SetName(w_.NetworkNameRow(), Loc("network_name_label"));
   w_.NetworkNameBox().Header(LocBox("network_name_label"));
   w_.SaveNameButton().Content(LocBox("save"));
-  w_.ReferralsHeading().Text(Loc("referrals"));
+  w_.CancelNameButton().Content(LocBox("cancel"));
   w_.RoyaltyText().Text(Loc("referral_royalty"));
 
   // Every async field on this card starts in the state that says nothing has
@@ -136,8 +215,7 @@ void AccountPage::ApplyStrings() {
     initialStatesApplied_ = true;
     ApplyAccountState(FieldState::NoSession);
     ApplyFieldState(w_.ReferralText(), FieldState::NoSession);
-    w_.BalanceCodesEmptyText().Visibility(Visibility::Visible);
-    ApplyFieldState(w_.BalanceCodesEmptyText(), FieldState::NoSession);
+    RenderBalanceCodes({}, FieldState::NoSession);
   }
 }
 
@@ -175,9 +253,9 @@ void AccountPage::LoadAccount() {
       auto& page = self->account();
       page.needsNameClaim_ = claim;
       page.userAuth_ = u.user_auth ? *u.user_auth : std::string();
-      self->NetworkNameBox().Text(H(u.network_name));
+      page.ApplyNetworkName(u.network_name);
       const std::wstring auth = urnw::Widen(page.userAuth_);
-      self->AccountAuthText().Text(hstring{urnw::Format(
+      page.SetAuthText(hstring{urnw::Format(
           u.verified ? "account_auth_verified" : "account_auth_unverified", auth)});
       page.ApplyAccountState(FieldState::Loaded);
       // The load succeeded, so the status line has nothing left to say; the
@@ -236,13 +314,10 @@ void AccountPage::LoadReferralInfo() {
 
 void AccountPage::LoadBalanceCodes() {
   if (!Sdk().IsLoggedIn()) {
-    w_.BalanceCodesPanel().Children().Clear();
-    w_.BalanceCodesEmptyText().Visibility(Visibility::Visible);
-    ApplyFieldState(w_.BalanceCodesEmptyText(), FieldState::NoSession);
+    RenderBalanceCodes({}, FieldState::NoSession);
     return;
   }
-  w_.BalanceCodesEmptyText().Visibility(Visibility::Visible);
-  ApplyFieldState(w_.BalanceCodesEmptyText(), FieldState::Loading);
+  RenderBalanceCodes({}, FieldState::Loading);
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().api().getNetworkRedeemedBalanceCodes(
@@ -261,61 +336,56 @@ void AccountPage::LoadBalanceCodes() {
         queue.TryEnqueue([weak, failed, codes = std::move(codes)] {
           auto self = weak.get();
           if (!self) return;
-          auto panel = self->BalanceCodesPanel();
-          panel.Children().Clear();
-          if (failed) {
-            self->BalanceCodesEmptyText().Visibility(Visibility::Visible);
-            ApplyFieldState(self->BalanceCodesEmptyText(), FieldState::Failed);
-            return;
-          }
-          self->BalanceCodesEmptyText().Visibility(codes.empty() ? Visibility::Visible
-                                                                 : Visibility::Collapsed);
-          if (codes.empty()) {
-            // the shipped, specific empty line, restored after any state write
-            self->BalanceCodesEmptyText().Text(Loc("no_balance_codes_found"));
-            self->BalanceCodesEmptyText().Foreground(urnw::colors::FaintBrush());
-            return;
-          }
-
-          // header + one row per redeemed code: code / data / redeemed / expires
-          auto makeRow = [](hstring const& c0, hstring const& c1, hstring const& c2,
-                            hstring const& c3, bool header) {
-            Grid row;
-            ColumnDefinition d0, d1, d2, d3;
-            d0.Width(GridLength{1, GridUnitType::Star});
-            d1.Width(GridLength{0, GridUnitType::Auto});
-            d1.MinWidth(84);
-            d2.Width(GridLength{0, GridUnitType::Auto});
-            d2.MinWidth(96);
-            d3.Width(GridLength{0, GridUnitType::Auto});
-            d3.MinWidth(96);
-            row.ColumnDefinitions().Append(d0);
-            row.ColumnDefinitions().Append(d1);
-            row.ColumnDefinitions().Append(d2);
-            row.ColumnDefinitions().Append(d3);
-            const std::array<hstring, 4> cells = {c0, c1, c2, c3};
-            for (int i = 0; i < 4; ++i) {
-              TextBlock cell;
-              cell.Text(cells[i]);
-              cell.FontSize(12);
-              if (header) cell.Foreground(urnw::colors::MutedBrush());
-              Grid::SetColumn(cell, i);
-              row.Children().Append(cell);
-            }
-            return row;
-          };
-          panel.Children().Append(makeRow(Loc("code"), Loc("data"), Loc("redeemed"),
-                                          Loc("expires"), /*header=*/true));
-          for (auto const& code : codes) {
-            panel.Children().Append(makeRow(
-                H(MaskSecret(code.secret)),
-                H("+" + urnw::FormatByteCountCompact(code.balance_byte_count)),
-                H(code.redeem_time ? IsoDate(*code.redeem_time) : std::string()),
-                H(code.end_time ? IsoDate(*code.end_time) : std::string()),
-                /*header=*/false));
-          }
+          self->account().RenderBalanceCodes(
+              codes, failed ? FieldState::Failed
+                            : codes.empty() ? FieldState::Empty : FieldState::Loaded);
         });
       });
+}
+
+// The redeemed-code table, and every state it can be in, in one place.
+//
+// It used to be three scattered writes to a panel and an empty TextBlock, and
+// they disagreed: the "no balance codes found" line was left visible under a
+// populated table by one path and cleared by another. One function, one shape.
+//
+// THREE columns, not four. This is a 380dip pane; code / data / redeemed is what
+// fits without any column collapsing, and the expiry is the least load-bearing
+// of the four (a redeemed code's data is already on the plan). The weights are
+// stars with minimums, so the table narrows rather than clips.
+void AccountPage::RenderBalanceCodes(urnet::RedeemedBalanceCodeList const& codes,
+                                     rows::FieldState state) {
+  auto panel = w_.BalanceCodesPanel();
+  panel.Children().Clear();
+
+  const bool loaded = state == FieldState::Loaded && !codes.empty();
+  // ApplyFieldState writes the right sentence for every non-value state; the
+  // line is a centred one inside the FULL-HEIGHT pane, so "nothing here" is not
+  // a short card at the top of a tall column.
+  w_.BalanceCodesEmptyText().Visibility(loaded ? Visibility::Collapsed
+                                               : Visibility::Visible);
+  if (state == FieldState::Empty) {
+    // the shipped, specific empty line rather than the generic "None"
+    w_.BalanceCodesEmptyText().Text(Loc("no_balance_codes_found"));
+    w_.BalanceCodesEmptyText().Foreground(urnw::colors::FaintBrush());
+  } else if (!loaded) {
+    ApplyFieldState(w_.BalanceCodesEmptyText(), state);
+  }
+
+  kit::SetTextOrCollapse(w_.AccountPaneCMeta(),
+                         loaded ? hstring{std::to_wstring(codes.size())} : hstring{});
+  if (!loaded) return;
+
+  const std::vector<double> weights{1.4, 1.0, 1.2};
+  panel.Children().Append(
+      kit::MakePaneTableHeader(weights, {Loc("code"), Loc("data"), Loc("redeemed")}));
+  for (auto const& code : codes) {
+    auto row = kit::MakePaneTableRow(weights);
+    row.cells[0].Text(H(MaskSecret(code.secret)));
+    row.cells[1].Text(H("+" + urnw::FormatByteCountCompact(code.balance_byte_count)));
+    row.cells[2].Text(H(code.redeem_time ? IsoDate(*code.redeem_time) : std::string()));
+    panel.Children().Append(row.root);
+  }
 }
 
 // Claim and change are DIFFERENT operations and the account decides which.
@@ -355,7 +425,10 @@ void AccountPage::OnSaveNetworkName(IInspectable const&, RoutedEventArgs const&)
       // MISSING STRING: the store has no "Network name changed to {}". The
       // server's accepted name in the brand green is the acknowledgement -
       // it is data, and the colour is the signal.
-      self->NetworkNameBox().Text(H(newName));
+      page.ApplyNetworkName(newName);
+      // The write landed, so the editor has nothing left to edit. Leaving it
+      // open is what made the old card ambiguous about which name was saved.
+      page.SetEditingName(false);
       kit::ApplySupportingText(page.nameStatus_, H(newName), kit::ValidationState::Valid);
     });
   };

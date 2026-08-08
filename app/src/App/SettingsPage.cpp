@@ -132,8 +132,10 @@ void SettingsPage::ApplyStrings() {
   w_.SplitTunnelHeading().Text(Loc("app_split_rules"));
   w_.SplitTunnelDescription().Text(Loc("apps_listed_bypass_vpn"));
   w_.ManageAppSplitButton().Content(LocBox("manage_apps"));
+  // The heading over the destructive end. It sits on ACCOUNT now (the rows under
+  // it are Sign out and Delete account), which is why it is painted from here
+  // rather than from AccountPage: this class still owns those rows.
   w_.SettingsAccountHeading().Text(Loc("account"));
-  w_.SignOutButton().Content(LocBox("sign_out"));
   w_.ProtocolLink().Content(LocBox("uses_ur_protocol"));
 }
 
@@ -143,22 +145,46 @@ void SettingsPage::BuildSections() {
   if (built_) return;
   built_ = true;
 
+  // R4 / spec override #2: THE ACCOUNT-SUBJECT SECTIONS ARE BUILT ONTO ACCOUNT.
+  //
+  // Login methods, the auth code, the client id, the bonus referral code, the
+  // referral network, Manage Subscription and Delete account are not settings -
+  // they are the account - and the reconciled IA moves them to that destination.
+  // What did NOT move is this class: it owns their sheets, their loads, their
+  // echo guards and their FieldState wiring, and re-homing four hundred lines of
+  // that into AccountPage would have been a rewrite dressed up as a move. So the
+  // builders stay here and the HOSTS they build into are Account's.
+  //
+  // Two consequences worth knowing:
+  //   * LoadSettings() is what fills these rows, so MainWindow's navigation relay
+  //     now calls it for the ACCOUNT destination as well as for Settings.
+  //   * ResetForSignOut() still clears them from here, which is correct - they
+  //     are still this object's state.
+  //
+  // Pane mode (rows::SetPaneMode) makes the same builder calls emit the pane
+  // vocabulary instead of cards. It is set around the whole build because
+  // Account is a pane shell; the Settings sections below are switched back for
+  // now and follow in their own change.
+  rows::SetPaneMode(true);
+  BuildSecuritySection(w_.AccountSecurityHost());
+  BuildReferralSection(w_.AccountReferralHost());
+  BuildSubscriptionSection(w_.AccountPlanExtraHost());
+  BuildDangerSection();
+  rows::SetPaneMode(false);
+
+  // ---- what stays on Settings -------------------------------------------
   // TWO hosts, not one. At desktop widths they are two card columns (D4); at
   // flyout width the second stacks under the first, so the split has to be by
   // SUBJECT rather than by length, or the narrow reading order comes out
-  // shuffled. Left is what this account and this device ARE; right is how they
-  // connect and who they talk to.
+  // shuffled.
   auto host = w_.SettingsSections();
   auto right = w_.SettingsSectionsRight();
-  BuildAccountSection(host);
   BuildDeviceSection(host);
-  BuildSubscriptionSection(host);
   BuildConnectionsSection(right);
   BuildIdentitySection(right);
   BuildStayInTouchSection(right);
   BuildLogsSection(right);
   BuildVersionSection(right);
-  BuildDangerSection();
 
   // Everything that can be read without a round trip, so the page is not blank
   // before (or without) a load: the client id and the persisted kill switch.
@@ -170,12 +196,28 @@ void SettingsPage::BuildSections() {
   ApplyValue(versionValue_, sdkVersion.empty() ? Sdk().appVersion() : sdkVersion);
 }
 
-void SettingsPage::BuildAccountSection(Panel const& host) {
-  // Deliberately unheaded. The markup below already carries an "Account"
-  // heading (over Sign out), and a second one here read as a stutter on screen
-  // - two identical brand headings on one page. Every row in this card names
-  // itself, which is also how macOS's settings form presents them.
+// HOW THE ACCOUNT SIGNS IN. Built onto Account's pane B (spec override #2):
+// login methods, the short-lived auth code, and the client id support asks for.
+void SettingsPage::BuildSecuritySection(Panel const& host) {
+  // "Secure Your Account" is the shipped string closest to a Security heading;
+  // the store has no "Security" key. Reported as a needed addition.
+  Heading(host, Loc("secure_your_account"), L"");
   auto card = Card(host);
+
+  // Sign-in methods FIRST: it is the section's subject, and it was buried under
+  // three other rows when this lived on Settings.
+  authMethodsPanel_ = StackPanel();
+  card.Children().Append(authMethodsPanel_);
+  auto addAuth = ButtonRow(card, Loc("site_app_login_methods"), hstring{}, Loc("add"));
+  addAuth.Click([this](auto const&, auto const&) { ShowAddAuthSheet(); });
+  // Nothing has been asked for yet; LoadSettings moves this on.
+  RenderAuthMethods(FieldState::NoSession);
+
+  // Auth code - a short-lived credential for signing in on another device.
+  auto authCodeButton = ButtonRow(card, Loc("auth_code"),
+                                  Loc("created_auth_codes_expire_after_5_minutes"),
+                                  Loc("site_app_create_auth_code"));
+  authCodeButton.Click([this](auto const&, auto const&) { ShowAuthCodeSheet(); });
 
   // Client ID - the identifier support asks for; copy is the only action.
   clientIdValue_ = ValueActionRow(card, Loc("client_id"), Loc("copy"), clientIdCopy_);
@@ -185,8 +227,13 @@ void SettingsPage::BuildAccountSection(Panel const& host) {
     CopyToClipboard(clientId_);
     snackbar_.Show(Loc("client_id_copied_to_clipboard"), InfoBarSeverity::Success);
   });
+}
 
-  Divider(card);
+// WHO REFERRED WHOM. Also onto Account's pane B, directly above the referral
+// summary and the royalty mascot the markup carries.
+void SettingsPage::BuildReferralSection(Panel const& host) {
+  Heading(host, Loc("referrals"), L"");
+  auto card = Card(host);
 
   // Bonus referral code - what a friend types on sign up.
   referralCodeValue_ =
@@ -198,44 +245,16 @@ void SettingsPage::BuildAccountSection(Panel const& host) {
     snackbar_.Show(Loc("bonus_referral_code_copied_to_clipboard"), InfoBarSeverity::Success);
   });
 
-  Divider(card);
-
   // Referral network - who referred THIS network, editable in a sheet.
   auto referralButton = NavRow(card, Loc("referral_network"), referralNetworkValue_);
   referralButton.Click([this](auto const&, auto const&) { ShowReferralNetworkSheet(); });
 
-  // Both referral rows start in the state that says WHY they are empty. Without
-  // this they rendered as blank cells before any load ran - the exact "is this
-  // empty, loading, or broken?" ambiguity FieldState exists to remove, and it
-  // was visible on screen because --preview-ui never calls LoadSettings.
+  // Both rows start in the state that says WHY they are empty. Without this they
+  // rendered as blank cells before any load ran - the exact "is this empty,
+  // loading, or broken?" ambiguity FieldState exists to remove, and it was
+  // visible on screen because --preview-ui never calls LoadSettings.
   ApplyFieldState(referralCodeValue_, FieldState::NoSession);
   ApplyFieldState(referralNetworkValue_, FieldState::NoSession);
-
-  Divider(card);
-
-  // Auth code - a short-lived credential for signing in on another device.
-  auto authCodeButton = ButtonRow(card, Loc("auth_code"),
-                                  Loc("created_auth_codes_expire_after_5_minutes"),
-                                  Loc("site_app_create_auth_code"));
-  authCodeButton.Click([this](auto const&, auto const&) { ShowAuthCodeSheet(); });
-
-  Divider(card);
-
-  // Sign-in methods, one row each, with remove; and an add affordance.
-  TextBlock methodsLabel;
-  methodsLabel.Text(Loc("site_app_login_methods"));
-  methodsLabel.Style(Lookup(L"UrLabelStyle"));
-  card.Children().Append(methodsLabel);
-  authMethodsPanel_ = StackPanel();
-  authMethodsPanel_.Spacing(4);
-  card.Children().Append(authMethodsPanel_);
-  Button addAuth;
-  addAuth.Content(winrt::box_value(Loc("add")));
-  addAuth.HorizontalAlignment(HorizontalAlignment::Left);
-  addAuth.Click([this](auto const&, auto const&) { ShowAddAuthSheet(); });
-  card.Children().Append(addAuth);
-  // Nothing has been asked for yet; LoadSettings moves this on.
-  RenderAuthMethods(FieldState::NoSession);
 }
 
 void SettingsPage::BuildDeviceSection(Panel const& host) {
@@ -342,14 +361,31 @@ void SettingsPage::BuildVersionSection(Panel const& host) {
   versionValue_ = ValueRow(card, Loc("version_info"));
 }
 
+// THE IRREVERSIBLE END, at the bottom of Account's pane B. Sign out moved here
+// with it: signing out is an account operation, and leaving it on a preferences
+// page while the account it ends lives somewhere else is the split the IA
+// reconciliation exists to remove.
+//
+// Both are BUTTON ROWS, not bright red buttons in a card (spec, Security):
+// "Destructive Remove commands should not appear as bright red buttons in every
+// default row. Show red styling only when the user enters a destructive
+// confirmation context." So Delete account is a normal row whose action word is
+// red, and the red-on-black confirmation lives in DeleteAccountSheet.
 void SettingsPage::BuildDangerSection() {
-  auto host = w_.SettingsDangerSection();
-  deleteAccountButton_ = Button();
-  deleteAccountButton_.Content(winrt::box_value(Loc("delete_account_2")));
-  deleteAccountButton_.Foreground(colors::DangerBrush());
-  deleteAccountButton_.HorizontalAlignment(HorizontalAlignment::Left);
+  auto host = w_.AccountDangerHost();
+  // WHOLE-ROW affordances, not a label with a button beside it repeating the
+  // same word. Both rows previously read "Sign out [Sign out]".
+  TextBlock unused{nullptr};
+  auto signOut = NavRow(host, Loc("sign_out"), unused);
+  signOut.Click([this](auto const& sender, auto const& args) { OnSignOut(sender, args); });
+
+  // NOT red here. The spec is explicit that a destructive command must not be a
+  // bright red control sitting in a default row, and that red belongs to the
+  // confirmation context - which for this one is DeleteAccountSheet, where the
+  // user types the network name back before the button is enabled at all.
+  TextBlock unusedDelete{nullptr};
+  deleteAccountButton_ = NavRow(host, Loc("delete_account_2"), unusedDelete);
   deleteAccountButton_.Click([this](auto const&, auto const&) { ShowDeleteAccountSheet(); });
-  host.Children().Append(deleteAccountButton_);
 }
 
 // ---- loads -----------------------------------------------------------------

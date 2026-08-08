@@ -365,20 +365,32 @@ void MainWindow::ApplyBreakpoint() {
         wide ? PanePlacement{0, 2, 1, Thickness{12, 0, 0, 0}}
              : PanePlacement{2, 0, 1, Thickness{0, 8, 0, 0}});
 
-  // ---- Account: the plan beside the identity -------------------------------
-  // The usage bar is the widest thing on this destination and the only one that
-  // reads better for it, so the plan card keeps the main column; redeemed
-  // codes, the profile form and referrals go beside it instead of a screenful
-  // below it. 1180 rather than Wallet's 1720: there is no table here, and two
-  // ~580dip card columns is as wide as a column of form rows should ever get.
-  AccountCapColumn().MaxWidth(wide ? 1180 : 560);
-  if (wide) {
-    SetStar(AccountSideColumn(), 1);
-  } else {
-    SetWidth(AccountSideColumn(), 0);
-  }
-  Place(AccountSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
-                                 : PanePlacement{1, 0, 1, Thickness{0, 0, 0, 24}});
+  // ---- Account: plan, identity, codes ---------------------------------------
+  // Home's shape, applied to an account: a fixed rail of figures, a wide middle
+  // that is the one list worth widening, and a fixed table on the right.
+  //
+  //   >= 1000dip   three panes   plan(360) | account(*) | codes(380)
+  //   <  1000dip   two panes     plan(360) | account(*)
+  //   <   640dip   one pane      account(*)
+  //
+  // The codes table folds first because it is a record, not a control: nothing
+  // in it is actionable and Redeem lives in the plan pane. Below 640 the PLAN
+  // pane folds rather than the account pane, because at that width a 360 rail
+  // beside a ~340 column is two half-columns and neither is readable - and the
+  // usage figures are also on the status strip and the tray.
+  // 1500 for the third pane, not the app-wide 1000. Measured at 1240 with three
+  // panes open: the nav pane takes 220, the plan rail 360 and the codes table
+  // 380, which left the account list 278dip - and a row that is a label, a value
+  // and a Copy button in 278dip renders as "..." beside "Please login to
+  // URnetwork". A pane that cannot show its labels is not a pane.
+  const bool accountThree = 1500.0 <= width;
+  const bool accountTwo = 900.0 <= width;
+  SetWidth(AccountPaneCColumn(), accountThree ? 380 : 0);
+  AccountPaneCRule().Visibility(accountThree ? Visibility::Visible : Visibility::Collapsed);
+  AccountPaneC().Visibility(accountThree ? Visibility::Visible : Visibility::Collapsed);
+  SetWidth(AccountPaneAColumn(), accountTwo ? 360 : 0);
+  AccountPaneBRule().Visibility(accountTwo ? Visibility::Visible : Visibility::Collapsed);
+  AccountPaneA().Visibility(accountTwo ? Visibility::Visible : Visibility::Collapsed);
 
   // ---- Leaderboard: the table, with your own rank beside it ----------------
   // The plainest cut in the app. BOTH panes move here, because the reading
@@ -803,6 +815,12 @@ void MainWindow::LoadCurrentDestination() {
   if (tag == L"account") {
     account_->LoadAccount();
     Balance().Refresh();  // macOS AccountRootView onAppear parity
+    // R4: login methods, the auth code, the client id, the bonus referral code
+    // and the referral network live on Account now, and SettingsPage is what
+    // loads them (it still owns those rows - see BuildSections). Without this
+    // they sit on "Please login to URnetwork" on the destination that shows
+    // them, which is indistinguishable from being signed out.
+    settings_->LoadSettings();
   } else if (tag == L"wallet") {
     wallet_->LoadWallet();
   } else if (tag == L"leaderboard") {
@@ -1180,6 +1198,14 @@ void MainWindow::OnLocationRowClick(IInspectable const& s,
 void MainWindow::OnPeersLineClick(IInspectable const& s,
                                    RoutedEventArgs const& e) {
   connect_->OnPeersLineClick(s, e);
+}
+
+void MainWindow::OnEditNetworkName(IInspectable const& s, RoutedEventArgs const& e) {
+  account_->OnEditNetworkName(s, e);
+}
+
+void MainWindow::OnCancelNetworkName(IInspectable const& s, RoutedEventArgs const& e) {
+  account_->OnCancelNetworkName(s, e);
 }
 
 void MainWindow::OnSaveNetworkName(IInspectable const& s, RoutedEventArgs const& e) {

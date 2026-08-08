@@ -181,6 +181,11 @@ struct MainWindow : MainWindowT<MainWindow> {
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignOut(winrt::Windows::Foundation::IInspectable const&,
                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // R4: the profile name's explicit edit mode. Enter, cancel, save.
+  void OnEditNetworkName(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCancelNetworkName(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSaveNetworkName(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // upgrade (hosted checkout) + redeem, as ContentDialogs

@@ -38,6 +38,37 @@ namespace urnw {
 // ---- the row kit ----------------------------------------------------------
 namespace rows {
 
+// ---- PANE MODE (R4) --------------------------------------------------------
+//
+// The kit below was written for the card model: Card() draws a rounded island,
+// Heading() draws an 18pt brand heading above it, Row() grows to whatever its
+// content needs, Divider() draws the line between two rows inside a card.
+//
+// The owner's verdict deleted that model. Rather than fork the kit - which
+// would have meant two builders per row species, kept in step by hand - the
+// same calls emit the PANE vocabulary when this flag is on:
+//
+//   Card       -> a plain StackPanel. A pane has no islands in it.
+//   Heading    -> kit::MakePaneGroupHeader, the 28px strip.
+//   Row        -> kit::MakePaneTwoLineRow, a FIXED 44px with the label on line
+//                 one and the note trimmed to line two.
+//   NavRow     -> kit::MakePaneTwoLineRowButton, the same 44px as a Button.
+//   Divider    -> nothing. Every pane row carries its own bottom hairline, so a
+//                 divider between two of them draws a 2px rule.
+//   Supporting -> a padded prose block with the row hairline, not a bare
+//                 TextBlock floating between two rows.
+//
+// It is a MODE rather than a parameter because the call sites are section
+// builders forty calls long, and threading a bool through every one of them is
+// how half of them end up not getting it. Set it around a BuildXSection() call
+// and put it back; it is only ever read on the UI thread during construction.
+//
+// The one behavioural difference to know about: a pane Row's note is TRIMMED to
+// one line. That is the price of a fixed row height, and the fixed row height is
+// the whole point of the model ("less random sized modules").
+void SetPaneMode(bool on);
+bool PaneMode();
+
 // A style from App.xaml by key, or nullptr when it is missing. Nullptr is a
 // legal Style() assignment, so a renamed key degrades to the default look
 // instead of throwing out of a constructor.

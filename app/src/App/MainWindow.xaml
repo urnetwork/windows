@@ -1322,170 +1322,282 @@
                     </Grid>
                 </Grid>
 
-                <!-- Account (macOS AccountRootView parity: plan card + usage bar,
-                     redeem, redeemed codes, profile, referrals) -->
-                <ScrollViewer Margin="24" x:Name="AccountView" Visibility="Collapsed">
-                  <!-- capped star column, not MaxWidth on the panel: see ConnectView -->
-                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
-                       middle one. The middle star is greedy enough to always
-                       reach its MaxWidth when the window has the room, and the
-                       two hairline stars split whatever is left - so the column
-                       is CENTRED at wide widths and simply fills the viewport
-                       at narrow ones, with no breakpoint and no branch.
+                <!-- ==== ACCOUNT: THE PANE SHELL (R4) ======================
+                     Spec override #2 makes this the destination that OWNS the
+                     account: what the plan is, who the network is, how it signs
+                     in, who referred it, and what it has redeemed. Login
+                     methods, the auth code, the client id, the bonus referral
+                     code, the referral network, Manage Subscription, Sign out
+                     and Delete account all MOVED here out of Settings. The
+                     builders that make them still live in SettingsPage - it
+                     owns their sheets, their loads and their echo guards - and
+                     now build into this page's hosts instead of into its own.
+                     See SettingsPage::BuildSections.
 
-                       Why not MaxWidth on the panel: that is the arrange-split
-                       bug (the offset comes out of the child's DESIRED width
-                       while it is laid out at the cap). Why not the single
-                       capped column P4 used: it pins the content to x=0, which
-                       is right at 1100 and lopsided when maximized - measured
-                       2578px wide with 600px of content and ~1900px of void on
-                       one side. -->
-                  <Grid x:Name="AccountLayout">
+                       col 0  PLAN     the plan, the usage bar, the upgrade and
+                                       redeem actions, subscription management
+                       col 2  ACCOUNT  identity as ONE list of uniform rows -
+                                       profile, security, referrals, and the
+                                       irreversible end
+                       col 4  CODES    the redeemed balance codes, as a table
+                                       filling to the floor
+
+                     The profile name is an EXPLICIT edit mode (spec, Profile):
+                     the row shows the name, the pencil opens a field, and Save
+                     exists only while editing. It used to be a permanently-open
+                     TextBox with a permanently-enabled Save button under it,
+                     which is a form, not a profile. -->
+                <Grid x:Name="AccountView" Visibility="Collapsed"
+                      Style="{StaticResource UrPaneStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition x:Name="AccountCapColumn"
-                                          Width="1000*" MaxWidth="560" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="AccountPaneAColumn" Width="360" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="AccountPaneBColumn" Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="AccountPaneCColumn" Width="380" />
                     </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="1">
-                      <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition x:Name="AccountSideColumn" Width="0" />
-                      </Grid.ColumnDefinitions>
-                      <Grid.RowDefinitions>
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                      </Grid.RowDefinitions>
 
-                    <!-- WHAT THE PLAN IS. Its own column at desktop widths: the
-                         usage bar is the widest thing on this destination and
-                         the only one that reads better for it. -->
-                    <StackPanel Grid.Row="0" Grid.Column="0"
-                                x:Name="AccountMainStack" Spacing="16"
-                                VerticalAlignment="Top" Margin="0,0,0,24">
-
-                        <!-- Plan + usage card -->
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="8">
-                                <TextBlock x:Name="AccountPlanLabel" Style="{StaticResource UrLabelStyle}" />
-                                <Grid>
-                                    <!-- W1: the last ABC Gravity leak on a card. The
-                                         display face is for page titles, the wordmark
-                                         and the hero; this is a one-word card heading
-                                         ("Free" / "Supporter" / "Guest") and it read as
-                                         a second, louder heading style beside every
-                                         other card header, which is the exact clash the
-                                         type ramp was supposed to end. The condensed
-                                         face keeps the stat tiles (Wallet figures) - a
-                                         number is not a heading. -->
+                    <!-- ============ PANE A: PLAN ============ -->
+                    <Grid Grid.Column="0" x:Name="AccountPaneA">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="AccountPaneATitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center">
+                                    <muxc:ProgressRing x:Name="AccountPlanRing" Width="14" Height="14"
+                                                       IsActive="False" Visibility="Collapsed" />
+                                    <TextBlock x:Name="AccountPaneAMeta"
+                                               Style="{StaticResource UrPaneMetaStyle}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- WHAT THE PLAN IS. It leads the pane, the way
+                                     the protection state leads Home's. -->
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,14">
                                     <TextBlock x:Name="AccountPlanValueText"
-                                               FontFamily="{StaticResource UrBodyFontFamily}" FontSize="22"
-                                               FontWeight="SemiBold" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                                HorizontalAlignment="Right"
-                                                VerticalAlignment="Center">
-                                        <muxc:ProgressRing x:Name="AccountPlanRing" Width="16" Height="16"
-                                                           IsActive="False" Visibility="Collapsed" />
-                                        <Button x:Name="AccountUpgradeButton" Click="OnOpenUpgrade" />
+                                               FontFamily="{StaticResource UrBodyFontFamily}"
+                                               FontSize="22" FontWeight="SemiBold" />
+                                </Border>
+                                <!-- the usage bar, full width of the pane, on the
+                                     same rhythm as Home's charts -->
+                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,10">
+                                    <StackPanel Spacing="8">
+                                        <Grid x:Name="AccountUsageBarHost" Height="32" />
+                                        <StackPanel x:Name="AccountUsageLegend"
+                                                    Orientation="Horizontal" Spacing="16" />
                                     </StackPanel>
-                                </Grid>
-                                <Grid x:Name="AccountUsageBarHost" Height="32" />
-                                <StackPanel x:Name="AccountUsageLegend" Orientation="Horizontal"
-                                            Spacing="16" />
-                                <Grid Margin="0,4,0,0">
-                                    <TextBlock x:Name="AccountDailyLabel" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="AccountDailyValue" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                                <Border Height="1" Background="{StaticResource UrBorderBrush}" />
-                                <Grid>
-                                    <TextBlock x:Name="AccountReferralTotals" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="AccountReferralBonus" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                                <!-- full-width redeem row (macOS: its own tappable row) -->
-                                <Button x:Name="RedeemRowButton" HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Stretch"
-                                        Background="Transparent" BorderThickness="0"
-                                        Padding="0,8,0,8" Click="OnOpenRedeem">
-                                    <Grid HorizontalAlignment="Stretch">
+                                </Border>
+                                <!-- the pane's primary command: a full-bleed bar -->
+                                <Button x:Name="AccountUpgradeButton"
+                                        Style="{StaticResource UrPaneAccentButtonStyle}"
+                                        Click="OnOpenUpgrade" />
+
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <TextBlock x:Name="AccountUsageGroupLabel"
+                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                    <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock x:Name="RedeemRowText" FontSize="14" />
-                                        <FontIcon Grid.Column="1" Glyph="&#xE76C;" FontSize="12"
-                                                  Foreground="{StaticResource UrTextMutedBrush}" />
+                                        <TextBlock x:Name="AccountDailyLabel"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                        <TextBlock x:Name="AccountDailyValue" Grid.Column="1"
+                                                   Style="{StaticResource UrValueTextStyle}" />
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="AccountReferralTotals"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                        <TextBlock x:Name="AccountReferralBonus" Grid.Column="1"
+                                                   Style="{StaticResource UrValueTextStyle}" />
+                                    </Grid>
+                                </Border>
+                                <Button x:Name="RedeemRowButton" MinHeight="40"
+                                        Style="{StaticResource UrPaneRowButtonStyle}"
+                                        Click="OnOpenRedeem">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="RedeemRowText"
+                                                   Style="{StaticResource UrRowTitleStyle}"
+                                                   AutomationProperties.AccessibilityView="Raw" />
+                                        <FontIcon Grid.Column="1" Glyph="&#xE76C;"
+                                                  Style="{StaticResource UrChevronIconStyle}" />
                                     </Grid>
                                 </Button>
+                                <!-- Manage Subscription, moved out of Settings
+                                     (SettingsPage::BuildSubscriptionSection) -->
+                                <StackPanel x:Name="AccountPlanExtraHost" />
                             </StackPanel>
-                        </Border>
-                    </StackPanel>
-
-                    <!-- WHO THE ACCOUNT IS. The identity half - redeemed codes,
-                         the profile form, referrals - beside the plan rather
-                         than a screenful below it. -->
-                    <StackPanel Grid.Row="1" Grid.Column="0"
-                                x:Name="AccountSideStack" Spacing="16"
-                                VerticalAlignment="Top" Margin="0,0,0,24">
-
-                        <!-- Redeemed balance codes -->
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="8">
-                                <TextBlock x:Name="BalanceCodesLabel" Style="{StaticResource UrLabelStyle}" />
-                                <!-- header + rows built in code (LoadBalanceCodes) -->
-                                <StackPanel x:Name="BalanceCodesPanel" Spacing="6" />
-                                <TextBlock x:Name="BalanceCodesEmptyText" FontSize="12"
-                                           Visibility="Collapsed"
-                                           Foreground="{StaticResource UrTextFaintBrush}" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Profile -->
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE77B;" Style="{StaticResource UrRowIconStyle}" />
-                                    <TextBlock x:Name="AccountHeading" Style="{StaticResource UrPanelHeadingStyle}" />
-                                </StackPanel>
-                                <TextBox x:Name="NetworkNameBox" Style="{StaticResource UrTextInputStyle}" />
-                                <Button x:Name="SaveNameButton" Click="OnSaveNetworkName" />
-                                <TextBlock x:Name="AccountAuthText"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                <!-- name-availability line, change password, auth
-                                     methods (AccountPage::BuildProfileExtra) -->
-                                <StackPanel x:Name="AccountProfileExtra" Spacing="8" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Referrals -->
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE902;" Style="{StaticResource UrRowIconStyle}" />
-                                    <TextBlock x:Name="ReferralsHeading" Style="{StaticResource UrPanelHeadingStyle}" />
-                                </StackPanel>
-                                <TextBlock x:Name="ReferralText" TextWrapping="Wrap" />
-
-                                <!-- referral royalty: networks with at least one referral get
-                                     the crowned frog mascot (same as the ur.io site) -->
-                                <StackPanel x:Name="RoyaltyBadge" Visibility="Collapsed"
-                                            HorizontalAlignment="Center" Spacing="4">
-                                    <Image Source="ms-appx:///Assets/ReferralFrog.png"
-                                           Width="80" Height="80" />
-                                    <TextBlock x:Name="RoyaltyText" HorizontalAlignment="Center"
-                                               Foreground="{StaticResource UrTextMutedBrush}" FontSize="12" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
+                        </ScrollViewer>
                     </Grid>
-                  </Grid>
-                </ScrollViewer>
+
+                    <Border x:Name="AccountPaneBRule" Grid.Column="1"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE B: ACCOUNT ============ -->
+                    <Grid Grid.Column="2" x:Name="AccountPaneB"
+                          AutomationProperties.LandmarkType="Main">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="AccountPaneBTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- profile ...................................... -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <TextBlock x:Name="AccountProfileGroupLabel"
+                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                </Border>
+                                <!-- VIEW mode: the name, and the pencil that opens
+                                     the editor. -->
+                                <Button x:Name="NetworkNameRow" MinHeight="44"
+                                        Style="{StaticResource UrPaneRowButtonStyle}"
+                                        Click="OnEditNetworkName">
+                                    <Grid ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="AccountNetworkNameLabel"
+                                                   Style="{StaticResource UrRowTitleStyle}"
+                                                   AutomationProperties.AccessibilityView="Raw" />
+                                        <TextBlock x:Name="NetworkNameValue" Grid.Column="1"
+                                                   Style="{StaticResource UrValueTextStyle}"
+                                                   Foreground="{StaticResource UrTextMutedBrush}" />
+                                        <FontIcon Grid.Column="2" Glyph="&#xE70F;" FontSize="12"
+                                                  Style="{StaticResource UrRowIconStyle}"
+                                                  AutomationProperties.AccessibilityView="Raw" />
+                                    </Grid>
+                                </Button>
+                                <!-- EDIT mode: the field, and Save/Cancel that
+                                     exist ONLY here. -->
+                                <Border x:Name="NetworkNameEditPanel" Visibility="Collapsed"
+                                        BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,10"
+                                        Background="{StaticResource UrSheetBrush}">
+                                    <StackPanel Spacing="10">
+                                        <TextBox x:Name="NetworkNameBox"
+                                                 Style="{StaticResource UrTextInputStyle}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button x:Name="SaveNameButton" Click="OnSaveNetworkName" />
+                                            <Button x:Name="CancelNameButton" Click="OnCancelNetworkName" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                                <!-- Collapsed until there IS an auth to describe.
+                                     A fixed-height row around an empty TextBlock
+                                     is still an empty row, and it opened a 38px
+                                     hole in the middle of the profile group. -->
+                                <Border x:Name="AccountAuthRow" Visibility="Collapsed"
+                                        Style="{StaticResource UrPaneRowStyle}" MinHeight="38">
+                                    <TextBlock x:Name="AccountAuthText"
+                                               Style="{StaticResource UrKeyTextStyle}" />
+                                </Border>
+                                <!-- name-availability line + change password
+                                     (AccountPage::BuildProfileExtra) -->
+                                <StackPanel x:Name="AccountProfileExtra" />
+
+                                <!-- security: login methods, auth code, client id,
+                                     all moved out of Settings -->
+                                <StackPanel x:Name="AccountSecurityHost" />
+
+                                <!-- referrals: the bonus code and the referring
+                                     network, also moved out of Settings -->
+                                <StackPanel x:Name="AccountReferralHost" />
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,10">
+                                    <TextBlock x:Name="ReferralText" TextWrapping="Wrap"
+                                               Style="{StaticResource UrKeyTextStyle}"
+                                               TextTrimming="None" />
+                                </Border>
+                                <!-- referral royalty: a network with at least one
+                                     referral gets the crowned frog mascot (same as
+                                     the ur.io site) -->
+                                <Border x:Name="RoyaltyBadge" Visibility="Collapsed"
+                                        BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,10">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Image Source="ms-appx:///Assets/ReferralFrog.png"
+                                               Width="40" Height="40"
+                                               AutomationProperties.AccessibilityView="Raw" />
+                                        <TextBlock x:Name="RoyaltyText" VerticalAlignment="Center"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- the irreversible end, last on the page at
+                                     every width -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <TextBlock x:Name="SettingsAccountHeading"
+                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                </Border>
+                                <StackPanel x:Name="AccountDangerHost" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <Border x:Name="AccountPaneCRule" Grid.Column="3"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE C: BALANCE CODES ============ -->
+                    <Grid Grid.Column="4" x:Name="AccountPaneC">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="AccountPaneCTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                                <TextBlock x:Name="AccountPaneCMeta" HorizontalAlignment="Right"
+                                           Style="{StaticResource UrPaneMetaStyle}" />
+                            </Grid>
+                        </Border>
+                        <Grid Grid.Row="1">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                                <StackPanel x:Name="BalanceCodesPanel" />
+                            </ScrollViewer>
+                            <!-- one centred line in a FULL-HEIGHT pane, never a
+                                 short card at the top of one -->
+                            <TextBlock x:Name="BalanceCodesEmptyText"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       TextAlignment="Center" TextWrapping="Wrap" MaxWidth="300"
+                                       Margin="16" IsHitTestVisible="False"
+                                       Style="{StaticResource UrSupportingTextStyle}" />
+                        </Grid>
+                    </Grid>
+                </Grid>
 
                 <!-- Wallet.
 
@@ -2097,18 +2209,9 @@
                             </StackPanel>
                         </Border>
 
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                            <FontIcon Glyph="&#xE77B;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="SettingsAccountHeading" Style="{StaticResource UrSectionHeadingStyle}" />
-                        </StackPanel>
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
-                                <Button x:Name="SignOutButton" Click="OnSignOut"
-                                        HorizontalAlignment="Left" />
-                                <!-- delete account (SettingsPage::BuildDangerSection) -->
-                                <StackPanel x:Name="SettingsDangerSection" Spacing="8" />
-                            </StackPanel>
-                        </Border>
+                        <!-- R4: Account / Sign out / Delete account MOVED to the
+                             Account destination (spec override #2). What is left
+                             here is preferences. -->
                         <HyperlinkButton x:Name="ProtocolLink" NavigateUri="https://ur.xyz"
                                          FontSize="12" Padding="0" Margin="0,8,0,0" />
                     </StackPanel>

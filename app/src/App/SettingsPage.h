@@ -81,7 +81,11 @@ class SettingsPage {
 
   // ---- section construction (once, on the first ApplyStrings) ----
   void BuildSections();
-  void BuildAccountSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  // R4: what used to be BuildAccountSection, split in two and built onto
+  // ACCOUNT's panes (spec override #2). The builders stay here because this
+  // class owns their sheets, loads and echo guards; only the host changed.
+  void BuildSecuritySection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  void BuildReferralSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildDeviceSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildConnectionsSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildIdentitySection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
