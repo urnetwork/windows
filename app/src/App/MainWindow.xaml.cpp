@@ -79,6 +79,7 @@ MainWindow::MainWindow() {
   // ApplyStrings because every page paints its own labels from there.
   login_ = std::make_unique<urnw::LoginPage>(*this);
   connect_ = std::make_unique<urnw::ConnectPage>(*this);
+  network_ = std::make_unique<urnw::NetworkPage>(*this);
   account_ = std::make_unique<urnw::AccountPage>(*this);
   wallet_ = std::make_unique<urnw::WalletPage>(*this);
   settings_ = std::make_unique<urnw::SettingsPage>(*this);
@@ -92,6 +93,29 @@ MainWindow::MainWindow() {
   if (auto root = Content().try_as<FrameworkElement>()) {
     root.SizeChanged([weak = get_weak()](auto const&, auto const&) {
       if (auto self = weak.get()) self->ApplyBreakpoint();
+    });
+  }
+
+  // R4: the Network destination's copy of the locations/peers feeds. A SECOND
+  // subscriber, not a replacement - ConnectPage still owns the handlers that
+  // drive the chooser sheet, and SdkHost::SetLocationsObserver explains why
+  // there are two slots rather than one. Bound here rather than inside the page
+  // so it follows the same rule as every other feed in this window: the SDK
+  // fires on its own thread, the payload is captured by value, and nothing
+  // touches XAML until it is back on the dispatcher with the weak ref resolved.
+  {
+    auto queue = DispatcherQueue();
+    auto weak = get_weak();
+    Sdk().SetLocationsObserver(
+        [queue, weak](std::optional<urnet::FilteredLocations> locations, std::string state) {
+          queue.TryEnqueue([weak, locations = std::move(locations), state = std::move(state)] {
+            if (auto self = weak.get()) self->network().OnLocations(locations, state);
+          });
+        });
+    Sdk().SetPeersObserver([queue, weak](std::optional<urnet::NetworkPeerList> peers) {
+      queue.TryEnqueue([weak, peers = std::move(peers)] {
+        if (auto self = weak.get()) self->network().OnPeers(peers);
+      });
     });
   }
 
@@ -234,15 +258,9 @@ void MainWindow::ApplyStrings() {
   // no key for the developer surface yet, so it goes through the same fallback
   // the rest of that screen uses (DeveloperPage.cpp, Dev()).
 
-  // Network destination shell (R1 skeleton; Wave 2 builds the real picker).
-  NetworkHeading().Text(Loc("available_providers"));
-  NetworkIntroText().Visibility(Visibility::Collapsed);  // no shipped intro sentence yet
-  NetworkSelectedLabel().Text(Loc("selected_provider"));
-  NetworkSelectedValue().Text(Loc("best_available_provider"));
-  NetworkBrowseText().Text(Loc("browse_locations"));
-
   login_->ApplyStrings();
   connect_->ApplyStrings();
+  network_->ApplyStrings();
   account_->ApplyStrings();
   wallet_->ApplyStrings();
   settings_->ApplyStrings();
@@ -330,79 +348,91 @@ void MainWindow::ApplyBreakpoint() {
     ConnectPaneBRule().Visibility(Visibility::Collapsed);
   }
 
-  // ---- Wallet: Portmaster's master-detail ----------------------------------
-  // The figures across the top; the sources of the money on the left (wallets,
-  // points, multipliers, reliability); the ledger on the right. The split is a
-  // proportion rather than a rail because BOTH sides want the extra: a payouts
-  // table with four columns and a row of wallet cards both read better wider.
-  WalletCapColumn().MaxWidth(wide ? 1720 : 820);
-  if (wide) {
-    SetStar(WalletSideColumn(), 0.85);
-  } else {
-    SetWidth(WalletSideColumn(), 0);
-  }
-  Place(WalletSideStack(), wide ? PanePlacement{1, 1, 1, Thickness{20, 4, 0, 24}}
-                                : PanePlacement{2, 0, 1, Thickness{0, 4, 0, 24}});
-  // The three header figures: a row at desktop widths, a column at flyout
-  // width. Three tiles across 560dip read "Unpaid data provid..." and
-  // "1234.50..." - a KPI that cannot be read is not a KPI.
-  SetStar(WalletStatsColumn2(), wide ? 1 : 0);
-  SetStar(WalletStatsColumn3(), wide ? 1 : 0);
-  Place(WalletPendingTile(),
-        wide ? PanePlacement{0, 1, 1, Thickness{12, 0, 0, 0}}
-             : PanePlacement{1, 0, 1, Thickness{0, 8, 0, 0}});
-  Place(WalletReferralsTile(),
-        wide ? PanePlacement{0, 2, 1, Thickness{12, 0, 0, 0}}
-             : PanePlacement{2, 0, 1, Thickness{0, 8, 0, 0}});
+  // ---- Network: the list, and what one row IS ------------------------------
+  // The inverse of Home's rail: here the LIST takes the star and the detail is
+  // the fixed column, because a location row is a name and a figure and gains
+  // nothing past a few hundred dips, while the detail pane is a fixed set of
+  // key/value rows that gains nothing either. 400 rather than Home's 380: the
+  // longest row in it is a country name beside a provider count.
+  //
+  // Below the breakpoint the detail folds and the list takes the window. Nothing
+  // becomes unreachable: selecting a row still connects, which is the only thing
+  // the detail pane's content is about.
+  SetWidth(NetworkPaneBColumn(), wide ? 400 : 0);
+  NetworkPaneBRule().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+  NetworkPaneB().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
 
-  // ---- Account: the plan beside the identity -------------------------------
-  // The usage bar is the widest thing on this destination and the only one that
-  // reads better for it, so the plan card keeps the main column; redeemed
-  // codes, the profile form and referrals go beside it instead of a screenful
-  // below it. 1180 rather than Wallet's 1720: there is no table here, and two
-  // ~580dip card columns is as wide as a column of form rows should ever get.
-  AccountCapColumn().MaxWidth(wide ? 1180 : 560);
-  if (wide) {
-    SetStar(AccountSideColumn(), 1);
-  } else {
-    SetWidth(AccountSideColumn(), 0);
-  }
-  Place(AccountSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
-                                 : PanePlacement{1, 0, 1, Thickness{0, 0, 0, 24}});
+  // ---- Earnings: sources, ledger, explanation ------------------------------
+  // Home's shape again: a fixed rail of the figures and the wallets, a wide
+  // middle that is the TABLE, and a fixed rail of the reasons the table reads
+  // the way it does.
+  //
+  //   >= 1500dip   three panes   wallets(360) | ledger(*) | points(380)
+  //   >=  900dip   two panes     wallets(360) | ledger(*)
+  //   <   900dip   one pane      ledger(*)
+  //
+  // The points rail folds first and the LEDGER is what survives to the smallest
+  // width, because a payouts table is the thing a user opens this destination
+  // to read; points and reliability explain a number they can already see.
+  const bool earningsThree = 1500.0 <= width;
+  const bool earningsTwo = 900.0 <= width;
+  SetWidth(WalletPaneCColumn(), earningsThree ? 380 : 0);
+  WalletPaneCRule().Visibility(earningsThree ? Visibility::Visible : Visibility::Collapsed);
+  WalletPaneC().Visibility(earningsThree ? Visibility::Visible : Visibility::Collapsed);
+  SetWidth(WalletPaneAColumn(), earningsTwo ? 360 : 0);
+  WalletPaneBRule().Visibility(earningsTwo ? Visibility::Visible : Visibility::Collapsed);
+  WalletPaneA().Visibility(earningsTwo ? Visibility::Visible : Visibility::Collapsed);
 
-  // ---- Leaderboard: the table, with your own rank beside it ----------------
-  // The plainest cut in the app. BOTH panes move here, because the reading
-  // order inverts: at flyout width the one thing you came for is your own
-  // number, so the rank card is first; at desktop widths the table is the page
-  // and the rank card is the note beside it.
-  // 1360, not Wallet's 1720: these rows carry three fields, and past about a
-  // thousand dips the gap between a network's name and its figure stops being
-  // a table and starts being two lists.
-  LeaderboardCapColumn().MaxWidth(wide ? 1360 : 820);
-  if (wide) {
-    SetWidth(LeaderboardSideColumn(), 360);
-  } else {
-    SetWidth(LeaderboardSideColumn(), 0);
-  }
-  Place(LeaderboardMainStack(), wide ? PanePlacement{0, 0, 1, Thickness{0, 0, 0, 24}}
-                                     : PanePlacement{1, 0, 1, Thickness{0, 12, 0, 24}});
-  Place(LeaderboardSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
-                                     : PanePlacement{0, 0, 1, Thickness{}});
+  // ---- Account: plan, identity, codes ---------------------------------------
+  // Home's shape, applied to an account: a fixed rail of figures, a wide middle
+  // that is the one list worth widening, and a fixed table on the right.
+  //
+  //   >= 1000dip   three panes   plan(360) | account(*) | codes(380)
+  //   <  1000dip   two panes     plan(360) | account(*)
+  //   <   640dip   one pane      account(*)
+  //
+  // The codes table folds first because it is a record, not a control: nothing
+  // in it is actionable and Redeem lives in the plan pane. Below 640 the PLAN
+  // pane folds rather than the account pane, because at that width a 360 rail
+  // beside a ~340 column is two half-columns and neither is readable - and the
+  // usage figures are also on the status strip and the tray.
+  // 1500 for the third pane, not the app-wide 1000. Measured at 1240 with three
+  // panes open: the nav pane takes 220, the plan rail 360 and the codes table
+  // 380, which left the account list 278dip - and a row that is a label, a value
+  // and a Copy button in 278dip renders as "..." beside "Please login to
+  // URnetwork". A pane that cannot show its labels is not a pane.
+  const bool accountThree = 1500.0 <= width;
+  const bool accountTwo = 900.0 <= width;
+  SetWidth(AccountPaneCColumn(), accountThree ? 380 : 0);
+  AccountPaneCRule().Visibility(accountThree ? Visibility::Visible : Visibility::Collapsed);
+  AccountPaneC().Visibility(accountThree ? Visibility::Visible : Visibility::Collapsed);
+  SetWidth(AccountPaneAColumn(), accountTwo ? 360 : 0);
+  AccountPaneBRule().Visibility(accountTwo ? Visibility::Visible : Visibility::Collapsed);
+  AccountPaneA().Visibility(accountTwo ? Visibility::Visible : Visibility::Collapsed);
 
-  // ---- Settings: two card columns ------------------------------------------
-  // A wall of cards and nothing else, so the wide reading is simply two
-  // columns of them. Same 1180 cap as Account, and for the same reason: a
-  // settings row is a label and a control, and past ~580dip they stop looking
-  // like they belong to each other. The destructive end stays full width under
-  // both columns - see the markup.
-  SettingsCapColumn().MaxWidth(wide ? 1180 : 560);
-  if (wide) {
-    SetStar(SettingsSideColumn(), 1);
-  } else {
-    SetWidth(SettingsSideColumn(), 0);
-  }
-  Place(SettingsSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 0}}
-                                  : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});
+  // (Leaderboard's branch is gone with its destination: it is a tab inside
+  // Earnings' ledger pane now, and shares that pane's widths.)
+
+  // ---- Settings: three constrained columns ---------------------------------
+  // Windows guidance says settings is a single column of rows at a constrained
+  // width; the pane model says full bleed with no cap. Three equal star columns
+  // satisfy both: at the 2062dip window this app is judged in each pane is
+  // ~660dip, which IS the constrained settings measure, and the three together
+  // reach both edges with no centring grid.
+  //
+  //   >= 1400dip   three panes   general | device | about
+  //   >=  900dip   two panes     general | device      (About folds; version and
+  //                                                     the community links are
+  //                                                     the least operational)
+  //   <   900dip   one pane      general
+  const bool settingsThree = 1400.0 <= width;
+  const bool settingsTwo = 900.0 <= width;
+  SetStar(SettingsPaneCColumn(), settingsThree ? 1 : 0);
+  SettingsPaneCRule().Visibility(settingsThree ? Visibility::Visible : Visibility::Collapsed);
+  SettingsPaneC().Visibility(settingsThree ? Visibility::Visible : Visibility::Collapsed);
+  SetStar(SettingsPaneBColumn(), settingsTwo ? 1 : 0);
+  SettingsPaneBRule().Visibility(settingsTwo ? Visibility::Visible : Visibility::Collapsed);
+  SettingsPaneB().Visibility(settingsTwo ? Visibility::Visible : Visibility::Collapsed);
 
   // ---- Support: the form, and the way to reach a human beside it -----------
   // 1080 and an even split. This destination has one form and no data, so the
@@ -724,14 +754,24 @@ void MainWindow::SetAdvancedMode(bool on) {
 // session, and URNETWORK_PREVIEW_SAMPLE says the operator asked for synthetic
 // content. Without this the strip could only ever be screenshotted in its
 // signed-out state, which is the one state that does not exercise its layout.
-void MainWindow::PreviewSampleStatusStrip() {
-  if (!previewUi_) return;
+// The second of the two gates every synthetic-content path in this window
+// shares: --preview-ui says there is no session, and URNETWORK_PREVIEW_SAMPLE
+// says the operator explicitly asked for made-up content. Both are required,
+// and this is the one place the second one is read.
+bool MainWindow::PreviewSampleRequested() const {
+  if (!previewUi_) return false;
   size_t len = 0;
   char value[16]{};
   if (getenv_s(&len, value, sizeof(value), "URNETWORK_PREVIEW_SAMPLE") != 0 || len == 0) {
-    return;
+    return false;
   }
-  if (std::string_view(value) != "1") return;
+  return std::string_view(value) == "1";
+}
+
+void MainWindow::ShowBlockedLocationsFromNetwork() { settings_->ShowBlockedLocationsSheet(); }
+
+void MainWindow::PreviewSampleStatusStrip() {
+  if (!PreviewSampleRequested()) return;
   urnw::LogWarn(
       "preview-sample: rendering a SYNTHETIC status strip - no session, no api, "
       "none of these values came from the network");
@@ -823,6 +863,9 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
   // URNETWORK_PREVIEW_SAMPLE (ConnectPage::PreviewSampleActive): a pane layout
   // whose whole claim is density cannot be reviewed empty.
   connect_->ApplyPreviewSample();
+  // ...and Network's, for the same reason and behind the same two gates: a
+  // location list with nothing in it cannot show whether a location list fills.
+  if (PreviewSampleRequested()) network_->ApplyPreviewSample();
   if (ConnectView().Visibility() == Visibility::Visible) connect_->AnimateDrawerIn();
 
   // Both snackbar call sites are signed-in-only and had never rendered. Raise
@@ -862,14 +905,23 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   // Home clears the header and the pane shell starts at the top of the content
   // area. (AlwaysShowHeader is not the lever: it hides the header only in the
   // minimal pane mode. A null Header collapses the presenter at every width.)
-  HomeNav().Header(tag == L"connect" ? IInspectable{nullptr} : item.Content());
+  //
+  // R4 extends that from Home to every destination REBUILT in the pane shell.
+  // A 60px display-face title above a pane layout is the one thing that stops
+  // the panes reaching the ceiling, and it looked exactly as wrong on Network
+  // as it had on Home - measured side by side against the approved Connect
+  // capture. Support and Developer keep their header because they are still
+  // card-model pages with a page margin, and a card page with no title reads as
+  // content that started halfway down.
+  const bool paneShell = tag == L"connect" || tag == L"network" || tag == L"wallet" ||
+                         tag == L"leaderboard" || tag == L"account" || tag == L"settings";
+  HomeNav().Header(paneShell ? IInspectable{nullptr} : item.Content());
 
   const bool wasConnectVisible = ConnectView().Visibility() == Visibility::Visible;
   ConnectView().Visibility(tag == L"connect" ? Visibility::Visible : Visibility::Collapsed);
   NetworkView().Visibility(tag == L"network" ? Visibility::Visible : Visibility::Collapsed);
   AccountView().Visibility(tag == L"account" ? Visibility::Visible : Visibility::Collapsed);
   WalletView().Visibility(tag == L"wallet" ? Visibility::Visible : Visibility::Collapsed);
-  LeaderboardView().Visibility(tag == L"leaderboard" ? Visibility::Visible : Visibility::Collapsed);
   SupportView().Visibility(tag == L"support" ? Visibility::Visible : Visibility::Collapsed);
   SettingsView().Visibility(tag == L"settings" ? Visibility::Visible : Visibility::Collapsed);
   DeveloperView().Visibility(tag == L"developer" ? Visibility::Visible
@@ -878,6 +930,10 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   // it runs only while this destination is selected AND the window is
   // presenting (SetPresentationActive supplies the other half).
   developer_->SetSelected(tag == L"developer");
+  // R4: opening Network opens the SDK's locations/peer view controllers and
+  // re-renders from whatever snapshot exists now. Same shape as the developer
+  // poll above - a destination that is not on screen does not hold a feed open.
+  network_->SetSelected(tag == L"network");
 
   if (tag == L"connect" && !wasConnectVisible) connect_->AnimateDrawerIn();
 
@@ -894,8 +950,12 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
     // the destination the user just navigated TO, every time - not only the one
     // named on the command line, which is what EnterPreviewUi used to do and
     // which left Wallet stranded for anyone who arrived from another tag.
-    if (tag == L"wallet") wallet_->ShowPreviewWalletState();
-    if (tag == L"leaderboard") wallet_->ShowPreviewLeaderboardState();
+    // One destination now, so both preview states settle together: the ledger
+    // pane's two tables are both on screen-in-waiting behind its switch.
+    if (tag == L"wallet") {
+      wallet_->ShowPreviewWalletState();
+      wallet_->ShowPreviewLeaderboardState();
+    }
     // Carried over from EnterPreviewUi at merge. P4 moved the per-destination
     // preview states here and P2 added the developer surface in parallel, so
     // taking either side wholesale would have dropped the other's: P4's branch
@@ -932,6 +992,12 @@ void MainWindow::LoadCurrentDestination() {
   if (tag == L"account") {
     account_->LoadAccount();
     Balance().Refresh();  // macOS AccountRootView onAppear parity
+    // R4: login methods, the auth code, the client id, the bonus referral code
+    // and the referral network live on Account now, and SettingsPage is what
+    // loads them (it still owns those rows - see BuildSections). Without this
+    // they sit on "Please login to URnetwork" on the destination that shows
+    // them, which is indistinguishable from being signed out.
+    settings_->LoadSettings();
   } else if (tag == L"wallet") {
     wallet_->LoadWallet();
   } else if (tag == L"leaderboard") {
@@ -1328,6 +1394,14 @@ void MainWindow::OnPeersLineClick(IInspectable const& s,
   connect_->OnPeersLineClick(s, e);
 }
 
+void MainWindow::OnEditNetworkName(IInspectable const& s, RoutedEventArgs const& e) {
+  account_->OnEditNetworkName(s, e);
+}
+
+void MainWindow::OnCancelNetworkName(IInspectable const& s, RoutedEventArgs const& e) {
+  account_->OnCancelNetworkName(s, e);
+}
+
 void MainWindow::OnSaveNetworkName(IInspectable const& s, RoutedEventArgs const& e) {
   account_->OnSaveNetworkName(s, e);
 }
@@ -1342,6 +1416,11 @@ void MainWindow::OnConnectWallet(IInspectable const& s, RoutedEventArgs const& e
 void MainWindow::OnVerifySeeker(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnVerifySeeker(s, e);
 }
+void MainWindow::OnEarningsTableChanged(SelectorBar const& s,
+                                        SelectorBarSelectionChangedEventArgs const& e) {
+  wallet_->OnEarningsTableChanged(s, e);
+}
+
 void MainWindow::OnLeaderboardPublicToggled(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnLeaderboardPublicToggled(s, e);
 }

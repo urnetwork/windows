@@ -1,4 +1,4 @@
-// The parts of the component kit a XAML style cannot express.
+﻿// The parts of the component kit a XAML style cannot express.
 //
 // Most of the kit IS markup — UrButton, UrCard, UrLabel, UrTextField, the
 // switch and the snackbar surface are styles in App.xaml, over native WinUI
@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
@@ -337,6 +338,98 @@ PaneListRowButton MakePaneListRowButton(double height = 36);
 // which is a SHAPE change and not colour-alone, and the row's automation Name
 // gains its selected state so a screen reader is told rather than shown.
 void SetPaneListRowSelected(PaneListRowButton const& row, bool selected);
+// ---- the pane shell's dynamic GROUPS and rows (R4) -------------------------
+//
+// R3 built Home, whose groups and headers are all declared in MainWindow.xaml.
+// The four Wave-2 destinations generate most of theirs at runtime (the settings
+// sections, the payouts table, the balance codes, the location list), so the
+// pieces R3 could leave in markup have to exist as builders too. These are
+// ADDITIVE: nothing above this comment changed, and every one of them is the
+// markup style of the same name applied in code, so a pane built here and a
+// pane built in XAML are the same pane.
+
+// The 28px strip that opens a group inside a pane: a letterspaced caption on
+// the left, an optional count/figure on the right. UrGroupHeaderStyle +
+// UrGroupHeaderTextStyle + UrPaneMetaStyle, i.e. exactly what Home declares.
+struct PaneGroupHeader {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock title{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock meta{nullptr};
+  // where a group's icon-only command goes (UrPaneActionButtonStyle). Empty
+  // unless the caller appends one; it costs no width when it is.
+  winrt::Microsoft::UI::Xaml::Controls::Grid trailing{nullptr};
+};
+PaneGroupHeader MakePaneGroupHeader(winrt::hstring const& title,
+                                    winrt::hstring const& meta = {});
+
+// The two-line row: a title, and one line of explanation under it that is
+// TRIMMED rather than wrapped, so the height is fixed whatever the string is.
+// `trailing` is a single-cell right-aligned host for a switch, a button or a
+// chevron; point that control's AutomationProperties at `title`.
+//
+// Height defaults to UrPaneRowTallHeight (44) because a settings list is a list
+// of EXPLAINED rows: pick the tall height once for the list and the rows in it
+// with no note simply centre their title in the same 44.
+struct PaneTwoLineRow {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock title{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock note{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Grid trailing{nullptr};
+};
+PaneTwoLineRow MakePaneTwoLineRow(winrt::hstring const& title, winrt::hstring const& note = {},
+                                  double height = 44);
+
+// The same two-line row as a Button, for a row that opens something. Same
+// metrics and the same bottom hairline, so tappable and static rows share one
+// left edge and one baseline grid (UrPaneRowButtonStyle).
+struct PaneTwoLineRowButton {
+  winrt::Microsoft::UI::Xaml::Controls::Button root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock title{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock note{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};  // right of the chevron slot
+};
+PaneTwoLineRowButton MakePaneTwoLineRowButton(winrt::hstring const& title,
+                                              winrt::hstring const& note = {},
+                                              double height = 44);
+
+// A table row: N cells on one grid, one fixed height, a bottom hairline. The
+// widths are star weights, so the columns narrow rather than clip and the header
+// strip built from the same widths stays aligned with the body.
+//
+// Every table on the four Wave-2 destinations (payouts, leaderboard, balance
+// codes) is this call, which is what stops three tables becoming three row
+// species.
+struct PaneTableRow {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> cells;
+};
+// `textColumns` is how many LEADING columns read as text (left aligned, in the
+// row-title voice); every column after them is a figure and reads right, which
+// is what makes a column of numbers scannable. The payouts ledger has one
+// (date); the leaderboard has two (rank and network name).
+PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height = 36,
+                              size_t textColumns = 1);
+
+// Its header strip: the same weights, the same alignment rule, the column names,
+// on the 28px group rhythm.
+winrt::Microsoft::UI::Xaml::Controls::Border MakePaneTableHeader(
+    std::vector<double> const& weights, std::vector<winrt::hstring> const& titles,
+    size_t textColumns = 1);
+
+// The empty state of a pane that FILLS: one centred muted line, sized to sit in
+// the middle of a full-height pane rather than to be a short card at the top of
+// one. Stretch it (it is HorizontalAlignment/VerticalAlignment Stretch inside a
+// Grid cell) and it centres itself in whatever is left of the pane.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakePaneEmptyLine(winrt::hstring const& text);
+
+// The search field row at the top of a list pane: a squared-off TextBox on the
+// pane's 40px row metrics with the row's bottom hairline. Returns the row and
+// the box.
+struct PaneSearchRow {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox box{nullptr};
+};
+PaneSearchRow MakePaneSearchRow(winrt::hstring const& placeholder);
 
 // iOS Components/UrTextField/ValidationState.swift.
 enum class ValidationState {

@@ -16,6 +16,7 @@
 #include "BalanceSheets.h"
 #include "ConnectPage.h"
 #include "DeveloperPage.h"
+#include "LocationSheets.h"
 #include "LoginPage.h"
 #include "Protocol.h"
 #include "SdkHost.h"
@@ -44,6 +45,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // reference and then reach back for their page.
   urnw::LoginPage& login() { return *login_; }
   urnw::ConnectPage& connect() { return *connect_; }
+  urnw::NetworkPage& network() { return *network_; }
+  // The blocked-locations sheet, opened from the Network destination's detail
+  // pane as well as from Settings. Two doors, one sheet: blocked countries
+  // constrain the location list, so the list is where you look for them.
+  void ShowBlockedLocationsFromNetwork();
   urnw::AccountPage& account() { return *account_; }
   urnw::WalletPage& wallet() { return *wallet_; }
   urnw::SettingsPage& settings() { return *settings_; }
@@ -191,6 +197,11 @@ struct MainWindow : MainWindowT<MainWindow> {
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignOut(winrt::Windows::Foundation::IInspectable const&,
                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // R4: the profile name's explicit edit mode. Enter, cancel, save.
+  void OnEditNetworkName(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCancelNetworkName(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSaveNetworkName(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // upgrade (hosted checkout) + redeem, as ContentDialogs
@@ -209,6 +220,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   // public/private switch.
   void OnVerifySeeker(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // R4: the ledger pane's Payouts / Leaderboard switch (Earnings).
+  void OnEarningsTableChanged(
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
   void OnLeaderboardPublicToggled(winrt::Windows::Foundation::IInspectable const&,
                                   winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
@@ -283,6 +298,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   // at from a build with no account. Same two gates and the same log warning
   // as WalletPage's sample rows; touches no network and no stored state.
   void PreviewSampleStatusStrip();
+  // --preview-ui AND URNETWORK_PREVIEW_SAMPLE, the two gates every synthetic
+  // path in this window shares. Read in one place so they cannot drift.
+  bool PreviewSampleRequested() const;
+
 
   // ---- balance / plan (SubscriptionBalanceStore relay) ----
   void UpdateBalanceWarning();  // insufficient-balance InfoBar gating
@@ -291,6 +310,7 @@ struct MainWindow : MainWindowT<MainWindow> {
 
   std::unique_ptr<urnw::LoginPage> login_;
   std::unique_ptr<urnw::ConnectPage> connect_;
+  std::unique_ptr<urnw::NetworkPage> network_;
   std::unique_ptr<urnw::AccountPage> account_;
   std::unique_ptr<urnw::WalletPage> wallet_;
   std::unique_ptr<urnw::SettingsPage> settings_;

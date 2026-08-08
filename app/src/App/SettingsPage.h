@@ -1,4 +1,4 @@
-// The Settings destination and the Support destination (the feedback form),
+﻿// The Settings destination and the Support destination (the feedback form),
 // which iOS carries inside the same settings surface.
 //
 // Settings is macOS SettingsForm parity: account (client id, referral code,
@@ -74,21 +74,31 @@ class SettingsPage {
   // confirmation ritual into a way to destroy a different network.
   void ResetForSignOut();
 
+  // The blocked-locations sheet. Public because the Network destination's
+  // detail pane is a second door to it: blocked countries are what the location
+  // list is filtered by, so the list is where a user looks for them. Still
+  // reachable from Settings' VPN group; one sheet, two entry points.
+  winrt::fire_and_forget ShowBlockedLocationsSheet();
+
  private:
   winrt::fire_and_forget ShowAppRulesSheet();
 
   // ---- section construction (once, on the first ApplyStrings) ----
   void BuildSections();
-  void BuildAccountSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  // R4: what used to be BuildAccountSection, split in two and built onto
+  // ACCOUNT's panes (spec override #2). The builders stay here because this
+  // class owns their sheets, loads and echo guards; only the host changed.
+  void BuildSecuritySection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  void BuildReferralSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildDeviceSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  // R4: the reconciled preference sections. General is the one preference that
+  // ships; Advanced carries export logs and the Advanced Mode host.
+  void BuildGeneralSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  void BuildAdvancedSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildConnectionsSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildIdentitySection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildStayInTouchSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildSubscriptionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
-  void BuildLogsSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
-  // D5. R4 HOOK: fold this row into R4's Settings > Advanced section when that
-  // branch lands and delete this function; see the definition.
-  void BuildAdvancedSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildVersionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildDangerSection();
 
@@ -119,7 +129,6 @@ class SettingsPage {
   winrt::fire_and_forget ShowAuthCodeSheet();
   winrt::fire_and_forget ShowAddAuthSheet();
   winrt::fire_and_forget ShowReferralNetworkSheet();
-  winrt::fire_and_forget ShowBlockedLocationsSheet();
   winrt::fire_and_forget ShowIdentitySheet();
   winrt::fire_and_forget ShowDeleteAccountSheet();
 
@@ -151,6 +160,9 @@ class SettingsPage {
   winrt::Microsoft::UI::Xaml::Controls::Button manageSubscription_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock versionValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button deleteAccountButton_{nullptr};
+  // >>> ADVANCED MODE GOES HERE (D5). <<< The first host in Settings' Advanced
+  // group; see BuildAdvancedSection for the row shape to append.
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel advancedModeHost_{nullptr};
 
   // ---- loaded state ----
   std::string clientId_;

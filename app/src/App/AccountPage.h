@@ -41,6 +41,19 @@ class AccountPage {
 
   void OnSaveNetworkName(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // R4: the profile name's explicit edit mode (spec, Profile). The row shows the
+  // saved name; the pencil opens a field; Save and Cancel exist only while it is
+  // open, and Cancel restores the saved name rather than whatever was typed.
+  void OnEditNetworkName(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCancelNetworkName(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+
+  // The redeemed-code table and every state it can be in, in one place: three
+  // scattered writes to a panel and an empty line used to disagree about which
+  // was showing. Called by LoadBalanceCodes, ApplyStrings and ResetForSignOut.
+  void RenderBalanceCodes(urnet::RedeemedBalanceCodeList const& codes,
+                          rows::FieldState state);
 
   // Drop the signed-out account's identity. userAuth_ is the dangerous one:
   // SendPasswordReset mails a link to it, so a leftover value mails the
@@ -72,6 +85,13 @@ class AccountPage {
   // has an auto-generated name to claim.
   bool needsNameClaim_ = false;
 
+  void SetEditingName(bool editing);
+  // The auth line and its ROW: an empty fixed-height row is still a hole.
+  void SetAuthText(winrt::hstring const& text);
+  // Write the saved name into the view row AND keep the copy the editor seeds
+  // from. The TextBox is never the source of truth for the name.
+  void ApplyNetworkName(std::string const& name);
+
   winrt::Microsoft::UI::Xaml::Controls::TextBlock nameStatus_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button changePasswordButton_{nullptr};
   bool built_ = false;
@@ -79,6 +99,10 @@ class AccountPage {
   // ApplyStrings so a load is not needed to make the card readable
   bool initialStatesApplied_ = false;
   bool savingName_ = false;
+  bool editingName_ = false;
+  // the last name the SERVER acknowledged; what the editor seeds from and what
+  // Cancel restores
+  std::string networkName_;
   bool sendingReset_ = false;
 };
 

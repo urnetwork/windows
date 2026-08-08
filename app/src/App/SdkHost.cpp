@@ -2191,6 +2191,10 @@ void SdkHost::ClearDrawer() {
   // clear the chooser's peer-count sub-label + any open sheet on logout
   if (onLocations_) onLocations_(std::nullopt, std::string());
   if (onPeers_) onPeers_(std::nullopt);
+  // R4: the Network destination observes the same two feeds as the chooser
+  // sheet, so it has to be cleared with them.
+  if (onLocationsObserver_) onLocationsObserver_(std::nullopt, std::string());
+  if (onPeersObserver_) onPeersObserver_(std::nullopt);
 }
 
 std::vector<urnet::ThroughputPoint> SdkHost::CurrentThroughputPoints(int64_t& windowSeconds) {
@@ -2663,6 +2667,7 @@ void SdkHost::EnsureLocations() {
   locationsVc_ = device_->openLocationsViewController();
   presentationSubs_.push_back(locationsVc_->addFilteredLocationsListener(
       [this](std::optional<urnet::FilteredLocations> locations, std::string state) {
+        if (onLocationsObserver_) onLocationsObserver_(locations, state);
         if (onLocations_) onLocations_(std::move(locations), std::move(state));
       }));
   locationsVc_->start();
@@ -2670,18 +2675,23 @@ void SdkHost::EnsureLocations() {
   peerVc_ = device_->openPeerViewController();
   presentationSubs_.push_back(peerVc_->addPeersListener(
       [this](std::optional<urnet::NetworkPeerList> peers) {
+        if (onPeersObserver_) onPeersObserver_(peers);
         if (onPeers_) onPeers_(std::move(peers));
       }));
   peerVc_->start();
   // seed the chooser + the drawer's peer-count sub-label (the listeners only
   // fire on later changes)
-  if (onLocations_) {
-    onLocations_(locationsVc_->getFilteredLocations(),
-                 locationsVc_->getFilteredLocationState());
+  if (onLocations_ || onLocationsObserver_) {
+    auto seedLocations = locationsVc_->getFilteredLocations();
+    auto seedState = locationsVc_->getFilteredLocationState();
+    if (onLocationsObserver_) onLocationsObserver_(seedLocations, seedState);
+    if (onLocations_) onLocations_(std::move(seedLocations), std::move(seedState));
   }
-  if (onPeers_) {
+  if (onPeers_ || onPeersObserver_) {
     static std::atomic<bool> logged{false};
-    onPeers_(ReadSdkList(logged, "getPeers (seed)", [&] { return peerVc_->getPeers(); }));
+    auto seedPeers = ReadSdkList(logged, "getPeers (seed)", [&] { return peerVc_->getPeers(); });
+    if (onPeersObserver_) onPeersObserver_(seedPeers);
+    if (onPeers_) onPeers_(std::move(seedPeers));
   }
 }
 

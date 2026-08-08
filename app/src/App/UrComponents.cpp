@@ -308,6 +308,300 @@ void SetPaneListRowSelected(PaneListRowButton const& row, bool selected) {
   }
 }
 
+// ---- the pane shell's dynamic GROUPS and rows (R4) -------------------------
+//
+// Additive to the R3 block above. Each of these is the App.xaml style of the
+// same name applied in code, so a group built here is byte-for-byte the group
+// Home declares in markup - which is the whole reason they are here rather than
+// hand-built at each of the four Wave-2 call sites.
+
+namespace {
+
+// A double out of the app dictionary (the pane metrics live there so every pane
+// is one construction), with a fallback for a renamed key.
+double MetricByKey(wchar_t const* key, double fallback) {
+  auto app = Application::Current();
+  if (!app) return fallback;
+  auto boxed = winrt::box_value(winrt::hstring{key});
+  if (!app.Resources().HasKey(boxed)) return fallback;
+  return winrt::unbox_value_or<double>(app.Resources().Lookup(boxed), fallback);
+}
+
+// The title/note column shared by the two-line row and its Button twin. Trimmed,
+// never wrapped: a wrapping note would grow the row and break the one thing the
+// fixed height is for.
+StackPanel MakeTwoLineText(TextBlock& title, TextBlock& note, winrt::hstring const& titleText,
+                           winrt::hstring const& noteText) {
+  StackPanel text;
+  text.Spacing(1);
+  text.VerticalAlignment(VerticalAlignment::Center);
+
+  title = TextBlock();
+  title.Text(titleText);
+  if (auto style = StyleByKey(L"UrRowTitleStyle")) title.Style(style);
+  text.Children().Append(title);
+
+  note = TextBlock();
+  if (auto style = StyleByKey(L"UrRowNoteStyle")) note.Style(style);
+  // SetTextOrCollapse, not Text: a StackPanel spends its Spacing on a child that
+  // drew nothing, so an empty note would push the title off centre by a pixel on
+  // every row that has none - across a list, a visibly ragged left column.
+  SetTextOrCollapse(note, noteText);
+  text.Children().Append(note);
+  return text;
+}
+
+}  // namespace
+
+PaneGroupHeader MakePaneGroupHeader(winrt::hstring const& title, winrt::hstring const& meta) {
+  PaneGroupHeader out;
+  out.root = Controls::Border();
+  if (auto style = StyleByKey(L"UrGroupHeaderStyle")) {
+    out.root.Style(style);
+  } else {
+    out.root.Height(28);
+    out.root.Background(urnw::colors::SheetBrush());
+    out.root.Padding(ThicknessHelper::FromLengths(12, 0, 12, 0));
+  }
+
+  Controls::Grid grid;
+  grid.ColumnSpacing(8);
+  Controls::ColumnDefinition titleColumn, metaColumn, actionColumn;
+  titleColumn.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star));
+  metaColumn.Width(GridLengthHelper::Auto());
+  actionColumn.Width(GridLengthHelper::Auto());
+  grid.ColumnDefinitions().Append(titleColumn);
+  grid.ColumnDefinitions().Append(metaColumn);
+  grid.ColumnDefinitions().Append(actionColumn);
+
+  out.title = TextBlock();
+  out.title.Text(title);
+  if (auto style = StyleByKey(L"UrGroupHeaderTextStyle")) out.title.Style(style);
+  grid.Children().Append(out.title);
+
+  out.meta = TextBlock();
+  if (auto style = StyleByKey(L"UrPaneMetaStyle")) out.meta.Style(style);
+  SetTextOrCollapse(out.meta, meta);
+  Controls::Grid::SetColumn(out.meta, 1);
+  grid.Children().Append(out.meta);
+
+  out.trailing = Controls::Grid();
+  out.trailing.VerticalAlignment(VerticalAlignment::Center);
+  Controls::Grid::SetColumn(out.trailing, 2);
+  grid.Children().Append(out.trailing);
+
+  // A group header is a heading, not a list item: without this a screen reader
+  // reads twelve section names as twelve unrelated strings between the rows.
+  Automation::AutomationProperties::SetHeadingLevel(out.title,
+                                                    Automation::Peers::AutomationHeadingLevel::Level3);
+
+  out.root.Child(grid);
+  return out;
+}
+
+PaneTwoLineRow MakePaneTwoLineRow(winrt::hstring const& title, winrt::hstring const& note,
+                                  double height) {
+  PaneTwoLineRow out;
+  out.root = MakePaneRow(height);
+
+  Controls::Grid grid;
+  grid.ColumnSpacing(10);
+  Controls::ColumnDefinition textColumn, trailingColumn;
+  textColumn.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star));
+  trailingColumn.Width(GridLengthHelper::Auto());
+  grid.ColumnDefinitions().Append(textColumn);
+  grid.ColumnDefinitions().Append(trailingColumn);
+
+  grid.Children().Append(MakeTwoLineText(out.title, out.note, title, note));
+
+  out.trailing = Controls::Grid();
+  out.trailing.VerticalAlignment(VerticalAlignment::Center);
+  out.trailing.HorizontalAlignment(HorizontalAlignment::Right);
+  Controls::Grid::SetColumn(out.trailing, 1);
+  grid.Children().Append(out.trailing);
+
+  out.root.Child(grid);
+  return out;
+}
+
+PaneTwoLineRowButton MakePaneTwoLineRowButton(winrt::hstring const& title,
+                                              winrt::hstring const& note, double height) {
+  PaneTwoLineRowButton out;
+  out.root = Controls::Button();
+  if (auto style = StyleByKey(L"UrPaneRowButtonStyle")) out.root.Style(style);
+  out.root.Height(height);
+  out.root.MinHeight(height);
+
+  Controls::Grid grid;
+  grid.ColumnSpacing(10);
+  Controls::ColumnDefinition textColumn, valueColumn, chevronColumn;
+  textColumn.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star));
+  valueColumn.Width(GridLengthHelper::Auto());
+  chevronColumn.Width(GridLengthHelper::Auto());
+  grid.ColumnDefinitions().Append(textColumn);
+  grid.ColumnDefinitions().Append(valueColumn);
+  grid.ColumnDefinitions().Append(chevronColumn);
+
+  grid.Children().Append(MakeTwoLineText(out.title, out.note, title, note));
+
+  out.value = TextBlock();
+  if (auto style = StyleByKey(L"UrValueTextStyle")) out.value.Style(style);
+  out.value.Foreground(urnw::colors::MutedBrush());
+  out.value.MaxWidth(240);
+  Controls::Grid::SetColumn(out.value, 1);
+  grid.Children().Append(out.value);
+
+  FontIcon chevron;
+  chevron.FontFamily(IconFont());
+  chevron.Glyph(L"");
+  chevron.FontSize(11);
+  chevron.Foreground(urnw::colors::MutedBrush());
+  chevron.VerticalAlignment(VerticalAlignment::Center);
+  Automation::AutomationProperties::SetAccessibilityView(
+      chevron, Automation::Peers::AccessibilityView::Raw);
+  Controls::Grid::SetColumn(chevron, 2);
+  grid.Children().Append(chevron);
+
+  // A Button whose Content is a Panel gets NO automatic automation name. The
+  // title is the row's name, and the note and the value are announced as its
+  // description rather than as two more list items beside it.
+  Automation::AutomationProperties::SetAccessibilityView(
+      out.title, Automation::Peers::AccessibilityView::Raw);
+  Automation::AutomationProperties::SetAccessibilityView(
+      out.note, Automation::Peers::AccessibilityView::Raw);
+  Automation::AutomationProperties::SetAccessibilityView(
+      out.value, Automation::Peers::AccessibilityView::Raw);
+  Automation::AutomationProperties::SetName(out.root, title);
+  if (!note.empty()) Automation::AutomationProperties::SetFullDescription(out.root, note);
+
+  out.root.Content(grid);
+  return out;
+}
+
+PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height,
+                              size_t textColumns) {
+  PaneTableRow out;
+  out.root = MakePaneRow(height);
+
+  Controls::Grid grid;
+  grid.ColumnSpacing(12);
+  for (double weight : weights) {
+    Controls::ColumnDefinition column;
+    column.Width(GridLengthHelper::FromValueAndType(weight, GridUnitType::Star));
+    // A star column with nothing else said will happily go to zero and clip the
+    // cell to nothing at narrow widths. A minimum makes the table NARROW instead
+    // of vanishing, which is the responsive behaviour a data table wants.
+    column.MinWidth(56);
+    grid.ColumnDefinitions().Append(column);
+  }
+
+  for (size_t index = 0; index < weights.size(); ++index) {
+    TextBlock cell;
+    if (auto style = StyleByKey(L"UrRowTitleStyle")) cell.Style(style);
+    // The leading cells are the row's subject and read as text; every cell after
+    // them is a figure and reads right, which is what makes a column of numbers
+    // scannable.
+    if (textColumns <= index) {
+      if (auto style = StyleByKey(L"UrValueTextStyle")) cell.Style(style);
+      cell.Foreground(urnw::colors::MutedBrush());
+    }
+    Controls::Grid::SetColumn(cell, static_cast<int32_t>(index));
+    grid.Children().Append(cell);
+    out.cells.push_back(cell);
+  }
+
+  out.root.Child(grid);
+  return out;
+}
+
+Controls::Border MakePaneTableHeader(std::vector<double> const& weights,
+                                     std::vector<winrt::hstring> const& titles,
+                                     size_t textColumns) {
+  Controls::Border header;
+  if (auto style = StyleByKey(L"UrGroupHeaderStyle")) {
+    header.Style(style);
+  } else {
+    header.Height(28);
+    header.Background(urnw::colors::SheetBrush());
+    header.Padding(ThicknessHelper::FromLengths(12, 0, 12, 0));
+  }
+
+  Controls::Grid grid;
+  grid.ColumnSpacing(12);
+  for (double weight : weights) {
+    Controls::ColumnDefinition column;
+    column.Width(GridLengthHelper::FromValueAndType(weight, GridUnitType::Star));
+    column.MinWidth(56);
+    grid.ColumnDefinitions().Append(column);
+  }
+  for (size_t index = 0; index < weights.size() && index < titles.size(); ++index) {
+    TextBlock cell;
+    if (auto style = StyleByKey(L"UrPaneColumnTextStyle")) cell.Style(style);
+    cell.Text(titles[index]);
+    if (textColumns <= index) {
+      cell.HorizontalAlignment(HorizontalAlignment::Right);
+      cell.TextAlignment(TextAlignment::Right);
+    }
+    Controls::Grid::SetColumn(cell, static_cast<int32_t>(index));
+    grid.Children().Append(cell);
+  }
+  header.Child(grid);
+  return header;
+}
+
+FrameworkElement MakePaneEmptyLine(winrt::hstring const& text) {
+  TextBlock line;
+  line.Text(text);
+  if (auto style = StyleByKey(L"UrSupportingTextStyle")) line.Style(style);
+  line.Foreground(urnw::colors::FaintBrush());
+  line.TextAlignment(TextAlignment::Center);
+  line.TextWrapping(TextWrapping::Wrap);
+  line.MaxWidth(320);
+  line.HorizontalAlignment(HorizontalAlignment::Center);
+  line.VerticalAlignment(VerticalAlignment::Center);
+  line.Margin(ThicknessHelper::FromLengths(16, 16, 16, 16));
+  // No glyph and no card. In a pane layout "nothing here" is ONE line in the
+  // middle of a full-height column - MakeEmptyStateCard's surface would put a
+  // rounded island back inside a pane, which is the thing the model deleted.
+  return line;
+}
+
+PaneSearchRow MakePaneSearchRow(winrt::hstring const& placeholder) {
+  PaneSearchRow out;
+  out.root = MakePaneRow(MetricByKey(L"UrPaneHeaderHeight", 40));
+  out.root.Background(urnw::colors::BackgroundBrush());
+
+  Controls::Grid grid;
+  grid.ColumnSpacing(8);
+  Controls::ColumnDefinition iconColumn, boxColumn;
+  iconColumn.Width(GridLengthHelper::Auto());
+  boxColumn.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star));
+  grid.ColumnDefinitions().Append(iconColumn);
+  grid.ColumnDefinitions().Append(boxColumn);
+
+  FontIcon glyph;
+  glyph.FontFamily(IconFont());
+  glyph.Glyph(L"");  // Search
+  glyph.FontSize(13);
+  glyph.Foreground(urnw::colors::MutedBrush());
+  glyph.VerticalAlignment(VerticalAlignment::Center);
+  Automation::AutomationProperties::SetAccessibilityView(
+      glyph, Automation::Peers::AccessibilityView::Raw);
+  grid.Children().Append(glyph);
+
+  out.box = Controls::TextBox();
+  if (auto style = StyleByKey(L"UrPaneSearchStyle")) out.box.Style(style);
+  out.box.PlaceholderText(placeholder);
+  // A TextBox's placeholder is NOT its accessible name; without this the field
+  // reaches a screen reader as an unnamed edit box.
+  Automation::AutomationProperties::SetName(out.box, placeholder);
+  Controls::Grid::SetColumn(out.box, 1);
+  grid.Children().Append(out.box);
+
+  out.root.Child(grid);
+  return out;
+}
+
 FrameworkElement MakeEmptyState(winrt::hstring const& glyph, winrt::hstring const& text) {
   StackPanel column;
   column.Spacing(8);

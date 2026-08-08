@@ -76,6 +76,13 @@ std::string ServerError(std::optional<Result> const& result,
 
 namespace rows {
 
+// ---- pane mode (R4) --------------------------------------------------------
+// See the note in SettingsSheets.h. UI thread only, set around a section build.
+bool g_paneMode = false;
+
+void SetPaneMode(bool on) { g_paneMode = on; }
+bool PaneMode() { return g_paneMode; }
+
 Style Lookup(std::wstring_view key) {
   auto app = Application::Current();
   if (!app) return nullptr;
@@ -86,6 +93,14 @@ Style Lookup(std::wstring_view key) {
 }
 
 StackPanel Card(Panel const& host, double spacing) {
+  if (g_paneMode) {
+    // A pane has no islands in it: the group's rows go straight into the pane's
+    // column, separated by their own hairlines. Spacing 0 for the same reason -
+    // a gap between two rows is the card model's separator.
+    StackPanel plain;
+    host.Children().Append(plain);
+    return plain;
+  }
   Border card;
   card.Style(Lookup(L"UrCardStyle"));
   StackPanel inner;
@@ -96,6 +111,13 @@ StackPanel Card(Panel const& host, double spacing) {
 }
 
 void Heading(Panel const& host, hstring const& text, hstring const& glyph) {
+  if (g_paneMode) {
+    // The 28px group strip. The glyph is dropped: a pane group header is chrome
+    // naming a column, and the R3 vocabulary deliberately does not put marks in
+    // it (Home's twelve group headers carry none).
+    host.Children().Append(kit::MakePaneGroupHeader(text).root);
+    return;
+  }
   TextBlock block;
   block.Text(text);
   block.FontSize(18);
@@ -138,12 +160,76 @@ TextBlock Supporting(Panel const& host, hstring const& text) {
   block.FontSize(12);
   block.TextWrapping(TextWrapping::Wrap);
   block.Foreground(colors::MutedBrush());
+  if (g_paneMode) {
+    // Prose, not a list row: it is allowed to wrap and therefore to be taller
+    // than 44, but it still carries the row hairline and the pane's 12px inset
+    // so it does not read as text floating between two rows.
+    Border box;
+    box.Padding(ThicknessHelper::FromLengths(12, 10, 12, 10));
+    box.BorderBrush(colors::BorderBrush());
+    box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+    box.Child(block);
+    host.Children().Append(box);
+    return block;
+  }
   host.Children().Append(block);
   return block;
 }
 
+// Accessibility for a row's trailing control. Its own content is a VERB
+// ("Copy", "Save"), which does not say what it acts on - the UIA tree showed two
+// bare "Copy" buttons with nothing to tell them apart.
+//
+// FullDescription, NOT LabeledBy. LabeledBy REPLACES the name, which cost more
+// than it bought: on a ValueRow the trailing element IS the value TextBlock, so
+// its name became the row label and the device spec, the version and every
+// field's state became unreadable to a screen reader. FullDescription appends
+// instead, so the button keeps "Copy" and gains "Client ID", and a value
+// TextBlock is never touched at all.
+//
+// Shared by the card row and the pane row (R4) so the two cannot drift.
+void DescribeTrailing(FrameworkElement const& trailing, hstring const& label) {
+  auto describe = [&label](FrameworkElement const& element) {
+    // A TextBlock's name is its text, which is exactly what a screen-reader
+    // user needs to hear - never touch it. That was the ValueRow regression.
+    if (!element.try_as<Control>()) return;
+    if (element.try_as<ToggleSwitch>()) {
+      // A UrSwitchToggleStyle switch has empty On/Off content, so it has NO
+      // name of its own - FullDescription supplements a name that is not there,
+      // and the toggle vanished from the tree as an unnamed control. Verified
+      // live: "Send me product updates" had no TogglePattern target to drive.
+      // It needs the label AS its name.
+      Automation::AutomationProperties::SetName(element, label);
+      return;
+    }
+    // Buttons carry a VERB. FullDescription appends the object without
+    // destroying the verb, which is what LabeledBy did.
+    Automation::AutomationProperties::SetFullDescription(element, label);
+  };
+  describe(trailing);
+  if (auto panel = trailing.try_as<Panel>()) {
+    // ValueActionRow's trailing is a value + button stack: describe the button,
+    // leave the value readable.
+    for (auto const& child : panel.Children()) {
+      if (auto element = child.try_as<FrameworkElement>()) describe(element);
+    }
+  }
+}
+
 Grid Row(Panel const& host, hstring const& label, hstring const& note,
          FrameworkElement const& trailing) {
+  if (g_paneMode) {
+    auto pane = kit::MakePaneTwoLineRow(label, note);
+    if (trailing) {
+      trailing.VerticalAlignment(VerticalAlignment::Center);
+      DescribeTrailing(trailing, label);
+      pane.trailing.Children().Append(trailing);
+    }
+    host.Children().Append(pane.root);
+    // The caller gets the row's inner Grid, as it always has. Nothing in the
+    // app reads it, but returning the Border would silently change the type.
+    return pane.trailing;
+  }
   Grid row;
   ColumnDefinition left, right;
   left.Width(GridLength{1, GridUnitType::Star});
@@ -173,41 +259,7 @@ Grid Row(Panel const& host, hstring const& label, hstring const& note,
   if (trailing) {
     Grid::SetColumn(trailing, 1);
     trailing.VerticalAlignment(VerticalAlignment::Center);
-    // Accessibility. The trailing control's own content is a VERB ("Copy",
-    // "Save"), which does not say what it acts on - the UIA tree showed two
-    // bare "Copy" buttons with nothing to tell them apart.
-    //
-    // FullDescription, NOT LabeledBy. LabeledBy REPLACES the name, which cost
-    // more than it bought: on a ValueRow the trailing element IS the value
-    // TextBlock, so its name became the row label and the device spec, the
-    // version and every field's state became unreadable to a screen reader.
-    // FullDescription appends instead, so the button keeps "Copy" and gains
-    // "Client ID", and a value TextBlock is never touched at all.
-    auto describe = [&label](FrameworkElement const& element) {
-      // A TextBlock's name is its text, which is exactly what a screen-reader
-      // user needs to hear - never touch it. That was the ValueRow regression.
-      if (!element.try_as<Control>()) return;
-      if (element.try_as<ToggleSwitch>()) {
-        // A UrSwitchToggleStyle switch has empty On/Off content, so it has NO
-        // name of its own - FullDescription supplements a name that is not
-        // there, and the toggle vanished from the tree as an unnamed control.
-        // Verified live: "Send me product updates" had no TogglePattern target
-        // to drive. It needs the label AS its name.
-        Automation::AutomationProperties::SetName(element, label);
-        return;
-      }
-      // Buttons carry a VERB ("Copy", "Save"). FullDescription appends the
-      // object without destroying the verb, which is what LabeledBy did.
-      Automation::AutomationProperties::SetFullDescription(element, label);
-    };
-    describe(trailing);
-    if (auto panel = trailing.try_as<Panel>()) {
-      // ValueActionRow's trailing is a value + button stack: describe the
-      // button, leave the value readable.
-      for (auto const& child : panel.Children()) {
-        if (auto element = child.try_as<FrameworkElement>()) describe(element);
-      }
-    }
+    DescribeTrailing(trailing, label);
     row.Children().Append(trailing);
   }
   host.Children().Append(row);
@@ -264,6 +316,12 @@ TextBlock ValueActionRow(Panel const& host, hstring const& label, hstring const&
 }
 
 Button NavRow(Panel const& host, hstring const& label, TextBlock& outValue) {
+  if (g_paneMode) {
+    auto pane = kit::MakePaneTwoLineRowButton(label);
+    outValue = pane.value;
+    host.Children().Append(pane.root);
+    return pane.root;
+  }
   Button button;
   button.Style(Lookup(L"UrCardRowButtonStyle"));
   button.HorizontalAlignment(HorizontalAlignment::Stretch);
@@ -356,6 +414,9 @@ void ApplyFieldState(TextBlock const& value, FieldState state, hstring const& lo
 }
 
 void Divider(Panel const& host) {
+  // Every pane row already ends in a hairline; a second one here draws a 2px
+  // rule under one row in a list of otherwise identical rows.
+  if (g_paneMode) return;
   Border line;
   line.Height(1);
   line.Background(colors::BorderBrush());

@@ -562,6 +562,22 @@ class SdkHost {
   void SetBlockerEnabledHandler(BlockerEnabledHandler h) { onBlockerEnabled_ = std::move(h); }
   void SetLocationsHandler(LocationsHandler h) { onLocations_ = std::move(h); }
   void SetPeersHandler(PeersHandler h) { onPeers_ = std::move(h); }
+  // R4: a SECOND, independent subscriber to the same two feeds.
+  //
+  // The chooser sheet owns the handlers above, and the Network destination is a
+  // second live consumer of exactly the same pushes - it IS the chooser, as a
+  // page. One slot cannot serve both: whichever of the two set it last would
+  // silently unsubscribe the other, and the failure mode is a location list that
+  // never updates, which reads as a hang rather than as a bug.
+  //
+  // Deliberately a second SLOT rather than a subscription list. There are
+  // exactly two consumers, both owned by the window for the window's lifetime,
+  // and a list would need removal tokens and a lock for no behaviour anyone
+  // wants. Both are invoked on the SDK callback thread, observer first, with the
+  // payload COPIED to the observer and moved into the handler - so neither can
+  // observe the other's move.
+  void SetLocationsObserver(LocationsHandler h) { onLocationsObserver_ = std::move(h); }
+  void SetPeersObserver(PeersHandler h) { onPeersObserver_ = std::move(h); }
   void SetRemoteChangedHandler(RemoteChangedHandler h) { onRemoteChanged_ = std::move(h); }
 
   // Snapshots on demand (seed / resync when the window shows).
@@ -996,6 +1012,9 @@ class SdkHost {
   BlockerEnabledHandler onBlockerEnabled_;
   LocationsHandler onLocations_;
   PeersHandler onPeers_;
+  // R4: the Network destination's copy of the two feeds above (SetLocationsObserver)
+  LocationsHandler onLocationsObserver_;
+  PeersHandler onPeersObserver_;
   RemoteChangedHandler onRemoteChanged_;
   AuthState authState_ = AuthState::LoggedOut;
   // "Is there a stored device session?" — cached so IsLoggedIn() does not have
