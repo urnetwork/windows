@@ -41,11 +41,20 @@
              Bold at 24sp (Type.kt TopBarTitleTextStyle). The file carries only a
              Bold face, so the weight is stated rather than left to be
              synthesised. -->
-        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Background="Transparent">
-            <TextBlock x:Name="BrandText" Margin="16,0" VerticalAlignment="Center"
-                       FontFamily="{StaticResource UrWordmarkFontFamily}"
-                       FontSize="24" FontWeight="Bold"
-                       IsHitTestVisible="False" />
+        <!-- R1: the integrated title bar is 48epx per the spec (was 40). Left
+             content is a 20epx app icon and the PP NeueBit wordmark; the whole
+             strip is the SetTitleBar drag region. IsHitTestVisible=False on the
+             content so the drag region is not swallowed by the icon or the text. -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="48" Background="Transparent">
+            <StackPanel Orientation="Horizontal" Margin="16,0" Spacing="8"
+                        VerticalAlignment="Center" IsHitTestVisible="False">
+                <Image x:Name="BrandIcon" Width="20" Height="20"
+                       VerticalAlignment="Center"
+                       Source="ms-appx:///Assets/app.ico" />
+                <TextBlock x:Name="BrandText" VerticalAlignment="Center"
+                           FontFamily="{StaticResource UrWordmarkFontFamily}"
+                           FontSize="24" FontWeight="Bold" />
+            </StackPanel>
         </Grid>
 
         <!-- The account menu (iOS Shared/Views/AccountMenu.swift): the avatar in

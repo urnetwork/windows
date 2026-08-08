@@ -322,6 +322,12 @@
     <CopyFileToFolders Include="Assets\ReferralFrog.png">
       <DestinationFolders>$(OutDir)Assets</DestinationFolders>
     </CopyFileToFolders>
+    <!-- the app icon, for the integrated title bar's 20epx app mark (R1). It is
+         already the ApplicationIcon resource; this copy makes it resolvable as
+         ms-appx:///Assets/app.ico from the title-bar Image. -->
+    <CopyFileToFolders Include="Assets\app.ico">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
     <!-- The login carousel's three slides (iOS Assets.xcassets/Images/
          LoginCarousel{1,2,3}.imageset). Exported from the iOS .heic sources,
          which WinUI cannot decode without the HEIF media extension, and kept at
