@@ -110,6 +110,80 @@ winrt::Microsoft::UI::Xaml::Controls::Border MakeDivider();
 winrt::Microsoft::UI::Xaml::FrameworkElement MakeSectionHeader(winrt::hstring const& glyph,
                                                                winrt::hstring const& text);
 
+// ============================================================================
+// THE WAVE-2 COMPONENT KIT (R1, spec §12 inventory)
+//
+// Wave 1 owns the shell and Home; Wave 2 rebuilds Network / Earnings / Account /
+// Settings. These builders are the shared vocabulary those four agents build
+// against, so the four destinations come out of one kit rather than four
+// re-inventions. Each realizes a spec §12 component in the brand tokens/faces
+// (styles pulled from App.xaml by key, so the kit tracks the ramp), returns the
+// live parts a page must update, and carries its own accessibility.
+//
+// EmptyState (MakeEmptyState / MakeEmptyStateCard), CopyField's cousin
+// StatusField and the Snackbar already live above. ConnectionHero is realized by
+// ConnectPage's ControlsCard (the ConnectCanvas hero + status-leads layout Wave
+// 1 built); it is Home-only and not duplicated here.
+// ============================================================================
+
+// PageHeader: a page Title in the brand display face + an optional one-line Body
+// description under it. Every Wave-2 destination opens with one.
+//   contract: MakePageHeader(title[, description]) -> a top-aligned column.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakePageHeader(
+    winrt::hstring const& title, winrt::hstring const& description = {});
+
+// MetricCard: a boxed stat tile - a muted caption over a big condensed value -
+// for the KPI rows on Earnings and Account. Returns its two live TextBlocks so
+// the page updates label/value without rebuilding the tile.
+//   contract: MakeMetricCard(label[, value]).{root,label,value}
+struct MetricCard {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock label{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};
+};
+MetricCard MakeMetricCard(winrt::hstring const& label, winrt::hstring const& value = {});
+
+// SettingsCard: one settings row on a card surface - leading 20epx glyph, a
+// title with an optional one-line description, and a trailing slot the caller
+// drops a control (ToggleSwitch, ComboBox) or a chevron into. The trailing
+// control should point AutomationProperties.LabeledBy at `title`.
+//   contract: MakeSettingsCard(glyph, title[, description]).{root,title,description,trailing}
+struct SettingsCard {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock title{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock description{nullptr};
+  // append the control/chevron here; single-cell, right-aligned
+  winrt::Microsoft::UI::Xaml::Controls::Grid trailing{nullptr};
+};
+SettingsCard MakeSettingsCard(winrt::hstring const& glyph, winrt::hstring const& title,
+                              winrt::hstring const& description = {});
+
+// CopyField: a caption, a value (optionally masked for a secret/client id), and
+// a copy button that writes the FULL value to the clipboard with a Raw glyph.
+// The masked display never reaches the clipboard - the real value does.
+//   contract: MakeCopyField(label, value[, masked]).{root,value,copy}
+struct CopyField {
+  winrt::Microsoft::UI::Xaml::FrameworkElement root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button copy{nullptr};
+};
+CopyField MakeCopyField(winrt::hstring const& label, winrt::hstring const& value,
+                        bool masked = false);
+
+// PlanUsageCard: the plan name + value, a host Grid for a UsageBar, and a legend
+// panel - the shape the connect drawer and Account both draw the subscription
+// with. Returns the parts a page wires a urnw::UsageBar into (the bar itself is
+// not a XAML control, so it stays the caller's to construct into usageBarHost).
+//   contract: MakePlanUsageCard(planLabel[, planValue]).{root,planValue,usageBarHost,legend}
+struct PlanUsageCard {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock planValue{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Grid usageBarHost{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel legend{nullptr};
+};
+PlanUsageCard MakePlanUsageCard(winrt::hstring const& planLabel,
+                                winrt::hstring const& planValue = {});
+
 // ---- the persistent status strip -------------------------------------------
 //
 // One field of the window's bottom status strip: an optional state dot, an
