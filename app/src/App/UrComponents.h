@@ -368,11 +368,18 @@ struct PaneTableRow {
   winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
   std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> cells;
 };
-PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height = 36);
+// `textColumns` is how many LEADING columns read as text (left aligned, in the
+// row-title voice); every column after them is a figure and reads right, which
+// is what makes a column of numbers scannable. The payouts ledger has one
+// (date); the leaderboard has two (rank and network name).
+PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height = 36,
+                              size_t textColumns = 1);
 
-// Its header strip: the same weights, the column names, on the 28px group rhythm.
+// Its header strip: the same weights, the same alignment rule, the column names,
+// on the 28px group rhythm.
 winrt::Microsoft::UI::Xaml::Controls::Border MakePaneTableHeader(
-    std::vector<double> const& weights, std::vector<winrt::hstring> const& titles);
+    std::vector<double> const& weights, std::vector<winrt::hstring> const& titles,
+    size_t textColumns = 1);
 
 // The empty state of a pane that FILLS: one centred muted line, sized to sit in
 // the middle of a full-height pane rather than to be a short card at the top of

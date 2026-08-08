@@ -204,6 +204,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   // public/private switch.
   void OnVerifySeeker(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // R4: the ledger pane's Payouts / Leaderboard switch (Earnings).
+  void OnEarningsTableChanged(
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
   void OnLeaderboardPublicToggled(winrt::Windows::Foundation::IInspectable const&,
                                   winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 

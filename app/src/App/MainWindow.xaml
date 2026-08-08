@@ -1599,409 +1599,352 @@
                     </Grid>
                 </Grid>
 
-                <!-- Wallet.
+                <!-- ==== EARNINGS: THE PANE SHELL (R4) =====================
+                     Wallet and Leaderboard MERGED into one destination (spec
+                     §7 / override #2). They were two rail items over one
+                     subject: what the network earned, and where it stands.
 
-                     Wider than the other destinations (820 against 520) because
-                     two of its surfaces are TABLES - the payouts ledger and the
-                     country multipliers - which iOS stacks into a phone column
-                     and a desktop window does not have to. Everything dynamic in
-                     here is built by WalletPage/WalletSheets into the named empty
-                     panels below; the markup carries only the static structure.
+                       col 0  WALLETS    where the money goes - the three
+                                         figures, the payout wallets, the form
+                                         that adds one
+                       col 2  LEDGER     the payouts table, and the leaderboard
+                                         table, one at a time, both filling to
+                                         the floor
+                       col 4  POINTS     why the number is what it is - points,
+                                         multipliers, reliability, own rank
 
-                     THE WIDTH CAP IS A COLUMN, NOT A MaxWidth ON THE PANEL. Put
-                     MaxWidth on a Stretch-aligned child of a ScrollViewer and
-                     the arrange offset comes out of the child's DESIRED width
-                     while the child is laid out at the cap: the column gets
-                     pushed right by half the slack and its right-hand side falls
-                     off the viewport. That is how the leaderboard lost its
-                     net-provided figures and half of its switch at 1200px. This
-                     panel only escaped because its widest child is a long
-                     unwrapped sentence that happens to measure the full 820,
-                     making the two widths equal and the offset a true centre -
-                     luck, and luck that changes with the sentence.
+                     THE LEDGER PANE IS TABBED, and that is the deviation from
+                     "2-3 panes, one subject each" worth arguing for. Payouts
+                     and the leaderboard are both wide multi-column tables that
+                     want the same space, and neither is worth reading four
+                     columns at a time in a 380dip rail. A third table pane
+                     would have made the window three narrow tables; stacking
+                     them in one pane would have put a second table below the
+                     fold of the first. One pane, one table at a time, the
+                     switch in the pane's own header strip - which is what the
+                     40px header is for.
 
-                     A star column capped by MaxWidth has no such split: the Grid
-                     fills the viewport, the column takes min(820, viewport) at
-                     x=0, and the content stretches inside it at every width. -->
-                <ScrollViewer Margin="24" x:Name="WalletView" Visibility="Collapsed">
-                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
-                       middle one. The middle star is greedy enough to always
-                       reach its MaxWidth when the window has the room, and the
-                       two hairline stars split whatever is left - so the column
-                       is CENTRED at wide widths and simply fills the viewport
-                       at narrow ones, with no breakpoint and no branch.
-
-                       Why not MaxWidth on the panel: that is the arrange-split
-                       bug (the offset comes out of the child's DESIRED width
-                       while it is laid out at the cap). Why not the single
-                       capped column P4 used: it pins the content to x=0, which
-                       is right at 1100 and lopsided when maximized - measured
-                       2578px wide with 600px of content and ~1900px of void on
-                       one side. -->
-                  <!-- The same shape ConnectView carries; see the long note
-                       there. Wallet's cut is Portmaster's: the numbers across
-                       the top, then the SOURCES of money on the left (wallets,
-                       points, multipliers, reliability) and the LEDGER on the
-                       right. A table earns width, and the payouts table was the
-                       thing squeezed into 820dip in the owner's screenshot. -->
-                  <Grid x:Name="WalletLayout">
+                     Everything dynamic is built by WalletPage into the named
+                     hosts below. -->
+                <Grid x:Name="WalletView" Visibility="Collapsed"
+                      Style="{StaticResource UrPaneStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition x:Name="WalletCapColumn"
-                                          Width="1000*" MaxWidth="820" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="WalletPaneAColumn" Width="360" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="WalletPaneBColumn" Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="WalletPaneCColumn" Width="380" />
                     </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="1">
-                      <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition x:Name="WalletSideColumn" Width="0" />
-                      </Grid.ColumnDefinitions>
-                      <Grid.RowDefinitions>
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                      </Grid.RowDefinitions>
 
-                    <!-- The header, across the whole composition at every
-                         width: the plan action, the destination's snackbar and
-                         the three figures the rest of the page explains. -->
-                    <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
-                                x:Name="WalletTopStack" Spacing="12">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xEB05;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="PlanHeading" Style="{StaticResource UrPanelHeadingStyle}" />
-                        </StackPanel>
-                        <!-- the upgrade action does not need the full width of a
-                             desktop window; capped so it reads as a button
-                             rather than as a banner -->
-                        <Button x:Name="UpgradeButton" MaxWidth="420"
-                                HorizontalAlignment="Left"
-                                Style="{StaticResource AccentButtonStyle}" Click="OnOpenUpgrade" />
-                        <muxc:InfoBar x:Name="WalletInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
+                    <!-- ============ PANE A: WALLETS ============ -->
+                    <Grid Grid.Column="0" x:Name="WalletPaneA">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="WalletPaneATitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                                <TextBlock x:Name="WalletPaneAMeta" HorizontalAlignment="Right"
+                                           Style="{StaticResource UrPaneMetaStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- THE THREE FIGURES. Rows on the pane's grid,
+                                     not three stat tiles: a tile is a card, and
+                                     three of them across a 360 rail is a stack
+                                     of boxes with one number each. -->
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,12">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="WalletPendingLabel"
+                                                   Style="{StaticResource UrKeyTextStyle}"
+                                                   VerticalAlignment="Bottom" />
+                                        <TextBlock x:Name="WalletPendingValue" Grid.Column="1"
+                                                   FontFamily="{StaticResource UrBodyFontFamily}"
+                                                   FontSize="22" FontWeight="SemiBold"
+                                                   HorizontalAlignment="Right" />
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="WalletUnpaidLabel"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                        <TextBlock x:Name="WalletUnpaidValue" Grid.Column="1"
+                                                   Style="{StaticResource UrValueTextStyle}" />
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="WalletReferralsLabel"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                        <TextBlock x:Name="WalletReferralsValue" Grid.Column="1"
+                                                   Style="{StaticResource UrValueTextStyle}" />
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,8">
+                                    <TextBlock x:Name="PayoutsThresholdText" TextWrapping="Wrap"
+                                               Style="{StaticResource UrRowNoteStyle}"
+                                               TextTrimming="None" />
+                                </Border>
+                                <Button x:Name="UpgradeButton"
+                                        Style="{StaticResource UrPaneAccentButtonStyle}"
+                                        Click="OnOpenUpgrade" />
 
-                        <!-- Header stats (iOS WalletsHeader): unpaid data provided,
-                             the pending USDC balance the payout threshold is measured
-                             against, and total referrals.
+                                <!-- payout wallets ............................. -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <Grid>
+                                        <TextBlock x:Name="PayoutWalletsHeading"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                        <TextBlock x:Name="WalletsStatusText"
+                                                   HorizontalAlignment="Right"
+                                                   Style="{StaticResource UrPaneMetaStyle}" />
+                                    </Grid>
+                                </Border>
+                                <StackPanel x:Name="WalletCardsPanel" />
+                                <!-- onboarding copy, so it keeps its two shipped
+                                     sentences - but as a padded block on the
+                                     pane's grid, not a floating card -->
+                                <Border x:Name="WalletsEmptyPanel" Visibility="Collapsed"
+                                        BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,12">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock x:Name="WalletsEmptyText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrKeyTextStyle}"
+                                                   TextTrimming="None" />
+                                        <TextBlock x:Name="WalletsEmptyNote" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" />
+                                    </StackPanel>
+                                </Border>
 
-                             THREE TILES, not three columns of one card. The
-                             single card was right at 600dip and wrong at 1700:
-                             three captions and three numbers spread across a
-                             seventeen-hundred-pixel slab, with two thirds of it
-                             empty. UrStatTileStyle is exactly this shape and D1
-                             built it for exactly this. -->
-                        <!-- A row at desktop widths, a column at flyout width.
-                             Three tiles across 560dip left "Unpaid data
-                             provid..." and "1234.50..." on screen - a KPI that
-                             cannot be read is not a KPI - and the responsive
-                             rule for this app is a single column down there
-                             anyway. Same Place() helper the panes use. -->
-                        <!-- Gaps come from the tiles' own margins, NOT from
-                             ColumnSpacing/RowSpacing: a Grid spends its spacing
-                             between every pair of definitions whether or not
-                             they have any width, so a collapsed column still
-                             costs its gap and the visible tiles shrink by it. -->
-                        <Grid x:Name="WalletStatsGrid">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition x:Name="WalletStatsColumn2" Width="0" />
-                                <ColumnDefinition x:Name="WalletStatsColumn3" Width="0" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource UrStatTileStyle}">
-                                <StackPanel>
-                                    <TextBlock x:Name="WalletUnpaidLabel" Style="{StaticResource UrStatLabelStyle}" />
-                                    <TextBlock x:Name="WalletUnpaidValue" Style="{StaticResource UrStatValueStyle}" />
-                                </StackPanel>
-                            </Border>
-                            <Border x:Name="WalletPendingTile" Grid.Row="1" Grid.Column="0"
-                                    Style="{StaticResource UrStatTileStyle}">
-                                <StackPanel>
-                                    <TextBlock x:Name="WalletPendingLabel" Style="{StaticResource UrStatLabelStyle}" />
-                                    <TextBlock x:Name="WalletPendingValue" Style="{StaticResource UrStatValueStyle}" />
-                                </StackPanel>
-                            </Border>
-                            <Border x:Name="WalletReferralsTile" Grid.Row="2" Grid.Column="0"
-                                    Style="{StaticResource UrStatTileStyle}">
-                                <StackPanel>
-                                    <TextBlock x:Name="WalletReferralsLabel" Style="{StaticResource UrStatLabelStyle}" />
-                                    <TextBlock x:Name="WalletReferralsValue" Style="{StaticResource UrStatValueStyle}" />
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                        <TextBlock x:Name="PayoutsThresholdText" Style="{StaticResource UrSupportingTextStyle}" />
-                    </StackPanel>
-
-                    <!-- WHERE THE MONEY COMES FROM: the wallets it is paid to,
-                         the form that adds one, and the three surfaces that
-                         explain the amount (points, multipliers, reliability). -->
-                    <StackPanel Grid.Row="1" Grid.Column="0"
-                                x:Name="WalletMainStack" Spacing="12"
-                                VerticalAlignment="Top" Margin="0,4,0,0">
-
-                        <!-- Wallets: one card per account wallet, scrolling
-                             horizontally (iOS PopulatedWalletsView). WalletsStatusText
-                             carries loading / failed; the empty state is its own
-                             panel because it is onboarding copy, not a status line. -->
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                            <FontIcon Glyph="&#xE8C7;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="PayoutWalletsHeading" Style="{StaticResource UrSectionHeadingStyle}" />
-                        </StackPanel>
-                        <TextBlock x:Name="WalletsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
-                        <ScrollViewer x:Name="WalletCardsScroller" HorizontalScrollMode="Auto"
-                                      HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled"
-                                      VerticalScrollBarVisibility="Disabled" Visibility="Collapsed">
-                            <StackPanel x:Name="WalletCardsPanel" Orientation="Horizontal" Spacing="12"
-                                        Padding="0,0,0,8" />
+                                <!-- connect a wallet ........................... -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <TextBlock x:Name="ConnectWalletHeading"
+                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                </Border>
+                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,12">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock x:Name="ConnectWalletChainsText"
+                                                   TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" />
+                                        <TextBox x:Name="WalletAddressBox"
+                                                 Style="{StaticResource UrTextInputStyle}"
+                                                 TextChanged="OnWalletAddressChanged" />
+                                        <TextBlock x:Name="WalletChainText"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" TextWrapping="Wrap" />
+                                        <Button x:Name="ConnectWalletButton"
+                                                HorizontalAlignment="Stretch"
+                                                IsEnabled="False" Click="OnConnectWallet" />
+                                    </StackPanel>
+                                </Border>
+                                <muxc:InfoBar x:Name="WalletInfo"
+                                              Style="{StaticResource UrSnackbarStyle}"
+                                              Margin="12,8" IsOpen="False" />
+                            </StackPanel>
                         </ScrollViewer>
-                        <!-- "no wallets yet" is onboarding copy, so it gets a
-                             surface and a mark rather than two grey sentences on
-                             the page background. -->
-                        <Border x:Name="WalletsEmptyPanel" Style="{StaticResource UrCardStyle}"
-                                Visibility="Collapsed">
-                            <StackPanel Spacing="8" HorizontalAlignment="Center"
-                                        Padding="8,12">
-                                <FontIcon Glyph="&#xE8C7;" Style="{StaticResource UrEmptyGlyphStyle}" />
-                                <TextBlock x:Name="WalletsEmptyText" TextAlignment="Center"
-                                           Style="{StaticResource UrSupportingTextStyle}" />
-                                <TextBlock x:Name="WalletsEmptyNote" TextAlignment="Center"
-                                           Style="{StaticResource UrSupportingTextStyle}" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Connect an external wallet by address. The server
-                             validates it per chain; Bittensor (TAO) wallets are
-                             recorded for future use only and can never be the
-                             payout wallet. -->
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                            <FontIcon Glyph="&#xE71B;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="ConnectWalletHeading" Style="{StaticResource UrSectionHeadingStyle}" />
-                        </StackPanel>
-                        <!-- a form is a module: the chain note, the field and its
-                             verdict belong on one surface, not loose on the page
-                             between two headings -->
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
-                                <TextBlock x:Name="ConnectWalletChainsText" FontSize="12" TextWrapping="Wrap"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <Grid ColumnSpacing="8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="WalletAddressBox" Grid.Column="0"
-                                             Style="{StaticResource UrTextInputStyle}"
-                                             TextChanged="OnWalletAddressChanged" />
-                                    <Button x:Name="ConnectWalletButton" Grid.Column="1"
-                                            VerticalAlignment="Bottom"
-                                            IsEnabled="False" Click="OnConnectWallet" />
-                                </Grid>
-                                <TextBlock x:Name="WalletChainText" FontSize="12"
-                                           Foreground="{StaticResource UrTextMutedBrush}" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Account points (iOS AccountPointsBreakdown) -->
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                            <FontIcon Glyph="&#xE734;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="AccountPointsHeading" Style="{StaticResource UrSectionHeadingStyle}" />
-                        </StackPanel>
-                        <TextBlock x:Name="AccountPointsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
-                        <!-- named so the page can collapse it: an empty card is a
-                             bar of nothing sitting under its own error message -->
-                        <Border x:Name="AccountPointsCard" Style="{StaticResource UrCardStyle}"
-                                Visibility="Collapsed">
-                            <StackPanel x:Name="AccountPointsPanel" Spacing="0" />
-                        </Border>
-
-                        <!-- Earning multipliers / Seeker token -->
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                            <FontIcon Glyph="&#xEAFC;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="EarningMultipliersHeading" Style="{StaticResource UrSectionHeadingStyle}" />
-                        </StackPanel>
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="8">
-                                <TextBlock x:Name="SeekerStatusText" Style="{StaticResource UrSupportingTextStyle}" />
-                                <Button x:Name="VerifySeekerButton" Click="OnVerifySeeker"
-                                        HorizontalAlignment="Left" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Network reliability: the mean, the per-bucket weights and
-                             client counts, and the country multiplier table. -->
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                            <FontIcon Glyph="&#xE9D2;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="NetworkReliabilityHeading" Style="{StaticResource UrSectionHeadingStyle}" />
-                        </StackPanel>
-                        <TextBlock x:Name="ReliabilityStatusText" Style="{StaticResource UrSupportingTextStyle}" />
-                        <Border x:Name="ReliabilityCard" Style="{StaticResource UrCardStyle}"
-                                Visibility="Collapsed">
-                            <StackPanel x:Name="ReliabilityPanel" Spacing="8" />
-                        </Border>
-                    </StackPanel>
-
-                    <!-- THE LEDGER. Its own column at desktop widths, because a
-                         table is the one thing on this destination that gets
-                         better with width and it was the thing squeezed
-                         hardest: four columns - date, amount, wallet,
-                         transaction - inside an 820dip page that also had to
-                         hold the wallet cards. Portmaster gives its detail pane
-                         the same treatment.
-                         Advanced Mode will add id / raw columns here; the
-                         column strategy in WalletPage is stars with minimums,
-                         so they fit by narrowing rather than by clipping. -->
-                    <StackPanel Grid.Row="2" Grid.Column="0"
-                                x:Name="WalletSideStack" Spacing="12"
-                                VerticalAlignment="Top" Margin="0,4,0,0">
-                        <!-- Payouts ledger: a real desktop table, one row per
-                             payment, each row opening the payout detail sheet. -->
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                            <FontIcon Glyph="&#xE9D5;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="PayoutsHeading" Style="{StaticResource UrSectionHeadingStyle}" />
-                        </StackPanel>
-                        <TextBlock x:Name="PayoutsStatusText" Style="{StaticResource UrSupportingTextStyle}" />
-                        <StackPanel x:Name="PayoutsPanel" Spacing="0" />
-                    </StackPanel>
                     </Grid>
-                  </Grid>
-                </ScrollViewer>
 
-                <!-- Leaderboard. Same capped star column as Wallet, and for a
-                     reason this panel demonstrated: with MaxWidth on the panel
-                     itself the whole column arranged off the right edge above
-                     ~1100px, taking the per-row net-provided figures - the point
-                     of a leaderboard - and half the switch with it. -->
-                <ScrollViewer Margin="24" x:Name="LeaderboardView" Visibility="Collapsed">
-                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
-                       middle one. The middle star is greedy enough to always
-                       reach its MaxWidth when the window has the room, and the
-                       two hairline stars split whatever is left - so the column
-                       is CENTRED at wide widths and simply fills the viewport
-                       at narrow ones, with no breakpoint and no branch.
+                    <Border x:Name="WalletPaneBRule" Grid.Column="1"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
 
-                       Why not MaxWidth on the panel: that is the arrange-split
-                       bug (the offset comes out of the child's DESIRED width
-                       while it is laid out at the cap). Why not the single
-                       capped column P4 used: it pins the content to x=0, which
-                       is right at 1100 and lopsided when maximized - measured
-                       2578px wide with 600px of content and ~1900px of void on
-                       one side. -->
-                  <!-- The same shape ConnectView carries. The leaderboard's
-                       cut is the plainest in the app: a TABLE, which wants the
-                       width, and one card describing where you are in it, which
-                       does not. Portmaster would call it list-and-detail. -->
-                  <Grid x:Name="LeaderboardLayout">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition x:Name="LeaderboardCapColumn"
-                                          Width="1000*" MaxWidth="820" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="1">
-                      <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition x:Name="LeaderboardSideColumn" Width="0" />
-                      </Grid.ColumnDefinitions>
-                      <Grid.RowDefinitions>
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                      </Grid.RowDefinitions>
-
-                    <!-- OWN RANK. First in the flyout, because at 560dip the
-                         one thing you came for is your own number; beside the
-                         table at desktop widths, where the table comes first. -->
-                    <StackPanel Grid.Row="0" Grid.Column="0"
-                                x:Name="LeaderboardSideStack" Spacing="8"
-                                VerticalAlignment="Top">
-                        <!-- No section heading here: NavigationView's Header already
-                             shows the destination name ("Leaderboard"), and a panel
-                             heading with the same word under it read as a stutter.
-                             The other destinations keep theirs because their headings
-                             name a SECTION ("Plan", "Feedback"), not the destination. -->
-
-                        <!-- Own ranking (iOS LeaderboardHeader): rank, net provided,
-                             and the public/private switch. -->
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="8">
-                                <StackPanel>
-                                    <TextBlock x:Name="LeaderboardRankLabel" Style="{StaticResource UrLabelStyle}" />
-                                    <TextBlock x:Name="LeaderboardRankValue" Style="{StaticResource UrStatValueStyle}"
-                                               FontSize="30" />
-                                </StackPanel>
-                                <Border Height="1" Background="{StaticResource UrBorderBrush}" />
-                                <StackPanel>
-                                    <TextBlock x:Name="LeaderboardNetProvidedLabel" Style="{StaticResource UrLabelStyle}" />
-                                    <TextBlock x:Name="LeaderboardNetProvidedValue" Style="{StaticResource UrStatValueStyle}"
-                                               FontSize="30" />
-                                </StackPanel>
-                                <Border Height="1" Background="{StaticResource UrBorderBrush}" />
-                                <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
-                       middle one. The middle star is greedy enough to always
-                       reach its MaxWidth when the window has the room, and the
-                       two hairline stars split whatever is left - so the column
-                       is CENTRED at wide widths and simply fills the viewport
-                       at narrow ones, with no breakpoint and no branch.
-
-                       Why not MaxWidth on the panel: that is the arrange-split
-                       bug (the offset comes out of the child's DESIRED width
-                       while it is laid out at the cap). Why not the single
-                       capped column P4 used: it pins the content to x=0, which
-                       is right at 1100 and lopsided when maximized - measured
-                       2578px wide with 600px of content and ~1900px of void on
-                       one side. -->
-                  <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock x:Name="LeaderboardPublicLabel" Grid.Column="0" TextWrapping="Wrap"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource UrTextBrush}" />
-                                    <ToggleSwitch x:Name="LeaderboardPublicToggle" Grid.Column="1"
-                                                  Style="{StaticResource UrSwitchToggleStyle}"
-                                                  AutomationProperties.LabeledBy="{Binding ElementName=LeaderboardPublicLabel}"
-                                                  Toggled="OnLeaderboardPublicToggled" />
-                                </Grid>
-                            </StackPanel>
+                    <!-- ============ PANE B: THE LEDGER ============ -->
+                    <Grid Grid.Column="2" x:Name="WalletPaneB"
+                          AutomationProperties.LandmarkType="Main">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}" Padding="12,0">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <!-- the pane's own switch, in its own header
+                                     strip: two tables, one at a time -->
+                                <muxc:SelectorBar x:Name="EarningsTableBar"
+                                                  VerticalAlignment="Center"
+                                                  SelectionChanged="OnEarningsTableChanged">
+                                    <muxc:SelectorBarItem x:Name="PayoutsTabItem" />
+                                    <muxc:SelectorBarItem x:Name="LeaderboardTabItem" />
+                                </muxc:SelectorBar>
+                                <TextBlock x:Name="WalletPaneBMeta" Grid.Column="1"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource UrPaneMetaStyle}" />
+                            </Grid>
                         </Border>
-
-                        <TextBlock x:Name="LeaderboardDescription"
-                                   Style="{StaticResource UrSupportingTextStyle}" />
-                    </StackPanel>
-
-                    <!-- THE TABLE. Full width of the main column at every size;
-                         at desktop widths that is ~1000dip of rows instead of
-                         820 shared with the rank card. Advanced Mode will add
-                         network-id columns here. -->
-                    <StackPanel Grid.Row="1" Grid.Column="0"
-                                x:Name="LeaderboardMainStack" Spacing="8"
-                                VerticalAlignment="Top" Margin="0,12,0,24">
-                        <!-- Loading / empty / failed. Without it the panel drew one
-                             heading and nothing else whether the fetch was in
-                             flight, had returned nothing, or had failed - three
-                             very different situations, one blank screen. -->
-                        <TextBlock x:Name="LeaderboardStatusText"
-                                   Style="{StaticResource UrSupportingTextStyle}" />
-                        <StackPanel x:Name="LeaderboardRows" Spacing="0" />
-
-                        <!-- This destination's own snackbar. WalletInfo lives
-                             inside the WalletView ScrollViewer, which is
-                             Collapsed while the user is here, so the switch's
-                             401 snapped the toggle back and put its message on a
-                             panel nobody was looking at - it turned up later,
-                             out of context, on Wallet. Screenshotted both ways
-                             (P4 report). WalletPage::Notify picks the visible
-                             one. -->
-                        <muxc:InfoBar x:Name="LeaderboardInfo" Style="{StaticResource UrSnackbarStyle}"
-                                      IsOpen="False" Margin="0,12,0,0" />
-                    </StackPanel>
+                        <Grid Grid.Row="1">
+                            <!-- PAYOUTS. Fills to the floor; its empty state is a
+                                 centred line in that same full-height area. -->
+                            <Grid x:Name="PayoutsHost">
+                                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="PayoutsPanel" />
+                                </ScrollViewer>
+                                <TextBlock x:Name="PayoutsStatusText"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           TextAlignment="Center" TextWrapping="Wrap"
+                                           MaxWidth="320" Margin="16" IsHitTestVisible="False"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                            </Grid>
+                            <!-- LEADERBOARD. The same pane, the same floor. -->
+                            <Grid x:Name="LeaderboardHost" Visibility="Collapsed">
+                                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="LeaderboardRows" />
+                                </ScrollViewer>
+                                <TextBlock x:Name="LeaderboardStatusText"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           TextAlignment="Center" TextWrapping="Wrap"
+                                           MaxWidth="320" Margin="16" IsHitTestVisible="False"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                            </Grid>
+                        </Grid>
                     </Grid>
-                  </Grid>
-                </ScrollViewer>
+
+                    <Border x:Name="WalletPaneCRule" Grid.Column="3"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE C: POINTS ============ -->
+                    <Grid Grid.Column="4" x:Name="WalletPaneC">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="WalletPaneCTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- own ranking: the one thing you came to the
+                                     leaderboard for, beside the table rather
+                                     than above it -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <TextBlock x:Name="LeaderboardRankLabel"
+                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,12">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="LeaderboardNetProvidedLabel"
+                                                   Style="{StaticResource UrKeyTextStyle}"
+                                                   VerticalAlignment="Bottom" />
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                    Spacing="12" VerticalAlignment="Center">
+                                            <TextBlock x:Name="LeaderboardNetProvidedValue"
+                                                       FontFamily="{StaticResource UrBodyFontFamily}"
+                                                       FontSize="18" FontWeight="SemiBold" />
+                                            <TextBlock x:Name="LeaderboardRankValue"
+                                                       FontFamily="{StaticResource UrBodyFontFamily}"
+                                                       FontSize="22" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="44">
+                                    <Grid ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="LeaderboardPublicLabel"
+                                                   Style="{StaticResource UrRowTitleStyle}" />
+                                        <ToggleSwitch x:Name="LeaderboardPublicToggle"
+                                                      Grid.Column="1" Width="44"
+                                                      Style="{StaticResource UrSwitchToggleStyle}"
+                                                      AutomationProperties.LabeledBy="{Binding ElementName=LeaderboardPublicLabel}"
+                                                      Toggled="OnLeaderboardPublicToggled" />
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,8">
+                                    <TextBlock x:Name="LeaderboardDescription" TextWrapping="Wrap"
+                                               Style="{StaticResource UrRowNoteStyle}"
+                                               TextTrimming="None" />
+                                </Border>
+                                <muxc:InfoBar x:Name="LeaderboardInfo"
+                                              Style="{StaticResource UrSnackbarStyle}"
+                                              Margin="12,8" IsOpen="False" />
+
+                                <!-- account points ............................. -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <Grid>
+                                        <TextBlock x:Name="AccountPointsHeading"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                        <TextBlock x:Name="AccountPointsStatusText"
+                                                   HorizontalAlignment="Right"
+                                                   Style="{StaticResource UrPaneMetaStyle}" />
+                                    </Grid>
+                                </Border>
+                                <Border x:Name="AccountPointsCard" Visibility="Collapsed"
+                                        BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,10">
+                                    <StackPanel x:Name="AccountPointsPanel" />
+                                </Border>
+
+                                <!-- earning multipliers ........................ -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <TextBlock x:Name="EarningMultipliersHeading"
+                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                </Border>
+                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,10">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock x:Name="SeekerStatusText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrKeyTextStyle}"
+                                                   TextTrimming="None" />
+                                        <Button x:Name="VerifySeekerButton"
+                                                HorizontalAlignment="Stretch"
+                                                Click="OnVerifySeeker" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- network reliability ........................ -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <Grid>
+                                        <TextBlock x:Name="NetworkReliabilityHeading"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                        <TextBlock x:Name="ReliabilityStatusText"
+                                                   HorizontalAlignment="Right"
+                                                   Style="{StaticResource UrPaneMetaStyle}" />
+                                    </Grid>
+                                </Border>
+                                <Border x:Name="ReliabilityCard" Visibility="Collapsed"
+                                        BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,10">
+                                    <StackPanel x:Name="ReliabilityPanel" Spacing="8" />
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
 
                 <!-- Support. Measured before this change: 0% card surface and
                      83% blank rows - the stars, the box and Send floated

@@ -406,7 +406,8 @@ PaneTwoLineRowButton MakePaneTwoLineRowButton(winrt::hstring const& title,
   return out;
 }
 
-PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height) {
+PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height,
+                              size_t textColumns) {
   PaneTableRow out;
   out.root = MakePaneRow(height);
 
@@ -425,9 +426,10 @@ PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height)
   for (size_t index = 0; index < weights.size(); ++index) {
     TextBlock cell;
     if (auto style = StyleByKey(L"UrRowTitleStyle")) cell.Style(style);
-    // Cell 0 is the row's subject and reads as text; every later cell is a
-    // figure and reads right, which is what makes a column of numbers scannable.
-    if (0 < index) {
+    // The leading cells are the row's subject and read as text; every cell after
+    // them is a figure and reads right, which is what makes a column of numbers
+    // scannable.
+    if (textColumns <= index) {
       if (auto style = StyleByKey(L"UrValueTextStyle")) cell.Style(style);
       cell.Foreground(urnw::colors::MutedBrush());
     }
@@ -441,7 +443,8 @@ PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height)
 }
 
 Controls::Border MakePaneTableHeader(std::vector<double> const& weights,
-                                     std::vector<winrt::hstring> const& titles) {
+                                     std::vector<winrt::hstring> const& titles,
+                                     size_t textColumns) {
   Controls::Border header;
   if (auto style = StyleByKey(L"UrGroupHeaderStyle")) {
     header.Style(style);
@@ -463,7 +466,7 @@ Controls::Border MakePaneTableHeader(std::vector<double> const& weights,
     TextBlock cell;
     if (auto style = StyleByKey(L"UrPaneColumnTextStyle")) cell.Style(style);
     cell.Text(titles[index]);
-    if (0 < index) {
+    if (textColumns <= index) {
       cell.HorizontalAlignment(HorizontalAlignment::Right);
       cell.TextAlignment(TextAlignment::Right);
     }

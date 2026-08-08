@@ -83,6 +83,12 @@ class WalletPage {
       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnLeaderboardPublicToggled(winrt::Windows::Foundation::IInspectable const&,
                                   winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // R4: the ledger pane shows ONE table at a time and this is the switch in its
+  // header strip. Also what triggers the leaderboard fetch, since the merge
+  // means selecting Earnings no longer implies it.
+  void OnEarningsTableChanged(
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
 
   // Called by the wallet-detail sheet once the payout wallet or the wallet list
   // changed under it.
@@ -117,6 +123,11 @@ class WalletPage {
   // of these, because "nothing on screen" must never be able to mean three
   // different things at once (loading / empty / the request failed).
   enum class Fetch { Loading, Ready, Failed };
+  // one-shot: the leaderboard is fetched the first time its tab is looked at
+  bool leaderboardRequested_ = false;
+  // the ledger pane's header figure belongs to whichever table is showing
+  void ApplyLedgerMeta();
+  int64_t leaderboardCount_ = 0;
   // ---- wallets / payout wallet ----
   void ApplyWallets(std::vector<urnet::AccountWallet> const& wallets, Fetch state);
   void ApplyPayoutWalletId(std::string const& walletId);

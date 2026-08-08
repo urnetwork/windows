@@ -435,10 +435,14 @@ void WalletPage::RefuseNoSession() {
   Notify(Loc("please_login_to_urnetwork"), InfoBarSeverity::Error);
 }
 
-// The bar the user can SEE. Each destination's InfoBar lives inside that
-// destination's own ScrollViewer, and the other one is Collapsed.
+// The bar the user can SEE. Wallet and Leaderboard are one destination now, but
+// they are still two PANES, and a message about the leaderboard switch raised on
+// the wallet pane's bar is a message beside content it has nothing to do with -
+// which is the defect this function was written for. So it keys off which pane
+// the message belongs to: the leaderboard's bar lives in pane C beside its own
+// ranking rows, the wallet's in pane A beside the form that raises it.
 void WalletPage::Notify(hstring const& message, InfoBarSeverity severity) {
-  if (w_.LeaderboardView().Visibility() == Visibility::Visible) {
+  if (w_.LeaderboardHost().Visibility() == Visibility::Visible) {
     leaderboardSnackbar_.Show(message, severity);
     return;
   }
@@ -487,8 +491,25 @@ void WalletPage::Initialize() {
 }
 
 void WalletPage::ApplyStrings() {
-  // wallet
-  w_.PlanHeading().Text(Loc("plan"));
+  // the three pane headers, and a landmark name each
+  w_.WalletPaneATitle().Text(Loc("payout_wallets"));
+  // NOT "Account points": that is the name of the first GROUP in this pane, and
+  // a pane header repeating its own first group header reads as a stutter. The
+  // pane is the four things that explain the figure beside it.
+  w_.WalletPaneCTitle().Text(Loc("network_earnings"));
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  automation::AutomationProperties::SetName(w_.WalletPaneA(), Loc("payout_wallets"));
+  automation::AutomationProperties::SetName(w_.WalletPaneB(), Loc("payouts"));
+  automation::AutomationProperties::SetName(w_.WalletPaneC(), Loc("network_earnings"));
+
+  // the ledger pane's switch
+  w_.PayoutsTabItem().Text(Loc("payouts"));
+  w_.LeaderboardTabItem().Text(Loc("leaderboard"));
+  if (!w_.EarningsTableBar().SelectedItem()) {
+    w_.EarningsTableBar().SelectedItem(w_.PayoutsTabItem());
+  }
+
+  // pane A
   w_.UpgradeButton().Content(LocBox("upgrade_with_stripe"));
   w_.WalletUnpaidLabel().Text(Loc("unpaid_data_provided"));
   w_.WalletPendingLabel().Text(Loc("pending_payout"));
@@ -504,12 +525,19 @@ void WalletPage::ApplyStrings() {
       hstring{urnw::Localized("connect_external_wallet_supported_chains") + L" " +
               urnw::Localized("bittensor_wallet_future_use")});
   w_.WalletAddressBox().PlaceholderText(Loc("enter_wallet_address"));
+  automation::AutomationProperties::SetName(w_.WalletAddressBox(),
+                                            Loc("enter_wallet_address"));
   w_.ConnectWalletButton().Content(LocBox("connect"));
+
+  // pane C
   w_.AccountPointsHeading().Text(Loc("account_points"));
   w_.EarningMultipliersHeading().Text(Loc("earning_multipliers"));
   w_.VerifySeekerButton().Content(LocBox("verify_seeker_token_btn"));
   w_.NetworkReliabilityHeading().Text(Loc("site_app_network_reliability"));
-  w_.PayoutsHeading().Text(Loc("payouts"));
+  w_.LeaderboardRankLabel().Text(Loc("current_ranking"));
+  w_.LeaderboardNetProvidedLabel().Text(Loc("net_provided"));
+  w_.LeaderboardPublicLabel().Text(Loc("display_network_on_leaderboard"));
+  w_.LeaderboardDescription().Text(Loc("leaderboard_description"));
 
   // Every panel starts in the state its fetch has not left yet. Without this
   // an unloaded destination is blank, which reads as "there is nothing" rather
@@ -519,20 +547,32 @@ void WalletPage::ApplyStrings() {
   w_.AccountPointsStatusText().Text(loading);
   w_.ReliabilityStatusText().Text(loading);
   w_.PayoutsStatusText().Text(loading);
+  w_.PayoutsStatusText().Visibility(Visibility::Visible);
+  w_.LeaderboardStatusText().Text(loading);
+  w_.LeaderboardStatusText().Visibility(Visibility::Visible);
   const hstring dash{L"-"};
   SetStatValue(w_.WalletUnpaidValue(), dash, false);
   SetStatValue(w_.WalletPendingValue(), dash, false);
   SetStatValue(w_.WalletReferralsValue(), dash, false);
-  ApplySeekerState();
-
-  // leaderboard (its title comes from the NavigationView header)
-  w_.LeaderboardRankLabel().Text(Loc("current_ranking"));
-  w_.LeaderboardNetProvidedLabel().Text(Loc("net_provided"));
-  w_.LeaderboardPublicLabel().Text(Loc("display_network_on_leaderboard"));
   SetStatValue(w_.LeaderboardRankValue(), dash, false);
   SetStatValue(w_.LeaderboardNetProvidedValue(), dash, false);
-  w_.LeaderboardDescription().Text(Loc("leaderboard_description"));
-  w_.LeaderboardStatusText().Text(loading);
+  ApplySeekerState();
+}
+
+// The ledger pane shows ONE table at a time; this is the switch in its header.
+void WalletPage::OnEarningsTableChanged(SelectorBar const&,
+                                        SelectorBarSelectionChangedEventArgs const&) {
+  const bool payouts = w_.EarningsTableBar().SelectedItem() != w_.LeaderboardTabItem();
+  w_.PayoutsHost().Visibility(payouts ? Visibility::Visible : Visibility::Collapsed);
+  w_.LeaderboardHost().Visibility(payouts ? Visibility::Collapsed : Visibility::Visible);
+  ApplyLedgerMeta();
+  // The leaderboard is a SEPARATE fetch from the wallet loads, and the merge
+  // means selecting the destination no longer implies it. Ask for it the first
+  // time the tab is looked at, not on every switch.
+  if (!payouts && !leaderboardRequested_) {
+    leaderboardRequested_ = true;
+    LoadLeaderboard();
+  }
 }
 
 // ---- wallet --------------------------------------------------------------
@@ -674,7 +714,7 @@ void WalletPage::ApplyWallets(std::vector<urnet::AccountWallet> const& wallets, 
   if (state == Fetch::Failed) {
     w_.WalletsStatusText().Text(Loc("something_went_wrong"));
     w_.WalletsStatusText().Visibility(Visibility::Visible);
-    w_.WalletCardsScroller().Visibility(Visibility::Collapsed);
+    w_.WalletCardsPanel().Children().Clear();
     w_.WalletsEmptyPanel().Visibility(Visibility::Collapsed);
     ApplySeekerState();
     return;
@@ -684,7 +724,8 @@ void WalletPage::ApplyWallets(std::vector<urnet::AccountWallet> const& wallets, 
   w_.WalletsStatusText().Visibility(Visibility::Collapsed);
   const bool empty = wallets_.empty();
   w_.WalletsEmptyPanel().Visibility(empty ? Visibility::Visible : Visibility::Collapsed);
-  w_.WalletCardsScroller().Visibility(empty ? Visibility::Collapsed : Visibility::Visible);
+  kit::SetTextOrCollapse(w_.WalletPaneAMeta(),
+                         empty ? hstring{} : hstring{std::to_wstring(wallets_.size())});
   RebuildWalletCards();
   ApplySeekerState();
 }
@@ -709,85 +750,31 @@ UIElement WalletPage::BuildWalletCard(urnet::AccountWallet const& wallet) {
   const bool isPayout =
       wallet.wallet_id && !wallet.wallet_id->empty() && *wallet.wallet_id == payoutWalletId_;
 
-  // A card the user can activate is a Button, not a Border with a Tapped
-  // handler (App.xaml UrCardButtonStyle): the platform then gives it the tab
-  // order, the focus rectangle, hover/press states and an automation peer.
-  Button card;
-  card.Style(KitStyle(L"UrCardButtonStyle"));
-  card.Width(248);
-  card.Height(132);
-  card.HorizontalContentAlignment(HorizontalAlignment::Stretch);
-  card.VerticalContentAlignment(VerticalAlignment::Stretch);
+  // ONE ROW PER WALLET, on the pane's 44px grid. It used to be a 248x132 card in
+  // a horizontally-scrolling strip - three boxes side by side inside a vertical
+  // page, which is the phone layout this model exists to delete, and which put
+  // the third wallet off the right edge of a 360dip rail.
+  auto row = kit::MakePaneTwoLineRowButton(
+      hstring{MaskAddress(wallet.wallet_address)}, hstring{ChainDisplayName(wallet.blockchain)});
+  row.value.Text(hstring{urnw::Format(
+      "amount_usdc", FormatUsdcAmount(TotalPaidToWallet(wallet.wallet_id.value_or(std::string()))))});
+  // The payout wallet is the one that matters and it is marked in the ONE way
+  // the pane vocabulary marks a state: colour on the figure it applies to, with
+  // the fact repeated in the row's accessible name below.
+  if (isPayout) row.value.Foreground(colors::MakeBrush(colors::kUrGreen));
 
-  Grid body;
-  body.RowDefinitions().Append(RowDefinition());
-  RowDefinition bottom;
-  bottom.Height(GridLengthHelper::FromValueAndType(1, GridUnitType::Auto));
-  body.RowDefinitions().Append(bottom);
-  body.ColumnDefinitions().Append(AutoColumn());
-  body.ColumnDefinitions().Append(StarColumn());
-
-  auto icon = WalletIconElement(wallet.blockchain);
-  icon.VerticalAlignment(VerticalAlignment::Top);
-  Grid::SetRow(icon, 0);
-  Grid::SetColumn(icon, 0);
-  body.Children().Append(icon);
-
-  StackPanel totals;
-  totals.HorizontalAlignment(HorizontalAlignment::Right);
-  auto tag = PayoutWalletTag(isPayout);
-  tag.HorizontalAlignment(HorizontalAlignment::Right);
-  totals.Children().Append(tag);
-  auto paid = MakeValue(hstring{urnw::Format("amount_usdc",
-                                             FormatUsdcAmount(TotalPaidToWallet(
-                                                 wallet.wallet_id.value_or(std::string()))))},
-                        24);
-  paid.HorizontalAlignment(HorizontalAlignment::Right);
-  totals.Children().Append(paid);
-  auto caption = MakeText(Loc("total_payouts"), 12, colors::MutedBrush());
-  caption.HorizontalAlignment(HorizontalAlignment::Right);
-  totals.Children().Append(caption);
-  Grid::SetRow(totals, 0);
-  Grid::SetColumn(totals, 1);
-  body.Children().Append(totals);
-
-  Grid footer;
-  footer.ColumnDefinitions().Append(StarColumn());
-  footer.ColumnDefinitions().Append(AutoColumn());
-  auto chain = MakeText(hstring{ChainDisplayName(wallet.blockchain)}, 12, colors::MutedBrush());
-  chain.VerticalAlignment(VerticalAlignment::Center);
-  Grid::SetColumn(chain, 0);
-  footer.Children().Append(chain);
-  auto address = MakeText(hstring{MaskAddress(wallet.wallet_address)}, 18, colors::TextBrush());
-  address.FontFamily(FontFamily(L"ms-appx:///Assets/Fonts/pp_neue_bit_bold.ttf#PP NeueBit"));
-  Grid::SetColumn(address, 1);
-  footer.Children().Append(address);
-  Grid::SetRow(footer, 1);
-  Grid::SetColumnSpan(footer, 2);
-  body.Children().Append(footer);
-
-  // A Button whose Content is a Panel gets NO automatic name (6fdacf8, checked
-  // against the UIA tree, and checked again here: all three cards came back as
-  // `[Button] id='' name=''`). Name it after what the card IS - the chain and
-  // the wallet it identifies - exactly as LocationRow names itself from its
-  // label plus its one datum. The two children that name now carries are marked
-  // Raw so a reader does not hear them twice; the payout total, its caption and
-  // the DEFAULT chip stay in the content view, because those are data.
   namespace automation = winrt::Microsoft::UI::Xaml::Automation;
-  automation::AutomationProperties::SetName(
-      card, hstring{urnw::Format("wallet_provider", ChainDisplayName(wallet.blockchain)) +
-                    L", " + MaskAddress(wallet.wallet_address)});
-  automation::AutomationProperties::SetAccessibilityView(
-      chain, automation::Peers::AccessibilityView::Raw);
-  automation::AutomationProperties::SetAccessibilityView(
-      address, automation::Peers::AccessibilityView::Raw);
+  std::wstring name = urnw::Format("wallet_provider", ChainDisplayName(wallet.blockchain)) +
+                      L", " + MaskAddress(wallet.wallet_address);
+  if (isPayout) name += L", " + std::wstring{Loc("default_wallet")};
+  automation::AutomationProperties::SetName(row.root, hstring{name});
 
-  card.Content(body);
-  card.Click([weak = w_.get_weak(), wallet](auto const&, auto const&) {
+  row.root.Click([weak = w_.get_weak(), wallet](auto const&, auto const&) {
     if (auto self = weak.get()) self->wallet().ShowWalletDetail(wallet);
   });
-  return card;
+  return row.root;
 }
+
 
 winrt::fire_and_forget WalletPage::ShowWalletDetail(urnet::AccountWallet wallet) {
   if (w_.sheetOpen()) co_return;  // only one ContentDialog can show at a time
@@ -960,91 +947,60 @@ void WalletPage::RebuildPayouts() {
   auto panel = w_.PayoutsPanel();
   panel.Children().Clear();
 
-  auto columns = [](Grid const& grid) {
-    grid.ColumnSpacing(12);
-    grid.ColumnDefinitions().Append(StarColumn(2));  // date
-    grid.ColumnDefinitions().Append(StarColumn(2));  // amount
-    grid.ColumnDefinitions().Append(StarColumn(3));  // wallet
-    grid.ColumnDefinitions().Append(StarColumn(3));  // transaction
-  };
-
-  Grid header;
-  columns(header);
-  header.Padding(Thickness{12, 4, 12, 4});
-  const hstring headings[] = {Loc("payout"), Loc("amount"), Loc("site_app_wallet"),
-                              Loc("transaction")};
-  for (int i = 0; i < 4; ++i) {
-    auto cell = MakeText(headings[i], 12, colors::MutedBrush());
-    Grid::SetColumn(cell, i);
-    header.Children().Append(cell);
-  }
-  panel.Children().Append(header);
-
-  Border rule;
-  rule.Height(1);
-  rule.Background(colors::BorderBrush());
-  panel.Children().Append(rule);
+  // Stars with minimums, through the shared table builder, so the payouts table,
+  // the leaderboard table and Account's balance-code table are ONE row species
+  // and narrow rather than clip.
+  const std::vector<double> weights{2, 2, 3, 3};
+  panel.Children().Append(kit::MakePaneTableHeader(
+      weights, {Loc("payout"), Loc("amount"), Loc("site_app_wallet"), Loc("transaction")}));
 
   for (auto const& payment : payments_) {
-    // UrCardRowButtonStyle: the kit's row-sized card button, so each row is
-    // keyboard reachable and gets the platform's hover/press states.
-    Button row;
-    row.Style(KitStyle(L"UrCardRowButtonStyle"));
-    row.Margin(Thickness{0, 2, 0, 0});
-    row.HorizontalContentAlignment(HorizontalAlignment::Stretch);
-
-    Grid cells;
-    columns(cells);
+    auto cells = kit::MakePaneTableRow(weights);
     const bool completed = PaymentCompleted(payment);
 
-    auto date = MakeText(hstring{ShortDate(PaymentTime(payment))}, 13, colors::TextBrush());
-    Grid::SetColumn(date, 0);
-    cells.Children().Append(date);
-
-    const hstring amount =
+    cells.cells[0].Text(hstring{ShortDate(PaymentTime(payment))});
+    cells.cells[1].Text(
         completed ? hstring{urnw::Format("plus_amount_usdc",
                                          FormatUsdcAmount(payment.token_amount.value_or(0.0)))}
-                  : Loc("pending_payout");
-    auto amountCell = MakeText(amount, 13,
-                               completed ? colors::MakeBrush(colors::kUrGreen)
-                                         : colors::MutedBrush());
-    Grid::SetColumn(amountCell, 1);
-    cells.Children().Append(amountCell);
-
-    auto wallet = MakeText(hstring{MaskAddress(payment.wallet_address)}, 13,
-                           colors::MutedBrush());
-    Grid::SetColumn(wallet, 2);
-    cells.Children().Append(wallet);
-
+                  : Loc("pending_payout"));
+    // Lime is the earnings accent and this is the only place on the row where a
+    // figure is money that ARRIVED; pending keeps the muted default.
+    if (completed) cells.cells[1].Foreground(colors::MakeBrush(colors::kUrGreen));
+    cells.cells[2].Text(hstring{MaskAddress(payment.wallet_address)});
     const std::string hash = payment.tx_hash.value_or(std::string());
-    auto tx = MakeText(hash.empty() ? Loc("none") : hstring{MaskAddress(hash)}, 13,
-                       colors::MutedBrush());
-    Grid::SetColumn(tx, 3);
-    cells.Children().Append(tx);
+    cells.cells[3].Text(hash.empty() ? Loc("none") : hstring{MaskAddress(hash)});
 
-    // Same as the wallet cards: a Button over a Grid has no automatic name, so
-    // all three ledger rows were unnamed buttons. The row is named after the
-    // payout it opens - the same title its detail sheet carries, so the two
-    // cannot drift - and the date cell alone goes Raw, because the name now
-    // says it. Amount, wallet and transaction stay readable: they are data.
-    //
-    // By DATE for every row, pending included. Naming a pending row "Pending
-    // payout" duplicated its own amount cell, which already says exactly that -
-    // the double read this pass exists to avoid - and it left the row without
-    // the one thing that tells it apart from the other pending rows.
+    // The row opens the payout detail, so it is a Button wearing the pane row's
+    // metrics rather than a Border: keyboard reachable, hover and press states
+    // from the platform, and an automation peer.
+    Button row;
+    row.Style(KitStyle(L"UrPaneRowButtonStyle"));
+    row.Height(36);
+    row.MinHeight(36);
+    row.Padding(Thickness{0, 0, 0, 0});
+    row.Content(cells.root);
+    // cells.root is itself a bordered row; inside a Button it would draw the
+    // hairline twice over the button's own.
+    cells.root.BorderThickness(Thickness{0, 0, 0, 0});
+
+    // A Button over a Grid has no automatic name, so all three ledger rows were
+    // unnamed buttons. By DATE for every row, pending included: naming a pending
+    // row "Pending payout" duplicated its own amount cell and left the row
+    // without the one thing that tells it apart from the other pending rows.
     namespace automation = winrt::Microsoft::UI::Xaml::Automation;
     automation::AutomationProperties::SetName(
         row, hstring{urnw::Format("date_payout", ShortDate(PaymentTime(payment)))});
     automation::AutomationProperties::SetAccessibilityView(
-        date, automation::Peers::AccessibilityView::Raw);
+        cells.cells[0], automation::Peers::AccessibilityView::Raw);
 
-    row.Content(cells);
     row.Click([weak = w_.get_weak(), payment](auto const&, auto const&) {
       if (auto self = weak.get()) self->wallet().ShowPayoutDetail(payment);
     });
     panel.Children().Append(row);
   }
+  ApplyLedgerMeta();
 }
+
 
 winrt::fire_and_forget WalletPage::ShowPayoutDetail(urnet::AccountPayment payment) {
   if (w_.sheetOpen()) co_return;
@@ -1522,16 +1478,20 @@ void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, 
     return;
   }
   if (earners.empty()) {
-    // A glyph and a sentence on a card, not a lone grey line on the page. This
-    // destination measured 60% blank rows: below the header card there was one
-    // muted sentence and ~500px of nothing, which reads as a screen that failed
-    // to draw rather than a leaderboard with no entries yet.
-    w_.LeaderboardStatusText().Visibility(Visibility::Collapsed);
-    rows.Children().Append(
-        urnw::kit::MakeEmptyStateCard(L"", Loc("site_app_leaderboard_empty")));
+    // ONE CENTRED LINE in the full-height pane. It used to be a glyph on a card,
+    // which in a pane is a rounded island back inside a column.
+    w_.LeaderboardStatusText().Text(Loc("site_app_leaderboard_empty"));
+    w_.LeaderboardStatusText().Visibility(Visibility::Visible);
     return;
   }
   w_.LeaderboardStatusText().Visibility(Visibility::Collapsed);
+
+  // The same table builder the payouts ledger and Account's balance codes use.
+  const std::vector<double> weights{1, 5, 2};
+  rows.Children().Append(
+      kit::MakePaneTableHeader(weights,
+                               {Loc("current_ranking"), Loc("network"), Loc("net_provided")},
+                               /*textColumns=*/2));
 
   int rank = 0;
   for (auto const& earner : earners) {
@@ -1542,40 +1502,38 @@ void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, 
     // flags it and the client is what decides not to draw it.
     const bool masked = !isOwn && (!earner.is_public || earner.contains_profanity);
 
-    Border rule;
-    rule.Height(1);
-    rule.Background(colors::BorderBrush());
-    rows.Children().Append(rule);
+    auto row = kit::MakePaneTableRow(weights, 36, /*textColumns=*/2);
+    row.cells[0].Text(hstring{L"#" + std::to_wstring(rank)});
+    row.cells[1].Text(masked ? Loc("private_network")
+                             : hstring{urnw::Widen(earner.network_name)});
+    row.cells[2].Text(hstring{FormatMiB(earner.net_mib_count)});
 
-    Grid row;
-    row.ColumnSpacing(12);
-    row.Padding(Thickness{0, 8, 0, 8});
-    row.ColumnDefinitions().Append(AutoColumn());
-    row.ColumnDefinitions().Append(StarColumn());
-    row.ColumnDefinitions().Append(AutoColumn());
-
-    auto brush = isOwn ? colors::MakeBrush(colors::kUrGreen)
-                       : (masked ? colors::MutedBrush() : colors::TextBrush());
-
-    auto rankCell = MakeText(hstring{L"#" + std::to_wstring(rank)}, 13,
-                             isOwn ? brush : colors::MutedBrush());
-    rankCell.MinWidth(42);
-    Grid::SetColumn(rankCell, 0);
-    row.Children().Append(rankCell);
-
-    auto name = MakeText(masked ? Loc("private_network")
-                                : hstring{urnw::Widen(earner.network_name)},
-                         13, brush);
-    Grid::SetColumn(name, 1);
-    row.Children().Append(name);
-
-    auto provided = MakeText(hstring{FormatMiB(earner.net_mib_count)}, 13, brush);
-    Grid::SetColumn(provided, 2);
-    row.Children().Append(provided);
-
-    rows.Children().Append(row);
+    // The account's own row is the point of the table, so it is marked - in
+    // colour AND with the pane's fill step, because colour alone is never the
+    // only signal (spec, Colour semantics).
+    if (isOwn) {
+      auto own = colors::MakeBrush(colors::kUrGreen);
+      for (auto const& cell : row.cells) cell.Foreground(own);
+      row.root.Background(colors::CardBrush());
+    } else if (masked) {
+      for (auto const& cell : row.cells) cell.Foreground(colors::MutedBrush());
+    }
+    rows.Children().Append(row.root);
   }
+  leaderboardCount_ = static_cast<int64_t>(earners.size());
+  ApplyLedgerMeta();
 }
+
+// The ledger pane's header figure belongs to whichever table is showing. One
+// pane, two tables, one count - and a payout count left over the leaderboard is
+// a wrong number, not a stale one.
+void WalletPage::ApplyLedgerMeta() {
+  const bool payouts = w_.LeaderboardHost().Visibility() != Visibility::Visible;
+  const int64_t count = payouts ? static_cast<int64_t>(payments_.size()) : leaderboardCount_;
+  kit::SetTextOrCollapse(w_.WalletPaneBMeta(),
+                         count <= 0 ? hstring{} : hstring{std::to_wstring(count)});
+}
+
 
 void WalletPage::ApplyRanking(urnet::NetworkRanking const& ranking, bool ok) {
   if (!ok) {

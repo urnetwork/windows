@@ -340,30 +340,26 @@ void MainWindow::ApplyBreakpoint() {
   NetworkPaneBRule().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
   NetworkPaneB().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
 
-  // ---- Wallet: Portmaster's master-detail ----------------------------------
-  // The figures across the top; the sources of the money on the left (wallets,
-  // points, multipliers, reliability); the ledger on the right. The split is a
-  // proportion rather than a rail because BOTH sides want the extra: a payouts
-  // table with four columns and a row of wallet cards both read better wider.
-  WalletCapColumn().MaxWidth(wide ? 1720 : 820);
-  if (wide) {
-    SetStar(WalletSideColumn(), 0.85);
-  } else {
-    SetWidth(WalletSideColumn(), 0);
-  }
-  Place(WalletSideStack(), wide ? PanePlacement{1, 1, 1, Thickness{20, 4, 0, 24}}
-                                : PanePlacement{2, 0, 1, Thickness{0, 4, 0, 24}});
-  // The three header figures: a row at desktop widths, a column at flyout
-  // width. Three tiles across 560dip read "Unpaid data provid..." and
-  // "1234.50..." - a KPI that cannot be read is not a KPI.
-  SetStar(WalletStatsColumn2(), wide ? 1 : 0);
-  SetStar(WalletStatsColumn3(), wide ? 1 : 0);
-  Place(WalletPendingTile(),
-        wide ? PanePlacement{0, 1, 1, Thickness{12, 0, 0, 0}}
-             : PanePlacement{1, 0, 1, Thickness{0, 8, 0, 0}});
-  Place(WalletReferralsTile(),
-        wide ? PanePlacement{0, 2, 1, Thickness{12, 0, 0, 0}}
-             : PanePlacement{2, 0, 1, Thickness{0, 8, 0, 0}});
+  // ---- Earnings: sources, ledger, explanation ------------------------------
+  // Home's shape again: a fixed rail of the figures and the wallets, a wide
+  // middle that is the TABLE, and a fixed rail of the reasons the table reads
+  // the way it does.
+  //
+  //   >= 1500dip   three panes   wallets(360) | ledger(*) | points(380)
+  //   >=  900dip   two panes     wallets(360) | ledger(*)
+  //   <   900dip   one pane      ledger(*)
+  //
+  // The points rail folds first and the LEDGER is what survives to the smallest
+  // width, because a payouts table is the thing a user opens this destination
+  // to read; points and reliability explain a number they can already see.
+  const bool earningsThree = 1500.0 <= width;
+  const bool earningsTwo = 900.0 <= width;
+  SetWidth(WalletPaneCColumn(), earningsThree ? 380 : 0);
+  WalletPaneCRule().Visibility(earningsThree ? Visibility::Visible : Visibility::Collapsed);
+  WalletPaneC().Visibility(earningsThree ? Visibility::Visible : Visibility::Collapsed);
+  SetWidth(WalletPaneAColumn(), earningsTwo ? 360 : 0);
+  WalletPaneBRule().Visibility(earningsTwo ? Visibility::Visible : Visibility::Collapsed);
+  WalletPaneA().Visibility(earningsTwo ? Visibility::Visible : Visibility::Collapsed);
 
   // ---- Account: plan, identity, codes ---------------------------------------
   // Home's shape, applied to an account: a fixed rail of figures, a wide middle
@@ -392,24 +388,8 @@ void MainWindow::ApplyBreakpoint() {
   AccountPaneBRule().Visibility(accountTwo ? Visibility::Visible : Visibility::Collapsed);
   AccountPaneA().Visibility(accountTwo ? Visibility::Visible : Visibility::Collapsed);
 
-  // ---- Leaderboard: the table, with your own rank beside it ----------------
-  // The plainest cut in the app. BOTH panes move here, because the reading
-  // order inverts: at flyout width the one thing you came for is your own
-  // number, so the rank card is first; at desktop widths the table is the page
-  // and the rank card is the note beside it.
-  // 1360, not Wallet's 1720: these rows carry three fields, and past about a
-  // thousand dips the gap between a network's name and its figure stops being
-  // a table and starts being two lists.
-  LeaderboardCapColumn().MaxWidth(wide ? 1360 : 820);
-  if (wide) {
-    SetWidth(LeaderboardSideColumn(), 360);
-  } else {
-    SetWidth(LeaderboardSideColumn(), 0);
-  }
-  Place(LeaderboardMainStack(), wide ? PanePlacement{0, 0, 1, Thickness{0, 0, 0, 24}}
-                                     : PanePlacement{1, 0, 1, Thickness{0, 12, 0, 24}});
-  Place(LeaderboardSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
-                                     : PanePlacement{0, 0, 1, Thickness{}});
+  // (Leaderboard's branch is gone with its destination: it is a tab inside
+  // Earnings' ledger pane now, and shares that pane's widths.)
 
   // ---- Settings: three constrained columns ---------------------------------
   // Windows guidance says settings is a single column of rows at a constrained
@@ -754,7 +734,6 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   NetworkView().Visibility(tag == L"network" ? Visibility::Visible : Visibility::Collapsed);
   AccountView().Visibility(tag == L"account" ? Visibility::Visible : Visibility::Collapsed);
   WalletView().Visibility(tag == L"wallet" ? Visibility::Visible : Visibility::Collapsed);
-  LeaderboardView().Visibility(tag == L"leaderboard" ? Visibility::Visible : Visibility::Collapsed);
   SupportView().Visibility(tag == L"support" ? Visibility::Visible : Visibility::Collapsed);
   SettingsView().Visibility(tag == L"settings" ? Visibility::Visible : Visibility::Collapsed);
   DeveloperView().Visibility(tag == L"developer" ? Visibility::Visible
@@ -783,8 +762,12 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
     // the destination the user just navigated TO, every time - not only the one
     // named on the command line, which is what EnterPreviewUi used to do and
     // which left Wallet stranded for anyone who arrived from another tag.
-    if (tag == L"wallet") wallet_->ShowPreviewWalletState();
-    if (tag == L"leaderboard") wallet_->ShowPreviewLeaderboardState();
+    // One destination now, so both preview states settle together: the ledger
+    // pane's two tables are both on screen-in-waiting behind its switch.
+    if (tag == L"wallet") {
+      wallet_->ShowPreviewWalletState();
+      wallet_->ShowPreviewLeaderboardState();
+    }
     // Carried over from EnterPreviewUi at merge. P4 moved the per-destination
     // preview states here and P2 added the developer surface in parallel, so
     // taking either side wholesale would have dropped the other's: P4's branch
@@ -1228,6 +1211,11 @@ void MainWindow::OnConnectWallet(IInspectable const& s, RoutedEventArgs const& e
 void MainWindow::OnVerifySeeker(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnVerifySeeker(s, e);
 }
+void MainWindow::OnEarningsTableChanged(SelectorBar const& s,
+                                        SelectorBarSelectionChangedEventArgs const& e) {
+  wallet_->OnEarningsTableChanged(s, e);
+}
+
 void MainWindow::OnLeaderboardPublicToggled(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnLeaderboardPublicToggled(s, e);
 }
