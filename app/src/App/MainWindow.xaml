@@ -654,13 +654,13 @@
             </muxc:NavigationView.FooterMenuItems>
 
             <Grid Margin="24">
-                <!-- Connect: the connect drawer (macOS ConnectActions parity).
-                     A scrollable column of cards capped at 600: connection
-                     controls, client statistics, local statistics, custom DNS,
-                     the ad/tracker blocker toggle, and the plan + usage card.
-                     Charts render into the *ChartHost grids from code-behind
-                     (TransferChart); the usage bar into DrawerUsageBarHost
-                     (UsageBar). -->
+                <!-- Home (macOS ConnectActions parity). The modules: the
+                     connection card, Provide, Connect options, client and local
+                     statistics, and Custom DNS. One column at flyout width, two
+                     or three at desktop widths - see the composition note on
+                     ConnectLayout below. Charts render into the *ChartHost grids
+                     from code-behind (TransferChart). The plan + usage card that
+                     used to be here now lives only on Account (spec §5). -->
                 <ScrollViewer x:Name="ConnectView" HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                   <!-- THE WIDTH CAP IS A COLUMN, NOT A MaxWidth ON THE PANEL -
@@ -714,18 +714,32 @@
                        than stacked under it, and the status that belongs to the
                        whole window in the strip at the bottom.
 
-                       The rail spans all three rows at wide, top-aligned, so it
-                       is free to be taller than the hero without pushing the
-                       charts down the page. It carries Provide, Connect options
-                       and the plan card: the three things on this screen that
-                       are DECISIONS rather than status, which is exactly the
-                       cut Proton's NetShield / Kill switch / Split tunnelling
-                       rail makes.
+                       W1 FIX - NO ROWS. This used to be three Auto rows in the
+                       main column with the rail parked in row 0 of the side
+                       column, and that is where the ~330px hole in the middle
+                       of Home came from: an Auto row is as tall as the TALLEST
+                       cell in it, so the rail (Provide + options + plan, ~740)
+                       set row 0's height, the hero card (~450) sat at the top of
+                       it, and the session card in row 2 started ~290px lower
+                       than the hero card ended. Rows are how a hole gets into a
+                       column that only ever wanted to stack.
 
-                       Row 1 is deliberately empty. It exists so the rail's
-                       row span has somewhere to give, and so an Advanced Mode
-                       region under the hero (a raw-status line, an event feed)
-                       has a row waiting for it that needs no re-layout. -->
+                       So: ONE row, three columns, and the panels are REPARENTED
+                       rather than re-addressed (MainWindow::ApplyBreakpoint).
+                       The main column is a plain StackPanel, so its children
+                       are top-aligned and one section gap apart by
+                       construction, at every width, whatever the columns beside
+                       it are doing.
+
+                         narrow   ConnectMainStack = hero / rail / session
+                         wide     hero / session   |                | rail
+                         ultra    hero             | session        | rail
+
+                       The rail carries Provide and Connect options: the
+                       decisions, as opposed to the status, which is the cut
+                       Proton's NetShield / Kill switch / Split tunnelling rail
+                       makes. (The plan card was a third rail module and is gone
+                       from Home per spec §5 - it lives on Account.) -->
                   <Grid x:Name="ConnectLayout">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -736,17 +750,20 @@
                     <Grid Grid.Column="1">
                       <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="*" />
+                          <ColumnDefinition x:Name="ConnectDetailColumn" Width="0" />
                           <ColumnDefinition x:Name="ConnectRailColumn" Width="0" />
                       </Grid.ColumnDefinitions>
-                      <Grid.RowDefinitions>
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                      </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Grid.Column="0"
-                                x:Name="DrawerStack" Spacing="16"
+                    <!-- The main column. Section gap 24 between modules; the
+                         cards inside each module keep the 16 the rest of the app
+                         uses. Nothing here is bottom-anchored and nothing here
+                         is in a row. -->
+                    <StackPanel Grid.Column="0"
+                                x:Name="ConnectMainStack" Spacing="24"
+                                Margin="0,0,0,24"
                                 HorizontalAlignment="Stretch">
+                      <StackPanel x:Name="DrawerStack" Spacing="16"
+                                  HorizontalAlignment="Stretch">
 
                         <!-- Connection controls -->
                         <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}"
@@ -876,14 +893,13 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- THE RAIL. Narrow: row 1 of the main column, i.e.
-                         directly under the hero card, which is where the
-                         flyout has always had it. Wide: the side column,
-                         spanning every row, top-aligned. -->
-                    <StackPanel Grid.Row="1" Grid.Column="0"
-                                x:Name="ConnectRail" Spacing="16"
-                                VerticalAlignment="Top"
-                                Margin="0,16,0,0">
+                    <!-- THE RAIL. Declared here, inside the main column, because
+                         that is the narrow layout and the narrow layout is what
+                         the markup should plainly say: directly under the hero
+                         card, where the flyout has always had it. At wide and
+                         ultra ApplyBreakpoint MOVES it into ConnectRailHost. -->
+                    <StackPanel x:Name="ConnectRail" Spacing="16"
+                                VerticalAlignment="Top">
 
                         <!-- PROVIDE. Was buried in the middle of the hero card,
                              between the peers line and the connect options, with
@@ -1021,57 +1037,26 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Plan + usage (macOS ConnectActions.swift:169-204).
-                             In the rail with the other two: the plan is a
-                             decision (upgrade / redeem), not a reading of the
-                             live connection, and it is the one card on this
-                             screen that stays useful while disconnected. -->
-                        <Border x:Name="DrawerPlanCard" Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="8">
-                                <TextBlock x:Name="DrawerPlanLabel" Style="{StaticResource UrLabelStyle}" />
-                                <Grid>
-                                    <TextBlock x:Name="DrawerPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
-                                               FontWeight="SemiBold" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                                HorizontalAlignment="Right"
-                                                VerticalAlignment="Center">
-                                        <muxc:ProgressRing x:Name="DrawerPlanRing" Width="16" Height="16"
-                                                           IsActive="False" Visibility="Collapsed" />
-                                        <Button x:Name="DrawerGetProButton" Click="OnOpenUpgrade" />
-                                    </StackPanel>
-                                </Grid>
-                                <Grid x:Name="DrawerUsageBarHost" Height="32" />
-                                <StackPanel x:Name="DrawerUsageLegend" Orientation="Horizontal"
-                                            Spacing="16" />
-                                <Grid Margin="0,4,0,0">
-                                    <TextBlock x:Name="DrawerDailyLabel" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="DrawerDailyValue" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <Grid>
-                                    <TextBlock x:Name="DrawerReferralTotals" FontSize="12"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                    <TextBlock x:Name="DrawerReferralBonus" FontSize="12"
-                                               HorizontalAlignment="Right"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </Grid>
-                            </StackPanel>
-                        </Border>
+                        <!-- The plan + usage card that used to be the rail's
+                             third module is GONE from Home (spec §5: compact
+                             usage in the nav footer or the Account flyout, the
+                             full plan on Account, a quota InfoBar here only near
+                             the threshold). It was the longest module in the
+                             rail and the reason the rail out-ran the main column
+                             by ~300px; the same card, with the same bindings,
+                             is on Account. Nothing was deleted twice: the
+                             balance snapshot still paints AccountPlan* from
+                             MainWindow::ApplyBalance. -->
                     </StackPanel>
 
                     <!-- THE STATUS COLUMN. Charts and the dns summary: what the
                          connection is DOING, as opposed to what it has been
-                         told to do. Stays in the main column at every width,
-                         under the hero, where Portmaster puts its chart. At
-                         desktop widths these are ~900px wide rather than 600,
-                         which is the whole reason a transfer chart is worth
-                         drawing at all. -->
-                    <StackPanel Grid.Row="2" Grid.Column="0"
-                                x:Name="ConnectStatusStack" Spacing="16"
-                                Margin="0,16,0,24">
+                         told to do. Directly under the hero card at narrow and
+                         wide - one section gap, no row, no anchor - and its own
+                         column at ultra, where there is room for the hero and
+                         the activity to sit side by side instead of the page
+                         ending a third of the way across the window. -->
+                    <StackPanel x:Name="ConnectStatusStack" Spacing="16">
 
                         <!-- R1: COMPACT SESSION EMPTY STATE. While disconnected - the
                              state the app opens in - the two big chart cards below were
@@ -1224,6 +1209,17 @@
                         </Button>
 
                     </StackPanel>
+                    </StackPanel>
+
+                    <!-- The two side columns are EMPTY in markup. They are
+                         parked, top-aligned hosts that ApplyBreakpoint moves
+                         ConnectStatusStack and ConnectRail into; at narrow they
+                         are zero-width and hold nothing, so the narrow layout
+                         costs nothing to read. -->
+                    <StackPanel x:Name="ConnectDetailHost" Grid.Column="1"
+                                VerticalAlignment="Top" Margin="24,0,0,24" />
+                    <StackPanel x:Name="ConnectRailHost" Grid.Column="2"
+                                VerticalAlignment="Top" Margin="24,0,0,24" />
                     </Grid>
 
                   </Grid>
@@ -1329,7 +1325,17 @@
                             <StackPanel Spacing="8">
                                 <TextBlock x:Name="AccountPlanLabel" Style="{StaticResource UrLabelStyle}" />
                                 <Grid>
-                                    <TextBlock x:Name="AccountPlanValueText" FontFamily="{StaticResource UrHeadingCondensedFontFamily}" FontSize="22"
+                                    <!-- W1: the last ABC Gravity leak on a card. The
+                                         display face is for page titles, the wordmark
+                                         and the hero; this is a one-word card heading
+                                         ("Free" / "Supporter" / "Guest") and it read as
+                                         a second, louder heading style beside every
+                                         other card header, which is the exact clash the
+                                         type ramp was supposed to end. The condensed
+                                         face keeps the stat tiles (Wallet figures) - a
+                                         number is not a heading. -->
+                                    <TextBlock x:Name="AccountPlanValueText"
+                                               FontFamily="{StaticResource UrBodyFontFamily}" FontSize="22"
                                                FontWeight="SemiBold" />
                                     <StackPanel Orientation="Horizontal" Spacing="8"
                                                 HorizontalAlignment="Right"

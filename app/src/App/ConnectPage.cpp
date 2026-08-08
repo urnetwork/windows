@@ -180,11 +180,9 @@ void ConnectPage::ApplyStrings() {
   w_.FallbackState().Text(Loc("off"));
   w_.DnsUnavailableText().Text(Loc("dns_settings_unavailable"));
   w_.BlockerLabel().Text(Loc("block_ads_and_trackers"));
-  // drawer plan + usage card (macOS ConnectActions parity)
-  w_.DrawerPlanLabel().Text(Loc("plan"));
-  w_.DrawerPlanValueText().Text(Loc("free"));
-  w_.DrawerGetProButton().Content(LocBox("get_pro"));
-  w_.DrawerDailyLabel().Text(Loc("daily_data_balance_label"));
+  // The plan + usage card that used to sit in this rail is gone from Home
+  // (spec §5); its strings now belong only to Account, which paints them from
+  // MainWindow::ApplyBalance.
 }
 
 // ---- connect -------------------------------------------------------------
@@ -989,10 +987,9 @@ void ConnectPage::AnimateDrawerIn() {
   // ad/tracker switch is a row in ConnectOptionsCard now, with the other three
   // per-connection switches, instead of being a card of its own with one line
   // in it.
-  const std::array<FrameworkElement, 7> cards = {
-      w_.ControlsCard(),        w_.ProvideCard(),     w_.ConnectOptionsCard(),
-      w_.ClientStatsCard(),     w_.LocalStatsCard(),  w_.DnsCard(),
-      w_.DrawerPlanCard()};
+  const std::array<FrameworkElement, 6> cards = {
+      w_.ControlsCard(),    w_.ProvideCard(),    w_.ConnectOptionsCard(),
+      w_.ClientStatsCard(), w_.LocalStatsCard(), w_.DnsCard()};
   const auto duration = Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
                                      std::chrono::milliseconds(300)),
                                  DurationType::TimeSpan};

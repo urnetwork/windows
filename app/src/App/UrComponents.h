@@ -41,7 +41,12 @@ namespace urnw::kit {
 // VisualStateGroup named Narrow/Wide whose Wide state raises the cap, opens the
 // side column and moves the side panel from the row BELOW the main panel to the
 // column BESIDE it. Only the cap and the side width differ per destination.
-// Read ConnectView and you have read all seven.
+// Read WalletView and you have read the six that still work that way.
+//
+// HOME IS THE EXCEPTION and reads differently on purpose: its panes are
+// StackPanel children that get REPARENTED, because the row form put a ~330px
+// hole down the middle of the one screen the owner judges (see Reparent in
+// MainWindow.xaml.cpp), and it has a second breakpoint below.
 //
 // 1000 rather than 900: the pane grid sits inside a 24px page margin and a 48px
 // nav rail, so a 1000dip window leaves the two panes ~900dip between them,
@@ -67,6 +72,27 @@ namespace urnw::kit {
 // namescope - i.e. delete every accessor the seven page units are written
 // against. See MainWindow::ApplyBreakpoint.
 inline constexpr double kWideBreakpointDip = 1000.0;
+
+// ---- the second breakpoint (W1), for Home only ------------------------------
+//
+// Two columns capped at ~1240 is a sane reading measure and, on the display this
+// app is judged on (2560px at 125%, i.e. 2062dip), it reproduced the complaint
+// that started the redesign: the page stopped a third of the way across the
+// window, with ~280dip of dead gutter on each side and a hole down the middle.
+// Widening the cap alone does not fix that - it stretches one hero card and a
+// 360 rail across 1800dip, which is not a composition, it is the same page with
+// longer buttons.
+//
+// So above this width Home gets a THIRD column, and the activity (session,
+// charts, Custom DNS) moves BESIDE the hero instead of under it. 1800 rather
+// than 1600: the third column has to be worth having, and an 1800dip window
+// leaves ~1530dip of content after the 220 nav pane and the 24 page margins -
+// enough for a main column, an activity column and the 360 rail with a 24
+// gutter each, none of them cramped.
+//
+// Home only, deliberately. The other destinations already spend their width on
+// a table or a form; a third column there would be width for its own sake.
+inline constexpr double kUltraWideDip = 1800.0;
 
 // Set a line's text AND its visibility in one call: an empty string collapses
 // the element instead of leaving a row of nothing behind.
