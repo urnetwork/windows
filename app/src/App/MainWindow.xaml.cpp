@@ -269,7 +269,11 @@ void MainWindow::ApplyBreakpoint() {
   // The hero keeps the main canvas; Provide, Connect options and the plan card
   // become a rail BESIDE it rather than a stack under it. 1440 rather than "as
   // wide as the window": a 2560px hero is not composed, it is stretched.
-  ConnectCapColumn().MaxWidth(wide ? 1440 : 600);
+  // R1: Home caps at ~1240 with a 340-380 side rail and a 16 gap (spec §5),
+  // not the 1440/360 the other destinations use - Home is the one screen the
+  // owner judges, and its two columns should read as main+rail, not a stretched
+  // canvas.
+  ConnectCapColumn().MaxWidth(wide ? 1240 : 600);
   SetWidth(ConnectRailColumn(), wide ? 360 : 0);
   Place(ConnectRail(), wide
             // Beside the hero, in the hero's OWN row and spanning nothing.
@@ -279,7 +283,7 @@ void MainWindow::ApplyBreakpoint() {
             // opened ~120px of blank between the hero card and the charts.
             // In one row the columns simply run ragged, which is what a
             // two-column page does.
-            ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
+            ? PanePlacement{0, 1, 1, Thickness{16, 0, 0, 24}}
             // directly under the hero card, which is where the flyout has
             // always had it
             : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 0}});

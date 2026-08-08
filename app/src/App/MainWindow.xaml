@@ -749,8 +749,30 @@
                                 HorizontalAlignment="Stretch">
 
                         <!-- Connection controls -->
-                        <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
+                        <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}"
+                                Padding="24">
+                            <StackPanel Spacing="16">
+                                <!-- R1: STATUS LEADS. The protection state is the first
+                                     thing on the card, at Subtitle scale, above the globe
+                                     - the spec's "am I protected" answered before any
+                                     ornament. Was below a ~400px globe; the owner
+                                     reconciliation keeps the globe but sizes it so it never
+                                     out-shouts the status and the Connect action.
+                                     A Grid star column (not a StackPanel): the idle copy
+                                     can carry the network name and must be free to wrap. -->
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse x:Name="StatusDot" Width="12" Height="12"
+                                             VerticalAlignment="Center" />
+                                    <TextBlock x:Name="StatusText" Grid.Column="1"
+                                               FontFamily="{StaticResource UrBodyFontFamily}"
+                                               FontSize="26" LineHeight="30" FontWeight="SemiBold"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                </Grid>
                                 <!-- The connect hero (P6). A Button, so it is focusable,
                                      keyboard-invokable and carries pressed states; its
                                      content is the decorative ConnectCanvas host, marked
@@ -758,13 +780,10 @@
                                      is a Panel gets NO automatic name — the explicit one,
                                      which states the connection state, is set from
                                      ConnectPage::ApplyConnectStatus.
-                                     The button chrome is suppressed by the resource
-                                     overrides below rather than by a local Background,
-                                     which the template's visual states would win over on
-                                     hover; the hero draws its own hover and focus
-                                     affordances. Pointer and focus events are wired in
-                                     code (ConnectPage::Initialize), so the hero adds no
-                                     new MainWindow handlers. -->
+                                     R1: the host is height-capped (was unbounded, ~400px)
+                                     so the globe reads as the brand hero without dominating
+                                     the card. Its mask takes colour from the solid card
+                                     behind it, so it stays on the card, never a gradient. -->
                                 <Button x:Name="ConnectHero"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Stretch"
@@ -782,32 +801,16 @@
                                         <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
                                         <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent" />
                                     </Button.Resources>
-                                    <Grid x:Name="ConnectCanvasHost"
-                                          HorizontalAlignment="Stretch"
+                                    <!-- R1: the globe sizes from the host WIDTH
+                                         (ConnectCanvas clamps side to [168,288] and
+                                         writes the host height itself), so capping the
+                                         width is how the hero is sized down. ~220 gives
+                                         a ~236px globe: present as the brand hero, no
+                                         longer out-shouting the status and Connect. -->
+                                    <Grid x:Name="ConnectCanvasHost" MaxWidth="220"
+                                          HorizontalAlignment="Center"
                                           AutomationProperties.AccessibilityView="Raw" />
                                 </Button>
-                                <!-- connect status (android ConnectStatusIndicator
-                                     parity): a state-coloured dot + the four-state
-                                     status line. Driven by the SDK's own connection
-                                     status, NOT by the service tunnel alone, so
-                                     "Connecting to providers" exists at all —
-                                     see MainWindow::ApplyConnectStatus. -->
-                                <Grid ColumnSpacing="10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Ellipse x:Name="StatusDot" Width="10" Height="10"
-                                             VerticalAlignment="Center" />
-                                    <!-- a Grid star column, not a horizontal StackPanel:
-                                         the idle copy carries the network name, and a
-                                         StackPanel would hand it infinite width so
-                                         TextWrapping could never fire -->
-                                    <TextBlock x:Name="StatusText" Grid.Column="1"
-                                               FontSize="22" FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
-                                               VerticalAlignment="Center" />
-                                </Grid>
                                 <!-- selected location; the whole row opens the provider chooser -->
                                 <Button x:Name="LocationRow"
                                         Style="{StaticResource UrCardRowButtonStyle}"
@@ -1069,6 +1072,22 @@
                     <StackPanel Grid.Row="2" Grid.Column="0"
                                 x:Name="ConnectStatusStack" Spacing="16"
                                 Margin="0,16,0,24">
+
+                        <!-- R1: COMPACT SESSION EMPTY STATE. While disconnected - the
+                             state the app opens in - the two big chart cards below were
+                             a screenful of zero-value graphs (the spec's oversized
+                             zero-data cards). This one small card replaces them until
+                             there is a session to chart; ConnectPage toggles it against
+                             the two cards on the connected signal. -->
+                        <Border x:Name="SessionEmptyCard" Style="{StaticResource UrCardStyle}"
+                                Visibility="Collapsed">
+                            <StackPanel Spacing="8" HorizontalAlignment="Center"
+                                        Padding="8,16">
+                                <FontIcon Glyph="&#xE9D2;" Style="{StaticResource UrEmptyGlyphStyle}" />
+                                <TextBlock x:Name="SessionEmptyText" TextAlignment="Center"
+                                           Style="{StaticResource UrSupportingTextStyle}" />
+                            </StackPanel>
+                        </Border>
 
                         <!-- Card 1: client statistics (remote + blocked charts) -->
                         <Button x:Name="ClientStatsCard" Style="{StaticResource UrCardButtonStyle}"

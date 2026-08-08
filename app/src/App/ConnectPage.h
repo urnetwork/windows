@@ -128,6 +128,10 @@ class ConnectPage {
   void ApplyLocationRowName();
   void ApplySplitRuleCount();
   void ApplyBlockerUi(bool on);
+  // R1: while disconnected, the two zero-value chart cards are replaced by one
+  // compact session empty state; connected, the reverse. One writer for all
+  // three, called from ApplyStats and seeded from ApplyStrings.
+  void ApplySessionCardsVisibility(bool connected);
   void OnChartTick();
   winrt::fire_and_forget ShowClientContractsSheet();
   winrt::fire_and_forget ShowSplitRulesSheet();
