@@ -338,8 +338,21 @@ void ConnectPage::ApplyConnectStatus() {
   // connectionStatus in two files is two places for them to disagree, and the
   // strip is visible while the connect screen is not.
   w_.ApplyStatusStripConnection(text, dot);
-  w_.ConnectButton().Content(ConnectActionIsDisconnect() ? LocBox("disconnect")
-                                                         : LocBox("connect"));
+  const bool disconnectAction = ConnectActionIsDisconnect();
+  w_.ConnectButton().Content(disconnectAction ? LocBox("disconnect") : LocBox("connect"));
+  // ...and its WEIGHT. The state is carried on four channels — the word above,
+  // the dot's colour, the hero, and now the button's FILL — so none of them is
+  // carrying it alone and none of them is colour-alone. Filled blue while there
+  // is something to do, outlined once the tunnel is up. The reasoning, and why
+  // the full-bleed lime slab that used to be here is gone, is in App.xaml at
+  // UrPaneActionPrimaryStyle.
+  //
+  // The whole STYLE is swapped rather than the Background brush: a style carries
+  // its pointer-over, pressed and disabled states with it, and setting a brush
+  // alone would leave a button that washes to the other state's hover colour
+  // under the pointer.
+  ApplyConnectButtonStyle(disconnectAction ? L"UrPaneActionSecondaryStyle"
+                                           : L"UrPaneActionPrimaryStyle");
 
   // ---- the hero -----------------------------------------------------------
   // Same inputs, same instant, one function: the canvas is not allowed to lag
@@ -402,6 +415,20 @@ void ConnectPage::ApplyConnectStatus() {
   const bool enabled = !blocked && (!transitional || connectWatchdogFired_);
   w_.ConnectButton().IsEnabled(enabled);
   w_.ConnectHero().IsEnabled(enabled);
+}
+
+// Swap the connect action between its filled and outlined forms. Looked up by
+// key rather than held, because App.xaml is where the two forms are DEFINED and
+// a cached Style here would be a second place they could drift apart. The
+// HasKey test is not defensive noise: a missing key throws out of Lookup, and
+// this runs on every status push.
+void ConnectPage::ApplyConnectButtonStyle(std::wstring_view key) {
+  auto const resources = Application::Current().Resources();
+  auto const boxed = winrt::box_value(hstring{key});
+  if (!resources.HasKey(boxed)) return;
+  if (auto style = resources.Lookup(boxed).try_as<winrt::Microsoft::UI::Xaml::Style>()) {
+    if (w_.ConnectButton().Style() != style) w_.ConnectButton().Style(style);
+  }
 }
 
 // ---- live stats (macOS parity) -------------------------------------------

@@ -799,11 +799,16 @@
                                                   Style="{StaticResource UrChevronIconStyle}" />
                                     </Grid>
                                 </Button>
-                                <!-- THE primary action: a full-bleed bar the width of its
-                                     pane, square with it. Loud because it spans a column,
-                                     not because it floats. -->
+                                <!-- THE primary action. Its STYLE is assigned from
+                                     ConnectPage::ApplyConnectStatus, not fixed here: the
+                                     disconnected state is a filled blue Connect and the
+                                     connected state is an outlined Disconnect, and the one
+                                     function that already derives the status word, the dot
+                                     colour and the hero state derives this too. See
+                                     UrPaneActionPrimaryStyle in App.xaml for why the
+                                     full-bleed lime slab that used to be here is gone. -->
                                 <Button x:Name="ConnectButton"
-                                        Style="{StaticResource UrPaneAccentButtonStyle}"
+                                        Style="{StaticResource UrPaneActionPrimaryStyle}"
                                         Click="OnConnectToggle" />
                                 <!-- network peers (apple ConnectActions parity) -->
                                 <Button x:Name="PeersLine" MinHeight="36"

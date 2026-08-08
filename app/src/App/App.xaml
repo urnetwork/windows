@@ -258,6 +258,10 @@
             <SolidColorBrush x:Key="UrTextBrush" Color="#F8F8F8" />
             <SolidColorBrush x:Key="UrTextMutedBrush" Color="#989898" />
             <SolidColorBrush x:Key="UrTextFaintBrush" Color="#5A5A5A" />
+            <!-- text ON a bright fill (kInverseText in UrColors.h). Added for the
+                 primary action's label, which needs 4.5:1 on #638BFC at 14sp and
+                 gets 5.9:1 here against white's 3.0:1. -->
+            <SolidColorBrush x:Key="UrInverseTextBrush" Color="#101010" />
             <SolidColorBrush x:Key="UrDangerBrush" Color="#F8523B" />
             <SolidColorBrush x:Key="UrAccentBrush" Color="#EFF7BB" />
             <SolidColorBrush x:Key="UrGreenBrush" Color="#87FB67" />
@@ -967,18 +971,81 @@
                 <Setter Property="TextWrapping" Value="NoWrap" />
             </Style>
 
-            <!-- The pane's primary command: a full-bleed bar, not a pill. It is
-                 the width of its pane and square with it, so the one loud thing
-                 on Home is loud because it spans a column, not because it
-                 floats. -->
-            <Style x:Key="UrPaneAccentButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
-                <Setter Property="CornerRadius" Value="0" />
-                <Setter Property="Height" Value="44" />
-                <Setter Property="Margin" Value="0" />
-                <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <!-- ==== THE PANE'S PRIMARY ACTION (D5) ==============================
+                 REPLACES UrPaneAccentButtonStyle, which was a full-bleed #EFF7BB
+                 slab: zero radius, zero inset, flush between two rows. The
+                 reasoning behind it — "loud because it spans a column, not
+                 because it floats" — produced a HIGHLIGHTED ROW, not a control.
+                 Measured on the shipped build: in a pane where every other
+                 element has an inset and a radius, the one element with neither
+                 reads as a banner, and it was also the only saturated colour
+                 mass on the screen.
+
+                 What changed, and why each part:
+
+                 - INSET AND RADIUS. 12px inset (the pane's own inset, so the
+                   button's left edge lands on the same rule as every row label)
+                   and the spec's 4epx control radius (§ "Control corner radius
+                   4 epx"). It is now a control sitting in the pane, which is
+                   what it is.
+                 - HEIGHT 40, not 44. A row in these panes is 34–44px; at 44
+                   flush the button was indistinguishable from the rows around
+                   it. 40 + 12 of air on each side reads as its own object.
+                 - LIME IS GONE. The redesign spec's semantic discipline —
+                   adopted by the owner reconciliation — reserves lime for
+                   EARNINGS and brand, and makes blue the action colour. The
+                   connect action wearing #EFF7BB spent the earnings colour on
+                   a VPN control, on the one screen that has no earnings on it.
+                   The fill is now UrBlueMediumBrush #638BFC, which is already
+                   THE action colour here (URButton PRIMARY, the toggle on-state
+                   and the focused text field all use it). No new token.
+                 - THE FOREGROUND IS #101010, NOT WHITE, and this is the one
+                   place it differs from URButton PRIMARY. White on #638BFC is
+                   3.0:1. That passes AA for URButton's 24sp NeueBit Bold (large
+                   text, 3:1) and FAILS for this button's 14sp SemiBold, which
+                   needs 4.5:1. #101010 on #638BFC is 5.9:1. Contrast decides
+                   the foreground; the hue still says "action".
+
+                 The template is UrButtonBaseStyle's — the Material state layer,
+                 a translucent wash of the CONTENT colour — so one template
+                 covers the filled and the outlined form below and a style only
+                 has to set Background/Foreground/BorderBrush. -->
+            <Style x:Key="UrPaneActionPrimaryStyle" TargetType="Button" BasedOn="{StaticResource UrButtonBaseStyle}">
+                <Setter Property="Background" Value="{StaticResource UrBlueMediumBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource UrInverseTextBrush}" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="MinHeight" Value="40" />
+                <Setter Property="Height" Value="40" />
+                <Setter Property="Margin" Value="12,12,12,12" />
+                <Setter Property="Padding" Value="12,0" />
                 <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+
+            <!-- The same control, de-emphasised: same geometry, same position,
+                 no fill. This is the CONNECTED state's Disconnect.
+
+                 ProtonVPN — the reference the owner named for the status strip —
+                 draws a filled Connect and an outlined Disconnect, and the
+                 reason generalises past one product: a filled primary is an
+                 instruction, and once the VPN is up there is nothing the user
+                 needs to be instructed to do. A protected client that shouts a
+                 saturated slab at you is telling you to act on the one state
+                 where acting makes you LESS safe. So the weight of this control
+                 is itself a status reading: loud = there is something to do,
+                 quiet = you are fine.
+
+                 It is not colour-alone (the spec forbids that): the label
+                 changes word, the status line above changes word, and the dot
+                 changes colour. This changes FILL, which is a fourth channel. -->
+            <Style x:Key="UrPaneActionSecondaryStyle" TargetType="Button" BasedOn="{StaticResource UrPaneActionPrimaryStyle}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{StaticResource UrTextBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource UrBorderStrongBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

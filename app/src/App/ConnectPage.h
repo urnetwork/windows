@@ -15,6 +15,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -108,6 +109,11 @@ class ConnectPage {
   // tunnel — see the definition): anything other than a settled disconnected
   // state means the press disconnects, and in a transition aborts.
   bool ConnectActionIsDisconnect() const;
+  // The connect action's two forms (App.xaml UrPaneActionPrimaryStyle /
+  // ...SecondaryStyle): filled blue while there is something to do, outlined
+  // once the tunnel is up. Called only from ApplyConnectStatus, which is the
+  // single place the connect state is rendered.
+  void ApplyConnectButtonStyle(std::wstring_view key);
 
   void BuildCharts();
   void BuildHero();        // the ConnectCanvas plus the hero's desktop affordances
