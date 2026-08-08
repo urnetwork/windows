@@ -50,8 +50,14 @@ class ConnectPage {
   // network name off the stored jwt, for the idle "{name} is ready to connect"
   // copy; re-renders the status line
   void SetNetworkIdentity(std::string const& networkName, bool guestMode);
-  void ResyncDrawer();     // seed the caches/cards from SdkHost snapshots
-  void AnimateDrawerIn();  // fade + slide-up entrance, staggered across cards
+  void ResyncDrawer();     // seed the caches/panes from SdkHost snapshots
+  void AnimateDrawerIn();  // the entrance; see the definition
+  // --preview-ui + URNETWORK_PREVIEW_SAMPLE only: synthetic rows for the panes,
+  // so a review build shows the layout FULL rather than four empty states. Two
+  // gates, like PreviewHeroActive, and it writes only this page's own caches —
+  // no Sdk() call, no network, no stored state. Called from MainWindow's
+  // preview entry beside PreviewSampleStatusStrip.
+  void ApplyPreviewSample();
 
   // Status line + status dot + hero canvas + connect button, from connectStatus_
   // (the SDK), connected_ (the service tunnel) and the window's balance state.
@@ -128,10 +134,38 @@ class ConnectPage {
   void ApplyLocationRowName();
   void ApplySplitRuleCount();
   void ApplyBlockerUi(bool on);
-  // R1: while disconnected, the two zero-value chart cards are replaced by one
-  // compact session empty state; connected, the reverse. One writer for all
-  // three, called from ApplyStats and seeded from ApplyStrings.
+  // R3: the activity pane's list vs its empty state. The empty state is a
+  // centred line INSIDE the full-height pane, not a card, so this only swaps
+  // which of the two is drawn in that same area.
   void ApplySessionCardsVisibility(bool connected);
+
+  // ---- R3: the pane lists ---------------------------------------------------
+  // The three dense, uniform-row lists the pane shell put where the cards were.
+  // Each rebuilds its host StackPanel from this page's cached feed, and every
+  // row in a list is the same height as every other row in it.
+  //
+  //   activity pane     ApplyConnectionsList  the routing decisions (block
+  //                                           actions): verdict, host, bytes
+  //   statistics pane   ApplySessionRows      the session figures, key/value
+  //                     ApplyContractsList    one row per contract peer
+  //                     ApplySplitRulesList   one row per split rule
+  void ApplyConnectionsList();
+  void ApplySessionRows();
+  void ApplyContractsList();
+  void ApplySplitRulesList();
+  //   connect pane   ApplyPeersList  the other devices on this network. It is
+  //                                  the only feed that belongs to the connect
+  //                                  column, and without it that column is a
+  //                                  fixed block of controls that ends two
+  //                                  thirds of the way down a tall window.
+  void ApplyPeersList();
+
+  bool PreviewSampleActive() const;
+  // A minute of synthetic throughput ending NOW. Regenerated on a cadence from
+  // OnChartTick, not pushed once: the charts hold a 60s window, so a single push
+  // at startup has scrolled off the left edge by the time anyone looks at the
+  // build, and the review screenshot is of three flat lines.
+  void PreviewSampleCharts();
   void OnChartTick();
   winrt::fire_and_forget ShowClientContractsSheet();
   winrt::fire_and_forget ShowSplitRulesSheet();
@@ -154,6 +188,9 @@ class ConnectPage {
   // copy. Read once per auth change, not per stats push (ParsedJwt re-parses).
   std::string networkName_;
   bool guestMode_ = false;
+  // the last peer snapshot, for the connect pane's list (ApplyPeerCount already
+  // receives it; before R3 only its COUNT was ever drawn)
+  std::optional<urnet::NetworkPeerList> peers_;
 
   // the hero canvas (UI thread only; stepped from chartTimer_)
   std::unique_ptr<urnw::ConnectCanvas> canvas_;
@@ -175,6 +212,13 @@ class ConnectPage {
   std::vector<urnw::SplitRule> splitRules_;
   int64_t allowedCount_ = 0;
   int64_t blockedCount_ = 0;
+  // R3: the statistics pane draws the session as key/value ROWS, which means it
+  // needs the last figures rather than only the two prose lines the card used to
+  // print. Written by ApplyStats, read by ApplySessionRows.
+  int64_t downBitsPerSecond_ = 0;
+  int64_t upBitsPerSecond_ = 0;
+  int64_t providerCount_ = 0;
+  bool statsConnected_ = false;
   std::optional<urnet::DnsResolverSettings> dnsSettings_;
   std::string countryCode_;  // selected location country (dns recommendations)
   std::string countryName_;

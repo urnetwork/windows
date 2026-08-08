@@ -4,6 +4,7 @@
 #include "UrComponents.h"
 
 #include <chrono>
+#include <string>
 
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
@@ -144,6 +145,95 @@ Controls::Border MakeStatusSeparator() {
   rule.VerticalAlignment(VerticalAlignment::Center);
   rule.Background(urnw::colors::BorderBrush());
   return rule;
+}
+
+// ---- the pane shell's dynamic rows (R3) ------------------------------------
+
+Controls::Border MakePaneRow(double height) {
+  Controls::Border row;
+  // Height, not MinHeight. A minimum is what lets one row of a list grow when
+  // its content happens to be longer, and a list whose rows are mostly-but-not-
+  // always the same height is precisely the defect this layout answers.
+  row.Height(height);
+  row.HorizontalAlignment(HorizontalAlignment::Stretch);
+  row.Padding(ThicknessHelper::FromLengths(12, 0, 12, 0));
+  row.BorderBrush(urnw::colors::BorderBrush());
+  row.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+  return row;
+}
+
+PaneKeyValueRow MakePaneKeyValueRow(winrt::hstring const& key, winrt::hstring const& value,
+                                    double height) {
+  PaneKeyValueRow out;
+  out.root = MakePaneRow(height);
+
+  Controls::Grid grid;
+  grid.ColumnSpacing(8);
+  Controls::ColumnDefinition keyColumn, valueColumn;
+  keyColumn.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star));
+  valueColumn.Width(GridLengthHelper::Auto());
+  grid.ColumnDefinitions().Append(keyColumn);
+  grid.ColumnDefinitions().Append(valueColumn);
+
+  out.key = TextBlock();
+  out.key.Text(key);
+  if (auto style = StyleByKey(L"UrKeyTextStyle")) out.key.Style(style);
+  grid.Children().Append(out.key);
+
+  out.value = TextBlock();
+  out.value.Text(value);
+  if (auto style = StyleByKey(L"UrValueTextStyle")) out.value.Style(style);
+  Controls::Grid::SetColumn(out.value, 1);
+  grid.Children().Append(out.value);
+
+  // The key names the value; announcing it as its own static-text item beside
+  // the value makes one fact into two fragments. Same treatment, same reason, as
+  // MakeStatusField's caption.
+  Automation::AutomationProperties::SetAccessibilityView(
+      out.key, Automation::Peers::AccessibilityView::Raw);
+  Automation::AutomationProperties::SetName(
+      out.value, winrt::hstring{std::wstring{key} + L", " + std::wstring{value}});
+
+  out.root.Child(grid);
+  return out;
+}
+
+PaneListRow MakePaneListRow(double height) {
+  PaneListRow out;
+  out.root = MakePaneRow(height);
+
+  Controls::Grid grid;
+  grid.ColumnSpacing(10);
+  Controls::ColumnDefinition dotColumn, titleColumn, metaColumn;
+  dotColumn.Width(GridLengthHelper::Auto());
+  titleColumn.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Star));
+  metaColumn.Width(GridLengthHelper::Auto());
+  grid.ColumnDefinitions().Append(dotColumn);
+  grid.ColumnDefinitions().Append(titleColumn);
+  grid.ColumnDefinitions().Append(metaColumn);
+
+  out.dot = winrt::Microsoft::UI::Xaml::Shapes::Ellipse();
+  out.dot.Width(7);
+  out.dot.Height(7);
+  out.dot.VerticalAlignment(VerticalAlignment::Center);
+  // the colour is a restatement of what the row's text already says
+  Automation::AutomationProperties::SetAccessibilityView(
+      out.dot, Automation::Peers::AccessibilityView::Raw);
+  grid.Children().Append(out.dot);
+
+  out.title = TextBlock();
+  if (auto style = StyleByKey(L"UrRowTitleStyle")) out.title.Style(style);
+  Controls::Grid::SetColumn(out.title, 1);
+  grid.Children().Append(out.title);
+
+  out.meta = TextBlock();
+  if (auto style = StyleByKey(L"UrValueTextStyle")) out.meta.Style(style);
+  out.meta.Foreground(urnw::colors::MutedBrush());
+  Controls::Grid::SetColumn(out.meta, 2);
+  grid.Children().Append(out.meta);
+
+  out.root.Child(grid);
+  return out;
 }
 
 FrameworkElement MakeEmptyState(winrt::hstring const& glyph, winrt::hstring const& text) {

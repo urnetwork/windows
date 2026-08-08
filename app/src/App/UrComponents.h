@@ -263,6 +263,45 @@ void SetStatusFieldValue(StatusField const& field, winrt::hstring const& value);
 // the strip is a row, so its rules run the other way.
 winrt::Microsoft::UI::Xaml::Controls::Border MakeStatusSeparator();
 
+// ---- the pane shell's dynamic rows (R3) ------------------------------------
+//
+// The pane layout's static chrome is styles in App.xaml (UrPaneHeaderStyle,
+// UrGroupHeaderStyle, UrPaneRowStyle and friends — read the block at the foot of
+// that file). These builders are the rows a page generates at RUNTIME: the
+// connections table, the contracts list, the split rules, the session figures.
+//
+// They exist so that "one row height per list" is a property of the code rather
+// than a hope. A list that builds its rows by hand acquires a 52px row the day
+// someone adds a second line to one of them, and that is exactly the "random
+// sized modules" the owner rejected. Every row of a list comes out of one call
+// here, so a list cannot drift.
+
+// The row itself: a FIXED height (not a minimum), a bottom hairline, the pane's
+// 12px inset. Pass the height once per list.
+winrt::Microsoft::UI::Xaml::Controls::Border MakePaneRow(double height);
+
+// key on the left, value hard right, one line each, both trimmed. The session
+// figures and any inspector grid are this.
+struct PaneKeyValueRow {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock key{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};
+};
+PaneKeyValueRow MakePaneKeyValueRow(winrt::hstring const& key,
+                                    winrt::hstring const& value = {},
+                                    double height = 34);
+
+// A list row: a leading state dot, a title that trims, and a right-aligned
+// figure. The connections table, the contracts list and the split rules are all
+// this one shape on purpose — one row species per pane layout, not three.
+struct PaneListRow {
+  winrt::Microsoft::UI::Xaml::Controls::Border root{nullptr};
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse dot{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock title{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock meta{nullptr};
+};
+PaneListRow MakePaneListRow(double height = 36);
+
 // iOS Components/UrTextField/ValidationState.swift.
 enum class ValidationState {
   NotChecked,  // nothing has been asked of the server yet

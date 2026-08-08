@@ -653,212 +653,164 @@
                 </muxc:NavigationViewItem>
             </muxc:NavigationView.FooterMenuItems>
 
-            <Grid Margin="24">
-                <!-- Home (macOS ConnectActions parity). The modules: the
-                     connection card, Provide, Connect options, client and local
-                     statistics, and Custom DNS. One column at flyout width, two
-                     or three at desktop widths - see the composition note on
-                     ConnectLayout below. Charts render into the *ChartHost grids
-                     from code-behind (TransferChart). The plan + usage card that
-                     used to be here now lives only on Account (spec §5). -->
-                <ScrollViewer x:Name="ConnectView" HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto">
-                  <!-- THE WIDTH CAP IS A COLUMN, NOT A MaxWidth ON THE PANEL -
-                       see the long note on WalletView. MaxWidth on a Stretch
-                       child of a ScrollViewer offsets from the child's DESIRED
-                       width while laying it out at the cap, so the column is
-                       pushed right by the slack and its right side falls off
-                       the viewport. Measured here at 1100px before the fix:
-                       300px of dead gutter on the left, 48px on the right, and
-                       the Connect button clipped from 900px up. Wallet and
-                       Leaderboard were fixed this way in P4; Connect, Account,
-                       Support and Settings had not been. -->
-                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
-                       middle one. The middle star is greedy enough to always
-                       reach its MaxWidth when the window has the room, and the
-                       two hairline stars split whatever is left - so the column
-                       is CENTRED at wide widths and simply fills the viewport
-                       at narrow ones, with no breakpoint and no branch.
+            <!-- NO PAGE MARGIN. This Grid used to be Margin="24", which is where
+                 every destination's gutter came from. Home is now a full-bleed
+                 pane layout and must touch the window edges; the six card-model
+                 destinations carry the 24 themselves until they are rebuilt. -->
+            <Grid x:Name="HomeContentRoot">
+                <!-- ==== HOME: THE PANE SHELL (R3) ==========================
+                     Owner verdict on two rounds of card polish: "the UI has
+                     barely even changed... Things need to fit in a fill, I guess
+                     go with Portmaster looks, less random sized modules and more
+                     fit in."
 
-                       Why not MaxWidth on the panel: that is the arrange-split
-                       bug (the offset comes out of the child's DESIRED width
-                       while it is laid out at the cap). Why not the single
-                       capped column P4 used: it pins the content to x=0, which
-                       is right at 1100 and lopsided when maximized - measured
-                       2578px wide with 600px of content and ~1900px of void on
-                       one side. -->
-                  <!-- ==== THE WIDE COMPOSITION (D4) =========================
-                       This is the reference instance of the shape every
-                       destination now uses; read this one and you have read all
-                       seven. Two nested grids and a two-state group:
+                     What changed is not styling. The card model IS the mobile
+                     model - a centred column with a MaxWidth cap, page padding,
+                     gutters between rounded islands - and no amount of
+                     rebalancing islands makes a 2062dip window look filled. So
+                     Home is now built the way SPN/Portmaster builds a window:
 
-                         OUTER   * | 1000* MaxWidth | *   the centring column
-                                 above. Its cap is what the Wide state RAISES:
-                                 the narrow layout is a 600px column, the wide
-                                 one is a 1440px composition.
+                       THREE VERTICAL PANES, floor to ceiling, edge to edge.
+                       A 1px rule between them, never a gap.
+                       A 40px header strip on each; each scrolls under its own.
+                       Inside a pane: 28px group headers and UNIFORM rows.
+                       Lists FILL their pane; an empty state is a centred line
+                       inside a full-height pane, not a short card in space.
 
-                         INNER   main * | side (0 at narrow)  and three Auto
-                                 rows. Every panel below is parked in the main
-                                 column, stacked, in the order the flyout wants
-                                 them. The Wide state moves ONE of them - the
-                                 rail - into the side column.
+                       col 0  CONNECT     the state, the hero, the primary
+                                          action, and every per-connection
+                                          decision (provide, mode, switches)
+                       col 2  ACTIVITY    the throughput chart across the top of
+                                          the pane, then the routing decisions as
+                                          a dense uniform table that fills to the
+                                          floor
+                       col 4  STATISTICS  the detail/inspector: the block and
+                                          local charts, session figures,
+                                          contracts, split rules and DNS, all as
+                                          key/value rows on one grid rhythm
 
-                         STATES  Narrow is the default and carries no setters,
-                                 so the flyout layout is what the markup plainly
-                                 says. Wide is an AdaptiveTrigger on
-                                 UrWideBreakpoint (App.xaml, one number for the
-                                 whole app).
+                     Deleted with the card model: ConnectLayout's 1:1000:1
+                     centring grid, ConnectCapColumn's MaxWidth, ConnectMainStack
+                     / ConnectRail / ConnectStatusStack and the Reparent dance
+                     that moved them between three hosts, and every card margin.
+                     MainWindow::ApplyBreakpoint now only decides how many PANES
+                     fit; it no longer moves any panel between parents.
 
-                       Connect is Proton's shape: ONE canvas where the hero
-                       lives, the secondary controls in a rail BESIDE it rather
-                       than stacked under it, and the status that belongs to the
-                       whole window in the strip at the bottom.
-
-                       W1 FIX - NO ROWS. This used to be three Auto rows in the
-                       main column with the rail parked in row 0 of the side
-                       column, and that is where the ~330px hole in the middle
-                       of Home came from: an Auto row is as tall as the TALLEST
-                       cell in it, so the rail (Provide + options + plan, ~740)
-                       set row 0's height, the hero card (~450) sat at the top of
-                       it, and the session card in row 2 started ~290px lower
-                       than the hero card ended. Rows are how a hole gets into a
-                       column that only ever wanted to stack.
-
-                       So: ONE row, three columns, and the panels are REPARENTED
-                       rather than re-addressed (MainWindow::ApplyBreakpoint).
-                       The main column is a plain StackPanel, so its children
-                       are top-aligned and one section gap apart by
-                       construction, at every width, whatever the columns beside
-                       it are doing.
-
-                         narrow   ConnectMainStack = hero / rail / session
-                         wide     hero / session   |                | rail
-                         ultra    hero             | session        | rail
-
-                       The rail carries Provide and Connect options: the
-                       decisions, as opposed to the status, which is the cut
-                       Proton's NetShield / Kill switch / Split tunnelling rail
-                       makes. (The plan card was a third rail module and is gone
-                       from Home per spec §5 - it lives on Account.) -->
-                  <Grid x:Name="ConnectLayout">
+                     The globe (owner override 3) is kept and lives INSIDE column
+                     0's flow, sized to the pane. Its mask takes its colour from
+                     the surface behind it, so column 0 is a solid fill. -->
+                <Grid x:Name="ConnectView" Style="{StaticResource UrPaneStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition x:Name="ConnectCapColumn"
-                                          Width="1000*" MaxWidth="600" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="ConnectPaneAColumn" Width="330" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="ConnectPaneBColumn" Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="ConnectPaneCColumn" Width="380" />
                     </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="1">
-                      <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition x:Name="ConnectDetailColumn" Width="0" />
-                          <ColumnDefinition x:Name="ConnectRailColumn" Width="0" />
-                      </Grid.ColumnDefinitions>
 
-                    <!-- The main column. Section gap 24 between modules; the
-                         cards inside each module keep the 16 the rest of the app
-                         uses. Nothing here is bottom-anchored and nothing here
-                         is in a row. -->
-                    <StackPanel Grid.Column="0"
-                                x:Name="ConnectMainStack" Spacing="24"
-                                Margin="0,0,0,24"
-                                HorizontalAlignment="Stretch">
-                      <StackPanel x:Name="DrawerStack" Spacing="16"
-                                  HorizontalAlignment="Stretch">
-
-                        <!-- Connection controls -->
-                        <Border x:Name="ControlsCard" Style="{StaticResource UrCardStyle}"
-                                Padding="24">
-                            <StackPanel Spacing="16">
-                                <!-- R1: STATUS LEADS. The protection state is the first
-                                     thing on the card, at Subtitle scale, above the globe
-                                     - the spec's "am I protected" answered before any
-                                     ornament. Was below a ~400px globe; the owner
-                                     reconciliation keeps the globe but sizes it so it never
-                                     out-shouts the status and the Connect action.
-                                     A Grid star column (not a StackPanel): the idle copy
-                                     can carry the network name and must be free to wrap. -->
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Ellipse x:Name="StatusDot" Width="12" Height="12"
-                                             VerticalAlignment="Center" />
-                                    <TextBlock x:Name="StatusText" Grid.Column="1"
-                                               FontFamily="{StaticResource UrBodyFontFamily}"
-                                               FontSize="26" LineHeight="30" FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
-                                               VerticalAlignment="Center" />
-                                </Grid>
-                                <!-- The connect hero (P6). A Button, so it is focusable,
-                                     keyboard-invokable and carries pressed states; its
-                                     content is the decorative ConnectCanvas host, marked
-                                     AccessibilityView="Raw" because a Button whose Content
-                                     is a Panel gets NO automatic name — the explicit one,
-                                     which states the connection state, is set from
-                                     ConnectPage::ApplyConnectStatus.
-                                     R1: the host is height-capped (was unbounded, ~400px)
-                                     so the globe reads as the brand hero without dominating
-                                     the card. Its mask takes colour from the solid card
-                                     behind it, so it stays on the card, never a gradient. -->
-                                <Button x:Name="ConnectHero"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Stretch"
-                                        VerticalContentAlignment="Stretch"
-                                        Padding="0" BorderThickness="0"
-                                        UseSystemFocusVisuals="False"
-                                        Click="OnConnectToggle">
-                                    <Button.Resources>
-                                        <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
-                                        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
-                                        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent" />
-                                        <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
-                                        <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
-                                        <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
-                                        <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
-                                        <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent" />
-                                    </Button.Resources>
-                                    <!-- R1: the globe sizes from the host WIDTH
-                                         (ConnectCanvas clamps side to [168,288] and
-                                         writes the host height itself), so capping the
-                                         width is how the hero is sized down. ~220 gives
-                                         a ~236px globe: present as the brand hero, no
-                                         longer out-shouting the status and Connect. -->
-                                    <Grid x:Name="ConnectCanvasHost" MaxWidth="220"
-                                          HorizontalAlignment="Center"
-                                          AutomationProperties.AccessibilityView="Raw" />
-                                </Button>
-                                <!-- selected location; the whole row opens the provider chooser -->
-                                <Button x:Name="LocationRow"
-                                        Style="{StaticResource UrCardRowButtonStyle}"
+                    <!-- ============ PANE A: CONNECT ============ -->
+                    <Grid Grid.Column="0" x:Name="ConnectPaneA"
+                          AutomationProperties.LandmarkType="Main">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="PaneATitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                                <TextBlock x:Name="PaneAMeta" HorizontalAlignment="Right"
+                                           Style="{StaticResource UrPaneMetaStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- STATUS LEADS. Protection state first, at the top of
+                                     the pane, above the ornament. -->
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,14">
+                                    <Grid ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse x:Name="StatusDot" Width="10" Height="10"
+                                                 VerticalAlignment="Center" />
+                                        <TextBlock x:Name="StatusText" Grid.Column="1"
+                                                   FontFamily="{StaticResource UrBodyFontFamily}"
+                                                   FontSize="20" LineHeight="24" FontWeight="SemiBold"
+                                                   TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Border>
+                                <!-- The hero, INSIDE the pane's flow. A Button, so it is
+                                     focusable and keyboard-invokable; its content is the
+                                     decorative ConnectCanvas host, marked Raw because a
+                                     Button whose Content is a Panel gets NO automatic
+                                     name - the explicit one is set from
+                                     ConnectPage::ApplyConnectStatus. -->
+                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="0,8">
+                                    <Button x:Name="ConnectHero"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            VerticalContentAlignment="Stretch"
+                                            Padding="0" BorderThickness="0"
+                                            UseSystemFocusVisuals="False"
+                                            Click="OnConnectToggle">
+                                        <Button.Resources>
+                                            <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent" />
+                                        </Button.Resources>
+                                        <!-- ConnectCanvas clamps its side to [168,288] off the
+                                             host WIDTH and writes the host height itself, so
+                                             capping the width is how the hero is sized to the
+                                             pane rather than to the window. -->
+                                        <Grid x:Name="ConnectCanvasHost" MaxWidth="190"
+                                              HorizontalAlignment="Center"
+                                              AutomationProperties.AccessibilityView="Raw" />
+                                    </Button>
+                                </Border>
+                                <!-- the selected provider; the whole row opens the chooser -->
+                                <Button x:Name="LocationRow" MinHeight="48"
+                                        Style="{StaticResource UrPaneRowButtonStyle}"
                                         Click="OnLocationRowClick">
                                     <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Spacing="2">
-                                            <TextBlock x:Name="SelectedProviderLabel" FontSize="12"
-                                               AutomationProperties.AccessibilityView="Raw"
+                                        <StackPanel Grid.Column="0" Spacing="1"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock x:Name="SelectedProviderLabel" FontSize="11"
+                                                       AutomationProperties.AccessibilityView="Raw"
                                                        Foreground="{StaticResource UrTextMutedBrush}" />
-                                            <TextBlock x:Name="LocationText" FontSize="15"
+                                            <TextBlock x:Name="LocationText" FontSize="14"
+                                                       TextTrimming="CharacterEllipsis"
                                                        AutomationProperties.AccessibilityView="Raw" />
                                         </StackPanel>
-                                        <FontIcon Grid.Column="1" Glyph="&#xE76C;" FontSize="14"
-                                                  VerticalAlignment="Center"
-                                                  Foreground="{StaticResource UrTextMutedBrush}" />
+                                        <FontIcon Grid.Column="1" Glyph="&#xE76C;"
+                                                  Style="{StaticResource UrChevronIconStyle}" />
                                     </Grid>
                                 </Button>
+                                <!-- THE primary action: a full-bleed bar the width of its
+                                     pane, square with it. Loud because it spans a column,
+                                     not because it floats. -->
                                 <Button x:Name="ConnectButton"
-                                        Style="{StaticResource AccentButtonStyle}"
-                                        HorizontalAlignment="Stretch" Click="OnConnectToggle" />
-                                <!-- network peers status line (apple ConnectActions parity): a
-                                     filled dot (green when providing peers are online, coral at
-                                     zero) + "{n} peers", always shown; tapping opens the chooser -->
-                                <Button x:Name="PeersLine"
-                                        Style="{StaticResource UrCardRowButtonStyle}"
+                                        Style="{StaticResource UrPaneAccentButtonStyle}"
+                                        Click="OnConnectToggle" />
+                                <!-- network peers (apple ConnectActions parity) -->
+                                <Button x:Name="PeersLine" MinHeight="36"
+                                        Style="{StaticResource UrPaneRowButtonStyle}"
                                         Click="OnPeersLineClick">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                                VerticalAlignment="Center">
                                         <Ellipse x:Name="PeerDot" Width="8" Height="8"
                                                  VerticalAlignment="Center" />
                                         <TextBlock x:Name="PeerCountText" FontSize="12"
@@ -867,363 +819,419 @@
                                                    Foreground="{StaticResource UrTextMutedBrush}" />
                                     </StackPanel>
                                 </Button>
-                                <!-- out of balance: the action button opens the upgrade flow -->
+                                <!-- out of balance: the action opens the upgrade flow -->
                                 <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
-                                         Severity="Warning" />
-                                <!-- Live stats, connected only. THESE FOUR ROWS WERE THE
-                                     VOID. Every one of them is empty while disconnected -
-                                     which is the state the app opens in - but a
-                                     StackPanel row with an empty TextBlock still
-                                     consumes its Spacing, so four blanks at
-                                     Spacing="12" left ~120px of nothing in the middle
-                                     of the hero card with no way to tell it apart from
-                                     a layout bug. ConnectPage now sets text and
-                                     visibility together (kit::SetTextOrCollapse), so an
-                                     empty row costs no height. The divider is inside
-                                     the same collapsing group: a rule over nothing is
-                                     the same defect one pixel tall. -->
-                                <StackPanel x:Name="LiveStatsGroup" Spacing="8" Visibility="Collapsed">
-                                    <Border Style="{StaticResource UrDividerStyle}" />
-                                    <TextBlock x:Name="ProviderCountText" Style="{StaticResource UrLabelStyle}" />
-                                    <TextBlock x:Name="ThroughputText" FontSize="12"
-                                               FontFamily="Consolas"
-                                               Foreground="{StaticResource UrTextMutedBrush}" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
+                                         Margin="12,8" Severity="Warning" />
 
-                    <!-- THE RAIL. Declared here, inside the main column, because
-                         that is the narrow layout and the narrow layout is what
-                         the markup should plainly say: directly under the hero
-                         card, where the flyout has always had it. At wide and
-                         ultra ApplyBreakpoint MOVES it into ConnectRailHost. -->
-                    <StackPanel x:Name="ConnectRail" Spacing="16"
-                                VerticalAlignment="Top">
-
-                        <!-- PROVIDE. Was buried in the middle of the hero card,
-                             between the peers line and the connect options, with
-                             nothing marking where one subject ended and the next
-                             began - the card ran ~800px and carried five unrelated
-                             topics. Provide is its own decision (am I giving
-                             bandwidth back, and to whom), so it is its own module. -->
-                        <Border x:Name="ProvideCard" Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <!-- provide indicator (apple parity): solid dot = Network
-                                         provide tier; dot + outer ring = Public tier -->
-                                    <Grid Width="14" Height="14" VerticalAlignment="Center">
-                                        <Ellipse x:Name="ProvideModeRing" Width="14" Height="14"
-                                                 StrokeThickness="1.5" Visibility="Collapsed" />
-                                        <Ellipse x:Name="ProvideModeDot" Width="8" Height="8" />
+                                <!-- provide ....................................... -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                                VerticalAlignment="Center">
+                                        <!-- provide indicator (apple parity): solid dot =
+                                             Network tier; dot + ring = Public tier -->
+                                        <Grid Width="12" Height="12" VerticalAlignment="Center">
+                                            <Ellipse x:Name="ProvideModeRing" Width="12" Height="12"
+                                                     StrokeThickness="1.5" Visibility="Collapsed" />
+                                            <Ellipse x:Name="ProvideModeDot" Width="7" Height="7" />
+                                        </Grid>
+                                        <TextBlock x:Name="ProvideModeLabel"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="44" Padding="8,4">
+                                    <muxc:SelectorBar x:Name="ProvideModeBar"
+                                                      VerticalAlignment="Center"
+                                                      SelectionChanged="OnProvideModeChanged">
+                                        <muxc:SelectorBarItem x:Name="ProvideAutoItem" />
+                                        <muxc:SelectorBarItem x:Name="ProvideAlwaysItem" />
+                                        <muxc:SelectorBarItem x:Name="ProvideNetworkItem" />
+                                        <muxc:SelectorBarItem x:Name="ProvideNeverItem" />
+                                    </muxc:SelectorBar>
+                                </Border>
+                                <Border x:Name="DiscoverableRow"
+                                        Style="{StaticResource UrPaneRowStyle}" MinHeight="36">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon Glyph="&#xE704;" FontSize="13"
+                                                  Style="{StaticResource UrRowIconStyle}" />
+                                        <TextBlock x:Name="DiscoverableText" Grid.Column="1"
+                                                   Style="{StaticResource UrKeyTextStyle}"
+                                                   FontSize="12" />
                                     </Grid>
-                                    <TextBlock x:Name="ProvideModeLabel"
-                                               Style="{StaticResource UrSectionHeadingStyle}" />
-                                </StackPanel>
-                                <!-- Provide control mode: Auto | Always | Network | Never.
-                                     "Network" is the private provider (always on, provides
-                                     only to same-network peers, never publicly). -->
-                                <muxc:SelectorBar x:Name="ProvideModeBar"
-                                                  SelectionChanged="OnProvideModeChanged">
-                                    <muxc:SelectorBarItem x:Name="ProvideAutoItem" />
-                                    <muxc:SelectorBarItem x:Name="ProvideAlwaysItem" />
-                                    <muxc:SelectorBarItem x:Name="ProvideNetworkItem" />
-                                    <muxc:SelectorBarItem x:Name="ProvideNeverItem" />
-                                </muxc:SelectorBar>
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <!-- discoverability (apple/android parity): whether this device
-                                     is itself connectable as a same-network peer -->
-                                <Grid ColumnSpacing="8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <FontIcon Glyph="&#xE704;" Style="{StaticResource UrRowIconStyle}"
-                                              FontSize="14" />
-                                    <TextBlock x:Name="DiscoverableText" Grid.Column="1"
-                                               TextWrapping="Wrap"
-                                               Style="{StaticResource UrLabelStyle}" />
-                                </Grid>
-                                <!-- "N clients connected", empty when provide is off:
-                                     collapses rather than leaving a gap (see LiveStatsGroup) -->
-                                <TextBlock x:Name="ProvideStatsText" Style="{StaticResource UrLabelStyle}" />
-                            </StackPanel>
-                        </Border>
+                                </Border>
+                                <!-- "N clients connected": the ROW collapses when there is
+                                     nothing to say, not just its text - a fixed-height row
+                                     around a collapsed TextBlock is still a blank row. -->
+                                <Border x:Name="ProvideStatsRow" Visibility="Collapsed"
+                                        Style="{StaticResource UrPaneRowStyle}" MinHeight="36">
+                                    <TextBlock x:Name="ProvideStatsText"
+                                               Style="{StaticResource UrKeyTextStyle}"
+                                               FontSize="12" />
+                                </Border>
 
-                        <!-- CONNECT OPTIONS. Four independent switches that used to
-                             be four bare Grids stacked on the same surface as the
-                             connect button, with no rules between them: the reason
-                             the owner could not tell where one setting stopped. The
-                             ad/tracker blocker joins them - it was its own one-row
-                             card for no reason other than the order it was added -
-                             so every per-connection switch is in one place. -->
-                        <Border x:Name="ConnectOptionsCard" Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE9E9;" Style="{StaticResource UrRowIconStyle}" />
+                                <!-- connect options ................................ -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
                                     <TextBlock x:Name="ConnectOptionsLabel"
-                                               Style="{StaticResource UrSectionHeadingStyle}" />
-                                </StackPanel>
-                                <!-- Connection Mode: device performance profile -->
-                                <muxc:SelectorBar x:Name="ConnectionModeBar"
-                                                  SelectionChanged="OnConnectionModeChanged">
-                                    <muxc:SelectorBarItem x:Name="ModeAutoItem" />
-                                    <muxc:SelectorBarItem x:Name="ModeWebItem" />
-                                    <muxc:SelectorBarItem x:Name="ModeStreamingItem" />
-                                </muxc:SelectorBar>
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <FontIcon Glyph="&#xE71B;" Style="{StaticResource UrRowIconStyle}" />
-                                    <TextBlock x:Name="FixedIpLabel" Grid.Column="1" FontSize="14"
-                                               TextWrapping="Wrap" VerticalAlignment="Center" />
-                                    <ToggleSwitch x:Name="FixedIpToggle" Grid.Column="2"
-                                                  Style="{StaticResource UrSwitchToggleStyle}"
-                                                  AutomationProperties.LabeledBy="{Binding ElementName=FixedIpLabel}"
-                                                  Toggled="OnFixedIpToggled" />
-                                </Grid>
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <FontIcon Glyph="&#xEA18;" Style="{StaticResource UrRowIconStyle}" />
-                                    <TextBlock x:Name="StrongAnonLabel" Grid.Column="1" FontSize="14"
-                                               TextWrapping="Wrap" VerticalAlignment="Center" />
-                                    <ToggleSwitch x:Name="StrongAnonToggle" Grid.Column="2"
-                                                  Style="{StaticResource UrSwitchToggleStyle}"
-                                                  AutomationProperties.LabeledBy="{Binding ElementName=StrongAnonLabel}"
-                                                  Toggled="OnStrongAnonToggled" />
-                                </Grid>
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <!-- Post quantum encryption: opportunistic e2e; providers
-                                     without support fall back to plaintext at this layer -->
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <FontIcon Glyph="&#xE72E;" Style="{StaticResource UrRowIconStyle}" />
-                                    <TextBlock x:Name="PostQuantumLabel" Grid.Column="1" FontSize="14"
-                                               TextWrapping="Wrap" VerticalAlignment="Center" />
-                                    <ToggleSwitch x:Name="PostQuantumToggle" Grid.Column="2"
-                                                  Style="{StaticResource UrSwitchToggleStyle}"
-                                                  AutomationProperties.LabeledBy="{Binding ElementName=PostQuantumLabel}"
-                                                  Toggled="OnPostQuantumToggled" />
-                                </Grid>
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <!-- Block ads and trackers: the device applies and persists it -->
-                                <Grid ColumnSpacing="12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <FontIcon Glyph="&#xEA39;" Style="{StaticResource UrRowIconStyle}" />
-                                    <TextBlock x:Name="BlockerLabel" Grid.Column="1" FontSize="14"
-                                               TextWrapping="Wrap" VerticalAlignment="Center" />
-                                    <ToggleSwitch x:Name="BlockerToggle" Grid.Column="2"
-                                                  Style="{StaticResource UrSwitchToggleStyle}"
-                                                  AutomationProperties.LabeledBy="{Binding ElementName=BlockerLabel}"
-                                                  Toggled="OnBlockerToggled" />
-                                </Grid>
+                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="44" Padding="8,4">
+                                    <muxc:SelectorBar x:Name="ConnectionModeBar"
+                                                      VerticalAlignment="Center"
+                                                      SelectionChanged="OnConnectionModeChanged">
+                                        <muxc:SelectorBarItem x:Name="ModeAutoItem" />
+                                        <muxc:SelectorBarItem x:Name="ModeWebItem" />
+                                        <muxc:SelectorBarItem x:Name="ModeStreamingItem" />
+                                    </muxc:SelectorBar>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}">
+                                    <Grid ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon Glyph="&#xE71B;" FontSize="14"
+                                                  Style="{StaticResource UrRowIconStyle}" />
+                                        <TextBlock x:Name="FixedIpLabel" Grid.Column="1"
+                                                   Style="{StaticResource UrRowTitleStyle}" />
+                                        <ToggleSwitch x:Name="FixedIpToggle" Grid.Column="2" Width="44"
+                                                      Style="{StaticResource UrSwitchToggleStyle}"
+                                                      AutomationProperties.LabeledBy="{Binding ElementName=FixedIpLabel}"
+                                                      Toggled="OnFixedIpToggled" />
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}">
+                                    <Grid ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon Glyph="&#xEA18;" FontSize="14"
+                                                  Style="{StaticResource UrRowIconStyle}" />
+                                        <TextBlock x:Name="StrongAnonLabel" Grid.Column="1"
+                                                   Style="{StaticResource UrRowTitleStyle}" />
+                                        <ToggleSwitch x:Name="StrongAnonToggle" Grid.Column="2" Width="44"
+                                                      Style="{StaticResource UrSwitchToggleStyle}"
+                                                      AutomationProperties.LabeledBy="{Binding ElementName=StrongAnonLabel}"
+                                                      Toggled="OnStrongAnonToggled" />
+                                    </Grid>
+                                </Border>
+                                <!-- Post quantum: opportunistic e2e; providers without
+                                     support fall back to plaintext at this layer -->
+                                <Border Style="{StaticResource UrPaneRowStyle}">
+                                    <Grid ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon Glyph="&#xE72E;" FontSize="14"
+                                                  Style="{StaticResource UrRowIconStyle}" />
+                                        <TextBlock x:Name="PostQuantumLabel" Grid.Column="1"
+                                                   Style="{StaticResource UrRowTitleStyle}" />
+                                        <ToggleSwitch x:Name="PostQuantumToggle" Grid.Column="2" Width="44"
+                                                      Style="{StaticResource UrSwitchToggleStyle}"
+                                                      AutomationProperties.LabeledBy="{Binding ElementName=PostQuantumLabel}"
+                                                      Toggled="OnPostQuantumToggled" />
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}">
+                                    <Grid ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon Glyph="&#xEA39;" FontSize="14"
+                                                  Style="{StaticResource UrRowIconStyle}" />
+                                        <TextBlock x:Name="BlockerLabel" Grid.Column="1"
+                                                   Style="{StaticResource UrRowTitleStyle}" />
+                                        <ToggleSwitch x:Name="BlockerToggle" Grid.Column="2" Width="44"
+                                                      Style="{StaticResource UrSwitchToggleStyle}"
+                                                      AutomationProperties.LabeledBy="{Binding ElementName=BlockerLabel}"
+                                                      Toggled="OnBlockerToggled" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- network peers ................................. -->
+                                <!-- The pane's LIST. Everything above it is a fixed
+                                     block of controls, which is what left the connect
+                                     column ending two thirds of the way down a
+                                     maximized window; the peers are the one feed that
+                                     belongs to this pane and can fill it. Same row
+                                     species as the activity table. -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <Grid>
+                                        <TextBlock x:Name="PeersGroupLabel"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                        <TextBlock x:Name="PeersGroupCount" HorizontalAlignment="Right"
+                                                   Style="{StaticResource UrPaneMetaStyle}" />
+                                    </Grid>
+                                </Border>
+                                <StackPanel x:Name="PeersHost" />
                             </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <Border x:Name="ConnectPaneBRule" Grid.Column="1"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE B: ACTIVITY ============ -->
+                    <Grid Grid.Column="2" x:Name="ConnectPaneB">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="PaneBTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                                <!-- the live down/up rates: the pane's own figure, in its
+                                     own header, rather than a line inside a card -->
+                                <TextBlock x:Name="ThroughputText" Grid.Column="1"
+                                           HorizontalAlignment="Right"
+                                           Style="{StaticResource UrPaneMetaStyle}" />
+                            </Grid>
                         </Border>
-
-                        <!-- The plan + usage card that used to be the rail's
-                             third module is GONE from Home (spec §5: compact
-                             usage in the nav footer or the Account flyout, the
-                             full plan on Account, a quota InfoBar here only near
-                             the threshold). It was the longest module in the
-                             rail and the reason the rail out-ran the main column
-                             by ~300px; the same card, with the same bindings,
-                             is on Account. Nothing was deleted twice: the
-                             balance snapshot still paints AccountPlan* from
-                             MainWindow::ApplyBalance. -->
-                    </StackPanel>
-
-                    <!-- THE STATUS COLUMN. Charts and the dns summary: what the
-                         connection is DOING, as opposed to what it has been
-                         told to do. Directly under the hero card at narrow and
-                         wide - one section gap, no row, no anchor - and its own
-                         column at ultra, where there is room for the hero and
-                         the activity to sit side by side instead of the page
-                         ending a third of the way across the window. -->
-                    <StackPanel x:Name="ConnectStatusStack" Spacing="16">
-
-                        <!-- R1: COMPACT SESSION EMPTY STATE. While disconnected - the
-                             state the app opens in - the two big chart cards below were
-                             a screenful of zero-value graphs (the spec's oversized
-                             zero-data cards). This one small card replaces them until
-                             there is a session to chart; ConnectPage toggles it against
-                             the two cards on the connected signal. -->
-                        <Border x:Name="SessionEmptyCard" Style="{StaticResource UrCardStyle}"
-                                Visibility="Collapsed">
-                            <StackPanel Spacing="8" HorizontalAlignment="Center"
-                                        Padding="8,16">
+                        <!-- the chart runs the FULL WIDTH of the pane, edge to edge -->
+                        <Border Grid.Row="1" BorderBrush="{StaticResource UrBorderBrush}"
+                                BorderThickness="0,0,0,1" Padding="12,0">
+                            <Grid x:Name="RemoteChartHost" Height="150" />
+                        </Border>
+                        <Border Grid.Row="2" Style="{StaticResource UrGroupHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="ConnectionsLabel"
+                                           Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                <TextBlock x:Name="ConnectionsCount" HorizontalAlignment="Right"
+                                           Style="{StaticResource UrPaneMetaStyle}" />
+                            </Grid>
+                        </Border>
+                        <!-- The list FILLS the rest of the pane. Its empty state is a
+                             centred line in that same full-height area, never a short
+                             card floating in space. -->
+                        <Grid Grid.Row="3">
+                            <ScrollViewer x:Name="ConnectionsScroll"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                                <StackPanel x:Name="ConnectionsHost" />
+                            </ScrollViewer>
+                            <StackPanel x:Name="SessionEmptyCard" Spacing="8"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        IsHitTestVisible="False">
                                 <FontIcon Glyph="&#xE9D2;" Style="{StaticResource UrEmptyGlyphStyle}" />
                                 <TextBlock x:Name="SessionEmptyText" TextAlignment="Center"
                                            Style="{StaticResource UrSupportingTextStyle}" />
                             </StackPanel>
+                        </Grid>
+                    </Grid>
+
+                    <Border x:Name="ConnectPaneCRule" Grid.Column="3"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE C: STATISTICS / INSPECTOR ============ -->
+                    <Grid Grid.Column="4" x:Name="ConnectPaneC">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="PaneCTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
                         </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- two charts, the SAME height, full width of the pane -->
+                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,0">
+                                    <Grid x:Name="BlockedChartHost" Height="132" />
+                                </Border>
+                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,0">
+                                    <Grid x:Name="LocalChartHost" Height="132" />
+                                </Border>
 
-                        <!-- Card 1: client statistics (remote + blocked charts) -->
-                        <Button x:Name="ClientStatsCard" Style="{StaticResource UrCardButtonStyle}"
-                                Click="OnClientStatsCardClick">
-                            <StackPanel Spacing="12">
-                                <Grid>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon Glyph="&#xE9D2;" Style="{StaticResource UrRowIconStyle}"
-                                                  FontSize="14" />
-                                        <TextBlock x:Name="ClientStatsLabel" FontSize="12"
-                                                   VerticalAlignment="Center"
-                                                   AutomationProperties.AccessibilityView="Raw"
-                                                   Foreground="{StaticResource UrTextMutedBrush}" />
-                                    </StackPanel>
-                                    <FontIcon Glyph="&#xE76C;" FontSize="12"
-                                              HorizontalAlignment="Right"
-                                              Foreground="{StaticResource UrTextFaintBrush}" />
-                                </Grid>
-                                <Grid x:Name="RemoteChartHost" Height="128" />
-                                <Grid x:Name="BlockedChartHost" Height="128" />
-                            </StackPanel>
-                        </Button>
+                                <!-- session figures ............................... -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <TextBlock x:Name="DataUsageLabel"
+                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                </Border>
+                                <StackPanel x:Name="LiveStatsGroup" Visibility="Collapsed">
+                                    <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                        <TextBlock x:Name="ProviderCountText"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                    </Border>
+                                </StackPanel>
+                                <!-- the key/value rows are built into this host by
+                                     ConnectPage::ApplySessionRows, on one grid rhythm -->
+                                <StackPanel x:Name="SessionRowsHost" />
 
-                        <!-- Card 2: local statistics (local chart + split rules) -->
-                        <Button x:Name="LocalStatsCard" Style="{StaticResource UrCardButtonStyle}"
-                                Click="OnLocalStatsCardClick">
-                            <StackPanel Spacing="12">
-                                <Grid>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon Glyph="&#xE7F4;" Style="{StaticResource UrRowIconStyle}"
-                                                  FontSize="14" />
-                                        <TextBlock x:Name="LocalStatsLabel" FontSize="12"
-                                                   VerticalAlignment="Center"
-                                                   AutomationProperties.AccessibilityView="Raw"
-                                                   Foreground="{StaticResource UrTextMutedBrush}" />
-                                    </StackPanel>
-                                    <FontIcon Glyph="&#xE76C;" FontSize="12"
-                                              HorizontalAlignment="Right"
-                                              Foreground="{StaticResource UrTextFaintBrush}" />
-                                </Grid>
-                                <Grid x:Name="LocalChartHost" Height="128" />
-                                <TextBlock x:Name="SplitRuleCountText" FontSize="12" />
-                            </StackPanel>
-                        </Button>
+                                <!-- contracts ..................................... -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="ClientStatsLabel"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                        <!-- was a whole card; it is now the group's action.
+                                             Opens the same live-contracts sheet. -->
+                                        <Button x:Name="ClientStatsCard" Grid.Column="1"
+                                                Style="{StaticResource UrPaneActionButtonStyle}"
+                                                Click="OnClientStatsCardClick">
+                                            <FontIcon Glyph="&#xE8A7;" FontSize="12"
+                                                      Style="{StaticResource UrRowIconStyle}" />
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                                <StackPanel x:Name="ContractsHost" />
 
-                        <!-- Card 3: custom dns summary -->
-                        <Button x:Name="DnsCard" Style="{StaticResource UrCardButtonStyle}"
-                                Click="OnDnsCardClick">
-                            <StackPanel Spacing="8">
-                                <Grid Margin="0,0,0,4">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon Glyph="&#xE774;" Style="{StaticResource UrRowIconStyle}"
-                                                  FontSize="14" />
-                                        <TextBlock x:Name="DnsCardLabel" FontSize="12"
-                                                   VerticalAlignment="Center"
-                                                   AutomationProperties.AccessibilityView="Raw"
-                                                   Foreground="{StaticResource UrTextMutedBrush}" />
-                                    </StackPanel>
-                                    <FontIcon Glyph="&#xE76C;" FontSize="12"
-                                              HorizontalAlignment="Right"
-                                              Foreground="{StaticResource UrTextFaintBrush}" />
-                                </Grid>
+                                <!-- split rules ................................... -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="LocalStatsLabel"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                        <TextBlock x:Name="SplitRuleCountText" Grid.Column="1"
+                                                   Style="{StaticResource UrPaneMetaStyle}" />
+                                        <Button x:Name="LocalStatsCard" Grid.Column="2"
+                                                Style="{StaticResource UrPaneActionButtonStyle}"
+                                                Click="OnLocalStatsCardClick">
+                                            <FontIcon Glyph="&#xE8A7;" FontSize="12"
+                                                      Style="{StaticResource UrRowIconStyle}" />
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                                <StackPanel x:Name="SplitRulesHost" />
+
+                                <!-- custom dns .................................... -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="DnsCardLabel"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                        <Button x:Name="DnsCard" Grid.Column="1"
+                                                Style="{StaticResource UrPaneActionButtonStyle}"
+                                                Click="OnDnsCardClick">
+                                            <FontIcon Glyph="&#xE70F;" FontSize="12"
+                                                      Style="{StaticResource UrRowIconStyle}" />
+                                        </Button>
+                                    </Grid>
+                                </Border>
                                 <!-- unapplied-recommendation pill (iOS DnsRecommendationPill
-                                     parity): shown above the status rows when the applied dns
-                                     settings differ from the connected country's regional
-                                     recommendation (with a country-color dot) or, failing that,
-                                     the safe defaults (no dot); collapsed when they already
-                                     match. Driven by MainWindow::ApplyDnsRecommendationPill. -->
+                                     parity), as a row rather than a floating chip -->
                                 <Border x:Name="DnsRecPill" Visibility="Collapsed"
-                                        Background="{StaticResource UrCoralSubtleBrush}"
-                                        CornerRadius="9" Padding="10,5,10,5"
-                                        HorizontalAlignment="Left">
+                                        Style="{StaticResource UrPaneRowStyle}" MinHeight="34"
+                                        Background="{StaticResource UrCoralSubtleBrush}">
                                     <StackPanel Orientation="Horizontal" Spacing="6"
                                                 VerticalAlignment="Center">
-                                        <Ellipse x:Name="DnsRecDot" Width="8" Height="8"
+                                        <Ellipse x:Name="DnsRecDot" Width="7" Height="7"
                                                  VerticalAlignment="Center"
                                                  Visibility="Collapsed" />
-                                        <TextBlock x:Name="DnsRecText" FontSize="11"
-                                                   FontWeight="Medium" TextWrapping="Wrap"
+                                        <TextBlock x:Name="DnsRecText" FontSize="12"
+                                                   TextTrimming="CharacterEllipsis"
                                                    VerticalAlignment="Center"
                                                    Foreground="{StaticResource UrTextBrush}" />
                                     </StackPanel>
                                 </Border>
-                                <StackPanel x:Name="DnsRowsPanel" Spacing="8">
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Ellipse x:Name="DohDot" Width="6" Height="6"
-                                                 VerticalAlignment="Center" />
-                                        <TextBlock x:Name="DohLabel" Grid.Column="1" FontSize="14" />
-                                        <TextBlock x:Name="DohState" Grid.Column="2" FontSize="12" />
-                                    </Grid>
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Ellipse x:Name="UdnsDot" Width="6" Height="6"
-                                                 VerticalAlignment="Center" />
-                                        <TextBlock x:Name="UdnsLabel" Grid.Column="1" FontSize="14" />
-                                        <TextBlock x:Name="UdnsState" Grid.Column="2" FontSize="12" />
-                                    </Grid>
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Ellipse x:Name="LdnsDot" Width="6" Height="6"
-                                                 VerticalAlignment="Center" />
-                                        <TextBlock x:Name="LdnsLabel" Grid.Column="1" FontSize="14" />
-                                        <TextBlock x:Name="LdnsState" Grid.Column="2" FontSize="12" />
-                                    </Grid>
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Ellipse x:Name="FallbackDot" Width="6" Height="6"
-                                                 VerticalAlignment="Center" />
-                                        <TextBlock x:Name="FallbackLabel" Grid.Column="1" FontSize="14" />
-                                        <TextBlock x:Name="FallbackState" Grid.Column="2" FontSize="12" />
-                                    </Grid>
+                                <StackPanel x:Name="DnsRowsPanel">
+                                    <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse x:Name="DohDot" Width="6" Height="6"
+                                                     VerticalAlignment="Center" />
+                                            <TextBlock x:Name="DohLabel" Grid.Column="1"
+                                                       Style="{StaticResource UrKeyTextStyle}" />
+                                            <TextBlock x:Name="DohState" Grid.Column="2"
+                                                       Style="{StaticResource UrValueTextStyle}"
+                                                       FontSize="12" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse x:Name="UdnsDot" Width="6" Height="6"
+                                                     VerticalAlignment="Center" />
+                                            <TextBlock x:Name="UdnsLabel" Grid.Column="1"
+                                                       Style="{StaticResource UrKeyTextStyle}" />
+                                            <TextBlock x:Name="UdnsState" Grid.Column="2"
+                                                       Style="{StaticResource UrValueTextStyle}"
+                                                       FontSize="12" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse x:Name="LdnsDot" Width="6" Height="6"
+                                                     VerticalAlignment="Center" />
+                                            <TextBlock x:Name="LdnsLabel" Grid.Column="1"
+                                                       Style="{StaticResource UrKeyTextStyle}" />
+                                            <TextBlock x:Name="LdnsState" Grid.Column="2"
+                                                       Style="{StaticResource UrValueTextStyle}"
+                                                       FontSize="12" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse x:Name="FallbackDot" Width="6" Height="6"
+                                                     VerticalAlignment="Center" />
+                                            <TextBlock x:Name="FallbackLabel" Grid.Column="1"
+                                                       Style="{StaticResource UrKeyTextStyle}" />
+                                            <TextBlock x:Name="FallbackState" Grid.Column="2"
+                                                       Style="{StaticResource UrValueTextStyle}"
+                                                       FontSize="12" />
+                                        </Grid>
+                                    </Border>
                                 </StackPanel>
-                                <TextBlock x:Name="DnsUnavailableText" FontSize="12"
-                                           Visibility="Collapsed"
-                                           Foreground="{StaticResource UrTextFaintBrush}" />
+                                <Border x:Name="DnsUnavailableRow" Visibility="Collapsed"
+                                        Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                    <TextBlock x:Name="DnsUnavailableText"
+                                               Style="{StaticResource UrKeyTextStyle}"
+                                               Foreground="{StaticResource UrTextFaintBrush}" />
+                                </Border>
                             </StackPanel>
-                        </Button>
-
-                    </StackPanel>
-                    </StackPanel>
-
-                    <!-- The two side columns are EMPTY in markup. They are
-                         parked, top-aligned hosts that ApplyBreakpoint moves
-                         ConnectStatusStack and ConnectRail into; at narrow they
-                         are zero-width and hold nothing, so the narrow layout
-                         costs nothing to read. -->
-                    <StackPanel x:Name="ConnectDetailHost" Grid.Column="1"
-                                VerticalAlignment="Top" Margin="24,0,0,24" />
-                    <StackPanel x:Name="ConnectRailHost" Grid.Column="2"
-                                VerticalAlignment="Top" Margin="24,0,0,24" />
+                        </ScrollViewer>
                     </Grid>
-
-                  </Grid>
-                </ScrollViewer>
+                </Grid>
 
                 <!-- Network (R1 skeleton). A first-class destination for the
                      locations/providers picker that is a drawer/sheet today. This
@@ -1232,7 +1240,7 @@
                      OnLocationRowClick) - so the destination is real and runnable;
                      Wave 2 rebuilds the in-page location list, search, favourites
                      and blocked locations against the component kit. -->
-                <ScrollViewer x:Name="NetworkView" Visibility="Collapsed"
+                <ScrollViewer Margin="24" x:Name="NetworkView" Visibility="Collapsed"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                   <Grid>
@@ -1280,7 +1288,7 @@
 
                 <!-- Account (macOS AccountRootView parity: plan card + usage bar,
                      redeem, redeemed codes, profile, referrals) -->
-                <ScrollViewer x:Name="AccountView" Visibility="Collapsed">
+                <ScrollViewer Margin="24" x:Name="AccountView" Visibility="Collapsed">
                   <!-- capped star column, not MaxWidth on the panel: see ConnectView -->
                   <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
                        middle one. The middle star is greedy enough to always
@@ -1467,7 +1475,7 @@
                      A star column capped by MaxWidth has no such split: the Grid
                      fills the viewport, the column takes min(820, viewport) at
                      x=0, and the content stretches inside it at every width. -->
-                <ScrollViewer x:Name="WalletView" Visibility="Collapsed">
+                <ScrollViewer Margin="24" x:Name="WalletView" Visibility="Collapsed">
                   <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
                        middle one. The middle star is greedy enough to always
                        reach its MaxWidth when the window has the room, and the
@@ -1719,7 +1727,7 @@
                      itself the whole column arranged off the right edge above
                      ~1100px, taking the per-row net-provided figures - the point
                      of a leaderboard - and half the switch with it. -->
-                <ScrollViewer x:Name="LeaderboardView" Visibility="Collapsed">
+                <ScrollViewer Margin="24" x:Name="LeaderboardView" Visibility="Collapsed">
                   <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
                        middle one. The middle star is greedy enough to always
                        reach its MaxWidth when the window has the room, and the
@@ -1855,7 +1863,7 @@
                      glyphed header, an intro line and rules between the three
                      steps (rate, write, send), which is the shape Settings
                      already uses and the shape that reads best in the app. -->
-                <ScrollViewer x:Name="SupportView" Visibility="Collapsed">
+                <ScrollViewer Margin="24" x:Name="SupportView" Visibility="Collapsed">
                   <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
                        middle one. The middle star is greedy enough to always
                        reach its MaxWidth when the window has the room, and the
@@ -1973,7 +1981,7 @@
                 </ScrollViewer>
 
                 <!-- Settings -->
-                <ScrollViewer x:Name="SettingsView" Visibility="Collapsed">
+                <ScrollViewer Margin="24" x:Name="SettingsView" Visibility="Collapsed">
                   <!-- capped star column, not MaxWidth on the panel: see ConnectView -->
                   <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
                        middle one. The middle star is greedy enough to always
@@ -2083,7 +2091,7 @@
                      columns and Destinations three; both take the full width of
                      the composition at every size, and both will grow id / raw
                      columns under Advanced Mode. -->
-                <ScrollViewer x:Name="DeveloperView" Visibility="Collapsed"
+                <ScrollViewer Margin="24" x:Name="DeveloperView" Visibility="Collapsed"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                   <Grid x:Name="DeveloperLayout">
