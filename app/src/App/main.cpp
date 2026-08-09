@@ -20,6 +20,7 @@
 #include "pch.h"
 
 #include <objbase.h>  // CoWaitForMultipleObjects
+#include <shellapi.h>  // CommandLineToArgvW (IsRelaunchHandoff)
 #include <shobjidl_core.h>
 
 #include <atomic>
@@ -131,6 +132,21 @@ bool RedirectActivation(AppInstance const& primary, AppActivationArguments const
   return false;
 }
 
+// Was this process spawned by the update relaunch (AppController::RelaunchOnto,
+// beta spec §5)? Same argv scan as Startup.cpp's WantsDiagnose. The flag never
+// GRANTS anything — it only buys the bounded key retry below, so a user typing
+// it by hand merely waits a few seconds longer before redirecting.
+bool IsRelaunchHandoff() {
+  int argc = 0;
+  wchar_t** argv = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
+  if (!argv) return false;
+  bool relaunched = false;
+  for (int i = 1; i < argc && !relaunched; ++i)
+    relaunched = std::wstring_view(argv[i]) == L"--relaunched";
+  ::LocalFree(argv);
+  return relaunched;
+}
+
 // Is another instance holding the single-instance key? Answered WITHOUT
 // registering anything: a --diagnose run must not briefly become the app's
 // primary instance and have a real launch redirected to it.
@@ -224,6 +240,32 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
   }
   urnw::LogInfo("startup: single instance: this process {}",
                 isPrimary ? "owns the key" : "is a second launch");
+
+  // The update relaunch (spec §5): the old instance unregisters its key,
+  // spawns this process, then tears itself down — so finding the key still
+  // held here is a RACE against a process that is already exiting, not a
+  // second launch. Retry the registration, bounded, instead of redirecting an
+  // activation into a teardown: the old instance is past pumping messages, so
+  // that redirect could only time out after 15s and show an error for a
+  // situation that resolves itself in under a second. If the key never frees
+  // (the old instance is genuinely wedged), fall through to the ordinary
+  // redirect path and its honest failure box.
+  if (!isPrimary && IsRelaunchHandoff()) {
+    urnw::LogInfo("startup: relaunch handoff — waiting for the old instance to release the key");
+    for (int attempt = 0; attempt < 40 && !isPrimary; ++attempt) {
+      ::Sleep(250);
+      try {
+        primary = AppInstance::FindOrRegisterForKey(kInstanceKey);
+        isPrimary = primary.IsCurrent();
+      } catch (winrt::hresult_error const& e) {
+        urnw::LogError("startup: relaunch key retry failed: {}",
+                       urnw::Narrow(HresultDetail(e)));
+        break;
+      }
+    }
+    urnw::LogInfo("startup: relaunch handoff {}",
+                  isPrimary ? "took the key" : "timed out — redirecting");
+  }
 
   // The first launch owns the key; every later launch redirects its activation
   // (a urnetwork:// wallet callback, or a plain relaunch) to it and exits.

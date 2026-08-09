@@ -24,14 +24,17 @@ namespace urnw {
 
 class SdkHost;
 class SubscriptionBalanceStore;
+class UpdateChecker;
 
 namespace pages {
 
-// The process-wide SDK host and balance store, through AppController. Declared
-// here and defined in PageContext.cpp so this header does not have to pull in
-// AppController.h (which reaches TrayIcon and the whole SDK surface).
+// The process-wide SDK host, balance store and update checker, through
+// AppController. Declared here and defined in PageContext.cpp so this header
+// does not have to pull in AppController.h (which reaches TrayIcon and the
+// whole SDK surface).
 SdkHost& Sdk();
 SubscriptionBalanceStore& Balance();
+UpdateChecker& Updates();
 
 inline winrt::hstring H(std::string const& s) { return winrt::to_hstring(s); }
 
@@ -69,10 +72,11 @@ inline winrt::Windows::Foundation::IInspectable LocBox(std::string_view key) {
 // Every id introduced this way is reported for the store, and the list extracts
 // mechanically rather than living in a doc that would go stale on the next row:
 //
-//     grep -ohE '"(dev|adv|svc)_[a-z0-9_]+"' app/src/App/*.cpp | sort -u
+//     grep -ohE '"(dev|adv|svc|upd)_[a-z0-9_]+"' app/src/App/*.cpp | sort -u
 //
 // (svc_ is the service-manager surface — the setup/start/update banner and the
-// uninstall row — added with the beta distribution work, same rules.)
+// uninstall row — and upd_ is the update checker's banner and Settings toggle;
+// both added with the beta distribution work, same rules.)
 //
 // Do NOT use this for a key that DOES exist — that hides a working translation
 // behind an English default. And do not put a bare literal in the UI instead.

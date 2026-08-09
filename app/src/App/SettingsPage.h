@@ -175,6 +175,10 @@ class SettingsPage {
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch productUpdates_{nullptr};
   // why the toggle above is disabled, when it is (S4)
   winrt::Microsoft::UI::Xaml::Controls::TextBlock productUpdatesState_{nullptr};
+  // "Check for updates automatically" (beta spec §5). No applying_ guard like
+  // its neighbours: nothing ever writes IsOn back — the pref has one writer
+  // (this toggle) and one reader path (the checker), so there is no echo.
+  winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch autoUpdateCheck_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button manageSubscription_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock versionValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button deleteAccountButton_{nullptr};

@@ -15,6 +15,7 @@
 #include "SdkHost.h"
 #include "SubscriptionBalance.h"
 #include "TrayIcon.h"
+#include "UpdateChecker.h"
 
 namespace winrt::URnetwork::implementation {
 struct MainWindow;
@@ -34,6 +35,10 @@ class AppController {
   SdkHost& sdk() { return sdk_; }
   // The subscription balance / plan store (fetch + polling; Phase 1 keystone).
   SubscriptionBalanceStore& balance() { return balance_; }
+  // The update checker (beta spec §5). Owned here, not by the window: checks
+  // run on launch and every 6 hours whether or not the tray was ever clicked,
+  // and the window that renders the banner may not exist yet.
+  UpdateChecker& updates() { return updates_; }
 
   // Route a urnetwork:// URI (the wallet-connect callback) into the SdkHost and
   // bring the app forward so the sign-in result is visible. UI thread only.
@@ -48,6 +53,10 @@ class AppController {
 
  private:
   void ShowWindowImpl(const POINT* anchor);
+  // A fully swapped update wants this instance replaced: release the
+  // single-instance key, start the NEW exe (now sitting at our own path) with
+  // the handoff flag, and quit. UI thread only — it reuses the tray-quit path.
+  void RelaunchOnto(std::filesystem::path const& exe);
   // AppWindow.Changed relay: notices a move or resize the user made.
   void OnWindowPlacementChanged();
   // Record the rect we just applied ourselves, so the relay can ignore it.
@@ -62,6 +71,7 @@ class AppController {
 
   SdkHost sdk_;
   SubscriptionBalanceStore balance_{sdk_};
+  UpdateChecker updates_;
   TrayIcon tray_;
   winrt::Microsoft::UI::Dispatching::DispatcherQueue uiThread_{nullptr};
   winrt::Microsoft::UI::Xaml::Window window_{nullptr};

@@ -158,6 +158,36 @@ MainWindow::MainWindow() {
     });
     ServiceSetupBar().ActionButton(setup);
   }
+  // The update banner's one click (beta spec §5). The checker itself lives on
+  // AppController — it must run with this window closed — so the wiring here is
+  // bind-then-replay, the standing-value contract SdkHost::CurrentAdvancedMode
+  // spells out: this window is built on the FIRST TRAY CLICK, which can be
+  // minutes after the launch check already found an update, and a handler bound
+  // now with no replay would leave the banner blank until the 6-hour tick.
+  {
+    Button update;
+    update.Click([weak = get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) self->OnUpdateBannerAction();
+    });
+    UpdateBar().ActionButton(update);
+
+    auto queue = DispatcherQueue();
+    urnw::pages::Updates().SetHandler(
+        [weak = get_weak(), queue](urnw::UpdateChecker::Snapshot const& snap) {
+          // The checker publishes from its worker thread; marshal with the
+          // payload by value, weak ref resolved on the UI thread — the same
+          // shape as every SDK feed in this constructor.
+          queue.TryEnqueue([weak, snap] {
+            if (auto self = weak.get()) {
+              self->updateSnapshot_ = snap;
+              self->ApplyUpdateChecker();
+            }
+          });
+        });
+    updateSnapshot_ = urnw::pages::Updates().Current();
+    ApplyUpdateChecker();
+  }
+
   // The banner heals itself: coming back to the window (from the UAC prompt,
   // from an elevated terminal where the service was just installed by hand,
   // from anywhere) re-reads the SCM instead of trusting a stale classification.
@@ -1253,6 +1283,35 @@ winrt::fire_and_forget MainWindow::BeginServiceSetupAction() {
     self->serviceSetup_ = {std::move(observation), false, notice};
     self->ApplyServiceSetup();
   });
+}
+
+// ---- the update checker (beta spec §5) --------------------------------------
+
+void MainWindow::ApplyUpdateChecker() {
+  // Same guard as ApplyServiceSetup: the replay runs in the ctor, and in
+  // principle before the pages exist.
+  if (connect_) connect_->ApplyUpdateChecker(updateSnapshot_);
+  if (developer_) developer_->ApplyUpdateCheck(updateSnapshot_);
+}
+
+void MainWindow::OnUpdateBannerAction() {
+  using Phase = urnw::UpdateChecker::Phase;
+  switch (updateSnapshot_.phase) {
+    case Phase::Available:
+    case Phase::Failed:
+      // Download / verify / extract / swap, or retry it from scratch — the
+      // checker re-runs the whole pipeline rather than resuming a half state.
+      urnw::pages::Updates().BeginApply();
+      break;
+    case Phase::ManualUnzip:
+      // The zip is already downloaded and verified; the only help left to
+      // offer is showing it again.
+      if (!updateSnapshot_.zipPath.empty())
+        urnw::UpdateChecker::RevealInExplorer(updateSnapshot_.zipPath);
+      break;
+    default:
+      break;  // Applying: the button is disabled; None: no banner to click
+  }
 }
 
 winrt::fire_and_forget MainWindow::BeginServiceUninstall() {

@@ -53,6 +53,7 @@
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
 #include "SdkHost.h"
+#include "UpdateChecker.h"
 
 namespace winrt::URnetwork::implementation {
 struct MainWindow;
@@ -131,6 +132,15 @@ class DeveloperPage {
   void OnBoolToggled(size_t index);
   void OnNumChanged(size_t index);
   void SetLastAction(std::wstring const& text);
+
+  // ---- the update checker (beta spec §5) -------------------------------------
+  // The "Check for updates now" action's report line. Pushed by MainWindow's
+  // fan-out (already on the UI thread) whenever the checker publishes, and
+  // replayed at the end of Build() — the outcome of a check that ran before
+  // this screen was ever opened must not be lost. This surface exists because
+  // it is the ONE way to exercise the check path on a dev build, where the
+  // periodic checker is disabled outright (kCode == 0).
+  void ApplyUpdateCheck(UpdateChecker::Snapshot const& snap);
 
  private:
   using ToggleSwitch = winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch;
@@ -266,6 +276,10 @@ class DeveloperPage {
   // shape the other six destinations use (D4).
   TextBlock connectHint_{nullptr};
   TextBlock lastAction_{nullptr};
+  // The update check's report line (see ApplyUpdateCheck). Its button needs no
+  // member: it is never gated — the check is an unauthenticated HTTP GET that
+  // works with no session and no device.
+  TextBlock updateCheckText_{nullptr};
   // The two intro-card actions that touch the device. Held because they are the
   // only action buttons OUTSIDE liveCards_, so they cannot be hidden wholesale
   // and are enabled/disabled instead.

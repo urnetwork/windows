@@ -134,6 +134,15 @@ void AppController::Start() {
     });
   }
 
+  // The update checker (beta spec §5): its worker owns the launch-delay check
+  // and the 6h cadence; a successful swap comes back through this handler.
+  // Marshalled onto the UI thread because the handoff reuses the tray-quit
+  // teardown, which is UI-thread machinery end to end.
+  updates_.SetRelaunchHandler([this](std::filesystem::path exe) {
+    OnUi([this, exe = std::move(exe)] { RelaunchOnto(exe); });
+  });
+  updates_.Start();
+
   LogInfo("app: initializing the sdk host");
   if (!sdk_.Initialize()) {
     // The tray icon is up by now, so from outside the app looks fine: an icon,
@@ -153,12 +162,54 @@ void AppController::Start() {
 
 void AppController::Shutdown() {
   LogInfo("app: shutdown requested (tray quit)");
+  // First, and joined: the checker's worker is the one thread here that does
+  // long blocking I/O (a zip download), and it polls its stop flag between
+  // reads, so this is bounded — see UpdateChecker::Stop.
+  updates_.Stop();
   // ...and quitting is the other
   if (shell::SaveWindowPlacement(windowHwnd_)) ownPlacement_ = true;
   quitting_ = true;  // let the window's Closing handler close instead of hiding
   tray_.Destroy();
   if (window_) window_.Close();
   if (auto app = Application::Current()) app.Exit();
+}
+
+// The relaunch half of a swapped update. Order is load-bearing:
+//
+//   1. UnregisterKey FIRST, so the key is free before the new process exists.
+//      Without this the new launch finds this (dying) instance holding the
+//      key and redirects its activation into a teardown.
+//   2. Spawn the new exe with --relaunched: its bounded key retry (main.cpp)
+//      covers the case where the unregister failed or this process is slow to
+//      die — tolerance, not the mechanism.
+//   3. Quit through the ordinary tray-quit path, so placement is saved and
+//      the SDK host tears down exactly as it does every day.
+//
+// A spawn failure does NOT quit: the swap is already complete on disk, so the
+// worst outcome of staying alive is running the old image until the user
+// restarts by hand — strictly better than exiting to nothing.
+void AppController::RelaunchOnto(std::filesystem::path const& exe) {
+  LogInfo("update: relaunching onto {}", Narrow(exe.wstring()));
+  try {
+    winrt::Microsoft::Windows::AppLifecycle::AppInstance::GetCurrent().UnregisterKey();
+  } catch (winrt::hresult_error const& e) {
+    LogWarn("update: UnregisterKey failed ({}); the new instance will retry",
+            Narrow(std::wstring{e.message()}));
+  }
+  std::wstring cmd = L"\"" + exe.wstring() + L"\" --relaunched";
+  STARTUPINFOW si{};
+  si.cb = sizeof(si);
+  PROCESS_INFORMATION pi{};
+  if (::CreateProcessW(exe.c_str(), cmd.data(), nullptr, nullptr, FALSE, 0,
+                       nullptr, nullptr, &si, &pi)) {
+    ::CloseHandle(pi.hThread);
+    ::CloseHandle(pi.hProcess);
+    Shutdown();
+  } else {
+    LogError("update: relaunch CreateProcess failed: {} — the update takes "
+             "effect on the next manual start",
+             ::GetLastError());
+  }
 }
 
 void AppController::OnAuthState(AuthState state, const std::string& error) {

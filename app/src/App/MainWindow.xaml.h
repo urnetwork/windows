@@ -23,6 +23,7 @@
 #include "ServiceSetup.h"
 #include "SettingsPage.h"
 #include "SubscriptionBalance.h"
+#include "UpdateChecker.h"
 #include "UrComponents.h"
 #include "UsageBar.h"
 #include "WalletPage.h"
@@ -329,6 +330,16 @@ struct MainWindow : MainWindowT<MainWindow> {
   winrt::fire_and_forget RefreshServiceSetup();
   winrt::fire_and_forget BeginServiceSetupAction();  // the banner's one click
 
+  // ---- the update checker (beta spec §5) ----
+  // Same one-snapshot shape as the service manager above, but the AUTHORITY
+  // lives in AppController's UpdateChecker (checks run with the window closed —
+  // this window does not even exist until the first tray click). The ctor
+  // binds the checker's handler, then REPLAYS Current(), the standing-value
+  // contract SdkHost::CurrentAdvancedMode documents; this member is only the
+  // UI-thread copy the render reads.
+  void ApplyUpdateChecker();  // fan the snapshot out to the pages
+  void OnUpdateBannerAction();  // Update / retry, or re-reveal the manual zip
+
   std::unique_ptr<urnw::LoginPage> login_;
   std::unique_ptr<urnw::ConnectPage> connect_;
   std::unique_ptr<urnw::NetworkPage> network_;
@@ -354,6 +365,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   // a Classify is already on a worker; window activation fires refreshes on
   // every focus change, and one truth-teller at a time is plenty
   bool serviceProbeInFlight_ = false;
+
+  // ---- update checker state (UI thread only; see ApplyUpdateChecker) ----
+  urnw::UpdateChecker::Snapshot updateSnapshot_;
 
   // ---- status strip state (UI thread only) ----
   urnw::kit::StatusField statusState_;     // dot + the connection wording

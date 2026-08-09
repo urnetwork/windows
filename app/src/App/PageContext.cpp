@@ -10,6 +10,7 @@ namespace urnw::pages {
 
 SdkHost& Sdk() { return urnw::App().sdk(); }
 SubscriptionBalanceStore& Balance() { return urnw::App().balance(); }
+UpdateChecker& Updates() { return urnw::App().updates(); }
 
 // The miss test IS the equality: Localized() returns the key id itself when the
 // store has no such key, so "the lookup gave me back what I asked for" means

@@ -19,6 +19,7 @@
 #include "Protocol.h"
 #include "Sdk.h"
 #include "StopBudget.h"
+#include "UpdateFormats.h"
 #include "Version.h"
 #include "VersionGrammar.h"
 #include "WfpPolicy.h"
@@ -1788,6 +1789,73 @@ void TestVersionGrammar() {
                     static_cast<unsigned long long>(version::kCode)));
 }
 
+// --- the update checker's two parsers (Common/UpdateFormats.h) --------------
+
+void TestUpdateFormats() {
+  Section("UpdateFormats — SHA256SUMS lookup and the swap allowlist");
+
+  // The document exactly as the release pipeline writes it: sha256sum format,
+  // '<hex>  <filename>', one line per artifact.
+  const std::string sums =
+      "1111111111111111111111111111111111111111111111111111111111111111  "
+      "URnetwork-v2026.8.9-101076420-beta-windows-x64-portable.zip\n"
+      "2222222222222222222222222222222222222222222222222222222222222222  "
+      "URnetwork-v2026.8.9-101076420-beta-windows-arm64-portable.zip\n";
+  Check(update::Sha256ForFile(
+            sums,
+            "URnetwork-v2026.8.9-101076420-beta-windows-x64-portable.zip") ==
+            std::string(64, '1'),
+        "the x64 zip's line is found by exact filename");
+  Check(update::Sha256ForFile(
+            sums,
+            "URnetwork-v2026.8.9-101076420-beta-windows-arm64-portable.zip") ==
+            std::string(64, '2'),
+        "a later line is found too — the search is by name, not position");
+  Check(update::Sha256ForFile(sums, "URnetwork.msi").empty(),
+        "a file the document does not name yields EMPTY, which equals no hash");
+  Check(update::Sha256ForFile("", "x.zip").empty(),
+        "an empty document yields empty");
+
+  // Variations the format legitimately produces elsewhere: binary-mode marker,
+  // CRLF endings, uppercase hex — all verify; the hex canonicalizes to
+  // lowercase so the caller's own formatting compares bytewise.
+  Check(update::Sha256ForFile(
+            "ABCDEF1111111111111111111111111111111111111111111111111111111111 "
+            "*a.zip\r\n",
+            "a.zip") ==
+            "abcdef1111111111111111111111111111111111111111111111111111111111",
+        "binary marker + CRLF + uppercase hex verify, hex comes back lowercase");
+
+  // Malformed lines must MISS, never almost-match: short hex, a non-hex
+  // character, and the one-space separator that would misalign the filename.
+  Check(update::Sha256ForFile("abc  a.zip\n", "a.zip").empty(),
+        "a short hex run is not a hash");
+  Check(update::Sha256ForFile(
+            "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+            "  a.zip\n",
+            "a.zip")
+            .empty(),
+        "64 non-hex characters are not a hash");
+  Check(update::Sha256ForFile(std::string(64, '3') + " a.zip\n", "a.zip").empty(),
+        "a single-space separator is malformed — the name would misalign");
+
+  // The allowlist: what a swap may touch is a bare top-level exe/dll/pri name
+  // and NOTHING else. Archive entry paths are never trusted (zip-slip), so a
+  // separator or a traversal in a name is an outright refusal.
+  for (const char* good : {"URnetwork.exe", "urnetworkd.exe", "URnetworkSdk.dll",
+                           "wintun.dll", "resources.pri", "URNETWORK.EXE"}) {
+    Check(update::IsAllowedPayloadName(good),
+          std::format("'{}' is swap payload", good));
+  }
+  for (const char* bad :
+       {"", ".", "..", "README.txt", "THIRD-PARTY-NOTICES.txt", "x.pdb",
+        ".exe", "Assets", "..\\evil.exe", "../evil.exe", "a/b.dll",
+        "C:\\windows\\system32\\evil.dll", "URnetwork.exe.old"}) {
+    Check(!update::IsAllowedPayloadName(bad),
+          std::format("'{}' is NOT swap payload", bad));
+  }
+}
+
 void TestInstallVerb() {
   Section("install verb — binPath quoting and the start/stop verdicts (no SCM)");
 
@@ -1898,6 +1966,7 @@ int RunSelfTest() {
   TestStopBudget();
   TestSdkResolverAgainstTable();
   TestVersionGrammar();
+  TestUpdateFormats();
   TestInstallVerb();
 
   Section("WFP object identities (for `netsh wfp show filters` diffs)");

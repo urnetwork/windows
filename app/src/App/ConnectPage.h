@@ -29,6 +29,7 @@
 #include "ServiceSetup.h"
 #include "StatsSheets.h"
 #include "TransferChart.h"
+#include "UpdateChecker.h"
 #include "UrComponents.h"  // kit::PaneListRowButton (the selectable activity row)
 
 namespace winrt::URnetwork::implementation {
@@ -83,6 +84,13 @@ class ConnectPage {
   // no banner, a developer console must not be interfered with, and no
   // evidence means no claim.
   void ApplyServiceSetup(urnw::ServiceSetup::Snapshot const& snap);
+
+  // The update banner (beta spec §5): the one writer of UpdateBar, stacked
+  // directly under ServiceSetupBar with the same one-writer discipline —
+  // MainWindow owns the snapshot copy and pushes every change through here.
+  // Phase::None closes the bar; everything else renders one of the four
+  // standing states (offer / in-flight / manual finish / failure).
+  void ApplyUpdateChecker(urnw::UpdateChecker::Snapshot const& snap);
 
   // Status line + status dot + hero canvas + connect button, from connectStatus_
   // (the SDK), connected_ (the service tunnel) and the window's balance state.

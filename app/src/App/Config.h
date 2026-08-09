@@ -64,4 +64,10 @@ inline constexpr const char* kGoogleOAuthClientSecret =
 inline constexpr const char* kGoogleOAuthClientSecret = "";
 #endif
 
+// The GitHub repo the update checker polls for releases (beta-distribution
+// spec §5): the beta fork today, and the whole upstream handoff is this one
+// line — repoint it at urnetwork/<repo> when the fork graduates. Wide because
+// it is spliced into WinHTTP request strings, which are UTF-16 end to end.
+inline constexpr const wchar_t* kUpdateRepo = L"Ryanmello07/urnetwork-windows";
+
 }  // namespace urnw::config

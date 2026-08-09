@@ -290,6 +290,7 @@
     <ClCompile Include="ServiceClient.cpp" />
     <ClCompile Include="ServiceSetup.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
+    <ClCompile Include="UpdateChecker.cpp" />
     <ClCompile Include="UrComponents.cpp" />
     <ClCompile Include="WindowShell.cpp" />
   </ItemGroup>
@@ -329,6 +330,7 @@
     <ClInclude Include="ServiceClient.h" />
     <ClInclude Include="ServiceSetup.h" />
     <ClInclude Include="TrayIcon.h" />
+    <ClInclude Include="UpdateChecker.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

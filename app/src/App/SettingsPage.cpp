@@ -18,6 +18,7 @@
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
 #include "Strings.h"
+#include "UpdateChecker.h"
 #include "UrColors.h"
 #include "Version.h"
 
@@ -323,6 +324,23 @@ void SettingsPage::BuildGeneralSection(Panel const& host) {
     card.Children().Append(box);
   }
   ApplyFieldState(productUpdatesState_, FieldState::NoSession);
+
+  // Check for updates automatically (beta spec §5). A LOCAL preference, unlike
+  // the account row above it: persisted in app_prefs.json beside Advanced Mode
+  // — it describes this installation, not the account — which is why it needs
+  // no session, no FieldState and no server round-trip. Default ON; turning it
+  // on also fires a check right away (see SetAutoCheckEnabled). The labels are
+  // Adv() ids like every update-surface string: the store carries nothing for
+  // an updater.
+  autoUpdateCheck_ = ToggleRow(
+      card, Adv("upd_auto_check", L"Check for updates automatically"),
+      Adv("upd_auto_check_note",
+          L"Look for new releases shortly after launch and every six hours. "
+          L"Nothing is ever installed without a click."));
+  autoUpdateCheck_.IsOn(urnw::UpdateChecker::AutoCheckEnabled());
+  autoUpdateCheck_.Toggled([this](auto const&, auto const&) {
+    urnw::pages::Updates().SetAutoCheckEnabled(autoUpdateCheck_.IsOn());
+  });
 }
 
 // ADVANCED. The home the Advanced Mode toggle drops into, and export logs.

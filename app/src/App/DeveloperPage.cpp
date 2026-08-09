@@ -836,12 +836,27 @@ void DeveloperPage::Build() {
           self->developer().RunAction(ReliabilityAction::Sync, DevW("dev_sync", L"Sync"));
       });
       actions.Children().Append(syncButton_);
+
+      // The update checker's manual trigger (beta spec §5) — and the only way
+      // to exercise that path on a dev build, where the periodic check is
+      // disabled (kCode == 0). Never gated: it is an unauthenticated HTTP GET
+      // that needs no session, no device and no service. The outcome lands on
+      // updateCheckText_ below via MainWindow's fan-out, not here.
+      Button checkUpdates =
+          MakeActionButton(Dev("dev_check_updates", L"Check for updates"));
+      checkUpdates.Click(
+          [](auto const&, auto const&) { urnw::pages::Updates().CheckNow(); });
+      actions.Children().Append(checkUpdates);
     }
     body.Children().Append(actions);
 
     lastAction_ = MakeText(hstring{}, 12, MutedBrush(), true);
     lastAction_.Visibility(Visibility::Collapsed);
     body.Children().Append(lastAction_);
+
+    updateCheckText_ = MakeText(hstring{}, 12, MutedBrush(), true);
+    updateCheckText_.Visibility(Visibility::Collapsed);
+    body.Children().Append(updateCheckText_);
     body.Children().Append(MakeText(
         Dev("dev_actions_are_requests",
             L"Actions are requests: confirm them in the measurements and exit rows, which "
@@ -1286,6 +1301,55 @@ void DeveloperPage::Build() {
 
   LogInfo("developer: built {} toggles, {} numeric rows, {} metric rows", boolRows_.size(),
           numRows_.size(), metricRows_.size());
+
+  // Replay the update checker's standing state into the line just built: this
+  // screen is constructed lazily, and the outcome of the launch check (or a
+  // manual check fired before the destination was ever opened) must not be
+  // lost to having arrived early. Same bind-then-replay shape as the window's.
+  ApplyUpdateCheck(urnw::pages::Updates().Current());
+}
+
+// ---- the update checker (beta spec §5) --------------------------------------
+
+void DeveloperPage::ApplyUpdateCheck(UpdateChecker::Snapshot const& snap) {
+  using Outcome = UpdateChecker::CheckOutcome;
+  if (!updateCheckText_) return;  // the intro card is not built yet
+  // Version strings and codes are DATA (release grammar / decimal), so the
+  // composition around the Dev() labels hides no literal from the store.
+  std::wstring text;
+  switch (snap.lastCheck) {
+    case Outcome::NeverRan:
+      break;  // nothing to report; the line stays collapsed
+    case Outcome::InFlight:
+      text = DevW("dev_update_checking", L"Checking for updates…");
+      break;
+    case Outcome::NoUpdate:
+      text = DevW("dev_update_none", L"No update: this build is current") +
+             L" (" + Widen(urnw::version::kString) + L"; " +
+             DevW("dev_update_newest_seen", L"newest release seen:") + L" " +
+             (snap.newestCode ? L"v" + snap.newestVersion
+                              : DevW("dev_update_none_seen", L"none")) +
+             L")";
+      break;
+    case Outcome::UpdateFound:
+      text = DevW("dev_update_found", L"Update found:") + L" v" +
+             snap.newestVersion;
+      break;
+    case Outcome::DevBuild:
+      text = DevW("dev_update_dev_build",
+                  L"Newest release is") +
+             L" v" + snap.newestVersion + L" — " +
+             DevW("dev_update_dev_build_note",
+                  L"this is a dev build (code 0), which never self-updates");
+      break;
+    default:  // Failed
+      text = DevW("dev_update_check_failed",
+                  L"The update check failed — see the app log.");
+      break;
+  }
+  updateCheckText_.Text(hstring{text});
+  updateCheckText_.Visibility(text.empty() ? Visibility::Collapsed
+                                           : Visibility::Visible);
 }
 
 // ---- apply -----------------------------------------------------------------

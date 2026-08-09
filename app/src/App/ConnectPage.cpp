@@ -368,6 +368,103 @@ void ConnectPage::ApplyServiceSetup(urnw::ServiceSetup::Snapshot const& snap) {
   bar.IsOpen(true);
 }
 
+// The update banner (beta spec §5). Renders MainWindow's snapshot copy onto
+// UpdateBar, directly under the service bar — same shape, same one-writer
+// rule. Labels go through Adv() with `upd_` ids for the same reason the
+// service bar's use `svc_`: the store carries nothing for an update surface,
+// and the version string itself is DATA (release grammar, never translated),
+// so appending it is composition, not a hidden literal.
+void ConnectPage::ApplyUpdateChecker(urnw::UpdateChecker::Snapshot const& snap) {
+  using Phase = urnw::UpdateChecker::Phase;
+  using Stage = urnw::UpdateChecker::Stage;
+  using Failure = urnw::UpdateChecker::Failure;
+  auto bar = w_.UpdateBar();
+  if (snap.phase == Phase::None) {
+    bar.IsOpen(false);
+    return;
+  }
+
+  // The headline is the spec's wording in every phase — the banner keeps
+  // saying what it is FOR while the message says what is happening to it.
+  const winrt::hstring title{
+      AdvW("upd_available_title", L"Update available:") + L" v" + snap.version};
+  winrt::hstring action = Loc("update");
+  bool enabled = true;
+  std::wstring message;
+  auto severity = winrt::Microsoft::UI::Xaml::Controls::InfoBarSeverity::Informational;
+
+  switch (snap.phase) {
+    case Phase::Available:
+      message = AdvW("upd_available_message",
+                     L"One click downloads the release, verifies it, applies "
+                     L"it here and restarts the app. Updating the VPN service "
+                     L"is a second click afterwards.");
+      break;
+    case Phase::Applying:
+      enabled = false;
+      switch (snap.stage) {
+        case Stage::Downloading:
+          message = AdvW("upd_stage_downloading", L"Downloading the update…");
+          break;
+        case Stage::Verifying:
+          message = AdvW("upd_stage_verifying", L"Verifying the download…");
+          break;
+        case Stage::Extracting:
+          message = AdvW("upd_stage_extracting", L"Unpacking…");
+          break;
+        default:  // Swapping — Idle never renders under Applying
+          message = AdvW("upd_stage_swapping", L"Applying the new files…");
+          break;
+      }
+      break;
+    case Phase::ManualUnzip:
+      // The one phase whose action is not the apply: the folder is not
+      // writable, the verified zip is downloaded, and the click re-reveals it.
+      action = Adv("upd_show_file", L"Show file");
+      message = AdvW("upd_manual_message",
+                     L"This folder isn't writable, so the app can't swap its "
+                     L"own files. The verified download was shown in Explorer "
+                     L"— quit the app and extract it over this folder.");
+      if (!snap.zipPath.empty()) message += L" (" + snap.zipPath + L")";
+      break;
+    default: {  // Failed — Phase::None returned above
+      severity = winrt::Microsoft::UI::Xaml::Controls::InfoBarSeverity::Error;
+      switch (snap.failure) {
+        case Failure::Download:
+          message = AdvW("upd_failed_download",
+                         L"The download didn't finish. Check the connection "
+                         L"and click to try again.");
+          break;
+        case Failure::Checksum:
+          message = AdvW("upd_failed_checksum",
+                         L"The download didn't match the release's checksums, "
+                         L"so it was discarded. Click to try again.");
+          break;
+        case Failure::Extract:
+          message = AdvW("upd_failed_extract",
+                         L"The downloaded update couldn't be unpacked. "
+                         L"Details are in the app log.");
+          break;
+        default:  // Swap
+          message = AdvW("upd_failed_swap",
+                         L"The update couldn't be applied, and the previous "
+                         L"files were put back. Details are in the app log.");
+          break;
+      }
+      break;
+    }
+  }
+
+  bar.Severity(severity);
+  bar.Title(title);
+  bar.Message(winrt::hstring{message});
+  if (auto button = bar.ActionButton()) {
+    button.Content(winrt::box_value(action));
+    button.IsEnabled(enabled);
+  }
+  bar.IsOpen(true);
+}
+
 // The connect status line, its dot, and the button label — android
 // ConnectStatusIndicator parity. Until now StatusText read the SERVICE tunnel
 // state and said only "Connected"/"Disconnected", while the SDK's four-state

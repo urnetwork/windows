@@ -49,6 +49,7 @@
     <ClInclude Include="Protocol.h" />
     <ClInclude Include="Sdk.h" />
     <ClInclude Include="Strings.h" />
+    <ClInclude Include="UpdateFormats.h" />
     <ClInclude Include="Version.h" />
     <ClInclude Include="VersionGrammar.h" />
   </ItemGroup>
