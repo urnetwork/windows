@@ -146,6 +146,31 @@ MainWindow::MainWindow() {
     BalanceWarning().ActionButton(getPro);
   }
 
+  // The service-setup banner's one click (beta spec §3): a single elevated
+  // `urnetworkd install`, whatever the banner currently says — package B made
+  // the verb idempotent and starting, so "Set up", "Start" and "Update" are
+  // three wordings for the same action. The label is written per state by
+  // ConnectPage::ApplyServiceSetup, the same way the balance bar's title is.
+  {
+    Button setup;
+    setup.Click([weak = get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) self->BeginServiceSetupAction();
+    });
+    ServiceSetupBar().ActionButton(setup);
+  }
+  // The banner heals itself: coming back to the window (from the UAC prompt,
+  // from an elevated terminal where the service was just installed by hand,
+  // from anywhere) re-reads the SCM instead of trusting a stale classification.
+  Activated([weak = get_weak()](auto const&,
+                                Microsoft::UI::Xaml::WindowActivatedEventArgs const& args) {
+    if (args.WindowActivationState() ==
+        Microsoft::UI::Xaml::WindowActivationState::Deactivated) {
+      return;
+    }
+    if (auto self = weak.get()) self->RefreshServiceSetup();
+  });
+  RefreshServiceSetup();  // the first reading; the ctor must not block on SCM
+
   login_->Initialize();   // name / bonus-code debounce + resend cooldown
   wallet_->Initialize();  // wallet-address validation debounce
 
@@ -1132,6 +1157,148 @@ void MainWindow::UpdateBalanceWarning() {
   // off the same fields, so it is re-rendered from the ONE place they change.
   // Guarded: the balance relay can land before the pages are constructed.
   if (connect_) connect_->ApplyConnectStatus();
+}
+
+// ---- the in-app service manager (beta spec §3) ------------------------------
+//
+// One snapshot, one writer set. RefreshServiceSetup and the two Begin* verbs
+// are the only things that assign serviceSetup_, all on the UI thread, and
+// every assignment ends in ApplyServiceSetup — the same shape as the balance
+// relay above, for the same reason: the banner and the Settings row must never
+// disagree about what the SCM said.
+
+void MainWindow::ApplyServiceSetup() {
+  // Guarded like UpdateBalanceWarning's connect_ guard: the first refresh is
+  // kicked from the ctor and could in principle land before the pages exist.
+  if (connect_) connect_->ApplyServiceSetup(serviceSetup_);
+  if (settings_) settings_->ApplyServiceSetup(serviceSetup_);
+}
+
+winrt::fire_and_forget MainWindow::RefreshServiceSetup() {
+  // While an elevated verb runs, ITS completion is the next truth — a refresh
+  // racing it would publish the pre-verb state over the post-verb one.
+  if (serviceProbeInFlight_ || serviceSetup_.busy) co_return;
+  serviceProbeInFlight_ = true;
+  auto weak = get_weak();
+  auto queue = DispatcherQueue();
+
+  co_await winrt::resume_background();
+  auto observation = urnw::ServiceSetup::Classify();
+
+  queue.TryEnqueue([weak, observation = std::move(observation)]() mutable {
+    auto self = weak.get();
+    if (!self) return;
+    self->serviceProbeInFlight_ = false;
+    if (self->serviceSetup_.busy) return;  // a verb started meanwhile; it publishes
+    // A standing notice survives a refresh that observes the SAME state.
+    // Declining the UAC prompt hands focus back to this window, which fires
+    // Activated, which lands here — a notice wiped by that refresh would
+    // exist for one frame. A state CHANGE is different evidence and clears it.
+    const bool sameState =
+        observation.state == self->serviceSetup_.observation.state;
+    self->serviceSetup_.observation = std::move(observation);
+    if (!sameState) self->serviceSetup_.notice = urnw::ServiceSetup::Notice::None;
+    self->ApplyServiceSetup();
+  });
+}
+
+winrt::fire_and_forget MainWindow::BeginServiceSetupAction() {
+  using State = urnw::ServiceSetup::State;
+  using Notice = urnw::ServiceSetup::Notice;
+  const State state = serviceSetup_.observation.state;
+  const bool actionable = state == State::NotInstalled ||
+                          state == State::Stopped ||
+                          state == State::VersionMismatch;
+  if (!actionable || serviceSetup_.busy) co_return;
+  serviceSetup_.busy = true;
+  serviceSetup_.notice = Notice::None;
+  ApplyServiceSetup();
+  auto weak = get_weak();
+  auto queue = DispatcherQueue();
+
+  co_await winrt::resume_background();
+  // ONE UAC prompt, one verb. The wait is generous against the verb's own
+  // bounded budgets (10s stop + 10s start, InstallVerb.h) because a wait that
+  // expires under a verb still working would report failure over a success.
+  auto run = urnw::ServiceSetup::RunElevatedVerb(L"install", 60000);
+  urnw::ServiceSetup::Observation observation;
+  Notice notice = Notice::None;
+  if (run.declined) {
+    // The calm case: no error, no drama. The banner stays with one line
+    // saying what happened, and clicking again asks again.
+    notice = Notice::UacDeclined;
+    observation = urnw::ServiceSetup::Classify();
+  } else if (!run.launched) {
+    notice = Notice::ActionFailed;
+    observation = urnw::ServiceSetup::Classify();
+  } else {
+    // The verb waits for RUNNING itself, so this poll usually returns on its
+    // first classification; the budget covers an SCM still settling.
+    observation =
+        urnw::ServiceSetup::AwaitState(State::Running, 15000);
+    if (observation.state != State::Running) {
+      notice = Notice::ActionFailed;
+      urnw::LogWarn(
+          "servicesetup: install finished (exited={} code={}) but the service "
+          "did not reach Running",
+          run.exited, run.exitCode);
+    } else {
+      urnw::LogInfo("servicesetup: the service is installed and running");
+    }
+  }
+
+  queue.TryEnqueue([weak, observation = std::move(observation), notice]() mutable {
+    auto self = weak.get();
+    if (!self) return;
+    self->serviceSetup_ = {std::move(observation), false, notice};
+    self->ApplyServiceSetup();
+  });
+}
+
+winrt::fire_and_forget MainWindow::BeginServiceUninstall() {
+  using State = urnw::ServiceSetup::State;
+  using Notice = urnw::ServiceSetup::Notice;
+  const State state = serviceSetup_.observation.state;
+  // The row is hidden in these states, but a stale window can still click it.
+  if (serviceSetup_.busy || state == State::NotInstalled ||
+      state == State::ConsoleMode || state == State::Unknown) {
+    co_return;
+  }
+  serviceSetup_.busy = true;
+  serviceSetup_.notice = Notice::None;
+  ApplyServiceSetup();
+  auto weak = get_weak();
+  auto queue = DispatcherQueue();
+
+  co_await winrt::resume_background();
+  auto run = urnw::ServiceSetup::RunElevatedVerb(L"uninstall", 30000);
+  // Declined is the user changing their mind at the second ask — silence, not
+  // an error. Anything else that is not a clean exit 0 gets said out loud,
+  // because a "removed" service that is still there teaches distrust.
+  const bool failed =
+      !run.declined && (!run.launched || !run.exited || run.exitCode != 0);
+  urnw::ServiceSetup::Observation observation =
+      failed || run.declined
+          ? urnw::ServiceSetup::Classify()
+          : urnw::ServiceSetup::AwaitState(State::NotInstalled, 5000);
+  if (failed) {
+    urnw::LogWarn(
+        "servicesetup: uninstall failed (launched={} exited={} code={})",
+        run.launched, run.exited, run.exitCode);
+  }
+
+  queue.TryEnqueue([weak, observation = std::move(observation), failed]() mutable {
+    auto self = weak.get();
+    if (!self) return;
+    self->serviceSetup_ = {std::move(observation), false,
+                           urnw::ServiceSetup::Notice::None};
+    self->ApplyServiceSetup();
+    if (failed && self->settings_) {
+      self->settings_->settingsSnackbar().Show(
+          Loc("something_went_wrong"),
+          Microsoft::UI::Xaml::Controls::InfoBarSeverity::Error);
+    }
+  });
 }
 
 void MainWindow::OnOpenUpgrade(IInspectable const&, RoutedEventArgs const&) {

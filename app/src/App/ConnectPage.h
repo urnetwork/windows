@@ -26,6 +26,7 @@
 #include "ConnectCanvas.h"
 #include "LocationSheets.h"
 #include "SdkHost.h"
+#include "ServiceSetup.h"
 #include "StatsSheets.h"
 #include "TransferChart.h"
 #include "UrComponents.h"  // kit::PaneListRowButton (the selectable activity row)
@@ -74,6 +75,14 @@ class ConnectPage {
   // no Sdk() call, no network, no stored state. Called from MainWindow's
   // preview entry beside PreviewSampleStatusStrip.
   void ApplyPreviewSample();
+
+  // The service-setup banner (beta spec §3): the one writer of ServiceSetupBar.
+  // MainWindow owns the snapshot and pushes every change through here, the way
+  // UpdateBalanceWarning pushes the balance InfoBar's gate — this only renders.
+  // Running / ConsoleMode / Unknown all close the bar: the healthy state needs
+  // no banner, a developer console must not be interfered with, and no
+  // evidence means no claim.
+  void ApplyServiceSetup(urnw::ServiceSetup::Snapshot const& snap);
 
   // Status line + status dot + hero canvas + connect button, from connectStatus_
   // (the SDK), connected_ (the service tunnel) and the window's balance state.

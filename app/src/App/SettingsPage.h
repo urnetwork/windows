@@ -22,6 +22,7 @@
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
+#include "ServiceSetup.h"
 #include "SettingsSheets.h"
 #include "StatsSheets.h"
 #include "UrComponents.h"
@@ -42,6 +43,13 @@ class SettingsPage {
   // MainWindow::ApplyAdvancedMode, which is the one apply path — the toggle
   // itself only writes, it never applies.
   void ApplyAdvancedMode(bool on);
+  // The service manager's snapshot changed (beta spec §3): show the uninstall
+  // row only while a service is actually registered. Hidden — not disabled —
+  // for NotInstalled / ConsoleMode / Unknown, because an affordance for
+  // removing something that is not there is noise, and in ConsoleMode the verb
+  // would only fight the developer's console run. Pushed by
+  // MainWindow::ApplyServiceSetup, the one writer of that snapshot.
+  void ApplyServiceSetup(urnw::ServiceSetup::Snapshot const& snap);
 
   // The settings destination's API loads: network user (sign-in methods,
   // network name), device info, referral code + network, account preferences.
@@ -117,6 +125,10 @@ class SettingsPage {
   // modal confirm, then RemoveAuth (apple SettingsView's confirmationDialog)
   winrt::fire_and_forget ConfirmRemoveAuth(std::string authType);
   void RemoveAuth(std::string const& authType);
+  // modal confirm, then MainWindow::BeginServiceUninstall (elevated
+  // `urnetworkd uninstall`). Same dialog shape as ConfirmRemoveAuth: defaults
+  // to Cancel, commits only on the explicit destructive button.
+  winrt::fire_and_forget ConfirmUninstallService();
   winrt::fire_and_forget OpenCustomerPortal();
   winrt::fire_and_forget SaveLogsToFile();
   // Attaches the SDK log directory to an ALREADY-ACCEPTED feedback report,
@@ -154,6 +166,12 @@ class SettingsPage {
   // as applyingKillSwitch_.
   bool applyingAdvancedMode_ = false;
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch killSwitch_{nullptr};
+  // The uninstall-service row (beta spec §3), wrapped in its own host panel so
+  // visibility can collapse the WHOLE row — ButtonRow returns only the button,
+  // and hiding a button inside a still-visible labelled row would leave a
+  // caption pointing at nothing.
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel serviceRowHost_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button uninstallServiceButton_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch productUpdates_{nullptr};
   // why the toggle above is disabled, when it is (S4)
   winrt::Microsoft::UI::Xaml::Controls::TextBlock productUpdatesState_{nullptr};

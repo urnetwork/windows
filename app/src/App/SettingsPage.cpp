@@ -423,6 +423,38 @@ void SettingsPage::BuildConnectionsSection(Panel const& host) {
                                Loc("manage_apps"));
   splitButton.Click(
       [this](auto const& sender, auto const& args) { OnManageAppSplitTunnel(sender, args); });
+
+  // Uninstall the VPN service (beta spec §3). Last in the group: it is the one
+  // machine-level action on a page of preferences. Labels are Adv() ids — the
+  // store carries nothing for a Windows service surface (see the banner in
+  // ConnectPage::ApplyServiceSetup) — and the row starts COLLAPSED until a
+  // classification proves a service is actually registered; ApplyServiceSetup
+  // below is the only writer of that visibility.
+  serviceRowHost_ = StackPanel();
+  card.Children().Append(serviceRowHost_);
+  uninstallServiceButton_ = ButtonRow(
+      serviceRowHost_, Adv("svc_service_label", L"VPN service"),
+      Adv("svc_uninstall_note",
+          L"Remove the Windows service URnetwork uses to carry traffic."),
+      Adv("svc_uninstall_action", L"Uninstall"));
+  uninstallServiceButton_.Click(
+      [this](auto const&, auto const&) { ConfirmUninstallService(); });
+  serviceRowHost_.Visibility(Visibility::Collapsed);
+}
+
+void SettingsPage::ApplyServiceSetup(urnw::ServiceSetup::Snapshot const& snap) {
+  if (!serviceRowHost_) return;  // the section is not built yet
+  using State = urnw::ServiceSetup::State;
+  const State state = snap.observation.state;
+  // Registered in any form — running, stopped, or wearing the wrong version —
+  // is the evidence the row needs. Everything else hides it (see the header).
+  const bool registered = state == State::Running || state == State::Stopped ||
+                          state == State::VersionMismatch;
+  serviceRowHost_.Visibility(registered ? Visibility::Visible
+                                        : Visibility::Collapsed);
+  // Disabled while EITHER elevated verb runs: two UAC prompts in flight is
+  // exactly the confusion the one-click design exists to avoid.
+  if (uninstallServiceButton_) uninstallServiceButton_.IsEnabled(!snap.busy);
 }
 
 void SettingsPage::BuildIdentitySection(Panel const& host) {
@@ -852,6 +884,38 @@ winrt::fire_and_forget SettingsPage::ConfirmRemoveAuth(std::string authType) {
     dialog.Content(body);
     if (co_await dialog.ShowAsync() == ContentDialogResult::Primary) {
       RemoveAuth(authType);
+    }
+  } catch (...) {
+  }
+  w_.SetSheetOpen(false);
+}
+
+// The uninstall confirmation, in ConfirmRemoveAuth's exact shape: defaults to
+// Cancel, Enter must not uninstall, and the destructive word appears only on
+// the button that commits. The body says the two things the click will cost —
+// the app cannot connect afterwards, and Windows will ask for permission — so
+// the UAC prompt that follows is expected rather than alarming.
+winrt::fire_and_forget SettingsPage::ConfirmUninstallService() {
+  if (w_.sheetOpen()) co_return;
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    auto dialog = rows::MakeSheet(self->Content().XamlRoot(),
+                                  Adv("svc_service_label", L"VPN service"));
+    dialog.PrimaryButtonText(Adv("svc_uninstall_action", L"Uninstall"));
+    dialog.CloseButtonText(Loc("cancel"));
+    dialog.DefaultButton(ContentDialogButton::Close);  // Enter must not remove
+    TextBlock body;
+    body.Text(Adv("svc_uninstall_confirm",
+                  L"This stops the URnetwork service and removes it from "
+                  L"Windows. The app can't connect until it is set up again. "
+                  L"Windows will ask for administrator permission."));
+    body.FontSize(14);
+    body.TextWrapping(TextWrapping::Wrap);
+    body.MinWidth(320);
+    dialog.Content(body);
+    if (co_await dialog.ShowAsync() == ContentDialogResult::Primary) {
+      self->BeginServiceUninstall();
     }
   } catch (...) {
   }

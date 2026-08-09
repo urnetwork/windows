@@ -20,6 +20,7 @@
 #include "LoginPage.h"
 #include "Protocol.h"
 #include "SdkHost.h"
+#include "ServiceSetup.h"
 #include "SettingsPage.h"
 #include "SubscriptionBalance.h"
 #include "UrComponents.h"
@@ -94,6 +95,12 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the InfoBar cannot end up disagreeing about the account's state.
   bool balanceConfirming() const { return balancePoll_.confirming; }
   bool balanceBlocked() const { return insufficientBalance_ && !balance_.isPro; }
+
+  // ---- the in-app service manager (beta spec §3) ----
+  // The elevated `urnetworkd uninstall`, reached from Settings' confirm dialog.
+  // Public for the same reason ApplyBalance is: the page owns the dialog, the
+  // window owns the state machine every service-setup surface reads from.
+  winrt::fire_and_forget BeginServiceUninstall();
 
   // ---- Advanced Mode (D5) ----
   // The window's copy of SdkHost's standing value, kept so a page can ask
@@ -308,6 +315,20 @@ struct MainWindow : MainWindowT<MainWindow> {
   winrt::fire_and_forget ShowUpgradeSheet();
   winrt::fire_and_forget ShowRedeemSheet();
 
+  // ---- the in-app service manager (beta spec §3) ----
+  // The window owns the ONE snapshot every service-setup surface reads —
+  // the Connect banner and the Settings uninstall row — on the same
+  // one-derivation principle as UpdateBalanceWarning: two surfaces reading
+  // two classifications would eventually disagree about the same SCM.
+  //
+  // Classify runs off-thread (SCM + file-version reads) and lands back here
+  // through the dispatcher; the elevated verbs end with their OWN
+  // re-classification, so refreshes started while one is in flight are
+  // dropped rather than raced against it.
+  void ApplyServiceSetup();  // fan the snapshot out to the pages
+  winrt::fire_and_forget RefreshServiceSetup();
+  winrt::fire_and_forget BeginServiceSetupAction();  // the banner's one click
+
   std::unique_ptr<urnw::LoginPage> login_;
   std::unique_ptr<urnw::ConnectPage> connect_;
   std::unique_ptr<urnw::NetworkPage> network_;
@@ -327,6 +348,12 @@ struct MainWindow : MainWindowT<MainWindow> {
   bool sheetOpen_ = false;  // only one ContentDialog can show at a time
   // --preview-ui: the home view is pinned regardless of auth state
   bool previewUi_ = false;
+
+  // ---- service manager state (UI thread only) ----
+  urnw::ServiceSetup::Snapshot serviceSetup_;
+  // a Classify is already on a worker; window activation fires refreshes on
+  // every focus change, and one truth-teller at a time is plenty
+  bool serviceProbeInFlight_ = false;
 
   // ---- status strip state (UI thread only) ----
   urnw::kit::StatusField statusState_;     // dot + the connection wording

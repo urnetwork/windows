@@ -164,8 +164,10 @@
       <AdditionalLibraryDirectories>$(UrnSdkDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <!-- crypt32.lib: WalletConnect.cpp uses CryptBinaryToStringA (Base64) -> __imp_CryptBinaryToStringA.
            winhttp.lib + bcrypt.lib: GoogleSignIn.cpp's OAuth token exchange (WinHttp*)
-           and its PKCE verifier/challenge (BCryptGenRandom / BCryptHash). -->
-      <AdditionalDependencies>URnetworkSdk.lib;shell32.lib;advapi32.lib;ws2_32.lib;iphlpapi.lib;crypt32.lib;winhttp.lib;bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+           and its PKCE verifier/challenge (BCryptGenRandom / BCryptHash).
+           version.lib: ServiceSetup.cpp reads ProductVersion resources
+           (GetFileVersionInfoW / VerQueryValueW) for the mismatch banner. -->
+      <AdditionalDependencies>URnetworkSdk.lib;shell32.lib;advapi32.lib;ws2_32.lib;iphlpapi.lib;crypt32.lib;winhttp.lib;bcrypt.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>app.manifest</AdditionalManifestFiles>
@@ -286,6 +288,7 @@
     <ClCompile Include="UsageBar.cpp" />
     <ClCompile Include="WalletConnect.cpp" />
     <ClCompile Include="ServiceClient.cpp" />
+    <ClCompile Include="ServiceSetup.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
     <ClCompile Include="UrComponents.cpp" />
     <ClCompile Include="WindowShell.cpp" />
@@ -324,6 +327,7 @@
     <ClInclude Include="WalletConnect.h" />
     <ClInclude Include="WindowShell.h" />
     <ClInclude Include="ServiceClient.h" />
+    <ClInclude Include="ServiceSetup.h" />
     <ClInclude Include="TrayIcon.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

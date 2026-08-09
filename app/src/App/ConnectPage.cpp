@@ -290,6 +290,84 @@ bool ConnectPage::ConnectActionIsDisconnect() const {
   return connectStatus_ != ConnectStatus::Disconnected;
 }
 
+// The service-setup banner (beta spec §3). Renders MainWindow's one snapshot
+// onto ServiceSetupBar, the InfoBar sitting under BalanceWarning in this pane
+// — same bar shape, same one-writer discipline. Every label goes through
+// Adv(): the store's 916 keys were searched and carry nothing for a Windows
+// service surface (the only "Set up"/"Install" strings are the browser
+// extension's), so these ids wait for the store the same way the inspector's
+// do. The two shipped strings that DO fit are used: "Update" (the generic
+// CTA) and "Setting up…" (site_ext_setting_up — its comment scopes it to the
+// extension, but its value is exactly this moment).
+void ConnectPage::ApplyServiceSetup(urnw::ServiceSetup::Snapshot const& snap) {
+  using State = urnw::ServiceSetup::State;
+  using Notice = urnw::ServiceSetup::Notice;
+  auto bar = w_.ServiceSetupBar();
+  const State state = snap.observation.state;
+  const bool show = state == State::NotInstalled || state == State::Stopped ||
+                    state == State::VersionMismatch;
+  if (!show) {
+    bar.IsOpen(false);
+    return;
+  }
+
+  winrt::hstring title;
+  winrt::hstring action;
+  std::wstring message;
+  switch (state) {
+    case State::NotInstalled:
+      title = Adv("svc_setup_title", L"Set up the VPN service");
+      action = Adv("svc_setup_action", L"Set up");
+      message = AdvW("svc_setup_message",
+                     L"URnetwork uses a Windows service to carry traffic. One "
+                     L"click — Windows will ask for administrator permission.");
+      break;
+    case State::Stopped:
+      title = Adv("svc_start_title", L"Start the VPN service");
+      action = Adv("svc_start_action", L"Start");
+      message = AdvW("svc_start_message",
+                     L"The service is installed but not running.");
+      break;
+    default:  // VersionMismatch — `show` admits nothing else
+      title = Adv("svc_update_title", L"Update the VPN service");
+      action = Loc("update");
+      message = AdvW("svc_update_message",
+                     L"The installed service is a different version than this "
+                     L"app.");
+      // The versions are DATA (release-grammar strings, never translated), so
+      // appending them to the store line is composition, not a hidden literal.
+      if (!snap.observation.installedVersion.empty() &&
+          !snap.observation.siblingVersion.empty()) {
+        message += L" (" + snap.observation.installedVersion + L" → " +
+                   snap.observation.siblingVersion + L")";
+      }
+      break;
+  }
+
+  // The in-flight and aftermath lines REPLACE the pitch, not the title: the
+  // banner keeps saying what it is for while the message says what is
+  // happening to it right now.
+  if (snap.busy) {
+    message = std::wstring{Loc("site_ext_setting_up")};
+  } else if (snap.notice == Notice::UacDeclined) {
+    message = AdvW("svc_uac_declined",
+                   L"Windows asked for permission and the prompt was closed. "
+                   L"Click again whenever you're ready.");
+  } else if (snap.notice == Notice::ActionFailed) {
+    message = AdvW("svc_action_failed",
+                   L"That didn't finish — the service is unchanged. Details "
+                   L"are in the app log.");
+  }
+
+  bar.Title(title);
+  bar.Message(winrt::hstring{message});
+  if (auto button = bar.ActionButton()) {
+    button.Content(winrt::box_value(action));
+    button.IsEnabled(!snap.busy);
+  }
+  bar.IsOpen(true);
+}
+
 // The connect status line, its dot, and the button label — android
 // ConnectStatusIndicator parity. Until now StatusText read the SERVICE tunnel
 // state and said only "Connected"/"Disconnected", while the SDK's four-state

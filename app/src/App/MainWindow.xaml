@@ -827,6 +827,15 @@
                                 <!-- out of balance: the action opens the upgrade flow -->
                                 <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
                                          Margin="12,8" Severity="Warning" />
+                                <!-- the VPN service needs setting up / starting / updating:
+                                     the action is ONE elevated `urnetworkd install`. Title,
+                                     message, action label and IsOpen are all written by
+                                     ConnectPage::ApplyServiceSetup (one writer, like the
+                                     balance bar above); the action button is built in the
+                                     MainWindow ctor beside the balance bar's. Package D's
+                                     update-available banner stacks directly BELOW this one. -->
+                                <InfoBar x:Name="ServiceSetupBar" IsOpen="False" IsClosable="False"
+                                         Margin="12,8" Severity="Warning" />
 
                                 <!-- provide ....................................... -->
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">

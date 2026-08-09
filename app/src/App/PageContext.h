@@ -69,7 +69,10 @@ inline winrt::Windows::Foundation::IInspectable LocBox(std::string_view key) {
 // Every id introduced this way is reported for the store, and the list extracts
 // mechanically rather than living in a doc that would go stale on the next row:
 //
-//     grep -ohE '"(dev|adv)_[a-z0-9_]+"' app/src/App/*.cpp | sort -u
+//     grep -ohE '"(dev|adv|svc)_[a-z0-9_]+"' app/src/App/*.cpp | sort -u
+//
+// (svc_ is the service-manager surface — the setup/start/update banner and the
+// uninstall row — added with the beta distribution work, same rules.)
 //
 // Do NOT use this for a key that DOES exist — that hides a working translation
 // behind an English default. And do not put a bare literal in the UI instead.
