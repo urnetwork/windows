@@ -22,6 +22,17 @@ jobs:
   build-sdk:
     name: Build SDK DLLs (windows/amd64 + arm64)
     runs-on: ubuntu-latest
+    # The derived version is the release contract for every later job: msbuild
+    # stamps it into the binaries, the packager names the zips with it, and the
+    # release job tags with it. Job outputs are the only channel that crosses
+    # job boundaries, so the derive step's outputs are re-exported here.
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_code: ${{ steps.version.outputs.version_code }}
+      version_major: ${{ steps.version.outputs.version_major }}
+      version_minor: ${{ steps.version.outputs.version_minor }}
+      version_patch: ${{ steps.version.outputs.version_patch }}
+      msi_version: ${{ steps.version.outputs.msi_version }}
     steps:
       - name: Check out Windows repo
         uses: actions/checkout@v4
@@ -40,9 +51,22 @@ jobs:
           founded=$(date -u -d "2023-05-23" +%s)
           beta_code=$(( ($(date -u -d "$created" +%s) - founded) * 10 ))
           version="${base}-${beta_code}-beta"
+          # the date parts feed VERSIONINFO's numeric FILEVERSION, whose fields
+          # are 16-bit -- each part fits on its own, the full string would not
+          major=${base%%.*}
+          rest=${base#*.}
+          minor=${rest%%.*}
+          patch=${rest#*.}
+          # the MSI's ProductVersion is tighter still (first fields 8-bit), so
+          # its flavor drops the century: 26.8.9, never 2026.8.9
+          msi_version=$(date -u -d "$created" '+%-y.%-m.%-d')
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "version_code=${beta_code}" >> "$GITHUB_OUTPUT"
-          echo "build date ${base} -> beta ${version} (${beta_code})"
+          echo "version_major=${major}" >> "$GITHUB_OUTPUT"
+          echo "version_minor=${minor}" >> "$GITHUB_OUTPUT"
+          echo "version_patch=${patch}" >> "$GITHUB_OUTPUT"
+          echo "msi_version=${msi_version}" >> "$GITHUB_OUTPUT"
+          echo "build date ${base} -> beta ${version} (${beta_code}), msi ${msi_version}"
 
       - name: Check out forked SDK
         uses: actions/checkout@v4
@@ -220,6 +244,12 @@ jobs:
       # The solution's build configurations cover Common, urnetworkd and the
       # WinUI 3 app only -- the split-tunnel driver (needs the WDK) and the WiX
       # installer are deliberately excluded, so neither is required here.
+      #
+      # The Ur* properties stamp the derived version into both exes
+      # (Directory.Build.props turns them into preprocessor definitions and
+      # VERSIONINFO fields). Absent, the build defaults to 0.0.0-dev / code 0,
+      # which the update checker treats as "never self-update" -- so a release
+      # build MUST carry them or it would ship an artifact that cannot update.
       - name: Build the solution (${{ matrix.platform }})
         shell: pwsh
         working-directory: app
@@ -229,6 +259,11 @@ jobs:
             /p:Configuration=Release `
             /p:Platform=${{ matrix.platform }} `
             /p:WindowsTargetPlatformVersion=${{ steps.winsdk.outputs.version }} `
+            /p:UrVersion=${{ needs.build-sdk.outputs.version }} `
+            /p:UrVersionCode=${{ needs.build-sdk.outputs.version_code }} `
+            /p:UrVersionMajor=${{ needs.build-sdk.outputs.version_major }} `
+            /p:UrVersionMinor=${{ needs.build-sdk.outputs.version_minor }} `
+            /p:UrVersionPatch=${{ needs.build-sdk.outputs.version_patch }} `
             /p:RestorePackagesConfig=true `
             /m `
             /v:minimal `
@@ -257,3 +292,122 @@ jobs:
           # bigger artifact.
           path: app/build/${{ matrix.platform }}/Release/
           if-no-files-found: error
+
+      # Stage the zip exactly as a user (and the in-app updater) receives it:
+      # payload at the zip root, no wrapper folder, the release name grammar.
+      # The packager owns the payload rules (exclusions, README, licenses) so
+      # local runs and CI cannot drift apart.
+      - name: Package the portable zip
+        shell: pwsh
+        working-directory: app
+        run: |
+          .\tools\package-portable.ps1 `
+            -Platform ${{ matrix.platform }} `
+            -Version ${{ needs.build-sdk.outputs.version }}
+
+      - name: Upload the portable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: urnetwork-windows-portable-${{ matrix.platform }}
+          path: app/build/${{ matrix.platform }}/URnetwork-*-portable.zip
+          if-no-files-found: error
+
+      # Compile-proof of the MSI (it had never been through the WiX compiler),
+      # against the same staged output the zip ships. x64 only: one proof is
+      # the milestone; the ARM64 MSI belongs to the signing milestone with the
+      # rest of the polish. The result is attached to the release unsigned and
+      # untested -- the portable zip is the supported artifact.
+      - name: Build the MSI (x64 compile-proof)
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          dotnet build app/installer/Installer.wixproj `
+            -c Release `
+            -p:Platform=x64 `
+            -p:BinDir="$env:GITHUB_WORKSPACE\app\build\x64\Release" `
+            -p:UrMsiVersion=${{ needs.build-sdk.outputs.msi_version }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # flatten out of WiX's bin/<platform>/<config>/<culture>/ nest so the
+          # release job downloads a file, not a directory shape to guess at
+          $msi = Get-ChildItem app/installer/bin -Recurse -Filter *.msi | Select-Object -First 1
+          if (-not $msi) { throw "dotnet build succeeded but produced no .msi" }
+          New-Item -ItemType Directory -Force app/installer/dist | Out-Null
+          Copy-Item $msi.FullName app/installer/dist/URnetwork.msi -Force
+
+      - name: Upload the MSI
+        if: matrix.platform == 'x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: urnetwork-windows-msi
+          path: app/installer/dist/URnetwork.msi
+          if-no-files-found: error
+
+  # Every green build publishes a prerelease, the way the android fork does:
+  # same tag grammar, same riding-the-numbering notes line. The in-app update
+  # checker polls this repo's releases, so the asset names and the flat
+  # sha256sum format are contracts, not cosmetics.
+  release:
+    name: Publish the prerelease
+    # PRs build everything but must not publish: a PR that republished (and
+    # first DELETED) the day's release would be a footgun even before fork
+    # PRs' read-only tokens made it fail halfway.
+    if: github.event_name != 'pull_request'
+    needs: [build-sdk, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.build-sdk.outputs.version }}
+    steps:
+      # gh resolves which repo to release into from the checkout's remote
+      - name: Check out Windows repo
+        uses: actions/checkout@v4
+
+      - name: Download the portable zips
+        uses: actions/download-artifact@v4
+        with:
+          pattern: urnetwork-windows-portable-*
+          path: dist
+          merge-multiple: true
+
+      - name: Download the MSI
+        uses: actions/download-artifact@v4
+        with:
+          name: urnetwork-windows-msi
+          path: dist
+
+      # '<hex>  <filename>' -- sha256sum's own format, which both `sha256sum
+      # -c` and the in-app updater's verification parse. Zips only: the MSI is
+      # explicitly untested, nothing machine-verifies against its hash.
+      - name: Write SHA256SUMS
+        working-directory: dist
+        run: |
+          sha256sum URnetwork-*-portable.zip > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish the release
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="v${VERSION}"
+          # re-running a run (or a same-day rebuild racing the date math)
+          # must replace the tag's release, not collide with it
+          gh release delete "$tag" --yes || true
+          {
+            echo "Beta build (custom server fork) riding the official version numbering -- this is not an official URnetwork release."
+            echo
+            echo "The attached MSI is unsigned and untested -- use the portable zip."
+          } > notes.md
+          files=(URnetwork-*-portable.zip SHA256SUMS)
+          for msi in *.msi; do
+            if [ -f "$msi" ]; then files+=("$msi"); fi
+          done
+          # --target pins the tag to the commit this run built; without it a
+          # new tag would point wherever the default branch happens to be
+          gh release create "$tag" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
+            --notes-file notes.md \
+            "${files[@]}"
