@@ -7,7 +7,10 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
 
-  <Package Name="URnetwork" Manufacturer="URnetwork" Version="0.0.1.0"
+  <!-- Version comes from the .wixproj (UrMsiVersion, yy.M.d from CI; 0.0.1
+       for a bare local build) because ProductVersion fields cannot hold the
+       app's four-digit year. -->
+  <Package Name="URnetwork" Manufacturer="URnetwork" Version="$(var.UrMsiVersion)"
            UpgradeCode="a7c1e2d3-4b5f-6081-9c2d-3e4f50617283"
            Scope="perMachine" Compressed="yes">
 

@@ -7,7 +7,13 @@
     <OutputType>Package</OutputType>
     <!-- default staging dir; override on the command line per arch/config -->
     <BinDir Condition="'$(BinDir)'==''">$(MSBuildThisFileDirectory)..\build\$(Platform)\Release</BinDir>
-    <DefineConstants>BinDir=$(BinDir)</DefineConstants>
+    <!-- MSI ProductVersion fields are 16-bit-bounded (and the first two
+         effectively 8-bit), so the MSI cannot carry the app's yyyy.M.d date:
+         CI passes -p:UrMsiVersion=yy.M.d instead. The default keeps a bare
+         `dotnet build` compiling. Real upgrade ordering is the signing
+         milestone's problem, not this compile-proof's. -->
+    <UrMsiVersion Condition="'$(UrMsiVersion)'==''">0.0.1</UrMsiVersion>
+    <DefineConstants>BinDir=$(BinDir);UrMsiVersion=$(UrMsiVersion)</DefineConstants>
     <!-- -p:IncludeDriver=true (build.ps1 -IncludeDriver) compiles the split-tunnel
          driver component into the package; otherwise the .sys is omitted so the MSI
          builds without the (WDK-built) driver. -->
