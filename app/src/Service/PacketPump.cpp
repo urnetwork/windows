@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "PacketPump.h"
 
+#include <chrono>
+
 #include "Log.h"
 
 namespace urnw {
@@ -45,8 +47,34 @@ bool PacketPump::Start() {
 
 void PacketPump::Stop() {
   if (!running_.exchange(false)) return;
+  // Say so BEFORE the join. This line is not decoration: when this pump wedged
+  // for the first time, the whole diagnosis had to be reconstructed from the
+  // ABSENCE of "pump: stopped" between "tunnel: stopping (was up)" and eighty
+  // seconds of nothing. A shutdown step that can block must announce that it is
+  // about to, or its failure is invisible.
+  LogInfo("pump: stopping (signalling the outbound thread and joining it)");
   if (stopEvent_) ::SetEvent(stopEvent_);
+  const auto joinStart = std::chrono::steady_clock::now();
   if (outbound_.joinable()) outbound_.join();
+  const auto joinMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::steady_clock::now() - joinStart)
+                          .count();
+  // The join is deliberately UNBOUNDED here, and that is not an oversight — it
+  // is the safety property. The outbound thread holds references to the wintun
+  // adapter and the DeviceLocal; returning from Stop() while it still runs would
+  // hand the caller permission to destroy both underneath it. The BOUND lives
+  // one level up, in RunBounded (StopBudget.h), which owns this whole teardown
+  // and abandons it wholesale rather than dismembering it. See the ownership
+  // contract there.
+  //
+  // What CAN still make this slow is one in-flight DeviceLocal::sendPacket that
+  // is blocked in the SDK. One is the worst case, because OutboundLoop now
+  // re-checks the stop flag between packets; before that fix the drain loop
+  // could refill faster than it drained and never look at the flag at all.
+  if (joinMs > 250)
+    LogWarn("pump: the outbound thread took {}ms to join — it was blocked "
+            "inside the sdk (a send that could not complete), not looping",
+            joinMs);
   // Close the gate BEFORE unsubscribing, and take the lock to do it: taking the
   // lock is what waits out a callback already inside, which unsubscribing alone
   // does not. After this, no callback can reach the adapter.
@@ -69,7 +97,24 @@ void PacketPump::OutboundLoop() {
 
   while (running_.load()) {
     // Drain everything currently in the ring, then wait for more.
-    for (;;) {
+    //
+    // THE DRAIN LOOP MUST TEST running_ TOO. It used to be `for (;;)`, exiting
+    // only when the ring happened to be momentarily empty, and that is the bug
+    // that made a shutdown with the tunnel UP unbounded.
+    //
+    // Consider the state this loop is in exactly when the operator reaches for
+    // Ctrl+C. Thirty-one capture routes point the whole machine at the tun, and
+    // the tunnel is broken — no exit proven, every transport timing out — so
+    // nothing sent is ever acknowledged and the host stack retransmits. The ring
+    // therefore refills at least as fast as it drains, `packet.empty()` never
+    // becomes true, and the loop never reaches the WaitForMultipleObjects below
+    // that was the ONLY place the stop event was read. Stop() sets running_
+    // false, sets the event, and then joins a thread structurally incapable of
+    // noticing either.
+    //
+    // The livelock is worst precisely when the tunnel is most broken, which is
+    // when the operator is most likely to be trying to turn it off.
+    while (running_.load()) {
       std::span<const uint8_t> packet = adapter_.Receive();
       if (packet.empty()) break;
       // hand the outbound IP packet to the SDK; n is the valid byte count
@@ -77,9 +122,11 @@ void PacketPump::OutboundLoop() {
                          static_cast<int64_t>(packet.size()));
       adapter_.ReleaseReceived(packet);
     }
+    if (!running_.load()) break;  // re-checked: the drain loop may have exited on it
     DWORD w = ::WaitForMultipleObjects(2, waits, FALSE, INFINITE);
     if (w != WAIT_OBJECT_0) break;  // stop signaled (or wait failed)
   }
+  LogInfo("pump: outbound thread exited");
 }
 
 }  // namespace urnw

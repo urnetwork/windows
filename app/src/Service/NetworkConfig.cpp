@@ -10,6 +10,7 @@
 #include <cwchar>
 
 #include "Log.h"
+#include "NetPolicy.h"
 #include "Strings.h"
 
 #pragma comment(lib, "iphlpapi.lib")
@@ -64,28 +65,13 @@ bool DeleteTunRoute(NET_LUID tun, uint32_t network, uint8_t prefix) {
 // the crashing thread might already hold.
 std::atomic<uint64_t> g_armedTunLuid{0};
 
-// The whole ipv4 space EXCEPT the private ranges (10.0.0.0/8, 172.16.0.0/12,
-// 192.168.0.0/16), captured through the tun so LAN traffic bypasses the tunnel —
-// matching Android (MainService excludeRoute), iOS (NEIPv4Settings.excludedRoutes)
-// and Linux. These are the complement prefixes of those ranges within 0.0.0.0/0
-// (the same set Android adds on its no-excludeRoute path). Like the old 0.0.0.0/1 +
-// 128.0.0.0/1 capture they sort above the physical default without deleting it; the
-// excluded ranges fall through to the physical/connected routes. {network (host
-// byte order), prefix length}.
-struct TunPrefix {
-  uint32_t network;
-  uint8_t prefix;
-};
-constexpr TunPrefix kIncludedV4Routes[] = {
-    {0x00000000u, 5},  {0x08000000u, 7},  {0x0B000000u, 8},  {0x0C000000u, 6},
-    {0x10000000u, 4},  {0x20000000u, 3},  {0x40000000u, 2},  {0x80000000u, 3},
-    {0xA0000000u, 5},  {0xA8000000u, 6},  {0xAC000000u, 12}, {0xAC200000u, 11},
-    {0xAC400000u, 10}, {0xAC800000u, 9},  {0xAD000000u, 8},  {0xAE000000u, 7},
-    {0xB0000000u, 4},  {0xC0000000u, 9},  {0xC0800000u, 11}, {0xC0A00000u, 13},
-    {0xC0A90000u, 16}, {0xC0AA0000u, 15}, {0xC0AC0000u, 14}, {0xC0B00000u, 12},
-    {0xC0C00000u, 10}, {0xC1000000u, 8},  {0xC2000000u, 7},  {0xC4000000u, 6},
-    {0xC8000000u, 5},  {0xD0000000u, 4},  {0xE0000000u, 3},
-};
+// The tun's capture set — the whole IPv4 space EXCEPT the ranges that bypass
+// the tunnel. It is NOT written here any more: it is derived at compile time
+// from net::kLocalBypassV4, which is also what the WFP LAN permit is built
+// from, so the route table and the firewall cannot disagree about which
+// addresses are local. See NetPolicy.h for why that coupling matters and for
+// the 169.254/16 + 224.0.0.0/3 decisions.
+constexpr const auto& kIncludedV4Routes = net::kTunCaptureV4;
 
 bool SetTunDns(NET_LUID tun, const std::vector<std::string>& servers,
                const std::string& search) {
@@ -117,7 +103,57 @@ bool SetTunDns(NET_LUID tun, const std::vector<std::string>& servers,
   return true;
 }
 
+// DnsFlushResolverCache, resolved by NAME.
+//
+// It is exported by dnsapi.dll (ordinal 85 on 26100) and declared in NO SDK
+// header — windns.h has DnsFlushResolverCacheEntry_* and not this — so an
+// import-library reference would be a build-time bet on an undocumented symbol.
+// GetProcAddress makes its absence a logged no-op at runtime instead of a link
+// error, which is the right shape for something whose failure must not fail a
+// connect.
+//
+// The handle is deliberately never freed: dnsapi.dll is a system DLL that is
+// already resident in this process, and a FreeLibrary race with a flush in
+// flight buys nothing.
+using DnsFlushFn = BOOL(WINAPI*)(void);
+
+DnsFlushFn ResolveDnsFlush() {
+  static const DnsFlushFn fn = [] () -> DnsFlushFn {
+    HMODULE mod = ::LoadLibraryExW(L"dnsapi.dll", nullptr,
+                                   LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (!mod) return nullptr;
+    return reinterpret_cast<DnsFlushFn>(reinterpret_cast<void*>(
+        ::GetProcAddress(mod, "DnsFlushResolverCache")));
+  }();
+  return fn;
+}
+
 }  // namespace
+
+bool NetworkConfig::ResolverCacheFlushAvailable() {
+  return ResolveDnsFlush() != nullptr;
+}
+
+bool NetworkConfig::FlushResolverCache() {
+  const DnsFlushFn flush = ResolveDnsFlush();
+  if (!flush) {
+    LogWarn("dns: this system does not export DnsFlushResolverCache, so the "
+            "machine-wide resolver cache was NOT flushed. Names resolved before "
+            "this transition keep being served from it for the rest of their "
+            "TTL, to every process on the box.");
+    return false;
+  }
+  if (!flush()) {
+    LogWarn("dns: DnsFlushResolverCache failed ({}); the machine-wide resolver "
+            "cache still holds answers from before this transition. Not fatal — "
+            "a stale cache is not worth failing a working tunnel over.",
+            ::GetLastError());
+    return false;
+  }
+  LogInfo("dns: flushed the machine-wide resolver cache, so no answer from "
+          "before this transition survives it");
+  return true;
+}
 
 bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
   settings_ = settings;
@@ -174,19 +210,58 @@ bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
   LogInfo("netcfg: installed {} tun routes (private ranges excluded)",
           std::size(kIncludedV4Routes));
 
-  // --- DNS (R6: also needs a leak guard against other adapters' resolvers) ---
+  // --- DNS ------------------------------------------------------------------
+  // NOT fatal, deliberately: tearing a working tunnel down because its
+  // resolvers did not take would trade a DNS problem for a connectivity one.
+  // But it is not silent either, and that WAS the bug. Before dns_applied_
+  // existed, a failure here left applied_ = true, Apply returning true, the
+  // status reporting state=up + routes_installed=true, and a single LogWarn as
+  // the only trace — so the UI said Connected while every query went out in the
+  // clear. The flag is the honest half of "the tunnel is up but not all of it
+  // is": TunnelStatus::dns_applied carries it to the app, which renders a
+  // degraded state instead of a clean one.
+  //
+  // With the WFP layer armed the consequence changes shape but not severity:
+  // WfpPolicy hard-blocks port 53 to everything except the tun's resolvers, so
+  // a failure here means no adapter points at a permitted resolver and DNS
+  // stops entirely rather than leaking. Fail-closed is the better of the two,
+  // and it is still a state the user must be told about.
+  dns_applied_ = false;
   if (!settings.dns_servers.empty()) {
-    bool dnsOk = SetTunDns(tunLuid_, settings.dns_servers, settings.dns_search);
-    // Not fatal: the tunnel still carries traffic, DNS just leaks to the
-    // physical adapter's resolver. Loud, because that IS the R6 leak.
-    if (!dnsOk) LogWarn("netcfg: tun DNS not set — queries will use the physical resolver (R6)");
+    dns_applied_ = SetTunDns(tunLuid_, settings.dns_servers, settings.dns_search);
+    if (!dns_applied_)
+      LogError("netcfg: tun DNS NOT SET — the tunnel is up but name resolution "
+               "is not tunnelled (R6). Without the firewall layer queries go to "
+               "the physical adapter's resolver in the clear; with it they are "
+               "blocked and DNS fails. Reported to the app as dns_applied=false.");
   } else {
-    LogWarn("netcfg: no tun DNS servers supplied");
+    LogError("netcfg: NO tun DNS servers supplied — same consequence as a failed "
+             "set; reported as dns_applied=false");
+  }
+
+  // Cross-check the resolvers against the ONE table (NetPolicy.h). A resolver
+  // inside the bypass set is routed out the physical NIC, not the tun, so the
+  // firewall's tun-scoped DNS permit will not match it and the port-53 block
+  // will kill resolution outright. This can only happen if the SDK's resolver
+  // address and our bypass table are changed independently — which is exactly
+  // the class of drift NetPolicy.h exists to make impossible, so say so loudly
+  // rather than debug it later from a "DNS is broken" report.
+  for (const auto& server : settings.dns_servers) {
+    IN_ADDR s{};
+    if (!ParseV4(server, s)) continue;
+    if (net::IsLocalBypassV4(ntohl(s.S_un.S_addr))) {
+      LogError("netcfg: tunnel resolver {} falls inside a range that BYPASSES "
+               "the tunnel (NetPolicy.h kLocalBypassV4). It is not reachable "
+               "through the tun and the firewall's port-53 block will drop it. "
+               "This is a table/SDK disagreement, not a network fault.",
+               server);
+    }
   }
 
   applied_ = true;
-  LogInfo("netcfg: applied addr={}/{} mtu={} dns={}", settings.local_address_v4,
-          settings.prefix_v4, settings.mtu, settings.dns_servers.size());
+  LogInfo("netcfg: applied addr={}/{} mtu={} dns={} dns_applied={}",
+          settings.local_address_v4, settings.prefix_v4, settings.mtu,
+          settings.dns_servers.size(), dns_applied_ ? "yes" : "NO");
   return true;
 }
 
@@ -211,6 +286,7 @@ void NetworkConfig::Revert() {
     ::DeleteUnicastIpAddressEntry(&ipRow);
   }
   applied_ = false;
+  dns_applied_ = false;
   DisarmCrashRevert();
   LogInfo("netcfg: reverted ({} of {} routes removed, dns cleared)", removed,
           std::size(kIncludedV4Routes));
@@ -280,8 +356,34 @@ int NetworkConfig::SweepOrphanedTunnel(const GUID& tunGuid,
     if (candidateCount < 8) candidates[candidateCount++] = luid.Value;
   };
 
-  // ConvertInterfaceGuidToLuid resolves against the live interface table, so a
-  // success here means an interface with our pinned GUID exists right now.
+  // ConvertInterfaceGuidToLuid RESOLVES A PERSISTENT MAPPING, NOT THE LIVE
+  // INTERFACE TABLE. This line used to carry a comment claiming the opposite —
+  // "a success here means an interface with our pinned GUID exists right now" —
+  // and that claim is false. Measured on this machine, unelevated, with no
+  // URnetwork adapter present anywhere:
+  //
+  //   ConvertInterfaceGuidToLuid({C4E5F6A7-...}) -> NO_ERROR, luid 0x35008000000000
+  //   ConvertInterfaceLuidToIndex                -> NO_ERROR, ifIndex 9
+  //   ConvertInterfaceLuidToAlias                -> NO_ERROR, "URnetwork"
+  //   GetIfEntry2(luid)                          -> NO_ERROR, "URnetwork"
+  //
+  // ...while Get-NetAdapter -IncludeHidden, `netsh interface ipv4 show
+  // interfaces`, Get-NetIPInterface and Get-NetRoute ALL agree there is no
+  // interface 9 and no route on it.
+  //
+  // Windows keeps the GUID <-> NetLuidIndex binding, and an interface record
+  // behind it, after the miniport is gone. So once this machine has EVER created
+  // the tun, all of those lookups keep succeeding forever. What that produced
+  // was a PERMANENT FALSE ORPHAN: every start warned "a previous run did not
+  // revert", and `urnetworkd revert` reported orphaned_interfaces=1 on a machine
+  // with nothing wrong with it — including at 05:33 on 2026-08-09, while the
+  // owner was using it to recover from the shutdown hang.
+  //
+  // That is not a cosmetic bug. This warning and the active marker are, by the
+  // design's own words, "the only way the owner learns that a crash cost them
+  // their network". A warning that is always on is a warning that is never read.
+  //
+  // The candidate is therefore a LEAD, confirmed against the live IP stack below.
   NET_LUID byGuid{};
   GUID guid = tunGuid;
   if (::ConvertInterfaceGuidToLuid(&guid, &byGuid) == NO_ERROR) add(byGuid);
@@ -319,13 +421,57 @@ int NetworkConfig::SweepOrphanedTunnel(const GUID& tunGuid,
     }
   }
 
+  int confirmed = 0;
   for (int i = 0; i < candidateCount; ++i) {
     NET_LUID luid{};
     luid.Value = candidates[i];
+
+    // THE EVIDENCE TEST. A candidate only counts if the IP STACK still has this
+    // interface — not merely if a name-to-LUID lookup resolves it (see the note
+    // on ConvertInterfaceGuidToLuid above; GetIfEntry2 is no better, it answers
+    // for the phantom too).
+    //
+    // GetIpInterfaceEntry is the right question because it queries the very
+    // table that holds routes and per-interface DNS: the two things this sweep
+    // exists to take back. An interface absent from it CANNOT be holding either.
+    //
+    // AND THIS CANNOT PRODUCE A FALSE NEGATIVE FOR THE CASE THAT MATTERS. A real
+    // orphan stranding the machine is, by definition, one with our routes still
+    // pointed at it — and a route cannot exist on an interface the IP stack does
+    // not have. So every orphan capable of doing harm still passes this gate.
+    // The only thing filtered out is the harmless residue, which is exactly what
+    // the file's own "prefer the miss" rule asks for.
+    //
+    // Both families are tried: we only ever install v4 routes and v4 DNS, but
+    // accepting either is the direction that errs towards sweeping.
+    bool live = false;
+    for (const ADDRESS_FAMILY family : {AF_INET, AF_INET6}) {
+      MIB_IPINTERFACE_ROW ip{};
+      ip.Family = family;
+      ip.InterfaceLuid = luid;
+      if (::GetIpInterfaceEntry(&ip) == NO_ERROR) {
+        live = true;
+        break;
+      }
+    }
+
     MIB_IF_ROW2 row{};
     row.InterfaceLuid = luid;
     std::string alias = (::GetIfEntry2(&row) == NO_ERROR) ? Narrow(row.Alias)
                                                           : std::string("<gone>");
+    if (!live) {
+      // Debug, not warn: on a machine that has ever run the tunnel this is the
+      // NORMAL steady state, and it is the noise that used to drown the real
+      // signal. Kept rather than dropped so the residue is still explicable to
+      // anyone reading the log after a crash.
+      LogDebug("netcfg: the name \"{}\" (luid {:#x}) still resolves, but the ip "
+               "stack has no such interface — stale guid/alias binding from an "
+               "adapter that is already gone, holding no route and no dns. Not "
+               "an orphan; not swept.",
+               alias, luid.Value);
+      continue;
+    }
+    ++confirmed;
     if (!remove) {
       LogWarn("netcfg: ORPHANED tun interface \"{}\" (luid {:#x}) present at "
               "startup — a previous run did not revert. NOT cleaning it: this "
@@ -344,7 +490,13 @@ int NetworkConfig::SweepOrphanedTunnel(const GUID& tunGuid,
         "DNS",
         alias, luid.Value, removed);
   }
-  return candidateCount;
+  // CONFIRMED orphans, not candidates. This return value is what
+  // ReportAndClearPriorState turns into "found N tun interface(s) from an
+  // earlier run" and what `urnetworkd revert` prints as orphaned_interfaces —
+  // i.e. it is the number the owner reads when deciding whether a crash cost
+  // them their network. Returning the unconfirmed candidate count made every
+  // clean start on this machine report a crash that never happened.
+  return confirmed;
 }
 
 std::string NetworkConfig::DescribeInterface(uint32_t ifIndex) {
@@ -420,6 +572,54 @@ EgressInterfaces NetworkConfig::DiscoverEgress(NET_LUID tunLuid) {
       result.index6 = bestIndex;
   }
   return result;
+}
+
+std::vector<std::string> NetworkConfig::HostResolversV4(NET_LUID excludeLuid) {
+  std::vector<std::string> out;
+
+  // The buffer requirement can grow between the sizing call and the real one
+  // (an adapter arriving), so retry rather than assume.
+  ULONG size = 16 * 1024;
+  std::vector<uint8_t> buf;
+  ULONG err = ERROR_BUFFER_OVERFLOW;
+  for (int attempt = 0; attempt < 4 && err == ERROR_BUFFER_OVERFLOW; ++attempt) {
+    buf.assign(size, 0);
+    err = ::GetAdaptersAddresses(
+        AF_UNSPEC,
+        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
+            GAA_FLAG_SKIP_FRIENDLY_NAME,
+        nullptr, reinterpret_cast<PIP_ADAPTER_ADDRESSES>(buf.data()), &size);
+  }
+  if (err != NO_ERROR) {
+    LogWarn("netcfg: GetAdaptersAddresses failed while reading the host's "
+            "resolvers: {}. The firewall policy will treat this machine as "
+            "having no resolver, which stands the port-53 block down rather "
+            "than blocking DNS with no path back.",
+            err);
+    return out;
+  }
+
+  for (auto* a = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(buf.data()); a;
+       a = a->Next) {
+    if (a->OperStatus != IfOperStatusUp) continue;
+    if (excludeLuid.Value != 0 && a->Luid.Value == excludeLuid.Value) continue;
+    for (auto* d = a->FirstDnsServerAddress; d; d = d->Next) {
+      const SOCKADDR* sa = d->Address.lpSockaddr;
+      if (!sa || sa->sa_family != AF_INET) continue;
+      const auto* sin = reinterpret_cast<const sockaddr_in*>(sa);
+      const uint32_t host = ::ntohl(sin->sin_addr.S_un.S_addr);
+      if (host == 0) continue;                            // "none" placeholder
+      if ((host & 0xFF000000u) == 0x7F000000u) continue;  // 127/8 — see header
+      char text[INET_ADDRSTRLEN] = {};
+      if (!::inet_ntop(AF_INET, &sin->sin_addr, text, sizeof(text))) continue;
+      std::string s(text);
+      bool seen = false;
+      for (const auto& have : out)
+        if (have == s) seen = true;
+      if (!seen) out.push_back(std::move(s));
+    }
+  }
+  return out;
 }
 
 bool NetworkConfig::InterfaceSourceAddress(uint32_t ifIndex, int family,

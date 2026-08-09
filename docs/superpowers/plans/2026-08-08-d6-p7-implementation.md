@@ -12,6 +12,39 @@ harness traps) and `docs/superpowers/specs/2026-08-06-ios-parity-native-shell.md
 
 # D6 — wire the fault-injection and probe actions
 
+## Status: DONE 2026-08-08 (uncommitted at time of writing)
+
+All seven bridged and verified against a live `DeviceRemote` over
+`urnetworkd console --rpc-only`, unelevated. Both stale comments deleted and
+replaced with notes citing the header/`.def` lines, so the claim is checkable
+rather than re-litigable. Changed: `SdkHost.h`, `SdkHost.cpp`,
+`DeveloperPage.cpp`, `DeveloperPage.h`. 33 new `dev_*` ids for upstream.
+
+**Grep trap for the next person:** the exports are snake_case C ABI names
+(`urnet_device_remote_drop_exit`), not camelCase — a camelCase grep finds nothing
+and looks like confirmation that the methods don't exist. That is exactly how the
+stale comments survived.
+
+**Bug that only running found:** `migrateExit` returns **-1** for an exit not in
+the window — a not-found sentinel, not a count — and the first implementation
+rendered "affected **-1**". `< 0` now declines; `0` is deliberately *not* treated
+as a sentinel, because "migrated 0 flows" is a real answer. The `int64_t`
+signature alone would never have surfaced this.
+
+**Honest gaps — do not read the above as full coverage:**
+- The beta-test account has insufficient balance, so it never forms a provider
+  contract and the exits table is always empty. **No Drop/Stall/Migrate against a
+  real exit was possible.** The bridge and the decline path are proven; a
+  successful drop is not.
+- Requeue is a **weak pass**. Nothing replayed across three service restarts, but
+  the app does not re-bootstrap its session in-process, so the replay opportunity
+  was never created. Structurally there is no queue in the added path;
+  empirically it is unproven.
+- `getConnectedProviderLocations()` skipped: clean to bridge, but renders empty
+  with zero connected providers and `ConnectPage` lacks the serial bridge
+  `DeveloperPage` has — shipping it would mean shipping unverified UI.
+- `getPacketStats()` skipped — see the correction under "Also bridgeable" below.
+
 ## Why this exists
 
 Advanced Mode is **read and write** by owner decision: *"advanced mode can let
@@ -69,15 +102,45 @@ These would complete the inspector and are all already exported:
 - `ContractViewController::getPacketStats()` → directional packets *and* bytes
   (Remote/Local/Block × Egress/Ingress). Struct-shaped, no guard needed. This is
   what turns the inspector's "(total)" labels into in/out.
+
+  > **CORRECTION (2026-08-08): this instruction was wrong; it was correctly
+  > refused during D6.** There is exactly one device-level `contractVc_`
+  > (`SdkHost.cpp:1786`), so its packet stats are **device-wide**, while the
+  > inspector's `packetCount`/`byteCount` are **per-block-action**. Rendering
+  > device-wide in/out under per-connection rows is the right shape around the
+  > wrong number. The existing comment at `ConnectPage.cpp:1352–1355` already
+  > says this and is correct — leave it. Do not bridge this field for the
+  > inspector.
+
 - `DeviceRemote::getProbeResults()` → per-target DNS / connect / TTFB / total
   latency. **`*List` → `ReadSdkList`.**
 
-**Not available, do not fake:** protocol, source/destination port, per-flow
-process attribution (only via the `DeviceLocal`-only `setFlowOwnerLookup`, which
-lives in the service process), ASN/org, per-connection duration, per-connection
-RTT. The egress interface index for the status strip is **not** in
-`proto::TunnelStatus` — the driver knows it; surfacing it is a service-side
-change, not a client one.
+**Not available, do not fake:** ~~protocol, source/destination port,~~ per-flow
+process attribution, ASN/org, per-connection duration, per-connection RTT. The
+egress interface index for the status strip is **not** in `proto::TunnelStatus` —
+the driver knows it; surfacing it is a service-side change, not a client one.
+
+> **CORRECTION (2026-08-08): protocol and both ports ARE available.**
+> `DeviceLocal::setFlowOwnerLookup` (`urnetwork_sdk.hpp:9568`, `:10066`) invokes a
+> callback carrying `version, protocol, source_ip, source_port, destination_ip,
+> destination_port` and asks us who owns the flow. Those are handed to us as
+> arguments — and the same callback is the race-free moment to do a socket→PID
+> lookup, because the socket is live by construction. That makes **per-flow
+> process attribution reachable too**, without WFP, a driver, or elevated
+> privileges.
+>
+> Two constraints on using it: it is `DeviceLocal`-only, so it lives in the
+> **service** process and any design must cross our mTLS RPC boundary; and its
+> calling cadence and thread context are **unverified** — spike that before
+> building on it (task #23). Separately, `BlockAction` has no ports or owner, so
+> joining a flow table to it can only key on IP: two processes hitting the same
+> IP collapse into one row. Disclose that (Portmaster's `" or "` pattern) rather
+> than picking a winner.
+>
+> Full analysis, including why the presumed user-mode WFP route is a dead end
+> (`FWPM_NET_EVENT_HEADER3` has no PID field; the event log is a ~128 KB circular
+> buffer holding ~100–150 events; it logs drops, not allows):
+> `docs/superpowers/research/2026-08-08-windows-traffic-logging.md`.
 
 ## Verification
 
@@ -96,6 +159,71 @@ an RPC reconnect.
 # P7 — the tunnel
 
 ## Status: NOT AUTHORISED TO RUN. Plan only.
+
+> **UPDATE 2026-08-08 — prerequisites landed in front of the gates.** Four research
+> passes and a non-destructive prep pass have run since this was written. Nothing
+> elevated was executed. What changed:
+>
+> **The data-path architecture is validated — keep what we built.** wintun + the
+> 31-prefix complement route set + `IP_UNICAST_IF` self-exclusion. The prefix table
+> was verified arithmetically (31 aligned, non-overlapping, union = `0/0` minus the
+> three RFC1918 ranges). The `0.0.0.0/1`+`128.0.0.0/1` idea is a *Linux* `wg-quick`
+> technique requiring `fwmark` + `suppress_prefixlength` — **do not adopt it**.
+>
+> **R6 and R7 are confirmed live on the test machine, not risks.** The tunnel is
+> v4-only and the box has a global routable IPv6 address and a v6 default route, so
+> Windows prefers v6 per RFC 6724 and most real browsing bypasses the VPN entirely.
+> Ethernet's resolver sits inside the deliberately-excluded `192.168/16`, so DNS
+> leaks by construction. **Gate F as written would fail, and Gates D/E would be
+> testing a tunnel that leaks by design.**
+>
+> **Recommended reordering:** build the user-mode WFP leak layer (task #20) and fix
+> the recovery-path defects (task #21) *before* the first elevated run, rather than
+> running the gates against a known-leaky configuration and re-running them after.
+> This reorders the plan; it does not expand it.
+>
+> **Defects found by reading, not yet fixed** — all in task #21:
+> - `main.cpp:211` sweeps the route table (`SweepOrphanedTunnel(remove=true)`)
+>   *before* the control-pipe conflict is detected at `:216`. `RevertNetwork` and
+>   `RunConsole` both guard with `ControlPipeInUse()`; the SCM path does not. So
+>   `sc start urnetworkd` against a live console tunnel deletes its 31 routes and
+>   clears its DNS while the console still reports Up — the exact scenario
+>   `main.cpp:320-328` calls unacceptable, in the one path missing the guard.
+> - `NetworkConfig.cpp:178-185` — a **DNS failure inside `Apply` is not rolled
+>   back**. `applied_ = true`, `Apply` returns true, the tunnel reports
+>   `state=up`/`routes_installed=true`, and the only signal is a `LogWarn`. The UI
+>   says Connected while every query goes out in the clear. Needs `dns_applied` on
+>   `TunnelStatus`.
+>
+> **Crash recovery works, but not for the reason the code comment gives.**
+> `TerminateProcess` runs no user code — not the exception filter (`main.cpp:159`),
+> the terminate handler (`:172`) or the console handler (`:178`). **`CrashRevert`
+> does not run.** Routes come back because wintun never calls `SwDeviceSetLifetime`,
+> so process death is a PnP *surprise removal*; `DIF_REMOVE` never runs, so a
+> phantom devnode and registry residue survive. "The network came back" and "nothing
+> was left behind" are different claims and only the first is guaranteed. Requires
+> wintun **≥ 0.14** (confirmed: we ship 0.14.1).
+>
+> **Gate E is safe to attempt**, for a reason not previously stated: the tun route
+> set deliberately excludes the private ranges (`NetworkConfig.cpp:66-88`), so even
+> a lingering adapter leaves `10/8`, `172.16/12` and `192.168/16` on the physical
+> path — router, LAN and the local resolver all stay reachable. Worst realistic
+> outcome is "no internet, LAN and local elevated shell intact". The hotspot is a
+> nice-to-have, not the primary recovery.
+>
+> **Environment blockers for Gate F:** Tailscale is running (a second wintun 0.14.1
+> consumer with 2 NRPT rules and its own v6 address) and must be stopped or the
+> leak results are uninterpretable. `C:\ProgramData\URnetwork\service` is machine-
+> wide and deliberately not redirectable (`Paths.cpp:44-50`) — one marker, one log,
+> one adapter GUID — so **only one build may exist on the box during P7**.
+>
+> **Standing hazard:** `WintunDeleteDriver` detaches *every* wintun adapter on the
+> machine including other vendors' (the mechanism behind three tracked outages, and
+> Tailscale is installed here). We resolve the export but never call it. That is
+> correct — do not "tidy up" by calling it.
+>
+> Reports: `docs/superpowers/reports/p7-baseline/` (capture script, stability-proven
+> baseline, `p7-gates.ps1`) and `docs/superpowers/research/2026-08-08-windows-{tunnel-datapath,leak-prevention-wfp,traffic-logging,split-tunneling}.md`.
 
 The owner said *"Save step 7 for after my manual approval and review of
 everything"* and has since said *"Next is D6 and P7"* in the context of asking
@@ -149,9 +277,36 @@ the console process must be stopped first. That advice is already in the banner.
 
 ## Execution order (each gate must pass before the next)
 
-**Gate A — adapter, unelevated-fail.** Confirm `console` (no `--rpc-only`) fails
-cleanly at step 1 without elevation, naming elevation as the cause. Already
-observed; re-confirm on the current build.
+**Gate A — adapter, unelevated-fail. PASSED 2026-08-08 — but the wording below was
+wrong, and a gate that proves nothing is worse than no gate.**
+
+~~Confirm `console` (no `--rpc-only`) fails cleanly at step 1 without elevation,
+naming elevation as the cause.~~
+
+**The console does not fail.** `RunConsole` logs the elevation error at
+`main.cpp:385-391` and **continues, serving the pipe**. Step 1 only executes when
+a client sends `start_tunnel`. As originally written this gate executes no tunnel
+code at all and looks like a pass. To actually run it you must drive it: send
+`start_tunnel{mode:tunnel}` over the named pipe. That is safe — an unelevated
+token cannot create a wintun adapter, and steps 6–8 are double-guarded
+(`TunnelController.cpp:312` mode check, `:320` null-adapter check).
+
+Observed result, build SHA256 `CD0814BF…`:
+
+```
+ERR: wintun: CreateAdapter failed: 5
+ERR: tunnel: start FAILED at step 1/8 wintun (mode=tunnel): failed to create the
+     wintun adapter (needs LocalSystem/admin and a loadable wintun driver)
+INF: tunnel: stopped, no network state to restore (nothing was applied)
+```
+
+`routes_installed:false`, `state:error`, error 5 = `ERROR_ACCESS_DENIED`, baseline
+byte-identical afterwards.
+
+**Record the corollary: the elevation guard is the OS, not our code.** Nothing in
+the C++ refuses to proceed unelevated — `WintunCreateAdapter` returning
+`ERROR_ACCESS_DENIED` is the only thing that stops it. Adequate, but not what
+this plan implied.
 
 **Gate B — elevated, adapter only.** Elevated `console`, allow step 1, abort
 before 6. Confirm: adapter appears with **no address and no route**; routing

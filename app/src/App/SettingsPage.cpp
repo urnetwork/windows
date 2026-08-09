@@ -395,6 +395,21 @@ void SettingsPage::BuildConnectionsSection(Panel const& host) {
   // because "kill switch" alone does not say which way it runs.
   killSwitch_ = ToggleRow(card, Loc("kill_switch"), Loc("site_app_kill_switch_note"));
   killSwitch_.Toggled([this](auto const&, auto const&) { OnKillSwitchToggled(); });
+  // The one thing the shipped note does not say, and the one thing that is not
+  // true of this feature: "nothing leaves" holds while idle, but NOT during a
+  // connection attempt. The service opens a DNS hole to reach our servers, and
+  // that hole cannot be scoped to us - Windows performs name lookups in the DNS
+  // Client service, so the permit is address-scoped and every app on the device
+  // is inside it for the length of the attempt (Service/WfpPolicy.h, filter 9b).
+  // Disclosed here rather than left to the log, because a user who reads "block
+  // traffic when disconnected" and is not told this has been told something
+  // false about the seconds that matter most.
+  Supporting(card, Adv("adv_kill_switch_dns_window",
+                       L"While it is on and nothing is connecting, nothing "
+                       L"leaves this device - name lookups included. During a "
+                       L"connection attempt, name lookups from any app on this "
+                       L"device can leave in the clear so URnetwork can reach "
+                       L"its servers; everything else stays blocked."));
 
   TextBlock unused{nullptr};
   auto blockedButton = NavRow(card, Loc("blocked_locations_2"), unused);

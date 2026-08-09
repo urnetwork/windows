@@ -10,22 +10,30 @@
 // needed.
 //
 // SPDX-License-Identifier: MPL-2.0
+#include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
+#include <format>
 #include <string>
+#include <vector>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include "ConsoleArgs.h"
 #include "ControlServer.h"
 #include "Ids.h"
 #include "Log.h"
 #include "NetworkConfig.h"
 #include "Paths.h"
 #include "Sdk.h"
+#include "SelfTest.h"
+#include "StopBudget.h"
 #include "Strings.h"
 #include "TunnelController.h"
+#include "WfpPolicy.h"
 
 using namespace urnw;
 
@@ -122,16 +130,23 @@ void ReportAndClearPriorState(bool observeOnly) {
                                    : TunnelController::TakeActiveMarker();
   const int orphans = NetworkConfig::SweepOrphanedTunnel(
       ids::kTunAdapterGuid, ids::kTunAdapterName, /*remove=*/!observeOnly);
+  // Belt to the dynamic session's braces. WfpPolicy registers everything on a
+  // session BFE tears down when the process dies, so on a healthy machine this
+  // finds nothing — which is exactly why it is worth running: anything it DOES
+  // find is static or persistent state that a dynamic session could not have
+  // left, i.e. an older build or a hand-installed lockdown. Same observe-only
+  // contract as the interface sweep above.
+  const int wfpObjects = WfpPolicy::SweepOrphanedObjects(/*remove=*/!observeOnly);
   if (observeOnly) {
-    if (crashed || orphans > 0) {
+    if (crashed || orphans > 0 || wfpObjects > 0) {
       LogWarn("service: leftover tunnel state from a previous run (marker={} "
-              "orphaned_interfaces={}) — this process is OBSERVE-ONLY "
-              "(rpc-only), so nothing was cleaned and the marker was LEFT IN "
-              "PLACE for the next real start. If your network is wrong: STOP "
-              "THIS PROCESS FIRST, then run `urnetworkd revert` from an "
-              "elevated prompt — revert REFUSES while any urnetworkd is serving "
-              "the control pipe, including this one.",
-              crashed ? "yes" : "no", orphans);
+              "orphaned_interfaces={} wfp_objects={}) — this process is "
+              "OBSERVE-ONLY (rpc-only), so nothing was cleaned and the marker "
+              "was LEFT IN PLACE for the next real start. If your network is "
+              "wrong: STOP THIS PROCESS FIRST, then run `urnetworkd revert` "
+              "from an elevated prompt — revert REFUSES while any urnetworkd is "
+              "serving the control pipe, including this one.",
+              crashed ? "yes" : "no", orphans, wfpObjects);
     } else {
       LogInfo("service: no leftover tunnel state from a previous run "
               "(observe-only: nothing swept, no marker consumed)");
@@ -148,9 +163,25 @@ void ReportAndClearPriorState(bool observeOnly) {
     LogWarn("service: found {} tun interface(s) from an earlier run with no "
             "active marker; swept them",
             orphans);
+  } else if (wfpObjects > 0) {
+    LogWarn("service: found {} leftover filter-engine object(s) from an earlier "
+            "run with no active marker; purged them",
+            wfpObjects);
   } else {
     LogInfo("service: no leftover tunnel state from a previous run");
   }
+}
+
+// Is a urnetworkd already serving the control pipe? Two instances cannot both
+// serve it (the pipe is single-instance), and the loser's accept loop dies
+// quietly — so every entry point refuses up front instead.
+//
+// Declared HERE, above Run(), rather than next to the dev helpers where it used
+// to live, because Run() is the path that most needs it. See the note at the
+// top of Run().
+bool ControlPipeInUse() {
+  if (::WaitNamedPipeW(ids::kControlPipeName, 1)) return true;
+  return ::GetLastError() != ERROR_FILE_NOT_FOUND;
 }
 
 // Last-chance handlers. The machine's actual restore path is the wintun adapter
@@ -175,14 +206,86 @@ void OnTerminate() {
   std::abort();
 }
 
+// How many times the operator has asked this process to stop. Windows runs each
+// console control event on its OWN thread, so this is genuinely concurrent and
+// has to be atomic — and it is also why the escalation below can make progress
+// while the main thread is stuck.
+std::atomic<int> g_stopPresses{0};
+
+// Give the machine its routes back and kill this process outright. The last rung
+// of the ladder, and the only one that cannot itself block.
+//
+// Everything here is deliberately minimal. CrashRevert takes no lock and issues
+// route ioctls only (see NetworkConfig.h for why it skips the DNS clear).
+// TerminateProcess then runs NO user code at all — not the exception filter
+// above, not the terminate handler, not this handler on a later press — which is
+// exactly the property being bought: nothing left in this process can wedge
+// again. The rest of the machine's state comes back without us: the wintun
+// adapter dies as a pnp surprise removal and takes its routes and dns, and the
+// WFP filters go with the dynamic BFE session.
+[[noreturn]] void ForceExitNow(const char* why) {
+  NetworkConfig::CrashRevert();
+  LogError("console: {} — TERMINATING THIS PROCESS NOW. Routes reverted on the "
+           "way out; the wintun adapter and every filter die with the process. "
+           "If your network still looks wrong, run `urnetworkd revert` from an "
+           "elevated prompt.",
+           why);
+  ::TerminateProcess(::GetCurrentProcess(), kForcedStopExitCode);
+  ::ExitProcess(kForcedStopExitCode);  // unreachable; satisfies [[noreturn]]
+}
+
 BOOL WINAPI OnConsoleControl(DWORD type) {
   switch (type) {
     case CTRL_C_EVENT:
-    case CTRL_BREAK_EVENT:
-      LogInfo("console: {} — shutting down",
-              type == CTRL_C_EVENT ? "Ctrl+C" : "Ctrl+Break");
-      if (g_stopEvent) ::SetEvent(g_stopEvent);
-      return TRUE;  // handled; the main thread runs the orderly teardown
+    case CTRL_BREAK_EVENT: {
+      // EACH PRESS MUST MEAN SOMETHING DIFFERENT.
+      //
+      // This used to log one identical line and re-signal an already-signalled
+      // manual-reset event, forever. On the first run that ever reached UP the
+      // operator pressed Ctrl+C sixteen times over eighty seconds and got
+      // sixteen identical "shutting down" lines, no progress, and no hint that
+      // pressing again was pointless — then had to kill the process from another
+      // window and run `urnetworkd revert` to get their machine back.
+      const char* key = type == CTRL_C_EVENT ? "Ctrl+C" : "Ctrl+Break";
+      const int press = g_stopPresses.fetch_add(1) + 1;
+      switch (DecideConsoleStop(press)) {
+        case ConsoleStopAction::Graceful:
+          LogInfo("console: {} — shutting down. This reverts your routes, dns "
+                  "and firewall policy FIRST and then releases the sdk. Press "
+                  "{} again to force it.",
+                  key, key);
+          if (g_stopEvent) ::SetEvent(g_stopEvent);
+          return TRUE;  // handled; the main thread runs the orderly teardown
+
+        case ConsoleStopAction::Force:
+          LogWarn("console: {} AGAIN — ESCALATING. The graceful stop has not "
+                  "finished, so every remaining wait in this process is being "
+                  "collapsed to {}ms and the sdk teardown will be ABANDONED "
+                  "rather than waited on. Your network state is reverted before "
+                  "that teardown is even attempted. One more {} terminates this "
+                  "process immediately.",
+                  key, kForcedTeardownBudget.count(), key);
+          RequestForcedStop();
+          if (g_stopEvent) ::SetEvent(g_stopEvent);
+          // Wait for the (now collapsed) teardown to report. If it drains, the
+          // main thread exits on its own and this is a clean forced stop; if it
+          // does not, fall through to the kill rather than hand the operator
+          // another silent wait.
+          if (g_consoleDrainedEvent &&
+              ::WaitForSingleObject(
+                  g_consoleDrainedEvent,
+                  static_cast<DWORD>(kConsoleForceGrace.count())) ==
+                  WAIT_OBJECT_0) {
+            LogWarn("console: forced teardown completed; exiting");
+            return TRUE;
+          }
+          ForceExitNow("the forced teardown did not drain either");
+
+        case ConsoleStopAction::Terminate:
+          ForceExitNow("third stop request");
+      }
+      return TRUE;
+    }
     case CTRL_CLOSE_EVENT:
     case CTRL_LOGOFF_EVENT:
     case CTRL_SHUTDOWN_EVENT:
@@ -205,6 +308,39 @@ BOOL WINAPI OnConsoleControl(DWORD type) {
 }
 
 void Run() {
+  // THE CONTROL-PIPE CONFLICT IS DETECTED FIRST, BEFORE THE SWEEP.
+  //
+  // This used to sit further down, at server.Start(), which meant the sweep ran
+  // first — and the sweep is destructive. `sc start urnetworkd` against a live
+  // `urnetworkd console` tunnel therefore deleted that tunnel's routes and
+  // cleared its DNS, while the console kept reporting Up, the pump kept pumping
+  // and the tray still said Connected. Every packet would have left in the
+  // clear with nothing reporting it. That is precisely the scenario
+  // RevertNetwork() below calls unacceptable and refuses to cause — and this
+  // was the one path that had no such guard, even though RevertNetwork and
+  // RunConsole both did.
+  //
+  // Ordering is the fix and it costs nothing: if another process holds the
+  // pipe, this one cannot serve it and has no business touching the network on
+  // the way to finding that out.
+  //
+  // The check is inherently a TOCTOU — a console could claim the pipe in the
+  // window between here and server.Start() — so server.Start() keeps its own
+  // failure path below. That is a race between two deliberate acts, and its
+  // worst outcome is a service that declines to start. The bug this fixes was
+  // the opposite: a race-free, unconditional strip of a live tunnel.
+  if (ControlPipeInUse()) {
+    LogError("service: REFUSING to start — another urnetworkd is already "
+             "serving {} (probably `urnetworkd console`). Nothing was swept and "
+             "no route or DNS entry was touched: this process cannot serve the "
+             "pipe anyway, and starting the sweep against a LIVE tunnel would "
+             "delete its routes and clear its DNS while it kept reporting "
+             "Connected. Stop the other instance first.",
+             Narrow(ids::kControlPipeName));
+    SetState(SERVICE_STOPPED, ERROR_SERVICE_SPECIFIC_ERROR);
+    return;
+  }
+
   // Sweep before anything else can fail or block: if a previous run left the
   // machine pointed at a tun that is gone, giving the routes back is more
   // urgent than getting the sdk up.
@@ -227,10 +363,27 @@ void Run() {
   ::WaitForSingleObject(g_stopEvent, INFINITE);
 
   LogInfo("service: stopping");
-  server.Stop();  // stops the tunnel, which reverts routes and DNS
+  const auto stopStart = std::chrono::steady_clock::now();
+  server.Stop();  // reverts routes/dns/firewall FIRST, then releases the sdk
   g_server = nullptr;
+  const auto stopMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::steady_clock::now() - stopStart)
+                          .count();
+  // Tell the SCM we are stopped BEFORE any forced exit below. A LocalSystem
+  // service that vanishes without reporting STOPPED is recorded as a crash and
+  // trips the SC_ACTION_RESTART policy — which would start a fresh urnetworkd on
+  // a machine whose owner just asked for the VPN to be off.
   SetState(SERVICE_STOPPED);
-  LogInfo("service: stopped cleanly");
+  if (TeardownAbandoned()) {
+    LogError("service: stopped in {}ms with the SDK TEARDOWN ABANDONED. The "
+             "machine's routes, dns and firewall policy were reverted; what is "
+             "still held is ours alone, on a thread that will not return. "
+             "Terminating rather than unwinding — see StopBudget.h.",
+             stopMs);
+    NetworkConfig::CrashRevert();  // idempotent; a no-op if the orderly path ran
+    ::TerminateProcess(::GetCurrentProcess(), kForcedStopExitCode);
+  }
+  LogInfo("service: stopped cleanly in {}ms", stopMs);
 }
 
 void WINAPI ServiceMain(DWORD, LPWSTR*) {
@@ -306,14 +459,6 @@ int UninstallService() {
   return rc;
 }
 
-// Is a urnetworkd already serving the control pipe? Two instances cannot both
-// serve it (the pipe is single-instance), and the loser's accept loop dies
-// quietly — so a console run refuses up front instead.
-bool ControlPipeInUse() {
-  if (::WaitNamedPipeW(ids::kControlPipeName, 1)) return true;
-  return ::GetLastError() != ERROR_FILE_NOT_FOUND;
-}
-
 // Give the machine its network back without starting anything. The escape hatch
 // for the one failure this service must never leave unfixable: a tun adapter
 // that outlived the process that owned it, still holding the default routes.
@@ -356,11 +501,18 @@ int RevertNetwork(bool force) {
   const bool marker = ControlPipeInUse() ? false : TunnelController::TakeActiveMarker();
   const int orphans = NetworkConfig::SweepOrphanedTunnel(ids::kTunAdapterGuid,
                                                          ids::kTunAdapterName);
-  LogInfo("revert: marker={} orphaned_interfaces={}", marker ? "yes" : "no",
-          orphans);
+  // The filter engine is the second place state can be stranded. With a dynamic
+  // session there should be nothing here — the point of reporting it is that a
+  // non-zero count means something OTHER than a dynamic session installed it.
+  const int wfpObjects = WfpPolicy::SweepOrphanedObjects(/*remove=*/true);
+  LogInfo("revert: marker={} orphaned_interfaces={} wfp_objects={}",
+          marker ? "yes" : "no", orphans, wfpObjects);
   if (orphans == 0)
     LogInfo("revert: no URnetwork tun interface present; nothing of ours is in "
             "the route table");
+  if (wfpObjects == 0)
+    LogInfo("revert: no URnetwork filter-engine objects present; nothing of "
+            "ours is blocking traffic");
   return 0;
 }
 
@@ -370,10 +522,55 @@ int RevertNetwork(bool force) {
 // the destructive half of TunnelController::StartLocked. That is what makes it
 // safe — and useful — to run unelevated: the app gets a live DeviceRemote and
 // the machine's routes and DNS are never written.
-int RunConsole(bool rpcOnly) {
+//
+// stopAfterStep (0 = absent) is the DEBUG-ONLY staged bring-up flag. It halts
+// every start_tunnel after step N of 8 and unwinds through the ordinary
+// teardown. It only ever narrows: it enables nothing, and where it overlaps with
+// rpcOnly the clamp still wins (see EffectiveStopStep in ConsoleArgs.h).
+int RunConsole(bool rpcOnly, int stopAfterStep = 0) {
   LogSetConsoleEcho(true);
-  LogInfo("console: starting as {}{}", DescribeIdentity(),
-          rpcOnly ? " in RPC-ONLY mode" : "");
+  LogInfo("console: starting as {}{}{}", DescribeIdentity(),
+          rpcOnly ? " in RPC-ONLY mode" : "",
+          stopAfterStep ? std::format(" with STAGED BRING-UP (--stop-after={})",
+                                      stopAfterStep)
+                        : std::string());
+  if (stopAfterStep) {
+    // Before the rpc-only banner, because when both are given the reader needs
+    // to know the sequence is being cut short BEFORE they read what rpc-only
+    // promises about a session that will not survive to be used.
+    const int effective = EffectiveStopStep(stopAfterStep, rpcOnly);
+    if (effective < stopAfterStep) {
+      // The requested stop point is BEYOND the mode's own ceiling, so it is
+      // never reached and the flag never fires: rpc-only returns at the fence
+      // after step 5 and the session stays up as a normal rpc-only session.
+      // Said plainly, because "stop after 7" that silently does nothing would
+      // otherwise be read as "it stopped, so the teardown was exercised".
+      LogWarn("console: --stop-after={} is BEYOND what this process can reach. "
+              "--rpc-only already ends the sequence at step {}/8 by returning "
+              "at the fence, which is before step {}/8 — so this flag NEVER "
+              "FIRES here and no staged teardown happens. The session ends as "
+              "an ordinary rpc-only session. The clamp wins; --stop-after "
+              "cannot raise its ceiling. Drop --rpc-only (and run elevated) if "
+              "you meant to reach step {}/8.",
+              stopAfterStep, kRpcOnlyCeilingStep, stopAfterStep, stopAfterStep);
+    } else {
+      LogWarn("console: --stop-after={} — DEBUG FLAG. Every start_tunnel this "
+              "process serves runs steps 1/8..{}/8 and then STOPS, unwinding "
+              "through the same teardown a user disconnect runs. It cannot make "
+              "this process do MORE than it otherwise would: it only ever stops "
+              "the sequence earlier. Nothing here is enabled by the flag; steps "
+              "still run only if the mode and this process's privileges allow "
+              "them.",
+              stopAfterStep, effective);
+    }
+    if (!rpcOnly && stopAfterStep >= 6) {
+      LogWarn("console: --stop-after={} is AT OR PAST STEP 6/8, the first call "
+              "that rewrites this machine's routes and DNS. Everything up to and "
+              "including step {}/8 really runs. Have a baseline capture and a "
+              "second network path before you drive this.",
+              stopAfterStep, stopAfterStep);
+    }
+  }
   if (rpcOnly) {
     LogWarn("console: --rpc-only — this process will bring up the DeviceLocal "
             "and the mTLS rpc listener the app dials, and will NOT create a "
@@ -413,22 +610,43 @@ int RunConsole(bool rpcOnly) {
   ControlServer server;
   g_server = &server;
   // Before Start(), so the clamp is in force before the pipe can accept a
-  // single request.
+  // single request. The stop point goes in the same window and in this order:
+  // the clamp is the stronger guarantee and must never be sequenced behind a
+  // debug flag.
   if (rpcOnly) server.ClampToRpcOnly();
+  if (stopAfterStep) server.SetStopAfterStep(stopAfterStep);
   if (!server.Start()) {
     LogError("console: control server failed to start");
     return 1;
   }
-  LogInfo("console: running on {} (mode={}); press Ctrl+C to stop",
-          Narrow(ids::kControlPipeName), rpcOnly ? "rpc-only" : "tunnel");
+  LogInfo("console: running on {} (mode={}{}); press Ctrl+C to stop",
+          Narrow(ids::kControlPipeName), rpcOnly ? "rpc-only" : "tunnel",
+          stopAfterStep ? std::format(", stop-after={}", stopAfterStep)
+                        : std::string());
 
   ::WaitForSingleObject(g_stopEvent, INFINITE);
 
   LogInfo("console: stopping");
-  server.Stop();  // stops the tunnel, which reverts routes and DNS
+  const auto stopStart = std::chrono::steady_clock::now();
+  server.Stop();  // reverts routes/dns/firewall FIRST, then releases the sdk
   g_server = nullptr;
+  const auto stopMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::steady_clock::now() - stopStart)
+                          .count();
+  // Before the forced-exit check: the console control handler's escalation path
+  // is waiting on this, and letting it observe a drained teardown is what turns
+  // a second Ctrl+C into a clean forced stop instead of a kill.
   ::SetEvent(g_consoleDrainedEvent);
-  LogInfo("console: stopped cleanly{}",
+  if (TeardownAbandoned()) {
+    LogError("console: stopped in {}ms with the SDK TEARDOWN ABANDONED. Your "
+             "routes, dns and firewall policy are already back; the sdk objects "
+             "are held by a thread that will not return, so this process exits "
+             "by TerminateProcess rather than unwinding through it.",
+             stopMs);
+    NetworkConfig::CrashRevert();  // idempotent; a no-op if the orderly path ran
+    ::TerminateProcess(::GetCurrentProcess(), kForcedStopExitCode);
+  }
+  LogInfo("console: stopped cleanly in {}ms{}", stopMs,
           rpcOnly ? " (this process wrote no network state, so there is nothing "
                     "to restore)"
                   : ", network restored");
@@ -459,6 +677,37 @@ int Usage() {
       L"                            URNETWORK_RPC_ONLY=1), because a client that\n"
       L"                            asked for a tunnel is refused rather than\n"
       L"                            silently downgraded.\n"
+      L"  urnetworkd console --stop-after=<N>        (N = 1..8, DEBUG ONLY)\n"
+      L"                            run the bring-up as far as step N of 8 and\n"
+      L"                            then STOP, unwinding through the same\n"
+      L"                            teardown a user disconnect runs. Combinable\n"
+      L"                            with --rpc-only, in either order; where they\n"
+      L"                            overlap the rpc-only clamp wins, because it\n"
+      L"                            is the one that does less. The steps:\n"
+      L"                              1 wintun adapter (needs elevation)\n"
+      L"                              2 sdk egress bound to the physical nic\n"
+      L"                              3 network space   4 DeviceLocal\n"
+      L"                              5 mTLS rpc listener\n"
+      L"                              6 ROUTES + DNS + firewall  <- destructive\n"
+      L"                              7 split tunnel    8 packet pump\n"
+      L"                            1-5 write nothing to this machine; --rpc-only\n"
+      L"                            stops before 6 but SKIPS 1, so --stop-after=1\n"
+      L"                            is the only way to bring the adapter up and\n"
+      L"                            stop before anything is routed to it. The\n"
+      L"                            stop point and what is left applied are\n"
+      L"                            logged at every step. An out-of-range,\n"
+      L"                            malformed or repeated N is REFUSED, never\n"
+      L"                            read as 'no stop'.\n"
+      L"  urnetworkd selftest       run the pure-logic unit tests: the shared\n"
+      L"                            route/firewall table, the WFP filter-set\n"
+      L"                            construction for every policy state, and the\n"
+      L"                            console option parsing above. Opens\n"
+      L"                            no adapter, writes no route, and never\n"
+      L"                            contacts the filter engine, so it needs no\n"
+      L"                            elevation and cannot change the machine.\n"
+      L"                            It CANNOT prove a filter blocks anything --\n"
+      L"                            that needs the elevated leak-validation\n"
+      L"                            gates in p7-gates.ps1.\n"
       L"  urnetworkd install        register the service (elevated)\n"
       L"  urnetworkd uninstall      stop and deregister the service (elevated)\n"
       L"  urnetworkd revert         take back any leftover tunnel routes/DNS\n"
@@ -508,24 +757,33 @@ int wmain(int argc, wchar_t** argv) {
                   logFile.c_str());
   }
 
-  // --rpc-only is accepted only alongside `console`. It is deliberately NOT a
-  // flag on the SCM path: the installed service exists to run tunnels, and a
-  // mode that silently makes it not do so would be indistinguishable from a
-  // broken tunnel.
-  const bool rpcOnlyFlag = argc >= 3 && std::wstring(argv[2]) == L"--rpc-only";
+  // Before every other verb: it is the only one that is structurally incapable
+  // of touching the machine, so it can never be the thing that broke something.
+  if (cmd == L"selftest") return RunSelfTest();
   if (cmd == L"install") return InstallService();
   if (cmd == L"uninstall") return UninstallService();
+  // --rpc-only and --stop-after are accepted only alongside `console`. Neither
+  // is a flag on the SCM path: the installed service exists to run tunnels, and
+  // a mode that silently makes it not do so would be indistinguishable from a
+  // broken tunnel.
   if (cmd == L"console" || cmd == L"--console") {
-    // Check EVERY extra argument, not just argv[2]: `console --rpc-only --xyz`
-    // used to ignore argv[3] silently while `console --xyz` errored, so a typo
-    // was swallowed exactly when the flag most needed to be read carefully.
-    for (int i = 2; i < argc; ++i) {
-      if (std::wstring(argv[i]) == L"--rpc-only") continue;
-      std::fwprintf(stderr, L"unknown option for console: %s\n", argv[i]);
+    // EVERY extra argument is checked, not just argv[2]: `console --rpc-only
+    // --xyz` used to ignore argv[3] silently while `console --xyz` errored, so a
+    // typo was swallowed exactly when the flag most needed to be read carefully.
+    // ParseConsoleArgs (ConsoleArgs.h) keeps that rule and extends it to
+    // --stop-after's VALUE — an out-of-range, malformed or repeated one is
+    // rejected here rather than falling back to "no stop", which would turn a
+    // typo into a full tunnel bring-up on a machine whose operator asked for a
+    // partial one. That refusal is exercised by `urnetworkd selftest`.
+    std::vector<std::wstring> options;
+    for (int i = 2; i < argc; ++i) options.emplace_back(argv[i]);
+    const ConsoleArgs parsed = ParseConsoleArgs(options);
+    if (!parsed.ok) {
+      std::fwprintf(stderr, L"%s\n", parsed.error.c_str());
       Usage();
       return 2;
     }
-    return RunConsole(rpcOnlyFlag);
+    return RunConsole(parsed.rpc_only, parsed.stop_after);
   }
   // `urnetworkd --rpc-only` with no subcommand: the obvious shorthand, and it
   // resolves to the mode that does less, so honouring it is safe. Extra

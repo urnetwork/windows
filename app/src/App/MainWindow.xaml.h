@@ -348,6 +348,15 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::string statusRpcHostPort_;
   urnw::proto::StartMode statusSessionMode_ = urnw::proto::StartMode::Tunnel;
   bool statusRoutesInstalled_ = false;
+  // Routes installed and DNS applied are SEPARATE facts: the tunnel can carry
+  // traffic while its resolvers never took, in which case queries either leave
+  // in the clear or fail closed depending on whether the firewall is up. The
+  // Routes field says which, instead of a bare "on" over a half-applied tunnel.
+  bool statusDnsApplied_ = false;
+  // "off" | "armed" | "connected" — whether leak prevention is actually in
+  // force. Off while connected is what a failed or unelevated install looks
+  // like, and it is not the same as protected.
+  std::string statusWfpState_ = "off";
   // LiveStats' pre-clamp reading, likewise cached across a rebuild.
   std::string statusRawConnection_;
   // What RenderStatusState last drew. The state field is written by callers that

@@ -111,6 +111,14 @@ class NetworkPage {
   // pushes take over from there.
   void SetSelected(bool selected);
 
+  // The OTHER half of that, and the one this page was missing. SdkHost owns the
+  // two feeds only while the window is PRESENTING, and presenting means
+  // `shown && activated` - so every deactivation destroyed them and pushed
+  // std::nullopt here. Selection alone could not put them back: it fires on a
+  // navigation change, and coming back to the destination you left on is not
+  // one. Both halves now reopen, exactly as DeveloperPage's poll does.
+  void SetPresentationActive(bool active);
+
   // --preview-ui + URNETWORK_PREVIEW_SAMPLE only: synthetic buckets, so the
   // pane can be reviewed with rows in it. A session-less process has no
   // locations at all, and an empty pane proves nothing about a layout whose
@@ -118,8 +126,26 @@ class NetworkPage {
   void ApplyPreviewSample();
 
  private:
-  void Build();     // one-time: the search row
-  void Render();    // the list pane
+  // Why an empty provider list is empty. All three of these used to render as
+  // the SAME screen - a single "Best available provider" row and nothing else -
+  // which is how a torn-down feed passed for a working one for as long as it
+  // did. Every one of them now says which it is.
+  //
+  // There is deliberately no NoSession member any more. It said "Not connected
+  // to the URnetwork service, so the provider list is unavailable", which was an
+  // honest description of a wrong design rather than of reality: the provider
+  // list is public, and SdkHost now serves it from the in-process Api when there
+  // is no device. A state that cannot occur must not be representable.
+  enum class FeedState {
+    Loading,  // a fetch is in flight (view controller or api; both are async)
+    Failed,   // LOCATIONS_ERROR - the query failed, from either source
+    Loaded,   // answered; what is (or is not) in the buckets is real
+  };
+  FeedState CurrentFeedState() const;
+
+  void Build();           // one-time: the search row
+  void ReconcileFeeds();  // selection AND presentation -> open the feeds, render
+  void Render();          // the list pane
   void RenderDetail();
 
   // One row species for the whole pane: a fixed-height UrPaneRowButtonStyle
@@ -140,12 +166,17 @@ class NetworkPage {
   winrt::Microsoft::UI::Xaml::Controls::TextBox search_{nullptr};
   bool built_ = false;
   bool selected_ = false;
+  bool presentationActive_ = false;
   // Set by ApplyPreviewSample. A real (empty) push from a session-less process
   // must not wipe the synthetic buckets back off the screen - the same pin
   // ConnectPage and the status strip carry, and for the same reason.
   bool samplePinned_ = false;
 
   std::optional<urnet::FilteredLocations> locations_;
+  // The SDK's FilterLocationsState for the snapshot above. Kept because it is
+  // the ONLY thing separating "still loading" from "the query failed" from
+  // "there are genuinely no providers": all three arrive as empty buckets.
+  std::string locationsState_;
   std::optional<urnet::NetworkPeerList> peers_;
   std::string query_;
 };

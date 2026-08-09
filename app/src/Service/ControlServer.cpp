@@ -50,6 +50,16 @@ nlohmann::json ControlServer::Handle(const nlohmann::json& request) {
       proto::SetSplitTunnel s = request.get<proto::SetSplitTunnel>();
       reply.ok = tunnel_.SetSplitTunnel(s.excluded_app_paths, s.allowlist_mode);
       reply.status = tunnel_.Status();
+    } else if (type == proto::msg::kSetKillSwitch) {
+      // The app owns the setting and its persistence; this only tells the
+      // service what the setting now is, so the firewall policy follows it at
+      // the next transition (and immediately when it is turned OFF while
+      // armed). A service that never hears about a mid-session change would
+      // hold a policy the user has already switched off.
+      proto::SetKillSwitch s = request.get<proto::SetKillSwitch>();
+      reply.ok = tunnel_.SetKillSwitch(s.on);
+      reply.status = tunnel_.Status();
+      PushState();
     } else if (type == proto::msg::kLogout) {
       tunnel_.Logout();
       reply.ok = true;

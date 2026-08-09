@@ -20,10 +20,19 @@
 //      window is presenting, and it never runs on the UI thread: every getter
 //      here is a synchronous rpc to the service.
 //
-// Deliberately absent: dropExit, stallExit, shuffleExits and the probe-suite
-// getters are DeviceLocal-only with no DeviceRemote equivalent. Android offers
-// them; this app cannot reach them, and a button that calls nothing is worse
-// than no button.
+// D6 added the write half: dropExit, stallExit, shuffleExits and the probe
+// suite. A note here used to say those were DeviceLocal-only with no
+// DeviceRemote equivalent and therefore unreachable from this app. That was
+// true when written and stopped being true when S1 landed — all seven are on
+// DeviceRemote (urnetwork_sdk.hpp:10114-10150, exported at
+// urnetwork_sdk.def:334-370). They are FAULT INJECTION and degrade a live
+// connection on purpose, so a fourth property joins the three below:
+//
+//   4. Immediate-or-nothing. No client-side retry and nothing queued into sync
+//      state — a drop replayed after an RPC reconnect hits a different, healthy
+//      exit. The SDK pins this with TestDeviceRemoteAdvancedModeActionsAreNever
+//      Queued; the client's job is not to reintroduce it. Advanced Mode does not
+//      modal-gate these, so the log line naming the exit is the only record.
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
@@ -106,6 +115,19 @@ class DeveloperPage {
   void ApplySnapshot(ReliabilitySnapshot const& snap);
   void RunAction(ReliabilityAction action, std::wstring const& described,
                  std::string const& exitClientId = {});
+
+  // ---- D6: fault injection + the probe suite --------------------------------
+  // These do not go through ReliabilityAction: each takes its own arguments and
+  // returns its own outcome, and each has to name the exit it acted on in the
+  // report line. They ride the same serial Submit() bridge as everything else,
+  // which is what keeps a Drop and the poll that renders its effect in order.
+  enum class FaultAction { Drop, Stall, Unstall };
+  void RunFaultAction(FaultAction action, std::string const& exitClientId);
+  void RunShuffleExits();
+  // start=false stops it. The running state and the results come back on the
+  // ordinary poll (ReliabilitySnapshot), not from here.
+  void RunProbeSuite(bool start);
+
   void OnBoolToggled(size_t index);
   void OnNumChanged(size_t index);
   void SetLastAction(std::wstring const& text);
@@ -166,6 +188,8 @@ class DeveloperPage {
   // different states and a diagnostic screen has to tell them apart.
   void ApplySettings(ReliabilitySnapshot const& snap);
   void ApplyExits(ReliabilitySnapshot const& snap);
+  // D6: the probe-suite card — running state + the per-target result table.
+  void ApplyProbeSuite(ReliabilitySnapshot const& snap);
 
   void ReconcilePolling();
   // Run `mutate` over a FRESH whole-struct read on the bridge, then re-read.
@@ -280,6 +304,25 @@ class DeveloperPage {
   std::vector<DestinationRow> destinationRows_;
   std::vector<BoolRow> boolRows_;
   std::vector<NumRow> numRows_;
+
+  // D6: the probe-suite card. Same identity/cells split as the exits table —
+  // the result list is rebuilt only when the set of probe TARGETS changes, so a
+  // repeating suite rewrites latencies in place instead of tearing the table
+  // down under the pointer on every poll.
+  TextBlock probeSuiteState_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button probeStartButton_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button probeStopButton_{nullptr};
+  StackPanel probeResultsBody_{nullptr};
+  std::optional<std::wstring> probeResultsIdentity_;
+  struct ProbeRow {
+    TextBlock kind{nullptr};
+    TextBlock dns{nullptr};
+    TextBlock connect{nullptr};
+    TextBlock ttfb{nullptr};
+    TextBlock total{nullptr};
+    TextBlock outcome{nullptr};
+  };
+  std::vector<ProbeRow> probeRows_;
 };
 
 }  // namespace urnw

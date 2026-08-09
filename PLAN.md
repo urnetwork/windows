@@ -199,8 +199,18 @@ carries lifecycle/config. Last-good rpc session persists like `RpcSessionStore` 
   cgo SDK DLLs (x64 + arm64) built inside the Windows VM (Go + llvm-mingw provisioned there;
   the mac needs no Windows cross-toolchain — see `all/build-windows.sh`), Store certification
   pass (R9).
-- **M5 — polish.** Notifications, deep links/SSO, launch-at-login, localization, fonts,
-  kill-switch (`vpnInterfaceWhileOffline` via user-mode WFP block).
+- **M5 — polish.** Notifications, deep links/SSO, launch-at-login, localization, fonts.
+
+> **Correction (2026-08-08): the kill switch is not M5 polish.** It was filed here as
+> `vpnInterfaceWhileOffline` via a user-mode WFP block. Research since found (a) the
+> toggle we ship today is **not a kill switch** — `Device::setRouteLocal` is a branch
+> *downstream of the OS routing decision*, so it only sees packets the kernel already
+> routed into the tun and cannot cover IPv6, LAN, other adapters' DNS, split-tunnel
+> exclusions, or a dead `urnetworkd`, which is the case a kill switch exists for; and
+> (b) the same user-mode WFP session is the mitigation for **R6 (DNS leak) and R7 (IPv6
+> leak)**, both of which are confirmed live, not hypothetical. It is therefore a
+> prerequisite for the tunnel milestone, not polish after it. Tracked as P7a. See
+> `docs/superpowers/research/2026-08-08-windows-leak-prevention-wfp.md`.
 
 ## 5. Risks & investigations
 

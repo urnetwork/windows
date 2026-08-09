@@ -36,6 +36,16 @@ namespace urnw::proto {
 //    ignores mode" is the version. Anything requesting RpcOnly MUST refuse to
 //    proceed against a peer reporting < kFirstStartModeVersion.
 //    See SdkHost::BootstrapSession.
+//
+//    NOT bumped for StartTunnel::kill_switch, TunnelStatus::dns_applied or
+//    TunnelStatus::wfp_state, and the test is the same one that made `mode`
+//    load-bearing: does silence mean the wrong thing? It does not. A peer that
+//    drops kill_switch arms nothing, which is the permissive default the app
+//    already claims when it has no state. A peer that drops dns_applied or
+//    wfp_state is read as "DNS not applied" and "no firewall policy", i.e. the
+//    DEGRADED reading — the app understates its protection rather than
+//    overstating it. `mode` had to be versioned because its absence meant the
+//    opposite: routes rewritten by a request that asked for none.
 inline constexpr int kProtocolVersion = 2;
 
 // The first version that understands StartTunnel::mode. Below this, an absent
@@ -50,6 +60,7 @@ inline constexpr const char* kStartTunnel = "start_tunnel";      // app -> servi
 inline constexpr const char* kStopTunnel = "stop_tunnel";        // app -> service
 inline constexpr const char* kGetState = "get_state";            // app -> service
 inline constexpr const char* kSetSplitTunnel = "set_split_tunnel"; // app -> service
+inline constexpr const char* kSetKillSwitch = "set_kill_switch"; // app -> service
 inline constexpr const char* kLogout = "logout";                 // app -> service
 inline constexpr const char* kReply = "reply";                   // service -> app
 inline constexpr const char* kEvent = "event";                   // service -> app (unsolicited)
@@ -158,11 +169,28 @@ struct StartTunnel {
   // Tunnel unless the app explicitly asks otherwise, so an absent field on the
   // wire keeps its pre-mode meaning. See StartMode.
   StartMode mode = StartMode::Tunnel;
+  // The user's persisted kill-switch preference, carried at start so the
+  // service knows it before it installs a single route. The APP still owns the
+  // setting and its persistence (SdkHost::SetKillSwitch, LocalState); what
+  // changed is what it drives — a WFP policy in the service rather than the
+  // SDK's routeLocal flag, which only ever sees packets the OS already routed
+  // INTO the tun and so cannot cover IPv6, LAN, another adapter's resolver, or
+  // a dead service.
+  //
+  // Absent parses as false, the permissive default, matching
+  // SdkHost::CurrentKillSwitch's "claim the permissive default, not the strict
+  // one" when no state exists. Getting this backwards would have an old client
+  // silently arm a kill switch nobody asked for.
+  bool kill_switch = false;
 };
 
 struct SetSplitTunnel {
   std::vector<std::string> excluded_app_paths;  // meaning depends on allowlist_mode (see StartTunnel)
   bool allowlist_mode = false;
+};
+
+struct SetKillSwitch {
+  bool on = false;
 };
 
 // ---- reply / state payload ------------------------------------------------
@@ -189,6 +217,54 @@ struct TunnelStatus {
   // field to trust for "is my traffic going through the tunnel"; it is false for
   // the whole life of an rpc-only session.
   bool routes_installed = false;
+  // True only when the tunnel's resolvers were actually accepted by the stack.
+  //
+  // routes_installed and dns_applied are separate facts and used to be
+  // conflated. Applying the network settings deliberately SUCCEEDS when the DNS
+  // half fails — tearing a working tunnel down over its resolvers trades a DNS
+  // problem for a connectivity one — so before this field a DNS failure left
+  // state=up, routes_installed=true and one warning in the service log, while
+  // every surface said Connected and every query went out in the clear.
+  //
+  // Defaults FALSE, including for a peer too old to send it. That is the safe
+  // direction: an unknown DNS state renders as degraded, not as clean.
+  bool dns_applied = false;
+  // The firewall policy in force: "off" | "armed" | "connecting" | "connected".
+  // Reported so the app can say whether leak prevention is actually running — on
+  // an unelevated or otherwise failed install it is "off" while the tunnel is
+  // up, which is a materially different state from a protected one.
+  //
+  // "connecting" arrived with the Armed/Connecting split (Service/WfpPolicy.h)
+  // and needed NO protocol bump, by the same test the rest of this block uses:
+  // a peer that does not know the string reads it as "not off", i.e. some policy
+  // is in force — which is true, and understates rather than overstates
+  // protection. What it does NOT carry is that DNS is open machine-wide while it
+  // holds; that is disclosed in the kill-switch copy, not inferred from here.
+  std::string wfp_state = "off";
+  // THE PHYSICAL EGRESS INTERFACE THE SERVICE HAS ITS OWN SDK PINNED TO — the
+  // ifIndex passed to setEgressInterfaceIndex at step 2/8, i.e. IP_UNICAST_IF.
+  // 0 when nothing is pinned (no tunnel, or no physical default route).
+  //
+  // Reported because the app runs a SECOND SDK instance in a SECOND process, and
+  // that instance's egress binding is process-global inside its own copy of the
+  // DLL — the service's bind cannot reach it. Without this the app's platform
+  // sockets follow the route table into the tun as soon as the tunnel is up, so
+  // the UI's own account/auth/JWT traffic is carried by the tunnel it exists to
+  // report on. Observed 2026-08-08: "[dtm]failed to refresh JWT: Timeout."
+  // logged by URnetwork.exe while a tunnel was up with no working exit.
+  //
+  // The service is the right source rather than the app computing it itself:
+  // DiscoverEgress has to EXCLUDE the tun LUID to get the right answer, only the
+  // service knows that LUID, and EgressMonitor already re-validates the index and
+  // deliberately retains the last good one rather than unbinding (see its
+  // Refresh). Duplicating that logic in the app would be a second implementation
+  // of an R1 rule that must not drift.
+  //
+  // NO PROTOCOL BUMP. A peer too old to send it leaves 0, which the app reads as
+  // "do not bind" — exactly today's behaviour. Absent means unchanged, and the
+  // safe direction is the default.
+  int64_t egress_index4 = 0;
+  int64_t egress_index6 = 0;
 };
 
 struct Reply {
@@ -216,6 +292,7 @@ inline void to_json(nlohmann::json& j, const StartTunnel& v) {
       {"excluded_app_paths", v.excluded_app_paths},
       {"allowlist_mode", v.allowlist_mode},
       {"mode", ToString(v.mode)},
+      {"kill_switch", v.kill_switch},
   };
 }
 
@@ -242,6 +319,7 @@ inline void from_json(const nlohmann::json& j, StartTunnel& v) {
   get("rpc_listen_hostport", v.rpc_listen_hostport);
   get("excluded_app_paths", v.excluded_app_paths);
   get("allowlist_mode", v.allowlist_mode);
+  get("kill_switch", v.kill_switch);
 }
 
 inline void to_json(nlohmann::json& j, const SetSplitTunnel& v) {
@@ -256,6 +334,13 @@ inline void from_json(const nlohmann::json& j, SetSplitTunnel& v) {
   get("allowlist_mode", v.allowlist_mode);
 }
 
+inline void to_json(nlohmann::json& j, const SetKillSwitch& v) {
+  j = {{"on", v.on}};
+}
+inline void from_json(const nlohmann::json& j, SetKillSwitch& v) {
+  if (auto it = j.find("on"); it != j.end() && !it->is_null()) it->get_to(v.on);
+}
+
 inline void to_json(nlohmann::json& j, const TunnelStatus& v) {
   j = {
       {"state", ToString(v.state)},
@@ -266,6 +351,10 @@ inline void to_json(nlohmann::json& j, const TunnelStatus& v) {
       {"tunnel_local_up_millis", v.tunnel_local_up_millis},
       {"mode", ToString(v.mode)},
       {"routes_installed", v.routes_installed},
+      {"dns_applied", v.dns_applied},
+      {"wfp_state", v.wfp_state},
+      {"egress_index4", v.egress_index4},
+      {"egress_index6", v.egress_index6},
   };
 }
 
@@ -286,6 +375,10 @@ inline void from_json(const nlohmann::json& j, TunnelStatus& v) {
   get("protocol_version", v.protocol_version);
   get("tunnel_local_up_millis", v.tunnel_local_up_millis);
   get("routes_installed", v.routes_installed);
+  get("dns_applied", v.dns_applied);
+  get("wfp_state", v.wfp_state);
+  get("egress_index4", v.egress_index4);
+  get("egress_index6", v.egress_index6);
 }
 
 inline void to_json(nlohmann::json& j, const Reply& v) {

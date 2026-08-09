@@ -1,0 +1,110 @@
+﻿
+
+ComputerName                          : MSI
+InterfaceAlias                        : VMware Network Adapter VMnet1
+InterfaceIndex                        : 19
+InterfaceDescription                  : VMware Virtual Ethernet Adapter for VMnet1
+NetCompartment.CompartmentId          : 1
+NetCompartment.CompartmentDescription : Default Compartment
+NetAdapter.LinkLayerAddress           : 00-50-56-C0-00-01
+NetAdapter.Status                     : Up
+IPv6LinkLocalAddress                  : fe80::4ff9:fa91:2a4c:d682%19
+IPv4Address                           : 192.168.81.1
+IPv6DefaultGateway                    : 
+IPv4DefaultGateway                    : 
+NetIPv6Interface.NlMTU                : 1500
+NetIPv4Interface.NlMTU                : 1500
+NetIPv6Interface.DHCP                 : Enabled
+NetIPv4Interface.DHCP                 : Enabled
+DNSServer                             : fec0:0:0:ffff::1
+                                        fec0:0:0:ffff::2
+                                        fec0:0:0:ffff::3
+
+ComputerName                          : MSI
+InterfaceAlias                        : VMware Network Adapter VMnet8
+InterfaceIndex                        : 21
+InterfaceDescription                  : VMware Virtual Ethernet Adapter for VMnet8
+NetCompartment.CompartmentId          : 1
+NetCompartment.CompartmentDescription : Default Compartment
+NetAdapter.LinkLayerAddress           : 00-50-56-C0-00-08
+NetAdapter.Status                     : Up
+IPv6LinkLocalAddress                  : fe80::c475:6718:2815:57f8%21
+IPv4Address                           : 192.168.15.1
+IPv6DefaultGateway                    : 
+IPv4DefaultGateway                    : 
+NetIPv6Interface.NlMTU                : 1500
+NetIPv4Interface.NlMTU                : 1500
+NetIPv6Interface.DHCP                 : Enabled
+NetIPv4Interface.DHCP                 : Enabled
+DNSServer                             : fec0:0:0:ffff::1
+                                        fec0:0:0:ffff::2
+                                        fec0:0:0:ffff::3
+
+ComputerName                          : MSI
+InterfaceAlias                        : Ethernet
+InterfaceIndex                        : 7
+InterfaceDescription                  : Realtek PCIe GbE Family Controller
+NetCompartment.CompartmentId          : 1
+NetCompartment.CompartmentDescription : Default Compartment
+NetAdapter.LinkLayerAddress           : 34-5A-60-90-DD-72
+NetAdapter.Status                     : Up
+NetProfile.Name                       : Network 2
+NetProfile.NetworkCategory            : Public
+NetProfile.IPv6Connectivity           : Internet
+NetProfile.IPv4Connectivity           : Internet
+IPv6Address                           : fdfe:5e6c:2e69:98de:9f6d:7c51:b7f8:a9ea
+                                        fdfe:5e6c:2e69:98de:71b0:b49d:e233:846a
+                                        2607:fb91:4185:ac41:cc0:4b6f:1e7d:1db1
+IPv6TemporaryAddress                  : fdfe:5e6c:2e69:98de:9843:82bd:c5fa:fd53
+                                        2607:fb91:4185:ac41:9843:82bd:c5fa:fd53
+IPv6LinkLocalAddress                  : fe80::f96d:7823:809d:c505%7
+IPv4Address                           : 192.168.12.124
+IPv6DefaultGateway                    : fe80::1a60:41ff:fe3b:cfd9
+IPv4DefaultGateway                    : 192.168.12.1
+NetIPv6Interface.NlMTU                : 1500
+NetIPv4Interface.NlMTU                : 1500
+NetIPv6Interface.DHCP                 : Enabled
+NetIPv4Interface.DHCP                 : Enabled
+DNSServer                             : fe80::1a60:41ff:fe3b:cfd9
+                                        fe80::1a60:41ff:fe3b:cfd9
+                                        192.168.12.1
+
+ComputerName                          : MSI
+InterfaceAlias                        : Local Area Connection* 1
+InterfaceIndex                        : 12
+InterfaceDescription                  : Microsoft Wi-Fi Direct Virtual Adapter
+NetCompartment.CompartmentId          : 1
+NetCompartment.CompartmentDescription : Default Compartment
+NetAdapter.LinkLayerAddress           : D0-57-7E-D0-72-09
+NetAdapter.Status                     : Disconnected
+
+ComputerName                          : MSI
+InterfaceAlias                        : Local Area Connection* 2
+InterfaceIndex                        : 17
+InterfaceDescription                  : Microsoft Wi-Fi Direct Virtual Adapter #2
+NetCompartment.CompartmentId          : 1
+NetCompartment.CompartmentDescription : Default Compartment
+NetAdapter.LinkLayerAddress           : D2-57-7E-D0-72-08
+NetAdapter.Status                     : Disconnected
+
+ComputerName                          : MSI
+InterfaceAlias                        : Bluetooth Network Connection
+InterfaceIndex                        : 20
+InterfaceDescription                  : Bluetooth Device (Personal Area Network)
+NetCompartment.CompartmentId          : 1
+NetCompartment.CompartmentDescription : Default Compartment
+NetAdapter.LinkLayerAddress           : D0-57-7E-D0-72-0C
+NetAdapter.Status                     : Disconnected
+
+ComputerName                          : MSI
+InterfaceAlias                        : Wi-Fi
+InterfaceIndex                        : 6
+InterfaceDescription                  : Intel(R) Wi-Fi 6E AX211 160MHz
+NetCompartment.CompartmentId          : 1
+NetCompartment.CompartmentDescription : Default Compartment
+NetAdapter.LinkLayerAddress           : D0-57-7E-D0-72-08
+NetAdapter.Status                     : Disconnected
+
+
+
+

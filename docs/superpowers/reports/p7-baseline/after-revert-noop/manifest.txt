@@ -1,0 +1,8 @@
+﻿label       : after-revert-noop
+captured    : 2026-08-08T18:26:33.7418929-07:00
+host        : MSI
+user        : ryanm
+elevated    : False
+urnetworkd  : 0 running
+tun present : False
+marker      : False

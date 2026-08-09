@@ -21,6 +21,33 @@ class SplitTunnelClient {
   SplitTunnelClient() = default;
   ~SplitTunnelClient();
 
+  SplitTunnelClient(const SplitTunnelClient&) = delete;
+  SplitTunnelClient& operator=(const SplitTunnelClient&) = delete;
+
+  // MOVABLE so a teardown can take ownership of the open device away from the
+  // long-lived member and close it somewhere the caller is not obliged to wait
+  // for. Close() ends in StopAndRemoveDriverService(), which is SCM RPC
+  // (OpenSCManager/ControlService/DeleteService) and can block; on the shutdown
+  // path that has to happen inside the bounded teardown worker, not on the
+  // thread that owes the operator their network back. See
+  // TunnelController::StopLocked phase 2 and the ownership contract in
+  // StopBudget.h.
+  //
+  // The moved-FROM client is left empty (device_ == nullptr), so it is inert:
+  // IsAvailable() is false, every ioctl is a no-op, and its eventual destructor
+  // reaches only the idempotent SCM cleanup.
+  SplitTunnelClient(SplitTunnelClient&& other) noexcept : device_(other.device_) {
+    other.device_ = nullptr;
+  }
+  SplitTunnelClient& operator=(SplitTunnelClient&& other) noexcept {
+    if (this != &other) {
+      Close();
+      device_ = other.device_;
+      other.device_ = nullptr;
+    }
+    return *this;
+  }
+
   // Try to open the driver device. Returns false (and disables all ops) if the
   // driver is not present.
   bool Open();

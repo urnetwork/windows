@@ -230,6 +230,11 @@ MainWindow::~MainWindow() {
 void MainWindow::SetPresentationActive(bool active) {
   connect_->SetPresentationActive(active);
   developer_->SetPresentationActive(active);
+  // R4: Network holds two SDK feeds that SdkHost closes with the presentation.
+  // Without this line the close had no matching open and the provider list was
+  // empty from the first deactivation onwards - the page's other half,
+  // SetSelected, only fires on a navigation CHANGE.
+  network_->SetPresentationActive(active);
   // the login carousel's timer: it runs only while the window is on screen
   login_->SetPresentationActive(active);
 }
@@ -671,15 +676,54 @@ void MainWindow::ApplyStatusStrip() {
   // ---- the advanced four (D5) ---------------------------------------------
   // Only built when the mode is on, so a null field is "Normal", not an error.
   if (!statusMode_.value) return;
+  // NO SESSION IS ITS OWN READING, and it has to be, because "rpc-only" is what
+  // this field said in that state. sessionMode_ defaults to RpcOnly on purpose
+  // — it is the mode that claims less, so a stray read cannot render as
+  // connected — and the strip turned that fail-safe default into a positive
+  // claim: with no session at all, on a machine with no rpc_session.json and a
+  // service that had never been asked for one, the strip read "Session rpc-only"
+  // and "RPC none". Naming a state the app is not in is worse than naming none.
+  //
+  // HasSession() is the lock-free read for exactly this (see SdkHost.h): "there
+  // is a DeviceRemote AND the service that holds it is still there".
+  const bool haveSession = Sdk().HasSession();
   urnw::kit::SetStatusFieldValue(
-      statusMode_, statusSessionMode_ == urnw::proto::StartMode::RpcOnly
-                       ? Adv("adv_mode_rpc_only", L"rpc-only")
-                       : Adv("adv_mode_tunnel", L"tunnel"));
-  urnw::kit::SetStatusFieldValue(statusRoutes_,
-                                 statusRoutesInstalled_ ? Loc("on") : Loc("off"));
+      statusMode_,
+      !haveSession ? Adv("adv_none", L"none")
+      : statusSessionMode_ == urnw::proto::StartMode::RpcOnly
+          ? Adv("adv_mode_rpc_only", L"rpc-only")
+          : Adv("adv_mode_tunnel", L"tunnel"));
+  // Routes on, DNS not applied, is a DEGRADED tunnel, not a working one: the
+  // service reports state=up and routes_installed=true while every name lookup
+  // either leaves in the clear or fails closed. A bare "on" here was the only
+  // signal that state had, and it was the wrong one. The firewall state
+  // qualifies it further — "on" with no leak-prevention policy in force means
+  // IPv6 and other adapters' resolvers are still open.
+  // ...and with no routes at all there is still one thing left to say. A kill
+  // switch that armed on a drop leaves the machine BLOCKED with no tunnel: no
+  // route is installed, so the first branch is right, but a bare "off" is the
+  // reading of an untouched machine and this one has had its network taken away
+  // on purpose. That is precisely the "no network and no obvious cause" state
+  // the service's own comments keep naming as the failure to avoid, and the
+  // strip is the surface that can name the cause.
   urnw::kit::SetStatusFieldValue(
-      statusRpcPort_, statusRpcHostPort_.empty() ? Adv("adv_none", L"none")
-                                                 : H(statusRpcHostPort_));
+      statusRoutes_,
+      !statusRoutesInstalled_
+          ? (statusWfpState_ == "off"
+                 ? Loc("off")
+                 : Adv("adv_routes_kill_switch_armed", L"off, kill switch armed"))
+          : (!statusDnsApplied_
+                 ? Adv("adv_routes_dns_degraded", L"on, dns not applied")
+                 : (statusWfpState_ == "off"
+                        ? Adv("adv_routes_no_firewall", L"on, no leak guard")
+                        : Loc("on"))));
+  // ...and the endpoint of a session that no longer exists is not an endpoint.
+  // Same rule as the field above: a stale host:port under "Session: none" reads
+  // as a live rpc listener.
+  urnw::kit::SetStatusFieldValue(
+      statusRpcPort_, (!haveSession || statusRpcHostPort_.empty())
+                          ? Adv("adv_none", L"none")
+                          : H(statusRpcHostPort_));
   // The PRE-CLAMP status. LiveStats.rawConnectionStatus is populated ONLY in an
   // rpc-only session — it exists to see through that one clamp, not as a general
   // mirror — so outside that session the clamped value IS the raw one and
@@ -1228,6 +1272,8 @@ void MainWindow::OnTunnelStateChanged(urnw::proto::TunnelStatus const& status) {
   statusRpcHostPort_ = status.rpc_listen_hostport;
   statusSessionMode_ = status.mode;
   statusRoutesInstalled_ = status.routes_installed;
+  statusDnsApplied_ = status.dns_applied;
+  statusWfpState_ = status.wfp_state;
   if (advancedMode_) ApplyStatusStrip();
 }
 

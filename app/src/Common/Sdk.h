@@ -24,22 +24,42 @@ void SdkInit(bool isService, int64_t memoryLimitBytes);
 
 // ---- guarded reads of list-shaped SDK getters ------------------------------
 //
-// WRAP EVERY GETTER THAT RETURNS A `*List` TYPE IN THIS. The rule is mechanical:
-// if the return type is one of the generated `std::vector<T>` aliases
-// (`ThroughputPointList`, `BlockActionList`, `RegionalDnsServerList`, ...) it
-// can throw; if it returns a struct, it cannot. It lives HERE, next to the
-// wrapper include, rather than in one .cpp, because the first version was a
-// static helper in SdkHost.cpp and a review found a tenth call site in another
+// WRAP EVERY GETTER THAT RETURNS A `*List` TYPE IN THIS, AND EVERY GETTER WHOSE
+// STRUCT CARRIES ONE. The rule is mechanical: if the return type is one of the
+// generated `std::vector<T>` aliases (`ThroughputPointList`, `BlockActionList`,
+// `RegionalDnsServerList`, ...) it can throw. It lives HERE, next to the wrapper
+// include, rather than in one .cpp, because the first version was a static
+// helper in SdkHost.cpp and a review found a tenth call site in another
 // translation unit that therefore could not use it.
 //
+// The struct clause was added after `getFilteredLocations()` - the one
+// list-bearing getter in SdkHost.cpp that was NOT wrapped - turned up during a
+// bug hunt. `FilteredLocations` is a struct, so the old wording said "cannot
+// throw" and left it bare; but all six of its fields are `ConnectLocationList`.
+// It happens to be safe (see below), by the generated from_json's guards and
+// not by ours. Wrap it anyway: consistency is what makes the rule checkable,
+// and "safe because of how a third party generates code" is not a rule.
+//
 // The generated wrapper converts a getter's JSON with `detail::parseJson<T>`
-// (urnetwork_sdk.hpp:81). It guards a NULL `char*` (`takeStringOpt` ->
-// nullopt) but NOT the four-byte document `null`, which is exactly what the Go
-// side marshals for a non-nil list whose backing slice is nil: `MarshalJSON`
-// renders a nil slice as `null` and `exports_gen.go` short-circuits only on a
-// nil POINTER. `nlohmann::json::parse("null").get<std::vector<T>>()` then
-// throws `type_error.302` ("type must be array, but is null") out of an
-// ordinary, non-throwing-looking getter.
+// (urnetwork_sdk.hpp:82). It guards a NULL `char*` (`takeStringOpt` -> nullopt)
+// and, IN THE CURRENTLY VENDORED HEADER, the four-byte document `null` as well
+// (`if (j.is_null()) { return T{}; }`). That document is what the Go side used
+// to marshal for a non-nil list whose backing slice is nil, and
+// `nlohmann::json::parse("null").get<std::vector<T>>()` threw `type_error.302`
+// ("type must be array, but is null") out of an ordinary, non-throwing-looking
+// getter. `exportedList::MarshalJSON` now renders empty as `[]` too
+// (sdk/gomobile.go), so both ends of that specific bug are closed.
+//
+// KEEP THE WRAPPER ANYWAY. third_party is a build artifact unpacked from an SDK
+// zip, and this repo does not pin which zip - "the header guards it" is a fact
+// about today's artifact, not about the contract. One branch and one latched
+// log is the right price for that.
+//
+// But do NOT read the paragraph above as "a list getter still throws
+// type_error.302 today": measured against the shipped dll, it does not. An
+// investigation into an empty provider list spent real time on that hypothesis
+// because an earlier version of this comment said the null guard was missing
+// when it had already landed.
 //
 // Struct-shaped getters are safe for a specific reason, and it is NOT that
 // their fields are read defensively. Every generated struct `from_json` OPENS

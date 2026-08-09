@@ -56,15 +56,24 @@
     <ClCompile Include="NetworkConfig.cpp" />
     <ClCompile Include="EgressMonitor.cpp" />
     <ClCompile Include="SplitTunnelClient.cpp" />
+    <ClCompile Include="WfpPolicy.cpp" />
+    <ClCompile Include="WindowTrace.cpp" />
+    <ClCompile Include="SelfTest.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ConsoleArgs.h" />
     <ClInclude Include="ControlServer.h" />
     <ClInclude Include="TunnelController.h" />
     <ClInclude Include="Wintun.h" />
     <ClInclude Include="PacketPump.h" />
     <ClInclude Include="NetworkConfig.h" />
+    <ClInclude Include="NetPolicy.h" />
     <ClInclude Include="EgressMonitor.h" />
     <ClInclude Include="SplitTunnelClient.h" />
+    <ClInclude Include="WfpPolicy.h" />
+    <ClInclude Include="WindowTrace.h" />
+    <ClInclude Include="SelfTest.h" />
+    <ClInclude Include="StopBudget.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.vcxproj">

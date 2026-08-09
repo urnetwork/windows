@@ -7,10 +7,12 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -267,20 +269,52 @@ struct ReliabilitySnapshot {
   std::optional<urnet::ReliabilityMetrics> metrics;
   std::vector<urnet::Exit> exits;
   std::vector<urnet::DestinationExit> destinationExits;
+  // D6: the probe suite. Running state and the last results ride the same
+  // snapshot as everything else so the screen has ONE consistent read per poll
+  // rather than a second, separately-timed one that can disagree with the exits
+  // table about which session it describes.
+  bool probeSuiteRunning = false;
+  std::vector<urnet::ProbeResult> probeResults;
 };
 
-// The void actions on the reliability bridge. Every one of them silently
-// no-ops when there is no multi client, and none returns anything the C ABI
-// preserves — DeviceLocal::migrateExit and probeAllExits return an int64 count,
-// the DeviceRemote forms return void, so the count never crosses — and a caller
-// can therefore report what it ASKED FOR and nothing more.
+// The actions on the reliability bridge.
+//
+// D6 correction: an earlier version of this comment said none of these returns
+// anything the C ABI preserves. That was wrong for two of them. migrateExit and
+// probeAllExits are declared `int64_t` on DeviceRemote (urnetwork_sdk.hpp:10122,
+// 10140) and their exports carry it, so "Migrated N flows" is available and is
+// now reported. The other four really are void and "requested" remains the
+// ceiling for them.
 enum class ReliabilityAction {
   ResetMetrics,
   ResetSettings,
-  ProbeAllExits,
+  ProbeAllExits,         // returns a count
   SimulateNetworkChange,
   Sync,
-  MigrateExit,  // the only one that reads exitClientId
+  MigrateExit,  // the only one that reads exitClientId; returns a count
+};
+
+// What an action actually did, as opposed to what was asked for.
+//
+// `issued` is the old bool: the call reached a live device and did not throw.
+// `count` is only meaningful when `hasCount` is set, which happens for exactly
+// the two actions whose SDK signature returns int64_t. A caller must not render
+// a count for the void actions — a hardcoded 0 there reads as "migrated nothing"
+// when the truth is "this action has nothing to report".
+//
+// `declined` is the NEGATIVE return, and it was found by RUNNING this, not by
+// reading it: migrateExit against an exit that is not in the window returns -1,
+// and the first version of this struct rendered that verbatim as "affected -1".
+// A negative is a NOT-FOUND SENTINEL, not a flow count — those are different
+// answers and only one of them is a number.
+//
+// Zero is NOT a sentinel. "Migrated 0 flows" is a real and useful result, so
+// the test is `< 0` and must never be relaxed to `<= 0`.
+struct ReliabilityActionResult {
+  bool issued = false;
+  bool hasCount = false;
+  bool declined = false;
+  int64_t count = 0;
 };
 
 class SdkHost {
@@ -509,18 +543,107 @@ class SdkHost {
 
   void Logout();
 
-  // Connect flow via the ConnectViewController.
+  // ---- connect ------------------------------------------------------------
+  //
+  // CONNECT STARTS THE TUNNEL. It used to only ask the SDK to pick providers,
+  // on the assumption that a session already existed — and the ONLY thing that
+  // ever created one was BootstrapSession, called from the resume thread in
+  // Initialize() and from a fresh sign-in. Every way of arriving signed-in
+  // WITHOUT either of those (the service was down at launch, the app relaunched
+  // into a network space with no stored jwt and the user re-picked their server,
+  // the service was restarted under a running app) left the app with no
+  // DeviceRemote and nothing to re-create one — so Connect was a permanent
+  // no-op with no user-visible reason. Measured: a service started in tunnel
+  // mode sat idle for 91 s and never received a start_tunnel.
+  //
+  // All three of these are now "connect to X, bringing a session up first if
+  // there is not a live one". They are:
+  //   * NON-BLOCKING. The intent is recorded and a worker does the work, so a
+  //     press never waits on BootstrapSession (which holds mutex_ across
+  //     several synchronous service rpcs, up to the 30 s pipe timeout).
+  //   * IDEMPOTENT and RE-ENTRANT. At most one session worker runs at a time;
+  //     a second press while one is in flight REPLACES the intent rather than
+  //     starting a second bootstrap. Last press wins.
+  //   * LOUD ON FAILURE. Every path that cannot produce a session publishes the
+  //     reason on the notice channel (PublishSessionFailure) and pushes a stats
+  //     snapshot, so the button does not sit on "Connecting" forever.
   void ConnectBestAvailable();
   void Connect(const std::string& connectLocationJson);
   void Disconnect();
 
+  // Bring a service session up if there is not a live one, off the calling
+  // thread, WITHOUT connecting to anything. `reason` names the caller in the
+  // log. Same worker, same guarantees as the connect entry points above.
+  //
+  // Called from: the resume path in Initialize(), a network-server change that
+  // lands on a signed-in space, and the service-reconnect watchdog.
+  void EnsureSession(const char* reason);
+
+  // Whether a live service session exists, LOCK-FREE.
+  //
+  // Deliberately an atomic rather than a `device_.has_value()` under mutex_:
+  // that lock is held by the session worker across a whole bootstrap, and this
+  // is read from the UI thread inside a layout pass. (There used to be such a
+  // locking variant, HasDeviceSession(); its one caller was the Network pane's
+  // "no session, so no provider list" gate, and both went away when that gate
+  // turned out to be wrong.) The strip is the caller — with no session at all it
+  // used to
+  // render "Session rpc-only" and "RPC none", because sessionMode_ defaults to
+  // RpcOnly (the mode that claims less) and nothing distinguished "no session"
+  // from "an rpc-only one". A status field must not name a state the app is not
+  // in.
+  bool HasSession() const { return hasSession_.load(std::memory_order_acquire); }
+
   // ---- location/provider chooser -------------------------------------------
-  // LocationsViewController buckets provider locations into sections and owns
-  // the search; PeerViewController surfaces the connected, provide-enabled
-  // network peers pinned atop the chooser. Both are opened lazily on the first
-  // chooser open (EnsureLocations) and torn down with the session; reads are
-  // graceful (empty) before the view controllers exist.
+  // THE PROVIDER LIST IS ALWAYS AVAILABLE. It does not need a tunnel, a service
+  // session, a DeviceRemote or elevation - GET /network/provider-locations is a
+  // plain 200 with no authorization at all. Two sources feed the same pair of
+  // handler slots, and exactly one of them writes at a time:
+  //
+  //   1. locationsVc_ (LocationsViewController, owned by the service's
+  //      DeviceRemote). AUTHORITATIVE WHENEVER IT EXISTS. It pushes live
+  //      updates, owns the server-side search, and is the only source that can
+  //      see the network's own view of a signed-in device.
+  //   2. api_ (the in-process Api built in Initialize, reachability class A -
+  //      the same object that drives sign-in, alive from launch with or without
+  //      a service). Used ONLY while there is no view controller.
+  //
+  // The single-writer rule is enforced by deviceFeedOpen_: the api path checks
+  // it before every push and stays silent while the view controller is open, so
+  // the two can never race into the same UI state. There is no reverse gate,
+  // because there is nothing to gate - the view controller does not consult the
+  // api cache.
+  //
+  // Both sources are presentation-scoped in the sense that they are (re)armed
+  // from the same three places, and the view controller half is torn down WITH
+  // THE PRESENTATION, not with the session; reads are graceful (empty) before
+  // either source has answered.
+  //
+  // Idempotent, and cheap when it is a no-op. Call it from anywhere the
+  // preconditions can newly become true - the failure it exists to prevent is a
+  // torn-down feed that nothing puts back, and the snapshot getters CANNOT
+  // recover from that on their own (both the SDK's initial load and the api
+  // fetch are async; a read taken right after either starts is always empty).
   void EnsureLocations();
+  // Set the provider-list search query. Proxies to the view controller when one
+  // exists; otherwise runs the SAME two-endpoint dispatch the view controller
+  // runs, against the in-process Api. Search therefore works identically with
+  // and without a session.
+  //
+  // urnet::getFilteredLocationsFromResult does NOT do text matching - MEASURED,
+  // after a first cut of this assumed otherwise and shipped a search box that
+  // silently returned every country for every query. Its `filter` argument only
+  // changes BUCKETING (sdk/locations_view_controller.go:205-262): a zero
+  // MatchDistance goes to BestMatches instead of its type bucket, and the
+  // cities/regions buckets are populated only when the filter is non-empty. The
+  // narrowing itself is done SERVER-SIDE, which is why
+  // LocationsViewController::FilterLocations dispatches on the query
+  // (locations_view_controller.go:186-193) and why this does too:
+  //
+  //     query empty     -> Api::getProviderLocations      (the whole list)
+  //     query non-empty -> Api::findProviderLocations{query}
+  //
+  // then buckets whichever result came back with that same query.
   void SetLocationFilter(const std::string& query);
   std::optional<urnet::FilteredLocations> CurrentFilteredLocations();
   std::string CurrentFilteredLocationState();
@@ -659,14 +782,57 @@ class SdkHost {
   std::optional<urnet::ReliabilitySettings> UpdateReliabilitySettings(
       const std::function<void(urnet::ReliabilitySettings&)>& mutate);
 
-  // Returns whether the call was actually ISSUED to the device — false when
-  // there is no session, or when the rpc threw. NOT whether it had an effect:
-  // the counts these return Go-side do not survive the C ABI, so "issued" is
-  // the strongest true statement available and the view must not upgrade it to
-  // "done". A void version of this let the developer screen render
-  // "Requested: sync" on a screen that simultaneously said there was no
-  // session.
-  bool RunReliabilityAction(ReliabilityAction action, const std::string& exitClientId = {});
+  // `issued` is false when there is no session or the rpc threw. A void version
+  // of this let the developer screen render "Requested: sync" on a screen that
+  // simultaneously said there was no session.
+  //
+  // For MigrateExit and ProbeAllExits the result also carries the SDK's own
+  // count (hasCount), so those two can report what they DID rather than what
+  // was asked. For the other four "issued" is still the ceiling.
+  ReliabilityActionResult RunReliabilityAction(ReliabilityAction action,
+                                               const std::string& exitClientId = {});
+
+  // ---- D6: fault injection + the probe suite --------------------------------
+  //
+  // The stale comment these replaced said dropExit/stallExit/shuffleExits and
+  // the probe suite were DeviceLocal-only with no DeviceRemote equivalent. They
+  // have all seven been on DeviceRemote since S1 (urnetwork_sdk.hpp:10114-10150,
+  // exported at urnetwork_sdk.def:334-370), which is why this section exists.
+  //
+  // These are FAULT INJECTION: they deliberately degrade a live connection.
+  // Two rules follow from that and neither is optional:
+  //
+  //   1. IMMEDIATE-OR-NOTHING. Never queue one into sync state and never retry
+  //      client-side. A dropped exit replayed after an RPC reconnect drops a
+  //      DIFFERENT, healthy exit minutes later, which is the bug S1 fixed and
+  //      which the SDK now pins with TestDeviceRemoteAdvancedModeActionsAreNever
+  //      Queued. Every method here is one call under the lock, and a throw is
+  //      reported, not retried.
+  //   2. The log must NAME the exit. These are destructive by design and
+  //      Advanced Mode does not gate them behind a modal, so the log is the only
+  //      record of what was done to which exit.
+  //
+  // Same threading contract as the three above: they take mutex_, they issue a
+  // synchronous rpc, they BLOCK. Never call from the UI thread.
+
+  // Force the exit out of the window. Returns false when there was no session,
+  // the rpc threw, or the SDK declined (no such exit / no multi client).
+  bool DropExit(const std::string& exitClientId);
+  // Mark the exit stalled (or clear it). urnet::Exit carries no stalled flag, so
+  // the client cannot render current state — the caller offers both directions.
+  bool StallExit(const std::string& exitClientId, bool stalled);
+  // Reshuffle the whole exit window. Device-wide, not per-exit.
+  void ShuffleExits();
+
+  // Start the probe suite. A nullopt config asks the SDK for its own default
+  // (urnet::getDefaultProbeSuiteConfig) rather than a zeroed struct, which would
+  // be a suite with zero concurrency and zero timeout.
+  bool StartProbeSuite(const std::optional<urnet::ProbeSuiteConfig>& config = std::nullopt);
+  void StopProbeSuite();
+  bool ProbeSuiteRunning();
+  // ReadSdkList-guarded: Go marshals a nil slice as the 4-byte document `null`
+  // and the unwrap throws type_error.302. Empty, never an exception.
+  std::vector<urnet::ProbeResult> GetProbeResults();
 
   // Accessors for the UI/view models to drive the SDK directly.
   bool apiReady() { return api_.has_value(); }
@@ -760,6 +926,22 @@ class SdkHost {
   // handler out before it is invoked — never across the invocation, and never
   // together with mutex_ in the other order.
   void SetModeNoticeHandler(ModeNoticeHandler h);
+  // A SECOND, independent subscriber to the same notices, for the same reason
+  // SetLocationsObserver exists (see the R4 note there).
+  //
+  // THIS CHANNEL HAD TWO CONSUMERS AND ONE SLOT, and which of them won was a
+  // THREAD RACE. MainWindow's constructor binds the window-level snackbar
+  // (MainWindow.xaml.cpp) and DeveloperPage's constructor binds the Developer
+  // InfoBar; the page is constructed FIRST, so the window's binding replaces it
+  // — except that the page also asks for a replay on its own bridge thread, and
+  // whichever of the two got there first is the one that rendered. Observed
+  // live: "developer: mode notice cleared" in the log from a run whose snackbar
+  // never fired. A channel whose whole job is "never fail silently" cannot have
+  // a delivery that depends on which thread woke up first.
+  //
+  // Both slots are invoked, observer first, on the publishing thread. Same
+  // threading contract as SetModeNoticeHandler: marshal and return.
+  void SetModeNoticeObserver(ModeNoticeHandler h);
   // Re-push the current notice. Safe at any time, including from an ordinary
   // logged-out launch: with no session it publishes an INACTIVE notice. (It
   // used to derive purely from sessionMode_, whose default is RpcOnly, so
@@ -820,6 +1002,58 @@ class SdkHost {
 
  private:
   urnet::NetworkSpace BuildNetworkSpace();
+
+  // ---- the session worker (one bootstrap at a time) -------------------------
+  //
+  // What a caller wants done once there is a session. `kind` is deliberately
+  // separate from `location`: "best available" is also a nullopt location, so a
+  // bare optional could not tell the two apart.
+  enum class ConnectKind { None, BestAvailable, Location, Disconnect };
+  struct SessionRequest {
+    ConnectKind kind = ConnectKind::None;
+    std::optional<urnet::ConnectLocation> location;
+    // Static string, for the log. Never user-facing.
+    const char* reason = "";
+  };
+  // Record the request and make sure a worker is running. Takes ONLY
+  // pendingMutex_ — never mutex_ — so it is safe from the UI thread while a
+  // bootstrap is in flight.
+  void RequestSession(SessionRequest request);
+  // Drain and service requests until there are none left, then exit. The
+  // "worker is alive" flag is cleared under pendingMutex_, the same lock a
+  // producer holds while it tests it, so a request that lands as the worker is
+  // finishing cannot be dropped.
+  void SessionWorkerLoop();
+  // Apply the request's connect intent. Caller holds mutex_.
+  void ConnectLocked(const SessionRequest& request);
+
+  std::mutex pendingMutex_;
+  SessionRequest pending_;
+  bool pendingRequested_ = false;
+  bool sessionWorkerAlive_ = false;
+
+  // ---- the service-reconnect watchdog ---------------------------------------
+  //
+  // The control channel dropping is the app's only notice that the service (and
+  // with it the tun, its routes and the whole WFP session) is gone, and NOTHING
+  // used to schedule a retry: PipeClient never reconnects by design, and the
+  // only thing that called ServiceClient::Connect() was BootstrapSession, which
+  // only ran at launch and at sign-in. So a service restarted under a running
+  // app was invisible to it forever.
+  //
+  // This waits for the pipe to come back — probed with WaitNamedPipe, which
+  // costs nothing and does not disturb the channel — and then asks the session
+  // worker for a session. It does NOT bootstrap on its own: a failing bootstrap
+  // every few seconds would publish a session-failure notice every few seconds.
+  void ScheduleServiceRetry();
+  void ServiceWatchdogLoop();
+  void StopServiceWatchdog();  // called from the destructor; joins the thread
+
+  std::thread watchdog_;
+  std::mutex watchdogMutex_;
+  std::condition_variable watchdogCv_;
+  bool watchdogStop_ = false;
+  bool watchdogRunning_ = false;
   // After obtaining a network JWT, register this device and store the client JWT.
   // A live session (guest upgrade) is torn down first: the new jwt invalidates
   // the running device, and BootstrapSession rebuilds under the new auth.
@@ -849,6 +1083,28 @@ class SdkHost {
   // Drawer feeds: subscribe listeners (in BootstrapSession) and publish
   // snapshots, only on change (block actions storm per routing decision).
   void SubscribeDrawer();
+  // EnsureLocations without the lock: the third presentation-scoped subscribe,
+  // alongside SubscribeStats and SubscribeDrawer, so the three can be re-armed
+  // together from BootstrapSession and SetPresentationActive. mutex_ is not
+  // recursive, so the public EnsureLocations() cannot be called from either.
+  void EnsureLocationsLocked();  // caller holds mutex_
+  // The no-device half of the above: bring the api cache into line with
+  // apiLocationsQuery_, kicking a fetch only if the cache does not already
+  // answer that exact query and no fetch for it is already in flight. Caller
+  // holds mutex_ and must NOT hold apiLocationsMutex_.
+  void EnsureApiLocationsLocked();  // caller holds mutex_
+  // Re-bucket the cached api result at the current query and push it to both
+  // handler slots. Silent while the view-controller feed is open. Takes
+  // apiLocationsMutex_ internally and RELEASES it before invoking the handlers.
+  // Callable from any thread; must not be called holding apiLocationsMutex_.
+  void PublishApiLocations();
+  // urnet::getFilteredLocationsFromResult over the cache, ReadSdkList-guarded
+  // (FilteredLocations is struct-shaped but all six fields are `*List`; same
+  // rule as every sibling getter). nullopt when nothing has been fetched yet -
+  // deliberately NOT an engaged all-nullopt value, which is exactly the shape
+  // the LOCATIONS_LOADING push has and is indistinguishable from "loaded, zero
+  // providers" without the state string. Caller holds apiLocationsMutex_.
+  std::optional<urnet::FilteredLocations> FilteredApiLocationsLocked();
   void ClosePresentationLocked();
   void PublishThroughput();
   void PublishContractRows();
@@ -892,6 +1148,42 @@ class SdkHost {
   std::vector<urnet::Sub> presentationSubs_;
   bool presentationActive_ = false;
 
+  // ---- provider locations with NO service session (class A) -----------------
+  //
+  // Guarded by their OWN mutex, not mutex_, for two reasons. The completion
+  // fires on an SDK/Go thread and mutex_ is held across a whole BootstrapSession
+  // (service connect, hello, start_tunnel - seconds); and the fetch is kicked
+  // from EnsureLocationsLocked, i.e. WITH mutex_ already held, so an SDK that
+  // ever completed inline would self-deadlock on a non-recursive std::mutex.
+  // Lock order is mutex_ -> apiLocationsMutex_ and never the reverse.
+  std::mutex apiLocationsMutex_;
+  // The raw get/findProviderLocations document currently on screen.
+  std::optional<urnet::FindLocationsResult> apiLocations_;
+  // urnet::LocationsLoading / LocationsLoaded / LocationsError for the cache
+  // above, so the pane can tell loading from failed from genuinely-zero. Empty
+  // until the first fetch is kicked.
+  std::string apiLocationsState_;
+  // Three queries, and they are NOT interchangeable. `Query` is what the user
+  // wants (the search box); `LoadedQuery` is what apiLocations_ actually answers
+  // and is therefore the one the buckets must be computed with; `PendingQuery`
+  // is what the in-flight fetch will answer, which is what stops a fetch already
+  // running for this exact query from being kicked a second time.
+  std::string apiLocationsQuery_;
+  std::string apiLocationsLoadedQuery_;
+  std::string apiLocationsPendingQuery_;
+  bool apiLocationsInFlight_ = false;
+  // Bumped on every kick; a completion whose generation no longer matches is a
+  // superseded fetch and is dropped rather than allowed to overwrite a newer
+  // answer.
+  uint64_t apiLocationsGeneration_ = 0;
+  // THE SINGLE-WRITER GATE. True for exactly as long as locationsVc_ is open.
+  // Atomic because the api completion reads it from an SDK thread while the
+  // view controller is opened and closed under mutex_ on another. While it is
+  // set, the api path pushes NOTHING: the device feed is the better source (it
+  // is live and it drives server-side search) and two writers into one UI state
+  // is the bug this exists to prevent.
+  std::atomic<bool> deviceFeedOpen_{false};
+
   // Drawer caches (change detection + on-demand snapshots), guarded by
   // drawerMutex_ because the SDK listeners fire on their own threads.
   std::mutex drawerMutex_;
@@ -908,15 +1200,69 @@ class SdkHost {
   // surface TunnelState::Up. Every place that used to hand-build such a status
   // goes through here.
   proto::TunnelStatus SessionStatus(bool haveLocation) const;
+  // Take the two facts only the SERVICE can observe out of ANY status it sent —
+  // an event, or the reply to hello/get_state. It used to be done only for
+  // events, so a reattach (app restarted over a live session) adopted neither:
+  // hello carries both and they were read for `state`/`mode` and dropped, and
+  // the first thing the reattached session then pushed was a synthesised
+  // SessionStatus carrying the DEFAULTS — dns_applied=false, wfp_state=off —
+  // which renders a healthy protected tunnel as degraded and unguarded until
+  // some later start/stop event happens to correct it.
+  void AdoptServiceFacts(const proto::TunnelStatus& st);
+
+  // ---- R1 SELF-EXCLUSION FOR *THIS* PROCESS --------------------------------
+  //
+  // Pin this process's SDK sockets to the physical NIC while the service's
+  // tunnel is up, and unpin when it is not.
+  //
+  // WHY THIS EXISTS AT ALL. The service solved R1 for itself at step 2/8 —
+  // EgressMonitor -> urnet::setEgressInterfaceIndex, i.e. IP_UNICAST_IF on every
+  // socket the SDK opens — so its own platform traffic never follows the routes
+  // it is about to install into the tun. That setter is PROCESS-GLOBAL inside
+  // one loaded copy of URnetworkSdk.dll, and this app loads its OWN copy with
+  // its OWN Go runtime for its OWN Api/LocalState/DeviceRemote. So the service's
+  // bind covers urnetworkd and cannot reach here, and both mechanisms that were
+  // supposed to keep our platform traffic out of our own tunnel — the egress
+  // bind and the WFP app-id permit — were designed around the service and never
+  // covered the UI. Measured 2026-08-08: "[dtm]failed to refresh JWT: Timeout."
+  // from URnetwork.exe (pid 2584) while a tunnel was up.
+  //
+  // THE INDEX COMES FROM THE SERVICE (TunnelStatus::egress_index4). It is not
+  // recomputed here on purpose: the correct answer requires excluding the tun's
+  // LUID, only the service knows it, and EgressMonitor already implements the
+  // retain-last-good-rather-than-unbind rule that R1 depends on. Two
+  // implementations of that rule would eventually disagree, and the failure mode
+  // of disagreeing is a socket that silently follows the tun.
+  //
+  // IT IS HALF OF A PAIR. On its own it would make things WORSE, not better: the
+  // baseline WFP floor blocks everything that is not urnetworkd, loopback, LAN
+  // or the tun, so an app socket moved onto the physical NIC would be blocked
+  // outright. The other half is the Connected-only app-id permit the service
+  // installs (WfpConfig::app_image_path). Do not land one without the other.
+  //
+  // WHAT IT DOES NOT FIX, stated so nobody assumes otherwise: name resolution.
+  // Go on Windows resolves through GetAddrInfoW, so the query leaves svchost.exe
+  // and goes to whatever resolver the stack picks — which, while connected, is
+  // the tunnel's, over the tun. A cold cache plus a tunnel with no working exit
+  // still cannot resolve. This moves the SOCKETS, not the resolver.
+  //
+  // Idempotent and change-gated; safe from the pipe reader thread.
+  void ApplySdkEgressBind(int64_t index4, int64_t index6, const char* why);
+
+  // The control channel dropped. Runs on the pipe reader thread.
+  void OnServiceDisconnected();
   // Build and push the persistent notice from the CURRENT session state.
   // Caller holds mutex_ (it reads device_).
   void PublishModeNotice();
   // Push a "there is no session, and here is why" notice. The user stays
   // signed in; see ModeNotice::Kind::SessionFailed.
   void PublishSessionFailure(const std::string& why);
-  // A copy of the handler, taken under noticeMutex_. Invoke the COPY, so the
-  // lock is never held across the call.
+  // Copies of the two handlers, taken under noticeMutex_. Invoke the COPIES, so
+  // the lock is never held across the calls.
   ModeNoticeHandler ModeNoticeHandlerCopy() const;
+  ModeNoticeHandler ModeNoticeObserverCopy() const;
+  // Deliver `notice` to both slots, observer first.
+  void DeliverModeNotice(const ModeNotice& notice) const;
 
   ServiceClient service_;
   // Set once in Initialize() from URNETWORK_RPC_ONLY; never changes after.
@@ -927,6 +1273,50 @@ class SdkHost {
   // unreadable mode. With no session there is certainly no tunnel, so a stray
   // read before or after one must not be able to render "connected".
   std::atomic<proto::StartMode> sessionMode_{proto::StartMode::RpcOnly};
+  // "There is a session AND the service that holds it is still there." Written
+  // wherever device_ is created or destroyed and cleared when the control
+  // channel drops (the service owns the tunnel: its process dying takes the
+  // session with it, whatever this side still holds). Atomic because the strip
+  // reads it from the UI thread — see HasSession().
+  std::atomic<bool> hasSession_{false};
+  // The rpc endpoint of the LIVE session, so the statuses this process
+  // SYNTHESISES (SessionStatus) carry it too. Without this the advanced strip's
+  // RPC field read "none" for the whole life of a healthy session, because the
+  // only statuses that ever carried a host:port were the ones the service sent.
+  //
+  // Guarded by wfpStateMutex_, NOT mutex_: SessionStatus() is called from SDK
+  // listener callbacks that do not hold mutex_, and this is already the lock
+  // over "the last facts we know about the session".
+  std::string sessionRpcHostPort_;
+  // The last values the SERVICE reported for the two facts only it can observe:
+  // whether the tun's resolvers actually took, and whether the WFP
+  // leak-prevention policy is in force. Cached so SessionStatus() — which this
+  // process synthesises — reports what is true instead of the struct defaults.
+  // Both default to the DEGRADED reading, so a status pushed before the service
+  // has ever spoken understates protection rather than overstating it.
+  std::atomic<bool> lastServiceDnsApplied_{false};
+  mutable std::mutex wfpStateMutex_;
+  std::string lastServiceWfpState_ = "off";
+  // The egress binding currently in force on THIS process's SDK instance, as a
+  // packed (index4, index6) pair, and the lock that keeps the compare and the
+  // SDK call together.
+  //
+  // -1 means "never applied", which is distinct from 0 ("applied, and it is the
+  // unbound state"): without that distinction the first status carrying 0 would
+  // be a no-op and a stale bind from a previous session could survive.
+  //
+  // ITS OWN LOCK, AND NOT AN ATOMIC. There are two writers — the pipe reader
+  // thread (pushed status) and the bootstrap thread (hello, and the start_tunnel
+  // reply) — and with a bare compare-and-swap they can interleave so that the
+  // LAST call into the SDK carries the FIRST thread's value. The state that
+  // leaves behind is a process pinned to a stale interface with nothing left to
+  // correct it, which is the exact failure this whole mechanism exists to
+  // prevent. Held only across the compare and the setter, never across a
+  // handler, and never together with mutex_ — the bootstrap thread holds mutex_
+  // when it gets here, so taking them in the other order anywhere would be a
+  // deadlock.
+  std::mutex egressMutex_;
+  int64_t sdkEgressBound_ = -1;
   // The STANDING reason there is no session, in words a user can act on, or
   // empty when there is nothing to report. Distinct from bootstrapError_, which
   // is per-attempt scratch: this survives the attempt so that a view created
@@ -989,6 +1379,8 @@ class SdkHost {
   // ModeNoticeHandlerCopy(), never directly.
   mutable std::mutex noticeMutex_;
   ModeNoticeHandler onModeNotice_;
+  // The Developer page's copy of the same notices (SetModeNoticeObserver).
+  ModeNoticeHandler onModeNoticeObserver_;
   // sessionFailure_ is declared above with the field it belongs to. P2 and P5
   // arrived at the same design independently -- a bootstrap failure is standing
   // state, not an event, because it happens before any window exists to receive

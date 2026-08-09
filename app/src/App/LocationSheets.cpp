@@ -448,6 +448,13 @@ int64_t CountOf(std::optional<urnet::ConnectLocationList> const& list) {
   return list ? static_cast<int64_t>(list->size()) : 0;
 }
 
+// The SDK's own state strings (sdk/locations_view_controller.go). Compared by
+// value rather than parsed: they are the wire, and an unrecognised one falls
+// through to "loading", which is the honest answer for "the feed is open and it
+// has not said otherwise".
+constexpr std::string_view kLocationsLoading = "LOCATIONS_LOADING";
+constexpr std::string_view kLocationsError = "LOCATIONS_ERROR";
+
 // A synthetic location for --preview-ui. Every field is set explicitly so the
 // detail pane exercises all of them; nothing here reaches the network.
 urnet::ConnectLocation SampleLocation(std::string const& name, std::string const& type,
@@ -510,23 +517,63 @@ void NetworkPage::Build() {
 }
 
 void NetworkPage::SetSelected(bool selected) {
+  if (selected_ == selected) return;
   selected_ = selected;
-  if (!selected) return;
-  // Opening the view controllers is idempotent and seeds both feeds; the
-  // chooser sheet calls the same thing.
-  Sdk().EnsureLocations();
-  if (!samplePinned_) {
-    locations_ = Sdk().CurrentFilteredLocations();
-    peers_ = Sdk().ConnectedProvidePeers();
+  ReconcileFeeds();
+}
+
+void NetworkPage::SetPresentationActive(bool active) {
+  if (presentationActive_ == active) return;
+  presentationActive_ = active;
+  ReconcileFeeds();
+}
+
+// Selection and presentation are the two halves, the same pair DeveloperPage's
+// poll runs on - and this page only ever had the first one.
+//
+// SdkHost owns the locations/peers view controllers for exactly as long as the
+// presentation, and the presentation stops on DEACTIVATION, not only on hide
+// (AppController::WindowPresentationShouldRun is `shown && activated`). So
+// alt-tabbing away closed both feeds, dropped their listeners and pushed
+// std::nullopt into this page - and nothing reopened them, because the only
+// opener was a navigation CHANGE and coming back to the destination you left on
+// is not one. The pane then stayed empty for the life of the window.
+//
+// EnsureLocations is idempotent, so reconciling on either half is safe and the
+// order the two arrive in does not matter.
+//
+// NEITHER HALF IS A SESSION. Both are properties of this window, and that is the
+// point: with no service running at all, EnsureLocations arms the in-process Api
+// source instead of the device's view controller, and this page cannot tell the
+// difference - same handler, same FilteredLocations, same buckets.
+void NetworkPage::ReconcileFeeds() {
+  if (selected_ && presentationActive_) {
+    Sdk().EnsureLocations();
+    if (!samplePinned_) {
+      // Deliberately not trusted to be the answer: both sources load
+      // asynchronously (the view controller measured at ~1.2s against the
+      // shipped dll; the api path is an http round trip), so a snapshot read
+      // taken right after arming is EMPTY by construction and the real content
+      // arrives on the push. This settles the state - so the pane says
+      // "loading" rather than showing the last session's buckets or nothing at
+      // all - it does not fetch.
+      locations_ = Sdk().CurrentFilteredLocations();
+      locationsState_ = Sdk().CurrentFilteredLocationState();
+      peers_ = Sdk().ConnectedProvidePeers();
+    }
   }
-  Render();
+  if (selected_) Render();
 }
 
 void NetworkPage::OnLocations(std::optional<urnet::FilteredLocations> locations,
                               std::string state) {
-  (void)state;
   if (samplePinned_) return;
   locations_ = std::move(locations);
+  // The state is the ONLY thing that separates "still loading", "the SDK gave
+  // up on this query" and "the answer is genuinely zero providers": all three
+  // arrive here as buckets with nothing in them. Dropping it (this used to be
+  // `(void)state;`) is what made the three render as one silent screen.
+  locationsState_ = std::move(state);
   Render();
 }
 
@@ -695,11 +742,44 @@ void NetworkPage::Render() {
   }
 
   // 3. the SDK's own buckets, in the SDK's own order
+  int64_t bucketRows = 0;
   if (locations_) {
     AppendLocationSection(Loc("countries"), locations_->Countries, selected, total);
     AppendLocationSection(Loc("regions"), locations_->Regions, selected, total);
     AppendLocationSection(Loc("cities"), locations_->Cities, selected, total);
     AppendLocationSection(Loc("devices"), locations_->Devices, selected, total);
+    bucketRows = CountOf(locations_->Countries) + CountOf(locations_->Regions) +
+                 CountOf(locations_->Cities) + CountOf(locations_->Devices);
+    if (searching) bucketRows += CountOf(locations_->BestMatches);
+  }
+
+  // 4. WHY the buckets are empty, when they are.
+  //
+  // The list is never structurally empty when idle - the synthetic "Best
+  // available provider" row is always in it - so the overlay below, which keys
+  // off `host.Children().Size() == 0`, could not fire for the case that
+  // actually matters. A feed still loading, a failed query and a network with
+  // genuinely no providers ALL rendered as that one row and nothing else, with
+  // no way for anyone (user or bug report) to tell them apart. This is that
+  // missing sentence, inline where the buckets would be.
+  const FeedState feed = CurrentFeedState();
+  if (bucketRows <= 0 && !samplePinned_) {
+    hstring line;
+    switch (feed) {
+      case FeedState::Loading:
+        line = Loc("loading");
+        break;
+      case FeedState::Failed:
+        // No promise of a retry: the SDK does not schedule one. The list
+        // reloads when this destination is re-entered, when the window comes
+        // back, or on the next search - so say what is true and stop.
+        line = pages::Adv("adv_providers_load_failed", L"Could not load the provider list.");
+        break;
+      case FeedState::Loaded:
+        line = searching ? Loc("no_locations_found") : Loc("no_providers_found");
+        break;
+    }
+    host.Children().Append(kit::MakePaneEmptyLine(line));
   }
 
   // The empty state is a centred line inside the FULL-HEIGHT list area (the
@@ -714,6 +794,29 @@ void NetworkPage::Render() {
 
   w_.NetworkPaneAMeta().Text(total <= 0 ? hstring{} : hstring{std::to_wstring(total)});
   RenderDetail();
+}
+
+// Which of the three indistinguishable empty screens this one is.
+//
+// THE STATE STRING IS CHECKED BEFORE THE SNAPSHOT, and that order is the whole
+// trick. A LOCATIONS_LOADING push carries the document `null`, which parses into
+// an ENGAGED optional whose six buckets are all nullopt - byte for byte the same
+// value as "loaded, and this network has no providers". Nothing below the state
+// string can tell those apart, so nothing below it is allowed to try.
+//
+// Only when the state says nothing useful (empty: no source has answered yet)
+// does an absent snapshot mean "loading". It always does at first - both the
+// view controller's initial load and the api fetch are async, so any snapshot
+// read taken right after arming is empty by construction.
+//
+// There is no longer a session check here. SdkHost serves this pane from the
+// in-process Api whenever there is no device, so "no service session" is not a
+// state of the provider list at all: it loads, or it is loading, or it failed.
+NetworkPage::FeedState NetworkPage::CurrentFeedState() const {
+  if (locationsState_ == kLocationsError) return FeedState::Failed;
+  if (locationsState_ == kLocationsLoading) return FeedState::Loading;
+  if (!locations_) return FeedState::Loading;
+  return FeedState::Loaded;
 }
 
 void NetworkPage::RenderDetail() {

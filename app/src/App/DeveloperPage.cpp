@@ -3,7 +3,9 @@
 
 #include "DeveloperPage.h"
 
+#include <array>
 #include <cmath>
+#include <span>
 #include <thread>
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
@@ -13,6 +15,7 @@
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
+#include "StatsFormat.h"
 #include "Strings.h"
 #include "UrColors.h"
 
@@ -165,7 +168,13 @@ Button MakeActionButton(hstring const& text, bool primary = false) {
 }
 
 // A table row: one cell per width, star widths spelled as negative numbers.
-Grid MakeTableRow(std::initializer_list<double> widths) {
+//
+// Star and pixel only, deliberately — NOT Auto. Each row is an independent
+// Grid, so an Auto column sizes to its own row's content and the header (whose
+// action cell is a label) would compute a different width from the rows (whose
+// action cell is four buttons). Every column below the widest one would then
+// sit at a different x per row. Fixed pixels for anything holding a control.
+Grid MakeTableRow(std::span<const double> widths) {
   Grid row;
   for (double w : widths) {
     ColumnDefinition c;
@@ -174,6 +183,35 @@ Grid MakeTableRow(std::initializer_list<double> widths) {
   }
   return row;
 }
+Grid MakeTableRow(std::initializer_list<double> widths) {
+  return MakeTableRow(std::span<const double>{widths.begin(), widths.size()});
+}
+
+// The exits table's columns, named once because the header and every row must
+// agree exactly or the columns stop lining up. Two hand-copied literal lists
+// would have drifted on the first edit.
+//
+// D6 widened the trailing cell from one Migrate button to four actions. The
+// first attempt spent 300px on it and left the six star columns to share what
+// was left: at 1100dip that put the "Failed dials" header hard against "State"
+// with a zero-pixel gap. Fixed width is taken off the top BEFORE the stars are
+// divided, so every pixel here is one the narrow case pays for. 270 with
+// compacted buttons (kActionPadding) plus a wider Failed-dials share is what
+// clears it. Judged at 1100 AND maximized — a table that passes at one width
+// and fails at the other is this project's most repeated layout defect.
+// Column order: 0 Exit · 1 Window · 2 Tier · 3 Flows · 4 Failed dials · 5 State
+// · 6 Actions. "Failed dials" is the longest header on the table and it is
+// index FOUR — putting its extra share on index 3 by miscount leaves the
+// original collision exactly where it was.
+inline constexpr std::array<double, 7> kExitColumns{-2, -2, -1, -1, -2, -2, 270};
+
+// Table-cell button padding. UrCardRowButtonStyle's 12,8 is right for a button
+// standing on its own in a card; four of them in one row cell need the density
+// more than they need the touch target.
+inline constexpr winrt::Microsoft::UI::Xaml::Thickness kActionPadding{8, 6, 8, 6};
+
+// The probe-suite results table. Same rule: the header and every row share it.
+inline constexpr std::array<double, 7> kProbeColumns{-3, -1, -1, -1, -1, -1, -2};
 
 void PutCell(Grid const& row, int column, FrameworkElement const& element) {
   Grid::SetColumn(element, column);
@@ -213,8 +251,16 @@ DeveloperPage::DeveloperPage(winrt::URnetwork::implementation::MainWindow& windo
   // RefreshModeNotice, which takes it), so it may do exactly one thing —
   // enqueue and return. TryEnqueue never runs the lambda inline, so nothing
   // here can re-enter SdkHost under its own lock.
+  //
+  // THE OBSERVER SLOT, NOT THE HANDLER. MainWindow's constructor binds the
+  // handler to the window-level snackbar, and this page is constructed BEFORE
+  // that line runs — so with one slot the two silently overwrote each other, and
+  // which of them survived depended on whether this page's bridge thread got its
+  // replay in first. Observed live: a run whose log carries "developer: mode
+  // notice cleared" (this page) and whose snackbar never fired. Two consumers,
+  // two slots; see SdkHost::SetModeNoticeObserver.
   auto queue = w_.DispatcherQueue();
-  Sdk().SetModeNoticeHandler([weak = w_.get_weak(), queue](SdkHost::ModeNotice const& notice) {
+  Sdk().SetModeNoticeObserver([weak = w_.get_weak(), queue](SdkHost::ModeNotice const& notice) {
     queue.TryEnqueue([weak, notice] {
       if (auto self = weak.get()) self->developer().OnModeNotice(notice);
     });
@@ -424,11 +470,41 @@ void DeveloperPage::ShowPreviewSnapshot() {
   d3.FlowCount = 1;
   snap.destinationExits = {d1, d2, d3};
 
+  // D6: the probe suite, so the new table has a shape to judge at layout time.
+  // Deliberately mixed: one clean http probe, one dns-only probe (no connect or
+  // ttfb, which must render as em-dashes and not as 0ms), and one failure whose
+  // Error string is passed through verbatim.
+  urnet::ProbeResult p1;
+  p1.Name = "https://www.google.com";
+  p1.Kind = "http";
+  p1.Ok = true;
+  p1.DnsMillis = 14;
+  p1.ConnectMillis = 38;
+  p1.TtfbMillis = 96;
+  p1.TotalMillis = 141;
+  p1.ByteCount = 52344;
+  urnet::ProbeResult p2;
+  p2.Name = "cloudflare.com";
+  p2.Kind = "dns";
+  p2.Ok = true;
+  p2.DnsMillis = 22;
+  p2.TotalMillis = 22;
+  urnet::ProbeResult p3;
+  p3.Name = "https://ipv6.example.net";
+  p3.Kind = "http";
+  p3.Ok = false;
+  p3.DnsMillis = 11;
+  p3.TotalMillis = 4000;
+  p3.Error = "dial tcp: i/o timeout";
+  snap.probeResults = {p1, p2, p3};
+  snap.probeSuiteRunning = true;
+
   LogInfo("preview-ui: applying a SYNTHETIC reliability snapshot - none of these "
           "numbers came from a device");
   previewData_ = true;
   ApplySnapshotNow(snap);
-  SetLastAction(DevW("dev_requested", L"Requested:") + L" probe all exits");
+  SetLastAction(DevW("dev_probed_exits", L"Probed exits") + L": " +
+                DevW("dev_count_affected", L"affected") + L" 3");
 }
 
 // ---- lifecycle -------------------------------------------------------------
@@ -543,22 +619,137 @@ void DeveloperPage::RunAction(ReliabilityAction action, std::wstring const& desc
   // buttons, violated by the file itself — and EditSettings two functions up
   // already did the right thing.
   //
-  // "Requested", not "done", is still the ceiling even on success: these return
-  // void over the C ABI (the DeviceLocal forms return an int64 count; the
-  // DeviceRemote exports are void), so the counters and exit rows underneath
-  // are where an action is actually confirmed.
+  // D6: "Requested" is no longer the ceiling for all six. migrateExit and
+  // probeAllExits are declared int64_t on DeviceRemote and the count DOES cross
+  // the ABI — the comment that used to sit here said otherwise and the number
+  // was thrown away, so a migrate that moved 12 flows and a migrate that moved
+  // 0 read identically. When the SDK gives a count, report it; for the four
+  // genuinely-void actions "Requested" is still honest, and the counters and
+  // exit rows underneath are where those are confirmed.
   auto queue = w_.DispatcherQueue();
   Submit([weak = w_.get_weak(), queue, action, exitClientId, described] {
-    const bool issued = Sdk().RunReliabilityAction(action, exitClientId);
+    const ReliabilityActionResult result = Sdk().RunReliabilityAction(action, exitClientId);
     ReliabilitySnapshot snap = Sdk().ReadReliability();
-    queue.TryEnqueue([weak, snap = std::move(snap), issued, described] {
+    queue.TryEnqueue([weak, snap = std::move(snap), result, described] {
+      auto self = weak.get();
+      if (!self) return;
+      self->developer().ApplySnapshot(snap);
+      if (!result.issued) {
+        self->developer().SetLastAction(
+            DevW("dev_not_issued", L"Not issued: there is no live session to act on."));
+        return;
+      }
+      if (result.declined) {
+        // A negative return from migrateExit/probeAllExits is the SDK's
+        // not-found sentinel. It reports like the fault actions' decline, NOT
+        // as a count — "affected -1" was what the first version rendered.
+        self->developer().SetLastAction(
+            DevW("dev_action_declined", L"No change: the SDK declined that action."));
+        return;
+      }
+      if (result.hasCount) {
+        // 0 is a real, informative answer here ("nothing needed moving"), not a
+        // missing value, so it renders like any other count.
+        self->developer().SetLastAction(described + L": " +
+                                        DevW("dev_count_affected", L"affected") + L" " +
+                                        std::format(L"{}", result.count));
+        return;
+      }
+      self->developer().SetLastAction(DevW("dev_requested", L"Requested:") + L" " + described);
+    });
+  });
+}
+
+// ---- D6: fault injection + the probe suite ----------------------------------
+// Three properties, each called out by the plan:
+//
+//   * NO client-side retry and nothing queued. One shot through SdkHost and
+//     whatever comes back is what gets reported. A retry here reintroduces the
+//     exact bug S1 fixed, because the exit that gets dropped on the replay is
+//     not the exit the user pointed at.
+//   * NO modal. Advanced Mode's audience is doing this deliberately and a
+//     confirmation on every click makes the screen unusable for the diagnosis
+//     it exists for. The report line and the SdkHost log both NAME the exit,
+//     which is the discipline that stands in for the modal.
+//   * The report separates "the SDK did it" from "the SDK declined". Unlike the
+//     void reliability actions these return a real bool, so a Drop aimed at an
+//     exit that has already left the window says so instead of claiming success.
+void DeveloperPage::RunFaultAction(FaultAction action, std::string const& exitClientId) {
+  if (exitClientId.empty()) return;  // no identity, nothing to act on
+  auto queue = w_.DispatcherQueue();
+  Submit([weak = w_.get_weak(), queue, action, exitClientId] {
+    bool applied = false;
+    std::wstring described;
+    const std::wstring shortId = ShortId(exitClientId);
+    switch (action) {
+      case FaultAction::Drop:
+        applied = Sdk().DropExit(exitClientId);
+        described = DevW("dev_dropped_exit", L"Dropped exit") + L" " + shortId;
+        break;
+      case FaultAction::Stall:
+        applied = Sdk().StallExit(exitClientId, true);
+        described = DevW("dev_stalled_exit", L"Stalled exit") + L" " + shortId;
+        break;
+      case FaultAction::Unstall:
+        applied = Sdk().StallExit(exitClientId, false);
+        described = DevW("dev_unstalled_exit", L"Cleared stall on exit") + L" " + shortId;
+        break;
+    }
+    ReliabilitySnapshot snap = Sdk().ReadReliability();
+    queue.TryEnqueue([weak, snap = std::move(snap), applied, described, shortId] {
       auto self = weak.get();
       if (!self) return;
       self->developer().ApplySnapshot(snap);
       self->developer().SetLastAction(
-          issued ? DevW("dev_requested", L"Requested:") + L" " + described
-                 : DevW("dev_not_issued",
-                        L"Not issued: there is no live session to act on."));
+          applied ? described
+                  : DevW("dev_declined_exit", L"No change: the SDK declined that exit") + L" " +
+                        shortId);
+    });
+  });
+}
+
+void DeveloperPage::RunShuffleExits() {
+  auto queue = w_.DispatcherQueue();
+  Submit([weak = w_.get_weak(), queue] {
+    // shuffleExits is void on both Device forms, so "requested" is the ceiling
+    // and the exits table below is where the reshuffle is actually visible.
+    Sdk().ShuffleExits();
+    ReliabilitySnapshot snap = Sdk().ReadReliability();
+    queue.TryEnqueue([weak, snap = std::move(snap)] {
+      auto self = weak.get();
+      if (!self) return;
+      self->developer().ApplySnapshot(snap);
+      self->developer().SetLastAction(DevW("dev_requested", L"Requested:") + L" " +
+                                      DevW("dev_shuffle_exits", L"Shuffle exit window"));
+    });
+  });
+}
+
+void DeveloperPage::RunProbeSuite(bool start) {
+  auto queue = w_.DispatcherQueue();
+  Submit([weak = w_.get_weak(), queue, start] {
+    bool started = false;
+    // nullopt = ask the SDK for its own default config; SdkHost resolves it
+    // through urnet::getDefaultProbeSuiteConfig rather than sending a zeroed
+    // struct, which would be a suite with zero concurrency and zero timeout.
+    if (start)
+      started = Sdk().StartProbeSuite();
+    else
+      Sdk().StopProbeSuite();
+    ReliabilitySnapshot snap = Sdk().ReadReliability();
+    queue.TryEnqueue([weak, snap = std::move(snap), start, started] {
+      auto self = weak.get();
+      if (!self) return;
+      self->developer().ApplySnapshot(snap);
+      if (!start) {
+        self->developer().SetLastAction(DevW("dev_probe_suite_stopped", L"Probe suite stopped"));
+        return;
+      }
+      self->developer().SetLastAction(
+          started
+              ? DevW("dev_probe_suite_started", L"Probe suite started")
+              : DevW("dev_probe_suite_not_started",
+                     L"Probe suite did not start: no live session, or one is already running."));
     });
   });
 }
@@ -623,8 +814,9 @@ void DeveloperPage::Build() {
       simulateButton_.IsEnabled(false);
       simulateButton_.Click([weak = w_.get_weak()](auto const&, auto const&) {
         if (auto self = weak.get())
-          self->developer().RunAction(ReliabilityAction::SimulateNetworkChange,
-                                      L"simulate network change");
+          self->developer().RunAction(
+              ReliabilityAction::SimulateNetworkChange,
+              DevW("dev_simulate_network_change", L"Simulate network change"));
       });
       actions.Children().Append(simulateButton_);
 
@@ -632,7 +824,7 @@ void DeveloperPage::Build() {
       syncButton_.IsEnabled(false);
       syncButton_.Click([weak = w_.get_weak()](auto const&, auto const&) {
         if (auto self = weak.get())
-          self->developer().RunAction(ReliabilityAction::Sync, L"sync");
+          self->developer().RunAction(ReliabilityAction::Sync, DevW("dev_sync", L"Sync"));
       });
       actions.Children().Append(syncButton_);
     }
@@ -725,7 +917,8 @@ void DeveloperPage::Build() {
     Button reset = MakeActionButton(Dev("dev_reset_measurements", L"Reset measurements"));
     reset.Click([weak = w_.get_weak()](auto const&, auto const&) {
       if (auto self = weak.get())
-        self->developer().RunAction(ReliabilityAction::ResetMetrics, L"reset measurements");
+        self->developer().RunAction(ReliabilityAction::ResetMetrics,
+                                    DevW("dev_reset_measurements", L"Reset measurements"));
     });
     body.Children().Append(reset);
   }
@@ -736,7 +929,7 @@ void DeveloperPage::Build() {
   {
     StackPanel body{nullptr};
     deviceCard(tables, Dev("dev_exits", L"Exits"), body);
-    Grid header = MakeTableRow({-2, -2, -1, -1, -1, -3, 90});
+    Grid header = MakeTableRow(kExitColumns);
     auto head = [&](int column, std::string_view key, const wchar_t* label) {
       auto tb = MakeText(Dev(key, label), 11, FaintBrush());
       PutCell(header, column, tb);
@@ -747,10 +940,26 @@ void DeveloperPage::Build() {
     head(3, "dev_col_flows", L"Flows");
     head(4, "dev_col_failed_dials", L"Failed dials");
     head(5, "dev_col_state", L"State");
+    head(6, "dev_col_actions", L"Actions");
     body.Children().Append(header);
     exitsBody_ = StackPanel();
     exitsBody_.Spacing(6);
     body.Children().Append(exitsBody_);
+
+    // D6: shuffle acts on the WHOLE window, not on a row, so it belongs under
+    // the table rather than in it. It is the one fault-injection action with no
+    // exit to name.
+    body.Children().Append(MakeText(
+        Dev("dev_exits_actions_detail",
+            L"Drop, Stall and Shuffle degrade the live connection on purpose, immediately. "
+            L"Nothing here is queued or retried — an action that misses is reported, not "
+            L"replayed."),
+        12, MutedBrush(), true));
+    Button shuffle = MakeActionButton(Dev("dev_shuffle_exits", L"Shuffle exit window"));
+    shuffle.Click([weak = w_.get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) self->developer().RunShuffleExits();
+    });
+    body.Children().Append(shuffle);
   }
 
   // ---- destination exits ---------------------------------------------------
@@ -776,6 +985,56 @@ void DeveloperPage::Build() {
     destinationsBody_ = StackPanel();
     destinationsBody_.Spacing(6);
     body.Children().Append(destinationsBody_);
+  }
+
+  // ---- probe suite ---------------------------------------------------------
+  // D6. Distinct from "Probe all exits now" in the Probing overrides card: that
+  // qualifies EXITS against the embedded health-site list and reports a count.
+  // This dials a suite of targets and reports the timing breakdown per target —
+  // DNS, connect, TTFB, total — which is what tells a slow connection apart
+  // from a connection that is slow to RESOLVE.
+  {
+    StackPanel body{nullptr};
+    deviceCard(tables, Dev("dev_probe_suite", L"Probe suite"), body);
+    body.Children().Append(MakeText(
+        Dev("dev_probe_suite_detail",
+            L"Dials real targets through the live connection and times each stage. Runs with "
+            L"the SDK's own default configuration."),
+        11, FaintBrush(), true));
+
+    probeSuiteState_ = MakeText(hstring{}, 13, MutedBrush(), true);
+    body.Children().Append(probeSuiteState_);
+
+    StackPanel controls;
+    controls.Orientation(Orientation::Horizontal);
+    controls.Spacing(8);
+    probeStartButton_ = MakeActionButton(Dev("dev_probe_suite_start", L"Start probe suite"));
+    probeStartButton_.Click([weak = w_.get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) self->developer().RunProbeSuite(true);
+    });
+    controls.Children().Append(probeStartButton_);
+    probeStopButton_ = MakeActionButton(Dev("dev_probe_suite_stop", L"Stop"));
+    probeStopButton_.Click([weak = w_.get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) self->developer().RunProbeSuite(false);
+    });
+    controls.Children().Append(probeStopButton_);
+    body.Children().Append(controls);
+
+    Grid header = MakeTableRow(kProbeColumns);
+    auto head = [&](int column, std::string_view key, const wchar_t* label) {
+      PutCell(header, column, MakeText(Dev(key, label), 11, FaintBrush()));
+    };
+    head(0, "dev_col_target", L"Target");
+    head(1, "dev_col_kind", L"Kind");
+    head(2, "dev_col_dns", L"DNS");
+    head(3, "dev_col_connect", L"Connect");
+    head(4, "dev_col_ttfb", L"TTFB");
+    head(5, "dev_col_total", L"Total");
+    head(6, "dev_col_outcome", L"Outcome");
+    body.Children().Append(header);
+    probeResultsBody_ = StackPanel();
+    probeResultsBody_.Spacing(6);
+    body.Children().Append(probeResultsBody_);
   }
 
   // ---- the settings sections ----------------------------------------------
@@ -992,7 +1251,8 @@ void DeveloperPage::Build() {
     Button probe = MakeActionButton(Dev("dev_probe_all_exits_now", L"Probe all exits now"));
     probe.Click([weak = w_.get_weak()](auto const&, auto const&) {
       if (auto self = weak.get())
-        self->developer().RunAction(ReliabilityAction::ProbeAllExits, L"probe all exits");
+        self->developer().RunAction(ReliabilityAction::ProbeAllExits,
+                                    DevW("dev_probed_exits", L"Probed exits"));
     });
     section.Children().Append(probe);
   }
@@ -1008,8 +1268,9 @@ void DeveloperPage::Build() {
         MakeActionButton(Dev("dev_reset_to_shipped_defaults", L"Reset to shipped defaults"));
     reset.Click([weak = w_.get_weak()](auto const&, auto const&) {
       if (auto self = weak.get())
-        self->developer().RunAction(ReliabilityAction::ResetSettings,
-                                    L"reset to shipped defaults");
+        self->developer().RunAction(
+            ReliabilityAction::ResetSettings,
+            DevW("dev_reset_to_shipped_defaults", L"Reset to shipped defaults"));
     });
     section.Children().Append(reset);
   }
@@ -1036,6 +1297,7 @@ void DeveloperPage::ApplySnapshotNow(ReliabilitySnapshot const& snap) {
   ApplySettings(snap);
   ApplyMetrics(snap.metrics);
   ApplyExits(snap);
+  ApplyProbeSuite(snap);
 }
 
 void DeveloperPage::ApplySettings(ReliabilitySnapshot const& snap) {
@@ -1171,7 +1433,7 @@ void DeveloperPage::ApplyExits(ReliabilitySnapshot const& snap) {
       // and nothing to name the row with. Drop it rather than mint a label.
       if (!e.ClientId || e.ClientId->empty()) continue;
       const std::string clientId = *e.ClientId;
-      Grid row = MakeTableRow({-2, -2, -1, -1, -1, -3, 90});
+      Grid row = MakeTableRow(kExitColumns);
       ExitRow cells;
       cells.clientId = clientId;
       cells.root = row;
@@ -1190,14 +1452,47 @@ void DeveloperPage::ApplyExits(ReliabilitySnapshot const& snap) {
       cells.state = MakeText(hstring{}, 12, MutedBrush(), true);
       PutCell(row, 5, cells.state);
 
+      // The per-exit action cluster. Fixed column (see kExitColumns) with the
+      // buttons stacked horizontally, so the row keeps ONE cell for actions and
+      // the six data columns stay aligned with the header.
+      //
+      // Migrate is not destructive — it moves flows off an exit. The other
+      // three are: Drop evicts the exit from the window, Stall makes it look
+      // hung to the reliability stack, Unstall clears that. urnet::Exit carries
+      // no stalled flag, so the client CANNOT know which of Stall/Unstall is
+      // the meaningful one for a given row — hence both, always enabled, rather
+      // than a toggle that would have to lie about its current state.
+      StackPanel actions;
+      actions.Orientation(Orientation::Horizontal);
+      actions.Spacing(4);
+      actions.VerticalAlignment(VerticalAlignment::Center);
+
       Button migrate = MakeActionButton(Dev("dev_migrate", L"Migrate"));
+      migrate.Padding(kActionPadding);
       migrate.Click([weak = w_.get_weak(), clientId](auto const&, auto const&) {
         if (auto self = weak.get())
-          self->developer().RunAction(ReliabilityAction::MigrateExit,
-                                      std::format(L"migrate exit {}", ShortId(clientId)),
-                                      clientId);
+          self->developer().RunAction(
+              ReliabilityAction::MigrateExit,
+              DevW("dev_migrate_exit", L"Migrated exit") + L" " + ShortId(clientId), clientId);
       });
-      PutCell(row, 6, migrate);
+      actions.Children().Append(migrate);
+
+      auto fault = [&](std::string_view key, const wchar_t* label, FaultAction action) {
+        Button b = MakeActionButton(Dev(key, label));
+        b.Padding(kActionPadding);
+        // Destructive, and coloured as such. No modal: Advanced Mode's audience
+        // is doing this deliberately, and SdkHost logs the exit either way.
+        b.Foreground(colors::DangerBrush());
+        b.Click([weak = w_.get_weak(), clientId, action](auto const&, auto const&) {
+          if (auto self = weak.get()) self->developer().RunFaultAction(action, clientId);
+        });
+        actions.Children().Append(b);
+      };
+      fault("dev_drop", L"Drop", FaultAction::Drop);
+      fault("dev_stall", L"Stall", FaultAction::Stall);
+      fault("dev_unstall", L"Unstall", FaultAction::Unstall);
+
+      PutCell(row, 6, actions);
       exitsBody_.Children().Append(row);
       exitRows_.push_back(std::move(cells));
     }
@@ -1277,6 +1572,91 @@ void DeveloperPage::ApplyExits(ReliabilitySnapshot const& snap) {
     destinationRows_[j].exit.Text(hstring{
         d.ClientId && !d.ClientId->empty() ? ShortId(*d.ClientId) : std::wstring{L"\u2014"}});
     destinationRows_[j].flows.Text(hstring{std::format(L"{}", d.FlowCount)});
+  }
+}
+
+// ---- D6: the probe suite ----------------------------------------------------
+void DeveloperPage::ApplyProbeSuite(ReliabilitySnapshot const& snap) {
+  if (!probeResultsBody_) return;  // not built yet
+
+  // Running state. Start is disabled while a suite is running and Stop while it
+  // is not, so the pair reads as one control rather than two buttons that both
+  // look live and half of which no-op.
+  if (probeSuiteState_) {
+    probeSuiteState_.Text(snap.probeSuiteRunning
+                              ? Dev("dev_probe_suite_running", L"Running.")
+                              : Dev("dev_probe_suite_idle", L"Not running."));
+    probeSuiteState_.Foreground(snap.probeSuiteRunning ? colors::MakeBrush(colors::kAccent)
+                                                       : MutedBrush());
+  }
+  if (probeStartButton_) probeStartButton_.IsEnabled(!snap.probeSuiteRunning);
+  if (probeStopButton_) probeStopButton_.IsEnabled(snap.probeSuiteRunning);
+
+  // Same identity/cells split as the exits table: rebuild only when the set of
+  // TARGETS changes, so a repeating suite rewrites its latencies in place. Name
+  // AND kind, because one target legitimately appears once per probe kind.
+  std::wstring identity;
+  for (auto const& r : snap.probeResults)
+    identity += urnw::Widen(r.Name) + L"/" + urnw::Widen(r.Kind) + L";";
+  if (!probeResultsIdentity_ || *probeResultsIdentity_ != identity) {
+    probeResultsIdentity_ = identity;
+    probeRows_.clear();
+    probeResultsBody_.Children().Clear();
+    if (snap.probeResults.empty()) {
+      probeResultsBody_.Children().Append(
+          MakeText(Dev("dev_no_probe_results", L"No probe results yet. Start the suite."), 13,
+                   MutedBrush(), true));
+    }
+    for (auto const& r : snap.probeResults) {
+      Grid row = MakeTableRow(kProbeColumns);
+      auto name = MakeText(hstring{urnw::Widen(r.Name)}, 13, colors::TextBrush());
+      name.FontFamily(FontFamily{L"Consolas"});
+      PutCell(row, 0, name);
+      ProbeRow cells;
+      cells.kind = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 1, cells.kind);
+      cells.dns = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 2, cells.dns);
+      cells.connect = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 3, cells.connect);
+      cells.ttfb = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 4, cells.ttfb);
+      cells.total = MakeText(hstring{}, 12, MutedBrush());
+      PutCell(row, 5, cells.total);
+      cells.outcome = MakeText(hstring{}, 12, MutedBrush(), true);
+      PutCell(row, 6, cells.outcome);
+      probeResultsBody_.Children().Append(row);
+      probeRows_.push_back(std::move(cells));
+    }
+  }
+
+  // A zero stage millis is "this stage did not happen / was not measured", not
+  // "0ms" — an HTTP probe records no DNS time when it was handed an address, and
+  // rendering that as 0ms claims a measurement that was never taken.
+  auto stage = [](int64_t ms) -> std::wstring {
+    return ms <= 0 ? std::wstring{L"—"} : std::format(L"{}ms", ms);
+  };
+  for (size_t i = 0; i < snap.probeResults.size() && i < probeRows_.size(); ++i) {
+    auto const& r = snap.probeResults[i];
+    auto const& cells = probeRows_[i];
+    cells.kind.Text(hstring{urnw::Widen(r.Kind)});
+    cells.dns.Text(hstring{stage(r.DnsMillis)});
+    cells.connect.Text(hstring{stage(r.ConnectMillis)});
+    cells.ttfb.Text(hstring{stage(r.TtfbMillis)});
+    cells.total.Text(hstring{stage(r.TotalMillis)});
+    // The SDK's Error string is passed through VERBATIM, like WarningCause in
+    // the exits table, so a new go-side failure renders without an app update.
+    if (r.Ok) {
+      cells.outcome.Text(r.ByteCount > 0
+                             ? hstring{DevW("dev_probe_ok", L"ok") + L" · " +
+                                       urnw::Widen(urnw::FormatByteCountCompact(r.ByteCount))}
+                             : Dev("dev_probe_ok", L"ok"));
+      cells.outcome.Foreground(MutedBrush());
+    } else {
+      cells.outcome.Text(hstring{r.Error.empty() ? DevW("dev_probe_failed", L"failed")
+                                                 : urnw::Widen(r.Error)});
+      cells.outcome.Foreground(colors::DangerBrush());
+    }
   }
 }
 

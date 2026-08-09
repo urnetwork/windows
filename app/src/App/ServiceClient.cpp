@@ -17,6 +17,9 @@ bool ServiceClient::Connect() {
       }
     }
   });
+  pipe_.SetDisconnectHandler([this] {
+    if (onDisconnect_) onDisconnect_();
+  });
   return pipe_.Connect();
 }
 
@@ -65,6 +68,19 @@ bool ServiceClient::SetSplitTunnel(const std::vector<std::string>& excludedPaths
     return reply.value("ok", false);
   } catch (const std::exception& e) {
     LogError("service: set split tunnel failed: {}", e.what());
+    return false;
+  }
+}
+
+bool ServiceClient::SetKillSwitch(bool on) {
+  proto::SetKillSwitch s;
+  s.on = on;
+  nlohmann::json body = s;
+  try {
+    nlohmann::json reply = pipe_.Call(proto::Request(proto::msg::kSetKillSwitch, body));
+    return reply.value("ok", false);
+  } catch (const std::exception& e) {
+    LogError("service: set kill switch failed: {}", e.what());
     return false;
   }
 }
