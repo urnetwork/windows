@@ -25,6 +25,7 @@
 #include "ConsoleArgs.h"
 #include "ControlServer.h"
 #include "Ids.h"
+#include "InstallVerb.h"
 #include "Log.h"
 #include "NetworkConfig.h"
 #include "Paths.h"
@@ -407,37 +408,198 @@ void WINAPI ServiceMain(DWORD, LPWSTR*) {
 
 // --- dev helpers -----------------------------------------------------------
 
+// The states in InstallVerb.h are restated without winsvc.h; this is the one
+// translation unit that sees both, so it is where a divergence becomes a
+// compile error instead of a verdict about the wrong state.
+static_assert(install::kStateStopped == SERVICE_STOPPED);
+static_assert(install::kStateStartPending == SERVICE_START_PENDING);
+static_assert(install::kStateStopPending == SERVICE_STOP_PENDING);
+static_assert(install::kStateRunning == SERVICE_RUNNING);
+
+// This executable's own absolute path, unbounded. MAX_PATH is not a real
+// ceiling on this box — the portable zip can be unpacked anywhere, including
+// under a long-path-enabled tree — and a truncated binPath would register a
+// service pointing at a file that does not exist.
+std::wstring OwnExePath() {
+  std::wstring path(MAX_PATH, L'\0');
+  for (;;) {
+    const DWORD n =
+        ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+    if (n == 0) return {};
+    if (n < path.size()) {
+      path.resize(n);
+      return path;
+    }
+    if (path.size() >= 0x8000) return {};  // beyond the NT path limit: give up
+    path.resize(path.size() * 2);
+  }
+}
+
+// Poll until the service reports `wanted`, the budget runs out, or — on a wait
+// for RUNNING — it reports STOPPED, which is a terminal verdict worth having
+// early: the SCM moves a starting service to START_PENDING before StartServiceW
+// returns, so STOPPED here can only mean it came up and refused (see the pipe
+// refusal at the top of Run()). lastState always carries what was last seen
+// (kStateQueryFailed if the query itself failed) so the caller can say what
+// happened instead of only that something did.
+bool WaitForServiceState(SC_HANDLE svc, DWORD wanted, DWORD budgetMs,
+                         DWORD& lastState) {
+  const ULONGLONG deadline = ::GetTickCount64() + budgetMs;
+  for (;;) {
+    SERVICE_STATUS_PROCESS ssp{};
+    DWORD needed = 0;
+    if (!::QueryServiceStatusEx(svc, SC_STATUS_PROCESS_INFO,
+                                reinterpret_cast<LPBYTE>(&ssp), sizeof(ssp),
+                                &needed)) {
+      lastState = install::kStateQueryFailed;
+      return false;
+    }
+    lastState = ssp.dwCurrentState;
+    if (lastState == wanted) return true;
+    if (wanted == SERVICE_RUNNING && lastState == SERVICE_STOPPED) return false;
+    if (::GetTickCount64() >= deadline) return false;
+    ::Sleep(install::kScmPollIntervalMs);
+  }
+}
+
+// `urnetworkd install` — register the service AND leave it RUNNING, no matter
+// what was there before. Idempotent by design: the app's one-click service
+// setup fires this through a single UAC prompt for first install, for repair,
+// and for the post-update re-point alike, so "already exists" must be a path
+// through, not an error. Already registered -> stop it (bounded), re-point its
+// binPath at THIS exe, start; not registered -> create + start. Exit 0 exactly
+// when the service is RUNNING at the end — the UAC child has no visible
+// console, so the exit code is the interface and stdout is a courtesy for the
+// human who runs it by hand. The one-line-per-failure stderr text and the exit
+// codes are decided by InstallVerb.h, where selftest can reach them.
 int InstallService() {
-  wchar_t path[MAX_PATH];
-  ::GetModuleFileNameW(nullptr, path, MAX_PATH);
-  SC_HANDLE scm = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_CREATE_SERVICE);
-  if (!scm) {
-    std::fwprintf(stderr, L"OpenSCManager failed: %lu (run elevated)\n", ::GetLastError());
+  const std::wstring path = OwnExePath();
+  if (path.empty()) {
+    std::fwprintf(stderr, L"install: cannot resolve this exe's own path: %lu\n",
+                  ::GetLastError());
     return 1;
   }
-  SC_HANDLE svc = ::CreateServiceW(
-      scm, ids::kServiceName, ids::kServiceDisplayName, SERVICE_ALL_ACCESS,
-      SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, path,
-      nullptr, nullptr, nullptr, nullptr, nullptr);
-  int rc = svc ? 0 : 1;
-  if (!svc) std::fwprintf(stderr, L"CreateService failed: %lu\n", ::GetLastError());
-  // configure crash recovery: restart the service on failure (plan M4). The
-  // restarted instance runs the startup sweep, so a crash that DID leave an
-  // adapter behind gets cleaned within the restart delay.
-  if (svc) {
-    SC_ACTION actions[3] = {{SC_ACTION_RESTART, 5000},
-                            {SC_ACTION_RESTART, 5000},
-                            {SC_ACTION_NONE, 0}};
-    SERVICE_FAILURE_ACTIONS fa{};
-    fa.dwResetPeriod = 86400;
-    fa.cActions = 3;
-    fa.lpsaActions = actions;
-    ::ChangeServiceConfig2W(svc, SERVICE_CONFIG_FAILURE_ACTIONS, &fa);
-    ::CloseServiceHandle(svc);
-    std::wprintf(L"installed %s\n", ids::kServiceName);
+  const std::wstring binPath = install::QuoteServiceBinPath(path);
+
+  SC_HANDLE scm = ::OpenSCManagerW(nullptr, nullptr,
+                                   SC_MANAGER_CONNECT | SC_MANAGER_CREATE_SERVICE);
+  if (!scm) {
+    std::fwprintf(stderr, L"install: OpenSCManager failed: %lu (run elevated)\n",
+                  ::GetLastError());
+    return 1;
   }
+
+  bool created = false;
+  SC_HANDLE svc = ::OpenServiceW(scm, ids::kServiceName, SERVICE_ALL_ACCESS);
+  if (!svc && ::GetLastError() != ERROR_SERVICE_DOES_NOT_EXIST) {
+    std::fwprintf(stderr, L"install: OpenService failed: %lu (run elevated)\n",
+                  ::GetLastError());
+    ::CloseServiceHandle(scm);
+    return 1;
+  }
+  if (svc) {
+    // Already registered — possibly running, possibly pointing at an exe that
+    // an update just renamed to .old. Stop it first: ChangeServiceConfig on a
+    // running service succeeds but only applies at the NEXT start, which would
+    // make this verb report success while the old binary keeps running.
+    SERVICE_STATUS st{};
+    if (!::ControlService(svc, SERVICE_CONTROL_STOP, &st) &&
+        ::GetLastError() != ERROR_SERVICE_NOT_ACTIVE) {
+      // START_PENDING / STOP_PENDING cannot accept a stop control; the bounded
+      // wait below is the arbiter either way, so this is not an error yet.
+      LogWarn("install: stop control not accepted ({}); waiting on the state",
+              ::GetLastError());
+    }
+    DWORD state = install::kStateQueryFailed;
+    if (!WaitForServiceState(svc, SERVICE_STOPPED, install::kStopWaitBudgetMs,
+                             state)) {
+      const std::wstring text = install::StopFailureText(state);
+      std::fwprintf(stderr, L"%s\n", text.c_str());
+      LogError("install: {}", Narrow(text));
+      ::CloseServiceHandle(svc);
+      ::CloseServiceHandle(scm);
+      return 1;
+    }
+    if (!::ChangeServiceConfigW(svc, SERVICE_WIN32_OWN_PROCESS,
+                                SERVICE_AUTO_START, SERVICE_ERROR_NORMAL,
+                                binPath.c_str(), nullptr, nullptr, nullptr,
+                                nullptr, nullptr, ids::kServiceDisplayName)) {
+      std::fwprintf(stderr, L"install: ChangeServiceConfig failed: %lu\n",
+                    ::GetLastError());
+      ::CloseServiceHandle(svc);
+      ::CloseServiceHandle(scm);
+      return 1;
+    }
+    std::wprintf(L"%s already registered — stopped and re-pointed at %s\n",
+                 ids::kServiceName, binPath.c_str());
+  } else {
+    svc = ::CreateServiceW(
+        scm, ids::kServiceName, ids::kServiceDisplayName, SERVICE_ALL_ACCESS,
+        SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL,
+        binPath.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr);
+    if (!svc) {
+      std::fwprintf(stderr, L"install: CreateService failed: %lu\n",
+                    ::GetLastError());
+      ::CloseServiceHandle(scm);
+      return 1;
+    }
+    created = true;
+    std::wprintf(L"registered %s -> %s\n", ids::kServiceName, binPath.c_str());
+  }
+  // Crash recovery on BOTH paths, so a re-install converges to the same config
+  // a fresh install gets (plan M4): restart on failure, and the restarted
+  // instance runs the startup sweep, so a crash that DID leave an adapter
+  // behind gets cleaned within the restart delay.
+  SC_ACTION actions[3] = {{SC_ACTION_RESTART, 5000},
+                          {SC_ACTION_RESTART, 5000},
+                          {SC_ACTION_NONE, 0}};
+  SERVICE_FAILURE_ACTIONS fa{};
+  fa.dwResetPeriod = 86400;
+  fa.cActions = 3;
+  fa.lpsaActions = actions;
+  ::ChangeServiceConfig2W(svc, SERVICE_CONFIG_FAILURE_ACTIONS, &fa);
+
+  // The registered service is stopped by now on every path, so a busy control
+  // pipe can only be a console-mode urnetworkd. The service refuses to start
+  // against one (Run() checks the pipe before its destructive sweep) — starting
+  // it anyway would spend the whole wait budget buying a slower copy of that
+  // refusal, so say the real reason now.
+  if (ControlPipeInUse()) {
+    std::fwprintf(stderr, L"%s\n", install::kPipeBusyBeforeStartText);
+    LogError("install: {}", Narrow(install::kPipeBusyBeforeStartText));
+    ::CloseServiceHandle(svc);
+    ::CloseServiceHandle(scm);
+    return 1;
+  }
+
+  if (!::StartServiceW(svc, 0, nullptr)) {
+    std::fwprintf(stderr, L"install: StartService failed: %lu\n",
+                  ::GetLastError());
+    ::CloseServiceHandle(svc);
+    ::CloseServiceHandle(scm);
+    return 1;
+  }
+  DWORD state = install::kStateQueryFailed;
+  WaitForServiceState(svc, SERVICE_RUNNING, install::kStartWaitBudgetMs, state);
+  // Query the pipe only for the verdict's STOPPED row; when the service is
+  // RUNNING the pipe is busy because the service itself serves it, and
+  // JudgeStartWait ignores the flag there.
+  const install::StartVerdict verdict =
+      install::JudgeStartWait(state, ControlPipeInUse());
+  if (verdict.exit_code == 0) {
+    std::wprintf(L"%s %s and RUNNING (binPath %s)\n", ids::kServiceName,
+                 created ? L"installed" : L"updated", binPath.c_str());
+    LogInfo("install: {} {} and running", Narrow(ids::kServiceName),
+            created ? "installed" : "updated");
+  } else {
+    std::fwprintf(stderr, L"%s\n", verdict.error.c_str());
+    // The UAC child's stderr is invisible; the log is where this line can
+    // actually be read after the fact.
+    LogError("install: {}", Narrow(verdict.error));
+  }
+  ::CloseServiceHandle(svc);
   ::CloseServiceHandle(scm);
-  return rc;
+  return verdict.exit_code;
 }
 
 int UninstallService() {
@@ -583,8 +745,8 @@ int RunConsole(bool rpcOnly, int stopAfterStep = 0) {
     LogError("console: NOT elevated — creating the wintun adapter and writing "
              "routes both require LocalSystem/administrator, so a start_tunnel "
              "will fail at step 1. Re-run from an elevated prompt (or use "
-             "`urnetworkd install` + `sc start urnetworkd`), or run "
-             "`urnetworkd console --rpc-only`, which needs no elevation.");
+             "`urnetworkd install`, which registers the service and starts it), "
+             "or run `urnetworkd console --rpc-only`, which needs no elevation.");
   }
   if (ControlPipeInUse()) {
     LogError("console: {} is already served — another urnetworkd (probably the "
@@ -708,7 +870,13 @@ int Usage() {
       L"                            It CANNOT prove a filter blocks anything --\n"
       L"                            that needs the elevated leak-validation\n"
       L"                            gates in p7-gates.ps1.\n"
-      L"  urnetworkd install        register the service (elevated)\n"
+      L"  urnetworkd install        register the service AND START it\n"
+      L"                            (elevated). Idempotent: if the service is\n"
+      L"                            already registered it is stopped, re-pointed\n"
+      L"                            at THIS exe, and started again — run it from\n"
+      L"                            a new build to make the service run that\n"
+      L"                            build. No separate `sc start` is needed.\n"
+      L"                            Exit code 0 means the service is RUNNING.\n"
       L"  urnetworkd uninstall      stop and deregister the service (elevated)\n"
       L"  urnetworkd revert         take back any leftover tunnel routes/DNS\n"
       L"                            without starting anything (elevated).\n"

@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "ConsoleArgs.h"
+#include "InstallVerb.h"
 #include "NetPolicy.h"
 #include "NetworkConfig.h"
 #include "Protocol.h"
@@ -1787,6 +1788,86 @@ void TestVersionGrammar() {
                     static_cast<unsigned long long>(version::kCode)));
 }
 
+void TestInstallVerb() {
+  Section("install verb — binPath quoting and the start/stop verdicts (no SCM)");
+
+  // These tests exist because the verb's real caller cannot read its output:
+  // the app fires `urnetworkd install` through a UAC prompt, sees only the
+  // exit code, and polls the SCM itself. The SCM calls need elevation and are
+  // therefore out of selftest's reach forever — but the decisions (what to
+  // store as binPath, what each observed outcome means, which exit code it
+  // earns) are pure, and InstallVerb.h keeps them that way.
+
+  // Quoting. The unquoted-service-path failure this prevents: an unquoted
+  // `C:\Program Files\...` binPath makes the SCM try `C:\Program.exe` first.
+  Check(install::QuoteServiceBinPath(L"C:\\Program Files\\URnetwork\\urnetworkd.exe") ==
+            L"\"C:\\Program Files\\URnetwork\\urnetworkd.exe\"",
+        "a path with spaces is wrapped in quotes");
+  Check(install::QuoteServiceBinPath(L"C:\\u\\urnetworkd.exe") ==
+            L"\"C:\\u\\urnetworkd.exe\"",
+        "a path without spaces is quoted too — one output shape, no rule to "
+        "remember");
+  const std::wstring once =
+      install::QuoteServiceBinPath(L"C:\\Program Files\\URnetwork\\urnetworkd.exe");
+  Check(install::QuoteServiceBinPath(once) == once,
+        "quoting is idempotent: an already-quoted path is not double-quoted");
+  Check(install::QuoteServiceBinPath(L"").empty(),
+        "an empty path stays empty — the caller refuses it before the SCM");
+
+  // The start verdict, row by row. Exit 0 must mean RUNNING and nothing else.
+  Check(install::JudgeStartWait(install::kStateRunning, false).exit_code == 0 &&
+            install::JudgeStartWait(install::kStateRunning, false).error.empty(),
+        "RUNNING is exit 0 with no error text");
+  Check(install::JudgeStartWait(install::kStateRunning, true).exit_code == 0,
+        "RUNNING ignores the pipe flag — the running service is what holds it");
+
+  const install::StartVerdict console =
+      install::JudgeStartWait(install::kStateStopped, /*pipeBusy=*/true);
+  Check(console.exit_code != 0 &&
+            console.error.find(L"console") != std::wstring::npos,
+        "STOPPED with the pipe busy blames the console-mode urnetworkd by name");
+  const install::StartVerdict stopped =
+      install::JudgeStartWait(install::kStateStopped, /*pipeBusy=*/false);
+  Check(stopped.exit_code != 0 &&
+            stopped.error.find(L"log") != std::wstring::npos,
+        "STOPPED with the pipe free points at the log, not at a console");
+  Check(stopped.error.find(L"console") == std::wstring::npos,
+        "…and does NOT mention a console it has no evidence for");
+
+  const install::StartVerdict pending =
+      install::JudgeStartWait(install::kStateStartPending, false);
+  Check(pending.exit_code != 0 &&
+            pending.error.find(L"did not reach RUNNING") != std::wstring::npos,
+        "a start still pending at budget end is a failure that says so");
+  Check(install::JudgeStartWait(install::kStateQueryFailed, false).exit_code != 0,
+        "a failed status query is a failure, never folded into success");
+  // A state number this code has never heard of must not fall through to
+  // exit 0 — the verdict is total, and unknowns land in the timeout row.
+  Check(install::JudgeStartWait(99, false).exit_code != 0,
+        "an unknown state is refused, not defaulted to success");
+
+  // The stop half of the idempotent path.
+  Check(install::StopFailureText(install::kStateStopPending)
+                .find(L"did not stop") != std::wstring::npos,
+        "a stop that never lands says the service did not stop");
+  Check(install::StopFailureText(install::kStateQueryFailed)
+                .find(L"could not query") != std::wstring::npos,
+        "a failed query during stop is reported as a query failure");
+
+  // The budgets are the bound on a UAC elevation the user already approved:
+  // they must exist (nonzero), be pollable (interval strictly inside), and
+  // stay near the spec's ~10s so a miss means "wrong", not "slow".
+  Check(install::kScmPollIntervalMs > 0 &&
+            install::kScmPollIntervalMs < install::kStartWaitBudgetMs &&
+            install::kScmPollIntervalMs < install::kStopWaitBudgetMs,
+        "the poll interval fits inside both wait budgets");
+  Check(install::kStartWaitBudgetMs >= 5000 &&
+            install::kStartWaitBudgetMs <= 30000 &&
+            install::kStopWaitBudgetMs >= 5000 &&
+            install::kStopWaitBudgetMs <= 30000,
+        "both budgets are bounded near the spec's ~10s — finite, not infinite");
+}
+
 }  // namespace
 
 int RunSelfTest() {
@@ -1801,7 +1882,9 @@ int RunSelfTest() {
       "leak-validation gates in p7-baseline/p7-gates.ps1. It also cannot prove\n"
       "that --stop-after actually stops at a step — every step past 5 needs\n"
       "elevation — only that the flag parses, clamps, and cannot widen\n"
-      "--rpc-only.\n");
+      "--rpc-only. And it cannot register, start or stop the real service —\n"
+      "the SCM half of `urnetworkd install` needs elevation — only that the\n"
+      "verb's binPath quoting and its exit-code verdicts are right.\n");
 
   TestNetPolicyTable();
   TestFilterSet();
@@ -1815,6 +1898,7 @@ int RunSelfTest() {
   TestStopBudget();
   TestSdkResolverAgainstTable();
   TestVersionGrammar();
+  TestInstallVerb();
 
   Section("WFP object identities (for `netsh wfp show filters` diffs)");
   for (const auto& g : WfpPolicy::ObjectGuidsText())

@@ -63,6 +63,7 @@
   <ItemGroup>
     <ClInclude Include="ConsoleArgs.h" />
     <ClInclude Include="ControlServer.h" />
+    <ClInclude Include="InstallVerb.h" />
     <ClInclude Include="TunnelController.h" />
     <ClInclude Include="Wintun.h" />
     <ClInclude Include="PacketPump.h" />
