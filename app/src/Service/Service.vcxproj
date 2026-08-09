@@ -76,6 +76,10 @@
     <ClInclude Include="StopBudget.h" />
   </ItemGroup>
   <ItemGroup>
+    <!-- VERSIONINFO only (see Service.rc for why the service is stamped) -->
+    <ResourceCompile Include="Service.rc" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Common\Common.vcxproj">
       <Project>{A1B2C3D4-0001-4E5F-8A9B-000000000001}</Project>
     </ProjectReference>

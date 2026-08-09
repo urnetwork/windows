@@ -18,6 +18,8 @@
 #include "Protocol.h"
 #include "Sdk.h"
 #include "StopBudget.h"
+#include "Version.h"
+#include "VersionGrammar.h"
 #include "WfpPolicy.h"
 #include "WindowTrace.h"
 
@@ -1731,6 +1733,60 @@ void TestWindowTraceFlag() {
   }
 }
 
+// --- the release tag grammar ------------------------------------------------
+
+void TestVersionGrammar() {
+  Section("VersionGrammar — release tags rank by code, or not at all");
+
+  // The shapes CI actually mints: v<YYYY.M.D>-<code>[-beta]. The update
+  // checker hands the parser the WHOLE tag — nothing is stripped first, so
+  // the parser is the single opinion on what counts as a release.
+  Check(version::ParseReleaseCode("v2026.8.9-101076420-beta") == 101076420ull,
+        "a full beta tag yields its code");
+  Check(version::ParseReleaseCode("v2026.8.9-101076420") == 101076420ull,
+        "the -beta suffix is optional");
+  Check(version::ParseReleaseCode("2026.8.9-101076420-beta") == 101076420ull,
+        "the leading v is optional — Version.h stamps the v-less form");
+  Check(version::ParseReleaseCode("v2026.12.31-1-beta") == 1ull,
+        "two-digit month and day parse");
+  Check(version::ParseReleaseCode("v2026.8.9-1010764200-beta") == 1010764200ull,
+        "a ten-digit code — the real magnitude in 2026 — parses exactly");
+
+  // 0 is the single no-match answer, and it is also what a dev build stamps
+  // as its own code: "not a release tag" and "never newer than anything"
+  // coincide by design.
+  for (const char* bad :
+       {"", "v", "0.0.0-dev", "v2026.8.9", "v2026.8.9-beta",
+        "v2026.8.9-101076420-rc1", "v2026.8.9-101076420-beta2",
+        "v2026.8.9-101076420-beta-beta", "v2026.8.9-101076420beta",
+        "v2026.8-101076420", "v2026.8.9.1-101076420", "v26.8.9-101076420",
+        "v2026.13.9-101076420", "v2026.8.32-101076420", "v2026.0.9-101076420",
+        "v2026.8.0-101076420", "V2026.8.9-101076420", "v2026.8.9--101076420",
+        "v2026.8.9-101076420 ", " v2026.8.9-101076420",
+        "urnetwork-v2026.8.9-101076420"}) {
+    Check(version::ParseReleaseCode(bad) == 0,
+          std::format("'{}' is no release: code 0", bad));
+  }
+
+  // Overflow is a digit-COUNT gate, not arithmetic that happens to survive:
+  // eighteen digits always fit uint64_t, a nineteenth is refused outright.
+  // A wrapped code would be a plausible number that outranks every real
+  // release forever — the worst possible failure for an update checker.
+  Check(version::ParseReleaseCode("v2026.8.9-999999999999999999") ==
+            999999999999999999ull,
+        "an eighteen-digit code is the accepted maximum");
+  Check(version::ParseReleaseCode("v2026.8.9-9999999999999999999") == 0,
+        "a nineteen-digit code is refused, not wrapped");
+
+  // The stamp this very binary carries must round-trip through the same
+  // parser: a stamped build's kString parses back to kCode, and the dev
+  // stamp parses to 0 — exactly why dev builds never self-update.
+  Check(version::ParseReleaseCode(version::kString) == version::kCode,
+        "the binary's own stamp round-trips: ParseReleaseCode(kString) == kCode",
+        std::format("kString='{}' kCode={}", version::kString,
+                    static_cast<unsigned long long>(version::kCode)));
+}
+
 }  // namespace
 
 int RunSelfTest() {
@@ -1758,6 +1814,7 @@ int RunSelfTest() {
   TestWindowTraceFlag();
   TestStopBudget();
   TestSdkResolverAgainstTable();
+  TestVersionGrammar();
 
   Section("WFP object identities (for `netsh wfp show filters` diffs)");
   for (const auto& g : WfpPolicy::ObjectGuidsText())

@@ -19,6 +19,7 @@
 #include "PageContext.h"
 #include "Strings.h"
 #include "UrColors.h"
+#include "Version.h"
 
 using namespace winrt;
 using namespace winrt::Microsoft::UI::Xaml;
@@ -90,9 +91,9 @@ std::string AuthMethodLabel(std::string const& authType) {
 // taken exactly when the store has nothing, and the screen localizes with no
 // code change the moment @urnetwork/localizations grows the key.
 //
-// Used for TWO section titles and nothing else. 945 keys ship and neither
-// "Advanced" nor "About" is among them, and both are sections the reconciled IA
-// names explicitly. They extract mechanically:
+// Used for two section titles and one About row label. 945 keys ship and none
+// of "Advanced", "About" or "App version" is among them, and all are surfaces
+// the reconciled IA names explicitly. They extract mechanically:
 //
 //     grep -oE 'Missing\("[a-z0-9_]+"' SettingsPage.cpp | sort -u
 hstring Missing(std::string_view key, const wchar_t* english) {
@@ -487,6 +488,13 @@ void SettingsPage::BuildVersionSection(Panel const& host) {
   // leaderboard has no panel heading under its destination title.
   auto card = Card(host);
   versionValue_ = ValueRow(card, Loc("version_info"));
+  // The build's own stamp (Common/Version.h), distinct from the SDK row above:
+  // release tags, the update banner and the VERSIONINFO resource all speak this
+  // exact string, so About must show it verbatim. "0.0.0-dev" outside CI is the
+  // correct answer, not a bug. Applied here, not in LoadSettings — it is a
+  // compile-time constant and needs no round trip.
+  ApplyValue(ValueRow(card, Missing("app_version", L"App version")),
+             urnw::version::kString);
 }
 
 void SettingsPage::BuildDangerSection() {

@@ -27,6 +27,22 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
 
+  <!-- The build's version identity. CI derives the android-format version
+       (v<YYYY.M.D>-<code>[-beta]) and passes it in as
+         /p:UrVersion=2026.8.9-<code>-beta /p:UrVersionCode=<code>
+         /p:UrVersionMajor=2026 /p:UrVersionMinor=8 /p:UrVersionPatch=9
+       Local builds pass nothing and get these defaults - which is not
+       cosmetic: code 0 is the value that DISABLES the update checker, so a
+       build that was never released can never try to replace itself with one
+       that was. -->
+  <PropertyGroup Label="UrVersion">
+    <UrVersion Condition="'$(UrVersion)'==''">0.0.0-dev</UrVersion>
+    <UrVersionCode Condition="'$(UrVersionCode)'==''">0</UrVersionCode>
+    <UrVersionMajor Condition="'$(UrVersionMajor)'==''">0</UrVersionMajor>
+    <UrVersionMinor Condition="'$(UrVersionMinor)'==''">0</UrVersionMinor>
+    <UrVersionPatch Condition="'$(UrVersionPatch)'==''">0</UrVersionPatch>
+  </PropertyGroup>
+
   <!-- Per-arch vendored SDK: dll + import lib + include (.h/.hpp) -->
   <PropertyGroup>
     <UrnSdkArch Condition="'$(Platform)'=='x64'">amd64</UrnSdkArch>
@@ -42,7 +58,12 @@
            (std::filesystem/format/string_view then vanish). Keep it here. -->
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(UrnSdkDir);$(UrnRepoRoot)third_party\vendor-include;$(UrnRepoRoot)src\Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NOMINMAX;WIN32_LEAN_AND_MEAN;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- UR_VERSION_RAW is the BARE version token; Common/Version.h stringizes
+           it into UR_VERSION_STRING. A \" escaped literal here does not survive
+           MSBuild's command-line quoting on this toolchain - the same verified
+           finding as URN_WINDOWSAPPSDK_VERSION_RAW in App.vcxproj. The four
+           numeric parts pass straight through as integers. -->
+      <PreprocessorDefinitions>UR_VERSION_RAW=$(UrVersion);UR_VERSION_CODE=$(UrVersionCode);UR_VER_MAJOR=$(UrVersionMajor);UR_VER_MINOR=$(UrVersionMinor);UR_VER_PATCH=$(UrVersionPatch);NOMINMAX;WIN32_LEAN_AND_MEAN;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <WarningLevel>Level3</WarningLevel>
       <!-- the sources are utf-8 and narrow literals carry non-ascii (e.g. the
@@ -50,6 +71,13 @@
            in the system code page and mojibakes the strings -->
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
+    <ResourceCompile>
+      <!-- The same five definitions for rc.exe, so the VERSIONINFO resources
+           (App.rc, Service.rc) are compiled from the identical values the code
+           sees. ResourceCompile is its own tool with its own definition list -
+           the ClCompile ones above never reach it. -->
+      <PreprocessorDefinitions>UR_VERSION_RAW=$(UrVersion);UR_VERSION_CODE=$(UrVersionCode);UR_VER_MAJOR=$(UrVersionMajor);UR_VER_MINOR=$(UrVersionMinor);UR_VER_PATCH=$(UrVersionPatch);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
   </ItemDefinitionGroup>
 
 </Project>

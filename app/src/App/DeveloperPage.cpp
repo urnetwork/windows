@@ -18,6 +18,7 @@
 #include "StatsFormat.h"
 #include "Strings.h"
 #include "UrColors.h"
+#include "Version.h"
 
 using namespace winrt;
 using namespace winrt::Microsoft::UI::Xaml;
@@ -789,6 +790,14 @@ void DeveloperPage::Build() {
         Dev("dev_intro",
             L"Tools for diagnosing connection freezes. These act on the live connection."),
         13, MutedBrush(), true));
+
+    // The build identifies itself up front: transcripts pasted from this screen
+    // should carry the stamp (Common/Version.h). "0.0.0-dev" is any non-CI
+    // build.
+    body.Children().Append(MakeText(
+        hstring{std::wstring{Dev("dev_app_version", L"App version")} + L" " +
+                Widen(version::kString)},
+        11, FaintBrush(), true));
 
     connectHint_ = MakeText(Dev("dev_connect_to_use", L"Connect to use these tools."), 14,
                             colors::TextBrush(), true);

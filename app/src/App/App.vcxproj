@@ -1,7 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- URnetwork tray app: WinUI 3 (Windows App SDK), C++/WinRT, unpackaged.
-     WindowsPackageType=None auto-initializes the Windows App SDK bootstrapper;
-     the installer must still deploy the WindowsAppRuntime (see installer/).
+     WindowsAppSDKSelfContained=true (below) deploys the WindowsAppRuntime into
+     the output folder, so neither the portable zip nor the installer needs a
+     machine-wide runtime install.
      This is the most toolchain-dependent project — verify NuGet versions in
      packages.config against the installed Windows App SDK on the build box.
      SPDX-License-Identifier: MPL-2.0 -->
@@ -19,6 +20,19 @@
        version the app was built against has to be readable FROM the app. -->
   <PropertyGroup>
     <UrnWindowsAppSdkVersion>2.2.0</UrnWindowsAppSdkVersion>
+  </PropertyGroup>
+
+  <!-- SELF-CONTAINED (supported since WinAppSDK 1.1; we are on 2.2): the SDK
+       targets copy the WindowsAppRuntime binaries next to the exe and switch
+       the auto-initializer from the bootstrapper (which looks for a
+       machine-wide runtime and dies with a dialog when there is none) to the
+       app-local path. The portable zip is the beta artifact and "portable"
+       must mean "unzip and run on a clean machine" — no prerequisite
+       installer. Unconditional, not release-only: a dev build that resolves
+       its runtime differently from the shipped one would make every
+       runtime-resolution bug unreproducible locally. -->
+  <PropertyGroup>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.CppWinRT" Version="3.0.260520.1" />
