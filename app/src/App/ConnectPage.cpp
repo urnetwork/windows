@@ -445,6 +445,16 @@ void ConnectPage::ApplyUpdateChecker(urnw::UpdateChecker::Snapshot const& snap) 
                          L"The downloaded update couldn't be unpacked. "
                          L"Details are in the app log.");
           break;
+        case Failure::SwapDirty:
+          // The one failure whose banner must NOT claim a clean floor: the
+          // rollback itself lost a step, so "the previous files were put
+          // back" would be false over exactly the directory it describes.
+          message = AdvW("upd_failed_swap_dirty",
+                         L"The update couldn't be applied, and some previous "
+                         L"files could not be put back — this folder may mix "
+                         L"versions until a retry succeeds. Details are in "
+                         L"the app log.");
+          break;
         default:  // Swap
           message = AdvW("upd_failed_swap",
                          L"The update couldn't be applied, and the previous "

@@ -40,8 +40,10 @@ using namespace winrt::Microsoft::Windows::AppLifecycle;
 
 namespace {
 
-// Key for the single instance. Stable, like the other app identities (Ids.h).
-constexpr wchar_t kInstanceKey[] = L"URnetwork.Desktop";
+// Key for the single instance. Lives in Ids.h with the other app identities
+// because the update-relaunch failure path (AppController::RelaunchOnto) must
+// re-register the SAME key; a private copy here is how the two sites drift.
+constexpr const wchar_t* kInstanceKey = urnw::ids::kSingleInstanceKey;
 
 // How long a second launch waits for the running instance to accept its
 // activation. This wait used to be INFINITE: if the primary is wedged — or if

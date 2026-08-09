@@ -96,11 +96,42 @@ constexpr char kAutoCheckPrefKey[] = "check_updates_automatically";
 // isolates everything else.
 fs::path UpdatesDir() { return StorageRoot(/*isService=*/false).parent_path() / L"updates"; }
 
+// Unbounded, like the service's own OwnExePath (Service/main.cpp): the
+// portable folder can sit under a long-path-enabled tree, and a MAX_PATH
+// truncation here would silently disable the whole swap (empty path -> no
+// cleanup, no writability probe, Failure::Swap on every apply).
 fs::path OwnExePath() {
-  wchar_t buf[MAX_PATH];
-  const DWORD n = ::GetModuleFileNameW(nullptr, buf, MAX_PATH);
-  if (n == 0 || n >= MAX_PATH) return {};
-  return fs::path(std::wstring(buf, n));
+  std::wstring path(MAX_PATH, L'\0');
+  for (;;) {
+    const DWORD n = ::GetModuleFileNameW(nullptr, path.data(),
+                                         static_cast<DWORD>(path.size()));
+    if (n == 0) return {};
+    if (n < path.size()) {
+      path.resize(n);
+      return fs::path(std::move(path));
+    }
+    if (path.size() >= 0x8000) return {};  // beyond the NT path limit: give up
+    path.resize(path.size() * 2);
+  }
+}
+
+// ---- release-list JSON reads -------------------------------------------------
+//
+// nlohmann's value() only substitutes the default for a MISSING key; a key
+// that is present with the wrong type ("tag_name": null) throws type_error out
+// of get<>(). The release list is another service's JSON — its shape is
+// exactly what this code must survive, not assume — so every read is a
+// find + type check, and a malformed release degrades to "skipped", never to
+// an exception hunting for a backstop.
+bool JsonFlag(nlohmann::json const& j, const char* key) {
+  const auto it = j.find(key);
+  return it != j.end() && it->is_boolean() && it->get<bool>();
+}
+
+std::string JsonString(nlohmann::json const& j, const char* key) {
+  const auto it = j.find(key);
+  if (it == j.end() || !it->is_string()) return {};
+  return it->get<std::string>();
 }
 
 // The probe the swap gates on: can this user create (and delete) a file in the
@@ -296,7 +327,8 @@ std::string Sha256File(fs::path const& file) {
 // installed can interpose. bsdtar refuses absolute and ..-traversal member
 // paths by default, but the swap does not lean on that: the allowlist copy
 // out of staging is the actual zip-slip defence (UpdateFormats.h).
-bool ExtractZip(fs::path const& zip, fs::path const& dest, std::string& error) {
+bool ExtractZip(fs::path const& zip, fs::path const& dest,
+                std::function<bool()> const& cancelled, std::string& error) {
   wchar_t sys[MAX_PATH];
   const UINT n = ::GetSystemDirectoryW(sys, MAX_PATH);
   if (n == 0 || n >= MAX_PATH) {
@@ -318,15 +350,37 @@ bool ExtractZip(fs::path const& zip, fs::path const& dest, std::string& error) {
     return false;
   }
   ::CloseHandle(pi.hThread);
-  const DWORD wait = ::WaitForSingleObject(pi.hProcess, 10 * 60 * 1000);
-  DWORD exitCode = 1;
-  if (wait == WAIT_OBJECT_0) ::GetExitCodeProcess(pi.hProcess, &exitCode);
-  if (wait != WAIT_OBJECT_0) ::TerminateProcess(pi.hProcess, 1);
-  ::CloseHandle(pi.hProcess);
-  if (wait != WAIT_OBJECT_0) {
-    error = "tar did not finish within its budget";
-    return false;
+  // Wait in short slices and poll the stop flag between them, the same
+  // contract the download loop keeps: Stop() joins this worker from the UI
+  // thread (AppController::Shutdown), and a tar wedged by an AV holding the
+  // zip must cost Quit one slice, not the remainder of a ten-minute budget.
+  const ULONGLONG deadline = ::GetTickCount64() + 10ull * 60 * 1000;
+  DWORD wait = WAIT_TIMEOUT;
+  for (;;) {
+    wait = ::WaitForSingleObject(pi.hProcess, 500);
+    if (wait != WAIT_TIMEOUT) break;
+    if (cancelled && cancelled()) {
+      error = "cancelled";
+      break;
+    }
+    if (::GetTickCount64() >= deadline) {
+      error = "tar did not finish within its budget";
+      break;
+    }
   }
+  DWORD exitCode = 1;
+  if (wait == WAIT_OBJECT_0) {
+    ::GetExitCodeProcess(pi.hProcess, &exitCode);
+  } else {
+    // Cancelled, out of budget, or the wait itself failed: the extraction is
+    // over either way, and a tar left running would keep the zip and staging
+    // dir locked against the retry.
+    ::TerminateProcess(pi.hProcess, 1);
+    if (error.empty())
+      error = std::format("WaitForSingleObject(tar) failed: {}", ::GetLastError());
+  }
+  ::CloseHandle(pi.hProcess);
+  if (wait != WAIT_OBJECT_0) return false;
   if (exitCode != 0) {
     error = std::format("tar exited {}", exitCode);
     return false;
@@ -440,7 +494,18 @@ void UpdateChecker::WorkerLoop() {
   // MTA for this thread: RevealInExplorer's ShellExecuteW wants COM up when it
   // runs from an apply on this thread.
   winrt::init_apartment(winrt::apartment_type::multi_threaded);
-  CleanupStaleFiles();
+  // Every dispatch below is wrapped: an exception escaping a std::thread is
+  // std::terminate, so a single surprise (nlohmann type_error on API-shape
+  // drift, bad_alloc mid-download) would otherwise take down the whole tray
+  // app — and recur on the next 6-hour check. The reads are guarded
+  // individually too (JsonFlag/JsonString); this is the backstop, not the plan.
+  try {
+    CleanupStaleFiles();
+  } catch (std::exception const& e) {
+    LogError("update: startup cleanup threw: {}", e.what());
+  } catch (...) {
+    LogError("update: startup cleanup threw (unknown)");
+  }
 
   std::unique_lock lock(mutex_);
   nextAuto_ = steady_clock::now() + kLaunchDelay;
@@ -449,7 +514,23 @@ void UpdateChecker::WorkerLoop() {
     if (applyRequested_) {
       applyRequested_ = false;
       lock.unlock();
-      RunApply();
+      try {
+        RunApply();
+      } catch (std::exception const& e) {
+        LogError("update: apply threw: {}", e.what());
+        Mutate([](Snapshot& s) {
+          s.phase = Phase::Failed;
+          s.stage = Stage::Idle;
+          s.failure = Failure::Download;
+        });
+      } catch (...) {
+        LogError("update: apply threw (unknown)");
+        Mutate([](Snapshot& s) {
+          s.phase = Phase::Failed;
+          s.stage = Stage::Idle;
+          s.failure = Failure::Download;
+        });
+      }
       lock.lock();
       continue;
     }
@@ -458,7 +539,15 @@ void UpdateChecker::WorkerLoop() {
     if (checkRequested_ || (timed && steady_clock::now() >= nextAuto_)) {
       checkRequested_ = false;
       lock.unlock();
-      RunCheck();
+      try {
+        RunCheck();
+      } catch (std::exception const& e) {
+        LogError("update: check threw: {}", e.what());
+        Mutate([](Snapshot& s) { s.lastCheck = CheckOutcome::Failed; });
+      } catch (...) {
+        LogError("update: check threw (unknown)");
+        Mutate([](Snapshot& s) { s.lastCheck = CheckOutcome::Failed; });
+      }
       lock.lock();
       // Any completed check — manual or automatic — restarts the cadence; two
       // checks 30 seconds apart cannot say different things.
@@ -488,13 +577,11 @@ void UpdateChecker::CleanupStaleFiles() {
     for (auto const& entry : fs::directory_iterator(exe.parent_path(), ec)) {
       if (!entry.is_regular_file(ec)) continue;
       const std::wstring name = entry.path().filename().wstring();
-      const std::size_t pos = name.rfind(L".old");
-      // "<anything>.old" or "<anything>.old-<code>" and nothing else — a
-      // release file that merely CONTAINS ".old" must not match.
-      if (pos == std::wstring::npos ||
-          (pos + 4 != name.size() && name[pos + 4] != L'-')) {
-        continue;
-      }
+      // "<stem>.old" or "<stem>.old-<digits>" at the END and nothing else
+      // (UpdateFormats.h, selftest-covered): this gate is a DeleteFile in a
+      // folder the user unzipped themselves, so `report.old-2024.xlsx` and
+      // `URnetwork.exe.old-backup` must never match.
+      if (!update::IsStaleRenamedName(Narrow(name))) continue;
       if (::DeleteFileW(entry.path().c_str())) ++removed;
     }
     if (removed) LogInfo("update: removed {} stale .old file(s)", removed);
@@ -560,8 +647,8 @@ void UpdateChecker::RunCheck() {
   Offer offer;
   for (auto const& rel : releases) {
     if (!rel.is_object()) continue;
-    if (rel.value("draft", false)) continue;
-    const std::string tag = rel.value("tag_name", "");
+    if (JsonFlag(rel, "draft")) continue;
+    const std::string tag = JsonString(rel, "tag_name");
     const std::uint64_t code = version::ParseReleaseCode(tag);
     if (code == 0) continue;
     std::string ver = tag;
@@ -580,11 +667,11 @@ void UpdateChecker::RunCheck() {
         assets != rel.end() && assets->is_array()) {
       for (auto const& asset : *assets) {
         if (!asset.is_object()) continue;
-        const std::string name = asset.value("name", "");
+        const std::string name = JsonString(asset, "name");
         if (name == zipName)
-          zipUrl = asset.value("browser_download_url", "");
+          zipUrl = JsonString(asset, "browser_download_url");
         else if (name == "SHA256SUMS")
-          sumsUrl = asset.value("browser_download_url", "");
+          sumsUrl = JsonString(asset, "browser_download_url");
       }
     }
     if (zipUrl.empty() || sumsUrl.empty()) {
@@ -753,7 +840,7 @@ void UpdateChecker::RunApply() {
   ec.clear();
   fs::create_directories(staging, ec);
   std::string tarError;
-  if (ec || !ExtractZip(zipPath, staging, tarError)) {
+  if (ec || !ExtractZip(zipPath, staging, cancelled, tarError)) {
     LogError("update: extraction failed: {}", ec ? ec.message() : tarError);
     fail(Failure::Extract);
     return;
@@ -823,6 +910,7 @@ void UpdateChecker::RunApply() {
   std::vector<SwapStep> steps;
   steps.reserve(payload.size());
   bool swapOk = true;
+  DWORD swapError = 0;
   for (auto const& name : payload) {
     SwapStep st;
     st.current = appDir / name;
@@ -837,8 +925,9 @@ void UpdateChecker::RunApply() {
     if (fs::exists(st.current, ec)) {
       if (!::MoveFileExW(st.current.c_str(), st.oldPath.c_str(),
                          MOVEFILE_REPLACE_EXISTING)) {
+        swapError = ::GetLastError();
         LogError("update: rename {} -> .old failed: {}", Narrow(name),
-                 ::GetLastError());
+                 swapError);
         swapOk = false;
         steps.push_back(st);
         break;
@@ -848,8 +937,9 @@ void UpdateChecker::RunApply() {
     // COPY_ALLOWED: updates\ can live on a different volume than the install.
     if (!::MoveFileExW(st.staged.c_str(), st.current.c_str(),
                        MOVEFILE_COPY_ALLOWED)) {
+      swapError = ::GetLastError();
       LogError("update: move staged {} into place failed: {}", Narrow(name),
-               ::GetLastError());
+               swapError);
       swapOk = false;
       steps.push_back(st);
       break;
@@ -859,9 +949,12 @@ void UpdateChecker::RunApply() {
   }
   if (!swapOk) {
     // Roll the completed renames back, newest first, so the directory ends
-    // this attempt as it began it — never half-swapped and silent. A rollback
-    // step that itself fails is logged loudly; the .old copy is still on disk
-    // either way, so nothing is lost, only misnamed.
+    // this attempt as it began it — never half-swapped and silent. The .old
+    // restore gets a second, REPLACE_EXISTING attempt because when returning
+    // the new file to staging failed, the real name is still occupied and the
+    // plain restore necessarily fails with it — and the .old image winning
+    // over a stranded new file is the whole point of a rollback.
+    bool rolledBack = true;
     for (auto it = steps.rbegin(); it != steps.rend(); ++it) {
       if (it->movedNew &&
           !::MoveFileExW(it->current.c_str(), it->staged.c_str(),
@@ -870,12 +963,37 @@ void UpdateChecker::RunApply() {
                  Narrow(it->current.filename().wstring()), ::GetLastError());
       }
       if (it->renamedOld &&
-          !::MoveFileExW(it->oldPath.c_str(), it->current.c_str(), 0)) {
-        LogError("update: ROLLBACK could not restore {}: {}",
+          !::MoveFileExW(it->oldPath.c_str(), it->current.c_str(), 0) &&
+          !::MoveFileExW(it->oldPath.c_str(), it->current.c_str(),
+                         MOVEFILE_REPLACE_EXISTING)) {
+        LogError("update: ROLLBACK could not restore {}: {} — the install "
+                 "dir holds MIXED versions until a retry succeeds",
                  Narrow(it->current.filename().wstring()), ::GetLastError());
+        rolledBack = false;
       }
     }
-    fail(Failure::Swap);
+    // ACCESS_DENIED on a rename is the probe/swap gap: DirWritable proved
+    // file-CREATE rights, but the swap needs DELETE on the existing files
+    // (someone else's ACLs on an admin-unzipped folder, or an ACL change since
+    // the probe). Retrying re-downloads ~100 MB into the same denial forever;
+    // the verified zip and a user who can elevate are the actual fix, and
+    // ManualUnzip is the phase built to say exactly that. Only when the
+    // rollback completed, though — a half-swapped dir must keep the loud
+    // banner, not a calm "finish it yourself".
+    if (rolledBack && swapError == ERROR_ACCESS_DENIED) {
+      LogWarn("update: renames in {} were denied — downloaded, not applied",
+              Narrow(appDir.wstring()));
+      fs::remove_all(staging, ec);
+      const std::wstring zipW = zipPath.wstring();
+      Mutate([&zipW](Snapshot& s) {
+        s.phase = Phase::ManualUnzip;
+        s.stage = Stage::Idle;
+        s.zipPath = zipW;
+      });
+      RevealInExplorer(zipW);
+      return;
+    }
+    fail(rolledBack ? Failure::Swap : Failure::SwapDirty);
     return;
   }
 

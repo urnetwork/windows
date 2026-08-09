@@ -13,11 +13,19 @@
 
   <PropertyGroup Label="Globals">
     <UrnRepoRoot>$(MSBuildThisFileDirectory)</UrnRepoRoot>
-    <!-- All projects output to build\<plat>\<cfg>\ so the WiX BinDir
+    <!-- The C++ projects output to build\<plat>\<cfg>\ so the WiX BinDir
          (installer/Installer.wixproj) finds URnetwork.exe / urnetworkd.exe / the
          SDK dll / wintun / resources.pri together. Set here (before
-         Cpp.Default.props's conditional default) so it takes effect. -->
-    <OutDir>$(UrnRepoRoot)build\$(Platform)\$(Configuration)\</OutDir>
+         Cpp.Default.props's conditional default) so it takes effect.
+
+         Scoped to .vcxproj, because this file is imported by EVERY project
+         under app\ — including Installer.wixproj via the WiX SDK's
+         Microsoft.Common.props import. Unconditional, it redirected the MSI
+         out of app\installer\bin (where CI's flatten step looks, failing the
+         whole release job) and INTO the very directory package-portable.ps1
+         zips, sweeping ~12 MB of .msi/.wixpdb into the portable payload for
+         any local flow that builds the MSI before packaging. -->
+    <OutDir Condition="'$(MSBuildProjectExtension)'=='.vcxproj'">$(UrnRepoRoot)build\$(Platform)\$(Configuration)\</OutDir>
     <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.19041.0</WindowsTargetPlatformMinVersion>
   </PropertyGroup>

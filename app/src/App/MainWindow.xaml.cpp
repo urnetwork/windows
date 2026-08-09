@@ -1261,9 +1261,22 @@ winrt::fire_and_forget MainWindow::BeginServiceSetupAction() {
   } else if (!run.launched) {
     notice = Notice::ActionFailed;
     observation = urnw::ServiceSetup::Classify();
+  } else if (run.exited && run.exitCode != 0) {
+    // The exit code is the verb's ENTIRE interface (InstallVerb.h), and a
+    // nonzero one already proved the service will never reach Running — an
+    // install that fails fast (StartService refusal, stop-budget miss) exits
+    // within seconds, and the 15s Running poll below would only pin the
+    // banner on a disabled "Setting up…" while the verdict sits unread.
+    notice = Notice::ActionFailed;
+    observation = urnw::ServiceSetup::Classify();
+    urnw::LogWarn(
+        "servicesetup: install exited {} — reporting the failure without "
+        "polling for Running",
+        run.exitCode);
   } else {
-    // The verb waits for RUNNING itself, so this poll usually returns on its
-    // first classification; the budget covers an SCM still settling.
+    // Exit 0, or the straggler that outlived the wait: the verb holds (or
+    // held) a success verdict, so this poll usually returns on its first
+    // classification; the budget covers an SCM still settling.
     observation =
         urnw::ServiceSetup::AwaitState(State::Running, 15000);
     if (observation.state != State::Running) {

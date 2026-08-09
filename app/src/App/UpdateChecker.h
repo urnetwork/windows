@@ -53,13 +53,21 @@ class UpdateChecker {
     None,         // nothing newer is known (or the checker is disabled)
     Available,    // a newer release exists; the one click is offered
     Applying,     // the click fired; `stage` says how far it has got
-    ManualUnzip,  // downloaded + verified, but the app dir is not writable:
-                  // the zip was revealed in Explorer and the user finishes
+    ManualUnzip,  // downloaded + verified, but the app dir cannot be swapped
+                  // (not writable, or the renames were denied): the zip was
+                  // revealed in Explorer and the user finishes
     Failed,       // the last apply attempt failed; `failure` says where.
-                  // Nothing was half-swapped — the click retries from scratch
+                  // Nothing was half-swapped (the rollback restored the old
+                  // files) — the click retries from scratch. The one exception
+                  // is SwapDirty, which says the rollback itself could not
+                  // finish; the banner wording owns that honesty.
   };
   enum class Stage { Idle, Downloading, Verifying, Extracting, Swapping };
-  enum class Failure { None, Download, Checksum, Extract, Swap };
+  // SwapDirty is Swap plus a rollback step that failed: the install dir may
+  // hold mixed-version files until a retry succeeds. It exists because the
+  // plain Swap banner says "the previous files were put back", and saying that
+  // over a directory where it is false teaches the user to distrust the banner.
+  enum class Failure { None, Download, Checksum, Extract, Swap, SwapDirty };
 
   // What the last CHECK concluded — the developer screen's line, separate from
   // the banner phase because "checked and found nothing" must be reportable

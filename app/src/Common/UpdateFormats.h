@@ -20,6 +20,12 @@
 //                        so a hostile archive member named `..\evil.exe` or
 //                        `C:\x.dll` cannot become a swap target even if the
 //                        extractor were to misbehave.
+//   IsStaleRenamedName   the startup cleanup's matcher for the swap's OWN
+//                        leftovers (`<name>.old`, `<name>.old-<code>`). It
+//                        gates a DeleteFile in the user's install folder — an
+//                        ordinary folder they unzipped themselves — so a match
+//                        that is merely close (`report.old-2024.xlsx`) is not
+//                        hygiene, it is data loss.
 //
 // No Windows headers, no allocation beyond the returned string, total on all
 // inputs.
@@ -112,6 +118,26 @@ inline bool IsAllowedPayloadName(std::string_view name) noexcept {
   const std::string_view ext = name.substr(dot);
   return EqualsAsciiCaseless(ext, ".exe") || EqualsAsciiCaseless(ext, ".dll") ||
          EqualsAsciiCaseless(ext, ".pri");
+}
+
+// Whether a file name is one of the rename-swap's own leftovers, and nothing
+// else: `<stem>.old`, or `<stem>.old-<digits>` (the code-suffixed fallback the
+// swap parks a rename under when the plain .old name is still locked), with a
+// non-empty stem and NOTHING after the match. The names are minted by the swap
+// itself from `name + L".old"` and `std::to_wstring(code)`, so digits-to-the-
+// end is the exact minted shape, not an approximation of it. Everything looser
+// deletes user files: ".old-" anywhere in the middle admits `report.old-2024
+// .xlsx`, and a bare substring test admits `URnetwork.exe.old-backup`.
+inline constexpr bool IsStaleRenamedName(std::string_view name) noexcept {
+  const std::size_t pos = name.rfind(".old");
+  if (pos == std::string_view::npos || pos == 0) return false;  // no empty stem
+  const std::string_view tail = name.substr(pos + 4);
+  if (tail.empty()) return true;  // `<stem>.old`
+  if (tail.size() < 2 || tail.front() != '-') return false;
+  for (std::size_t i = 1; i < tail.size(); ++i) {
+    if (tail[i] < '0' || tail[i] > '9') return false;
+  }
+  return true;  // `<stem>.old-<digits>`
 }
 
 }  // namespace urnw::update

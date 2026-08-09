@@ -128,16 +128,23 @@ inline StartVerdict JudgeStartWait(unsigned long finalState, bool pipeBusy) {
 
 // The stop half of the idempotent path: an already-registered service is
 // stopped before its binPath is re-pointed, and that wait can fail too. Same
-// contract as above — one observation in, one stderr line out.
-inline std::wstring StopFailureText(unsigned long finalState) {
+// contract as above — one observation in, one stderr line out. The uninstall
+// verb shares this wait-for-STOPPED (DeleteService on an unstopped service
+// only marks it delete-pending, poisoning every later verb with
+// ERROR_SERVICE_MARKED_FOR_DELETE), so `verb` names whichever one is
+// reporting; a text that told the user to re-run `install` after a failed
+// uninstall would be advice to undo their own intent.
+inline std::wstring StopFailureText(unsigned long finalState,
+                                    const wchar_t* verb = L"install") {
   if (finalState == kStateQueryFailed)
-    return L"install: could not query the existing service's state — check "
+    return std::wstring(verb) +
+           L": could not query the existing service's state — check "
            L"`sc query urnetworkd` and re-run";
-  return L"install: the existing service did not stop within " +
+  return std::wstring(verb) + L": the existing service did not stop within " +
          std::to_wstring(kStopWaitBudgetMs / 1000) +
          L"s (last reported state " + std::to_wstring(finalState) +
-         L") — stop it yourself (`sc stop urnetworkd`), then run `urnetworkd "
-         L"install` again";
+         L") — stop it yourself (`sc stop urnetworkd`), then run `urnetworkd " +
+         verb + L"` again";
 }
 
 // Printed when the pipe is already busy BEFORE StartServiceW is even attempted.

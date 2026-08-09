@@ -1854,6 +1854,24 @@ void TestUpdateFormats() {
     Check(!update::IsAllowedPayloadName(bad),
           std::format("'{}' is NOT swap payload", bad));
   }
+
+  // The stale-leftover matcher gates a DeleteFile in the user's own install
+  // folder, so the shapes the swap MINTS match and everything else — however
+  // close — does not. `report.old-2024.xlsx` is the reviewer-found data-loss
+  // case: ".old" followed by '-' mid-name, in a folder the user unzipped
+  // themselves.
+  for (const char* stale :
+       {"URnetwork.exe.old", "urnetworkd.exe.old", "URnetworkSdk.dll.old",
+        "URnetwork.exe.old-101076420", "wintun.dll.old-1"}) {
+    Check(update::IsStaleRenamedName(stale),
+          std::format("'{}' is a swap leftover", stale));
+  }
+  for (const char* keep :
+       {"", ".old", "report.old-2024.xlsx", "URnetwork.exe.old-backup",
+        "notes.older", "x.old-", "URnetwork.exe", "gold", "a.oldx"}) {
+    Check(!update::IsStaleRenamedName(keep),
+          std::format("'{}' is NOT a swap leftover — never deleted", keep));
+  }
 }
 
 void TestInstallVerb() {
@@ -1921,6 +1939,16 @@ void TestInstallVerb() {
   Check(install::StopFailureText(install::kStateQueryFailed)
                 .find(L"could not query") != std::wstring::npos,
         "a failed query during stop is reported as a query failure");
+  // The uninstall verb shares the wait-for-STOPPED (DeleteService on an
+  // unstopped service only marks it delete-pending); its flavor of the text
+  // must tell the user to re-run UNINSTALL, not to install what they were
+  // removing.
+  Check(install::StopFailureText(install::kStateStopPending, L"uninstall")
+                .find(L"`urnetworkd uninstall` again") != std::wstring::npos,
+        "the uninstall flavor sends the user back to uninstall");
+  Check(install::StopFailureText(install::kStateStopPending, L"uninstall")
+                .starts_with(L"uninstall:"),
+        "the uninstall flavor is prefixed with its own verb");
 
   // The budgets are the bound on a UAC elevation the user already approved:
   // they must exist (nonzero), be pollable (interval strictly inside), and

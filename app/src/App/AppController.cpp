@@ -185,13 +185,19 @@ void AppController::Shutdown() {
 //   3. Quit through the ordinary tray-quit path, so placement is saved and
 //      the SDK host tears down exactly as it does every day.
 //
-// A spawn failure does NOT quit: the swap is already complete on disk, so the
-// worst outcome of staying alive is running the old image until the user
-// restarts by hand — strictly better than exiting to nothing.
+// A spawn failure does NOT quit — but it must UNDO step 1: the swap is already
+// complete on disk, so staying alive merely runs the old image until the user
+// restarts by hand. Staying alive WITHOUT the key is different: the next
+// shortcut launch (or a urnetwork:// wallet callback) would register ITSELF as
+// primary and run beside this instance — two tray icons, two SdkHosts on the
+// service pipe, and the wallet callback landing in the instance without the
+// session. So the failure branch re-acquires the key; if some other instance
+// took it in the gap, this one quits in its favour so exactly one remains.
 void AppController::RelaunchOnto(std::filesystem::path const& exe) {
+  namespace lifecycle = winrt::Microsoft::Windows::AppLifecycle;
   LogInfo("update: relaunching onto {}", Narrow(exe.wstring()));
   try {
-    winrt::Microsoft::Windows::AppLifecycle::AppInstance::GetCurrent().UnregisterKey();
+    lifecycle::AppInstance::GetCurrent().UnregisterKey();
   } catch (winrt::hresult_error const& e) {
     LogWarn("update: UnregisterKey failed ({}); the new instance will retry",
             Narrow(std::wstring{e.message()}));
@@ -205,10 +211,28 @@ void AppController::RelaunchOnto(std::filesystem::path const& exe) {
     ::CloseHandle(pi.hThread);
     ::CloseHandle(pi.hProcess);
     Shutdown();
-  } else {
-    LogError("update: relaunch CreateProcess failed: {} — the update takes "
-             "effect on the next manual start",
-             ::GetLastError());
+    return;
+  }
+  // The moment right after a swap is exactly when an AV scanner holds a fresh
+  // unsigned exe, so this branch is reachable in the field, not theoretical.
+  LogError("update: relaunch CreateProcess failed: {} — the update takes "
+           "effect on the next manual start",
+           ::GetLastError());
+  try {
+    const auto again =
+        lifecycle::AppInstance::FindOrRegisterForKey(ids::kSingleInstanceKey);
+    if (!again.IsCurrent()) {
+      // Someone else already owns the key (a launch raced the failed spawn).
+      // Two live instances is the one outcome worse than exiting; bow out
+      // through the ordinary quit path.
+      LogWarn("update: another instance took the single-instance key — "
+              "quitting in its favour");
+      Shutdown();
+    }
+  } catch (winrt::hresult_error const& e) {
+    LogError("update: could not re-register the single-instance key ({}) — "
+             "a second launch may start a second instance",
+             Narrow(std::wstring{e.message()}));
   }
 }
 

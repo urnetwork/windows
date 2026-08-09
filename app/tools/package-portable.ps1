@@ -51,9 +51,16 @@ foreach ($name in $required) {
 }
 
 # Without the self-contained WindowsAppRuntime payload the zip only runs where
-# the runtime is preinstalled. Warn rather than fail: builds made before the
-# self-contained switch are still worth packaging for a look inside.
+# the runtime is preinstalled. A RELEASE-versioned package fails outright: the
+# spec's zip contract is that a clean machine needs no preinstalled runtime,
+# and a warning in a green CI log ships exactly the broken zip it warns about
+# (SHA256SUMS would even verify it). Dev-versioned runs still only warn --
+# builds made before the self-contained switch are worth packaging for a look
+# inside, and code 0 can never be offered to anyone by the update checker.
 if (-not (Test-Path (Join-Path $srcDir "Microsoft.ui.xaml.dll"))) {
+  if ($Version -ne "0.0.0-dev") {
+    throw "Microsoft.ui.xaml.dll is not in the build output -- a release-versioned zip must be self-contained (did WindowsAppSDKSelfContained stop applying?)"
+  }
   Write-Warning "Microsoft.ui.xaml.dll is not in the build output -- this build is NOT self-contained, so the zip will require the Windows App Runtime to be installed"
 }
 

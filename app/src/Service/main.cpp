@@ -442,6 +442,16 @@ std::wstring OwnExePath() {
 // refusal at the top of Run()). lastState always carries what was last seen
 // (kStateQueryFailed if the query itself failed) so the caller can say what
 // happened instead of only that something did.
+//
+// A wait for STOPPED also RE-ISSUES the stop control whenever a poll observes
+// RUNNING. The caller sent its one stop before this wait, and a service that
+// was START_PENDING then refused it (ERROR_SERVICE_CANNOT_ACCEPT_CTRL) — so
+// without the retry, the start finishes, the service sits RUNNING and
+// perfectly willing to accept the control this function's caller already
+// tried, and the whole budget burns down to a failure text telling the user
+// to run the `sc stop` that one more ControlService here performs itself.
+// Harmless when the handle lacks SERVICE_STOP (the call just fails) and on
+// the RUNNING wait (the branch never triggers).
 bool WaitForServiceState(SC_HANDLE svc, DWORD wanted, DWORD budgetMs,
                          DWORD& lastState) {
   const ULONGLONG deadline = ::GetTickCount64() + budgetMs;
@@ -457,6 +467,10 @@ bool WaitForServiceState(SC_HANDLE svc, DWORD wanted, DWORD budgetMs,
     lastState = ssp.dwCurrentState;
     if (lastState == wanted) return true;
     if (wanted == SERVICE_RUNNING && lastState == SERVICE_STOPPED) return false;
+    if (wanted == SERVICE_STOPPED && lastState == SERVICE_RUNNING) {
+      SERVICE_STATUS st{};
+      ::ControlService(svc, SERVICE_CONTROL_STOP, &st);
+    }
     if (::GetTickCount64() >= deadline) return false;
     ::Sleep(install::kScmPollIntervalMs);
   }
@@ -608,13 +622,47 @@ int UninstallService() {
     std::fwprintf(stderr, L"OpenSCManager failed: %lu (run elevated)\n", ::GetLastError());
     return 1;
   }
-  SC_HANDLE svc = ::OpenServiceW(scm, ids::kServiceName, DELETE | SERVICE_STOP);
+  // QUERY_STATUS on top of DELETE | STOP: this verb now WAITS for STOPPED
+  // before deleting, mirroring the install verb's stop half. DeleteService on
+  // a service that has not stopped "succeeds" by marking it delete-pending —
+  // the verb would print "uninstalled" and exit 0 over a service still
+  // RUNNING, the app's AwaitState(NotInstalled) poll would time out against
+  // it, and every later install OR uninstall click would fail with
+  // ERROR_SERVICE_MARKED_FOR_DELETE until the service happens to stop. A
+  // crash-looping service the user is trying to remove (SCM failure-actions
+  // keep restarting it, so it is often START_PENDING — the one state that
+  // refuses a stop control) is exactly the service this verb gets pointed at.
+  SC_HANDLE svc = ::OpenServiceW(scm, ids::kServiceName,
+                                 DELETE | SERVICE_STOP | SERVICE_QUERY_STATUS);
   int rc = 1;
   if (svc) {
     SERVICE_STATUS st{};
-    ::ControlService(svc, SERVICE_CONTROL_STOP, &st);
+    if (!::ControlService(svc, SERVICE_CONTROL_STOP, &st) &&
+        ::GetLastError() != ERROR_SERVICE_NOT_ACTIVE) {
+      // Same tolerance as the install verb: a pending state cannot accept the
+      // control yet; the bounded wait below re-issues it when it can be.
+      LogWarn("uninstall: stop control not accepted ({}); waiting on the state",
+              ::GetLastError());
+    }
+    DWORD state = install::kStateQueryFailed;
+    if (!WaitForServiceState(svc, SERVICE_STOPPED, install::kStopWaitBudgetMs,
+                             state)) {
+      const std::wstring text = install::StopFailureText(state, L"uninstall");
+      std::fwprintf(stderr, L"%s\n", text.c_str());
+      LogError("uninstall: {}", Narrow(text));
+      ::CloseServiceHandle(svc);
+      ::CloseServiceHandle(scm);
+      return 1;
+    }
     rc = ::DeleteService(svc) ? 0 : 1;
+    if (rc != 0) {
+      std::fwprintf(stderr, L"uninstall: DeleteService failed: %lu\n",
+                    ::GetLastError());
+    }
     ::CloseServiceHandle(svc);
+  } else {
+    std::fwprintf(stderr, L"uninstall: OpenService failed: %lu\n",
+                  ::GetLastError());
   }
   ::CloseServiceHandle(scm);
   std::wprintf(L"%s\n", rc == 0 ? L"uninstalled" : L"uninstall failed");
