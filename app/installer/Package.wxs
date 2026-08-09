@@ -17,6 +17,13 @@
     <MajorUpgrade DowngradeErrorMessage="A newer version of URnetwork is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
+    <!-- The app icon, for Add/Remove Programs and the Start Menu shortcut.
+         Referenced from the SOURCE tree, not BinDir: BinDir carries whatever
+         the app build staged for runtime, and the installer should not depend
+         on which assets that happens to include. -->
+    <Icon Id="AppIcon.ico" SourceFile="$(sys.SOURCEFILEDIR)..\src\App\Assets\app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+
     <!-- Build binaries are staged under $(var.BinDir) by the .wixproj. -->
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="URnetwork">
@@ -24,6 +31,19 @@
         <!-- Tray app + SDK -->
         <Component Id="AppExe" Guid="*">
           <File Id="URnetworkExe" Source="$(var.BinDir)\URnetwork.exe" KeyPath="yes" />
+          <!-- Start Menu entry, so the installed app is launchable the way a
+               normal Windows app is (owner report: without one the MSI leaves
+               the exe reachable only by path). It lives in THIS component so
+               the exe File stays the KeyPath, and it is ADVERTISED because
+               that is the one shortcut shape validation accepts here: ICE43/
+               ICE57 call any non-advertised shortcut per-user data, even in a
+               perMachine package, and the alternative is a new HKCU-keypath
+               component — wrong for a per-machine install. An advertised
+               shortcut resolves to this component's keypath (the exe) and
+               needs no Target. No desktop shortcut on purpose. -->
+          <Shortcut Id="StartMenuShortcut" Name="URnetwork" Advertise="yes"
+                    Directory="ProgramMenuFolder"
+                    WorkingDirectory="INSTALLFOLDER" Icon="AppIcon.ico" />
         </Component>
         <Component Id="SdkDll" Guid="*">
           <File Id="URnetworkSdkDll" Source="$(var.BinDir)\URnetworkSdk.dll" KeyPath="yes" />

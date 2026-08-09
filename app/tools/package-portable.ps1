@@ -54,7 +54,7 @@ foreach ($name in $required) {
 # the runtime is preinstalled. A RELEASE-versioned package fails outright: the
 # spec's zip contract is that a clean machine needs no preinstalled runtime,
 # and a warning in a green CI log ships exactly the broken zip it warns about
-# (SHA256SUMS would even verify it). Dev-versioned runs still only warn --
+# (its release digest would even verify it). Dev-versioned runs still only warn --
 # builds made before the self-contained switch are worth packaging for a look
 # inside, and code 0 can never be offered to anyone by the update checker.
 if (-not (Test-Path (Join-Path $srcDir "Microsoft.ui.xaml.dll"))) {
@@ -97,8 +97,8 @@ Copy-Item (Join-Path $app "THIRD-PARTY-NOTICES.txt") $stage
 Copy-Item (Join-Path $app "third_party\wintun\wintun-license.txt") $stage
 
 # --- README -------------------------------------------------------------------
-# One page, ASCII, and honest -- especially about what SHA256SUMS does and
-# does not protect against, and about how to un-break the network by hand.
+# One page, ASCII, and honest -- especially about what the download check does
+# and does not protect against, and about how to un-break the network by hand.
 $readme = @"
 URnetwork (beta) -- portable build
 version $Version, windows $arch
@@ -121,13 +121,16 @@ the traffic; the app is the window onto it. Then log in and connect.
 Updating
 --------
 The app checks this project's releases and offers updates. Applying one
-downloads the new zip, verifies it against the release's SHA256SUMS, and
-swaps the files here in place; the app then shows "Update the VPN
-service" -- one click restarts the service onto the new files. You can
-also unzip a newer release over this folder yourself (quit the app
-first). Note: SHA256SUMS protects the download against corruption, not
-against a compromised download source. Signed installers come in a later
-milestone.
+downloads the new zip, checks its SHA-256 against the digest GitHub
+records for that release asset, and swaps the files here in place; the
+app then shows "Update the VPN service" -- one click restarts the
+service onto the new files. You can also unzip a newer release over
+this folder yourself (quit the app first). To check a download by hand,
+compare its SHA-256 with the asset's digest in the GitHub release API
+(the "digest" field on each asset). Note: the digest comes from the
+same place as the download, so it protects against corruption, not
+against a compromised download source. Signed installers come in a
+later milestone.
 
 Uninstalling
 ------------

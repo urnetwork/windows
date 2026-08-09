@@ -99,12 +99,16 @@ Extend `beta-build.yml`:
 - The existing derive step's outputs flow to the app build jobs (job outputs)
   and into msbuild as `/p:UrVersion /p:UrVersionCode`.
 - Each matrix job stages and uploads the portable zip for its arch.
-- A `release` job (after both arches): downloads artifacts, writes
-  `SHA256SUMS`, deletes any same-tag release, then
-  `gh release create v<version> --prerelease` attaching both zips, SHA256SUMS,
-  and the MSI. Notes line mirrors android's ("beta build riding the official
-  version numbering...") plus "MSI attached is unsigned and untested — use the
-  portable zip".
+- A `release` job (after both arches): downloads artifacts, deletes any
+  same-tag release, then `gh release create v<version> --prerelease` attaching
+  both zips and the MSI (amended 2026-08-09 round 2: was "writes `SHA256SUMS`
+  ... attaching both zips, SHA256SUMS, and the MSI" — the owner ruled a
+  checksums file off the release page; integrity rides the per-asset SHA-256
+  digest GitHub computes on upload and serves in the releases API as
+  `asset.digest`, format `sha256:<64 lowercase hex>`, which is the same JSON
+  the update checker already fetches). Notes line mirrors android's ("beta
+  build riding the official version numbering...") plus "MSI attached is
+  unsigned and untested — use the portable zip".
 - Every green build of `beta/custom-server` publishes a prerelease, exactly
   like android.
 
@@ -119,7 +123,12 @@ New app-side component (`UpdateChecker`):
   change later).
 - Newer than own stamped code -> banner: "Update available: v<version>".
   One click: download own-arch zip to `%LOCALAPPDATA%\URnetwork\updates\`,
-  verify against the release's `SHA256SUMS`, extract (`tar.exe`, ships with
+  verify against GitHub's per-asset SHA-256 `digest` taken from the same
+  releases JSON the check parsed (amended 2026-08-09 round 2: was "verify
+  against the release's `SHA256SUMS`" — the checker no longer fetches a
+  checksum document; a zip asset with a missing or malformed digest
+  disqualifies the release exactly as a missing SHA256SUMS used to), extract
+  (`tar.exe`, ships with
   Windows 10 1803+), then **rename-swap**: for each payload file, rename the
   existing file to `<name>.old` (NTFS allows renaming running images —
   including the running service exe), move the new file in, relaunch the app.
@@ -133,9 +142,10 @@ New app-side component (`UpdateChecker`):
   half-swapped (stage fully in `updates\`, swap only after a complete verified
   extract).
 - Settings toggle "Check for updates automatically", default on.
-- Honest limit, stated in README too: SHA256SUMS from the same origin protects
-  download integrity, not against repo compromise. Real signing arrives with
-  the MSI milestone.
+- Honest limit, stated in README too: a digest from the same origin as the
+  download protects download integrity, not against repo compromise (amended
+  2026-08-09 round 2: was "SHA256SUMS from the same origin"). Real signing
+  arrives with the MSI milestone.
 
 ### 6. MSI compile-proof
 
@@ -145,6 +155,13 @@ fields are 16-bit-bounded; the real upgrade-ordering scheme is the MSI
 milestone's problem). Unsigned MSI uploaded and attached to the release,
 labeled untested. `Package.wxs` gets the minimal fixes it needs to actually
 compile (it has never been through the compiler).
+
+Amended 2026-08-09 round 2: beyond compile-minimal, the MSI now behaves like a
+normal installed app (owner report after live-testing the first release): an
+`Icon` + `ARPPRODUCTICON` so Add/Remove Programs shows the app icon, and an
+advertised Start Menu shortcut carried by the existing `AppExe` component
+(file KeyPath — the ICE43/ICE57-clean shape for a perMachine package). No
+desktop shortcut.
 
 ### 7. Verification gates
 
@@ -156,7 +173,8 @@ compile (it has never been through the compiler).
   checker finds it -> update applies -> service banner -> one-click service
   update -> Connect again.
 - **Pipeline gate**: a real prerelease appears on the fork with both zips +
-  SHA256SUMS + MSI, tag matching android's grammar.
+  MSI, tag matching android's grammar (amended 2026-08-09 round 2: no
+  SHA256SUMS asset; each asset's `digest` in the releases API stands in).
 
 ## Sequencing after this ships
 

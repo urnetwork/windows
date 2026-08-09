@@ -344,8 +344,11 @@ jobs:
 
   # Every green build publishes a prerelease, the way the android fork does:
   # same tag grammar, same riding-the-numbering notes line. The in-app update
-  # checker polls this repo's releases, so the asset names and the flat
-  # sha256sum format are contracts, not cosmetics.
+  # checker polls this repo's releases, so the asset names are a contract, not
+  # cosmetics. No checksums file is attached: download verification rides the
+  # per-asset sha256 digest GitHub itself computes on upload and serves in the
+  # same releases JSON the checker already fetches (owner ruled a SHA256SUMS
+  # asset off the release page).
   release:
     name: Publish the prerelease
     # PRs build everything but must not publish: a PR that republished (and
@@ -376,15 +379,6 @@ jobs:
           name: urnetwork-windows-msi
           path: dist
 
-      # '<hex>  <filename>' -- sha256sum's own format, which both `sha256sum
-      # -c` and the in-app updater's verification parse. Zips only: the MSI is
-      # explicitly untested, nothing machine-verifies against its hash.
-      - name: Write SHA256SUMS
-        working-directory: dist
-        run: |
-          sha256sum URnetwork-*-portable.zip > SHA256SUMS
-          cat SHA256SUMS
-
       - name: Publish the release
         working-directory: dist
         env:
@@ -399,7 +393,7 @@ jobs:
             echo
             echo "The attached MSI is unsigned and untested -- use the portable zip."
           } > notes.md
-          files=(URnetwork-*-portable.zip SHA256SUMS)
+          files=(URnetwork-*-portable.zip)
           for msi in *.msi; do
             if [ -f "$msi" ]; then files+=("$msi"); fi
           done
