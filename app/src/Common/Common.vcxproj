@@ -42,6 +42,7 @@
 
   <ItemGroup>
     <ClInclude Include="ConnectionHealth.h" />
+    <ClInclude Include="CrashDumps.h" />
     <ClInclude Include="Heartbeat.h" />
     <ClInclude Include="Ids.h" />
     <ClInclude Include="Log.h" />
@@ -58,6 +59,7 @@
     <ClInclude Include="VersionGrammar.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CrashDumps.cpp" />
     <ClCompile Include="Heartbeat.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Paths.cpp" />

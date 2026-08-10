@@ -17,6 +17,7 @@
 
 #include "ConnectionHealth.h"
 #include "ConsoleArgs.h"
+#include "CrashDumps.h"
 #include "Heartbeat.h"
 #include "InstallVerb.h"
 #include "NetPolicy.h"
@@ -2275,6 +2276,112 @@ void TestGoCrashCapture() {
         ec.message());
 }
 
+// --- does the native-fault channel actually produce anything? (task #39) -----
+//
+// Clearing SEM_NOGPFAULTERRORBOX restores this process's ABILITY to reach WER.
+// What WER then writes is machine configuration, and on a box with no
+// LocalDumps key the answer is "an Application Error 1000 and no stack". The
+// verdicts below are what stops that from being discovered the hard way — by
+// looking in an empty CrashDumps folder after the next death and concluding
+// there was no fault.
+//
+// The probe itself is also RUN here, against this real machine, and its verdict
+// printed: a check that only exercised synthetic structs would prove the
+// formatter and tell the operator nothing about the box they are about to test
+// on.
+void TestCrashDumpChannel() {
+  Section("crash-dump channel — what a native fault will actually leave behind");
+
+  CrashDumpChannel none;  // defaults: WER on, no LocalDumps anywhere
+  const std::string noneText = DescribeCrashDumpChannel(none, "urnetworkd.exe");
+  Check(noneText.find("NOT KNOWN TO WRITE A DUMP FILE") != std::string::npos,
+        "with LocalDumps absent the verdict says plainly that no dump file is "
+        "expected — the failure mode being prevented is an investigator reading "
+        "an empty folder as 'it did not crash'");
+  Check(noneText.find("does not exist at all") != std::string::npos,
+        "…and says which of the two ways it is unconfigured");
+  Check(noneText.find("Application Error 1000") != std::string::npos,
+        "…while still naming what WILL exist, so the channel is not written off "
+        "entirely");
+  Check(noneText.find("reg add") != std::string::npos &&
+            noneText.find("DumpType") != std::string::npos &&
+            noneText.find("urnetworkd.exe") != std::string::npos,
+        "…and it carries the exact elevated command that opens the channel, "
+        "for this executable by name");
+
+  // THE SHAPE THIS MACHINE IS ACTUALLY IN, and the one a naive probe gets
+  // wrong. LocalDumps exists — because Razer, NVIDIA and BlueStacks each
+  // planted a per-executable subkey under it — but it carries no values of its
+  // own and there is no urnetworkd.exe subkey. "The key exists" must NOT read
+  // as "dumps are configured", or this instrumentation manufactures exactly the
+  // false confidence it was written to destroy.
+  CrashDumpChannel container;
+  container.localDumpsGlobal = true;         // present…
+  container.localDumpsGlobalHasValues = false;  // …but an empty container
+  const std::string containerText =
+      DescribeCrashDumpChannel(container, "urnetworkd.exe");
+  Check(containerText.find("NOT KNOWN TO WRITE A DUMP FILE") != std::string::npos,
+        "a LocalDumps key that exists ONLY as a container for other programs' "
+        "per-executable subkeys is NOT reported as a working channel — the key "
+        "existing is not the question, its values are");
+  Check(containerText.find("no values of its own") != std::string::npos,
+        "…and the reason is spelled out, so nobody re-checks the registry, sees "
+        "the key, and overrules the log");
+  Check(containerText.find("reg add") != std::string::npos,
+        "…and it still hands over the command that fixes it");
+
+  CrashDumpChannel off;
+  off.werDisabled = true;
+  const std::string offText = DescribeCrashDumpChannel(off, "urnetworkd.exe");
+  Check(offText.find("OFF AT THE MACHINE LEVEL") != std::string::npos,
+        "WER disabled machine-wide is reported as its own verdict");
+  Check(offText.find("Application Error 1000") == std::string::npos ||
+            offText.find("no Application Error 1000") != std::string::npos,
+        "…and never promises an event-log entry that will not be written");
+
+  CrashDumpChannel mini;
+  mini.localDumpsForThisExe = true;
+  mini.dumpType = 1;
+  const std::string miniText = DescribeCrashDumpChannel(mini, "urnetworkd.exe");
+  Check(miniText.find("OPEN") != std::string::npos,
+        "a configured channel reports OPEN");
+  Check(miniText.find("systemprofile") != std::string::npos,
+        "…and with no DumpFolder set it names the WINDOWS DEFAULT location for "
+        "a LocalSystem service, which is not the operator's profile and is not "
+        "where anyone looks first");
+  Check(miniText.find("MINI") != std::string::npos &&
+            miniText.find("reg add") != std::string::npos,
+        "…and a mini dump is called out as probably insufficient for a process "
+        "that is half Go, with the command that upgrades it to a full dump");
+
+  CrashDumpChannel full;
+  full.localDumpsForThisExe = true;
+  full.dumpType = 2;
+  full.dumpFolder = L"C:\\ProgramData\\URnetwork\\service\\crashdumps";
+  const std::string fullText = DescribeCrashDumpChannel(full, "urnetworkd.exe");
+  Check(fullText.find("C:\\ProgramData\\URnetwork\\service\\crashdumps") !=
+            std::string::npos,
+        "a configured DumpFolder is reported verbatim — the operator should not "
+        "have to guess where the file went",
+        fullText.substr(0, 120));
+  Check(fullText.find("MINI") == std::string::npos,
+        "…and a full dump carries no mini-dump caveat");
+
+  // The real machine, printed rather than asserted: what it says depends on the
+  // box, and the point is that the operator reads it before the next run.
+  const CrashDumpChannel live = ProbeCrashDumpChannel(L"urnetworkd.exe");
+  Check(true,
+        "probed THIS machine's WER configuration (read-only; nothing written)",
+        std::format("wer_disabled={} local_dumps_key_exists={} "
+                    "…and_has_values_of_its_own={} for_urnetworkd={} "
+                    "dump_type={}",
+                    live.werDisabled, live.localDumpsGlobal,
+                    live.localDumpsGlobalHasValues, live.localDumpsForThisExe,
+                    live.dumpType));
+  std::printf("  ----  on THIS machine, after a native fault:\n        %s\n",
+              DescribeCrashDumpChannel(live, "urnetworkd.exe").c_str());
+}
+
 // --- the per-thread terminate belt (task #39) --------------------------------
 //
 // WHAT THIS CAN AND CANNOT PROVE. It cannot prove the guard reverts routes or
@@ -2331,6 +2438,26 @@ void TestThreadGuard() {
         "StartGuardedThread arms and names the thread it creates, so a thread "
         "added later inherits the instrumentation instead of opting out of it",
         nameStarted);
+
+  // THE REASON ServiceMain HAD TO BE ARMED BY HAND, pinned rather than argued.
+  //
+  // An unarmed thread does not get nothing — it gets the CRT's DEFAULT handler,
+  // which measurably is NOT null on this toolchain (an earlier version of this
+  // check asserted null and failed, which is why the check now states what the
+  // machine actually does). What matters is that the default is the SAME on
+  // every fresh thread and is not ours: it runs no log line and no
+  // NetworkConfig::CrashRevert(). StartServiceCtrlDispatcher calls ServiceMain
+  // on a thread IT creates, so on the SCM path the thread running SdkInit, the
+  // control server and the entire teardown sat in exactly this state until
+  // main.cpp started arming it by hand.
+  std::terminate_handler bare2 = nullptr;
+  std::thread([&] { bare2 = std::get_terminate(); }).join();
+  Check(bare2 == bare && bare != outer,
+        "every unarmed thread gets the same CRT DEFAULT handler, and it is not "
+        "ours — so a thread we never armed cannot log or revert, which is why "
+        "the SCM's ServiceMain thread had to arm its own",
+        std::format("two fresh threads agree={} and differ from wmain's={}",
+                    bare2 == bare, bare != outer));
 
   bool ranPastCatch = false;
   StartGuardedThread("selftest-inner-catch", [&] {
@@ -2778,6 +2905,7 @@ int RunSelfTest() {
   TestRpcSessionBlob();
   TestGoCrashCapture();
   TestThreadGuard();
+  TestCrashDumpChannel();
   TestHeartbeat();
   TestWireSerialization();
 

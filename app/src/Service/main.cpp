@@ -24,6 +24,7 @@
 
 #include "ConsoleArgs.h"
 #include "ControlServer.h"
+#include "CrashDumps.h"
 #include "Heartbeat.h"
 #include "Ids.h"
 #include "InstallVerb.h"
@@ -73,6 +74,13 @@ void SetState(DWORD state, DWORD exitCode = NO_ERROR, DWORD waitHint = 0) {
 }
 
 DWORD WINAPI HandlerEx(DWORD control, DWORD, LPVOID, LPVOID) {
+  // THE SCM CALLS THIS ON ITS OWN THREAD, NOT ON ServiceMain's. Nothing this
+  // process ran armed a terminate handler there, so an escape from SetState's
+  // formatting or from LogInfo would have reached the default handler: abort,
+  // no line, no NetworkConfig::CrashRevert(). This is the thread that carries
+  // every stop and shutdown request, which makes it the last one that should be
+  // able to die without saying so. Idempotent and ~free after the first call.
+  ArmThreadGuard("scm-control");
   switch (control) {
     case SERVICE_CONTROL_STOP:
     case SERVICE_CONTROL_SHUTDOWN:
@@ -367,6 +375,11 @@ std::atomic<int> g_stopPresses{0};
 }
 
 BOOL WINAPI OnConsoleControl(DWORD type) {
+  // Windows runs each console control event on its OWN thread (see g_stopPresses
+  // above), created by the OS, which has therefore never armed one of our
+  // terminate handlers. Same reasoning as HandlerEx: this is a shutdown path,
+  // and a shutdown path that can die silently is how a machine keeps its routes.
+  ArmThreadGuard("console-control");
   switch (type) {
     case CTRL_C_EVENT:
     case CTRL_BREAK_EVENT: {
@@ -570,6 +583,25 @@ void ArmGoCrashCapture() {
 }
 
 void WINAPI ServiceMain(DWORD, LPWSTR*) {
+  // THE BIGGEST HOLE IN THE BELT, AND THE LEAST OBVIOUS ONE.
+  //
+  // wmain calls std::set_terminate, and on MSVC that handler is PER-THREAD. But
+  // StartServiceCtrlDispatcher does not call ServiceMain on the wmain thread —
+  // it creates a thread per service entry and calls it there. So on the SCM
+  // path, the thread that runs SdkInit, the control server, the whole session
+  // and the entire teardown had NO terminate handler at all: an exception
+  // escaping any of it reached the default handler, which aborts without one
+  // log line and without NetworkConfig::CrashRevert().
+  //
+  // That is the same silent, revert-less death ThreadGuard was written to end,
+  // on the single most important thread in the process, on the only path the
+  // owner actually runs. Every worker thread was covered and this one was not.
+  //
+  // FIRST, ahead of even ArmGoCrashCapture: arming costs a thread-local store
+  // and a std::set_terminate, touches nothing else in the process, and cannot
+  // be what fails — while ArmGoCrashCapture opens files and formats strings,
+  // which is already something worth being covered for.
+  ArmThreadGuard("service-main");
   ArmGoCrashCapture();
   g_statusHandle = ::RegisterServiceCtrlHandlerExW(ids::kServiceName, HandlerEx, nullptr);
   if (!g_statusHandle) {
@@ -1292,6 +1324,14 @@ int wmain(int argc, wchar_t** argv) {
   // post-SdkInit calls are the ones that would still work if the DLL ever became
   // delay-loaded.
   UnblindErrorMode("wmain entry");
+  // …and immediately: does the channel we just reopened actually PRODUCE
+  // anything on this machine? Clearing the bit restores the ability to reach
+  // WER; what WER writes is machine configuration this process does not own,
+  // and on a box with no LocalDumps key the answer is "an event log entry and
+  // no stack". Stated every start so nobody has to infer it from an empty
+  // CrashDumps folder after the next death — see CrashDumps.h.
+  LogInfo("{}", DescribeCrashDumpChannel(ProbeCrashDumpChannel(L"urnetworkd.exe"),
+                                         "urnetworkd.exe"));
 
   // Before every other verb: it is the only one that is structurally incapable
   // of touching the machine, so it can never be the thing that broke something.

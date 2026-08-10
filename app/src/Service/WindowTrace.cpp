@@ -12,6 +12,7 @@
 
 #include "Log.h"
 #include "Strings.h"
+#include "ThreadGuard.h"
 
 namespace urnw {
 namespace {
@@ -178,9 +179,17 @@ void WindowTrace::Start(urnet::DeviceLocal* device, const WindowTraceConfig& cfg
           "is the typed reliability surface, which carries the dial outcomes "
           "that cancellation was masking.");
 
-  thread_ = std::thread([this, device, interval = cfg.interval] {
-    Run(device, interval);
-  });
+  // The last std::thread this service owned that was not created through the
+  // guard. Off by default, which is why it was easy to miss — and exactly why
+  // it should be guarded: a thread that only runs when someone is already
+  // investigating a death is a poor place to lose one. Run() polls the SDK's
+  // typed reliability surface and formats it, so it allocates on every tick.
+  // StartGuardedThread returns an ordinary joinable std::thread, so the join in
+  // Stop() below is unchanged.
+  thread_ = StartGuardedThread("sdk-window-trace",
+                               [this, device, interval = cfg.interval] {
+                                 Run(device, interval);
+                               });
 }
 
 void WindowTrace::Stop() {
