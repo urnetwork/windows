@@ -158,31 +158,15 @@ winrt::Windows::UI::Color LocationColor(const urnet::ConnectLocation& loc) {
   return ColorFromHex(urnet::getColorHex(code));
 }
 
-bool SameId(std::optional<std::string> const& a, std::optional<std::string> const& b) {
-  return a && b && !a->empty() && *a == *b;
-}
-
-// The selected-location tests (ConnectViewController.getSelectedLocation()):
-// best-available when nothing is selected or the id flags it; a peer/location by
-// comparing the connect_location_id parts.
-bool IsBestAvailableSelected(std::optional<urnet::ConnectLocation> const& selected) {
-  return !selected || (selected->connect_location_id &&
-                       selected->connect_location_id->best_available.value_or(false));
-}
-
+// The selected-location tests (SameId / IsBestAvailableSelected /
+// IsLocationSelected) used to live here; they moved to SdkHost (declared in
+// SdkHost.h) when the row-click coalescer became a third consumer of the same
+// identity question. Only the peer flavour stays, because only these two
+// surfaces render peer rows.
 bool IsPeerSelected(std::optional<urnet::ConnectLocation> const& selected,
                     urnet::NetworkPeer const& peer) {
   if (!selected || !selected->connect_location_id) return false;
   return SameId(selected->connect_location_id->client_id, peer.ClientId);
-}
-
-bool IsLocationSelected(std::optional<urnet::ConnectLocation> const& selected,
-                        urnet::ConnectLocation const& loc) {
-  if (!selected || !selected->connect_location_id || !loc.connect_location_id) return false;
-  const auto& a = *selected->connect_location_id;
-  const auto& b = *loc.connect_location_id;
-  return SameId(a.location_id, b.location_id) || SameId(a.client_id, b.client_id) ||
-         SameId(a.location_group_id, b.location_group_id);
 }
 
 bool NonEmpty(std::optional<urnet::ConnectLocationList> const& list) {
@@ -351,8 +335,10 @@ Grid LocationChooserSheet::MakeLocationRow(const urnet::ConnectLocation& locatio
   const urnet::ConnectLocation locationCopy = location;
   row.Tapped([weak, locationCopy](IInspectable const&, auto const&) {
     if (auto self = weak.lock()) {
-      self->sdk_.Connect(locationCopy);  // SDK persists the selection internally
-      self->dialog_.Hide();              // dismiss on connect (iOS/android parity)
+      // Coalesced (see ConnectFromRow): the SDK still persists the selection
+      // internally when the settled intent fires.
+      self->sdk_.ConnectFromRow(locationCopy);
+      self->dialog_.Hide();  // dismiss on connect (iOS/android parity)
     }
   });
   return row;
@@ -397,7 +383,7 @@ Grid LocationChooserSheet::MakePeerRow(const urnet::NetworkPeer& peer, bool sele
     id.client_id = peerCopy.ClientId;
     location.connect_location_id = id;
     location.name = PeerDisplayName(peerCopy);
-    self->sdk_.Connect(location);
+    self->sdk_.ConnectFromRow(location);  // coalesced, like every row click
     self->dialog_.Hide();
   });
   return row;
@@ -428,7 +414,7 @@ Grid LocationChooserSheet::MakeBestAvailableRow(bool selected) {
   std::weak_ptr<LocationChooserSheet> weak = weak_from_this();
   row.Tapped([weak](IInspectable const&, auto const&) {
     if (auto self = weak.lock()) {
-      self->sdk_.ConnectBestAvailable();
+      self->sdk_.ConnectBestAvailableFromRow();  // coalesced, like every row click
       self->dialog_.Hide();
     }
   });
@@ -684,8 +670,10 @@ void NetworkPage::AppendLocationSection(hstring const& title,
     // Same action as the sheet's row: select AND connect. Deliberately not a
     // new "highlight" concept - one model, one meaning, and the detail pane
     // then genuinely shows the SELECTED provider rather than a hover state.
+    // Coalesced (ConnectFromRow): a scroll-and-click hunt through this list
+    // fires one connect, not one per row visited.
     row.Click([this, copy](IInspectable const&, auto const&) {
-      Sdk().Connect(copy);
+      Sdk().ConnectFromRow(copy);
       Render();
     });
     w_.NetworkListHost().Children().Append(row);
@@ -718,7 +706,7 @@ void NetworkPage::Render() {
         id.client_id = copy.ClientId;
         location.connect_location_id = id;
         location.name = PeerDisplayName(copy);
-        Sdk().Connect(location);
+        Sdk().ConnectFromRow(location);  // coalesced, like every row click
         Render();
       });
       host.Children().Append(row);
@@ -734,7 +722,7 @@ void NetworkPage::Render() {
                        IsBestAvailableSelected(selected), /*unstable=*/false,
                        /*strongPrivacy=*/false, /*providing=*/false);
     row.Click([this](IInspectable const&, auto const&) {
-      Sdk().ConnectBestAvailable();
+      Sdk().ConnectBestAvailableFromRow();  // coalesced, like every row click
       Render();
     });
     host.Children().Append(row);
@@ -882,7 +870,7 @@ void NetworkPage::RenderDetail() {
     auto reset = MakeRow(Loc("best_available_provider"), hstring{}, colors::kUrCoral,
                          /*selected=*/false, false, false, false);
     reset.Click([this](IInspectable const&, auto const&) {
-      Sdk().ConnectBestAvailable();
+      Sdk().ConnectBestAvailableFromRow();  // coalesced, like every row click
       Render();
     });
     host.Children().Append(reset);

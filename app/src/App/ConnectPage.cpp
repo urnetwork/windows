@@ -219,18 +219,21 @@ void ConnectPage::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
     return;
   }
   // Connect to what the user PICKED. This button used to call
-  // ConnectBestAvailable() unconditionally, while the chooser's own rows call
-  // Connect(location) directly -- so choosing Japan and then pressing Connect
-  // silently sent you somewhere else, and the two controls contradicted each
-  // other with no way to tell from the UI. Android connects to
-  // connectViewModel.selectedLocation; do the same, and fall back to
+  // ConnectBestAvailable() unconditionally, while the chooser's own rows
+  // connect to their location directly -- so choosing Japan and then pressing
+  // Connect silently sent you somewhere else, and the two controls
+  // contradicted each other with no way to tell from the UI. Android connects
+  // to connectViewModel.selectedLocation; do the same, and fall back to
   // best-available only when there genuinely is no selection (the SDK flags
-  // best-available on the selection itself -- LocationSheets
-  // IsBestAvailableSelected uses the same test).
+  // best-available on the selection itself -- IsBestAvailableSelected, the
+  // same test the chooser's check glyphs use).
+  //
+  // Deliberately the IMMEDIATE entry points, not the coalesced row variants
+  // (SdkHost::ConnectFromRow): this is a single explicit press of THE connect
+  // button, not a hunt through a list, and it also supersedes any row intent
+  // still settling.
   const auto selected = Sdk().SelectedLocation();
-  const bool bestAvailable =
-      !selected || (selected->connect_location_id &&
-                    selected->connect_location_id->best_available.value_or(false));
+  const bool bestAvailable = IsBestAvailableSelected(selected);
   // Say "connecting" NOW rather than waiting for the SDK to push it back. On a
   // client that has never run, a Connect press that produces no visible change
   // is indistinguishable from a hang; the next status push corrects this if the

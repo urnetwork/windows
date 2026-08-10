@@ -148,6 +148,18 @@ SdkHost::~SdkHost() {
   // would deadlock, and letting it outlive this object would leave a thread
   // dialling a pipe on behalf of a destroyed host.
   StopServiceWatchdog();
+  // Drain the session-request slot. The worker is detached by design (see
+  // RequestSession) and a request mid-flight at destruction has always been a
+  // shutdown race the process exit wins; but the row-click settle added a
+  // worker that deliberately SLEEPS on pendingCv_ for the settle window, and
+  // that one can and must be told to get up now — it wakes, finds the slot
+  // empty, and exits without ever touching the wider object.
+  {
+    std::scoped_lock lock(pendingMutex_);
+    pending_ = SessionRequest{};
+    pendingRequested_ = false;
+    pendingCv_.notify_all();
+  }
   std::scoped_lock lock(mutex_);
   subs_.clear();
 }
@@ -2065,21 +2077,37 @@ LiveStats SdkHost::ReadStats() {
   if (connectVc_) {
     s.connectionStatus = connectVc_->getConnectionStatus();
     s.connected = connectVc_->getConnected();
-    auto grid = connectVc_->getGrid();
-    s.providerCount = grid.getWindowCurrentSize();
-    // The provider grid itself, for the hero canvas. getWidth/getHeight return
-    // scalars and cannot throw; the point LIST goes through ReadSdkList like
-    // every other list getter, because a nil Go slice marshals as the four-byte
-    // document `null` and seven of eleven list getters were observed throwing
-    // type_error.302 against a live session. An empty grid is a normal state
-    // here, so a nullopt simply leaves the vector empty and the hero renders
-    // its bare lattice.
-    s.gridWidth = grid.getWidth();
-    s.gridHeight = grid.getHeight();
-    static std::atomic<bool> gridLogged{false};
-    if (auto pts = ReadSdkList(gridLogged, "getProviderGridPointList",
-                               [&] { return grid.getProviderGridPointList(); })) {
-      s.gridPoints = std::move(*pts);
+    // getGrid() returns a HANDLE, not a value, and while nothing is connected
+    // the Go side has no grid object at all — the call comes back as handle 0.
+    // The old code called all four grid getters on that zero handle anyway,
+    // and each call was a nil-receiver panic on the Go side, recovered and
+    // logged by the cgo guard (handles.go: resolveHandle(0) answers ok=true).
+    // MEASURED at ~570 "[cgo]urnet_connect_grid_get_* panicked" lines across a
+    // session left sitting disconnected, four per stats push, all noise (the
+    // owner's beta logs; signed-out never even opens this controller, so the
+    // spam was the signed-in idle state — the commonest state there is). A
+    // zero handle is the
+    // SDK saying "there is no grid"; treat it as the empty grid it is — the
+    // defaults below (0 providers, 0x0, no points) are exactly what the
+    // rpc-only and service-down clamps already produce, and the hero renders
+    // them as its bare lattice. The guard stays correct against the coming SDK
+    // fix too (resolveHandle(0) -> ok=false): the calls are simply never made.
+    if (auto grid = connectVc_->getGrid()) {
+      s.providerCount = grid.getWindowCurrentSize();
+      // The provider grid itself, for the hero canvas. getWidth/getHeight return
+      // scalars and cannot throw; the point LIST goes through ReadSdkList like
+      // every other list getter, because a nil Go slice marshals as the four-byte
+      // document `null` and seven of eleven list getters were observed throwing
+      // type_error.302 against a live session. An empty grid is a normal state
+      // here, so a nullopt simply leaves the vector empty and the hero renders
+      // its bare lattice.
+      s.gridWidth = grid.getWidth();
+      s.gridHeight = grid.getHeight();
+      static std::atomic<bool> gridLogged{false};
+      if (auto pts = ReadSdkList(gridLogged, "getProviderGridPointList",
+                                 [&] { return grid.getProviderGridPointList(); })) {
+        s.gridPoints = std::move(*pts);
+      }
     }
   } else if (device_) {
     s.connected = device_->getConnectLocation().has_value();
@@ -3400,6 +3428,28 @@ std::optional<urnet::ConnectLocation> SdkHost::SelectedLocation() {
   return std::nullopt;
 }
 
+// ---- selection identity (shared: sheet, Network pane, row coalescer) -------
+// Declared in SdkHost.h; the narrative is there. The bodies moved verbatim
+// from LocationSheets.cpp's anonymous namespace.
+
+bool SameId(std::optional<std::string> const& a, std::optional<std::string> const& b) {
+  return a && b && !a->empty() && *a == *b;
+}
+
+bool IsBestAvailableSelected(std::optional<urnet::ConnectLocation> const& selected) {
+  return !selected || (selected->connect_location_id &&
+                       selected->connect_location_id->best_available.value_or(false));
+}
+
+bool IsLocationSelected(std::optional<urnet::ConnectLocation> const& selected,
+                        urnet::ConnectLocation const& loc) {
+  if (!selected || !selected->connect_location_id || !loc.connect_location_id) return false;
+  const auto& a = *selected->connect_location_id;
+  const auto& b = *loc.connect_location_id;
+  return SameId(a.location_id, b.location_id) || SameId(a.client_id, b.client_id) ||
+         SameId(a.location_group_id, b.location_group_id);
+}
+
 // ---- connect: bring the tunnel up, then pick providers ---------------------
 //
 // See the block on these three in SdkHost.h. Each records an intent and returns
@@ -3442,6 +3492,86 @@ void SdkHost::Connect(const urnet::ConnectLocation& location) {
   RequestSession(std::move(r));
 }
 
+// ---- row clicks: the same connects, coalesced ------------------------------
+// The rules and the reason are on the declarations in SdkHost.h. In short: a
+// row click's intent settles for kRowClickSettle before the worker acts, a
+// later click replaces it, re-clicking the current target is a no-op, and any
+// immediate request (Disconnect, the connect button, the tray) supersedes a
+// settling intent through the ordinary last-request-wins slot.
+
+namespace {
+// ~1.2s: long enough to absorb a scroll-and-click hunt through the location
+// list, short enough that a single deliberate click still feels acted on. The
+// SDK charges 100ms-1s of shared dial budget per provider dial and refunds
+// nothing on cancellation, so every click this absorbs is up to ~10s of
+// staircase debt (one window's worth of dials) that never gets incurred.
+constexpr auto kRowClickSettle = std::chrono::milliseconds(1200);
+}  // namespace
+
+bool SdkHost::RowClickIsCurrent(
+    const std::function<bool(const std::optional<urnet::ConnectLocation>&)>& matches) {
+  // No session, or no presentation-scoped controller: nothing can be current.
+  // (Lock-free by design — see the declaration. The same unguarded connectVc_
+  // read ReadStats has always done from these threads.)
+  if (!connectVc_) return false;
+  // Active means the SDK is driving at the selection NOW. A re-click during
+  // CONNECTING must coalesce away just like one during CONNECTED — the whole
+  // point is not to restart a window build that is already in progress — but
+  // after a Disconnect the selection survives as a preference, and clicking it
+  // then is a genuine "connect me again".
+  const std::string status = connectVc_->getConnectionStatus();
+  const bool active =
+      status == "CONNECTED" || status == "CONNECTING" || status == "DESTINATION_SET";
+  if (!active) return false;
+  return matches(connectVc_->getSelectedLocation());
+}
+
+void SdkHost::CancelPendingRowConnect(const char* why) {
+  std::scoped_lock lock(pendingMutex_);
+  if (pendingRequested_ && pending_.coalesced) {
+    LogInfo("sdkhost: pending '{}' cancelled ({})", pending_.reason, why);
+    pending_ = SessionRequest{};
+    pendingRequested_ = false;
+    // A worker may be sleeping toward the cancelled intent's deadline; wake it
+    // so it sees the empty slot and exits instead of oversleeping.
+    pendingCv_.notify_all();
+  }
+}
+
+void SdkHost::ConnectFromRow(const urnet::ConnectLocation& location) {
+  if (RowClickIsCurrent(
+          [&](const std::optional<urnet::ConnectLocation>& sel) {
+            return IsLocationSelected(sel, location);
+          })) {
+    // Already there. The only work left is un-queuing a newer intent, so a
+    // "click B, regret it, click A again" round trip ends with zero rebuilds.
+    CancelPendingRowConnect("re-selected the current location");
+    return;
+  }
+  SessionRequest r;
+  r.kind = ConnectKind::Location;
+  r.location = location;
+  r.reason = "connect (row click)";
+  r.coalesced = true;
+  r.notBefore = std::chrono::steady_clock::now() + kRowClickSettle;
+  RequestSession(std::move(r));
+}
+
+void SdkHost::ConnectBestAvailableFromRow() {
+  if (RowClickIsCurrent([](const std::optional<urnet::ConnectLocation>& sel) {
+        return IsBestAvailableSelected(sel);
+      })) {
+    CancelPendingRowConnect("re-selected best available");
+    return;
+  }
+  SessionRequest r;
+  r.kind = ConnectKind::BestAvailable;
+  r.reason = "connect (row click, best available)";
+  r.coalesced = true;
+  r.notBefore = std::chrono::steady_clock::now() + kRowClickSettle;
+  RequestSession(std::move(r));
+}
+
 void SdkHost::EnsureSession(const char* reason) {
   SessionRequest r;
   r.kind = ConnectKind::None;
@@ -3461,14 +3591,36 @@ void SdkHost::RequestSession(SessionRequest request) {
   // LAST REQUEST WINS. Two presses in a row, or a press while a bootstrap is
   // running, must not queue two start_tunnels — they must land on one session
   // and the destination the user chose most recently.
-  pending_ = std::move(request);
+  //
+  // ONE exception, born with the row-click settle window: a bare "make sure a
+  // session exists" (kind None — the resume path, a network-server change, the
+  // service watchdog) must not REPLACE a pending connect. Every connect
+  // creates the session it needs, so the ensure is already implied by what is
+  // sitting in the slot, and replacing would throw the user's destination
+  // choice away for a request that wanted strictly less. Before the settle
+  // window this race was microseconds wide; at 1.2s of deliberate delay it
+  // would be a click the watchdog eats.
+  const bool covered = pendingRequested_ && request.kind == ConnectKind::None &&
+                       pending_.kind != ConnectKind::None;
+  if (covered) {
+    LogInfo("sdkhost: '{}' is covered by the pending '{}'", request.reason,
+            pending_.reason);
+  } else {
+    pending_ = std::move(request);
+  }
   pendingRequested_ = true;
+  // Wake a worker that is sleeping out a settle deadline: the replacement may
+  // be IMMEDIATE (a Disconnect, an explicit connect) and must not wait behind
+  // the deadline of the row click it just superseded.
+  pendingCv_.notify_all();
   // sessionWorkerAlive_ is read and written ONLY under this lock, by both the
   // producer here and the worker as it exits, so a request that arrives while
   // the worker is finishing cannot fall between them.
   if (sessionWorkerAlive_) {
-    LogInfo("sdkhost: '{}' folded into the session start already in flight",
-            pending_.reason);
+    if (!covered) {
+      LogInfo("sdkhost: '{}' folded into the session start already in flight",
+              pending_.reason);
+    }
     return;
   }
   sessionWorkerAlive_ = true;
@@ -3479,7 +3631,17 @@ void SdkHost::SessionWorkerLoop() {
   for (;;) {
     SessionRequest req;
     {
-      std::scoped_lock lock(pendingMutex_);
+      std::unique_lock<std::mutex> lock(pendingMutex_);
+      // The row-click settle: a coalesced request is not consumed before its
+      // deadline. Loop rather than a single wait — a replacement can land with
+      // a LATER deadline (the next click of a burst) or an earlier one (an
+      // immediate Disconnect), and a cancel can empty the slot entirely, so
+      // every wakeup re-reads the slot from scratch. Immediate requests carry
+      // an epoch deadline and fall straight through.
+      while (pendingRequested_ &&
+             std::chrono::steady_clock::now() < pending_.notBefore) {
+        pendingCv_.wait_until(lock, pending_.notBefore);
+      }
       if (!pendingRequested_) {
         sessionWorkerAlive_ = false;
         return;

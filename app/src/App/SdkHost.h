@@ -7,6 +7,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -124,6 +125,21 @@ struct LiveStats {
   int64_t gridWidth = 0;   // grid columns; 0 until the grid has a point
   int64_t gridHeight = 0;  // grid rows
 };
+
+// ---- selection identity ----------------------------------------------------
+// The tests for "is this location the selected one", against
+// ConnectViewController.getSelectedLocation(): best-available when nothing is
+// selected or the id flags it; a location/peer by comparing the
+// connect_location_id parts. These lived in LocationSheets.cpp's anonymous
+// namespace for the chooser sheet's and the Network pane's check glyphs; they
+// moved here when SdkHost's row-click coalescer became a third consumer of the
+// same question (ConnectFromRow's re-select no-op) — three copies of an
+// identity predicate is how surfaces drift into disagreeing about what is
+// selected.
+bool SameId(std::optional<std::string> const& a, std::optional<std::string> const& b);
+bool IsBestAvailableSelected(std::optional<urnet::ConnectLocation> const& selected);
+bool IsLocationSelected(std::optional<urnet::ConnectLocation> const& selected,
+                        urnet::ConnectLocation const& location);
 
 // ---- connect drawer snapshots (macOS ConnectStatsSections parity) ----------
 
@@ -661,6 +677,36 @@ class SdkHost {
   // ConnectLocation (an SDK one, or one it built from a peer), so skip the json
   // round-trip that Connect(const std::string&) does.
   void Connect(const urnet::ConnectLocation& location);
+  // The ROW-CLICK variants of the two connects above, for the chooser sheet's
+  // and the Network pane's select-and-connect rows. Same connect, two extra
+  // rules (debounce + idempotence only — the rows keep their one meaning):
+  //
+  //   * COALESCED. Every row click is a real connect, and every connect makes
+  //     the SDK tear down the current exit's provider window and queue a
+  //     rebuild behind the connect repo's shared dial-pacing staircase
+  //     (NextConnectTime reserves 100ms-1s of shared dial budget per cold dial
+  //     and never rolls a reservation back when the waiter is cancelled). A
+  //     burst of clicks therefore runs the staircase minutes ahead of `now`,
+  //     and every exit born after that sits "transport down: verdicts held"
+  //     until its evaluation expires — the owner's stuck pending-yellows. The
+  //     staircase is the SDK's bug to fix; the app's share is to stop
+  //     machine-gunning destination changes at it. A row click records the
+  //     intent immediately but the session worker does not act until it has
+  //     sat still for ~1.2s; a later click replaces it and restarts the clock.
+  //   * IDEMPOTENT. Re-clicking the row the session is already driving at
+  //     (selected AND connecting/connected) is a no-op instead of a rebuild of
+  //     a window the user is happily inside — though it still cancels any
+  //     newer pending row intent, so "click away, think better of it, click
+  //     back" ends where it started.
+  //
+  // A pending row intent is CANCELLED by Disconnect and superseded by the
+  // immediate entry points above (the connect page's button, the tray toggle):
+  // all of them go through the same last-request-wins slot with no settle
+  // delay. There is deliberately no UI timer behind this — the settle is the
+  // session worker waiting on the request slot's condition variable, so it
+  // works identically from every surface and thread that can issue a connect.
+  void ConnectFromRow(const urnet::ConnectLocation& location);
+  void ConnectBestAvailableFromRow();
   // Own presentation-only view controllers only while the WinUI window is
   // visible. The DeviceRemote and service tunnel remain alive in the tray.
   void SetPresentationActive(bool active);
@@ -1014,6 +1060,15 @@ class SdkHost {
     std::optional<urnet::ConnectLocation> location;
     // Static string, for the log. Never user-facing.
     const char* reason = "";
+    // Row clicks only (ConnectFromRow / ConnectBestAvailableFromRow): the
+    // worker must not consume this request before `notBefore`, and every
+    // replacement carries its own deadline — so a click burst keeps pushing
+    // the one pending intent forward and only the last click ever fires.
+    // Immediate requests leave it at the epoch, which is always in the past.
+    std::chrono::steady_clock::time_point notBefore{};
+    // Eligible for CancelPendingRowConnect: only a settling row click may be
+    // silently discarded. An explicit press or a Disconnect never is.
+    bool coalesced = false;
   };
   // Record the request and make sure a worker is running. Takes ONLY
   // pendingMutex_ — never mutex_ — so it is safe from the UI thread while a
@@ -1026,8 +1081,24 @@ class SdkHost {
   void SessionWorkerLoop();
   // Apply the request's connect intent. Caller holds mutex_.
   void ConnectLocked(const SessionRequest& request);
+  // Row-click support (see ConnectFromRow). Whether the session is already
+  // driving at the clicked target: `matches` is handed the SDK's own selected
+  // location, and the answer is AND-ed with the connection status being
+  // active (connecting or connected) — a selection the user has since
+  // disconnected from must reconnect, not no-op. Deliberately lock-free, the
+  // same pattern as ReadStats: it runs on the UI thread inside a click, and
+  // mutex_ can be held across a whole bootstrap.
+  bool RowClickIsCurrent(
+      const std::function<bool(const std::optional<urnet::ConnectLocation>&)>& matches);
+  // Discard a pending, still-settling row intent (and only that kind). Called
+  // when a re-click of the current location makes the pending intent moot.
+  void CancelPendingRowConnect(const char* why);
 
   std::mutex pendingMutex_;
+  // Signalled on every RequestSession and on CancelPendingRowConnect, so a
+  // worker sleeping out a row click's settle deadline re-reads the slot the
+  // moment a replacement (possibly an IMMEDIATE one, e.g. Disconnect) lands.
+  std::condition_variable pendingCv_;
   SessionRequest pending_;
   bool pendingRequested_ = false;
   bool sessionWorkerAlive_ = false;
