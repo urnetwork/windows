@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <filesystem>
 #include <iterator>
 #include <memory>
 #include <set>
@@ -2118,6 +2119,158 @@ void TestConnectionHealth() {
         "ToString names every state");
 }
 
+// --- the Go runtime crash capture (task #39) ---------------------------------
+//
+// This is the one test here that touches the filesystem, and it is worth the
+// exception. Everything the capture promises is a promise about a moment nobody
+// will be present for — a Go fatal in a LocalSystem service, minutes into a
+// tunnel, with the process about to call ExitProcess and take the evidence with
+// it. There is no second chance to notice it did not work, so the mechanism is
+// exercised end to end rather than described.
+//
+// It runs entirely inside a temp directory of its own and puts this process's
+// stderr back where it found it. It opens no adapter, writes no route and does
+// not go near the filter engine.
+
+// Read a file that ANOTHER handle currently holds open for writing. This is not
+// incidental to the test: the capture is only useful if the owner can read the
+// crash file off a running service, so the share modes are part of the contract.
+std::string ReadFileWhileOpen(const std::filesystem::path& p) {
+  HANDLE h = ::CreateFileW(p.c_str(), GENERIC_READ,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                           nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (h == INVALID_HANDLE_VALUE) return {};
+  std::string out;
+  char buf[4096];
+  DWORD got = 0;
+  while (::ReadFile(h, buf, sizeof(buf), &got, nullptr) && got > 0)
+    out.append(buf, got);
+  ::CloseHandle(h);
+  return out;
+}
+
+void TestGoCrashCapture() {
+  Section("go crash capture — where a Go runtime fatal goes (task #39)");
+
+  const std::filesystem::path dir =
+      std::filesystem::temp_directory_path() /
+      ("urnetworkd-selftest-gocrash-" + std::to_string(::GetCurrentProcessId()));
+  std::error_code ec;
+  std::filesystem::remove_all(dir, ec);
+
+  // Every arm below repoints this process's STD_ERROR_HANDLE and leaves the
+  // capture handle open, because that is what the real thing does — it is meant
+  // to outlive everything and be reclaimed by process exit. A test cannot exit
+  // the process, so it plays the part of process exit itself: take the handle
+  // back out of STD_ERROR_HANDLE, restore what was there, and close it.
+  const HANDLE savedStderr = ::GetStdHandle(STD_ERROR_HANDLE);
+  const auto releaseCapture = [&] {
+    const HANDLE held = ::GetStdHandle(STD_ERROR_HANDLE);
+    ::SetStdHandle(STD_ERROR_HANDLE, savedStderr);
+    if (held && held != INVALID_HANDLE_VALUE && held != savedStderr)
+      ::CloseHandle(held);
+  };
+
+  // --- arm it on a clean directory ------------------------------------------
+  const GoCrashCapture first = RedirectGoCrashOutput(dir);
+  Check(first.armed, "arming the capture on a fresh dir succeeds", first.error);
+  Check(first.path == dir / L"go-crash.log", "it names go-crash.log");
+  Check(std::filesystem::exists(first.path), "the file exists immediately");
+  Check(std::filesystem::file_size(first.path, ec) == 0 && !ec,
+        "…and starts empty, which is the healthy steady state");
+  Check(first.carried_over.empty() && first.carried_over_bytes == 0,
+        "a first-ever start carries nothing over");
+
+  // --- write the way runtime.write1 writes ----------------------------------
+  //
+  // THE assertion this whole section exists for. The Go runtime does not write
+  // through the CRT and cannot be asked to write anywhere: it calls
+  // GetStdHandle(STD_ERROR_HANDLE) for itself and WriteFile()s to the result.
+  // So the test does exactly that, with no CRT in the path, and then looks in
+  // the file. If this does not land, nothing else here means anything.
+  const HANDLE armed = ::GetStdHandle(STD_ERROR_HANDLE);
+  Check(armed != savedStderr && armed != INVALID_HANDLE_VALUE,
+        "STD_ERROR_HANDLE — the one thing the Go runtime consults — was moved");
+
+  static constexpr char kMarker[] =
+      "fatal error: urnetworkd selftest marker, not a real crash\n";
+  static constexpr char kSecond[] = "goroutine 1 [running]:\n";
+  const DWORD markerLen = static_cast<DWORD>(sizeof(kMarker) - 1);
+  const DWORD secondLen = static_cast<DWORD>(sizeof(kSecond) - 1);
+  DWORD wrote = 0;
+  const BOOL ok = ::WriteFile(armed, kMarker, markerLen, &wrote, nullptr);
+  Check(ok && wrote == markerLen,
+        "a raw WriteFile to STD_ERROR_HANDLE lands, as the Go runtime's would");
+
+  const std::string live = ReadFileWhileOpen(first.path);
+  const DWORD liveErr = ::GetLastError();
+  Check(live == kMarker,
+        "…and is readable from another handle WHILE the capture holds it open — "
+        "an unreadable crash file would be no crash file at all",
+        std::format("read {} bytes, last error {}, on-disk size {}", live.size(),
+                    liveErr, std::filesystem::file_size(first.path, ec)));
+
+  // A traceback is many writes, not one, and the handle is append-only so that
+  // none of them can land on top of another. Proving it takes one more write.
+  DWORD wrote2 = 0;
+  ::WriteFile(armed, kSecond, secondLen, &wrote2, nullptr);
+  Check(ReadFileWhileOpen(first.path) == std::string(kMarker) + kSecond,
+        "successive writes APPEND — a multi-line traceback accumulates rather "
+        "than overwriting itself");
+
+  const DWORD capturedLen = markerLen + secondLen;
+  releaseCapture();
+
+  // --- a crash, then a restart: the evidence has to survive ------------------
+  // This is the hazard the rotation exists for. The service is configured to
+  // auto-restart on failure, so the run that follows a Go fatal is five seconds
+  // behind it and is the most likely thing to destroy the only copy.
+  const GoCrashCapture second = RedirectGoCrashOutput(dir);
+  Check(second.armed, "re-arming after a crashed run succeeds", second.error);
+  Check(second.carried_over == dir / L"go-crash.prev.log" &&
+            second.carried_over_bytes == capturedLen,
+        "the crashed run's output is rotated aside, with its size reported so "
+        "the restart can shout about it");
+  Check(ReadFileWhileOpen(second.carried_over) == std::string(kMarker) + kSecond,
+        "…intact, byte for byte");
+  Check(std::filesystem::file_size(second.path, ec) == 0 && !ec,
+        "…and the new run starts on an empty file again");
+
+  releaseCapture();
+
+  // --- and a HEALTHY restart must not quietly eat it ------------------------
+  // The rotation is conditional on the file being non-empty for exactly this
+  // reason. Rotate unconditionally and one clean restart — an owner rebooting,
+  // an update re-pointing the service — silently replaces the traceback with
+  // nothing, days before anyone thinks to look for it.
+  const GoCrashCapture third = RedirectGoCrashOutput(dir);
+  Check(third.armed, "arming over an empty file succeeds", third.error);
+  Check(third.carried_over.empty(),
+        "a run that wrote nothing rotates nothing");
+  Check(ReadFileWhileOpen(dir / L"go-crash.prev.log") ==
+            std::string(kMarker) + kSecond,
+        "…so the kept traceback survives healthy restarts, not just one");
+
+  releaseCapture();
+
+  // Nothing may be left holding the file. An EXCLUSIVE open (share mode 0) is
+  // the strict form of that question — it succeeds only when this process holds
+  // no other handle at all — and it is the right one to ask, because the capture
+  // shares for delete, so merely deleting the file would prove nothing.
+  const HANDLE exclusive =
+      ::CreateFileW(third.path.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING,
+                    FILE_ATTRIBUTE_NORMAL, nullptr);
+  Check(exclusive != INVALID_HANDLE_VALUE,
+        "releasing the capture really releases the file (an exclusive open of "
+        "it succeeds)",
+        std::format("CreateFileW err={}", ::GetLastError()));
+  if (exclusive != INVALID_HANDLE_VALUE) ::CloseHandle(exclusive);
+
+  std::filesystem::remove_all(dir, ec);
+  Check(!ec && !std::filesystem::exists(dir), "the temp dir cleans up",
+        ec.message());
+}
+
 // --- the app's reattach blob (task #40) --------------------------------------
 //
 // WHY A SERVICE SELFTEST COVERS AN APP FILE. The blob is how the app decides
@@ -2255,10 +2408,14 @@ int RunSelfTest() {
   g_pass = 0;
   g_fail = 0;
   std::printf(
-      "urnetworkd selftest — pure logic only. Nothing here opens the filter\n"
-      "engine, creates an adapter, writes a route or flushes a cache. Two\n"
-      "checks READ the machine (its resolver list, and whether dnsapi exports\n"
-      "the flush entry point); neither changes it. It cannot prove that a\n"
+      "urnetworkd selftest — pure logic, near enough. Nothing here opens the\n"
+      "filter engine, creates an adapter, writes a route or flushes a cache.\n"
+      "Two checks READ the machine (its resolver list, and whether dnsapi\n"
+      "exports the flush entry point); neither changes it. One — the go crash\n"
+      "capture — writes, because it can only be proven by doing: it repoints\n"
+      "THIS process's stderr at a file in its own temp directory, checks what\n"
+      "the Go runtime would write really lands there, then puts stderr back\n"
+      "and deletes the directory. It cannot prove that a\n"
       "filter blocks anything; that needs an elevated session and the\n"
       "leak-validation gates in p7-baseline/p7-gates.ps1. It also cannot prove\n"
       "that --stop-after actually stops at a step — every step past 5 needs\n"
@@ -2283,6 +2440,7 @@ int RunSelfTest() {
   TestInstallVerb();
   TestConnectionHealth();
   TestRpcSessionBlob();
+  TestGoCrashCapture();
 
   Section("WFP object identities (for `netsh wfp show filters` diffs)");
   for (const auto& g : WfpPolicy::ObjectGuidsText())

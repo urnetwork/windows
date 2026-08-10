@@ -10,7 +10,10 @@
 #include <urnetwork_sdk.hpp>
 
 #include <atomic>
+#include <cstdint>
+#include <filesystem>
 #include <optional>
+#include <string>
 
 #include "Log.h"
 
@@ -21,6 +24,113 @@ namespace urnw {
 // NetworkSpace/Device. memoryLimitBytes matches the macOS caps (app ~64MB,
 // service 48-64MB); the service is intentionally memory-bounded.
 void SdkInit(bool isService, int64_t memoryLimitBytes);
+
+// ---- Go runtime crash capture ----------------------------------------------
+//
+// THE PROBLEM THIS SOLVES. The service died ~4.5 minutes into a live tunnel
+// with no C++ log line, no WER report, no Application Error 1000 and no glog
+// FATAL (task #39). That combination is not "a mystery": it is the exact,
+// documented fingerprint of a GO runtime fatal — an unrecovered panic on a
+// goroutine, or a `throw` like "concurrent map writes". The Go runtime prints
+// its whole diagnosis (the message plus goroutine stacks) and then calls
+// ExitProcess(2). It prints that diagnosis to FILE DESCRIPTOR 2 AND NOWHERE
+// ELSE — not through glog, not through this process's logger, not through any
+// callback the C++ side can install. Under the SCM there is no fd 2, so every
+// byte of it is discarded, and the process simply ceases to exist.
+//
+// So the crash is not unlogged because it is exotic. It is unlogged because the
+// one channel it uses is the one channel a Windows service does not have.
+//
+// WHY REPOINTING STD_ERROR_HANDLE IS ENOUGH, AND WHY THAT IS NOT A GUESS. The
+// Go runtime's low-level writer (runtime.write1 in runtime/os_windows.go) does
+// NOT cache the stderr handle. For fd 2 it calls GetStdHandle(STD_ERROR_HANDLE)
+// on EVERY write and hands the result straight to WriteFile. So a SetStdHandle
+// performed at any point in this process's life — long after URnetworkSdk.dll
+// has loaded and its Go runtime has finished initialising — redirects the fatal
+// traceback that has not happened yet.
+//
+// That was verified against the vendored DLL rather than assumed, because the
+// whole value of this file is that it works on the day it is needed. The DLL
+// was loaded, its runtime left to initialise against the inherited console
+// stderr, and only then was STD_ERROR_HANDLE repointed at a file: runtime
+// output written before the switch went to the console and every byte after it
+// went to the file. The same DLL's import table names GetStdHandle, WriteFile
+// and RaiseFailFastException from KERNEL32, which is runtime.write1 and
+// runtime.dieFromException, i.e. the print path and the GOTRACEBACK=crash path.
+//
+// This is deliberately NOT wired into SdkInit. SdkInit runs on the console path
+// too, and console mode is the one place the operator IS reading stderr; taking
+// it away from them to write a file they are not watching would be a downgrade.
+// The service (SCM) path calls this and nothing else does. Console mode gets
+// the same durability for free with a shell redirect — `urnetworkd console
+// 2> go-crash.log` — which costs the operator nothing, because this process's
+// own log echo goes to STDOUT (see LogSetConsoleEcho) and stderr in console
+// mode carries essentially only the Go runtime.
+//
+// WHAT THIS DOES NOT DO. It does not make the process survive, and it does not
+// widen the traceback. Go decides HOW MUCH to print from GOTRACEBACK, which its
+// runtime reads exactly once, inside schedinit, before wmain gets control — so
+// no amount of _wputenv_s/SetEnvironmentVariableW from this process can change
+// it. That is also measured, not assumed (a GODEBUG set after the load produced
+// nothing). GOTRACEBACK is therefore set where it CAN be set: in the service
+// key's Environment value at install time, so the SCM hands it to the process
+// before the loader runs. See InstallService() in Service/main.cpp.
+//
+// The saving grace is that the most likely culprit does not need it: a runtime
+// `throw` (concurrent map write, and every other unrecoverable runtime fault)
+// sets m.throwing, and gotraceback() returns all=true for those REGARDLESS of
+// GOTRACEBACK. Those already dump every goroutine. GOTRACEBACK only widens the
+// unrecovered-panic case.
+struct GoCrashCapture {
+  // stderr — both the CRT stream and STD_ERROR_HANDLE — now lands in `path`.
+  bool armed = false;
+  // This run's file. Normally stays 0 bytes forever: anything in it at all is a
+  // Go runtime fatal, because nothing else in this process writes to stderr
+  // once the SCM has taken it over.
+  std::filesystem::path path;
+  // Set only when the PREVIOUS run left output behind, i.e. when the previous
+  // run died the way #39 died. Empty on a normal start. The caller is expected
+  // to shout about it: the start after the crash is the first moment anyone can
+  // learn the crash happened at all.
+  std::filesystem::path carried_over;
+  std::uintmax_t carried_over_bytes = 0;
+  // Why it is not armed. Empty when armed.
+  std::string error;
+};
+
+// Point this process's STD_ERROR_HANDLE at a durable file in `dir`, and rotate
+// the previous run's file aside first.
+//
+// It repoints the Win32 handle and NOT the CRT's stderr stream, which are two
+// different things — and the Win32 handle is the one that matters, because it
+// is the one the Go runtime reads. The CRT stream is deliberately left alone:
+// on the SCM path nothing writes to it that anyone would miss (this process
+// logs through Log.h, and the SDK through glog), so redirecting it would buy
+// nothing and cost a second handle, a buffering policy and an ownership
+// question in code whose whole job is to be working when everything else is not.
+//
+// ROTATION IS CONDITIONAL ON THE FILE BEING NON-EMPTY, and that condition is
+// the whole design. The service is configured to auto-restart on failure
+// (SC_ACTION_RESTART, twice, 5s apart — see InstallService), so the run that
+// follows a crash is usually seconds away and would be the thing that destroys
+// the evidence. Because a healthy run leaves the file at exactly zero bytes,
+// a healthy run rotates nothing, and the crashed run's traceback survives in
+// go-crash.prev.log for as long as it takes someone to look — days, restarts
+// and reboots included. Only a SECOND crash displaces the first.
+//
+// Nothing here ever truncates: the file is opened append-only, so even if the
+// rotation itself fails (the previous file held open by an editor, say) the
+// worst case is two runs' output in one file, never a lost one.
+//
+// The file is shared for read, write and delete, so the owner can read a live
+// service's crash file — or delete it — without stopping anything.
+//
+// The handle is deliberately never closed. A fatal can land at any instant,
+// including in the middle of shutdown, and a capture that stops covering the
+// teardown is a capture with a hole in it exactly where a lifetime bug would
+// show up. There is no buffer to lose either: writes go straight to WriteFile,
+// so every byte is on disk before the runtime reaches ExitProcess(2).
+GoCrashCapture RedirectGoCrashOutput(const std::filesystem::path& dir);
 
 // ---- guarded reads of list-shaped SDK getters ------------------------------
 //

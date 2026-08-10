@@ -387,7 +387,46 @@ void Run() {
   LogInfo("service: stopped cleanly in {}ms", stopMs);
 }
 
+// Whether the Go runtime's stderr is being captured to a file, and where. Read
+// only by the status/diagnostic paths; set once, on the SCM path, before
+// anything else in ServiceMain.
+GoCrashCapture g_goCrash;
+
+// Give the Go runtime somewhere durable to die. FIRST THING ON THE SCM PATH,
+// ahead of even the control handler registration, because everything after this
+// point runs with a live Go runtime underneath it and the only window this
+// cannot cover is the one before the process had a chance to run any code at
+// all.
+//
+// This is the SCM path and only the SCM path — see Sdk.h for why console mode
+// is deliberately left alone, and what the operator does there instead.
+void ArmGoCrashCapture() {
+  g_goCrash = RedirectGoCrashOutput(LogDir(/*isService=*/true));
+  if (!g_goCrash.armed) {
+    LogError("service: could NOT arm the go crash capture at {} ({}). A Go "
+             "runtime fatal in this run will print to a stderr the SCM did not "
+             "give us and vanish, exactly as in task #39.",
+             g_goCrash.path.string(), g_goCrash.error);
+  } else {
+    LogInfo("service: go crash capture armed -> {} (stays 0 bytes unless the "
+            "Go runtime dies; nothing else writes to stderr here)",
+            g_goCrash.path.string());
+  }
+  // The loudest line this service can emit, and the reason the capture is worth
+  // having: the start AFTER a crash is the first moment anyone can find out the
+  // crash happened, because the crashing process itself got no chance to say so.
+  if (!g_goCrash.carried_over.empty()) {
+    LogError("service: THE PREVIOUS RUN DIED INSIDE THE GO RUNTIME. It left "
+             "{} bytes of fatal output, kept at {}. That file holds the panic "
+             "or fatal-error message and the goroutine stacks — it is the "
+             "evidence task #39 has been missing. Read it before restarting "
+             "anything; the next Go-runtime death overwrites it.",
+             g_goCrash.carried_over_bytes, g_goCrash.carried_over.string());
+  }
+}
+
 void WINAPI ServiceMain(DWORD, LPWSTR*) {
+  ArmGoCrashCapture();
   g_statusHandle = ::RegisterServiceCtrlHandlerExW(ids::kServiceName, HandlerEx, nullptr);
   if (!g_statusHandle) {
     LogError("service: RegisterServiceCtrlHandlerEx failed: {}", ::GetLastError());
@@ -474,6 +513,73 @@ bool WaitForServiceState(SC_HANDLE svc, DWORD wanted, DWORD budgetMs,
     if (::GetTickCount64() >= deadline) return false;
     ::Sleep(install::kScmPollIntervalMs);
   }
+}
+
+// Ask the SCM to put GOTRACEBACK=crash in the service's environment.
+//
+// WHY THIS IS HERE AND NOT IN wmain, WHICH IS WHERE IT LOOKS LIKE IT BELONGS.
+// GOTRACEBACK controls how much the Go runtime prints when it dies — the
+// crashing goroutine only, or every goroutine plus a fail-fast that WER can
+// turn into a dump. The runtime reads it in parsedebugvars(), which runs inside
+// schedinit(); for a c-shared DLL that is DLL_PROCESS_ATTACH, i.e. while the
+// loader is still resolving this exe's imports, BEFORE the CRT has run and long
+// before wmain gets control. A _wputenv_s or SetEnvironmentVariableW at the top
+// of wmain is therefore not "early" — it is unconditionally too late, and it
+// would read like working diagnostics while doing nothing at all.
+//
+// That is measured, not reasoned: with the DLL loaded first and GODEBUG (the
+// other variable parsedebugvars consumes) set afterwards, the runtime emitted
+// nothing. It never re-reads them. Worse, Go snapshots the whole environment
+// block once at startup into runtime.envs, so a later Win32 write is not merely
+// late — it is invisible.
+//
+// The only actor that can put a variable in this process's environment before
+// the loader runs is whoever creates the process. Under the SCM that is the
+// SCM, and the documented way to tell it is a REG_MULTI_SZ `Environment` value
+// on the service key, which it merges into the environment of every start. So
+// this is the correct home for it, and install is the correct moment.
+//
+// Best-effort by design: it is a diagnostic, and a service that refuses to
+// install because a debugging aid could not be configured would be a worse
+// trade than the one it is trying to make. Every outcome is logged.
+//
+// On the tradeoff, because it will be asked: with GOTRACEBACK=crash a Go fatal
+// ends in RaiseFailFastException instead of ExitProcess(2), so it does NOT run
+// OnUnhandledException and therefore does not get the CrashRevert() belt. That
+// is not a regression — ExitProcess(2) runs no exception filter either, so that
+// belt has never been on this path. What changes is purely additive: an
+// Application Error 1000 and a WER dump where today there is silence.
+void SetServiceGoTraceback() {
+  // REG_MULTI_SZ: one NUL-terminated entry, then the empty string that ends the
+  // list. Spelled as an array so both terminators are visible.
+  static constexpr wchar_t kEnvironment[] = L"GOTRACEBACK=crash\0";
+  static_assert(kEnvironment[17] == L'\0' && kEnvironment[18] == L'\0',
+                "the value must end in a double NUL to be a valid REG_MULTI_SZ");
+
+  const std::wstring key =
+      std::wstring(L"SYSTEM\\CurrentControlSet\\Services\\") + ids::kServiceName;
+  HKEY handle = nullptr;
+  LSTATUS status =
+      ::RegOpenKeyExW(HKEY_LOCAL_MACHINE, key.c_str(), 0, KEY_SET_VALUE, &handle);
+  if (status != ERROR_SUCCESS) {
+    LogWarn("install: could not open the service key to set GOTRACEBACK ({}); "
+            "a Go runtime fatal will still be captured to go-crash.log, but it "
+            "will only carry the crashing goroutine's stack",
+            status);
+    return;
+  }
+  status = ::RegSetValueExW(handle, L"Environment", 0, REG_MULTI_SZ,
+                            reinterpret_cast<const BYTE*>(kEnvironment),
+                            sizeof(kEnvironment));
+  ::RegCloseKey(handle);
+  if (status != ERROR_SUCCESS) {
+    LogWarn("install: could not write the service Environment value ({}); "
+            "GOTRACEBACK is unset for the service", status);
+    return;
+  }
+  LogInfo("install: service environment set to GOTRACEBACK=crash — a Go "
+          "runtime fatal now dumps every goroutine and fails fast into WER "
+          "instead of exiting quietly");
 }
 
 // `urnetworkd install` — register the service AND leave it RUNNING, no matter
@@ -572,6 +678,10 @@ int InstallService() {
   fa.cActions = 3;
   fa.lpsaActions = actions;
   ::ChangeServiceConfig2W(svc, SERVICE_CONFIG_FAILURE_ACTIONS, &fa);
+
+  // Also on both paths, and BEFORE the StartService below, so the start this
+  // verb performs is already covered rather than the one after it.
+  SetServiceGoTraceback();
 
   // The registered service is stopped by now on every path, so a busy control
   // pipe can only be a console-mode urnetworkd. The service refuses to start
@@ -815,6 +925,23 @@ int RunConsole(bool rpcOnly, int stopAfterStep = 0) {
   // this process has neither the privilege nor the mandate to give them back,
   // and says so rather than trying and half-failing.
   ReportAndClearPriorState(/*observeOnly=*/rpcOnly);
+
+  // Console mode keeps its real stderr — the operator is watching this terminal
+  // and taking it away to write a file nobody is tailing would be a downgrade.
+  // But the same failure the service captures (task #39: the process vanishes
+  // with no C++ log line, no WER report and no glog FATAL, which is a Go
+  // runtime fatal printing to stderr and then exiting) prints HERE and nowhere
+  // else, so it is one closed window away from being lost again. Say how to
+  // keep it, and say why that costs nothing: this process's own log echo goes
+  // to STDOUT, so redirecting STDERR leaves the transcript below intact.
+  LogInfo("console: a Go runtime fatal (panic/concurrent map write) prints to "
+          "THIS TERMINAL's stderr and to no log file — it never reaches glog or "
+          "the line above. To keep it: `urnetworkd console 2> go-crash.log`. "
+          "That costs you nothing here, because everything you are reading is "
+          "echoed on stdout. Under the SCM the service captures it to a file "
+          "automatically ({}).",
+          (LogDir(/*isService=*/true) / L"go-crash.log").string());
+
   SdkInit(/*isService=*/true, kServiceMemoryLimit);
 
   ControlServer server;
@@ -933,8 +1060,13 @@ int Usage() {
       L"                            one, and reverting a live one drops your\n"
       L"                            traffic to the clear. --force overrides.\n"
       L"\n"
-      L"log: %s\n",
-      LogFilePath().c_str());
+      L"log: %s\n"
+      L"go fatals: %s (written by the SCM path automatically; in console mode\n"
+      L"           redirect stderr yourself: `urnetworkd console 2> that file`.\n"
+      L"           An empty file is the healthy state — anything in it is a Go\n"
+      L"           runtime panic or fatal error, and the run before it died.)\n",
+      LogFilePath().c_str(),
+      (LogDir(/*isService=*/true) / L"go-crash.log").c_str());
   return 0;
 }
 
