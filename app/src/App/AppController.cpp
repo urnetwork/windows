@@ -14,6 +14,7 @@
 #include "Localization.h"
 #include "Log.h"
 #include "MainWindow.xaml.h"
+#include "PageContext.h"  // pages::AdvW — the tray tooltip's health words (#27)
 #include "Startup.h"
 #include "Strings.h"
 #include "WindowShell.h"
@@ -261,7 +262,14 @@ void AppController::OnAuthState(AuthState state, const std::string& error) {
 }
 
 void AppController::OnTunnelState(const proto::TunnelStatus& status) {
-  connected_ = (status.state == proto::TunnelState::Up);
+  const bool isUp = (status.state == proto::TunnelState::Up);
+  // #27: health evidence is scoped to the tunnel session that produced it. Any
+  // transition — down, up-from-down, error — invalidates it; only a steady Up
+  // keeps it. Without this, a tray showing Degraded when the window was hidden
+  // would keep saying so across a reconnect that fixed everything (stats stop
+  // flowing while hidden, so nothing else would ever correct it).
+  if (!(connected_ && isUp)) trayHealth_.reset();
+  connected_ = isUp;
   lastTunnelStatus_ = status;
   UpdateTray();
   if (windowVisible_ && window_) {
@@ -271,7 +279,14 @@ void AppController::OnTunnelState(const proto::TunnelStatus& status) {
 }
 
 void AppController::OnStats(const LiveStats& stats) {
-  // Live stats only matter to the window (no tray surface); push only when visible.
+  // #27: the tray is a stats consumer now — the aggregate health rides every
+  // snapshot. Change-gated: stats push on every throughput tick, and a
+  // Shell_NotifyIcon per second for an unchanged icon is churn for nothing.
+  if (trayHealth_ != std::optional<health::State>{stats.health}) {
+    trayHealth_ = stats.health;
+    UpdateTray();
+  }
+  // Live stats otherwise only matter to the window; push only when visible.
   if (windowVisible_ && window_) {
     if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
       self->OnStatsChanged(stats);
@@ -279,13 +294,42 @@ void AppController::OnStats(const LiveStats& stats) {
 }
 
 void AppController::UpdateTray() {
-  // v1 maps provide=false; connect reflects the tunnel/connection state.
-  tray_.SetState(connected_ ? TrayState::NoProvideConnect
-                            : TrayState::NoProvideNoConnect);
-  // "URnetwork — Connected": the app name, then the status. Both come from the
-  // store; the em dash is punctuation, not text.
+  // v1 maps provide=false; connect reflects the tunnel AND (#27) the aggregate
+  // health: the connected icon means "proven working", so Evaluating/Degraded
+  // map to the existing not-connected art rather than claiming green. With no
+  // evidence at all (window never shown: the stats feed is presentation-scoped)
+  // the tunnel's own claim stands, which is exactly the old behaviour.
+  using Health = health::State;
+  const Health h = trayHealth_.value_or(Health::Connected);
+  const bool verified = connected_ && h == Health::Connected;
+  tray_.SetState(verified ? TrayState::NoProvideConnect
+                          : TrayState::NoProvideNoConnect);
+  // "URnetwork — Connected": the app name, then the status. The em dash is
+  // punctuation, not text. The health words reuse the connect page's exact
+  // strings (same Adv ids), so the tooltip and the status line can never name
+  // the same state differently.
   std::wstring tip = Localized("app_name");
-  if (connected_) tip += L" — " + Localized("connected");
+  if (connected_) {
+    switch (h) {
+      case Health::Connected:
+        tip += L" — " + Localized("connected");
+        break;
+      case Health::Evaluating:
+        tip += L" — " + pages::AdvW("conn_finding_providers", L"Finding providers…");
+        break;
+      case Health::Degraded:
+        tip += L" — " +
+               pages::AdvW("conn_degraded", L"Connection degraded — reconnecting");
+        break;
+      case Health::Connecting:
+        tip += L" — " + Localized("connecting_status_indicator");
+        break;
+      default:
+        // NoService/Disconnected under a tunnel that reports Up: a transient
+        // disagreement between the two feeds — claim nothing extra.
+        break;
+    }
+  }
   tray_.SetTooltip(tip);
 }
 
@@ -509,10 +553,12 @@ void AppController::ReconcileWindowPresentation() {
     self->SetPresentationActive(active);
     if (!active) return;
 
-    // Re-apply the current state after the hidden/inactive interval.
+    // Re-apply the current state after the hidden/inactive interval. The stats
+    // snapshot goes through OnStats (#27), not straight to the window, so the
+    // tray's health reading refreshes at the same instant the window's does.
     self->OnAuthStateChanged(authState_, authError_);
     if (lastTunnelStatus_) self->OnTunnelStateChanged(*lastTunnelStatus_);
-    self->OnStatsChanged(sdk_.CurrentStats());
+    OnStats(sdk_.CurrentStats());
     self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
     if (authState_ == AuthState::LoggedIn) balance_.Refresh();
   }

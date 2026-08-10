@@ -735,12 +735,28 @@
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
+                                        <!-- dot on the FIRST line (top + margin), not centred:
+                                             the blocked-traffic note below can make this a
+                                             multi-line block, and the dot belongs to the
+                                             headline it colours (24px line, 10px dot). -->
                                         <Ellipse x:Name="StatusDot" Width="10" Height="10"
-                                                 VerticalAlignment="Center" />
-                                        <TextBlock x:Name="StatusText" Grid.Column="1"
-                                                   FontFamily="{StaticResource UrBodyFontFamily}"
-                                                   FontSize="20" LineHeight="24" FontWeight="SemiBold"
-                                                   TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                 VerticalAlignment="Top" Margin="0,7,0,0" />
+                                        <StackPanel Grid.Column="1" Spacing="4"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock x:Name="StatusText"
+                                                       FontFamily="{StaticResource UrBodyFontFamily}"
+                                                       FontSize="20" LineHeight="24" FontWeight="SemiBold"
+                                                       TextWrapping="Wrap" />
+                                            <!-- #27 soft-kill-switch honesty: while the tunnel
+                                                 is up with nothing proven (Evaluating /
+                                                 Degraded), this says traffic is blocked rather
+                                                 than leaking. One writer:
+                                                 ConnectPage::ApplyConnectStatus. -->
+                                            <TextBlock x:Name="TrafficHeldText"
+                                                       Style="{StaticResource UrSupportingTextStyle}"
+                                                       TextWrapping="Wrap" TextTrimming="None"
+                                                       Visibility="Collapsed" />
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                                 <!-- The hero, INSIDE the pane's flow. A Button, so it is

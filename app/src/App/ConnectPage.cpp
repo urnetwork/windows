@@ -239,6 +239,10 @@ void ConnectPage::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
   // is indistinguishable from a hang; the next status push corrects this if the
   // SDK disagrees.
   connectStatus_ = ConnectStatus::Connecting;
+  // #27: the aggregate must move with the optimistic status, or the render
+  // reconciliation in ApplyConnectStatus is the only thing masking a stale
+  // health value — keep the two telling the same story from the same instant.
+  health_ = urnw::health::State::Connecting;
   ApplyConnectStatus();
   if (bestAvailable)
     Sdk().ConnectBestAvailable();
@@ -483,9 +487,36 @@ void ConnectPage::ApplyUpdateChecker(urnw::UpdateChecker::Snapshot const& snap) 
 // state and said only "Connected"/"Disconnected", while the SDK's four-state
 // connectionStatus was fetched into LiveStats and dropped on the floor: there
 // was no connecting state anywhere in the client.
+//
+// #27: the line now renders the AGGREGATE health (health_), not the SDK status
+// alone. The SDK status says what the connect controller is doing; health says
+// whether anything is actually proven to work, which is the claim the word
+// "Connected" makes to a user. The button/watchdog still read connectStatus_ —
+// what the press DOES is the controller's business — and the two are
+// reconciled below for the one instant they can lag each other.
 void ConnectPage::ApplyConnectStatus() {
+  using Health = urnw::health::State;
+  // The optimistic local Connecting (a press writes connectStatus_ ahead of
+  // any SDK push) and the SDK's own transitional status outrank a health value
+  // from an older snapshot — but never outrank the sharper evidence states
+  // (Evaluating/Degraded), which are already about a live transition.
+  Health render = health_;
+  if ((connectStatus_ == ConnectStatus::Connecting ||
+       connectStatus_ == ConnectStatus::DestinationSet) &&
+      (render == Health::Disconnected || render == Health::NoService ||
+       render == Health::Connected)) {
+    render = Health::Connecting;
+  }
+  // ...and the settled idle status outranks a stale ACTIVE health: an unknown/
+  // clamped status must never leave the line claiming a connection.
+  if (connectStatus_ == ConnectStatus::Disconnected &&
+      render != Health::NoService && render != Health::Disconnected) {
+    render = Health::Disconnected;
+  }
+
   hstring text;
   winrt::Windows::UI::Color dot = urnw::colors::kStatusIdle;
+  auto heroConnection = urnw::ConnectCanvas::State::Disconnected;
   // The two balance states iOS's ConnectButtonView layers OVER the connection
   // state, read from the same two fields MainWindow::UpdateBalanceWarning gates
   // the InfoBar on, so the hero and the InfoBar cannot disagree. A running
@@ -493,20 +524,41 @@ void ConnectPage::ApplyConnectStatus() {
   // balance is mid-flight, and showing a warning for it would be wrong.
   const bool processing = w_.balanceConfirming();
   const bool outOfBalance = !processing && w_.balanceBlocked();
-  switch (connectStatus_) {
-    case ConnectStatus::Connected:
+  switch (render) {
+    case Health::Connected:
       // the provider count lives in its own line below (ProviderCountText),
       // where android folds it into this string — desktop has room for both
       text = Loc("connected");
       dot = urnw::colors::kUrGreen;
+      heroConnection = urnw::ConnectCanvas::State::Connected;
       break;
-    case ConnectStatus::Connecting:
-    case ConnectStatus::DestinationSet:
+    case Health::Evaluating:
+      // The honest name for "all yellow": the window has providers and none is
+      // proven yet. The hero stays in its Connecting state ON PURPOSE — that is
+      // the state in which SetGrid keeps taking updates, so the per-provider
+      // dots keep telling the same story instead of freezing mid-evaluation
+      // under a green headline.
+      text = Adv("conn_finding_providers", L"Finding providers…");
+      dot = urnw::colors::kStatusConnecting;
+      heroConnection = urnw::ConnectCanvas::State::Connecting;
+      break;
+    case Health::Degraded:
+      // Was connected, proven dropped and stayed dropped past the hold. The
+      // SDK reconnects on its own; the copy says so rather than asking for a
+      // click the recovery does not need. (Disconnect IS one click away — the
+      // button below reads connectStatus_, which is still active here.)
+      text = Adv("conn_degraded", L"Connection degraded — reconnecting");
+      dot = urnw::colors::kUrCoral;
+      heroConnection = urnw::ConnectCanvas::State::Connecting;
+      break;
+    case Health::Connecting:
       // android maps DESTINATION_SET and CONNECTING to one connecting state
       text = Loc("connecting_status_indicator");
       dot = urnw::colors::kStatusConnecting;
+      heroConnection = urnw::ConnectCanvas::State::Connecting;
       break;
-    case ConnectStatus::Disconnected:
+    case Health::NoService:
+    case Health::Disconnected:
       // R1: PROTECTION STATE, not readiness. The owner reconciliation is explicit
       // that "{network} is ready to connect" reads as backend readiness, not
       // protection, and must go. The spec's headline is "Not connected" with a
@@ -514,11 +566,42 @@ void ConnectPage::ApplyConnectStatus() {
       // so the closest shipped protection word - "Disconnected" - leads instead,
       // and the two missing lines are reported for the store. The network name is
       // no longer folded into the hero headline; it lives in the status strip.
+      // (NoService deliberately shares the word: the service-setup banner above
+      // this line is the surface that explains WHY there is no service.)
       text = Loc("disconnected");
       dot = urnw::colors::kStatusIdle;
+      heroConnection = urnw::ConnectCanvas::State::Disconnected;
       break;
   }
   w_.StatusText().Text(text);
+
+  // ---- soft-kill-switch honesty (#27; RECOVERY.md's "says Connected but
+  // nothing works" gap) ------------------------------------------------------
+  // With the tunnel up and nothing proven, traffic is being routed into the
+  // tunnel and going nowhere — that is the soft kill switch DOING ITS JOB, and
+  // the one thing worse than the stall is not saying it. Two variants because
+  // the fails-closed guarantee is only true while the service reports a
+  // firewall policy in force; wfp_state == "off" over a live tunnel (a failed
+  // or unelevated install) must not be described as protection.
+  {
+    std::wstring held;
+    if (connected_ &&
+        (render == Health::Evaluating || render == Health::Degraded)) {
+      if (w_.statusWfpState() != "off") {
+        held = AdvW("conn_traffic_blocked",
+                    L"No working provider right now — your traffic is blocked, "
+                    L"not exposed. Disconnect to go back to your normal "
+                    L"connection.");
+      } else {
+        held = AdvW("conn_traffic_blocked_unprotected",
+                    L"No working provider right now — traffic sent into the "
+                    L"tunnel is going nowhere, and leak protection is off, so "
+                    L"some traffic may bypass it. Disconnect to go back to "
+                    L"your normal connection.");
+      }
+    }
+    urnw::kit::SetTextOrCollapse(w_.TrafficHeldText(), winrt::hstring{held});
+  }
   w_.StatusDot().Fill(urnw::colors::MakeBrush(dot));
   // The window's status strip shows this same state on every OTHER destination.
   // It reads the derivation rather than repeating it, for the reason the hero
@@ -544,25 +627,14 @@ void ConnectPage::ApplyConnectStatus() {
 
   // ---- the hero -----------------------------------------------------------
   // Same inputs, same instant, one function: the canvas is not allowed to lag
-  // the line above it.
-  auto heroState = urnw::ConnectCanvas::State::Disconnected;
+  // the line above it. The connection half (heroConnection) was derived in the
+  // health switch above so it CANNOT disagree with the words; the two balance
+  // states still layer over it, exactly as before.
+  auto heroState = heroConnection;
   if (processing) {
     heroState = urnw::ConnectCanvas::State::Processing;
   } else if (outOfBalance) {
     heroState = urnw::ConnectCanvas::State::Error;
-  } else {
-    switch (connectStatus_) {
-      case ConnectStatus::Connected:
-        heroState = urnw::ConnectCanvas::State::Connected;
-        break;
-      case ConnectStatus::Connecting:
-      case ConnectStatus::DestinationSet:
-        heroState = urnw::ConnectCanvas::State::Connecting;
-        break;
-      case ConnectStatus::Disconnected:
-        heroState = urnw::ConnectCanvas::State::Disconnected;
-        break;
-    }
   }
   // --preview-ui drives the walk itself; letting the real status overwrite it
   // would pin the preview to Disconnected forever (there is no session).
@@ -650,6 +722,10 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // The SDK's connection status: the only signal in the client that carries a
   // CONNECTING state. It was read into LiveStats and never used.
   connectStatus_ = ParseConnectStatus(stats.connectionStatus);
+  // #27: the aggregate health, derived in the SAME ReadStats as every other
+  // field of this snapshot — the status line renders THIS, not the raw status.
+  health_ = stats.health;
+  healthReevalAtMillis_ = stats.healthReevalAtMillis;
   // The provider grid, into the hero. This is the first consumer
   // getProviderGridPointList() has ever had in this client. An empty list is
   // normal (no session, rpc-only, or a connection that has not placed a
@@ -677,9 +753,12 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // in the middle of the screen the app opens on. The whole group carries a
   // divider, so it is hidden as a unit - a rule with nothing under it is the
   // same defect, one pixel tall.
+  // #27: gated on the AGGREGATE, not the raw SDK bit — "Connected to N
+  // providers" under a headline reading "Finding providers…" is the exact
+  // contradiction the aggregate exists to remove.
   urnw::kit::SetTextOrCollapse(
       w_.ProviderCountText(),
-      stats.connected
+      stats.connected && stats.health == urnw::health::State::Connected
           ? hstring{urnw::Plural("connected_provider_count", stats.providerCount)}
           : hstring{L""});
 
@@ -1865,6 +1944,23 @@ void ConnectPage::ApplyDnsRecommendationPill() {
 void ConnectPage::OnChartTick() {
   // skip the redraw work while the window is hidden (tray) or on another tab
   if (!w_.Visible()) return;
+  // #27: a pending degrade hold expires on the CLOCK, not on an SDK event —
+  // grid pushes stop arriving exactly when the window is stuck, so waiting for
+  // one would hold "Connected" over a dead window forever. BEFORE the
+  // per-pane gate below on purpose: the status strip renders health on every
+  // destination, not only Home. One nudge per deadline (the push re-arms it if
+  // the hold is still running), through the ordinary stats path so the window
+  // AND the tray both hear the answer.
+  if (healthReevalAtMillis_ > 0) {
+    const int64_t nowMillis =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+    if (nowMillis >= healthReevalAtMillis_) {
+      healthReevalAtMillis_ = 0;
+      Sdk().RepublishStats();
+    }
+  }
   if (w_.ConnectView().Visibility() != Visibility::Visible && !w_.sheetOpen()) return;
   if (w_.ConnectView().Visibility() == Visibility::Visible) {
     remoteChart_->Tick();

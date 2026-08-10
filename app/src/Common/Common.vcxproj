@@ -41,6 +41,7 @@
   </ItemDefinitionGroup>
 
   <ItemGroup>
+    <ClInclude Include="ConnectionHealth.h" />
     <ClInclude Include="Ids.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="Paths.h" />

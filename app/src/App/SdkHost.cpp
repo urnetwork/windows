@@ -2220,6 +2220,42 @@ LiveStats SdkHost::ReadStats() {
     s.gridWidth = 0;
     s.gridHeight = 0;
   }
+
+  // ---- aggregate connection health (#27) -----------------------------------
+  // LAST, after both clamps, so the tracker consumes exactly the fields the UI
+  // will render: an rpc-only or service-down snapshot has already had its
+  // status replaced with a sentinel ActivityFromStatus reads as Inactive and
+  // its grid zeroed. The derivation itself — the transition table, the degrade
+  // hold, why an absent grid feed holds rather than sharpens — lives in
+  // ConnectionHealth.h where the service selftest pins it.
+  {
+    health::Signals hs;
+    hs.serviceConnected = service_.IsConnected();
+    hs.activity = health::ActivityFromStatus(s.connectionStatus);
+    // Evidence only counts as evidence while a live grid feed produced it.
+    // connectVc_ is read lock-free here like every other field in this
+    // function (see the function's own locking notes).
+    hs.gridKnown = !s.rpcOnly && connectVc_.has_value() && hs.serviceConnected;
+    int64_t cells = 0;
+    int64_t proven = 0;
+    for (const auto& point : s.gridPoints) {
+      if (health::CellOccupiesWindow(point.State)) ++cells;
+      if (health::CellProven(point.State)) ++proven;
+    }
+    // Whichever of the SDK's own window figure and the live cell count says
+    // the window is populated: the tracker only asks "is there a window", and
+    // the two figures bracket the answer whatever windowCurrentSize counts.
+    hs.windowSize = (std::max)(s.providerCount, cells);
+    hs.provenCount = proven;
+    const int64_t nowMillis =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+    std::scoped_lock healthLock(healthMutex_);
+    s.health = healthTracker_.Update(hs, nowMillis);
+    s.provenProviderCount = proven;
+    s.healthReevalAtMillis = healthTracker_.ReevalAtMillis();
+  }
   return s;
 }
 
@@ -3733,6 +3769,18 @@ void SdkHost::SessionWorkerLoop() {
 
 void SdkHost::ConnectLocked(const SessionRequest& request) {
   // caller holds mutex_
+  //
+  // #27: a DELIBERATE connect/disconnect starts a new health attempt. Proof
+  // earned by the previous target must not survive into the new window, or a
+  // chosen location change renders as "Degraded" — the word for an involuntary
+  // loss — while the rebuild it caused settles (see Tracker::NoteNewAttempt).
+  // Here, at the single point every connect surface funnels through (button,
+  // tray, coalesced row clicks), not at the entry points, so a settling row
+  // intent that is superseded never resets anything.
+  {
+    std::scoped_lock healthLock(healthMutex_);
+    healthTracker_.NoteNewAttempt();
+  }
   try {
     if (connectVc_) {
       if (request.kind == ConnectKind::Disconnect) {

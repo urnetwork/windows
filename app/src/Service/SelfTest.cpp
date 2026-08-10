@@ -12,6 +12,7 @@
 #include <thread>
 #include <vector>
 
+#include "ConnectionHealth.h"
 #include "ConsoleArgs.h"
 #include "InstallVerb.h"
 #include "NetPolicy.h"
@@ -1951,6 +1952,171 @@ void TestInstallVerb() {
         "both budgets are bounded near the spec's ~10s — finite, not infinite");
 }
 
+// --- ConnectionHealth: the aggregate the status line / strip / tray render --
+//
+// Pure logic in Common (ConnectionHealth.h), pinned here for the VersionGrammar
+// reason: the words the app says for a given set of facts are a contract with
+// the user, and the two failure modes this table exists to kill — "Connected
+// but nothing works" and "yellow forever" — were both silences of the OLD
+// derivation. Every row below is a claim about what the UI says.
+void TestConnectionHealth() {
+  Section("ConnectionHealth — status derivation + degrade hysteresis");
+  using health::Activity;
+  using health::ActivityFromStatus;
+  using health::CellOccupiesWindow;
+  using health::CellProven;
+  using health::Signals;
+  using health::State;
+  using health::ToString;
+  using health::Tracker;
+
+  constexpr int64_t kHold = Tracker::kDegradeHoldMillis;
+  Check(5000 <= kHold && kHold <= 10000,
+        "the degrade hold sits inside the 5-10s anti-flap band",
+        std::format("got {}ms", kHold));
+
+  auto sig = [](bool svc, Activity a, bool grid, int64_t window, int64_t proven) {
+    Signals s;
+    s.serviceConnected = svc;
+    s.activity = a;
+    s.gridKnown = grid;
+    s.windowSize = window;
+    s.provenCount = proven;
+    return s;
+  };
+
+  // The SDK status fold: the four live values, this app's two clamp sentinels,
+  // and garbage. An unknown status must never claim a connection.
+  Check(ActivityFromStatus("CONNECTED") == Activity::Active,
+        "CONNECTED folds to Active");
+  Check(ActivityFromStatus("connected") == Activity::Active,
+        "…case-insensitively, like android's ConnectStatus.fromString");
+  Check(ActivityFromStatus("CONNECTING") == Activity::Connecting &&
+            ActivityFromStatus("DESTINATION_SET") == Activity::Connecting,
+        "CONNECTING and DESTINATION_SET are one transitional state");
+  Check(ActivityFromStatus("DISCONNECTED") == Activity::Inactive,
+        "DISCONNECTED is Inactive");
+  Check(ActivityFromStatus("RPC_ONLY") == Activity::Inactive &&
+            ActivityFromStatus("SERVICE_DOWN") == Activity::Inactive,
+        "both ReadStats clamp sentinels read as Inactive");
+  Check(ActivityFromStatus("") == Activity::Inactive &&
+            ActivityFromStatus("BANANA") == Activity::Inactive,
+        "empty/unknown statuses are Inactive, never a claimed connection");
+
+  // Grid cell classification: "Added" is the app-side stand-in for the
+  // reliability heartbeat's proven count; Removed cells claim nothing.
+  Check(CellProven("Added") && !CellProven("InEvaluation") &&
+            !CellProven("EvaluationFailed") && !CellProven("NotAdded") &&
+            !CellProven("Removed"),
+        "only Added counts as proven");
+  Check(CellOccupiesWindow("Added") && CellOccupiesWindow("InEvaluation") &&
+            CellOccupiesWindow("EvaluationFailed") && CellOccupiesWindow("NotAdded"),
+        "live cells occupy the window whatever their verdict");
+  Check(!CellOccupiesWindow("Removed") && !CellOccupiesWindow(""),
+        "Removed/empty cells do not");
+
+  // ---- the transition table, as one connect lifetime ----
+  Tracker t;
+  Check(t.Update(sig(false, Activity::Inactive, false, 0, 0), 0) == State::NoService,
+        "pipe down is NoService — the signed-out launch can never render Connected");
+  Check(t.Update(sig(true, Activity::Inactive, false, 0, 0), 1000) ==
+            State::Disconnected,
+        "service up, nothing driving: Disconnected (rpc-only lands here too)");
+  Check(t.Update(sig(true, Activity::Connecting, true, 0, 0), 2000) ==
+            State::Connecting,
+        "a connect begins: Connecting");
+  Check(t.Update(sig(true, Activity::Active, true, 0, 0), 3000) == State::Connecting,
+        "CONNECTED with an empty window is still Connecting, not a green lie");
+  Check(t.Update(sig(true, Activity::Active, true, 4, 0), 4000) == State::Evaluating,
+        "window populated, nothing proven: Evaluating — the honest all-yellow");
+  Check(t.Update(sig(true, Activity::Connecting, true, 4, 0), 4500) ==
+            State::Evaluating,
+        "…and a transitional SDK status does not un-say it");
+  Check(t.Update(sig(true, Activity::Active, true, 4, 1), 5000) == State::Connected,
+        "one proven provider is Connected");
+  Check(t.ReevalAtMillis() == 0, "a healthy Connected schedules no re-eval");
+
+  // A blip: proven drops and returns inside the hold. The status must not flap.
+  Check(t.Update(sig(true, Activity::Active, true, 4, 0), 6000) == State::Connected,
+        "proven drops to 0: Connected HOLDS through the blip window");
+  Check(t.ReevalAtMillis() == 6000 + kHold,
+        "…and the hold names the deadline the clock must re-ask at",
+        std::format("got {}", t.ReevalAtMillis()));
+  Check(t.Update(sig(true, Activity::Active, true, 4, 1), 6000 + kHold / 2) ==
+            State::Connected,
+        "proven back inside the hold: still Connected — no flap");
+  Check(t.ReevalAtMillis() == 0, "recovery clears the pending deadline");
+
+  // A real loss: the hold expires.
+  Check(t.Update(sig(true, Activity::Active, true, 4, 0), 10000) == State::Connected,
+        "loss again: the hold restarts from the new loss instant");
+  Check(t.Update(sig(true, Activity::Active, true, 4, 0), 10000 + kHold - 1) ==
+            State::Connected,
+        "one millisecond inside the hold is still Connected");
+  Check(t.Update(sig(true, Activity::Active, true, 4, 0), 10000 + kHold) ==
+            State::Degraded,
+        "the hold's own deadline is Degraded — the boundary the re-eval fires at");
+  Check(t.Update(sig(true, Activity::Active, true, 0, 0), 20000) == State::Degraded,
+        "…even if the whole window collapsed afterwards: was-connected wins over "
+        "looks-like-connecting");
+  Check(t.Update(sig(true, Activity::Active, true, 4, 2), 30000) == State::Connected,
+        "recovery is IMMEDIATE — hysteresis only guards the bad direction");
+
+  // A deliberate location change must read as a fresh attempt, not a loss
+  // (the session worker calls NoteNewAttempt when it applies the intent).
+  t.NoteNewAttempt();
+  Check(t.Update(sig(true, Activity::Active, true, 4, 0), 31000) == State::Evaluating,
+        "after NoteNewAttempt the rebuilding window is Evaluating, never Degraded");
+
+  // Disconnect resets the attempt; a fresh connect starts clean.
+  Check(t.Update(sig(true, Activity::Inactive, true, 0, 0), 32000) ==
+            State::Disconnected,
+        "disconnect lands in Disconnected");
+  Check(t.Update(sig(true, Activity::Active, true, 3, 0), 33000) == State::Evaluating,
+        "…and the next connect evaluates: the old attempt's proof is gone");
+
+  // The service dying mid-session must not freeze a green light.
+  Tracker t2;
+  t2.Update(sig(true, Activity::Active, true, 4, 1), 0);
+  Check(t2.Update(sig(false, Activity::Inactive, false, 0, 0), 1000) ==
+            State::NoService,
+        "pipe drop mid-Connected is NoService, not a frozen Connected");
+  Check(t2.Update(sig(true, Activity::Active, true, 4, 0), 2000) == State::Evaluating,
+        "…and the session after it starts unproven (attempt was reset)");
+
+  // The hidden-window rules: no grid feed means no fresh evidence, so an
+  // evidence-based claim HOLDS rather than sharpening from an empty snapshot.
+  Tracker t3;
+  t3.Update(sig(true, Activity::Active, true, 4, 0), 0);  // Evaluating
+  Check(t3.Update(sig(true, Activity::Connecting, false, 0, 0), 1000) ==
+            State::Evaluating,
+        "window hidden (no grid feed): the last evidence-based claim holds");
+
+  // ...and with no evidence at ALL, the tunnel's own claim stands (the tray
+  // over a reattached session whose window was never opened), but it inherits
+  // the grace hold: once the feed opens, an empty grid has kHold to prove
+  // itself before the claim is withdrawn as Degraded.
+  Tracker t4;
+  Check(t4.Update(sig(true, Activity::Active, false, 0, 0), 0) == State::Connected,
+        "no evidence at all + Active session: the unverified Connected claim");
+  Check(t4.Update(sig(true, Activity::Active, true, 3, 0), 1000) == State::Connected,
+        "the feed opening onto an unproven window holds (grace), no flap");
+  Check(t4.ReevalAtMillis() == 1000 + kHold,
+        "…with the grace deadline scheduled like any other hold");
+  Check(t4.Update(sig(true, Activity::Active, true, 3, 0), 1000 + kHold) ==
+            State::Degraded,
+        "an unverified claim that never proves out becomes Degraded, honestly");
+
+  // ToString is total (log/test plumbing, never user-facing).
+  Check(std::string(ToString(State::NoService)) == "no_service" &&
+            std::string(ToString(State::Disconnected)) == "disconnected" &&
+            std::string(ToString(State::Connecting)) == "connecting" &&
+            std::string(ToString(State::Evaluating)) == "evaluating" &&
+            std::string(ToString(State::Connected)) == "connected" &&
+            std::string(ToString(State::Degraded)) == "degraded",
+        "ToString names every state");
+}
+
 }  // namespace
 
 int RunSelfTest() {
@@ -1983,6 +2149,7 @@ int RunSelfTest() {
   TestVersionGrammar();
   TestUpdateFormats();
   TestInstallVerb();
+  TestConnectionHealth();
 
   Section("WFP object identities (for `netsh wfp show filters` diffs)");
   for (const auto& g : WfpPolicy::ObjectGuidsText())

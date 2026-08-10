@@ -96,6 +96,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the InfoBar cannot end up disagreeing about the account's state.
   bool balanceConfirming() const { return balancePoll_.confirming; }
   bool balanceBlocked() const { return insufficientBalance_ && !balance_.isPro; }
+  // #27: the last firewall state the SERVICE reported ("off" | "armed" |
+  // "connecting" | "connected"), for the connect page's blocked-traffic line.
+  // Read from here rather than re-cached on the page for the balance reason
+  // above: one cache, one truth, written unconditionally by OnTunnelStateChanged.
+  std::string const& statusWfpState() const { return statusWfpState_; }
 
   // ---- the in-app service manager (beta spec §3) ----
   // The elevated `urnetworkd uninstall`, reached from Settings' confirm dialog.

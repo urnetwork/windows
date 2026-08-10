@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ConnectionHealth.h"
 #include "GoogleSignIn.h"
 #include "Sdk.h"
 #include "ServiceClient.h"
@@ -124,6 +125,22 @@ struct LiveStats {
   std::vector<urnet::ProviderGridPoint> gridPoints;
   int64_t gridWidth = 0;   // grid columns; 0 until the grid has a point
   int64_t gridHeight = 0;  // grid rows
+
+  // ---- aggregate connection health (#27) ----
+  // THE state every user-facing surface renders — status line, strip, tray.
+  // Derived in ReadStats by the one Tracker in SdkHost (ConnectionHealth.h has
+  // the transition table and the reasons), so every snapshot carries a health
+  // reading consistent with the other fields in the SAME snapshot. Defaults to
+  // NoService, the state that claims least.
+  urnw::health::State health = urnw::health::State::NoService;
+  // Grid cells in the Added state — the app-side "proven" count.
+  int64_t provenProviderCount = 0;
+  // Non-zero while a degrade hold is pending: the steady-clock millis at which
+  // the CLOCK (not a new SDK event) changes the answer. Whoever renders health
+  // must ask for a fresh snapshot then (ConnectPage does, from its 1s tick,
+  // via RepublishStats) — grid events stop arriving exactly when everything is
+  // stuck, so waiting for one would hold "Connected" over a dead window.
+  int64_t healthReevalAtMillis = 0;
 };
 
 // ---- selection identity ----------------------------------------------------
@@ -719,6 +736,12 @@ class SdkHost {
   // callbacks; the UI marshals to its thread and applies visibility gating.
   void SetStatsHandler(StatsHandler h) { onStats_ = std::move(h); }
   LiveStats CurrentStats();  // snapshot on demand (e.g. resync when window shows)
+  // Read a fresh snapshot and push it through the stats handler, exactly like
+  // an SDK listener firing. For LiveStats::healthReevalAtMillis: the degrade
+  // hold expires on the clock, and this is the clock's way to reach every
+  // consumer (window AND tray) through the one existing path instead of a
+  // side-channel that could disagree with it.
+  void RepublishStats() { PublishStats(); }
 
   // ---- connect drawer (stats cards + sheets) -------------------------------
   // Push handlers, set once by the window; fired on SDK callback threads.
@@ -1368,6 +1391,15 @@ class SdkHost {
   std::atomic<bool> lastServiceDnsApplied_{false};
   mutable std::mutex wfpStateMutex_;
   std::string lastServiceWfpState_ = "off";
+  // ---- aggregate connection health (#27) ------------------------------------
+  // The one Tracker (ConnectionHealth.h) behind its own SMALL lock, never
+  // mutex_: ReadStats is deliberately lock-free against mutex_ (it runs on the
+  // UI thread and on SDK callback threads while a bootstrap can hold mutex_
+  // for seconds), and the tracker is folded in at the end of ReadStats. The
+  // lock covers Update/ReevalAtMillis as one unit and NoteNewAttempt from the
+  // session worker; it is held across nothing else.
+  mutable std::mutex healthMutex_;
+  health::Tracker healthTracker_;
   // The egress binding currently in force on THIS process's SDK instance, as a
   // packed (index4, index6) pair, and the lock that keeps the compare and the
   // SDK call together.

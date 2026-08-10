@@ -103,6 +103,14 @@ class AppController {
   AuthState authState_ = AuthState::LoggedOut;
   std::string authError_;
   bool connected_ = false;
+  // #27: the last aggregate connection health a stats push carried, so the
+  // tray can say Evaluating/Degraded instead of a false Connected. nullopt is
+  // "no evidence": stats only flow while the window presents, and with none
+  // the tray falls back to the tunnel's own claim (exactly its old behaviour).
+  // Held across a hide — stale under-claiming beats fresh over-claiming — and
+  // cleared on any tunnel transition, because exit evidence is only valid
+  // within the tunnel session that produced it (see OnTunnelState).
+  std::optional<health::State> trayHealth_;
   // set when the tray "Quit" is chosen, so the window's Closing handler lets it
   // close instead of hiding to tray (macOS parity: X/close hides, tray Quit exits)
   bool quitting_ = false;

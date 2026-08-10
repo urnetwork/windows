@@ -274,6 +274,17 @@ class ConnectPage {
   bool connected_ = false;
   // the SDK connect controller's own status (ApplyStats); see ConnectStatus
   ConnectStatus connectStatus_ = ConnectStatus::Disconnected;
+  // ---- #27: the aggregate connection health ----
+  // What the status line/dot/strip/hero actually render now. Derived in
+  // SdkHost::ReadStats (ConnectionHealth.h owns the transition table) and
+  // carried on the same LiveStats as connectStatus_, so the two can only
+  // disagree across the OPTIMISTIC local write a connect press makes — which
+  // ApplyConnectStatus reconciles explicitly. NoService claims least.
+  urnw::health::State health_ = urnw::health::State::NoService;
+  // Non-zero while a degrade hold is pending: the steady-millis deadline at
+  // which the clock alone changes health_. OnChartTick asks SdkHost to
+  // republish then — no SDK event is coming; see LiveStats::healthReevalAtMillis.
+  int64_t healthReevalAtMillis_ = 0;
   // network name off the stored jwt, for the idle "{name} is ready to connect"
   // copy. Read once per auth change, not per stats push (ParsedJwt re-parses).
   std::string networkName_;
