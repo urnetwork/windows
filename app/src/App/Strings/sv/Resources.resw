@@ -2224,7 +2224,7 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>Vi kunde inte bekräfta ditt köp ännu. Om du slutförde betalningen uppdateras din plan automatiskt inom några minuter — du behöver inte köpa igen.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>Avsluta</value>

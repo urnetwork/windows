@@ -21,6 +21,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -32,6 +33,8 @@
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 
+#include "IdenticonImage.h"
+#include "PostQuantumIdentity.h"
 #include "ProviderGlobe.h"
 #include "ProviderLocations.h"
 #include "SdkHost.h"
@@ -51,6 +54,13 @@ class ProviderLocationsSheet : public std::enable_shared_from_this<ProviderLocat
   // gray discovery-disabled line instead of "no providers" (apple/drawer
   // parity). Cheap enough to run on every SDK push.
   void Update(std::vector<ProviderLocationRow> rows, bool remoteConnected);
+
+  // The providers with a verified e2e session (SdkHost::CurrentProviderIdentities
+  // / the identity change feed). Joined by egress client id onto the rows to
+  // badge the encrypted providers. Independent of the locations feed -- a
+  // session verifying does not change a location row -- so it re-renders on its
+  // own push.
+  void UpdateIdentities(std::vector<ProviderIdentityRow> identities);
 
   // Called from the window's shared ~10 fps drawer clock: advances the globe's
   // recenter animation and reticks the connected-duration labels at 1s.
@@ -75,6 +85,13 @@ class ProviderLocationsSheet : public std::enable_shared_from_this<ProviderLocat
   std::unique_ptr<ProviderGlobe> globe_;
 
   std::vector<ProviderLocationRow> rows_;
+  // the verified-e2e identity set, keyed by egress client id (the row join
+  // key). Membership drives the badge; the entry supplies the identicon key.
+  // Value-compared in UpdateIdentities so an identity change re-renders even
+  // when the location rows are unchanged.
+  std::vector<ProviderIdentityRow> identities_;
+  std::map<std::string, const ProviderIdentityRow*> identityByClientId_;
+  IdenticonCache identiconCache_;
   std::string selectedClientId_;
   // rows the user removed, trimmed locally so the list does not appear to snap
   // back during the SDK round trip; cleared as the SDK confirms them gone

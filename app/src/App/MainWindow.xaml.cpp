@@ -339,6 +339,7 @@ void MainWindow::ApplyStrings() {
   FixedIpLabel().Text(Loc("fixed_ip"));
   StrongAnonLabel().Text(Loc("strong_anonymization"));
   PostQuantumLabel().Text(Loc("post_quantum_encryption"));
+  KillSwitchLabel().Text(Loc("kill_switch"));
   ClientStatsLabel().Text(Loc("client_statistics"));
   LocalStatsLabel().Text(Loc("local_statistics"));
   DnsCardLabel().Text(Loc("custom_dns"));
@@ -364,6 +365,9 @@ void MainWindow::ApplyStrings() {
   AccountUpgradeButton().Content(LocBox("upgrade"));
   AccountDailyLabel().Text(Loc("daily_data_balance_label"));
   RedeemRowText().Text(Loc("redeem_balance_code"));
+  ManageSubRowText().Text(Loc("manage_subscription"));
+  ManageSubHintText().Text(Loc("site_manage_billing_hint"));
+  ManageSubErrorText().Text(Loc("site_billing_portal_error"));
   BalanceCodesLabel().Text(Loc("balance_codes_title"));
   BalanceCodesEmptyText().Text(Loc("no_balance_codes_found"));
   AccountHeading().Text(Loc("account"));
@@ -1178,6 +1182,13 @@ void MainWindow::ApplyBalance() {
   // the wallet panel's checkout stays hidden for guests: an account comes first
   UpgradeButton().Visibility(upgradeVisibility);
 
+  // Pro accounts manage the subscription in Stripe's billing portal (payment
+  // details, invoices, cancellation) — the plan card's row is their entry
+  // point; free/guest accounts have nothing to manage there
+  ManageSubSection().Visibility(balance_.isPro && !balance_.guest
+                                    ? Visibility::Visible
+                                    : Visibility::Collapsed);
+
   // the small ring while the post-checkout confirmation poll runs
   AccountPlanRing().IsActive(balancePoll_.confirming);
   AccountPlanRing().Visibility(balancePoll_.confirming ? Visibility::Visible
@@ -1231,6 +1242,46 @@ void MainWindow::OnOpenUpgrade(IInspectable const&, RoutedEventArgs const&) {
 
 void MainWindow::OnOpenRedeem(IInspectable const&, RoutedEventArgs const&) {
   ShowRedeemSheet();
+}
+
+void MainWindow::OnManageSubscription(IInspectable const&, RoutedEventArgs const&) {
+  // Subscription management lives in Stripe's billing portal: ask the server
+  // for a fresh portal session, then open its url in the browser. Portal urls
+  // are short-lived, so one is minted per click, never cached.
+  if (portalOpening_ || !Sdk().apiReady()) return;
+  portalOpening_ = true;
+  ManageSubRowButton().IsEnabled(false);
+  ManageSubErrorText().Visibility(Visibility::Collapsed);
+  auto queue = DispatcherQueue();
+  auto weak = get_weak();
+  Sdk().api().stripeCreateCustomerPortal(
+      urnet::StripeCreateCustomerPortalArgs{},
+      [queue, weak](std::optional<urnet::StripeCreateCustomerPortalResult> result,
+                    std::optional<std::string>) {
+        // transport failure and a server-side error both land as "no url":
+        // either way the row shows the visible portal error and re-arms
+        const std::string url =
+            result && !result->error && result->url ? *result->url : std::string();
+        queue.TryEnqueue([weak, url] {
+          if (auto self = weak.get()) self->OpenBillingPortal(url);
+        });
+      });
+}
+
+winrt::fire_and_forget MainWindow::OpenBillingPortal(std::string url) {
+  auto self = get_strong();  // keep the window alive across the launcher await
+  bool launched = false;
+  if (!url.empty()) {
+    try {
+      launched = co_await winrt::Windows::System::Launcher::LaunchUriAsync(
+          winrt::Windows::Foundation::Uri{H(url)});
+    } catch (...) {
+      launched = false;
+    }
+  }
+  self->portalOpening_ = false;
+  self->ManageSubRowButton().IsEnabled(true);
+  if (!launched) self->ManageSubErrorText().Visibility(Visibility::Visible);
 }
 
 winrt::fire_and_forget MainWindow::ShowUpgradeSheet() {
@@ -1690,6 +1741,11 @@ void MainWindow::WireDrawerFeeds() {
       if (auto self = weak.get()) self->ApplyBlockerUi(on);
     });
   });
+  sdk.SetRouteLocalHandler([queue, weak](bool routeLocal) {
+    queue.TryEnqueue([weak, routeLocal] {
+      if (auto self = weak.get()) self->ApplyKillSwitchUi(routeLocal);
+    });
+  });
   // location/provider chooser: the bucketed locations feed the open sheet; the
   // peers feed both the sheet's pinned section and the drawer's peer-count label
   sdk.SetLocationsHandler([queue, weak](std::optional<urnet::FilteredLocations> locations,
@@ -1719,6 +1775,18 @@ void MainWindow::WireDrawerFeeds() {
         self->providerLocations_ = rows;
         if (self->providerLocationsSheet_) {
           self->providerLocationsSheet_->Update(rows, Sdk().RemoteConnected());
+        }
+      }
+    });
+  });
+  // the verified-e2e identity set behind the locations badge: signal-only feed,
+  // pushed the same way and applied to the sheet if it is open
+  sdk.SetProviderIdentitiesHandler([queue, weak](std::vector<urnw::ProviderIdentityRow> identities) {
+    queue.TryEnqueue([weak, identities = std::move(identities)] {
+      if (auto self = weak.get()) {
+        self->providerIdentities_ = identities;
+        if (self->providerLocationsSheet_) {
+          self->providerLocationsSheet_->UpdateIdentities(identities);
         }
       }
     });
@@ -1804,6 +1872,8 @@ void MainWindow::SeedConnectControls() {
   StrongAnonToggle().IsOn(!settings.allowDirect);
   PostQuantumToggle().IsOn(settings.postQuantum);
   BlockerToggle().IsOn(Sdk().CurrentBlockerEnabled());
+  // "Kill switch" is the inverse of the device routeLocal flag (apple parity)
+  KillSwitchToggle().IsOn(!Sdk().CurrentRouteLocal());
   // provide control mode ("manual"/unknown land on Never, the SDK's
   // conservative default case)
   const std::string provideMode = Sdk().CurrentProvideControlMode();
@@ -1888,6 +1958,21 @@ void MainWindow::ApplyBlockerUi(bool on) {
   if (BlockerToggle().IsOn() == on) return;
   updatingControls_ = true;
   BlockerToggle().IsOn(on);
+  updatingControls_ = false;
+}
+
+void MainWindow::OnKillSwitchToggled(IInspectable const&, RoutedEventArgs const&) {
+  if (updatingControls_) return;
+  // kill switch on = routeLocal off (apple SettingsForm parity); the device
+  // applies it live and the app LocalState persists it across sessions
+  Sdk().SetRouteLocal(!KillSwitchToggle().IsOn());
+}
+
+void MainWindow::ApplyKillSwitchUi(bool routeLocal) {
+  const bool on = !routeLocal;
+  if (KillSwitchToggle().IsOn() == on) return;
+  updatingControls_ = true;
+  KillSwitchToggle().IsOn(on);
   updatingControls_ = false;
 }
 
@@ -2079,6 +2164,10 @@ winrt::fire_and_forget MainWindow::ShowProviderLocationsSheet() {
     self->providerLocationsSheet_ =
         urnw::ProviderLocationsSheet::Create(Content().XamlRoot(), Sdk());
     self->providerLocationsSheet_->Update(self->providerLocations_, Sdk().RemoteConnected());
+    // seed the badge set from the current snapshot so open-while-connected shows
+    // badges immediately, not only after the next identity change
+    self->providerIdentities_ = Sdk().CurrentProviderIdentities();
+    self->providerLocationsSheet_->UpdateIdentities(self->providerIdentities_);
     co_await self->providerLocationsSheet_->Dialog().ShowAsync();
   } catch (...) {
   }

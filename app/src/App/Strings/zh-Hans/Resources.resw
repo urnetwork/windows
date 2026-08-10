@@ -2180,7 +2180,7 @@
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>我们尚未能确认您的购买。如果您已完成结账，您的计划将在几分钟内自动更新——无需再次购买。</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>退出</value>

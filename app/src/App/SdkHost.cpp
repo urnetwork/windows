@@ -806,6 +806,14 @@ bool SdkHost::BootstrapSession() {
     } catch (const std::exception& e) {
       LogWarn("sdkhost: restore provide control mode failed: {}", e.what());
     }
+    // Restore routeLocal (the kill switch is its inverse) the same way (apple
+    // DeviceManager parity): the service's DeviceLocal starts from
+    // DefaultRouteLocal and does not read local state itself.
+    try {
+      device_->setRouteLocal(localState_->getRouteLocal());
+    } catch (const std::exception& e) {
+      LogWarn("sdkhost: restore route local failed: {}", e.what());
+    }
     if (presentationActive_) {
       SubscribeStats();
       SubscribeDrawer();
@@ -978,10 +986,19 @@ void SdkHost::SubscribeDrawer() {
   presentationSubs_.push_back(device_->addBlockerEnabledChangeListener([this](bool on) {
     if (onBlockerEnabled_) onBlockerEnabled_(on);
   }));
+  // routeLocal (kill switch): keep the toggle honest against changes from any
+  // controller of the shared daemon device
+  presentationSubs_.push_back(device_->addRouteLocalChangeListener([this](bool routeLocal) {
+    if (onRouteLocal_) onRouteLocal_(routeLocal);
+  }));
   // connected provider locations: signal-only (no payload), so re-read the
   // getter and publish only when the rows actually changed
   presentationSubs_.push_back(device_->addConnectedProviderLocationChangeListener(
       [this] { PublishProviderLocations(); }));
+  // provider identities (the e2e-verified set behind the locations badge):
+  // signal-only, same as the locations feed -- re-read and value-compare
+  presentationSubs_.push_back(device_->addProviderIdentityChangeListener(
+      [this] { PublishProviderIdentities(); }));
 
   // initial snapshots
   PublishThroughput();
@@ -990,9 +1007,11 @@ void SdkHost::SubscribeDrawer() {
   PublishBlockStats();
   PublishSplitRules();
   PublishProviderLocations();
+  PublishProviderIdentities();
   PushLocalOverrideAppsToDriver();  // seed the driver once the device + service are up
   if (onDnsSettings_) onDnsSettings_(device_->getDnsResolverSettings());
   if (onBlockerEnabled_) onBlockerEnabled_(device_->getBlockerEnabled());
+  if (onRouteLocal_) onRouteLocal_(device_->getRouteLocal());
 }
 
 void SdkHost::PublishThroughput() {
@@ -1179,6 +1198,31 @@ std::vector<ProviderLocationRow> SdkHost::CurrentProviderLocations() {
   return lastProviderLocations_;
 }
 
+void SdkHost::PublishProviderIdentities() {
+  if (!device_) return;
+  std::vector<ProviderIdentityRow> rows;
+  try {
+    rows = ReadProviderIdentityRows(device_->getProviderIdentities());
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read provider identities failed: {}", e.what());
+    return;
+  }
+  // Value compare, not identity: the listener is signal-only and re-fires on
+  // window churn, so publishing unconditionally would rebuild the sheet.
+  bool changed = false;
+  {
+    std::scoped_lock lock(drawerMutex_);
+    changed = !SameProviderIdentityRows(rows, lastProviderIdentities_);
+    if (changed) lastProviderIdentities_ = rows;
+  }
+  if (changed && onProviderIdentities_) onProviderIdentities_(std::move(rows));
+}
+
+std::vector<ProviderIdentityRow> SdkHost::CurrentProviderIdentities() {
+  std::scoped_lock lock(drawerMutex_);
+  return lastProviderIdentities_;
+}
+
 void SdkHost::RemoveConnectedProvider(const std::string& clientId) {
   std::scoped_lock lock(mutex_);
   if (!device_ || clientId.empty()) return;
@@ -1298,6 +1342,16 @@ bool SdkHost::CurrentBlockerEnabled() {
   }
 }
 
+bool SdkHost::CurrentRouteLocal() {
+  try {
+    if (device_) return device_->getRouteLocal();
+    if (localState_) return localState_->getRouteLocal();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: get route local failed: {}", e.what());
+  }
+  return true;  // the SDK default (kill switch off)
+}
+
 PerformanceSettings SdkHost::CurrentPerformanceSettings() {
   PerformanceSettings s;
   std::optional<urnet::PerformanceProfile> profile;
@@ -1362,6 +1416,16 @@ void SdkHost::SetBlockerEnabled(bool on) {
     device_->setBlockerEnabled(on);  // the device persists and restores this
   } catch (const std::exception& e) {
     LogWarn("sdkhost: set blocker failed: {}", e.what());
+  }
+}
+
+void SdkHost::SetRouteLocal(bool routeLocal) {
+  std::scoped_lock lock(mutex_);
+  try {
+    if (localState_) localState_->setRouteLocal(routeLocal);  // persistence
+    if (device_) device_->setRouteLocal(routeLocal);          // live device
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: set route local failed: {}", e.what());
   }
 }
 

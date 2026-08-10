@@ -49,7 +49,10 @@ class RedeemCodeSheet : public std::enable_shared_from_this<RedeemCodeSheet> {
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void Submit();
-  void ApplyResult(bool ok, bool rejected, std::string const& serverError,
+  // rejected: the server refused the code (serverMessage carries its reason,
+  // possibly empty). !ok && !rejected is a transport failure, which gets the
+  // check-your-balance copy — the redeem may have committed server-side.
+  void ApplyResult(bool ok, bool rejected, std::string const& serverMessage,
                    int64_t balanceByteCount);
 
   SdkHost& sdk_;
@@ -84,7 +87,9 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
 
   // Balance-store push, forwarded by the window (already on the UI thread):
   // flips the waiting state to success when Pro lands, or to the timeout
-  // message when the confirmation poll gives up.
+  // message when the confirmation poll gives up. The timeout page is not
+  // terminal: a later Pro-confirming snapshot (background poll, activation
+  // refresh) flips it to success too.
   void OnBalance(BalanceSnapshot const& snapshot, BalancePollState const& poll);
 
  private:
@@ -98,8 +103,12 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   void ApplySelection();
   void BeginCheckout();
   // Create a Stripe session in the given ui mode and route the result: embedded
-  // → OpenEmbedded (or retry once as hosted), hosted → the system browser.
+  // → OpenEmbedded (or retry once as hosted), hosted → LaunchHosted.
   void RequestSession(bool embedded);
+  // Open the hosted checkout url in the system browser, OBSERVING the launch:
+  // Waiting (+ confirmation poll) only on success; on failure an inline error
+  // with the url appended so the user can copy it into a browser by hand.
+  winrt::fire_and_forget LaunchHosted(std::string url);
   // Embedded checkout: swap in the WebView2 page and navigate it to the ur.io
   // bridge for this session's client_secret. Async because WebView2 init is.
   winrt::fire_and_forget OpenEmbedded(std::string clientSecret);

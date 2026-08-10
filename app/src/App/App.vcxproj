@@ -219,6 +219,11 @@
     <ClCompile Include="GlobeGeometry.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="WorldTopology.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="ProviderLocations.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <!-- Post-quantum identity row logic is WinRT-free (no pch), same as the
+         provider-locations logic above; the identicon rasterizer below needs
+         WinUI image types and uses the pch. -->
+    <ClCompile Include="PostQuantumIdentity.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="IdenticonImage.cpp" />
     <ClCompile Include="ProviderGlobe.cpp" />
     <ClCompile Include="ProviderLocationsSheet.cpp" />
     <ClCompile Include="SdkHost.cpp" />
@@ -244,6 +249,8 @@
     <ClInclude Include="GlobeGeometry.h" />
     <ClInclude Include="WorldTopology.h" />
     <ClInclude Include="ProviderLocations.h" />
+    <ClInclude Include="PostQuantumIdentity.h" />
+    <ClInclude Include="IdenticonImage.h" />
     <ClInclude Include="ProviderGlobe.h" />
     <ClInclude Include="ProviderLocationsSheet.h" />
     <ClInclude Include="SdkHost.h" />

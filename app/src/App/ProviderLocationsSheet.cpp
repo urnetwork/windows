@@ -193,6 +193,17 @@ void ProviderLocationsSheet::Update(std::vector<ProviderLocationRow> rows, bool 
   Render();
 }
 
+void ProviderLocationsSheet::UpdateIdentities(std::vector<ProviderIdentityRow> identities) {
+  // value-compare: the identity feed is signal-only and re-fires on churn
+  if (SameProviderIdentityRows(identities, identities_)) return;
+  identities_ = std::move(identities);
+  identityByClientId_.clear();
+  for (const ProviderIdentityRow& identity : identities_) {
+    identityByClientId_[identity.clientId] = &identity;
+  }
+  Render();
+}
+
 void ProviderLocationsSheet::Render() {
   list_.Children().Clear();
   durationLabels_.clear();
@@ -288,7 +299,28 @@ Grid ProviderLocationsSheet::MakeProviderRow(const ProviderLocationRow& row) {
       if (auto self = weak.lock()) self->CopyClientId(copyId);
     });
   }
-  text.Children().Append(idText);
+  // the id, plus the provider's identity identicon as a trailing badge when a
+  // verified e2e session exists. A 2-column grid (id Star, badge Auto) so a
+  // long id ellipsizes instead of pushing the badge off; the badge is created
+  // only on a join hit, so absence is the "not e2e" state (no placeholder).
+  if (auto it = identityByClientId_.find(row.clientId); it != identityByClientId_.end()) {
+    Grid idRow;
+    ColumnDefinition idCol, badgeCol;
+    idCol.Width(GridLength{1, GridUnitType::Star});
+    badgeCol.Width(GridLength{0, GridUnitType::Auto});
+    idRow.ColumnDefinitions().Append(idCol);
+    idRow.ColumnDefinitions().Append(badgeCol);
+    idRow.ColumnSpacing(6);
+    Grid::SetColumn(idText, 0);
+    idRow.Children().Append(idText);
+    UIElement badge = MakeIdenticonBadge(identiconCache_, *it->second, kBadgeIdenticonSize);
+    ToolTipService::SetToolTip(badge, box_value(Loc("post_quantum_encryption")));
+    Grid::SetColumn(badge, 1);
+    idRow.Children().Append(badge);
+    text.Children().Append(idRow);
+  } else {
+    text.Children().Append(idText);
+  }
 
   const std::string place = PlaceLabel(row);
   TextBlock placeText = MakeText(

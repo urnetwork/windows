@@ -2221,7 +2221,7 @@
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>हम अभी तक आपकी खरीदारी की पुष्टि नहीं कर सके। यदि आपने चेकआउट पूरा कर लिया है, तो आपकी योजना कुछ ही मिनटों में अपने आप अपडेट हो जाएगी — दोबारा खरीदने की जरूरत नहीं है।</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>बाहर निकलें</value>

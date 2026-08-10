@@ -68,6 +68,10 @@
     <value>{} (verified)</value>
     <comment>The account's email or phone, marked as verified. The argument is the email or phone number.</comment>
   </data>
+  <data name="account_isn_t_ready_for_purchases" xml:space="preserve">
+    <value>Your account isn't ready for purchases. Please restart the app and try again.</value>
+    <comment>Shown when a purchase is refused before contacting the App Store because the networkId is missing or unparseable — the purchase could never be credited to anyone (Shared/ViewModels/AppStoreSubscriptionManager.swift). This used to be a silent no-op.</comment>
+  </data>
   <data name="account_needs_verification" xml:space="preserve">
     <value>This account needs verification. Check your email.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
@@ -348,9 +352,21 @@
     <value>Balance code</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
+  <data name="balance_code_already_redeemed_message" xml:space="preserve">
+    <value>This balance code has already been redeemed. If you redeemed it earlier, the data is already on your balance.</value>
+    <comment>Redeem balance code: the server answered that this code was already redeemed. Distinct from invalid -- the user may have redeemed it on an earlier attempt that looked like a failure.</comment>
+  </data>
+  <data name="balance_code_invalid_message" xml:space="preserve">
+    <value>That balance code isn't valid. Check the code and try again.</value>
+    <comment>Redeem balance code: the server answered and rejected the code as unknown/invalid. Distinct from a transport failure, which must never be reported as a bad code.</comment>
+  </data>
   <data name="balance_code_redeemed" xml:space="preserve">
     <value>Balance code redeemed.</value>
     <comment>Confirmation shown after a balance code is redeemed.</comment>
+  </data>
+  <data name="balance_code_transport_error" xml:space="preserve">
+    <value>We couldn't reach the server — check your connection. If you were charged, the code may already be applied; check your balance before trying again.</value>
+    <comment>Redeem balance code: the request never got a server answer (network failure). Must NOT be worded as 'bad code' -- the redeem may have committed server-side, so tell the user to check their balance before retrying.</comment>
   </data>
   <data name="balance_code_where_to_buy" xml:space="preserve">
     <value>Don't have a code? Data codes can be purchased at ur.io and emailed to you.</value>
@@ -359,6 +375,10 @@
   <data name="balance_codes_link" xml:space="preserve">
     <value>Balance codes</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="balance_codes_load_error" xml:space="preserve">
+    <value>Couldn't load your balance codes. Check your connection and try again.</value>
+    <comment>Linux redeem-code sheet: shown in place of the redeemed-codes history when getNetworkRedeemedBalanceCodes FAILS (transport error, no response, or a server-side error) — distinct from the empty state's "No balance codes found", which is only for a successful fetch with no codes.</comment>
   </data>
   <data name="balance_codes_title" xml:space="preserve">
     <value>Balance Codes</value>
@@ -509,6 +529,14 @@ right way</value>
   <data name="checking_solana_transactions" xml:space="preserve">
     <value>Checking for Solana Transactions</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="checkout_browser_launch_failed" xml:space="preserve">
+    <value>We couldn't open your browser. Copy this link into a browser to finish checkout:</value>
+    <comment>Upgrade sheet: the system browser could not be opened for the hosted checkout url. The app appends the url itself on the next line (selectable) so the user can copy it into a browser by hand — never advancing to the waiting page with no payment page open.</comment>
+  </data>
+  <data name="checkout_interrupted_confirming" xml:space="preserve">
+    <value>The checkout view closed unexpectedly. If your payment went through, your plan updates here automatically — there's no need to buy again.</value>
+    <comment>Upgrade sheet waiting page: the embedded checkout webview crashed after the payment form had rendered, so a charge may already have gone through with only the redirect lost. Shown while the confirmation poll asks the server for the payment webhook; must never invite buying again.</comment>
   </data>
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>Complete your purchase in the browser. Your plan updates here automatically once payment is confirmed.</value>
@@ -737,6 +765,14 @@ right way</value>
   <data name="copy_to_clipboard" xml:space="preserve">
     <value>Copy to Clipboard</value>
     <comment>Button text to copy the seedphrase to the clipboard.</comment>
+  </data>
+  <data name="couldn_t_load_subscription_options" xml:space="preserve">
+    <value>Couldn't load subscription options. Check your connection and retry.</value>
+    <comment>Shown in the upgrade sheet and intro funnel when the App Store product fetch failed, with a retry action — replaces the eternal spinner (Shared/Views/UpgradeSubscriptionSheet.swift, Shared/Views/Introduction/IntroductionView.swift).</comment>
+  </data>
+  <data name="couldn_t_restore_purchases" xml:space="preserve">
+    <value>Couldn't restore purchases. Please try again.</value>
+    <comment>Restore-purchases outcome: the App Store sync failed (e.g. the user cancelled the credentials prompt or the store was unreachable) and no entitlement was found locally (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>Couldn't open wallet. Please install it and try again.</value>
@@ -2426,6 +2462,10 @@ Claim your bonus by creating a network!</value>
     <value>No payouts found for this wallet</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="no_previous_purchases_were_found" xml:space="preserve">
+    <value>No previous purchases were found.</value>
+    <comment>Restore-purchases outcome: the sync succeeded and there is genuinely nothing to restore (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
+  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>We could not find any providers.</value>
     <comment>Locations List</comment>
@@ -2543,6 +2583,18 @@ and most decentralized ingress and egress protocol.</value>
     <value>Join with Stripe</value>
     <comment>Call to action</comment>
   </data>
+  <data name="payment_confirmation_delayed" xml:space="preserve">
+    <value>Confirmation is taking longer than expected. Your plan will update automatically once it's confirmed — there's no need to buy again.</value>
+    <comment>Shown when the post-payment confirmation poll exhausts its budget (2 minutes) without the server confirming the subscription. The payment evidence is real (store or payment sheet reported success), so say that plainly, and head off a second purchase.</comment>
+  </data>
+  <data name="payment_confirmation_processing" xml:space="preserve">
+    <value>We're confirming your payment now. Your plan will update automatically — you don't need to do anything.</value>
+    <comment>Body of the post-purchase overlay while the server has not yet confirmed the subscription. Replaces the optimistic 'You're premium.' claim until currentSubscription actually confirms.</comment>
+  </data>
+  <data name="payment_not_completed" xml:space="preserve">
+    <value>Your payment could not be completed.</value>
+    <comment>Shown in the payment-problem dialog when the Stripe payment sheet reports a failure. The sheet's own error detail is appended by the caller.</comment>
+  </data>
   <data name="payment_pending" xml:space="preserve">
     <value>Payment Pending</value>
     <comment>Used in Main/Account/PayoutItem/PayoutItemView.swift.</comment>
@@ -2550,6 +2602,14 @@ and most decentralized ingress and egress protocol.</value>
   <data name="payment_problem" xml:space="preserve">
     <value>Payment problem</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
+  </data>
+  <data name="payment_received" xml:space="preserve">
+    <value>Payment received.</value>
+    <comment>Title of the post-purchase screen while the server has not yet confirmed the entitlement (Shared/Views/PurchaseSuccessView.swift). StoreKit took the payment; the confirmation poll is still running — the copy must not claim premium yet.</comment>
+  </data>
+  <data name="payment_received_title" xml:space="preserve">
+    <value>Payment received</value>
+    <comment>Title for the post-purchase overlay and the confirmation-timeout dialog. Deliberately claims only what is known -- the payment was received -- not that the plan is active yet.</comment>
   </data>
   <data name="payout" xml:space="preserve">
     <value>Payout</value>
@@ -2786,7 +2846,15 @@ and most decentralized ingress and egress protocol.</value>
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>We couldn't confirm your purchase yet. If you completed checkout, your plan will update automatically in a few minutes — there's no need to buy again.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
+  </data>
+  <data name="purchase_could_not_be_verified" xml:space="preserve">
+    <value>This purchase could not be verified with Google Play, so it can't be applied to your account. If you were charged and your plan doesn't update, please contact support.</value>
+    <comment>Error dialog body when the server's verify answer for a Play purchase is terminal `invalid` — the proof will never verify (unknown token, disallowed product, canceled before completing). The purchase is still acknowledged with Play so a real charge is not auto-refunded; this dialog is how the failure reaches the user instead of a silent nothing (android google/PlanViewModel.kt report path).</comment>
+  </data>
+  <data name="purchase_found_confirming_your_plan" xml:space="preserve">
+    <value>Purchase found. Confirming your plan — it will update automatically.</value>
+    <comment>Restore-purchases outcome: an entitlement for the current network was found; the confirmation poll now bridges the gap until the server credits it (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>Quit</value>
@@ -3017,6 +3085,10 @@ and most decentralized ingress and egress protocol.</value>
   <data name="restore_most_secure_settings" xml:space="preserve">
     <value>Restore to most secure settings</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="restore_purchases" xml:space="preserve">
+    <value>Restore purchases</value>
+    <comment>Action label that resyncs App Store purchases (AppStore.sync + entitlement scan). Shown in Settings and in the upgrade flow's failure states (Main/Account/Settings/SettingsForm-iOS.swift, SettingsForm-macOS.swift, Shared/Views/UpgradeSubscriptionSheet.swift, Shared/Views/PurchaseSuccessView.swift, Shared/Views/Introduction/IntroductionView.swift).</comment>
   </data>
   <data name="retry" xml:space="preserve">
     <value>Retry</value>
@@ -3873,6 +3945,10 @@ world's content</value>
     <value>Invalid balance code.</value>
     <comment>Account panel: invalid balance code</comment>
   </data>
+  <data name="site_keep_waiting" xml:space="preserve">
+    <value>Keep waiting</value>
+    <comment>Upgrade sheet: give-up state action to resume waiting for the payment</comment>
+  </data>
   <data name="site_load_balance_codes_error" xml:space="preserve">
     <value>Could not load balance codes</value>
     <comment>Account panel: balance codes load error</comment>
@@ -3933,6 +4009,18 @@ world's content</value>
     <value>Operator Client UI</value>
     <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
   </data>
+  <data name="site_pay_another_way" xml:space="preserve">
+    <value>Pay another way</value>
+    <comment>Upgrade sheet: escape from the waiting state back to the payment options</comment>
+  </data>
+  <data name="site_payment_not_seen_body" xml:space="preserve">
+    <value>We haven't seen your payment yet. If you completed it in your wallet, it may still be processing — your plan will update automatically under Account once it lands.</value>
+    <comment>Upgrade sheet: give-up state body — the payment may still be processing and will appear under Account</comment>
+  </data>
+  <data name="site_payment_not_seen_title" xml:space="preserve">
+    <value>Payment not confirmed yet</value>
+    <comment>Upgrade sheet: give-up state title after the payment wait deadline</comment>
+  </data>
   <data name="site_principal" xml:space="preserve">
     <value>Principal</value>
     <comment>Account panel: client info — principal label</comment>
@@ -3949,6 +4037,10 @@ world's content</value>
     <value>Proxy type</value>
     <comment>Account panel: proxy-type picker aria-label</comment>
   </data>
+  <data name="site_redeem_timeout" xml:space="preserve">
+    <value>The request timed out. If you were charged, check your balance — the code may already be applied.</value>
+    <comment>Balance code redeem: timeout is ambiguous — the server may have committed the redeem after the client stopped waiting</comment>
+  </data>
   <data name="site_roles" xml:space="preserve">
     <value>Roles</value>
     <comment>Account panel: client info — roles label</comment>
@@ -3964,6 +4056,10 @@ world's content</value>
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>Username is the token in the URL; password is empty.</value>
     <comment>Account panel: SOCKS credential note</comment>
+  </data>
+  <data name="site_solana_no_wallet_hint" xml:space="preserve">
+    <value>Nothing happened? You may need a Solana wallet installed — or pay another way.</value>
+    <comment>Upgrade sheet: waiting state hint — a solana: deep link with no wallet installed silently does nothing</comment>
   </data>
   <data name="site_sub_active_body" xml:space="preserve">
     <value>Your Pro plan is active. There's no store subscription to manage on this account.</value>
@@ -4141,6 +4237,10 @@ as it should be.</value>
     <value>Strong Anonymization</value>
     <comment>Connect drawer: strong anonymization toggle — the inverse of allow direct (direct connections expose the real source IP to the provider).</comment>
   </data>
+  <data name="subscription_purchased_under_different_account" xml:space="preserve">
+    <value>Your subscription was purchased under a different account. Log in to that account to use it.</value>
+    <comment>The store purchase belongs to a different network than the one logged in — crediting must not go to the wrong account, so tell the user which way out exists. Apple: restore-purchases outcome (Shared/ViewModels/AppStoreSubscriptionManager.swift). Android: terminal `wrong_network` answer from the Play purchase report (google/PlanViewModel.kt); the purchase is still acknowledged so Play does not auto-refund it.</comment>
+  </data>
   <data name="successfully_claimed_multiplier" xml:space="preserve">
     <value>Successfully claimed multiplier!</value>
     <comment>Snackbar shown when the earnings multiplier is claimed successfully. Used in Main/Account/Settings/SettingsView.swift.</comment>
@@ -4229,6 +4329,10 @@ as it should be.</value>
     <value>Thanks for the feedback!</value>
     <comment>Confirmation shown after feedback is sent.</comment>
   </data>
+  <data name="the_purchase_could_not_be_completed" xml:space="preserve">
+    <value>The purchase could not be completed. Please try again.</value>
+    <comment>Shown inline in the upgrade flow when a StoreKit purchase attempt throws (Shared/ViewModels/AppStoreSubscriptionManager.swift). Every purchase failure is shown to the user — a payment error they cannot see is one they will hit again. User cancellation is not an error and never shows this.</comment>
+  </data>
   <data name="there_was_an_error_checking_the_network_name" xml:space="preserve">
     <value>There was an error checking the network name</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkViewModel.swift.</comment>
@@ -4248,6 +4352,10 @@ as it should be.</value>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
     <value>⚠️ This is the ONLY time you'll see this.</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
+  <data name="this_purchase_couldn_t_be_verified" xml:space="preserve">
+    <value>This purchase couldn't be verified with the App Store, so it can't be applied to your account. If you were charged and your plan doesn't update, please contact support.</value>
+    <comment>Shown inline in the upgrade flow when the server's verify answer for a purchase's transaction JWS is terminal `invalid` — the proof will never verify. The transaction is still finished so StoreKit stops redelivering it; this message is how the failure reaches the user instead of a silent success (Shared/ViewModels/AppStoreSubscriptionManager.swift). Apple sibling of purchase_could_not_be_verified (android).</comment>
   </data>
   <data name="this_region" xml:space="preserve">
     <value>this region</value>
@@ -4611,6 +4719,10 @@ as it should be.</value>
   <data name="wallets" xml:space="preserve">
     <value>Wallets</value>
     <comment>Wallets Screen</comment>
+  </data>
+  <data name="we_re_confirming_your_purchase_with_the_app_store" xml:space="preserve">
+    <value>We're confirming your purchase with the App Store. Your plan will update automatically.</value>
+    <comment>Body of the post-purchase screen while the confirmation poll runs (Shared/Views/PurchaseSuccessView.swift). Processing-shaped, not premium-shaped: the server learns of the purchase by webhook and has not confirmed yet.</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>Welcome to URnetwork</value>

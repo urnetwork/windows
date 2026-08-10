@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "PostQuantumIdentity.h"
 #include "ProviderLocations.h"
 #include "Sdk.h"
 #include "ServiceClient.h"
@@ -230,6 +231,8 @@ class SdkHost {
   using SplitRulesHandler = std::function<void(std::vector<SplitRule>)>;
   using DnsSettingsHandler = std::function<void(std::optional<urnet::DnsResolverSettings>)>;
   using BlockerEnabledHandler = std::function<void(bool)>;
+  // The device routeLocal flag (the kill-switch toggle renders its inverse).
+  using RouteLocalHandler = std::function<void(bool)>;
   // Location/provider chooser feeds (invoked on SDK callback threads; payloads
   // by value so the UI can marshal them onto its thread).
   using LocationsHandler =
@@ -238,6 +241,8 @@ class SdkHost {
   using RemoteChangedHandler = std::function<void(bool remoteConnected)>;
   // The connected providers and where they are (the provider-locations sheet).
   using ProviderLocationsHandler = std::function<void(std::vector<ProviderLocationRow>)>;
+  // The providers with a verified e2e session (the provider-locations badge).
+  using ProviderIdentitiesHandler = std::function<void(std::vector<ProviderIdentityRow>)>;
 
   SdkHost() = default;
   ~SdkHost();
@@ -371,11 +376,15 @@ class SdkHost {
   void SetSplitRulesHandler(SplitRulesHandler h) { onSplitRules_ = std::move(h); }
   void SetDnsSettingsHandler(DnsSettingsHandler h) { onDnsSettings_ = std::move(h); }
   void SetBlockerEnabledHandler(BlockerEnabledHandler h) { onBlockerEnabled_ = std::move(h); }
+  void SetRouteLocalHandler(RouteLocalHandler h) { onRouteLocal_ = std::move(h); }
   void SetLocationsHandler(LocationsHandler h) { onLocations_ = std::move(h); }
   void SetPeersHandler(PeersHandler h) { onPeers_ = std::move(h); }
   void SetRemoteChangedHandler(RemoteChangedHandler h) { onRemoteChanged_ = std::move(h); }
   void SetProviderLocationsHandler(ProviderLocationsHandler h) {
     onProviderLocations_ = std::move(h);
+  }
+  void SetProviderIdentitiesHandler(ProviderIdentitiesHandler h) {
+    onProviderIdentities_ = std::move(h);
   }
 
   // ---- provider locations (the "Connected to N providers" detail sheet) -----
@@ -386,6 +395,10 @@ class SdkHost {
   // every window event, and the rows also carry a per-second duration clock, so
   // an identity compare would thrash the UI).
   std::vector<ProviderLocationRow> CurrentProviderLocations();
+  // The providers with an identity-verified e2e session, joined by egress
+  // client id onto the provider-locations rows to badge the encrypted ones.
+  // Same signal-only-listener + value-compare discipline as the locations feed.
+  std::vector<ProviderIdentityRow> CurrentProviderIdentities();
   // Drop a provider by its EGRESS client id and stop it being re-discovered for
   // the rest of this connection.
   void RemoveConnectedProvider(const std::string& clientId);
@@ -404,6 +417,7 @@ class SdkHost {
   std::vector<SplitRule> CurrentSplitRules();
   std::optional<urnet::DnsResolverSettings> CurrentDnsSettings();
   bool CurrentBlockerEnabled();
+  bool CurrentRouteLocal();
   PerformanceSettings CurrentPerformanceSettings();
 
   // Drawer mutations (called from the UI thread).
@@ -415,6 +429,10 @@ class SdkHost {
   void SetPerformanceSettings(const PerformanceSettings& settings);
   // Ad/tracker blocker: the device applies and persists it; the app stores nothing.
   void SetBlockerEnabled(bool on);
+  // routeLocal (the kill switch is its inverse): applied live to the device and
+  // persisted in the app LocalState, restored onto the device at session
+  // bootstrap (apple DeviceManager parity — DeviceLocal does not persist it).
+  void SetRouteLocal(bool routeLocal);
   // Provide/earn control mode: "never"|"always"|"network"|"auto"|"manual".
   // "network" is the private provider: the provider is always on, but provides
   // ONLY to same-network peers — never publicly. Persisted in LocalState like
@@ -477,6 +495,7 @@ class SdkHost {
   void PublishBlockStats();
   void PublishSplitRules();
   void PublishProviderLocations();
+  void PublishProviderIdentities();
   // Read getLocalOverrideAppIds(), compute {paths, allowlist} (Android inversion:
   // any include-in-tunnel app => allowlist with the tunnel set, else denylist with
   // the bypass set), and push to the service -> driver. Called from the override
@@ -525,6 +544,7 @@ class SdkHost {
   int64_t lastBlockedCount_ = 0;
   std::vector<SplitRule> lastSplitRules_;
   std::vector<ProviderLocationRow> lastProviderLocations_;
+  std::vector<ProviderIdentityRow> lastProviderIdentities_;
 
   ServiceClient service_;
   std::string appVersion_ = "0.0.1";
@@ -547,10 +567,12 @@ class SdkHost {
   SplitRulesHandler onSplitRules_;
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;
+  RouteLocalHandler onRouteLocal_;
   LocationsHandler onLocations_;
   PeersHandler onPeers_;
   RemoteChangedHandler onRemoteChanged_;
   ProviderLocationsHandler onProviderLocations_;
+  ProviderIdentitiesHandler onProviderIdentities_;
   AuthState authState_ = AuthState::LoggedOut;
 };
 

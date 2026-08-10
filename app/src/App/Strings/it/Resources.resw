@@ -2224,7 +2224,7 @@ più grande, sicuro e decentralizzato al mondo.</value>
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>Non siamo ancora riusciti a confermare il tuo acquisto. Se hai completato il pagamento, il tuo piano si aggiornerà automaticamente entro pochi minuti — non è necessario acquistare di nuovo.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>Esci</value>

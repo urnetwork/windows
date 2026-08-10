@@ -94,6 +94,9 @@ struct MainWindow : MainWindowT<MainWindow> {
                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnOpenRedeem(winrt::Windows::Foundation::IInspectable const&,
                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // Pro: fetch a Stripe billing-portal session and open it in the browser
+  void OnManageSubscription(winrt::Windows::Foundation::IInspectable const&,
+                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSendFeedback(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnWalletAddressChanged(
@@ -117,6 +120,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnBlockerToggled(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnKillSwitchToggled(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnClientStatsCardTapped(winrt::Windows::Foundation::IInspectable const&,
                                winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
   void OnLocalStatsCardTapped(winrt::Windows::Foundation::IInspectable const&,
@@ -175,6 +180,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   void UpdateBalanceWarning();  // insufficient-balance InfoBar gating
   winrt::fire_and_forget ShowUpgradeSheet();
   winrt::fire_and_forget ShowRedeemSheet();
+  // Launch the billing-portal url (empty = the API failed), observing the
+  // launcher so a launch failure surfaces as the visible portal error too.
+  winrt::fire_and_forget OpenBillingPortal(std::string url);
 
   // ---- guest mode ----
   winrt::fire_and_forget ShowGuestModeSheet();  // terms consent -> LoginAsGuest
@@ -213,6 +221,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   void ApplyDnsRecommendationPill();
   void ApplySplitRuleCount();
   void ApplyBlockerUi(bool on);
+  // routeLocal is the device flag; the toggle renders its inverse (kill switch
+  // on = routeLocal off), mirroring apple SettingsForm.
+  void ApplyKillSwitchUi(bool routeLocal);
   void OnChartTick();
   void AnimateDrawerIn();  // fade + slide-up entrance, staggered across cards
   winrt::fire_and_forget ShowClientContractsSheet();
@@ -256,6 +267,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   int64_t totalReferrals_ = 0;
   std::string referralCode_;
   bool insufficientBalance_ = false;  // last ContractStatus push
+  bool portalOpening_ = false;        // one billing-portal request in flight
   std::shared_ptr<urnw::UpgradeSheet> upgradeSheet_;
   std::shared_ptr<urnw::RedeemCodeSheet> redeemSheet_;
   std::shared_ptr<urnw::GuestModeSheet> guestSheet_;
@@ -283,6 +295,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::vector<urnw::BlockActionItem> blockActions_;
   std::vector<urnw::SplitRule> splitRules_;
   std::vector<urnw::ProviderLocationRow> providerLocations_;
+  std::vector<urnw::ProviderIdentityRow> providerIdentities_;
   int64_t allowedCount_ = 0;
   int64_t blockedCount_ = 0;
   std::optional<urnet::DnsResolverSettings> dnsSettings_;

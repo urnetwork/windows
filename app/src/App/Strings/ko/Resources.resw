@@ -2179,7 +2179,7 @@
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>아직 구매를 확인하지 못했습니다. 결제를 완료하셨다면 몇 분 안에 플랜이 자동으로 업데이트됩니다. 다시 구매할 필요가 없습니다.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>종료</value>

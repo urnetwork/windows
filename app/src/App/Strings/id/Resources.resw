@@ -2180,7 +2180,7 @@ terbesar, teraman, dan paling terdesentralisasi di dunia.</value>
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>Kami belum dapat mengonfirmasi pembelian Anda. Jika Anda telah menyelesaikan checkout, paket Anda akan diperbarui secara otomatis dalam beberapa menit — tidak perlu membeli lagi.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>Keluar</value>
