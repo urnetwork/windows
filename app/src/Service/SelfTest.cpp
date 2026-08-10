@@ -18,6 +18,7 @@
 #include "NetPolicy.h"
 #include "NetworkConfig.h"
 #include "Protocol.h"
+#include "RpcSessionBlob.h"
 #include "Sdk.h"
 #include "StopBudget.h"
 #include "UpdateFormats.h"
@@ -2117,6 +2118,137 @@ void TestConnectionHealth() {
         "ToString names every state");
 }
 
+// --- the app's reattach blob (task #40) --------------------------------------
+//
+// WHY A SERVICE SELFTEST COVERS AN APP FILE. The blob is how the app decides
+// whether it may adopt a tunnel THIS service is already running, and the whole
+// failure it encodes only exists on a machine with an elevated service, a live
+// tunnel and an app restart in between — which is to say it cannot be exercised
+// anywhere a test can run. So the decision was moved out of SdkHost.cpp into a
+// pure header (Common/RpcSessionBlob.h) and pinned here, exactly as
+// VersionGrammar.h and ConnectionHealth.h already are. What this CANNOT prove
+// is the live reattach itself; that still needs the owner.
+void TestRpcSessionBlob() {
+  Section("RpcSessionBlob — the reattach blob, its migration and its refusals");
+  using namespace urnw::rpcsession;
+
+  // The shape the SDK actually emits: canonical, dashed, lowercase.
+  const std::string kId = "019fe9cc-3e1a-7a4b-9c2d-0a1b2c3d4e5f";
+
+  // ---- the round trip -------------------------------------------------------
+  //
+  // The whole contract with the file on disk: what the fresh-start path writes
+  // at start_tunnel is what the next launch reads back and pairs with. A field
+  // that survives Serialize but not Parse is precisely the class of bug this
+  // section exists to catch, so every field is compared, not just the new one.
+  {
+    Blob out;
+    out.client_pem = "-----BEGIN CERTIFICATE-----\nclient\n-----END CERTIFICATE-----";
+    out.server_cert_pem = "-----BEGIN CERTIFICATE-----\nserver\n-----END CERTIFICATE-----";
+    out.host_port = "127.0.0.1:12035";
+    out.instance_id = kId;
+    const auto back = Parse(Serialize(out));
+    Check(back.has_value(), "a serialized blob parses back");
+    if (back) {
+      Check(back->client_pem == out.client_pem, "…client_pem survives the round trip");
+      Check(back->server_cert_pem == out.server_cert_pem,
+            "…server_cert_pem survives the round trip");
+      Check(back->host_port == out.host_port, "…host_port survives the round trip");
+      Check(back->instance_id == out.instance_id,
+            "…AND the instance id — the field the pairing fix turns on");
+    }
+  }
+
+  // ---- MIGRATION: blobs written before the field existed ---------------------
+  //
+  // The exact bytes the shipped build writes. It must parse (there IS a session
+  // recorded here) and it must come back UNPAIRABLE, because there is no id to
+  // pair with and no safe substitute for one: an empty instance id becomes a nil
+  // *Id at the cgo boundary and yields a device handle that silently answers
+  // nothing, and the nil UUID would SKIP the service's pairing check rather than
+  // pass it. Unpairable is what makes the caller start a fresh session instead.
+  {
+    const auto legacy = Parse(
+        R"({"client_pem":"c","server_cert_pem":"s","host_port":"127.0.0.1:12035"})");
+    Check(legacy.has_value(), "a blob from before instance_id existed still parses");
+    if (legacy) {
+      Check(legacy->host_port == "127.0.0.1:12035" && legacy->client_pem == "c" &&
+                legacy->server_cert_pem == "s",
+            "…with every field it DID carry intact");
+      Check(legacy->instance_id.empty(),
+            "…and an empty instance id, which the caller reads as "
+            "not-reattachable");
+    }
+  }
+
+  // ---- refusals: there is no session here ------------------------------------
+  Check(!Parse("").has_value(), "an empty file is not a session");
+  Check(!Parse("{").has_value(), "a truncated write is not a session (and no throw)");
+  Check(!Parse("not json at all").has_value(), "garbage is not a session");
+  Check(!Parse(R"(["client_pem","host_port"])").has_value(),
+        "a json ARRAY is not a session");
+  Check(!Parse("null").has_value(), "json null is not a session");
+  Check(!Parse(R"({"client_pem":"c","server_cert_pem":"s"})").has_value(),
+        "no host_port means nothing to reattach TO");
+  Check(!Parse(R"({"host_port":""})").has_value(), "an empty host_port likewise");
+
+  // A field of the wrong TYPE must not throw out of a parse that sits between
+  // the filesystem and a bootstrap. Unreadable reads as absent, everywhere.
+  {
+    const auto odd = Parse(
+        R"({"client_pem":42,"server_cert_pem":null,"host_port":"127.0.0.1:1",)"
+        R"("instance_id":{"a":1}})");
+    Check(odd.has_value(), "wrong-typed fields do not throw or discard the blob");
+    if (odd) {
+      Check(odd->client_pem.empty() && odd->server_cert_pem.empty(),
+            "…they read as absent");
+      Check(odd->instance_id.empty(),
+            "…and a non-string instance id is unpairable, not garbage");
+    }
+  }
+
+  // ---- what counts as an id we may hand to the SDK ---------------------------
+  Check(IsPairableInstanceId(kId), "the canonical dashed uuid is pairable");
+  Check(IsPairableInstanceId("019FE9CC-3E1A-7A4B-9C2D-0A1B2C3D4E5F"),
+        "uppercase hex too — the sdk's decoder accepts both cases");
+  Check(!IsPairableInstanceId(""), "empty is not an id");
+  Check(!IsPairableInstanceId("00000000-0000-0000-0000-000000000000"),
+        "the NIL uuid is REFUSED — a zero id makes the service SKIP the pairing "
+        "check, so accepting one out of a file would disable the very check "
+        "this change exists to make work");
+  Check(!IsPairableInstanceId("019fe9cc3e1a7a4b9c2d0a1b2c3d4e5f"),
+        "the 32-char dashless form is refused — the sdk never emits it");
+  Check(!IsPairableInstanceId("019fe9cc-3e1a-7a4b-9c2d-0a1b2c3d4e5"),
+        "one char short is refused");
+  Check(!IsPairableInstanceId("019fe9cc-3e1a-7a4b-9c2d-0a1b2c3d4e5ff"),
+        "one char long is refused");
+  Check(!IsPairableInstanceId("019fe9cc-3e1a-7a4b-9c2d-0a1b2c3d4e5g"),
+        "a non-hex digit is refused");
+  Check(!IsPairableInstanceId("019fe9cc:3e1a:7a4b:9c2d:0a1b2c3d4e5f"),
+        "separators must be dashes — the sdk slices at fixed offsets without "
+        "checking them, so a 36-char string with the wrong separators reaches "
+        "its hex decoder as garbage");
+  Check(!IsPairableInstanceId("019fe9cc-3e1a-7a4b-9c2d0-a1b2c3d4e5f"),
+        "…and dashes in the wrong PLACES are refused for the same reason");
+
+  // The blob-level consequence of those two rules, since the blob is where the
+  // caller actually reads them: an unusable id is downgraded to "unpairable",
+  // never passed through.
+  {
+    const auto nil = Parse(
+        R"({"host_port":"127.0.0.1:1",)"
+        R"("instance_id":"00000000-0000-0000-0000-000000000000"})");
+    Check(nil.has_value() && nil->instance_id.empty(),
+          "a blob carrying the nil uuid parses, but not as a pairable id");
+  }
+  {
+    const auto ok =
+        Parse(R"({"host_port":"127.0.0.1:1","instance_id":")" + kId + R"("})");
+    Check(ok.has_value() && ok->instance_id == kId,
+          "…while a real id comes through untouched");
+  }
+}
+
 }  // namespace
 
 int RunSelfTest() {
@@ -2150,6 +2282,7 @@ int RunSelfTest() {
   TestUpdateFormats();
   TestInstallVerb();
   TestConnectionHealth();
+  TestRpcSessionBlob();
 
   Section("WFP object identities (for `netsh wfp show filters` diffs)");
   for (const auto& g : WfpPolicy::ObjectGuidsText())

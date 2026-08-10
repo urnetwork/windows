@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <functional>
 #include <mutex>
 #include <optional>
@@ -1148,6 +1149,47 @@ class SdkHost {
   std::condition_variable watchdogCv_;
   bool watchdogStop_ = false;
   bool watchdogRunning_ = false;
+
+  // ---- the rpc-sync watchdog (does the session we built actually PAIR?) -----
+  //
+  // WHY THIS EXISTS AT ALL, and why it matters more than the pairing fix it
+  // ships beside. Every C++ call in BootstrapSession succeeds OFFLINE: the
+  // DeviceRemote constructor, setRpcServer, every addXListener and every getter
+  // return without ever needing the service to answer. So "session bootstrapped"
+  // was logged, the app rendered, and NOTHING in this process could tell that
+  // DeviceLocalRpc.Sync was refusing all of it — the owner's app sat reading
+  // Disconnected over a live tunnel for a whole session while the SDK logged
+  // "device instance mismatch" 59 times where no app surface would ever see it.
+  // A refusal is permanent by construction (the remote retries the same rejected
+  // pairing every 500ms forever), so there is no amount of waiting that fixes it.
+  //
+  // The design is therefore: one BOUNDED look, on a deadline, off the UI thread,
+  // that turns silence into either a WARN with the SDK's own error text or, on a
+  // reattach, a fall back to a fresh session that the user can actually drive.
+  // It is armed by BootstrapSession and it exits on its own; it never polls.
+  //
+  // Generation, not a pointer: a session torn down and rebuilt while a check was
+  // pending could hand back a DeviceRemote at the same address, and acting on
+  // the WRONG session here means stopping a tunnel that is working.
+  static constexpr std::chrono::milliseconds kSyncSettleDeadline{5000};
+  void ArmSyncWatchdogLocked(std::uint64_t generation, bool reattached);
+  void SyncWatchdogLoop();
+  // The one look. Caller must NOT hold mutex_ (this takes it, then releases it
+  // before asking for a replacement session).
+  void CheckSessionSync(std::uint64_t generation, bool reattached);
+  void StopSyncWatchdog();  // called from the destructor; joins the thread
+
+  std::thread syncWatchdog_;
+  std::mutex syncMutex_;
+  std::condition_variable syncCv_;
+  bool syncStop_ = false;
+  bool syncRunning_ = false;
+  std::uint64_t syncGeneration_ = 0;
+  bool syncReattached_ = false;
+  std::chrono::steady_clock::time_point syncDeadline_{};
+  // Bumped under mutex_ every time device_ is created or destroyed. A watchdog
+  // holding a stale value has nothing to say about the session that is live now.
+  std::uint64_t sessionGeneration_ = 0;
   // After obtaining a network JWT, register this device and store the client JWT.
   // A live session (guest upgrade) is torn down first: the new jwt invalidates
   // the running device, and BootstrapSession rebuilds under the new auth.

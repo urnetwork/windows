@@ -48,6 +48,7 @@
     <ClInclude Include="PipeClient.h" />
     <ClInclude Include="PipeServer.h" />
     <ClInclude Include="Protocol.h" />
+    <ClInclude Include="RpcSessionBlob.h" />
     <ClInclude Include="Sdk.h" />
     <ClInclude Include="Strings.h" />
     <ClInclude Include="UpdateFormats.h" />
