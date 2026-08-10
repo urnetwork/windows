@@ -4,6 +4,7 @@
 #include <chrono>
 
 #include "Log.h"
+#include "ThreadGuard.h"
 
 namespace urnw {
 
@@ -30,17 +31,27 @@ bool PacketPump::Start() {
   // than a freed one.
   gate_ = std::make_shared<ReceiveGate>();
   gate_->adapter = &adapter_;
+  //
+  // GUARDED, AND THE THREAD IT RUNS ON IS WHY. This body executes on a thread
+  // the SDK created — a Go/cgo callback thread that has never run one line of
+  // our startup code, so nothing on it had a terminate handler, and an
+  // exception escaping into cgo is the least diagnosable death this process can
+  // have. RunGuarded arms the handler once per SDK thread (a thread_local
+  // latch, so the per-packet cost is a predicted branch) and names the thread
+  // in whatever gets logged. See ThreadGuard.h.
   receiveSub_ = device_.addReceivePacket(
       [gate = gate_](int64_t /*ipVersion*/, int64_t /*ipProtocol*/,
                      const uint8_t* packet, int32_t len) {
-        if (!packet || len <= 0) return;
-        std::scoped_lock lock(gate->mutex);
-        if (!gate->adapter) return;  // stopped; the adapter may already be gone
-        gate->adapter->Send(
-            std::span<const uint8_t>(packet, static_cast<size_t>(len)));
+        RunGuarded("sdk-receive", [&] {
+          if (!packet || len <= 0) return;
+          std::scoped_lock lock(gate->mutex);
+          if (!gate->adapter) return;  // stopped; the adapter may already be gone
+          gate->adapter->Send(
+              std::span<const uint8_t>(packet, static_cast<size_t>(len)));
+        });
       });
 
-  outbound_ = std::thread([this] { OutboundLoop(); });
+  outbound_ = StartGuardedThread("pump-outbound", [this] { OutboundLoop(); });
   LogInfo("pump: started");
   return true;
 }

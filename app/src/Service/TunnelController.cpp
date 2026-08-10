@@ -9,11 +9,13 @@
 #include <windows.h>
 
 #include "ConsoleArgs.h"  // ClampStopAfterStep — the flag's own bounds
+#include "Heartbeat.h"    // the lock-free state mirror the heartbeat reads
 #include "Ids.h"
 #include "Log.h"
 #include "Paths.h"
 #include "StopBudget.h"   // the shutdown budgets and the abandonable teardown
 #include "Strings.h"
+#include "ThreadGuard.h"
 
 namespace urnw {
 namespace {
@@ -266,7 +268,7 @@ void TunnelController::ArmConnectingWatchdogLocked() {
     std::scoped_lock lock(watchdogMutex_);
     watchdogCancelled_ = false;
   }
-  watchdog_ = std::thread([this] {
+  watchdog_ = StartGuardedThread("connecting-watchdog", [this] {
     {
       std::unique_lock lock(watchdogMutex_);
       if (watchdogWake_.wait_for(lock, kConnectingWindow,
@@ -298,6 +300,23 @@ void TunnelController::CancelConnectingWatchdogLocked() {
   // Safe to join under mutex_: the watchdog thread never acquires it. If it is
   // mid-Apply this waits for that Apply, which is bounded by BFE.
   watchdog_.join();
+}
+
+// See the contract in the header: the lock-free mirror is why every write to
+// state_ goes through one function instead of eight assignments.
+//
+// THE GLOG FLUSH IS DELIBERATELY NOT HERE, and the reason is the ordering rule
+// this file already lives by. StopLocked calls this with Stopping BEFORE
+// RevertMachineStateLocked, and flushGlog() is a cgo call into the very runtime
+// that may be the thing wedged — so putting it here would sequence a call that
+// can block on the SDK ahead of the route revert, which StopBudget.h calls the
+// one thing that must never be sequenced behind anything. The flush happens at
+// the RPC boundary instead (ControlServer::PushState, outside mutex_) and on
+// the ~1 Hz heartbeat tick, which together bound how stale the SDK's log can be
+// to about a second on every path including teardown.
+void TunnelController::SetStateLocked(proto::TunnelState next) {
+  state_ = next;
+  PublishTunnelState(proto::ToString(next));
 }
 
 proto::TunnelStatus TunnelController::Start(const proto::StartTunnel& config) {
@@ -409,7 +428,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
   // start runs the sweep, so "restart me" is a real recovery route rather than
   // a dead end.
   if (TeardownAbandoned()) {
-    state_ = proto::TunnelState::Error;
+    SetStateLocked(proto::TunnelState::Error);
     error_ =
         "a previous teardown could not be completed and its device is still "
         "held; this service process must be restarted before another tunnel "
@@ -419,7 +438,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
              error_);
     return Status();
   }
-  state_ = proto::TunnelState::Starting;
+  SetStateLocked(proto::TunnelState::Starting);
   // The clamp wins over the request, and it is applied HERE, once, before
   // anything reads the mode. Everything downstream — the fence, the step-6
   // precondition, the reported state and mode — reads startMode_, so a clamped
@@ -702,7 +721,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     // the destructive steps, and not by a flag consulted further down. There is
     // no control path from this point to step 6 in this mode.
     if (rpcOnly) {
-      state_ = proto::TunnelState::RpcOnly;
+      SetStateLocked(proto::TunnelState::RpcOnly);
       upSinceMillis_ = NowMillis();
       EgressInterfaces bound = egress_->Current();
       LogInfo("tunnel: RPC-ONLY UP in {}ms (rpc={} egress_v4_ifindex={}). Steps "
@@ -719,7 +738,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     // halted session from being reported Up.
     if (!BringUpTunnelLocked(config, step)) return Status();
 
-    state_ = proto::TunnelState::Up;
+    SetStateLocked(proto::TunnelState::Up);
     upSinceMillis_ = NowMillis();
     EgressInterfaces bound = egress_->Current();
     LogInfo("tunnel: UP in {}ms (rpc={} egress_v4_ifindex={} split_tunnel={})",
@@ -727,14 +746,14 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
             splitTunnel_.IsAvailable() ? "driver" : "none");
   } catch (const std::exception& e) {
     error_ = e.what();
-    state_ = proto::TunnelState::Error;
+    SetStateLocked(proto::TunnelState::Error);
     LogError("tunnel: start FAILED at step {} (mode={}): {}", step,
              proto::ToString(startMode_), error_);
     // finalDisarm=false: a failed start is not a user disconnect. With the kill
     // switch on, the policy stays Armed so a start that died halfway does not
     // hand the machine back to the clear.
     StopLocked(/*finalDisarm=*/false);
-    state_ = proto::TunnelState::Error;  // StopLocked resets to Stopped
+    SetStateLocked(proto::TunnelState::Error);  // StopLocked resets to Stopped
   }
 
   return Status();
@@ -1011,7 +1030,7 @@ void TunnelController::StopLocked(bool finalDisarm) {
   // rather than from the mode flag.
   const bool hadRoutes = netConfig_ != nullptr;
   if (proto::IsSessionLive(state_) || state_ == proto::TunnelState::Starting)
-    state_ = proto::TunnelState::Stopping;
+    SetStateLocked(proto::TunnelState::Stopping);
   if (wasRunning) LogInfo("tunnel: stopping (was {})", proto::ToString(priorState));
 
   // BEFORE EITHER PHASE, AND BEFORE ANYTHING TOUCHES device_. The trace thread
@@ -1050,7 +1069,7 @@ void TunnelController::StopLocked(bool finalDisarm) {
 
   rpcHostPort_.clear();
   upSinceMillis_ = 0;
-  state_ = proto::TunnelState::Stopped;
+  SetStateLocked(proto::TunnelState::Stopped);
   // Do NOT say "network restored" when nothing was ever changed: an rpc-only
   // session that claims to have restored the network is a claim the reader
   // would use to rule out a network problem this service did not cause.

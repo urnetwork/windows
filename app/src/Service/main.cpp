@@ -24,6 +24,7 @@
 
 #include "ConsoleArgs.h"
 #include "ControlServer.h"
+#include "Heartbeat.h"
 #include "Ids.h"
 #include "InstallVerb.h"
 #include "Log.h"
@@ -33,6 +34,7 @@
 #include "SelfTest.h"
 #include "StopBudget.h"
 #include "Strings.h"
+#include "ThreadGuard.h"
 #include "TunnelController.h"
 #include "WfpPolicy.h"
 
@@ -201,10 +203,139 @@ LONG WINAPI OnUnhandledException(EXCEPTION_POINTERS* info) {
   return EXCEPTION_CONTINUE_SEARCH;  // let WER/the SCM restart policy take it
 }
 
+// COVERS THE wmain THREAD AND NOTHING ELSE. std::set_terminate is PER-THREAD on
+// MSVC — the CRT stores the handler in the per-thread data block — so this one
+// is invisible to every thread the service creates afterwards. Its counterpart
+// for those is ThreadGuard.h, which arms an equivalent handler as the first
+// statement on each of them; the two do the same three things in the same order
+// (revert, log, abort) on purpose, so which thread died changes the attribution
+// in the log and nothing else.
 void OnTerminate() {
   NetworkConfig::CrashRevert();
-  LogError("service: std::terminate — reverted tunnel routes before dying");
+  LogError("service: std::terminate on the wmain thread — reverted tunnel "
+           "routes before dying");
   std::abort();
+}
+
+// --- unblinding the crash-reporting channels (task #39) ---------------------
+
+// Give this process back the ability to report a crash, which the Go runtime
+// took away before wmain ever ran.
+//
+// WHAT GO DOES, AND WHEN. runtime.preventErrorDialogs() (runtime/
+// signal_windows.go) is called from osinit(), inside schedinit(), as part of the
+// Go runtime's own start-up. It ORs SEM_FAILCRITICALERRORS |
+// SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX into the process error mode and
+// then ORs WER_FAULT_REPORTING_NO_UI into the WER flags. For a c-shared DLL that
+// start-up is DLL_PROCESS_ATTACH.
+//
+// URnetworkSdk.dll is a LOAD-TIME import of urnetworkd.exe. That is verified
+// against the shipped binary rather than assumed: `dumpbin /DEPENDENTS
+// urnetworkd.exe` lists URnetworkSdk.dll under "Image has the following
+// dependencies" and prints no delay-load section at all. So the loader resolves
+// it, the Go runtime initialises, and the bit is set before the CRT has run and
+// long before wmain gets control.
+//
+// WHY IT MATTERS MORE THAN ANYTHING ELSE IN THIS FILE. SEM_NOGPFAULTERRORBOX
+// makes UnhandledExceptionFilter short-circuit — it returns
+// EXCEPTION_EXECUTE_HANDLER without ever invoking WER. With it set, a native
+// access violation, an abort() or a fail-fast produces NO WER report, NO
+// minidump and NO Application Error 1000, which makes a native death
+// byte-for-byte indistinguishable from a clean ExitProcess. Every "there is no
+// crash report, so it did not crash" conclusion drawn about task #39 was drawn
+// from a channel that had been switched off. This is the prerequisite for every
+// other Windows crash tool working at all.
+//
+// WHAT IS CLEARED AND WHAT IS LEFT. Only SEM_NOGPFAULTERRORBOX.
+// SEM_FAILCRITICALERRORS and SEM_NOOPENFILEERRORBOX suppress unrelated dialogs
+// (missing removable media, an unopenable file) and clearing them would buy
+// nothing while risking a modal box on the machine of someone trying to use
+// their VPN. WER_FAULT_REPORTING_NO_UI is left alone too: it suppresses the UI,
+// not the report, and under the SCM there is no interactive desktop anyway.
+//
+// THE SIDE EFFECT, STATED PLAINLY: in `urnetworkd console` — an interactive,
+// elevated developer run — a crash can now raise the ordinary Windows
+// error-reporting UI instead of the process silently vanishing. For a session
+// whose entire purpose is to find out how this thing dies, that is the point.
+//
+// CALLED AFTER SdkInit, NOT ONLY AT THE TOP OF wmain. With today's load-time
+// import the top of wmain is already after the Go runtime, and the call there
+// is what covers the whole process life. But if this project ever delay-loads
+// the SDK, the runtime would initialise inside the FIRST SDK call — i.e. inside
+// SdkInit — and re-set the bit after a wmain-only clear. Anchoring a second
+// clear to "just after the SDK has certainly been initialised" is the version
+// that cannot silently stop working. That is not hypothetical caution: this
+// codebase already paid for exactly that mistake once with GOTRACEBACK, where a
+// correct-looking assignment ran unconditionally too late.
+//
+// Both call sites report the before/after value, so which one actually cleared
+// the bit is a fact in the log rather than a claim in this comment. On a
+// load-time build the wmain call reports a change and the post-SdkInit call
+// reports "already clear"; if that ever inverts, the DLL has become delay-loaded.
+void UnblindErrorMode(const char* where) {
+  const UINT before = ::GetErrorMode();
+  const UINT wanted = before & ~static_cast<UINT>(SEM_NOGPFAULTERRORBOX);
+  ::SetErrorMode(wanted);
+  const UINT after = ::GetErrorMode();
+  LogInfo("service: error mode at {}: {:#x} -> {:#x} (SEM_NOGPFAULTERRORBOX was "
+          "{}, is now {}). The Go runtime sets that bit from osinit() at "
+          "DLL_PROCESS_ATTACH; while it is set, UnhandledExceptionFilter "
+          "short-circuits and a native fault produces no WER report and no "
+          "Application Error 1000 — which is why this service's four deaths "
+          "left nothing behind.",
+          where, before, after,
+          (before & SEM_NOGPFAULTERRORBOX) ? "SET (crash reporting blinded)"
+                                           : "already clear",
+          (after & SEM_NOGPFAULTERRORBOX) ? "STILL SET — the clear did NOT take"
+                                          : "clear (crash reporting restored)");
+}
+
+// The ~1 Hz heartbeat tick's extra work.
+//
+// urnet::flushGlog() had exactly ONE call site in this repo before this change
+// (WindowTrace.cpp, at the teardown of an opt-in trace). glog buffers, so the
+// SDK's own INFO log — the single most likely place for the cause of a death to
+// be written — routinely lost its tail: one of the four deaths lost 28 seconds
+// of it, which is 28 seconds of exactly the evidence being looked for.
+//
+// A timer rather than a buffering knob, because there is no buffering knob to
+// reach. The generated wrapper exposes setLogDir, setMemoryLimit and flushGlog
+// and nothing else — there is no logbuflevel/logbufsecs entry point in
+// third_party/urnetwork-sdk/amd64/urnetwork_sdk.hpp, and glog's own flags are
+// not addressable from this side of the C ABI. The timer is cheap regardless:
+// a flush of already-formatted lines under glog's own lock.
+void FlushSdkLogsTick() { urnet::flushGlog(); }
+
+// The last breath.
+//
+// ITS PRESENCE OR ABSENCE ANSWERS THE ONE QUESTION FOUR INVESTIGATIONS COULD
+// NOT SETTLE: did this process leave through the CRT, or was it stopped where
+// it stood?
+//
+//   * present at the end of a log -> the process returned from wmain or called
+//     exit(). However surprising the moment, the exit was orderly.
+//   * ABSENT -> ExitProcess, TerminateProcess, RaiseFailFastException, an
+//     abort() that did not unwind, or a kill from outside. atexit handlers run
+//     for none of those.
+//
+// It writes through the ordinary logger, which is one unbuffered WriteFile per
+// line (Log.cpp), so the line is on disk before this function returns.
+//
+// REGISTERED FROM wmain rather than from ServiceMain. wmain runs first on every
+// path, so this covers `selftest`, `install`, `revert` and console mode as well
+// as the SCM path — and `selftest` is the only path that can be run to
+// completion on a machine that is not allowed to start the real service, which
+// makes it the only way to DEMONSTRATE that the handler fires at all.
+void OnProcessExit() {
+  // Belt for the paths that did not stop the ticker themselves. Bounded, so it
+  // cannot turn a shutdown into a hang.
+  StopHeartbeat();
+  LogInfo("service: ATEXIT — this process is leaving through the CRT's exit "
+          "path (a return from wmain, or exit()) after {} of uptime. IF YOU ARE "
+          "READING A LOG THAT ENDS WITHOUT THIS LINE, THE PROCESS DID NOT LEAVE "
+          "THAT WAY: it was ExitProcess'd, TerminateProcess'd, fail-fast'd or "
+          "killed, and that distinction is the whole of task #39.",
+          FormatUptime(ProcessUptime().count()));
 }
 
 // How many times the operator has asked this process to stop. Windows runs each
@@ -347,6 +478,11 @@ void Run() {
   // urgent than getting the sdk up.
   ReportAndClearPriorState(/*observeOnly=*/false);
   SdkInit(/*isService=*/true, kServiceMemoryLimit);
+  // Immediately after the SDK is up, for the reason spelled out on the function:
+  // this is the anchor that survives the SDK becoming delay-loaded.
+  UnblindErrorMode("after SdkInit (service)");
+  StartHeartbeat(LogDir(/*isService=*/true) / L"heartbeat.txt",
+                 &FlushSdkLogsTick);
 
   ControlServer server;
   g_server = &server;
@@ -354,6 +490,9 @@ void Run() {
     LogError("service: control server failed to start (is another urnetworkd "
              "already holding {}?)",
              Narrow(ids::kControlPipeName));
+    // The ticker is already running by here; quiesce it before unwinding so it
+    // cannot still be writing while static destructors run.
+    StopHeartbeat();
     SetState(SERVICE_STOPPED, ERROR_SERVICE_SPECIFIC_ERROR);
     return;
   }
@@ -367,6 +506,11 @@ void Run() {
   const auto stopStart = std::chrono::steady_clock::now();
   server.Stop();  // reverts routes/dns/firewall FIRST, then releases the sdk
   g_server = nullptr;
+  // AFTER the teardown, not before it: a death during teardown is exactly as
+  // worth timestamping as one during a live session, and the teardown is
+  // bounded (~3.2 s, StopBudget.h) so keeping the ticker across it cannot delay
+  // anything. StopHeartbeat's own wait is bounded too.
+  StopHeartbeat();
   const auto stopMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::steady_clock::now() - stopStart)
                           .count();
@@ -943,6 +1087,9 @@ int RunConsole(bool rpcOnly, int stopAfterStep = 0) {
           (LogDir(/*isService=*/true) / L"go-crash.log").string());
 
   SdkInit(/*isService=*/true, kServiceMemoryLimit);
+  UnblindErrorMode("after SdkInit (console)");
+  StartHeartbeat(LogDir(/*isService=*/true) / L"heartbeat.txt",
+                 &FlushSdkLogsTick);
 
   ControlServer server;
   g_server = &server;
@@ -954,6 +1101,7 @@ int RunConsole(bool rpcOnly, int stopAfterStep = 0) {
   if (stopAfterStep) server.SetStopAfterStep(stopAfterStep);
   if (!server.Start()) {
     LogError("console: control server failed to start");
+    StopHeartbeat();  // see the same call in Run()
     return 1;
   }
   LogInfo("console: running on {} (mode={}{}); press Ctrl+C to stop",
@@ -967,6 +1115,7 @@ int RunConsole(bool rpcOnly, int stopAfterStep = 0) {
   const auto stopStart = std::chrono::steady_clock::now();
   server.Stop();  // reverts routes/dns/firewall FIRST, then releases the sdk
   g_server = nullptr;
+  StopHeartbeat();  // see the note on the same call in Run()
   const auto stopMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::steady_clock::now() - stopStart)
                           .count();
@@ -1105,6 +1254,15 @@ int wmain(int argc, wchar_t** argv) {
   // reached from the ones that start a tunnel.
   ::SetUnhandledExceptionFilter(&OnUnhandledException);
   std::set_terminate(&OnTerminate);
+  // The per-thread half of the same belt. std::set_terminate above covers ONLY
+  // this thread on MSVC; every worker thread arms its own handler through
+  // ThreadGuard.h, and this is where that handler is told what "give the machine
+  // its network back" means. Registered here so it is in force before anything
+  // starts a thread.
+  SetThreadGuardCrashRevert(&NetworkConfig::CrashRevert);
+  // Before any verb runs, so a death in ANY of them is distinguishable from a
+  // clean exit. See OnProcessExit.
+  std::atexit(&OnProcessExit);
 
   // Echo the log to stdout whenever there is a stdout to echo to. `console`,
   // the dev commands and the no-argument fallback all run in a terminal; the
@@ -1125,6 +1283,15 @@ int wmain(int argc, wchar_t** argv) {
                           L"debugger only\n",
                   logFile.c_str());
   }
+
+  // The widest possible clear, and it goes here rather than beside the hooks
+  // above so the operator SEES it: the console echo is only switched on a few
+  // lines up. Today the SDK is a load-time import, so the Go runtime has already
+  // blinded WER by the time wmain runs and this is the call that unblinds it for
+  // the whole process — including `install`, `revert` and `selftest`. The
+  // post-SdkInit calls are the ones that would still work if the DLL ever became
+  // delay-loaded.
+  UnblindErrorMode("wmain entry");
 
   // Before every other verb: it is the only one that is structurally incapable
   // of touching the machine, so it can never be the thing that broke something.
@@ -1192,5 +1359,12 @@ int wmain(int argc, wchar_t** argv) {
     LogError("service: StartServiceCtrlDispatcher failed: {}", err);
     return 1;
   }
+  // The SCM path's ONLY orderly ending. Said out loud because its absence is
+  // evidence: a service log that stops after "service: scm state -> stopped"
+  // without this line and without the ATEXIT line below it did not return from
+  // here at all.
+  LogInfo("service: StartServiceCtrlDispatcher returned — ServiceMain is done "
+          "and wmain is returning 0. The ATEXIT line should follow this one; if "
+          "it does not, something took the process between the two.");
   return 0;
 }

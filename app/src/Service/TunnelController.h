@@ -133,6 +133,21 @@ class TunnelController {
   static bool PeekActiveMarker();
 
  private:
+  // THE ONLY WAY state_ IS WRITTEN, so that the lock-free mirror the ~1 Hz
+  // heartbeat reads cannot drift from the real state.
+  //
+  // The heartbeat CANNOT call Status(): that takes mutex_, and a connect
+  // attempt wedged inside the SDK holds mutex_ forever (see the
+  // connecting-window note below) — which is exactly the state a heartbeat most
+  // needs to be able to record. Publishing on every write is what lets a
+  // lock-free reader be correct rather than merely non-blocking.
+  //
+  // Nothing here may block: this runs on the teardown path ahead of the route
+  // revert. The glog flush that belongs to a transition lives at the RPC
+  // boundary instead (ControlServer::PushState) for exactly that reason.
+  //
+  // Caller holds mutex_.
+  void SetStateLocked(proto::TunnelState next);
   proto::TunnelStatus StartLocked(const proto::StartTunnel& config);
   // Steps 6-8: network settings, split tunnel, packet pump. Split out of
   // StartLocked so the destructive half of the sequence is a named unit with

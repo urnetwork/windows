@@ -48,6 +48,8 @@
 #include <thread>
 #include <utility>
 
+#include "ThreadGuard.h"
+
 namespace urnw {
 
 // --- the budgets -----------------------------------------------------------
@@ -224,10 +226,18 @@ bool RunBounded(std::chrono::milliseconds budget, Work work) {
     // before `done` is published. Signalling first would let the caller return
     // "finished" while an adapter destructor was still running, which is the
     // subtle version of exactly the bug this function exists to prevent.
-    {
+    //
+    // The guard wraps the scope and not the whole lambda, so the destruction
+    // order above is unchanged: RunGuarded returns only after `owned` has been
+    // destroyed, and `done` is still published after that. This is the teardown
+    // path, so it is also the thread most likely to be running when something
+    // else in the process is already wrong — an escape here used to abort with
+    // no attribution and, being a detached thread, with no crash revert either
+    // (ThreadGuard.h).
+    RunGuarded("teardown-worker", [&] {
       auto owned = std::move(work);
       owned();
-    }
+    });
     {
       std::scoped_lock lock(gate->mutex);
       gate->done = true;

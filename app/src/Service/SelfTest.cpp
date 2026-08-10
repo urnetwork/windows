@@ -5,16 +5,19 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <exception>
 #include <filesystem>
 #include <iterator>
 #include <memory>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include "ConnectionHealth.h"
 #include "ConsoleArgs.h"
+#include "Heartbeat.h"
 #include "InstallVerb.h"
 #include "NetPolicy.h"
 #include "NetworkConfig.h"
@@ -22,6 +25,7 @@
 #include "RpcSessionBlob.h"
 #include "Sdk.h"
 #include "StopBudget.h"
+#include "ThreadGuard.h"
 #include "UpdateFormats.h"
 #include "Version.h"
 #include "VersionGrammar.h"
@@ -2271,6 +2275,338 @@ void TestGoCrashCapture() {
         ec.message());
 }
 
+// --- the per-thread terminate belt (task #39) --------------------------------
+//
+// WHAT THIS CAN AND CANNOT PROVE. It cannot prove the guard reverts routes or
+// writes a log line on the way down: that path ends in std::abort(), and a test
+// that reaches it takes the test process with it. What it CAN pin — and what
+// the whole design rests on — is the platform fact underneath: whether
+// std::set_terminate is per-thread on this toolchain. If it were process-wide,
+// the handler wmain arms would already cover every worker and ThreadGuard would
+// be dead weight; because it is per-thread, a worker that does not arm its own
+// is structurally unable to log or revert, which is the gap that let four
+// deaths pass without evidence.
+void TestThreadGuard() {
+  Section("thread guard — the per-thread terminate belt (task #39)");
+
+  // wmain has already armed OnTerminate on this thread, so `outer` is a real
+  // handler and not a default.
+  const std::terminate_handler outer = std::get_terminate();
+  Check(outer != nullptr,
+        "the wmain thread has a terminate handler armed (main.cpp does it "
+        "before any verb runs)");
+
+  std::terminate_handler bare = nullptr;
+  std::thread([&] { bare = std::get_terminate(); }).join();
+  Check(bare != outer,
+        "std::set_terminate is PER-THREAD here — a fresh thread does NOT "
+        "inherit the wmain thread's handler, which is the entire reason "
+        "ThreadGuard exists",
+        std::format("wmain armed={} fresh-thread armed={} identical={}",
+                    outer != nullptr, bare != nullptr, outer == bare));
+
+  std::terminate_handler insideGuard = nullptr;
+  std::string nameInside;
+  std::thread([&] {
+    RunGuarded("selftest-guarded", [&] {
+      insideGuard = std::get_terminate();
+      nameInside = ThreadGuardName();
+    });
+  }).join();
+  Check(insideGuard != nullptr && insideGuard != bare,
+        "a guarded body runs with a handler of OURS installed on its thread");
+  Check(nameInside == "selftest-guarded",
+        "…and the thread is named, so whatever it logs is attributable to a "
+        "thread rather than to 'the service'",
+        nameInside);
+  Check(std::get_terminate() == outer,
+        "arming a worker thread leaves the wmain thread's handler untouched — "
+        "per-thread in both directions");
+
+  std::string nameStarted;
+  StartGuardedThread("selftest-started", [&] {
+    nameStarted = ThreadGuardName();
+  }).join();
+  Check(nameStarted == "selftest-started",
+        "StartGuardedThread arms and names the thread it creates, so a thread "
+        "added later inherits the instrumentation instead of opting out of it",
+        nameStarted);
+
+  bool ranPastCatch = false;
+  StartGuardedThread("selftest-inner-catch", [&] {
+    try {
+      throw std::runtime_error("handled inside the body");
+    } catch (const std::exception&) {
+    }
+    ranPastCatch = true;
+  }).join();
+  Check(ranPastCatch,
+        "an exception CAUGHT inside the body is none of the guard's business — "
+        "it only ever sees what escapes");
+}
+
+// --- the heartbeat (task #39) ------------------------------------------------
+//
+// The death window in the four recorded deaths was as wide as the gap between
+// two event-driven log lines: 9 to 28 seconds. This closes it to about one
+// second. The parts that can be proved without a death are the record's shape
+// (fixed width is what makes an in-place rewrite safe) and the file behaviour
+// (one record, rewritten, readable while the service holds it).
+// Counts the ticker's per-tick work. A file-scope atomic because HeartbeatTick
+// is a bare function pointer — the service passes a glog flush through it, and
+// a signature that admitted captures would admit state the ticker does not own.
+std::atomic<int> g_heartbeatTicks{0};
+
+void TestHeartbeat() {
+  Section("heartbeat — narrowing the death window to about one second");
+
+  Check(FormatUptime(0) == "00:00:00", "uptime formats from zero",
+        FormatUptime(0));
+  Check(FormatUptime(3723) == "01:02:03", "…as hh:mm:ss", FormatUptime(3723));
+  Check(FormatUptime(360000) == "100:00:00",
+        "…and hours are NOT wrapped at 24: a service up for four days must not "
+        "read as one that just restarted",
+        FormatUptime(360000));
+
+  // The mirror starts where a process with no tunnel actually is. Checked
+  // before anything below publishes over it.
+  Check(std::string(PublishedTunnelState()) == "stopped",
+        "the lock-free tunnel-state mirror starts at 'stopped'",
+        PublishedTunnelState());
+
+  const std::string a =
+      FormatHeartbeatRecord(4321, 3723, "up", "2026-08-10 11:22:33");
+  Check(a.size() == kHeartbeatRecordBytes,
+        "every record is exactly the fixed width",
+        std::format("got {} want {}", a.size(), kHeartbeatRecordBytes));
+  Check(a.compare(0, 3, "\xEF\xBB\xBF") == 0,
+        "…opens with a UTF-8 BOM, because Windows PowerShell 5.1 reads a "
+        "BOM-less file in the ANSI code page (same reason Log.cpp writes one)");
+  Check(a.ends_with("\r\n"), "…and ends with CRLF");
+  Check(a.find("pid=4321") != std::string::npos &&
+            a.find("uptime=01:02:03") != std::string::npos &&
+            a.find("tunnel=up") != std::string::npos &&
+            a.find("at=2026-08-10 11:22:33") != std::string::npos,
+        "it carries the wall clock, the pid, the uptime and the tunnel state — "
+        "which together say WHEN it died and WHAT it was doing", a);
+
+  // Printed, not just asserted: the whole point of this file is that a human
+  // finds it after a death and understands it without reading any code, so what
+  // they will actually see belongs in the transcript. Trailing padding trimmed
+  // for legibility only — on disk it is there, and it is what makes the
+  // in-place rewrite safe.
+  {
+    std::string shown = a.substr(3);  // past the BOM
+    while (!shown.empty() && (shown.back() == ' ' || shown.back() == '\r' ||
+                              shown.back() == '\n'))
+      shown.pop_back();
+    std::printf("  ----  a heartbeat record reads:\n        %s\n",
+                shown.c_str());
+  }
+
+  const std::string b =
+      FormatHeartbeatRecord(1, 0, "rpc_only", "2026-08-10 11:22:34");
+  Check(b.size() == a.size(),
+        "a shorter tick still produces the same number of bytes — this is what "
+        "makes an in-place rewrite safe, because a short record can never leave "
+        "the tail of a long one on disk",
+        std::format("{} vs {}", b.size(), a.size()));
+
+  const std::string over = FormatHeartbeatRecord(
+      4294967295UL, 999999999, std::string(400, 'x').c_str(),
+      std::string(400, 'y'));
+  Check(over.size() == kHeartbeatRecordBytes,
+        "absurd input is truncated to the width rather than allowed to change "
+        "it",
+        std::format("got {}", over.size()));
+  // Valid UTF-8 even after truncation, proved with the same encoder the wire
+  // uses: nlohmann's strict dump() IS a UTF-8 validator.
+  bool utf8Ok = true;
+  try {
+    (void)nlohmann::json(over).dump();
+  } catch (const std::exception&) {
+    utf8Ok = false;
+  }
+  Check(utf8Ok,
+        "…and what survives is still valid UTF-8: truncation stops at a "
+        "character boundary instead of cutting a multi-byte sequence in half");
+
+  // ---- the file -------------------------------------------------------------
+  const std::filesystem::path dir =
+      std::filesystem::temp_directory_path() /
+      ("urnetworkd-selftest-heartbeat-" + std::to_string(::GetCurrentProcessId()));
+  std::error_code ec;
+  std::filesystem::remove_all(dir, ec);
+
+  const std::filesystem::path file = dir / L"heartbeat.txt";
+  {
+    HeartbeatFile beat;
+    Check(beat.Open(file), "the heartbeat file opens (creating its directory)",
+          beat.LastError());
+
+    PublishTunnelState("up");
+    beat.Beat(3723, PublishedTunnelState());
+    const std::string first = ReadFileWhileOpen(file);
+    Check(first.size() == kHeartbeatRecordBytes,
+          "one tick writes exactly one record, readable from another handle "
+          "WHILE the writer holds it open — an unreadable heartbeat would be no "
+          "heartbeat at all",
+          std::format("read {} bytes", first.size()));
+    Check(first.find("tunnel=up") != std::string::npos,
+          "…carrying the published tunnel state, obtained without taking the "
+          "tunnel lock (a wedged connect holds that lock forever, and that is "
+          "exactly the state worth recording)");
+
+    PublishTunnelState("stopped");
+    beat.Beat(4, PublishedTunnelState());
+    const std::string second = ReadFileWhileOpen(file);
+    Check(second.size() == kHeartbeatRecordBytes,
+          "a second tick REWRITES IN PLACE — the file does not grow, so a "
+          "service running for weeks costs 256 bytes",
+          std::format("size after two ticks: {}", second.size()));
+    Check(second.find("tunnel=stopped") != std::string::npos &&
+              second.find("tunnel=up") == std::string::npos,
+          "…and nothing of the previous tick survives it");
+  }
+  std::filesystem::remove_all(dir, ec);
+  Check(!ec && !std::filesystem::exists(dir),
+        "the file is released and the temp dir cleans up", ec.message());
+
+  // ---- the ticker, end to end ----------------------------------------------
+  //
+  // The half that cannot be proved by inspection: that the detached thread
+  // really ticks at about 1 Hz, that its per-tick work runs (the service passes
+  // a glog flush there), and that StopHeartbeat both stops it and returns
+  // inside its bounded budget. That last one matters most — an unbounded
+  // quiesce would have made the instrumentation a new way to hang shutdown,
+  // which is the one thing this repo has already been burned by.
+  //
+  // StartHeartbeat latches after its first call, so this consumes the latch for
+  // THIS process. Safe exactly here: the selftest verb never becomes a service
+  // and never reaches Run()/RunConsole(), which are the only callers.
+  const std::filesystem::path liveDir =
+      std::filesystem::temp_directory_path() /
+      ("urnetworkd-selftest-heartbeat-live-" +
+       std::to_string(::GetCurrentProcessId()));
+  std::filesystem::remove_all(liveDir, ec);
+  const std::filesystem::path liveFile = liveDir / L"heartbeat.txt";
+
+  g_heartbeatTicks.store(0);
+  StartHeartbeat(liveFile, [] { g_heartbeatTicks.fetch_add(1); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+
+  const std::string live = ReadFileWhileOpen(liveFile);
+  Check(live.size() == kHeartbeatRecordBytes,
+        "the detached ticker really writes: one record on disk while the "
+        "process runs",
+        std::format("read {} bytes", live.size()));
+  Check(g_heartbeatTicks.load() >= 2,
+        "…and its per-tick work ran at about 1 Hz over 1.2s (this is where the "
+        "service flushes the sdk's glog)",
+        std::format("{} ticks", g_heartbeatTicks.load()));
+
+  const auto stopStart = std::chrono::steady_clock::now();
+  StopHeartbeat();
+  const auto stopMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::steady_clock::now() - stopStart)
+                          .count();
+  Check(stopMs <= 400,
+        "StopHeartbeat returns inside its bounded quiesce budget — the ticker "
+        "may never become a reason a shutdown hangs",
+        std::format("took {}ms, budget 250ms", stopMs));
+
+  const int settled = g_heartbeatTicks.load();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1400));
+  Check(g_heartbeatTicks.load() == settled,
+        "…and it really stopped: no further ticks after StopHeartbeat returned",
+        std::format("{} -> {}", settled, g_heartbeatTicks.load()));
+
+  std::filesystem::remove_all(liveDir, ec);
+  Check(!ec && !std::filesystem::exists(liveDir),
+        "the ticker released its file too", ec.message());
+}
+
+// --- the reply that used to kill the service (task #39) ----------------------
+//
+// PipeServer built `reply.dump()` OUTSIDE the try/catch that wrapped the
+// handler. dump() throws type_error.316 on invalid UTF-8, and the reply carries
+// SDK-supplied strings verbatim (ControlServer: reply.error = st.error), so one
+// bad byte from a remote peer, a resolver or a Go library was enough to throw
+// out of the pipe's worker thread — which, with no per-thread terminate handler
+// armed, ended a LocalSystem service holding the machine's default routes with
+// no log line and no route revert.
+void TestWireSerialization() {
+  Section("wire serialization — the reply dump() that could kill the service");
+
+  proto::Reply bad;
+  bad.ok = false;
+  bad.in_reply_to = proto::msg::kStartTunnel;
+  // The exact shape: a diagnostic string with bytes that are not valid UTF-8.
+  // 0xFF and 0xFE can never appear in a UTF-8 sequence.
+  bad.error = std::string("dial failed to ") + '\xFF' + '\xFE' + " (host)";
+  const nlohmann::json j = bad;
+
+  bool strictThrew = false;
+  std::string strictWhat;
+  try {
+    (void)j.dump();
+  } catch (const std::exception& e) {
+    strictThrew = true;
+    strictWhat = e.what();
+  }
+  Check(strictThrew,
+        "a plain dump() STILL throws on that reply — the hazard is current, not "
+        "historical",
+        strictWhat);
+  Check(strictWhat.find("316") != std::string::npos,
+        "…and it is type_error.316, invalid UTF-8, which is the throw that sat "
+        "outside PipeServer's try/catch",
+        strictWhat);
+
+  std::string wire;
+  bool wireThrew = false;
+  try {
+    wire = proto::DumpForWire(j);
+  } catch (const std::exception& e) {
+    wireThrew = true;
+    strictWhat = e.what();
+  }
+  Check(!wireThrew, "DumpForWire does not throw on it", strictWhat);
+
+  bool parsed = false;
+  proto::Reply round;
+  try {
+    round = nlohmann::json::parse(wire).get<proto::Reply>();
+    parsed = true;
+  } catch (const std::exception&) {
+  }
+  Check(parsed, "…it produces a message the peer can parse");
+  Check(!round.ok && round.in_reply_to == proto::msg::kStartTunnel,
+        "…and the fields the app ACTS on are untouched: only the unencodable "
+        "bytes degrade");
+  Check(round.error.starts_with("dial failed to ") &&
+            round.error.find("(host)") != std::string::npos,
+        "the diagnostic text either side of the bad bytes is preserved",
+        round.error);
+  Check(round.error.find("\xEF\xBF\xBD") != std::string::npos,
+        "the invalid bytes became U+FFFD, which reads as 'a byte here was not "
+        "valid UTF-8' — true, and itself the diagnosis");
+
+  // The last-resort reply has to be serializable by construction, or it fails
+  // in exactly the situation it exists for.
+  bool fallbackOk = false;
+  nlohmann::json fb;
+  try {
+    fb = nlohmann::json::parse(proto::kUnserializableReplyJson);
+    fallbackOk = true;
+  } catch (const std::exception&) {
+  }
+  Check(fallbackOk && proto::TypeOf(fb) == proto::msg::kReply &&
+            fb.value("ok", true) == false,
+        "the last-resort reply is a valid, failed reply — built from a literal, "
+        "never from the data that just failed to serialize");
+}
+
 // --- the app's reattach blob (task #40) --------------------------------------
 //
 // WHY A SERVICE SELFTEST COVERS AN APP FILE. The blob is how the app decides
@@ -2441,6 +2777,9 @@ int RunSelfTest() {
   TestConnectionHealth();
   TestRpcSessionBlob();
   TestGoCrashCapture();
+  TestThreadGuard();
+  TestHeartbeat();
+  TestWireSerialization();
 
   Section("WFP object identities (for `netsh wfp show filters` diffs)");
   for (const auto& g : WfpPolicy::ObjectGuidsText())

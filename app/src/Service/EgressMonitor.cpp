@@ -9,6 +9,7 @@
 #include "NetworkConfig.h"
 #include "Sdk.h"
 #include "Strings.h"
+#include "ThreadGuard.h"
 
 #pragma comment(lib, "iphlpapi.lib")
 
@@ -166,8 +167,18 @@ void __stdcall EgressMonitor::OnChange(void* context, MIB_IPINTERFACE_ROW*,
                                        MIB_NOTIFICATION_TYPE) {
   // Called on a system worker thread. Recompute the egress binding; the SDK
   // setter is atomic and cheap, so we can react to every change.
+  //
+  // GUARDED, because "a system worker thread" means a thread that ran none of
+  // our startup and therefore had no terminate handler of ours (ThreadGuard.h).
+  // Refresh() calls into the SDK, allocates and formats, so it can throw, and an
+  // escape here used to be an unattributable abort. Arming the handler on a
+  // pooled OS thread reaches beyond our own code, and that is acceptable in one
+  // direction only: our handler adds a log line and a route revert to a process
+  // that was already dying, and never keeps one alive.
   auto* self = static_cast<EgressMonitor*>(context);
-  if (self) self->Refresh();
+  RunGuarded("egress-change", [&] {
+    if (self) self->Refresh();
+  });
 }
 
 }  // namespace urnw

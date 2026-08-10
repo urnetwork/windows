@@ -2,6 +2,7 @@
 #include "ControlServer.h"
 
 #include "Log.h"
+#include "Sdk.h"  // urnet::flushGlog — see PushState
 
 namespace urnw {
 
@@ -80,6 +81,21 @@ nlohmann::json ControlServer::Handle(const nlohmann::json& request) {
 }
 
 void ControlServer::PushState() {
+  // EVERY TUNNEL STATE TRANSITION FLUSHES THE SDK'S LOG, and this is the place
+  // to do it from.
+  //
+  // The SDK's own INFO log is where the cause of a death is most likely
+  // written, glog buffers it, and before this change urnet::flushGlog() had ONE
+  // call site in the whole repo (WindowTrace.cpp, at the teardown of an opt-in
+  // trace) — so one of the four silent deaths lost 28 seconds of exactly the
+  // evidence being looked for.
+  //
+  // HERE rather than inside TunnelController's state setter, which is where it
+  // looks like it belongs: this runs at the RPC boundary, after the tunnel call
+  // has returned and released mutex_, so it cannot sequence a call that may
+  // block inside the Go runtime ahead of the route revert. See the note on
+  // TunnelController::SetStateLocked.
+  urnet::flushGlog();
   nlohmann::json event;
   event["event"] = "tunnel_state";
   event["status"] = tunnel_.Status();

@@ -413,4 +413,40 @@ inline nlohmann::json Request(const char* type, nlohmann::json body = nlohmann::
   return body;
 }
 
+// THE ONE WAY A MESSAGE BECOMES BYTES ON THIS PIPE.
+//
+// nlohmann::json::dump() throws type_error.316 ("invalid UTF-8 byte at index
+// N") on a string it cannot encode, and this protocol carries strings this
+// process did not author: ControlServer copies the SDK's error text into
+// Reply::error verbatim, and the SDK's errors are whatever a remote peer, a
+// resolver or a Go library produced. One stray byte in one of those is enough.
+//
+// error_handler_t::replace, so a bad byte degrades to U+FFFD instead of
+// throwing. That is the right trade HERE and the reasoning is worth stating,
+// because "never silently corrupt data" would normally point the other way:
+//
+//   * the field at risk is a human-readable diagnostic, and the app acts on the
+//     `ok` flag and the status, not on the exact bytes of `error`. A message
+//     with one replacement character in it still says everything the app needs;
+//   * the alternative is not "a correct message" but NO message. dump() throws
+//     from PipeServer's write path, which is a worker thread whose escape ends
+//     in std::terminate — so a single malformed diagnostic string would take
+//     down a LocalSystem service holding the machine's default routes;
+//   * and the corruption is bounded and visible: U+FFFD in a log line reads as
+//     "a byte was not valid UTF-8 here", which is true and is itself the
+//     diagnosis.
+//
+// Callers still wrap this in a try/catch. `replace` closes the invalid-UTF-8
+// door, not every door — dump() can still fail on allocation.
+inline std::string DumpForWire(const nlohmann::json& j) {
+  return j.dump(/*indent=*/-1, /*indent_char=*/' ', /*ensure_ascii=*/false,
+                nlohmann::json::error_handler_t::replace);
+}
+
+// What to send when even DumpForWire could not produce bytes. Deliberately a
+// literal — building it from the data that just failed to serialize is how a
+// fallback fails the same way the thing it is replacing did.
+inline constexpr const char* kUnserializableReplyJson =
+    R"({"type":"reply","ok":false,"error":"the service could not serialize its reply"})";
+
 }  // namespace urnw::proto
