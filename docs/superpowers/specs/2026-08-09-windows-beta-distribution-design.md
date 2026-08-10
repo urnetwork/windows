@@ -146,6 +146,15 @@ New app-side component (`UpdateChecker`):
   download protects download integrity, not against repo compromise (amended
   2026-08-09 round 2: was "SHA256SUMS from the same origin"). Real signing
   arrives with the MSI milestone.
+- One-time migration cost, stated so a tester does not read it as a broken
+  checker (added 2026-08-09 round 2): builds from before this amendment — the
+  live-tested v2026.8.9-1015032940-beta and anything older — verify against a
+  `SHA256SUMS` asset that digest-era releases no longer attach, so their
+  checker skips every new release at check time (the log says "release …
+  lacks SHA256SUMS — skipped") and keeps answering "no update" forever.
+  Moving such an install forward takes one manual step — unzip the new
+  portable zip over the folder with the app quit, or run the MSI — after
+  which the digest-verifying checker updates normally again.
 
 ### 6. MSI compile-proof
 
