@@ -837,7 +837,8 @@
                                 <InfoBar x:Name="ServiceSetupBar" IsOpen="False" IsClosable="False"
                                          Margin="12,8" Severity="Warning" />
                                 <!-- a newer release exists (beta spec §5): one click downloads,
-                                     verifies against SHA256SUMS, rename-swaps the app's own
+                                     verifies against the asset's SHA-256 digest from the
+                                     releases API, rename-swaps the app's own
                                      files and relaunches. Same bar shape and one-writer
                                      discipline as the two above: everything is written by
                                      ConnectPage::ApplyUpdateChecker, and the action button is

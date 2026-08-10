@@ -7,7 +7,8 @@
 // release outranks the build's own stamped code, offer ONE click that
 //
 //   downloads the own-arch zip to %LOCALAPPDATA%\URnetwork\updates\<tag>\,
-//   verifies it against the release's SHA256SUMS (CNG SHA-256),
+//   verifies it against the asset's own SHA-256 digest, stamped by GitHub in
+//     the same releases JSON the check parsed (CNG SHA-256 locally),
 //   extracts it with the OS tar.exe into a fresh staging dir,
 //   takes ONLY allowlisted top-level payload names out of staging
 //     (Common/UpdateFormats.h — archive paths are never trusted),
@@ -154,8 +155,11 @@ class UpdateChecker {
     std::uint64_t code = 0;
     std::wstring tag;      // as minted, with the v — names the download dir
     std::wstring zipUrl;   // browser_download_url of the own-arch zip
-    std::wstring sumsUrl;  // browser_download_url of SHA256SUMS
-    std::string zipName;   // the exact asset filename, for the SUMS lookup
+    // The zip asset's expected SHA-256 (lowercase hex), parsed out of the SAME
+    // asset object the zipUrl came from — never re-looked-up later, so a repo
+    // that changes mid-flight cannot pair this hash with a different download.
+    std::string digestHex;
+    std::string zipName;   // the exact asset filename, names the file on disk
   };
 
   void WorkerLoop();

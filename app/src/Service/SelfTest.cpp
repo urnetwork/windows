@@ -1789,55 +1789,42 @@ void TestVersionGrammar() {
                     static_cast<unsigned long long>(version::kCode)));
 }
 
-// --- the update checker's two parsers (Common/UpdateFormats.h) --------------
+// --- the update checker's parsers (Common/UpdateFormats.h) ------------------
 
 void TestUpdateFormats() {
-  Section("UpdateFormats — SHA256SUMS lookup and the swap allowlist");
+  Section("UpdateFormats — asset digest parsing and the swap allowlist");
 
-  // The document exactly as the release pipeline writes it: sha256sum format,
-  // '<hex>  <filename>', one line per artifact.
-  const std::string sums =
-      "1111111111111111111111111111111111111111111111111111111111111111  "
-      "URnetwork-v2026.8.9-101076420-beta-windows-x64-portable.zip\n"
-      "2222222222222222222222222222222222222222222222222222222222222222  "
-      "URnetwork-v2026.8.9-101076420-beta-windows-arm64-portable.zip\n";
-  Check(update::Sha256ForFile(
-            sums,
-            "URnetwork-v2026.8.9-101076420-beta-windows-x64-portable.zip") ==
+  // The digest exactly as the releases API mints it on every asset:
+  // `sha256:<64 lowercase hex>`. The parser's empty return means "this
+  // release cannot be verified, skip it", so everything below the well-formed
+  // case is a refusal shape, never a best-effort read.
+  Check(update::DigestHexFromAssetDigest("sha256:" + std::string(64, '1')) ==
             std::string(64, '1'),
-        "the x64 zip's line is found by exact filename");
-  Check(update::Sha256ForFile(
-            sums,
-            "URnetwork-v2026.8.9-101076420-beta-windows-arm64-portable.zip") ==
-            std::string(64, '2'),
-        "a later line is found too — the search is by name, not position");
-  Check(update::Sha256ForFile(sums, "URnetwork.msi").empty(),
-        "a file the document does not name yields EMPTY, which equals no hash");
-  Check(update::Sha256ForFile("", "x.zip").empty(),
-        "an empty document yields empty");
-
-  // Variations the format legitimately produces elsewhere: binary-mode marker,
-  // CRLF endings, uppercase hex — all verify; the hex canonicalizes to
-  // lowercase so the caller's own formatting compares bytewise.
-  Check(update::Sha256ForFile(
-            "ABCDEF1111111111111111111111111111111111111111111111111111111111 "
-            "*a.zip\r\n",
-            "a.zip") ==
+        "the minted shape parses to its bare hex");
+  Check(update::DigestHexFromAssetDigest(
+            "sha256:"
+            "ABCDEF1111111111111111111111111111111111111111111111111111111111") ==
             "abcdef1111111111111111111111111111111111111111111111111111111111",
-        "binary marker + CRLF + uppercase hex verify, hex comes back lowercase");
-
-  // Malformed lines must MISS, never almost-match: short hex, a non-hex
-  // character, and the one-space separator that would misalign the filename.
-  Check(update::Sha256ForFile("abc  a.zip\n", "a.zip").empty(),
-        "a short hex run is not a hash");
-  Check(update::Sha256ForFile(
-            "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-            "  a.zip\n",
-            "a.zip")
+        "uppercase hex verifies, and comes back canonical lowercase");
+  Check(update::DigestHexFromAssetDigest("sha512:" + std::string(64, '1'))
+            .empty(),
+        "another algorithm is not a SHA-256 — refused, not truncated to fit");
+  Check(update::DigestHexFromAssetDigest("SHA256:" + std::string(64, '1'))
+            .empty(),
+        "the prefix is matched as minted — an uppercase prefix is refused");
+  Check(update::DigestHexFromAssetDigest(std::string(64, '1')).empty(),
+        "bare hex without the algorithm prefix is refused");
+  Check(update::DigestHexFromAssetDigest("sha256:" + std::string(63, '1'))
+            .empty(),
+        "63 hex chars are not a SHA-256");
+  Check(update::DigestHexFromAssetDigest("sha256:" + std::string(65, '1'))
+            .empty(),
+        "65 hex chars are not a SHA-256 either — length is exact");
+  Check(update::DigestHexFromAssetDigest("sha256:" + std::string(64, 'z'))
             .empty(),
         "64 non-hex characters are not a hash");
-  Check(update::Sha256ForFile(std::string(64, '3') + " a.zip\n", "a.zip").empty(),
-        "a single-space separator is malformed — the name would misalign");
+  Check(update::DigestHexFromAssetDigest("").empty(),
+        "an empty digest field yields empty, which equals no hash");
 
   // The allowlist: what a swap may touch is a bare top-level exe/dll/pri name
   // and NOTHING else. Archive entry paths are never trusted (zip-slip), so a

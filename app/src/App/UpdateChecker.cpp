@@ -35,12 +35,11 @@ using std::chrono::steady_clock;
 constexpr auto kLaunchDelay = std::chrono::seconds(30);
 constexpr auto kCheckInterval = std::chrono::hours(6);
 
-// Response caps. The release LIST is JSON that should be tens of KB;
-// SHA256SUMS is a handful of lines; the zip is ~100 MB self-contained today.
-// A cap is not a guess about the future, it is the refusal to stream an
-// unbounded body into a file because a server said so.
+// Response caps. The release LIST is JSON that should be tens of KB; the zip
+// is ~100 MB self-contained today. A cap is not a guess about the future, it
+// is the refusal to stream an unbounded body into a file because a server
+// said so.
 constexpr std::uint64_t kMaxJsonBytes = 8ull * 1024 * 1024;
-constexpr std::uint64_t kMaxSumsBytes = 1ull * 1024 * 1024;
 constexpr std::uint64_t kMaxZipBytes = 1ull * 1024 * 1024 * 1024;
 
 // The arch half of the asset name grammar
@@ -285,7 +284,8 @@ bool FetchUrl(std::wstring const& url, const wchar_t* accept,
 // ---- SHA-256 (CNG) -----------------------------------------------------------
 
 // The zip's hash, streamed through BCrypt, as lowercase hex — the same
-// canonical form Sha256ForFile returns, so the comparison is bytewise. Empty
+// canonical form DigestHexFromAssetDigest returns, so the comparison could be
+// bytewise (it is folded anyway; hex case is not worth a failure mode). Empty
 // on any failure: an unreadable file must fail verification, not pass it.
 std::string Sha256File(fs::path const& file) {
   BCRYPT_ALG_HANDLE alg = nullptr;
@@ -640,8 +640,9 @@ void UpdateChecker::RunCheck() {
 
   // Two maxima, deliberately separate: the newest release that PARSES (the
   // honest answer to "is there something newer") and the newest release this
-  // build can actually FETCH (both own-arch zip and SHA256SUMS attached).
-  // When they differ, that is a broken release and the log says so.
+  // build can actually VERIFY (own-arch zip attached, carrying a usable
+  // sha256 digest). When they differ, that is a broken release and the log
+  // says so.
   std::uint64_t newestCode = 0;
   std::string newestVersion;
   Offer offer;
@@ -662,24 +663,34 @@ void UpdateChecker::RunCheck() {
     const std::string zipName =
         "URnetwork-v" + ver + "-windows-" + kArch + "-portable.zip";
     std::string zipUrl;
-    std::string sumsUrl;
+    std::string digestHex;
     if (auto assets = rel.find("assets");
         assets != rel.end() && assets->is_array()) {
       for (auto const& asset : *assets) {
         if (!asset.is_object()) continue;
-        const std::string name = JsonString(asset, "name");
-        if (name == zipName)
-          zipUrl = JsonString(asset, "browser_download_url");
-        else if (name == "SHA256SUMS")
-          sumsUrl = JsonString(asset, "browser_download_url");
+        if (JsonString(asset, "name") != zipName) continue;
+        // URL and expected hash from the SAME asset object, in one visit: the
+        // digest is GitHub's own upload-time SHA-256 for exactly the bytes
+        // this URL serves, and pairing them here is what makes a later
+        // re-lookup (against a repo that may have changed) impossible.
+        zipUrl = JsonString(asset, "browser_download_url");
+        digestHex =
+            update::DigestHexFromAssetDigest(JsonString(asset, "digest"));
       }
     }
-    if (zipUrl.empty() || sumsUrl.empty()) {
-      LogWarn("update: release {} lacks {} — skipped", tag,
-              zipUrl.empty() ? zipName : "SHA256SUMS");
+    if (zipUrl.empty()) {
+      LogWarn("update: release {} lacks {} — skipped", tag, zipName);
       continue;
     }
-    offer = Offer{Widen(ver), code, Widen(tag), Widen(zipUrl), Widen(sumsUrl),
+    if (digestHex.empty()) {
+      // Present zip, absent (or malformed) digest: the download would be
+      // unverifiable, which disqualifies the release outright — the same rule
+      // a missing checksum document used to trigger.
+      LogWarn("update: release {} lacks a usable digest — skipped", tag);
+      continue;
+    }
+    LogDebug("update: release {} digest ok ({})", tag, digestHex);
+    offer = Offer{Widen(ver), code, Widen(tag), Widen(zipUrl), digestHex,
                   zipName};
   }
 
@@ -799,34 +810,23 @@ void UpdateChecker::RunApply() {
     }
   }
 
-  // ---- (b) verify against the release's SHA256SUMS --------------------------
+  // ---- (b) verify against the asset's digest ---------------------------------
+  // The expected hash travelled inside the Offer since check time — GitHub's
+  // per-asset SHA-256 from the very JSON object whose URL was just downloaded
+  // — so verification is purely local: hash the file, compare. Folded, not
+  // bytewise, because hex case is not worth a failure mode; both sides are
+  // minted lowercase today.
   Mutate([](Snapshot& s) { s.stage = Stage::Verifying; });
-  std::string sums;
-  {
-    std::string error;
-    const bool ok = FetchUrl(
-        offer.sumsUrl, nullptr, kMaxSumsBytes,
-        [&sums](const char* data, DWORD n) {
-          sums.append(data, n);
-          return true;
-        },
-        cancelled, error);
-    if (!ok) {
-      LogWarn("update: SHA256SUMS download failed: {}", error);
-      fail(Failure::Download);
-      return;
-    }
-  }
-  const std::string expected = update::Sha256ForFile(sums, offer.zipName);
   const std::string actual = Sha256File(zipPath);
-  if (expected.empty() || actual.empty() || expected != actual) {
+  if (offer.digestHex.empty() || actual.empty() ||
+      !update::EqualsAsciiCaseless(offer.digestHex, actual)) {
     // The unverifiable download does not stay on disk: a later "just unzip
     // it yourself" must never be able to reach for a zip that failed its
-    // check. (Same-origin SHA256SUMS protects download integrity, not
-    // against repo compromise — the README says so too; real signing is the
-    // MSI milestone's.)
+    // check. (A same-origin digest protects download integrity, not against
+    // repo compromise — the README says so too; real signing is the MSI
+    // milestone's.)
     LogError("update: checksum mismatch for {} — expected '{}', got '{}'",
-             offer.zipName, expected, actual);
+             offer.zipName, offer.digestHex, actual);
     fs::remove(zipPath, ec);
     fail(Failure::Checksum);
     return;
