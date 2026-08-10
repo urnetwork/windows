@@ -2,6 +2,9 @@
 #include "PacketPump.h"
 
 #include <chrono>
+#include <cstdint>
+#include <span>
+#include <vector>
 
 #include "Log.h"
 #include "ThreadGuard.h"
@@ -23,12 +26,14 @@ bool PacketPump::Start() {
 
   // inbound: the SDK delivers decrypted IP packets from the tunnel; write them
   // into the wintun ring so the host stack receives them. The callback fires on
-  // an SDK thread; wintun send is thread-safe.
+  // an SDK thread; wintun send is thread-safe. The returned Sub keeps the
+  // subscription alive and unsubscribes on Stop()/destruction.
   //
   // The callback captures a shared_ptr to the gate, NOT `this`: closing the
   // subscription does not drain a dispatch that is already running (see the
   // note in the header), so a late callback has to find a live object rather
-  // than a freed one.
+  // than a freed one. Batching does not soften that — it widens it, because a
+  // late dispatch now carries up to a whole batch of work into the window.
   gate_ = std::make_shared<ReceiveGate>();
   gate_->adapter = &adapter_;
   //
@@ -37,25 +42,48 @@ bool PacketPump::Start() {
   // our startup code, so nothing on it had a terminate handler, and an
   // exception escaping into cgo is the least diagnosable death this process can
   // have. RunGuarded arms the handler once per SDK thread (a thread_local
-  // latch, so the per-packet cost is a predicted branch) and names the thread
+  // latch, so the per-batch cost is a predicted branch) and names the thread
   // in whatever gets logged. See ThreadGuard.h.
-  receiveSub_ = device_.addReceivePacket(
-      [gate = gate_, counters = counters_](
-          int64_t /*ipVersion*/, int64_t /*ipProtocol*/, const uint8_t* packet,
-          int32_t len) {
+  receiveSub_ = device_.addReceivePacketBatch(
+      [gate = gate_, counters = counters_](const uint8_t* packetBatchBytes,
+                                           int32_t packetBatchByteCount) {
         RunGuarded("sdk-receive", [&] {
-          if (!packet || len <= 0) return;
-          // COUNTED BEFORE THE GATE, and that ordering is the measurement.
-          // What the failsafe asks is "did anything come back through the
-          // tunnel", not "did the adapter still exist when it did" — a packet
-          // that arrives during teardown is still proof the tunnel was
-          // carrying. Counting after the gate would make a stopping pump look
-          // like a dead one for the length of the stop.
-          counters->inbound.fetch_add(1, std::memory_order_relaxed);
+          if (!packetBatchBytes || packetBatchByteCount <= 0) return;
+          // ONE LOCK FOR THE WHOLE BATCH, not one per packet. It is uncontended
+          // except against Stop(), and taking it once is what keeps "Stop()
+          // waits out a callback already inside" true of the whole dispatch
+          // rather than of one packet of it — a batch that lost the lock
+          // halfway would be a batch half-delivered into a dying adapter.
           std::scoped_lock lock(gate->mutex);
-          if (!gate->adapter) return;  // stopped; the adapter may already be gone
-          gate->adapter->Send(
-              std::span<const uint8_t>(packet, static_cast<size_t>(len)));
+          const size_t byteCount = static_cast<size_t>(packetBatchByteCount);
+          size_t offset = 0;
+          while (2 <= byteCount - offset) {
+            const size_t packetByteCount =
+                (static_cast<size_t>(packetBatchBytes[offset]) << 8) |
+                static_cast<size_t>(packetBatchBytes[offset + 1]);
+            offset += 2;
+            if (packetByteCount == 0 || byteCount - offset < packetByteCount)
+              return;
+            // COUNTED BEFORE THE GATE IS CONSULTED, and that ordering is the
+            // measurement. What the failsafe asks is "did anything come back
+            // through the tunnel", not "did the adapter still exist when it
+            // did" — a packet that arrives during teardown is still proof the
+            // tunnel was carrying. Bailing out of this loop on a closed gate
+            // would make a stopping pump look like a dead one for the length
+            // of the stop.
+            //
+            // PER PACKET, NOT PER BATCH, on both counters. These numbers are
+            // compared against packet-denominated thresholds
+            // (kDeadFastOutboundPackets, TunnelWatchdog.h); counting dispatches
+            // would silently rescale every one of them.
+            counters->inbound.fetch_add(1, std::memory_order_relaxed);
+            // null once Stop() has run; the adapter may already be gone. The
+            // rest of the batch is still walked, and still counted.
+            if (gate->adapter)
+              gate->adapter->Send(std::span<const uint8_t>(
+                  packetBatchBytes + offset, packetByteCount));
+            offset += packetByteCount;
+          }
         });
       });
 
@@ -117,6 +145,12 @@ void PacketPump::Stop() {
   //      `addReceivePacket` hands Go the RAW pointer (`receive_packet_fn.get()`,
   //      hpp:16493) and keeps it alive purely through that retain (hpp:16495).
   //
+  // Those names and hpp line numbers are the ones from the incident, when this
+  // data path was the single-packet API; the call site above is now
+  // `addReceivePacketBatch`. Nothing else here changes — the retain/release
+  // mechanism, and therefore both the bug and its fix, are identical for the
+  // batch subscription.
+  //
   // From this line onward, every inbound packet therefore invoked a DESTROYED
   // std::function from a cgo thread -- a freed object that then copies two
   // shared_ptr control blocks and takes a lock. The window is this line to
@@ -144,6 +178,9 @@ void PacketPump::Stop() {
 void PacketPump::OutboundLoop() {
   HANDLE readEvent = adapter_.ReadWaitEvent();
   HANDLE waits[2] = {readEvent, stopEvent_};
+  constexpr size_t kMaxPacketCount = 64;
+  std::vector<uint8_t> packetBatchBytes;
+  packetBatchBytes.reserve(kMaxPacketCount * (2 + 1440));
 
   while (running_.load()) {
     // Drain everything currently in the ring, then wait for more.
@@ -156,26 +193,49 @@ void PacketPump::OutboundLoop() {
     // Ctrl+C. Thirty-one capture routes point the whole machine at the tun, and
     // the tunnel is broken — no exit proven, every transport timing out — so
     // nothing sent is ever acknowledged and the host stack retransmits. The ring
-    // therefore refills at least as fast as it drains, `packet.empty()` never
-    // becomes true, and the loop never reaches the WaitForMultipleObjects below
-    // that was the ONLY place the stop event was read. Stop() sets running_
-    // false, sets the event, and then joins a thread structurally incapable of
+    // therefore refills at least as fast as it drains, the batch below is never
+    // empty, and the loop never reaches the WaitForMultipleObjects below that
+    // was the ONLY place the stop event was read. Stop() sets running_ false,
+    // sets the event, and then joins a thread structurally incapable of
     // noticing either.
     //
     // The livelock is worst precisely when the tunnel is most broken, which is
     // when the operator is most likely to be trying to turn it off.
+    //
+    // Batching BOUNDS how late that test can be read; it does not remove the
+    // need for it. The gather loop is capped at kMaxPacketCount, so the stop
+    // flag is now consulted at worst one batch late instead of never.
     while (running_.load()) {
-      std::span<const uint8_t> packet = adapter_.Receive();
-      if (packet.empty()) break;
-      // hand the outbound IP packet to the SDK; n is the valid byte count
-      device_.sendPacket(packet.data(), static_cast<int32_t>(packet.size()),
-                         static_cast<int64_t>(packet.size()));
-      // COUNTED AFTER THE SEND. What the failsafe wants to know is how much the
-      // host has committed to a tunnel that is giving nothing back, and a
-      // packet counted before the call would be counted even when the call
-      // threw or the pump was stopping mid-drain.
-      counters_->outbound.fetch_add(1, std::memory_order_relaxed);
-      adapter_.ReleaseReceived(packet);
+      packetBatchBytes.clear();
+      size_t packetCount = 0;
+      while (packetCount < kMaxPacketCount) {
+        std::span<const uint8_t> packet = adapter_.Receive();
+        if (packet.empty()) break;
+        if (packet.size() <= UINT16_MAX) {
+          const uint16_t packetByteCount = static_cast<uint16_t>(packet.size());
+          packetBatchBytes.push_back(
+              static_cast<uint8_t>(packetByteCount >> 8));
+          packetBatchBytes.push_back(static_cast<uint8_t>(packetByteCount));
+          packetBatchBytes.insert(packetBatchBytes.end(), packet.begin(),
+                                  packet.end());
+          ++packetCount;
+        }
+        adapter_.ReleaseReceived(packet);
+      }
+      if (packetBatchBytes.empty()) break;
+      // hand the outbound IP packets to the SDK, length-prefixed, in one call
+      device_.sendPacketBatch(packetBatchBytes.data(),
+                              static_cast<int32_t>(packetBatchBytes.size()));
+      // COUNTED AFTER THE SEND, AND IN PACKETS. What the failsafe wants to know
+      // is how much the host has committed to a tunnel that is giving nothing
+      // back, and a batch counted before the call would be counted even when the
+      // call threw or the pump was stopping mid-drain.
+      //
+      // The UNIT is the part batching could quietly break: kDeadFastOutboundPackets
+      // is eight PACKETS (TunnelWatchdog.h), so counting one per sendPacketBatch
+      // would let a machine commit up to kMaxPacketCount times that much traffic
+      // into a dead tunnel before the fast window arms.
+      counters_->outbound.fetch_add(packetCount, std::memory_order_relaxed);
     }
     if (!running_.load()) break;  // re-checked: the drain loop may have exited on it
     DWORD w = ::WaitForMultipleObjects(2, waits, FALSE, INFINITE);

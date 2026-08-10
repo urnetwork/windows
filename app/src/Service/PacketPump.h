@@ -1,6 +1,6 @@
 // The packet data path, mirroring the macOS PacketTunnelProvider:
-//   outbound (host -> tunnel): wintun ring -> DeviceLocal.sendPacket
-//   inbound  (tunnel -> host): DeviceLocal receive callback -> wintun ring
+//   outbound (host -> tunnel): wintun ring -> DeviceLocal.sendPacketBatch
+//   inbound  (tunnel -> host): DeviceLocal batch callback -> wintun ring
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
