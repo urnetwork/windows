@@ -26,14 +26,22 @@ namespace urnw {
 namespace {
 std::unique_ptr<AppController> g_app;
 
-constexpr bool WindowPresentationShouldRun(bool shown, bool activated) {
-  return shown && activated;
+// The presentation gate. `shown` is the tray-level intent (between ShowWindow
+// and HideWindow); `minimized` is the taskbar state. Focus is deliberately
+// absent: this used to be `shown && activated`, and stopping on mere
+// deactivation meant clicking into any other app froze the graphs and reset
+// them when the window was clicked back (the feeds rebuild from scratch on
+// resume). The owner wants the window watchable while something else has
+// focus; minimize and hide-to-tray still stop everything, which keeps the CPU
+// save exactly where nobody is looking.
+constexpr bool WindowPresentationShouldRun(bool shown, bool minimized) {
+  return shown && !minimized;
 }
 
-static_assert(WindowPresentationShouldRun(true, true));
-static_assert(!WindowPresentationShouldRun(true, false));
-static_assert(!WindowPresentationShouldRun(false, true));
-static_assert(!WindowPresentationShouldRun(false, false));
+static_assert(WindowPresentationShouldRun(true, /*minimized=*/false));
+static_assert(!WindowPresentationShouldRun(true, /*minimized=*/true));
+static_assert(!WindowPresentationShouldRun(false, /*minimized=*/false));
+static_assert(!WindowPresentationShouldRun(false, /*minimized=*/true));
 
 // Pull a urnetwork:// uri out of a command line. The shell appends it as an
 // argument (possibly quoted); the uri itself never contains whitespace because
@@ -407,9 +415,17 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
         self->EnterPreviewUi(preview);
     }
-    window_.Activated([this](auto const&, auto const& args) {
-      windowActivated_ =
-          args.WindowActivationState() != WindowActivationState::Deactivated;
+    // Minimize/restore tracking. windowShown_ only knows about the tray
+    // (ShowWindow/HideWindow); the minimize box passes through neither, so
+    // without this the presentation would keep burning CPU into a taskbar
+    // button. XAML's Window.VisibilityChanged reports Visible=false on
+    // minimize as well as on AppWindow.Hide(), so it covers both teardown
+    // states; the handler re-reads IsIconic instead of trusting args.Visible()
+    // (see SyncWindowMinimized for why). Window.Activated is deliberately not
+    // consumed here any more: focus loss used to stop the presentation, and
+    // the rebuild-on-refocus was the reset the owner reported.
+    window_.VisibilityChanged([this](auto const&, auto const&) {
+      SyncWindowMinimized();
       ReconcileWindowPresentation();
     });
   }
@@ -472,6 +488,12 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       NoteAppliedPlacement();
     }
   }
+  // A tray-show reaching a MINIMIZED window must restore it first: Activate()
+  // does not un-minimize (a long-standing WinUI quirk), and with the gate keyed
+  // on visibility the click would otherwise read as dead — shown, still iconic,
+  // presentation off. Before the rect log below, so that line reports the real
+  // placement instead of the iconic placeholder rect (-32000,-32000).
+  if (windowHwnd_ && ::IsIconic(windowHwnd_)) ::ShowWindow(windowHwnd_, SW_RESTORE);
   // What the window actually did, as opposed to what any one step intended.
   // The shell's "restored placement" line was true when it was written and
   // false a moment later, which is the failure mode this project keeps paying
@@ -486,7 +508,7 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
     }
   }
   windowShown_ = true;
-  windowActivated_ = true;
+  SyncWindowMinimized();
   window_.Activate();
   ReconcileWindowPresentation();
 }
@@ -535,16 +557,28 @@ void AppController::HideWindow() {
   // next tray click - within this session as well as across restarts.
   if (shell::SaveWindowPlacement(windowHwnd_)) ownPlacement_ = true;
   windowShown_ = false;
-  windowActivated_ = false;
   ReconcileWindowPresentation();
   if (window_) window_.try_as<Window>().AppWindow().Hide();
 }
 
+// The minimize half of the gate. IsIconic is read fresh rather than carried
+// from the VisibilityChanged payload: AppWindow.Hide() also raises
+// Visible=false, and letting that set "minimized" would latch the flag across
+// a hide → tray-show cycle whose window comes back restored.
+void AppController::SyncWindowMinimized() {
+  windowMinimized_ = windowHwnd_ != nullptr && ::IsIconic(windowHwnd_) != FALSE;
+}
+
 void AppController::ReconcileWindowPresentation() {
   const bool active =
-      WindowPresentationShouldRun(windowShown_, windowActivated_);
+      WindowPresentationShouldRun(windowShown_, windowMinimized_);
   if (windowVisible_ == active) return;
   windowVisible_ = active;
+
+  // One line per transition, with the gate's inputs: a "stopped" here while
+  // the window is plainly on screen is the focus-loss regression coming back.
+  LogInfo("app: presentation {} (shown={}, minimized={})",
+          active ? "started" : "stopped", windowShown_, windowMinimized_);
 
   sdk_.SetPresentationActive(active);
   balance_.SetVisible(active);

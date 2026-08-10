@@ -518,12 +518,14 @@ void NetworkPage::SetPresentationActive(bool active) {
 // poll runs on - and this page only ever had the first one.
 //
 // SdkHost owns the locations/peers view controllers for exactly as long as the
-// presentation, and the presentation stops on DEACTIVATION, not only on hide
-// (AppController::WindowPresentationShouldRun is `shown && activated`). So
-// alt-tabbing away closed both feeds, dropped their listeners and pushed
-// std::nullopt into this page - and nothing reopened them, because the only
-// opener was a navigation CHANGE and coming back to the destination you left on
-// is not one. The pane then stayed empty for the life of the window.
+// presentation, and the presentation stops on minimize and hide-to-tray
+// (AppController::WindowPresentationShouldRun is `shown && !minimized`; when
+// this defect was found the gate was `shown && activated`, so plain alt-tabbing
+// hit it too). Closing the presentation closed both feeds, dropped their
+// listeners and pushed std::nullopt into this page - and nothing reopened them,
+// because the only opener was a navigation CHANGE and coming back to the
+// destination you left on is not one. The pane then stayed empty for the life
+// of the window.
 //
 // EnsureLocations is idempotent, so reconciling on either half is safe and the
 // order the two arrive in does not matter.

@@ -61,6 +61,9 @@ class AppController {
   void OnWindowPlacementChanged();
   // Record the rect we just applied ourselves, so the relay can ignore it.
   void NoteAppliedPlacement();
+  // Re-read IsIconic into windowMinimized_. Called from Window.VisibilityChanged
+  // (minimize and restore both raise it) and before the reconcile on show.
+  void SyncWindowMinimized();
   void OnAuthState(AuthState state, const std::string& error);
   void OnTunnelState(const proto::TunnelStatus& status);
   void OnStats(const LiveStats& stats);
@@ -114,11 +117,15 @@ class AppController {
   // set when the tray "Quit" is chosen, so the window's Closing handler lets it
   // close instead of hiding to tray (macOS parity: X/close hides, tray Quit exits)
   bool quitting_ = false;
-  // Presentation controllers run only while the tray window is both shown and
-  // active. Minimize/app deactivation suspends them just like an explicit hide.
-  bool windowShown_ = false;
-  bool windowActivated_ = false;
-  bool windowVisible_ = false;
+  // Presentation controllers (the stats feed, chart ticks, canvas animation,
+  // the balance poll) run whenever the window is actually on screen. Focus is
+  // deliberately NOT part of that: the owner watches the graphs while another
+  // app is foreground, and gating on activation reset all of it on every click
+  // away. Only the states nobody can see tear it down — minimized, or hidden
+  // to the tray — where the CPU save is real and the rebuild-on-return is fine.
+  bool windowShown_ = false;      // between ShowWindow and HideWindow (tray-level intent)
+  bool windowMinimized_ = false;  // IsIconic, synced by SyncWindowMinimized
+  bool windowVisible_ = false;    // the reconciled result: the presentation is running
   std::optional<proto::TunnelStatus> lastTunnelStatus_;
 };
 
