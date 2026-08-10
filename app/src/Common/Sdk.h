@@ -82,7 +82,12 @@ void SdkInit(bool isService, int64_t memoryLimitBytes);
 // GOTRACEBACK. Those already dump every goroutine. GOTRACEBACK only widens the
 // unrecovered-panic case.
 struct GoCrashCapture {
-  // stderr — both the CRT stream and STD_ERROR_HANDLE — now lands in `path`.
+  // STD_ERROR_HANDLE — the Win32 handle, which is the one the Go runtime
+  // consults on every write, and the only one this function touches — now
+  // points at `path`. The CRT's own stderr stream is deliberately left alone;
+  // the note on RedirectGoCrashOutput below explains why that is the design and
+  // not an omission. Said precisely here because an earlier draft of this line
+  // claimed BOTH streams were redirected, which the implementation never did.
   bool armed = false;
   // This run's file. Normally stays 0 bytes forever: anything in it at all is a
   // Go runtime fatal, because nothing else in this process writes to stderr

@@ -994,79 +994,100 @@ int RunConsole(bool rpcOnly, int stopAfterStep = 0) {
 }
 
 int Usage() {
-  std::wprintf(
-      L"urnetworkd — the URnetwork Windows service\n"
-      L"\n"
-      L"  urnetworkd                run under the SCM (what the SCM invokes)\n"
-      L"  urnetworkd console        run in this console for development\n"
-      L"  urnetworkd console --rpc-only\n"
-      L"                            same, but clamped so no start_tunnel from\n"
-      L"                            any client can create the wintun adapter or\n"
-      L"                            write a route or dns entry. Brings up the\n"
-      L"                            DeviceLocal + mTLS rpc listener only, so the\n"
-      L"                            app has a live DeviceRemote to drive.\n"
-      L"                            NEEDS NO ELEVATION and carries no traffic.\n"
-      L"                            The startup sweep is observe-only here: it\n"
-      L"                            reports leftover state but cleans nothing\n"
-      L"                            and does not consume the crash marker.\n"
-      L"                            This is a SAFETY NET, not a switch: the app\n"
-      L"                            must ask for rpc-only itself (set\n"
-      L"                            URNETWORK_RPC_ONLY=1), because a client that\n"
-      L"                            asked for a tunnel is refused rather than\n"
-      L"                            silently downgraded.\n"
-      L"  urnetworkd console --stop-after=<N>        (N = 1..8, DEBUG ONLY)\n"
-      L"                            run the bring-up as far as step N of 8 and\n"
-      L"                            then STOP, unwinding through the same\n"
-      L"                            teardown a user disconnect runs. Combinable\n"
-      L"                            with --rpc-only, in either order; where they\n"
-      L"                            overlap the rpc-only clamp wins, because it\n"
-      L"                            is the one that does less. The steps:\n"
-      L"                              1 wintun adapter (needs elevation)\n"
-      L"                              2 sdk egress bound to the physical nic\n"
-      L"                              3 network space   4 DeviceLocal\n"
-      L"                              5 mTLS rpc listener\n"
-      L"                              6 ROUTES + DNS + firewall  <- destructive\n"
-      L"                              7 split tunnel    8 packet pump\n"
-      L"                            1-5 write nothing to this machine; --rpc-only\n"
-      L"                            stops before 6 but SKIPS 1, so --stop-after=1\n"
-      L"                            is the only way to bring the adapter up and\n"
-      L"                            stop before anything is routed to it. The\n"
-      L"                            stop point and what is left applied are\n"
-      L"                            logged at every step. An out-of-range,\n"
-      L"                            malformed or repeated N is REFUSED, never\n"
-      L"                            read as 'no stop'.\n"
-      L"  urnetworkd selftest       run the pure-logic unit tests: the shared\n"
-      L"                            route/firewall table, the WFP filter-set\n"
-      L"                            construction for every policy state, and the\n"
-      L"                            console option parsing above. Opens\n"
-      L"                            no adapter, writes no route, and never\n"
-      L"                            contacts the filter engine, so it needs no\n"
-      L"                            elevation and cannot change the machine.\n"
-      L"                            It CANNOT prove a filter blocks anything --\n"
-      L"                            that needs the elevated leak-validation\n"
-      L"                            gates in p7-gates.ps1.\n"
-      L"  urnetworkd install        register the service AND START it\n"
-      L"                            (elevated). Idempotent: if the service is\n"
-      L"                            already registered it is stopped, re-pointed\n"
-      L"                            at THIS exe, and started again — run it from\n"
-      L"                            a new build to make the service run that\n"
-      L"                            build. No separate `sc start` is needed.\n"
-      L"                            Exit code 0 means the service is RUNNING.\n"
-      L"  urnetworkd uninstall      stop and deregister the service (elevated)\n"
-      L"  urnetworkd revert         take back any leftover tunnel routes/DNS\n"
-      L"                            without starting anything (elevated).\n"
-      L"                            Refuses while a urnetworkd is running --\n"
-      L"                            it cannot tell a live tunnel from a dead\n"
-      L"                            one, and reverting a live one drops your\n"
-      L"                            traffic to the clear. --force overrides.\n"
-      L"\n"
-      L"log: %s\n"
-      L"go fatals: %s (written by the SCM path automatically; in console mode\n"
-      L"           redirect stderr yourself: `urnetworkd console 2> that file`.\n"
-      L"           An empty file is the healthy state — anything in it is a Go\n"
-      L"           runtime panic or fatal error, and the run before it died.)\n",
-      LogFilePath().c_str(),
-      (LogDir(/*isService=*/true) / L"go-crash.log").c_str());
+  // NARROW UTF-8 BYTES THROUGH fwrite, NOT std::wprintf — and that is a bug
+  // fix, not a style preference.
+  //
+  // This text begins "urnetworkd — the URnetwork Windows service", and that em
+  // dash used to truncate the ENTIRE usage output. std::wprintf converts each
+  // wide character to a multibyte sequence using the current C locale, which is
+  // "C" here because nothing calls setlocale; U+2014 has no representation in
+  // it, so the conversion fails, wprintf returns -1, and everything after the
+  // eleventh character is discarded. `urnetworkd help` printed exactly
+  // "urnetworkd " and stopped — verified by redirecting it to a file, 243 bytes
+  // of which every one was the startup log line. So the "log:" path, and every
+  // word describing every verb, had never been readable, and neither was the
+  // Usage() shown after an argument error.
+  //
+  // The file is compiled /utf-8, so the narrow literal below is already UTF-8
+  // bytes and fwrite puts them on stdout untouched, with no locale in the path
+  // to reject anything. This is exactly how LogWrite emits the same em dashes
+  // correctly today (Log.cpp: fwrite of the formatted narrow line), so the two
+  // output paths now agree instead of one silently failing.
+  const std::string text = std::format(
+      "urnetworkd — the URnetwork Windows service\n"
+      "\n"
+      "  urnetworkd                run under the SCM (what the SCM invokes)\n"
+      "  urnetworkd console        run in this console for development\n"
+      "  urnetworkd console --rpc-only\n"
+      "                            same, but clamped so no start_tunnel from\n"
+      "                            any client can create the wintun adapter or\n"
+      "                            write a route or dns entry. Brings up the\n"
+      "                            DeviceLocal + mTLS rpc listener only, so the\n"
+      "                            app has a live DeviceRemote to drive.\n"
+      "                            NEEDS NO ELEVATION and carries no traffic.\n"
+      "                            The startup sweep is observe-only here: it\n"
+      "                            reports leftover state but cleans nothing\n"
+      "                            and does not consume the crash marker.\n"
+      "                            This is a SAFETY NET, not a switch: the app\n"
+      "                            must ask for rpc-only itself (set\n"
+      "                            URNETWORK_RPC_ONLY=1), because a client that\n"
+      "                            asked for a tunnel is refused rather than\n"
+      "                            silently downgraded.\n"
+      "  urnetworkd console --stop-after=<N>        (N = 1..8, DEBUG ONLY)\n"
+      "                            run the bring-up as far as step N of 8 and\n"
+      "                            then STOP, unwinding through the same\n"
+      "                            teardown a user disconnect runs. Combinable\n"
+      "                            with --rpc-only, in either order; where they\n"
+      "                            overlap the rpc-only clamp wins, because it\n"
+      "                            is the one that does less. The steps:\n"
+      "                              1 wintun adapter (needs elevation)\n"
+      "                              2 sdk egress bound to the physical nic\n"
+      "                              3 network space   4 DeviceLocal\n"
+      "                              5 mTLS rpc listener\n"
+      "                              6 ROUTES + DNS + firewall  <- destructive\n"
+      "                              7 split tunnel    8 packet pump\n"
+      "                            1-5 write nothing to this machine; --rpc-only\n"
+      "                            stops before 6 but SKIPS 1, so --stop-after=1\n"
+      "                            is the only way to bring the adapter up and\n"
+      "                            stop before anything is routed to it. The\n"
+      "                            stop point and what is left applied are\n"
+      "                            logged at every step. An out-of-range,\n"
+      "                            malformed or repeated N is REFUSED, never\n"
+      "                            read as 'no stop'.\n"
+      "  urnetworkd selftest       run the pure-logic unit tests: the shared\n"
+      "                            route/firewall table, the WFP filter-set\n"
+      "                            construction for every policy state, and the\n"
+      "                            console option parsing above. Opens\n"
+      "                            no adapter, writes no route, and never\n"
+      "                            contacts the filter engine, so it needs no\n"
+      "                            elevation and cannot change the machine.\n"
+      "                            It CANNOT prove a filter blocks anything --\n"
+      "                            that needs the elevated leak-validation\n"
+      "                            gates in p7-gates.ps1.\n"
+      "  urnetworkd install        register the service AND START it\n"
+      "                            (elevated). Idempotent: if the service is\n"
+      "                            already registered it is stopped, re-pointed\n"
+      "                            at THIS exe, and started again — run it from\n"
+      "                            a new build to make the service run that\n"
+      "                            build. No separate `sc start` is needed.\n"
+      "                            Exit code 0 means the service is RUNNING.\n"
+      "  urnetworkd uninstall      stop and deregister the service (elevated)\n"
+      "  urnetworkd revert         take back any leftover tunnel routes/DNS\n"
+      "                            without starting anything (elevated).\n"
+      "                            Refuses while a urnetworkd is running --\n"
+      "                            it cannot tell a live tunnel from a dead\n"
+      "                            one, and reverting a live one drops your\n"
+      "                            traffic to the clear. --force overrides.\n"
+      "\n"
+      "log: {}\n"
+      "go fatals: {} (written by the SCM path automatically; in console mode\n"
+      "           redirect stderr yourself: `urnetworkd console 2> that file`.\n"
+      "           An empty file is the healthy state — anything in it is a Go\n"
+      "           runtime panic or fatal error, and the run before it died.)\n",
+      Narrow(LogFilePath().wstring()),
+      Narrow((LogDir(/*isService=*/true) / L"go-crash.log").wstring()));
+  std::fwrite(text.data(), 1, text.size(), stdout);
+  std::fflush(stdout);
   return 0;
 }
 
