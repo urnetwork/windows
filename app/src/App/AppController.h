@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <optional>
 #include <string>
@@ -125,9 +126,13 @@ class AppController {
   // cleared on any tunnel transition, because exit evidence is only valid
   // within the tunnel session that produced it (see OnTunnelState).
   std::optional<health::State> trayHealth_;
-  // set when the tray "Quit" is chosen, so the window's Closing handler lets it
-  // close instead of hiding to tray (macOS parity: X/close hides, tray Quit exits)
-  bool quitting_ = false;
+  // Set when the tray "Quit" is chosen, so the window's Closing handler lets it
+  // close instead of hiding to tray (macOS parity: X/close hides, tray Quit
+  // exits). Atomic since D3: OnUi reads it from SDK callback threads as the
+  // "stop marshalling, the DispatcherQueue is tearing down" gate — a completion
+  // that resumes on the queue after shutdown does not get to throw from inside
+  // CoreMessaging, it simply is not queued.
+  std::atomic<bool> quitting_{false};
   // Presentation controllers (the stats feed, chart ticks, canvas animation,
   // the balance poll) run whenever the window is actually on screen. Focus is
   // deliberately NOT part of that: the owner watches the graphs while another

@@ -625,9 +625,12 @@ class SdkHost {
   // told. Safe with no service connection — there is then nothing to stop.
   proto::TunnelStatus StopServiceTunnel();
 
-  // Bring a service session up if there is not a live one, off the calling
-  // thread, WITHOUT connecting to anything. `reason` names the caller in the
-  // log. Same worker, same guarantees as the connect entry points above.
+  // ATTACH to a live service session if one is running, off the calling
+  // thread, WITHOUT connecting to anything — and WITHOUT starting a session
+  // that is not already there (D8, owner decision: the tunnel starts only on
+  // an explicit Connect gesture; a reattach is not a start). `reason` names
+  // the caller in the log. Same worker, same guarantees as the connect entry
+  // points above.
   //
   // Called from: the resume path in Initialize(), a network-server change that
   // lands on a signed-in space, and the service-reconnect watchdog.
@@ -754,6 +757,16 @@ class SdkHost {
   void ConnectBestAvailableFromRow();
   // Own presentation-only view controllers only while the WinUI window is
   // visible. The DeviceRemote and service tunnel remain alive in the tray.
+  //
+  // NON-BLOCKING (D4). The caller is the XAML thread on every window
+  // show/hide/minimize, and the work behind this — listener unsubscribes and
+  // view-controller closes on the way down, subscribes on the way up — is a
+  // series of synchronous session rpcs behind mutex_, a lock the session
+  // worker holds across whole bootstraps. Against a DYING service each of
+  // those rpcs blocks until the transport notices, which is how Windows came
+  // to kill this app as AppHangB1 three times, 4-5s after each daemon death.
+  // This records the desired state and returns; the presentation worker
+  // applies it (last write wins).
   void SetPresentationActive(bool active);
 
   void SetAuthStateHandler(AuthStateHandler h) { onAuth_ = std::move(h); }
@@ -1191,6 +1204,22 @@ class SdkHost {
   bool watchdogStop_ = false;
   bool watchdogRunning_ = false;
 
+  // ---- the presentation worker (D4) -----------------------------------------
+  //
+  // Applies SetPresentationActive off the XAML thread. One desired value, last
+  // write wins; the worker drains it and exits, and a write that lands while it
+  // is finishing either sets `dirty` before the exit check (same lock) or finds
+  // `running` false and starts a fresh worker — never dropped, never two.
+  void PresentationWorkerLoop();
+  void StopPresentationWorker();  // called from the destructor; joins the thread
+
+  std::thread presentationWorker_;
+  std::mutex presentationMutex_;
+  bool presentationStop_ = false;
+  bool presentationWorkerRunning_ = false;
+  bool presentationDesired_ = false;
+  bool presentationDirty_ = false;
+
   // ---- the rpc-sync watchdog (does the session we built actually PAIR?) -----
   //
   // WHY THIS EXISTS AT ALL, and why it matters more than the pairing fix it
@@ -1265,8 +1294,18 @@ class SdkHost {
   // An identity with no network yet is retained in pendingAuthJwt_ and the UI
   // routes to the create-network step, exactly as the wallet path does.
   void AuthLoginWithGoogle(const std::string& idToken, std::function<void(AuthResult)> done);
-  // Bring up the tunnel (service) and the controlling DeviceRemote.
-  bool BootstrapSession();
+  // Bring up the controlling DeviceRemote — by reattaching to a session the
+  // service already holds (the saved-blob path), or by asking the service to
+  // start one. `reason` is the gesture's static reason string; the one
+  // start_tunnel site logs it, so no session start can appear in a log without
+  // saying who asked (D8's missing space-switch line).
+  //
+  // `attachOnly` is the D8 owner decision as a parameter: true means "adopt a
+  // running session if there is one, start NOTHING otherwise" — the resume
+  // path, a network-server change and the service-reconnect watchdog, none of
+  // which is a person asking for a VPN. A decline sets bootstrapDeclined_ and
+  // returns false with bootstrapError_ empty; it is policy, not failure.
+  bool BootstrapSession(const char* reason, bool attachOnly);
   // ASK THE SERVICE WHAT IS ACTUALLY INSTALLED. One get_state rpc, once per
   // gesture, and the ONLY admissible answer to "is there a tunnel right now" —
   // see the contract in Common/ConnectAction.h.
@@ -1569,9 +1608,14 @@ class SdkHost {
   // Guarded by mutex_. Cleared on a successful bootstrap and on teardown.
   std::string sessionFailure_;
   // Why the last BootstrapSession() returned false, in words a user can act on.
-  // Set on every failure path and read by both callers; guarded by mutex_, which
-  // BootstrapSession's callers already hold.
+  // Set on every failure path and read by the session worker; guarded by
+  // mutex_, which BootstrapSession's caller already holds.
   std::string bootstrapError_;
+  // The last BootstrapSession() returned false because the click-only rule
+  // (D8) declined a cold start on an attach-only request — not because
+  // anything failed. The worker reads it to log the outcome at INFO and skip
+  // the failure notice. Guarded by mutex_ like bootstrapError_.
+  bool bootstrapDeclined_ = false;
   std::string appVersion_ = "0.0.1";
 
   // Answer and clear whichever wallet-bridge flow is outstanding. Called when a

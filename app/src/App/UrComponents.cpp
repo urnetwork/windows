@@ -13,6 +13,7 @@
 #include <winrt/Windows.UI.Text.h>
 
 #include "Log.h"
+#include "Strings.h"  // Narrow, for the hresult message in the snackbar guard
 #include "UrColors.h"
 
 using namespace winrt::Microsoft::UI::Xaml;
@@ -868,32 +869,57 @@ Snackbar::Snackbar(InfoBar bar,
 }
 
 Snackbar::~Snackbar() {
-  if (timer_) timer_.Stop();
+  // The Stop can itself throw once the DispatcherQueue has shut down, and a
+  // throw out of a destructor is std::terminate. Nothing here needs to
+  // succeed — the timer dies with the queue either way.
+  try {
+    if (timer_) timer_.Stop();
+  } catch (winrt::hresult_error const&) {
+  }
   if (self_) *self_ = nullptr;
 }
 
 void Snackbar::Show(winrt::hstring const& message, InfoBarSeverity severity,
                     std::optional<int> durationMs) {
   if (!bar_) return;
-  bar_.Severity(severity);
-  bar_.Message(message);
-  bar_.IsOpen(true);
-  if (!timer_) return;
-  timer_.Stop();  // a second message restarts the window rather than inheriting it
+  // D3: shutdown-safe by construction. A Show can land from a lambda that was
+  // queued before quit and dispatched during the queue's drain, and
+  // DispatcherQueueTimer.Start() on a queue that has begun shutting down
+  // throws ERROR_INVALID_OPERATION (0x800710dd) — thrown from inside a
+  // CoreMessaging dispatch, where nothing of ours is above it on the stack to
+  // observe it, which is the shape of the tray-quit 0xc000027b. A message
+  // nobody can see any more is safe to drop; say so in the log and no-op.
+  try {
+    bar_.Severity(severity);
+    bar_.Message(message);
+    bar_.IsOpen(true);
+    if (!timer_) return;
+    timer_.Stop();  // a second message restarts the window rather than inheriting it
 
-  // An error is usually the only diagnostic the user gets; it waits for them.
-  const bool safeToMiss = (severity == InfoBarSeverity::Informational ||
-                           severity == InfoBarSeverity::Success);
-  const int duration =
-      durationMs.value_or(safeToMiss ? defaultDurationMs_ : kPersistent);
-  if (duration <= kPersistent) return;
-  timer_.Interval(std::chrono::milliseconds(duration));
-  timer_.Start();
+    // An error is usually the only diagnostic the user gets; it waits for them.
+    const bool safeToMiss = (severity == InfoBarSeverity::Informational ||
+                             severity == InfoBarSeverity::Success);
+    const int duration =
+        durationMs.value_or(safeToMiss ? defaultDurationMs_ : kPersistent);
+    if (duration <= kPersistent) return;
+    timer_.Interval(std::chrono::milliseconds(duration));
+    timer_.Start();
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogWarn("kit: snackbar show dropped (teardown in progress): {}",
+                  urnw::Narrow(std::wstring{e.message()}));
+  }
 }
 
 void Snackbar::Hide() {
-  if (timer_) timer_.Stop();
-  if (bar_) bar_.IsOpen(false);
+  // Same rule as Show: the auto-hide Tick fires on the queue, and during
+  // teardown the XAML writes below can throw with nothing above them to
+  // catch it. Hiding a bar that is being destroyed needs no error handling —
+  // it just must not turn into a stowed exception.
+  try {
+    if (timer_) timer_.Stop();
+    if (bar_) bar_.IsOpen(false);
+  } catch (winrt::hresult_error const&) {
+  }
 }
 
 }  // namespace urnw::kit

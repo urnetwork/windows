@@ -143,6 +143,9 @@ SdkHost::~SdkHost() {
   // would deadlock, and letting it outlive this object would leave a thread
   // dialling a pipe on behalf of a destroyed host.
   StopServiceWatchdog();
+  // The presentation worker takes mutex_ too (D4), so it is stopped under the
+  // same rule: outside the lock, joined.
+  StopPresentationWorker();
   // Same rule, same reason: the rpc-sync watchdog takes mutex_ to look at the
   // device, so it is stopped and JOINED here, above the lock.
   StopSyncWatchdog();
@@ -379,6 +382,12 @@ bool SdkHost::Initialize() {
       // state stays LoggedIn (already set above) and the reason goes out on the
       // notice channel, which exists precisely to carry "why this app is not
       // carrying traffic" without touching auth.
+      //
+      // D8: "resume" REATTACHES ONLY. An app launch is not a Connect gesture,
+      // so a launch that finds a live session adopts it (that is #40's whole
+      // flow, unchanged) and a launch that finds none starts nothing — the
+      // forensics have app-launch resumes installing capture routes on
+      // machines nobody touched, and the owner's decision is click-only.
       EnsureSession("resume");
     } else {
       SetAuthState(AuthState::LoggedOut);
@@ -1073,56 +1082,46 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
       return;
     }
     if (result->by_client_jwt) {
-      bool ok = false;
-      std::string why;
       {
         std::scoped_lock lock(mutex_);
         try {
-          // SYNCHRONOUS setters, taken under the SAME lock as the bootstrap
-          // that reads them straight back.
-          //
-          // These were asyncLocalState_->set*(..., [](bool){}): hand the
-          // commit to the SDK's own thread and carry on. The very next
-          // statement was BootstrapSession(), whose first act is
-          // localState_->getByClientJwt() on THIS thread. On a fresh install
-          // there is no earlier value to read, so the FIRST sign-in lost that
-          // race and reported "no client credentials are stored for this
-          // device" over an authLogin and an authNetworkClient that had both
-          // just succeeded. Pressing sign in again worked, because by then the
-          // async commit had landed — which is exactly what made it look like
-          // a flaky server rather than our own ordering.
+          // SYNCHRONOUS setters, under the lock. These were
+          // asyncLocalState_->set*(..., [](bool){}): hand the commit to the
+          // SDK's own thread and carry on — and the next reader (then an
+          // immediate BootstrapSession, today the first Connect press's
+          // bootstrap) raced it. On a fresh install there is no earlier value
+          // to read, so the FIRST sign-in lost that race and reported "no
+          // client credentials are stored for this device" over an authLogin
+          // and an authNetworkClient that had both just succeeded. Pressing
+          // sign in again worked, because by then the async commit had landed
+          // — which is exactly what made it look like a flaky server rather
+          // than our own ordering. A fast Connect press can still arrive
+          // within milliseconds of this callback, so the setters stay
+          // synchronous.
           localState_->setByJwt(byJwt);
           localState_->setByClientJwt(*result->by_client_jwt);
           loggedIn_.store(true, std::memory_order_release);
         } catch (const std::exception& e) {
           LogWarn("sdkhost: persist jwt failed: {}", e.what());
         }
-        ok = BootstrapSession();
-        why = bootstrapError_;
       }
-      // THE SIGN-IN SUCCEEDED. Say so.
+      // THE SIGN-IN SUCCEEDED, AND THAT IS ALL THAT HAPPENED. D8, owner
+      // decision: signing in does not start the tunnel. BootstrapSession used
+      // to run right here — the unlogged session start the forensics found
+      // (start #5, no gesture, no reason line, because this call site never
+      // went through the session worker and its 'starting a session' log). A
+      // session now exists only when a Connect gesture asks for one, and the
+      // one start_tunnel call site logs its reason every time.
       //
-      // This used to report AuthResult{ok=false} and AuthState::Error whenever
-      // the TUNNEL BOOTSTRAP failed — service not running, service too old, a
-      // mode refusal — over an authLogin and an authNetworkClient that had both
-      // returned 200 and a jwt that is now on disk. On the seedphrase step that
-      // surfaced as "There was an error signing in with your seedphrase",
-      // which is the single most alarming thing this app can say to somebody
-      // whose credential has no reset path: it reads as "your phrase is wrong".
-      // It is not. The phrase was right and the account is fine.
-      //
-      // The resume path in Initialize() already got this right and explains
-      // why (AuthState::Error makes the window derive loggedIn=false and dumps
-      // an authenticated user onto the sign-in screen, and it LATCHES). The
-      // login path now does the same thing: auth state goes LoggedIn, and the
-      // reason the app is not carrying traffic goes out on the notice channel,
-      // which is what that channel is for.
+      // Auth state goes LoggedIn unconditionally: a sign-in with the service
+      // down is still a successful sign-in, and reporting anything else here
+      // used to dump a user with a perfectly valid credential onto the
+      // sign-in screen (the seedphrase step rendered it as "your phrase is
+      // wrong" — the most alarming sentence this app can say to somebody
+      // whose credential has no reset path).
+      LogInfo("sdkhost: signed in; no session started — the tunnel starts "
+              "only on a Connect gesture");
       SetAuthState(AuthState::LoggedIn);
-      if (!ok) {
-        LogError("sdkhost: signed in, but the session bootstrap failed: {}",
-                 why.empty() ? "unknown" : why);
-        PublishSessionFailure(why);
-      }
       AuthResult r{true, false, ""};
       if (done) done(r);
     } else {
@@ -1721,13 +1720,17 @@ proto::TunnelStatus SdkHost::SessionStatus(bool haveLocation) const {
   return st;
 }
 
-bool SdkHost::BootstrapSession() {
+bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
   // caller holds mutex_
   // Cleared on entry and set on every failure path, so a caller that gets false
   // can tell the user WHY. Both callers used to report the same hardcoded
   // "failed to start tunnel session", which is actively misleading for a mode
   // mismatch or an out-of-date service.
   bootstrapError_.clear();
+  // ...and the D8 outcome flag with it: a false return with this set is not a
+  // failure, it is the click-only policy declining a cold start. The worker
+  // reads it to keep the decline off the failure-notice channel.
+  bootstrapDeclined_ = false;
   const std::string clientJwt = localState_->getByClientJwt();
   if (clientJwt.empty()) {
     bootstrapError_ = "no client credentials are stored for this device";
@@ -1833,9 +1836,29 @@ bool SdkHost::BootstrapSession() {
               "instance id — it was written by a build from before the id was "
               "persisted. Reattaching without it would leave every rpc sync "
               "refused and the app reading Disconnected over a live tunnel, so "
-              "this launch starts a fresh session instead. This happens once.",
+              "the reattach is given up: a Connect starts a fresh session "
+              "right here, and a reattach-only resume declines and waits for "
+              "the next Connect press (D8). Either way this happens once.",
               saved->host_port);
       reattaching = false;
+    }
+    // D8, owner decision: THE TUNNEL STARTS ONLY ON AN EXPLICIT CONNECT
+    // GESTURE. An EnsureSession — the resume path at launch, a network-server
+    // change, the service-reconnect watchdog — may ADOPT a session that is
+    // already running (a reattach changes nothing on the machine), and may do
+    // nothing else. The cold start below this gate installs routes, DNS and a
+    // firewall policy on a machine nobody touched; the forensics have three
+    // app launches and a space switch each doing exactly that with no gesture
+    // anywhere in the log. Everything above this line was read-only (hello,
+    // the saved blob); declining here leaves the service exactly as found.
+    if (attachOnly && !reattaching) {
+      bootstrapDeclined_ = true;
+      LogInfo("sdkhost: '{}' found no live {} session to reattach to "
+              "(service state={}) — NOT starting one. The tunnel starts only "
+              "on a Connect gesture.",
+              reason, proto::ToString(requestedMode_),
+              proto::ToString(hello.state));
+      return false;
     }
     if (reattaching) {
       clientPem = saved->client_pem;
@@ -1852,6 +1875,12 @@ bool SdkHost::BootstrapSession() {
               proto::ToString(hello.mode), hostPort,
               hello.routes_installed ? "yes" : "no", instanceId);
     } else {
+      // THE ONE START SITE. Every path that can create a service session funnels
+      // through this branch, so this line is the complete audit trail of "who
+      // started a tunnel and why" — the space-switch start the forensics could
+      // not attribute (start #5, 09:57:18, no gesture, no reason line) predates
+      // it. Grep for "starting a session (" and every start has a reason.
+      LogInfo("sdkhost: starting a session ({})", reason);
       // fresh session: generate per-session RPC key material
       urnet::DeviceRpcKeyMaterial km = urnet::generateDeviceRpcKeyMaterial();
       hostPort = RandomLoopbackHostPort();
@@ -2122,6 +2151,20 @@ void SdkHost::SubscribeStats() {
 
 LiveStats SdkHost::ReadStats() {
   LiveStats s;
+  // D4: the DeviceRemote getters below are NOT cached reads. While the rpc
+  // transport thinks it is attached, every one of them is a synchronous
+  // DeviceLocalRpc.Get* call (device_rpc.go), and against a service that is
+  // DYING — socket open, process gone — each blocks until the transport's
+  // write timeout tears it down. ReadStats runs on the UI thread (ConnectPage's
+  // 1s health tick via RepublishStats, and window activation), and the friend's
+  // app glog ends mid Get* burst 4-5s before Windows recorded AppHangB1. The
+  // pipe drop is this process's EARLY notice of the death — Go's transport
+  // needs seconds more to notice — so with the channel down the device getters
+  // are skipped outright. Nothing rendered is lost: the SERVICE_DOWN clamp at
+  // the end of this function already replaces everything they would produce.
+  // The view-controller reads stay — those objects live in this process and
+  // answer from their own pushed state, no rpc involved.
+  const bool serviceUp = service_.IsConnected();
   if (connectVc_) {
     s.connectionStatus = connectVc_->getConnectionStatus();
     s.connected = connectVc_->getConnected();
@@ -2157,7 +2200,7 @@ LiveStats SdkHost::ReadStats() {
         s.gridPoints = std::move(*pts);
       }
     }
-  } else if (device_) {
+  } else if (device_ && serviceUp) {  // getConnectLocation is an rpc — see above
     s.connected = device_->getConnectLocation().has_value();
     s.connectionStatus = s.connected ? "DESTINATION_SET" : "DISCONNECTED";
   }
@@ -2178,7 +2221,7 @@ LiveStats SdkHost::ReadStats() {
       }
     }
   }
-  if (device_) {
+  if (device_ && serviceUp) {  // five more rpc getters — see the note at the top
     if (auto cs = device_->getContractStatus(); cs) s.insufficientBalance = cs->InsufficientBalance;
     s.provideEnabled = device_->getProvideEnabled();
     s.providePaused = device_->getProvidePaused();
@@ -3869,8 +3912,18 @@ void SdkHost::SessionWorkerLoop() {
       }
 
       if (plan.startTunnel) {
-        LogInfo("sdkhost: starting a session ({})", req.reason);
-        ok = BootstrapSession();
+        // D8: a bare "make sure a session exists" (resume, a network-server
+        // change, the service watchdog) may only ATTACH to a session that is
+        // already running — nobody gestured, so nobody gets a tunnel. The
+        // decision table still routes EnsureSession into the bootstrap
+        // (deliberately: the bootstrap is what dials the pipe, adopts the
+        // service's facts and reports "service unreachable" — see the pinned
+        // "CONNECT still runs the bootstrap with the pipe down" row), and the
+        // bootstrap itself declines the cold start. The "starting a session"
+        // line now lives at the ONE start_tunnel site inside it, so a start
+        // that logs no reason cannot exist.
+        const bool attachOnly = g == gesture::Gesture::EnsureSession;
+        ok = BootstrapSession(req.reason, attachOnly);
       } else {
         ok = device_.has_value();
       }
@@ -3891,6 +3944,13 @@ void SdkHost::SessionWorkerLoop() {
         // nothing to disconnect from, which is a legitimate outcome, not an
         // error. Fall through to the stats push, which is what puts the button
         // back to its idle label.
+      } else if (bootstrapDeclined_) {
+        // D8: the attach-only bootstrap found nothing to reattach to and, by
+        // the click-only rule, started nothing. NOT a failure and NOT a
+        // notice: the machine is exactly as the user left it, the app renders
+        // Disconnected honestly (the stats push below), and the next Connect
+        // press is what changes it. The bootstrap already logged the decline
+        // with its reason.
       } else {
         // EVERY failing path says why, on the channel built for it. Under the
         // lock: PublishSessionFailure writes sessionFailure_, which mutex_
@@ -4201,10 +4261,17 @@ void SdkHost::CheckSessionSync(std::uint64_t generation, bool reattached) {
         LogWarn("sdkhost: could not read the stored connect location: {}", e.what());
       }
     }
-    LogWarn("sdkhost: dropping the reattached session and starting a fresh one "
-            "(the tunnel stops and restarts). {}",
+    // With a stored destination the replacement request is a connect and the
+    // running tunnel is rebuilt around it — the user was mid-session seconds
+    // ago and losing their tunnel over our pairing bug would be making them
+    // pay for it. With NO stored destination there is nothing to reconnect,
+    // and under D8 the ensure that follows will not cold-start an idle tunnel
+    // to replace this one: the app returns to an honest Disconnected and the
+    // next Connect press starts fresh.
+    LogWarn("sdkhost: dropping the reattached session (the tunnel stops). {}",
             resume ? "The stored destination will be reconnected."
-                   : "No stored destination — the session comes up idle.");
+                   : "No stored destination — the app returns to Disconnected; "
+                     "the next Connect starts fresh (D8).");
     try {
       // Also clears the saved rpc blob, so the next launch cannot reattach to
       // the session this refusal proved unusable.
@@ -4298,51 +4365,143 @@ void SdkHost::ClosePresentationLocked() {
     peerVc_.reset();
     return;
   }
-  if (peerVc_) device_->closePeerViewController(*peerVc_);
-  peerVc_.reset();
-  if (locationsVc_) device_->closeLocationsViewController(*locationsVc_);
-  locationsVc_.reset();
-  if (contractDetailsVc_) {
-    device_->closeContractDetailsViewController(*contractDetailsVc_);
+  // D4: the close calls below are courtesies to the SERVICE — they detach
+  // listeners and window monitors on the hosted device, over the session rpc.
+  // With the control channel down, the process those courtesies would reach is
+  // gone and its mTLS listener with it; each call would only spend an rpc
+  // timeout proving that (the presentationSubs_ clear above already pays one
+  // such timeout at worst — the first failed call detaches the transport and
+  // everything after it is local). Skip them and just drop this side's
+  // handles: every pipe-down path ends in TeardownSessionLocked, whose
+  // device close is what cleans the Go side up.
+  const bool remoteUsable = service_.IsConnected();
+  if (remoteUsable) {
+    if (peerVc_) device_->closePeerViewController(*peerVc_);
+    if (locationsVc_) device_->closeLocationsViewController(*locationsVc_);
+    if (contractDetailsVc_) {
+      device_->closeContractDetailsViewController(*contractDetailsVc_);
+    }
+    if (blockVc_) device_->closeBlockActionViewController(*blockVc_);
+    if (contractVc_) device_->closeContractViewController(*contractVc_);
+    if (connectVc_) device_->closeConnectViewController(*connectVc_);
   }
+  peerVc_.reset();
+  locationsVc_.reset();
   contractDetailsVc_.reset();
-  if (blockVc_) device_->closeBlockActionViewController(*blockVc_);
   blockVc_.reset();
-  if (contractVc_) device_->closeContractViewController(*contractVc_);
   contractVc_.reset();
-  if (connectVc_) device_->closeConnectViewController(*connectVc_);
   connectVc_.reset();
   ClearDrawer();
 }
 
+// D4: RECORD AND RETURN — the caller is the XAML thread, and this used to be
+// the app's kill. It took mutex_ inline (a lock the session worker holds for
+// whole bootstraps) and then ran ClosePresentationLocked, whose teardown is
+// ~ten listener unsubscribes and six view-controller closes, EACH of which is
+// a synchronous DeviceLocalRpc call while the rpc transport thinks it is
+// attached (device_rpc.go addListener's unsub: `if service != nil {
+// rpcCallVoid(...Remove...Listener...) }`, RpcCallTimeout 60s). Against a
+// service that is DYING — socket open, process gone — the first of those
+// blocks until the mux write timeout tears the transport down, which is
+// seconds. Windows killed this app three times for exactly that, AppHangB1,
+// 4-5s after each daemon death, last app-log line "presentation stopped" —
+// the line ReconcileWindowPresentation prints immediately before calling
+// here. The UI thread must never wait on rpc completion; the presentation
+// worker does the waiting instead.
 void SdkHost::SetPresentationActive(bool active) {
-  std::scoped_lock lock(mutex_);
-  if (presentationActive_ == active) return;
-  presentationActive_ = active;
-  if (!active) {
-    ClosePresentationLocked();
-    return;
+  {
+    std::scoped_lock lock(presentationMutex_);
+    if (presentationStop_) return;
+    presentationDesired_ = active;
+    presentationDirty_ = true;
+    if (presentationWorkerRunning_) return;  // it re-checks dirty before exiting
+    presentationWorkerRunning_ = true;
+    // A previous worker that has already returned still leaves a joinable
+    // thread object behind; joining it here (it is not running) is what keeps
+    // the move-assign below from calling std::terminate. Same trap
+    // ScheduleServiceRetry documents.
+    if (presentationWorker_.joinable()) presentationWorker_.join();
+    presentationWorker_ = std::thread([this] { PresentationWorkerLoop(); });
   }
-  // Stats and the drawer are genuinely device-scoped; the provider list is not,
-  // so the `if (!device_) return;` that used to sit here has been narrowed to
-  // the two things it is actually true of. Returning early on no-device meant
-  // alt-tabbing back with no service running re-armed NOTHING - which is the
-  // same bug the block below describes, one source further down.
-  if (device_) {
-    SubscribeStats();
-    SubscribeDrawer();
+}
+
+void SdkHost::PresentationWorkerLoop() {
+  for (;;) {
+    bool active = false;
+    {
+      std::scoped_lock lock(presentationMutex_);
+      // Exit when there is nothing left to apply. The flag-clear and the
+      // running-flag are under the same lock the producer holds, so a toggle
+      // that lands as this worker is finishing either sets dirty before the
+      // check here (we go round again) or finds running=false and starts a
+      // fresh worker — never dropped.
+      if (presentationStop_ || !presentationDirty_) {
+        presentationWorkerRunning_ = false;
+        return;
+      }
+      active = presentationDesired_;
+      presentationDirty_ = false;
+    }
+    {
+      std::scoped_lock lock(mutex_);
+      if (presentationActive_ == active) continue;
+      presentationActive_ = active;
+      if (!active) {
+        // The teardown that used to hang the XAML thread. On this worker a
+        // dying service costs one rpc timeout at worst (the first failed call
+        // detaches the transport and the rest are local), and nobody on the
+        // UI thread waits for any of it.
+        try {
+          ClosePresentationLocked();
+        } catch (const std::exception& e) {
+          LogWarn("sdkhost: presentation close failed: {}", e.what());
+        }
+        continue;
+      }
+      try {
+        // Stats and the drawer are genuinely device-scoped; the provider list
+        // is not, so the `if (!device_) return;` that used to sit here has
+        // been narrowed to the two things it is actually true of. Returning
+        // early on no-device meant alt-tabbing back with no service running
+        // re-armed NOTHING - which is the same bug the block below describes,
+        // one source further down.
+        if (device_) {
+          SubscribeStats();
+          SubscribeDrawer();
+        }
+        // The other half of ClosePresentationLocked. That function closes FOUR
+        // feeds (stats, drawer, locations, peers) and this one used to put
+        // back only two - so the locations/peers view controllers, their
+        // listeners and the snapshot they hold were destroyed by any window
+        // DEACTIVATION and never rebuilt. Nothing else rebuilt them either:
+        // the only openers were a chooser-sheet open and
+        // NetworkPage::SetSelected, which runs on a navigation CHANGE, so a
+        // window that came back to the destination it left on stayed empty.
+        //
+        // Now unconditional, so it re-arms the api source too: the cache
+        // normally makes it a no-op, and a failed previous fetch is retried
+        // here.
+        EnsureLocationsLocked();
+      } catch (const std::exception& e) {
+        LogWarn("sdkhost: presentation open failed: {}", e.what());
+      }
+    }
   }
-  // The other half of ClosePresentationLocked. That function closes FOUR feeds
-  // (stats, drawer, locations, peers) and this one used to put back only two -
-  // so the locations/peers view controllers, their listeners and the snapshot
-  // they hold were destroyed by any window DEACTIVATION and never rebuilt.
-  // Nothing else rebuilt them either: the only openers were a chooser-sheet
-  // open and NetworkPage::SetSelected, which runs on a navigation CHANGE, so a
-  // window that came back to the destination it left on stayed empty.
-  //
-  // Now unconditional, so it re-arms the api source too: the cache normally
-  // makes it a no-op, and a failed previous fetch is retried here.
-  EnsureLocationsLocked();
+}
+
+void SdkHost::StopPresentationWorker() {
+  {
+    std::scoped_lock lock(presentationMutex_);
+    presentationStop_ = true;
+    presentationDirty_ = false;
+  }
+  // Joined, not detached: a detached worker touching a destroyed SdkHost from
+  // inside a cgo call would turn an orderly exit into a WER record. The join
+  // is bounded in practice — the worker only blocks inside rpc teardown, the
+  // pipe-down guard in ClosePresentationLocked skips exactly the calls that
+  // could wait on a dead peer, and against a live service the closes are
+  // loopback round-trips.
+  if (presentationWorker_.joinable()) presentationWorker_.join();
 }
 
 void SdkHost::TeardownSessionLocked(bool stopTunnel) {
@@ -4361,6 +4520,21 @@ void SdkHost::TeardownSessionLocked(bool stopTunnel) {
   // this machine's routes hostage.
   if (stopTunnel && service_.IsConnected()) {
     service_.StopTunnel();
+  }
+  // D4: with the control channel gone, close the DEVICE first. Its close
+  // cancels the rpc transport, which turns every courtesy unsubscribe below —
+  // presentationSubs_, subs_, the view-controller closes — from "one rpc
+  // timeout against a peer that died" into a local no-op. With the channel
+  // up the order stays listeners-then-device, so the removals actually reach
+  // the hosted device. close() is once-guarded on the Go side, so the
+  // unconditional close further down stays correct in both orders.
+  if (device_ && !service_.IsConnected()) {
+    try {
+      device_->close();
+    } catch (const std::exception& e) {
+      LogWarn("sdkhost: early close of the dead session's device failed: {}",
+              e.what());
+    }
   }
   ClosePresentationLocked();
   subs_.clear();

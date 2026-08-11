@@ -70,6 +70,13 @@ AppController::~AppController() {
 
 template <class F>
 void AppController::OnUi(F&& f) {
+  // D3: nothing is marshalled onto a queue that is tearing down. Every SDK
+  // callback funnels through here, and a lambda that lands after Shutdown()
+  // would run against a closed window during the DispatcherQueue's drain —
+  // the class of late completion whose unobserved failure was the tray-quit
+  // 0xc000027b. Dropping it is correct by definition: the process is exiting
+  // and there is no UI left for the work to mean anything to.
+  if (quitting_.load(std::memory_order_acquire)) return;
   if (uiThread_) {
     uiThread_.TryEnqueue([f = std::forward<F>(f)]() mutable { f(); });
   }
@@ -212,6 +219,11 @@ void AppController::Start() {
 }
 
 void AppController::Shutdown() {
+  // Once. A double Quit click, or the relaunch handoff racing a tray quit,
+  // must not run the teardown below twice against a window that is half gone.
+  // exchange() also flips the OnUi gate before anything is torn down, so no
+  // SDK callback can queue new UI work into the drain that follows.
+  if (quitting_.exchange(true, std::memory_order_acq_rel)) return;
   LogInfo("app: shutdown requested (tray quit)");
   // First, and joined: the checker's worker is the one thread here that does
   // long blocking I/O (a zip download), and it polls its stop flag between
@@ -219,9 +231,33 @@ void AppController::Shutdown() {
   updates_.Stop();
   // ...and quitting is the other
   if (shell::SaveWindowPlacement(windowHwnd_)) ownPlacement_ = true;
-  quitting_ = true;  // let the window's Closing handler close instead of hiding
+  // D3: DRAIN THE ASYNC MACHINERY WHILE THE QUEUE STILL DISPATCHES. The
+  // tray-quit crash (0xc000027b, CoreMessagingXP, ERROR_INVALID_OPERATION)
+  // is what a late completion looks like when it resumes on a DispatcherQueue
+  // that has begun tearing down and nothing observes the throw. Everything
+  // that can produce such a completion is stopped HERE, on the UI thread,
+  // before Exit() ends the loop:
+  //
+  //   * the two controller-owned DispatcherQueueTimers (placement save,
+  //     balance poll) are stopped — a timer left running keeps a CoreMessaging
+  //     callback registered into the teardown;
+  //   * the window is closed AND RELEASED. The release is the load-bearing
+  //     half: window_ used to hold the MainWindow alive until static
+  //     destruction, long after the queue was gone, so every page timer
+  //     (charts, developer poll, login debounces, snackbar auto-hide) was
+  //     still scheduled while the queue shut down. Dropping the reference on
+  //     this thread runs ~MainWindow now — the page destructors stop their
+  //     own timers, by their documented contract — and every weak-ref lambda
+  //     already queued finds null and no-ops instead of touching a dead tree.
+  //
+  // Nothing here waits on anything unbounded: updates_.Stop() above is the
+  // only join, and it is bounded by design.
+  if (placementSaveTimer_) placementSaveTimer_.Stop();
+  balance_.Stop();
   tray_.Destroy();
   if (window_) window_.Close();
+  window_ = nullptr;
+  windowHwnd_ = nullptr;
   if (auto app = Application::Current()) app.Exit();
 }
 
@@ -502,6 +538,10 @@ void AppController::ShowWindow(const POINT* anchor) {
   // — creating the window, asking it for its HWND, wiring its events, moving it,
   // and starting the presentation controllers in ReconcileWindowPresentation —
   // is a WinRT call that can throw.
+  // A quit is in progress: the window reference was just released on purpose,
+  // and rebuilding it from a racing activation (deep link, relaunch) would
+  // resurrect the exact timers the shutdown drain exists to stop.
+  if (quitting_.load(std::memory_order_acquire)) return;
   try {
     ShowWindowImpl(anchor);
   } catch (winrt::hresult_error const& e) {
