@@ -334,8 +334,14 @@ func exitScore(m ExitMetrics, w ScoreWeights) float64 {
 // challengerWins applies incumbent hysteresis: a challenger only displaces the
 // incumbent if it beats it by more than hysteresisPct percent. hysteresisPct==0
 // reduces to a plain greater-than, which is the pre-change behavior.
+//
+// The margin is taken on the ABSOLUTE value deliberately. exitScore is unbounded
+// below (the stall penalty has no floor), so a degraded exit scores negative --
+// and a plain multiplicative margin inverts there: incumbent*-5 * 1.1 = -5.5 is
+// BELOW the incumbent, so a worse challenger would "win" precisely in the
+// flapping case hysteresis exists to damp.
 func challengerWins(incumbent, challenger, hysteresisPct float64) bool {
-	return challenger > incumbent*(1.0+hysteresisPct/100.0)
+	return challenger > incumbent+math.Abs(incumbent)*hysteresisPct/100.0
 }
 ```
 
