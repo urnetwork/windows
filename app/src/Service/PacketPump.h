@@ -95,7 +95,12 @@ class PacketPump {
   // rather than a null.
   std::shared_ptr<PacketCounters> counters_ = std::make_shared<PacketCounters>();
   std::shared_ptr<ReceiveGate> gate_;
-  urnet::Sub receiveSub_;  // device -> wintun; unsubscribes on destruction
+  // device -> wintun. Unsubscribes on DESTRUCTION or MOVE-ASSIGNMENT, which are
+  // the only two operations on this type that call `urnet_sub_close`. Never
+  // `reset()` it: that is inherited from `detail::Handle`, releases the handle
+  // WITHOUT unsubscribing, and frees the retained callback out from under a Go
+  // side that still holds a raw pointer to it. See PacketPump::Stop.
+  urnet::Sub receiveSub_;
   std::thread outbound_;
   std::atomic<bool> running_{false};
   HANDLE stopEvent_ = nullptr;

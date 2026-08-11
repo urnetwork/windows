@@ -101,8 +101,39 @@ void PacketPump::Stop() {
     std::scoped_lock lock(gate_->mutex);
     gate_->adapter = nullptr;
   }
-  receiveSub_.reset();  // unsubscribe inbound
-  gate_.reset();        // the callback holds its own share until the sdk drops it
+  // UNSUBSCRIBE -- which `reset()` does NOT do. This line was
+  // `receiveSub_.reset()`, and that is a use-after-free against a live SDK.
+  //
+  // `urnet::Sub` does not override `reset()`, so it resolved to
+  // `detail::Handle::reset()` (urnetwork_sdk.hpp:126-132), which
+  //   1. calls `urnet_release(h_)` -- that drops the handle-registry entry ONLY.
+  //      It never calls `urnet_sub_close`, so the Go-side subscription installed
+  //      by `DeviceLocal::addReceivePacket` stayed registered; then
+  //   2. sets `h_ = 0`, which makes `~Sub()` skip its own `urnet_sub_close`
+  //      too -- so the subscription leaked for the life of the PROCESS, not
+  //      merely the session; and
+  //   3. calls `retained_.clear()`, destroying the `shared_ptr<ReceivePacket>`
+  //      that is the ONLY owner of the callback installed above.
+  //      `addReceivePacket` hands Go the RAW pointer (`receive_packet_fn.get()`,
+  //      hpp:16493) and keeps it alive purely through that retain (hpp:16495).
+  //
+  // From this line onward, every inbound packet therefore invoked a DESTROYED
+  // std::function from a cgo thread -- a freed object that then copies two
+  // shared_ptr control blocks and takes a lock. The window is this line to
+  // "sdk teardown complete", with the tunnel still carrying: 403ms in one
+  // observed teardown and 1434ms in another, over a session that moved ~210k
+  // messages.
+  //
+  // Move-assignment is the operation that does this correctly, and the ORDER is
+  // the whole point: `Sub::operator=(Sub&&)` calls `urnet_sub_close(h_)` FIRST
+  // (hpp:9681-9687), so Go has dropped the callback before `Handle::operator=`
+  // frees it.
+  //
+  // The gate above still matters and is not redundant: unsubscribing does not
+  // drain a dispatch already in flight, so a callback that is mid-body when we
+  // close still has to find a live gate and a null adapter.
+  receiveSub_ = urnet::Sub{};
+  gate_.reset();  // the callback holds its own share until the sdk drops it
   if (stopEvent_) {
     ::CloseHandle(stopEvent_);
     stopEvent_ = nullptr;
