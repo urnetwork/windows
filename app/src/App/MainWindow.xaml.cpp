@@ -1503,16 +1503,26 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
 }
 
 void MainWindow::OnTunnelStateChanged(urnw::proto::TunnelStatus const& status) {
-  connect_->SetConnectedUi(status.state == urnw::proto::TunnelState::Up);
-  // D5: the three status-strip facts that come off the SERVICE rather than the
-  // SDK. Cached unconditionally, not only while Advanced Mode is on, so turning
-  // the mode on mid-session shows the current values instead of three blanks
-  // waiting for a push that a settled session will never send.
+  // D5: the status-strip facts that come off the SERVICE rather than the SDK.
+  // Cached unconditionally, not only while Advanced Mode is on, so turning the
+  // mode on mid-session shows the current values instead of blanks waiting for
+  // a push that a settled session will never send.
+  //
+  // CACHED BEFORE SetConnectedUi, not after. That call re-renders the connect
+  // page, and the page's disclosure line reads statusWfpState/statusStopReason/
+  // statusFailsafeArmed — so writing them afterwards would render every tunnel
+  // transition against the PREVIOUS one's firewall and reason. It never showed
+  // because wfp_state changes lag by a push anyway; a failsafe teardown makes it
+  // visible, because it is the one transition with no stats feed behind it to
+  // redraw a moment later.
   statusRpcHostPort_ = status.rpc_listen_hostport;
   statusSessionMode_ = status.mode;
   statusRoutesInstalled_ = status.routes_installed;
   statusDnsApplied_ = status.dns_applied;
   statusWfpState_ = status.wfp_state;
+  statusStopReason_ = status.stop_reason;
+  statusFailsafeArmed_ = status.failsafe_armed;
+  connect_->SetConnectedUi(status.state == urnw::proto::TunnelState::Up);
   if (advancedMode_) ApplyStatusStrip();
 }
 

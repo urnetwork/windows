@@ -51,6 +51,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ControlServer.cpp" />
     <ClCompile Include="TunnelController.cpp" />
+    <ClCompile Include="TunnelWatchdog.cpp" />
     <ClCompile Include="Wintun.cpp" />
     <ClCompile Include="PacketPump.cpp" />
     <ClCompile Include="NetworkConfig.cpp" />
@@ -65,6 +66,7 @@
     <ClInclude Include="ControlServer.h" />
     <ClInclude Include="InstallVerb.h" />
     <ClInclude Include="TunnelController.h" />
+    <ClInclude Include="TunnelWatchdog.h" />
     <ClInclude Include="Wintun.h" />
     <ClInclude Include="PacketPump.h" />
     <ClInclude Include="NetworkConfig.h" />

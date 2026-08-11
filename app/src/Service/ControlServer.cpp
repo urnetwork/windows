@@ -7,10 +7,26 @@
 namespace urnw {
 
 bool ControlServer::Start() {
+  // THE ONE TRANSITION WITH NO REPLY TO RIDE ON. Every other state change here
+  // is the direct result of a request, so the handler below pushes the new
+  // status when it answers. The dead-tunnel failsafe is not: it stops the
+  // tunnel on its own initiative, from its own thread, and without this the app
+  // would keep rendering a live tunnel until its next poll — which is exactly
+  // the window in which the user is looking at the screen wondering what
+  // happened to their internet.
+  //
+  // Invoked with the session lock RELEASED (see TunnelController::
+  // NotifyStateChanged), so PushState's Status() call cannot deadlock against
+  // the teardown that raised it.
+  tunnel_.SetOnStateChanged([this] { PushState(); });
   return pipe_.Start([this](const nlohmann::json& req) { return Handle(req); });
 }
 
 void ControlServer::Stop() {
+  // Cleared FIRST. The teardown below can push a transition, and a handler that
+  // reaches a pipe already being torn down is a use of a stopping object for no
+  // benefit — the client is going away with the service.
+  tunnel_.SetOnStateChanged(nullptr);
   pipe_.Stop();
   tunnel_.Stop();
 }

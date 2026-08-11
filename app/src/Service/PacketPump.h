@@ -6,6 +6,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -17,6 +18,31 @@
 #include <windows.h>
 
 namespace urnw {
+
+// THE ONLY SIGNAL IN THIS PROCESS THAT MEASURES "can this tunnel carry
+// traffic" RATHER THAN INFERRING IT.
+//
+// Every other health reading here is second-hand: the SDK's proven-exit count
+// is a claim about transports, the reliability metrics are counters about
+// dials. These two numbers are the packets themselves — what the host handed
+// the tunnel, and what the tunnel handed back. A tunnel with outbound climbing
+// and inbound frozen is not "degraded"; it is a hole, and with the connected
+// firewall policy in force it is a hole the whole machine is falling into.
+//
+// SEPARATE FROM THE PUMP'S LIFETIME, ON PURPOSE. The dead-tunnel failsafe reads
+// these from its own thread while TunnelController is free to move the pump
+// into an abandonable teardown worker (StopBudget.h). A raw pointer to the pump
+// would be a use-after-free the first time a teardown ran over its budget; a
+// shared block cannot be, and the reader simply sees the counters stop moving —
+// which is the honest reading of "the pump is gone".
+//
+// Relaxed atomics: these are counters read at 1 Hz for a verdict measured in
+// tens of seconds, incremented once per packet on the two hottest paths in the
+// service. Nothing orders anything against them.
+struct PacketCounters {
+  std::atomic<uint64_t> outbound{0};  // host -> tunnel (wintun ring -> sdk)
+  std::atomic<uint64_t> inbound{0};   // tunnel -> host (sdk -> wintun ring)
+};
 
 class PacketPump {
  public:
@@ -31,6 +57,11 @@ class PacketPump {
   // up, because nothing would move through it.
   bool Start();
   void Stop();
+
+  // A SHARE of the counter block, valid for as long as the caller holds it —
+  // including after this pump has been destroyed or abandoned. See the note on
+  // PacketCounters for why that outliving is the point rather than a leak.
+  std::shared_ptr<PacketCounters> Counters() const { return counters_; }
 
  private:
   void OutboundLoop();  // wintun -> device
@@ -58,6 +89,11 @@ class PacketPump {
 
   WintunAdapter& adapter_;
   urnet::DeviceLocal& device_;
+  // Constructed HERE, with the pump, and never reset: a reader that took a
+  // share before Start() must not find a different block afterwards, and a
+  // reader that holds one across Stop() must keep seeing the final totals
+  // rather than a null.
+  std::shared_ptr<PacketCounters> counters_ = std::make_shared<PacketCounters>();
   std::shared_ptr<ReceiveGate> gate_;
   urnet::Sub receiveSub_;  // device -> wintun; unsubscribes on destruction
   std::thread outbound_;

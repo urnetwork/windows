@@ -40,10 +40,18 @@ bool PacketPump::Start() {
   // latch, so the per-packet cost is a predicted branch) and names the thread
   // in whatever gets logged. See ThreadGuard.h.
   receiveSub_ = device_.addReceivePacket(
-      [gate = gate_](int64_t /*ipVersion*/, int64_t /*ipProtocol*/,
-                     const uint8_t* packet, int32_t len) {
+      [gate = gate_, counters = counters_](
+          int64_t /*ipVersion*/, int64_t /*ipProtocol*/, const uint8_t* packet,
+          int32_t len) {
         RunGuarded("sdk-receive", [&] {
           if (!packet || len <= 0) return;
+          // COUNTED BEFORE THE GATE, and that ordering is the measurement.
+          // What the failsafe asks is "did anything come back through the
+          // tunnel", not "did the adapter still exist when it did" — a packet
+          // that arrives during teardown is still proof the tunnel was
+          // carrying. Counting after the gate would make a stopping pump look
+          // like a dead one for the length of the stop.
+          counters->inbound.fetch_add(1, std::memory_order_relaxed);
           std::scoped_lock lock(gate->mutex);
           if (!gate->adapter) return;  // stopped; the adapter may already be gone
           gate->adapter->Send(
@@ -131,6 +139,11 @@ void PacketPump::OutboundLoop() {
       // hand the outbound IP packet to the SDK; n is the valid byte count
       device_.sendPacket(packet.data(), static_cast<int32_t>(packet.size()),
                          static_cast<int64_t>(packet.size()));
+      // COUNTED AFTER THE SEND. What the failsafe wants to know is how much the
+      // host has committed to a tunnel that is giving nothing back, and a
+      // packet counted before the call would be counted even when the call
+      // threw or the pump was stopping mid-drain.
+      counters_->outbound.fetch_add(1, std::memory_order_relaxed);
       adapter_.ReleaseReceived(packet);
     }
     if (!running_.load()) break;  // re-checked: the drain loop may have exited on it

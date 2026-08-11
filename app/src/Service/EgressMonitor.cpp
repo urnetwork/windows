@@ -42,6 +42,7 @@ EgressMonitor::~EgressMonitor() { Stop(); }
 
 bool EgressMonitor::Start() {
   Refresh();
+  bool ok = true;
   DWORD err = ::NotifyIpInterfaceChange(AF_UNSPEC, &EgressMonitor::OnChange,
                                         this, FALSE, &notifyHandle_);
   if (err != NO_ERROR) {
@@ -51,9 +52,23 @@ bool EgressMonitor::Start() {
     LogError("egress: NotifyIpInterfaceChange failed: {} — the binding will NOT "
              "follow network changes",
              err);
-    return false;
+    ok = false;
   }
-  return true;
+  // THE ROUTE HALF. Registered separately and tolerated separately: either
+  // subscription alone still keeps the binding roughly current, and the pair is
+  // what makes "the default route went away" observable at all. AF_UNSPEC so a
+  // v6-only default vanishing is seen too; the callback filters.
+  err = ::NotifyRouteChange2(AF_UNSPEC, &EgressMonitor::OnRouteChange, this,
+                             FALSE, &routeNotifyHandle_);
+  if (err != NO_ERROR) {
+    LogError("egress: NotifyRouteChange2 failed: {} — a DEFAULT ROUTE appearing "
+             "or vanishing will not be observed. That is the cable-out case, so "
+             "the sdk will not be told the network moved and the dead-tunnel "
+             "failsafe becomes the only thing that notices.",
+             err);
+    ok = false;
+  }
+  return ok;
 }
 
 void EgressMonitor::Stop() {
@@ -63,6 +78,10 @@ void EgressMonitor::Stop() {
     ::CancelMibChangeNotify2(notifyHandle_);
     notifyHandle_ = nullptr;
   }
+  if (routeNotifyHandle_) {
+    ::CancelMibChangeNotify2(routeNotifyHandle_);
+    routeNotifyHandle_ = nullptr;
+  }
 }
 
 void EgressMonitor::SetOnChange(ChangeHandler handler) {
@@ -70,8 +89,14 @@ void EgressMonitor::SetOnChange(ChangeHandler handler) {
   onChange_ = std::move(handler);
 }
 
+void EgressMonitor::SetOnNetworkEvent(NetworkEventHandler handler) {
+  std::scoped_lock lock(mutex_);
+  onNetworkEvent_ = std::move(handler);
+}
+
 void EgressMonitor::Refresh() {
   ChangeHandler handler;
+  NetworkEventHandler networkEvent;
   EgressInterfaces egress;
   bool changed = false;
 
@@ -151,11 +176,16 @@ void EgressMonitor::Refresh() {
       }
     }
     handler = onChange_;
+    networkEvent = onNetworkEvent_;
   }
 
   // Deliberately outside the lock: the handler takes locks of its own, and
   // Stop() blocks on this callback while its caller holds one of them.
   if (changed && handler) handler(egress);
+  // UNCONDITIONAL, and that is the entire point of the second callback. See the
+  // note on SetOnNetworkEvent: the dominant failure produces `changed == false`,
+  // so anything hung off `changed` is blind to it.
+  if (networkEvent) networkEvent();
 }
 
 EgressInterfaces EgressMonitor::Current() const {
@@ -179,6 +209,24 @@ void __stdcall EgressMonitor::OnChange(void* context, MIB_IPINTERFACE_ROW*,
   RunGuarded("egress-change", [&] {
     if (self) self->Refresh();
   });
+}
+
+void __stdcall EgressMonitor::OnRouteChange(void* context,
+                                            MIB_IPFORWARD_ROW2* row,
+                                            MIB_NOTIFICATION_TYPE type) {
+  auto* self = static_cast<EgressMonitor*>(context);
+  if (!self) return;
+  // MibInitialNotification arrives with a NULL row and says nothing about any
+  // route; the initial Refresh in Start() has already covered that ground.
+  if (type == MibInitialNotification || row == nullptr) return;
+  // ONLY DEFAULT ROUTES, and never our own tun's. See the note on this function
+  // in the header: without the filter, every bring-up and every teardown storms
+  // this callback 31 times over.
+  if (row->DestinationPrefix.PrefixLength != 0) return;
+  if (self->tunLuid_.Value != 0 &&
+      row->InterfaceLuid.Value == self->tunLuid_.Value)
+    return;
+  RunGuarded("egress-route-change", [&] { self->Refresh(); });
 }
 
 }  // namespace urnw

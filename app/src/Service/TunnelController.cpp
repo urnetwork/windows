@@ -412,8 +412,12 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
   // Adopt the caller's kill-switch preference BEFORE the teardown below, so a
   // reconnect keeps the policy in force across the gap rather than dropping it
   // and re-arming.
-  killSwitch_ = config.kill_switch;
+  killSwitch_.store(config.kill_switch);
   StopLocked(/*finalDisarm=*/false);  // idempotent restart
+  // A NEW ATTEMPT CLEARS THE LAST TEARDOWN'S REASON. Left set, a failsafe stop
+  // would keep explaining itself over the top of the connection that replaced
+  // it — the app renders "URnetwork disconnected you" beside a live tunnel.
+  lastStopReason_.store(kStopReasonNone);
 
   // REFUSE TO START ON TOP OF AN ABANDONED TEARDOWN. The teardown above is
   // bounded, so it can return having LEFT the previous session's DeviceLocal
@@ -604,6 +608,15 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     // which this thread is holding right now and StopLocked holds while waiting
     // for the monitor's callbacks to drain.
     egress_->SetOnChange([this](EgressInterfaces e) { OnEgressChanged(e); });
+    // THE SECOND CALLBACK, AND THE ONE THAT COVERS THE OWNER'S CASE. SetOnChange
+    // above fires only when the bound INDEX MOVES, which is false for a cable
+    // coming out (the index is deliberately retained) — so it cannot be the hook
+    // that tells the SDK the network moved. This one fires on every observation.
+    //
+    // It must do almost nothing: it runs on a system worker thread that
+    // EgressMonitor::Stop() waits for, so it records the event and returns. The
+    // SDK calls happen on the watchdog's own thread, coalesced.
+    egress_->SetOnNetworkEvent([this] { deadTunnelWatchdog_.NoteNetworkEvent(); });
     egress_->Start();  // logs the chosen interface; keeps it current on change
     if (egress_->Current().index4 == 0) {
       // Not fatal — there may genuinely be no network yet, and the monitor will
@@ -744,6 +757,22 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     LogInfo("tunnel: UP in {}ms (rpc={} egress_v4_ifindex={} split_tunnel={})",
             upSinceMillis_ - startedAtMillis, rpcHostPort_, bound.index4,
             splitTunnel_.IsAvailable() ? "driver" : "none");
+
+    // --- the tunnel is now the machine's only path: start watching it --------
+    //
+    // HERE, and not one step earlier. Everything before this line is a bring-up
+    // that has its own failure handling; from this line on there is no caller
+    // waiting on anything, no timer, and — until this — nothing in the whole
+    // service that would ever look at the tunnel again. That absence is the
+    // bug: 31 capture routes and a firewall that blocks every other path, held
+    // by a session nobody re-examines.
+    //
+    // The watchdog is given a SHARE of the pump's counters rather than the pump
+    // (which a bounded teardown may abandon) and a raw device pointer with the
+    // same contract WindowTrace has: stopped at the top of StopLocked, before
+    // anything touches device_.
+    deadTunnelWatchdog_.Start(&*device_, pump_ ? pump_->Counters() : nullptr,
+                    [this](DeadTunnelReason reason) { FailsafeStop(reason); });
   } catch (const std::exception& e) {
     error_ = e.what();
     SetStateLocked(proto::TunnelState::Error);
@@ -849,7 +878,7 @@ bool TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
   step = "6/8 firewall policy";
   if (!ApplyWfpLocked(WfpState::Connecting)) {
     const std::string why = wfp_.LastError();
-    if (killSwitch_) {
+    if (killSwitch_.load()) {
       throw std::runtime_error(
           "the kill switch is on but the leak-prevention firewall could not be "
           "installed (" + why + "); refusing to connect rather than report a "
@@ -984,6 +1013,12 @@ bool TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
 }
 
 void TunnelController::Stop() {
+  // Whoever called the public Stop() is a person or their agent: the app's
+  // Disconnect, the SCM, the console handler, Logout. None of them is the
+  // failsafe, which has its own entry point — so the app can tell "you turned
+  // it off" from "it turned itself off", which is the only framing that makes
+  // an automatic teardown acceptable rather than alarming.
+  lastStopReason_.store(kStopReasonUser);
   // TIMED, not blocking. The class's own connecting-watchdog note (see the
   // header) already establishes that a connect attempt wedged inside the SDK
   // holds mutex_ for as long as the process lives. Stop() used to take that lock
@@ -1010,15 +1045,123 @@ void TunnelController::Stop() {
   // dnscache that can block, which is exactly what must not happen on a path
   // taken because something else already blocked).
   //
-  // What is NOT done here, and why it is still safe: the tun's DNS settings and
-  // the WFP policy are both left in place. Both die with the process — DNS with
-  // the adapter (wintun never calls SwDeviceSetLifetime, so process exit is a
-  // PnP surprise removal) and the filters with the dynamic BFE session — and
-  // NoteTeardownAbandoned() below makes that process exit happen by
-  // TerminateProcess rather than by hoping.
+  // What is NOT done here, and why it is still safe: the tun's DNS settings are
+  // left in place. They die with the process — wintun never calls
+  // SwDeviceSetLifetime, so process exit is a PnP surprise removal that takes
+  // the adapter and every route pointed at it — and NoteTeardownAbandoned()
+  // below makes that process exit happen by TerminateProcess rather than by
+  // hoping.
   NetworkConfig::CrashRevert();
   SetActiveMarker(false);
+  DropFirewallOnEscape("stop");
   NoteTeardownAbandoned();
+}
+
+// The lock-free half of "give this machine back", shared by Stop()'s timeout
+// path and FailsafeStop()'s.
+//
+// CrashRevert deliberately has no WFP path (NetworkConfig.h) — it issues route
+// ioctls only, because it is also the console handler's floor and must not call
+// anything that can block. But the routes are only half the block: with the
+// policy still Connected, every non-tun path stays blocked and the machine has
+// no internet even though nothing is routed to the tun any more. Waiting for
+// process death to drop the filters is good enough for a crash and NOT good
+// enough for an operation whose entire purpose is to give the internet back.
+//
+// Legal from here, and already proven in this file: WfpPolicy is internally
+// synchronised precisely so an off-thread caller can narrow while a connect is
+// wedged, which is exactly what the connecting watchdog does.
+//
+// Gated on the kill switch, and that gate is the whole product decision. With
+// it ON the user asked to stay blocked when the tunnel is not up, and a
+// timeout is not permission to change that answer for them.
+void TunnelController::DropFirewallOnEscape(const char* who) {
+  if (killSwitch_.load()) {
+    LogWarn("tunnel: [{}] the KILL SWITCH IS ON, so the firewall policy is "
+            "deliberately LEFT IN FORCE on this lock-free path: this machine "
+            "stays blocked, which is what the setting promises. Turn the kill "
+            "switch off (or stop urnetworkd — the policy dies with the process) "
+            "to lift it.",
+            who);
+    return;
+  }
+  if (wfp_.State() == WfpState::Off) return;
+  LogWarn("tunnel: [{}] dropping the leak-prevention firewall WITHOUT THE LOCK. "
+          "The routes are already reverted, so leaving the policy installed "
+          "would leave this machine blocked with nothing to blame it on — and "
+          "the kill switch is off, which means fail OPEN is the documented "
+          "default. Traffic falls back to the physical adapter in the clear.",
+          who);
+  wfp_.Revert();
+}
+
+// --- the dead-tunnel failsafe ----------------------------------------------
+//
+// See the contract in the header. This runs on TunnelWatchdog's evaluator
+// thread, which has already logged WHY; what is added here is what is being
+// done about it and what the machine is left in.
+void TunnelController::FailsafeStop(DeadTunnelReason reason) {
+  // Recorded BEFORE the teardown, so every status pushed during it — including
+  // the Stopping transition — already carries the reason. An app that learns
+  // "stopped" first and "why" second renders the alarming half alone.
+  lastStopReason_.store(StopReasonOf(reason));
+  const bool killSwitchOn = killSwitch_.load();
+  const bool finalDisarm = FailsafeFinalDisarm(killSwitchOn);
+
+  std::unique_lock<std::timed_mutex> lock(mutex_, std::defer_lock);
+  if (lock.try_lock_for(kStopLockBudget)) {
+    // THE ORDINARY TEARDOWN. Phase 1 hands the machine back — routes, tun DNS,
+    // the resolver cache, the marker, the policy — before phase 2 touches
+    // anything that can block on a network that has already failed. That
+    // two-phase order is not repeated here; it is inherited, which is the point
+    // of there being no second teardown path.
+    StopLocked(finalDisarm);
+    lock.unlock();
+    LogWarn("tunnel: the failsafe teardown is complete. {} No reconnection is "
+            "attempted and none will be: the next attempt is the user's, which "
+            "is what makes this impossible to thrash.",
+            killSwitchOn
+                ? "The KILL SWITCH IS ON, so the firewall narrowed to ARMED and "
+                  "this machine is still blocked — deliberately, and nothing is "
+                  "leaking. Turning the kill switch off lifts it immediately."
+                : "The kill switch is off, so the firewall was lifted and this "
+                  "machine's internet is back, unprotected, exactly as it is "
+                  "after a user disconnect.");
+    NotifyStateChanged();
+    return;
+  }
+
+  // THE LOCK-FREE ESCAPE. A connect attempt wedged inside the SDK holds mutex_
+  // for the life of the process, and "this tunnel is blocking the machine" is
+  // the one verdict that cannot be made conditional on acquiring it.
+  LogError("tunnel: the failsafe could not take the session lock within {}ms — "
+           "something (almost certainly a connect attempt) is wedged inside the "
+           "sdk and will never give it back. Reverting this machine's ROUTES "
+           "WITHOUT THE LOCK and abandoning the orderly teardown.",
+           kStopLockBudget.count());
+  deadTunnelWatchdog_.Cancel();  // non-blocking: there is no teardown to hang this off
+  NetworkConfig::CrashRevert();
+  SetActiveMarker(false);
+  DropFirewallOnEscape("failsafe");
+  NoteTeardownAbandoned();
+  NotifyStateChanged();
+}
+
+void TunnelController::SetOnStateChanged(std::function<void()> handler) {
+  std::scoped_lock lock(stateChangedMutex_);
+  onStateChanged_ = std::move(handler);
+}
+
+void TunnelController::NotifyStateChanged() {
+  std::function<void()> handler;
+  {
+    std::scoped_lock lock(stateChangedMutex_);
+    handler = onStateChanged_;
+  }
+  // Outside both locks by construction: the handler reads Status(), which takes
+  // mutex_, and it writes to the control pipe, which can block on a client that
+  // is not reading.
+  if (handler) handler();
 }
 
 void TunnelController::StopLocked(bool finalDisarm) {
@@ -1039,6 +1182,13 @@ void TunnelController::StopLocked(bool finalDisarm) {
   // thread is inside the SDK on our behalf. It is a no-op when nothing was
   // started, which is the normal case.
   trace_.Stop();
+  // Same contract, same reason, and BOUNDED — unlike the trace, the watchdog is
+  // always on, so it may not become a new way for a stop to hang. Its Stop()
+  // gives the SDK sampler kWatchdogJoinBudgetMillis and abandons it after that
+  // (TunnelWatchdog.h spells out why abandoning is safe). It also recognises
+  // being called from its own evaluator thread — which it always is when the
+  // failsafe is what got us here — and detaches instead of joining itself.
+  deadTunnelWatchdog_.Stop();
 
   // --- THE ORDER OF THE UNWIND, WHICH IS THE FIX ----------------------------
   //
@@ -1132,10 +1282,11 @@ void TunnelController::RevertMachineStateLocked(bool finalDisarm, bool hadRoutes
   if (finalDisarm) {
     if (wfp_.State() != WfpState::Off)
       LogInfo("tunnel: lifting the leak-prevention firewall (session ended{})",
-              killSwitch_ ? ", kill switch on but this was a deliberate stop"
-                          : "");
+              killSwitch_.load()
+                  ? ", kill switch on but this was a deliberate stop"
+                  : "");
     ApplyWfpLocked(WfpState::Off);
-  } else if (killSwitch_ && wfp_.State() != WfpState::Off) {
+  } else if (killSwitch_.load() && wfp_.State() != WfpState::Off) {
     // ALSO THE CLOSE OF THE CONNECTING WINDOW. This runs on the failed-start and
     // reconnect paths, so it is where an attempt that opened the machine-wide
     // DNS permit gives it back. Narrowing Connecting -> Armed only ever removes
@@ -1148,7 +1299,7 @@ void TunnelController::RevertMachineStateLocked(bool finalDisarm, bool hadRoutes
             "attempt reopens the window. `sc stop urnetworkd` lifts it (the "
             "policy dies with the process).");
     ApplyWfpLocked(WfpState::Armed);
-  } else if (killSwitch_ && hadRoutes) {
+  } else if (killSwitch_.load() && hadRoutes) {
     // THE SECOND WAY INTO ARMED, and the one that was missing.
     //
     // Every branch above requires a policy to ALREADY be installed
@@ -1210,7 +1361,10 @@ bool TunnelController::TearDownSessionLocked() {
   // outlive the call, and a change notification firing into a destroyed
   // controller is a use-after-free in a LocalSystem service. Clearing it here
   // means the monitor a worker inherits can only ever unregister itself.
-  if (egress_) egress_->SetOnChange(nullptr);
+  if (egress_) {
+    egress_->SetOnChange(nullptr);
+    egress_->SetOnNetworkEvent(nullptr);
+  }
 
   // Take splitMutex_ only to MOVE the client out, never across the close. The
   // existing hazard note still applies — the egress callback wants this lock and
@@ -1396,8 +1550,8 @@ void TunnelController::PushExcludedToDriver(const std::vector<std::string>& path
 
 bool TunnelController::SetKillSwitch(bool on) {
   std::scoped_lock lock(mutex_);
-  if (killSwitch_ == on) return true;
-  killSwitch_ = on;
+  if (killSwitch_.load() == on) return true;
+  killSwitch_.store(on);
   LogInfo("tunnel: kill switch {} (firewall policy currently {})",
           on ? "ON" : "off", ToString(wfp_.State()));
   // Two combinations take effect NOW; the rest are decided at the next
@@ -1475,6 +1629,8 @@ bool TunnelController::SetSplitTunnel(const std::vector<std::string>& excludedPa
 
 void TunnelController::Logout() {
   std::scoped_lock lock(mutex_);
+  // As deliberate as a disconnect, so it is reported as one. See Stop().
+  lastStopReason_.store(kStopReasonUser);
   // finalDisarm: signing out is as deliberate as disconnecting, and there is no
   // session left to protect. Leaving a signed-out machine blocked would be
   // unexplainable from any surface the user still has.
@@ -1521,6 +1677,12 @@ proto::TunnelStatus TunnelController::Status() {
     s.egress_index4 = static_cast<int64_t>(bound.index4);
     s.egress_index6 = static_cast<int64_t>(bound.index6);
   }
+  // Why the last teardown happened, and whether another one is coming. Both are
+  // read from lock-free publishers rather than from session state, so they are
+  // still correct on the one path where they matter most: a status served while
+  // a failsafe teardown is in flight.
+  s.stop_reason = lastStopReason_.load();
+  s.failsafe_armed = deadTunnelWatchdog_.FailsafeArmed();
   return s;
 }
 

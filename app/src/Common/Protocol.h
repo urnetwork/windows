@@ -265,6 +265,24 @@ struct TunnelStatus {
   // safe direction is the default.
   int64_t egress_index4 = 0;
   int64_t egress_index6 = 0;
+  // WHY THE LAST TEARDOWN HAPPENED. "" | "user" | "failsafe_no_exit" |
+  // "failsafe_no_inbound" | "failsafe_sdk_unresponsive" (Service/TunnelWatchdog.h
+  // owns the failsafe spellings; they are literals there, not built by hand).
+  //
+  // Without this a failsafe teardown is INDISTINGUISHABLE FROM THE USER PRESSING
+  // DISCONNECT, and that is the difference between "you turned it off" and "it
+  // turned itself off to keep you online" — which is the only sentence that
+  // makes the behaviour acceptable rather than alarming.
+  //
+  // NO PROTOCOL BUMP, by the same test the block above uses: a peer too old to
+  // send it leaves "", which reads as "no reason given" and renders exactly as
+  // today. Absent means unchanged, and unchanged is the safe direction.
+  std::string stop_reason;
+  // A dead-tunnel countdown is running RIGHT NOW and is close enough to matter
+  // (Service/TunnelWatchdog.h, kFailsafeNoticeMillis). The UI warns on this, so
+  // an automatic teardown is never a surprise. Defaults false — a peer that
+  // cannot say simply never warns, which is today's behaviour.
+  bool failsafe_armed = false;
 };
 
 struct Reply {
@@ -355,6 +373,8 @@ inline void to_json(nlohmann::json& j, const TunnelStatus& v) {
       {"wfp_state", v.wfp_state},
       {"egress_index4", v.egress_index4},
       {"egress_index6", v.egress_index6},
+      {"stop_reason", v.stop_reason},
+      {"failsafe_armed", v.failsafe_armed},
   };
 }
 
@@ -379,6 +399,17 @@ inline void from_json(const nlohmann::json& j, TunnelStatus& v) {
   get("wfp_state", v.wfp_state);
   get("egress_index4", v.egress_index4);
   get("egress_index6", v.egress_index6);
+  get("stop_reason", v.stop_reason);
+  get("failsafe_armed", v.failsafe_armed);
+}
+
+// "The service stopped this tunnel BY ITSELF because it could not carry
+// traffic." One predicate, in the header both sides already share, so the tray,
+// the connect page and the status strip cannot disagree about what counts as a
+// failsafe stop — and so a reason string added later is recognised by all three
+// without touching any of them.
+inline bool IsFailsafeStop(const std::string& stop_reason) {
+  return stop_reason.rfind("failsafe_", 0) == 0;
 }
 
 inline void to_json(nlohmann::json& j, const Reply& v) {

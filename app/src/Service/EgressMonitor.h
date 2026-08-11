@@ -57,6 +57,30 @@ class EgressMonitor {
   using ChangeHandler = std::function<void(EgressInterfaces)>;
   void SetOnChange(ChangeHandler handler);
 
+  // "THE OS SAID SOMETHING ABOUT IP STATE CHANGED." Fired on EVERY observation,
+  // whether or not the bound index moved, and that difference is the whole
+  // reason it exists as a second callback rather than a second use of the one
+  // above.
+  //
+  // SetOnChange fires only when the INDEX MOVES, which is false for the single
+  // most common failure this service has: the cable comes out, the adapter
+  // keeps its default route for a while, DiscoverEgress deliberately falls back
+  // to it (NetworkConfig.cpp) and Refresh deliberately retains the last good
+  // index anyway — so `changed` is false, the handler never runs, and the log
+  // says "egress: unchanged". Correct for R1, and blind for everything else:
+  // the SDK is never told the network moved, its transports die on timeouts,
+  // and the tunnel stays "up" over nothing while the firewall blocks every
+  // other path.
+  //
+  // Same threading contract as SetOnChange — a system worker thread, no lock of
+  // this monitor held — with one ADDITIONAL rule that is not advice: THIS
+  // HANDLER MUST NOT CALL INTO THE SDK. Stop() blocks until in-flight callbacks
+  // return, so a handler that can block wedges Stop(), which wedges
+  // TearDownSessionLocked. Record the event and return; do the work on a thread
+  // of your own (TunnelWatchdog.h).
+  using NetworkEventHandler = std::function<void()>;
+  void SetOnNetworkEvent(NetworkEventHandler handler);
+
   // Compute the current egress interfaces, push them to the SDK, and register
   // for change notifications to keep them current. Returns false if the
   // notification could not be registered; the initial binding is still applied,
@@ -75,15 +99,32 @@ class EgressMonitor {
  private:
   static void __stdcall OnChange(void* context, MIB_IPINTERFACE_ROW* row,
                                  MIB_NOTIFICATION_TYPE type);
+  // The DEFAULT ROUTE half of "the network moved". A default route appearing or
+  // vanishing is a ROUTE event, and this monitor watched only interface events —
+  // so the cable coming out, the case that strands the owner, could produce no
+  // observation at all. DiscoverEgress reads the forward table, so the two
+  // notifications answer the same question and both must feed Refresh.
+  //
+  // FILTERED, and the filter is load-bearing rather than an optimisation: the
+  // tun carries 31 capture routes (NetPolicy.h) that are installed and reverted
+  // in a burst at every bring-up and teardown, and an unfiltered subscription
+  // would turn each of those bursts into 31 notifications and 31 SDK
+  // network-change kicks — during the exact sequences that must not be
+  // perturbed. Only prefix-length-0 routes on interfaces other than our tun get
+  // through.
+  static void __stdcall OnRouteChange(void* context, MIB_IPFORWARD_ROW2* row,
+                                      MIB_NOTIFICATION_TYPE type);
 
   NET_LUID tunLuid_;
   HANDLE notifyHandle_ = nullptr;
+  HANDLE routeNotifyHandle_ = nullptr;
 
   // Serializes Refresh: NotifyIpInterfaceChange callbacks arrive on system
   // worker threads and can overlap each other and Start().
   mutable std::mutex mutex_;
   EgressInterfaces current_;
   ChangeHandler onChange_;
+  NetworkEventHandler onNetworkEvent_;
 };
 
 }  // namespace urnw

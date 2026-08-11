@@ -605,6 +605,25 @@ class SdkHost {
   void Connect(const std::string& connectLocationJson);
   void Disconnect();
 
+  // TURN THE SERVICE'S TUNNEL OFF. Not the same thing as Disconnect(), and the
+  // difference is the whole of the owner's "kill the app and my internet stays
+  // blocked" report.
+  //
+  // Disconnect() asks the SDK's connect controller to stop connecting. It does
+  // NOT touch the service: the capture routes stay installed and the WFP policy
+  // stays in its Connected state, because the SERVICE owns the tunnel and only a
+  // stop_tunnel takes it down. That ownership is correct and standard — it is
+  // what keeps a tunnel alive across an app crash — but it means the app has to
+  // offer a way to reach it that does not depend on the main window existing, or
+  // a tunnel that stops working strands the user with no escape short of an
+  // elevated `urnetworkd revert`.
+  //
+  // Synchronous and BLOCKING (one pipe rpc): the caller is a tray menu item, the
+  // service's own Stop() is bounded at ~3 s by design, and an asynchronous
+  // "turning it off, probably" is not what someone with no internet needs to be
+  // told. Safe with no service connection — there is then nothing to stop.
+  proto::TunnelStatus StopServiceTunnel();
+
   // Bring a service session up if there is not a live one, off the calling
   // thread, WITHOUT connecting to anything. `reason` names the caller in the
   // log. Same worker, same guarantees as the connect entry points above.

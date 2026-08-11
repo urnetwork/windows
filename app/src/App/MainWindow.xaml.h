@@ -101,6 +101,13 @@ struct MainWindow : MainWindowT<MainWindow> {
   // Read from here rather than re-cached on the page for the balance reason
   // above: one cache, one truth, written unconditionally by OnTunnelStateChanged.
   std::string const& statusWfpState() const { return statusWfpState_; }
+  // #41: why the last teardown happened ("" | "user" | "failsafe_*") and whether
+  // a dead-tunnel countdown is running right now. Same one-cache rule as
+  // statusWfpState above; the connect page turns them into the two sentences
+  // that keep an automatic teardown from being a surprise and then from being a
+  // mystery.
+  std::string const& statusStopReason() const { return statusStopReason_; }
+  bool statusFailsafeArmed() const { return statusFailsafeArmed_; }
 
   // ---- the in-app service manager (beta spec §3) ----
   // The elevated `urnetworkd uninstall`, reached from Settings' confirm dialog.
@@ -403,6 +410,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // force. Off while connected is what a failed or unelevated install looks
   // like, and it is not the same as protected.
   std::string statusWfpState_ = "off";
+  // #41: the last teardown's reason and whether another one is being counted
+  // down to. Empty and false are the pre-#41 readings, which render exactly as
+  // this app always has — absent means unchanged.
+  std::string statusStopReason_;
+  bool statusFailsafeArmed_ = false;
   // LiveStats' pre-clamp reading, likewise cached across a rebuild.
   std::string statusRawConnection_;
   // What RenderStatusState last drew. The state field is written by callers that

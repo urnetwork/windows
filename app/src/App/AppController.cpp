@@ -88,6 +88,29 @@ void AppController::Start() {
       sdk_.ConnectBestAvailable();
   };
   cb.isConnected = [this] { return connected_; };
+  // The two recovery items. Both read the LAST STATUS THE SERVICE PUSHED rather
+  // than any app-side belief: the whole point is that they are reachable when
+  // the app's own view of the world is the thing that has gone wrong (the window
+  // is closed, the connect controller is stuck, the tunnel is up over nothing).
+  cb.canStopTunnel = [this] {
+    return lastTunnelStatus_ && lastTunnelStatus_->routes_installed;
+  };
+  cb.onStopTunnel = [this] {
+    LogInfo("app: tray -> turn the tunnel off");
+    OnTunnelState(sdk_.StopServiceTunnel());
+  };
+  // "A firewall policy is in force with no tunnel up" — i.e. the kill switch is
+  // holding this machine blocked. Not offered while the tunnel is UP: the
+  // connected policy is the leak fix and applies whether or not the switch is
+  // on, so turning the switch off there would change nothing and look broken.
+  cb.canLiftKillSwitch = [this] {
+    return lastTunnelStatus_ && lastTunnelStatus_->wfp_state != "off" &&
+           lastTunnelStatus_->state != proto::TunnelState::Up;
+  };
+  cb.onLiftKillSwitch = [this] {
+    LogInfo("app: tray -> turn the kill switch off");
+    sdk_.SetKillSwitch(false);
+  };
   cb.onQuit = [this] { Shutdown(); };
   // The tray icon is the app's ONLY affordance on launch — no icon means no way
   // in, and from outside that is indistinguishable from a process that died. Say
@@ -277,6 +300,49 @@ void AppController::OnTunnelState(const proto::TunnelStatus& status) {
   // would keep saying so across a reconnect that fixed everything (stats stop
   // flowing while hidden, so nothing else would ever correct it).
   if (!(connected_ && isUp)) trayHealth_.reset();
+  // --- #41: the service turned the tunnel off BY ITSELF ----------------------
+  //
+  // The one transition the user did not ask for, and therefore the only one that
+  // has to announce itself. It is announced ON THE EDGE — the first status that
+  // carries a failsafe reason this session — because the reason persists in
+  // every subsequent status until the next start, and a balloon per poll would
+  // be worse than silence.
+  //
+  // The balloon is deliberately the channel: this fires when the window may not
+  // exist (closed to tray), and it is exactly then that the owner is looking at
+  // a machine whose internet just changed with no explanation on screen.
+  const bool failsafe = proto::IsFailsafeStop(status.stop_reason);
+  const bool wasFailsafe =
+      lastTunnelStatus_ && proto::IsFailsafeStop(lastTunnelStatus_->stop_reason);
+  if (failsafe && !wasFailsafe) {
+    const bool stillBlocked = status.wfp_state != "off";
+    LogWarn("app: the service stopped the tunnel by itself ({}); the machine is "
+            "{}",
+            status.stop_reason,
+            stillBlocked ? "STILL BLOCKED (kill switch on)"
+                         : "back on its normal connection, unprotected");
+    tray_.ShowBalloon(
+        Localized("app_name"),
+        stillBlocked
+            // Kill switch ON. The promise is being kept, so the copy leads with
+            // that rather than apologising: nothing is leaking, and the escape
+            // is named because it is one click away in this very menu.
+            ? pages::AdvW(
+                  "conn_failsafe_blocked",
+                  L"The tunnel could not carry traffic, so URnetwork shut it "
+                  L"down. The kill switch is on, so this machine stays blocked "
+                  L"and nothing is leaking. Reconnect, or turn off the kill "
+                  L"switch from this menu.")
+            // Kill switch OFF. Two facts, in the order that matters to someone
+            // whose internet just came back: what happened, then that they are
+            // no longer protected.
+            : pages::AdvW(
+                  "conn_failsafe_restored",
+                  L"URnetwork disconnected you to keep you online: the tunnel "
+                  L"was up but nothing was getting through. Your traffic is "
+                  L"going out normally now and is NOT protected. Press Connect "
+                  L"to try again."));
+  }
   connected_ = isUp;
   lastTunnelStatus_ = status;
   UpdateTray();
@@ -317,6 +383,28 @@ void AppController::UpdateTray() {
   // strings (same Adv ids), so the tooltip and the status line can never name
   // the same state differently.
   std::wstring tip = Localized("app_name");
+  // #41: two states that are NOT "disconnected" even though no tunnel is up, and
+  // that a bare app name would render as an idle machine. The icon is shared
+  // with the ordinary not-connected art on purpose — a third asset would be a
+  // new symbol to learn for a state that lasts until the next click — so the
+  // tooltip is what carries the distinction.
+  if (!connected_ && lastTunnelStatus_) {
+    if (lastTunnelStatus_->wfp_state != "off") {
+      // The one the owner has to be able to read at a glance: the machine is
+      // blocked ON PURPOSE and nothing is leaking, which is a completely
+      // different situation from a tunnel that failed open.
+      tray_.SetTooltip(tip + L" — " +
+                       pages::AdvW("conn_tray_blocked_kill_switch",
+                                   L"Blocked (kill switch on)"));
+      return;
+    }
+    if (proto::IsFailsafeStop(lastTunnelStatus_->stop_reason)) {
+      tray_.SetTooltip(tip + L" — " +
+                       pages::AdvW("conn_tray_failsafe_stopped",
+                                   L"Disconnected (the tunnel failed)"));
+      return;
+    }
+  }
   if (connected_) {
     switch (h) {
       case Health::Connected:

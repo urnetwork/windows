@@ -22,6 +22,7 @@
 #include "Protocol.h"
 #include "Sdk.h"
 #include "SplitTunnelClient.h"
+#include "TunnelWatchdog.h"
 #include "WfpPolicy.h"
 #include "WindowTrace.h"
 #include "Wintun.h"
@@ -83,6 +84,42 @@ class TunnelController {
   // latches TeardownAbandoned() — see the note there for what the two callers
   // who care then do.
   void Stop();
+
+  // THE DEAD-TUNNEL FAILSAFE'S ONLY ENTRY POINT. Called by TunnelWatchdog, from
+  // the watchdog's own thread, when a live tunnel has been proven unable to
+  // carry traffic (see TunnelWatchdog.h for the verdict and its thresholds).
+  //
+  // It goes through StopLocked, the SAME teardown a user pressing Disconnect
+  // takes, and there is deliberately NO second unwind path — a bespoke one is
+  // how routes end up with nobody to revert them. The one thing it decides for
+  // itself is `finalDisarm`, and it decides it with FailsafeFinalDisarm():
+  //
+  //   kill switch OFF -> the firewall policy is LIFTED and the machine gets its
+  //                      internet back in the clear. Byte for byte a user
+  //                      Disconnect. This is the whole point.
+  //   kill switch ON  -> the policy NARROWS to Armed and the machine stays
+  //                      blocked. Silently restoring the internet would break
+  //                      the promise that setting makes; the state is surfaced
+  //                      instead, and one click lifts it.
+  //
+  // IT NEVER RECONNECTS. That is absolute, and it is what makes thrash
+  // structurally impossible: re-entering this state costs a full user-initiated
+  // start plus a fresh grace period.
+  //
+  // BOUNDED like Stop(), and for a stronger reason: a wedged connect holds
+  // mutex_ forever, and "give the internet back" cannot be conditional on a
+  // lock. On the timeout path it reverts the routes lock-free AND — with the
+  // kill switch off — drops the firewall policy directly, which Stop() used to
+  // leave to process death.
+  void FailsafeStop(DeadTunnelReason reason);
+
+  // Called, OUTSIDE mutex_, whenever this controller changes state on its own
+  // initiative rather than in reply to a request. Exists for exactly one case
+  // and it is the failsafe: every other transition is the direct result of an
+  // RPC, so ControlServer pushes the new status when it answers. A teardown
+  // nobody asked for has no reply to ride on, and an app that only learns about
+  // it at its next poll is an app showing a tunnel that is already gone.
+  void SetOnStateChanged(std::function<void()> handler);
 
   // Update the split-tunnel app set + mode (driver, if present). allowlist=false:
   // excludedPaths bypass the tunnel; allowlist=true: ONLY excludedPaths tunnel.
@@ -257,6 +294,14 @@ class TunnelController {
   void OnEgressChanged(EgressInterfaces egress);
   // Shared by both; the caller holds splitMutex_.
   void PushPhysicalAddressesLocked(const EgressInterfaces& egress);
+  // Invoke onStateChanged_ if one is set. MUST be called with mutex_ RELEASED:
+  // the handler pushes a status, which takes mutex_ to read it.
+  void NotifyStateChanged();
+  // Drop the firewall policy from a path that holds NO lock, when the kill
+  // switch permits it. Shared by Stop()'s and FailsafeStop()'s timeout paths;
+  // `who` names the caller in the log. See the definition for why relying on
+  // process death to remove the filters is not good enough here.
+  void DropFirewallOnEscape(const char* who);
 
   // TIMED, not plain. Stop() must be able to give up on acquiring it: this
   // class's own connecting-watchdog note (below) already establishes that a
@@ -335,7 +380,33 @@ class TunnelController {
   WfpPolicy wfp_;
   // The last kill-switch preference the app pushed (start_tunnel or
   // set_kill_switch). Read on every transition.
-  bool killSwitch_ = false;
+  //
+  // ATOMIC, because the failsafe's lock-free escape has to read it while a
+  // wedged connect holds mutex_ — and what it decides there is whether this
+  // machine gets its internet back or stays blocked, which is the one question
+  // that must never be answered by waiting for a lock. Every other read and
+  // write still happens under mutex_; std::atomic<bool> is a superset, so
+  // nothing else changes.
+  std::atomic<bool> killSwitch_{false};
+
+  // --- what the app is told about the last teardown -------------------------
+  //
+  // A bare const char* into the string literals TunnelWatchdog.h defines, for
+  // Heartbeat.h's reason: it is published from the watchdog thread and read from
+  // the RPC thread, and pointing at static storage means the read side needs no
+  // allocation, no lock and no lifetime rule.
+  std::atomic<const char*> lastStopReason_{kStopReasonNone};
+
+  // The dead-tunnel failsafe. DECLARED LAST so that destruction order — members
+  // die in reverse declaration order — stops its threads BEFORE device_ and the
+  // pump they read, exactly as trace_ is declared after device_ for the same
+  // reason. The explicit Stop() at the top of StopLocked is the real mechanism;
+  // this is the belt to that braces.
+  TunnelWatchdog deadTunnelWatchdog_;
+
+  // Set once by ControlServer at wiring time; read on the failsafe path.
+  std::mutex stateChangedMutex_;
+  std::function<void()> onStateChanged_;
   // The resolvers actually handed to the tun, kept so the firewall's DNS permit
   // and the interface's DNS settings are built from the same list rather than
   // recomputed.

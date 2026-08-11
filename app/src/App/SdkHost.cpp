@@ -4109,6 +4109,29 @@ void SdkHost::Disconnect() {
   RequestSession(std::move(r));
 }
 
+// See the contract in the header. Deliberately NOT routed through the session
+// worker: this is the escape hatch, and an escape hatch that queues behind a
+// bootstrap holding mutex_ for up to the pipe timeout is not one. It talks to
+// the service directly, and the service's Stop() is itself bounded.
+proto::TunnelStatus SdkHost::StopServiceTunnel() {
+  if (!service_.IsConnected()) {
+    LogWarn("sdkhost: stop-tunnel asked for with no control channel to the "
+            "service. Nothing here can revert a tunnel this process does not "
+            "own — if routes are still installed, the service is gone and its "
+            "death already took them (the adapter dies with the process).");
+    return {};
+  }
+  LogInfo("sdkhost: stopping the SERVICE tunnel (routes, dns and the firewall "
+          "policy all come back) — this is the escape hatch, not a connect "
+          "controller disconnect");
+  proto::TunnelStatus st = service_.StopTunnel();
+  // The SDK side follows, so the app does not sit rendering Connecting against
+  // a tunnel that no longer exists. Queued rather than inline: the point above
+  // was to avoid waiting on the session worker, not to avoid using it at all.
+  Disconnect();
+  return st;
+}
+
 void SdkHost::ClosePresentationLocked() {
   presentationSubs_.clear();
   // Released here rather than beside each locationsVc_.reset() below, so the two

@@ -12,6 +12,7 @@
 #include "Ids.h"
 #include "Localization.h"
 #include "Log.h"
+#include "PageContext.h"  // pages::AdvW — the two recovery items' labels
 #include "Startup.h"  // FailVisible, at the window-procedure boundary
 #include "Strings.h"
 #include "resource.h"
@@ -26,6 +27,8 @@ constexpr UINT kTrayIconId = 1;
 constexpr UINT kMenuOpen = 1;
 constexpr UINT kMenuConnect = 2;
 constexpr UINT kMenuQuit = 3;
+constexpr UINT kMenuStopTunnel = 4;
+constexpr UINT kMenuLiftKillSwitch = 5;
 constexpr wchar_t kWindowClass[] = L"URnetworkTrayWindow";
 
 // Read the taskbar theme: SystemUsesLightTheme == 0 => dark taskbar.
@@ -233,6 +236,32 @@ void TrayIcon::ShowContextMenu(POINT pt) {
   bool connected = cb_.isConnected && cb_.isConnected();
   ::AppendMenuW(menu, MF_STRING, kMenuConnect,
                 Localized(connected ? "disconnect" : "connect").c_str());
+
+  // The escapes, each shown only while it is the answer to something. See the
+  // note on Callbacks: this menu is the only surface that exists when the window
+  // does not, so it is where a machine blocked by a tunnel has to be reachable
+  // from. Separated from the everyday items above so they read as recovery
+  // rather than as more settings.
+  const bool stoppable = cb_.canStopTunnel && cb_.canStopTunnel();
+  const bool liftable = cb_.canLiftKillSwitch && cb_.canLiftKillSwitch();
+  if (stoppable || liftable) ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+  if (stoppable) {
+    // NOT the word "Disconnect": that is the item above, and it means something
+    // narrower (stop connecting). This one takes the whole tunnel down —
+    // routes, DNS and the firewall policy — which is what someone with no
+    // internet is actually looking for.
+    ::AppendMenuW(menu, MF_STRING, kMenuStopTunnel,
+                  pages::AdvW("conn_tray_turn_tunnel_off",
+                              L"Turn the tunnel off (restore my internet)")
+                      .c_str());
+  }
+  if (liftable) {
+    ::AppendMenuW(menu, MF_STRING, kMenuLiftKillSwitch,
+                  pages::AdvW("conn_tray_lift_kill_switch",
+                              L"Turn off the kill switch (unblock this machine)")
+                      .c_str());
+  }
+
   ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
   ::AppendMenuW(menu, MF_STRING, kMenuQuit, Localized("quit_urnetwork").c_str());
 
@@ -245,6 +274,10 @@ void TrayIcon::ShowContextMenu(POINT pt) {
   switch (cmd) {
     case kMenuOpen: if (cb_.onShowWindow) cb_.onShowWindow(); break;
     case kMenuConnect: if (cb_.onConnectToggle) cb_.onConnectToggle(); break;
+    case kMenuStopTunnel: if (cb_.onStopTunnel) cb_.onStopTunnel(); break;
+    case kMenuLiftKillSwitch:
+      if (cb_.onLiftKillSwitch) cb_.onLiftKillSwitch();
+      break;
     case kMenuQuit: if (cb_.onQuit) cb_.onQuit(); break;
   }
 }

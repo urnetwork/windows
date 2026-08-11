@@ -599,6 +599,37 @@ void ConnectPage::ApplyConnectStatus() {
                     L"some traffic may bypass it. Disconnect to go back to "
                     L"your normal connection.");
       }
+      // #41 THE PRE-EMPTIVE HALF. The service will turn this tunnel off by
+      // itself if nothing gets through, and a teardown nobody was warned about
+      // reads as a crash however good the explanation afterwards is. Appended to
+      // the existing line rather than shown as a second surface, because it is
+      // the same subject: this is what happens next if the state above does not
+      // change.
+      if (w_.statusFailsafeArmed()) {
+        held += L" ";
+        held += AdvW("conn_failsafe_armed",
+                     L"If nothing gets through shortly, URnetwork will turn the "
+                     L"tunnel off automatically so you keep your internet.");
+      }
+    } else if (!connected_ && proto::IsFailsafeStop(w_.statusStopReason())) {
+      // #41 THE EXPLANATION. Rendered while DISCONNECTED, which is the one state
+      // this line has never had anything to say in — and the exact state a user
+      // lands in when the service tore the tunnel down without being asked.
+      //
+      // Two variants, and the difference is not decoration: with the kill switch
+      // on the machine is STILL BLOCKED, and telling that user "your traffic is
+      // going out normally" would be false in the direction that matters.
+      held = w_.statusWfpState() != "off"
+                 ? AdvW("conn_failsafe_blocked",
+                        L"The tunnel could not carry traffic, so URnetwork shut "
+                        L"it down. The kill switch is on, so nothing leaves "
+                        L"this machine until you connect again or turn the kill "
+                        L"switch off — nothing is leaking.")
+                 : AdvW("conn_failsafe_restored",
+                        L"URnetwork disconnected you to keep you online: the "
+                        L"tunnel was up but nothing was getting through. Your "
+                        L"traffic is going out normally now and is NOT "
+                        L"protected. Press Connect to try again.");
     }
     urnw::kit::SetTextOrCollapse(w_.TrafficHeldText(), winrt::hstring{held});
   }

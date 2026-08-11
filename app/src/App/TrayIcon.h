@@ -27,6 +27,31 @@ class TrayIcon {
     std::function<void()> onConnectToggle;           // menu: Connect/Disconnect
     std::function<bool()> isConnected;               // for the menu item label
     std::function<void()> onQuit;                    // menu: Quit
+
+    // --- the two escapes, shown only when they are the answer to something ---
+    //
+    // THE TRAY IS THE ONLY SURFACE THAT ALWAYS EXISTS. Closing the window hides
+    // to tray and the tunnel keeps running (the service owns it), so when a
+    // tunnel stops carrying traffic the user may have no window to press
+    // anything in — which is the "kill the app and my internet stays blocked"
+    // half of the owner's report. Both items below therefore have to work with
+    // no main window and without opening one.
+    //
+    // Each is a PAIR: a predicate that decides whether the item appears at all,
+    // and the action. An item that is always present but usually inert teaches
+    // people to ignore it; an item that appears exactly when it is the fix does
+    // not. Both predicates are read at menu-build time, i.e. at the click.
+
+    // "The service still has routes installed" — a tunnel is carrying (or
+    // failing to carry) this machine's traffic right now.
+    std::function<bool()> canStopTunnel;
+    std::function<void()> onStopTunnel;
+
+    // "A firewall policy is in force with no tunnel up" — the kill switch is
+    // holding this machine blocked. Turning it off is the one click that lifts
+    // it immediately rather than at the next transition.
+    std::function<bool()> canLiftKillSwitch;
+    std::function<void()> onLiftKillSwitch;
   };
 
   TrayIcon() = default;
