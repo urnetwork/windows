@@ -17,6 +17,7 @@
 #include <exception>
 #include <format>
 #include <string>
+#include <thread>
 #include <vector>
 
 #define WIN32_LEAN_AND_MEAN
@@ -53,6 +54,12 @@ HANDLE g_stopEvent = nullptr;
 HANDLE g_consoleDrainedEvent = nullptr;
 ControlServer* g_server = nullptr;
 
+// True only once ServiceMain has been entered, i.e. only when the SCM is what
+// started this process and is therefore what can restart it. Read by the
+// self-restart handler, which must behave completely differently in a console
+// the operator is watching. Set before anything can ask.
+std::atomic<bool> g_underScm{false};
+
 const char* StateName(DWORD state) {
   switch (state) {
     case SERVICE_START_PENDING: return "start_pending";
@@ -86,7 +93,11 @@ DWORD WINAPI HandlerEx(DWORD control, DWORD, LPVOID, LPVOID) {
     case SERVICE_CONTROL_SHUTDOWN:
       LogInfo("service: control {} received",
               control == SERVICE_CONTROL_STOP ? "STOP" : "SHUTDOWN");
-      SetState(SERVICE_STOP_PENDING, NO_ERROR, 5000);
+      // The hint comes from StopBudget.h rather than being typed here, because
+      // it is a promise about the budgets in that header and the two silently
+      // disagreeing is how a service gets recorded as hung for taking exactly as
+      // long as it was designed to. `selftest` pins hint > worst-case stop.
+      SetState(SERVICE_STOP_PENDING, NO_ERROR, kServiceStopWaitHintMillis);
       if (g_stopEvent) ::SetEvent(g_stopEvent);
       return NO_ERROR;
     case SERVICE_CONTROL_INTERROGATE:
@@ -374,6 +385,84 @@ std::atomic<int> g_stopPresses{0};
   ::ExitProcess(kForcedStopExitCode);  // unreachable; satisfies [[noreturn]]
 }
 
+// --- self-restart: the recovery for a device that really is still held -------
+//
+// Installed as StopBudget.h's SelfRestartHandler and called from exactly one
+// place: TunnelController::StartLocked, when a sweep proves an abandoned SDK
+// teardown is STILL holding the previous session's device. Everything else
+// about that state is already handled — the machine's routes, DNS and firewall
+// policy went back in phase 1, long before anyone got here — and what is left is
+// the one thing the process cannot fix from the inside: a wintun adapter held by
+// a thread that will not return.
+//
+// So it stops trying to fix it from the inside. Under the SCM the process ends
+// itself, the adapter dies with it as a PnP surprise removal, SC_ACTION_RESTART
+// (InstallService, 5000 ms delay) starts a clean one, and the app reattaches on
+// its own. The user presses nothing; the error they were shown says "reconnecting
+// in a few seconds" and then it is.
+//
+// Returns whether a restart is actually coming, so the caller can say something
+// true rather than something hopeful.
+bool RestartServiceProcess(const char* why) {
+  // ONCE. Two starts refused in quick succession must not race two terminators,
+  // and the second caller still wants "yes, a restart is coming" — it is.
+  static std::atomic<bool> requested{false};
+  if (requested.exchange(true)) return g_underScm.load();
+
+  if (!g_underScm.load()) {
+    // CONSOLE MODE, WHERE KILLING THE PROCESS WOULD BE A SURPRISE, NOT A FIX.
+    // Nothing is watching this process to restart it: the operator is, from a
+    // terminal, and a foreground process that vanishes on its own is how a
+    // developer loses an afternoon deciding whether they crashed it. Say what is
+    // wrong and what to press; they have a prompt and they are already looking
+    // at it.
+    LogError("console: {} — and NOTHING WILL RESTART THIS PROCESS FOR YOU here, "
+             "so it is being left running rather than killed under you. Your "
+             "network is already back (routes, dns and the firewall policy were "
+             "reverted before that teardown was abandoned); what is stuck is one "
+             "sdk thread holding the wintun adapter. Press Ctrl+C and run "
+             "`urnetworkd console` again. Under the scm this case restarts "
+             "itself.",
+             why);
+    return false;
+  }
+
+  LogError("service: {} — ENDING THIS PROCESS ON PURPOSE so the scm restarts it "
+           "clean (SC_ACTION_RESTART, ~5s). This is the recovery, not a crash: "
+           "the held wintun adapter dies with the process as a pnp surprise "
+           "removal, the next start runs the sweep, and the app reattaches "
+           "itself. The machine's routes, dns and firewall policy are ALREADY "
+           "back and nothing below can change that. Exiting in {}ms, after the "
+           "reply explaining it has reached the app.",
+           why, kSelfRestartGrace.count());
+
+  // ON ITS OWN THREAD, because the caller is inside an RPC handler holding the
+  // session lock with the app blocked on the control pipe. Terminating on the
+  // spot would drop the pipe with the answer still unsent, so the app would show
+  // "the service went away" instead of "it is restarting itself".
+  //
+  // DETACHED and owning nothing — the same contract RunBounded's workers keep,
+  // for the same reason: this thread outlives the frame that created it by
+  // design, and the process it is going to end is the only thing it touches.
+  std::thread([] {
+    ArmThreadGuard("self-restart");
+    std::this_thread::sleep_for(kSelfRestartGrace);
+    // A worker that happens to finish inside this grace window does NOT buy a
+    // reprieve. The app has already been told a restart is coming and has
+    // clamped its surfaces to match; a process that then silently stayed would
+    // leave every one of them waiting for a drop that never arrives. One
+    // restart costs five seconds. Being wrong about this costs another refusal.
+    NetworkConfig::CrashRevert();  // idempotent; a no-op after the orderly path
+    // NO SetState(SERVICE_STOPPED) ANYWHERE ON THIS PATH, and that omission is
+    // the mechanism. The SCM restarts a service that DIES; one that reports
+    // STOPPED is a service that meant to stop, and the failure actions are
+    // deliberately not applied to it (Run() relies on exactly that distinction
+    // for an ordinary user-requested stop).
+    ::TerminateProcess(::GetCurrentProcess(), kSelfRestartExitCode);
+  }).detach();
+  return true;
+}
+
 BOOL WINAPI OnConsoleControl(DWORD type) {
   // Windows runs each console control event on its OWN thread (see g_stopPresses
   // above), created by the OS, which has therefore never armed one of our
@@ -602,6 +691,11 @@ void WINAPI ServiceMain(DWORD, LPWSTR*) {
   // be what fails — while ArmGoCrashCapture opens files and formats strings,
   // which is already something worth being covered for.
   ArmThreadGuard("service-main");
+  // The SCM started us, so the SCM can restart us — which is what makes ending
+  // this process a recovery rather than a disappearance. Set before anything can
+  // ask, and never cleared: a process that reached here was launched by the SCM
+  // for the whole of its life.
+  g_underScm.store(true);
   ArmGoCrashCapture();
   g_statusHandle = ::RegisterServiceCtrlHandlerExW(ids::kServiceName, HandlerEx, nullptr);
   if (!g_statusHandle) {
@@ -1292,6 +1386,12 @@ int wmain(int argc, wchar_t** argv) {
   // its network back" means. Registered here so it is in force before anything
   // starts a thread.
   SetThreadGuardCrashRevert(&NetworkConfig::CrashRevert);
+  // The other hook main() owns, and it is here for the same reason: only this
+  // translation unit knows how this process was started, and therefore whether
+  // ending it is a recovery (the SCM restarts it) or a disappearance (a console
+  // the operator is watching). Installed before any verb runs so no path can
+  // reach the state without a way out of it. See RestartServiceProcess.
+  SetSelfRestartHandler(&RestartServiceProcess);
   // Before any verb runs, so a death in ANY of them is distinguishable from a
   // clean exit. See OnProcessExit.
   std::atexit(&OnProcessExit);

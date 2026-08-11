@@ -77,12 +77,16 @@ class TunnelController {
   // Tear the tunnel down and restore the network.
   //
   // BOUNDED. It returns within roughly kStopLockBudget + kSdkTeardownBudget
-  // (~3 s; see StopBudget.h) whether or not the SDK cooperates, and the
-  // machine's routes, DNS and firewall policy are given back BEFORE any part of
-  // the teardown that can block on the network is attempted. When the SDK half
-  // does not finish in budget it is abandoned rather than waited on, which
-  // latches TeardownAbandoned() — see the note there for what the two callers
-  // who care then do.
+  // (~7.7 s worst case; see StopBudget.h, and note that the machine's network is
+  // back inside the first ~1.4 s of that) whether or not the SDK cooperates, and
+  // the machine's routes, DNS and firewall policy are given back BEFORE any part
+  // of the teardown that can block on the network is attempted. When the SDK
+  // half does not finish in budget it is abandoned rather than waited on. That
+  // permanently commits the process to leaving by TerminateProcess
+  // (TeardownAbandoned(), read by main()) and TEMPORARILY blocks a new start —
+  // temporarily, because the abandoned worker's gate is retained, so StartLocked
+  // re-reads it and lets the start through the moment the worker finishes. See
+  // the two questions at the top of StopBudget.h.
   void Stop();
 
   // THE DEAD-TUNNEL FAILSAFE'S ONLY ENTRY POINT. Called by TunnelWatchdog, from

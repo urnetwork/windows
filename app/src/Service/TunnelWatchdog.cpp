@@ -184,6 +184,20 @@ void TunnelWatchdog::Stop() {
   // UNLIKE the evaluator, this abandonment IS an escalation: the evaluator holds
   // nothing but our own state, while an abandoned sampler is a thread parked
   // inside the SDK forever.
+  //
+  // AND IT IS THE EXIT LATCH ONLY — IT MUST NOT REFUSE A LATER START. Both
+  // questions used to be one bool (StopBudget.h says why they are now two), so
+  // a detached sampler bricked every subsequent Connect for the life of the
+  // process. It has no business doing that: it OWNS NOTHING. It reads through a
+  // raw DeviceLocal* that channel->device was cleared of above, it holds no
+  // wintun adapter, no packet pump and no device, and it cannot make wintun
+  // issue a second adapter on the pinned guid — which is the entire hazard the
+  // start refusal exists for. Nor is anything lost by not counting it: if the
+  // wedge that stranded it is the SDK-wide one, TearDownSessionLocked's worker
+  // is abandoned on the same lock moments later and registers itself as a real
+  // device holder on its own account. A sampler that is merely slow, on a
+  // teardown that then completes, is not a reason anybody should have to
+  // restart a service.
   if (sampler_.joinable()) {
     if (JoinWithin(channel, channel ? &channel->samplerDone : nullptr)) {
       sampler_.join();

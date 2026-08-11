@@ -442,7 +442,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
   // it — the app renders "URnetwork disconnected you" beside a live tunnel.
   lastStopReason_.store(kStopReasonNone);
 
-  // REFUSE TO START ON TOP OF AN ABANDONED TEARDOWN. The teardown above is
+  // REFUSE TO START ON TOP OF A DEVICE THAT IS STILL HELD. The teardown above is
   // bounded, so it can return having LEFT the previous session's DeviceLocal
   // and wintun adapter alive on a detached thread (see TearDownSessionLocked).
   // Building a second session over that would ask wintun to create a second
@@ -450,19 +450,59 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
   // two DeviceLocals and two packet pumps behind it — a worse machine state
   // than the failure that got us here, and one no revert path understands.
   //
-  // The honest answer is that this process is finished. The installed service
-  // has SC_ACTION_RESTART configured (InstallService in main.cpp) and its next
-  // start runs the sweep, so "restart me" is a real recovery route rather than
-  // a dead end.
-  if (TeardownAbandoned()) {
+  // THE QUESTION IS ASKED ABOUT NOW, NOT ABOUT THE PAST. This used to read
+  // `if (TeardownAbandoned())` — a process-global one-way bool with no clear
+  // path — and on 2026-08-11 that cost two testers their VPN: a teardown ran
+  // 2013 ms against a 2000 ms budget, was abandoned by thirteen milliseconds,
+  // FINISHED 392 ms later having released everything, and every Connect for the
+  // rest of the process's life was refused with "its device is still held". It
+  // had been free for 2.2 seconds. The gate each abandoned worker signals
+  // through is retained now (StopBudget.h), so the same worker that caused the
+  // refusal can withdraw it, and this is where that is re-read.
+  const AbandonedTeardownSweep abandoned = SweepAbandonedTeardowns();
+  // SAY SO. A refusal that quietly stops happening is indistinguishable in a log
+  // from a refusal that never happened, and this is the line that tells the next
+  // reader the budget was too tight rather than the machine broken.
+  if (abandoned.completed_late > 0)
+    LogWarn("tunnel: {} previously ABANDONED sdk teardown(s) have since "
+            "FINISHED and released the device, adapter and pump they were "
+            "holding. The refusal they caused is withdrawn and this start "
+            "proceeds normally — they overran their {}ms budget, they were not "
+            "wedged.",
+            abandoned.completed_late, kSdkTeardownBudget.count());
+  if (abandoned.outstanding > 0) {
     SetStateLocked(proto::TunnelState::Error);
-    error_ =
-        "a previous teardown could not be completed and its device is still "
-        "held; this service process must be restarted before another tunnel "
-        "can start";
-    LogError("tunnel: REFUSING to start — {}. Restart urnetworkd (sc stop "
-             "urnetworkd && sc start urnetworkd).",
-             error_);
+    // RECOVERY IS PERFORMED, NOT PRESCRIBED. Telling a user to run sc.exe is a
+    // dead end wearing an error message's clothes. The installed service has
+    // SC_ACTION_RESTART (InstallService in main.cpp), so ending this process IS
+    // the fix: the adapter the worker is holding dies with it as a PnP surprise
+    // removal, the SCM starts a clean one within seconds, and the app reattaches
+    // by itself (SdkHost::OnServiceDisconnected -> ScheduleServiceRetry).
+    //
+    // SAFE TO DO FROM HERE, and that is the two-phase invariant paying out: the
+    // StopLocked at the top of this function has already reverted this machine's
+    // routes, DNS, resolver cache, marker and firewall policy, and so had the
+    // abandoned teardown before it walked away. Nothing outstanding can undo
+    // that, and nothing about to be terminated still owes the machine anything.
+    const bool restarting = RequestSelfRestart(
+        "a previous sdk teardown is still holding this session's device");
+    error_ = restarting
+                 ? "a previous teardown is still holding its device, so this "
+                   "service is restarting itself now — reconnecting in a few "
+                   "seconds"
+                 : "a previous teardown is still holding its device; this "
+                   "service process must be restarted before another tunnel "
+                   "can start";
+    LogError("tunnel: REFUSING to start — {} abandoned sdk teardown(s) have "
+             "NOT finished and still hold a device, adapter and pump. A second "
+             "session would ask wintun for a second adapter on the same pinned "
+             "guid. {}",
+             abandoned.outstanding,
+             restarting
+                 ? "This process is ending itself so the scm restarts it clean; "
+                   "the machine's network is already back and stays back."
+                 : "Nothing can restart this process for you here — stop it and "
+                   "run it again.");
     return StatusLocked();
   }
   SetStateLocked(proto::TunnelState::Starting);
@@ -1098,6 +1138,14 @@ void TunnelController::Stop() {
   // again on this process. Patch what actually changed, or every later
   // get_state reports a machine that is still captured.
   RepublishMachineFactsLockFree(/*routesReverted=*/true);
+  // THE EXIT LATCH ONLY, and deliberately not a start refusal. Nothing was
+  // handed to a worker here — the session objects are still owned by this
+  // controller, behind a mutex_ that a wedged operation is holding. A later
+  // start can only run if that lock came back, i.e. if the wedge is over, and
+  // its first act is StopLocked, which tears the session down through the
+  // bounded path and registers a real device-holding gate if THAT is abandoned.
+  // What survives from here is only "this process may no longer unwind", which
+  // is true and permanent because a thread is still somewhere inside the SDK.
   NoteTeardownAbandoned();
 }
 
@@ -1192,6 +1240,9 @@ void TunnelController::FailsafeStop(DeadTunnelReason reason) {
   // from routes_installed and wfp_state. The push below would otherwise carry
   // "routes installed" over a machine this very function just handed back.
   RepublishMachineFactsLockFree(/*routesReverted=*/true);
+  // Exit latch only, for the reason spelled out on the identical call in Stop():
+  // no worker was ever handed this session, so there is no device for a later
+  // start to collide with that StopLocked will not deal with itself.
   NoteTeardownAbandoned();
   NotifyStateChanged();
 }
@@ -1495,7 +1546,13 @@ bool TunnelController::TearDownSessionLocked() {
         wintun.reset();
         space.reset();
         LogInfo("tunnel: sdk teardown complete");
-      });
+      },
+      // THE ONE ABANDONMENT IN THIS PROCESS THAT MAY REFUSE A LATER START. Every
+      // per-session object was moved into the lambda above, so if this worker is
+      // abandoned it — and only it — is what "the device is still held" means.
+      // The gate RunBounded retains for it is what lets StartLocked ask again
+      // later and get a different answer once it finishes.
+      AbandonHazard::HoldsSessionDevice);
 
   const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                       std::chrono::steady_clock::now() - started)
@@ -1518,7 +1575,10 @@ bool TunnelController::TearDownSessionLocked() {
       "alone: the device, the wintun adapter and the packet pump, on a thread "
       "that owns them outright. This process will now exit by TerminateProcess "
       "instead of unwinding, which takes the adapter with it (a pnp surprise "
-      "removal) and the filter policy with the dynamic session.",
+      "removal) and the filter policy with the dynamic session. NOT NECESSARILY "
+      "FATAL TO CONNECT: this worker is watched, not written off — if it "
+      "finishes later, the next start re-reads its gate, says so, and proceeds. "
+      "Only a start attempted while it is STILL running is refused.",
       ms, kSdkTeardownBudget.count());
   return false;
 }

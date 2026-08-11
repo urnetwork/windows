@@ -1518,6 +1518,10 @@ int64_t MillisSince(std::chrono::steady_clock::time_point start) {
       .count();
 }
 
+// Defined below, and called from the end of TestStopBudget so the two run as one
+// story: the budget mechanism first, then the question StartLocked asks of it.
+void TestHeldDeviceSweep();
+
 void TestStopBudget() {
   Section("the shutdown budget — a teardown that never returns must not be able "
           "to hold the machine");
@@ -1547,11 +1551,23 @@ void TestStopBudget() {
   // correct-looking way to write "this machine is now stuck".
   Check(kStopLockBudget + kSdkTeardownBudget +
                 std::chrono::milliseconds{2 * kWatchdogJoinBudgetMillis} <
-            std::chrono::milliseconds{5000},
+            std::chrono::milliseconds{kServiceStopWaitHintMillis},
         "worst-case Stop() (lock budget + sdk budget + both watchdog joins) "
-        "fits inside the 5000ms STOP_PENDING wait hint given to the SCM",
-        std::format("{}ms + {}ms + 2x{}ms", kStopLockBudget.count(),
-                    kSdkTeardownBudget.count(), kWatchdogJoinBudgetMillis));
+        "fits inside the STOP_PENDING wait hint given to the SCM — the hint is "
+        "derived from these budgets, and this is what stops the two drifting "
+        "apart the next time one of them is raised",
+        std::format("{}ms + {}ms + 2x{}ms against a {}ms hint",
+                    kStopLockBudget.count(), kSdkTeardownBudget.count(),
+                    kWatchdogJoinBudgetMillis, kServiceStopWaitHintMillis));
+  // THE MEASUREMENT THAT CAUSED THIS RAISE. A tester's machine finished the SDK
+  // teardown in 2013 ms against the old 2000 ms budget and was abandoned for it,
+  // then completed 392 ms later. A budget a real healthy machine can overrun by
+  // 0.65% is not discriminating "wedged" from "slow"; it is measuring hardware.
+  Check(kSdkTeardownBudget >= std::chrono::milliseconds{4000},
+        "the sdk teardown budget leaves real room over the 2013ms a real "
+        "machine actually took — the old 2000ms lost to it by 13ms and bricked "
+        "connect until the service was restarted by hand",
+        std::format("{}ms", kSdkTeardownBudget.count()));
 
   // --- the escalation ladder ------------------------------------------------
   Check(DecideConsoleStop(1) == ConsoleStopAction::Graceful,
@@ -1593,7 +1609,20 @@ void TestStopBudget() {
                       kTestBudget.count()));
     Check(TeardownAbandoned(),
           "abandoning latches TeardownAbandoned(), which is what makes the "
-          "process refuse a restart and exit by TerminateProcess");
+          "process exit by TerminateProcess instead of unwinding through a "
+          "thread that is still inside the sdk");
+    // THE WATCHDOG-SAMPLER DECISION, PINNED AS MECHANISM. This RunBounded took
+    // the DEFAULT hazard, i.e. a worker that owns nothing — the detached sdk
+    // sampler's case (TunnelWatchdog.cpp), and the lock-free escapes in Stop()
+    // and FailsafeStop(). It must commit the process to TerminateProcess, as
+    // checked above, and it must NOT be able to refuse a later start: those
+    // callers hold no device, no adapter and no pump, so they cannot make wintun
+    // issue a second adapter on the pinned guid, which is the entire hazard the
+    // refusal exists for. One bool used to answer both questions, and that is
+    // how a merely-slow sampler bricked Connect for the life of the process.
+    Check(SweepAbandonedTeardowns().outstanding == 0,
+          "an abandoned worker that owns NOTHING does not hold a device, so it "
+          "cannot refuse a start — only the exit path cares about it");
     Check(state->entered.load() && !state->ownedDestroyed.load(),
           "THE SAFETY PROPERTY: the abandoned worker is still running and what "
           "it owns is STILL ALIVE — nothing was freed under a thread that is "
@@ -1663,6 +1692,175 @@ void TestStopBudget() {
     for (int i = 0; i < 2000 && !state->ownedDestroyed.load(); ++i)
       std::this_thread::sleep_for(std::chrono::milliseconds{1});
     ResetStopBudgetForTest();
+  }
+
+  TestHeldDeviceSweep();
+}
+
+// --- "is the device STILL held", which used to be "was it ever" --------------
+//
+// The bug (2026-08-11, both testers, build v2026.8.11-1016372210-beta): a
+// teardown ran 2013 ms against a 2000 ms budget and was abandoned by THIRTEEN
+// MILLISECONDS; the abandoned worker finished 392 ms later and released
+// everything; 2.2 seconds after that, and for the rest of the process's life,
+// every Connect was refused with "a previous teardown could not be completed and
+// its device is still held". Nothing was held. StartLocked was reading a
+// process-global one-way bool with no clear function.
+//
+// These checks are the honest question in miniature, against the REAL registry
+// and the REAL RunBounded — a wedge that is genuinely outstanding must refuse, a
+// wedge that has since finished must not, and the difference has to be visible
+// rather than silent.
+void TestHeldDeviceSweep() {
+  Section("the abandoned-teardown gate — a refusal that can be withdrawn when "
+          "the worker it was about finishes");
+
+  ResetStopBudgetForTest();
+
+  Check(SweepAbandonedTeardowns().outstanding == 0 &&
+            SweepAbandonedTeardowns().completed_late == 0,
+        "a process that has abandoned nothing holds nothing and reports nothing "
+        "— the sweep's resting state is silence, not a latch waiting to fire");
+
+  // --- abandoned and STILL RUNNING refuses; then finishes, and clears --------
+  {
+    constexpr std::chrono::milliseconds kTestBudget{150};
+    auto state = std::make_shared<WedgeState>();
+    const bool finished = RunBounded(
+        kTestBudget,
+        [s = state, owned = OwnedByTeardown(state)]() mutable {
+          s->entered.store(true);
+          while (!s->release.load())
+            std::this_thread::sleep_for(std::chrono::milliseconds{1});
+        },
+        AbandonHazard::HoldsSessionDevice);
+    Check(!finished, "the wedged teardown was abandoned, as the setup requires");
+
+    const AbandonedTeardownSweep held = SweepAbandonedTeardowns();
+    Check(held.outstanding == 1 && held.completed_late == 0,
+          "WHILE THE WORKER IS GENUINELY OUTSTANDING the device counts as held "
+          "and a start must be refused — this is the case the refusal exists "
+          "for and it is not weakened",
+          std::format("outstanding={} completed_late={}", held.outstanding,
+                      held.completed_late));
+    Check(SweepAbandonedTeardowns().outstanding == 1,
+          "and asking twice does not lose it: a sweep retires only workers that "
+          "have actually finished");
+
+    // Now let it go, exactly as the tester's worker did 392 ms after it was
+    // written off, and prove the refusal is WITHDRAWN.
+    state->release.store(true);
+    std::size_t lateSeen = 0;
+    AbandonedTeardownSweep sweep{};
+    for (int i = 0; i < 4000; ++i) {
+      sweep = SweepAbandonedTeardowns();
+      lateSeen += sweep.completed_late;
+      if (sweep.outstanding == 0) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds{1});
+    }
+    Check(sweep.outstanding == 0,
+          "THE FIX: once the abandoned worker finishes, the device is no longer "
+          "held and the next start proceeds — the tester's machine was refused "
+          "2.2 seconds after this moment");
+    Check(lateSeen == 1,
+          "and it is REPORTED, exactly once, so the log says 'it finished late' "
+          "instead of silently starting to work again",
+          std::format("completed_late totalled {}", lateSeen));
+    Check(state->ownedDestroyed.load(),
+          "clearing means RELEASED, not 'nearly done': the gate publishes only "
+          "after the worker's owned objects are destroyed, so a cleared sweep is "
+          "a statement that the device, adapter and pump are actually gone");
+    Check(SweepAbandonedTeardowns().completed_late == 0,
+          "a retired worker is not re-reported on every later sweep — the good "
+          "news is news once");
+    Check(TeardownAbandoned(),
+          "and the EXIT question keeps its answer regardless: a thread was "
+          "abandoned in this process, so unwinding through static destructors is "
+          "permanently off the table even though the start refusal is over");
+    ResetStopBudgetForTest();
+  }
+
+  // --- two sequential abandons, finishing OUT OF ORDER ----------------------
+  //
+  // A process can abandon more than one teardown in its life, so the answer
+  // cannot be a bool OR a single retained gate — and there is no rule that says
+  // they finish in the order they were abandoned. Both are released in reverse
+  // here for exactly that reason.
+  {
+    constexpr std::chrono::milliseconds kTestBudget{100};
+    auto first = std::make_shared<WedgeState>();
+    auto second = std::make_shared<WedgeState>();
+    auto wedge = [](std::shared_ptr<WedgeState> s) {
+      return [s, owned = OwnedByTeardown(s)]() mutable {
+        s->entered.store(true);
+        while (!s->release.load())
+          std::this_thread::sleep_for(std::chrono::milliseconds{1});
+      };
+    };
+    RunBounded(kTestBudget, wedge(first), AbandonHazard::HoldsSessionDevice);
+    RunBounded(kTestBudget, wedge(second), AbandonHazard::HoldsSessionDevice);
+
+    Check(SweepAbandonedTeardowns().outstanding == 2,
+          "TWO abandoned teardowns are two held devices, not one flag set twice "
+          "— a set of gates is the only representation that can count them");
+
+    // Release the SECOND one first. A design that retained "the" abandoned
+    // teardown, or that assumed FIFO completion, gets this wrong.
+    second->release.store(true);
+    AbandonedTeardownSweep sweep{};
+    std::size_t lateSeen = 0;
+    for (int i = 0; i < 4000; ++i) {
+      sweep = SweepAbandonedTeardowns();
+      lateSeen += sweep.completed_late;
+      if (sweep.outstanding <= 1) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds{1});
+    }
+    Check(sweep.outstanding == 1 && lateSeen == 1,
+          "one of two finishing — the LATER one — retires only itself; the "
+          "start stays refused because the other really is still holding a "
+          "device",
+          std::format("outstanding={} late={}", sweep.outstanding, lateSeen));
+
+    first->release.store(true);
+    for (int i = 0; i < 4000; ++i) {
+      sweep = SweepAbandonedTeardowns();
+      lateSeen += sweep.completed_late;
+      if (sweep.outstanding == 0) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds{1});
+    }
+    Check(sweep.outstanding == 0 && lateSeen == 2,
+          "and only when BOTH have finished is the condition clear — each "
+          "abandonment is accounted for exactly once");
+    Check(first->ownedDestroyed.load() && second->ownedDestroyed.load(),
+          "both workers destroyed what they owned; abandoning is a leak at "
+          "worst, and not even that once they return");
+    ResetStopBudgetForTest();
+  }
+
+  // --- the watchdog's detached sampler, and the two lock-free escapes --------
+  //
+  // NoteTeardownAbandoned() is reached from four places with two different
+  // meanings, and this pins the split. The sampler (TunnelWatchdog.cpp) reads
+  // through a raw DeviceLocal* that has already been cleared and owns no
+  // adapter, no pump and no device; Stop() and FailsafeStop() call it on their
+  // lock-free escapes, where no worker exists at all and the session is still
+  // owned by the controller. None of the three can make wintun issue a second
+  // adapter on the pinned guid, so none of them may refuse a start — while all
+  // three still commit the process to TerminateProcess, because a thread really
+  // is parked inside the sdk.
+  {
+    NoteTeardownAbandoned();  // what all three of those call sites do, verbatim
+    Check(TeardownAbandoned(),
+          "a bare abandonment note still answers the EXIT question: this "
+          "process may no longer unwind through a thread it cannot locate");
+    Check(SweepAbandonedTeardowns().outstanding == 0,
+          "...and answers the START question with NO. A detached sampler "
+          "holding nothing, or a lock-free escape that handed no worker "
+          "anything, must not brick tunnel starts for the life of the process");
+    ResetStopBudgetForTest();
+    Check(!TeardownAbandoned() && SweepAbandonedTeardowns().outstanding == 0,
+          "the test-only reset clears BOTH the flag and the registry, so these "
+          "checks cannot leak into the ones after them");
   }
 }
 
