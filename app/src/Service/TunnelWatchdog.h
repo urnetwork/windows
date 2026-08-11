@@ -90,7 +90,9 @@ inline constexpr int64_t kDeadFastMillis = 20000;
 // an idle working one, and firing there would be a teardown with no evidence.
 inline constexpr uint64_t kDeadFastOutboundPackets = 8;
 
-// DEAD_SLOW. No proven exit at all, whatever the traffic.
+// DEAD_SLOW. No proven exit at all — and nothing coming back to contradict it
+// (see the carrying veto in Evaluate: a packet out of the tun overrules any
+// claim about exits, because Exit.Proven is a probe result and a packet is not).
 //
 // One honest COLD attempt after a roam is DNS (<=13 s) + TCP (<=21 s) +
 // handshake, call it ~35 s (the same note). 90 s is ~2.5x that, so a genuine
@@ -121,6 +123,53 @@ inline constexpr int64_t kFailsafeNoticeMillis = 30000;
 // cannot stop the verdict being reached.
 inline constexpr int64_t kSdkSampleIntervalMillis = 2000;
 inline constexpr int64_t kEvaluateIntervalMillis = 1000;
+
+// How late an evaluator tick has to be before the only honest reading is THIS
+// PROCESS WAS NOT RUNNING.
+//
+// Every threshold above is a DURATION measured on a steady clock, and the
+// unstated assumption underneath all of them is that this process was awake for
+// it. On Windows 11 that assumption is wrong by default: Modern Standby (S0ix)
+// freezes every thread while the counter keeps advancing, so a laptop closed
+// for the night resumes with a sampleAge of eight hours. The very first tick
+// after the resume would fire UNRESPONSIVE — before the sampler has had a
+// chance to complete one getExits(), before the resume's own route and
+// interface events have reached networkChanged(), and reporting "the sdk
+// stopped answering" about an sdk that was never asked. With the kill switch
+// ON that is a machine that resumes blocked, with an error that is not true.
+//
+// A gap this large is a freeze however it was caused — modern standby,
+// hibernate, a suspended VM, a machine so loaded the evaluator missed five
+// slots — and the response to all of them is the same: this session has not
+// been WATCHED for that time, so it is owed a fresh grace period rather than a
+// verdict. 5x the interval it asked for is far beyond any scheduling jitter and
+// far below the shortest window it protects.
+//
+// Note the direction of the failure: a machine that stalls this thread forever
+// gets no failsafe rather than a wrong one. That is the correct way round — the
+// bug this file exists for leaves the internet blocked, and so does a teardown
+// nobody could justify.
+inline constexpr int64_t kEvaluatorFrozenMillis = 5 * kEvaluateIntervalMillis;
+
+// True when the gap between two evaluator ticks can only be explained by the
+// process not having run. Pure, so the selftest pins the discrimination rather
+// than the wall-clock behaviour of a laptop lid.
+inline constexpr bool EvaluatorFroze(int64_t tickGapMillis) {
+  return tickGapMillis >= kEvaluatorFrozenMillis;
+}
+
+// A timestamp is THIS session's evidence only if it was taken after the session
+// began; anything older belongs to a tunnel, or to a stretch of time, that this
+// verdict has no business judging. Folding it to -1 hands it to AgeSince, which
+// already means "never in this session" by counting from the start instead.
+//
+// Used on the freeze path: after a rebase, the sampler's last completed sample
+// and the last proven reading are both from before the machine went away, and
+// treating them as current is exactly the false UNRESPONSIVE above.
+inline constexpr int64_t StampInSession(int64_t stampMillis,
+                                        int64_t sessionStartMillis) {
+  return stampMillis >= sessionStartMillis ? stampMillis : -1;
+}
 
 // One SDK network-change notification per this many milliseconds.
 //
@@ -261,7 +310,11 @@ inline constexpr int64_t AgeSince(int64_t stampMillis, int64_t upSinceMillis,
 
 // THE VERDICT. Pure, total, and the only place the failsafe's mind is made up.
 //
-// WHY THIS CANNOT FIRE WHILE TRAFFIC IS GENUINELY FLOWING. The connected policy
+// WHY THIS CANNOT FIRE WHILE TRAFFIC IS GENUINELY FLOWING. Not as an argument
+// about SDK internals but as the FIRST RULE IN THE FUNCTION: a packet that came
+// back out of the tun within kDeadFastMillis vetoes every verdict below it, so
+// no claim about exits and no silence from the SDK can tear down a tunnel this
+// machine is measurably using. The connected policy
 // blocks every non-tun path, so a working tunnel's host stack retransmits and
 // ANY single inbound packet from ANY exit resets the fast window. A genuinely
 // idle machine has outboundSinceInbound == 0 and never trips DEAD_FAST — which
@@ -282,6 +335,37 @@ inline constexpr DeadTunnelVerdict Evaluate(const DeadTunnelSignals& s,
   const int64_t provenAge = detail::AgeSince(s.lastProvenMillis, s.upSinceMillis, nowMillis);
   const int64_t inboundAge = detail::AgeSince(s.lastInboundMillis, s.upSinceMillis, nowMillis);
 
+  // ---- THE MEASUREMENT OVERRULES THE CLAIM, AND IT DOES SO FIRST ------------
+  //
+  // A packet that came back OUT of the tun is the only FIRST-HAND evidence in
+  // this process that this tunnel can carry traffic. Everything else below is
+  // second-hand: provenCount is the sdk's claim ABOUT its transports, and a
+  // completed getExits() is a claim about the sdk answering questions. Neither
+  // may overrule a measurement, so while anything is still coming back NOTHING
+  // fires and no countdown is shown.
+  //
+  // This is not a softening. It is what turns "the failsafe cannot tear down a
+  // working tunnel" from an argument about sdk internals into a property of
+  // this function, and it closes three false teardowns that were reachable:
+  //
+  //   * getExits() blocking on the sdk's state lock while the DATA PATH — a
+  //     different set of goroutines entirely, reaching this process through
+  //     addReceivePacket — keeps delivering. UNRESPONSIVE would call that a
+  //     wedge, tear down a tunnel the user was using, and report a reason that
+  //     was not true.
+  //   * the sampler thread's OWN networkChanged()/notifyNetworkChange() being
+  //     slow during exactly the roam that made them necessary — the watchdog's
+  //     own sdk work presenting as sdk silence.
+  //   * an exit that carries but is never marked Proven. Exit.Proven is a probe
+  //     result; task #15/S2 exists precisely because exit state is known to be
+  //     incomplete. NO_EXIT is explicitly "whatever the traffic", and that is
+  //     the one place this file let an inference outrank its own measurement.
+  //
+  // It cannot mask DEAD_FAST, which already requires inboundAge >= this same
+  // window, and it cannot mask a genuine wedge: a wedged sdk delivers nothing,
+  // so the veto lapses within kDeadFastMillis of the wedge beginning.
+  if (s.lastInboundMillis >= 0 && inboundAge < kDeadFastMillis) return v;
+
   // ---- UNRESPONSIVE first ---------------------------------------------------
   // Deliberately ahead of the other two: provenCount is a reading FROM the SDK,
   // so if the SDK has stopped answering, the other two rules would be judging
@@ -301,9 +385,10 @@ inline constexpr DeadTunnelVerdict Evaluate(const DeadTunnelSignals& s,
   }
 
   // ---- DEAD_SLOW ------------------------------------------------------------
-  // No proven exit for a long time, whatever the traffic. A tunnel with nothing
-  // to carry to cannot carry, and holding the machine's routes for it is the
-  // block the owner reported.
+  // No proven exit for a long time, and nothing has come back to say otherwise
+  // (the veto above already returned if it had). A tunnel with nothing to carry
+  // to cannot carry, and holding the machine's routes for it is the block the
+  // owner reported.
   //
   // Gated on the sampler having ANSWERED AT LEAST ONCE. "We never got a reading"
   // is the unresponsive rule's business, not this one's, and firing here on an

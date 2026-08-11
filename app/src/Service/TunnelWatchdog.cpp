@@ -374,6 +374,13 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
                   counters->inbound.load(std::memory_order_relaxed));
   }
 
+  // The instant every window below is measured from. It STARTS as the session's
+  // start and is rebased whenever this process is found not to have been
+  // running (see kEvaluatorFrozenMillis) — a session nobody watched for eight
+  // hours is owed a grace period, not a verdict.
+  int64_t sessionStartMillis = upSinceMillis;
+  int64_t lastTickMillis = NowMillis();
+
   for (;;) {
     {
       std::unique_lock lock(channel->mutex);
@@ -386,6 +393,34 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
     if (channel->cancelled.load()) return;
 
     const int64_t now = NowMillis();
+
+    // ---- was this process actually running for the interval it just waited? --
+    //
+    // Checked BEFORE anything is measured, because if the answer is no then
+    // every age below is the length of a sleep rather than the length of a
+    // failure. See kEvaluatorFrozenMillis for why this is not hypothetical on
+    // the machine this ships to.
+    const int64_t tickGap = now - lastTickMillis;
+    lastTickMillis = now;
+    if (EvaluatorFroze(tickGap)) {
+      LogWarn("watchdog: this process did not run for {}ms (it asked to wait "
+              "{}ms) — a modern-standby resume, a hibernate, a suspended vm or "
+              "a machine that could not schedule this thread. Every failsafe "
+              "window is a duration, so they are all rebased from now: this "
+              "tunnel gets a full fresh grace period rather than being torn "
+              "down for silence it was never awake to hear. The sdk is being "
+              "told the network moved by the os events the resume raises.",
+              tickGap, kEvaluateIntervalMillis);
+      sessionStartMillis = now;
+      if (counters) {
+        traffic.Reset(counters->outbound.load(std::memory_order_relaxed),
+                      counters->inbound.load(std::memory_order_relaxed));
+      }
+      armed_.store(false, std::memory_order_relaxed);
+      millisToFailsafe_.store(0, std::memory_order_relaxed);
+      continue;
+    }
+
     if (counters) {
       traffic.Observe(counters->outbound.load(std::memory_order_relaxed),
                       counters->inbound.load(std::memory_order_relaxed), now);
@@ -394,10 +429,15 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
     DeadTunnelSignals signals;
     signals.tunnelUp = TunnelIsUp();
     signals.routesInstalled = signals.tunnelUp;  // see TunnelIsUp
-    signals.upSinceMillis = upSinceMillis;
+    signals.upSinceMillis = sessionStartMillis;
     signals.provenCount = channel->provenCount.load();
-    signals.lastProvenMillis = channel->lastProvenMillis.load();
-    signals.lastSampleMillis = channel->lastSampleMillis.load();
+    // Folded to "never in this session" when they predate a rebase: the sampler
+    // publishes across a freeze without knowing one happened, and a sample
+    // completed before the machine went away says nothing about the sdk now.
+    signals.lastProvenMillis =
+        StampInSession(channel->lastProvenMillis.load(), sessionStartMillis);
+    signals.lastSampleMillis =
+        StampInSession(channel->lastSampleMillis.load(), sessionStartMillis);
     signals.lastInboundMillis = traffic.lastInboundMillis();
     signals.outboundSinceInbound = traffic.outboundSinceInbound();
 
@@ -413,15 +453,19 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
     // can reach, and the operator has to be able to read WHY off the log
     // without reconstructing it.
     LogError("watchdog: ======== THIS TUNNEL IS NOT CARRYING TRAFFIC ========");
-    LogError("watchdog: {} ({}). Session up {}s; sdk last answered {}ms ago "
-             "reporting {} exit(s), {} proven; last proven {}ms ago; last "
-             "packet IN from the tunnel {}ms ago; {} packet(s) sent since then.",
+    // Every age is measured from sessionStartMillis, not from the session's own
+    // start: after a freeze rebase they are ages within the stretch this thread
+    // was actually awake for, and those are the only ones the verdict used.
+    LogError("watchdog: {} ({}). Session up {}s, watched for {}s; sdk last "
+             "answered {}ms ago reporting {} exit(s), {} proven; last proven "
+             "{}ms ago; last packet IN from the tunnel {}ms ago; {} packet(s) "
+             "sent since then.",
              DescribeDeadTunnel(verdict.reason), StopReasonOf(verdict.reason),
-             (now - upSinceMillis) / 1000,
-             detail::AgeSince(signals.lastSampleMillis, upSinceMillis, now),
+             (now - upSinceMillis) / 1000, (now - sessionStartMillis) / 1000,
+             detail::AgeSince(signals.lastSampleMillis, sessionStartMillis, now),
              channel->exitCount.load(), signals.provenCount,
-             detail::AgeSince(signals.lastProvenMillis, upSinceMillis, now),
-             detail::AgeSince(signals.lastInboundMillis, upSinceMillis, now),
+             detail::AgeSince(signals.lastProvenMillis, sessionStartMillis, now),
+             detail::AgeSince(signals.lastInboundMillis, sessionStartMillis, now),
              signals.outboundSinceInbound);
     LogError("watchdog: stopping the tunnel through the ORDINARY teardown. With "
              "the kill switch OFF this gives the machine its internet back — "
