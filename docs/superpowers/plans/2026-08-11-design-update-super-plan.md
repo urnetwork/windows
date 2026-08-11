@@ -176,9 +176,96 @@ instruction**. A splash cannot cover that. Ship instead:
 The actual cold-start lever is delay-loading `URnetworkSdk.dll`, which is engineering, not
 animation — worth its own ticket.
 
+## Phase E — the window reveal and onboarding (owner's idea; supersedes the splash)
+
+The owner's proposal — "the entire main app window is animated and slides out dynamically
+to display all the content", in the spirit of a macOS menu-bar app — is better than a
+separate splash and replaces D4's first-open item. A splash is extra work shown during a
+wait; a window reveal covers work already happening. It still cannot touch the ~2.2s
+pre-`wWinMain` import load, but that is not the felt launch: this is a tray app, and the
+perceived open is **tray click → window**, measured at 99-227ms. That is exactly what the
+reveal covers.
+
+**E1. Mechanism — the HWND never animates; content springs inside it.**
+The window is placed once by the existing `ApplyNativeShell` and never moved. Two
+independent reasons, both decisive: (a) Composition gives a genuine off-thread spring
+(`CreateSpringVector3Animation`) but can only animate a visual's Scale/Offset/Opacity — it
+cannot animate an HWND rect, so animating the window would mean hand-ticking a spring on
+the UI thread during the app's busiest 200ms; (b) every animated frame would raise
+`AppWindow.Changed` with a rect matching no saved placement, so
+`OnWindowPlacementChanged` would mark the window user-positioned and the 700ms debounce
+would persist an intermediate rect to the registry. Structural change required: wrap the
+unnamed root Grid (`MainWindow.xaml:17`) in an opaque `WindowPlate` that never moves,
+containing a `RevealRoot` that springs. No child's `Grid.Row` changes, so it merges cleanly
+with Phase B.
+
+**E2. What makes it read as macOS-fancy on Windows** (each mapped to a real API):
+- *Origin-anchored*: reveal scales out from the tray icon. `Shell_NotifyIconGetRect` via
+  `TrayIcon::FillIdentity` (`TrayIcon.cpp:86`), which already centralizes the GUID/hwnd+uID
+  identity. `S_FALSE` returns the overflow chevron and is a VALID anchor; fallback 2 is the
+  `POINT anchor` at `TrayIcon.cpp:322`; fallback 3 is a centred scale. Never fail to open.
+- *Spring, not easing*: new token `kSpringReveal`, damping **0.86 / period 60ms**. The
+  existing 0.75 spring visibly wobbles a 480x760dip surface — do not reuse it.
+- *Depth and corners*: the app has NO Mica/acrylic (removed 2026-08-07, reasoning at
+  `WindowShell.cpp:149-178`) and makes NO `DWMWA_*` call anywhere. Add `DWMWCP_ROUND`, and
+  **critically `DWMWA_TRANSITIONS_FORCEDISABLED`** — otherwise Windows' own centred open
+  transition fights the tray-anchored spring and the result reads as broken, not fancy.
+  Having no backdrop is an advantage here: nothing can pop in late.
+- *Settle, don't snap*: staggered opacity ripple after the geometry starts.
+
+**E3. Choreography** (t=0 = `Activate()` returns): plate alpha 0→1 over Fast150;
+`RevealRoot` Scale 0.94→1 and Offset −v·20dip→0 on `kSpringReveal`; opacity ripple at
+0/40/80/120ms — `ConnectCanvasHost`+`StatusDot`/`StatusText` → `ConnectButton`+`LocationRow`
+→ `HomeNav`+`AppTitleBar` → `ConnectPaneB`/`C`+rules+`StatusStrip`. ~270ms perceived; 3
+rings/230ms in Simple mode. Geometry and opacity are kept strictly separate so nested alpha
+does not muddy. **Un-minimize gets NO reveal** — the OS restore animation owns that moment;
+`IsIconic` must be latched BEFORE the `SW_RESTORE` at `AppController.cpp:695`.
+
+**E4. Latency contract:** interactive ≤250ms p95, reveal adds **0ms**. Guaranteed by
+ordering: `Arm()` writes the start pose BEFORE `Activate()`, so the first composed frame is
+already correct; `Start()` runs after. Cloak-until-ready is explicitly rejected — it adds
+latency, which is the one thing this must never do. Input works during the reveal because
+hit-testing walks the layout tree, not the visual transform. Verify by differencing the
+app's own log timestamps (`Log.cpp:92`, 7 fractional digits) with two new lines:
+`app: tray click -> show` and `app: window interactive {}ms after the click (reveal={})`.
+Gate: the distributions with animation on and off must overlap.
+
+**E5. Onboarding — separate flow, three steps, zero new full-screen UI.** It shares only
+`IconRect` with the reveal, not motion. (1) A tray **balloon** at icon creation —
+`ShowBalloon` already exists and is the only thing that can point AT the notification area,
+which is the one thing a new user must learn. (2) The existing **`ServiceSetup` banner**
+made focal for one window, skipped entirely when the service state is
+`Running`/`ConsoleMode`/`Unknown`, so most users see two steps. (3) A `muxc:TeachingTip`
+targeting `ConnectButton`. Persist as `"onboarding_version_seen": 1` — an **int, not a
+bool**, so a future revision can re-show — in `app_prefs.json`, written **on show, not on
+completion**, or an abandoned first run replays forever. Note this is the THIRD preference
+site, which `UpdateChecker.cpp:64-69` states verbatim is the trigger to promote
+`LoadAppPrefs`/`SaveAppPref` into Common — do that as part of this.
+
+**E6. The two risks, both real.**
+- *Unverified capability*: the plate alpha ramp uses `SetLayeredWindowAttributes`, and
+  `WS_EX_LAYERED` over a WinUI 3 DirectComposition island is not universally safe. It must
+  be proven with a real screen capture of an ACTIVE window — not `PrintWindow`, which is
+  precisely the verification gap that let the Mica bug ship. Fallback is a one-flag
+  degradation to no plate fade.
+- *The nastiest failure mode*: hiding the window mid-reveal cancels the animations but
+  leaves `RevealRoot.Scale` at ~0.96 permanently, so every subsequent open renders a
+  slightly-small window with no error anywhere.
+  `MainWindow::SetPresentationActive(false)` must cancel-to-final — the same pattern
+  `ConnectCanvas` already uses.
+
+**Resume-replay hazard: already handled**, verified in source —
+`ConnectCanvas::SetState`'s `if (state_ == state) return;` (`:650`) no-ops the replayed
+status and `blobsIn_` settles rather than replays (`:857-865`). The rule to write down: the
+reveal fires from `ShowWindowImpl` ONLY, never from the four handlers
+`ReconcileWindowPresentation:792-796` replays.
+
 ## Sequencing and why
 
-A → B → C → D, with D1 pulled forward to sit beside A3.
+A → B → C → E → D, with D1 (the asset gap) pulled forward to sit beside A3, and D4's
+first-open splash DELETED — Phase E supersedes it. E lands after C because it consumes C's
+motion tokens and its reduce-motion/presentation-gate choke points, and after B because the
+ripple has three rings in Simple and four in Advanced.
 
 A first because it is the smallest diff with the highest daily value: two attribute edits
 delete both misaligned bands, one insert/remove fixes an unusable nav item, and the MSI
