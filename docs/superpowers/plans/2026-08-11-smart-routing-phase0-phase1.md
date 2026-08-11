@@ -58,6 +58,20 @@
 **Interfaces:**
 - Produces: a green CI run on `beta/algorithm-dpi` identical to `beta/custom-server` except it pins connect and sdk to `beta/algorithm-dpi`. No code behavior change.
 
+- [ ] **Step 0: Push the connect + sdk algorithm branches to origin FIRST**
+
+CI clones connect by branch name and checks sdk out by ref; pinning the workflow to
+`beta/algorithm-dpi` before those branches exist on origin makes the job fail at clone
+time. The branches already exist locally at the same commit as `beta/custom-server`, so
+this push is content-identical and safe.
+
+```bash
+cd <connect-repo> && git push origin beta/algorithm-dpi
+cd <sdk-repo>     && git push origin beta/algorithm-dpi
+```
+
+Verify both: `git ls-remote --heads origin beta/algorithm-dpi` returns a ref in each repo.
+
 - [ ] **Step 1: Read the current clone/checkout refs**
 
 Run: `git show beta/algorithm-dpi:.github/workflows/beta-build.yml | grep -n 'custom-server\|--branch\|checkout\|ref:'`
@@ -513,10 +527,7 @@ Expected: FAIL.
 ```go
 package connect
 
-import (
-	"sync"
-	"time"
-)
+import "sync"
 
 // ProviderPrior is the coarse, persistable memory of one provider IDENTITY
 // (never an exit instance): a smoothed score, a conviction count, and a
@@ -603,13 +614,11 @@ func (p *ProviderPriors) Load(m map[string]ProviderPrior) {
 
 // PriorsStore is the persistence seam; the sdk supplies a LocalState-backed
 // implementation. A nil store means in-memory only (bare fixtures, mobile before
-// wiring). Retention/TTL is enforced by the store on load.
+// wiring). Retention/TTL is enforced by the store on load, not here.
 type PriorsStore interface {
 	Load() map[string]ProviderPrior
 	Save(map[string]ProviderPrior) error
 }
-
-var _ = time.Now // Load-time retention lives in the store, not here.
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -974,7 +983,7 @@ Expected: PASS, clean.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ip_remote_multi_client.go ip_remote_multi_client.go routing_quarantine_test.go
+git add ip_remote_multi_client.go routing_quarantine_test.go
 git commit -F <msgfile>   # "feat(routing): quarantine flap damping and re-entry ramp (zero-value-off)"
 ```
 
