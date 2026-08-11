@@ -202,6 +202,12 @@ class Tracker {
     return state_ = State::Connecting;
   }
 
+  // The last answer, without folding anything in. For callers that need the
+  // aggregate as an INPUT to a decision (the session worker deciding whether
+  // the tray's one item is a connect or a disconnect) rather than as something
+  // to render — those callers have no snapshot to fold and must not invent one.
+  State Current() const { return state_; }
+
   // When the CLOCK (not a new SDK event) will change the answer: the pending
   // degrade hold's deadline, in the same clock as Update's nowMillis, or 0.
   // Grid events stop arriving exactly when everything is stuck, so whoever

@@ -136,13 +136,18 @@ inline TunnelState TunnelStateFromString(const std::string& s) {
 
 // "The service has a live DeviceLocal and RPC listener the app can dial." True
 // for both modes. Use this for session/reattach decisions.
-inline bool IsSessionLive(TunnelState s) {
+//
+// constexpr so Common/ConnectAction.h — which is pure, and whose whole table is
+// evaluated at compile time in the selftest — can express "is there a session"
+// with the SAME predicate the rest of the product uses rather than a second
+// copy of it.
+inline constexpr bool IsSessionLive(TunnelState s) {
   return s == TunnelState::Up || s == TunnelState::RpcOnly;
 }
 
 // "Traffic is actually being carried." Use this, never IsSessionLive, for
 // anything the user reads as "connected".
-inline bool IsTunnelUp(TunnelState s) { return s == TunnelState::Up; }
+inline constexpr bool IsTunnelUp(TunnelState s) { return s == TunnelState::Up; }
 
 // ---- request payloads -----------------------------------------------------
 

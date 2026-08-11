@@ -15,6 +15,7 @@
 #include <thread>
 #include <vector>
 
+#include "ConnectAction.h"
 #include "ConnectionHealth.h"
 #include "ConsoleArgs.h"
 #include "CrashDumps.h"
@@ -3459,6 +3460,367 @@ void TestEgressCoalescer() {
   }
 }
 
+// Every row here is a bug that has already shipped, or is one refactor away
+// from shipping. The two the owner hit by name:
+//
+//   A. Disconnect drove only the SDK, so the routes, the DNS and the firewall
+//      policy stayed installed and the machine had no internet — reported, from
+//      the app's own tooltip, as a kill switch that was not on.
+//   B. Connect drove only the SDK whenever device_ was non-null, so after the
+//      tray's tunnel stop it re-issued connectBestAvailable() into a destroyed
+//      listener and never sent start_tunnel.
+//
+// The table is evaluated at COMPILE TIME wherever it can be, which is the point
+// of Decide being constexpr: a row that stops holding is a build error in the
+// static_asserts and a FAIL line here.
+void TestConnectGesture() {
+  Section("ConnectAction — what each gesture does to the session and the tunnel");
+  using gesture::ActionIsDisconnect;
+  using gesture::AppFacts;
+  using gesture::Decide;
+  using gesture::Gesture;
+  using gesture::KillSwitchIsLiftable;
+  using gesture::MachineIsCaptured;
+  using gesture::Plan;
+  using gesture::ServiceFacts;
+  using health::State;
+
+  // A service with a real tunnel up: routes in, policy connected.
+  auto tunnelUp = [] {
+    ServiceFacts f;
+    f.pipeUp = true;
+    f.known = true;
+    f.state = proto::TunnelState::Up;
+    f.mode = proto::StartMode::Tunnel;
+    f.routesInstalled = true;
+    f.wfpState = "connected";
+    return f;
+  };
+  // A service with nothing running and nothing in force.
+  auto idle = [] {
+    ServiceFacts f;
+    f.pipeUp = true;
+    f.known = true;
+    return f;
+  };
+  auto app = [](bool haveDevice) {
+    AppFacts a;
+    a.haveDevice = haveDevice;
+    return a;
+  };
+
+  // ---- bug A: Disconnect must reach the SERVICE ----
+  {
+    const Plan p = Decide(Gesture::Disconnect, tunnelUp(), app(true));
+    Check(p.stopTunnel,
+          "DISCONNECT over a live tunnel sends stop_tunnel — bug A: it used to "
+          "drive only the SDK and leave 31 capture routes on the machine");
+    Check(p.tearDownDevice,
+          "…and drops the DeviceRemote, because the stop destroys the "
+          "service-side listener it points at");
+    Check(p.sdkDisconnect, "…and tells the connect controller to stop");
+    Check(!p.startTunnel && !p.liftKillSwitch,
+          "…and starts nothing and flips no preference");
+    Check(p.why[0] != '\0', "…and says why, on a channel the log and the UI read");
+  }
+  {
+    // The kill switch must not change the answer. Whether the policy is lifted
+    // is the SERVICE's call (RevertMachineStateLocked's finalDisarm branch) and
+    // it has always lifted on a deliberate stop; the plan carries no arming
+    // intent in either direction.
+    AppFacts a = app(true);
+    a.killSwitch = true;
+    const Plan on = Decide(Gesture::Disconnect, tunnelUp(), a);
+    a.killSwitch = false;
+    const Plan off = Decide(Gesture::Disconnect, tunnelUp(), a);
+    Check(on.stopTunnel && off.stopTunnel,
+          "DISCONNECT stops the tunnel with the kill switch ON exactly as with "
+          "it off — a kill switch blocks an unexpected drop, not a deliberate "
+          "one (that would be lockdown, which is not this product)");
+    Check(on.stopTunnel == off.stopTunnel &&
+              on.tearDownDevice == off.tearDownDevice &&
+              on.liftKillSwitch == off.liftKillSwitch,
+          "…and the plan is byte-identical: no arming decision lives on this "
+          "side of the pipe");
+  }
+  {
+    // The app restarted over a tunnel it did not start. There is no device to
+    // tear down and the machine is still captured.
+    const Plan p = Decide(Gesture::Disconnect, tunnelUp(), app(false));
+    Check(p.stopTunnel && !p.tearDownDevice && !p.sdkDisconnect,
+          "DISCONNECT with no device over a live tunnel still stops the tunnel "
+          "— the machine is captured whether or not this process has a session");
+  }
+  {
+    // Nothing installed, nothing in force: only the SDK has anything to do.
+    const Plan p = Decide(Gesture::Disconnect, idle(), app(true));
+    Check(!p.stopTunnel, "DISCONNECT with nothing installed sends no stop_tunnel");
+    Check(p.tearDownDevice,
+          "…but still drops a DeviceRemote the service has no session for — "
+          "this is the row the tray escape hatch's follow-up lands on, and "
+          "without it Connect stays broken after a force-stop (bug B)");
+  }
+  {
+    // A firewall policy left armed with no tunnel: still a blocked machine, and
+    // stop_tunnel is what lifts it (StopLocked(finalDisarm=true)).
+    ServiceFacts f = idle();
+    f.wfpState = "armed";
+    const Plan p = Decide(Gesture::Disconnect, f, app(false));
+    Check(p.stopTunnel,
+          "DISCONNECT with the firewall armed and no tunnel sends stop_tunnel — "
+          "the idempotent stop is what lifts a policy holding the machine");
+  }
+
+  // ---- bug B: Connect must ask the SERVICE, not device_ ----
+  {
+    ServiceFacts f = idle();  // the state a tray force-stop leaves behind
+    const Plan p = Decide(Gesture::Connect, f, app(true));
+    Check(p.startTunnel,
+          "CONNECT with a device but NO tunnel starts one — bug B: `if "
+          "(device_) { ok = true; }` sent nothing at all here");
+    Check(p.tearDownDevice,
+          "…after dropping the stale DeviceRemote, whose service-side listener "
+          "the stop destroyed");
+    Check(!p.stopTunnel,
+          "…and does NOT send a deliberate stop first: start_tunnel is itself "
+          "the reconciler, and its internal stop holds the firewall Armed "
+          "across the gap a kill switch exists for");
+    Check(p.sdkConnect, "…and then drives the connect controller");
+  }
+  {
+    const Plan p = Decide(Gesture::Connect, idle(), app(false));
+    Check(p.startTunnel && !p.tearDownDevice && p.sdkConnect,
+          "CONNECT cold: bootstrap, then connect");
+  }
+  {
+    const Plan p = Decide(Gesture::Connect, tunnelUp(), app(true));
+    Check(!p.startTunnel && !p.tearDownDevice && !p.stopTunnel && p.sdkConnect,
+          "CONNECT with session and tunnel both live touches neither — it just "
+          "drives the controller");
+  }
+  {
+    // App restarted over a live tunnel: no device, but a session to reattach to.
+    // #40's reattach-by-instance-id runs inside the bootstrap, against a session
+    // that is genuinely live — this row is what routes it there.
+    const Plan p = Decide(Gesture::Connect, tunnelUp(), app(false));
+    Check(p.startTunnel && !p.tearDownDevice && !p.stopTunnel,
+          "CONNECT with a live tunnel and no device bootstraps (which reattaches "
+          "rather than restarting) and stops nothing");
+  }
+  {
+    // The row-click path is the same plan. It is the path that silently did
+    // nothing after a tray stop, because it shares the worker's short-circuit.
+    const Plan row = Decide(Gesture::ConnectRow, idle(), app(true));
+    const Plan btn = Decide(Gesture::Connect, idle(), app(true));
+    Check(row.startTunnel == btn.startTunnel &&
+              row.tearDownDevice == btn.tearDownDevice &&
+              row.sdkConnect == btn.sdkConnect,
+          "a LOCATION ROW click plans exactly what the connect button plans");
+  }
+  {
+    // After a failsafe teardown the routes are gone and the reason is set. The
+    // gesture that follows is an ordinary cold connect; the reason must not
+    // change the plan (it is copy, not state).
+    ServiceFacts f = idle();
+    f.stopReason = "failsafe_no_exit";
+    const Plan p = Decide(Gesture::Connect, f, app(false));
+    Check(p.startTunnel && !p.stopTunnel,
+          "CONNECT after a failsafe stop starts a tunnel; the stop reason is "
+          "an explanation, not an input");
+  }
+  {
+    // rpc-only: the mode whose promise is that it never touches this machine.
+    ServiceFacts f = idle();
+    f.state = proto::TunnelState::RpcOnly;
+    f.mode = proto::StartMode::RpcOnly;
+    AppFacts a = app(true);
+    a.wantsTunnel = false;
+    const Plan p = Decide(Gesture::Connect, f, a);
+    Check(!p.startTunnel && !p.tearDownDevice && !p.stopTunnel,
+          "CONNECT in rpc-only mode never claims a tunnel and never restarts "
+          "the session over the absence of one");
+    a.wantsTunnel = true;  // a CLAMPED session: we asked for a tunnel, got this
+    const Plan clamped = Decide(Gesture::Connect, f, a);
+    Check(!clamped.startTunnel && !clamped.tearDownDevice,
+          "…and a session the service CLAMPED to rpc-only is not torn down and "
+          "restarted on every press: the standing mode notice is what explains "
+          "it, and the existing bootstrap refusals stay authoritative");
+    const Plan disc = Decide(Gesture::Disconnect, f, a);
+    Check(!disc.stopTunnel && !disc.tearDownDevice && disc.sdkDisconnect,
+          "…and DISCONNECT there stops the controller only — there is nothing "
+          "installed on this machine to give back");
+  }
+
+  // ---- the pipe is down, or the read failed: never silence ----
+  {
+    ServiceFacts f;  // pipeUp=false, known=false
+    for (const Gesture g : {Gesture::Connect, Gesture::ConnectRow,
+                            Gesture::Disconnect, Gesture::EnsureSession,
+                            Gesture::ForceStopTunnel, Gesture::LiftKillSwitch}) {
+      const Plan p = Decide(g, f, app(true));
+      Check(p.why[0] != '\0',
+            std::string("with no control channel, gesture ") +
+                std::to_string(static_cast<int>(g)) +
+                " still says why rather than landing in silence");
+    }
+    const Plan connect = Decide(Gesture::Connect, f, app(false));
+    Check(connect.startTunnel,
+          "…and CONNECT still runs the bootstrap with the pipe down: that is "
+          "what dials it, reports the failure and arms the service-reconnect "
+          "watchdog. Making it a no-op would remove the app's only recovery "
+          "from 'the service is not running yet'");
+    const Plan stop = Decide(Gesture::ForceStopTunnel, f, app(true));
+    Check(!stop.stopTunnel,
+          "…and the escape hatch stops nothing: the adapter and the dynamic "
+          "WFP session died with the process that held them");
+  }
+  {
+    // The pipe is up but get_state did not answer. The two fallbacks are
+    // OPPOSITE, and deliberately so.
+    ServiceFacts f;
+    f.pipeUp = true;
+    f.known = false;
+    const Plan connect = Decide(Gesture::Connect, f, app(true));
+    Check(!connect.tearDownDevice && !connect.startTunnel,
+          "an UNANSWERED get_state keeps the session a CONNECT already has — a "
+          "dropped reply is not evidence that the tunnel is gone");
+    const Plan disconnect = Decide(Gesture::Disconnect, f, app(true));
+    Check(disconnect.stopTunnel && disconnect.tearDownDevice,
+          "…while a DISCONNECT is honoured in full: stop_tunnel is idempotent, "
+          "so stopping nothing is a cheaper mistake than leaving the machine "
+          "captured");
+  }
+
+  // ---- the tray's two recovery gates ----
+  Check(!KillSwitchIsLiftable(tunnelUp()),
+        "the kill-switch item is NOT offered over a connected policy");
+  {
+    ServiceFacts f = idle();
+    f.wfpState = "connected";
+    Check(!KillSwitchIsLiftable(f),
+          "…nor over a connected policy with no tunnel, which is the row that "
+          "made the old `wfp_state != \"off\"` gate a DEAD CONTROL: "
+          "SetKillSwitch's lift arm cannot act on it and returns true having "
+          "done nothing");
+    f.wfpState = "armed";
+    Check(KillSwitchIsLiftable(f), "…and IS offered while armed");
+    f.wfpState = "connecting";
+    Check(KillSwitchIsLiftable(f),
+          "…and while connecting, which the service's lift arm also handles");
+    f.wfpState = "off";
+    Check(!KillSwitchIsLiftable(f), "…and not when nothing is in force");
+    f.wfpState = "armed";
+    f.pipeUp = false;
+    Check(!KillSwitchIsLiftable(f), "…and never with no service to ask");
+  }
+  Check(MachineIsCaptured(tunnelUp()), "routes installed is a captured machine");
+  {
+    ServiceFacts f = idle();
+    f.wfpState = "armed";
+    Check(MachineIsCaptured(f),
+          "…and so is a policy in force with no routes: no internet either way");
+    f.wfpState = "";
+    Check(!MachineIsCaptured(f),
+          "…while an ABSENT wfp_state reads as off, never as a claimed policy");
+  }
+  Check(!MachineIsCaptured(idle()), "an idle service captures nothing");
+
+  // ---- the button-label rule, over the six rows the UI renders ----
+  Check(ActionIsDisconnect(tunnelUp(), State::Connected), "connected -> Disconnect");
+  Check(ActionIsDisconnect(tunnelUp(), State::Evaluating), "evaluating -> Disconnect");
+  Check(ActionIsDisconnect(tunnelUp(), State::Degraded), "degraded -> Disconnect");
+  Check(ActionIsDisconnect(tunnelUp(), State::Connecting), "connecting -> Disconnect");
+  Check(ActionIsDisconnect(tunnelUp(), State::Disconnected),
+        "SDK DISCONNECTED with routes still installed -> Disconnect. This is the "
+        "cell the owner was stuck in: the button said Connect, and Connect was "
+        "the one control that could not fix a machine with no internet");
+  {
+    ServiceFacts f = idle();
+    f.wfpState = "armed";
+    Check(!ActionIsDisconnect(f, State::Disconnected),
+          "blocked by the ARMED kill switch -> Connect. That capture is the "
+          "switch doing its stated job on a drop nobody asked for, reconnecting "
+          "is the recovery, and the two controls that lift it are named in the "
+          "copy and in the tray — the button does not have to be a third");
+    f.wfpState = "connected";
+    Check(ActionIsDisconnect(f, State::Disconnected),
+          "…but a CONNECTED policy outliving its tunnel -> Disconnect: nothing "
+          "else on any surface clears that one");
+    f.wfpState = "armed";
+    f.routesInstalled = true;
+    Check(ActionIsDisconnect(f, State::Disconnected),
+          "…and routes still installed is always Disconnect, whatever the "
+          "policy says");
+  }
+  Check(!ActionIsDisconnect(idle(), State::Disconnected),
+        "idle and uncaptured -> Connect");
+  {
+    ServiceFacts f;  // no pipe at all
+    Check(!ActionIsDisconnect(f, State::NoService), "no service -> Connect");
+  }
+  {
+    // The tray's one item resolves through that same rule, so the tray and the
+    // window can never offer opposite actions for one machine state again.
+    const Plan p = Decide(Gesture::TrayToggle, tunnelUp(), app(true));
+    Check(p.stopTunnel && !p.startTunnel,
+          "TRAY TOGGLE over a captured machine is the DISCONNECT plan");
+    const Plan cold = Decide(Gesture::TrayToggle, idle(), app(false));
+    Check(cold.startTunnel && !cold.stopTunnel,
+          "…and the CONNECT plan over an idle one");
+  }
+
+  // ---- the escape hatch keeps working, and stops breaking Connect ----
+  {
+    const Plan p = Decide(Gesture::ForceStopTunnel, tunnelUp(), app(true));
+    Check(p.stopTunnel && p.tearDownDevice,
+          "FORCE STOP takes the tunnel down AND drops the session pointing at "
+          "it — the second half is what lets Connect work afterwards");
+  }
+
+  // ---- EnsureSession never connects to anything ----
+  {
+    const Plan p = Decide(Gesture::EnsureSession, idle(), app(false));
+    Check(p.startTunnel && !p.sdkConnect,
+          "ENSURE SESSION builds a session and connects to nothing");
+    const Plan live = Decide(Gesture::EnsureSession, tunnelUp(), app(true));
+    Check(!live.startTunnel && !live.stopTunnel && !live.sdkConnect,
+          "…and is a no-op when the session is already live");
+  }
+
+  // ---- compile-time proof of the two rows the owner reported ----
+  {
+    constexpr ServiceFacts kCaptured = [] {
+      ServiceFacts f;
+      f.pipeUp = true;
+      f.known = true;
+      f.state = proto::TunnelState::Up;
+      f.routesInstalled = true;
+      f.wfpState = "connected";
+      return f;
+    }();
+    constexpr AppFacts kWithDevice = [] {
+      AppFacts a;
+      a.haveDevice = true;
+      return a;
+    }();
+    static_assert(Decide(Gesture::Disconnect, kCaptured, kWithDevice).stopTunnel,
+                  "bug A: a disconnect over a live tunnel must reach the service");
+    static_assert(ActionIsDisconnect(kCaptured, State::Disconnected),
+                  "bug A: no surface may offer Connect over a captured machine");
+    constexpr ServiceFacts kStopped = [] {
+      ServiceFacts f;
+      f.pipeUp = true;
+      f.known = true;
+      return f;
+    }();
+    static_assert(Decide(Gesture::Connect, kStopped, kWithDevice).startTunnel,
+                  "bug B: a connect with a stale device must start a tunnel");
+    Check(true,
+          "the two owner-reported rows are static_asserts — they cannot regress "
+          "without failing the build");
+  }
+}
+
 int RunSelfTest() {
   g_pass = 0;
   g_fail = 0;
@@ -3494,6 +3856,7 @@ int RunSelfTest() {
   TestUpdateFormats();
   TestInstallVerb();
   TestConnectionHealth();
+  TestConnectGesture();
   TestRpcSessionBlob();
   TestGoCrashCapture();
   TestThreadGuard();

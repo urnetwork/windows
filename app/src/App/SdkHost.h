@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ConnectAction.h"
 #include "ConnectionHealth.h"
 #include "GoogleSignIn.h"
 #include "Sdk.h"
@@ -647,6 +648,13 @@ class SdkHost {
   // in.
   bool HasSession() const { return hasSession_.load(std::memory_order_acquire); }
 
+  // Whether the control channel to the service is up. Distinct from HasSession:
+  // the service can be perfectly reachable with no session on it, and — the case
+  // that matters — a status the app is still rendering can belong to a service
+  // that has since gone away. The tray's recovery gates need to tell those
+  // apart. PipeClient's flag is atomic; this takes no lock of ours.
+  bool ServiceConnected() const { return service_.IsConnected(); }
+
   // ---- location/provider chooser -------------------------------------------
   // THE PROVIDER LIST IS ALWAYS AVAILABLE. It does not need a tunnel, a service
   // session, a DeviceRemote or elevation - GET /network/provider-locations is a
@@ -1113,6 +1121,20 @@ class SdkHost {
     // silently discarded. An explicit press or a Disconnect never is.
     bool coalesced = false;
   };
+  // The queued intent in the vocabulary the pure decision table speaks
+  // (Common/ConnectAction.h). Location covers both the immediate "connect to
+  // this one" and the coalesced row click: they reach the same worker and want
+  // the same plan, and the table pins them as separate rows so that a future
+  // divergence has to be a deliberate one.
+  static constexpr gesture::Gesture GestureOf(ConnectKind kind) {
+    switch (kind) {
+      case ConnectKind::BestAvailable: return gesture::Gesture::Connect;
+      case ConnectKind::Location:      return gesture::Gesture::ConnectRow;
+      case ConnectKind::Disconnect:    return gesture::Gesture::Disconnect;
+      case ConnectKind::None:          break;
+    }
+    return gesture::Gesture::EnsureSession;
+  }
   // Record the request and make sure a worker is running. Takes ONLY
   // pendingMutex_ — never mutex_ — so it is safe from the UI thread while a
   // bootstrap is in flight.
@@ -1219,7 +1241,21 @@ class SdkHost {
   // key material is device-scoped and survives re-registration). Logout
   // clears the auth and severs the identity on top of this;
   // RegisterNetworkClient replaces the auth. Caller holds mutex_.
-  void TeardownSessionLocked();
+  //
+  // `stopTunnel` is the ORDERING FIX as well as a switch. When true the
+  // stop_tunnel goes out FIRST, before device_->close() — the app-side mirror
+  // of the rule StopBudget.h established in the service: the cheap, local,
+  // safety-critical half (routes, dns, firewall — 133 ms, measured) must never
+  // be sequenced behind the half that can block indefinitely. It used to be the
+  // other way round here, so a wedged DeviceRemote::close() held the machine's
+  // routes hostage on the logout path.
+  //
+  // The session worker passes FALSE, because it sequences the stop itself
+  // (gesture::Plan::stopTunnel) and because Connect needs the opposite of a
+  // stop: dropping a stale DeviceRemote must NOT lift the firewall policy, or
+  // a reconnect with the kill switch on would open the machine for the length
+  // of a bring-up. start_tunnel is the reconciler there.
+  void TeardownSessionLocked(bool stopTunnel = true);
   void SetupWalletCallbacks();
   // The wallet signed the challenge: authLogin{wallet_auth}. `signature` is what
   // the chain's verifier expects (base64 for SOL, hex for TAO).
@@ -1231,6 +1267,14 @@ class SdkHost {
   void AuthLoginWithGoogle(const std::string& idToken, std::function<void(AuthResult)> done);
   // Bring up the tunnel (service) and the controlling DeviceRemote.
   bool BootstrapSession();
+  // ASK THE SERVICE WHAT IS ACTUALLY INSTALLED. One get_state rpc, once per
+  // gesture, and the ONLY admissible answer to "is there a tunnel right now" —
+  // see the contract in Common/ConnectAction.h. Returns a default-constructed
+  // status (service_version empty, which is what marks it "no answer") when
+  // there is no channel or the call failed; the decision reads that as unknown
+  // and keeps whatever session it has rather than tearing one down over a
+  // dropped reply. Caller holds mutex_.
+  proto::TunnelStatus CurrentServiceStatusLocked();
   void SetAuthState(AuthState s, const std::string& error = {});
   void SubscribeStats();          // caller holds mutex_; opens presentation controllers
   LiveStats ReadStats();          // read the current snapshot from the SDK getters
@@ -1450,6 +1494,15 @@ class SdkHost {
   // Both default to the DEGRADED reading, so a status pushed before the service
   // has ever spoken understates protection rather than overstating it.
   std::atomic<bool> lastServiceDnsApplied_{false};
+  // ...and the third, which used to be SYNTHESISED from the mode flag
+  // (`mode == Tunnel && service_.IsConnected()`). That inference is the class
+  // of belief the disconnect bug was made of: after a Disconnect the mode flag
+  // and the pipe were both still exactly as they had been, so every synthesised
+  // status went on asserting "routes are installed right now" — the field
+  // Protocol.h nominates as THE answer to "is my traffic going through the
+  // tunnel" — with no idea whether they were. Carried from the service like its
+  // two neighbours instead; the service is the process that owns the routes.
+  std::atomic<bool> lastServiceRoutesInstalled_{false};
   mutable std::mutex wfpStateMutex_;
   std::string lastServiceWfpState_ = "off";
   // ---- aggregate connection health (#27) ------------------------------------

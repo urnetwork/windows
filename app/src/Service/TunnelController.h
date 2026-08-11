@@ -150,6 +150,24 @@ class TunnelController {
   // Clear persisted auth/session state (mirrors the macOS logout message).
   void Logout();
 
+  // THE STATUS THE APP DECIDES ON, and it must never block.
+  //
+  // The app's whole connect/disconnect lifecycle now hangs off one get_state per
+  // gesture (Common/ConnectAction.h): "is there a tunnel right now" is answered
+  // here, by the process that owns the routes, instead of being inferred on the
+  // far side from a pointer. That makes two properties load-bearing.
+  //
+  //   NON-BLOCKING. A get_state that queues behind a wedged connect is useless
+  //   exactly when it matters — the same argument StopBudget.h makes about Stop.
+  //   This takes NO session lock: it copies a snapshot published at every write
+  //   site, plus the two lock-free publishers below.
+  //
+  //   COHERENT. Lock-free by CONSTRUCTION, not by omission. It used to read
+  //   state_, the netConfig_ unique_ptr, wfp_'s state and two std::strings with
+  //   no synchronisation at all against StartLocked/StopLocked — the scalar
+  //   reads were races, and the string reads could observe a buffer being freed
+  //   underneath them. A whole-snapshot mirror also rules out combinations that
+  //   were never true at any instant (state=up with routes=false).
   proto::TunnelStatus Status();
 
   // "Routes are installed right now" marker under the service storage root.
@@ -173,11 +191,12 @@ class TunnelController {
   // THE ONLY WAY state_ IS WRITTEN, so that the lock-free mirror the ~1 Hz
   // heartbeat reads cannot drift from the real state.
   //
-  // The heartbeat CANNOT call Status(): that takes mutex_, and a connect
-  // attempt wedged inside the SDK holds mutex_ forever (see the
-  // connecting-window note below) — which is exactly the state a heartbeat most
-  // needs to be able to record. Publishing on every write is what lets a
-  // lock-free reader be correct rather than merely non-blocking.
+  // The heartbeat CANNOT compose a status: that reads session state under
+  // mutex_, and a connect attempt wedged inside the SDK holds mutex_ forever
+  // (see the connecting-window note below) — which is exactly the state a
+  // heartbeat most needs to be able to record. Publishing on every write is
+  // what lets a lock-free reader be correct rather than merely non-blocking.
+  // The same discipline now backs Status(); see ComposeStatusLocked.
   //
   // Nothing here may block: this runs on the teardown path ahead of the route
   // revert. The glog flush that belongs to a transition lives at the RPC
@@ -185,6 +204,33 @@ class TunnelController {
   //
   // Caller holds mutex_.
   void SetStateLocked(proto::TunnelState next);
+  // Build a status from the objects that OWN each fact — the old Status() body,
+  // unchanged, minus the two lock-free publishers Status() overlays live.
+  // Caller holds mutex_.
+  proto::TunnelStatus ComposeStatusLocked();
+  // Compose, publish to the mirror Status() serves, and return it. Every
+  // internal `return Status()` is this: the composition is what the caller
+  // wants AND the publish the lock-free reader needs, so the two cannot drift.
+  // Caller holds mutex_.
+  proto::TunnelStatus StatusLocked();
+  // The same publish with the value discarded, for the write sites that change
+  // a status-visible fact without composing one. THE RULE: anything that moves
+  // state_, netConfig_, wfp_'s state, startMode_, rpcHostPort_, error_ or
+  // upSinceMillis_ must be followed by a publish before mutex_ is released.
+  // SetStateLocked and ApplyWfpLocked are the two funnels that cover most of
+  // it; the rest are named at their call sites. Caller holds mutex_.
+  void PublishStatusLocked();
+  // The same publish for the three paths that change this machine's state
+  // WITHOUT mutex_ — the connecting watchdog narrowing the DNS window, and
+  // Stop()/FailsafeStop() escaping a wedged lock through CrashRevert. They
+  // cannot compose a status (that reads session state), so they patch the two
+  // facts they actually changed. Without this the app would keep being told
+  // "routes installed, policy connecting" about a machine those very paths just
+  // handed back — and its disconnect decision now rides on both fields.
+  //
+  // `routesReverted` is for the CrashRevert paths; the watchdog passes false
+  // because it only ever moves the firewall.
+  void RepublishMachineFactsLockFree(bool routesReverted);
   proto::TunnelStatus StartLocked(const proto::StartTunnel& config);
   // Steps 6-8: network settings, split tunnel, packet pump. Split out of
   // StartLocked so the destructive half of the sequence is a named unit with
@@ -396,6 +442,27 @@ class TunnelController {
   // the RPC thread, and pointing at static storage means the read side needs no
   // allocation, no lock and no lifetime rule.
   std::atomic<const char*> lastStopReason_{kStopReasonNone};
+
+  // --- the snapshot Status() serves without a session lock -------------------
+  //
+  // Written under mutex_ (by PublishStatusLocked, at every write site), read
+  // under statusMirrorMutex_ ALONE. That lock is never held across anything
+  // that can block — a struct copy in, a struct copy out — and it is always
+  // innermost, so it cannot participate in the wedge it exists to survive.
+  // A whole-snapshot mirror rather than per-field atomics on purpose: the app
+  // reads (IsSessionLive(state), routes_installed) as a PAIR, and per-field
+  // publication would let it observe a combination that was never true.
+  //
+  // The two lock-free publishers above (lastStopReason_, the watchdog's armed
+  // flag) are deliberately NOT mirrored: Status() overlays them live, so they
+  // are still correct on the one path where they matter most — a status served
+  // while a failsafe teardown is in flight, i.e. before the publish that
+  // teardown will eventually do.
+  mutable std::mutex statusMirrorMutex_;
+  proto::TunnelStatus statusMirror_;
+  // upSinceMillis_'s mirror, kept separate so Status() can age it against a
+  // live clock rather than serve the uptime as of the last publish.
+  std::atomic<int64_t> upSinceMirror_{0};
 
   // The dead-tunnel failsafe. DECLARED LAST so that destruction order — members
   // die in reverse declaration order — stops its threads BEFORE device_ and the

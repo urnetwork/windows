@@ -140,10 +140,20 @@ class ConnectPage {
   enum class ConnectStatus { Disconnected, Connecting, DestinationSet, Connected };
 
   static ConnectStatus ParseConnectStatus(std::string const& value);
-  // What the connect button does right now, from the SDK status only (NOT the
-  // tunnel — see the definition): anything other than a settled disconnected
-  // state means the press disconnects, and in a transition aborts.
+  // What the connect button does right now, from the ONE shared rule in
+  // Common/ConnectAction.h: the action is Disconnect whenever there is anything
+  // for a disconnect to DO — the SDK is driving something, OR this machine is
+  // captured (routes installed, or a firewall policy in force). The tray asks
+  // the same question of the same predicate.
   bool ConnectActionIsDisconnect() const;
+  // The service facts the shared rule needs, from the window's one cache. The
+  // string_view points into that cache, which outlives every call here.
+  urnw::gesture::ServiceFacts CurrentServiceFacts() const;
+  // The health state this page would RENDER right now: health_ reconciled
+  // against the SDK's own connect status. Factored out of ApplyConnectStatus so
+  // the button label and the status line cannot be computed from two different
+  // readings of the same instant.
+  urnw::health::State RenderHealth() const;
   // The connect action's two forms (App.xaml UrPaneActionPrimaryStyle /
   // ...SecondaryStyle): filled blue while there is something to do, outlined
   // once the tunnel is up. Called only from ApplyConnectStatus, which is the

@@ -410,10 +410,32 @@ void SettingsPage::BuildConnectionsSection(Panel const& host) {
   Heading(host, Loc("site_app_connections"), hstring{});
   auto card = Card(host);
 
-  // Kill switch. The note is the shipped one-liner for what it actually does,
-  // because "kill switch" alone does not say which way it runs.
-  killSwitch_ = ToggleRow(card, Loc("kill_switch"), Loc("site_app_kill_switch_note"));
+  // Kill switch. The shipped note — "Block browser traffic when URnetwork is
+  // disconnected" (site_app_kill_switch_note) — is wrong twice, and the second
+  // way is what the owner ran into. It is not browser-only: it is a machine-wide
+  // WFP policy. And "when disconnected" is the exact reading under which a
+  // machine left blocked after pressing Disconnect looks CORRECT — it is the
+  // sentence that made a plain bug read as a feature. What this guards is an
+  // UNEXPECTED loss, and nothing else.
+  killSwitch_ = ToggleRow(
+      card, Loc("kill_switch"),
+      Adv("adv_kill_switch_note",
+          L"If the tunnel drops unexpectedly, block this device's traffic "
+          L"instead of letting it out unprotected."));
   killSwitch_.Toggled([this](auto const&, auto const&) { OnKillSwitchToggled(); });
+  // What the toggle does NOT do, said before the disclosure below because it is
+  // the question a user reading the word "kill switch" actually has. It is also
+  // a promise the service has always kept and the app used not to: a deliberate
+  // stop lifts the policy whatever this toggle says
+  // (TunnelController::RevertMachineStateLocked's finalDisarm branch). Lockdown
+  // — block whenever not connected — is a different product decision with its
+  // own separately-worded toggle, and it is deliberately not shipped here.
+  Supporting(card, Adv("adv_kill_switch_deliberate",
+                       L"Pressing Disconnect always restores your internet "
+                       L"straight away. The kill switch only applies to drops "
+                       L"you did not ask for - a tunnel that stops carrying "
+                       L"traffic, a network change, or the URnetwork service "
+                       L"stopping."));
   // The one thing the shipped note does not say, and the one thing that is not
   // true of this feature: "nothing leaves" holds while idle, but NOT during a
   // connection attempt. The service opens a DNS hole to reach our servers, and

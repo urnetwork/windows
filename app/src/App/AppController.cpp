@@ -81,31 +81,50 @@ void AppController::Start() {
   TrayIcon::Callbacks cb;
   cb.onLeftClick = [this](POINT anchor) { ShowWindow(&anchor); };
   cb.onShowWindow = [this] { ShowWindow(nullptr); };
+  // ONE RULE, SHARED WITH THE WINDOW. The tray used to test `state == Up` while
+  // the connect page tested the SDK's connect status, and in the state the owner
+  // hit — SDK disconnected, tunnel still installed, machine blocked — the two
+  // disagreed: the page offered "Disconnect" and the tray offered "Connect",
+  // over a machine that needed exactly one of them. Both now ask the same
+  // predicate, which says Disconnect whenever there is anything for a disconnect
+  // to DO.
   cb.onConnectToggle = [this] {
-    if (connected_)
+    if (gesture::ActionIsDisconnect(CurrentServiceFacts(), TrayHealth()))
       sdk_.Disconnect();
     else
       sdk_.ConnectBestAvailable();
   };
-  cb.isConnected = [this] { return connected_; };
+  cb.isConnected = [this] {
+    return gesture::ActionIsDisconnect(CurrentServiceFacts(), TrayHealth());
+  };
   // The two recovery items. Both read the LAST STATUS THE SERVICE PUSHED rather
   // than any app-side belief: the whole point is that they are reachable when
   // the app's own view of the world is the thing that has gone wrong (the window
   // is closed, the connect controller is stuck, the tunnel is up over nothing).
+  //
+  // NARROWED, now that Disconnect does this job on the happy path. Two items
+  // promising "restore my internet" is a worse menu than one; this one is what
+  // is left when the ordinary Disconnect is not the obvious answer — a machine
+  // still captured while the app has no live session, or a bring-up wedged
+  // before it ever reported Up. The armed kill switch is excluded because the
+  // item below is the one that lifts it, with a label that says so.
   cb.canStopTunnel = [this] {
-    return lastTunnelStatus_ && lastTunnelStatus_->routes_installed;
+    const gesture::ServiceFacts f = CurrentServiceFacts();
+    return gesture::MachineIsCaptured(f) && !gesture::BlockedByKillSwitch(f) &&
+           !(connected_ && sdk_.HasSession());
   };
   cb.onStopTunnel = [this] {
-    LogInfo("app: tray -> turn the tunnel off");
+    LogInfo("app: tray -> force the tunnel off (recovery)");
     OnTunnelState(sdk_.StopServiceTunnel());
   };
-  // "A firewall policy is in force with no tunnel up" — i.e. the kill switch is
-  // holding this machine blocked. Not offered while the tunnel is UP: the
-  // connected policy is the leak fix and applies whether or not the switch is
-  // on, so turning the switch off there would change nothing and look broken.
+  // "The kill switch is holding this machine blocked, AND the service can lift
+  // it if asked." The second half is the part that was missing: the old gate was
+  // `wfp_state != "off"`, which offered "unblock this machine" over a CONNECTED
+  // policy — where TunnelController::SetKillSwitch's lift arm does nothing and
+  // returns true. That was a control that existed and provably could not do what
+  // its label said, offered in exactly the state the owner was stuck in.
   cb.canLiftKillSwitch = [this] {
-    return lastTunnelStatus_ && lastTunnelStatus_->wfp_state != "off" &&
-           lastTunnelStatus_->state != proto::TunnelState::Up;
+    return gesture::KillSwitchIsLiftable(CurrentServiceFacts());
   };
   cb.onLiftKillSwitch = [this] {
     LogInfo("app: tray -> turn the kill switch off");
@@ -367,6 +386,27 @@ void AppController::OnStats(const LiveStats& stats) {
   }
 }
 
+gesture::ServiceFacts AppController::CurrentServiceFacts() const {
+  gesture::ServiceFacts f;
+  if (!lastTunnelStatus_) return f;
+  // The pipe is up if the service has ever pushed us a status and has not since
+  // told us it went away (OnServiceDisconnected pushes the honest all-defaults
+  // status, which lands here).
+  f.pipeUp = sdk_.ServiceConnected();
+  f.known = f.pipeUp;
+  f.state = lastTunnelStatus_->state;
+  f.mode = lastTunnelStatus_->mode;
+  f.routesInstalled = lastTunnelStatus_->routes_installed;
+  f.wfpState = lastTunnelStatus_->wfp_state;
+  f.stopReason = lastTunnelStatus_->stop_reason;
+  return f;
+}
+
+health::State AppController::TrayHealth() const {
+  if (trayHealth_) return *trayHealth_;
+  return connected_ ? health::State::Connected : health::State::Disconnected;
+}
+
 void AppController::UpdateTray() {
   // v1 maps provide=false; connect reflects the tunnel AND (#27) the aggregate
   // health: the connected icon means "proven working", so Evaluating/Degraded
@@ -389,13 +429,39 @@ void AppController::UpdateTray() {
   // new symbol to learn for a state that lasts until the next click — so the
   // tooltip is what carries the distinction.
   if (!connected_ && lastTunnelStatus_) {
-    if (lastTunnelStatus_->wfp_state != "off") {
+    // ROUTES FIRST, and this row is the tooltip half of the owner's bug A. A
+    // machine whose capture routes are still installed with nothing carrying
+    // them has no internet — and the app used to render that as "Blocked (kill
+    // switch on)" with the kill switch OFF, which is the sentence that got the
+    // behaviour reported as a kill switch. After the fix this state is a
+    // fraction of a second wide (the stop is in flight), so the word is the
+    // transient one rather than an alarm.
+    if (lastTunnelStatus_->routes_installed) {
+      tray_.SetTooltip(tip + L" — " +
+                       pages::AdvW("conn_tray_disconnecting",
+                                   L"Disconnecting — traffic is still going "
+                                   L"through the tunnel"));
+      return;
+    }
+    if (lastTunnelStatus_->wfp_state == "armed") {
       // The one the owner has to be able to read at a glance: the machine is
       // blocked ON PURPOSE and nothing is leaking, which is a completely
-      // different situation from a tunnel that failed open.
+      // different situation from a tunnel that failed open. Gated on "armed"
+      // rather than on "not off" — that is the only state the kill switch put
+      // this machine in, and the only one the menu's lift item can undo.
       tray_.SetTooltip(tip + L" — " +
                        pages::AdvW("conn_tray_blocked_kill_switch",
                                    L"Blocked (kill switch on)"));
+      return;
+    }
+    if (lastTunnelStatus_->wfp_state != "off") {
+      // A policy in force that the kill switch did not put there: a connect
+      // attempt in flight, or a connected policy outliving its tunnel. Blocked
+      // either way, and the honest word for it is not "kill switch".
+      tray_.SetTooltip(tip + L" — " +
+                       pages::AdvW("conn_tray_blocked_no_tunnel",
+                                   L"Blocked — leak protection is still in "
+                                   L"force with no tunnel up"));
       return;
     }
     if (proto::IsFailsafeStop(lastTunnelStatus_->stop_reason)) {

@@ -41,6 +41,7 @@
   </ItemDefinitionGroup>
 
   <ItemGroup>
+    <ClInclude Include="ConnectAction.h" />
     <ClInclude Include="ConnectionHealth.h" />
     <ClInclude Include="CrashDumps.h" />
     <ClInclude Include="Heartbeat.h" />

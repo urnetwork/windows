@@ -286,15 +286,55 @@ ConnectPage::ConnectStatus ConnectPage::ParseConnectStatus(std::string const& va
   return ConnectStatus::Disconnected;
 }
 
+urnw::gesture::ServiceFacts ConnectPage::CurrentServiceFacts() const {
+  urnw::gesture::ServiceFacts f;
+  f.pipeUp = health_ != urnw::health::State::NoService;
+  f.known = f.pipeUp;
+  f.routesInstalled = w_.statusRoutesInstalled();
+  f.mode = w_.statusSessionMode();
+  f.wfpState = w_.statusWfpState();
+  f.stopReason = w_.statusStopReason();
+  f.state = connected_ ? urnw::proto::TunnelState::Up
+                       : urnw::proto::TunnelState::Stopped;
+  return f;
+}
+
 bool ConnectPage::ConnectActionIsDisconnect() const {
-  // The SDK status ALONE, deliberately -- not connected_. The two are not
-  // interchangeable: connected_ is also fed by the service pipe's TunnelStatus
-  // (SdkHost wires service_.SetStateHandler straight to onTunnel_), so the
-  // tunnel can be up with no destination selected, and the old `if (connected_)`
-  // test then offered "Disconnect" while the status line read "Ready to
-  // connect" -- leaving no way to connect at all. The button and the line above
-  // it must never disagree; both now read the same signal.
-  return connectStatus_ != ConnectStatus::Disconnected;
+  // It used to be `connectStatus_ != Disconnected` — the SDK status ALONE, and
+  // deliberately so: connected_ is also fed by the service pipe's TunnelStatus,
+  // so the tunnel can be up with no destination selected, and testing that
+  // alone offered "Disconnect" while the line above read "Ready to connect".
+  //
+  // The SDK status alone was still not the whole question, and the gap is the
+  // owner's bug A. Press Disconnect: the SDK settles to DISCONNECTED, this
+  // returned false, the button flipped back to "Connect" — over a machine whose
+  // capture routes were still installed and which therefore had no internet at
+  // all. The button offering to CONNECT was the only control on screen, and it
+  // was the wrong one. Both halves are asked now, through the rule the tray
+  // shares: anything the SDK is doing, OR a machine still captured.
+  return urnw::gesture::ActionIsDisconnect(CurrentServiceFacts(), RenderHealth());
+}
+
+urnw::health::State ConnectPage::RenderHealth() const {
+  using Health = urnw::health::State;
+  // The optimistic local Connecting (a press writes connectStatus_ ahead of
+  // any SDK push) and the SDK's own transitional status outrank a health value
+  // from an older snapshot — but never outrank the sharper evidence states
+  // (Evaluating/Degraded), which are already about a live transition.
+  Health render = health_;
+  if ((connectStatus_ == ConnectStatus::Connecting ||
+       connectStatus_ == ConnectStatus::DestinationSet) &&
+      (render == Health::Disconnected || render == Health::NoService ||
+       render == Health::Connected)) {
+    render = Health::Connecting;
+  }
+  // ...and the settled idle status outranks a stale ACTIVE health: an unknown/
+  // clamped status must never leave the line claiming a connection.
+  if (connectStatus_ == ConnectStatus::Disconnected &&
+      render != Health::NoService && render != Health::Disconnected) {
+    render = Health::Disconnected;
+  }
+  return render;
 }
 
 // The service-setup banner (beta spec §3). Renders MainWindow's one snapshot
@@ -496,23 +536,14 @@ void ConnectPage::ApplyUpdateChecker(urnw::UpdateChecker::Snapshot const& snap) 
 // reconciled below for the one instant they can lag each other.
 void ConnectPage::ApplyConnectStatus() {
   using Health = urnw::health::State;
-  // The optimistic local Connecting (a press writes connectStatus_ ahead of
-  // any SDK push) and the SDK's own transitional status outrank a health value
-  // from an older snapshot — but never outrank the sharper evidence states
-  // (Evaluating/Degraded), which are already about a live transition.
-  Health render = health_;
-  if ((connectStatus_ == ConnectStatus::Connecting ||
-       connectStatus_ == ConnectStatus::DestinationSet) &&
-      (render == Health::Disconnected || render == Health::NoService ||
-       render == Health::Connected)) {
-    render = Health::Connecting;
-  }
-  // ...and the settled idle status outranks a stale ACTIVE health: an unknown/
-  // clamped status must never leave the line claiming a connection.
-  if (connectStatus_ == ConnectStatus::Disconnected &&
-      render != Health::NoService && render != Health::Disconnected) {
-    render = Health::Disconnected;
-  }
+  // One reading of this instant, shared with the button label — see
+  // RenderHealth, which used to be inlined here and therefore could not be.
+  const Health render = RenderHealth();
+  // THE SECOND AXIS. Health is a pure function of what the SDK is CARRYING, and
+  // that is right; what no surface consulted was the service fact sitting one
+  // field away. The rule this adds is one line: no surface may print the word
+  // for Disconnected while this machine's routes are still installed.
+  const bool captured = w_.statusRoutesInstalled();
 
   hstring text;
   winrt::Windows::UI::Color dot = urnw::colors::kStatusIdle;
@@ -568,6 +599,34 @@ void ConnectPage::ApplyConnectStatus() {
       // no longer folded into the hero headline; it lives in the status strip.
       // (NoService deliberately shares the word: the service-setup banner above
       // this line is the surface that explains WHY there is no service.)
+      //
+      // ...UNLESS THE MACHINE IS STILL CAPTURED. This is the row that did not
+      // exist, and its absence is the whole of the owner's bug A: the SDK had
+      // stopped, so the page printed "Disconnected" — while 31 capture routes
+      // and a firewall policy were still in force and the machine had no
+      // internet at all. After the fix this state is the fraction of a second
+      // in which the stop is in flight, so the word is a transient one; if it
+      // persists, the tray's recovery item is the escape and the button below
+      // still reads Disconnect, which is the control that clears it.
+      if (captured) {
+        text = Adv("conn_disconnecting",
+                   L"Disconnecting — your traffic is still going through the "
+                   L"tunnel");
+        dot = urnw::colors::kStatusConnecting;
+        heroConnection = urnw::ConnectCanvas::State::Connecting;
+        break;
+      }
+      // ...and the OTHER honest word this line never had. Routes are gone but
+      // the armed policy is still holding this machine, which is the kill
+      // switch doing exactly what it says — and "Disconnected" describes it
+      // about as well as it described the captured state above. It is also the
+      // headline the tray tooltip has always used; the two now agree.
+      if (w_.statusWfpState() == "armed") {
+        text = Adv("conn_blocked_kill_switch", L"Blocked — kill switch on");
+        dot = urnw::colors::kUrCoral;
+        heroConnection = urnw::ConnectCanvas::State::Disconnected;
+        break;
+      }
       text = Loc("disconnected");
       dot = urnw::colors::kStatusIdle;
       heroConnection = urnw::ConnectCanvas::State::Disconnected;

@@ -108,6 +108,15 @@ struct MainWindow : MainWindowT<MainWindow> {
   // mystery.
   std::string const& statusStopReason() const { return statusStopReason_; }
   bool statusFailsafeArmed() const { return statusFailsafeArmed_; }
+  // "Routes and DNS are installed on this machine right now", straight from the
+  // service. This has been cached here since D5 and READ BY NOTHING, which is
+  // exactly how the connect page could print "Disconnected" over a machine with
+  // no internet: the health derivation is a pure function of what the SDK is
+  // carrying, and the service fact sitting one field away was never consulted.
+  // The connect page's status line, its button label and the tray all read it
+  // now, through the one shared rule in Common/ConnectAction.h.
+  bool statusRoutesInstalled() const { return statusRoutesInstalled_; }
+  urnw::proto::StartMode statusSessionMode() const { return statusSessionMode_; }
 
   // ---- the in-app service manager (beta spec §3) ----
   // The elevated `urnetworkd uninstall`, reached from Settings' confirm dialog.

@@ -108,6 +108,7 @@ void ClearRpcSession() {
   std::filesystem::remove(RpcSessionFile(), ec);
 }
 
+
 // ---- the app's own preferences (D5) ----------------------------------------
 //
 // See Paths.h AppPrefsFile for why this is not the SDK LocalState. It reads and
@@ -1580,6 +1581,10 @@ void SdkHost::PublishSessionFailure(const std::string& why) {
 
 void SdkHost::AdoptServiceFacts(const proto::TunnelStatus& st) {
   lastServiceDnsApplied_.store(st.dns_applied);
+  // The third service-owned fact, adopted here for the same reason as the other
+  // two: this process cannot observe it, and inferring it from a mode flag is
+  // what let the app report a captured machine as disconnected.
+  lastServiceRoutesInstalled_.store(st.routes_installed);
   // R1 for this process. Keyed on routes_installed and NOT on state: that field
   // is the one Protocol.h nominates as the answer to "is my traffic going
   // through the tunnel", it is read off the object that owns the routes, and it
@@ -1642,6 +1647,7 @@ void SdkHost::OnServiceDisconnected() {
   // are on, and the last throughput sample stays on screen — for as long as the
   // window is open, because no further push is coming from anywhere.
   lastServiceDnsApplied_.store(false);
+  lastServiceRoutesInstalled_.store(false);
   // ...and the tun went with it, so nothing must stay pinned to the interface
   // that existed to avoid it. A binding retained across the service's death
   // would outlive the reason for it and pin this process to one NIC for the rest
@@ -1678,17 +1684,15 @@ proto::TunnelStatus SdkHost::SessionStatus(bool haveLocation) const {
   proto::TunnelStatus st;
   const proto::StartMode mode = sessionMode_.load();
   st.mode = mode;
-  // True for the whole life of a tunnel session: step 6 ran before the service
-  // ever reported it live. Not inferred from the location â€” a tunnel with no
-  // location selected still has its routes installed.
-  //
-  // ...for as long as the service that installed them is still there. This is a
-  // status this process SYNTHESISES, so without the second half it went on
-  // asserting "routes are installed right now" — the field Protocol.h nominates
-  // as the one to trust for "is my traffic going through the tunnel" — out of a
-  // mode flag that survives the service's death by design.
-  st.routes_installed =
-      mode == proto::StartMode::Tunnel && service_.IsConnected();
+  // THE LAST VALUE THE SERVICE REPORTED, not an inference. This used to read
+  // `mode == Tunnel && service_.IsConnected()` — true for the whole life of a
+  // tunnel session by construction, because both halves survive a stop. So
+  // after a Disconnect, every status this process synthesised still asserted
+  // "routes are installed right now" over a machine whose routes had just been
+  // given back (or, worse, still claimed them honestly while the button said
+  // Disconnected — which was the bug). It is the service that owns the routes;
+  // carry what it said, exactly as dns_applied and wfp_state below already do.
+  st.routes_installed = lastServiceRoutesInstalled_.load();
   // These two are the SERVICE's to report — this process cannot observe either
   // — so carry the last value it sent rather than the struct default. Defaulting
   // them here would make every app-synthesised push claim "dns not applied, no
@@ -3739,6 +3743,11 @@ void SdkHost::SessionWorkerLoop() {
       // still answers its cached getters — connecting into one is the "hero
       // stays green over a tunnel that is gone" failure, from the other side.
       // Drop it and build a real one.
+      //
+      // Kept ahead of the decision below rather than folded into it: with the
+      // pipe gone there is nothing left to stop (the adapter and the dynamic
+      // WFP session died with the process that held them), so this is the one
+      // teardown that must NOT try to send a stop_tunnel down a dead channel.
       if (device_ && !service_.IsConnected()) {
         LogWarn("sdkhost: the session's service is gone; tearing the dead "
                 "DeviceRemote down before starting a new session ({})",
@@ -3749,23 +3758,108 @@ void SdkHost::SessionWorkerLoop() {
           LogWarn("sdkhost: teardown of the dead session failed: {}", e.what());
         }
       }
-      if (device_) {
-        ok = true;  // already live; nothing to start
-      } else if (req.kind == ConnectKind::Disconnect) {
-        // Nothing to disconnect FROM, and starting a tunnel in order to stop it
-        // would be absurd. Fall through to the stats push, which is what puts
-        // the button back to its idle label.
-        PublishStats();
-        continue;
-      } else {
+
+      // ---- WHAT THIS GESTURE ACTUALLY HAS TO DO ------------------------------
+      //
+      // This block used to be `if (device_) { ok = true; }` — a pointer standing
+      // in for "there is a tunnel". It is not one: the tray escape hatch and any
+      // service-side stop destroy the service's DeviceLocal and its mTLS
+      // listener while leaving this side's DeviceRemote perfectly constructed,
+      // so Connect re-issued connectBestAvailable() into a listener that no
+      // longer existed and never sent start_tunnel. Ask the SERVICE instead —
+      // once per gesture, one rpc — and let the pure table in
+      // Common/ConnectAction.h say what follows. Every row of that table is
+      // pinned by the service selftest.
+      const proto::TunnelStatus svc = CurrentServiceStatusLocked();
+      gesture::ServiceFacts facts;
+      facts.pipeUp = service_.IsConnected();
+      // A failed call yields a default-constructed status; the service always
+      // sends its version, so an empty one is the marker for "no answer".
+      facts.known = facts.pipeUp && !svc.service_version.empty();
+      facts.state = svc.state;
+      facts.mode = svc.mode;
+      facts.routesInstalled = svc.routes_installed;
+      facts.wfpState = svc.wfp_state;
+      facts.stopReason = svc.stop_reason;
+      if (facts.known) AdoptServiceFacts(svc);
+
+      gesture::AppFacts app;
+      app.haveDevice = device_.has_value();
+      // The PERSISTED preference, read locally — deliberately NOT
+      // CurrentKillSwitch(), which prefers the DeviceRemote and would put an
+      // rpc to a possibly-dead listener on the one path that must not block.
+      // Decide never reads this field (the SERVICE owns the arming decision,
+      // and the table pins that no arming intent lives on this side); it is
+      // carried so a plan can be explained against the setting the user chose.
+      try {
+        if (localState_) app.killSwitch = !localState_->getRouteLocal();
+      } catch (const std::exception&) {
+        app.killSwitch = false;  // no state at all: the permissive default
+      }
+      app.wantsTunnel = requestedMode_ == proto::StartMode::Tunnel;
+      {
+        // mutex_ -> healthMutex_, the order ConnectLocked already establishes.
+        std::scoped_lock healthLock(healthMutex_);
+        app.health = healthTracker_.Current();
+      }
+
+      const gesture::Plan plan = gesture::Decide(GestureOf(req.kind), facts, app);
+      LogInfo("sdkhost: '{}' -> {} (service: state={} routes={} wfp={}{}; app: "
+              "device={})",
+              req.reason, plan.why, proto::ToString(facts.state),
+              facts.routesInstalled ? "yes" : "no", svc.wfp_state,
+              facts.known ? "" : " — NOT READ, the service did not answer",
+              app.haveDevice ? "yes" : "no");
+
+      // PHASE 1, AND IT IS FIRST FOR THE REASON THE SERVICE'S OWN TEARDOWN IS
+      // ORDERED THIS WAY. Giving the machine back — routes, dns, resolver
+      // cache, firewall policy — is local, cheap and the only part the user
+      // experiences as "my internet is back". Everything below it can block on
+      // the SDK. This single call is the whole of the owner's bug A: the
+      // service has had a correct two-phase stop all along and the app simply
+      // never invoked it from Disconnect.
+      if (plan.stopTunnel) {
+        const proto::TunnelStatus stopped = service_.StopTunnel();
+        AdoptServiceFacts(stopped);
+        LogInfo("sdkhost: the service tunnel is stopped (state={} routes={} "
+                "wfp={}) — this machine's routes, dns and firewall policy are "
+                "back",
+                proto::ToString(stopped.state),
+                stopped.routes_installed ? "STILL INSTALLED" : "reverted",
+                stopped.wfp_state);
+      }
+      // The SDK side, second. ConnectLocked is where #27's NoteNewAttempt lives,
+      // so a deliberate disconnect still ends the health attempt exactly as it
+      // always did.
+      if (plan.sdkDisconnect && device_) {
+        SessionRequest stop;
+        stop.kind = ConnectKind::Disconnect;
+        stop.reason = req.reason;
+        ConnectLocked(stop);
+      }
+      // stopTunnel=false: either we just sent the stop ourselves (above), or
+      // this is a Connect dropping a stale DeviceRemote, where a deliberate stop
+      // would drop the firewall policy to Off for the length of the bring-up
+      // that follows — the exact gap a kill switch exists to cover.
+      if (plan.tearDownDevice && device_) {
+        try {
+          TeardownSessionLocked(/*stopTunnel=*/false);
+        } catch (const std::exception& e) {
+          LogWarn("sdkhost: teardown of the stale session failed: {}", e.what());
+        }
+      }
+
+      if (plan.startTunnel) {
         LogInfo("sdkhost: starting a session ({})", req.reason);
         ok = BootstrapSession();
+      } else {
+        ok = device_.has_value();
       }
 
       const bool connecting = req.kind == ConnectKind::BestAvailable ||
                               req.kind == ConnectKind::Location;
       if (ok) {
-        if (req.kind != ConnectKind::None) ConnectLocked(req);
+        if (plan.sdkConnect && req.kind != ConnectKind::None) ConnectLocked(req);
         // An rpc-only session is live and driveable and carries NOTHING. On a
         // Connect press that is the answer to "why did pressing this change
         // nothing", so re-raise the standing notice rather than let the press
@@ -3773,6 +3867,11 @@ void SdkHost::SessionWorkerLoop() {
         if (connecting && sessionMode_.load() == proto::StartMode::RpcOnly) {
           PublishModeNotice();
         }
+      } else if (!plan.startTunnel) {
+        // Nothing was attempted and nothing failed — a disconnect that found
+        // nothing to disconnect from, which is a legitimate outcome, not an
+        // error. Fall through to the stats push, which is what puts the button
+        // back to its idle label.
       } else {
         // EVERY failing path says why, on the channel built for it. Under the
         // lock: PublishSessionFailure writes sessionFailure_, which mutex_
@@ -3809,6 +3908,26 @@ void SdkHost::SessionWorkerLoop() {
     // (SubscribeStats only runs when it is).
     PublishStats();
   }
+}
+
+// See the contract in the header. ONE rpc, and it is the only admissible answer
+// to "is there a tunnel right now" — not device_, not sessionMode_, not the
+// cached mirror the tray reads. It cannot lie, because every field of the reply
+// is read off the object that OWNS the machine state, inside the process that
+// holds it (TunnelController::Status).
+proto::TunnelStatus SdkHost::CurrentServiceStatusLocked() {
+  if (!service_.IsConnected()) return {};
+  const proto::TunnelStatus st = service_.GetState();
+  if (st.service_version.empty()) {
+    // ServiceClient::CallStatus swallows the throw and hands back a default
+    // status, which reads as "nothing is running" — and acting on that would
+    // tear a healthy tunnel down over one dropped reply. Say so; the decision
+    // treats it as unknown and keeps whatever it has.
+    LogWarn("sdkhost: get_state did not answer ({}). Treating the service's "
+            "state as UNKNOWN rather than as 'nothing is installed'.",
+            st.error.empty() ? "no error reported" : st.error);
+  }
+  return st;
 }
 
 void SdkHost::ConnectLocked(const SessionRequest& request) {
@@ -4125,9 +4244,19 @@ proto::TunnelStatus SdkHost::StopServiceTunnel() {
           "policy all come back) — this is the escape hatch, not a connect "
           "controller disconnect");
   proto::TunnelStatus st = service_.StopTunnel();
+  AdoptServiceFacts(st);
   // The SDK side follows, so the app does not sit rendering Connecting against
   // a tunnel that no longer exists. Queued rather than inline: the point above
   // was to avoid waiting on the session worker, not to avoid using it at all.
+  //
+  // AND IT IS WHAT DROPS THE DEVICE. The stop above destroyed the SERVICE's
+  // DeviceLocal and its mTLS listener; this side's DeviceRemote survived it and
+  // used to be left in place, so the next Connect drove a handle to something
+  // that no longer existed and never sent start_tunnel — the hatch fixed the
+  // machine and broke the app. The queued Disconnect now runs through the same
+  // decision table as every other gesture, sees no session on the service side,
+  // and tears the stale DeviceRemote down. Doing it here instead would mean
+  // taking mutex_ on the one path that must never wait for it.
   Disconnect();
   return st;
 }
@@ -4193,7 +4322,23 @@ void SdkHost::SetPresentationActive(bool active) {
   EnsureLocationsLocked();
 }
 
-void SdkHost::TeardownSessionLocked() {
+void SdkHost::TeardownSessionLocked(bool stopTunnel) {
+  // FIRST, AND THIS ORDER IS THE POINT. Session teardown only: stop the tunnel
+  // but keep the service-persisted device identity (key material). The identity
+  // is device-scoped, not session-scoped — RegisterNetworkClient's
+  // re-registration under a new jwt (guest upgrade, verify after an upgrade)
+  // must not rotate the key peers use to verify this device. Only the explicit
+  // Logout() severs it.
+  //
+  // It used to sit at the BOTTOM of this function, below device_->close(). That
+  // is the app-side copy of exactly the ordering bug StopBudget.h fixed in the
+  // service: the cheap, local, safety-critical half (routes, dns, firewall —
+  // 133 ms, measured four times) sequenced behind the half that can block
+  // indefinitely. A DeviceRemote::close() that wedges must not be able to hold
+  // this machine's routes hostage.
+  if (stopTunnel && service_.IsConnected()) {
+    service_.StopTunnel();
+  }
   ClosePresentationLocked();
   subs_.clear();
   if (device_) { device_->close(); device_.reset(); }
@@ -4206,14 +4351,6 @@ void SdkHost::TeardownSessionLocked() {
     sessionRpcHostPort_.clear();
   }
   provideHasNetworkKey_ = false;
-  // Session teardown only: stop the tunnel but keep the service-persisted
-  // device identity (key material). The identity is device-scoped, not
-  // session-scoped â€” RegisterNetworkClient's re-registration under a new jwt
-  // (guest upgrade, verify after an upgrade) must not rotate the key peers
-  // use to verify this device. Only the explicit Logout() below severs it.
-  if (service_.IsConnected()) {
-    service_.StopTunnel();
-  }
   // No session, so no tunnel â€” reset to the mode that claims less, not to
   // Tunnel. A status built between this teardown and the next bootstrap must
   // not be able to render "connected".

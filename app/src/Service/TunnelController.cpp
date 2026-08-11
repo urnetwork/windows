@@ -168,6 +168,11 @@ bool TunnelController::ApplyWfpLocked(WfpState state) {
   CancelConnectingWatchdogLocked();
   if (state == WfpState::Off) {
     wfp_.Revert();
+    // The second funnel for the status mirror (see SetStateLocked): a firewall
+    // transition changes what the app is told about this machine WITHOUT
+    // changing the tunnel state, and the app's disconnect rule reads wfp_state
+    // directly — "the machine is captured" is routes OR a policy in force.
+    PublishStatusLocked();
     return true;
   }
   WfpConfig cfg = BaseWfpConfig();
@@ -233,6 +238,9 @@ bool TunnelController::ApplyWfpLocked(WfpState state) {
     }
   }
   const bool ok = wfp_.Apply(state, cfg);
+  // Whether it took or not: the mirror must carry what wfp_ actually holds, and
+  // a FAILED apply is exactly the state the app must not be told is protection.
+  PublishStatusLocked();
   // Arm the watchdog on the way IN. Every other transition has already cancelled
   // it at the top, so this one branch is the whole lifecycle. Keyed off the
   // RESULT and not the argument, so a Connecting that failed to install does not
@@ -287,6 +295,10 @@ void TunnelController::ArmConnectingWatchdogLocked() {
             "backstop — reaching it means the attempt is wedged, not slow.",
             static_cast<long long>(kConnectingWindow.count()));
     wfp_.Apply(WfpState::Armed, BaseWfpConfig());
+    // The app is told what the firewall actually holds, from the one path that
+    // changes it without mutex_. Routes are untouched here, so only the policy
+    // is patched.
+    RepublishMachineFactsLockFree(/*routesReverted=*/false);
   });
 }
 
@@ -317,6 +329,17 @@ void TunnelController::CancelConnectingWatchdogLocked() {
 void TunnelController::SetStateLocked(proto::TunnelState next) {
   state_ = next;
   PublishTunnelState(proto::ToString(next));
+  // ...and the OTHER lock-free reader, for the same reason: Status() serves the
+  // app's connect decision without taking mutex_, so a transition that does not
+  // republish is a transition the app cannot see. This is the funnel that covers
+  // most of the rule in the header; the sites that change a status-visible fact
+  // WITHOUT a transition publish for themselves and say so.
+  //
+  // It composes a status, which reads EgressMonitor under its own small lock.
+  // That is bounded (a struct read behind an IP Helper refresh) and it is the
+  // same work the RPC thread used to do on every get_state — unlike the glog
+  // flush this function deliberately does not do, it cannot re-enter the SDK.
+  PublishStatusLocked();
 }
 
 proto::TunnelStatus TunnelController::Start(const proto::StartTunnel& config) {
@@ -440,7 +463,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     LogError("tunnel: REFUSING to start — {}. Restart urnetworkd (sc stop "
              "urnetworkd && sc start urnetworkd).",
              error_);
-    return Status();
+    return StatusLocked();
   }
   SetStateLocked(proto::TunnelState::Starting);
   // The clamp wins over the request, and it is applied HERE, once, before
@@ -458,6 +481,10 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
   }
   const bool rpcOnly = startMode_ == proto::StartMode::RpcOnly;
   error_.clear();
+  // startMode_ and error_ both moved without a state transition (SetStateLocked
+  // ran above them), and mode is one of the facts the app decides on — an
+  // rpc-only session is one that never has routes, in both directions. Publish.
+  PublishStatusLocked();
 
   // === THE RETRY PATH ======================================================
   //
@@ -545,7 +572,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
               1, "NOTHING — step 1 was skipped in rpc-only mode, so no wintun "
                  "adapter was created. If you wanted the adapter, drop "
                  "--rpc-only and run elevated"))
-        return Status();
+        return StatusLocked();
     } else {
       const std::filesystem::path dll = ExeDir() / L"wintun.dll";
       LogInfo("tunnel: [1/8] loading wintun from {}", dll.string());
@@ -582,7 +609,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
               1, "a wintun adapter with NO address, NO route and NO dns server "
                  "— an interface exists on this machine, and nothing is routed "
                  "to it"))
-        return Status();
+        return StatusLocked();
     }
 
     // --- 2/8 R1: bind the SDK's egress to the physical interface. ---
@@ -637,7 +664,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
             2, "the sdk's egress bound to the physical nic — a setting inside "
                "this process only; no interface, route or dns entry on this "
                "machine was changed by it"))
-      return Status();
+      return StatusLocked();
 
     // --- 3/8 NetworkSpace (own storage; import the app's space json) ---
     step = "3/8 network space";
@@ -651,7 +678,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     if (HaltAfterStepLocked(
             3, "an open network space under the service's own storage root — "
                "files, and nothing else"))
-      return Status();
+      return StatusLocked();
 
     // --- 4/8 DeviceLocal (stable provider identity via persisted key material) ---
     step = "4/8 device";
@@ -675,7 +702,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
             4, "a live DeviceLocal and its persisted identity — sockets to the "
                "platform, over the PHYSICAL nic; still no interface, route or "
                "dns entry of ours on this machine"))
-      return Status();
+      return StatusLocked();
 
     // --- 5/8 mTLS RPC listener the app's DeviceRemote dials ---
     step = "5/8 rpc";
@@ -684,6 +711,10 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     device_->setRpcServer(config.rpc_server_pem, config.rpc_client_cert_pem,
                           config.rpc_listen_hostport);
     rpcHostPort_ = config.rpc_listen_hostport;
+    // The endpoint the app's DeviceRemote dials, and steps 6-8 can take seconds
+    // — long enough for a get_state to be served in between. Publish it now
+    // rather than at the next transition.
+    PublishStatusLocked();
 
     // --- the window trace (URNETWORK_SDK_TRACE; off unless set) --------------
     //
@@ -723,7 +754,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
             5, "the mTLS rpc listener the app dials — a loopback socket in this "
                "process; the machine's routes and dns are still exactly as they "
                "were"))
-      return Status();
+      return StatusLocked();
 
     // === THE FENCE ==========================================================
     // Everything above this line is inert with respect to the machine's
@@ -736,6 +767,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     if (rpcOnly) {
       SetStateLocked(proto::TunnelState::RpcOnly);
       upSinceMillis_ = NowMillis();
+      PublishStatusLocked();  // the uptime clock, set after the transition
       EgressInterfaces bound = egress_->Current();
       LogInfo("tunnel: RPC-ONLY UP in {}ms (rpc={} egress_v4_ifindex={}). Steps "
               "6/8 (routes+dns), 7/8 (split tunnel) and 8/8 (packet pump) were "
@@ -743,16 +775,17 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
               "no active marker was set. The machine's network is untouched and "
               "no traffic is carried.",
               upSinceMillis_ - startedAtMillis, rpcHostPort_, bound.index4);
-      return Status();
+      return StatusLocked();
     }
 
     // False means --stop-after halted inside steps 6-8 and the teardown has
     // already run. Returning here rather than falling through is what keeps a
     // halted session from being reported Up.
-    if (!BringUpTunnelLocked(config, step)) return Status();
+    if (!BringUpTunnelLocked(config, step)) return StatusLocked();
 
     SetStateLocked(proto::TunnelState::Up);
     upSinceMillis_ = NowMillis();
+    PublishStatusLocked();  // the uptime clock, set after the transition
     EgressInterfaces bound = egress_->Current();
     LogInfo("tunnel: UP in {}ms (rpc={} egress_v4_ifindex={} split_tunnel={})",
             upSinceMillis_ - startedAtMillis, rpcHostPort_, bound.index4,
@@ -785,7 +818,7 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
     SetStateLocked(proto::TunnelState::Error);  // StopLocked resets to Stopped
   }
 
-  return Status();
+  return StatusLocked();
 }
 
 // Steps 6-8 — the destructive half. Called from exactly one place, immediately
@@ -919,6 +952,12 @@ bool TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
   SetActiveMarker(true);
   if (!netConfig_->Apply(settings)) throw std::runtime_error("network config failed");
   appliedResolvers_ = settings.dns_servers;
+  // ROUTES ARE IN, AND THE APP HAS TO BE ABLE TO LEARN IT WITHOUT A TRANSITION.
+  // The state does not become Up until steps 7 and 8 have run, and this machine
+  // is already captured — so a get_state served in that window must say so, or
+  // a disconnect arriving mid-bring-up would find "nothing installed" and leave
+  // the routes exactly where the owner's report found them.
+  PublishStatusLocked();
 
   // Routes are in. Widen the policy from Armed to Connected: the tun's LUID and
   // the tunnel's own resolvers become permitted. Doing this AFTER Apply is
@@ -1054,6 +1093,11 @@ void TunnelController::Stop() {
   NetworkConfig::CrashRevert();
   SetActiveMarker(false);
   DropFirewallOnEscape("stop");
+  // The routes are gone and the policy may be too, but no Stopped transition is
+  // coming — mutex_ is wedged, so nothing will publish a composed status ever
+  // again on this process. Patch what actually changed, or every later
+  // get_state reports a machine that is still captured.
+  RepublishMachineFactsLockFree(/*routesReverted=*/true);
   NoteTeardownAbandoned();
 }
 
@@ -1143,6 +1187,11 @@ void TunnelController::FailsafeStop(DeadTunnelReason reason) {
   NetworkConfig::CrashRevert();
   SetActiveMarker(false);
   DropFirewallOnEscape("failsafe");
+  // Same reason as Stop()'s escape: no composed status will ever be published
+  // again on this process, and the app decides whether to offer a disconnect
+  // from routes_installed and wfp_state. The push below would otherwise carry
+  // "routes installed" over a machine this very function just handed back.
+  RepublishMachineFactsLockFree(/*routesReverted=*/true);
   NoteTeardownAbandoned();
   NotifyStateChanged();
 }
@@ -1158,9 +1207,10 @@ void TunnelController::NotifyStateChanged() {
     std::scoped_lock lock(stateChangedMutex_);
     handler = onStateChanged_;
   }
-  // Outside both locks by construction: the handler reads Status(), which takes
-  // mutex_, and it writes to the control pipe, which can block on a client that
-  // is not reading.
+  // Outside both locks by construction: the handler writes to the control pipe,
+  // which can block on a client that is not reading. (Status() itself no longer
+  // takes mutex_ — it serves the snapshot published at the last write — so this
+  // is now about the pipe alone, which is reason enough.)
   if (handler) handler();
 }
 
@@ -1233,6 +1283,12 @@ void TunnelController::StopLocked(bool finalDisarm) {
 void TunnelController::RevertMachineStateLocked(bool finalDisarm, bool hadRoutes) {
   if (netConfig_) { netConfig_->Revert(); netConfig_.reset(); }
   appliedResolvers_.clear();
+  // THE MACHINE IS BACK, AND THIS IS THE MOMENT THE APP MUST BE ABLE TO SEE IT.
+  // Phase 2 (the SDK teardown) may be abandoned on its budget and the Stopped
+  // transition that would otherwise publish sits on the far side of it, so
+  // without this a get_state served during a slow teardown would still report
+  // routes installed — over a machine that already has its network back.
+  PublishStatusLocked();
   // --- THE OTHER EDGE: Connected -> Armed/Off --------------------------------
   //
   // The mirror of the flush at the Connected edge, and it is not symmetry for
@@ -1644,7 +1700,64 @@ void TunnelController::Logout() {
   LogInfo("tunnel: logged out (cleared device identity)");
 }
 
+// See the contract in the header. NO SESSION LOCK: a copy of the snapshot that
+// was published at the last write, plus the two publishers that are lock-free by
+// design and are therefore read live. The app's whole connect/disconnect
+// decision now rides on this call, so it has to be answerable while a connect is
+// wedged holding mutex_ — the same reason Stop() is bounded rather than
+// blocking.
 proto::TunnelStatus TunnelController::Status() {
+  proto::TunnelStatus s;
+  {
+    std::scoped_lock lock(statusMirrorMutex_);
+    s = statusMirror_;
+  }
+  // Invariants, filled here rather than trusted to the mirror so that a status
+  // served before the first publish still identifies this service. The app uses
+  // a non-empty service_version as its "the call actually answered" marker.
+  s.service_version = urnet::version();
+  s.protocol_version = proto::kProtocolVersion;
+  // Live, from the lock-free publishers: still correct for a status served
+  // WHILE a failsafe teardown is in flight, which is the case they exist for.
+  s.stop_reason = lastStopReason_.load();
+  s.failsafe_armed = deadTunnelWatchdog_.FailsafeArmed();
+  const int64_t upSince = upSinceMirror_.load();
+  s.tunnel_local_up_millis = upSince ? (NowMillis() - upSince) : 0;
+  return s;
+}
+
+proto::TunnelStatus TunnelController::StatusLocked() {
+  proto::TunnelStatus s = ComposeStatusLocked();
+  upSinceMirror_.store(upSinceMillis_);
+  {
+    std::scoped_lock lock(statusMirrorMutex_);
+    statusMirror_ = s;
+  }
+  return s;
+}
+
+void TunnelController::PublishStatusLocked() { (void)StatusLocked(); }
+
+void TunnelController::RepublishMachineFactsLockFree(bool routesReverted) {
+  // Read the firewall FIRST: WfpPolicy has its own lock and an Apply can hold
+  // it across a BFE call, and statusMirrorMutex_'s whole guarantee is that it is
+  // never held across anything that can block.
+  const std::string wfp = ToString(wfp_.State());
+  std::scoped_lock lock(statusMirrorMutex_);
+  statusMirror_.wfp_state = wfp;
+  if (routesReverted) {
+    statusMirror_.routes_installed = false;
+    statusMirror_.dns_applied = false;
+    // The egress pin exists only to keep sockets off a tun that is routed to.
+    // With the routes gone the app must unbind, and AdoptServiceFacts keys that
+    // off routes_installed — but reporting a stale index alongside would be a
+    // claim about a machine state that no longer exists.
+    statusMirror_.egress_index4 = 0;
+    statusMirror_.egress_index6 = 0;
+  }
+}
+
+proto::TunnelStatus TunnelController::ComposeStatusLocked() {
   proto::TunnelStatus s;
   s.state = state_;
   s.mode = startMode_;
@@ -1677,12 +1790,10 @@ proto::TunnelStatus TunnelController::Status() {
     s.egress_index4 = static_cast<int64_t>(bound.index4);
     s.egress_index6 = static_cast<int64_t>(bound.index6);
   }
-  // Why the last teardown happened, and whether another one is coming. Both are
-  // read from lock-free publishers rather than from session state, so they are
-  // still correct on the one path where they matter most: a status served while
-  // a failsafe teardown is in flight.
-  s.stop_reason = lastStopReason_.load();
-  s.failsafe_armed = deadTunnelWatchdog_.FailsafeArmed();
+  // stop_reason and failsafe_armed are deliberately NOT composed here: Status()
+  // overlays them from their own lock-free publishers, so a status served
+  // between a failsafe teardown starting and its publish still carries the
+  // reason. Same for tunnel_local_up_millis, which is aged against a live clock.
   return s;
 }
 

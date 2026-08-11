@@ -246,14 +246,16 @@ void TrayIcon::ShowContextMenu(POINT pt) {
   const bool liftable = cb_.canLiftKillSwitch && cb_.canLiftKillSwitch();
   if (stoppable || liftable) ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
   if (stoppable) {
-    // NOT the word "Disconnect": that is the item above, and it means something
-    // narrower (stop connecting). This one takes the whole tunnel down —
-    // routes, DNS and the firewall policy — which is what someone with no
-    // internet is actually looking for.
-    ::AppendMenuW(menu, MF_STRING, kMenuStopTunnel,
-                  pages::AdvW("conn_tray_turn_tunnel_off",
-                              L"Turn the tunnel off (restore my internet)")
-                      .c_str());
+    // NOT "restore my internet" any more: that is what Disconnect does now, on
+    // the happy path, and two items promising the same thing is a menu that
+    // makes a stuck user choose. This is the RECOVERY one — it bypasses the
+    // session worker, so it still works when the thing that is wedged is the
+    // worker itself — and it is only offered when the ordinary Disconnect is
+    // not the obvious answer (AppController::Start, canStopTunnel).
+    ::AppendMenuW(
+        menu, MF_STRING, kMenuStopTunnel,
+        pages::AdvW("conn_tray_force_tunnel_off", L"Force the tunnel off (recovery)")
+            .c_str());
   }
   if (liftable) {
     ::AppendMenuW(menu, MF_STRING, kMenuLiftKillSwitch,

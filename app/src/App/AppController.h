@@ -68,6 +68,17 @@ class AppController {
   void OnTunnelState(const proto::TunnelStatus& status);
   void OnStats(const LiveStats& stats);
   void UpdateTray();
+  // THE LAST STATUS THE SERVICE PUSHED, in the vocabulary of the shared
+  // decision table (Common/ConnectAction.h). The tray reads this rather than
+  // any app-side belief for the reason its recovery items exist at all: they
+  // have to be right when the app's own view of the world is the thing that has
+  // gone wrong. The string_views point into lastTunnelStatus_, which outlives
+  // every caller here.
+  gesture::ServiceFacts CurrentServiceFacts() const;
+  // The aggregate to judge the button label by. Falls back to the tunnel's own
+  // claim when no stats have ever flowed (the feed is presentation-scoped, so a
+  // window that has never been shown has no evidence either way).
+  health::State TrayHealth() const;
   void ReconcileWindowPresentation();
   template <class F>
   void OnUi(F&& f);  // marshal onto the UI thread
