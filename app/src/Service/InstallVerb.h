@@ -53,6 +53,44 @@ inline constexpr unsigned long kStopWaitBudgetMs = 10000;
 inline constexpr unsigned long kStartWaitBudgetMs = 10000;
 inline constexpr unsigned long kScmPollIntervalMs = 250;
 
+// --- what the SCM does when this process dies unexpectedly ------------------
+//
+// Stated HERE, in the header selftest can reach, rather than inline at the one
+// call site — because it stopped being an installer detail the day something
+// inside the service started ENDING THE PROCESS ON PURPOSE and depending on the
+// answer (StopBudget.h's self-restart, main.cpp's RestartServiceProcess).
+//
+// THE PROPERTY THAT MATTERS IS THE LAST ENTRY. The SCM walks this list one slot
+// per unexpected death and repeats the FINAL entry for every death past the end
+// of it; the count is reset only by kFailureResetPeriodSeconds passing with no
+// death at all, and it is shared with real crashes. So a list ending in "do
+// nothing" is a service that stops coming back after its third bad moment in a
+// day — and the self-restart path would then be a deliberate kill with no
+// recovery behind it, leaving the machine with no service at all: no tunnel, no
+// disconnect, no status. Ending in a RESTART means "always come back", whatever
+// the count has reached. The delays climb so the pathological case (dying
+// immediately on every start) settles to one attempt a minute instead of a hot
+// loop.
+struct FailureAction {
+  // true -> SC_ACTION_RESTART, false -> SC_ACTION_NONE. A bool rather than the
+  // winsvc enum so this header stays includable by code that has not pulled in
+  // windows.h — the same reason the service constants above are restated.
+  bool restart;
+  unsigned long delayMs;
+};
+inline constexpr FailureAction kFailureActions[] = {
+    {true, 5000}, {true, 10000}, {true, 60000}};
+inline constexpr unsigned long kFailureResetPeriodSeconds = 86400;
+
+// Whether the policy above can answer an UNBOUNDED number of unexpected deaths,
+// which is exactly the question the self-restart is betting on. Pure, so
+// `urnetworkd selftest` can pin it on a machine where the SCM is not involved.
+constexpr bool RestartsIndefinitely() {
+  constexpr int n = static_cast<int>(sizeof(kFailureActions) /
+                                     sizeof(kFailureActions[0]));
+  return n > 0 && kFailureActions[n - 1].restart;
+}
+
 // --- binPath quoting --------------------------------------------------------
 //
 // The service's image path MUST be stored quoted. An unquoted path with spaces

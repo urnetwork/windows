@@ -397,11 +397,29 @@ using SelfRestartHandler = bool (*)(const char* why);
 
 namespace detail {
 inline std::atomic<SelfRestartHandler> g_selfRestart{nullptr};
+inline std::atomic<bool> g_selfRestartPending{false};
 }  // namespace detail
 
 inline void SetSelfRestartHandler(SelfRestartHandler handler) {
   detail::g_selfRestart.store(handler);
 }
+
+// True once a restart has been ACCEPTED and this process is therefore already
+// counting down to its own TerminateProcess.
+//
+// THIS EXISTS BECAUSE THE COUNTDOWN IS NOT INSTANT. kSelfRestartGrace deliberately
+// leaves a second on the clock so the RPC reply explaining the restart reaches the
+// app — and a second is long enough for the abandoned worker to finish, for the
+// next sweep to answer "nothing is held" and for a start to be allowed through it.
+// That start would build a wintun adapter, apply routes, DNS and firewall policy,
+// and then be shot in the head mid-bring-up by a terminator armed before it began.
+// Recoverable, but only by the floor, and it would look to the user exactly like
+// the bug this file is about: press Connect, watch it die for no stated reason.
+//
+// So the decision is a LATCH, not a re-derivation. Once this process has said it
+// is leaving, it is leaving, and nothing may start a tunnel it will not live long
+// enough to keep.
+inline bool SelfRestartPending() { return detail::g_selfRestartPending.load(); }
 
 inline bool RequestSelfRestart(const char* why) {
   SelfRestartHandler handler = detail::g_selfRestart.load();
@@ -410,7 +428,12 @@ inline bool RequestSelfRestart(const char* why) {
   // honest return is "no restart is coming", which is exactly what the caller
   // then tells the user.
   if (!handler) return false;
-  return handler(why);
+  const bool restarting = handler(why);
+  // Only on TRUE. A console run is told no restart is coming and is left running
+  // on purpose, so latching there would refuse every future start for a reason
+  // that never arrives — the stale-latch bug again, wearing a different hat.
+  if (restarting) detail::g_selfRestartPending.store(true);
+  return restarting;
 }
 
 // Test-only. `urnetworkd selftest` exercises the real flags rather than a copy
@@ -419,6 +442,7 @@ inline bool RequestSelfRestart(const char* why) {
 inline void ResetStopBudgetForTest() {
   detail::g_forcedStop.store(false);
   detail::g_teardownAbandoned.store(false);
+  detail::g_selfRestartPending.store(false);
   std::scoped_lock lock(detail::g_heldMutex);
   detail::g_heldDevices.clear();
 }

@@ -1862,6 +1862,100 @@ void TestHeldDeviceSweep() {
           "the test-only reset clears BOTH the flag and the registry, so these "
           "checks cannot leak into the ones after them");
   }
+
+  // --- the self-restart: a decision that must not be re-derived -------------
+  //
+  // Deciding to end this process is not instant — kSelfRestartGrace leaves a
+  // second on the clock so the reply explaining it reaches the app. A second is
+  // long enough for the abandoned worker to finish, for the next sweep to answer
+  // "nothing is held", and for a start to be let through it: a tunnel built at
+  // 500 ms and shot by a countdown armed at 0 ms. That start would look to the
+  // user exactly like the bug this section is about. So the decision latches.
+  //
+  // And it latches THE ANSWER, not the asking. A run that is told no restart is
+  // coming — a console, or an scm whose restart policy could not be confirmed —
+  // must refuse nothing, or this is the stale latch all over again in a new
+  // costume.
+  {
+    // Saved and put back, because wmain installs the REAL handler before any
+    // verb runs and this test is deliberately swapping it for stand-ins.
+    const SelfRestartHandler previous = urnw::detail::g_selfRestart.load();
+
+    SetSelfRestartHandler(nullptr);
+    Check(!RequestSelfRestart("no handler installed"),
+          "with no handler installed the honest answer is 'no restart is "
+          "coming' — which is what selftest and the one-shot verbs are, and "
+          "what the caller then tells the user");
+    Check(!SelfRestartPending(),
+          "and nothing is pending, so nothing is refused: a process that is not "
+          "leaving must not behave like one that is");
+
+    SetSelfRestartHandler([](const char*) { return false; });
+    Check(!RequestSelfRestart("console mode, or an unconfirmable scm policy"),
+          "a handler that DECLINES reports so");
+    Check(!SelfRestartPending(),
+          "A DECLINED RESTART LATCHES NOTHING. The console is left running on "
+          "purpose and an scm policy that could not be confirmed means we did "
+          "not jump — in both cases this process is staying, so every later "
+          "start must be judged on the sweep and not on a countdown that was "
+          "never armed");
+
+    SetSelfRestartHandler([](const char*) { return true; });
+    Check(RequestSelfRestart("a device really is still held"),
+          "a handler that ACCEPTS reports so, and the caller words the user's "
+          "error against that answer rather than against hope");
+    Check(SelfRestartPending(),
+          "THE FIX FOR THE GRACE WINDOW: once a terminator is armed, this "
+          "process is leaving, and StartLocked refuses without consulting the "
+          "sweep — a worker finishing inside the grace must not buy a session "
+          "that gets killed mid-bring-up");
+    Check(SelfRestartPending() && SweepAbandonedTeardowns().outstanding == 0,
+          "and it holds even when the sweep is CLEAR, which is precisely the "
+          "interleaving it exists for: nothing is held any more, and the start "
+          "is still refused because this process will not live to keep it");
+
+    ResetStopBudgetForTest();
+    Check(!SelfRestartPending(),
+          "the test-only reset clears the pending decision too");
+    SetSelfRestartHandler(previous);
+  }
+
+  // --- the net the self-restart jumps into ----------------------------------
+  //
+  // RestartServiceProcess kills a process that is still answering RPCs, on the
+  // strength of the SCM's failure-action policy. That policy used to end in
+  // SC_ACTION_NONE, and the SCM repeats the LAST entry for every death past the
+  // end of the list — so the third unexpected death in a day (a counter shared
+  // with real crashes, reset only by a full clean day) was answered with nothing
+  // at all. A deliberate kill with no recovery behind it does not leave the user
+  // where the error message left them; it leaves them with NO SERVICE: no
+  // tunnel, no disconnect, no status, an app polling a pipe that never answers.
+  Check(install::RestartsIndefinitely(),
+        "the LAST scm failure action is a RESTART, so an unexpected death is "
+        "answered however many have come before it — this is the property the "
+        "self-restart is betting the user's connectivity on, and ending the "
+        "list in 'do nothing' would make the cure worse than the bug",
+        std::format("{} actions, last delay {}ms",
+                    std::size(install::kFailureActions),
+                    install::kFailureActions[std::size(install::kFailureActions) -
+                                             1]
+                        .delayMs));
+  {
+    bool climbs = true;
+    for (std::size_t i = 1; i < std::size(install::kFailureActions); ++i)
+      climbs = climbs && install::kFailureActions[i].delayMs >
+                             install::kFailureActions[i - 1].delayMs;
+    Check(climbs,
+          "and the delays CLIMB, so 'always come back' cannot become a hot "
+          "restart loop: a process that dies immediately on every start settles "
+          "to one attempt a minute, while an ordinary one-off death is still "
+          "answered in seconds");
+  }
+  Check(install::kFailureActions[0].delayMs <= 10000,
+        "the FIRST retry is quick, because it is the one an actual user is "
+        "waiting through — the app's reattach watchdog polls every 3s and the "
+        "error they were shown says 'a few seconds'",
+        std::format("{}ms", install::kFailureActions[0].delayMs));
 }
 
 // --- the egress index on the wire -------------------------------------------

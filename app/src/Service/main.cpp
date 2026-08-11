@@ -385,6 +385,111 @@ std::atomic<int> g_stopPresses{0};
   ::ExitProcess(kForcedStopExitCode);  // unreachable; satisfies [[noreturn]]
 }
 
+// --- the failure-action policy the self-restart is standing on ---------------
+//
+// THE THREE-STRIKES CLIFF, WHICH NEARLY MADE THE CURE WORSE THAN THE DISEASE.
+// This service used to be registered with SC_ACTION_RESTART, SC_ACTION_RESTART,
+// SC_ACTION_NONE and a 24-hour reset period, and those three slots are not three
+// retries of one incident — they are a running count of every unexpected death in
+// a day, reset only by a full day without one. The third one is SC_ACTION_NONE:
+// the process dies and NOTHING BRINGS IT BACK. The counter is shared with real
+// crashes (task #39's ntdll AV is exactly the kind of thing that spends a slot),
+// so a machine having a bad day can arrive at the self-restart path with its
+// budget already gone.
+//
+// That matters here more than anywhere else, because the self-restart path
+// DELIBERATELY KILLS A HEALTHY-ENOUGH PROCESS. If the SCM then declines to bring
+// it back, the user is left with no service at all — no tunnel, no disconnect, no
+// status, an app polling a pipe that will never answer — which is strictly worse
+// than the refusal message that started this, and worse while having just
+// promised "reconnecting in a few seconds". A recovery that can strand the user
+// is not a recovery.
+//
+// THE LAST ACTION IS THEREFORE A RESTART, AND THAT IS THE WHOLE FIX. The SCM
+// repeats the FINAL entry of the array for every failure past the end of the
+// list, so a trailing SC_ACTION_RESTART means "always come back" regardless of
+// what the failure count has reached. The delays climb — 5 s, 10 s, 60 s — so the
+// pathological case (a process that dies immediately on every start) settles into
+// one attempt a minute rather than a hot loop, and the ordinary case still gets
+// its first retry in five seconds. For a VPN service that is holding nothing when
+// it dies (dynamic BFE session, PnP surprise removal), a minute of downtime is a
+// nuisance; never coming back is the product being gone until someone reboots.
+bool ApplyRestartOnFailure(SC_HANDLE svc) {
+  // The table lives in InstallVerb.h so `selftest` can pin the one property the
+  // self-restart is standing on — that the LAST action is a restart — on a
+  // machine where no SCM is involved. Translated to winsvc here, which is the
+  // only place that knows what SC_ACTION_RESTART is called.
+  static_assert(install::RestartsIndefinitely(),
+                "the last failure action must be a RESTART: the self-restart "
+                "path kills a live process and would strand the machine with no "
+                "service at all if the scm declined to bring it back");
+  constexpr int n =
+      static_cast<int>(sizeof(install::kFailureActions) /
+                       sizeof(install::kFailureActions[0]));
+  SC_ACTION actions[n]{};
+  for (int i = 0; i < n; ++i) {
+    actions[i].Type = install::kFailureActions[i].restart ? SC_ACTION_RESTART
+                                                          : SC_ACTION_NONE;
+    actions[i].Delay = install::kFailureActions[i].delayMs;
+  }
+  SERVICE_FAILURE_ACTIONS fa{};
+  // Unchanged, and now almost decorative: with no SC_ACTION_NONE to fall off the
+  // end onto, the reset period only decides which delay a failure gets, not
+  // whether it is answered at all.
+  fa.dwResetPeriod = install::kFailureResetPeriodSeconds;
+  fa.cActions = n;
+  fa.lpsaActions = actions;
+  return ::ChangeServiceConfig2W(svc, SERVICE_CONFIG_FAILURE_ACTIONS, &fa) != 0;
+}
+
+// Make the promise true immediately before relying on it.
+//
+// A SELF-RESTART IS A BET ON CONFIGURATION THIS PROCESS DID NOT NECESSARILY
+// WRITE. The service on this machine may have been registered by an older build
+// (the one with SC_ACTION_NONE in the last slot), by an in-place binary update
+// that never re-ran the install verb, or by an administrator with their own
+// ideas. Reading the policy out of a comment in InstallService and hoping is how
+// the bug this whole change is about happened in the first place: a decision made
+// against a stale belief instead of against the present.
+//
+// So the policy is re-applied here, at the one moment it is about to be depended
+// on, and the answer is used. LocalSystem holds SERVICE_ALL_ACCESS in the default
+// service DACL, so this costs two SCM handles and no elevation. If it fails, the
+// caller does NOT self-terminate — it falls back to the old, honest message that
+// asks for a manual restart, because a process that is still running can at least
+// still turn the tunnel off.
+//
+// These are RPCs to services.exe, made on a thread holding TunnelController's
+// mutex_, which is a thing worth saying out loud rather than discovering. It is
+// acceptable for exactly one reason: the only path that reaches here is a start
+// already being refused, and the operation the operator cannot be denied — Stop()
+// — takes that lock with a timed acquire and reverts the machine without it if it
+// cannot have it (kStopLockBudget). Nothing here can cost anyone their network.
+bool EnsureRestartOnFailure() {
+  SC_HANDLE scm = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_CONNECT);
+  if (!scm) {
+    LogError("service: cannot open the scm to confirm the restart-on-failure "
+             "policy ({}), so a self-restart cannot be proved to come back",
+             ::GetLastError());
+    return false;
+  }
+  SC_HANDLE svc = ::OpenServiceW(scm, ids::kServiceName, SERVICE_CHANGE_CONFIG);
+  if (!svc) {
+    LogError("service: cannot open our own service record to confirm the "
+             "restart-on-failure policy ({})",
+             ::GetLastError());
+    ::CloseServiceHandle(scm);
+    return false;
+  }
+  const bool ok = ApplyRestartOnFailure(svc);
+  if (!ok)
+    LogError("service: could not set the restart-on-failure policy ({})",
+             ::GetLastError());
+  ::CloseServiceHandle(svc);
+  ::CloseServiceHandle(scm);
+  return ok;
+}
+
 // --- self-restart: the recovery for a device that really is still held -------
 //
 // Installed as StopBudget.h's SelfRestartHandler and called from exactly one
@@ -396,18 +501,24 @@ std::atomic<int> g_stopPresses{0};
 // a thread that will not return.
 //
 // So it stops trying to fix it from the inside. Under the SCM the process ends
-// itself, the adapter dies with it as a PnP surprise removal, SC_ACTION_RESTART
-// (InstallService, 5000 ms delay) starts a clean one, and the app reattaches on
-// its own. The user presses nothing; the error they were shown says "reconnecting
-// in a few seconds" and then it is.
+// itself, the adapter dies with it as a PnP surprise removal, the failure-action
+// policy (ApplyRestartOnFailure — re-confirmed here, not assumed) starts a clean
+// one in ~5 s, and the app reattaches on its own. The user presses nothing; the
+// error they were shown says "reconnecting in a few seconds" and then it is.
 //
 // Returns whether a restart is actually coming, so the caller can say something
 // true rather than something hopeful.
 bool RestartServiceProcess(const char* why) {
-  // ONCE. Two starts refused in quick succession must not race two terminators,
-  // and the second caller still wants "yes, a restart is coming" — it is.
-  static std::atomic<bool> requested{false};
-  if (requested.exchange(true)) return g_underScm.load();
+  // THE LATCH IS ON THE TERMINATOR, NOT ON THE ASKING, and that distinction is
+  // one this file has already been bitten by once. A latch set the moment the
+  // question was asked would remember "yes" for a call that answered NO — the
+  // console branch, or a restart policy that could not be confirmed — and every
+  // later caller would be told a restart is coming that nobody ever armed. Same
+  // shape as the stale teardown latch: a fact recorded at the wrong moment, read
+  // forever afterwards as if it were the present. So the only thing latched here
+  // is the existence of a terminator, and it is latched where one is created.
+  static std::atomic<bool> armed{false};
+  if (armed.load()) return true;
 
   if (!g_underScm.load()) {
     // CONSOLE MODE, WHERE KILLING THE PROCESS WOULD BE A SURPRISE, NOT A FIX.
@@ -423,6 +534,24 @@ bool RestartServiceProcess(const char* why) {
              "sdk thread holding the wintun adapter. Press Ctrl+C and run "
              "`urnetworkd console` again. Under the scm this case restarts "
              "itself.",
+             why);
+    return false;
+  }
+
+  // PROVE THE NET IS THERE BEFORE JUMPING. Everything below kills a process that
+  // is still answering RPCs, on the strength of a policy stored in the service
+  // database — which this build did not necessarily write and which, in the shape
+  // it shipped in until now, gives up after the third death in a day. Re-applied
+  // and checked here rather than assumed; if it cannot be established, we do not
+  // jump, and the user keeps a running service and the old instruction.
+  if (!EnsureRestartOnFailure()) {
+    LogError("service: {} — but the scm's restart-on-failure policy could NOT be "
+             "confirmed, so this process is NOT ending itself. Terminating "
+             "without a proven restart would leave this machine with no service "
+             "at all: no tunnel, no disconnect, no status, and an app polling a "
+             "pipe that never answers. That is worse than the refusal. Your "
+             "network is already back; restart the urnetworkd service to clear "
+             "the held device.",
              why);
     return false;
   }
@@ -444,6 +573,11 @@ bool RestartServiceProcess(const char* why) {
   // DETACHED and owning nothing — the same contract RunBounded's workers keep,
   // for the same reason: this thread outlives the frame that created it by
   // design, and the process it is going to end is the only thing it touches.
+  //
+  // The exchange is HERE, at the creation of the one thing worth being unique.
+  // Every caller that reaches this line is getting a true "yes"; only the first
+  // of them arms anything.
+  if (armed.exchange(true)) return true;
   std::thread([] {
     ArmThreadGuard("self-restart");
     std::this_thread::sleep_for(kSelfRestartGrace);
@@ -939,15 +1073,10 @@ int InstallService() {
   // Crash recovery on BOTH paths, so a re-install converges to the same config
   // a fresh install gets (plan M4): restart on failure, and the restarted
   // instance runs the startup sweep, so a crash that DID leave an adapter
-  // behind gets cleaned within the restart delay.
-  SC_ACTION actions[3] = {{SC_ACTION_RESTART, 5000},
-                          {SC_ACTION_RESTART, 5000},
-                          {SC_ACTION_NONE, 0}};
-  SERVICE_FAILURE_ACTIONS fa{};
-  fa.dwResetPeriod = 86400;
-  fa.cActions = 3;
-  fa.lpsaActions = actions;
-  ::ChangeServiceConfig2W(svc, SERVICE_CONFIG_FAILURE_ACTIONS, &fa);
+  // behind gets cleaned within the restart delay. The policy itself lives in
+  // ApplyRestartOnFailure, shared with the self-restart path — see the note
+  // there for why its last action must be a RESTART and not a NONE.
+  ApplyRestartOnFailure(svc);
 
   // Also on both paths, and BEFORE the StartService below, so the start this
   // verb performs is already covered rather than the one after it.

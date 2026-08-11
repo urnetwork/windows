@@ -459,6 +459,31 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
   // had been free for 2.2 seconds. The gate each abandoned worker signals
   // through is retained now (StopBudget.h), so the same worker that caused the
   // refusal can withdraw it, and this is where that is re-read.
+  // AND ONCE THIS PROCESS HAS DECIDED TO LEAVE, IT LEAVES. Asked before the
+  // sweep and answered without it, because the sweep can legitimately say "clear"
+  // during the second kSelfRestartGrace leaves on the clock for the reply to
+  // reach the app: the abandoned worker finishes at, say, 300ms, a Connect
+  // arrives at 500ms, and it would be allowed to build a wintun adapter, rewrite
+  // this machine's routes and DNS, arm the firewall — and then be terminated at
+  // 1000ms by a countdown that was armed before it started. That is recoverable
+  // only by the floor, and to the user it looks like precisely the bug this whole
+  // change is about: press Connect, watch it die, no reason given. A start we
+  // will not live to keep is not a start.
+  if (SelfRestartPending()) {
+    SetStateLocked(proto::TunnelState::Error);
+    error_ =
+        "this service is already restarting itself — reconnecting in a few "
+        "seconds";
+    LogWarn("tunnel: REFUSING to start — this process has ALREADY committed to "
+            "ending itself so the scm restarts it clean, and is inside the "
+            "{}ms grace it leaves for that reply to reach the app. Even if the "
+            "wedged teardown has finished in the meantime, a session started "
+            "now would be killed mid-bring-up by a countdown it cannot see. The "
+            "start after the restart is the one that works.",
+            kSelfRestartGrace.count());
+    return StatusLocked();
+  }
+
   const AbandonedTeardownSweep abandoned = SweepAbandonedTeardowns();
   // SAY SO. A refusal that quietly stops happening is indistinguishable in a log
   // from a refusal that never happened, and this is the line that tells the next
