@@ -756,6 +756,15 @@
                                                        Style="{StaticResource UrSupportingTextStyle}"
                                                        TextWrapping="Wrap" TextTrimming="None"
                                                        Visibility="Collapsed" />
+                                            <!-- track 2 window honesty: the SDK's stall
+                                                 diagnosis as a human sentence while the
+                                                 attempt is yellow, and the explanation in
+                                                 the failure state. One writer:
+                                                 ConnectPage::ApplyConnectStatus. -->
+                                            <TextBlock x:Name="StatusReasonText"
+                                                       Style="{StaticResource UrSupportingTextStyle}"
+                                                       TextWrapping="Wrap" TextTrimming="None"
+                                                       Visibility="Collapsed" />
                                         </StackPanel>
                                     </Grid>
                                 </Border>

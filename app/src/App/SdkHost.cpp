@@ -2236,6 +2236,15 @@ LiveStats SdkHost::ReadStats() {
       if (loc->country_code) s.countryCode = *loc->country_code;
       if (loc->country) s.countryName = *loc->country;
     }
+    // The window honesty diagnosis (track 2): the SDK's stall reason and the
+    // terminal failed latch. One more rpc getter under the same serviceUp
+    // gate as the five above; an old service simply omits the JSON keys and
+    // both fields stay at their defaults, which renders as before this
+    // feature existed.
+    if (auto ws = device_->getWindowStatus()) {
+      s.windowStallReason = ws->StallReason;
+      s.windowFailed = ws->Failed;
+    }
   }
 
   // ---- rpc-only: clamp the RENDERED connection state ----------------------
@@ -2281,6 +2290,10 @@ LiveStats SdkHost::ReadStats() {
     s.gridPoints.clear();
     s.gridWidth = 0;
     s.gridHeight = 0;
+    // and the window honesty diagnosis: a session that carries no traffic by
+    // design cannot claim the connect attempt failed
+    s.windowStallReason.clear();
+    s.windowFailed = false;
   }
 
   // ---- the control channel is gone: the same clamp, the same reason -------
@@ -2310,6 +2323,8 @@ LiveStats SdkHost::ReadStats() {
     s.gridPoints.clear();
     s.gridWidth = 0;
     s.gridHeight = 0;
+    s.windowStallReason.clear();
+    s.windowFailed = false;
   }
 
   // ---- aggregate connection health (#27) -----------------------------------
@@ -2338,6 +2353,8 @@ LiveStats SdkHost::ReadStats() {
     // the two figures bracket the answer whatever windowCurrentSize counts.
     hs.windowSize = (std::max)(s.providerCount, cells);
     hs.provenCount = proven;
+    // the SDK's terminal verdict (already clamped above with everything else)
+    hs.windowFailed = s.windowFailed;
     const int64_t nowMillis =
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now().time_since_epoch())

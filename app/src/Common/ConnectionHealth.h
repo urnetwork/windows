@@ -53,6 +53,15 @@ enum class State {
   // different word is the difference between "still working on it" and "this
   // was working and stopped", which is exactly what the owner could not see.
   Degraded,
+  // The SDK's window honesty layer declared the attempt failed: zero providers
+  // Added past BOTH outcome deadlines (45s to an automatic silent window
+  // rebuild, 45s more to this). Terminal until the user retries — the page
+  // renders a failure line with the stall reason and a Retry action — or the
+  // SDK clears it because a provider finally landed (proven recovery is
+  // immediate and one-sided, like everywhere else in this table). This is the
+  // "no infinite yellow" state: it can only be entered on the SDK's explicit
+  // word (WindowStatus.Failed), never inferred locally from elapsed time.
+  Failed,
 };
 
 // For logs and tests only — never user-facing (the UI renders store strings).
@@ -64,6 +73,7 @@ inline constexpr const char* ToString(State s) {
     case State::Evaluating: return "evaluating";
     case State::Connected: return "connected";
     case State::Degraded: return "degraded";
+    case State::Failed: return "failed";
   }
   return "unknown";
 }
@@ -131,6 +141,11 @@ struct Signals {
   int64_t windowSize = 0;
   // Cells in the Added state (CellProven).
   int64_t provenCount = 0;
+  // The SDK's own terminal verdict on this attempt (WindowStatus.Failed over
+  // the device RPC): zero Added past both of the window's outcome deadlines.
+  // Cleared by the rpc-only and service-down clamps like every other claim —
+  // a session that carries nothing cannot have failed to connect.
+  bool windowFailed = false;
 };
 
 // The stateful half: attempt identity and the degrade hold. One instance lives
@@ -185,6 +200,17 @@ class Tracker {
       proven_ = true;
       provenLostAtMillis_ = -1;
       return state_ = State::Connected;
+    }
+    if (in.windowFailed && !proven_) {
+      // The SDK declared the attempt failed (zero Added past both outcome
+      // deadlines). Below the proven branch on purpose: a proven provider is
+      // stronger, newer evidence than a latch computed from the window's
+      // empty stretch, and the SDK clears the latch on the next Added anyway.
+      // The !proven_ guard is defensive symmetry — a failed latch can only
+      // exist on a never-proven window by construction, and if that invariant
+      // ever broke, Degraded (below) is the honest word for a session that
+      // WAS working, not Failed.
+      return state_ = State::Failed;
     }
     // proven == 0 from here down.
     if (proven_) {

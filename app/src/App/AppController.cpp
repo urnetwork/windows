@@ -522,6 +522,11 @@ void AppController::UpdateTray() {
       case Health::Connecting:
         tip += L" — " + Localized("connecting_status_indicator");
         break;
+      case Health::Failed:
+        // the window honesty layer's terminal outcome (track 2): the page
+        // shows the reason and a Retry; the tray says the same headline
+        tip += L" — " + pages::AdvW("conn_failed", L"Couldn't connect");
+        break;
       default:
         // NoService/Disconnected under a tunnel that reports Up: a transient
         // disagreement between the two feeds — claim nothing extra.

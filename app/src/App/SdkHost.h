@@ -143,6 +143,20 @@ struct LiveStats {
   // via RepublishStats) — grid events stop arriving exactly when everything is
   // stuck, so waiting for one would hold "Connected" over a dead window.
   int64_t healthReevalAtMillis = 0;
+
+  // ---- window honesty (connect-flow reliability, track 2) ----
+  // The SDK's stall diagnosis for a still-forming window (WindowStatus.
+  // StallReason over the device RPC): "evaluating" | "platform-unreachable" |
+  // "providers-unresponsive" | "rate-limited" | "auth-failing". Empty when the
+  // service predates the field or nothing is being attempted. ConnectPage
+  // renders it as the reason line under the hero while yellow and in the
+  // failure state.
+  std::string windowStallReason;
+  // WindowStatus.Failed: zero providers Added past both of the window's
+  // outcome deadlines (45s to one automatic silent rebuild, 45s more to
+  // this). Feeds health::Signals::windowFailed, which is what renders it.
+  // Clamped false with everything else in rpc-only and service-down.
+  bool windowFailed = false;
 };
 
 // ---- selection identity ----------------------------------------------------

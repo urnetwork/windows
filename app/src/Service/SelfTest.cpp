@@ -2475,13 +2475,47 @@ void TestConnectionHealth() {
             State::Degraded,
         "an unverified claim that never proves out becomes Degraded, honestly");
 
+  // ---- track 2 window honesty: the SDK's terminal failed verdict ----
+  // Failed can only be entered on the SDK's explicit word (WindowStatus.Failed
+  // — zero Added past both outcome deadlines), never inferred locally, and it
+  // yields instantly to better evidence.
+  auto sigF = [&sig](bool svc, Activity a, bool grid, int64_t window,
+                     int64_t proven, bool failed) {
+    Signals s = sig(svc, a, grid, window, proven);
+    s.windowFailed = failed;
+    return s;
+  };
+  Tracker t5;
+  Check(t5.Update(sigF(true, Activity::Connecting, true, 0, 0, true), 0) ==
+            State::Failed,
+        "the SDK's windowFailed verdict renders Failed — no infinite yellow");
+  Check(t5.Update(sigF(true, Activity::Active, true, 4, 0, true), 1000) ==
+            State::Failed,
+        "…whatever the SDK status claims, while nothing is proven");
+  Check(t5.Update(sigF(true, Activity::Active, true, 4, 1, true), 2000) ==
+            State::Connected,
+        "a proven provider beats a stale failed latch: recovery is immediate");
+  Check(t5.Update(sigF(true, Activity::Active, true, 4, 0, true), 2500) ==
+            State::Connected,
+        "…and a proven attempt never re-enters Failed — Degraded owns the "
+        "was-working-and-stopped story (the hold is still running here)");
+  Check(t5.Update(sigF(true, Activity::Inactive, true, 0, 0, false), 4000) ==
+            State::Disconnected,
+        "disconnect clears the failed claim like every other claim");
+  Tracker t6;
+  t6.Update(sigF(true, Activity::Connecting, true, 0, 0, true), 0);
+  Check(t6.Update(sigF(false, Activity::Inactive, false, 0, 0, true), 1000) ==
+            State::NoService,
+        "a dead pipe outranks a stale failed flag — NoService claims least");
+
   // ToString is total (log/test plumbing, never user-facing).
   Check(std::string(ToString(State::NoService)) == "no_service" &&
             std::string(ToString(State::Disconnected)) == "disconnected" &&
             std::string(ToString(State::Connecting)) == "connecting" &&
             std::string(ToString(State::Evaluating)) == "evaluating" &&
             std::string(ToString(State::Connected)) == "connected" &&
-            std::string(ToString(State::Degraded)) == "degraded",
+            std::string(ToString(State::Degraded)) == "degraded" &&
+            std::string(ToString(State::Failed)) == "failed",
         "ToString names every state");
 }
 

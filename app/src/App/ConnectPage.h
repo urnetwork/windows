@@ -137,7 +137,10 @@ class ConnectPage {
   // tunnel state that drives connected_: the tunnel says whether packets can
   // flow, this says what the connect controller is doing about it, and only this
   // one has a "connecting" value to show.
-  enum class ConnectStatus { Disconnected, Connecting, DestinationSet, Connected };
+  // Failed mirrors the SDK's CONNECT_FAILED (the window honesty layer's
+  // terminal outcome); an old SDK never emits it and the parse falls through
+  // to Disconnected exactly as before.
+  enum class ConnectStatus { Disconnected, Connecting, DestinationSet, Connected, Failed };
 
   static ConnectStatus ParseConnectStatus(std::string const& value);
   // What the connect button does right now, from the ONE shared rule in
@@ -333,6 +336,10 @@ class ConnectPage {
   std::optional<urnet::DnsResolverSettings> dnsSettings_;
   std::string countryCode_;  // selected location country (dns recommendations)
   std::string countryName_;
+  // The SDK's stall diagnosis for a still-forming window (track 2), cached
+  // off LiveStats for the reason line ApplyConnectStatus renders. Empty means
+  // nothing to say (idle, or a service that predates the field).
+  std::string windowStallReason_;
   // ---- D5: Advanced Mode ----
   // Pushed from MainWindow::ApplyAdvancedMode, which is itself driven by
   // SdkHost's standing value — this page never reads the preference itself, so

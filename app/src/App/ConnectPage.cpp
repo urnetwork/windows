@@ -214,7 +214,13 @@ void ConnectPage::ApplyStrings() {
 // ---- connect -------------------------------------------------------------
 
 void ConnectPage::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
-  if (ConnectActionIsDisconnect()) {
+  // The failure state's one action is Retry (track 2): rebuild the session.
+  // It must win over the disconnect rule below — in the failed state the SDK
+  // still holds a destination and the machine is still captured, so the
+  // gesture predicate reads Disconnect, but the button SAYS Retry and a press
+  // must do what the button says.
+  const bool retry = RenderHealth() == urnw::health::State::Failed;
+  if (!retry && ConnectActionIsDisconnect()) {
     Sdk().Disconnect();
     return;
   }
@@ -234,6 +240,14 @@ void ConnectPage::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
   // still settling.
   const auto selected = Sdk().SelectedLocation();
   const bool bestAvailable = IsBestAvailableSelected(selected);
+  if (retry) {
+    // The Retry contract: the disconnect tears down the failed session (multi
+    // client, routes, window) and the connect below builds a fresh one — the
+    // exact manual sequence that reliably recovered the field hangs. Both
+    // calls are explicit user-gesture entry points (D8: a retry press IS a
+    // connect gesture).
+    Sdk().Disconnect();
+  }
   // Say "connecting" NOW rather than waiting for the SDK to push it back. On a
   // client that has never run, a Connect press that produces no visible change
   // is indistinguishable from a hang; the next status push corrects this if the
@@ -283,6 +297,10 @@ ConnectPage::ConnectStatus ConnectPage::ParseConnectStatus(std::string const& va
   if (upper == "CONNECTED") return ConnectStatus::Connected;
   if (upper == "CONNECTING") return ConnectStatus::Connecting;
   if (upper == "DESTINATION_SET") return ConnectStatus::DestinationSet;
+  // the window honesty layer's terminal outcome (track 2). Recognised so the
+  // button can offer Retry over a session that still exists; an old SDK never
+  // sends it and the fallthrough below stays the fail-safe it always was.
+  if (upper == "CONNECT_FAILED") return ConnectStatus::Failed;
   return ConnectStatus::Disconnected;
 }
 
@@ -328,6 +346,12 @@ urnw::health::State ConnectPage::RenderHealth() const {
        render == Health::Connected)) {
     render = Health::Connecting;
   }
+  // Failed is deliberately NOT overridden by a transitional SDK status: during
+  // the old-DLL/new-service transition the in-process controller never learns
+  // the CONNECT_FAILED word and keeps saying CONNECTING forever, which is the
+  // exact infinite yellow this state exists to end. The Retry press does not
+  // need the override either — it writes BOTH optimistic values (connectStatus_
+  // and health_), so the failure stops rendering at the press itself.
   // ...and the settled idle status outranks a stale ACTIVE health: an unknown/
   // clamped status must never leave the line claiming a connection.
   if (connectStatus_ == ConnectStatus::Disconnected &&
@@ -588,6 +612,16 @@ void ConnectPage::ApplyConnectStatus() {
       dot = urnw::colors::kStatusConnecting;
       heroConnection = urnw::ConnectCanvas::State::Connecting;
       break;
+    case Health::Failed:
+      // The window honesty layer's terminal outcome: zero providers Added
+      // past both outcome deadlines, one automatic rebuild already spent.
+      // The reason line below says WHY; the button says Retry. The hero shows
+      // its error form — this is a settled failure, not a transition, and the
+      // climbing-dots animation would contradict the words.
+      text = Adv("conn_failed", L"Couldn't connect");
+      dot = urnw::colors::kUrCoral;
+      heroConnection = urnw::ConnectCanvas::State::Error;
+      break;
     case Health::NoService:
     case Health::Disconnected:
       // R1: PROTECTION STATE, not readiness. The owner reconciliation is explicit
@@ -645,7 +679,8 @@ void ConnectPage::ApplyConnectStatus() {
   {
     std::wstring held;
     if (connected_ &&
-        (render == Health::Evaluating || render == Health::Degraded)) {
+        (render == Health::Evaluating || render == Health::Degraded ||
+         render == Health::Failed)) {
       if (w_.statusWfpState() != "off") {
         held = AdvW("conn_traffic_blocked",
                     L"No working provider right now — your traffic is blocked, "
@@ -692,6 +727,40 @@ void ConnectPage::ApplyConnectStatus() {
     }
     urnw::kit::SetTextOrCollapse(w_.TrafficHeldText(), winrt::hstring{held});
   }
+
+  // ---- the stall reason line (track 2 window honesty) ----------------------
+  // One writer, under the status line: while the attempt is yellow the SDK's
+  // machine-readable diagnosis becomes a human sentence, and in the failure
+  // state it explains what failed. Empty (idle, connected, old service, or
+  // plain "evaluating" — the headline already says "Finding providers…")
+  // collapses the line. Store-first ids with english fallbacks, the Adv()
+  // convention every not-yet-in-store string on this page uses.
+  {
+    std::wstring reason;
+    const bool stalled = render == Health::Connecting ||
+                         render == Health::Evaluating ||
+                         render == Health::Degraded ||
+                         render == Health::Failed;
+    if (stalled) {
+      if (windowStallReason_ == "platform-unreachable") {
+        reason = AdvW("conn_reason_platform", L"Contacting the platform…");
+      } else if (windowStallReason_ == "providers-unresponsive") {
+        reason = AdvW("conn_reason_providers",
+                      L"Providers not responding — retrying…");
+      } else if (windowStallReason_ == "rate-limited") {
+        reason = AdvW("conn_reason_rate_limited", L"Rate limited — waiting…");
+      } else if (windowStallReason_ == "auth-failing") {
+        reason = AdvW("conn_reason_auth",
+                      L"Signing in to the platform is failing…");
+      }
+    }
+    if (render == Health::Failed && reason.empty()) {
+      reason = AdvW("conn_failed_detail",
+                    L"No providers could be reached. Retry rebuilds the "
+                    L"connection from scratch.");
+    }
+    urnw::kit::SetTextOrCollapse(w_.StatusReasonText(), winrt::hstring{reason});
+  }
   w_.StatusDot().Fill(urnw::colors::MakeBrush(dot));
   // The window's status strip shows this same state on every OTHER destination.
   // It reads the derivation rather than repeating it, for the reason the hero
@@ -699,8 +768,17 @@ void ConnectPage::ApplyConnectStatus() {
   // connectionStatus in two files is two places for them to disagree, and the
   // strip is visible while the connect screen is not.
   w_.ApplyStatusStripConnection(text, dot);
-  const bool disconnectAction = ConnectActionIsDisconnect();
-  w_.ConnectButton().Content(disconnectAction ? LocBox("disconnect") : LocBox("connect"));
+  // In the failed state the one action is Retry — the gesture predicate reads
+  // Disconnect (the SDK still holds a destination, the machine is captured),
+  // but a failure whose only offered control is "Disconnect" strands the user
+  // one manual step from the retry that usually works. OnConnectToggle keeps
+  // the two in agreement: a press in this state disconnects AND reconnects.
+  const bool failedAction = render == Health::Failed;
+  const bool disconnectAction = !failedAction && ConnectActionIsDisconnect();
+  w_.ConnectButton().Content(failedAction
+                                 ? LocBox("retry")
+                                 : (disconnectAction ? LocBox("disconnect")
+                                                     : LocBox("connect")));
   // ...and its WEIGHT. The state is carried on four channels — the word above,
   // the dot's colour, the hero, and now the button's FILL — so none of them is
   // carrying it alone and none of them is colour-alone. Filled blue while there
@@ -812,6 +890,9 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // The SDK's connection status: the only signal in the client that carries a
   // CONNECTING state. It was read into LiveStats and never used.
   connectStatus_ = ParseConnectStatus(stats.connectionStatus);
+  // the stall diagnosis rides the same snapshot (track 2); rendered by
+  // ApplyConnectStatus as the reason line under the hero
+  windowStallReason_ = stats.windowStallReason;
   // #27: the aggregate health, derived in the SAME ReadStats as every other
   // field of this snapshot — the status line renders THIS, not the raw status.
   health_ = stats.health;
