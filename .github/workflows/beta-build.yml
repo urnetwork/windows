@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - beta/custom-server
+      - beta/algorithm-dpi
   pull_request:
     branches:
       - beta/custom-server
+      - beta/algorithm-dpi
   workflow_dispatch:
 
 permissions:
@@ -75,13 +77,13 @@ jobs:
           # the beta integration line: it now carries the merged reliability
           # checkpoint + the DeviceLocalRpc bridge (sdk#135) and the cgo fixes
           # this client needed as the first c-abi consumer
-          ref: beta/custom-server
+          ref: beta/algorithm-dpi
           path: sdk
 
       # sdk/cgo/go.mod resolves these with `replace ... => ../../<name>`, so
       # they have to sit as siblings of the sdk checkout
       - name: Check out connect dependency
-        run: git clone --depth 1 --branch beta/custom-server https://github.com/Ryanmello07/connect.git connect
+        run: git clone --depth 1 --branch beta/algorithm-dpi https://github.com/Ryanmello07/connect.git connect
 
       - name: Check out glog dependency
         run: git clone --depth 1 https://github.com/urnetwork/glog.git glog
