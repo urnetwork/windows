@@ -23,12 +23,19 @@ bool ServiceClient::Connect() {
   return pipe_.Connect();
 }
 
-proto::TunnelStatus ServiceClient::CallStatus(const nlohmann::json& request) {
+proto::TunnelStatus ServiceClient::CallStatus(const nlohmann::json& request,
+                                              bool* answered) {
   proto::TunnelStatus status;
+  if (answered) *answered = false;
   try {
     nlohmann::json reply = pipe_.Call(request);
     proto::Reply r = reply.get<proto::Reply>();
     if (r.status) status = *r.status;
+    // "The service described its own state to us." A reply that carried no
+    // status at all leaves the default-constructed struct in place, and that
+    // struct reads as "nothing installed" — a claim about this machine that
+    // nobody made. Only a status the service actually sent may be believed.
+    if (answered) *answered = r.ok && r.status.has_value();
     if (!r.ok && !r.error.empty()) {
       status.state = proto::TunnelState::Error;
       status.error = r.error;
@@ -54,8 +61,8 @@ proto::TunnelStatus ServiceClient::StopTunnel() {
   return CallStatus(proto::Request(proto::msg::kStopTunnel));
 }
 
-proto::TunnelStatus ServiceClient::GetState() {
-  return CallStatus(proto::Request(proto::msg::kGetState));
+proto::TunnelStatus ServiceClient::GetState(bool* answered) {
+  return CallStatus(proto::Request(proto::msg::kGetState), answered);
 }
 
 bool ServiceClient::SetSplitTunnel(const std::vector<std::string>& excludedPaths, bool allowlist) {

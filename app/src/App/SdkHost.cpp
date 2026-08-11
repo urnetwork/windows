@@ -3770,12 +3770,18 @@ void SdkHost::SessionWorkerLoop() {
       // once per gesture, one rpc — and let the pure table in
       // Common/ConnectAction.h say what follows. Every row of that table is
       // pinned by the service selftest.
-      const proto::TunnelStatus svc = CurrentServiceStatusLocked();
+      bool answered = false;
+      const proto::TunnelStatus svc = CurrentServiceStatusLocked(answered);
       gesture::ServiceFacts facts;
       facts.pipeUp = service_.IsConnected();
-      // A failed call yields a default-constructed status; the service always
-      // sends its version, so an empty one is the marker for "no answer".
-      facts.known = facts.pipeUp && !svc.service_version.empty();
+      // FROM THE TRANSPORT, NEVER FROM A PAYLOAD FIELD. This was
+      // `!svc.service_version.empty()`, and that field is urnet::version(),
+      // which is EMPTY in this SDK build — the service's own startup line logs
+      // `sdk=` with nothing after it. So `known` was false on every gesture,
+      // every Connect took the unknown-fallback ("keep the session we have"),
+      // and a Connect after a tray force-stop still never sent start_tunnel.
+      // The fallback is a good fallback; it just must not be the normal path.
+      facts.known = facts.pipeUp && answered;
       facts.state = svc.state;
       facts.mode = svc.mode;
       facts.routesInstalled = svc.routes_installed;
@@ -3797,13 +3803,26 @@ void SdkHost::SessionWorkerLoop() {
         app.killSwitch = false;  // no state at all: the permissive default
       }
       app.wantsTunnel = requestedMode_ == proto::StartMode::Tunnel;
+      // RECORDED BEFORE THE DECISION, from the gesture itself, because the
+      // decision is what consumes it. A Connect of either shape IS the user
+      // asking, so it clears the flag ahead of its own Decide; a Disconnect
+      // (including the one the tray's escape hatch queues) sets it.
+      // EnsureSession leaves it alone — "make sure a session exists" is the
+      // resume path, a network-space change and the service-reconnect watchdog,
+      // none of which is anybody asking for a tunnel.
+      const gesture::Gesture g = GestureOf(req.kind);
+      if (g == gesture::Gesture::Connect || g == gesture::Gesture::ConnectRow)
+        userDisconnected_.store(false);
+      else if (g == gesture::Gesture::Disconnect)
+        userDisconnected_.store(true);
+      app.userDisconnected = userDisconnected_.load();
       {
         // mutex_ -> healthMutex_, the order ConnectLocked already establishes.
         std::scoped_lock healthLock(healthMutex_);
         app.health = healthTracker_.Current();
       }
 
-      const gesture::Plan plan = gesture::Decide(GestureOf(req.kind), facts, app);
+      const gesture::Plan plan = gesture::Decide(g, facts, app);
       LogInfo("sdkhost: '{}' -> {} (service: state={} routes={} wfp={}{}; app: "
               "device={})",
               req.reason, plan.why, proto::ToString(facts.state),
@@ -3915,14 +3934,18 @@ void SdkHost::SessionWorkerLoop() {
 // cached mirror the tray reads. It cannot lie, because every field of the reply
 // is read off the object that OWNS the machine state, inside the process that
 // holds it (TunnelController::Status).
-proto::TunnelStatus SdkHost::CurrentServiceStatusLocked() {
+proto::TunnelStatus SdkHost::CurrentServiceStatusLocked(bool& answered) {
+  answered = false;
   if (!service_.IsConnected()) return {};
-  const proto::TunnelStatus st = service_.GetState();
-  if (st.service_version.empty()) {
+  const proto::TunnelStatus st = service_.GetState(&answered);
+  if (!answered) {
     // ServiceClient::CallStatus swallows the throw and hands back a default
     // status, which reads as "nothing is running" — and acting on that would
     // tear a healthy tunnel down over one dropped reply. Say so; the decision
     // treats it as unknown and keeps whatever it has.
+    //
+    // Read off the TRANSPORT, not off a field of the reply: every payload
+    // field has a legitimate default that is indistinguishable from silence.
     LogWarn("sdkhost: get_state did not answer ({}). Treating the service's "
             "state as UNKNOWN rather than as 'nothing is installed'.",
             st.error.empty() ? "no error reported" : st.error);

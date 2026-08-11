@@ -3787,6 +3787,50 @@ void TestConnectGesture() {
           "…and is a no-op when the session is already live");
   }
 
+  // ---- ...and never UNDOES a disconnect ----
+  //
+  // The failure this pins is a second-order one, and it arrived with the fix
+  // for bug A rather than before it. Disconnect now tears the DeviceRemote
+  // down, so `if (device_)` no longer accidentally makes an ensure a no-op:
+  // the service-reconnect watchdog firing after a service restart would find
+  // no session, bootstrap one, and put the capture routes back on a machine
+  // whose owner pressed Disconnect and has not touched it since.
+  {
+    AppFacts a = app(false);
+    a.userDisconnected = true;
+    const Plan p = Decide(Gesture::EnsureSession, idle(), a);
+    Check(!p.startTunnel && !p.stopTunnel && !p.sdkConnect,
+          "ENSURE SESSION after a deliberate disconnect starts NOTHING: a "
+          "service that died and came back is not the user asking for a VPN");
+    Check(p.why[0] != '\0', "…and still says why rather than landing in silence");
+
+    // The watchdog reaches the worker the instant the pipe reappears, i.e.
+    // BEFORE this side has redialled it — so the guard has to sit ahead of the
+    // unknown-state fallback, which would otherwise bootstrap on !haveDevice.
+    ServiceFacts down;  // pipeUp=false, known=false
+    const Plan racing = Decide(Gesture::EnsureSession, down, a);
+    Check(!racing.startTunnel,
+          "…including on the exact path it exists for: the service came back, "
+          "the pipe is not redialled yet, and the fallback would have "
+          "bootstrapped over the top of the user's decision");
+
+    // An explicit Connect is the user asking, and is never gated by it. (The
+    // worker clears the flag before it decides; this pins that the table would
+    // not have refused even if it had not.)
+    const Plan connect = Decide(Gesture::Connect, idle(), a);
+    Check(connect.startTunnel,
+          "…while CONNECT is the user asking, and is never refused by it");
+    const Plan row = Decide(Gesture::ConnectRow, idle(), a);
+    Check(row.startTunnel, "…and neither is a location row click");
+
+    // A session the app is reattaching to is a session somebody else started;
+    // "make sure one exists" must still adopt it rather than sit out.
+    const Plan reattach = Decide(Gesture::EnsureSession, tunnelUp(), a);
+    Check(reattach.startTunnel,
+          "…and a LIVE tunnel is still adopted: the flag suppresses starting "
+          "one, never attaching to one that is already carrying traffic");
+  }
+
   // ---- compile-time proof of the two rows the owner reported ----
   {
     constexpr ServiceFacts kCaptured = [] {

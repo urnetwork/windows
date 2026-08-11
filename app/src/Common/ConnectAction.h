@@ -129,6 +129,21 @@ struct AppFacts {
   // not set). False means the rpc-only developer mode, whose promise is that it
   // never touches this machine's network — no gesture may start a tunnel there.
   bool wantsTunnel = true;
+  // THE LAST THING THE USER ACTUALLY ASKED FOR WAS "OFF". Read by EnsureSession
+  // alone, and it exists because Disconnect now tears the DeviceRemote down.
+  //
+  // EnsureSession is "make sure a session exists": the resume path at launch, a
+  // network-space change, and the service-reconnect watchdog. It used to be a
+  // no-op after a disconnect purely by accident — device_ survived a Disconnect,
+  // so `if (device_)` short-circuited. With the session genuinely gone, the
+  // watchdog firing after the service restarts would find no session, bootstrap
+  // one, and put the capture routes back on a machine whose owner had pressed
+  // Disconnect minutes earlier and never touched it since. The service dying and
+  // coming back is not consent, and neither is a network change.
+  //
+  // NOT read by Connect or ConnectRow: those ARE the user asking, and the flag
+  // is cleared by them before the decision is made.
+  bool userDisconnected = false;
   // The aggregate the user is being shown right now (ConnectionHealth.h). Read
   // only by TrayToggle, to decide which gesture the one tray item is.
   health::State health = health::State::NoService;
@@ -334,6 +349,22 @@ inline constexpr Plan Decide(Gesture g, const ServiceFacts& f, const AppFacts& a
     case Gesture::ConnectRow:
     case Gesture::EnsureSession: {
       p.sdkConnect = g != Gesture::EnsureSession;
+      // "MAKE SURE A SESSION EXISTS" IS NOT "TURN THE VPN BACK ON", and this
+      // has to be asked BEFORE the unknown-state fallback below — the case it
+      // exists for is the service-reconnect watchdog, which fires the instant
+      // the pipe reappears and therefore reaches here with pipeUp still false.
+      // With the user's last word being Disconnect and no session anywhere, an
+      // ensure must leave the machine exactly as they left it: no adapter, no
+      // routes, no policy. The next Connect is what changes that, and it clears
+      // this flag on the way in.
+      if (g == Gesture::EnsureSession && a.userDisconnected &&
+          !proto::IsSessionLive(f.state)) {
+        p.why =
+            "the user disconnected and nothing has asked to reconnect since: "
+            "making sure a session exists must not put this machine's capture "
+            "routes back on its own";
+        return p;
+      }
       if (!f.pipeUp || !f.known) {
         // NOT a no-op. The bootstrap is the thing that DIALS the pipe, reports
         // why it could not, and arms the service-reconnect watchdog; making

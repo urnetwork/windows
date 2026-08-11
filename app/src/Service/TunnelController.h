@@ -460,6 +460,17 @@ class TunnelController {
   // teardown will eventually do.
   mutable std::mutex statusMirrorMutex_;
   proto::TunnelStatus statusMirror_;
+  // urnet::version(), READ ONCE AT CONSTRUCTION AND NEVER AGAIN.
+  //
+  // It looks like a constant and it is not: it is a cgo call into the Go
+  // runtime. Composing a status now happens inside SetStateLocked, which runs
+  // on the teardown path AHEAD of the route revert and whose contract is that
+  // nothing in it may block — and Status() itself has to stay answerable while
+  // a connect attempt is wedged inside the SDK, which is exactly the state in
+  // which a cgo call can fail to return. Putting an SDK re-entry on both of
+  // those paths would undo the two properties they exist to have. Once, at
+  // construction, when nothing is wedged.
+  const std::string sdkVersion_;
   // upSinceMillis_'s mirror, kept separate so Status() can age it against a
   // live clock rather than serve the uptime as of the last publish.
   std::atomic<int64_t> upSinceMirror_{0};

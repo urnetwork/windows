@@ -1269,12 +1269,17 @@ class SdkHost {
   bool BootstrapSession();
   // ASK THE SERVICE WHAT IS ACTUALLY INSTALLED. One get_state rpc, once per
   // gesture, and the ONLY admissible answer to "is there a tunnel right now" —
-  // see the contract in Common/ConnectAction.h. Returns a default-constructed
-  // status (service_version empty, which is what marks it "no answer") when
-  // there is no channel or the call failed; the decision reads that as unknown
-  // and keeps whatever session it has rather than tearing one down over a
-  // dropped reply. Caller holds mutex_.
-  proto::TunnelStatus CurrentServiceStatusLocked();
+  // see the contract in Common/ConnectAction.h.
+  //
+  // `answered` is the whole point of the signature. On no channel or a failed
+  // call this returns a DEFAULT-CONSTRUCTED status, which reads as "nothing is
+  // installed on this machine" — a sentence nobody said. The decision must be
+  // able to tell that apart from a service that really has nothing running, and
+  // no field of the reply can carry that distinction: they all have legitimate
+  // defaults. (The first version tried `service_version`, which is empty in
+  // every build of this SDK, so `known` was false forever and Connect never
+  // took the branch that starts a tunnel.) Caller holds mutex_.
+  proto::TunnelStatus CurrentServiceStatusLocked(bool& answered);
   void SetAuthState(AuthState s, const std::string& error = {});
   void SubscribeStats();          // caller holds mutex_; opens presentation controllers
   LiveStats ReadStats();          // read the current snapshot from the SDK getters
@@ -1503,6 +1508,18 @@ class SdkHost {
   // tunnel" — with no idea whether they were. Carried from the service like its
   // two neighbours instead; the service is the process that owns the routes.
   std::atomic<bool> lastServiceRoutesInstalled_{false};
+  // "THE LAST THING THE USER ASKED FOR WAS OFF." Written by the session worker
+  // from the gesture it just dequeued, read by gesture::Decide for EnsureSession
+  // alone (see AppFacts::userDisconnected).
+  //
+  // Deliberately NOT persisted. It is about this run of the app: a launch is a
+  // fresh start and its resume path should bring the session up as it always
+  // has. What it protects is the window in between — the service dying and
+  // coming back, or a network-space change, silently re-installing the capture
+  // routes on a machine whose owner pressed Disconnect and walked away. Before
+  // Disconnect tore the DeviceRemote down, `if (device_)` made that impossible
+  // by accident; it is a rule now instead.
+  std::atomic<bool> userDisconnected_{false};
   mutable std::mutex wfpStateMutex_;
   std::string lastServiceWfpState_ = "off";
   // ---- aggregate connection health (#27) ------------------------------------

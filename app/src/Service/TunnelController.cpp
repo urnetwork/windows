@@ -67,7 +67,7 @@ std::string Join(const std::vector<std::string>& parts) {
 
 }  // namespace
 
-TunnelController::TunnelController() {
+TunnelController::TunnelController() : sdkVersion_(urnet::version()) {
   storageDir_ = StorageRoot(/*isService=*/true);
 }
 
@@ -1713,9 +1713,12 @@ proto::TunnelStatus TunnelController::Status() {
     s = statusMirror_;
   }
   // Invariants, filled here rather than trusted to the mirror so that a status
-  // served before the first publish still identifies this service. The app uses
-  // a non-empty service_version as its "the call actually answered" marker.
-  s.service_version = urnet::version();
+  // served before the first publish still identifies this service. From the
+  // cached copy: urnet::version() is a cgo call, and this function's contract
+  // is that it answers while the SDK is wedged. (It is also EMPTY in this SDK
+  // build, which is why nothing may use it to decide anything — see
+  // ServiceClient::GetState.)
+  s.service_version = sdkVersion_;
   s.protocol_version = proto::kProtocolVersion;
   // Live, from the lock-free publishers: still correct for a status served
   // WHILE a failsafe teardown is in flight, which is the case they exist for.
@@ -1777,7 +1780,11 @@ proto::TunnelStatus TunnelController::ComposeStatusLocked() {
   s.wfp_state = ToString(wfp_.State());
   s.rpc_listen_hostport = rpcHostPort_;
   s.error = error_;
-  s.service_version = urnet::version();
+  // The CACHED version, not a fresh urnet::version(). This composition now runs
+  // inside SetStateLocked, which is on the teardown path AHEAD of the route
+  // revert and may not block; a cgo call into a Go runtime that a wedged
+  // connect is sitting on is exactly the thing that can.
+  s.service_version = sdkVersion_;
   s.protocol_version = proto::kProtocolVersion;
   s.tunnel_local_up_millis = upSinceMillis_ ? (NowMillis() - upSinceMillis_) : 0;
   // Read from the object that OWNS the binding, like routes_installed and
