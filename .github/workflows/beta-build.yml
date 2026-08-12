@@ -479,12 +479,51 @@ jobs:
           ./configure --host=x86_64-w64-mingw32
           make -C src/lib
 
-      - name: Assert amd64 libndpi.a exists
+      # FIX ROUND 4: `file` on a static archive reports "current ar
+      # archive" for EVERY architecture -- an .a is just a container; the
+      # architecture lives in the member object files, not the archive
+      # itself. The original version of this assertion (and the arm64
+      # one) only ever checked that, so it could not have told the amd64
+      # and arm64 legs apart, or caught either one silently linking the
+      # wrong toolchain's objects. Pull a real member out and inspect
+      # THAT, and apply the identical treatment to both legs -- the whole
+      # point of this job is comparing two architectures, so only
+      # checking one side would undermine the proof.
+      - name: Assert amd64 libndpi.a exists and its members are x86-64
         run: |
           f=ndpi-amd64/src/lib/libndpi.a
           test -s "$f" || { echo "::error::$f was not produced"; exit 1; }
           ls -la "$f"
-          file "$f"
+
+          # Sanity floor, not an exact count: the Makefile/autotools build
+          # compiled ~296 translation units at the pinned tag. A floor of
+          # 250 catches a truncated/near-empty archive without failing
+          # this gate over an incremental upstream file addition or
+          # removal at the same tag.
+          member_count=$(ar t "$f" | wc -l)
+          echo "member count: $member_count"
+          if [ "$member_count" -lt 250 ]; then
+            echo "::error::$f has only $member_count members -- expected at least 250 (296 objects were compiled)"
+            exit 1
+          fi
+
+          member=$(ar t "$f" | head -n 1)
+          echo "inspecting member: $member"
+          ar p "$f" "$member" > /tmp/amd64-member.o
+
+          echo "--- file (informational cross-check only, not gated on -- ---"
+          echo "--- its COFF architecture wording is not guaranteed) ---"
+          file /tmp/amd64-member.o
+
+          echo "--- llvm-objdump -f (the primary oracle: ships with"
+          echo "--- llvm-mingw, already on this runner, parses the COFF"
+          echo "--- header directly rather than pattern-matching) ---"
+          llvm-objdump -f /tmp/amd64-member.o
+
+          llvm-objdump -f /tmp/amd64-member.o | grep -qiE 'x86-64|x86_64' || {
+            echo "::error::$f's member '$member' is not x86-64 -- llvm-objdump -f reported: $(llvm-objdump -f /tmp/amd64-member.o | tr '\n' ' ')"
+            exit 1
+          }
 
       # Step 2: arm64 via the vendored Makefile. Stage the pregenerated
       # headers where autotools would have generated them (src/include/),
@@ -515,13 +554,39 @@ jobs:
             CC=aarch64-w64-mingw32-clang \
             AR=aarch64-w64-mingw32-ar
 
-      - name: Assert arm64 libndpi.a exists and is actually aarch64
+      # FIX ROUND 4: same fix, same reasoning, as the amd64 assertion
+      # above -- `file` on the .a itself only ever said "current ar
+      # archive" (true for every architecture; run 31564089756 is what
+      # caught this), so the original version of this step could not
+      # actually have told an aarch64 archive apart from any other one.
+      - name: Assert arm64 libndpi.a exists and its members are aarch64
         run: |
           f=ndpi-arm64/src/lib/libndpi.a
           test -s "$f" || { echo "::error::$f was not produced"; exit 1; }
           ls -la "$f"
-          file "$f"
-          file "$f" | grep -qi aarch64 || { echo "::error::$f was produced but 'file' does not report aarch64 -- got: $(file "$f")"; exit 1; }
+
+          member_count=$(ar t "$f" | wc -l)
+          echo "member count: $member_count"
+          if [ "$member_count" -lt 250 ]; then
+            echo "::error::$f has only $member_count members -- expected at least 250 (296 objects were compiled)"
+            exit 1
+          fi
+
+          member=$(ar t "$f" | head -n 1)
+          echo "inspecting member: $member"
+          ar p "$f" "$member" > /tmp/arm64-member.o
+
+          echo "--- file (informational cross-check only, not gated on -- ---"
+          echo "--- its COFF architecture wording is not guaranteed) ---"
+          file /tmp/arm64-member.o
+
+          echo "--- llvm-objdump -f (the primary oracle) ---"
+          llvm-objdump -f /tmp/arm64-member.o
+
+          llvm-objdump -f /tmp/arm64-member.o | grep -qiE 'aarch64|arm64' || {
+            echo "::error::$f's member '$member' is not aarch64 -- llvm-objdump -f reported: $(llvm-objdump -f /tmp/arm64-member.o | tr '\n' ' ')"
+            exit 1
+          }
 
   # Every green build publishes a prerelease, the way the android fork does:
   # same tag grammar, same riding-the-numbering notes line. The in-app update
