@@ -20,9 +20,10 @@
 # comment below for the excluded subdirectories and why.
 #
 # Usage -- run from the ROOT of a pinned-tag ntop/nDPI checkout:
-#   cp <this-repo>/app/tools/ndpi/ndpi_define.h  src/include/ndpi_define.h
-#   cp <this-repo>/app/tools/ndpi/ndpi_config.h  src/include/ndpi_config.h
-#   cp <this-repo>/app/tools/ndpi/Makefile.crossproof  src/lib/Makefile.crossproof
+#   cp <this-repo>/app/tools/ndpi/ndpi_define.h      src/include/ndpi_define.h
+#   cp <this-repo>/app/tools/ndpi/ndpi_config.h       src/include/ndpi_config.h
+#   cp <this-repo>/app/tools/ndpi/Makefile.crossproof src/lib/Makefile.crossproof
+#   cp <this-repo>/app/tools/ndpi/ndpi_arm64_shim.h   src/lib/ndpi_arm64_shim.h
 #   make -C src/lib -f Makefile.crossproof \
 #        CC=aarch64-w64-mingw32-clang AR=aarch64-w64-mingw32-ar
 #   -> produces src/lib/libndpi.a
@@ -86,6 +87,28 @@ DEFS := -DNDPI_LIB_COMPILATION -DUSE_OLD_ROARING -DWIN32 -D_WIN64 -D_WINDOWS \
 # time; this build vendors pre-expanded copies to the same path instead).
 INCLUDES := -I. -I../include -Ithird_party/include
 
+# FIX ROUND 2 (task-13): force-include a compatibility shim ahead of every
+# translation unit, the same way an autotools -include would, WITHOUT
+# patching nDPI's own sources (we clone a pinned tag; editing it in the CI
+# step would make the proof about our patch, not about upstream). This
+# Makefile is the ARM64-only build vehicle in this repo (the amd64 leg
+# always goes through nDPI's own upstream autotools, never this file), so
+# force-including it here is already scoped to the arm64 leg; the shim's
+# own internal #if defined(__aarch64__) guard is defense-in-depth beyond
+# that. Currently supplies _rotr64() for aarch64, needed because
+# third_party/include/binaryfusefilter.h's #ifdef _WIN32 branch calls an
+# x86-only intrinsic with no architecture guard -- see
+# ndpi_arm64_shim.h's own header comment and task-13-report.md's "UPSTREAM
+# BUGS FOUND" section for the full story. Staged into src/lib/ alongside
+# this Makefile by the CI workflow, same as ndpi_define.h/ndpi_config.h
+# are staged into src/include/.
+#
+# EXPECT MORE OF THESE: 296 translation units, many never previously
+# compiled for Windows-on-ARM by anyone. If a future CI run surfaces
+# another undeclared x86 intrinsic, add it to ndpi_arm64_shim.h rather
+# than starting a second shim file -- keep them in one place.
+FORCE_INCLUDE := -include ndpi_arm64_shim.h
+
 # --- Source selection ---------------------------------------------------
 # src/lib/*.c : library core. A glob, not a hand-copied list, so it tracks
 # whatever the pinned tag actually ships (18 files at nDPI 5.0).
@@ -131,8 +154,13 @@ all: $(LIB)
 $(LIB): $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) -c -o $@ $<
+# ndpi_arm64_shim.h is an order-only prerequisite (not a normal one): its
+# CONTENT doesn't need to trigger a rebuild-tracking dance for a one-shot
+# CI build, but if it is simply missing (staging step skipped, wrong path)
+# this should fail with a clear "no such file" from make itself rather
+# than a confusing compiler error deep into the first translation unit.
+%.o: %.c | ndpi_arm64_shim.h
+	$(CC) $(CFLAGS) $(DEFS) $(FORCE_INCLUDE) $(INCLUDES) -c -o $@ $<
 
 # Not part of the build -- a quick sanity print used while developing this
 # Makefile against a real checkout (`make -f Makefile.crossproof sourcecount`).

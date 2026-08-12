@@ -355,14 +355,27 @@ jobs:
   # mingw host case hard-errors ("Unsupported MingW cross compiler") for
   # any triple that isn't x86_64-*/i686-*, so arm64 instead builds via
   # app/tools/ndpi/Makefile.crossproof, a vendored minimal Makefile (see
-  # that file, and app/tools/ndpi/ndpi_define.h + ndpi_config.h, for the
-  # full derivation and the exclusions this required). Deliberately
-  # independent of build-sdk/build-windows/release: it neither needs them
-  # nor is needed by them, so a red proof job isolates the Phase-0 finding
-  # without blocking the rest of CI. It clones nDPI at a PINNED RELEASE
-  # TAG, never dev tip (the plan is explicit that nDPI's ABI churns every
-  # minor). It produces and asserts two libndpi.a files and uploads
-  # NOTHING -- no artifact from this job enters the release zip.
+  # that file, and app/tools/ndpi/ndpi_define.h + ndpi_config.h +
+  # ndpi_arm64_shim.h, for the full derivation and the exclusions this
+  # required). Deliberately independent of build-sdk/build-windows/release:
+  # it neither needs them nor is needed by them, so a red proof job isolates
+  # the Phase-0 finding without blocking the rest of CI. It clones nDPI at a
+  # PINNED RELEASE TAG, never dev tip (the plan is explicit that nDPI's ABI
+  # churns every minor). It produces and asserts two libndpi.a files and
+  # uploads NOTHING -- no artifact from this job enters the release zip.
+  #
+  # FIX ROUND 2 found a genuine upstream bug along the way: nDPI's
+  # third_party/include/binaryfusefilter.h calls the x86-only _rotr64
+  # intrinsic behind a Windows-OS-only #ifdef with no architecture guard,
+  # so it has apparently never been compiled for Windows-on-ARM before.
+  # app/tools/ndpi/ndpi_arm64_shim.h supplies _rotr64() for aarch64 via
+  # force-include (-include in Makefile.crossproof), WITHOUT patching the
+  # cloned nDPI tree -- see that header's own comment and
+  # task-13-report.md's "UPSTREAM BUGS FOUND" section for the full writeup,
+  # including a second, latent rotate-direction bug the shim deliberately
+  # reproduces rather than "fixes" (so the amd64 and arm64 archives compute
+  # the same hash as each other, matching upstream's actual Windows
+  # behavior rather than what upstream presumably intended).
   #
   # KNOWN DIVERGENCE (not chased -- see Makefile.crossproof's DEFS comment
   # for the reasoning): the amd64 leg's bare autotools configure
@@ -472,11 +485,21 @@ jobs:
       # and the Makefile itself where autotools' own src/lib/Makefile would
       # live, so the include paths inside Makefile.crossproof line up with
       # the same layout autotools uses.
+      #
+      # FIX ROUND 2: also stage ndpi_arm64_shim.h next to the Makefile --
+      # Makefile.crossproof force-includes it (-include) on every
+      # translation unit to supply _rotr64() for aarch64, which
+      # third_party/include/binaryfusefilter.h needs but nDPI's own
+      # sources never define outside x86 Windows (see ndpi_arm64_shim.h's
+      # header comment and task-13-report.md's "UPSTREAM BUGS FOUND"
+      # section). We deliberately do NOT patch the cloned tree itself --
+      # the shim is staged alongside it, not merged into it.
       - name: Stage vendored headers + Makefile (arm64 leg)
         run: |
           cp app/tools/ndpi/ndpi_define.h ndpi-arm64/src/include/ndpi_define.h
           cp app/tools/ndpi/ndpi_config.h ndpi-arm64/src/include/ndpi_config.h
           cp app/tools/ndpi/Makefile.crossproof ndpi-arm64/src/lib/Makefile.crossproof
+          cp app/tools/ndpi/ndpi_arm64_shim.h ndpi-arm64/src/lib/ndpi_arm64_shim.h
 
       - name: Build arm64 libndpi.a (vendored Makefile.crossproof)
         working-directory: ndpi-arm64/src/lib
