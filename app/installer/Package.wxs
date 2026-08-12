@@ -137,6 +137,11 @@
          tools/package-portable.ps1 zips as the portable build, so this
          payload and the zip's payload cannot drift apart.
 
+         Exclude is a CHILD element here (Exclude Files="..."), not an
+         attribute on <Files> — WiX 5.0.2 rejects Exclude="..." on Files
+         itself with WIX0004 (confirmed against the pinned 5.0.2 compiler
+         binary, not guessed).
+
          The five files above (AppExe/SdkDll/ResourcesPri/ServiceExe/
          WintunDll) keep their own hand-authored <Component> because they
          need behavior <Files> harvesting cannot express — the advertised
@@ -146,11 +151,39 @@
          SplitTunnelDriver is excluded for the same reason: it is
          conditioned on INSTALLDRIVER=1 and must not be unconditionally
          harvested when -IncludeDriver built the .sys into BinDir. Build
-         junk (.pdb/.lib/.exp/.ilk, any obj\ tree) is excluded to match
-         package-portable.ps1's own exclusions exactly. -->
+         junk (.pdb/.lib/.exp/.ilk) is excluded to match
+         package-portable.ps1's own exclusions.
+
+         package-portable.ps1 also defensively drops any path segment
+         literally named "obj" at any depth. That pattern is deliberately
+         NOT reproduced here: WiX 5.0.2's harvester crashes
+         (System.ArgumentException: Illegal characters in path, inside
+         HarvestFilesCommand.GetWildcardFiles) on an Exclude Files value
+         with two "**" segments, such as "...\**\obj\**" — confirmed
+         against the pinned compiler, not guessed. A single trailing form
+         ("...\obj\**") compiles but only matches an "obj" directory
+         directly under BinDir, and fires a permanent
+         "missing directory for harvesting" warning on every build where it
+         (correctly) does not exist — which is always: the real CI-built
+         payload (304 files, inspected directly from a prior successful
+         run) contains zero "obj" path segments at any depth, so this is a
+         belt-and-suspenders guard in the zip packager with nothing to
+         guard against here. If BinDir ever legitimately grows an obj\
+         subtree, add a targeted Exclude for that specific path rather than
+         reintroducing the double-"**" form. -->
     <ComponentGroup Id="RuntimeFiles" Directory="INSTALLFOLDER">
-      <Files Include="$(var.BinDir)\**"
-             Exclude="$(var.BinDir)\URnetwork.exe;$(var.BinDir)\URnetworkSdk.dll;$(var.BinDir)\resources.pri;$(var.BinDir)\urnetworkd.exe;$(var.BinDir)\wintun.dll;$(var.BinDir)\SplitTunnel.sys;$(var.BinDir)\**\*.pdb;$(var.BinDir)\**\*.lib;$(var.BinDir)\**\*.exp;$(var.BinDir)\**\*.ilk;$(var.BinDir)\**\obj\**" />
+      <Files Include="$(var.BinDir)\**">
+        <Exclude Files="$(var.BinDir)\URnetwork.exe" />
+        <Exclude Files="$(var.BinDir)\URnetworkSdk.dll" />
+        <Exclude Files="$(var.BinDir)\resources.pri" />
+        <Exclude Files="$(var.BinDir)\urnetworkd.exe" />
+        <Exclude Files="$(var.BinDir)\wintun.dll" />
+        <Exclude Files="$(var.BinDir)\SplitTunnel.sys" />
+        <Exclude Files="$(var.BinDir)\**\*.pdb" />
+        <Exclude Files="$(var.BinDir)\**\*.lib" />
+        <Exclude Files="$(var.BinDir)\**\*.exp" />
+        <Exclude Files="$(var.BinDir)\**\*.ilk" />
+      </Files>
     </ComponentGroup>
 
     <!-- urnetwork:// protocol handler (OAuth callbacks + deep links) -->
