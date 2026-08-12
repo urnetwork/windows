@@ -87,26 +87,36 @@ DEFS := -DNDPI_LIB_COMPILATION -DUSE_OLD_ROARING -DWIN32 -D_WIN64 -D_WINDOWS \
 # time; this build vendors pre-expanded copies to the same path instead).
 INCLUDES := -I. -I../include -Ithird_party/include
 
-# FIX ROUND 2 (task-13): force-include a compatibility shim ahead of every
-# translation unit, the same way an autotools -include would, WITHOUT
-# patching nDPI's own sources (we clone a pinned tag; editing it in the CI
-# step would make the proof about our patch, not about upstream). This
-# Makefile is the ARM64-only build vehicle in this repo (the amd64 leg
-# always goes through nDPI's own upstream autotools, never this file), so
-# force-including it here is already scoped to the arm64 leg; the shim's
-# own internal #if defined(__aarch64__) guard is defense-in-depth beyond
-# that. Currently supplies _rotr64() for aarch64, needed because
-# third_party/include/binaryfusefilter.h's #ifdef _WIN32 branch calls an
-# x86-only intrinsic with no architecture guard -- see
-# ndpi_arm64_shim.h's own header comment and task-13-report.md's "UPSTREAM
-# BUGS FOUND" section for the full story. Staged into src/lib/ alongside
+# FIX ROUND 2/3 (task-13): force-include a compatibility shim ahead of
+# every translation unit, the same way an autotools -include would,
+# WITHOUT patching nDPI's own sources (we clone a pinned tag; editing it
+# in the CI step would make the proof about our patch, not about
+# upstream). This Makefile is the ARM64-only build vehicle in this repo
+# (the amd64 leg always goes through nDPI's own upstream autotools, never
+# this file), so force-including it here is already scoped to the arm64
+# leg; the shim's own internal #if defined(__aarch64__) guard is
+# defense-in-depth beyond that.
+#
+# Currently supplies __rorq() for aarch64 -- NOT _rotr64(), which round 2
+# tried and got wrong: llvm-mingw already declares _rotr64 for aarch64 in
+# three of its own headers, so redeclaring it just collided
+# ("conflicting types for '_rotr64'"). The actual missing piece, per the
+# ORIGINAL error ("call to undeclared function '__rorq'"), is the x86-only
+# compiler builtin mingw's own _rotr64 declaration calls internally --
+# needed because third_party/include/binaryfusefilter.h's #ifdef _WIN32
+# branch routes aarch64 into _rotr64 with no architecture guard at all.
+# See ndpi_arm64_shim.h's own header comment and task-13-report.md's
+# "UPSTREAM BUGS FOUND" section for the full story and the (corrected)
+# attribution between nDPI and llvm-mingw. Staged into src/lib/ alongside
 # this Makefile by the CI workflow, same as ndpi_define.h/ndpi_config.h
 # are staged into src/include/.
 #
 # EXPECT MORE OF THESE: 296 translation units, many never previously
 # compiled for Windows-on-ARM by anyone. If a future CI run surfaces
 # another undeclared x86 intrinsic, add it to ndpi_arm64_shim.h rather
-# than starting a second shim file -- keep them in one place.
+# than starting a second shim file -- keep them in one place. (Two rounds
+# fixing the SAME rotate path in the SAME header count as one problem
+# area, not two -- see task-13-report.md's running tally.)
 FORCE_INCLUDE := -include ndpi_arm64_shim.h
 
 # --- Source selection ---------------------------------------------------

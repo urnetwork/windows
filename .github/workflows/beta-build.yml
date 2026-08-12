@@ -364,18 +364,24 @@ jobs:
   # churns every minor). It produces and asserts two libndpi.a files and
   # uploads NOTHING -- no artifact from this job enters the release zip.
   #
-  # FIX ROUND 2 found a genuine upstream bug along the way: nDPI's
-  # third_party/include/binaryfusefilter.h calls the x86-only _rotr64
-  # intrinsic behind a Windows-OS-only #ifdef with no architecture guard,
-  # so it has apparently never been compiled for Windows-on-ARM before.
-  # app/tools/ndpi/ndpi_arm64_shim.h supplies _rotr64() for aarch64 via
-  # force-include (-include in Makefile.crossproof), WITHOUT patching the
-  # cloned nDPI tree -- see that header's own comment and
-  # task-13-report.md's "UPSTREAM BUGS FOUND" section for the full writeup,
-  # including a second, latent rotate-direction bug the shim deliberately
-  # reproduces rather than "fixes" (so the amd64 and arm64 archives compute
-  # the same hash as each other, matching upstream's actual Windows
-  # behavior rather than what upstream presumably intended).
+  # FIX ROUND 2/3 found a genuine problem area along the way: nDPI's
+  # third_party/include/binaryfusefilter.h routes aarch64 into a
+  # Windows-OS-only #ifdef _WIN32 branch (no architecture guard) that calls
+  # _rotr64 -- which llvm-mingw DOES declare for aarch64 (round 2 learned
+  # this the hard way, by colliding with it), but whose declaration itself
+  # calls the x86-only compiler builtin __rorq, which is genuinely absent
+  # on aarch64 (the ORIGINAL error). So the missing-builtin gap is as much
+  # an llvm-mingw/clang issue as an nDPI one; nDPI's own contribution is
+  # just the missing architecture guard that routes aarch64 down this path
+  # at all -- see task-13-report.md's "UPSTREAM BUGS FOUND" section for the
+  # full, corrected attribution. app/tools/ndpi/ndpi_arm64_shim.h supplies
+  # __rorq() for aarch64 via force-include (-include in
+  # Makefile.crossproof), WITHOUT patching the cloned nDPI tree and WITHOUT
+  # touching mingw's own _rotr64 declaration, including a second, latent
+  # rotate-direction bug the shim deliberately reproduces rather than
+  # "fixes" (so the amd64 and arm64 archives compute the same hash as each
+  # other, matching upstream's actual Windows behavior rather than what
+  # upstream presumably intended).
   #
   # KNOWN DIVERGENCE (not chased -- see Makefile.crossproof's DEFS comment
   # for the reasoning): the amd64 leg's bare autotools configure
@@ -486,14 +492,15 @@ jobs:
       # live, so the include paths inside Makefile.crossproof line up with
       # the same layout autotools uses.
       #
-      # FIX ROUND 2: also stage ndpi_arm64_shim.h next to the Makefile --
+      # FIX ROUND 2/3: also stage ndpi_arm64_shim.h next to the Makefile --
       # Makefile.crossproof force-includes it (-include) on every
-      # translation unit to supply _rotr64() for aarch64, which
-      # third_party/include/binaryfusefilter.h needs but nDPI's own
-      # sources never define outside x86 Windows (see ndpi_arm64_shim.h's
-      # header comment and task-13-report.md's "UPSTREAM BUGS FOUND"
-      # section). We deliberately do NOT patch the cloned tree itself --
-      # the shim is staged alongside it, not merged into it.
+      # translation unit to supply __rorq() for aarch64 (NOT _rotr64():
+      # round 2 tried redeclaring that and collided with llvm-mingw's own
+      # declaration of it -- see ndpi_arm64_shim.h's header comment and
+      # task-13-report.md's "UPSTREAM BUGS FOUND" section for the full
+      # story). We deliberately do NOT patch the cloned tree itself, and
+      # deliberately do NOT touch mingw's own _rotr64 -- the shim is
+      # staged alongside the tree, not merged into it.
       - name: Stage vendored headers + Makefile (arm64 leg)
         run: |
           cp app/tools/ndpi/ndpi_define.h ndpi-arm64/src/include/ndpi_define.h
