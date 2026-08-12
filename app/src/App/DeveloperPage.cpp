@@ -345,9 +345,17 @@ void DeveloperPage::OnModeNotice(SdkHost::ModeNotice const& notice) {
   auto bar = w_.ModeNoticeBar();
   if (!notice.active) {
     bar.IsOpen(false);
+    // WinUI collapses an InfoBar's TEMPLATE ROOT when closed, not the control
+    // itself, so a closed bar still measures its own Margin/Padding and its
+    // Grid row never contributes zero. Collapse the control explicitly so a
+    // silent notice truly contributes 0epx to root-grid row 2 (the vertical
+    // pane rules terminate on the status strip's hairline only if this row
+    // measures 0 when there is nothing to say).
+    bar.Visibility(Visibility::Collapsed);
     LogInfo("developer: mode notice cleared");
     return;
   }
+  bar.Visibility(Visibility::Visible);
   // Render `message` verbatim: it is a complete sentence and already
   // self-describing, so a title on top would say the words twice.
   bar.Title(hstring{});

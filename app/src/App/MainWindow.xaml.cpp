@@ -805,7 +805,24 @@ void MainWindow::ApplyAdvancedMode(bool on) {
   // THE DEVELOPER DESTINATION FOLDS. A Normal user whose VPN "just works" has no
   // 34-knob destination in the nav (spec 2026-08-06, "Scope settled"); Advanced
   // reveals it and the inline surfaces everywhere else.
-  DeveloperNavItem().Visibility(on ? Visibility::Visible : Visibility::Collapsed);
+  //
+  // This is done by inserting/removing the item from FooterMenuItems, NOT by
+  // toggling Visibility. NavigationView's UpdatePaneLayout() stamps an explicit
+  // MaxHeight on the footer ScrollViewer from its last real measure; a
+  // Visibility change inside the repeater does not invalidate that cached
+  // value, so a footer that grew while collapsed clips its last item
+  // (Settings) instead of scrolling to it. A collection change is the
+  // mutation NavigationView actually re-measures against.
+  {
+    auto footer = HomeNav().FooterMenuItems();
+    uint32_t index = 0;
+    const bool present = footer.IndexOf(DeveloperNavItem(), index);
+    if (on && !present) {
+      footer.InsertAt(1, DeveloperNavItem());  // Support, Developer, Settings
+    } else if (!on && present) {
+      footer.RemoveAt(index);
+    }
+  }
   // ...and if it is the destination the user is STANDING ON when the mode goes
   // off, move them. Collapsing the item alone leaves the developer surface on
   // screen with no selected item in the nav and no way back to it — the page
