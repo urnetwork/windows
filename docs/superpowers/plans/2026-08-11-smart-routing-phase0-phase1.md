@@ -826,7 +826,18 @@ In `DefaultMultiClientSettings()` leave them at zero (do not set) so the default
 		RewardInstrumentation:      settings.RewardInstrumentation,
 ```
 
-- [ ] **Step 4: Add banner grammar** in `ip_remote_multi_client_observability.go` — follow the existing non-default-field pattern so the session banner names these when set (e.g. `scoredplacement=1 placementhysteresispct=10`). Locate the banner assembly (the function that renders non-default settings) and add the four fields with the same conditional "only when non-default" style used for `windowoutcomedeadline`.
+- [ ] **Step 4: Banner — VERIFY ONLY, DO NOT EDIT.** (Corrected 2026-08-11 after Task 7 proved
+  the original instruction wrong.) The session banner is REFLECTION-BASED:
+  `relSettingsFields` walks every exported `ReliabilitySettings` field via
+  `reflect` (`ip_remote_multi_client_observability.go:310-313`), so fields added
+  in Step 3 render automatically as
+  `scoredplacement=1 placementhysteresispct=10.00 placementdemoteconsecutive=3 rewardinstrumentation=1`.
+  Hand-adding entries would be redundant AND would break
+  `TestBannerRendersEverySettingsField`, which asserts the rendered pair count
+  equals the struct field count exactly. Precedent: `WindowOutcomeDeadline` /
+  `WindowOutcomeRebuildDeadline` were added by the same four-site pattern and
+  touched zero lines in observability.go. Action: leave the file untouched and
+  run `go test -run 'TestBanner' -timeout 120s ./` to confirm the invariant holds.
 
 - [ ] **Step 5: Run test + build/vet**
 
