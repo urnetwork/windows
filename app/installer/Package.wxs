@@ -1,8 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- URnetwork MSI (WiX v5). Installs the tray app, the urnetworkd service, the
-     vendored wintun DLL, and (optionally) the split-tunnel driver. Per-machine.
-     The WindowsAppRuntime is chained by the outer bundle (see README); this
-     package is the payload. Distributed via the Microsoft Store as a Win32 MSI.
+     vendored wintun DLL, the self-contained WindowsAppRuntime/WinUI3 payload,
+     the brand Assets (Fonts + images), and (optionally) the split-tunnel
+     driver. Per-machine.
+
+     There is no outer Burn bundle anywhere in this repo -- this file used to
+     say the WindowsAppRuntime was "chained by the outer bundle (see
+     README)", but that bundle was never built, so until this fix the MSI
+     installed exactly 7 files and left the app unable to start on any
+     machine that had not already run the portable zip (which is why testing
+     against a dev box missed it). Since WindowsAppSDKSelfContained=true
+     landed, the runtime DLLs are this package's own payload: harvested below
+     with WiX v5's native <Files> globbing against $(var.BinDir) -- the same
+     directory tools/package-portable.ps1 zips wholesale -- rather than
+     hand-listed, because a hand list rots the moment the runtime version
+     bumps (that rot is exactly how this MSI ended up here).
+
+     Distributed via the Microsoft Store as a Win32 MSI.
      SPDX-License-Identifier: MPL-2.0 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
@@ -111,6 +125,34 @@
       </Directory>
     </StandardDirectory>
 
+    <!-- Everything else the app needs to actually start: the self-contained
+         WindowsAppRuntime/WinUI3 runtime (Microsoft.*.dll / .winmd, the
+         per-locale .mui satellites), the app's own compiled XAML
+         (App.xbf/MainWindow.xbf) and WinRT metadata (URnetwork.winmd), and
+         the brand Assets -- Fonts (the licensed faces; see
+         src/App/Assets/README.md) plus the icons/login-carousel images.
+         Roughly 290 files as of WindowsAppSDK 2.2 self-contained, none of
+         which are safe to hand-list (see the header comment). Harvested
+         straight from $(var.BinDir), the identical directory
+         tools/package-portable.ps1 zips as the portable build, so this
+         payload and the zip's payload cannot drift apart.
+
+         The five files above (AppExe/SdkDll/ResourcesPri/ServiceExe/
+         WintunDll) keep their own hand-authored <Component> because they
+         need behavior <Files> harvesting cannot express -- the advertised
+         Start Menu shortcut and the ServiceInstall/ServiceControl rows --
+         so they are excluded here to avoid installing each of them twice
+         (WiX rejects two components claiming the same target path).
+         SplitTunnelDriver is excluded for the same reason: it is
+         conditioned on INSTALLDRIVER=1 and must not be unconditionally
+         harvested when -IncludeDriver built the .sys into BinDir. Build
+         junk (.pdb/.lib/.exp/.ilk, any obj\ tree) is excluded to match
+         package-portable.ps1's own exclusions exactly. -->
+    <ComponentGroup Id="RuntimeFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.BinDir)\**"
+             Exclude="$(var.BinDir)\URnetwork.exe;$(var.BinDir)\URnetworkSdk.dll;$(var.BinDir)\resources.pri;$(var.BinDir)\urnetworkd.exe;$(var.BinDir)\wintun.dll;$(var.BinDir)\SplitTunnel.sys;$(var.BinDir)\**\*.pdb;$(var.BinDir)\**\*.lib;$(var.BinDir)\**\*.exp;$(var.BinDir)\**\*.ilk;$(var.BinDir)\**\obj\**" />
+    </ComponentGroup>
+
     <!-- urnetwork:// protocol handler (OAuth callbacks + deep links) -->
     <StandardDirectory Id="TARGETDIR">
       <Component Id="UriScheme" Guid="*">
@@ -133,6 +175,7 @@
       <ComponentRef Id="ThirdPartyNotices" />
       <ComponentRef Id="WintunLicense" />
       <ComponentRef Id="UriScheme" />
+      <ComponentGroupRef Id="RuntimeFiles" />
     </Feature>
     <?ifdef IncludeDriver ?>
     <Feature Id="SplitTunnel" Title="Per-app split tunneling" Level="1">
