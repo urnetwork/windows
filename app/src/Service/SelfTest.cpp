@@ -19,6 +19,7 @@
 #include "ConnectionHealth.h"
 #include "ConsoleArgs.h"
 #include "CrashDumps.h"
+#include "FlowOwner.h"
 #include "Heartbeat.h"
 #include "InstallVerb.h"
 #include "NetPolicy.h"
@@ -2519,6 +2520,149 @@ void TestConnectionHealth() {
         "ToString names every state");
 }
 
+void TestFlowOwner() {
+  Section("FlowOwner — the cache-only fast path, its bound, and its 5-tuple key "
+          "(pure logic; no table enumeration, no process opened)");
+
+  // ---- the bounded cache: eviction respects the bound -----------------------
+  {
+    BoundedCache<int, std::string> c(3);
+    c.Put(1, "a");
+    c.Put(2, "b");
+    c.Put(3, "c");
+    Check(c.Size() == 3, "a cache filled to its capacity holds exactly that many");
+
+    c.Put(4, "d");  // one over capacity: the OLDEST insert (key 1) must go
+    Check(c.Size() == 3, "inserting past capacity never grows the cache",
+          std::format("got {}", c.Size()));
+    Check(!c.Get(1).has_value(), "…the oldest-inserted entry is the one evicted");
+    Check(c.Get(4).value_or("") == "d", "…and the new entry landed");
+    Check(c.Get(2).value_or("") == "b" && c.Get(3).value_or("") == "c",
+          "…the two entries in between survive untouched");
+
+    // Updating an EXISTING key must not itself evict anything (Put's contract:
+    // only a NEW key can trigger eviction).
+    c.Put(2, "bb");
+    Check(c.Size() == 3 && c.Get(2).value_or("") == "bb",
+          "updating a key already in the cache does not evict — still 3 "
+          "entries, new value visible");
+
+    // Hammer well past capacity; the bound must hold throughout, not just once.
+    for (int i = 100; i < 200; ++i) c.Put(i, "x");
+    Check(c.Size() == 3, "the bound holds after 100 more inserts, not just the first overflow",
+          std::format("got {}", c.Size()));
+  }
+
+  // ReplaceAll's truncation policy (what the 5-tuple cache actually uses,
+  // since flows_ is rebuilt wholesale every refresh — see FlowOwner.h).
+  {
+    BoundedCache<int, int> c(2);
+    std::vector<std::pair<int, int>> entries = {{1, 10}, {2, 20}, {3, 30}, {4, 40}};
+    const size_t dropped = c.ReplaceAll(entries);
+    Check(dropped == 2, "ReplaceAll reports exactly how many did not fit",
+          std::format("got {}", dropped));
+    Check(c.Size() == 2, "…and the cache itself never exceeds capacity");
+    Check(c.Get(1).value_or(-1) == 10 && c.Get(2).value_or(-1) == 20,
+          "…the first `capacity` entries, in the order given, are the ones kept");
+    Check(!c.Get(3).has_value() && !c.Get(4).has_value(),
+          "…the rest are gone, not merely unreachable");
+  }
+
+  // ---- the 5-tuple key: port and ip-version both fully participate ----------
+  {
+    BoundedCache<FlowKey, int, FlowKeyHash> c(8);
+    FlowKey base;
+    base.version = FlowIpVersion::V4;
+    base.protocol = 6;  // IPPROTO_TCP, spelled numerically — this header pulls
+                        // in no Windows headers to name the constant
+    base.sourceAddr = {192, 168, 1, 5};
+    base.sourcePort = 51000;
+    base.destAddr = {93, 184, 216, 34};
+    base.destPort = 443;
+
+    FlowKey otherPort = base;
+    otherPort.sourcePort = 51001;  // differs ONLY in source port
+    c.Put(base, 111);
+    c.Put(otherPort, 222);
+    Check(c.Get(base).value_or(-1) == 111 && c.Get(otherPort).value_or(-1) == 222,
+          "two flows differing only in source port are DISTINCT cache entries, "
+          "not aliased onto one");
+    Check(c.Size() == 2, "…confirmed by the cache actually holding two entries");
+
+    FlowKey otherDestPort = base;
+    otherDestPort.destPort = 8443;  // differs ONLY in dest port
+    c.Put(otherDestPort, 333);
+    Check(c.Get(base).value_or(-1) == 111 && c.Get(otherDestPort).value_or(-1) == 333,
+          "…and differing only in DEST port is equally distinct");
+
+    // Same byte pattern, different declared version: must not conflate v4 with
+    // v6. This is the case a naive "compare the bytes" key would get wrong —
+    // FlowKey::operator== compares `version` too, so it can't.
+    FlowKey asV6 = base;
+    asV6.version = FlowIpVersion::V6;
+    c.Put(asV6, 444);
+    Check(c.Get(base).value_or(-1) == 111,
+          "inserting the v6 twin does not disturb the v4 original");
+    Check(c.Get(asV6).value_or(-1) == 444,
+          "…and the v6 entry is retrievable in its own right — v4/v6 are "
+          "never the same cache entry even with identical address bytes");
+    Check(c.Size() == 4, "all four keys occupy distinct slots",
+          std::format("got {}", c.Size()));
+  }
+
+  // ---- the cache-only fast path: miss schedules, never enumerates inline ----
+  //
+  // owner.Start() is NEVER called in this test, so there is no worker thread
+  // and no code path anywhere in this process could reach CollectTcp/
+  // CollectUdp/ResolveExePath — those are reachable only from WorkerLoop
+  // (FlowOwner.cpp), which only exists after Start(). That is the structural
+  // half of the proof. The behavioral half is what is actually checked below:
+  // a miss returns "" immediately and bumps RefreshRequestCount(), which is
+  // the ONLY thing LookupCached does on a miss — it never calls RefreshOnce
+  // itself. (This does not, and cannot, prove GetExtendedTcpTable is never
+  // invoked from the SDK's own packet-path thread in a live session — that
+  // needs a running tunnel and is out of reach for an unelevated selftest, the
+  // same honest limit TestWindowTraceFlag and TestConsoleArgs' --stop-after
+  // note for their own machine-touching halves.)
+  {
+    FlowOwner owner;
+    Check(owner.RefreshRequestCount() == 0,
+          "a freshly constructed FlowOwner has scheduled no refresh yet");
+
+    FlowKey miss1;
+    miss1.version = FlowIpVersion::V4;
+    miss1.protocol = 6;
+    miss1.sourceAddr = {10, 0, 0, 1};
+    miss1.sourcePort = 1234;
+    miss1.destAddr = {8, 8, 8, 8};
+    miss1.destPort = 53;
+
+    const std::string result = owner.LookupCached(miss1);
+    Check(result.empty(),
+          "a cache miss returns \"\" — never blocks trying to resolve it inline");
+    Check(owner.RefreshRequestCount() == 1,
+          "…and schedules exactly one background refresh rather than "
+          "performing one on this thread",
+          std::format("got {}", owner.RefreshRequestCount()));
+
+    // A second, DIFFERENT miss must keep scheduling — the contract is "every
+    // miss defers to the background", not "give up after the first".
+    FlowKey miss2 = miss1;
+    miss2.destPort = 443;
+    Check(owner.LookupCached(miss2).empty() && owner.RefreshRequestCount() == 2,
+          "a second distinct miss schedules a second refresh request",
+          std::format("got {}", owner.RefreshRequestCount()));
+
+    // Re-asking the SAME miss again also keeps scheduling — LookupCached has
+    // no de-dup of its own; that coalescing is WorkerLoop's job (a pending
+    // flag it clears once it actually runs), not this pure fast path's.
+    Check(owner.LookupCached(miss1).empty() && owner.RefreshRequestCount() == 3,
+          "re-missing the same key schedules again rather than being silently "
+          "swallowed",
+          std::format("got {}", owner.RefreshRequestCount()));
+  }
+}
+
 // --- the Go runtime crash capture (task #39) ---------------------------------
 //
 // This is the one test here that touches the filesystem, and it is worth the
@@ -4226,6 +4370,7 @@ int RunSelfTest() {
   TestUpdateFormats();
   TestInstallVerb();
   TestConnectionHealth();
+  TestFlowOwner();
   TestConnectGesture();
   TestRpcSessionBlob();
   TestGoCrashCapture();

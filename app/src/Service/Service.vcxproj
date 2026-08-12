@@ -59,6 +59,7 @@
     <ClCompile Include="SplitTunnelClient.cpp" />
     <ClCompile Include="WfpPolicy.cpp" />
     <ClCompile Include="WindowTrace.cpp" />
+    <ClCompile Include="FlowOwner.cpp" />
     <ClCompile Include="SelfTest.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -75,6 +76,7 @@
     <ClInclude Include="SplitTunnelClient.h" />
     <ClInclude Include="WfpPolicy.h" />
     <ClInclude Include="WindowTrace.h" />
+    <ClInclude Include="FlowOwner.h" />
     <ClInclude Include="SelfTest.h" />
     <ClInclude Include="StopBudget.h" />
   </ItemGroup>

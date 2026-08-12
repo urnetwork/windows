@@ -763,6 +763,34 @@ proto::TunnelStatus TunnelController::StartLocked(const proto::StartTunnel& conf
       PersistKeyMaterial(device_->getKeyMaterial());
     }
     LogInfo("tunnel: [4/8] device client_id={}", device_->getClientId());
+
+    // Per-flow app attribution — "which program owns this connection" — fed to
+    // the SDK's FlowOwnerLookup seam. THE FIRST CALLER OF setFlowOwnerLookup IN
+    // THIS REPO: the seam has existed with a nil default (no attribution, one
+    // branch cost on the SDK's egress path) since the smart-routing design.
+    //
+    // Installed HERE, right after DeviceLocal exists and BEFORE anything past
+    // this point can carry a packet — steps 5-8 still have to run (the rpc
+    // listener, the firewall widen, network settings, the pump) before this
+    // session is up. The lambda below is the ONLY thing that touches
+    // flowOwner_ from the SDK's side, and it does a cache-only read and
+    // returns immediately: it is invoked from the SDK on the packet path
+    // through a C -> Go -> C callback chain, so a synchronous table
+    // enumeration here would stall the tun drain for every flow it is asked
+    // about — see FlowOwner.h for why that is a hard requirement and not a
+    // tuning choice.
+    //
+    // flowOwner_ is a TunnelController member that OUTLIVES this session
+    // (like wfp_); Start() is idempotent, so a reconnect re-installs the
+    // lookup on the new DeviceLocal without spinning up a second worker.
+    flowOwner_.Start();
+    device_->setFlowOwnerLookup(
+        [this](int64_t version, int64_t protocol, std::string sourceIp,
+               int64_t sourcePort, std::string destIp, int64_t destPort) {
+          return flowOwner_.Lookup(version, protocol, sourceIp, sourcePort,
+                                   destIp, destPort);
+        });
+
     if (HaltAfterStepLocked(
             4, "a live DeviceLocal and its persisted identity — sockets to the "
                "platform, over the PHYSICAL nic; still no interface, route or "

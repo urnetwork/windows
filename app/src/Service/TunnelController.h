@@ -17,6 +17,7 @@
 #include <thread>
 
 #include "EgressMonitor.h"
+#include "FlowOwner.h"
 #include "NetworkConfig.h"
 #include "PacketPump.h"
 #include "Protocol.h"
@@ -388,6 +389,17 @@ class TunnelController {
   int64_t upSinceMillis_ = 0;
 
   std::filesystem::path storageDir_;
+
+  // Per-flow app attribution (FlowOwner.h), fed to the SDK via
+  // device_->setFlowOwnerLookup at step 4/8. Like wfp_, DELIBERATELY OUTLIVES
+  // individual sessions — Start() is idempotent, so a reconnect does not spin
+  // up a second worker thread — and DECLARED BEFORE device_ so that
+  // destruction order (members die in REVERSE declaration order) keeps it
+  // alive until AFTER every DeviceLocal that might still be calling into its
+  // lookup lambda is gone. The opposite ordering trace_ uses below is not a
+  // contradiction: trace_ holds a raw pointer INTO device_ and so must die
+  // BEFORE it; flowOwner_ is called BY device_ and so must die AFTER it.
+  FlowOwner flowOwner_;
 
   // SDK objects. NetworkSpaceManager persists across sessions; the rest are
   // per-session.
