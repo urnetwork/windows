@@ -791,10 +791,33 @@ func TestNewReliabilityKnobsZeroValueOff(t *testing.T) {
 		z.PlacementDemoteConsecutive != 0 || z.RewardInstrumentation {
 		t.Fatal("new knobs must be zero-value-off (legacy behavior)")
 	}
+	// Copy fidelity MUST be tested against an explicitly populated struct, NOT
+	// against DefaultMultiClientSettings(). Zero-value-off means every one of
+	// these knobs is false/0 in the defaults, so `got.X != s.X` compares
+	// false against false and passes even if the copy line is deleted entirely
+	// (Go zero-fills omitted struct-literal fields). The codebase's existing
+	// TestReliabilitySettingsFromDefaults only works because the fields IT
+	// checks are true in the defaults; our design deliberately defeats that.
+	// Distinct values (12.5, 3 — not 1, 1) also catch a copy line wired to the
+	// wrong source field, not merely a missing one.
+	src := &MultiClientSettings{
+		ScoredPlacement:            true,
+		PlacementHysteresisPct:     12.5,
+		PlacementDemoteConsecutive: 3,
+		RewardInstrumentation:      true,
+	}
+	got := ReliabilitySettingsFrom(src)
+	if !got.ScoredPlacement || got.PlacementHysteresisPct != 12.5 ||
+		got.PlacementDemoteConsecutive != 3 || !got.RewardInstrumentation {
+		t.Fatalf("ReliabilitySettingsFrom must copy all four knobs, got %+v", got)
+	}
+}
+
+func TestDefaultMultiClientSettingsKnobsAreZeroValueOff(t *testing.T) {
 	s := DefaultMultiClientSettings()
-	got := ReliabilitySettingsFrom(s)
-	if got.ScoredPlacement != s.ScoredPlacement {
-		t.Fatal("ReliabilitySettingsFrom must copy ScoredPlacement")
+	if s.ScoredPlacement || s.PlacementHysteresisPct != 0 ||
+		s.PlacementDemoteConsecutive != 0 || s.RewardInstrumentation {
+		t.Fatal("defaults must leave every smart-routing knob off; a default build must behave exactly like today")
 	}
 }
 ```
