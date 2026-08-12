@@ -592,6 +592,7 @@
              closest shipped strings are used (Connect / Support / Developer) and
              reported as needed additions. -->
         <muxc:NavigationView x:Name="HomeNav" Grid.Row="1" Visibility="Collapsed"
+                             AlwaysShowHeader="False"
                              FontFamily="{StaticResource UrBodyFontFamily}"
                              IsBackButtonVisible="Collapsed" PaneDisplayMode="Auto"
                              OpenPaneLength="220" IsPaneToggleButtonVisible="True"
@@ -652,6 +653,15 @@
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
             </muxc:NavigationView.FooterMenuItems>
+            <!-- The footer ScrollViewer's cached MaxHeight is stamped from
+                 whatever the footer measured on its last real layout pass; a
+                 collection change re-triggers that measure (see
+                 ApplyAdvancedMode), but this spacer still guarantees the last
+                 footer item - Settings - never sits flush against the status
+                 strip's hairline below it, at any scale factor. -->
+            <muxc:NavigationView.PaneFooter>
+                <Border Height="8" />
+            </muxc:NavigationView.PaneFooter>
 
             <!-- NO PAGE MARGIN. This Grid used to be Margin="24", which is where
                  every destination's gutter came from. Home is now a full-bleed
@@ -2350,7 +2360,7 @@
              and is never true - this is a property of the session, not an
              event, and it stays until it is replaced. -->
         <muxc:InfoBar x:Name="ModeNoticeBar" Grid.Row="2" IsOpen="False"
-                      IsClosable="False" Margin="12,0,12,12"
+                      IsClosable="False" Margin="0"
                       FontFamily="{StaticResource UrBodyFontFamily}" />
         <!-- Acknowledgements that belong to the window rather than to a
              destination - today the account menu's "referral link copied". A

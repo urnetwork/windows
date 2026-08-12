@@ -336,6 +336,21 @@ jobs:
           New-Item -ItemType Directory -Force app/installer/dist | Out-Null
           Copy-Item $msi.FullName app/installer/dist/URnetwork.msi -Force
 
+      # The compile-proof above only proves the .wxs parses -- it says
+      # nothing about what landed inside the .msi, and that blind spot is
+      # exactly how this MSI shipped for months installing 7 files while
+      # silently omitting the self-contained WindowsAppRuntime and
+      # Assets\Fonts (an install on a clean machine could not start). Fail
+      # the build here, before the MSI is ever uploaded or attached to a
+      # release, if the payload regresses back to that shape. Uses the
+      # built-in Windows Installer COM object (see the script) so it needs
+      # no extra tooling on the runner.
+      - name: Verify the MSI payload (file count + critical names)
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          .\app\tools\verify-msi-payload.ps1 -MsiPath app\installer\dist\URnetwork.msi
+
       - name: Upload the MSI
         if: matrix.platform == 'x64'
         uses: actions/upload-artifact@v4

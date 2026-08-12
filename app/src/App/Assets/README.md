@@ -49,9 +49,13 @@ files and inherits the same behaviour), but both worth knowing:
 **If the text still renders in the fallback face**, the reference failed and said
 nothing — that is the only failure mode fonts have here. Check, in order:
 
-1. `Assets\Fonts\*` really are next to `URnetwork.exe`. An MSI install does not
-   carry them yet (`installer/Package.wxs` installs no assets at all); running
-   from the build output does.
+1. `Assets\Fonts\*` really are next to `URnetwork.exe`. `installer/Package.wxs`
+   harvests the whole `$(var.BinDir)` tree (including `Assets\Fonts`) via WiX
+   v5's `<Files>` globbing, so a from-source MSI build carries them the same
+   as the portable zip and a build from the build output does too. If a font
+   still renders in fallback after an MSI install, suspect a stale/pre-fix MSI
+   or a build that predates the harvested `RuntimeFiles` component group, not
+   a missing-asset regression.
 2. The family name after `#`. Re-read it rather than trusting this table:
    `python tools/...` is not needed — any font inspector, or PowerShell's
    `[System.Drawing.Text.PrivateFontCollection]`, will report name id 1.
