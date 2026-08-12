@@ -21,7 +21,7 @@
     <!-- ICE03 (generic column-type/range validation across standard MSI tables)
          fails post-build on the harvested WindowsAppRuntime payload, not on
          anything this project authors: some locale .mui satellites carry a
-         single LCID (observed: 1152/1153/1169 -- ug-CN/mi-NZ/gd-gb) that
+         single LCID (observed: 1152/1153/1169 — ug-CN/mi-NZ/gd-gb) that
          predates ICE03's bundled reference table, and Microsoft.ui.xaml.dll /
          Microsoft.UI.Xaml.Phone.dll each declare ~89 languages, whose
          comma-joined list overflows the File table's Language column length.
@@ -29,12 +29,12 @@
          neither File/@Language (not a valid attribute in this WiX version)
          nor File/@CompanionFile (accepted, but does not stop WiX from
          auto-populating/validating Language on the companioned file either)
-         can override this per file -- there is no per-file or per-table
+         can override this per file — there is no per-file or per-table
          escape hatch, only this package-wide one. This column is otherwise
          inert for this MSI: Package has no Language/Languages/transforms and
          nothing here builds an MSP, so nothing in this package's install
          logic reads it; the OS resource loader never consults MSI metadata
-         at all. Suppressing ICE03 does NOT suppress other ICEs -- confirmed
+         at all. Suppressing ICE03 does NOT suppress other ICEs — confirmed
          locally that ICE60 (unrelated: flags the 4 unversioned brand fonts
          under Assets\Fonts for having no Language and not being recognized
          as a Font) still runs and still warns with ICE03 suppressed. -->
