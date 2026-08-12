@@ -1,0 +1,123 @@
+# Makefile.crossproof -- vendored, minimal static-lib build for libndpi.a
+#
+# THIS FILE IS NOT PART OF ntop/nDPI UPSTREAM. It exists because nDPI's own
+# ./configure hard-errors for any MinGW host triple other than x86_64-* or
+# i686-* ("Unsupported MingW cross compiler", configure.ac's mingw case
+# statement), so windows/arm64 cannot go through autotools at all -- see
+# app/tools/ndpi/ in the URnetwork Windows repo (task-13-report.md) for the
+# full Phase 0 finding. windows/amd64 does NOT use this file: it builds via
+# nDPI's own upstream autotools recipe (--host=x86_64-w64-mingw32
+# --with-only-libndpi). This Makefile exists solely to prove windows/arm64
+# is possible, parameterized by CC/AR so one file could drive either target.
+#
+# Source selection mirrors windows/nDPI.vcxproj (the checked-in MSVC
+# project) at the pinned tag, which is upstream's own precedent for which
+# library sources build on Windows without autotools. See the third_party
+# comment below for the excluded subdirectories and why.
+#
+# Usage -- run from the ROOT of a pinned-tag ntop/nDPI checkout:
+#   cp <this-repo>/app/tools/ndpi/ndpi_define.h  src/include/ndpi_define.h
+#   cp <this-repo>/app/tools/ndpi/ndpi_config.h  src/include/ndpi_config.h
+#   cp <this-repo>/app/tools/ndpi/Makefile.crossproof  src/lib/Makefile.crossproof
+#   make -C src/lib -f Makefile.crossproof \
+#        CC=aarch64-w64-mingw32-clang AR=aarch64-w64-mingw32-ar
+#   -> produces src/lib/libndpi.a
+#
+# This is a PROOF ARTIFACT for CI (Phase 0 gate, task-13). It builds a
+# static library only -- no linking, no example/reader, no tests. Nothing
+# it produces enters the shipped release zip.
+
+CC ?= cc
+AR ?= ar
+
+# Matches configure.ac's NDPI_CFLAGS ("-W -Wall -Wno-address-of-packed-member")
+# minus -Werror: this build's job is to prove the sources COMPILE for
+# arm64, not to be warning-clean. -Werror here would risk failing the proof
+# on a warning unrelated to the actual Phase 0 question.
+CFLAGS ?= -O2 -Wall -Wno-address-of-packed-member
+
+# NDPI_LIB_COMPILATION: required by nDPI's own headers for any non-autotools
+#   consumer of the library sources (src/include/ndpi_typedefs.h and others
+#   gate on it).
+# USE_OLD_ROARING, WIN32, _WIN64, _WINDOWS, _CRT_SECURE_NO_WARNINGS,
+#   _WINSOCK_DEPRECATED_NO_WARNINGS: exactly the PreprocessorDefinitions
+#   windows/nDPI.vcxproj's library configuration passes at this tag -- the
+#   proven-working Windows define set, not a guess. WIN32 in particular is
+#   NOT auto-defined by a mingw-w64 target triple (only _WIN32/_WIN64 are),
+#   so it must be passed explicitly the same way the MSVC project does.
+# __USE_MINGW_ANSI_STDIO, __STDC_FORMAT_MACROS: from configure.ac's own
+#   mingw host case (the *-*-mingw32*|*-*-msys branch), which the MSVC
+#   project doesn't need (it isn't a mingw target) but this build is (the
+#   aarch64-w64-mingw32-clang triple is the same mingw-w64 family as
+#   upstream's own proven x86_64-w64-mingw32 CI job, just a different arch).
+DEFS := -DNDPI_LIB_COMPILATION -DUSE_OLD_ROARING -DWIN32 -D_WIN64 -D_WINDOWS \
+        -D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS \
+        -D__USE_MINGW_ANSI_STDIO -D__STDC_FORMAT_MACROS
+
+# Mirrors autotools' own src/lib/Makefile.in CFLAGS line:
+#   -I$(srcdir) -I$(top_srcdir)/src/include -I$(top_builddir)/src/include \
+#   -I$(srcdir)/third_party/include
+# srcdir here is src/lib itself (this Makefile is invoked with that as CWD);
+# ../include is src/include, where ndpi_config.h and ndpi_define.h must be
+# staged before this runs (autotools generates them there at configure
+# time; this build vendors pre-expanded copies to the same path instead).
+INCLUDES := -I. -I../include -Ithird_party/include
+
+# --- Source selection ---------------------------------------------------
+# src/lib/*.c : library core. A glob, not a hand-copied list, so it tracks
+# whatever the pinned tag actually ships (18 files at nDPI 5.0).
+LIB_SRCS := $(wildcard *.c)
+
+# src/lib/protocols/*.c : one dissector per file (258 files at nDPI 5.0).
+PROTO_SRCS := $(wildcard protocols/*.c)
+
+# src/lib/third_party/src/*.c and .../hll/*.c ONLY. Deliberately NOT a
+# recursive glob (e.g. NOT $(shell find third_party/src -name '*.c')) --
+# three subdirectories must be excluded, confirmed against
+# windows/nDPI.vcxproj's own ClCompile list at this tag (20 third_party
+# sources: 18 top-level + hll/MurmurHash3.c + hll/hll.c -- the upstream
+# Windows/MSVC build excludes exactly the same three directories):
+#   third_party/src/fuzz/    libFuzzer harness (pl7m.c); needs -fsanitize=fuzzer
+#                            and is never part of any library build.
+#   third_party/src/gcrypt/  alternate crypto backend used only with
+#                            --with-local-libgcrypt; the default build links
+#                            gcrypt_light.c (top-level) instead. Also a hard
+#                            conflict for a flat build: third_party/src/aes.c
+#                            and third_party/src/gcrypt/aes.c share a
+#                            filename, so both compiling to aes.o in the same
+#                            directory would collide.
+#   third_party/src/windows/ getopt.c / gettimeofday.c: grepped across the
+#                            whole pinned tag and found unreferenced by any
+#                            build (autotools, MSVC, or msys2 CI). The
+#                            actual Windows compat shims MSVC uses instead
+#                            live in windows/src/ (getopt.c, win-gettimeofday.c)
+#                            and are only needed by the ndpiReader example,
+#                            not the library -- mingw-w64's own CRT already
+#                            provides gettimeofday(), and getopt() is never
+#                            called from library code.
+THIRDPARTY_SRCS := $(wildcard third_party/src/*.c) $(wildcard third_party/src/hll/*.c)
+
+SRCS := $(LIB_SRCS) $(PROTO_SRCS) $(THIRDPARTY_SRCS)
+OBJS := $(SRCS:.c=.o)
+
+LIB := libndpi.a
+
+.PHONY: all clean sourcecount
+all: $(LIB)
+
+$(LIB): $(OBJS)
+	$(AR) rcs $@ $(OBJS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) -c -o $@ $<
+
+# Not part of the build -- a quick sanity print used while developing this
+# Makefile against a real checkout (`make -f Makefile.crossproof sourcecount`).
+sourcecount:
+	@echo "lib:        $(words $(LIB_SRCS))"
+	@echo "protocols:  $(words $(PROTO_SRCS))"
+	@echo "thirdparty: $(words $(THIRDPARTY_SRCS))"
+	@echo "total:      $(words $(SRCS))"
+
+clean:
+	rm -f $(LIB) $(OBJS)

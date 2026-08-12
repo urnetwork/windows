@@ -344,6 +344,107 @@ jobs:
           path: app/installer/dist/URnetwork.msi
           if-no-files-found: error
 
+  # Phase 0 gate for the smart-routing / DPI-classification work
+  # (2026-08-11-smart-routing-phase0-phase1, task-13): prove nDPI's static
+  # library can be cross-compiled for BOTH windows/amd64 and windows/arm64
+  # before any DPI binding is planned. amd64 goes through nDPI's own
+  # upstream autotools recipe unmodified. arm64 CANNOT use autotools --
+  # configure.ac's mingw host case hard-errors ("Unsupported MingW cross
+  # compiler") for any triple that isn't x86_64-*/i686-*, so arm64 instead
+  # builds via app/tools/ndpi/Makefile.crossproof, a vendored minimal
+  # Makefile (see that file, and app/tools/ndpi/ndpi_define.h +
+  # ndpi_config.h, for the full derivation and the exclusions this
+  # required). Deliberately independent of build-sdk/build-windows/release:
+  # it neither needs them nor is needed by them, so a red proof job isolates
+  # the Phase-0 finding without blocking the rest of CI. It clones nDPI at a
+  # PINNED RELEASE TAG, never dev tip (the plan is explicit that nDPI's ABI
+  # churns every minor). It produces and asserts two libndpi.a files and
+  # uploads NOTHING -- no artifact from this job enters the release zip.
+  ndpi-crossproof:
+    name: nDPI static-lib cross-build proof (amd64 + arm64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Windows repo
+        uses: actions/checkout@v4
+
+      # Pinned to the latest STABLE release tag as of 2026-08-11 (5.0,
+      # tagged 2025-11-17, commit 375f99ef9fb4999d778b57bbeece171b3fa9fba6).
+      # Two separate clones, not one shared tree: the amd64 leg runs real
+      # autotools (autoreconf writes configure/config.h/Makefiles into the
+      # tree) and the arm64 leg overlays vendored headers into src/include/
+      # -- sharing one checkout would risk the vendored ndpi_config.h
+      # colliding with autotools' generated one, or arm64 accidentally
+      # linking amd64 .o files left behind by `make -C src/lib`.
+      - name: Clone ntop/nDPI at pinned tag 5.0 (amd64 leg)
+        run: git clone --branch 5.0 --depth 1 https://github.com/ntop/nDPI ndpi-amd64
+
+      - name: Clone ntop/nDPI at pinned tag 5.0 (arm64 leg)
+        run: git clone --branch 5.0 --depth 1 https://github.com/ntop/nDPI ndpi-arm64
+
+      # Same autotools toolchain nDPI's own CI installs for its mingw-64
+      # job (.github/workflows/build.yml in ntop/nDPI); trimmed of
+      # libjson-c-dev/flex/bison/libpcap-dev since --with-only-libndpi
+      # skips the unit-test and libpcap checks those exist for.
+      - name: Install autotools + mingw-w64 (amd64 leg)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool pkg-config gettext mingw-w64
+
+      # Same pinned llvm-mingw release the build-sdk job above already uses
+      # for the SDK's arm64 DLL -- known-good in this exact CI environment.
+      - name: Install llvm-mingw (arm64 leg)
+        run: |
+          version=20250709
+          url="https://github.com/mstorsjo/llvm-mingw/releases/download/${version}/llvm-mingw-${version}-ucrt-ubuntu-22.04-x86_64.tar.xz"
+          curl -fsSL "$url" -o /tmp/llvm-mingw.tar.xz
+          sudo mkdir -p /opt/llvm-mingw
+          sudo tar -xf /tmp/llvm-mingw.tar.xz -C /opt/llvm-mingw --strip-components=1
+          echo "/opt/llvm-mingw/bin" >> "$GITHUB_PATH"
+
+      # Step 1 of the Phase 0 plan: amd64 via nDPI's own upstream recipe,
+      # completely unmodified -- this is the arch nDPI's own CI already
+      # proves, run here only so both arches are asserted the same way in
+      # one job.
+      - name: Build amd64 libndpi.a (upstream autotools, unmodified)
+        working-directory: ndpi-amd64
+        run: |
+          ./autogen.sh
+          ./configure --host=x86_64-w64-mingw32 --with-only-libndpi
+          make -C src/lib
+
+      - name: Assert amd64 libndpi.a exists
+        run: |
+          f=ndpi-amd64/src/lib/libndpi.a
+          test -s "$f" || { echo "::error::$f was not produced"; exit 1; }
+          ls -la "$f"
+          file "$f"
+
+      # Step 2: arm64 via the vendored Makefile. Stage the pregenerated
+      # headers where autotools would have generated them (src/include/),
+      # and the Makefile itself where autotools' own src/lib/Makefile would
+      # live, so the include paths inside Makefile.crossproof line up with
+      # the same layout autotools uses.
+      - name: Stage vendored headers + Makefile (arm64 leg)
+        run: |
+          cp app/tools/ndpi/ndpi_define.h ndpi-arm64/src/include/ndpi_define.h
+          cp app/tools/ndpi/ndpi_config.h ndpi-arm64/src/include/ndpi_config.h
+          cp app/tools/ndpi/Makefile.crossproof ndpi-arm64/src/lib/Makefile.crossproof
+
+      - name: Build arm64 libndpi.a (vendored Makefile.crossproof)
+        working-directory: ndpi-arm64/src/lib
+        run: |
+          make -f Makefile.crossproof \
+            CC=aarch64-w64-mingw32-clang \
+            AR=aarch64-w64-mingw32-ar
+
+      - name: Assert arm64 libndpi.a exists and is actually aarch64
+        run: |
+          f=ndpi-arm64/src/lib/libndpi.a
+          test -s "$f" || { echo "::error::$f was not produced"; exit 1; }
+          ls -la "$f"
+          file "$f"
+          file "$f" | grep -qi aarch64 || { echo "::error::$f was produced but 'file' does not report aarch64 -- got: $(file "$f")"; exit 1; }
+
   # Every green build publishes a prerelease, the way the android fork does:
   # same tag grammar, same riding-the-numbering notes line. The in-app update
   # checker polls this repo's releases, so the asset names are a contract, not
