@@ -236,6 +236,10 @@ std::string FlowOwner::ResolveExePath(uint32_t pid) {
   // rights this code never uses.
   HANDLE h = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
   if (!h) return {};  // exited between the table snapshot and here, or denied
+  // MAX_PATH (260) truncates an extended-length path (\\?\... or long-paths-
+  // enabled). Accepted, not fixed: attribution here is best-effort, and a
+  // truncated path just fails to match a display name upstream — the same
+  // shape of miss as a pid this cache has not resolved yet.
   wchar_t buf[MAX_PATH];
   DWORD len = MAX_PATH;
   std::string result;

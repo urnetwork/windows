@@ -1557,6 +1557,26 @@ bool TunnelController::TearDownSessionLocked() {
   pump_.reset();
   auto egress = std::move(egress_);
   egress_.reset();
+
+  // Clear the flow-owner lookup BEFORE the move below, for the same reason
+  // egress_'s handlers are cleared above: the lambda StartLocked installed on
+  // device_ at step 4/8 (FlowOwner.h) captures `this`, and the worker device
+  // is about to be handed to may be ABANDONED rather than joined if
+  // device->close() overruns kSdkTeardownBudget (StopBudget.h) — a real path,
+  // not a hypothetical one, and exactly what the teardown-latch work exists
+  // for. An abandoned worker's thread can outlive this TunnelController, and
+  // a live DeviceLocal still holding a callback into a controller that may be
+  // gone is a use-after-free waiting for the SDK to call it.
+  //
+  // setFlowOwnerLookup(nullptr) round-trips through an empty std::function,
+  // which the generated wrapper turns into a null C callback + null user_data
+  // (urnetwork_sdk.hpp: DeviceLocal::setFlowOwnerLookup) rather than a call
+  // into a lambda pointing at us — the same nullptr-safe shape every other
+  // optional SDK callback in this codebase relies on. So the device the
+  // worker inherits, whether or not it is ever joined, can only ever answer
+  // "no lookup installed"; it can never call back into this object again.
+  if (device_) device_->setFlowOwnerLookup(nullptr);
+
   auto device = std::move(device_);
   device_.reset();
   auto adapter = std::move(adapter_);
