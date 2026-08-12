@@ -4,15 +4,15 @@
      the brand Assets (Fonts + images), and (optionally) the split-tunnel
      driver. Per-machine.
 
-     There is no outer Burn bundle anywhere in this repo -- this file used to
+     There is no outer Burn bundle anywhere in this repo — this file used to
      say the WindowsAppRuntime was "chained by the outer bundle (see
      README)", but that bundle was never built, so until this fix the MSI
      installed exactly 7 files and left the app unable to start on any
      machine that had not already run the portable zip (which is why testing
      against a dev box missed it). Since WindowsAppSDKSelfContained=true
      landed, the runtime DLLs are this package's own payload: harvested below
-     with WiX v5's native <Files> globbing against $(var.BinDir) -- the same
-     directory tools/package-portable.ps1 zips wholesale -- rather than
+     with WiX v5's native <Files> globbing against $(var.BinDir) — the same
+     directory tools/package-portable.ps1 zips wholesale — rather than
      hand-listed, because a hand list rots the moment the runtime version
      bumps (that rot is exactly how this MSI ended up here).
 
@@ -129,7 +129,7 @@
          WindowsAppRuntime/WinUI3 runtime (Microsoft.*.dll / .winmd, the
          per-locale .mui satellites), the app's own compiled XAML
          (App.xbf/MainWindow.xbf) and WinRT metadata (URnetwork.winmd), and
-         the brand Assets -- Fonts (the licensed faces; see
+         the brand Assets — Fonts (the licensed faces; see
          src/App/Assets/README.md) plus the icons/login-carousel images.
          Roughly 290 files as of WindowsAppSDK 2.2 self-contained, none of
          which are safe to hand-list (see the header comment). Harvested
@@ -139,8 +139,8 @@
 
          The five files above (AppExe/SdkDll/ResourcesPri/ServiceExe/
          WintunDll) keep their own hand-authored <Component> because they
-         need behavior <Files> harvesting cannot express -- the advertised
-         Start Menu shortcut and the ServiceInstall/ServiceControl rows --
+         need behavior <Files> harvesting cannot express — the advertised
+         Start Menu shortcut and the ServiceInstall/ServiceControl rows —
          so they are excluded here to avoid installing each of them twice
          (WiX rejects two components claiming the same target path).
          SplitTunnelDriver is excluded for the same reason: it is
