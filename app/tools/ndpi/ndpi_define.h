@@ -40,7 +40,14 @@
  *   @HANDLE_TLS_SIGS@ -> "//" (configure.ac's default without
  *                              --enable-tls-sigs, which this build does not
  *                              pass -- comments out the TLS signature
- *                              dissection knob, same as upstream's default)
+ *                              dissection knob, same as upstream's default.
+ *                              FIX ROUND 1: the amd64 leg's configure
+ *                              invocation in beta-build.yml was deliberately
+ *                              kept flag-free too, specifically so it agrees
+ *                              with this "//" -- see the FIX ROUND 1 comment
+ *                              above that step and task-13-report.md. Do not
+ *                              add --enable-tls-sigs to the amd64 leg without
+ *                              also regenerating this substitution to "".)
  *
  * Cross-checked line-by-line against windows/src/ndpi_define.h (the
  * checked-in copy the MSVC build uses) at the same tag: matches except that

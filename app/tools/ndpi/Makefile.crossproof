@@ -6,9 +6,13 @@
 # statement), so windows/arm64 cannot go through autotools at all -- see
 # app/tools/ndpi/ in the URnetwork Windows repo (task-13-report.md) for the
 # full Phase 0 finding. windows/amd64 does NOT use this file: it builds via
-# nDPI's own upstream autotools recipe (--host=x86_64-w64-mingw32
-# --with-only-libndpi). This Makefile exists solely to prove windows/arm64
-# is possible, parameterized by CC/AR so one file could drive either target.
+# nDPI's own upstream autotools recipe, bare `--host=x86_64-w64-mingw32`
+# (FIX ROUND 1: an earlier version of this recipe also passed
+# --with-only-libndpi, which inverts a libpcap check on the mingw branch
+# of configure.ac and broke the amd64 leg in CI -- see the beta-build.yml
+# comment above the amd64 configure step, and task-13-report.md, for the
+# full story). This Makefile exists solely to prove windows/arm64 is
+# possible, parameterized by CC/AR so one file could drive either target.
 #
 # Source selection mirrors windows/nDPI.vcxproj (the checked-in MSVC
 # project) at the pinned tag, which is upstream's own precedent for which
@@ -39,12 +43,31 @@ CFLAGS ?= -O2 -Wall -Wno-address-of-packed-member
 # NDPI_LIB_COMPILATION: required by nDPI's own headers for any non-autotools
 #   consumer of the library sources (src/include/ndpi_typedefs.h and others
 #   gate on it).
-# USE_OLD_ROARING, WIN32, _WIN64, _WINDOWS, _CRT_SECURE_NO_WARNINGS,
-#   _WINSOCK_DEPRECATED_NO_WARNINGS: exactly the PreprocessorDefinitions
-#   windows/nDPI.vcxproj's library configuration passes at this tag -- the
-#   proven-working Windows define set, not a guess. WIN32 in particular is
-#   NOT auto-defined by a mingw-w64 target triple (only _WIN32/_WIN64 are),
-#   so it must be passed explicitly the same way the MSVC project does.
+# USE_OLD_ROARING: pinned unconditionally, matching windows/nDPI.vcxproj's
+#   proven-working MSVC define. KNOWN DIVERGENCE from the amd64 leg (FIX
+#   ROUND 1, confirmed by CI run 31561484141's log): autotools' configure.ac
+#   (lines ~126-155 at tag 5.0) auto-detects C11 atomics via a compile-time
+#   AC_COMPILE_IFELSE probe (roaring v4 needs __STDC_VERSION__ >= 201112L
+#   and working <stdatomic.h>) and only falls back to -DUSE_OLD_ROARING when
+#   that probe fails. On the amd64 runner it succeeds ("Using croaring v4
+#   (autodetect: C11 atomics available)"), so the amd64 archive links the
+#   NEWER roaring engine while this Makefile always forces the OLD one.
+#   Deliberately not chased: reproducing an autoconf AC_COMPILE_IFELSE probe
+#   inside a hand-rolled Makefile invoked via a cross-compiler (no run step
+#   available to execute a test binary, even if one were compiled) is real
+#   extra risk for a Phase-0 proof whose only job is "does arm64 compile" --
+#   and llvm-mingw/aarch64-w64-mingw32-clang's C11 atomics support is
+#   unverified either way. USE_OLD_ROARING is also the one MSVC itself is
+#   proven to build with, so it stays the safe default here. Phase 2 should
+#   know the two proof archives use different roaring implementations
+#   before drawing any conclusion from comparing them.
+# WIN32, _WIN64, _WINDOWS, _CRT_SECURE_NO_WARNINGS,
+#   _WINSOCK_DEPRECATED_NO_WARNINGS: exactly the remaining
+#   PreprocessorDefinitions windows/nDPI.vcxproj's library configuration
+#   passes at this tag -- the proven-working Windows define set, not a
+#   guess. WIN32 in particular is NOT auto-defined by a mingw-w64 target
+#   triple (only _WIN32/_WIN64 are), so it must be passed explicitly the
+#   same way the MSVC project does.
 # __USE_MINGW_ANSI_STDIO, __STDC_FORMAT_MACROS: from configure.ac's own
 #   mingw host case (the *-*-mingw32*|*-*-msys branch), which the MSVC
 #   project doesn't need (it isn't a mingw target) but this build is (the

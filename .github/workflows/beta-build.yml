@@ -348,18 +348,30 @@ jobs:
   # (2026-08-11-smart-routing-phase0-phase1, task-13): prove nDPI's static
   # library can be cross-compiled for BOTH windows/amd64 and windows/arm64
   # before any DPI binding is planned. amd64 goes through nDPI's own
-  # upstream autotools recipe unmodified. arm64 CANNOT use autotools --
-  # configure.ac's mingw host case hard-errors ("Unsupported MingW cross
-  # compiler") for any triple that isn't x86_64-*/i686-*, so arm64 instead
-  # builds via app/tools/ndpi/Makefile.crossproof, a vendored minimal
-  # Makefile (see that file, and app/tools/ndpi/ndpi_define.h +
-  # ndpi_config.h, for the full derivation and the exclusions this
-  # required). Deliberately independent of build-sdk/build-windows/release:
-  # it neither needs them nor is needed by them, so a red proof job isolates
-  # the Phase-0 finding without blocking the rest of CI. It clones nDPI at a
-  # PINNED RELEASE TAG, never dev tip (the plan is explicit that nDPI's ABI
-  # churns every minor). It produces and asserts two libndpi.a files and
-  # uploads NOTHING -- no artifact from this job enters the release zip.
+  # upstream autotools recipe, just `--host=x86_64-w64-mingw32` (see the
+  # FIX ROUND 1 comment above that step for why the original recipe here
+  # added --with-only-libndpi and how that inverted a libpcap check and
+  # broke run 31561484141). arm64 CANNOT use autotools -- configure.ac's
+  # mingw host case hard-errors ("Unsupported MingW cross compiler") for
+  # any triple that isn't x86_64-*/i686-*, so arm64 instead builds via
+  # app/tools/ndpi/Makefile.crossproof, a vendored minimal Makefile (see
+  # that file, and app/tools/ndpi/ndpi_define.h + ndpi_config.h, for the
+  # full derivation and the exclusions this required). Deliberately
+  # independent of build-sdk/build-windows/release: it neither needs them
+  # nor is needed by them, so a red proof job isolates the Phase-0 finding
+  # without blocking the rest of CI. It clones nDPI at a PINNED RELEASE
+  # TAG, never dev tip (the plan is explicit that nDPI's ABI churns every
+  # minor). It produces and asserts two libndpi.a files and uploads
+  # NOTHING -- no artifact from this job enters the release zip.
+  #
+  # KNOWN DIVERGENCE (not chased -- see Makefile.crossproof's DEFS comment
+  # for the reasoning): the amd64 leg's bare autotools configure
+  # autodetects C11 atomics and picks the newer croaring v4 bitmap engine;
+  # the arm64 leg's vendored Makefile unconditionally pins the older
+  # USE_OLD_ROARING. Both compile -- this proof job answers "does it
+  # compile", not "are the two archives bit-for-bit feature-identical" --
+  # but Phase 2 should know the two archives use different roaring
+  # implementations before comparing them.
   ndpi-crossproof:
     name: nDPI static-lib cross-build proof (amd64 + arm64)
     runs-on: ubuntu-latest
@@ -383,8 +395,13 @@ jobs:
 
       # Same autotools toolchain nDPI's own CI installs for its mingw-64
       # job (.github/workflows/build.yml in ntop/nDPI); trimmed of
-      # libjson-c-dev/flex/bison/libpcap-dev since --with-only-libndpi
-      # skips the unit-test and libpcap checks those exist for.
+      # libjson-c-dev/flex/bison/libpcap-dev because we only ever run
+      # `make -C src/lib` below, which never builds the example/tests/dga
+      # targets those packages exist for -- and the json-c/pcap PKG_CHECKS
+      # in configure are AC_MSG_WARN (non-fatal), not AC_MSG_ERROR, when
+      # they don't find their package. See the FIX ROUND 1 note above the
+      # configure invocation for why libpcap-dev specifically does not
+      # need to be here despite the FAILED run that prompted this fix.
       - name: Install autotools + mingw-w64 (amd64 leg)
         run: |
           sudo apt-get update
@@ -401,15 +418,46 @@ jobs:
           sudo tar -xf /tmp/llvm-mingw.tar.xz -C /opt/llvm-mingw --strip-components=1
           echo "/opt/llvm-mingw/bin" >> "$GITHUB_PATH"
 
-      # Step 1 of the Phase 0 plan: amd64 via nDPI's own upstream recipe,
-      # completely unmodified -- this is the arch nDPI's own CI already
-      # proves, run here only so both arches are asserted the same way in
-      # one job.
-      - name: Build amd64 libndpi.a (upstream autotools, unmodified)
+      # Step 1 of the Phase 0 plan: amd64 via nDPI's own upstream recipe.
+      #
+      # FIX ROUND 1 (run 31561484141): the original recipe here added
+      # --with-only-libndpi on top of --host=x86_64-w64-mingw32, on the
+      # (wrong) assumption that the flag drops the libpcap requirement
+      # everywhere. It does for the GENERIC (non-mingw) branch
+      # (configure.ac:365, `elif test "${with_only_libndpi+set}" != set`),
+      # but the MINGW branch is INVERTED. configure.ac:344:
+      #
+      #   AS_IF([test "${enable_npcap+set}" != set \
+      #           && test "${with_only_libndpi+set}" != set],,
+      #         [PKG_CHECK_MODULES([PCAP], [libpcap], ...) ...])
+      #
+      # AS_IF's empty second arg means the pcap check is the ELSE branch,
+      # gated on "neither flag is set". With NEITHER flag (bare configure,
+      # what upstream's own mingw-64 CI job actually runs) the check is
+      # SKIPPED. Passing --with-only-libndpi makes that condition false and
+      # ACTIVATES the libpcap requirement -- backwards from what the flag's
+      # own help text ("Build only libndpi") implies, and exactly what
+      # broke this job: "Package requirements (libpcap) were not met".
+      # `make -C src/lib` below never builds the example/tests targets
+      # --with-only-libndpi exists to skip, so the flag bought this build
+      # nothing even under the correct reading -- just drop it.
+      #
+      # --enable-tls-sigs: upstream's own mingw job passes this. We
+      # deliberately do NOT, so this leg's HANDLE_TLS_SIGS macro matches
+      # the arm64 leg's vendored ndpi_define.h, which was derived against
+      # a BARE configure (no --enable-tls-sigs -> HANDLE_TLS_SIGS="//",
+      # the dissection feature OFF) -- see app/tools/ndpi/ndpi_define.h's
+      # provenance comment and task-13-report.md. Matching the two legs on
+      # this macro means the "does it compile" proof is at least comparing
+      # the same feature set on both archives; TLS client signature
+      # dissection itself is documented upstream as "rarely used, but
+      # requires significantly more memory", so leaving it off by default
+      # on both legs is also the lower-footprint choice for a proof build.
+      - name: Build amd64 libndpi.a (upstream autotools, minus the two flags above)
         working-directory: ndpi-amd64
         run: |
           ./autogen.sh
-          ./configure --host=x86_64-w64-mingw32 --with-only-libndpi
+          ./configure --host=x86_64-w64-mingw32
           make -C src/lib
 
       - name: Assert amd64 libndpi.a exists
