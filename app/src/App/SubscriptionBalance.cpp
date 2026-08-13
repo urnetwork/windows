@@ -172,7 +172,11 @@ void SubscriptionBalanceStore::OnJwtRefreshed() {
 }
 
 void SubscriptionBalanceStore::Fetch() {
-  if (loading_ || !sdk_.apiReady()) return;
+  // IsLoggedIn(), not apiReady(): apiReady is api_.has_value(), set at SDK INIT
+  // rather than at login. subscriptionBalance is authenticated, and this call
+  // site has a BACKGROUND POLLER behind it - so unguarded it was a repeating
+  // unauthenticated request, not a one-off.
+  if (loading_ || !sdk_.IsLoggedIn()) return;
   loading_ = true;
   const uint32_t generation = generation_;
   auto queue = queue_;

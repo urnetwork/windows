@@ -9,6 +9,14 @@
 
 #include <urnetwork_sdk.hpp>
 
+#include <atomic>
+#include <cstdint>
+#include <filesystem>
+#include <optional>
+#include <string>
+
+#include "Log.h"
+
 namespace urnw {
 
 // Initialize the SDK for this process: point glog at the per-process log dir and
@@ -16,5 +24,194 @@ namespace urnw {
 // NetworkSpace/Device. memoryLimitBytes matches the macOS caps (app ~64MB,
 // service 48-64MB); the service is intentionally memory-bounded.
 void SdkInit(bool isService, int64_t memoryLimitBytes);
+
+// ---- Go runtime crash capture ----------------------------------------------
+//
+// THE PROBLEM THIS SOLVES. The service died ~4.5 minutes into a live tunnel
+// with no C++ log line, no WER report, no Application Error 1000 and no glog
+// FATAL (task #39). That combination is not "a mystery": it is the exact,
+// documented fingerprint of a GO runtime fatal — an unrecovered panic on a
+// goroutine, or a `throw` like "concurrent map writes". The Go runtime prints
+// its whole diagnosis (the message plus goroutine stacks) and then calls
+// ExitProcess(2). It prints that diagnosis to FILE DESCRIPTOR 2 AND NOWHERE
+// ELSE — not through glog, not through this process's logger, not through any
+// callback the C++ side can install. Under the SCM there is no fd 2, so every
+// byte of it is discarded, and the process simply ceases to exist.
+//
+// So the crash is not unlogged because it is exotic. It is unlogged because the
+// one channel it uses is the one channel a Windows service does not have.
+//
+// WHY REPOINTING STD_ERROR_HANDLE IS ENOUGH, AND WHY THAT IS NOT A GUESS. The
+// Go runtime's low-level writer (runtime.write1 in runtime/os_windows.go) does
+// NOT cache the stderr handle. For fd 2 it calls GetStdHandle(STD_ERROR_HANDLE)
+// on EVERY write and hands the result straight to WriteFile. So a SetStdHandle
+// performed at any point in this process's life — long after URnetworkSdk.dll
+// has loaded and its Go runtime has finished initialising — redirects the fatal
+// traceback that has not happened yet.
+//
+// That was verified against the vendored DLL rather than assumed, because the
+// whole value of this file is that it works on the day it is needed. The DLL
+// was loaded, its runtime left to initialise against the inherited console
+// stderr, and only then was STD_ERROR_HANDLE repointed at a file: runtime
+// output written before the switch went to the console and every byte after it
+// went to the file. The same DLL's import table names GetStdHandle, WriteFile
+// and RaiseFailFastException from KERNEL32, which is runtime.write1 and
+// runtime.dieFromException, i.e. the print path and the GOTRACEBACK=crash path.
+//
+// This is deliberately NOT wired into SdkInit. SdkInit runs on the console path
+// too, and console mode is the one place the operator IS reading stderr; taking
+// it away from them to write a file they are not watching would be a downgrade.
+// The service (SCM) path calls this and nothing else does. Console mode gets
+// the same durability for free with a shell redirect — `urnetworkd console
+// 2> go-crash.log` — which costs the operator nothing, because this process's
+// own log echo goes to STDOUT (see LogSetConsoleEcho) and stderr in console
+// mode carries essentially only the Go runtime.
+//
+// WHAT THIS DOES NOT DO. It does not make the process survive, and it does not
+// widen the traceback. Go decides HOW MUCH to print from GOTRACEBACK, which its
+// runtime reads exactly once, inside schedinit, before wmain gets control — so
+// no amount of _wputenv_s/SetEnvironmentVariableW from this process can change
+// it. That is also measured, not assumed (a GODEBUG set after the load produced
+// nothing). GOTRACEBACK is therefore set where it CAN be set: in the service
+// key's Environment value at install time, so the SCM hands it to the process
+// before the loader runs. See InstallService() in Service/main.cpp.
+//
+// The saving grace is that the most likely culprit does not need it: a runtime
+// `throw` (concurrent map write, and every other unrecoverable runtime fault)
+// sets m.throwing, and gotraceback() returns all=true for those REGARDLESS of
+// GOTRACEBACK. Those already dump every goroutine. GOTRACEBACK only widens the
+// unrecovered-panic case.
+struct GoCrashCapture {
+  // STD_ERROR_HANDLE — the Win32 handle, which is the one the Go runtime
+  // consults on every write, and the only one this function touches — now
+  // points at `path`. The CRT's own stderr stream is deliberately left alone;
+  // the note on RedirectGoCrashOutput below explains why that is the design and
+  // not an omission. Said precisely here because an earlier draft of this line
+  // claimed BOTH streams were redirected, which the implementation never did.
+  bool armed = false;
+  // This run's file. Normally stays 0 bytes forever: anything in it at all is a
+  // Go runtime fatal, because nothing else in this process writes to stderr
+  // once the SCM has taken it over.
+  std::filesystem::path path;
+  // Set only when the PREVIOUS run left output behind, i.e. when the previous
+  // run died the way #39 died. Empty on a normal start. The caller is expected
+  // to shout about it: the start after the crash is the first moment anyone can
+  // learn the crash happened at all.
+  std::filesystem::path carried_over;
+  std::uintmax_t carried_over_bytes = 0;
+  // Why it is not armed. Empty when armed.
+  std::string error;
+};
+
+// Point this process's STD_ERROR_HANDLE at a durable file in `dir`, and rotate
+// the previous run's file aside first.
+//
+// It repoints the Win32 handle and NOT the CRT's stderr stream, which are two
+// different things — and the Win32 handle is the one that matters, because it
+// is the one the Go runtime reads. The CRT stream is deliberately left alone:
+// on the SCM path nothing writes to it that anyone would miss (this process
+// logs through Log.h, and the SDK through glog), so redirecting it would buy
+// nothing and cost a second handle, a buffering policy and an ownership
+// question in code whose whole job is to be working when everything else is not.
+//
+// ROTATION IS CONDITIONAL ON THE FILE BEING NON-EMPTY, and that condition is
+// the whole design. The service is configured to auto-restart on failure
+// (SC_ACTION_RESTART, twice, 5s apart — see InstallService), so the run that
+// follows a crash is usually seconds away and would be the thing that destroys
+// the evidence. Because a healthy run leaves the file at exactly zero bytes,
+// a healthy run rotates nothing, and the crashed run's traceback survives in
+// go-crash.prev.log for as long as it takes someone to look — days, restarts
+// and reboots included. Only a SECOND crash displaces the first.
+//
+// Nothing here ever truncates: the file is opened append-only, so even if the
+// rotation itself fails (the previous file held open by an editor, say) the
+// worst case is two runs' output in one file, never a lost one.
+//
+// The file is shared for read, write and delete, so the owner can read a live
+// service's crash file — or delete it — without stopping anything.
+//
+// The handle is deliberately never closed. A fatal can land at any instant,
+// including in the middle of shutdown, and a capture that stops covering the
+// teardown is a capture with a hole in it exactly where a lifetime bug would
+// show up. There is no buffer to lose either: writes go straight to WriteFile,
+// so every byte is on disk before the runtime reaches ExitProcess(2).
+GoCrashCapture RedirectGoCrashOutput(const std::filesystem::path& dir);
+
+// ---- guarded reads of list-shaped SDK getters ------------------------------
+//
+// WRAP EVERY GETTER THAT RETURNS A `*List` TYPE IN THIS, AND EVERY GETTER WHOSE
+// STRUCT CARRIES ONE. The rule is mechanical: if the return type is one of the
+// generated `std::vector<T>` aliases (`ThroughputPointList`, `BlockActionList`,
+// `RegionalDnsServerList`, ...) it can throw. It lives HERE, next to the wrapper
+// include, rather than in one .cpp, because the first version was a static
+// helper in SdkHost.cpp and a review found a tenth call site in another
+// translation unit that therefore could not use it.
+//
+// The struct clause was added after `getFilteredLocations()` - the one
+// list-bearing getter in SdkHost.cpp that was NOT wrapped - turned up during a
+// bug hunt. `FilteredLocations` is a struct, so the old wording said "cannot
+// throw" and left it bare; but all six of its fields are `ConnectLocationList`.
+// It happens to be safe (see below), by the generated from_json's guards and
+// not by ours. Wrap it anyway: consistency is what makes the rule checkable,
+// and "safe because of how a third party generates code" is not a rule.
+//
+// The generated wrapper converts a getter's JSON with `detail::parseJson<T>`
+// (urnetwork_sdk.hpp:82). It guards a NULL `char*` (`takeStringOpt` -> nullopt)
+// and, IN THE CURRENTLY VENDORED HEADER, the four-byte document `null` as well
+// (`if (j.is_null()) { return T{}; }`). That document is what the Go side used
+// to marshal for a non-nil list whose backing slice is nil, and
+// `nlohmann::json::parse("null").get<std::vector<T>>()` threw `type_error.302`
+// ("type must be array, but is null") out of an ordinary, non-throwing-looking
+// getter. `exportedList::MarshalJSON` now renders empty as `[]` too
+// (sdk/gomobile.go), so both ends of that specific bug are closed.
+//
+// KEEP THE WRAPPER ANYWAY. third_party is a build artifact unpacked from an SDK
+// zip, and this repo does not pin which zip - "the header guards it" is a fact
+// about today's artifact, not about the contract. One branch and one latched
+// log is the right price for that.
+//
+// But do NOT read the paragraph above as "a list getter still throws
+// type_error.302 today": measured against the shipped dll, it does not. An
+// investigation into an empty provider list spent real time on that hypothesis
+// because an earlier version of this comment said the null guard was missing
+// when it had already landed.
+//
+// Struct-shaped getters are safe for a specific reason, and it is NOT that
+// their fields are read defensively. Every generated struct `from_json` OPENS
+// with
+//
+//     if (!j.is_object()) {
+//         return;
+//     }
+//
+// (urnetwork_sdk.hpp:5226-5229 for `Exit`), which yields a default-constructed
+// value for a `null` document. The per-field `.value(...)` reads that follow
+// would throw `type_error.306` on a null json if they were ever reached — so
+// the early return is the WHOLE guarantee. Do not restate this as "the fields
+// tolerate null" and then extend that reasoning somewhere it does not hold.
+//
+// Only the top-level unwrap into a `std::vector` alias is unguarded, because
+// that path goes through nlohmann's built-in array conversion, which has no
+// such early return.
+//
+// The real fix is one line in the generator, upstream; see
+// docs/superpowers/reports/2026-08-07-sdk-null-list-unwrap.md. It cannot be
+// made in this repo: app/third_party is a build artifact unpacked from the SDK
+// zip and is not tracked here, so an edit to the header is discarded by the
+// next unpack.
+//
+// `logged` is a per-call-site latch. Several of these sites are listener
+// callbacks or 5s polls, and an unlatched log would fill the file at the
+// listener's rate. Pass a function-local `static std::atomic<bool>`.
+template <typename Fn>
+auto ReadSdkList(std::atomic<bool>& logged, const char* what, Fn&& fn) -> decltype(fn()) {
+  try {
+    return fn();
+  } catch (const std::exception& e) {
+    if (!logged.exchange(true))
+      LogWarn("sdk: {} failed, treating it as empty (logged once): {}", what, e.what());
+    return std::nullopt;
+  }
+}
 
 }  // namespace urnw

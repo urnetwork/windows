@@ -9,30 +9,139 @@
 #include "MainWindow.g.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "AuthSheets.h"
+#include "AccountPage.h"
 #include "BalanceSheets.h"
+#include "ConnectPage.h"
+#include "DeveloperPage.h"
 #include "LocationSheets.h"
+#include "LoginPage.h"
 #include "Protocol.h"
-#include "ProviderLocationsSheet.h"
 #include "SdkHost.h"
-#include "StatsSheets.h"
+#include "ServiceSetup.h"
+#include "SettingsPage.h"
 #include "SubscriptionBalance.h"
-#include "TransferChart.h"
+#include "UpdateChecker.h"
+#include "UrComponents.h"
 #include "UsageBar.h"
+#include "WalletPage.h"
 
 namespace winrt::URnetwork::implementation {
 
+// The window itself: navigation between the six destinations, the auth and
+// subscription-balance relays that write across more than one of them, the
+// shared one-dialog-at-a-time guard, and the login/home root swap.
+//
+// Every per-destination surface lives in its own unit (LoginPage, ConnectPage,
+// AccountPage, WalletPage, SettingsPage). The XAML event handlers stay here
+// because the markup binds to them by name; each is a one-line forwarder.
 struct MainWindow : MainWindowT<MainWindow> {
   MainWindow();
   ~MainWindow();
   void SetPresentationActive(bool active);
 
+  // ---- page units ----
+  // Public because the pages' own UI-thread callbacks resolve the window's weak
+  // reference and then reach back for their page.
+  urnw::LoginPage& login() { return *login_; }
+  urnw::ConnectPage& connect() { return *connect_; }
+  urnw::NetworkPage& network() { return *network_; }
+  // The blocked-locations sheet, opened from the Network destination's detail
+  // pane as well as from Settings. Two doors, one sheet: blocked countries
+  // constrain the location list, so the list is where you look for them.
+  void ShowBlockedLocationsFromNetwork();
+  urnw::AccountPage& account() { return *account_; }
+  urnw::WalletPage& wallet() { return *wallet_; }
+  urnw::SettingsPage& settings() { return *settings_; }
+  urnw::DeveloperPage& developer() { return *developer_; }
+
+  // ---- shared window-level state the pages need ----
+  // only one ContentDialog can show at a time
+  bool sheetOpen() const { return sheetOpen_; }
+  void SetSheetOpen(bool open) { sheetOpen_ = open; }
+  // the login flow over the home view, and back
+  void ShowLoginRoot();
+  void ShowHomeRoot();
+  // --preview-ui (see Startup.h): show the signed-in shell at `destination`
+  // with no session, so a screen behind sign-in can actually be looked at.
+  // Pins the home view — a later auth push must not yank it away.
+  void EnterPreviewUi(std::string const& destination);
+  // True while --preview-ui is showing the shell with no session. Read by the
+  // navigation relay, which must not fire the per-destination API loads: there
+  // is no token, so every one of them would be an unauthenticated request to
+  // the production API from whatever machine this is running on.
+  bool previewUi() const { return previewUi_; }
+  // the SubscriptionBalanceStore relay: it paints the account panel AND the
+  // connect drawer from one snapshot, so it stays at window level
+  void ApplyBalance();
+  // last ContractStatus push (ConnectPage::ApplyStats) -> the warning InfoBar
+  void SetInsufficientBalance(bool insufficient);
+  // ---- the persistent status strip (D4) ----
+  // ProtonVPN's bottom line, at window level: it is true whichever destination
+  // is on screen, so it cannot live on a page.
+  //
+  // The CONNECTION half is pushed in by ConnectPage::ApplyConnectStatus rather
+  // than recomputed here, on the same principle that already keeps the hero and
+  // the balance InfoBar in step: one function derives the state, colour and
+  // wording, and every surface that shows them reads that one derivation. A
+  // second switch over LiveStats.connectionStatus in this file would be a
+  // second place for the strip and the connect screen to disagree.
+  void ApplyStatusStripConnection(winrt::hstring const& text,
+                                  winrt::Windows::UI::Color dot);
+  // The hero canvas's two non-connection states (iOS ConnectButtonView parity).
+  // Deliberately the SAME two expressions UpdateBalanceWarning gates the InfoBar
+  // on, read from here rather than recomputed in ConnectPage, so the hero and
+  // the InfoBar cannot end up disagreeing about the account's state.
+  bool balanceConfirming() const { return balancePoll_.confirming; }
+  bool balanceBlocked() const { return insufficientBalance_ && !balance_.isPro; }
+  // #27: the last firewall state the SERVICE reported ("off" | "armed" |
+  // "connecting" | "connected"), for the connect page's blocked-traffic line.
+  // Read from here rather than re-cached on the page for the balance reason
+  // above: one cache, one truth, written unconditionally by OnTunnelStateChanged.
+  std::string const& statusWfpState() const { return statusWfpState_; }
+  // #41: why the last teardown happened ("" | "user" | "failsafe_*") and whether
+  // a dead-tunnel countdown is running right now. Same one-cache rule as
+  // statusWfpState above; the connect page turns them into the two sentences
+  // that keep an automatic teardown from being a surprise and then from being a
+  // mystery.
+  std::string const& statusStopReason() const { return statusStopReason_; }
+  bool statusFailsafeArmed() const { return statusFailsafeArmed_; }
+  // "Routes and DNS are installed on this machine right now", straight from the
+  // service. This has been cached here since D5 and READ BY NOTHING, which is
+  // exactly how the connect page could print "Disconnected" over a machine with
+  // no internet: the health derivation is a pure function of what the SDK is
+  // carrying, and the service fact sitting one field away was never consulted.
+  // The connect page's status line, its button label and the tray all read it
+  // now, through the one shared rule in Common/ConnectAction.h.
+  bool statusRoutesInstalled() const { return statusRoutesInstalled_; }
+  urnw::proto::StartMode statusSessionMode() const { return statusSessionMode_; }
+
+  // ---- the in-app service manager (beta spec §3) ----
+  // The elevated `urnetworkd uninstall`, reached from Settings' confirm dialog.
+  // Public for the same reason ApplyBalance is: the page owns the dialog, the
+  // window owns the state machine every service-setup surface reads from.
+  winrt::fire_and_forget BeginServiceUninstall();
+
+  // ---- Advanced Mode (D5) ----
+  // The window's copy of SdkHost's standing value, kept so a page can ask
+  // synchronously while it is BUILDING a row rather than having to have been
+  // listening. SdkHost stays the authority (SdkHost::CurrentAdvancedMode); this
+  // is seeded from it and then written only by the handler that fans the mode
+  // out to the pages, so the two cannot drift.
+  bool advancedMode() const { return advancedMode_; }
+  // Fan the mode out across the whole app. Not a page — a reading every surface
+  // has two of — so this is the ApplyStrings() of Advanced Mode: one function,
+  // called once per change, after which every surface has re-read itself.
+  void ApplyAdvancedMode(bool on);
+  // The Settings toggle's write path. Persists through SdkHost, which publishes
+  // back through the handler, which lands in ApplyAdvancedMode — so the toggle
+  // never applies the mode itself and there is exactly one apply path.
+  void SetAdvancedMode(bool on);
+
   // XAML event handlers — sign-in flow (initial → password / create / verify /
-  // reset; macOS Authenticate/** parity)
+  // reset; macOS Authenticate/** parity). Forwarded to LoginPage.
   void OnGetStarted(winrt::Windows::Foundation::IInspectable const&,
                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignIn(winrt::Windows::Foundation::IInspectable const&,
@@ -66,16 +175,46 @@ struct MainWindow : MainWindowT<MainWindow> {
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnResendCode(winrt::Windows::Foundation::IInspectable const&,
                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // opens android's AuthCodeLoginSheet as a dialog
   void OnUseCode(winrt::Windows::Foundation::IInspectable const&,
                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // guest mode: opens the terms-consent sheet (macOS GuestModeSheet parity)
+  // guest mode: opens the terms-consent sheet (macOS GuestModeSheet parity).
+  // No longer reachable from the login screen - the android login has no guest
+  // affordance and guest mode is superseded by the seedphrase system - but the
+  // sheet and BeginGuestUpgrade stay for existing guest sessions.
   void OnTryGuestMode(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignInWithBittensor(winrt::Windows::Foundation::IInspectable const&,
                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // one handler for both Solana wallets; the button Tag carries the provider
+  // one Solana button, as android has; the wallet is chosen in a dialog because
+  // the browser bridge needs the provider before it can build its deeplink
   void OnSignInWithSolana(winrt::Windows::Foundation::IInspectable const&,
                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // gates Get started on a non-empty field
+  void OnUserAuthChanged(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+  // Google SSO through the system browser (loopback OAuth + PKCE)
+  void OnSignInWithGoogle(winrt::Windows::Foundation::IInspectable const&,
+                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // seedphrase sign-in, and the instant (seedphrase-only) account
+  void OnSignInWithSeedphrase(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnSeedphraseChanged(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+  void OnSeedphraseSubmit(winrt::Windows::Foundation::IInspectable const&,
+                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCreateInstantAccount(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnInstantTermsChanged(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCreateInstantSubmit(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the bottom-left "Change Network API" text affordance
+  void OnChangeNetworkServer(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the title-bar avatar's menu (identity, create account, share, sign out)
+  void OnAccountMenu(winrt::Windows::Foundation::IInspectable const&,
+                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // XAML event handlers — home
   void OnConnectToggle(winrt::Windows::Foundation::IInspectable const&,
@@ -87,6 +226,11 @@ struct MainWindow : MainWindowT<MainWindow> {
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignOut(winrt::Windows::Foundation::IInspectable const&,
                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // R4: the profile name's explicit edit mode. Enter, cancel, save.
+  void OnEditNetworkName(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCancelNetworkName(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSaveNetworkName(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // upgrade (hosted checkout) + redeem, as ContentDialogs
@@ -94,9 +238,6 @@ struct MainWindow : MainWindowT<MainWindow> {
                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnOpenRedeem(winrt::Windows::Foundation::IInspectable const&,
                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // Pro: fetch a Stripe billing-portal session and open it in the browser
-  void OnManageSubscription(winrt::Windows::Foundation::IInspectable const&,
-                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSendFeedback(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnWalletAddressChanged(
@@ -104,8 +245,18 @@ struct MainWindow : MainWindowT<MainWindow> {
       winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
   void OnConnectWallet(winrt::Windows::Foundation::IInspectable const&,
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // wallet: Seeker-token multiplier verification. leaderboard: the
+  // public/private switch.
+  void OnVerifySeeker(winrt::Windows::Foundation::IInspectable const&,
+                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // R4: the ledger pane's Payouts / Leaderboard switch (Earnings).
+  void OnEarningsTableChanged(
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
+      winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
+  void OnLeaderboardPublicToggled(winrt::Windows::Foundation::IInspectable const&,
+                                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
-  // Connect drawer handlers
+  // Connect drawer handlers (forwarded to ConnectPage)
   void OnConnectionModeChanged(
       winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
       winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
@@ -120,22 +271,19 @@ struct MainWindow : MainWindowT<MainWindow> {
                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnBlockerToggled(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnKillSwitchToggled(winrt::Windows::Foundation::IInspectable const&,
+  void OnClientStatsCardClick(winrt::Windows::Foundation::IInspectable const&,
+                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnLocalStatsCardClick(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnDnsCardClick(winrt::Windows::Foundation::IInspectable const&,
+                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnLocationRowClick(winrt::Windows::Foundation::IInspectable const&,
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnClientStatsCardTapped(winrt::Windows::Foundation::IInspectable const&,
-                               winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnLocalStatsCardTapped(winrt::Windows::Foundation::IInspectable const&,
-                              winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnDnsCardTapped(winrt::Windows::Foundation::IInspectable const&,
-                       winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnLocationRowTapped(winrt::Windows::Foundation::IInspectable const&,
-                           winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  void OnPeersLineTapped(winrt::Windows::Foundation::IInspectable const&,
-                         winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
-  // "Connected to N providers" -> the provider-locations sheet. Only opens
-  // while genuinely connected (the line is blank otherwise).
-  void OnProviderCountTapped(winrt::Windows::Foundation::IInspectable const&,
-                             winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
+  // D5: the connection inspector's "clear the selection" action.
+  void OnInspectorClear(winrt::Windows::Foundation::IInspectable const&,
+                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnPeersLineClick(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // Called by AppController (already marshaled onto the UI thread).
   void OnAuthStateChanged(urnw::AuthState state, std::string const& error);
@@ -145,171 +293,177 @@ struct MainWindow : MainWindowT<MainWindow> {
                         urnw::BalancePollState const& poll);
 
  private:
-  // ---- sign-in flow ----
-  enum class LoginStep { Initial, Password, Create, Verify, Reset };
-  // What the create step submits: a fresh network with email + password, one
-  // with the retained wallet auth, or the guest network's upgrade to a full
-  // account (Api::upgradeGuest; linux CreateNetworkPage::Mode parity).
-  enum class CreateMode { Password, Wallet, GuestUpgrade };
-
-  // every label in the window, from the shared localization store (Localization.h)
+  // every label in the window: the window's own chrome and nav, then each page's
   void ApplyStrings();
+  // The selected destination's API loads. Called by the navigation relay AND by
+  // the auth relay - the selection survives a sign-out, so a new session must
+  // re-read whatever page is already on screen (see the definition).
+  void LoadCurrentDestination();
   void ApplyAuthState(urnw::AuthState state, std::string const& error);
-  void ShowLoginStep(LoginStep step);
-  void ApplyLoginRouting(urnw::LoginRouting const& routing);
-  void EnterCreateStep(std::string const& userAuth, CreateMode mode);
-  void EnterVerifyStep(std::string const& userAuth);
-  void ShowLoginErrorFor(LoginStep step, winrt::hstring const& message);
-  void CheckCreateNameNow();   // debounce elapsed: run the availability check
-  void ApplyNameCheck(uint32_t generation, bool ok, bool available);
-  void ValidateBonusCodeNow();
-  void ApplyBonusValidation(uint32_t generation, bool ok, bool valid, bool capped);
-  void ValidateCreateForm();   // gates the Continue button
-  void SubmitVerifyCode();
 
-  void SetConnectedUi(bool connected);
-  void ApplyStats(urnw::LiveStats const& stats);
-  void LoadAccount();
-  void LoadBalanceCodes();     // redeemed-codes list (account panel)
-  void LoadReferralInfo();     // referral code + totals (usage-bar rows)
-  void LoadWallet();
-  void LoadLeaderboard();
+  // ---- the one responsive switch (D4) ----
+  // Every destination declares a Narrow and a Wide visual state in markup; this
+  // is the only thing that changes between them, and it runs on one SizeChanged
+  // at window level rather than seven per-page handlers. AdaptiveTrigger would
+  // have been the native mechanism and does not work here - see
+  // kit::kWideBreakpointDip for what was measured.
+  void ApplyBreakpoint();
+
+  // ---- the persistent status strip ----
+  // Built once, from kit::MakeStatusField, so the fields Advanced Mode adds
+  // later (egress interface, rpc port, session mode, the raw pre-clamp
+  // connection status) cost one more call each and no layout change.
+  void BuildStatusStrip();
+  // Writes the state field unconditionally. The three callers each decide
+  // whether they are ALLOWED to write it (ApplyStatusStripConnection refuses a
+  // signed-out push; the preview sample refuses nothing); this just renders.
+  void RenderStatusState(winrt::hstring const& text,
+                         winrt::Windows::UI::Color dot);
+  // Re-renders the fields the strip owns itself (network, provider, traffic)
+  // and gates the whole strip on there being a session to describe.
+  void ApplyStatusStrip();
+  // --preview-ui + URNETWORK_PREVIEW_SAMPLE only: one obviously synthetic
+  // snapshot through the SAME apply path, so a POPULATED strip can be looked
+  // at from a build with no account. Same two gates and the same log warning
+  // as WalletPage's sample rows; touches no network and no stored state.
+  void PreviewSampleStatusStrip();
+  // --preview-ui AND URNETWORK_PREVIEW_SAMPLE, the two gates every synthetic
+  // path in this window shares. Read in one place so they cannot drift.
+  bool PreviewSampleRequested() const;
+
 
   // ---- balance / plan (SubscriptionBalanceStore relay) ----
-  void ApplyBalance();          // snapshot + poll state -> both plan cards
   void UpdateBalanceWarning();  // insufficient-balance InfoBar gating
   winrt::fire_and_forget ShowUpgradeSheet();
   winrt::fire_and_forget ShowRedeemSheet();
-  // Launch the billing-portal url (empty = the API failed), observing the
-  // launcher so a launch failure surfaces as the visible portal error too.
-  winrt::fire_and_forget OpenBillingPortal(std::string url);
 
-  // ---- guest mode ----
-  winrt::fire_and_forget ShowGuestModeSheet();  // terms consent -> LoginAsGuest
-  // The plan card's create-account affordance for a guest: the create step in
-  // guest-upgrade mode, shown over the login flow while the session stays live.
-  void BeginGuestUpgrade();
+  // ---- the in-app service manager (beta spec §3) ----
+  // The window owns the ONE snapshot every service-setup surface reads —
+  // the Connect banner and the Settings uninstall row — on the same
+  // one-derivation principle as UpdateBalanceWarning: two surfaces reading
+  // two classifications would eventually disagree about the same SCM.
+  //
+  // Classify runs off-thread (SCM + file-version reads) and lands back here
+  // through the dispatcher; the elevated verbs end with their OWN
+  // re-classification, so refreshes started while one is in flight are
+  // dropped rather than raced against it.
+  void ApplyServiceSetup();  // fan the snapshot out to the pages
+  winrt::fire_and_forget RefreshServiceSetup();
+  winrt::fire_and_forget BeginServiceSetupAction();  // the banner's one click
 
-  // ---- wallet sign in (ur.io/wallet-connect bridge) ----
-  void SetWalletSignInEnabled(bool enabled);
-  void ApplyWalletSignInResult(urnw::AuthResult const& result);
+  // ---- the update checker (beta spec §5) ----
+  // Same one-snapshot shape as the service manager above, but the AUTHORITY
+  // lives in AppController's UpdateChecker (checks run with the window closed —
+  // this window does not even exist until the first tray click). The ctor
+  // binds the checker's handler, then REPLAYS Current(), the standing-value
+  // contract SdkHost::CurrentAdvancedMode documents; this member is only the
+  // UI-thread copy the render reads.
+  void ApplyUpdateChecker();  // fan the snapshot out to the pages
+  void OnUpdateBannerAction();  // Update / retry, or re-reveal the manual zip
 
-  // ---- connect wallet (external wallet, by address) ----
-  void ApplyWallets(urnet::AccountWalletsList const& wallets);
-  void ValidateWalletAddress();  // debounced; the server validates per chain
-  void ApplyWalletValidation(std::string const& chain, uint32_t generation, bool valid);
-  // `serverError` is the api's own (unlocalizable) message, empty when there is none
-  void ApplyWalletConnectResult(bool ok, std::string const& serverError);
-
-  // ---- connect drawer (macOS ConnectActions parity) ----
-  void BuildCharts();
-  void WireDrawerFeeds();      // SdkHost push handlers -> UI thread -> caches/cards
-  void WireCardAffordances();  // hover/pressed feedback on the tappable cards
-  void ResyncDrawer();         // seed the caches/cards from SdkHost snapshots
-  void SeedConnectControls();  // performance profile + blocker toggle state
-  void PushPerformanceSettings();
-  // Non-const: reads the ConnectionModeBar / ModeWebItem / ModeStreamingItem x:Name
-  // accessors, which C++/WinRT generates as non-const members of the .xaml.g.h base.
-  urnw::ConnectionMode SelectedMode();
-  // provide control mode picker <-> the SDK's mode string (same non-const note)
-  std::string SelectedProvideMode();
-  void ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& settings);
-  // The unapplied-recommendation pill atop the dns card: compares the applied dns
-  // settings against the connected country's regional recommendation (else the
-  // safe defaults) and shows/collapses the pill. Recomputed on dns-setting changes
-  // (ApplyDnsCard) and connected-country changes (ApplyStats).
-  void ApplyDnsRecommendationPill();
-  void ApplySplitRuleCount();
-  void ApplyBlockerUi(bool on);
-  // routeLocal is the device flag; the toggle renders its inverse (kill switch
-  // on = routeLocal off), mirroring apple SettingsForm.
-  void ApplyKillSwitchUi(bool routeLocal);
-  void OnChartTick();
-  void AnimateDrawerIn();  // fade + slide-up entrance, staggered across cards
-  winrt::fire_and_forget ShowClientContractsSheet();
-  winrt::fire_and_forget ShowSplitRulesSheet();
-  winrt::fire_and_forget ShowAppRulesSheet();
-  winrt::fire_and_forget ShowDnsSheet();
-  winrt::fire_and_forget ShowLocationChooserSheet();
-  winrt::fire_and_forget ShowProviderLocationsSheet();
-  // drawer "N network peers" sub-label (req1); space-preserved (blank + Opacity
-  // 0 when there are none) so the location row never jumps
-  void ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers);
-
-  bool connected_ = false;
-
-  // sign-in flow state (UI thread only)
-  LoginStep loginStep_ = LoginStep::Initial;
-  std::string loginUserAuth_;      // the echoed user auth driving the current step
-  bool discoveringLogin_ = false;  // authLogin discovery in flight
-  CreateMode createMode_ = CreateMode::Password;  // what the create step submits
-  bool creatingNetwork_ = false;
-  bool verifying_ = false;
-  bool sendingReset_ = false;
-  // create-network name availability (debounced; the generation drops stale checks)
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer nameCheckTimer_{nullptr};
-  uint32_t nameCheckGeneration_ = 0;
-  bool nameChecking_ = false;
-  bool nameAvailable_ = false;
-  // bonus referral code validation (debounced)
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer bonusCheckTimer_{nullptr};
-  uint32_t bonusCheckGeneration_ = 0;
-  bool bonusValid_ = false;
-  bool bonusCapped_ = false;
-  // resend-code cooldown (15s, macOS parity)
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer resendCooldownTimer_{nullptr};
+  std::unique_ptr<urnw::LoginPage> login_;
+  std::unique_ptr<urnw::ConnectPage> connect_;
+  std::unique_ptr<urnw::NetworkPage> network_;
+  std::unique_ptr<urnw::AccountPage> account_;
+  std::unique_ptr<urnw::WalletPage> wallet_;
+  std::unique_ptr<urnw::SettingsPage> settings_;
+  std::unique_ptr<urnw::DeveloperPage> developer_;
 
   // balance / plan state (UI thread only; pushed by the store via AppController)
   urnw::BalanceSnapshot balance_;
   urnw::BalancePollState balancePoll_;
   std::unique_ptr<urnw::UsageBar> accountUsageBar_;
-  std::unique_ptr<urnw::UsageBar> drawerUsageBar_;
-  int64_t totalReferrals_ = 0;
-  std::string referralCode_;
   bool insufficientBalance_ = false;  // last ContractStatus push
-  bool portalOpening_ = false;        // one billing-portal request in flight
   std::shared_ptr<urnw::UpgradeSheet> upgradeSheet_;
   std::shared_ptr<urnw::RedeemCodeSheet> redeemSheet_;
-  std::shared_ptr<urnw::GuestModeSheet> guestSheet_;
 
-  // connect-wallet state (UI thread only). The address is validated against each
-  // supported chain; the generation drops results from a superseded edit.
-  struct WalletValidation {
-    bool sol = false;
-    bool matic = false;
-    bool tao = false;
-  };
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer walletValidateTimer_{nullptr};
-  WalletValidation walletValidation_;
-  uint32_t walletValidateGeneration_ = 0;
-  std::string walletChain_;          // the chain that accepted the address ("" = none)
-  bool connectingWallet_ = false;
+  bool sheetOpen_ = false;  // only one ContentDialog can show at a time
+  // --preview-ui: the home view is pinned regardless of auth state
+  bool previewUi_ = false;
 
-  // drawer state (UI thread only)
-  std::unique_ptr<urnw::TransferChart> remoteChart_;
-  std::unique_ptr<urnw::TransferChart> blockedChart_;
-  std::unique_ptr<urnw::TransferChart> localChart_;
-  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer chartTimer_{nullptr};
-  uint32_t chartTickCount_ = 0;
-  std::vector<urnw::ContractPeerRow> contractRows_;
-  std::vector<urnw::BlockActionItem> blockActions_;
-  std::vector<urnw::SplitRule> splitRules_;
-  std::vector<urnw::ProviderLocationRow> providerLocations_;
-  std::vector<urnw::ProviderIdentityRow> providerIdentities_;
-  int64_t allowedCount_ = 0;
-  int64_t blockedCount_ = 0;
-  std::optional<urnet::DnsResolverSettings> dnsSettings_;
-  std::string countryCode_;  // selected location country (dns recommendations)
-  std::string countryName_;
-  bool updatingControls_ = false;  // guards programmatic toggle/segment updates
-  bool drawerAnimated_ = false;    // entrance plays once per window
-  bool sheetOpen_ = false;         // only one ContentDialog can show at a time
-  std::shared_ptr<urnw::ClientContractsSheet> contractsSheet_;
-  std::shared_ptr<urnw::SplitRulesSheet> splitRulesSheet_;
-  std::shared_ptr<urnw::AppRulesSheet> appRulesSheet_;
-  std::shared_ptr<urnw::DnsEditorSheet> dnsSheet_;
-  std::shared_ptr<urnw::LocationChooserSheet> locationSheet_;
-  std::shared_ptr<urnw::ProviderLocationsSheet> providerLocationsSheet_;
+  // ---- service manager state (UI thread only) ----
+  urnw::ServiceSetup::Snapshot serviceSetup_;
+  // a Classify is already on a worker; window activation fires refreshes on
+  // every focus change, and one truth-teller at a time is plenty
+  bool serviceProbeInFlight_ = false;
+
+  // ---- update checker state (UI thread only; see ApplyUpdateChecker) ----
+  urnw::UpdateChecker::Snapshot updateSnapshot_;
+
+  // ---- status strip state (UI thread only) ----
+  urnw::kit::StatusField statusState_;     // dot + the connection wording
+  urnw::kit::StatusField statusNetwork_;
+  urnw::kit::StatusField statusProvider_;
+  urnw::kit::StatusField statusTraffic_;
+  // ---- the strip's ADVANCED density (D5) ----
+  // Four more fields, four more MakeStatusField calls and no layout change,
+  // which is exactly what the strip was built as a horizontal panel of fields
+  // for. Present only while Advanced Mode is on; BuildStatusStrip rebuilds.
+  urnw::kit::StatusField statusMode_;      // session mode: tunnel / rpc-only
+  urnw::kit::StatusField statusRoutes_;    // are routes+DNS actually installed
+  urnw::kit::StatusField statusRpcPort_;   // the service rpc endpoint
+  urnw::kit::StatusField statusRaw_;       // the PRE-CLAMP connection status
+  // The last TunnelStatus, for the three advanced fields that read it. Cached
+  // because the strip is rebuilt on a mode change, which is not a tunnel event:
+  // without this a rebuild would show three blanks until the service next
+  // happened to push, and on a settled session that is never.
+  std::string statusRpcHostPort_;
+  urnw::proto::StartMode statusSessionMode_ = urnw::proto::StartMode::Tunnel;
+  bool statusRoutesInstalled_ = false;
+  // Routes installed and DNS applied are SEPARATE facts: the tunnel can carry
+  // traffic while its resolvers never took, in which case queries either leave
+  // in the clear or fail closed depending on whether the firewall is up. The
+  // Routes field says which, instead of a bare "on" over a half-applied tunnel.
+  bool statusDnsApplied_ = false;
+  // "off" | "armed" | "connected" — whether leak prevention is actually in
+  // force. Off while connected is what a failed or unelevated install looks
+  // like, and it is not the same as protected.
+  std::string statusWfpState_ = "off";
+  // #41: the last teardown's reason and whether another one is being counted
+  // down to. Empty and false are the pre-#41 readings, which render exactly as
+  // this app always has — absent means unchanged.
+  std::string statusStopReason_;
+  bool statusFailsafeArmed_ = false;
+  // LiveStats' pre-clamp reading, likewise cached across a rebuild.
+  std::string statusRawConnection_;
+  // What RenderStatusState last drew. The state field is written by callers that
+  // are ALLOWED to write it (and the preview sample pins itself), so a rebuild
+  // that did not replay it would blank the one field the strip is named after
+  // until the next push — which under a pinned preview sample never comes. Same
+  // lesson as sessionFailure_, one layer up.
+  winrt::hstring statusStateText_;
+  winrt::Windows::UI::Color statusStateDot_{};
+  // Everything after the state field, hidden as a group when there is no
+  // session: three captions over three blanks says less than one honest line.
+  std::vector<winrt::Microsoft::UI::Xaml::UIElement> statusSessionParts_;
+  // D5: the Advanced four and their separators, tracked separately so the
+  // breakpoint can drop exactly those. They are in statusSessionParts_ as well
+  // (they are session facts, so signing out must hide them too); this is the
+  // narrower handle for the width rule.
+  std::vector<winrt::Microsoft::UI::Xaml::UIElement> statusAdvancedParts_;
+  std::string statusNetworkName_;
+  bool statusGuest_ = false;
+  bool statusSignedIn_ = false;
+  bool statusConnected_ = false;
+  std::string statusLocationName_;
+  int64_t statusDownBps_ = 0;
+  int64_t statusUpBps_ = 0;
+  // the sample above owns the strip's values: the real relays keep running
+  // (there is no session, so they push emptiness) and must not overwrite it
+  bool statusSamplePinned_ = false;
+  // last state ApplyBreakpoint drove, so a resize that does not cross the
+  // breakpoint costs nothing (SizeChanged fires on every pixel of a drag)
+  // ---- Advanced Mode (D5) ----
+  // Seeded from SdkHost::CurrentAdvancedMode() in the ctor and written only by
+  // ApplyAdvancedMode. See the accessor above.
+  bool advancedMode_ = false;
+
+  bool wideLayout_ = false;
+  // Home's second breakpoint (kUltraWideDip): the third column. Tracked
+  // separately so a drag across 1800 re-runs the layout even though `wide` did
+  // not change - the early-out has to test every state it applies, not one.
+  bool ultraLayout_ = false;
+  bool breakpointApplied_ = false;
 };
 
 }  // namespace winrt::URnetwork::implementation

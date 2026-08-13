@@ -41,22 +41,34 @@
   </ItemDefinitionGroup>
 
   <ItemGroup>
+    <ClInclude Include="ConnectAction.h" />
+    <ClInclude Include="ConnectionHealth.h" />
+    <ClInclude Include="CrashDumps.h" />
+    <ClInclude Include="Heartbeat.h" />
     <ClInclude Include="Ids.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="Paths.h" />
     <ClInclude Include="PipeClient.h" />
     <ClInclude Include="PipeServer.h" />
     <ClInclude Include="Protocol.h" />
+    <ClInclude Include="RpcSessionBlob.h" />
     <ClInclude Include="Sdk.h" />
     <ClInclude Include="Strings.h" />
+    <ClInclude Include="ThreadGuard.h" />
+    <ClInclude Include="UpdateFormats.h" />
+    <ClInclude Include="Version.h" />
+    <ClInclude Include="VersionGrammar.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CrashDumps.cpp" />
+    <ClCompile Include="Heartbeat.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Paths.cpp" />
     <ClCompile Include="PipeClient.cpp" />
     <ClCompile Include="PipeServer.cpp" />
     <ClCompile Include="Sdk.cpp" />
     <ClCompile Include="Strings.cpp" />
+    <ClCompile Include="ThreadGuard.cpp" />
   </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

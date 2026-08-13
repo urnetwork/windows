@@ -27,7 +27,43 @@ class TrayIcon {
     std::function<void()> onConnectToggle;           // menu: Connect/Disconnect
     std::function<bool()> isConnected;               // for the menu item label
     std::function<void()> onQuit;                    // menu: Quit
+
+    // --- the two escapes, shown only when they are the answer to something ---
+    //
+    // THE TRAY IS THE ONLY SURFACE THAT ALWAYS EXISTS. Closing the window hides
+    // to tray and the tunnel keeps running (the service owns it), so when a
+    // tunnel stops carrying traffic the user may have no window to press
+    // anything in — which is the "kill the app and my internet stays blocked"
+    // half of the owner's report. Both items below therefore have to work with
+    // no main window and without opening one.
+    //
+    // Each is a PAIR: a predicate that decides whether the item appears at all,
+    // and the action. An item that is always present but usually inert teaches
+    // people to ignore it; an item that appears exactly when it is the fix does
+    // not. Both predicates are read at menu-build time, i.e. at the click.
+
+    // "The service still has routes installed" — a tunnel is carrying (or
+    // failing to carry) this machine's traffic right now.
+    std::function<bool()> canStopTunnel;
+    std::function<void()> onStopTunnel;
+
+    // "A firewall policy is in force with no tunnel up" — the kill switch is
+    // holding this machine blocked. Turning it off is the one click that lifts
+    // it immediately rather than at the next transition.
+    std::function<bool()> canLiftKillSwitch;
+    std::function<void()> onLiftKillSwitch;
   };
+
+  TrayIcon() = default;
+  // The hidden window holds a pointer to this object in GWLP_USERDATA, so the
+  // window must never outlive it: a click or a TaskbarCreated broadcast
+  // afterwards would re-enter WndProc on freed memory. Not hypothetical — a
+  // failure anywhere after Create() shows a MODAL message box, and a modal box
+  // pumps the message queue while the owning AppController is being destroyed.
+  ~TrayIcon();
+
+  TrayIcon(const TrayIcon&) = delete;
+  TrayIcon& operator=(const TrayIcon&) = delete;
 
   bool Create(HINSTANCE instance, Callbacks callbacks);
   void Destroy();
@@ -40,7 +76,11 @@ class TrayIcon {
 
  private:
   static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-  void AddIcon();  // (re)registers the notify icon; also on Explorer restart
+  // (re)registers the notify icon; also on Explorer restart. False means there
+  // is no icon — the app has no UI at all then, so the caller must say so.
+  bool AddIcon();
+  // Fills in whichever identity this icon is registered under (see useGuid_).
+  void FillIdentity(NOTIFYICONDATAW& nid) const;
   void OnThemeChanged();
   void UpdateIcon();
   void ShowContextMenu(POINT pt);
@@ -52,6 +92,11 @@ class TrayIcon {
   TrayState state_ = TrayState::NoProvideNoConnect;
   bool darkTaskbar_ = false;
   UINT wmTaskbarCreated_ = 0;  // re-add the icon if Explorer restarts
+  // A NIF_GUID registration is bound to the executable's PATH: run the same
+  // build from a different folder and Shell_NotifyIcon(NIM_ADD) fails, leaving
+  // the app with no icon and no way in. Cleared when that happens, which falls
+  // the whole icon back to the classic hwnd+uID identity.
+  bool useGuid_ = true;
 };
 
 }  // namespace urnw

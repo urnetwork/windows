@@ -16,6 +16,22 @@ namespace urnw {
 PipeClient::~PipeClient() { Close(); }
 
 bool PipeClient::Connect() {
+  // Already up: do not tear a live channel down to rebuild it.
+  if (connected_.load()) return true;
+
+  // RECLAIM WHATEVER THE LAST CONNECTION LEFT, BEFORE ANYTHING ELSE.
+  //
+  // When the service dies the reader thread breaks out of its loop and clears
+  // connected_ — but the std::thread object stays JOINABLE and pipe_ stays a
+  // live HANDLE. Reconnecting without this line therefore did two things: it
+  // leaked the old handle, and it MOVE-ASSIGNED over a joinable std::thread,
+  // which is defined to call std::terminate. So the first successful reconnect
+  // after a service restart killed the app outright, and it killed it inside
+  // BootstrapSession — i.e. on the one path whose whole job is to recover from
+  // the service having gone away. Close() is idempotent and joins the dead
+  // reader, which is all that is needed.
+  Close();
+
   // The pipe is a message-mode byte stream we frame by newline. Retry briefly
   // if the single instance is momentarily busy between clients.
   for (int attempt = 0; attempt < 20; ++attempt) {
@@ -111,7 +127,21 @@ void PipeClient::ReaderLoop() {
   }
 
   ::CloseHandle(ov.hEvent);
-  connected_.store(false);
+  // exchange, not store: the handler fires ONCE per connection, and Close()
+  // racing this must not produce a second one.
+  const bool wasConnected = connected_.exchange(false);
+
+  // An orderly Close() is not a disconnection to report — the caller asked for
+  // it and already knows. Only an unasked-for break is news, and it is the only
+  // signal this process gets that the service (and with it the tun, its routes
+  // and the whole WFP session) is gone.
+  if (wasConnected && !stopping_.load()) {
+    LogWarn("control: the connection to the URnetwork service dropped. The "
+            "service owns the tunnel, so if its process exited the wintun "
+            "adapter and every filter it installed went with it — nothing is "
+            "connected and nothing is protected as of now.");
+    if (onDisconnect_) onDisconnect_();
+  }
 }
 
 nlohmann::json PipeClient::Call(const nlohmann::json& request, int timeoutMs) {

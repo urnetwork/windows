@@ -153,8 +153,8 @@ ContentDialog MakeDialog(XamlRoot const& root, hstring const& title) {
   dialog.XamlRoot(root);
   if (!title.empty()) dialog.Title(winrt::box_value(title));
   dialog.CloseButtonText(Loc("close"));
-  // brand sheet surface (macOS sheet background)
-  dialog.Background(colors::BackgroundBrush());
+  // brand sheet surface (android SheetBlack: a sheet sits ABOVE the page)
+  dialog.Background(colors::SheetBrush());
   return dialog;
 }
 
@@ -258,6 +258,30 @@ void SetTermsMarkerText(TextBlock const& text, std::wstring const& value,
   }
 }
 
+void PairTermsLabel(CheckBox const& box, TextBlock const& label) {
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  using automation::Peers::AccessibilityView;
+  if (!box || !label) return;
+  // The checkbox takes its name from the sentence — it has no content of its
+  // own, so without this it is a nameless CheckBox in the UIA tree...
+  automation::AutomationProperties::SetLabeledBy(box, label);
+  // ...and the sentence itself then has to LEAVE the control view, or it is
+  // announced once as the checkbox's name and immediately again as the text
+  // sitting beside it. Verified in the tree before this existed:
+  //   CheckBox 'I agree to URnetwork's Terms ... Privacy Policy'
+  //   Text     'I agree to URnetwork's Terms ... Privacy Policy'
+  automation::AutomationProperties::SetAccessibilityView(label, AccessibilityView::Raw);
+  // PER-ELEMENT, not a subtree hide. The two Hyperlinks inside that sentence
+  // are the only way to reach the terms and the privacy policy without a
+  // mouse, and they are children of the element just hidden — so each is put
+  // back into the content view explicitly.
+  for (auto const& run : label.Inlines()) {
+    if (auto link = run.try_as<Hyperlink>()) {
+      automation::AutomationProperties::SetAccessibilityView(link, AccessibilityView::Content);
+    }
+  }
+}
+
 // ---- RedeemCodeSheet --------------------------------------------------------
 
 std::shared_ptr<RedeemCodeSheet> RedeemCodeSheet::Create(XamlRoot const& root,
@@ -336,7 +360,8 @@ void RedeemCodeSheet::Build(XamlRoot const& root) {
 
 void RedeemCodeSheet::Submit() {
   const std::string secret = TrimWhitespace(urnw::Narrow(codeBox_.Text().c_str()));
-  if (redeeming_ || secret.size() != kBalanceCodeLength || !sdk_.apiReady()) return;
+  // IsLoggedIn(), not apiReady() - see WalletPage::ValidateWalletAddress.
+  if (redeeming_ || secret.size() != kBalanceCodeLength || !sdk_.IsLoggedIn()) return;
   redeeming_ = true;
   dialog_.IsPrimaryButtonEnabled(false);
   codeBox_.IsEnabled(false);
@@ -684,7 +709,7 @@ void UpgradeSheet::ShowCheckoutError(hstring const& message) {
 }
 
 void UpgradeSheet::BeginCheckout() {
-  if (checkingOut_ || !sdk_.apiReady()) return;
+  if (checkingOut_ || !sdk_.IsLoggedIn()) return;
   checkingOut_ = true;
   hostedFallbackTried_ = false;
   subscribeButton_.IsEnabled(false);
@@ -699,7 +724,7 @@ void UpgradeSheet::BeginCheckout() {
 }
 
 void UpgradeSheet::RequestSession(bool embedded) {
-  if (!sdk_.apiReady()) {
+  if (!sdk_.IsLoggedIn()) {
     ShowCheckoutError(Loc("something_went_wrong"));
     return;
   }

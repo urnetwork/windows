@@ -8,11 +8,13 @@
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <unordered_set>
 
 #include "Localization.h"
+#include "Sdk.h"   // ReadSdkList: the list-getter null-unwrap guard
 #include "StatsFormat.h"
 #include "Strings.h"  // Widen: the sdk's utf-8 data into the utf-16 ui
 #include "UrColors.h"
@@ -213,8 +215,8 @@ ContentDialog MakeDialog(XamlRoot const& root, hstring const& title) {
   dialog.XamlRoot(root);
   dialog.Title(winrt::box_value(title));
   dialog.CloseButtonText(Loc("close"));
-  // brand sheet surface (macOS sheet background)
-  dialog.Background(colors::BackgroundBrush());
+  // brand sheet surface (android SheetBlack: a sheet sits ABOVE the page)
+  dialog.Background(colors::SheetBrush());
   return dialog;
 }
 
@@ -1344,7 +1346,16 @@ void DnsEditorSheet::BuildResolverSection(StackPanel const& parent) {
 }
 
 void DnsEditorSheet::BuildSuggestionSection(StackPanel const& parent) {
-  auto servers = urnet::getRegionalDnsServers();
+  // RegionalDnsServerList is a `*List` alias, so it carries the same
+  // null-unwrap hazard as every other list getter — and this one would throw
+  // while BUILDING A SHEET, on the UI thread, out of a click handler. See
+  // ReadSdkList (Common/Sdk.h). The risk is lower here than for the live feeds
+  // because the source is an embedded static table rather than a slice that
+  // starts nil, but "unlikely to be nil" is not a guarantee the C ABI makes,
+  // and this site is exactly the one an audit of SdkHost.cpp alone missed.
+  static std::atomic<bool> logged{false};
+  auto servers = urnw::ReadSdkList(logged, "getRegionalDnsServers",
+                                   [] { return urnet::getRegionalDnsServers(); });
   if (!servers || servers->empty()) return;
 
   // suggestions for the connected country first, then by code, then name

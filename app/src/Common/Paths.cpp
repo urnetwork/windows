@@ -31,6 +31,27 @@ std::filesystem::path EnsureDir(std::filesystem::path p) {
 }  // namespace
 
 std::filesystem::path StorageRoot(bool isService) {
+  // URNETWORK_APP_ROOT overrides the per-user app root. This exists because
+  // several agents build and run this repo CONCURRENTLY from separate git
+  // worktrees, and every one of them otherwise shares a single
+  // %LOCALAPPDATA%\URnetwork\app: one SDK LocalState (the JWT and instance id),
+  // one rpc_session.json and one log file, with two unsynchronised writers.
+  // That is a state-corruption risk, not just noisy logs — and it silently
+  // makes one agent's run appear in another agent's evidence.
+  //
+  // Point each worktree at its own root:
+  //   $env:URNETWORK_APP_ROOT = 'C:\...\wt-p1\.localstate'
+  //
+  // Deliberately app-only. The service root is machine-wide by nature (it is
+  // LocalSystem state and the control pipe is a single machine-wide instance),
+  // so splitting it would give a false sense of isolation the service does not
+  // actually have.
+  if (!isService) {
+    wchar_t buf[MAX_PATH];
+    const DWORD n =
+        ::GetEnvironmentVariableW(L"URNETWORK_APP_ROOT", buf, MAX_PATH);
+    if (n > 0 && n < MAX_PATH) return EnsureDir(std::filesystem::path(buf, buf + n));
+  }
   // FOLDERID_ProgramData -> C:\ProgramData (machine-wide, service)
   // FOLDERID_LocalAppData -> C:\Users\<u>\AppData\Local (per user, app)
   std::filesystem::path base =
@@ -49,6 +70,10 @@ std::filesystem::path LogDir(bool isService) {
 
 std::filesystem::path RpcSessionFile() {
   return StorageRoot(/*isService=*/false) / L"rpc_session.json";
+}
+
+std::filesystem::path AppPrefsFile() {
+  return StorageRoot(/*isService=*/false) / L"app_prefs.json";
 }
 
 }  // namespace urnw

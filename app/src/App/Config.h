@@ -17,14 +17,57 @@ namespace urnw::config {
 // polkadot-js for Bittensor; Phantom/Solflare for Solana. Nothing crashes and no
 // button dies; only mobile wallet pairing is lost.
 //
-// Define URN_WALLETCONNECT_PROJECT_ID on the build (CI / build machine, the way
-// android takes it from local.properties) to inject the value without
-// committing it:
+// Inject it on the build (CI / build machine, the way android takes it from
+// local.properties) rather than committing it:
 //   msbuild ... /p:UrnWalletConnectProjectId=<project id>
-#if defined(URN_WALLETCONNECT_PROJECT_ID)
-inline constexpr const char* kWalletConnectProjectId = URN_WALLETCONNECT_PROJECT_ID;
+//
+// App.vcxproj passes the id as a BARE token and it is stringized here: an
+// MSBuild PreprocessorDefinition cannot carry `\"`-escaped quotes through to cl
+// (verified — the value ends at the backslash and the TU fails to compile), so
+// the quoting has to happen in the preprocessor instead.
+#define URN_CONFIG_STR2(x) #x
+#define URN_CONFIG_STR(x) URN_CONFIG_STR2(x)
+
+#if defined(URN_WALLETCONNECT_PROJECT_ID_RAW)
+inline constexpr const char* kWalletConnectProjectId =
+    URN_CONFIG_STR(URN_WALLETCONNECT_PROJECT_ID_RAW);
 #else
 inline constexpr const char* kWalletConnectProjectId = "";
 #endif
+
+// Google OAuth client — a "Desktop app" client from the URnetwork Google Cloud
+// project, used by the system-browser loopback flow in GoogleSignIn.cpp.
+//
+// Empty is the default and is NOT a broken state: GoogleSignIn::Configured()
+// returns false, the network space reports sso_google=false, and the login
+// screen HIDES the Google button rather than offering one that cannot work.
+// A build that wants the button injects both on the command line, the same way
+// the WalletConnect project id is injected:
+//   msbuild ... /p:UrnGoogleOAuthClientId=<id>.apps.googleusercontent.com
+//               /p:UrnGoogleOAuthClientSecret=<secret>
+//
+// The "secret" of a Google Desktop client is not confidential — it ships inside
+// every copy of the binary and Google documents it as such. PKCE (RFC 7636) is
+// what actually binds an authorization code to the process that asked for it,
+// and GoogleSignIn always sends a code challenge.
+#if defined(URN_GOOGLE_OAUTH_CLIENT_ID_RAW)
+inline constexpr const char* kGoogleOAuthClientId =
+    URN_CONFIG_STR(URN_GOOGLE_OAUTH_CLIENT_ID_RAW);
+#else
+inline constexpr const char* kGoogleOAuthClientId = "";
+#endif
+
+#if defined(URN_GOOGLE_OAUTH_CLIENT_SECRET_RAW)
+inline constexpr const char* kGoogleOAuthClientSecret =
+    URN_CONFIG_STR(URN_GOOGLE_OAUTH_CLIENT_SECRET_RAW);
+#else
+inline constexpr const char* kGoogleOAuthClientSecret = "";
+#endif
+
+// The GitHub repo the update checker polls for releases (beta-distribution
+// spec §5): the beta fork today, and the whole upstream handoff is this one
+// line — repoint it at urnetwork/<repo> when the fork graduates. Wide because
+// it is spliced into WinHTTP request strings, which are UTF-16 end to end.
+inline constexpr const wchar_t* kUpdateRepo = L"Ryanmello07/urnetwork-windows";
 
 }  // namespace urnw::config

@@ -1,9 +1,9 @@
 # URnetwork Windows — Next Steps
 
 Concrete, ordered pickup list. Context: `PLAN.md` (architecture/risks), `README.md`
-(build), `app/STORE.md` (Store), `app/SIGNING.md` (signing). Everything under
-`windows/app/` is written and uncommitted; the SDK-side R1 work is committed-ready
-in `connect/`+`sdk/`+`cgo/`.
+(build), `app/STORE.md` (Store), `app/SIGNING.md` (signing), and
+`docs/superpowers/plans/` for the current work packages. The SDK-side R1 work
+lives on the `beta/custom-server` line of `connect/`+`sdk/`+`cgo/`.
 
 ## Where it stands
 
@@ -12,11 +12,128 @@ in `connect/`+`sdk/`+`cgo/`.
   for darwin + windows/amd64 + windows/arm64; cgo C ABI + `urnetwork_sdk.hpp`
   wrapper regenerate and pass the C++ smoke test; windows/amd64 DLL cross-builds
   via mingw-w64.
-- **Written, not yet compiled on Windows:** the whole `windows/app` solution —
-  Common lib, `urnetworkd` service (wintun + DeviceLocal + packet pump + net
-  config + R1 egress monitor + control pipe), WinUI 3 tray app (SdkHost +
-  ServiceClient + tray + Account/Wallet/Leaderboard/Support UI), clean-room
-  split-tunnel driver, WiX MSI. Real brand icons generated + committed.
+- **Compiled, never run:** the whole `windows/app` solution — Common lib,
+  `urnetworkd` service (wintun + DeviceLocal + packet pump + net config + R1
+  egress monitor + control pipe), WinUI 3 tray app (SdkHost + ServiceClient +
+  tray + Account/Wallet/Leaderboard/Support UI). CI (`beta-build.yml`) builds it
+  for x64 and ARM64 on every push to `beta/custom-server` and uploads the
+  binaries. Not built there: the clean-room split-tunnel driver (needs the WDK)
+  and the WiX MSI — both excluded from the solution's configurations.
+  Compiling is not running: no line of this code has executed on a real machine.
+
+## 0. Running the app: the Windows App Runtime, the log, and `--diagnose`
+
+**URnetwork.exe is a tray app.** A successful launch opens no window — it puts an
+icon in the notification area (bottom-right; Windows 11 hides new icons behind
+the `^` chevron by default, so look there and drag it onto the taskbar). Left
+click opens the window, right click gives Open / Connect / Quit.
+
+Everything on the startup path is logged, from the first instruction of
+`wWinMain`:
+
+```
+%LOCALAPPDATA%\URnetwork\app\logs\urnetwork-app.log
+```
+
+and any failure before the tray icon exists is also shown in a message box
+naming the cause and that path — a tray app has no other channel. The file is
+UTF-8 with a BOM, so `Get-Content` reads it correctly on Windows PowerShell 5.1
+(whose default is otherwise the ANSI code page); `-Encoding UTF8` forces it for
+any file that predates this.
+
+### One command to see what happened
+
+```powershell
+.\URnetwork.exe --diagnose
+```
+
+It prints the same facts the app logs at startup — build/arch, Windows version,
+the resolved **Windows App Runtime** path (which carries its version),
+`resources.pri`, `URnetworkSdk.dll`, the log file, whether another instance is
+running, whether `urnetworkd`'s control pipe is listening — and exits without
+starting the UI. Run from a terminal it prints there; double-clicked it shows the
+same text in a message box. Paste that output into any bug report.
+
+> PowerShell does not wait on a GUI-subsystem process, so it returns the prompt
+> before the output lands under it. To get it in order, pipe it —
+> `.\URnetwork.exe --diagnose | Out-String` — or redirect it to a file.
+
+### Nothing at all happened — runtime missing, or never ran?
+
+On a first-ever run those two look identical, so here is how to tell them apart.
+
+`WindowsPackageType=None` (App.vcxproj) makes the Windows App SDK bootstrapper
+auto-initialize, but it can only bootstrap a Windows App Runtime that is
+**already on the machine**, and it runs from a CRT initializer — *before*
+`wWinMain` — so nothing this app owns can log or report what it does.
+
+What it does is now known rather than assumed: `MDDBOOTSTRAPAUTOINITIALIZER.OBJ`
+is in our link line (CI run 31025594279's msbuild log), the build defines none of
+the `WindowsAppSDKBootstrapAutoInitializeOptions_*` properties, and with no
+options set the SDK's own `MddBootstrapAutoInitializer.cpp` uses its default —
+`MddBootstrapInitializeOptions_OnNoMatch_ShowUI` — and then, on any failure at
+all, calls `exit(hr)`.
+
+| What you see | What it is |
+|---|---|
+| A Microsoft dialog offering to install the Windows App Runtime | No matching runtime. Install it (below). |
+| No dialog, **no log file**, exit code a large `0x8007…`-style number | The bootstrapper failed for some other reason and called `exit(hr)` — that exit code *is* the HRESULT. |
+| No dialog, no log file, exit code 0 | The process never reached its own code: wrong file, blocked by policy/SmartScreen, or a missing dependency (Windows shows its own "code execution cannot proceed" dialog for that one). |
+| A log file with a fresh `startup: wWinMain` line | It ran. Whatever went wrong is *after* startup: read the log and the message box the app showed. |
+
+A GUI app does not set `$LASTEXITCODE` usefully, so ask for the code explicitly:
+
+```powershell
+$p = Start-Process .\URnetwork.exe -ArgumentList '--diagnose' -PassThru -Wait
+'{0} (0x{0:X8})' -f $p.ExitCode
+```
+
+**`--diagnose` always prints something when the process reaches its own code.**
+If it prints nothing at all, the process is dying before `wWinMain` — that is the
+sharp version of "there is no log file". Windows Error Reporting also records the
+death: Event Viewer → Windows Logs → Application.
+
+Install it, matching **the same major.minor the app was built against**
+(`Microsoft.WindowsAppSDK` in `app/src/App/App.vcxproj` — currently **2.2**) and
+**the same architecture as the exe** (x64 or ARM64; an ARM64 build will not run
+on an x64 runtime):
+
+1. Download "Windows App SDK runtime — downloads" from Microsoft
+   (`https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads`), take
+   the **redistributable installer** (`WindowsAppRuntimeInstall-<arch>.exe`) for
+   that version, and run it. No admin rights are needed for the per-user install.
+2. Or via winget, if the id for that version exists on the box:
+   `winget install Microsoft.WindowsAppRuntime.<major>.<minor>`.
+
+Verify:
+
+```powershell
+Get-AppxPackage -Name Microsoft.WindowsAppRuntime.* | Select-Object Name, Version
+.\URnetwork.exe --diagnose | Out-String
+#   built against    : Windows App SDK 2.2.0
+#   app runtime      : present: ...\Microsoft.WindowsAppRuntime.2.2_<ver>_<arch>...
+```
+
+Those two lines are printed next to each other on purpose: a major.minor
+mismatch between them has no symptom of its own, and this is the only place it
+is visible.
+
+Also required next to `URnetwork.exe`: `URnetworkSdk.dll`, `resources.pri`, and
+`Microsoft.WindowsAppRuntime.Bootstrap.dll`. `--diagnose` reports each one.
+**Keep the folder together** — the CI artifact `urnetwork-windows-<arch>` is
+exactly that drop (verified against run 31025594279):
+
+```
+URnetwork.exe   urnetworkd.exe   URnetworkSdk.dll   wintun.dll
+resources.pri   Microsoft.WindowsAppRuntime.Bootstrap.dll
+Microsoft.Web.WebView2.Core.dll
+```
+
+Copying `URnetwork.exe` alone out of that folder gives an app that cannot start,
+and — before this work — did so silently.
+
+Once the WiX MSI is building in CI (plan WP5) it deploys the runtime itself, and
+this section becomes the fallback for loose builds.
 
 ## 1. Get it building on a Windows box (the gate — nothing else moves until this)
 
@@ -41,12 +158,23 @@ in `connect/`+`sdk/`+`cgo/`.
 
 ## 2. Prove M1 (the service tunnel) end-to-end on Windows
 
+> **Follow `docs/superpowers/reports/2026-08-05-service-bringup.md`.** It is the
+> step-by-step version of this section — the exact commands, the log lines to
+> expect, and what each failure means. Read its §1 before running anything: it
+> explains why an abnormal exit should not cost you your network, and what to run
+> (`urnetworkd revert`, elevated) if it ever does.
+
 1. `urnetworkd.exe console` (dev mode), then the tray app: log in → connect.
+   `console` echoes the log to stdout and unwinds cleanly on Ctrl+C.
 2. **Confirm R1 (top risk):** with the tunnel up, the service's own platform +
-   provider sockets must NOT loop into the tun. Watch `EgressMonitor` set the
-   egress interface; verify browsing works through a provider and there's no
-   route loop. This is the payoff of the socket self-exclusion.
-3. Clean service stop restores the network (routes/DNS reverted).
+   provider sockets must NOT loop into the tun. The `egress:` log line names the
+   interface it bound and its source address; that must be the physical adapter,
+   and the line must appear before the route install. Then
+   `Get-NetTCPConnection -OwningProcess <urnetworkd pid>` must show no socket
+   sourced from the tun's `169.254.2.1`. This is the payoff of the socket
+   self-exclusion.
+3. Clean service stop restores the network (routes/DNS reverted) — and so does
+   `Stop-Process -Force` with the tunnel up, which is the test that matters.
 
 ## 3. arm64
 

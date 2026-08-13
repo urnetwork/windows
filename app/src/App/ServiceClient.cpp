@@ -17,15 +17,25 @@ bool ServiceClient::Connect() {
       }
     }
   });
+  pipe_.SetDisconnectHandler([this] {
+    if (onDisconnect_) onDisconnect_();
+  });
   return pipe_.Connect();
 }
 
-proto::TunnelStatus ServiceClient::CallStatus(const nlohmann::json& request) {
+proto::TunnelStatus ServiceClient::CallStatus(const nlohmann::json& request,
+                                              bool* answered) {
   proto::TunnelStatus status;
+  if (answered) *answered = false;
   try {
     nlohmann::json reply = pipe_.Call(request);
     proto::Reply r = reply.get<proto::Reply>();
     if (r.status) status = *r.status;
+    // "The service described its own state to us." A reply that carried no
+    // status at all leaves the default-constructed struct in place, and that
+    // struct reads as "nothing installed" — a claim about this machine that
+    // nobody made. Only a status the service actually sent may be believed.
+    if (answered) *answered = r.ok && r.status.has_value();
     if (!r.ok && !r.error.empty()) {
       status.state = proto::TunnelState::Error;
       status.error = r.error;
@@ -51,8 +61,8 @@ proto::TunnelStatus ServiceClient::StopTunnel() {
   return CallStatus(proto::Request(proto::msg::kStopTunnel));
 }
 
-proto::TunnelStatus ServiceClient::GetState() {
-  return CallStatus(proto::Request(proto::msg::kGetState));
+proto::TunnelStatus ServiceClient::GetState(bool* answered) {
+  return CallStatus(proto::Request(proto::msg::kGetState), answered);
 }
 
 bool ServiceClient::SetSplitTunnel(const std::vector<std::string>& excludedPaths, bool allowlist) {
@@ -65,6 +75,19 @@ bool ServiceClient::SetSplitTunnel(const std::vector<std::string>& excludedPaths
     return reply.value("ok", false);
   } catch (const std::exception& e) {
     LogError("service: set split tunnel failed: {}", e.what());
+    return false;
+  }
+}
+
+bool ServiceClient::SetKillSwitch(bool on) {
+  proto::SetKillSwitch s;
+  s.on = on;
+  nlohmann::json body = s;
+  try {
+    nlohmann::json reply = pipe_.Call(proto::Request(proto::msg::kSetKillSwitch, body));
+    return reply.value("ok", false);
+  } catch (const std::exception& e) {
+    LogError("service: set kill switch failed: {}", e.what());
     return false;
   }
 }

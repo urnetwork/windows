@@ -8,6 +8,7 @@
 #include "Ids.h"
 #include "Log.h"
 #include "Protocol.h"
+#include "ThreadGuard.h"
 
 #pragma comment(lib, "advapi32.lib")
 
@@ -31,7 +32,11 @@ bool PipeServer::Start(RequestHandler handler) {
   stopping_.store(false);
   stopEvent_ = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
   if (!stopEvent_) return false;
-  acceptThread_ = std::thread([this] { AcceptLoop(); });
+  // Guarded, not bare. This thread runs JSON parsing, the whole request handler
+  // and therefore the entire tunnel control path; std::set_terminate is
+  // per-thread on MSVC, so an exception escaping here used to reach the default
+  // terminate handler — no log line, no crash revert, nothing (ThreadGuard.h).
+  acceptThread_ = StartGuardedThread("pipe-accept", [this] { AcceptLoop(); });
   return true;
 }
 
@@ -131,18 +136,44 @@ void PipeServer::ServeConnection(void* pipeHandle) {
       buffer.erase(0, nl + 1);
       if (line.empty()) continue;
 
-      nlohmann::json request, reply;
+      // SERIALIZATION IS INSIDE THE TRY, AND THAT IS THE BUG FIX.
+      //
+      // reply.dump() used to sit BELOW this block. It is the one call here most
+      // likely to throw and it was the only one not covered: dump() raises
+      // type_error.316 on invalid UTF-8, and `reply` carries SDK-supplied
+      // strings verbatim (ControlServer.cpp: reply.error = st.error). The throw
+      // escaped ServeConnection, escaped AcceptLoop, and — with no per-thread
+      // terminate handler armed — ended the whole LocalSystem service without
+      // one line of explanation and without the route revert. It is a candidate
+      // for the silent deaths in task #39 and it is fixed twice over: the dump
+      // is inside the try, and DumpForWire replaces bad bytes rather than
+      // throwing on them (see Protocol.h for why replacing is right here).
+      std::string out;
       try {
-        request = nlohmann::json::parse(line);
-        reply = handler_ ? handler_(request) : nlohmann::json::object();
+        nlohmann::json request, reply;
+        try {
+          request = nlohmann::json::parse(line);
+          reply = handler_ ? handler_(request) : nlohmann::json::object();
+        } catch (const std::exception& e) {
+          proto::Reply r;
+          r.ok = false;
+          r.error = e.what();
+          reply = r;
+        }
+        reply["type"] = proto::msg::kReply;
+        out = proto::DumpForWire(reply) + "\n";
       } catch (const std::exception& e) {
-        proto::Reply r;
-        r.ok = false;
-        r.error = e.what();
-        reply = r;
+        LogError("pipe: could not serialize a reply ({}); sending the minimal "
+                 "error reply instead. The client gets an answer and this "
+                 "connection stays up — the alternative was killing the "
+                 "service.",
+                 e.what());
+        out = std::string(proto::kUnserializableReplyJson) + "\n";
+      } catch (...) {
+        LogError("pipe: could not serialize a reply (non-std exception); "
+                 "sending the minimal error reply instead");
+        out = std::string(proto::kUnserializableReplyJson) + "\n";
       }
-      reply["type"] = proto::msg::kReply;
-      std::string out = reply.dump() + "\n";
 
       std::scoped_lock lock(writeMutex_);
       OVERLAPPED wov{};
@@ -162,9 +193,27 @@ void PipeServer::ServeConnection(void* pipeHandle) {
 void PipeServer::PushEvent(const nlohmann::json& event) {
   std::scoped_lock lock(writeMutex_);
   if (!activePipe_) return;
-  nlohmann::json e = event;
-  e["type"] = proto::msg::kEvent;
-  std::string out = e.dump() + "\n";
+  // Same exposure as the reply path above, on a worse thread. PushEvent is
+  // called from the tunnel control path (ControlServer::PushState) while the
+  // session lock is held, and the status it serializes carries SDK strings; a
+  // throw from here would escape into TunnelController mid-transition. An event
+  // is advisory — the app re-reads state on the next request — so a dropped one
+  // is survivable in a way a dead service is not.
+  std::string out;
+  try {
+    nlohmann::json e = event;
+    e["type"] = proto::msg::kEvent;
+    out = proto::DumpForWire(e) + "\n";
+  } catch (const std::exception& e) {
+    LogError("pipe: could not serialize an event ({}); dropping it. The app "
+             "will pick the state up on its next request.",
+             e.what());
+    return;
+  } catch (...) {
+    LogError("pipe: could not serialize an event (non-std exception); dropping "
+             "it");
+    return;
+  }
   OVERLAPPED ov{};
   ov.hEvent = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
   DWORD written = 0;

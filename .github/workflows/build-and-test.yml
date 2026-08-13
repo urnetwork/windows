@@ -1,0 +1,358 @@
+name: Build and test - Windows
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # the version derive step reads this run's created_at via the actions api
+  actions: read
+
+jobs:
+  # The SDK is a cgo c-shared DLL. It cross-builds cleanly from linux (the
+  # sdk/cgo Makefile's own windows recipe), which is both faster and cheaper
+  # than provisioning Go + llvm-mingw onto a windows runner, and it produces
+  # the exact URnetworkSdkWindows.zip layout app/tools/fetch-deps.ps1 expects.
+  build-sdk:
+    name: Build SDK DLLs (windows/amd64 + arm64)
+    runs-on: ubuntu-latest
+    # The derived version is the release contract for every later job: msbuild
+    # stamps it into the binaries, the packager names the zips with it, and the
+    # release job tags with it. Job outputs are the only channel that crosses
+    # job boundaries, so the derive step's outputs are re-exported here.
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_code: ${{ steps.version.outputs.version_code }}
+      version_major: ${{ steps.version.outputs.version_major }}
+      version_minor: ${{ steps.version.outputs.version_minor }}
+      version_patch: ${{ steps.version.outputs.version_patch }}
+      msi_version: ${{ steps.version.outputs.msi_version }}
+    steps:
+      - name: Check out Windows repo
+        uses: actions/checkout@v4
+
+      # Same version scheme as the android and apple beta lines: the official
+      # date format with warpctl's counter (seconds since the company founding
+      # times 10), derived from the RUN's creation time so every job of one run
+      # agrees even across midnight utc.
+      - name: Derive version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          created=$(gh api repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID --jq .created_at)
+          base=$(date -u -d "$created" '+%Y.%-m.%-d')
+          founded=$(date -u -d "2023-05-23" +%s)
+          beta_code=$(( ($(date -u -d "$created" +%s) - founded) * 10 ))
+          version="${base}-${beta_code}-beta"
+          # the date parts feed VERSIONINFO's numeric FILEVERSION, whose fields
+          # are 16-bit -- each part fits on its own, the full string would not
+          major=${base%%.*}
+          rest=${base#*.}
+          minor=${rest%%.*}
+          patch=${rest#*.}
+          # the MSI's ProductVersion is tighter still (first fields 8-bit), so
+          # its flavor drops the century: 26.8.9, never 2026.8.9
+          msi_version=$(date -u -d "$created" '+%-y.%-m.%-d')
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${beta_code}" >> "$GITHUB_OUTPUT"
+          echo "version_major=${major}" >> "$GITHUB_OUTPUT"
+          echo "version_minor=${minor}" >> "$GITHUB_OUTPUT"
+          echo "version_patch=${patch}" >> "$GITHUB_OUTPUT"
+          echo "msi_version=${msi_version}" >> "$GITHUB_OUTPUT"
+          echo "build date ${base} -> beta ${version} (${beta_code}), msi ${msi_version}"
+
+      - name: Check out forked SDK
+        uses: actions/checkout@v4
+        with:
+          repository: urnetwork/sdk
+          # the beta integration line: it now carries the merged reliability
+          # checkpoint + the DeviceLocalRpc bridge (sdk#135) and the cgo fixes
+          # this client needed as the first c-abi consumer
+          ref: main
+          path: sdk
+
+      # sdk/cgo/go.mod resolves these with `replace ... => ../../<name>`, so
+      # they have to sit as siblings of the sdk checkout
+      - name: Check out connect dependency
+        run: git clone --depth 1 --branch main https://github.com/urnetwork/connect.git connect
+
+      - name: Check out glog dependency
+        run: git clone --depth 1 https://github.com/urnetwork/glog.git glog
+
+      - name: Check out goidenticons dependency
+        run: git clone --depth 1 https://github.com/urnetwork/goidenticons.git goidenticons
+
+      # The sdk references RenderPngV2. goidenticons did not publish it when
+      # this workflow was written, so we shimmed it; it does now (same
+      # signature), and an unconditional shim is a REDECLARATION that fails the
+      # build. Write it only when the symbol is genuinely absent, so this works
+      # against either version of the dependency.
+      - name: Shim goidenticons RenderPngV2 if unpublished
+        run: |
+          if grep -qR '^func RenderPngV2(' goidenticons/; then
+            echo "goidenticons publishes RenderPngV2 -- no shim needed"
+          else
+            echo "goidenticons lacks RenderPngV2 -- shimming to RenderPng"
+            echo 'package goidenticons' > goidenticons/render_v2_ci_shim.go
+            echo 'func RenderPngV2(data []byte, size int) ([]byte, error) { return RenderPng(data, size) }' >> goidenticons/render_v2_ci_shim.go
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      # amd64 goes through mingw-w64 from apt; arm64 needs llvm-mingw, which
+      # has no apt package -- the pinned upstream release tarball is the same
+      # toolchain the Makefile names (aarch64-w64-mingw32-clang).
+      - name: Install mingw-w64 (amd64 target)
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64 zip
+
+      - name: Install llvm-mingw (arm64 target)
+        run: |
+          version=20250709
+          url="https://github.com/mstorsjo/llvm-mingw/releases/download/${version}/llvm-mingw-${version}-ucrt-ubuntu-22.04-x86_64.tar.xz"
+          curl -fsSL "$url" -o /tmp/llvm-mingw.tar.xz
+          sudo mkdir -p /opt/llvm-mingw
+          sudo tar -xf /tmp/llvm-mingw.tar.xz -C /opt/llvm-mingw --strip-components=1
+          echo "/opt/llvm-mingw/bin" >> "$GITHUB_PATH"
+
+      - name: Build the SDK Windows DLLs
+        working-directory: sdk/cgo
+        env:
+          WARP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # go.sum is generated (git-ignored) -- a build straight from a branch
+          # has not staged, so produce it before the cgo build needs it
+          if [ ! -f go.sum ]; then go mod download all; fi
+          make build_windows
+          ls -la build/windows/amd64 build/windows/arm64
+
+      # The Makefile chains its recipe with `; \`, so a failing `go build` does
+      # NOT fail the target -- the trailing `cp` of the headers succeeds and
+      # make exits 0. That is how a compile error shipped a "successful" SDK
+      # job whose zip contained three headers and no DLL at all, leaving the
+      # app jobs to fail 40 lines later with a confusing missing-file error.
+      # `ls` and `test -s <zip>` both passed on that build, because the dirs
+      # and the zip did exist. Assert on the ARTIFACT THAT MATTERS instead.
+      - name: Verify the SDK actually produced DLLs
+        working-directory: sdk/cgo
+        run: |
+          fail=0
+          for arch in amd64 arm64; do
+            dll="build/windows/$arch/URnetworkSdk.dll"
+            if [ ! -f "$dll" ]; then
+              echo "::error::$dll was not produced -- the cgo build failed (see the make output above)"
+              fail=1
+              continue
+            fi
+            # a real c-shared build of this sdk is tens of MB; anything tiny
+            # means a truncated or stub link, which would fail far downstream
+            size=$(stat -c %s "$dll")
+            echo "$dll: $size bytes"
+            if [ "$size" -lt 5000000 ]; then
+              echo "::error::$dll is only $size bytes -- implausibly small for the sdk"
+              fail=1
+            fi
+          done
+          # and the zip must carry them, since that is what the app jobs unpack
+          for arch in amd64 arm64; do
+            if ! unzip -l build/URnetworkSdkWindows.zip | grep -q "windows/$arch/URnetworkSdk.dll"; then
+              echo "::error::URnetworkSdkWindows.zip is missing windows/$arch/URnetworkSdk.dll"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Upload the SDK zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: urnetwork-sdk-windows
+          path: sdk/cgo/build/URnetworkSdkWindows.zip
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows app (${{ matrix.platform }})
+    needs: build-sdk
+    # NOT windows-latest: that image has moved to Visual Studio 18 (toolset
+    # v180), which carries v143 for x64 but not the v143 ARM64 cross tools, so
+    # ARM64 failed MSB8020 while x64 compiled. windows-2022 is the image whose
+    # toolchain matches the repo's documented prerequisites (VS 2022 v143).
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        # ARM64 cross-builds from the same x64 runner (v143 ships both
+        # toolchains); only the platform argument changes.
+        platform: [x64, ARM64]
+    steps:
+      - name: Check out Windows repo
+        uses: actions/checkout@v4
+
+      - name: Download the SDK zip
+        uses: actions/download-artifact@v4
+        with:
+          name: urnetwork-sdk-windows
+          path: sdk-zip
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      # fetch-deps pins wintun by sha256 AND upstream Authenticode signer, then
+      # unpacks the SDK zip and generates the per-arch import libs (needs
+      # lib.exe, which the VS dev shell below puts on PATH).
+      - name: Fetch vendored dependencies (wintun + SDK)
+        shell: pwsh
+        working-directory: app
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          Import-Module "$vs\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          .\tools\fetch-deps.ps1 -SdkZip "$env:GITHUB_WORKSPACE\sdk-zip\URnetworkSdkWindows.zip"
+
+      # Directory.Build.props pins WindowsTargetPlatformVersion to 10.0.22621.0
+      # (the version on the real build box). Runner images carry a different
+      # set, so resolve what is actually installed and override it as a global
+      # property -- /p: wins over the props file, and the repo keeps its pin
+      # for developers. The MIN version (19041, the app's floor) is untouched,
+      # so this changes which SDK headers build the app, not what it runs on.
+      - name: Resolve the installed Windows SDK version
+        id: winsdk
+        shell: pwsh
+        run: |
+          $roots = @(
+            "${env:ProgramFiles(x86)}\Windows Kits\10\Include",
+            "$env:ProgramFiles\Windows Kits\10\Include"
+          ) | Where-Object { Test-Path $_ }
+          $versions = $roots | ForEach-Object { Get-ChildItem $_ -Directory } |
+            Where-Object { $_.Name -match '^10\.0\.\d+\.\d+$' -and (Test-Path (Join-Path $_.FullName 'um\windows.h')) } |
+            Sort-Object { [version]$_.Name }
+          if (-not $versions) { throw "no Windows 10 SDK found on this runner" }
+          $chosen = $versions[-1].Name
+          Write-Host "available: $($versions.Name -join ', ')"
+          Write-Host "using: $chosen"
+          "version=$chosen" >> $env:GITHUB_OUTPUT
+
+      # The solution's build configurations cover Common, urnetworkd and the
+      # WinUI 3 app only -- the split-tunnel driver (needs the WDK) and the WiX
+      # installer are deliberately excluded, so neither is required here.
+      #
+      # The Ur* properties stamp the derived version into both exes
+      # (Directory.Build.props turns them into preprocessor definitions and
+      # VERSIONINFO fields). Absent, the build defaults to 0.0.0-dev / code 0,
+      # which the update checker treats as "never self-update" -- so a release
+      # build MUST carry them or it would ship an artifact that cannot update.
+      - name: Build the solution (${{ matrix.platform }})
+        shell: pwsh
+        working-directory: app
+        run: |
+          msbuild URnetwork.sln `
+            /restore `
+            /p:Configuration=Release `
+            /p:Platform=${{ matrix.platform }} `
+            /p:WindowsTargetPlatformVersion=${{ steps.winsdk.outputs.version }} `
+            /p:UrVersion=${{ needs.build-sdk.outputs.version }} `
+            /p:UrVersionCode=${{ needs.build-sdk.outputs.version_code }} `
+            /p:UrVersionMajor=${{ needs.build-sdk.outputs.version_major }} `
+            /p:UrVersionMinor=${{ needs.build-sdk.outputs.version_minor }} `
+            /p:UrVersionPatch=${{ needs.build-sdk.outputs.version_patch }} `
+            /p:RestorePackagesConfig=true `
+            /m `
+            /v:minimal `
+            /clp:Summary `
+            /flp:LogFile=msbuild-${{ matrix.platform }}.log`;Verbosity=detailed
+
+      # the msbuild log is the whole point of the run while the solution is
+      # still being brought up on a real toolchain, so keep it even on failure
+      - name: Upload the msbuild log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msbuild-log-${{ matrix.platform }}
+          path: app/msbuild-${{ matrix.platform }}.log
+          if-no-files-found: warn
+
+      - name: Upload the build output
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urnetwork-windows-${{ matrix.platform }}
+          # the WHOLE output dir, not a glob of exe/dll/pri: that pattern
+          # silently dropped Assets\Fonts (the brand typefaces the app copies
+          # next to the exe), and would drop the next asset added too. An
+          # artifact that is missing files the build produced is worse than a
+          # bigger artifact.
+          path: app/build/${{ matrix.platform }}/Release/
+          if-no-files-found: error
+
+      # Stage the zip exactly as a user (and the in-app updater) receives it:
+      # payload at the zip root, no wrapper folder, the release name grammar.
+      # The packager owns the payload rules (exclusions, README, licenses) so
+      # local runs and CI cannot drift apart.
+      - name: Package the portable zip
+        shell: pwsh
+        working-directory: app
+        run: |
+          .\tools\package-portable.ps1 `
+            -Platform ${{ matrix.platform }} `
+            -Version ${{ needs.build-sdk.outputs.version }}
+
+      - name: Upload the portable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: urnetwork-windows-portable-${{ matrix.platform }}
+          path: app/build/${{ matrix.platform }}/URnetwork-*-portable.zip
+          if-no-files-found: error
+
+      # Compile-proof of the MSI (it had never been through the WiX compiler),
+      # against the same staged output the zip ships. x64 only: one proof is
+      # the milestone; the ARM64 MSI belongs to the signing milestone with the
+      # rest of the polish. The result is attached to the release unsigned and
+      # untested -- the portable zip is the supported artifact.
+      - name: Build the MSI (x64 compile-proof)
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          dotnet build app/installer/Installer.wixproj `
+            -c Release `
+            -p:Platform=x64 `
+            -p:BinDir="$env:GITHUB_WORKSPACE\app\build\x64\Release" `
+            -p:UrMsiVersion=${{ needs.build-sdk.outputs.msi_version }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # flatten out of WiX's bin/<platform>/<config>/<culture>/ nest so the
+          # release job downloads a file, not a directory shape to guess at
+          $msi = Get-ChildItem app/installer/bin -Recurse -Filter *.msi | Select-Object -First 1
+          if (-not $msi) { throw "dotnet build succeeded but produced no .msi" }
+          New-Item -ItemType Directory -Force app/installer/dist | Out-Null
+          Copy-Item $msi.FullName app/installer/dist/URnetwork.msi -Force
+
+      # The compile-proof above only proves the .wxs parses -- it says
+      # nothing about what landed inside the .msi, and that blind spot is
+      # exactly how this MSI shipped for months installing 7 files while
+      # silently omitting the self-contained WindowsAppRuntime and
+      # Assets\Fonts (an install on a clean machine could not start). Fail
+      # the build here, before the MSI is ever uploaded or attached to a
+      # release, if the payload regresses back to that shape. Uses the
+      # built-in Windows Installer COM object (see the script) so it needs
+      # no extra tooling on the runner.
+      - name: Verify the MSI payload (file count + critical names)
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          .\app\tools\verify-msi-payload.ps1 -MsiPath app\installer\dist\URnetwork.msi
+
+      - name: Upload the MSI
+        if: matrix.platform == 'x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: urnetwork-windows-msi
+          path: app/installer/dist/URnetwork.msi
+          if-no-files-found: error

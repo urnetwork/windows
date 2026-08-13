@@ -19,6 +19,7 @@ namespace urnw {
 class PipeClient {
  public:
   using EventHandler = std::function<void(const nlohmann::json&)>;
+  using DisconnectHandler = std::function<void()>;
 
   PipeClient() = default;
   ~PipeClient();
@@ -36,6 +37,21 @@ class PipeClient {
   // Set before Connect().
   void SetEventHandler(EventHandler handler) { onEvent_ = std::move(handler); }
 
+  // The service went away: the pipe broke while we were connected, and no
+  // orderly Close() asked for it. Delivered ONCE per connection, on the reader
+  // thread, as that thread exits.
+  //
+  // It exists because the service is what HOLDS the tunnel — its process dying
+  // takes the wintun adapter and the dynamic WFP session with it — and until
+  // this callback there was no signal at all that it had. The app kept whatever
+  // it last cached and went on rendering a tunnel that no longer existed.
+  //
+  // A handler MUST NOT call Connect() or Close() on this object: both join the
+  // reader thread, which is the thread the handler is running on.
+  void SetDisconnectHandler(DisconnectHandler handler) {
+    onDisconnect_ = std::move(handler);
+  }
+
   // Send a request and block for its matching reply (by "type"). Throws
   // std::runtime_error on transport failure. Returns the reply JSON.
   nlohmann::json Call(const nlohmann::json& request, int timeoutMs = 30000);
@@ -49,6 +65,7 @@ class PipeClient {
   std::atomic<bool> stopping_{false};
   std::thread reader_;
   EventHandler onEvent_;
+  DisconnectHandler onDisconnect_;
 
   // pending reply plumbing: a single in-flight Call at a time (the control
   // channel is request/response; concurrent calls serialize on callMutex_)

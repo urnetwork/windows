@@ -31,6 +31,27 @@ a consistent publisher.
 signed by Microsoft. We use **attestation signing** (no HLK tests, Windows 10/11
 client, our target) via the Partner Center **Hardware Dev Center** dashboard.
 
+> **⚠ Policy risk — verify before committing to this track (flagged 2026-08-08).**
+> Microsoft's [Driver Signing Options](https://learn.microsoft.com/en-us/windows-hardware/drivers/dashboard/driver-signing-offerings)
+> page (revised 2026-03-23) retitled this section **"Attestation signed drivers for
+> testing scenarios"** and states *"For testing purposes only."* Separately, from
+> April 2026 only WHCP-signed drivers (or an allowlist entry) load by default on
+> Windows 11 24H2/25H2/26H1.
+>
+> **Verified:** that April change targets *cross-signed* drivers, not attestation, and
+> attestation-signed drivers still load today. Nothing in the enumerated restrictions
+> blocks us (Win10+ client, we ship the `.sys` in our MSI).
+>
+> **Unverified, and the reason to be nervous:** no primary source says attestation
+> survives as a *retail* path. Two independent research passes reached this same
+> conclusion. **The next action on the driver is not code — it is one person spending
+> ~1 week getting a written answer from Microsoft.** That de-risks a 10–16 eng-week
+> milestone. Do not start driver work before that answer. Tracked as task #23.
+>
+> Note this affects **only** the split-tunnel driver. The WFP leak-prevention and
+> kill-switch work is user-mode `fwpuclnt` and needs no driver, no WDK and no
+> attestation — Mullvad adds even its boot-time/persistent filters from user mode.
+
 Requirements (start in M0 — lead times):
 - A **Partner Center account with an EV code-signing certificate** attached to
   the Hardware Dev Center (the EV cert is required to access attestation

@@ -1,37 +1,139 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "PacketPump.h"
 
+#include <chrono>
+
 #include "Log.h"
+#include "ThreadGuard.h"
 
 namespace urnw {
 
 PacketPump::~PacketPump() { Stop(); }
 
-void PacketPump::Start() {
-  running_.store(true);
+bool PacketPump::Start() {
   stopEvent_ = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+  if (!stopEvent_) {
+    // OutboundLoop waits on this handle. With it null the wait fails
+    // immediately and the loop exits, so the tunnel would come up, report Up,
+    // and never send a single packet from the host. Fail the start instead.
+    LogError("pump: CreateEvent failed: {}", ::GetLastError());
+    return false;
+  }
+  running_.store(true);
 
   // inbound: the SDK delivers decrypted IP packets from the tunnel; write them
   // into the wintun ring so the host stack receives them. The callback fires on
-  // an SDK thread; wintun send is thread-safe. The returned Sub keeps the
-  // subscription alive and unsubscribes on Stop()/destruction.
+  // an SDK thread; wintun send is thread-safe.
+  //
+  // The callback captures a shared_ptr to the gate, NOT `this`: closing the
+  // subscription does not drain a dispatch that is already running (see the
+  // note in the header), so a late callback has to find a live object rather
+  // than a freed one.
+  gate_ = std::make_shared<ReceiveGate>();
+  gate_->adapter = &adapter_;
+  //
+  // GUARDED, AND THE THREAD IT RUNS ON IS WHY. This body executes on a thread
+  // the SDK created — a Go/cgo callback thread that has never run one line of
+  // our startup code, so nothing on it had a terminate handler, and an
+  // exception escaping into cgo is the least diagnosable death this process can
+  // have. RunGuarded arms the handler once per SDK thread (a thread_local
+  // latch, so the per-packet cost is a predicted branch) and names the thread
+  // in whatever gets logged. See ThreadGuard.h.
   receiveSub_ = device_.addReceivePacket(
-      [this](int64_t /*ipVersion*/, int64_t /*ipProtocol*/, const uint8_t* packet,
-             int32_t len) {
-        if (packet && len > 0) {
-          adapter_.Send(std::span<const uint8_t>(packet, static_cast<size_t>(len)));
-        }
+      [gate = gate_, counters = counters_](
+          int64_t /*ipVersion*/, int64_t /*ipProtocol*/, const uint8_t* packet,
+          int32_t len) {
+        RunGuarded("sdk-receive", [&] {
+          if (!packet || len <= 0) return;
+          // COUNTED BEFORE THE GATE, and that ordering is the measurement.
+          // What the failsafe asks is "did anything come back through the
+          // tunnel", not "did the adapter still exist when it did" — a packet
+          // that arrives during teardown is still proof the tunnel was
+          // carrying. Counting after the gate would make a stopping pump look
+          // like a dead one for the length of the stop.
+          counters->inbound.fetch_add(1, std::memory_order_relaxed);
+          std::scoped_lock lock(gate->mutex);
+          if (!gate->adapter) return;  // stopped; the adapter may already be gone
+          gate->adapter->Send(
+              std::span<const uint8_t>(packet, static_cast<size_t>(len)));
+        });
       });
 
-  outbound_ = std::thread([this] { OutboundLoop(); });
+  outbound_ = StartGuardedThread("pump-outbound", [this] { OutboundLoop(); });
   LogInfo("pump: started");
+  return true;
 }
 
 void PacketPump::Stop() {
   if (!running_.exchange(false)) return;
+  // Say so BEFORE the join. This line is not decoration: when this pump wedged
+  // for the first time, the whole diagnosis had to be reconstructed from the
+  // ABSENCE of "pump: stopped" between "tunnel: stopping (was up)" and eighty
+  // seconds of nothing. A shutdown step that can block must announce that it is
+  // about to, or its failure is invisible.
+  LogInfo("pump: stopping (signalling the outbound thread and joining it)");
   if (stopEvent_) ::SetEvent(stopEvent_);
+  const auto joinStart = std::chrono::steady_clock::now();
   if (outbound_.joinable()) outbound_.join();
-  receiveSub_.reset();  // unsubscribe inbound
+  const auto joinMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::steady_clock::now() - joinStart)
+                          .count();
+  // The join is deliberately UNBOUNDED here, and that is not an oversight — it
+  // is the safety property. The outbound thread holds references to the wintun
+  // adapter and the DeviceLocal; returning from Stop() while it still runs would
+  // hand the caller permission to destroy both underneath it. The BOUND lives
+  // one level up, in RunBounded (StopBudget.h), which owns this whole teardown
+  // and abandons it wholesale rather than dismembering it. See the ownership
+  // contract there.
+  //
+  // What CAN still make this slow is one in-flight DeviceLocal::sendPacket that
+  // is blocked in the SDK. One is the worst case, because OutboundLoop now
+  // re-checks the stop flag between packets; before that fix the drain loop
+  // could refill faster than it drained and never look at the flag at all.
+  if (joinMs > 250)
+    LogWarn("pump: the outbound thread took {}ms to join — it was blocked "
+            "inside the sdk (a send that could not complete), not looping",
+            joinMs);
+  // Close the gate BEFORE unsubscribing, and take the lock to do it: taking the
+  // lock is what waits out a callback already inside, which unsubscribing alone
+  // does not. After this, no callback can reach the adapter.
+  if (gate_) {
+    std::scoped_lock lock(gate_->mutex);
+    gate_->adapter = nullptr;
+  }
+  // UNSUBSCRIBE -- which `reset()` does NOT do. This line was
+  // `receiveSub_.reset()`, and that is a use-after-free against a live SDK.
+  //
+  // `urnet::Sub` does not override `reset()`, so it resolved to
+  // `detail::Handle::reset()` (urnetwork_sdk.hpp:126-132), which
+  //   1. calls `urnet_release(h_)` -- that drops the handle-registry entry ONLY.
+  //      It never calls `urnet_sub_close`, so the Go-side subscription installed
+  //      by `DeviceLocal::addReceivePacket` stayed registered; then
+  //   2. sets `h_ = 0`, which makes `~Sub()` skip its own `urnet_sub_close`
+  //      too -- so the subscription leaked for the life of the PROCESS, not
+  //      merely the session; and
+  //   3. calls `retained_.clear()`, destroying the `shared_ptr<ReceivePacket>`
+  //      that is the ONLY owner of the callback installed above.
+  //      `addReceivePacket` hands Go the RAW pointer (`receive_packet_fn.get()`,
+  //      hpp:16493) and keeps it alive purely through that retain (hpp:16495).
+  //
+  // From this line onward, every inbound packet therefore invoked a DESTROYED
+  // std::function from a cgo thread -- a freed object that then copies two
+  // shared_ptr control blocks and takes a lock. The window is this line to
+  // "sdk teardown complete", with the tunnel still carrying: 403ms in one
+  // observed teardown and 1434ms in another, over a session that moved ~210k
+  // messages.
+  //
+  // Move-assignment is the operation that does this correctly, and the ORDER is
+  // the whole point: `Sub::operator=(Sub&&)` calls `urnet_sub_close(h_)` FIRST
+  // (hpp:9681-9687), so Go has dropped the callback before `Handle::operator=`
+  // frees it.
+  //
+  // The gate above still matters and is not redundant: unsubscribing does not
+  // drain a dispatch already in flight, so a callback that is mid-body when we
+  // close still has to find a live gate and a null adapter.
+  receiveSub_ = urnet::Sub{};
+  gate_.reset();  // the callback holds its own share until the sdk drops it
   if (stopEvent_) {
     ::CloseHandle(stopEvent_);
     stopEvent_ = nullptr;
@@ -45,17 +147,41 @@ void PacketPump::OutboundLoop() {
 
   while (running_.load()) {
     // Drain everything currently in the ring, then wait for more.
-    for (;;) {
+    //
+    // THE DRAIN LOOP MUST TEST running_ TOO. It used to be `for (;;)`, exiting
+    // only when the ring happened to be momentarily empty, and that is the bug
+    // that made a shutdown with the tunnel UP unbounded.
+    //
+    // Consider the state this loop is in exactly when the operator reaches for
+    // Ctrl+C. Thirty-one capture routes point the whole machine at the tun, and
+    // the tunnel is broken — no exit proven, every transport timing out — so
+    // nothing sent is ever acknowledged and the host stack retransmits. The ring
+    // therefore refills at least as fast as it drains, `packet.empty()` never
+    // becomes true, and the loop never reaches the WaitForMultipleObjects below
+    // that was the ONLY place the stop event was read. Stop() sets running_
+    // false, sets the event, and then joins a thread structurally incapable of
+    // noticing either.
+    //
+    // The livelock is worst precisely when the tunnel is most broken, which is
+    // when the operator is most likely to be trying to turn it off.
+    while (running_.load()) {
       std::span<const uint8_t> packet = adapter_.Receive();
       if (packet.empty()) break;
       // hand the outbound IP packet to the SDK; n is the valid byte count
       device_.sendPacket(packet.data(), static_cast<int32_t>(packet.size()),
                          static_cast<int64_t>(packet.size()));
+      // COUNTED AFTER THE SEND. What the failsafe wants to know is how much the
+      // host has committed to a tunnel that is giving nothing back, and a
+      // packet counted before the call would be counted even when the call
+      // threw or the pump was stopping mid-drain.
+      counters_->outbound.fetch_add(1, std::memory_order_relaxed);
       adapter_.ReleaseReceived(packet);
     }
+    if (!running_.load()) break;  // re-checked: the drain loop may have exited on it
     DWORD w = ::WaitForMultipleObjects(2, waits, FALSE, INFINITE);
     if (w != WAIT_OBJECT_0) break;  // stop signaled (or wait failed)
   }
+  LogInfo("pump: outbound thread exited");
 }
 
 }  // namespace urnw

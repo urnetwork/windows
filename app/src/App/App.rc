@@ -16,6 +16,43 @@ IDI_TRAY_DARK_NOPROVIDE_CONNECT    ICON "Assets\\tray_dark_noprovide_connect.ico
 IDI_TRAY_DARK_PROVIDE_NOCONNECT    ICON "Assets\\tray_dark_provide_noconnect.ico"
 IDI_TRAY_DARK_PROVIDE_CONNECT      ICON "Assets\\tray_dark_provide_connect.ico"
 
-// World topology for the provider-locations globe (quantized TopoJSON,
-// Natural Earth 110m — public domain; see THIRD-PARTY-NOTICES.txt).
-IDR_WORLD_TOPOLOGY RCDATA "Assets\\world-110m.json"
+// The version stamp. UR_VER_* / UR_VERSION_STRING come from Version.h, which
+// takes them from the UR_* definitions Directory.Build.props feeds rc.exe —
+// the exact values the code compiles against, so Explorer's Details tab, the
+// in-app About row, and the update checker's self-comparison can never drift
+// apart. The fourth numeric field is a permanent 0: the date parts alone name
+// a release, and the code lives in the ProductVersion STRING (the full
+// grammar), where VerQueryValue readers parse it back out.
+#include <winresrc.h>
+#include "..\Common\Version.h"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION    UR_VER_MAJOR,UR_VER_MINOR,UR_VER_PATCH,0
+ PRODUCTVERSION UR_VER_MAJOR,UR_VER_MINOR,UR_VER_PATCH,0
+ FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+ FILEFLAGS      0x0L
+ FILEOS         VOS_NT_WINDOWS32
+ FILETYPE       VFT_APP
+ FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        // 040904B0 = en-US, Unicode — must agree with the Translation value
+        // below or Explorer finds no strings at all.
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",      "URnetwork"
+            VALUE "FileDescription",  "URnetwork"
+            VALUE "FileVersion",      UR_VERSION_STRING
+            VALUE "InternalName",     "URnetwork"
+            VALUE "LegalCopyright",   "URnetwork. Licensed under MPL-2.0."
+            VALUE "OriginalFilename", "URnetwork.exe"
+            VALUE "ProductName",      "URnetwork"
+            VALUE "ProductVersion",   UR_VERSION_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

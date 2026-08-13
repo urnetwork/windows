@@ -1,7 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- URnetwork tray app: WinUI 3 (Windows App SDK), C++/WinRT, unpackaged.
-     WindowsPackageType=None auto-initializes the Windows App SDK bootstrapper;
-     the installer must still deploy the WindowsAppRuntime (see installer/).
+     WindowsAppSDKSelfContained=true (below) deploys the WindowsAppRuntime into
+     the output folder, so neither the portable zip nor the installer needs a
+     machine-wide runtime install.
      This is the most toolchain-dependent project — verify NuGet versions in
      packages.config against the installed Windows App SDK on the build box.
      SPDX-License-Identifier: MPL-2.0 -->
@@ -11,9 +12,31 @@
        auto-imported from obj\*.nuget.g.props / .nuget.g.targets - no manual <Import>.
        GeneratePathProperty on SDK.BuildTools exposes $(PkgMicrosoft_Windows_SDK_BuildTools)
        for the MakePri path below. Versions track the installed Windows App SDK. -->
+  <!-- One place for the Windows App SDK version: it drives the PackageReference
+       below AND is compiled into the binary (URN_WINDOWSAPPSDK_VERSION, printed
+       by the app's diagnose switch, beside the runtime that actually loaded).
+       An unpackaged app needs a matching Windows App Runtime installed on the
+       machine, and a major.minor mismatch has no symptom of its own, so the
+       version the app was built against has to be readable FROM the app. -->
+  <PropertyGroup>
+    <UrnWindowsAppSdkVersion>2.2.0</UrnWindowsAppSdkVersion>
+  </PropertyGroup>
+
+  <!-- SELF-CONTAINED (supported since WinAppSDK 1.1; we are on 2.2): the SDK
+       targets copy the WindowsAppRuntime binaries next to the exe and switch
+       the auto-initializer from the bootstrapper (which looks for a
+       machine-wide runtime and dies with a dialog when there is none) to the
+       app-local path. The portable zip is the beta artifact and "portable"
+       must mean "unzip and run on a clean machine" — no prerequisite
+       installer. Unconditional, not release-only: a dev build that resolves
+       its runtime differently from the shipped one would make every
+       runtime-resolution bug unreproducible locally. -->
+  <PropertyGroup>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.CppWinRT" Version="3.0.260520.1" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="$(UrnWindowsAppSdkVersion)" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" GeneratePathProperty="true" />
   </ItemGroup>
@@ -127,7 +150,11 @@
            WINRT_GetActivationFactory / WINRT_CanUnloadNow (LNK2001, normally defined by the
            module.g.cpp we don't compile) - defining this compiles the whole block out, and
            since ONLY that generated unit referenced those symbols, both errors clear. -->
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- URN_WINDOWSAPPSDK_VERSION_RAW is the BARE token (2.2.0); the source
+           stringizes it (Startup.cpp). A `\"` -escaped literal does not survive
+           MSBuild's command-line quoting here — verified: cl then sees the value
+           end at `L` and the TU fails with C2065 'L': undeclared identifier. -->
+      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;URN_WINDOWSAPPSDK_VERSION_RAW=$(UrnWindowsAppSdkVersion);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebugDLL</RuntimeLibrary>
       <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreadedDLL</RuntimeLibrary>
       <Optimization Condition="'$(Configuration)'=='Release'">MaxSpeed</Optimization>
@@ -135,8 +162,12 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(UrnSdkDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <!-- crypt32.lib: WalletConnect.cpp uses CryptBinaryToStringA (Base64) -> __imp_CryptBinaryToStringA. -->
-      <AdditionalDependencies>URnetworkSdk.lib;shell32.lib;advapi32.lib;ws2_32.lib;iphlpapi.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <!-- crypt32.lib: WalletConnect.cpp uses CryptBinaryToStringA (Base64) -> __imp_CryptBinaryToStringA.
+           winhttp.lib + bcrypt.lib: GoogleSignIn.cpp's OAuth token exchange (WinHttp*)
+           and its PKCE verifier/challenge (BCryptGenRandom / BCryptHash).
+           version.lib: ServiceSetup.cpp reads ProductVersion resources
+           (GetFileVersionInfoW / VerQueryValueW) for the mismatch banner. -->
+      <AdditionalDependencies>URnetworkSdk.lib;shell32.lib;advapi32.lib;ws2_32.lib;iphlpapi.lib;crypt32.lib;winhttp.lib;bcrypt.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>app.manifest</AdditionalManifestFiles>
@@ -153,7 +184,29 @@
        (browser-extension) wallets only. -->
   <ItemDefinitionGroup Condition="'$(UrnWalletConnectProjectId)'!=''">
     <ClCompile>
-      <PreprocessorDefinitions>URN_WALLETCONNECT_PROJECT_ID=\"$(UrnWalletConnectProjectId)\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- Bare token, stringized in Config.h — same reason as
+           URN_WINDOWSAPPSDK_VERSION_RAW above. The `\"` form this used to have
+           would have broken the build for the first person to actually pass a
+           project id, which is why it never showed up: CI never sets one. -->
+      <PreprocessorDefinitions>URN_WALLETCONNECT_PROJECT_ID_RAW=$(UrnWalletConnectProjectId);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Google OAuth "Desktop app" client (src/App/Config.h), for the
+       system-browser loopback sign-in in GoogleSignIn.cpp:
+       msbuild ... /p:UrnGoogleOAuthClientId=<id>.apps.googleusercontent.com
+                   /p:UrnGoogleOAuthClientSecret=<secret>
+       Unset is fine and is the default: the Google button is HIDDEN and the
+       network space reports sso_google=false. Bare tokens, stringized in
+       Config.h, for the same reason as the two above. -->
+  <ItemDefinitionGroup Condition="'$(UrnGoogleOAuthClientId)'!=''">
+    <ClCompile>
+      <PreprocessorDefinitions>URN_GOOGLE_OAUTH_CLIENT_ID_RAW=$(UrnGoogleOAuthClientId);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(UrnGoogleOAuthClientSecret)'!=''">
+    <ClCompile>
+      <PreprocessorDefinitions>URN_GOOGLE_OAUTH_CLIENT_SECRET_RAW=$(UrnGoogleOAuthClientSecret);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
 
@@ -208,61 +261,76 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="App.xaml.cpp"><DependentUpon>App.xaml</DependentUpon></ClCompile>
     <ClCompile Include="MainWindow.xaml.cpp"><DependentUpon>MainWindow.xaml</DependentUpon></ClCompile>
+    <!-- per-destination units split out of MainWindow.xaml.cpp -->
+    <ClCompile Include="AccountPage.cpp" />
+    <ClCompile Include="ConnectCanvas.cpp" />
+    <ClCompile Include="ConnectPage.cpp" />
+    <ClCompile Include="DeveloperPage.cpp" />
+    <ClCompile Include="LoginPage.cpp" />
+    <ClCompile Include="PageContext.cpp" />
+    <ClCompile Include="SettingsPage.cpp" />
+    <ClCompile Include="SettingsSheets.cpp" />
+    <ClCompile Include="WalletPage.cpp" />
+    <ClCompile Include="WalletSheets.cpp" />
     <ClCompile Include="AppController.cpp" />
     <ClCompile Include="AuthSheets.cpp" />
+    <ClCompile Include="GoogleSignIn.cpp" />
+    <ClCompile Include="LoginCarousel.cpp" />
     <ClCompile Include="BalanceSheets.cpp" />
     <ClCompile Include="Localization.cpp" />
     <ClCompile Include="LocationSheets.cpp" />
-    <!-- The provider-locations pure logic is deliberately WinRT-free (no pch)
-         so tools/globe-tests.cpp can run the ported android test cases on any
-         host; see GlobeGeometry.h. -->
-    <ClCompile Include="GlobeGeometry.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
-    <ClCompile Include="WorldTopology.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
-    <ClCompile Include="ProviderLocations.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
-    <!-- Post-quantum identity row logic is WinRT-free (no pch), same as the
-         provider-locations logic above; the identicon rasterizer below needs
-         WinUI image types and uses the pch. -->
-    <ClCompile Include="PostQuantumIdentity.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
-    <ClCompile Include="IdenticonImage.cpp" />
-    <ClCompile Include="ProviderGlobe.cpp" />
-    <ClCompile Include="ProviderLocationsSheet.cpp" />
     <ClCompile Include="SdkHost.cpp" />
     <ClCompile Include="StatsFormat.cpp" />
     <ClCompile Include="StatsSheets.cpp" />
+    <ClCompile Include="Startup.cpp" />
     <ClCompile Include="SubscriptionBalance.cpp" />
     <ClCompile Include="TransferChart.cpp" />
     <ClCompile Include="UsageBar.cpp" />
     <ClCompile Include="WalletConnect.cpp" />
     <ClCompile Include="ServiceClient.cpp" />
+    <ClCompile Include="ServiceSetup.cpp" />
     <ClCompile Include="TrayIcon.cpp" />
+    <ClCompile Include="UpdateChecker.cpp" />
+    <ClCompile Include="UrComponents.cpp" />
+    <ClCompile Include="WindowShell.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h"><DependentUpon>App.xaml</DependentUpon></ClInclude>
     <ClInclude Include="MainWindow.xaml.h"><DependentUpon>MainWindow.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="AccountPage.h" />
+    <ClInclude Include="ConnectPage.h" />
+    <ClInclude Include="DeveloperPage.h" />
+    <ClInclude Include="LoginPage.h" />
+    <ClInclude Include="PageContext.h" />
+    <ClInclude Include="SettingsPage.h" />
+    <ClInclude Include="SettingsSheets.h" />
+    <ClInclude Include="WalletPage.h" />
+    <ClInclude Include="WalletSheets.h" />
     <ClInclude Include="AppController.h" />
     <ClInclude Include="AuthSheets.h" />
     <ClInclude Include="BalanceSheets.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="GoogleSignIn.h" />
+    <ClInclude Include="LoginCarousel.h" />
     <ClInclude Include="Localization.h" />
     <ClInclude Include="LocationSheets.h" />
-    <ClInclude Include="GlobeGeometry.h" />
-    <ClInclude Include="WorldTopology.h" />
-    <ClInclude Include="ProviderLocations.h" />
-    <ClInclude Include="PostQuantumIdentity.h" />
-    <ClInclude Include="IdenticonImage.h" />
-    <ClInclude Include="ProviderGlobe.h" />
-    <ClInclude Include="ProviderLocationsSheet.h" />
+    <ClInclude Include="ConnectCanvas.h" />
     <ClInclude Include="SdkHost.h" />
     <ClInclude Include="StatsFormat.h" />
     <ClInclude Include="StatsSheets.h" />
+    <ClInclude Include="Startup.h" />
     <ClInclude Include="SubscriptionBalance.h" />
     <ClInclude Include="TransferChart.h" />
     <ClInclude Include="UsageBar.h" />
     <ClInclude Include="UrColors.h" />
+    <ClInclude Include="UrComponents.h" />
     <ClInclude Include="WalletConnect.h" />
+    <ClInclude Include="WindowShell.h" />
     <ClInclude Include="ServiceClient.h" />
+    <ClInclude Include="ServiceSetup.h" />
     <ClInclude Include="TrayIcon.h" />
+    <ClInclude Include="UpdateChecker.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -273,6 +341,46 @@
   <ItemGroup>
     <CopyFileToFolders Include="Assets\ReferralFrog.png">
       <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <!-- the app icon, for the integrated title bar's 20epx app mark (R1). It is
+         already the ApplicationIcon resource; this copy makes it resolvable as
+         ms-appx:///Assets/app.ico from the title-bar Image. -->
+    <CopyFileToFolders Include="Assets\app.ico">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <!-- The login carousel's three slides (iOS Assets.xcassets/Images/
+         LoginCarousel{1,2,3}.imageset). Exported from the iOS .heic sources,
+         which WinUI cannot decode without the HEIF media extension, and kept at
+         256x256 JPEG - the size the mask actually draws - so the three together
+         are ~63KB rather than the ~1.5MB the originals weigh. -->
+    <CopyFileToFolders Include="Assets\LoginCarousel1.jpg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\LoginCarousel2.jpg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\LoginCarousel3.jpg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+  </ItemGroup>
+
+  <!-- Brand faces (Assets/README.md). Same deal as the image above: an unpackaged
+       app resolves ms-appx:///Assets/Fonts/<file>#<family> against the exe's own
+       folder, so the files have to BE there. The XAML references them by the
+       fonts' internal family names, not by file name (App.xaml). These are
+       licensed commercial faces - do not redistribute them outside the app. -->
+  <ItemGroup>
+    <CopyFileToFolders Include="Assets\Fonts\abcgravity_extended.otf">
+      <DestinationFolders>$(OutDir)Assets\Fonts</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\Fonts\abcgravity_extra_condensed.otf">
+      <DestinationFolders>$(OutDir)Assets\Fonts</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\Fonts\pp_neue_bit_bold.ttf">
+      <DestinationFolders>$(OutDir)Assets\Fonts</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\Fonts\pp_neue_montreal_regular.ttf">
+      <DestinationFolders>$(OutDir)Assets\Fonts</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>
 

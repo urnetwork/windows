@@ -1,18 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- URnetwork MSI (WiX v5). Installs the tray app, the urnetworkd service, the
-     vendored wintun DLL, and (optionally) the split-tunnel driver. Per-machine.
-     The WindowsAppRuntime is chained by the outer bundle (see README); this
-     package is the payload. Distributed via the Microsoft Store as a Win32 MSI.
+     vendored wintun DLL, the self-contained WindowsAppRuntime/WinUI3 payload,
+     the brand Assets (Fonts + images), and (optionally) the split-tunnel
+     driver. Per-machine.
+
+     There is no outer Burn bundle anywhere in this repo — this file used to
+     say the WindowsAppRuntime was "chained by the outer bundle (see
+     README)", but that bundle was never built, so until this fix the MSI
+     installed exactly 7 files and left the app unable to start on any
+     machine that had not already run the portable zip (which is why testing
+     against a dev box missed it). Since WindowsAppSDKSelfContained=true
+     landed, the runtime DLLs are this package's own payload: harvested below
+     with WiX v5's native <Files> globbing against $(var.BinDir) — the same
+     directory tools/package-portable.ps1 zips wholesale — rather than
+     hand-listed, because a hand list rots the moment the runtime version
+     bumps (that rot is exactly how this MSI ended up here).
+
+     Distributed via the Microsoft Store as a Win32 MSI.
      SPDX-License-Identifier: MPL-2.0 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
 
-  <Package Name="URnetwork" Manufacturer="URnetwork" Version="0.0.1.0"
+  <!-- Version comes from the .wixproj (UrMsiVersion, yy.M.d from CI; 0.0.1
+       for a bare local build) because ProductVersion fields cannot hold the
+       app's four-digit year. -->
+  <Package Name="URnetwork" Manufacturer="URnetwork" Version="$(var.UrMsiVersion)"
            UpgradeCode="a7c1e2d3-4b5f-6081-9c2d-3e4f50617283"
            Scope="perMachine" Compressed="yes">
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of URnetwork is already installed." />
     <MediaTemplate EmbedCab="yes" />
+
+    <!-- The app icon, for Add/Remove Programs and the Start Menu shortcut.
+         Referenced from the SOURCE tree, not BinDir: BinDir carries whatever
+         the app build staged for runtime, and the installer should not depend
+         on which assets that happens to include. -->
+    <Icon Id="AppIcon.ico" SourceFile="$(sys.SOURCEFILEDIR)..\src\App\Assets\app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
 
     <!-- Build binaries are staged under $(var.BinDir) by the .wixproj. -->
     <StandardDirectory Id="ProgramFiles64Folder">
@@ -21,6 +45,19 @@
         <!-- Tray app + SDK -->
         <Component Id="AppExe" Guid="*">
           <File Id="URnetworkExe" Source="$(var.BinDir)\URnetwork.exe" KeyPath="yes" />
+          <!-- Start Menu entry, so the installed app is launchable the way a
+               normal Windows app is (owner report: without one the MSI leaves
+               the exe reachable only by path). It lives in THIS component so
+               the exe File stays the KeyPath, and it is ADVERTISED because
+               that is the one shortcut shape validation accepts here: ICE43/
+               ICE57 call any non-advertised shortcut per-user data, even in a
+               perMachine package, and the alternative is a new HKCU-keypath
+               component — wrong for a per-machine install. An advertised
+               shortcut resolves to this component's keypath (the exe) and
+               needs no Target. No desktop shortcut on purpose. -->
+          <Shortcut Id="StartMenuShortcut" Name="URnetwork" Advertise="yes"
+                    Directory="ProgramMenuFolder"
+                    WorkingDirectory="INSTALLFOLDER" Icon="AppIcon.ico" />
         </Component>
         <Component Id="SdkDll" Guid="*">
           <File Id="URnetworkSdkDll" Source="$(var.BinDir)\URnetworkSdk.dll" KeyPath="yes" />
@@ -88,6 +125,67 @@
       </Directory>
     </StandardDirectory>
 
+    <!-- Everything else the app needs to actually start: the self-contained
+         WindowsAppRuntime/WinUI3 runtime (Microsoft.*.dll / .winmd, the
+         per-locale .mui satellites), the app's own compiled XAML
+         (App.xbf/MainWindow.xbf) and WinRT metadata (URnetwork.winmd), and
+         the brand Assets — Fonts (the licensed faces; see
+         src/App/Assets/README.md) plus the icons/login-carousel images.
+         Roughly 290 files as of WindowsAppSDK 2.2 self-contained, none of
+         which are safe to hand-list (see the header comment). Harvested
+         straight from $(var.BinDir), the identical directory
+         tools/package-portable.ps1 zips as the portable build, so this
+         payload and the zip's payload cannot drift apart.
+
+         Exclude is a CHILD element here (Exclude Files="..."), not an
+         attribute on <Files> — WiX 5.0.2 rejects Exclude="..." on Files
+         itself with WIX0004 (confirmed against the pinned 5.0.2 compiler
+         binary, not guessed).
+
+         The five files above (AppExe/SdkDll/ResourcesPri/ServiceExe/
+         WintunDll) keep their own hand-authored <Component> because they
+         need behavior <Files> harvesting cannot express — the advertised
+         Start Menu shortcut and the ServiceInstall/ServiceControl rows —
+         so they are excluded here to avoid installing each of them twice
+         (WiX rejects two components claiming the same target path).
+         SplitTunnelDriver is excluded for the same reason: it is
+         conditioned on INSTALLDRIVER=1 and must not be unconditionally
+         harvested when -IncludeDriver built the .sys into BinDir. Build
+         junk (.pdb/.lib/.exp/.ilk) is excluded to match
+         package-portable.ps1's own exclusions.
+
+         package-portable.ps1 also defensively drops any path segment
+         literally named "obj" at any depth. That pattern is deliberately
+         NOT reproduced here: WiX 5.0.2's harvester crashes
+         (System.ArgumentException: Illegal characters in path, inside
+         HarvestFilesCommand.GetWildcardFiles) on an Exclude Files value
+         with two "**" segments, such as "...\**\obj\**" — confirmed
+         against the pinned compiler, not guessed. A single trailing form
+         ("...\obj\**") compiles but only matches an "obj" directory
+         directly under BinDir, and fires a permanent
+         "missing directory for harvesting" warning on every build where it
+         (correctly) does not exist — which is always: the real CI-built
+         payload (304 files, inspected directly from a prior successful
+         run) contains zero "obj" path segments at any depth, so this is a
+         belt-and-suspenders guard in the zip packager with nothing to
+         guard against here. If BinDir ever legitimately grows an obj\
+         subtree, add a targeted Exclude for that specific path rather than
+         reintroducing the double-"**" form. -->
+    <ComponentGroup Id="RuntimeFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.BinDir)\**">
+        <Exclude Files="$(var.BinDir)\URnetwork.exe" />
+        <Exclude Files="$(var.BinDir)\URnetworkSdk.dll" />
+        <Exclude Files="$(var.BinDir)\resources.pri" />
+        <Exclude Files="$(var.BinDir)\urnetworkd.exe" />
+        <Exclude Files="$(var.BinDir)\wintun.dll" />
+        <Exclude Files="$(var.BinDir)\SplitTunnel.sys" />
+        <Exclude Files="$(var.BinDir)\**\*.pdb" />
+        <Exclude Files="$(var.BinDir)\**\*.lib" />
+        <Exclude Files="$(var.BinDir)\**\*.exp" />
+        <Exclude Files="$(var.BinDir)\**\*.ilk" />
+      </Files>
+    </ComponentGroup>
+
     <!-- urnetwork:// protocol handler (OAuth callbacks + deep links) -->
     <StandardDirectory Id="TARGETDIR">
       <Component Id="UriScheme" Guid="*">
@@ -110,6 +208,7 @@
       <ComponentRef Id="ThirdPartyNotices" />
       <ComponentRef Id="WintunLicense" />
       <ComponentRef Id="UriScheme" />
+      <ComponentGroupRef Id="RuntimeFiles" />
     </Feature>
     <?ifdef IncludeDriver ?>
     <Feature Id="SplitTunnel" Title="Per-app split tunneling" Level="1">
