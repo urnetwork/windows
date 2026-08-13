@@ -2435,6 +2435,41 @@ void SdkHost::SubscribeDrawer() {
   presentationSubs_.push_back(device_->addBlockerEnabledChangeListener([this](bool on) {
     if (onBlockerEnabled_) onBlockerEnabled_(on);
   }));
+  // NO routeLocal LISTENER HERE, and its absence is deliberate. This block used
+  // to also push `addRouteLocalChangeListener` into `onRouteLocal_`, which the
+  // window turned into ApplyKillSwitchUi. That whole mechanism was replaced: the
+  // kill switch is now read through the service facts and driven by
+  // SetKillSwitch (AppController), so `onRouteLocal_` no longer exists. Re-adding
+  // the listener would install a second, silent source of truth for the one
+  // control whose whole job is to be unambiguous about whether this machine is
+  // blocked.
+  //
+  // The provider-locations view controller: the SDK's, so the display order
+  // (west to east about the providers' centroid), the selection and the wheel's
+  // clamped ends are identical in every app.
+  //
+  // OPENED BEFORE the connected-provider listener below, and that order is
+  // load-bearing: the controller subscribes to the same device listener when it
+  // is opened, callbacks fire in subscription order, and PublishProviderLocations
+  // reads the controller's ordered window. Registering first would read a window
+  // one notify behind.
+  providerLocationsVc_ = device_->openProviderLocationsViewController();
+  // signal only: this fires from inside SetSelectedProviderClientId /
+  // StepProviderSelection, on the thread that is already holding mutex_, so it
+  // must not read the selection back here -- the handler marshals first
+  presentationSubs_.push_back(providerLocationsVc_->addSelectedProviderLocationChangeListener(
+      [this] {
+        if (onProviderSelection_) onProviderSelection_();
+      }));
+  providerLocationsVc_->start();
+  // connected provider locations: signal-only (no payload), so re-read the
+  // getter and publish only when the rows actually changed
+  presentationSubs_.push_back(device_->addConnectedProviderLocationChangeListener(
+      [this] { PublishProviderLocations(); }));
+  // provider identities (the e2e-verified set behind the locations badge):
+  // signal-only, same as the locations feed -- re-read and value-compare
+  presentationSubs_.push_back(device_->addProviderIdentityChangeListener(
+      [this] { PublishProviderIdentities(); }));
 
   // initial snapshots
   PublishThroughput();
@@ -2591,6 +2626,132 @@ void SdkHost::PublishSplitRules() {
   if (changed && onSplitRules_) onSplitRules_(std::move(rules));
 }
 
+void SdkHost::PublishProviderLocations() {
+  if (!providerLocationsVc_) return;
+  std::vector<ProviderLocationRow> rows;
+  try {
+    // the view controller's window, not the device's: same providers, in the
+    // shared display order, and read from the controller so the rows and the
+    // selection always come from one snapshot
+    if (auto locations = providerLocationsVc_->getProviderLocations()) {
+      rows.reserve(locations->size());
+      for (const auto& location : *locations) {
+        ProviderLocationRow row;
+        row.clientId = location.ClientId.value_or(std::string());
+        row.country = location.Country;
+        row.countryCode = location.CountryCode;
+        row.region = location.Region;
+        row.city = location.City;
+        row.hasLocation = location.HasLocation;
+        // the city centroid when known, else the region centroid
+        if (location.HasCityCoordinates) {
+          row.hasCoordinates = true;
+          row.lat = location.CityLat;
+          row.lon = location.CityLon;
+        } else if (location.HasRegionCoordinates) {
+          row.hasCoordinates = true;
+          row.lat = location.RegionLat;
+          row.lon = location.RegionLon;
+        }
+        row.connectedSinceMillis = location.ConnectedSinceMillis;
+        rows.push_back(std::move(row));
+      }
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read connected provider locations failed: {}", e.what());
+    return;
+  }
+  // Value compare, not identity: the listener is signal-only and fires on every
+  // window event, so publishing unconditionally would rebuild the sheet (and
+  // restart its globe animation) many times a second.
+  bool changed = false;
+  {
+    std::scoped_lock lock(drawerMutex_);
+    changed = rows != lastProviderLocations_;
+    if (changed) lastProviderLocations_ = rows;
+  }
+  if (changed && onProviderLocations_) onProviderLocations_(std::move(rows));
+}
+
+std::vector<ProviderLocationRow> SdkHost::CurrentProviderLocations() {
+  std::scoped_lock lock(drawerMutex_);
+  return lastProviderLocations_;
+}
+
+void SdkHost::PublishProviderIdentities() {
+  if (!device_) return;
+  std::vector<ProviderIdentityRow> rows;
+  try {
+    rows = ReadProviderIdentityRows(device_->getProviderIdentities());
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read provider identities failed: {}", e.what());
+    return;
+  }
+  // Value compare, not identity: the listener is signal-only and re-fires on
+  // window churn, so publishing unconditionally would rebuild the sheet.
+  bool changed = false;
+  {
+    std::scoped_lock lock(drawerMutex_);
+    changed = !SameProviderIdentityRows(rows, lastProviderIdentities_);
+    if (changed) lastProviderIdentities_ = rows;
+  }
+  if (changed && onProviderIdentities_) onProviderIdentities_(std::move(rows));
+}
+
+std::vector<ProviderIdentityRow> SdkHost::CurrentProviderIdentities() {
+  std::scoped_lock lock(drawerMutex_);
+  return lastProviderIdentities_;
+}
+
+void SdkHost::RemoveConnectedProvider(const std::string& clientId) {
+  std::scoped_lock lock(mutex_);
+  if (!device_ || clientId.empty()) return;
+  try {
+    if (providerLocationsVc_) {
+      // through the view controller: it hands the selection to the next older
+      // provider when the removed one is selected, the same as every other app
+      providerLocationsVc_->removeProvider(clientId);
+    } else {
+      device_->removeConnectedProvider(clientId);
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: remove connected provider failed: {}", e.what());
+  }
+  // the window takes a moment to drop the client; the monitor's change event
+  // publishes the trimmed list when it does
+}
+
+std::string SdkHost::SelectedProviderClientId() {
+  std::scoped_lock lock(mutex_);
+  if (!providerLocationsVc_) return std::string();
+  try {
+    return providerLocationsVc_->getSelectedClientId();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read selected provider failed: {}", e.what());
+    return std::string();
+  }
+}
+
+void SdkHost::SetSelectedProviderClientId(const std::string& clientId) {
+  std::scoped_lock lock(mutex_);
+  if (!providerLocationsVc_) return;
+  try {
+    providerLocationsVc_->setSelectedClientId(clientId);
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: select provider failed: {}", e.what());
+  }
+}
+
+void SdkHost::StepProviderSelection(int steps) {
+  std::scoped_lock lock(mutex_);
+  if (!providerLocationsVc_ || steps == 0) return;
+  try {
+    providerLocationsVc_->stepSelection(steps);
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: step provider selection failed: {}", e.what());
+  }
+}
+
 void SdkHost::PushLocalOverrideAppsToDriver() {
   if (!device_) return;
   // getLocalOverrideAppIds() already inverts: Included = Local (bypass), Excluded =
@@ -2623,12 +2784,14 @@ void SdkHost::ClearDrawer() {
     lastAllowedCount_ = 0;
     lastBlockedCount_ = 0;
     lastSplitRules_.clear();
+    lastProviderLocations_.clear();
   }
   if (onThroughput_) onThroughput_({}, 60);
   if (onContractRows_) onContractRows_({});
   if (onBlockActions_) onBlockActions_({});
   if (onBlockStats_) onBlockStats_(0, 0);
   if (onSplitRules_) onSplitRules_({});
+  if (onProviderLocations_) onProviderLocations_({});
   if (onDnsSettings_) onDnsSettings_(std::nullopt);
   // clear the chooser's peer-count sub-label + any open sheet on logout
   if (onLocations_) onLocations_(std::nullopt, std::string());
@@ -4380,6 +4543,7 @@ void SdkHost::ClosePresentationLocked() {
     blockVc_.reset();
     locationsVc_.reset();
     peerVc_.reset();
+    providerLocationsVc_.reset();
     return;
   }
   // D4: the close calls below are courtesies to the SERVICE — they detach
@@ -4393,6 +4557,14 @@ void SdkHost::ClosePresentationLocked() {
   // device close is what cleans the Go side up.
   const bool remoteUsable = service_.IsConnected();
   if (remoteUsable) {
+    // The provider-locations controller closes FIRST, mirroring the order it is
+    // opened in (it is opened before the connected-provider listener registers).
+    // It is INSIDE the guard with every other close, which is the whole point of
+    // this branch: it is an rpc to the service like the rest, so exempting it
+    // would reintroduce exactly the blocking call the D4 note above describes.
+    if (providerLocationsVc_) {
+      device_->closeProviderLocationsViewController(*providerLocationsVc_);
+    }
     if (peerVc_) device_->closePeerViewController(*peerVc_);
     if (locationsVc_) device_->closeLocationsViewController(*locationsVc_);
     if (contractDetailsVc_) {
@@ -4402,6 +4574,10 @@ void SdkHost::ClosePresentationLocked() {
     if (contractVc_) device_->closeContractViewController(*contractVc_);
     if (connectVc_) device_->closeConnectViewController(*connectVc_);
   }
+  // ...but the handles drop UNCONDITIONALLY, whether or not the courtesy was
+  // paid. That asymmetry is the D4 contract, and the provider controller joins
+  // it rather than being reset early inside the branch.
+  providerLocationsVc_.reset();
   peerVc_.reset();
   locationsVc_.reset();
   contractDetailsVc_.reset();

@@ -25,6 +25,7 @@
 
 #include "ConnectCanvas.h"
 #include "LocationSheets.h"
+#include "ProviderLocationsSheet.h"
 #include "SdkHost.h"
 #include "ServiceSetup.h"
 #include "StatsSheets.h"
@@ -126,6 +127,9 @@ class ConnectPage {
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnPeersLineClick(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // "Connected to N providers" -> the globe sheet.
+  void OnProviderCountClick(winrt::Windows::Foundation::IInspectable const&,
+                             winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // the inspector's "clear the selection" action (Advanced Mode)
   void OnInspectorClear(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -274,6 +278,9 @@ class ConnectPage {
   winrt::fire_and_forget ShowSplitRulesSheet();
   winrt::fire_and_forget ShowDnsSheet();
   winrt::fire_and_forget ShowLocationChooserSheet();
+  // The connected providers and where they are: globe + list, opened from the
+  // "Connected to N providers" row (android ProviderLocationsScreen parity).
+  winrt::fire_and_forget ShowProviderLocationsSheet();
   // drawer "N network peers" sub-label (req1); space-preserved (blank + Opacity
   // 0 when there are none) so the location row never jumps
   void ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers);
@@ -323,6 +330,11 @@ class ConnectPage {
   uint32_t chartTickCount_ = 0;
   std::vector<urnw::ContractPeerRow> contractRows_;
   std::vector<urnw::BlockActionItem> blockActions_;
+  // The globe sheet's two feeds, cached here rather than read on open: both are
+  // signal-only pushes from SdkHost, so the sheet has to be able to come up on
+  // whatever the last push left, not on a fresh getter read.
+  std::vector<urnw::ProviderLocationRow> providerLocations_;
+  std::vector<urnw::ProviderIdentityRow> providerIdentities_;
   std::vector<urnw::SplitRule> splitRules_;
   int64_t allowedCount_ = 0;
   int64_t blockedCount_ = 0;
@@ -367,6 +379,7 @@ class ConnectPage {
   std::shared_ptr<urnw::SplitRulesSheet> splitRulesSheet_;
   std::shared_ptr<urnw::DnsEditorSheet> dnsSheet_;
   std::shared_ptr<urnw::LocationChooserSheet> locationSheet_;
+  std::shared_ptr<urnw::ProviderLocationsSheet> providerLocationsSheet_;
 };
 
 }  // namespace urnw

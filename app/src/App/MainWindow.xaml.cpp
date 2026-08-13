@@ -1705,6 +1705,10 @@ void MainWindow::OnPeersLineClick(IInspectable const& s,
                                    RoutedEventArgs const& e) {
   connect_->OnPeersLineClick(s, e);
 }
+void MainWindow::OnProviderCountClick(IInspectable const& s,
+                                       RoutedEventArgs const& e) {
+  connect_->OnProviderCountClick(s, e);
+}
 
 void MainWindow::OnEditNetworkName(IInspectable const& s, RoutedEventArgs const& e) {
   account_->OnEditNetworkName(s, e);

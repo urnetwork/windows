@@ -1256,12 +1256,58 @@ void ConnectPage::WireDrawerFeeds() {
       }
     });
   });
+  // the connected providers and where they are: SdkHost re-reads the getter on
+  // the signal-only change listener and only pushes when the rows differ by
+  // value, so this can apply every push directly
+  sdk.SetProviderLocationsHandler([queue, weak](std::vector<urnw::ProviderLocationRow> rows) {
+    queue.TryEnqueue([weak, rows = std::move(rows)] {
+      if (auto self = weak.get()) {
+        auto& page = self->connect();
+        page.providerLocations_ = rows;
+        if (page.providerLocationsSheet_) {
+          page.providerLocationsSheet_->Update(rows, Sdk().RemoteConnected());
+        }
+      }
+    });
+  });
+  // the verified-e2e identity set behind the locations badge: signal-only feed,
+  // pushed the same way and applied to the sheet if it is open
+  sdk.SetProviderIdentitiesHandler(
+      [queue, weak](std::vector<urnw::ProviderIdentityRow> identities) {
+        queue.TryEnqueue([weak, identities = std::move(identities)] {
+          if (auto self = weak.get()) {
+            auto& page = self->connect();
+            page.providerIdentities_ = identities;
+            if (page.providerLocationsSheet_) {
+              page.providerLocationsSheet_->UpdateIdentities(identities);
+            }
+          }
+        });
+      });
+  // the globe's selection, owned by the SDK view controller (a wheel step lands
+  // here). Signal-only and fired under the host's lock, so the selection is
+  // read back on the UI thread, never in the callback.
+  sdk.SetProviderSelectionHandler([queue, weak] {
+    queue.TryEnqueue([weak] {
+      if (auto self = weak.get()) {
+        auto& page = self->connect();
+        if (page.providerLocationsSheet_) page.providerLocationsSheet_->RefreshSelection();
+      }
+    });
+  });
   sdk.SetRemoteChangedHandler([queue, weak](bool) {
     queue.TryEnqueue([weak] {
       if (auto self = weak.get()) {
+        auto& page = self->connect();
         // remote attach/detach flips the peers line's disabled state; the
         // nullopt trigger leaves the chooser's peer rows untouched
-        self->connect().ApplyPeerCount(std::nullopt);
+        page.ApplyPeerCount(std::nullopt);
+        // the same fact grays the provider-locations list: while the rpc is
+        // down an empty window is unavailable, not "no providers"
+        if (page.providerLocationsSheet_) {
+          page.providerLocationsSheet_->Update(page.providerLocations_,
+                                               Sdk().RemoteConnected());
+        }
       }
     });
   });
@@ -2148,6 +2194,9 @@ void ConnectPage::OnChartTick() {
     }
   }
   if (contractsSheet_) contractsSheet_->Tick();  // ring/disc easing + slide animations
+  // globe recenter animation + the 1s connected-duration retick (the sheet
+  // owns its own 1s divider off this 100ms clock)
+  if (providerLocationsSheet_) providerLocationsSheet_->Tick();
   // the preview sample's 60s window scrolls off if it is only pushed once
   if (PreviewSampleActive() && chartTickCount_ % 20 == 0) PreviewSampleCharts();
   if (++chartTickCount_ % 10 == 0) {  // ~1s cadence
@@ -2430,6 +2479,14 @@ void ConnectPage::OnPeersLineClick(IInspectable const&, RoutedEventArgs const&) 
   ShowLocationChooserSheet();
 }
 
+void ConnectPage::OnProviderCountClick(IInspectable const&, RoutedEventArgs const&) {
+  // LiveStatsGroup is already collapsed while disconnected, so this guard is
+  // belt-and-braces — but the sheet has nothing to draw without a connection,
+  // and an empty globe reads as a broken one rather than an idle one.
+  if (!connected_) return;
+  ShowProviderLocationsSheet();
+}
+
 winrt::fire_and_forget ConnectPage::ShowClientContractsSheet() {
   if (w_.sheetOpen()) co_return;  // only one ContentDialog can show at a time
   auto self = w_.get_strong();
@@ -2491,6 +2548,29 @@ winrt::fire_and_forget ConnectPage::ShowLocationChooserSheet() {
   } catch (...) {
   }
   locationSheet_.reset();
+  w_.SetSheetOpen(false);
+}
+
+// The connected providers and where they are: globe + list, opened from the
+// "Connected to N providers" row (android ProviderLocationsScreen parity).
+winrt::fire_and_forget ConnectPage::ShowProviderLocationsSheet() {
+  if (w_.sheetOpen()) co_return;  // only one ContentDialog can show at a time
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    providerLocationsSheet_ =
+        urnw::ProviderLocationsSheet::Create(self->Content().XamlRoot(), Sdk());
+    // seeded from the CACHE, not a getter: the locations feed is signal-only, so
+    // the rows the sheet should open on are the ones the last push left here
+    providerLocationsSheet_->Update(providerLocations_, Sdk().RemoteConnected());
+    // seed the badge set from the current snapshot so open-while-connected shows
+    // badges immediately, not only after the next identity change
+    providerIdentities_ = Sdk().CurrentProviderIdentities();
+    providerLocationsSheet_->UpdateIdentities(providerIdentities_);
+    co_await providerLocationsSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  providerLocationsSheet_.reset();
   w_.SetSheetOpen(false);
 }
 

@@ -1200,10 +1200,17 @@
                                                Style="{StaticResource UrGroupHeaderTextStyle}" />
                                 </Border>
                                 <StackPanel x:Name="LiveStatsGroup" Visibility="Collapsed">
-                                    <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                    <!-- the connected providers and where they are: this row
+                                         opens the globe sheet (android ProviderLocationsScreen
+                                         parity). A Button on the pane-row style rather than a
+                                         Border with Tapped, so it keeps the pane rhythm and is
+                                         reachable from the keyboard like every other row. -->
+                                    <Button x:Name="ProviderCountLine" MinHeight="34"
+                                            Style="{StaticResource UrPaneRowButtonStyle}"
+                                            Click="OnProviderCountClick">
                                         <TextBlock x:Name="ProviderCountText"
                                                    Style="{StaticResource UrKeyTextStyle}" />
-                                    </Border>
+                                    </Button>
                                 </StackPanel>
                                 <!-- the key/value rows are built into this host by
                                      ConnectPage::ApplySessionRows, on one grid rhythm -->

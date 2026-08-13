@@ -16,6 +16,10 @@ IDI_TRAY_DARK_NOPROVIDE_CONNECT    ICON "Assets\\tray_dark_noprovide_connect.ico
 IDI_TRAY_DARK_PROVIDE_NOCONNECT    ICON "Assets\\tray_dark_provide_noconnect.ico"
 IDI_TRAY_DARK_PROVIDE_CONNECT      ICON "Assets\\tray_dark_provide_connect.ico"
 
+// World topology for the provider-locations globe (quantized TopoJSON,
+// Natural Earth 110m — public domain; see THIRD-PARTY-NOTICES.txt).
+IDR_WORLD_TOPOLOGY RCDATA "Assets\\world-110m.json"
+
 // The version stamp. UR_VER_* / UR_VERSION_STRING come from Version.h, which
 // takes them from the UR_* definitions Directory.Build.props feeds rc.exe —
 // the exact values the code compiles against, so Explorer's Details tab, the

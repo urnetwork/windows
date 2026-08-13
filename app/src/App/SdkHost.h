@@ -21,6 +21,8 @@
 #include "ConnectAction.h"
 #include "ConnectionHealth.h"
 #include "GoogleSignIn.h"
+#include "PostQuantumIdentity.h"
+#include "ProviderLocations.h"
 #include "Sdk.h"
 #include "ServiceClient.h"
 #include "WalletConnect.h"
@@ -393,6 +395,15 @@ class SdkHost {
       std::function<void(std::optional<urnet::FilteredLocations>, std::string state)>;
   using PeersHandler = std::function<void(std::optional<urnet::NetworkPeerList>)>;
   using RemoteChangedHandler = std::function<void(bool remoteConnected)>;
+  // The connected providers and where they are (the provider-locations sheet).
+  using ProviderLocationsHandler = std::function<void(std::vector<ProviderLocationRow>)>;
+  // The providers with a verified e2e session (the provider-locations badge).
+  using ProviderIdentitiesHandler = std::function<void(std::vector<ProviderIdentityRow>)>;
+  // The globe's selection changed. SIGNAL ONLY, like the locations feed: the
+  // SDK fires it on the calling thread (a Set/Step call re-enters here), so the
+  // handler must marshal onto the UI thread and re-read
+  // SelectedProviderClientId() there rather than read it under our lock.
+  using ProviderSelectionHandler = std::function<void()>;
 
   SdkHost() = default;
   ~SdkHost();
@@ -826,6 +837,46 @@ class SdkHost {
   void SetLocationsObserver(LocationsHandler h) { onLocationsObserver_ = std::move(h); }
   void SetPeersObserver(PeersHandler h) { onPeersObserver_ = std::move(h); }
   void SetRemoteChangedHandler(RemoteChangedHandler h) { onRemoteChanged_ = std::move(h); }
+  void SetProviderLocationsHandler(ProviderLocationsHandler h) {
+    onProviderLocations_ = std::move(h);
+  }
+  void SetProviderIdentitiesHandler(ProviderIdentitiesHandler h) {
+    onProviderIdentities_ = std::move(h);
+  }
+  void SetProviderSelectionHandler(ProviderSelectionHandler h) {
+    onProviderSelection_ = std::move(h);
+  }
+
+  // ---- provider locations (the "Connected to N providers" detail sheet) -----
+  // The rows come from ProviderLocationsViewController::getProviderLocations:
+  // the same window Device::getConnectedProviderLocations reports, in the SDK's
+  // shared DISPLAY ORDER (west to east about the providers' centroid, then the
+  // ones with no coordinates), so the list reads left to right in the order the
+  // globe's wheel steps through. The change listener is signal-only -- so the
+  // getter is re-read on every notify and the result compared BY VALUE before
+  // anything is published (the SDK re-emits on every window event, and the rows
+  // also carry a per-second duration clock, so an identity compare would thrash
+  // the UI).
+  std::vector<ProviderLocationRow> CurrentProviderLocations();
+  // The providers with an identity-verified e2e session, joined by egress
+  // client id onto the provider-locations rows to badge the encrypted ones.
+  // Same signal-only-listener + value-compare discipline as the locations feed.
+  std::vector<ProviderIdentityRow> CurrentProviderIdentities();
+  // Drop a provider by its EGRESS client id and stop it being re-discovered for
+  // the rest of this connection.
+  void RemoveConnectedProvider(const std::string& clientId);
+
+  // ---- the globe's selection and scroll wheel ------------------------------
+  // The SDK's shared ProviderLocationsViewController, which every URnetwork app
+  // binds so they all traverse the globe identically. StepProviderSelection
+  // moves along the plottable providers ordered west to east relative to their
+  // centroid and CLAMPS at the ends: stepping past the extreme west or east
+  // sticks there instead of cycling round the globe. Removing the selected
+  // provider hands the selection to the NEAREST one left. Changes arrive
+  // through SetProviderSelectionHandler; "" means nothing is selected.
+  std::string SelectedProviderClientId();
+  void SetSelectedProviderClientId(const std::string& clientId);
+  void StepProviderSelection(int steps);
 
   // Snapshots on demand (seed / resync when the window shows).
   std::vector<urnet::ThroughputPoint> CurrentThroughputPoints(int64_t& windowSeconds);
@@ -1368,6 +1419,8 @@ class SdkHost {
   void PublishBlockActions();
   void PublishBlockStats();
   void PublishSplitRules();
+  void PublishProviderLocations();
+  void PublishProviderIdentities();
   // Read getLocalOverrideAppIds(), compute {paths, allowlist} (Android inversion:
   // any include-in-tunnel app => allowlist with the tunnel set, else denylist with
   // the bypass set), and push to the service -> driver. Called from the override
@@ -1399,6 +1452,8 @@ class SdkHost {
   std::optional<urnet::BlockActionViewController> blockVc_;  // block actions + stats
   std::optional<urnet::LocationsViewController> locationsVc_;  // provider chooser feed
   std::optional<urnet::PeerViewController> peerVc_;  // connected provide-enabled peers
+  // the provider globe's selection + scroll wheel, shared across every app
+  std::optional<urnet::ProviderLocationsViewController> providerLocationsVc_;
   // network-name availability at sign-up; api-scoped, so it survives logout
   std::optional<urnet::NetworkNameValidationViewController> networkNameVc_;
   std::vector<urnet::Sub> subs_;
@@ -1451,6 +1506,10 @@ class SdkHost {
   int64_t lastAllowedCount_ = 0;
   int64_t lastBlockedCount_ = 0;
   std::vector<SplitRule> lastSplitRules_;
+  // The value-compare baselines for the two signal-only provider feeds; see
+  // CurrentProviderLocations() for why an identity compare is not enough.
+  std::vector<ProviderLocationRow> lastProviderLocations_;
+  std::vector<ProviderIdentityRow> lastProviderIdentities_;
 
   // The session status to report for "we have a device, and it is/isn't on a
   // location" — derived from sessionMode_ so an rpc-only session can never
@@ -1700,6 +1759,9 @@ class SdkHost {
   LocationsHandler onLocationsObserver_;
   PeersHandler onPeersObserver_;
   RemoteChangedHandler onRemoteChanged_;
+  ProviderLocationsHandler onProviderLocations_;
+  ProviderIdentitiesHandler onProviderIdentities_;
+  ProviderSelectionHandler onProviderSelection_;
   AuthState authState_ = AuthState::LoggedOut;
   // "Is there a stored device session?" — cached so IsLoggedIn() does not have
   // to take mutex_, which on a resume meant waiting out the whole tunnel
