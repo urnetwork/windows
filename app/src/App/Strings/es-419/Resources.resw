@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>Se generará una nueva frase semilla y se vinculará a tu cuenta.</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>Una frase semilla te permite recuperar tu cuenta si pierdes el acceso.</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>Una frase semilla te permite recuperar tu cuenta si pierdes el acceso. Guárdala en un lugar seguro.</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>Para acceder a tu código de autenticación, crea una cuenta e inicia sesión en {link}ur.io{/link}. Ve a Cuenta -&gt; Configuración -&gt; Crear/Copiar código de autenticación -&gt; Pega -&gt; ¡Listo!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>Agregar</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>Agregar un método de inicio de sesión</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>Agregar ubicación bloqueada</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>Agrega un código de referencia para ganar recompensas adicionales</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>Agregar método de inicio de sesión</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>Agregar método de inicio de sesión</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>Añadir una billetera</value>
@@ -144,6 +165,10 @@
     <value>{} se enrutará por la VPN</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>{} usará un solo proveedor</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>Exclusión activa — las apps excluidas evitan la VPN</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>Reglas de división por app</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>0 apps divididas</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>Esta app es más antigua que el servicio del sistema URnetwork instalado. Actualiza la app para conectarte.</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>Método de inicio de sesión de Apple agregado</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>Aplicar bono</value>
@@ -196,6 +233,9 @@
     <value>¿Está seguro de que desea eliminar su cuenta?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>¿Seguro que quieres quitar {} como método de inicio de sesión?</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>¿Estás seguro de que quieres eliminar esta billetera?</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -203,6 +243,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>Código de autenticación</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>Código de autenticación 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>Crear código de autenticación</value>
@@ -394,6 +440,10 @@ de la manera correcta</value>
     <value>Al suscribirte, aceptas los [Términos y servicios](https://ur.io/terms) y la [Política de privacidad](https://ur.io/privacy) de URnetwork</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>Omitir la VPN</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>Cancelar</value>
     <comment>Call to action</comment>
@@ -413,6 +463,10 @@ de la manera correcta</value>
   <data name="change_network_api_title" xml:space="preserve">
     <value>Cambiar API de red</value>
     <comment>Title of the network API selector dialog.</comment>
+  </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>Toca el ícono de editar para cambiar el nombre de la red</value>
+    <comment>A description of the action to change the user's network name.</comment>
   </data>
   <data name="change_password" xml:space="preserve">
     <value>Cambiar la contraseña</value>
@@ -465,6 +519,10 @@ de la manera correcta</value>
   <data name="claim_multiplier" xml:space="preserve">
     <value>Multiplicador de reclamo</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>Reclama un nombre de red personalizado para reemplazar el generado automáticamente</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Contratos de cliente</value>
@@ -526,6 +584,10 @@ de la manera correcta</value>
     <value>Conectar</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>Conecta una billetera de Solana (Phantom o Solflare) para agregarla como método de inicio de sesión.</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>Conecta una billetera</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -574,6 +636,10 @@ de la manera correcta</value>
     <value>Conectado</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>Conectado: {}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.one" xml:space="preserve">
     <value>Conectado a {} proveedor</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -585,6 +651,10 @@ de la manera correcta</value>
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>Conectando a los proveedores</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>Conectando con la billetera...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>Modo de conexión</value>
@@ -630,6 +700,10 @@ de la manera correcta</value>
     <value>Aportar ancho de banda</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>¡Copiado!</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>Copia</value>
     <comment>Call to action</comment>
@@ -641,6 +715,10 @@ de la manera correcta</value>
   <data name="copy_client_id" xml:space="preserve">
     <value>Copiar ID de cliente</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>Copiar al portapapeles</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>No se pudo abrir la billetera. Instálala e inténtalo de nuevo.</value>
@@ -682,6 +760,10 @@ de la manera correcta</value>
     <value>Crear una cuenta</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>Crear cuenta instantánea</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>Algo salió mal. Inténtalo de nuevo.</value>
     <comment>Call to action</comment>
@@ -689,6 +771,14 @@ de la manera correcta</value>
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>Los códigos de autenticación creados caducan después de 5 minutos</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>API actual: {}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>Conexión actual: {}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>Red de referidos actual</value>
@@ -705,6 +795,18 @@ de la manera correcta</value>
   <data name="custom_dns" xml:space="preserve">
     <value>DNS personalizado</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>La app y el servicio del sistema URnetwork son compilaciones distintas. Actualiza ambos a la misma versión.</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>El servicio del sistema URnetwork está desactualizado. Actualízalo para conectarte.</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>El servicio del sistema URnetwork no está en ejecución. Instálalo o inícialo y vuelve a intentarlo.</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>Saldo de datos diario:</value>
@@ -733,6 +835,10 @@ de la manera correcta</value>
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>Por defecto, obtienes {} GiB/mes. Así puedes ganar ancho de banda extra:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>Predeterminado</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>POR DEFECTO</value>
@@ -822,6 +928,10 @@ de la manera correcta</value>
     <value>DNS sobre HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>La configuración segura predeterminada no está aplicada</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>La configuración segura predeterminada no está aplicada</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -842,6 +952,10 @@ de la manera correcta</value>
     <value>Configuración de DNS no disponible</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>Hay configuraciones recomendadas sin aplicar para {}</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>Usando la configuración regional recomendada</value>
     <comment>dns settings</comment>
@@ -849,6 +963,10 @@ de la manera correcta</value>
   <data name="dns_using_secure" xml:space="preserve">
     <value>Usando la configuración predeterminada más segura</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>Listo</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>¿No lo ves?</value>
@@ -878,6 +996,10 @@ de la manera correcta</value>
     <value>Editar nombre del dispositivo</value>
     <comment>device</comment>
   </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>Editar nombre de la red</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
+  </data>
   <data name="edit_profile" xml:space="preserve">
     <value>Editar perfil</value>
     <comment>Profile</comment>
@@ -906,6 +1028,10 @@ de la manera correcta</value>
     <value>Ingresa un nombre para tu red</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>Ingresa una contraseña</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>Ingresa una dirección de billetera de Solana o Bittensor</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -916,6 +1042,10 @@ de la manera correcta</value>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Ingresa el código de saldo</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>Ingresa el nombre de la red</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>Ingrese el código de referencia de la red</value>
@@ -928,6 +1058,10 @@ de la manera correcta</value>
   <data name="enter_wallet_address" xml:space="preserve">
     <value>Ingrese la dirección de la billetera</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>Error al cambiar el nombre de la red</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>Lo sentimos, se produjo un error al reclamar el multiplicador.</value>
@@ -1069,6 +1203,15 @@ de la manera correcta</value>
     <value>General</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>Generar</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>¿Generar una frase semilla de recuperación?</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>Generar frase semilla</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>Conéctate</value>
     <comment>Call to action</comment>
@@ -1088,6 +1231,10 @@ de la manera correcta</value>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Iniciar sesión con Google</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>Método de inicio de sesión de Google agregado</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>Entendido</value>
@@ -1129,6 +1276,14 @@ de la manera correcta</value>
     <value>Acepto los [Términos y servicios](https://ur.io/terms) y la [Política de privacidad](https://ur.io/privacy) de URnetwork</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>Guardé mi frase semilla</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>Hash de la clave de identidad copiado</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>Si el problema persiste, contáctanos en [support@ur.io](mailto:support@ur.io) o [únete a nuestro Discord](https://discord.com/invite/RUNZXMwPRK) para soporte directo.</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1148,6 +1303,10 @@ de la manera correcta</value>
   <data name="include_app_description" xml:space="preserve">
     <value>Solo las apps incluidas usan el túnel.</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>Incluir en la VPN</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>Incluidas</value>
@@ -1189,6 +1348,14 @@ de la manera correcta</value>
     <value>Dirección IP</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.one" xml:space="preserve">
+    <value>{} IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} IPs</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1225,6 +1392,10 @@ de la manera correcta</value>
     <value>Únete a URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>leyenda</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>Kill switch</value>
     <comment>Call to action</comment>
@@ -1253,9 +1424,16 @@ de la manera correcta</value>
     <value>Más información en la página del protocolo</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>Vincula otra forma de iniciar sesión en tu cuenta.</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>Cargando...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>Cargando métodos de inicio de sesión...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>Local</value>
@@ -1292,6 +1470,34 @@ de la manera correcta</value>
   <data name="local_statistics" xml:space="preserve">
     <value>Estadísticas locales</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
+  </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>URnetwork no pudo eliminar el archivo de ubicación del sistema, así que esta computadora puede seguir informando la ubicación de un proveedor. Inicia el servicio del sistema URnetwork y desactiva esta opción, o elimina /etc/geolocation como administrador.</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>No lo cubre todo. Chrome y KDE Plasma nunca consultan a GeoClue, y cualquier app que deduzca tu ubicación por su cuenta a partir de tu dirección IP no se ve afectada. Firefox recurre a su propia consulta si el sistema no responde con rapidez.</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>Las apps que piden tu ubicación al sistema a través de GeoClue — incluidas Configuración y Mapas de GNOME, Firefox y las apps Flatpak y Snap en espacio aislado — informan la ubicación del proveedor en lugar de la tuya.</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>Listo. Activa el interruptor para informar la ubicación del proveedor conectado como la ubicación de esta computadora.</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>Instala GeoClue 2.7 o una versión posterior. No está en todos los sistemas, y Ubuntu 22.04 y Debian 12 incluyen una versión anterior que no puede hacerlo.</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>Instala el servicio del sistema URnetwork. El archivo de ubicación del sistema está en /etc, así que tiene que escribirlo un asistente con privilegios — URnetwork nunca te pide que ejecutes la app en sí como administrador.</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>Mantén activada la fuente de ubicación estática de GeoClue. Está activada de forma predeterminada; revisa /etc/geoclue/geoclue.conf si la cambiaste.</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
   </data>
   <data name="login_client_error" xml:space="preserve">
     <value>Se ha producido un error al autenticar el cliente. Inténtalo de nuevo.</value>
@@ -1331,17 +1537,105 @@ enviamos para verificar tu identidad.</value>
     <value>Hacer predeterminado</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>Administrar apps</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>Administrar suscripción</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="max_n" xml:space="preserve">
+    <value>máx {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
   </data>
   <data name="member" xml:space="preserve">
     <value>Miembro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="method" xml:space="preserve">
+    <value>Método</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>hace {} min</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
+  </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>Sincronizando con {}</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>Solo las páginas de este navegador ven la ubicación modificada. La ubicación de tu dispositivo no cambia.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>Las apps pueden detectar que la ubicación es simulada. Las apps de banca, transporte, reparto y algunos juegos pueden negarse a funcionar mientras esté activado.</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>Esto cambia la ubicación que se informa a todas las apps de tu dispositivo, no solo a URnetwork.</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>Los sitios pueden detectar que la ubicación es simulada y pueden negarse a funcionar.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>Desactívalo en URnetwork antes de desactivar las opciones para desarrolladores, quitar la selección de URnetwork o desinstalar la app; de lo contrario, la ubicación de tu dispositivo puede quedar congelada hasta que lo reinicies.</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>URnetwork no pudo eliminar la ubicación simulada. Vuelve a seleccionar URnetwork en las opciones para desarrolladores y desactívalo, o reinicia tu dispositivo.</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>Cuando está activado, las apps de este dispositivo ven la ubicación del proveedor al que llevas más tiempo conectado, en lugar de tu ubicación real.</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>Sincronizar la ubicación del dispositivo</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>Requiere configuración</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>Abrir “Acerca del teléfono”</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>Abrir opciones para desarrolladores</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>Abrir configuración de ubicación</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>Listo. Activa el interruptor para sincronizar la ubicación de tu dispositivo con el proveedor conectado desde hace más tiempo.</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>Sincronización de la ubicación del dispositivo</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>Activa las opciones para desarrolladores: abre “Acerca del teléfono” y toca siete veces “Número de compilación”.</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>Activa la “Ubicación” en la configuración del sistema para que las apps puedan recibir la ubicación.</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>En las opciones para desarrolladores, toca “Seleccionar app de ubicación simulada” y elige URnetwork.</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>Esperando la ubicación de un proveedor</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
   </data>
   <data name="monthly" xml:space="preserve">
     <value>Mensual</value>
@@ -1351,9 +1645,17 @@ enviamos para verificar tu identidad.</value>
     <value>Más popular</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>Varias IP</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>Multiplicador</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/día</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>Nombre</value>
@@ -1378,6 +1680,10 @@ enviamos para verificar tu identidad.</value>
   <data name="net_provided" xml:space="preserve">
     <value>Red proporcionada</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>Red</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>Déjalo en blanco para derivarla del dominio de red.</value>
@@ -1451,6 +1757,10 @@ enviamos para verificar tu identidad.</value>
     <value>Ganancias de la red</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>El nombre de la red se cambió a {}</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>No disponible. Debe tener al menos 3 caracteres diferentes de una red existente. Hazlo único o más largo.</value>
     <comment>Call to action</comment>
@@ -1482,6 +1792,14 @@ enviamos para verificar tu identidad.</value>
   <data name="network_name_unavailable" xml:space="preserve">
     <value>Nombre de red no disponible.</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.one" xml:space="preserve">
+    <value>Tienes {} dispositivo más en línea</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>Tienes {} dispositivos más en línea</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>Pares de la red</value>
@@ -1530,6 +1848,14 @@ enviamos para verificar tu identidad.</value>
   <data name="no_blocked_locations" xml:space="preserve">
     <value>No hay ubicaciones bloqueadas</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>No necesitas correo, teléfono ni contraseña. Tu cuenta se protege con una frase semilla.</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>No se encontraron apps instaladas. (Las apps de la Store no aparecen.)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>No se encontraron ubicaciones</value>
@@ -1656,6 +1982,10 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>La contraseña debe tener al menos 12 caracteres</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>Pega aquí tu frase semilla de 24 palabras</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>Pagar con la billetera Solana</value>
     <comment>Call to action</comment>
@@ -1692,6 +2022,18 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Los pagos se realizan cada domingo a las 00:00 UTC y requieren cumplir con un umbral mínimo de USDC.</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>1 par</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d pares</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>Detección de pares desactivada hasta conectarse</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>Pendiente</value>
     <comment>Call to action</comment>
@@ -1703,6 +2045,22 @@ más grande, seguro y descentralizado del mundo.</value>
   <data name="pending_payout" xml:space="preserve">
     <value>Pago pendiente</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>Fijar a un solo proveedor</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>Mantiene todas las conexiones de esta app en un solo proveedor, para que su API y sus imágenes compartan una misma dirección IP. Usar para apps cuyo contenido no carga a través de la VPN</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>Fijado</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>Marcador de posición</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>Plan</value>
@@ -1740,6 +2098,22 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Desglose de puntos</value>
     <comment>Call to action</comment>
   </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>Cifrado poscuántico</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>Respaldo activado (temporal)</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>Identidad poscuántica</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>Tu clave de identidad se guarda localmente en este dispositivo. Si la clave de algún par se ve diferente de la clave guardada localmente, significa que no se puede confiar en el operador de la red.</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
+  </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>El precio se muestra al pagar.</value>
     <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
@@ -1776,6 +2150,18 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Modo de provisión</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0} h {1} min</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{} min</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{} s</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>Contratos de proveedor</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1790,6 +2176,26 @@ más grande, seguro y descentralizado del mundo.</value>
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} proveedores</value>
+  </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>Identidades de proveedores</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>Ubicación desconocida</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>No hay proveedores conectados</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>Ubicaciones de proveedores</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>Los detalles del proveedor no están disponibles hasta conectarse</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>Estadísticas del proveedor</value>
@@ -1817,7 +2223,7 @@ más grande, seguro y descentralizado del mundo.</value>
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>Aún no pudimos confirmar tu compra. Si completaste el pago, tu plan se actualizará automáticamente en unos minutos; no es necesario volver a comprar.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>Salir</value>
@@ -1874,6 +2280,10 @@ más grande, seguro y descentralizado del mundo.</value>
   <data name="refer_a_friend_30_gib_month" xml:space="preserve">
     <value>Recomienda a un amigo = +30 GiB/mes</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
+  </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>Recomienda a un amigo = +3 GiB/día</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
   </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>Recomendar y ganar</value>
@@ -1951,6 +2361,9 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Referidos</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>Volver a generar la frase semilla</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>Regiones</value>
     <comment>Provider list group title for regions</comment>
@@ -2002,6 +2415,9 @@ más grande, seguro y descentralizado del mundo.</value>
   <data name="remove_rule" xml:space="preserve">
     <value>Eliminar regla</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>¿Quitar este método de inicio de sesión?</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>Eliminar billetera</value>
@@ -2059,6 +2475,10 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Reglas</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>2x tus datos gratuitos y de referidos</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>Guardar</value>
     <comment>Profile</comment>
@@ -2087,6 +2507,10 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>hace {} s</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>Protege tu cuenta</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>Ver todo
 el contenido
@@ -2097,6 +2521,10 @@ del mundo</value>
     <value>Ver todo el contenido del mundo con URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>Frase semilla</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>¡Token Seeker verificado!</value>
     <comment>Call to action</comment>
@@ -2104,6 +2532,10 @@ del mundo</value>
   <data name="select_country_to_block" xml:space="preserve">
     <value>Selecciona el país para bloquear</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>Globo: seleccionar ubicación del proveedor</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>Ubicación seleccionada</value>
@@ -2193,6 +2625,10 @@ del mundo</value>
     <value>Iniciar sesión</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>Iniciar sesión</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>Iniciar sesión con dGEN1</value>
     <comment>Call to action</comment>
@@ -2200,6 +2636,13 @@ del mundo</value>
   <data name="sign_in_failed" xml:space="preserve">
     <value>Error al iniciar sesión</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>Método de inicio de sesión agregado correctamente</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>Métodos de inicio de sesión</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>Iniciar sesión con código</value>
@@ -2209,13 +2652,172 @@ del mundo</value>
     <value>Iniciar sesión con Google</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>Inicia sesión con Google para agregarlo como método de inicio de sesión.</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>Iniciar sesión con la frase semilla</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>Inicia sesión con tu Apple ID para agregarlo como método de inicio de sesión.</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>Cerrar sesión</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>Firmar con la billetera</value>
+    <comment>Button text for signing in with a wallet.</comment>
+  </data>
   <data name="signed_in" xml:space="preserve">
     <value>Sesión iniciada</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>Fiabilidad media</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>Clientes</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>Opciones de conexión</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>Conéctate para ver la actividad en vivo</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>País</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>Multiplicadores por país</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>IP fija</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>Administrar suscripción</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>Automático</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>Streaming</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>Web</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>Multiplicador</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>Aún no hay tráfico</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>Plan</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>Proxies</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>Peso de fiabilidad</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>Anonimización fuerte</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>Transferencia</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>Configura la extensión para conectarte</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>La extensión tiene la sesión iniciada en otra red:</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork enruta este navegador a través de la extensión. Instálala para empezar a conectarte.</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>Instala la extensión para conectarte</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>Extensión detectada y con la sesión iniciada</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>La extensión está instalada pero con la sesión cerrada. Configúrala con tu red para conectarte.</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>Listo para conectar</value>
+    <comment>Connect: disconnected status line</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>Instalar la app</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>Tienes el plan Free. Cambia a Pro para obtener más datos y funciones.</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>Plan Free</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>Administrar en {platform}</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>Administrar en el App Store</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>Administrar en Google Play</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>otra plataforma</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>Tu suscripción Pro se factura a través de {platform}. Para cambiarla o cancelarla, administra tus suscripciones a través de {platform}.</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>Tu suscripción Pro se factura a través del App Store. Para cambiarla o cancelarla, administra tus suscripciones en el App Store.</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>Tu suscripción Pro se factura a través de Google Play. Para cambiarla o cancelarla, administra tus suscripciones en Google Play.</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>Tu suscripción Pro se factura a través de Stripe. Actualiza los datos de pago o cancela cuando quieras más abajo.</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>Por favor, asegúrate de tener fondos USDC suficientes en tu billetera. En algunos casos, los pagos fallan si no hay fondos suficientes en la billetera.</value>
@@ -2365,6 +2967,14 @@ como debería ser.</value>
     <value>¿Quieres desconectarte de {} y cambiar de cuenta?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>Sincronizar la ubicación del dispositivo con el proveedor conectado desde hace más tiempo</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>Sincronizar la ubicación del dispositivo con el proveedor</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>Sistema</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2405,9 +3015,21 @@ como debería ser.</value>
     <value>Estas billeteras no están afiliadas ni controladas por URnetwork. Enviaremos las ganancias a la billetera conectada.</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ Esta es la única vez que la verás.</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>esta región</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>Conectado</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>Desconectado</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Iniciar sesión</value>
@@ -2487,6 +3109,10 @@ como debería ser.</value>
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>Prueba el modo invitado</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>No se pudo iniciar la conexión</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>DNS sin cifrar</value>
@@ -2598,6 +3224,10 @@ como debería ser.</value>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>Dirección de la billetera USDC</value>
   </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>Usa el proveedor más estable</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
+  </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>Usar la configuración recomendada</value>
     <comment>dns settings</comment>
@@ -2681,9 +3311,17 @@ como debería ser.</value>
     <value>Información de versión y compilación</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>vía {}</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>Esperando aprobación</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>Esperando la firma de la billetera...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>Billetera</value>
@@ -2723,6 +3361,10 @@ como debería ser.</value>
     <value>Error al iniciar sesión con la billetera</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>Método de inicio de sesión con billetera agregado</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>Billeteras</value>
     <comment>Wallets Screen</comment>
@@ -2755,6 +3397,10 @@ como debería ser.</value>
     <value>con URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>Anótala y guárdala en un lugar seguro. Si la pierdes, perderás el acceso a tu cuenta.</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>Anual</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -2766,6 +3412,16 @@ como debería ser.</value>
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>Recibes 30 GiB/mes de por vida</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>Recibes 3 GiB/día de por vida</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>Tienes 1 dispositivo más en línea</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>Tienes {} dispositivos más en línea</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>Desbloquearás velocidades aún más rápidas y acceso prioritario a nuevas funciones como medidas sólidas contra la censura y control de datos.</value>
@@ -2791,6 +3447,10 @@ como debería ser.</value>
     <value>Tu amigo recibe 30 GiB/mes de por vida</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>Tu amigo recibe 3 GiB/día de por vida</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>Tu compra necesita aprobación para completarse. UR Pro se activará solo en cuanto se apruebe — no necesitas volver a comprar.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -2798,5 +3458,9 @@ como debería ser.</value>
   <data name="your_referral_link" xml:space="preserve">
     <value>Tu enlace de referido</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>Tu frase semilla</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>

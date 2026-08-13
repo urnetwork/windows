@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>系統將產生一組新的助記詞並連結至你的帳戶。</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>如果你無法存取帳戶，助記詞可以幫你復原。</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>如果你無法存取帳戶，助記詞可以幫你復原。請妥善保管。</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>要取得您的認證碼，請建立帳戶並登入{link}ur.io{/link}。前往帳戶 -&gt; 設定 -&gt; 建立/複製認證碼 -&gt; 貼上 -&gt; 完成！</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>添加</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>添加登入方式</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>添加被屏蔽的位置</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>添加推薦碼以獲取額外獎勵</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>添加登入方式</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>添加登入方式</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>添加錢包</value>
@@ -144,6 +165,10 @@
     <value>{} 將透過 VPN 路由</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>{} 將使用單一供應商</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>排除模式已啟用 — 被排除的應用程式繞過 VPN</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>應用程式分流規則</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>0 個分流應用程式</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>此應用程式比已安裝的 URnetwork 系統服務舊。請更新應用程式以進行連接。</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>已添加 Apple 登入方式</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>應用獎金</value>
@@ -188,6 +225,9 @@
     <value>您確定要刪除您的帳戶嗎？</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>確定要移除 {} 作為登入方式嗎？</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>你確定要移除這個錢包嗎？</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -195,6 +235,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>認證碼</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>認證碼 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>創建認證碼</value>
@@ -386,6 +432,10 @@
     <value>訂閱即表示您同意 URnetwork 的[條款和服務](https://ur.io/terms)和[隱私政策](https://ur.io/privacy)</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>繞過 VPN</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>取消</value>
     <comment>Call to action</comment>
@@ -405,6 +455,10 @@
   <data name="change_network_api_title" xml:space="preserve">
     <value>更改網絡 API</value>
     <comment>Title of the network API selector dialog.</comment>
+  </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>輕按編輯圖示即可更改網絡名稱</value>
+    <comment>A description of the action to change the user's network name.</comment>
   </data>
   <data name="change_password" xml:space="preserve">
     <value>更改密碼</value>
@@ -457,6 +511,10 @@
   <data name="claim_multiplier" xml:space="preserve">
     <value>申領倍數</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>領取自訂網絡名稱，取代自動產生的名稱</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>客戶端合約</value>
@@ -518,6 +576,10 @@
     <value>連接</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>連接 Solana 錢包（Phantom 或 Solflare）以將其添加為登入方式。</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>連接錢包</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -566,6 +628,10 @@
     <value>已連接</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>已連接：{}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.other" xml:space="preserve">
     <value>已連接到 {} 個供應商</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -573,6 +639,10 @@
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>正在連接到供應商</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>正在連接錢包...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>連接模式</value>
@@ -614,6 +684,10 @@
     <value>貢獻頻寬</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>已複製！</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>複製</value>
     <comment>Call to action</comment>
@@ -625,6 +699,10 @@
   <data name="copy_client_id" xml:space="preserve">
     <value>複製客戶端 ID</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>複製到剪貼簿</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>無法開啟錢包。請安裝後再試。</value>
@@ -666,6 +744,10 @@
     <value>創建帳戶</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>建立即時帳戶</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>發生錯誤。請再試一次。</value>
     <comment>Call to action</comment>
@@ -673,6 +755,14 @@
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>創建的認證碼將於5分鐘後失效</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>目前 API：{}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>目前連接：{}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>當前推薦網絡</value>
@@ -689,6 +779,18 @@
   <data name="custom_dns" xml:space="preserve">
     <value>自訂 DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>應用程式與 URnetwork 系統服務的組建版本不同。請將兩者更新至同一版本。</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>URnetwork 系統服務版本過舊。請更新後再連接。</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>URnetwork 系統服務未執行。請安裝或啟動該服務，然後再試一次。</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>每日數據餘額：</value>
@@ -717,6 +819,10 @@
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>預設每月獲得 {} GiB。以下是賺取額外頻寬的方法：</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>預設</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>默認</value>
@@ -806,6 +912,10 @@
     <value>DNS over HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>預設安全設定未套用</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>預設安全設定未套用</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -826,6 +936,10 @@
     <value>DNS 設定不可用</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>有適用於 {} 的未套用建議設定</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>正在使用建議的地區設定</value>
     <comment>dns settings</comment>
@@ -833,6 +947,10 @@
   <data name="dns_using_secure" xml:space="preserve">
     <value>正在使用最安全的預設設定</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>完成</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>看不到嗎？</value>
@@ -862,6 +980,10 @@
     <value>編輯裝置名稱</value>
     <comment>device</comment>
   </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>編輯網絡名稱</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
+  </data>
   <data name="edit_profile" xml:space="preserve">
     <value>編輯個人資料</value>
     <comment>Profile</comment>
@@ -890,6 +1012,10 @@
     <value>輸入你的網絡名稱</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>請輸入密碼</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>請輸入 Solana 或 Bittensor 錢包地址</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -900,6 +1026,10 @@
   <data name="enter_balance_code" xml:space="preserve">
     <value>輸入餘額碼</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>請輸入網絡名稱</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>輸入網絡推薦碼</value>
@@ -912,6 +1042,10 @@
   <data name="enter_wallet_address" xml:space="preserve">
     <value>輸入錢包地址</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>更改網絡名稱時發生錯誤</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>抱歉，申領倍數時發生錯誤。</value>
@@ -1053,6 +1187,15 @@
     <value>一般</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>產生</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>要產生復原助記詞嗎？</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>產生助記詞</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>連接</value>
     <comment>Call to action</comment>
@@ -1072,6 +1215,10 @@
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>使用 Google 登入</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>已添加 Google 登入方式</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>知道了</value>
@@ -1109,6 +1256,14 @@
     <value>我同意 URnetwork 的[條款和服務](https://ur.io/terms)和[隱私政策](https://ur.io/privacy)</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>我已儲存助記詞</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>身份密鑰雜湊已複製</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>若問題持續，請透過 [support@ur.io](mailto:support@ur.io) 與我們聯絡，或[加入我們的 Discord](https://discord.com/invite/RUNZXMwPRK) 以獲得直接支援。</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1128,6 +1283,10 @@
   <data name="include_app_description" xml:space="preserve">
     <value>只有已包含的應用程式使用隧道。</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>納入 VPN</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>已包含</value>
@@ -1169,6 +1328,10 @@
     <value>IP 地址</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} 個 IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1205,6 +1368,10 @@
     <value>加入 URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>圖例</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>斷線開關 (Kill switch)</value>
     <comment>Call to action</comment>
@@ -1233,9 +1400,16 @@
     <value>在協議頁面了解更多</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>連結另一種登入帳戶的方式。</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>載入中...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>正在載入登入方式...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>本地</value>
@@ -1272,6 +1446,34 @@
   <data name="local_statistics" xml:space="preserve">
     <value>本地統計</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
+  </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>URnetwork 無法刪除系統位置檔案，因此本機可能仍在回報某個供應商的位置。請啟動 URnetwork 系統服務並關閉此功能，或以管理員身分刪除 /etc/geolocation。</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>它並不能涵蓋所有情況。Chrome 和 KDE Plasma 從不向 GeoClue 查詢，任何自行根據你的 IP 位址推斷位置的應用程式也不受影響。如果系統未能快速回應，Firefox 會改用它自己的查詢。</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>透過 GeoClue 向系統要求位置的應用程式 — 包括 GNOME 的「設定」和「地圖」、Firefox，以及沙盒化的 Flatpak 和 Snap 應用程式 — 會回報供應商的位置，而不是你的位置。</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>已就緒。開啟切換開關，即可將已連接供應商的位置回報為本機位置。</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>安裝 GeoClue 2.7 或更新版本。並非所有系統都內建它，而且 Ubuntu 22.04 和 Debian 12 隨附的是無法實現此功能的舊版本。</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>安裝 URnetwork 系統服務。系統位置檔案位於 /etc 下，因此必須由特權輔助程式寫入 — URnetwork 絕不會要求你以管理員身分執行應用程式本身。</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>保持 GeoClue 的靜態位置來源處於啟用狀態。它預設是開啟的；如果你更改過，請檢查 /etc/geoclue/geoclue.conf。</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
   </data>
   <data name="login_client_error" xml:space="preserve">
     <value>驗證客戶端時發生錯誤。請再試一次。</value>
@@ -1311,17 +1513,105 @@
     <value>設為默認</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>管理應用程式</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>管理訂閱</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="max_n" xml:space="preserve">
+    <value>最大 {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
   </data>
   <data name="member" xml:space="preserve">
     <value>會員</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="method" xml:space="preserve">
+    <value>方式</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>{}分鐘前</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
+  </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>正在與 {} 同步</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>只有此瀏覽器中的網頁會看到更改後的位置。您裝置的位置不會改變。</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>應用程式能夠識別出位置是模擬的。銀行、召車、外賣和部分遊戲應用程式在此功能開啟期間可能拒絕運作。</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>這會更改裝置上所有應用程式看到的位置，而不僅是 URnetwork。</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>網站能夠識別出位置是模擬的，並且可能拒絕運作。</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>在關閉開發人員選項、取消選取 URnetwork 或解除安裝應用程式之前，請先在 URnetwork 中關閉此功能——否則裝置位置可能會一直停留在模擬位置，直到重新啟動。</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>URnetwork 無法移除模擬位置。請在開發人員選項中重新選取 URnetwork 並關閉此功能，或重新啟動裝置。</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>啟用後，此裝置上的應用程式看到的將是你連接時間最長的供應商的位置，而不是你的真實位置。</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>同步裝置位置</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>需要設定</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>打開「關於手機」</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>打開開發人員選項</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>打開位置設定</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>已就緒。開啟開關即可將裝置位置與連接時間最長的供應商同步。</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>裝置位置同步</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>開啟開發人員選項：打開「關於手機」，然後連續輕按「版本號碼」七次。</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>在系統設定中開啟「位置」，以便應用程式能夠接收位置。</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>在開發人員選項中，輕按「選取模擬位置應用程式」，然後選擇 URnetwork。</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>正在等待供應商位置</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
   </data>
   <data name="monthly" xml:space="preserve">
     <value>按月</value>
@@ -1331,9 +1621,17 @@
     <value>最受歡迎</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>多個 IP</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>乘數</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/日</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>名稱</value>
@@ -1358,6 +1656,10 @@
   <data name="net_provided" xml:space="preserve">
     <value>淨提供</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>網絡</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>留空則從網絡網域衍生。</value>
@@ -1432,6 +1734,10 @@
     <value>網絡收益</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>網絡名稱已更改為 {}</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>不可用。必須與現有網絡至少有 3 個字元不同。請使其更獨特或更長。</value>
     <comment>Call to action</comment>
@@ -1463,6 +1769,10 @@
   <data name="network_name_unavailable" xml:space="preserve">
     <value>網絡名稱不可用</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>您還有 {} 部其他裝置在線</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>網絡對等節點</value>
@@ -1507,6 +1817,14 @@
   <data name="no_blocked_locations" xml:space="preserve">
     <value>沒有被屏蔽的位置</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>無需電郵、電話或密碼。你的帳戶由助記詞保護。</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>找不到已安裝的應用程式。（Store 應用程式不會列出。）</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>找不到任何位置</value>
@@ -1633,6 +1951,10 @@
     <value>密碼長度必須至少為 12 個字元</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>在此貼上你的 24 個單詞助記詞</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>使用 Solana 錢包付款</value>
     <comment>Call to action</comment>
@@ -1669,6 +1991,18 @@
     <value>每週日 00:00 UTC 進行支付，並且需要達到最低 USDC 門檻。</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>1 個對等節點</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d 個對等節點</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>未連接時無法發現對等節點</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>待處理</value>
     <comment>Call to action</comment>
@@ -1680,6 +2014,22 @@
   <data name="pending_payout" xml:space="preserve">
     <value>待處理的支付</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>固定到單一供應商</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>將此應用程式的所有連接保持在同一個供應商上，使其 API 和圖片共用同一個 IP 地址。適用於內容無法透過 VPN 載入的應用程式</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>已固定</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>佔位符</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>計劃</value>
@@ -1712,6 +2062,22 @@
   <data name="points_breakdown" xml:space="preserve">
     <value>積分明細</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>後量子加密</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>已啟用後備（暫時）</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>後量子身份</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>你的身份密鑰儲存在本裝置。如果任何對等節點的密鑰與本機儲存的密鑰不同，即表示網絡營運者不可信。</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>價格將於結帳時顯示。</value>
@@ -1749,6 +2115,18 @@
     <value>提供模式</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0}小時{1}分鐘</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{}分鐘</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{}秒</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>供應商合約</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1759,6 +2137,26 @@
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} 個供應商</value>
+  </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>供應商身份</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>位置未知</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>未連接任何供應商</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>供應商位置</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>連接後才能查看供應商詳情</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>供應商統計</value>
@@ -1782,7 +2180,7 @@
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>我們尚未能確認您的購買。如果您已完成結帳，您的計劃將在幾分鐘內自動更新——無需再次購買。</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>退出</value>
@@ -1839,6 +2237,10 @@
   <data name="refer_a_friend_30_gib_month" xml:space="preserve">
     <value>推薦朋友 = +30 GiB/月</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
+  </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>推薦朋友 = +3 GiB/日</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
   </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>推薦並賺取</value>
@@ -1916,6 +2318,9 @@
     <value>推薦</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>重新產生助記詞</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>地區</value>
     <comment>Provider list group title for regions</comment>
@@ -1967,6 +2372,9 @@
   <data name="remove_rule" xml:space="preserve">
     <value>移除規則</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>移除此登入方式？</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>移除錢包</value>
@@ -2024,6 +2432,10 @@
     <value>規則</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>2 倍免費流量和推薦流量</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>儲存</value>
     <comment>Profile</comment>
@@ -2052,6 +2464,10 @@
     <value>{}秒前</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>保護你的帳戶</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>查看所有
 世界內容</value>
@@ -2061,6 +2477,10 @@
     <value>使用 URnetwork 查看所有世界內容</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>助記詞</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker 權杖已驗證！</value>
     <comment>Call to action</comment>
@@ -2068,6 +2488,10 @@
   <data name="select_country_to_block" xml:space="preserve">
     <value>選擇要屏蔽的國家</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>地球圖示：選擇供應商位置</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>已選位置</value>
@@ -2157,6 +2581,10 @@
     <value>登入</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>登入</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>使用 dGEN1 登入</value>
     <comment>Call to action</comment>
@@ -2164,6 +2592,13 @@
   <data name="sign_in_failed" xml:space="preserve">
     <value>登入失敗</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>登入方式已成功添加</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>登入方式</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>使用認證碼登入</value>
@@ -2173,13 +2608,172 @@
     <value>使用 Google 登入</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>使用 Google 登入，將其添加為登入方式。</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>使用助記詞登入</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>使用您的 Apple ID 登入，將其添加為登入方式。</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>登出</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>使用錢包簽署</value>
+    <comment>Button text for signing in with a wallet.</comment>
+  </data>
   <data name="signed_in" xml:space="preserve">
     <value>已登入</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>平均可靠性</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>客戶端</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>連接選項</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>連接後可查看即時活動</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>國家</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>國家乘數</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>固定 IP</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>管理訂閱</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>自動</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>串流</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>網頁</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>乘數</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>暫無流量</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>計劃</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>代理</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>可靠性權重</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>強匿名化</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>傳輸</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>設定擴充功能以進行連接</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>擴充功能已登入其他網絡：</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork 透過擴充功能為此瀏覽器轉送流量。請安裝擴充功能以開始連接。</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>安裝擴充功能以進行連接</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>已偵測到擴充功能並已登入</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>擴充功能已安裝但尚未登入。請使用您的網絡進行設定以便連接。</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>準備連接</value>
+    <comment>Connect: disconnected status line</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>安裝應用程式</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>您目前使用 Free 計劃。升級至 Pro 可獲得更多流量和功能。</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>Free 計劃</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>在 {platform} 中管理</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>在 App Store 中管理</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>在 Google Play 中管理</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>其他平台</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>您的 Pro 訂閱透過 {platform} 計費。如需更改或取消，請透過 {platform} 管理您的訂閱。</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>您的 Pro 訂閱透過 App Store 計費。如需更改或取消，請在 App Store 中管理您的訂閱。</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>您的 Pro 訂閱透過 Google Play 計費。如需更改或取消，請在 Google Play 中管理您的訂閱。</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>您的 Pro 訂閱透過 Stripe 計費。您可以在下方隨時更新付款資料或取消訂閱。</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>請確保您的錢包中有足夠的 USDC 資金。在某些情況下，如果錢包資金不足，付款請求可能會失敗。</value>
@@ -2325,6 +2919,14 @@
     <value>您要斷開與 {} 的連接並切換帳戶嗎？</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>將裝置位置與連接時間最長的供應商同步</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>將裝置位置與供應商同步</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>系統</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2365,9 +2967,21 @@
     <value>這些錢包與URnetwork無關，也不受URnetwork控制。我們將收益發送到已連接的錢包中。</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ 這是你唯一一次看到它的機會。</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>此地區</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>已連接</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>已斷開連接</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>登入</value>
@@ -2443,6 +3057,10 @@
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>試用訪客模式</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>無法啟動連接</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>未加密 DNS</value>
@@ -2554,6 +3172,10 @@
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>USDC 錢包地址</value>
   </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>使用最穩定的供應商</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
+  </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>使用建議設定</value>
     <comment>dns settings</comment>
@@ -2637,9 +3259,17 @@
     <value>版本與組建資訊</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>經由 {}</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>等待批准</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>正在等待錢包簽署...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>錢包</value>
@@ -2679,6 +3309,10 @@
     <value>錢包登入失敗</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>已添加錢包登入方式</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>錢包</value>
     <comment>Wallets Screen</comment>
@@ -2711,6 +3345,10 @@
     <value>使用 URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>請抄寫下來並存放在安全的地方。一旦遺失，你將無法再存取你的帳戶。</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>按年</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -2722,6 +3360,16 @@
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>你每月獲得30 GiB，永久有效</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>你終身獲得 3 GiB/日</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>您還有 1 部其他裝置在線</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>您還有 {} 部其他裝置在線</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>您將解鎖更快的速度，並優先體驗新功能，如強大的反審查措施和數據控制。</value>
@@ -2747,6 +3395,10 @@
     <value>你的朋友每月獲得30 GiB，永久有效</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>你的朋友終身獲得 3 GiB/日</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>你的購買需要獲得批准才能完成。一旦通過，UR Pro 會自動開啟 — 無需重新購買。</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -2754,5 +3406,9 @@
   <data name="your_referral_link" xml:space="preserve">
     <value>你的推薦連結</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>你的助記詞</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>

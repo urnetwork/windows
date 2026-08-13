@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>새 시드 문구가 생성되어 계정에 연결됩니다.</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>시드 문구가 있으면 접근 권한을 잃어도 계정을 복구할 수 있습니다.</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>시드 문구가 있으면 접근 권한을 잃어도 계정을 복구할 수 있습니다. 안전한 곳에 보관하세요.</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>인증 코드를 받으려면 계정을 만들고 {link}ur.io{/link}에 로그인하세요. 계정 -&gt; 설정 -&gt; 인증 코드 생성/복사 -&gt; 붙여넣기 -&gt; 완료!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>추가</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>로그인 방법 추가</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>차단된 위치 추가</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>추가 보상을 얻으려면 추천 코드를 추가하세요</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>로그인 방법 추가</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>로그인 방법 추가</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>지갑 추가</value>
@@ -144,6 +165,10 @@
     <value>{}은(는) VPN으로 라우팅됩니다</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>{}은(는) 하나의 제공업체만 사용합니다</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>제외 모드 활성 — 제외된 앱은 VPN 우회</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>앱 분할 규칙</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>분할 앱 0개</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>이 앱이 설치된 URnetwork 시스템 서비스보다 오래된 버전입니다. 연결하려면 앱을 업데이트하세요.</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>Apple 로그인 방법이 추가되었습니다</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>보너스 적용</value>
@@ -188,6 +225,9 @@
     <value>정말로 계정을 삭제하시겠습니까?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>{}을(를) 로그인 방법에서 제거하시겠습니까?</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>이 지갑을 삭제하시겠습니까?</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -195,6 +235,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>인증 코드</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>인증 코드 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>인증 코드 생성</value>
@@ -386,6 +432,10 @@
     <value>구독하면 URnetwork의 [이용약관](https://ur.io/terms) 및 [개인정보 보호정책](https://ur.io/privacy)에 동의하는 것입니다.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>VPN 우회</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>취소</value>
     <comment>Call to action</comment>
@@ -405,6 +455,10 @@
   <data name="change_network_api_title" xml:space="preserve">
     <value>네트워크 API 변경</value>
     <comment>Title of the network API selector dialog.</comment>
+  </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>수정 아이콘을 탭하여 네트워크 이름을 변경하세요</value>
+    <comment>A description of the action to change the user's network name.</comment>
   </data>
   <data name="change_password" xml:space="preserve">
     <value>비밀번호 변경</value>
@@ -457,6 +511,10 @@
   <data name="claim_multiplier" xml:space="preserve">
     <value>배율 받기</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>자동 생성된 이름을 대체할 사용자 지정 네트워크 이름을 만드세요</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>클라이언트 계약</value>
@@ -518,6 +576,10 @@
     <value>연결</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>Solana 지갑(Phantom 또는 Solflare)을 연결하여 로그인 방법으로 추가하세요.</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>지갑 연결</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -566,6 +628,10 @@
     <value>연결됨</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>연결됨: {}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.other" xml:space="preserve">
     <value>{}개의 제공업체에 연결됨</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -573,6 +639,10 @@
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>제공업체에 연결 중</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>지갑에 연결 중...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>연결 모드</value>
@@ -614,6 +684,10 @@
     <value>대역폭 제공</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>복사되었습니다!</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>복사</value>
     <comment>Call to action</comment>
@@ -625,6 +699,10 @@
   <data name="copy_client_id" xml:space="preserve">
     <value>클라이언트 ID 복사</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>클립보드에 복사</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>지갑을 열 수 없습니다. 설치 후 다시 시도해 주세요.</value>
@@ -666,6 +744,10 @@
     <value>계정 만들기</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>즉시 계정 만들기</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>문제가 발생했습니다. 다시 시도해 주세요.</value>
     <comment>Call to action</comment>
@@ -673,6 +755,14 @@
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>생성된 인증 코드는 5분 후 만료됩니다</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>현재 API: {}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>현재 연결: {}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>현재 추천 네트워크</value>
@@ -689,6 +779,18 @@
   <data name="custom_dns" xml:space="preserve">
     <value>사용자 지정 DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>앱과 URnetwork 시스템 서비스의 빌드가 다릅니다. 둘 다 같은 버전으로 업데이트하세요.</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>URnetwork 시스템 서비스가 오래되었습니다. 연결하려면 업데이트하세요.</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>URnetwork 시스템 서비스가 실행되고 있지 않습니다. 설치하거나 시작한 후 다시 시도하세요.</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>일일 데이터 잔액:</value>
@@ -717,6 +819,10 @@
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>기본적으로 매월 {} GiB를 받습니다. 추가 대역폭을 얻는 방법은 다음과 같습니다:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>기본값</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>기본값</value>
@@ -806,6 +912,10 @@
     <value>DNS over HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>기본 안전 설정이 적용되어 있지 않습니다</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>기본 안전 설정이 적용되어 있지 않습니다</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -826,6 +936,10 @@
     <value>DNS 설정을 사용할 수 없습니다</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>{}에 대한 권장 설정이 적용되지 않았습니다</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>지역 권장 설정 사용 중</value>
     <comment>dns settings</comment>
@@ -833,6 +947,10 @@
   <data name="dns_using_secure" xml:space="preserve">
     <value>가장 안전한 기본 설정 사용 중</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>완료</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>메일이 보이지 않나요?</value>
@@ -862,6 +980,10 @@
     <value>기기 이름 편집</value>
     <comment>device</comment>
   </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>네트워크 이름 편집</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
+  </data>
   <data name="edit_profile" xml:space="preserve">
     <value>프로필 수정</value>
     <comment>Profile</comment>
@@ -890,6 +1012,10 @@
     <value>네트워크 이름을 입력하세요</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>비밀번호를 입력하세요</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>Solana 또는 Bittensor 지갑 주소를 입력하세요</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -900,6 +1026,10 @@
   <data name="enter_balance_code" xml:space="preserve">
     <value>잔액 코드를 입력하세요</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>네트워크 이름 입력</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>네트워크 추천 코드를 입력하세요</value>
@@ -912,6 +1042,10 @@
   <data name="enter_wallet_address" xml:space="preserve">
     <value>지갑 주소 입력</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>네트워크 이름 변경 중 오류가 발생했습니다</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>죄송합니다. 배율을 받는 중 오류가 발생했습니다.</value>
@@ -1053,6 +1187,15 @@
     <value>일반</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>생성</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>복구용 시드 문구를 생성할까요?</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>시드 문구 생성</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>연결하기</value>
     <comment>Call to action</comment>
@@ -1072,6 +1215,10 @@
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Google로 로그인</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>Google 로그인 방법이 추가되었습니다</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>확인</value>
@@ -1109,6 +1256,14 @@
     <value>URnetwork의 [이용약관](https://ur.io/terms) 및 [개인정보 보호정책](https://ur.io/privacy)에 동의합니다.</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>시드 문구를 저장했습니다</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>신원 키 해시가 복사되었습니다</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>문제가 지속되면 [support@ur.io](mailto:support@ur.io)로 연락하시거나 직접 지원을 위해 [Discord에 가입](https://discord.com/invite/RUNZXMwPRK)해 주세요.</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1128,6 +1283,10 @@
   <data name="include_app_description" xml:space="preserve">
     <value>포함된 앱만 터널을 사용합니다.</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>VPN에 포함</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>포함</value>
@@ -1169,6 +1328,10 @@
     <value>IP 주소</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>IP {}개</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1205,6 +1368,10 @@
     <value>가입하기 URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>범례</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>킬 스위치</value>
     <comment>Call to action</comment>
@@ -1233,9 +1400,16 @@
     <value>프로토콜 페이지에서 자세히 알아보기</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>계정에 로그인할 다른 방법을 연결하세요.</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>로딩 중...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>로그인 방법 로딩 중...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>로컬</value>
@@ -1272,6 +1446,34 @@
   <data name="local_statistics" xml:space="preserve">
     <value>로컬 통계</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
+  </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>URnetwork에서 시스템 위치 파일을 삭제하지 못했습니다. 따라서 이 컴퓨터가 여전히 제공업체의 위치를 보고할 수 있습니다. URnetwork 시스템 서비스를 시작한 뒤 이 기능을 끄거나, 관리자 권한으로 /etc/geolocation을 삭제하세요.</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>모든 경우를 처리하지는 않습니다. Chrome과 KDE Plasma는 GeoClue에 전혀 질의하지 않으며, IP 주소로 위치를 자체적으로 알아내는 앱에는 영향을 주지 않습니다. 시스템이 빠르게 응답하지 않으면 Firefox는 자체 조회로 대체합니다.</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>GeoClue를 통해 시스템에 위치를 요청하는 앱은 — GNOME 설정 및 지도, Firefox, 샌드박스로 실행되는 Flatpak 및 Snap 앱 등 — 사용자의 위치 대신 제공업체의 위치를 보고합니다.</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>준비되었습니다. 토글을 켜면 연결된 제공업체의 위치가 이 컴퓨터의 위치로 보고됩니다.</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>GeoClue 2.7 이상을 설치하세요. 모든 시스템에 있는 것은 아니며, Ubuntu 22.04와 Debian 12에는 이 기능을 지원하지 않는 이전 버전이 포함되어 있습니다.</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>URnetwork 시스템 서비스를 설치하세요. 시스템 위치 파일은 /etc 아래에 있어 권한 있는 도우미가 작성해야 합니다 — URnetwork는 앱 자체를 관리자 권한으로 실행하도록 요구하지 않습니다.</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>GeoClue의 정적 위치 소스를 사용 설정된 상태로 두세요. 기본적으로 켜져 있으며, 변경한 적이 있다면 /etc/geoclue/geoclue.conf를 확인하세요.</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
   </data>
   <data name="login_client_error" xml:space="preserve">
     <value>클라이언트 인증 중 문제가 발생했습니다. 다시 시도해 주세요.</value>
@@ -1311,17 +1513,105 @@
     <value>기본값으로 설정</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>앱 관리</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>구독 관리</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="max_n" xml:space="preserve">
+    <value>최대 {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
   </data>
   <data name="member" xml:space="preserve">
     <value>회원</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="method" xml:space="preserve">
+    <value>방법</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>{}분 전</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
+  </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>{}와(과) 동기화 중</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>변경된 위치는 이 브라우저의 페이지에만 표시됩니다. 기기의 위치는 그대로입니다.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>앱은 위치가 모의 위치임을 감지할 수 있습니다. 은행, 차량 호출, 배달 및 일부 게임 앱은 이 기능이 켜져 있는 동안 작동을 거부할 수 있습니다.</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>이 설정은 URnetwork뿐만 아니라 기기의 모든 앱에 보고되는 위치를 변경합니다.</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>사이트는 위치가 모의 위치임을 감지할 수 있으며 작동을 거부할 수 있습니다.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>개발자 옵션을 끄거나 URnetwork 선택을 해제하거나 앱을 제거하기 전에 URnetwork에서 이 기능을 먼저 끄세요. 그러지 않으면 기기를 다시 시작할 때까지 기기 위치가 고정된 상태로 남을 수 있습니다.</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>URnetwork가 모의 위치를 제거하지 못했습니다. 개발자 옵션에서 URnetwork를 다시 선택한 후 이 기능을 끄거나 기기를 다시 시작하세요.</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>사용 설정하면 이 기기의 앱에 실제 위치 대신 가장 오래 연결된 제공업체의 위치가 표시됩니다.</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>기기 위치 동기화</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>설정 필요</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>'휴대전화 정보' 열기</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>개발자 옵션 열기</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>위치 설정 열기</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>준비되었습니다. 토글을 켜면 기기 위치가 가장 오래 연결된 제공업체와 동기화됩니다.</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>기기 위치 동기화</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>개발자 옵션을 켭니다. '휴대전화 정보'를 열고 '빌드 번호'를 일곱 번 탭하세요.</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>앱이 위치를 수신할 수 있도록 시스템 설정에서 '위치'를 켜세요.</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>개발자 옵션에서 '모의 위치 앱 선택'을 탭한 다음 URnetwork를 선택하세요.</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>제공업체 위치를 기다리는 중</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
   </data>
   <data name="monthly" xml:space="preserve">
     <value>월간</value>
@@ -1331,9 +1621,17 @@
     <value>가장 인기 있음</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>여러 IP</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>배수</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/일</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>이름</value>
@@ -1358,6 +1656,10 @@
   <data name="net_provided" xml:space="preserve">
     <value>제공된 넷</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>네트워크</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>비워 두면 네트워크 도메인에서 파생됩니다.</value>
@@ -1431,6 +1733,10 @@
     <value>네트워크 수익</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>네트워크 이름이 {}(으)로 변경되었습니다</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>사용할 수 없습니다. 기존 네트워크와 최소 3자 이상 달라야 합니다. 고유하게 만들거나 더 길게 만드세요.</value>
     <comment>Call to action</comment>
@@ -1462,6 +1768,10 @@
   <data name="network_name_unavailable" xml:space="preserve">
     <value>네트워크 이름을 사용할 수 없습니다</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>다른 기기 {}대가 온라인 상태입니다</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>네트워크 피어</value>
@@ -1506,6 +1816,14 @@
   <data name="no_blocked_locations" xml:space="preserve">
     <value>차단된 위치 없음</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>이메일, 전화번호, 비밀번호가 필요 없습니다. 계정은 시드 문구로 보호됩니다.</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>설치된 앱을 찾을 수 없습니다. (Store 앱은 표시되지 않습니다.)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>위치를 찾을 수 없습니다</value>
@@ -1632,6 +1950,10 @@
     <value>비밀번호는 최소 12자 이상이어야 합니다</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>24단어 시드 문구를 여기에 붙여넣으세요</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>Solana 지갑으로 결제</value>
     <comment>Call to action</comment>
@@ -1668,6 +1990,18 @@
     <value>지급은 매주 일요일 00:00 UTC에 이루어지며, 최소 USDC 기준을 충족해야 합니다.</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>피어 1개</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>피어 %d개</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>연결될 때까지 피어 검색이 비활성화됩니다</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>대기 중</value>
     <comment>Call to action</comment>
@@ -1679,6 +2013,22 @@
   <data name="pending_payout" xml:space="preserve">
     <value>보류 중인 지급</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>하나의 제공업체에 고정</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>이 앱의 모든 연결을 하나의 제공업체로 유지하여 API와 이미지가 같은 IP 주소를 사용하도록 합니다. VPN을 통해 콘텐츠가 로드되지 않는 앱에 사용하세요</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>고정됨</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>자리표시자</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>플랜</value>
@@ -1711,6 +2061,22 @@
   <data name="points_breakdown" xml:space="preserve">
     <value>포인트 내역</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>포스트 양자 암호화</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>폴백 사용 중 (임시)</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>포스트 양자 신원</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>신원 키는 이 기기에 로컬로 저장됩니다. 어떤 피어의 키가 로컬에 저장된 키와 다르게 표시되면 네트워크 운영자를 신뢰할 수 없다는 뜻입니다.</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>가격은 결제 시 표시됩니다.</value>
@@ -1748,6 +2114,18 @@
     <value>제공 모드</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0}시간 {1}분</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{}분</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{}초</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>제공자 계약</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1758,6 +2136,26 @@
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{}개 제공자</value>
+  </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>제공업체 신원</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>위치 알 수 없음</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>연결된 제공업체가 없습니다</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>제공업체 위치</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>연결될 때까지 제공업체 세부 정보를 사용할 수 없습니다</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>제공자 통계</value>
@@ -1781,7 +2179,7 @@
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>아직 구매를 확인하지 못했습니다. 결제를 완료하셨다면 몇 분 안에 플랜이 자동으로 업데이트됩니다. 다시 구매할 필요가 없습니다.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>종료</value>
@@ -1838,6 +2236,10 @@
   <data name="refer_a_friend_30_gib_month" xml:space="preserve">
     <value>친구 추천 = +30 GiB/월</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
+  </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>친구 추천 = +3 GiB/일</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
   </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>추천하고 수익 얻기</value>
@@ -1915,6 +2317,9 @@
     <value>추천</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>시드 문구 다시 생성</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>지역</value>
     <comment>Provider list group title for regions</comment>
@@ -1966,6 +2371,9 @@
   <data name="remove_rule" xml:space="preserve">
     <value>규칙 제거</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>이 로그인 방법을 제거할까요?</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>지갑 제거</value>
@@ -2023,6 +2431,10 @@
     <value>규칙</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>무료 데이터와 추천 데이터 2배</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>저장</value>
     <comment>Profile</comment>
@@ -2051,6 +2463,10 @@
     <value>{}초 전</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>계정 보호하기</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>전 세계의
 콘텐츠 보기</value>
@@ -2060,6 +2476,10 @@
     <value>URnetwork로 전 세계의 콘텐츠 보기</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>시드 문구</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker 토큰이 인증되었습니다!</value>
     <comment>Call to action</comment>
@@ -2067,6 +2487,10 @@
   <data name="select_country_to_block" xml:space="preserve">
     <value>차단할 국가 선택</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>지구본: 제공업체 위치 선택</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>선택한 위치</value>
@@ -2156,6 +2580,10 @@
     <value>로그인</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>로그인</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>dGEN1로 로그인</value>
     <comment>Call to action</comment>
@@ -2163,6 +2591,13 @@
   <data name="sign_in_failed" xml:space="preserve">
     <value>로그인 실패</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>로그인 방법이 성공적으로 추가되었습니다</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>로그인 방법</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>코드로 로그인</value>
@@ -2172,13 +2607,172 @@
     <value>Google로 로그인</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>Google로 로그인하여 로그인 방법으로 추가하세요.</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>시드 문구로 로그인</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>Apple ID로 로그인하여 로그인 방법으로 추가하세요.</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>로그아웃</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>지갑으로 서명</value>
+    <comment>Button text for signing in with a wallet.</comment>
+  </data>
   <data name="signed_in" xml:space="preserve">
     <value>로그인됨</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>평균 신뢰성</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>클라이언트</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>연결 옵션</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>연결하면 실시간 활동을 볼 수 있습니다</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>국가</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>국가별 배수</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>고정 IP</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>구독 관리</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>자동</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>스트리밍</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>웹</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>배수</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>아직 트래픽 없음</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>플랜</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>프록시</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>신뢰성 가중치</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>강력한 익명화</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>전송량</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>연결하려면 확장 프로그램을 설정하세요</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>확장 프로그램이 다른 네트워크에 로그인되어 있습니다:</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork는 확장 프로그램을 통해 이 브라우저를 라우팅합니다. 연결을 시작하려면 설치하세요.</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>연결하려면 확장 프로그램을 설치하세요</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>확장 프로그램 감지됨, 로그인 완료</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>확장 프로그램이 설치되어 있지만 로그아웃 상태입니다. 연결하려면 내 네트워크로 설정하세요.</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>연결 준비 완료</value>
+    <comment>Connect: disconnected status line</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>앱 설치</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>현재 Free 플랜을 사용 중입니다. 더 많은 데이터와 기능을 원하시면 Pro로 업그레이드하세요.</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>Free 플랜</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>{platform}에서 관리</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>App Store에서 관리</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>Google Play에서 관리</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>다른 플랫폼</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>Pro 구독은 {platform}에서 청구됩니다. 변경하거나 취소하려면 {platform}에서 구독을 관리하세요.</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>Pro 구독은 App Store에서 청구됩니다. 변경하거나 취소하려면 App Store에서 구독을 관리하세요.</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>Pro 구독은 Google Play에서 청구됩니다. 변경하거나 취소하려면 Google Play에서 구독을 관리하세요.</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>Pro 구독은 Stripe를 통해 청구됩니다. 아래에서 언제든지 결제 정보를 업데이트하거나 구독을 취소할 수 있습니다.</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>지갑에 충분한 USDC 자금이 있는지 확인하세요. 경우에 따라 지갑에 자금이 부족하면 결제 요청이 실패할 수 있습니다.</value>
@@ -2324,6 +2918,14 @@
     <value>{}에서 연결을 끊고 계정을 전환하시겠습니까?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>기기 위치를 가장 오래 연결된 제공업체와 동기화</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>기기 위치를 제공업체와 동기화</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>시스템</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2364,9 +2966,21 @@
     <value>이 지갑들은 URnetwork와 제휴되거나 통제되지 않습니다. 수익금은 연결된 지갑으로 보내드립니다.</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ 지금 이 순간에만 확인할 수 있습니다.</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>이 지역</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>연결됨</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>연결 끊김</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>로그인</value>
@@ -2442,6 +3056,10 @@
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>게스트 모드 시도</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>연결을 시작할 수 없습니다</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>암호화되지 않은 DNS</value>
@@ -2553,6 +3171,10 @@
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>USDC 월렛 주소</value>
   </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>가장 안정적인 제공업체를 사용합니다</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
+  </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>권장 설정 사용</value>
     <comment>dns settings</comment>
@@ -2636,9 +3258,17 @@
     <value>버전 및 빌드 정보</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>{} 경유</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>승인 대기 중</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>지갑 서명을 기다리는 중...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>지갑</value>
@@ -2678,6 +3308,10 @@
     <value>지갑 로그인 실패</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>지갑 로그인 방법이 추가되었습니다</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>지갑</value>
     <comment>Wallets Screen</comment>
@@ -2710,6 +3344,10 @@
     <value>URnetwork와 함께</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>적어서 안전한 곳에 보관하세요. 잃어버리면 계정에 접근할 수 없게 됩니다.</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>연간</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -2721,6 +3359,16 @@
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>평생 30 GiB/월을 받습니다</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>회원님은 평생 3 GiB/일을 받습니다</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>다른 기기 1대가 온라인 상태입니다</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>다른 기기 {}대가 온라인 상태입니다</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>더 빠른 속도를 얻고, 강력한 검열 방지 조치와 데이터 제어와 같은 새로운 기능을 가장 먼저 이용하실 수 있습니다.</value>
@@ -2746,6 +3394,10 @@
     <value>친구도 평생 30 GiB/월을 받습니다</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>친구는 평생 3 GiB/일을 받습니다</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>구매를 완료하려면 승인이 필요합니다. 승인이 완료되면 UR Pro가 자동으로 켜지므로 다시 구매하지 않아도 됩니다.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -2753,5 +3405,9 @@
   <data name="your_referral_link" xml:space="preserve">
     <value>추천 링크</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>내 시드 문구</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>

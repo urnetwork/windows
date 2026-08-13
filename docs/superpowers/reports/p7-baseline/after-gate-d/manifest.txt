@@ -1,8 +1,0 @@
-﻿label       : after-gate-d
-captured    : 2026-08-08T20:49:08.4094899-07:00
-host        : MSI
-user        : ryanm
-elevated    : True
-urnetworkd  : 0 running
-tun present : False
-marker      : False

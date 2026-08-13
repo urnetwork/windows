@@ -14,6 +14,9 @@ vcpkg_installed/
 # vendored binaries (fetched by tools/fetch-deps.ps1)
 third_party/urnetwork-sdk/*/
 third_party/wintun/bin/
+# pinned upstream zips cached across builds (fetch-deps.ps1 re-verifies the
+# sha256 every run, so the cache is a speed/reliability win, not a trust one)
+third_party/cache/
 third_party/wintun/wintun.h
 third_party/wintun/wintun-license.txt
 third_party/vendor-include/

@@ -3,6 +3,7 @@
 
 #include "SubscriptionBalance.h"
 
+#include <algorithm>
 #include <chrono>
 
 #include "Log.h"
@@ -10,9 +11,11 @@
 namespace urnw {
 namespace {
 
+// Monotonic, not wall-clock: this feeds the confirmation budget, which must
+// never jump because the system clock was adjusted.
 int64_t NowMillis() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
+             std::chrono::steady_clock::now().time_since_epoch())
       .count();
 }
 
@@ -20,8 +23,13 @@ int64_t NowMillis() {
 constexpr auto kBackgroundInterval = std::chrono::seconds(30);
 // the post-checkout confirmation poll (macOS pollingInterval)
 constexpr auto kConfirmInterval = std::chrono::seconds(5);
-// give up confirming after this long (macOS maxPollingDuration)
-constexpr int64_t kConfirmDeadlineMillis = 120 * 1000;
+// give up confirming after this much ACTIVE polling time (macOS
+// maxPollingDuration). The budget only burns while the 5s poll is actually
+// running: focus loss pauses both, so however long the user spends typing card
+// details in the browser, they always come back to a poll that still has its
+// full remaining budget — never a TimedOut screen that ran out while nothing
+// was being fetched.
+constexpr int64_t kConfirmBudgetMillis = 120 * 1000;
 
 }  // namespace
 
@@ -97,7 +105,7 @@ void SubscriptionBalanceStore::SetVisible(bool visible) {
   visible_ = visible;
   if (!visible_) {
     StopBackground();
-    if (confirmTimer_) confirmTimer_.Stop();
+    PauseConfirmationPolling();
     return;
   }
   if (!started_) return;
@@ -112,24 +120,38 @@ void SubscriptionBalanceStore::SetVisible(bool visible) {
 void SubscriptionBalanceStore::StartConfirmationPolling() {
   if (confirming_) return;
   StopBackground();
-  // a fresh confirmation attempt: clear any previous give-up, arm the deadline
+  // a fresh confirmation attempt: clear any previous give-up, arm a full budget
   timedOut_ = false;
   confirming_ = true;
-  deadlineMillis_ = NowMillis() + kConfirmDeadlineMillis;
+  confirmRemainingMillis_ = kConfirmBudgetMillis;
   Publish();
   ResumeConfirmationPolling();
 }
 
 void SubscriptionBalanceStore::ResumeConfirmationPolling() {
   if (!started_ || !visible_ || !confirming_) return;
-  if (NowMillis() >= deadlineMillis_) {
+  if (confirmRemainingMillis_ <= 0) {
     StopConfirmation(/*timedOut=*/true);
     EnsureBackgroundPolling();
     Publish();
     return;
   }
+  // spend the remaining budget from now; PauseConfirmationPolling banks
+  // whatever is left when focus loss stops the timer
+  deadlineMillis_ = NowMillis() + confirmRemainingMillis_;
   if (confirmTimer_ && !confirmTimer_.IsRunning()) confirmTimer_.Start();
+  // an immediate poll, so a payment that completed while the window was
+  // unfocused (the whole point of a hosted checkout) confirms on the first
+  // frame back rather than after one more interval
   Fetch();
+}
+
+void SubscriptionBalanceStore::PauseConfirmationPolling() {
+  // bank the unspent budget: the deadline only exists while the timer runs
+  if (confirming_ && confirmTimer_ && confirmTimer_.IsRunning()) {
+    confirmRemainingMillis_ = std::max<int64_t>(0, deadlineMillis_ - NowMillis());
+  }
+  if (confirmTimer_) confirmTimer_.Stop();
 }
 
 void SubscriptionBalanceStore::ClearTimeout() {

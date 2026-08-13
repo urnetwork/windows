@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>سيتم إنشاء عبارة استرداد جديدة وربطها بحسابك.</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>تتيح لك عبارة الاسترداد استعادة حسابك إذا فقدت إمكانية الوصول.</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>تتيح لك عبارة الاسترداد استعادة حسابك إذا فقدت إمكانية الوصول. احفظها في مكان آمن.</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>للوصول إلى رمز المصادقة الخاص بك، أنشئ حسابًا وسجّل الدخول إلى {link}ur.io{/link}. انتقل إلى الحساب -&gt; الإعدادات -&gt; إنشاء/نسخ رمز المصادقة -&gt; لصق -&gt; أنت جاهز!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>إضافة</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>إضافة طريقة تسجيل دخول</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>إضافة موقع محجوب</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>أضف رمز الإحالة لكسب مكافآت إضافية</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>إضافة طريقة تسجيل دخول</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>إضافة طريقة تسجيل الدخول</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>إضافة محفظة</value>
@@ -144,6 +165,10 @@
     <value>سيتم توجيه {} عبر VPN</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>سيستخدم {} مزودًا واحدًا</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>الاستثناء نشط — التطبيقات المستثناة تتجاوز VPN</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>قواعد تقسيم التطبيقات</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>0 تطبيقات مقسّمة</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>هذا التطبيق أقدم من خدمة نظام URnetwork المثبّتة. حدّث التطبيق للاتصال.</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>تمت إضافة طريقة تسجيل الدخول عبر Apple</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>تطبيق المكافأة</value>
@@ -228,6 +265,9 @@
     <value>هل أنت متأكد أنك تريد حذف حسابك؟</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>هل أنت متأكد أنك تريد إزالة {} كطريقة لتسجيل الدخول؟</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>هل أنت متأكد أنك تريد إزالة هذه المحفظة؟</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -235,6 +275,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>رمز المصادقة</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>رمز المصادقة 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>إنشاء رمز المصادقة</value>
@@ -426,6 +472,10 @@
     <value>بالاشتراك ، أنت توافق على [شروط خدمة] URnetwork (https://ur.io/terms) و [سياسة الخصوصية] (https://ur.io/privacy)</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>تجاوز VPN</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>ألغِ</value>
     <comment>Call to action</comment>
@@ -445,6 +495,10 @@
   <data name="change_network_api_title" xml:space="preserve">
     <value>تغيير API الشبكة</value>
     <comment>Title of the network API selector dialog.</comment>
+  </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>انقر على أيقونة التعديل لتغيير اسم الشبكة</value>
+    <comment>A description of the action to change the user's network name.</comment>
   </data>
   <data name="change_password" xml:space="preserve">
     <value>تغيير كلمة المرور</value>
@@ -497,6 +551,10 @@
   <data name="claim_multiplier" xml:space="preserve">
     <value>المطالبة بالمضاعف</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>احصل على اسم شبكة مخصص ليحل محل الاسم الذي تم إنشاؤه تلقائيًا</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>عقود العميل</value>
@@ -558,6 +616,10 @@
     <value>اربط</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>اربط محفظة Solana (Phantom أو Solflare) لإضافتها كطريقة لتسجيل الدخول.</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>ربط محفظة</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -606,6 +668,10 @@
     <value>متصل</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>متصل: {}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.zero" xml:space="preserve">
     <value>متصل بـ {} من مزودي الخدمة</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -633,6 +699,10 @@
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>جاري الاتصال بمزودي الخدمة</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>جارٍ الاتصال بالمحفظة...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>وضع الاتصال</value>
@@ -694,6 +764,10 @@
     <value>ساهم بعرض النطاق الترددي</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>تم النسخ!</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>انسخ</value>
     <comment>Call to action</comment>
@@ -705,6 +779,10 @@
   <data name="copy_client_id" xml:space="preserve">
     <value>نسخ معرّف العميل</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>انسخ إلى الحافظة</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>تعذّر فتح المحفظة. يرجى تثبيتها والمحاولة مرة أخرى.</value>
@@ -746,6 +824,10 @@
     <value>إنشاء حساب</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>إنشاء حساب فوري</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>حدث خطأ ما. حاول مجددا.</value>
     <comment>Call to action</comment>
@@ -753,6 +835,14 @@
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>تنتهي صلاحية رموز المصادقة التي تم إنشاؤها بعد 5 دقائق</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>API الحالي: {}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>الاتصال الحالي: {}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>شبكة الإحالة الحالية</value>
@@ -769,6 +859,18 @@
   <data name="custom_dns" xml:space="preserve">
     <value>DNS مخصص</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>التطبيق وخدمة نظام URnetwork من إصدارَي بناء مختلفين. حدّث كليهما إلى الإصدار نفسه.</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>خدمة نظام URnetwork قديمة. حدّثها للاتصال.</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>خدمة نظام URnetwork غير قيد التشغيل. ثبّتها أو شغّلها، ثم أعد المحاولة.</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>رصيد البيانات اليومي:</value>
@@ -797,6 +899,10 @@
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>بشكل افتراضي، تحصل على {} GiB/شهر. إليك كيفية كسب عرض نطاق إضافي:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>افتراضي</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>افتراضي</value>
@@ -886,6 +992,10 @@
     <value>DNS عبر HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>الإعدادات الآمنة الافتراضية غير مطبقة</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>الإعدادات الآمنة الافتراضية غير مطبقة</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -906,6 +1016,10 @@
     <value>إعدادات DNS غير متاحة</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>توجد إعدادات موصى بها غير مطبقة لـ {}</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>استخدام الإعدادات الإقليمية الموصى بها</value>
     <comment>dns settings</comment>
@@ -913,6 +1027,10 @@
   <data name="dns_using_secure" xml:space="preserve">
     <value>استخدام الإعدادات الافتراضية الأكثر أمانًا</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>تم</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>ألا تراه؟</value>
@@ -942,6 +1060,10 @@
     <value>تعديل اسم الجهاز</value>
     <comment>device</comment>
   </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>تعديل اسم الشبكة</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
+  </data>
   <data name="edit_profile" xml:space="preserve">
     <value>تعديل الملف الشخصي</value>
     <comment>Profile</comment>
@@ -970,6 +1092,10 @@
     <value>أدخل اسمًا لشبكتك</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>أدخل كلمة مرور</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>أدخل عنوان محفظة Solana أو Bittensor</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -980,6 +1106,10 @@
   <data name="enter_balance_code" xml:space="preserve">
     <value>أدخل رمز الرصيد</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>أدخل اسم الشبكة</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>أدخل رمز الإحالة للشبكة</value>
@@ -992,6 +1122,10 @@
   <data name="enter_wallet_address" xml:space="preserve">
     <value>أدخل عنوان المحفظة</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>خطأ في تغيير اسم الشبكة</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>عذرًا، حدث خطأ أثناء المطالبة بالمضاعف.</value>
@@ -1133,6 +1267,15 @@
     <value>عام</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>أنشئ</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>إنشاء عبارة استرداد؟</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>أنشئ عبارة الاسترداد</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>اتصل الآن</value>
     <comment>Call to action</comment>
@@ -1152,6 +1295,10 @@
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>تسجيل الدخول باستخدام Google</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>تمت إضافة طريقة تسجيل الدخول عبر Google</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>فهمت</value>
@@ -1209,6 +1356,14 @@
     <value>أوافق على [شروط خدمة] URnetwork (https://ur.io/terms) و [سياسة الخصوصية] (https://ur.io/privacy)</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>حفظت عبارة الاسترداد</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>تم نسخ بصمة مفتاح الهوية</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>إذا استمرت المشكلة، تواصل معنا عبر [support@ur.io](mailto:support@ur.io) أو [انضم إلى Discord الخاص بنا](https://discord.com/invite/RUNZXMwPRK) للحصول على دعم مباشر.</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1228,6 +1383,10 @@
   <data name="include_app_description" xml:space="preserve">
     <value>التطبيقات المشمولة فقط تستخدم النفق.</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>التضمين في VPN</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>مشمول</value>
@@ -1269,6 +1428,30 @@
     <value>عنوان IP</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.zero" xml:space="preserve">
+    <value>{} عنوان IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.one" xml:space="preserve">
+    <value>عنوان IP واحد</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.two" xml:space="preserve">
+    <value>عنوانا IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.few" xml:space="preserve">
+    <value>{} عناوين IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.many" xml:space="preserve">
+    <value>{} عنوان IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} عنوان IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1305,6 +1488,10 @@
     <value>انضم إلى URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>مفتاح</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>مفتاح القتل</value>
     <comment>Call to action</comment>
@@ -1333,9 +1520,16 @@
     <value>معرفة المزيد في صفحة البروتوكول</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>اربط طريقة أخرى لتسجيل الدخول إلى حسابك.</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>جارٍ التحميل...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>جارٍ تحميل طرق تسجيل الدخول...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>محلي</value>
@@ -1372,6 +1566,34 @@
   <data name="local_statistics" xml:space="preserve">
     <value>الإحصائيات المحلية</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
+  </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>تعذّر على URnetwork إزالة ملف موقع النظام، لذا قد يستمر هذا الجهاز في الإبلاغ عن موقع أحد المزودين. شغّل خدمة نظام URnetwork وأوقف هذا الخيار، أو احذف /etc/geolocation كمسؤول.</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>لا تغطي هذه الميزة كل شيء. لا يستعلم Chrome ولا KDE Plasma من GeoClue إطلاقًا، وأي تطبيق يستنتج موقعك من عنوان IP الخاص بك بنفسه لن يتأثر. ويلجأ Firefox إلى بحثه الخاص إذا لم يستجب النظام بسرعة.</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>التطبيقات التي تطلب موقعك من النظام عبر GeoClue — بما في ذلك الإعدادات والخرائط في GNOME، وFirefox، وتطبيقات Flatpak وSnap المعزولة — تُبلّغ عن موقع المزود بدلًا من موقعك.</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>جاهز. فعّل المفتاح للإبلاغ عن موقع المزود المتصل كموقع لهذا الجهاز.</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>ثبّت GeoClue 2.7 أو أحدث. فهو غير متوفر على كل الأنظمة، كما أن Ubuntu 22.04 وDebian 12 يأتيان بإصدار أقدم لا يدعم ذلك.</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>ثبّت خدمة نظام URnetwork. ملف موقع النظام موجود ضمن /etc، لذا يجب أن يكتبه مساعد يملك صلاحيات مرتفعة — ولا يطلب منك URnetwork مطلقًا تشغيل التطبيق نفسه كمسؤول.</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>أبقِ مصدر الموقع الثابت في GeoClue مفعّلًا. إنه مفعّل افتراضيًا؛ راجع /etc/geoclue/geoclue.conf إذا كنت قد غيّرته.</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
   </data>
   <data name="login_client_error" xml:space="preserve">
     <value>حدث خطأ ما أثناء مصادقة العميل. حاول مجددا.</value>
@@ -1410,17 +1632,105 @@
     <value>جعل الافتراضي</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>إدارة التطبيقات</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>إدارة الاشتراك</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="max_n" xml:space="preserve">
+    <value>الحد الأقصى {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
   </data>
   <data name="member" xml:space="preserve">
     <value>عضو</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="method" xml:space="preserve">
+    <value>الطريقة</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>قبل {} د</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
+  </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>تتم المزامنة مع {}</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>الصفحات في هذا المتصفح فقط هي التي ترى الموقع المتغيّر. ولا يتغيّر موقع جهازك.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>يمكن للتطبيقات معرفة أن الموقع وهمي. قد ترفض تطبيقات البنوك وطلب سيارات الأجرة والتوصيل وبعض الألعاب العمل أثناء تفعيل هذه الميزة.</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>يؤدي هذا إلى تغيير الموقع الذي يظهر لجميع التطبيقات على جهازك، وليس URnetwork فقط.</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>يمكن للمواقع معرفة أن الموقع الجغرافي وهمي وقد ترفض العمل.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>أوقف هذه الميزة في URnetwork قبل إيقاف خيارات المطوّرين أو إلغاء اختيار URnetwork أو إلغاء تثبيت التطبيق، وإلا فقد يظل موقع جهازك ثابتًا حتى تعيد تشغيله.</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>تعذّر على URnetwork إزالة الموقع الوهمي. أعد اختيار URnetwork في خيارات المطوّرين ثم أوقف هذه الميزة، أو أعد تشغيل جهازك.</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>عند التفعيل، ترى التطبيقات على هذا الجهاز موقع مزود الخدمة الذي كنت متصلاً به لأطول مدة بدلاً من موقعك الحقيقي.</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>مزامنة موقع الجهاز</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>يلزم الإعداد</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>فتح «لمحة عن الهاتف»</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>فتح خيارات المطوّرين</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>فتح إعدادات الموقع</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>جاهز. فعّل مفتاح التبديل لمزامنة موقع جهازك مع أقدم مزود خدمة متصل.</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>مزامنة موقع الجهاز</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>فعّل خيارات المطوّرين: افتح «لمحة عن الهاتف» وانقر على «رقم الإصدار» سبع مرات.</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>فعّل «الموقع الجغرافي» في إعدادات النظام حتى تتمكن التطبيقات من استقبال الموقع.</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>في خيارات المطوّرين، انقر على «اختيار تطبيق الموقع الوهمي» ثم اختر URnetwork.</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>في انتظار موقع مزود الخدمة</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
   </data>
   <data name="monthly" xml:space="preserve">
     <value>شهري</value>
@@ -1430,9 +1740,17 @@
     <value>الأكثر شعبية</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>عناوين IP متعددة</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>المضاعف</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/يوم</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>الاسم</value>
@@ -1457,6 +1775,10 @@
   <data name="net_provided" xml:space="preserve">
     <value>البيانات المقدمة</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>الشبكة</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>اتركه فارغًا ليتم اشتقاقه من نطاق الشبكة.</value>
@@ -1530,6 +1852,10 @@
     <value>أرباح الشبكة</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>تم تغيير اسم الشبكة إلى {}</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>غير متوفر. يجب أن يكون 3 أحرف على الأقل مختلفة عن شبكة موجودة. اجعلها فريدة أو أطول.</value>
     <comment>Call to action</comment>
@@ -1561,6 +1887,30 @@
   <data name="network_name_unavailable" xml:space="preserve">
     <value>اسم الشبكة غير متاح</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.zero" xml:space="preserve">
+    <value>ليس لديك أي أجهزة أخرى متصلة</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.one" xml:space="preserve">
+    <value>لديك جهاز آخر متصل</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.two" xml:space="preserve">
+    <value>لديك جهازان آخران متصلان</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.few" xml:space="preserve">
+    <value>لديك {} أجهزة أخرى متصلة</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.many" xml:space="preserve">
+    <value>لديك {} جهازًا آخر متصلًا</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>لديك {} من الأجهزة الأخرى المتصلة</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>أقران الشبكة</value>
@@ -1625,6 +1975,14 @@
   <data name="no_blocked_locations" xml:space="preserve">
     <value>لا توجد مواقع محجوبة</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>لا حاجة إلى بريد إلكتروني أو هاتف أو كلمة مرور. حسابك محمي بعبارة الاسترداد.</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>لم يتم العثور على تطبيقات مثبّتة. (لا تُدرج تطبيقات Store.)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>لم يتم العثور على مواقع</value>
@@ -1751,6 +2109,10 @@
     <value>يجب أن تتكون كلمة المرور من 12 حرفًا على الأقل</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>الصق هنا عبارة الاسترداد المكوّنة من 24 كلمة</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>ادفع باستخدام محفظة Solana</value>
     <comment>Call to action</comment>
@@ -1787,6 +2149,18 @@
     <value>تحدث الدفعات كل يوم أحد في الساعة 00:00 بتوقيت UTC، ويتطلب ذلك تحقيق حد أدنى من USDC.</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>قرين واحد</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d قرين</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>اكتشاف الأقران معطّل حتى الاتصال</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>معلّق</value>
     <comment>Call to action</comment>
@@ -1798,6 +2172,22 @@
   <data name="pending_payout" xml:space="preserve">
     <value>دفعة معلقة</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>ثبّت على مزود واحد</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>يُبقي جميع اتصالات هذا التطبيق على مزود واحد، بحيث تشترك واجهة API والصور في عنوان IP واحد. استخدمه للتطبيقات التي يفشل تحميل محتواها عبر VPN</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>مثبّت</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>عنصر نائب</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>خطة</value>
@@ -1851,6 +2241,22 @@
     <value>تفصيل النقاط</value>
     <comment>Call to action</comment>
   </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>التشفير ما بعد الكمومي</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>الرجوع الاحتياطي مفعّل (مؤقتًا)</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>الهوية ما بعد الكمومية</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>يُخزَّن مفتاح هويتك محليًا على هذا الجهاز. إذا ظهر مفتاح أي قرين مختلفًا عن مفتاحه المخزَّن محليًا، فهذا يعني أنه لا يمكن الوثوق بمشغّل الشبكة.</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
+  </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>يظهر السعر عند الدفع.</value>
     <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
@@ -1887,6 +2293,18 @@
     <value>وضع التوفير</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0} س {1} د</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{} د</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{} ث</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>عقود المزود</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1917,6 +2335,26 @@
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} مزود</value>
+  </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>هويات المزودين</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>الموقع غير معروف</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>لم يتم الاتصال بأي مزود خدمة</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>مواقع مزودي الخدمة</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>تفاصيل المزود غير متاحة حتى الاتصال</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>إحصائيات المزود</value>
@@ -1960,7 +2398,7 @@
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>لم نتمكن من تأكيد عملية الشراء بعد. إذا أكملت الدفع، فسيتم تحديث خطتك تلقائيًا خلال دقائق قليلة — لا حاجة للشراء مرة أخرى.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>إغلاق</value>
@@ -2017,6 +2455,10 @@
   <data name="refer_a_friend_30_gib_month" xml:space="preserve">
     <value>أوصِ صديقًا = +30 غيغابايت/شهر</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
+  </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>أوصِ صديقًا = +3 GiB/يوم</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
   </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>الإحالة والربح</value>
@@ -2094,6 +2536,9 @@
     <value>الإحالات</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>أعد إنشاء عبارة الاسترداد</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>المناطق</value>
     <comment>Provider list group title for regions</comment>
@@ -2145,6 +2590,9 @@
   <data name="remove_rule" xml:space="preserve">
     <value>إزالة القاعدة</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>إزالة طريقة تسجيل الدخول هذه؟</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>إزالة المحفظة</value>
@@ -2202,6 +2650,10 @@
     <value>القواعد</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>بياناتك المجانية وبيانات الإحالة ×2</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>حفظ</value>
     <comment>Profile</comment>
@@ -2230,6 +2682,10 @@
     <value>قبل {} ث</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>أمّن حسابك</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>شاهد كل
 محتوى
@@ -2240,6 +2696,10 @@
     <value>شاهد كل محتوى العالم مع URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>عبارة الاسترداد</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>تم التحقق من رمز Seeker!</value>
     <comment>Call to action</comment>
@@ -2247,6 +2707,10 @@
   <data name="select_country_to_block" xml:space="preserve">
     <value>حدد الدولة للحظر</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>الكرة الأرضية: اختيار موقع المزود</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>الموقع المحدد</value>
@@ -2336,6 +2800,10 @@
     <value>تسجيل الدخول</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>تسجيل الدخول</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>تسجيل الدخول باستخدام dGEN1</value>
     <comment>Call to action</comment>
@@ -2343,6 +2811,13 @@
   <data name="sign_in_failed" xml:space="preserve">
     <value>فشل تسجيل الدخول</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>تمت إضافة طريقة تسجيل الدخول بنجاح</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>طرق تسجيل الدخول</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>تسجيل الدخول باستخدام رمز</value>
@@ -2352,9 +2827,24 @@
     <value>تسجيل الدخول باستخدام Google</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>سجّل الدخول باستخدام Google لإضافته كطريقة لتسجيل الدخول.</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>تسجيل الدخول بعبارة الاسترداد</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>سجّل الدخول باستخدام Apple ID الخاص بك لإضافته كطريقة لتسجيل الدخول.</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>تسجيل الخروج</value>
     <comment>Used in NetworkApp.swift.</comment>
+  </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>التوقيع بالمحفظة</value>
+    <comment>Button text for signing in with a wallet.</comment>
   </data>
   <data name="signed_in" xml:space="preserve">
     <value>تم تسجيل الدخول</value>
@@ -2383,6 +2873,10 @@
   <data name="site_app_auth_code_note" xml:space="preserve">
     <value>تنتهي صلاحية رموز المصادقة المُنشأة بعد 5 دقائق</value>
     <comment>App settings: auth code expiry note</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>متوسط الموثوقية</value>
+    <comment>Reliability: average label</comment>
   </data>
   <data name="site_app_block_ads" xml:space="preserve">
     <value>حظر الإعلانات والمتتبعات</value>
@@ -2428,6 +2922,10 @@
     <value>المدن</value>
     <comment>App connect location picker: cities section</comment>
   </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>العملاء</value>
+    <comment>Reliability: clients series</comment>
+  </data>
   <data name="site_app_code_capped" xml:space="preserve">
     <value>لقد بلغ رمز الإحالة هذا حدّ الإحالات الخاص به</value>
     <comment>App settings: referral code capped error</comment>
@@ -2439,6 +2937,14 @@
   <data name="site_app_completed_on" xml:space="preserve">
     <value>تاريخ الإكمال</value>
     <comment>App payout detail: completed time</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>خيارات الاتصال</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>اتصل لعرض النشاط المباشر</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
   </data>
   <data name="site_app_connected" xml:space="preserve">
     <value>متصل</value>
@@ -2467,6 +2973,14 @@
   <data name="site_app_countries" xml:space="preserve">
     <value>الدول</value>
     <comment>App connect location picker: countries section</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>الدولة</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>مضاعفات الدول</value>
+    <comment>Reliability: country multipliers heading</comment>
   </data>
   <data name="site_app_create_auth_code" xml:space="preserve">
     <value>إنشاء رمز مصادقة</value>
@@ -2568,6 +3082,10 @@
     <value>تم الإرسال! شكراً لملاحظاتك.</value>
     <comment>App support: sent confirmation</comment>
   </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>IP ثابت</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
   <data name="site_app_gib_added" xml:space="preserve">
     <value>تمت إضافة +{gib} GiB</value>
     <comment>App balance codes: redeem success flash</comment>
@@ -2616,9 +3134,29 @@
     <value>تعيين محفظة الدفعات</value>
     <comment>App wallets: make payout wallet action</comment>
   </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>إدارة الاشتراك</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
   <data name="site_app_mean_reliability" xml:space="preserve">
     <value>متوسط الموثوقية</value>
     <comment>App provider: mean reliability metric</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>تلقائي</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>البث</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>الويب</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>المضاعف</value>
+    <comment>Reliability: multiplier column</comment>
   </data>
   <data name="site_app_network_name" xml:space="preserve">
     <value>اسم الشبكة</value>
@@ -2652,6 +3190,10 @@
     <value>لا توجد بيانات موثوقية بعد.</value>
     <comment>App provider: no reliability data</comment>
   </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>لا توجد حركة مرور بعد</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
   <data name="site_app_no_wallets" xml:space="preserve">
     <value>لا توجد محافظ بعد — أضف واحدة لاستلام الدفعات</value>
     <comment>App wallets: empty state</comment>
@@ -2683,6 +3225,10 @@
   <data name="site_app_pending" xml:space="preserve">
     <value>قيد الانتظار</value>
     <comment>App wallets: pending payout status</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>خطة</value>
+    <comment>Connect drawer: plan section label</comment>
   </data>
   <data name="site_app_private_network" xml:space="preserve">
     <value>شبكة خاصة</value>
@@ -2716,6 +3262,10 @@
     <value>المزوّدون</value>
     <comment>App connect screen: provider grid section title</comment>
   </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>الوكلاء</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
   <data name="site_app_received" xml:space="preserve">
     <value>المُستَلَم</value>
     <comment>App provider: bytes received metric</comment>
@@ -2735,6 +3285,10 @@
   <data name="site_app_regions" xml:space="preserve">
     <value>المناطق</value>
     <comment>App connect location picker: regions section</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>وزن الموثوقية</value>
+    <comment>Reliability: weight series</comment>
   </data>
   <data name="site_app_remove" xml:space="preserve">
     <value>إزالة</value>
@@ -2768,9 +3322,17 @@
     <value>ابقَ على تواصل</value>
     <comment>App settings: stay in touch section</comment>
   </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>إخفاء الهوية القوي</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
   <data name="site_app_support_intro" xml:space="preserve">
     <value>أرسل لنا ملاحظاتك مباشرةً، أو انضم إلى المجتمع للحصول على دعم مباشر.</value>
     <comment>App support: intro line</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>النقل</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
   </data>
   <data name="site_app_total_referrals" xml:space="preserve">
     <value>إجمالي الإحالات</value>
@@ -2819,6 +3381,34 @@
   <data name="site_client_limit_upgrade" xml:space="preserve">
     <value>بلغت خطتك الحد الأقصى للعملاء المتزامنين — يرفعه Pro إلى 1,000.</value>
     <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>أعدّ الإضافة للاتصال</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>الإضافة مسجّلة الدخول إلى شبكة أخرى:</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>توجّه URnetwork هذا المتصفح عبر الإضافة. ثبّتها لبدء الاتصال.</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>ثبّت الإضافة للاتصال</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>تم اكتشاف الإضافة وتسجيل الدخول</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>الإضافة مثبّتة لكن لم يتم تسجيل الدخول. أعدّها مع شبكتك للاتصال.</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>جاهز للاتصال</value>
+    <comment>Connect: disconnected status line</comment>
   </data>
   <data name="site_copy_url" xml:space="preserve">
     <value>نسخ الرابط</value>
@@ -2887,6 +3477,10 @@
   <data name="site_generic_error" xml:space="preserve">
     <value>حدث خطأ ما. يُرجى المحاولة مرة أخرى.</value>
     <comment>Account panel: generic retry error</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>ثبّت التطبيق</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
   <data name="site_invalid_balance_code" xml:space="preserve">
     <value>رمز رصيد غير صالح.</value>
@@ -2983,6 +3577,46 @@
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>اسم المستخدم هو الرمز الموجود في الرابط؛ وكلمة المرور فارغة.</value>
     <comment>Account panel: SOCKS credential note</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>أنت على خطة Free. رقِّ إلى Pro للحصول على بيانات وميزات أكثر.</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>خطة Free</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>الإدارة في {platform}</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>الإدارة في App Store</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>الإدارة في Google Play</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>منصة أخرى</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>يتم تحصيل اشتراك Pro الخاص بك عبر {platform}. لتغييره أو إلغائه، أدر اشتراكاتك عبر {platform}.</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>يتم تحصيل اشتراك Pro الخاص بك عبر App Store. لتغييره أو إلغائه، أدر اشتراكاتك في App Store.</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>يتم تحصيل اشتراك Pro الخاص بك عبر Google Play. لتغييره أو إلغائه، أدر اشتراكاتك في Google Play.</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>يتم تحصيل اشتراك Pro الخاص بك عبر Stripe. حدّث تفاصيل الدفع أو ألغِ الاشتراك في أي وقت أدناه.</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="site_unexpected_error" xml:space="preserve">
     <value>حدث خطأ غير متوقع.</value>
@@ -3152,6 +3786,14 @@
     <value>هل تريد قطع الاتصال من {} والتبديل بين الحسابات؟</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>مزامنة موقع الجهاز مع أقدم مزود خدمة متصل</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>مزامنة موقع الجهاز مع مزود الخدمة</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>النظام</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -3192,9 +3834,21 @@
     <value>هذه المحافظ غير مرتبطة أو متحكم بها من قبل URnetwork. سنقوم بإرسال الأرباح إلى المحفظة المتصلة.</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ هذه هي المرة الوحيدة التي ستراها فيها.</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>هذه المنطقة</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>متصل</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>غير متصل</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>تسجيل الدخول</value>
@@ -3290,6 +3944,10 @@
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>جرب وضع الضيف</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>تعذّر بدء الاتصال</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>DNS غير مشفر</value>
@@ -3401,6 +4059,10 @@
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>عنوان محفظة USDC</value>
   </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>استخدام مزود الخدمة الأكثر استقرارًا</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
+  </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>استخدام الإعدادات الموصى بها</value>
     <comment>dns settings</comment>
@@ -3484,9 +4146,17 @@
     <value>معلومات الإصدار والبناء</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>عبر {}</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>في انتظار الموافقة</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>في انتظار توقيع المحفظة...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>المحفظة</value>
@@ -3526,6 +4196,10 @@
     <value>فشل تسجيل الدخول بالمحفظة</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>تمت إضافة طريقة تسجيل الدخول عبر المحفظة</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>محافظ</value>
     <comment>Wallets Screen</comment>
@@ -3558,6 +4232,10 @@
     <value>مع URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>اكتبها واحفظها في مكان آمن. إذا فقدتها، ستفقد إمكانية الوصول إلى حسابك.</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>سنوي</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -3569,6 +4247,16 @@
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>تحصل على 30 غيغابايت/شهر مدى الحياة</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>تحصل على 3 GiB/يوم مدى الحياة</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>لديك جهاز آخر متصل</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>لديك {} من الأجهزة الأخرى المتصلة</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>ستحصل على سرعات أعلى، وأولوية الوصول إلى الميزات الجديدة مثل تدابير مكافحة الرقابة القوية والتحكم في البيانات.</value>
@@ -3594,6 +4282,10 @@
     <value>يحصل صديقك على 30 غيغابايت/شهر مدى الحياة</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>يحصل صديقك على 3 GiB/يوم مدى الحياة</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>يحتاج شراؤك إلى موافقة قبل أن يكتمل. سيتم تفعيل UR Pro تلقائيًا بمجرد إتمام الموافقة — لا حاجة إلى الشراء مرة أخرى.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -3601,5 +4293,9 @@
   <data name="your_referral_link" xml:space="preserve">
     <value>رابط الإحالة الخاص بك</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>عبارة الاسترداد الخاصة بك</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>

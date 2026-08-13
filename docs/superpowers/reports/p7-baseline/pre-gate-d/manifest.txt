@@ -1,8 +1,0 @@
-﻿label       : pre-gate-d
-captured    : 2026-08-08T20:46:55.8655583-07:00
-host        : MSI
-user        : ryanm
-elevated    : False
-urnetworkd  : 1 running
-tun present : False
-marker      : False

@@ -34,14 +34,24 @@ Require 'aarch64-w64-mingw32-clang'
 if (-not (Test-Path $SdkDir)) { throw "SDK dir not found: $SdkDir (was the build home synced in?)" }
 Set-Location $SdkDir
 
-# sdk/cgo/go.sum is git-ignored and generated (run.sh regenerates it at version
-# staging via `go mod tidy`). A build from main hasn't staged, so generate it if
-# absent - else the cgo build fails "missing go.sum entry". `go mod download all`
-# is build-complete and leaves the tracked go.mod untouched.
+# This script BUILDS; it must never modify the sources rsync'd into the VM.
+# Module preparation (`go mod tidy`, which regenerates the git-ignored
+# sdk/cgo/go.sum) belongs upstream of the build - run.sh's version staging, or
+# the operator - so a build can never silently move a dependency version and
+# the artifact always corresponds to the tree as given.
+#
+# The host-side build-windows.sh checks this too, before the rsync, so this
+# should be unreachable in practice; it is the backstop for a VM invoked
+# directly.
 if (-not (Test-Path (Join-Path $SdkDir "go.sum"))) {
-  Log "go.sum missing - generating it (go mod download all)"
-  & go mod download all
-  if ($LASTEXITCODE -ne 0) { throw "go mod download all failed" }
+  throw @"
+$SdkDir\go.sum is missing.
+It is git-ignored and generated, normally by run.sh's version staging. This
+script does not modify sources, so prepare the module graph on the HOST before
+syncing: (cd <build home>/sdk/cgo && go mod tidy)
+Review the go.mod diff before keeping it - a tidy here also upgrades indirect
+deps (quic-go, gvisor, x/crypto, ...).
+"@
 }
 
 # Match the Makefile: green tea GC, trimpath, c-shared, version stamped in.

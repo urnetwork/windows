@@ -21,9 +21,46 @@ $WintunSha256 = "07C256185D6EE3652E09FA55C0B673E2624B565E02C4B9091C79CA7D2F24EF5
 $WintunSignerThumbprint = "DF98E075A012ED8C86FBCF14854B8F9555CB3D45"
 
 $wintunDir = Join-Path $thirdParty "wintun"
-$wintunZip = Join-Path $env:TEMP "wintun-$WintunVersion.zip"
-Write-Host "Downloading Wintun $WintunVersion ..."
-Invoke-WebRequest -Uri "https://www.wintun.net/builds/wintun-$WintunVersion.zip" -OutFile $wintunZip
+# Cache the pinned zip in the VM rather than re-fetching every build. This used
+# to be an unconditional download with no retry, so a momentary DNS blip inside
+# the VM ("The remote name could not be resolved: 'www.wintun.net'") killed a
+# build that had already compiled the whole cgo SDK. Caching is safe precisely
+# because the artifact is pinned: the SHA256 below is verified on every run, so
+# a stale, truncated or tampered cache entry fails exactly as a bad download
+# would. The version is in the filename, so bumping $WintunVersion misses the
+# cache and re-downloads.
+$wintunCache = Join-Path $thirdParty "cache"
+New-Item -ItemType Directory -Force -Path $wintunCache | Out-Null
+$wintunZip = Join-Path $wintunCache "wintun-$WintunVersion.zip"
+
+function Test-WintunZip {
+  if (-not (Test-Path $wintunZip)) { return $false }
+  return (Get-FileHash -Algorithm SHA256 $wintunZip).Hash -eq $WintunSha256
+}
+
+if (Test-WintunZip) {
+  Write-Host "Wintun $WintunVersion already cached (sha256 verified)"
+} else {
+  Remove-Item -Force $wintunZip -ErrorAction SilentlyContinue
+  # Three attempts: the failure mode seen in practice is transient DNS inside
+  # the VM, which usually clears within seconds.
+  $downloaded = $false
+  foreach ($attempt in 1..3) {
+    try {
+      Write-Host "Downloading Wintun $WintunVersion (attempt $attempt/3) ..."
+      Invoke-WebRequest -Uri "https://www.wintun.net/builds/wintun-$WintunVersion.zip" -OutFile $wintunZip
+      $downloaded = $true
+      break
+    } catch {
+      Write-Host "  download failed: $($_.Exception.Message)"
+      Remove-Item -Force $wintunZip -ErrorAction SilentlyContinue
+      if ($attempt -lt 3) { Start-Sleep -Seconds (5 * $attempt) }
+    }
+  }
+  if (-not $downloaded) {
+    throw "Wintun $WintunVersion download failed after 3 attempts (last error above). The VM could not reach www.wintun.net."
+  }
+}
 
 $actual = (Get-FileHash -Algorithm SHA256 $wintunZip).Hash
 if ($actual -ne $WintunSha256) {

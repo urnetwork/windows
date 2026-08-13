@@ -2,9 +2,11 @@
 // SubscriptionBalanceViewModel. Fetches Api::subscriptionBalance into a
 // snapshot (used / pending / available / start bytes + the Pro plan state),
 // keeps it fresh with a 30-second background poll while the window is visible,
-// and offers a 5-second confirmation poll with a 2-minute deadline for after a
-// checkout or a code redeem, so the plan flips as soon as the server's payment
-// webhook lands.
+// and offers a 5-second confirmation poll with a 2-minute active-polling
+// budget for after a checkout or a code redeem, so the plan flips as soon as
+// the server's payment webhook lands. The budget pauses whenever the window
+// loses focus (the poll stops with it), so the clock never runs while the
+// user is off paying in the browser.
 //
 // Pro is readable OFFLINE from the stored jwt (LocalState::parseByJwt), which
 // seeds the snapshot at login; the server is the source of truth afterwards,
@@ -58,12 +60,20 @@ class SubscriptionBalanceStore {
   void Initialize(winrt::Microsoft::UI::Dispatching::DispatcherQueue queue);
 
   void SetChangeHandler(ChangeHandler h) { onChange_ = std::move(h); }
-  // Stop/start every timer with window visibility. A confirmation preserves
-  // its deadline while hidden and resumes (or times out) when shown.
+  // Stop/start every timer with window visibility. A confirmation pauses with
+  // the window: its give-up budget only burns while the poll actually runs, so
+  // time spent unfocused (typing card details in the browser) costs nothing,
+  // and showing the window again fires an immediate poll with the banked
+  // budget. Re-showing also always fetches once — even for a Pro network whose
+  // background poll is stopped — so a plan bought or lapsed on the web lands
+  // on the next focus.
   void SetVisible(bool visible);
 
   // Login: seed Pro/guest offline from the stored jwt, fetch once, and begin
-  // the 30s background poll (it stops itself once Pro with balance).
+  // the 30s background poll. Once Pro with balance the periodic poll stops,
+  // but every window (re)activation still fetches once (SetVisible), so the
+  // stop is per focus interval, never for the whole session — a web-side
+  // purchase, lapse, or cancellation shows on the next focus.
   void Start();
   // Logout: stop the timers and clear the snapshot.
   void Stop();
@@ -78,7 +88,9 @@ class SubscriptionBalanceStore {
   void OnJwtRefreshed();
 
   // After a checkout was handed to the browser (or a balance code redeemed):
-  // poll every 5 seconds until the server confirms, giving up after 2 minutes.
+  // poll every 5 seconds until the server confirms, giving up after 2 minutes
+  // of ACTIVE polling. The budget pauses with the poll (SetVisible), so a slow
+  // browser checkout can never burn it down to a false TimedOut.
   void StartConfirmationPolling();
   void ClearTimeout();
 
@@ -95,6 +107,9 @@ class SubscriptionBalanceStore {
   }
   void EnsureBackgroundPolling();
   void ResumeConfirmationPolling();
+  // Focus loss: stop the confirmation timer and bank the unspent budget so
+  // ResumeConfirmationPolling can re-arm from where it left off.
+  void PauseConfirmationPolling();
   void StopBackground();
   void StopConfirmation(bool timedOut);
   void Publish();
@@ -111,7 +126,11 @@ class SubscriptionBalanceStore {
   bool loading_ = false;    // one fetch in flight at a time
   bool confirming_ = false;
   bool timedOut_ = false;
-  int64_t deadlineMillis_ = 0;   // confirmation poll gives up past this
+  // The confirmation give-up budget, counted in ACTIVE polling time only.
+  // deadlineMillis_ (monotonic) is armed while the confirm timer runs;
+  // pausing banks what is left back into confirmRemainingMillis_.
+  int64_t deadlineMillis_ = 0;
+  int64_t confirmRemainingMillis_ = 0;
   uint32_t generation_ = 0;      // drops fetch results from a superseded session
 };
 

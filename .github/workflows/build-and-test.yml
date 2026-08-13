@@ -1,18 +1,16 @@
-name: Beta Build - Windows
+name: Build and test - Windows
 
 on:
   push:
     branches:
-      - beta/custom-server
-      - beta/algorithm-dpi
+      - main
   pull_request:
     branches:
-      - beta/custom-server
-      - beta/algorithm-dpi
+      - main
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   # the version derive step reads this run's created_at via the actions api
   actions: read
 
@@ -73,17 +71,17 @@ jobs:
       - name: Check out forked SDK
         uses: actions/checkout@v4
         with:
-          repository: Ryanmello07/urnetwork-sdk
+          repository: urnetwork/sdk
           # the beta integration line: it now carries the merged reliability
           # checkpoint + the DeviceLocalRpc bridge (sdk#135) and the cgo fixes
           # this client needed as the first c-abi consumer
-          ref: beta/algorithm-dpi
+          ref: main
           path: sdk
 
       # sdk/cgo/go.mod resolves these with `replace ... => ../../<name>`, so
       # they have to sit as siblings of the sdk checkout
       - name: Check out connect dependency
-        run: git clone --depth 1 --branch beta/algorithm-dpi https://github.com/Ryanmello07/connect.git connect
+        run: git clone --depth 1 --branch main https://github.com/urnetwork/connect.git connect
 
       - name: Check out glog dependency
         run: git clone --depth 1 https://github.com/urnetwork/glog.git glog
@@ -358,311 +356,3 @@ jobs:
           name: urnetwork-windows-msi
           path: app/installer/dist/URnetwork.msi
           if-no-files-found: error
-
-  # Phase 0 gate for the smart-routing / DPI-classification work
-  # (2026-08-11-smart-routing-phase0-phase1, task-13): prove nDPI's static
-  # library can be cross-compiled for BOTH windows/amd64 and windows/arm64
-  # before any DPI binding is planned. amd64 goes through nDPI's own
-  # upstream autotools recipe, just `--host=x86_64-w64-mingw32` (see the
-  # FIX ROUND 1 comment above that step for why the original recipe here
-  # added --with-only-libndpi and how that inverted a libpcap check and
-  # broke run 31561484141). arm64 CANNOT use autotools -- configure.ac's
-  # mingw host case hard-errors ("Unsupported MingW cross compiler") for
-  # any triple that isn't x86_64-*/i686-*, so arm64 instead builds via
-  # app/tools/ndpi/Makefile.crossproof, a vendored minimal Makefile (see
-  # that file, and app/tools/ndpi/ndpi_define.h + ndpi_config.h +
-  # ndpi_arm64_shim.h, for the full derivation and the exclusions this
-  # required). Deliberately independent of build-sdk/build-windows/release:
-  # it neither needs them nor is needed by them, so a red proof job isolates
-  # the Phase-0 finding without blocking the rest of CI. It clones nDPI at a
-  # PINNED RELEASE TAG, never dev tip (the plan is explicit that nDPI's ABI
-  # churns every minor). It produces and asserts two libndpi.a files and
-  # uploads NOTHING -- no artifact from this job enters the release zip.
-  #
-  # FIX ROUND 2/3 found a genuine problem area along the way: nDPI's
-  # third_party/include/binaryfusefilter.h routes aarch64 into a
-  # Windows-OS-only #ifdef _WIN32 branch (no architecture guard) that calls
-  # _rotr64 -- which llvm-mingw DOES declare for aarch64 (round 2 learned
-  # this the hard way, by colliding with it), but whose declaration itself
-  # calls the x86-only compiler builtin __rorq, which is genuinely absent
-  # on aarch64 (the ORIGINAL error). So the missing-builtin gap is as much
-  # an llvm-mingw/clang issue as an nDPI one; nDPI's own contribution is
-  # just the missing architecture guard that routes aarch64 down this path
-  # at all -- see task-13-report.md's "UPSTREAM BUGS FOUND" section for the
-  # full, corrected attribution. app/tools/ndpi/ndpi_arm64_shim.h supplies
-  # __rorq() for aarch64 via force-include (-include in
-  # Makefile.crossproof), WITHOUT patching the cloned nDPI tree and WITHOUT
-  # touching mingw's own _rotr64 declaration, including a second, latent
-  # rotate-direction bug the shim deliberately reproduces rather than
-  # "fixes" (so the amd64 and arm64 archives compute the same hash as each
-  # other, matching upstream's actual Windows behavior rather than what
-  # upstream presumably intended).
-  #
-  # KNOWN DIVERGENCE (not chased -- see Makefile.crossproof's DEFS comment
-  # for the reasoning): the amd64 leg's bare autotools configure
-  # autodetects C11 atomics and picks the newer croaring v4 bitmap engine;
-  # the arm64 leg's vendored Makefile unconditionally pins the older
-  # USE_OLD_ROARING. Both compile -- this proof job answers "does it
-  # compile", not "are the two archives bit-for-bit feature-identical" --
-  # but Phase 2 should know the two archives use different roaring
-  # implementations before comparing them.
-  ndpi-crossproof:
-    name: nDPI static-lib cross-build proof (amd64 + arm64)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out Windows repo
-        uses: actions/checkout@v4
-
-      # Pinned to the latest STABLE release tag as of 2026-08-11 (5.0,
-      # tagged 2025-11-17, commit 375f99ef9fb4999d778b57bbeece171b3fa9fba6).
-      # Two separate clones, not one shared tree: the amd64 leg runs real
-      # autotools (autoreconf writes configure/config.h/Makefiles into the
-      # tree) and the arm64 leg overlays vendored headers into src/include/
-      # -- sharing one checkout would risk the vendored ndpi_config.h
-      # colliding with autotools' generated one, or arm64 accidentally
-      # linking amd64 .o files left behind by `make -C src/lib`.
-      - name: Clone ntop/nDPI at pinned tag 5.0 (amd64 leg)
-        run: git clone --branch 5.0 --depth 1 https://github.com/ntop/nDPI ndpi-amd64
-
-      - name: Clone ntop/nDPI at pinned tag 5.0 (arm64 leg)
-        run: git clone --branch 5.0 --depth 1 https://github.com/ntop/nDPI ndpi-arm64
-
-      # Same autotools toolchain nDPI's own CI installs for its mingw-64
-      # job (.github/workflows/build.yml in ntop/nDPI); trimmed of
-      # libjson-c-dev/flex/bison/libpcap-dev because we only ever run
-      # `make -C src/lib` below, which never builds the example/tests/dga
-      # targets those packages exist for -- and the json-c/pcap PKG_CHECKS
-      # in configure are AC_MSG_WARN (non-fatal), not AC_MSG_ERROR, when
-      # they don't find their package. See the FIX ROUND 1 note above the
-      # configure invocation for why libpcap-dev specifically does not
-      # need to be here despite the FAILED run that prompted this fix.
-      - name: Install autotools + mingw-w64 (amd64 leg)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y autoconf automake libtool pkg-config gettext mingw-w64
-
-      # Same pinned llvm-mingw release the build-sdk job above already uses
-      # for the SDK's arm64 DLL -- known-good in this exact CI environment.
-      - name: Install llvm-mingw (arm64 leg)
-        run: |
-          version=20250709
-          url="https://github.com/mstorsjo/llvm-mingw/releases/download/${version}/llvm-mingw-${version}-ucrt-ubuntu-22.04-x86_64.tar.xz"
-          curl -fsSL "$url" -o /tmp/llvm-mingw.tar.xz
-          sudo mkdir -p /opt/llvm-mingw
-          sudo tar -xf /tmp/llvm-mingw.tar.xz -C /opt/llvm-mingw --strip-components=1
-          echo "/opt/llvm-mingw/bin" >> "$GITHUB_PATH"
-
-      # Step 1 of the Phase 0 plan: amd64 via nDPI's own upstream recipe.
-      #
-      # FIX ROUND 1 (run 31561484141): the original recipe here added
-      # --with-only-libndpi on top of --host=x86_64-w64-mingw32, on the
-      # (wrong) assumption that the flag drops the libpcap requirement
-      # everywhere. It does for the GENERIC (non-mingw) branch
-      # (configure.ac:365, `elif test "${with_only_libndpi+set}" != set`),
-      # but the MINGW branch is INVERTED. configure.ac:344:
-      #
-      #   AS_IF([test "${enable_npcap+set}" != set \
-      #           && test "${with_only_libndpi+set}" != set],,
-      #         [PKG_CHECK_MODULES([PCAP], [libpcap], ...) ...])
-      #
-      # AS_IF's empty second arg means the pcap check is the ELSE branch,
-      # gated on "neither flag is set". With NEITHER flag (bare configure,
-      # what upstream's own mingw-64 CI job actually runs) the check is
-      # SKIPPED. Passing --with-only-libndpi makes that condition false and
-      # ACTIVATES the libpcap requirement -- backwards from what the flag's
-      # own help text ("Build only libndpi") implies, and exactly what
-      # broke this job: "Package requirements (libpcap) were not met".
-      # `make -C src/lib` below never builds the example/tests targets
-      # --with-only-libndpi exists to skip, so the flag bought this build
-      # nothing even under the correct reading -- just drop it.
-      #
-      # --enable-tls-sigs: upstream's own mingw job passes this. We
-      # deliberately do NOT, so this leg's HANDLE_TLS_SIGS macro matches
-      # the arm64 leg's vendored ndpi_define.h, which was derived against
-      # a BARE configure (no --enable-tls-sigs -> HANDLE_TLS_SIGS="//",
-      # the dissection feature OFF) -- see app/tools/ndpi/ndpi_define.h's
-      # provenance comment and task-13-report.md. Matching the two legs on
-      # this macro means the "does it compile" proof is at least comparing
-      # the same feature set on both archives; TLS client signature
-      # dissection itself is documented upstream as "rarely used, but
-      # requires significantly more memory", so leaving it off by default
-      # on both legs is also the lower-footprint choice for a proof build.
-      - name: Build amd64 libndpi.a (upstream autotools, minus the two flags above)
-        working-directory: ndpi-amd64
-        run: |
-          ./autogen.sh
-          ./configure --host=x86_64-w64-mingw32
-          make -C src/lib
-
-      # FIX ROUND 4: `file` on a static archive reports "current ar
-      # archive" for EVERY architecture -- an .a is just a container; the
-      # architecture lives in the member object files, not the archive
-      # itself. The original version of this assertion (and the arm64
-      # one) only ever checked that, so it could not have told the amd64
-      # and arm64 legs apart, or caught either one silently linking the
-      # wrong toolchain's objects. Pull a real member out and inspect
-      # THAT, and apply the identical treatment to both legs -- the whole
-      # point of this job is comparing two architectures, so only
-      # checking one side would undermine the proof.
-      - name: Assert amd64 libndpi.a exists and its members are x86-64
-        run: |
-          f=ndpi-amd64/src/lib/libndpi.a
-          test -s "$f" || { echo "::error::$f was not produced"; exit 1; }
-          ls -la "$f"
-
-          # Sanity floor, not an exact count: the Makefile/autotools build
-          # compiled ~296 translation units at the pinned tag. A floor of
-          # 250 catches a truncated/near-empty archive without failing
-          # this gate over an incremental upstream file addition or
-          # removal at the same tag.
-          member_count=$(ar t "$f" | wc -l)
-          echo "member count: $member_count"
-          if [ "$member_count" -lt 250 ]; then
-            echo "::error::$f has only $member_count members -- expected at least 250 (296 objects were compiled)"
-            exit 1
-          fi
-
-          member=$(ar t "$f" | head -n 1)
-          echo "inspecting member: $member"
-          ar p "$f" "$member" > /tmp/amd64-member.o
-
-          echo "--- file (informational cross-check only, not gated on -- ---"
-          echo "--- its COFF architecture wording is not guaranteed) ---"
-          file /tmp/amd64-member.o
-
-          echo "--- llvm-objdump -f (the primary oracle: ships with"
-          echo "--- llvm-mingw, already on this runner, parses the COFF"
-          echo "--- header directly rather than pattern-matching) ---"
-          llvm-objdump -f /tmp/amd64-member.o
-
-          llvm-objdump -f /tmp/amd64-member.o | grep -qiE 'x86-64|x86_64' || {
-            echo "::error::$f's member '$member' is not x86-64 -- llvm-objdump -f reported: $(llvm-objdump -f /tmp/amd64-member.o | tr '\n' ' ')"
-            exit 1
-          }
-
-      # Step 2: arm64 via the vendored Makefile. Stage the pregenerated
-      # headers where autotools would have generated them (src/include/),
-      # and the Makefile itself where autotools' own src/lib/Makefile would
-      # live, so the include paths inside Makefile.crossproof line up with
-      # the same layout autotools uses.
-      #
-      # FIX ROUND 2/3: also stage ndpi_arm64_shim.h next to the Makefile --
-      # Makefile.crossproof force-includes it (-include) on every
-      # translation unit to supply __rorq() for aarch64 (NOT _rotr64():
-      # round 2 tried redeclaring that and collided with llvm-mingw's own
-      # declaration of it -- see ndpi_arm64_shim.h's header comment and
-      # task-13-report.md's "UPSTREAM BUGS FOUND" section for the full
-      # story). We deliberately do NOT patch the cloned tree itself, and
-      # deliberately do NOT touch mingw's own _rotr64 -- the shim is
-      # staged alongside the tree, not merged into it.
-      - name: Stage vendored headers + Makefile (arm64 leg)
-        run: |
-          cp app/tools/ndpi/ndpi_define.h ndpi-arm64/src/include/ndpi_define.h
-          cp app/tools/ndpi/ndpi_config.h ndpi-arm64/src/include/ndpi_config.h
-          cp app/tools/ndpi/Makefile.crossproof ndpi-arm64/src/lib/Makefile.crossproof
-          cp app/tools/ndpi/ndpi_arm64_shim.h ndpi-arm64/src/lib/ndpi_arm64_shim.h
-
-      - name: Build arm64 libndpi.a (vendored Makefile.crossproof)
-        working-directory: ndpi-arm64/src/lib
-        run: |
-          make -f Makefile.crossproof \
-            CC=aarch64-w64-mingw32-clang \
-            AR=aarch64-w64-mingw32-ar
-
-      # FIX ROUND 4: same fix, same reasoning, as the amd64 assertion
-      # above -- `file` on the .a itself only ever said "current ar
-      # archive" (true for every architecture; run 31564089756 is what
-      # caught this), so the original version of this step could not
-      # actually have told an aarch64 archive apart from any other one.
-      - name: Assert arm64 libndpi.a exists and its members are aarch64
-        run: |
-          f=ndpi-arm64/src/lib/libndpi.a
-          test -s "$f" || { echo "::error::$f was not produced"; exit 1; }
-          ls -la "$f"
-
-          member_count=$(ar t "$f" | wc -l)
-          echo "member count: $member_count"
-          if [ "$member_count" -lt 250 ]; then
-            echo "::error::$f has only $member_count members -- expected at least 250 (296 objects were compiled)"
-            exit 1
-          fi
-
-          member=$(ar t "$f" | head -n 1)
-          echo "inspecting member: $member"
-          ar p "$f" "$member" > /tmp/arm64-member.o
-
-          echo "--- file (informational cross-check only, not gated on -- ---"
-          echo "--- its COFF architecture wording is not guaranteed) ---"
-          file /tmp/arm64-member.o
-
-          echo "--- llvm-objdump -f (the primary oracle) ---"
-          llvm-objdump -f /tmp/arm64-member.o
-
-          llvm-objdump -f /tmp/arm64-member.o | grep -qiE 'aarch64|arm64' || {
-            echo "::error::$f's member '$member' is not aarch64 -- llvm-objdump -f reported: $(llvm-objdump -f /tmp/arm64-member.o | tr '\n' ' ')"
-            exit 1
-          }
-
-  # Every green build publishes a prerelease, the way the android fork does:
-  # same tag grammar, same riding-the-numbering notes line. The in-app update
-  # checker polls this repo's releases, so the asset names are a contract, not
-  # cosmetics. No checksums file is attached: download verification rides the
-  # per-asset sha256 digest GitHub itself computes on upload and serves in the
-  # same releases JSON the checker already fetches (owner ruled a SHA256SUMS
-  # asset off the release page).
-  release:
-    name: Publish the prerelease
-    # PRs build everything but must not publish: a PR that republished (and
-    # first DELETED) the day's release would be a footgun even before fork
-    # PRs' read-only tokens made it fail halfway.
-    if: github.event_name != 'pull_request'
-    needs: [build-sdk, build-windows]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      VERSION: ${{ needs.build-sdk.outputs.version }}
-    steps:
-      # gh resolves which repo to release into from the checkout's remote
-      - name: Check out Windows repo
-        uses: actions/checkout@v4
-
-      - name: Download the portable zips
-        uses: actions/download-artifact@v4
-        with:
-          pattern: urnetwork-windows-portable-*
-          path: dist
-          merge-multiple: true
-
-      - name: Download the MSI
-        uses: actions/download-artifact@v4
-        with:
-          name: urnetwork-windows-msi
-          path: dist
-
-      - name: Publish the release
-        working-directory: dist
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          tag="v${VERSION}"
-          # re-running a run (or a same-day rebuild racing the date math)
-          # must replace the tag's release, not collide with it
-          gh release delete "$tag" --yes || true
-          {
-            echo "Beta build (custom server fork) riding the official version numbering -- this is not an official URnetwork release."
-            echo
-            echo "The attached MSI is unsigned and untested -- use the portable zip."
-          } > notes.md
-          files=(URnetwork-*-portable.zip)
-          for msi in *.msi; do
-            if [ -f "$msi" ]; then files+=("$msi"); fi
-          done
-          # --target pins the tag to the commit this run built; without it a
-          # new tag would point wherever the default branch happens to be
-          gh release create "$tag" \
-            --prerelease \
-            --target "$GITHUB_SHA" \
-            --title "$tag" \
-            --notes-file notes.md \
-            "${files[@]}"

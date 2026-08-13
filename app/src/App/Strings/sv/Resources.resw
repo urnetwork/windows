@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>En ny seedfras genereras och kopplas till ditt konto.</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>Med en seedfras kan du återställa ditt konto om du förlorar åtkomsten.</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>Med en seedfras kan du återställa ditt konto om du förlorar åtkomsten. Förvara den säkert.</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>För att komma åt din autentiseringskod, skapa ett konto och logga in på {link}ur.io{/link}. Gå till Konto -&gt; Inställningar -&gt; Skapa/Kopiera autentiseringskod -&gt; Klistra in -&gt; Klart!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>Lägg till</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>Lägg till en inloggningsmetod</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>Lägg till blockerad plats</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>Lägg till en referenskod för att tjäna extra belöningar</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>Lägg till inloggningsmetod</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>Lägg till inloggningsmetod</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>Lägg till plånbok</value>
@@ -144,6 +165,10 @@
     <value>{} kommer att gå via VPN</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>{} kommer att använda en enda leverantör</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>Exkludering aktiv — exkluderade appar kringgår VPN</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>Appdelningsregler</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>0 appar i appdelning</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>Den här appen är äldre än den installerade systemtjänsten URnetwork. Uppdatera appen för att ansluta.</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>Apple-inloggningsmetod tillagd</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>Tillämpa bonus</value>
@@ -196,6 +233,9 @@
     <value>Är du säker på att du vill radera ditt konto?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>Är du säker på att du vill ta bort {} som inloggningsmetod?</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>Är du säker på att du vill ta bort denna plånbok?</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -203,6 +243,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>Autentiseringskod</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>Autentiseringskod 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>Skapa autentiseringskod</value>
@@ -394,6 +440,10 @@ rätt sätt</value>
     <value>Genom att prenumerera godkänner du URnetworks [Användarvillkor](https://ur.io/terms) och [Integritetspolicy](https://ur.io/privacy)</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>Kringgå VPN</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>Avbryt</value>
     <comment>Call to action</comment>
@@ -413,6 +463,10 @@ rätt sätt</value>
   <data name="change_network_api_title" xml:space="preserve">
     <value>Ändra nätverks-API</value>
     <comment>Title of the network API selector dialog.</comment>
+  </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>Tryck på redigeringsikonen för att ändra ditt nätverksnamn</value>
+    <comment>A description of the action to change the user's network name.</comment>
   </data>
   <data name="change_password" xml:space="preserve">
     <value>Byt lösenord</value>
@@ -465,6 +519,10 @@ rätt sätt</value>
   <data name="claim_multiplier" xml:space="preserve">
     <value>Kravmultiplikator</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>Skaffa ett eget nätverksnamn som ersätter det automatiskt genererade</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Klientkontrakt</value>
@@ -526,6 +584,10 @@ rätt sätt</value>
     <value>Anslut</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>Anslut en Solana-plånbok (Phantom eller Solflare) för att lägga till den som inloggningsmetod.</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>Anslut en plånbok</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -574,6 +636,10 @@ rätt sätt</value>
     <value>Ansluten</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>Ansluten: {}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.one" xml:space="preserve">
     <value>Ansluten till {} leverantör</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -585,6 +651,10 @@ rätt sätt</value>
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>Ansluter till leverantörer</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>Ansluter till plånbok...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>Anslutningsläge</value>
@@ -630,6 +700,10 @@ rätt sätt</value>
     <value>Bidra med bandbredd</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>Kopierat!</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>Kopiera</value>
     <comment>Call to action</comment>
@@ -641,6 +715,10 @@ rätt sätt</value>
   <data name="copy_client_id" xml:space="preserve">
     <value>Kopiera klient-ID</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>Kopiera till urklipp</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>Kunde inte öppna plånboken. Installera den och försök igen.</value>
@@ -682,6 +760,10 @@ rätt sätt</value>
     <value>Skapa ett konto</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>Skapa direktkonto</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>Något gick fel. Försök igen.</value>
     <comment>Call to action</comment>
@@ -689,6 +771,14 @@ rätt sätt</value>
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>Skapade autentiseringskoder upphör efter 5 minuter</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>Nuvarande API: {}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>Nuvarande anslutning: {}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>Aktuellt referensnätverk</value>
@@ -705,6 +795,18 @@ rätt sätt</value>
   <data name="custom_dns" xml:space="preserve">
     <value>Anpassad DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>Appen och systemtjänsten URnetwork är olika byggen. Uppdatera båda till samma version.</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>Systemtjänsten URnetwork är inaktuell. Uppdatera den för att ansluta.</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>Systemtjänsten URnetwork körs inte. Installera eller starta den och försök igen.</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>Daglig databalans:</value>
@@ -733,6 +835,10 @@ rätt sätt</value>
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>Som standard får du {} GiB/månad. Så här kan du tjäna extra bandbredd:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>Standard</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>STANDARD</value>
@@ -822,6 +928,10 @@ rätt sätt</value>
     <value>DNS över HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>De säkra standardinställningarna är inte tillämpade</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>De säkra standardinställningarna är inte tillämpade</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -842,6 +952,10 @@ rätt sätt</value>
     <value>DNS-inställningar är inte tillgängliga</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>Det finns otillämpade rekommenderade inställningar för {}</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>Använder rekommenderade regionala inställningar</value>
     <comment>dns settings</comment>
@@ -849,6 +963,10 @@ rätt sätt</value>
   <data name="dns_using_secure" xml:space="preserve">
     <value>Använder de säkraste standardinställningarna</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>Klar</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>Ser du det inte?</value>
@@ -878,6 +996,10 @@ rätt sätt</value>
     <value>Redigera enhetsnamn</value>
     <comment>device</comment>
   </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>Redigera nätverksnamn</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
+  </data>
   <data name="edit_profile" xml:space="preserve">
     <value>Redigera profil</value>
     <comment>Profile</comment>
@@ -906,6 +1028,10 @@ rätt sätt</value>
     <value>Ange ett namn för ditt nätverk</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>Ange ett lösenord</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>Ange en Solana- eller Bittensor-plånboksadress</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -916,6 +1042,10 @@ rätt sätt</value>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Ange saldo-kod</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>Ange nätverksnamn</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>Ange nätverksreferenskod</value>
@@ -928,6 +1058,10 @@ rätt sätt</value>
   <data name="enter_wallet_address" xml:space="preserve">
     <value>Ange plånboksadress</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>Fel vid ändring av nätverksnamn</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>Tyvärr uppstod ett fel när multiplikatorn skulle hämtas.</value>
@@ -1069,6 +1203,15 @@ rätt sätt</value>
     <value>Allmänt</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>Generera</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>Vill du generera en seedfras för återställning?</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>Generera seedfras</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>Anslut</value>
     <comment>Call to action</comment>
@@ -1088,6 +1231,10 @@ rätt sätt</value>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Logga in med Google</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>Google-inloggningsmetod tillagd</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>Uppfattat</value>
@@ -1129,6 +1276,14 @@ rätt sätt</value>
     <value>Jag godkänner URnetworks [Användarvillkor](https://ur.io/terms) och [Integritetspolicy](https://ur.io/privacy)</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>Jag har sparat min seedfras</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>Hash för identitetsnyckel kopierad</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>Om problemet kvarstår, kontakta oss på [support@ur.io](mailto:support@ur.io) eller [gå med i vår Discord](https://discord.com/invite/RUNZXMwPRK) för direkt support.</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1148,6 +1303,10 @@ rätt sätt</value>
   <data name="include_app_description" xml:space="preserve">
     <value>Endast inkluderade appar använder tunneln.</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>Inkludera i VPN</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>Inkluderad</value>
@@ -1189,6 +1348,14 @@ rätt sätt</value>
     <value>IP-adress</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.one" xml:space="preserve">
+    <value>{} IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} IP:er</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1225,6 +1392,10 @@ rätt sätt</value>
     <value>Gå med i URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>förklaring</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>Kill switch</value>
     <comment>Call to action</comment>
@@ -1253,9 +1424,16 @@ rätt sätt</value>
     <value>Läs mer på protokollsidan</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>Koppla ett annat sätt att logga in på ditt konto.</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>Laddar...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>Laddar inloggningsmetoder...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>Lokal</value>
@@ -1292,6 +1470,34 @@ rätt sätt</value>
   <data name="local_statistics" xml:space="preserve">
     <value>Lokal statistik</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
+  </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>URnetwork kunde inte ta bort systemets platsfil, så den här datorn kan fortfarande rapportera en leverantörs plats. Starta systemtjänsten URnetwork och stäng av detta, eller ta bort /etc/geolocation som administratör.</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>Det täcker inte allt. Chrome och KDE Plasma frågar aldrig GeoClue, och appar som själva räknar ut din plats utifrån din IP-adress påverkas inte. Firefox faller tillbaka på sin egen uppslagning om systemet inte svarar snabbt.</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>Appar som frågar systemet om din plats via GeoClue — bland annat GNOME Inställningar och Kartor, Firefox samt sandlådade Flatpak- och Snap-appar — rapporterar leverantörens plats i stället för din.</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>Klart. Slå på reglaget för att rapportera den anslutna leverantörens plats som den här datorns plats.</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>Installera GeoClue 2.7 eller senare. Det finns inte på alla system, och Ubuntu 22.04 och Debian 12 levererar en äldre version som inte klarar detta.</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>Installera systemtjänsten URnetwork. Systemets platsfil ligger under /etc, så en privilegierad hjälpprocess måste skriva den — URnetwork ber dig aldrig köra själva appen som administratör.</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>Låt GeoClues statiska platskälla vara aktiverad. Den är på som standard; kontrollera /etc/geoclue/geoclue.conf om du har ändrat den.</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
   </data>
   <data name="login_client_error" xml:space="preserve">
     <value>Något gick fel vid autentiseringen av klienten. Försök igen.</value>
@@ -1331,17 +1537,105 @@ skickade till dig för att verifiera din identitet.</value>
     <value>Gör till standard</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>Hantera appar</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>Hantera prenumeration</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="max_n" xml:space="preserve">
+    <value>max {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
   </data>
   <data name="member" xml:space="preserve">
     <value>Medlem</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="method" xml:space="preserve">
+    <value>Metod</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>för {} min sedan</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
+  </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>Synkroniserar med {}</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>Bara sidor i den här webbläsaren ser den ändrade platsen. Enhetens plats påverkas inte.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>Appar kan upptäcka att platsen är simulerad. Bank-, taxi-, leverans- och vissa spelappar kan vägra att fungera medan detta är på.</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>Detta ändrar platsen som rapporteras till alla appar på din enhet, inte bara URnetwork.</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>Webbplatser kan upptäcka att platsen är simulerad och kan vägra att fungera.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>Stäng av detta i URnetwork innan du stänger av utvecklaralternativen, avmarkerar URnetwork eller avinstallerar appen — annars kan enhetens plats förbli frusen tills du startar om.</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>URnetwork kunde inte ta bort den simulerade platsen. Välj URnetwork igen under utvecklaralternativen och stäng av detta, eller starta om enheten.</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>När detta är aktiverat ser appar på den här enheten platsen för den leverantör du har varit ansluten till längst, i stället för din verkliga plats.</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>Synkronisera enhetens plats</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>Konfiguration krävs</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>Öppna ”Om telefonen”</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>Öppna utvecklaralternativ</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>Öppna platsinställningar</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>Klart. Slå på reglaget för att synkronisera enhetens plats med den längst anslutna leverantören.</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>Synkronisering av enhetens plats</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>Aktivera utvecklaralternativen: öppna ”Om telefonen” och tryck sju gånger på ”Byggnummer”.</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>Aktivera ”Plats” i systeminställningarna så att appar kan ta emot platsen.</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>I utvecklaralternativen trycker du på ”Välj app för skenplatser” och väljer URnetwork.</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>Väntar på en leverantörsplats</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
   </data>
   <data name="monthly" xml:space="preserve">
     <value>Månadsvis</value>
@@ -1351,9 +1645,17 @@ skickade till dig för att verifiera din identitet.</value>
     <value>Mest populär</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>Flera IP-adresser</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>Multiplikator</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/dag</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>Namn</value>
@@ -1378,6 +1680,10 @@ skickade till dig för att verifiera din identitet.</value>
   <data name="net_provided" xml:space="preserve">
     <value>Nettotillhandahållen</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>Nätverk</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>Lämna tomt för att härleda från nätverksdomänen.</value>
@@ -1452,6 +1758,10 @@ Hämta din bonus genom att skapa ett nätverk!</value>
     <value>Nätverksintäkter</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>Nätverksnamnet ändrades till {}</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>Inte tillgängligt. Måste skilja sig med minst 3 tecken från ett befintligt nätverk. Gör det unikt eller längre.</value>
     <comment>Call to action</comment>
@@ -1483,6 +1793,14 @@ Hämta din bonus genom att skapa ett nätverk!</value>
   <data name="network_name_unavailable" xml:space="preserve">
     <value>Nätverksnamnet är inte tillgängligt</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.one" xml:space="preserve">
+    <value>Du har {} annan enhet online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>Du har {} andra enheter online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>Nätverksnoder</value>
@@ -1531,6 +1849,14 @@ Hämta din bonus genom att skapa ett nätverk!</value>
   <data name="no_blocked_locations" xml:space="preserve">
     <value>Inga blockerade platser</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>Ingen e-post, telefon eller lösenord behövs. Ditt konto skyddas av en seedfras.</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>Inga installerade appar hittades. (Store-appar visas inte.)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>Inga platser hittades</value>
@@ -1657,6 +1983,10 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Lösenordet måste vara minst 12 tecken</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>Klistra in din seedfras på 24 ord här</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>Betala med Solana-plånbok</value>
     <comment>Call to action</comment>
@@ -1693,6 +2023,18 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Utbetalningar sker varje söndag kl. 00:00 UTC och kräver att en minsta USDC-gräns uppnås.</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>1 nod</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d noder</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>Nodidentifiering inaktiverad tills du är ansluten</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>Väntande</value>
     <comment>Call to action</comment>
@@ -1704,6 +2046,22 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   <data name="pending_payout" xml:space="preserve">
     <value>Väntande utbetalning</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>Fäst vid en leverantör</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>Håller alla den här appens anslutningar hos en enda leverantör, så att dess API och bilder delar samma IP-adress. Använd för appar vars innehåll inte laddas via VPN</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>Fäst</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>Platshållare</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>Plan</value>
@@ -1741,6 +2099,22 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Poängfördelning</value>
     <comment>Call to action</comment>
   </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>Postkvantkryptering</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>Reservläge aktiverat (tillfälligt)</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>Postkvantidentitet</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>Din identitetsnyckel lagras lokalt på den här enheten. Om någon nods nyckel skiljer sig från den lokalt lagrade nyckeln betyder det att nätverksoperatören inte går att lita på.</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
+  </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>Priset visas i kassan.</value>
     <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
@@ -1777,6 +2151,18 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Tillhandahållandeläge</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0} tim {1} min</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{} min</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{} s</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>Leverantörskontrakt</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1791,6 +2177,26 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} leverantörer</value>
+  </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>Leverantörsidentiteter</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>Okänd plats</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>Inga leverantörer anslutna</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>Leverantörsplatser</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>Leverantörsinformation är inte tillgänglig förrän du är ansluten</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>Leverantörsstatistik</value>
@@ -1818,7 +2224,7 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>Vi kunde inte bekräfta ditt köp ännu. Om du slutförde betalningen uppdateras din plan automatiskt inom några minuter — du behöver inte köpa igen.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>Avsluta</value>
@@ -1875,6 +2281,10 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   <data name="refer_a_friend_30_gib_month" xml:space="preserve">
     <value>Tipsa en vän = +30 GiB/månad</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
+  </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>Tipsa en vän = +3 GiB/dag</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
   </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>Tipsa och tjäna</value>
@@ -1952,6 +2362,9 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Rekommendationer</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>Generera ny seedfras</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>Regioner</value>
     <comment>Provider list group title for regions</comment>
@@ -2003,6 +2416,9 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   <data name="remove_rule" xml:space="preserve">
     <value>Ta bort regel</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>Ta bort den här inloggningsmetoden?</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>Ta bort plånbok</value>
@@ -2060,6 +2476,10 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Regler</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>2x din gratis- och referensdata</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>Spara</value>
     <comment>Profile</comment>
@@ -2088,6 +2508,10 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>för {} s sedan</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>Säkra ditt konto</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>Se allt
 innehåll i världen</value>
@@ -2097,6 +2521,10 @@ innehåll i världen</value>
     <value>Se allt innehåll i världen med URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>Seedfras</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker-token verifierat!</value>
     <comment>Call to action</comment>
@@ -2104,6 +2532,10 @@ innehåll i världen</value>
   <data name="select_country_to_block" xml:space="preserve">
     <value>Välj land att blockera</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>Jordglob: välj leverantörsplats</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>Vald plats</value>
@@ -2193,6 +2625,10 @@ innehåll i världen</value>
     <value>Logga in</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>Logga in</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>Logga in med dGEN1</value>
     <comment>Call to action</comment>
@@ -2200,6 +2636,13 @@ innehåll i världen</value>
   <data name="sign_in_failed" xml:space="preserve">
     <value>Inloggningen misslyckades</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>Inloggningsmetoden har lagts till</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>Inloggningsmetoder</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>Logga in med kod</value>
@@ -2209,13 +2652,172 @@ innehåll i världen</value>
     <value>Logga in med Google</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>Logga in med Google för att lägga till det som inloggningsmetod.</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>Logga in med seedfras</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>Logga in med ditt Apple ID för att lägga till det som inloggningsmetod.</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>Logga ut</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>Signera med plånbok</value>
+    <comment>Button text for signing in with a wallet.</comment>
+  </data>
   <data name="signed_in" xml:space="preserve">
     <value>Inloggad</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>Genomsnittlig tillförlitlighet</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>Klienter</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>Anslutningsalternativ</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>Anslut för att se aktivitet i realtid</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>Land</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>Landsmultiplikatorer</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>Fast IP</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>Hantera prenumeration</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>Auto</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>Streaming</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>Webb</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>Multiplikator</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>Ingen trafik ännu</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>Plan</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>Proxyservrar</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>Tillförlitlighetsvikt</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>Stark anonymisering</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>Överföring</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>Konfigurera tillägget för att ansluta</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>Tillägget är inloggat på ett annat nätverk:</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork dirigerar den här webbläsaren via tillägget. Installera det för att börja ansluta.</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>Installera tillägget för att ansluta</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>Tillägg upptäckt och inloggat</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>Tillägget är installerat men utloggat. Konfigurera det med ditt nätverk för att ansluta.</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>Redo att ansluta</value>
+    <comment>Connect: disconnected status line</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>Installera appen</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>Du har Free-planen. Uppgradera till Pro för mer data och fler funktioner.</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>Free-plan</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>Hantera i {platform}</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>Hantera i App Store</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>Hantera i Google Play</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>en annan plattform</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>Din Pro-prenumeration faktureras via {platform}. Ändra eller avsluta den genom att hantera dina prenumerationer via {platform}.</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>Din Pro-prenumeration faktureras via App Store. Ändra eller avsluta den genom att hantera dina prenumerationer i App Store.</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>Din Pro-prenumeration faktureras via Google Play. Ändra eller avsluta den genom att hantera dina prenumerationer i Google Play.</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>Din Pro-prenumeration faktureras via Stripe. Uppdatera dina betaluppgifter eller avsluta när som helst nedan.</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>Se till att du har tillräckligt med USDC i din plånbok. I vissa fall misslyckas betalningsförfrågningar om det inte finns tillräckliga medel i plånboken.</value>
@@ -2365,6 +2967,14 @@ som det borde vara.</value>
     <value>Vill du koppla från {} och byta konto?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>Synkronisera enhetens plats med den längst anslutna leverantören</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>Synkronisera enhetens plats med leverantören</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>System</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2405,9 +3015,21 @@ som det borde vara.</value>
     <value>Dessa plånböcker är inte anslutna till eller kontrollerade av URnetwork. Vi kommer att skicka intäkter till den anslutna plånboken.</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ Det här är enda gången du ser den.</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>denna region</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>Ansluten</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>Frånkopplad</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Logga in</value>
@@ -2487,6 +3109,10 @@ som det borde vara.</value>
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>Prova gästläge</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>Kunde inte starta anslutningen</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>Okrypterad DNS</value>
@@ -2598,6 +3224,10 @@ som det borde vara.</value>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>USDC-plånboksadress</value>
   </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>Använder den stabilaste leverantören</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
+  </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>Använd rekommenderade inställningar</value>
     <comment>dns settings</comment>
@@ -2681,9 +3311,17 @@ som det borde vara.</value>
     <value>Versions- och bygginformation</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>via {}</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>Väntar på godkännande</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>Väntar på plånbokssignatur...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>Plånbok</value>
@@ -2723,6 +3361,10 @@ som det borde vara.</value>
     <value>Inloggning med plånbok misslyckades</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>Inloggningsmetod med plånbok tillagd</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>Plånböcker</value>
     <comment>Wallets Screen</comment>
@@ -2755,6 +3397,10 @@ som det borde vara.</value>
     <value>med URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>Skriv ner den och förvara den på ett säkert ställe. Om du tappar bort den förlorar du åtkomsten till ditt konto.</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>Årsvis</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -2766,6 +3412,16 @@ som det borde vara.</value>
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>Du får 30 GiB/månad för alltid</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>Du får 3 GiB/dag på livstid</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>Du har 1 annan enhet online</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>Du har {} andra enheter online</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>Du låser upp ännu snabbare hastigheter och får först tillgång till nya funktioner som robusta åtgärder mot censur och datakontroll.</value>
@@ -2791,6 +3447,10 @@ som det borde vara.</value>
     <value>Din vän får 30 GiB/månad för alltid</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>Din vän får 3 GiB/dag på livstid</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>Ditt köp måste godkännas innan det kan slutföras. UR Pro aktiveras automatiskt när det går igenom — du behöver inte köpa igen.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -2798,5 +3458,9 @@ som det borde vara.</value>
   <data name="your_referral_link" xml:space="preserve">
     <value>Din rekommendationslänk</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>Din seedfras</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>

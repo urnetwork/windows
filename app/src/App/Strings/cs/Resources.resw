@@ -42,6 +42,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="a_new_seedphrase_will_be_generated_and" xml:space="preserve">
+    <value>Bude vygenerována nová seed fráze a propojena s vaším účtem.</value>
+    <comment>A description of the seedphrase generation process.</comment>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
+    <value>Seed fráze vám umožní obnovit účet, pokud k němu ztratíte přístup.</value>
+  </data>
+  <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
+    <value>Seed fráze vám umožní obnovit účet, pokud k němu ztratíte přístup. Uložte ji na bezpečné místo.</value>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>Pro přístup ke svému ověřovacímu kódu si vytvořte účet a přihlaste se na {link}ur.io{/link}. Přejděte na Účet -&gt; Nastavení -&gt; Vytvořit/Zkopírovat ověřovací kód -&gt; Vložit -&gt; Hotovo!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -74,6 +84,10 @@
     <value>Přidat</value>
     <comment>dns settings</comment>
   </data>
+  <data name="add_a_sign_in_method" xml:space="preserve">
+    <value>Přidat způsob přihlášení</value>
+    <comment>A title for the screen that lets the user add a new sign-in method.</comment>
+  </data>
   <data name="add_blocked_location" xml:space="preserve">
     <value>Přidat blokovanou lokalitu</value>
     <comment>Call to action</comment>
@@ -85,6 +99,13 @@
   <data name="add_referral_extra_rewards" xml:space="preserve">
     <value>Přidáním kódu pro doporučení získáte další odměny</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="add_sign_in_method" xml:space="preserve">
+    <value>Přidat způsob přihlášení</value>
+  </data>
+  <data name="add_sign_in_method_2" xml:space="preserve">
+    <value>Přidat způsob přihlášení</value>
+    <comment>Button text for adding a sign-in method.</comment>
   </data>
   <data name="add_wallet" xml:space="preserve">
     <value>Přidat peněženku</value>
@@ -144,6 +165,10 @@
     <value>{} bude používat VPN</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="app_pinned_toast" xml:space="preserve">
+    <value>{} bude používat jednoho poskytovatele</value>
+    <comment>Android app string: app pinned toast.</comment>
+  </data>
   <data name="app_split_active_exclude" xml:space="preserve">
     <value>Vyloučení aktivní — vyloučené aplikace obcházejí VPN</value>
     <comment>transfer stats and split rules</comment>
@@ -163,6 +188,18 @@
   <data name="app_split_rules" xml:space="preserve">
     <value>Pravidla rozdělení aplikací</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="app_split_starter" xml:space="preserve">
+    <value>0 rozdělených aplikací</value>
+    <comment>Generic starter label on the app-split panel when no apps are included or excluded yet (shown instead of "0 apps excluded").</comment>
+  </data>
+  <data name="app_too_old_for_daemon" xml:space="preserve">
+    <value>Tato aplikace je starší než nainstalovaná systémová služba URnetwork. Pro připojení aplikaci aktualizujte.</value>
+    <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="apple_sign_in_method_added" xml:space="preserve">
+    <value>Způsob přihlášení Apple byl přidán</value>
+    <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
   </data>
   <data name="apply_bonus" xml:space="preserve">
     <value>Použít bonus</value>
@@ -212,6 +249,9 @@
     <value>Opravdu chcete svůj účet odstranit?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
+    <value>Opravdu chcete odstranit {} jako způsob přihlášení?</value>
+  </data>
   <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
     <value>Opravdu chcete tuto peněženku odstranit?</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
@@ -219,6 +259,12 @@
   <data name="auth_code" xml:space="preserve">
     <value>Ověřovací kód</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="auth_code_2" xml:space="preserve">
+    <value>Ověřovací kód 
+
+{0}...{1}</value>
+    <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
     <value>Vytvořit autorizační kód</value>
@@ -409,6 +455,10 @@ správným způsobem</value>
     <value>Přihlášením k odběru souhlasíte s [Podmínkami a službami](https://ur.io/terms) a [Zásadami ochrany osobních údajů](https://ur.io/privacy) společnosti URnetwork.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
+  <data name="bypass_vpn" xml:space="preserve">
+    <value>Obejít VPN</value>
+    <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>Zrušit</value>
     <comment>Call to action</comment>
@@ -428,6 +478,10 @@ správným způsobem</value>
   <data name="change_network_api_title" xml:space="preserve">
     <value>Změnit síťové API</value>
     <comment>Title of the network API selector dialog.</comment>
+  </data>
+  <data name="change_network_name_hint" xml:space="preserve">
+    <value>Klepnutím na ikonu úprav změníte název sítě</value>
+    <comment>A description of the action to change the user's network name.</comment>
   </data>
   <data name="change_password" xml:space="preserve">
     <value>Změnit heslo</value>
@@ -480,6 +534,10 @@ správným způsobem</value>
   <data name="claim_multiplier" xml:space="preserve">
     <value>Nárokujte si násobej</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="claim_network_name_hint" xml:space="preserve">
+    <value>Získejte vlastní název sítě, který nahradí automaticky vygenerovaný</value>
+    <comment>A description of the benefits of claiming a custom network name.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Kontrakty klienta</value>
@@ -541,6 +599,10 @@ správným způsobem</value>
     <value>Připojit</value>
     <comment>Button text to connect to URnetwork VPN</comment>
   </data>
+  <data name="connect_a_solana_wallet_phantom_or_solflare" xml:space="preserve">
+    <value>Připojte peněženku Solana (Phantom nebo Solflare) a přidejte ji jako způsob přihlášení.</value>
+    <comment>A description of how to connect a Solana wallet to add it as a sign-in method.</comment>
+  </data>
   <data name="connect_a_wallet" xml:space="preserve">
     <value>Připojit peněženku</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
@@ -589,6 +651,10 @@ správným způsobem</value>
     <value>Připojeno</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
   </data>
+  <data name="connected_n" xml:space="preserve">
+    <value>Připojeno: {}...</value>
+    <comment>A label showing the public key of the connected wallet.</comment>
+  </data>
   <data name="connected_provider_count.one" xml:space="preserve">
     <value>Připojení k {} poskytovateli</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
@@ -608,6 +674,10 @@ správným způsobem</value>
   <data name="connecting_status_indicator" xml:space="preserve">
     <value>Připojení k poskytovatelům</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connecting_to_wallet" xml:space="preserve">
+    <value>Připojování k peněžence...</value>
+    <comment>A message displayed when a user is connecting a wallet.</comment>
   </data>
   <data name="connection_mode" xml:space="preserve">
     <value>Režim připojení</value>
@@ -661,6 +731,10 @@ správným způsobem</value>
     <value>Poskytněte šířku pásma</value>
     <comment>Used in Shared/Views/Introduction/IntroductionParticipateSettingsView.swift.</comment>
   </data>
+  <data name="copied" xml:space="preserve">
+    <value>Zkopírováno!</value>
+    <comment>Text for a button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="copy" xml:space="preserve">
     <value>Kopírovat</value>
     <comment>Call to action</comment>
@@ -672,6 +746,10 @@ správným způsobem</value>
   <data name="copy_client_id" xml:space="preserve">
     <value>Kopírovat ID klienta</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
+  </data>
+  <data name="copy_to_clipboard" xml:space="preserve">
+    <value>Kopírovat do schránky</value>
+    <comment>Button text to copy the seedphrase to the clipboard.</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>Peněženku se nepodařilo otevřít. Nainstalujte ji prosím a zkuste to znovu.</value>
@@ -713,6 +791,10 @@ správným způsobem</value>
     <value>Vytvořte si účet</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="create_instant_account" xml:space="preserve">
+    <value>Vytvořit okamžitý účet</value>
+    <comment>A title for the screen where a user can create an instant account.</comment>
+  </data>
   <data name="create_network_error" xml:space="preserve">
     <value>Něco se pokazilo. Zkuste to znovu.</value>
     <comment>Call to action</comment>
@@ -720,6 +802,14 @@ správným způsobem</value>
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
     <value>Vytvořené autorizační kódy vyprší po 5 minutách</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
+  </data>
+  <data name="current_api_n" xml:space="preserve">
+    <value>Aktuální API: {}</value>
+    <comment>A label showing the current network API and connect URLs.</comment>
+  </data>
+  <data name="current_connect_n" xml:space="preserve">
+    <value>Aktuální připojení: {}</value>
+    <comment>A label displaying the current connect URL.</comment>
   </data>
   <data name="current_network_referral" xml:space="preserve">
     <value>Aktuální síťové doporučení</value>
@@ -736,6 +826,18 @@ správným způsobem</value>
   <data name="custom_dns" xml:space="preserve">
     <value>Vlastní DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
+  </data>
+  <data name="daemon_sdk_mismatch" xml:space="preserve">
+    <value>Aplikace a systémová služba URnetwork jsou různá sestavení. Aktualizujte obojí na stejnou verzi.</value>
+    <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
+  </data>
+  <data name="daemon_too_old" xml:space="preserve">
+    <value>Systémová služba URnetwork je zastaralá. Pro připojení ji aktualizujte.</value>
+    <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_unreachable" xml:space="preserve">
+    <value>Systémová služba URnetwork neběží. Nainstalujte ji nebo spusťte a zkuste to znovu.</value>
+    <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
     <value>Denní datový zůstatek:</value>
@@ -764,6 +866,10 @@ správným způsobem</value>
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>Ve výchozím nastavení získáte {} GiB/měsíc. Zde je návod, jak získat další šířku pásma:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_option" xml:space="preserve">
+    <value>Výchozí</value>
+    <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
   <data name="default_txt" xml:space="preserve">
     <value>VÝCHOZÍ</value>
@@ -853,6 +959,10 @@ správným způsobem</value>
     <value>DNS přes HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
   </data>
+  <data name="dns_pill_default" xml:space="preserve">
+    <value>Výchozí bezpečná nastavení nejsou použita</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_pill_defaults" xml:space="preserve">
     <value>Výchozí bezpečná nastavení nejsou použita</value>
     <comment>DNS status pill shown when the default safe DNS settings are not applied.</comment>
@@ -873,6 +983,10 @@ správným způsobem</value>
     <value>Nastavení DNS není k dispozici</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_unapplied_recommended" xml:space="preserve">
+    <value>Pro {} existují nepoužitá doporučená nastavení</value>
+    <comment>dns settings</comment>
+  </data>
   <data name="dns_using_recommended" xml:space="preserve">
     <value>Používáte doporučené regionální nastavení</value>
     <comment>dns settings</comment>
@@ -880,6 +994,10 @@ správným způsobem</value>
   <data name="dns_using_secure" xml:space="preserve">
     <value>Používáte nejbezpečnější výchozí nastavení</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="done" xml:space="preserve">
+    <value>Hotovo</value>
+    <comment>A button that dismisses a sheet.</comment>
   </data>
   <data name="dont_see_it" xml:space="preserve">
     <value>Nevidíš to?</value>
@@ -909,6 +1027,10 @@ správným způsobem</value>
     <value>Upravit název zařízení</value>
     <comment>device</comment>
   </data>
+  <data name="edit_network_name" xml:space="preserve">
+    <value>Upravit název sítě</value>
+    <comment>Button on the profile screen to edit the network name.</comment>
+  </data>
   <data name="edit_profile" xml:space="preserve">
     <value>Upravit profil</value>
     <comment>Profile</comment>
@@ -937,6 +1059,10 @@ správným způsobem</value>
     <value>Vložte jméno pro vaší sít</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="enter_a_password" xml:space="preserve">
+    <value>Zadejte heslo</value>
+    <comment>Placeholder text for the password field in the add auth sheet.</comment>
+  </data>
   <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
     <value>Zadejte adresu peněženky Solana nebo Bittensor</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
@@ -947,6 +1073,10 @@ správným způsobem</value>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Zadejte kód zůstatku</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="enter_network_name" xml:space="preserve">
+    <value>Zadejte název sítě</value>
+    <comment>A label for a text field where a user can enter a custom network name.</comment>
   </data>
   <data name="enter_network_referral_code" xml:space="preserve">
     <value>Zadejte síťový referenční kód</value>
@@ -959,6 +1089,10 @@ správným způsobem</value>
   <data name="enter_wallet_address" xml:space="preserve">
     <value>Vložte adresu peněženky</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="error_changing_network_name" xml:space="preserve">
+    <value>Chyba při změně názvu sítě</value>
+    <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
   </data>
   <data name="error_claiming_multiplier" xml:space="preserve">
     <value>Omlouváme se, při nárokování násobitele došlo k chybě.</value>
@@ -1100,6 +1234,15 @@ správným způsobem</value>
     <value>Obecné</value>
     <comment>Call to action</comment>
   </data>
+  <data name="generate" xml:space="preserve">
+    <value>Vygenerovat</value>
+  </data>
+  <data name="generate_a_recovery_seedphrase" xml:space="preserve">
+    <value>Vygenerovat seed frázi pro obnovení?</value>
+  </data>
+  <data name="generate_seedphrase" xml:space="preserve">
+    <value>Vygenerovat seed frázi</value>
+  </data>
   <data name="get_connected" xml:space="preserve">
     <value>Připojit se</value>
     <comment>Call to action</comment>
@@ -1119,6 +1262,10 @@ správným způsobem</value>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Přihlásit se přes Google</value>
     <comment>Login initial</comment>
+  </data>
+  <data name="google_sign_in_method_added" xml:space="preserve">
+    <value>Způsob přihlášení Google byl přidán</value>
+    <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>Rozumím</value>
@@ -1168,6 +1315,14 @@ správným způsobem</value>
     <value>Souhlasím s [Podmínkami a službami](https://ur.io/terms) a [Zásadami ochrany osobních údajů](https://ur.io/privacy) společnosti URnetwork.</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="i_ve_saved_my_seedphrase" xml:space="preserve">
+    <value>Seed frázi mám uloženou</value>
+    <comment>Button text for confirming that the user has saved their seedphrase.</comment>
+  </data>
+  <data name="identity_key_hash_copied" xml:space="preserve">
+    <value>Otisk identitního klíče zkopírován</value>
+    <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
+  </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
     <value>Pokud problém přetrvává, kontaktujte nás na [support@ur.io](mailto:support@ur.io) nebo [přidejte se na náš Discord](https://discord.com/invite/RUNZXMwPRK) pro přímou podporu.</value>
     <comment>Used in Main/MainView.swift.</comment>
@@ -1187,6 +1342,10 @@ správným způsobem</value>
   <data name="include_app_description" xml:space="preserve">
     <value>Tunel používají jen zahrnuté aplikace.</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="include_in_vpn" xml:space="preserve">
+    <value>Zahrnout do VPN</value>
+    <comment>App split rules: rule choice routing the app through the VPN.</comment>
   </data>
   <data name="included" xml:space="preserve">
     <value>Zahrnuto</value>
@@ -1228,6 +1387,22 @@ správným způsobem</value>
     <value>IP adresa</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.one" xml:space="preserve">
+    <value>{} IP adresa</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.few" xml:space="preserve">
+    <value>{} IP adresy</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.many" xml:space="preserve">
+    <value>{} IP adresy</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.other" xml:space="preserve">
+    <value>{} IP adres</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
@@ -1264,6 +1439,10 @@ správným způsobem</value>
     <value>Připojte se k URnetwork</value>
     <comment>Join URnetwork title on the Create Network screen</comment>
   </data>
+  <data name="key" xml:space="preserve">
+    <value>legenda</value>
+    <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
+  </data>
   <data name="kill_switch" xml:space="preserve">
     <value>Kill switch</value>
     <comment>Call to action</comment>
@@ -1292,9 +1471,16 @@ správným způsobem</value>
     <value>Další informace najdete na stránce protokolu</value>
     <comment>Call to action</comment>
   </data>
+  <data name="link_another_way_to_sign_in_to" xml:space="preserve">
+    <value>Propojte další způsob přihlášení k vašemu účtu.</value>
+    <comment>A description of the add auth sheet.</comment>
+  </data>
   <data name="loading" xml:space="preserve">
     <value>Načítání...</value>
     <comment>Used in ContentView.swift.</comment>
+  </data>
+  <data name="loading_sign_in_methods" xml:space="preserve">
+    <value>Načítání způsobů přihlášení...</value>
   </data>
   <data name="local" xml:space="preserve">
     <value>Lokálně</value>
@@ -1331,6 +1517,34 @@ správným způsobem</value>
   <data name="local_statistics" xml:space="preserve">
     <value>Místní statistiky</value>
     <comment>Title of a card that shows the local traffic statistics.</comment>
+  </data>
+  <data name="location_override_cleanup_required" xml:space="preserve">
+    <value>URnetwork nemohl odstranit systémový soubor polohy, takže tento počítač může stále hlásit polohu poskytovatele. Spusťte systémovou službu URnetwork a tuto funkci vypněte, nebo soubor /etc/geolocation odstraňte jako správce.</value>
+    <comment>Error state on linux: URnetwork wrote the system location file and can no longer remove it, so the machine may still be reporting a provider's location. Gives the user the recovery steps.</comment>
+  </data>
+  <data name="location_override_coverage_gaps" xml:space="preserve">
+    <value>Nepokrývá vše. Chrome ani KDE Plasma se GeoClue nikdy neptají a jakákoli aplikace, která si vaši polohu sama odvodí z vaší IP adresy, zůstane nedotčena. Firefox se vrátí k vlastnímu zjišťování, pokud systém neodpoví rychle.</value>
+    <comment>Setup guide and info popup on linux: the honest limits of the device location override. Paired with location_override_coverage_geoclue.</comment>
+  </data>
+  <data name="location_override_coverage_geoclue" xml:space="preserve">
+    <value>Aplikace, které si o vaši polohu říkají systému přes GeoClue — včetně Nastavení a Map v GNOME, Firefoxu a izolovaných aplikací Flatpak a Snap — hlásí polohu poskytovatele místo té vaší.</value>
+    <comment>Setup guide and info popup on linux: what the device location override actually covers. Shown alongside location_override_coverage_gaps, which states the limits.</comment>
+  </data>
+  <data name="location_override_ready" xml:space="preserve">
+    <value>Připraveno. Zapněte přepínač, aby se poloha připojeného poskytovatele hlásila jako poloha tohoto počítače.</value>
+    <comment>Setup guide state on linux: every prerequisite for the device location override is met.</comment>
+  </data>
+  <data name="location_override_step_geoclue" xml:space="preserve">
+    <value>Nainstalujte GeoClue 2.7 nebo novější. Není v každém systému a Ubuntu 22.04 a Debian 12 dodávají starší verzi, která to neumí.</value>
+    <comment>Setup guide step on linux: the GeoClue version requirement for the device location override.</comment>
+  </data>
+  <data name="location_override_step_service" xml:space="preserve">
+    <value>Nainstalujte systémovou službu URnetwork. Systémový soubor polohy leží v /etc, takže jej musí zapsat pomocník s oprávněními — URnetwork po vás nikdy nechce, abyste samotnou aplikaci spouštěli jako správce.</value>
+    <comment>Setup guide step on linux: the privileged helper needed to write the system location file. Reassures the user that the app itself never needs root.</comment>
+  </data>
+  <data name="location_override_step_static_source" xml:space="preserve">
+    <value>Ponechte statický zdroj polohy v GeoClue zapnutý. Ve výchozím nastavení je zapnutý; pokud jste jej změnili, zkontrolujte /etc/geoclue/geoclue.conf.</value>
+    <comment>Setup guide step on linux: keep GeoClue's static location source enabled so the override is read.</comment>
   </data>
   <data name="login_client_error" xml:space="preserve">
     <value>Něco se pokazilo při ověřování klienta. Zkuste to znovu.</value>
@@ -1369,17 +1583,105 @@ správným způsobem</value>
     <value>Udělat výchozí</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="manage_apps" xml:space="preserve">
+    <value>Správa aplikací</value>
+    <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>Správa předplatného</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="max_n" xml:space="preserve">
+    <value>max {}</value>
+    <comment>A label at the bottom of the contract stack</comment>
   </data>
   <data name="member" xml:space="preserve">
     <value>Člen</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="method" xml:space="preserve">
+    <value>Způsob</value>
+    <comment>A label for the picker that lets the user select the sign-in method.</comment>
+  </data>
   <data name="minutes_ago_abbrev" xml:space="preserve">
     <value>před {} min</value>
     <comment>Compact relative-time label with an abbreviated minutes unit ("7m ago"), shown by the windows and linux stats formatters for events 1-59 minutes old. The argument is the elapsed minutes. Not a plural: the abbreviated unit does not inflect, but the word order and the unit abbreviation localize.</comment>
+  </data>
+  <data name="mock_location_active" xml:space="preserve">
+    <value>Synchronizace: {}</value>
+    <comment>Status shown while the device location is being synced with a provider. The argument is the provider's city or country.</comment>
+  </data>
+  <data name="mock_location_disclosure_browser_only" xml:space="preserve">
+    <value>Změněnou polohu vidí pouze stránky v tomto prohlížeči. Poloha vašeho zařízení zůstává beze změny.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: the simulated location is reported only to pages in this browser, not to the device.</comment>
+  </data>
+  <data name="mock_location_disclosure_detectable" xml:space="preserve">
+    <value>Aplikace dokážou poznat, že jde o simulovanou polohu. Bankovní aplikace, aplikace pro objednávání jízd a rozvoz i některé hry mohou při zapnutí této funkce odmítnout fungovat.</value>
+    <comment>Disclosure shown with the mock location toggle: apps can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_device_wide" xml:space="preserve">
+    <value>Tím se změní poloha hlášená všem aplikacím ve vašem zařízení, nejen aplikaci URnetwork.</value>
+    <comment>Disclosure shown with the mock location toggle: the simulated location is reported to every app on the device, not only URnetwork.</comment>
+  </data>
+  <data name="mock_location_disclosure_sites_can_detect" xml:space="preserve">
+    <value>Weby dokážou poznat, že je poloha simulovaná, a mohou odmítnout fungovat.</value>
+    <comment>Disclosure shown with the browser geolocation override toggle: sites can detect a simulated location and may refuse to work.</comment>
+  </data>
+  <data name="mock_location_disclosure_turn_off_first" xml:space="preserve">
+    <value>Vypněte tuto funkci v aplikaci URnetwork dříve, než vypnete možnosti pro vývojáře, zrušíte výběr aplikace URnetwork nebo aplikaci odinstalujete — jinak může poloha zařízení zůstat zamrzlá až do restartu.</value>
+    <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
+  </data>
+  <data name="mock_location_error_cleanup_required" xml:space="preserve">
+    <value>Aplikaci URnetwork se nepodařilo odstranit simulovanou polohu. Znovu vyberte URnetwork v možnostech pro vývojáře a funkci vypněte, nebo restartujte zařízení.</value>
+    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  </data>
+  <data name="mock_location_guide_intro" xml:space="preserve">
+    <value>Když je tato funkce zapnutá, aplikace v tomto zařízení vidí místo vaší skutečné polohy polohu poskytovatele, ke kterému jste připojeni nejdéle.</value>
+    <comment>Intro of the mock location guide explaining that apps see the longest-connected provider's location instead of the real one.</comment>
+  </data>
+  <data name="mock_location_guide_title" xml:space="preserve">
+    <value>Synchronizace polohy zařízení</value>
+    <comment>Title of the mock location setup guide.</comment>
+  </data>
+  <data name="mock_location_needs_setup" xml:space="preserve">
+    <value>Vyžaduje nastavení</value>
+    <comment>Short status shown when the mock location feature still needs Android setup steps.</comment>
+  </data>
+  <data name="mock_location_open_about_phone" xml:space="preserve">
+    <value>Otevřít „Informace o telefonu“</value>
+    <comment>Button that opens the Android About phone settings screen.</comment>
+  </data>
+  <data name="mock_location_open_developer_options" xml:space="preserve">
+    <value>Otevřít možnosti pro vývojáře</value>
+    <comment>Button that opens the Android developer options settings screen.</comment>
+  </data>
+  <data name="mock_location_open_location_settings" xml:space="preserve">
+    <value>Otevřít nastavení polohy</value>
+    <comment>Button that opens the Android system location settings screen.</comment>
+  </data>
+  <data name="mock_location_ready" xml:space="preserve">
+    <value>Hotovo. Zapnutím přepínače synchronizujete polohu zařízení s nejdéle připojeným poskytovatelem.</value>
+    <comment>Mock location guide status when setup is complete and the toggle can be turned on.</comment>
+  </data>
+  <data name="mock_location_settings_row" xml:space="preserve">
+    <value>Synchronizace polohy zařízení</value>
+    <comment>Settings row label for the device location sync (mock location) feature.</comment>
+  </data>
+  <data name="mock_location_step_developer_options" xml:space="preserve">
+    <value>Zapněte možnosti pro vývojáře: otevřete „Informace o telefonu“ a sedmkrát klepněte na „Číslo sestavení“.</value>
+    <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_services" xml:space="preserve">
+    <value>V nastavení systému zapněte funkci „Poloha“, aby aplikace mohly polohu přijímat.</value>
+    <comment>Mock location setup step: turn on the system Location setting so apps receive the simulated location.</comment>
+  </data>
+  <data name="mock_location_step_select_app" xml:space="preserve">
+    <value>V možnostech pro vývojáře klepněte na „Vybrat aplikaci pro simulovanou polohu“ a zvolte URnetwork.</value>
+    <comment>Mock location setup step: choose URnetwork as the mock location app in Android developer options.</comment>
+  </data>
+  <data name="mock_location_waiting_for_provider" xml:space="preserve">
+    <value>Čeká se na polohu poskytovatele</value>
+    <comment>Status shown while the mock location feature waits for a connected provider's location to become known.</comment>
   </data>
   <data name="monthly" xml:space="preserve">
     <value>Měsíčně</value>
@@ -1389,9 +1691,17 @@ správným způsobem</value>
     <value>Nejoblíbenější</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="multiple_ips" xml:space="preserve">
+    <value>Více IP adres</value>
+    <comment>Android app string: multiple ips.</comment>
+  </data>
   <data name="multiplier" xml:space="preserve">
     <value>Násobitel</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="n_gib_day" xml:space="preserve">
+    <value>+{} GiB/den</value>
+    <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
   </data>
   <data name="name_label" xml:space="preserve">
     <value>Jméno</value>
@@ -1416,6 +1726,10 @@ správným způsobem</value>
   <data name="net_provided" xml:space="preserve">
     <value>Poskytnutá čistá hodnota</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="network" xml:space="preserve">
+    <value>Síť</value>
+    <comment>Provide control mode option that provides bandwidth only to peers in the same network.</comment>
   </data>
   <data name="network_api_api_url_help" xml:space="preserve">
     <value>Ponechte prázdné pro odvození ze síťové domény.</value>
@@ -1490,6 +1804,10 @@ Získejte svůj bonus vytvořením sítě!</value>
     <value>Výnosy ze sítě</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="network_name_changed_to_n" xml:space="preserve">
+    <value>Název sítě byl změněn na {}</value>
+    <comment>A message that is displayed in a snackbar when the user changes the network name. The argument is the new network name.</comment>
+  </data>
   <data name="network_name_check_error" xml:space="preserve">
     <value>Není k dispozici. Musí se lišit alespoň o 3 znaky od existující sítě. Vytvořte ji jedinečnou nebo delší.</value>
     <comment>Call to action</comment>
@@ -1521,6 +1839,22 @@ Získejte svůj bonus vytvořením sítě!</value>
   <data name="network_name_unavailable" xml:space="preserve">
     <value>Název sítě není k dispozici</value>
     <comment>Create Network Form</comment>
+  </data>
+  <data name="network_peer_count.one" xml:space="preserve">
+    <value>Máte {} další zařízení online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.few" xml:space="preserve">
+    <value>Máte {} další zařízení online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.many" xml:space="preserve">
+    <value>Máte {} dalšího zařízení online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.other" xml:space="preserve">
+    <value>Máte {} dalších zařízení online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peers" xml:space="preserve">
     <value>Síťové uzly</value>
@@ -1577,6 +1911,14 @@ Získejte svůj bonus vytvořením sítě!</value>
   <data name="no_blocked_locations" xml:space="preserve">
     <value>Žádné blokované lokality</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
+    <value>Není potřeba e-mail, telefon ani heslo. Váš účet chrání seed fráze.</value>
+    <comment>A description of the benefits of creating an Instant Account.</comment>
+  </data>
+  <data name="no_installed_apps_found" xml:space="preserve">
+    <value>Nebyly nalezeny žádné nainstalované aplikace. (Aplikace ze Store se nezobrazují.)</value>
+    <comment>App split rules: empty state when no installed apps were enumerated.</comment>
   </data>
   <data name="no_locations_found" xml:space="preserve">
     <value>Nebyly nalezeny žádné lokality</value>
@@ -1703,6 +2045,10 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>Heslo musí mít alespoň 12 znaků</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
+    <value>Sem vložte svou 24slovnou seed frázi</value>
+    <comment>A placeholder text for the seedphrase field.</comment>
+  </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>Zaplaťte pomocí peněženky Solana</value>
     <comment>Call to action</comment>
@@ -1739,6 +2085,18 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>Výplaty probíhají každou neděli v 00:00 UTC a vyžadují dosažení minimální hranice USDC.</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="peer_count_one" xml:space="preserve">
+    <value>1 uzel</value>
+    <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
+  </data>
+  <data name="peer_count_other" xml:space="preserve">
+    <value>%d uzlů</value>
+    <comment>Post quantum identity panel: peer identity count indicator. The argument is the number of peers with an identity-verified e2e session.</comment>
+  </data>
+  <data name="peer_discovery_disabled" xml:space="preserve">
+    <value>Zjišťování uzlů je vypnuté, dokud se nepřipojíte</value>
+    <comment>Replaces the network peer count/list while the app is not attached to its remote device (the network extension or service rpc is down — not connected): the peer state lives in the remote device, so the stat is unavailable rather than zero. Shown with a gray dot.</comment>
+  </data>
   <data name="pending_data_key" xml:space="preserve">
     <value>Čekající</value>
     <comment>Call to action</comment>
@@ -1750,6 +2108,22 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   <data name="pending_payout" xml:space="preserve">
     <value>Čeká se na výplatu</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="pin_app" xml:space="preserve">
+    <value>Připnout k jednomu poskytovateli</value>
+    <comment>Android app string: pin app.</comment>
+  </data>
+  <data name="pin_app_description" xml:space="preserve">
+    <value>Udrží všechna připojení této aplikace u jednoho poskytovatele, takže její API a obrázky sdílejí jednu IP adresu. Použijte u aplikací, jejichž obsah se přes VPN nenačte</value>
+    <comment>Android app string: pin app description.</comment>
+  </data>
+  <data name="pinned" xml:space="preserve">
+    <value>Připnuto</value>
+    <comment>Android app string: pinned.</comment>
+  </data>
+  <data name="placeholder" xml:space="preserve">
+    <value>Zástupný text</value>
+    <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
     <value>Plán</value>
@@ -1795,6 +2169,22 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>Rozdělení bodů</value>
     <comment>Call to action</comment>
   </data>
+  <data name="post_quantum_encryption" xml:space="preserve">
+    <value>Postkvantové šifrování</value>
+    <comment>Connect drawer: post quantum encryption toggle label.</comment>
+  </data>
+  <data name="post_quantum_encryption_fallback_note" xml:space="preserve">
+    <value>Záložní režim zapnut (dočasně)</value>
+    <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
+  </data>
+  <data name="post_quantum_identity" xml:space="preserve">
+    <value>Postkvantová identita</value>
+    <comment>Account tab: post quantum identity panel title.</comment>
+  </data>
+  <data name="post_quantum_identity_explanation" xml:space="preserve">
+    <value>Váš identitní klíč je uložen lokálně v tomto zařízení. Pokud se klíč některého uzlu liší od jeho lokálně uloženého klíče, znamená to, že provozovateli sítě nelze důvěřovat.</value>
+    <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
+  </data>
   <data name="pricing_shown_at_checkout" xml:space="preserve">
     <value>Cena se zobrazí při placení.</value>
     <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
@@ -1831,6 +2221,18 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>Režim poskytování</value>
     <comment>Call to action</comment>
   </data>
+  <data name="provider_connected_duration_hours" xml:space="preserve">
+    <value>{0} h {1} min</value>
+    <comment>Compact duration a provider has been connected, as hours and minutes (e.g. 3h 24m). {hours} is the whole hours, {minutes} the remaining minutes.</comment>
+  </data>
+  <data name="provider_connected_duration_minutes" xml:space="preserve">
+    <value>{} min</value>
+    <comment>Compact duration a provider has been connected, as minutes (e.g. 24m).</comment>
+  </data>
+  <data name="provider_connected_duration_seconds" xml:space="preserve">
+    <value>{} s</value>
+    <comment>Compact duration a provider has been connected, as seconds (e.g. 42s).</comment>
+  </data>
   <data name="provider_contracts" xml:space="preserve">
     <value>Kontrakty poskytovatele</value>
     <comment>A label for the provider contracts screen.</comment>
@@ -1853,6 +2255,26 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   </data>
   <data name="provider_count_int" xml:space="preserve">
     <value>{} poskytovatelů</value>
+  </data>
+  <data name="provider_identities" xml:space="preserve">
+    <value>Identity poskytovatelů</value>
+    <comment>Post quantum identity: title of the connected provider identity key details view.</comment>
+  </data>
+  <data name="provider_location_unknown" xml:space="preserve">
+    <value>Neznámá poloha</value>
+    <comment>Row subtitle in the provider locations list when a provider's location is not known.</comment>
+  </data>
+  <data name="provider_locations_empty" xml:space="preserve">
+    <value>Žádní připojení poskytovatelé</value>
+    <comment>Empty state of the provider locations sheet when no providers are connected.</comment>
+  </data>
+  <data name="provider_locations_title" xml:space="preserve">
+    <value>Lokality poskytovatelů</value>
+    <comment>Title of the sheet that lists the connected providers and their locations.</comment>
+  </data>
+  <data name="provider_locations_unavailable" xml:space="preserve">
+    <value>Údaje o poskytovateli nejsou k dispozici, dokud se nepřipojíte</value>
+    <comment>Shown instead of the provider list when the device's window state cannot be read, because the network extension hosting it is not running. Never present an empty list as "no providers" in that case.</comment>
   </data>
   <data name="provider_statistics" xml:space="preserve">
     <value>Statistiky poskytovatele</value>
@@ -1888,7 +2310,7 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   </data>
   <data name="purchase_confirmation_timeout" xml:space="preserve">
     <value>Zatím se nám nepodařilo potvrdit váš nákup. Pokud jste platbu dokončili, váš tarif se během několika minut aktualizuje automaticky — není třeba nakupovat znovu.</value>
-    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up.</comment>
+    <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
   <data name="quit" xml:space="preserve">
     <value>Ukončit</value>
@@ -1945,6 +2367,10 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   <data name="refer_a_friend_30_gib_month" xml:space="preserve">
     <value>Doporučte přítele = +30 GiB/měsíc</value>
     <comment>Used in Shared/Views/Introduction/IntroductionUsageBar.swift.</comment>
+  </data>
+  <data name="refer_a_friend_3_gib_day" xml:space="preserve">
+    <value>Doporučte přítele = +3 GiB/den</value>
+    <comment>A bullet point in the introduction view that describes how much extra bandwidth you can earn by referring a friend.</comment>
   </data>
   <data name="refer_and_earn" xml:space="preserve">
     <value>Doporuč a získej</value>
@@ -2022,6 +2448,9 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>Doporučení</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
   </data>
+  <data name="regenerate_seedphrase" xml:space="preserve">
+    <value>Vygenerovat seed frázi znovu</value>
+  </data>
   <data name="regions" xml:space="preserve">
     <value>Regiony</value>
     <comment>Provider list group title for regions</comment>
@@ -2073,6 +2502,9 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   <data name="remove_rule" xml:space="preserve">
     <value>Odstranit pravidlo</value>
     <comment>A button to remove a split rule.</comment>
+  </data>
+  <data name="remove_this_sign_in_method" xml:space="preserve">
+    <value>Odstranit tento způsob přihlášení?</value>
   </data>
   <data name="remove_wallet" xml:space="preserve">
     <value>Odstranit peněženku</value>
@@ -2130,6 +2562,10 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>Pravidla</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
+  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
+    <value>2× více dat zdarma i z doporučení</value>
+    <comment>A description of the benefits of using a Seeker Token.</comment>
+  </data>
   <data name="save" xml:space="preserve">
     <value>Uložit</value>
     <comment>Profile</comment>
@@ -2158,6 +2594,10 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>před {} s</value>
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
+  <data name="secure_your_account" xml:space="preserve">
+    <value>Zabezpečte svůj účet</value>
+    <comment>The title of the screen.</comment>
+  </data>
   <data name="see_world_content" xml:space="preserve">
     <value>Zobrazit veškerý
 kontent světa</value>
@@ -2167,6 +2607,10 @@ kontent světa</value>
     <value>Prohlédněte si veškerý obsah světa pomocí sítě URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="seedphrase" xml:space="preserve">
+    <value>Seed fráze</value>
+    <comment>A label displayed above a field for entering a seedphrase.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Token Seeker ověřen!</value>
     <comment>Call to action</comment>
@@ -2174,6 +2618,10 @@ kontent světa</value>
   <data name="select_country_to_block" xml:space="preserve">
     <value>Vyberte zemi k blokování</value>
     <comment>Used in Main/Account/BlockedLocations/BlockedLocationsView.swift.</comment>
+  </data>
+  <data name="select_location_provider_content_description" xml:space="preserve">
+    <value>Glóbus: výběr lokality poskytovatele</value>
+    <comment>Connect drawer: accessibility label for the globe icon that opens the provider selection list.</comment>
   </data>
   <data name="selected_location" xml:space="preserve">
     <value>Vybrané umístění</value>
@@ -2263,6 +2711,10 @@ kontent světa</value>
     <value>Přihlásit se</value>
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
+  <data name="sign_in_2" xml:space="preserve">
+    <value>Přihlásit se</value>
+    <comment>Button text for signing in with a seedphrase.</comment>
+  </data>
   <data name="sign_in_dgen1" xml:space="preserve">
     <value>Přihlásit se pomocí dGEN1</value>
     <comment>Call to action</comment>
@@ -2270,6 +2722,13 @@ kontent světa</value>
   <data name="sign_in_failed" xml:space="preserve">
     <value>Přihlášení se nezdařilo</value>
     <comment>Generic error shown when signing in with email and password fails.</comment>
+  </data>
+  <data name="sign_in_method_added_successfully" xml:space="preserve">
+    <value>Způsob přihlášení byl úspěšně přidán</value>
+    <comment>Snackbar message displayed when a sign-in method is successfully added.</comment>
+  </data>
+  <data name="sign_in_methods" xml:space="preserve">
+    <value>Způsoby přihlášení</value>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>Přihlásit se pomocí kódu</value>
@@ -2279,13 +2738,172 @@ kontent světa</value>
     <value>Přihlásit se pomocí Google</value>
     <comment>Used in Authenticate/LoginInitial/UrGoogleSignInButton.swift.</comment>
   </data>
+  <data name="sign_in_with_google_to_add_it" xml:space="preserve">
+    <value>Přihlaste se přes Google a přidejte jej jako způsob přihlášení.</value>
+    <comment>A description of how to sign in with Google.</comment>
+  </data>
+  <data name="sign_in_with_seedphrase" xml:space="preserve">
+    <value>Přihlásit se pomocí seed fráze</value>
+  </data>
+  <data name="sign_in_with_your_apple_id_to" xml:space="preserve">
+    <value>Přihlaste se pomocí svého Apple ID a přidejte jej jako způsob přihlášení.</value>
+    <comment>A description of the Apple Sign-In process.</comment>
+  </data>
   <data name="sign_out" xml:space="preserve">
     <value>Odhlásit se</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="sign_with_wallet" xml:space="preserve">
+    <value>Podepsat peněženkou</value>
+    <comment>Button text for signing in with a wallet.</comment>
+  </data>
   <data name="signed_in" xml:space="preserve">
     <value>Přihlášeno</value>
     <comment>Tray notification shown when the account signs in.</comment>
+  </data>
+  <data name="site_app_average_reliability" xml:space="preserve">
+    <value>Průměrná spolehlivost</value>
+    <comment>Reliability: average label</comment>
+  </data>
+  <data name="site_app_clients" xml:space="preserve">
+    <value>Klienti</value>
+    <comment>Reliability: clients series</comment>
+  </data>
+  <data name="site_app_connect_options" xml:space="preserve">
+    <value>Možnosti připojení</value>
+    <comment>Connect drawer: options section label</comment>
+  </data>
+  <data name="site_app_connect_to_view" xml:space="preserve">
+    <value>Připojte se a zobrazte živou aktivitu</value>
+    <comment>Disabled stat cards: connect-to-view hint</comment>
+  </data>
+  <data name="site_app_country" xml:space="preserve">
+    <value>Země</value>
+    <comment>Reliability: country column</comment>
+  </data>
+  <data name="site_app_country_multipliers" xml:space="preserve">
+    <value>Násobitele podle zemí</value>
+    <comment>Reliability: country multipliers heading</comment>
+  </data>
+  <data name="site_app_fixed_ip" xml:space="preserve">
+    <value>Pevná IP</value>
+    <comment>Connect drawer: fixed-IP toggle</comment>
+  </data>
+  <data name="site_app_manage_subscription" xml:space="preserve">
+    <value>Správa předplatného</value>
+    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+  </data>
+  <data name="site_app_mode_auto" xml:space="preserve">
+    <value>Automaticky</value>
+    <comment>Connect drawer: connection mode Auto</comment>
+  </data>
+  <data name="site_app_mode_streaming" xml:space="preserve">
+    <value>Streamování</value>
+    <comment>Connect drawer: connection mode Streaming</comment>
+  </data>
+  <data name="site_app_mode_web" xml:space="preserve">
+    <value>Web</value>
+    <comment>Connect drawer: connection mode Web</comment>
+  </data>
+  <data name="site_app_multiplier" xml:space="preserve">
+    <value>Násobitel</value>
+    <comment>Reliability: multiplier column</comment>
+  </data>
+  <data name="site_app_no_traffic" xml:space="preserve">
+    <value>Zatím žádný provoz</value>
+    <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_plan" xml:space="preserve">
+    <value>Plán</value>
+    <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_proxies" xml:space="preserve">
+    <value>Proxy servery</value>
+    <comment>App account: proxies row/screen title</comment>
+  </data>
+  <data name="site_app_reliability_weight" xml:space="preserve">
+    <value>Váha spolehlivosti</value>
+    <comment>Reliability: weight series</comment>
+  </data>
+  <data name="site_app_strong_anon" xml:space="preserve">
+    <value>Silná anonymizace</value>
+    <comment>Connect drawer: strong-anonymization toggle</comment>
+  </data>
+  <data name="site_app_throughput" xml:space="preserve">
+    <value>Přenos</value>
+    <comment>Connect drawer: live transfer timeseries section</comment>
+  </data>
+  <data name="site_connect_ext_fix_title" xml:space="preserve">
+    <value>Nastavte rozšíření pro připojení</value>
+    <comment>Connect: extension fix alert title</comment>
+  </data>
+  <data name="site_connect_ext_foreign_body" xml:space="preserve">
+    <value>Rozšíření je přihlášeno k jiné síti:</value>
+    <comment>Connect: extension different-network alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_body" xml:space="preserve">
+    <value>URnetwork směruje tento prohlížeč přes rozšíření. Nainstalujte ho a začněte se připojovat.</value>
+    <comment>Connect: extension install alert body</comment>
+  </data>
+  <data name="site_connect_ext_install_title" xml:space="preserve">
+    <value>Nainstalujte rozšíření pro připojení</value>
+    <comment>Connect: extension install alert title</comment>
+  </data>
+  <data name="site_connect_ext_ready" xml:space="preserve">
+    <value>Rozšíření nalezeno a přihlášeno</value>
+    <comment>Connect: extension ready status</comment>
+  </data>
+  <data name="site_connect_ext_unlinked_body" xml:space="preserve">
+    <value>Rozšíření je nainstalováno, ale odhlášeno. Nastavte ho pro vaši síť a připojte se.</value>
+    <comment>Connect: extension logged-out alert body</comment>
+  </data>
+  <data name="site_connect_ready" xml:space="preserve">
+    <value>Připraveno k připojení</value>
+    <comment>Connect: disconnected status line</comment>
+  </data>
+  <data name="site_install_app" xml:space="preserve">
+    <value>Nainstalovat aplikaci</value>
+    <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_sub_free_body" xml:space="preserve">
+    <value>Máte plán Free. Upgradujte na Pro pro více dat a funkcí.</value>
+    <comment>Subscription: free plan body</comment>
+  </data>
+  <data name="site_sub_free_title" xml:space="preserve">
+    <value>Plán Free</value>
+    <comment>Subscription: free plan title</comment>
+  </data>
+  <data name="site_sub_manage_on" xml:space="preserve">
+    <value>Spravovat v {platform}</value>
+    <comment>Subscription: manage-on-platform button ({platform})</comment>
+  </data>
+  <data name="site_sub_manage_on_apple" xml:space="preserve">
+    <value>Spravovat v App Store</value>
+    <comment>Subscription: manage-on-platform button, Apple. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_manage_on_google" xml:space="preserve">
+    <value>Spravovat v Google Play</value>
+    <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
+  </data>
+  <data name="site_sub_other_platform" xml:space="preserve">
+    <value>jinou platformu</value>
+    <comment>Subscription: unknown platform fallback</comment>
+  </data>
+  <data name="site_sub_platform_body" xml:space="preserve">
+    <value>Vaše předplatné Pro je účtováno přes {platform}. Chcete-li ho změnit nebo zrušit, spravujte svá předplatná přes {platform}.</value>
+    <comment>Subscription: other-platform body ({platform})</comment>
+  </data>
+  <data name="site_sub_platform_body_apple" xml:space="preserve">
+    <value>Vaše předplatné Pro je účtováno přes App Store. Chcete-li ho změnit nebo zrušit, spravujte svá předplatná v App Store.</value>
+    <comment>Subscription: billing explanation, Apple. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_platform_body_google" xml:space="preserve">
+    <value>Vaše předplatné Pro je účtováno přes Google Play. Chcete-li ho změnit nebo zrušit, spravujte svá předplatná v Google Play.</value>
+    <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_stripe_body" xml:space="preserve">
+    <value>Vaše předplatné Pro je účtováno přes Stripe. Níže můžete kdykoli aktualizovat platební údaje nebo předplatné zrušit.</value>
+    <comment>Subscription: Stripe-billed body</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>Ujistěte se, že máte v peněžence dostatek prostředků USDC. V některých případech se platba nezdaří, pokud v peněžence není dostatek prostředků.</value>
@@ -2443,6 +3061,14 @@ jaký by měl být.</value>
     <value>Chcete se odpojit od {} a změnit účet?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
+    <value>Synchronizovat polohu zařízení s nejdéle připojeným poskytovatelem</value>
+    <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
+  </data>
+  <data name="sync_device_location_with_provider" xml:space="preserve">
+    <value>Synchronizovat polohu zařízení s poskytovatelem</value>
+    <comment>Toggle that makes the device (or browser, on the extension) report a connected provider's location instead of the real location. The provider used is the most stable (longest-connected) one.</comment>
+  </data>
   <data name="system" xml:space="preserve">
     <value>Systém</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -2483,9 +3109,21 @@ jaký by měl být.</value>
     <value>Tyto peněženky nejsou přidružené ani kontrolované společností URnetwork. Výdělky budeme posílat do připojené peněženky.</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="this_is_the_only_time_you_ll" xml:space="preserve">
+    <value>⚠️ Toto je jediná chvíle, kdy ji uvidíte.</value>
+    <comment>A warning message displayed in the seedphrase display view.</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>tomto regionu</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="tile_status_connected" xml:space="preserve">
+    <value>Připojeno</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is connected.</comment>
+  </data>
+  <data name="tile_status_disconnected" xml:space="preserve">
+    <value>Odpojeno</value>
+    <comment>Subtitle shown under the Quick Settings tile when the VPN is disconnected.</comment>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Přihlásit se</value>
@@ -2573,6 +3211,10 @@ jaký by měl být.</value>
   <data name="try_guest_mode_2" xml:space="preserve">
     <value>Vyzkoušejte režim hosta</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="tunnel_start_failed" xml:space="preserve">
+    <value>Nepodařilo se navázat připojení</value>
+    <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>Nešifrovaný DNS</value>
@@ -2684,6 +3326,10 @@ jaký by měl být.</value>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>Adresa peněženky USDC</value>
   </data>
+  <data name="use_most_stable_provider" xml:space="preserve">
+    <value>Používá nejstabilnějšího poskytovatele</value>
+    <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
+  </data>
   <data name="use_recommended_settings" xml:space="preserve">
     <value>Použít doporučené nastavení</value>
     <comment>dns settings</comment>
@@ -2767,9 +3413,17 @@ jaký by měl být.</value>
     <value>Informace o verzi a sestavení</value>
     <comment>Call to action</comment>
   </data>
+  <data name="via_exit" xml:space="preserve">
+    <value>přes {}</value>
+    <comment>Android app string: via exit.</comment>
+  </data>
   <data name="waiting_for_approval" xml:space="preserve">
     <value>Čeká se na schválení</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="waiting_for_wallet_signature" xml:space="preserve">
+    <value>Čeká se na podpis peněženky...</value>
+    <comment>A message displayed when waiting for a wallet signature.</comment>
   </data>
   <data name="wallet" xml:space="preserve">
     <value>Peněženka</value>
@@ -2809,6 +3463,10 @@ jaký by měl být.</value>
     <value>Přihlášení peněženkou se nezdařilo</value>
     <comment>Error shown when signing in with a wallet fails.</comment>
   </data>
+  <data name="wallet_sign_in_method_added" xml:space="preserve">
+    <value>Způsob přihlášení peněženkou byl přidán</value>
+    <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
   <data name="wallets" xml:space="preserve">
     <value>Peněženky</value>
     <comment>Wallets Screen</comment>
@@ -2841,6 +3499,10 @@ jaký by měl být.</value>
     <value>se sítí URnetwork</value>
     <comment>Onboarding Carousel</comment>
   </data>
+  <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
+    <value>Zapište si ji a uložte na bezpečné místo. Pokud ji ztratíte, přijdete o přístup ke svému účtu.</value>
+    <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
+  </data>
   <data name="yearly" xml:space="preserve">
     <value>Ročně</value>
     <comment>Billing period name on the yearly subscription product card in the upgrade flow.</comment>
@@ -2852,6 +3514,16 @@ jaký by měl být.</value>
   <data name="you_get_30_gib_month_for_life" xml:space="preserve">
     <value>Získáte 30 GiB/měsíc na celý život</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="you_get_3_gib_day_for_life" xml:space="preserve">
+    <value>Získáte 3 GiB/den navždy</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
+  </data>
+  <data name="you_have_1_other_device_online" xml:space="preserve">
+    <value>Máte 1 další zařízení online</value>
+  </data>
+  <data name="you_have_n_other_devices_online" xml:space="preserve">
+    <value>Máte {} dalších zařízení online</value>
   </data>
   <data name="you_ll_unlock_even_faster_speeds_and_first_dibs" xml:space="preserve">
     <value>Odemknete ještě vyšší rychlosti a získáte první právo na nové funkce, jako jsou robustní opatření proti cenzuře a kontrola dat.</value>
@@ -2877,6 +3549,10 @@ jaký by měl být.</value>
     <value>Váš přítel získá 30 GiB/měsíc na celý život</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
   </data>
+  <data name="your_friend_gets_3_gib_day_for" xml:space="preserve">
+    <value>Váš přítel získá 3 GiB/den navždy</value>
+    <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed in a modal.</comment>
+  </data>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>Váš nákup musí být před dokončením schválen. UR Pro se zapne automaticky, jakmile schválení projde — není potřeba kupovat znovu.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
@@ -2884,5 +3560,9 @@ jaký by měl být.</value>
   <data name="your_referral_link" xml:space="preserve">
     <value>Váš doporučovací odkaz</value>
     <comment>Used in Shared/Views/Introduction/ParticipateReferView.swift.</comment>
+  </data>
+  <data name="your_seedphrase" xml:space="preserve">
+    <value>Vaše seed fráze</value>
+    <comment>A title displayed above the user's seedphrase.</comment>
   </data>
 </root>
