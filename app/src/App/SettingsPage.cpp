@@ -417,11 +417,40 @@ void SettingsPage::BuildConnectionsSection(Panel const& host) {
   // machine left blocked after pressing Disconnect looks CORRECT — it is the
   // sentence that made a plain bug read as a feature. What this guards is an
   // UNEXPECTED loss, and nothing else.
-  killSwitch_ = ToggleRow(
-      card, Loc("kill_switch"),
+  StackPanel killSwitchControls;
+  killSwitchControls.Orientation(Orientation::Horizontal);
+  killSwitchControls.Spacing(8);
+
+  Button killSwitchInfo;
+  killSwitchInfo.Width(28);
+  killSwitchInfo.Height(28);
+  killSwitchInfo.Padding(ThicknessHelper::FromUniformLength(0));
+  killSwitchInfo.Background(nullptr);
+  killSwitchInfo.BorderThickness(ThicknessHelper::FromUniformLength(0));
+  FontIcon killSwitchInfoGlyph;
+  killSwitchInfoGlyph.FontFamily(
+      winrt::Microsoft::UI::Xaml::Media::FontFamily(L"Segoe Fluent Icons"));
+  killSwitchInfoGlyph.Glyph(L"\uE946");  // Info
+  killSwitchInfoGlyph.FontSize(14);
+  killSwitchInfoGlyph.Foreground(colors::MutedBrush());
+  killSwitchInfo.Content(killSwitchInfoGlyph);
+  const auto killSwitchInfoName =
+      Adv("show_kill_switch_exception", L"Show kill switch exception");
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      killSwitchInfo, killSwitchInfoName);
+  ToolTipService::SetToolTip(killSwitchInfo, winrt::box_value(killSwitchInfoName));
+  killSwitchInfo.Click(
+      [this](auto const&, auto const&) { ShowKillSwitchException(); });
+  killSwitchControls.Children().Append(killSwitchInfo);
+
+  killSwitch_ = ToggleSwitch();
+  killSwitch_.Style(Lookup(L"UrSwitchToggleStyle"));
+  killSwitchControls.Children().Append(killSwitch_);
+  Row(card, Loc("kill_switch"),
       Adv("adv_kill_switch_note",
           L"If the tunnel drops unexpectedly, block this device's traffic "
-          L"instead of letting it out unprotected."));
+          L"instead of letting it out unprotected."),
+      killSwitchControls);
   killSwitch_.Toggled([this](auto const&, auto const&) { OnKillSwitchToggled(); });
   // What the toggle does NOT do, said before the disclosure below because it is
   // the question a user reading the word "kill switch" actually has. It is also
@@ -963,6 +992,33 @@ winrt::fire_and_forget SettingsPage::ConfirmUninstallService() {
 }
 
 // ---- actions ---------------------------------------------------------------
+
+winrt::fire_and_forget SettingsPage::ShowKillSwitchException() {
+  if (w_.sheetOpen()) co_return;
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    auto dialog = rows::MakeSheet(
+        self->Content().XamlRoot(),
+        Adv("kill_switch_exception", L"Kill switch exception"));
+    dialog.CloseButtonText(Loc("got_it"));
+    dialog.DefaultButton(ContentDialogButton::Close);
+    TextBlock body;
+    body.Text(Adv(
+        "kill_switch_smtp_exception",
+        L"While the VPN is connected, outbound SMTP on TCP port 25 bypasses "
+        L"the VPN and uses your local network, even when the kill switch is "
+        L"on. This may expose your local public IP to the mail server. SMTP "
+        L"on ports 465 and 587 stays in the VPN and must establish TLS."));
+    body.FontSize(14);
+    body.TextWrapping(TextWrapping::Wrap);
+    body.MinWidth(320);
+    dialog.Content(body);
+    co_await dialog.ShowAsync();
+  } catch (...) {
+  }
+  w_.SetSheetOpen(false);
+}
 
 void SettingsPage::OnKillSwitchToggled() {
   if (applyingKillSwitch_) return;  // the load wrote it; do not echo it back

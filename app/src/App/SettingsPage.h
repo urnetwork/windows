@@ -121,6 +121,7 @@ class SettingsPage {
 
   // ---- actions ----
   void OnKillSwitchToggled();
+  winrt::fire_and_forget ShowKillSwitchException();
   void OnProductUpdatesToggled();
   // modal confirm, then RemoveAuth (apple SettingsView's confirmationDialog)
   winrt::fire_and_forget ConfirmRemoveAuth(std::string authType);
