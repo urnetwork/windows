@@ -1976,14 +1976,6 @@ right way</value>
     <value>Kill switch</value>
     <comment>Call to action</comment>
   </data>
-  <data name="kill_switch_exception" xml:space="preserve">
-    <value>Kill switch exception</value>
-    <comment>Title for the disclosure explaining traffic that intentionally bypasses the VPN kill switch.</comment>
-  </data>
-  <data name="kill_switch_exception_detail" xml:space="preserve">
-    <value>While the VPN is connected, IPv6 is not routed through URnetwork and may use your local network, even when the kill switch is on. Outbound SMTP on TCP port 25 also bypasses the VPN. These exceptions may expose your local public IP to those destinations. SMTP on ports 465 and 587 stays in the VPN and must establish TLS.</value>
-    <comment>Explains the deliberate IPv6 and SMTP exceptions to the VPN kill switch and the encrypted SMTP behavior.</comment>
-  </data>
   <data name="launch" xml:space="preserve">
     <value>Launch</value>
     <comment>Button text for entering the one-time authentication code and entering the app</comment>
@@ -3254,10 +3246,6 @@ world's content</value>
   <data name="show_icon_when_connected" xml:space="preserve">
     <value>Show UR icon when connected</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="show_kill_switch_exception" xml:space="preserve">
-    <value>Show kill switch exception</value>
-    <comment>Accessibility label for the kill switch exception information button.</comment>
   </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>Show Provider List</value>
