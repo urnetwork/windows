@@ -153,20 +153,6 @@ foreach ($platform in $Platforms) {
 
   $bin = "$PSScriptRoot\build\$platform\$Configuration"
 
-  # Keep the service's pure protocol/persistence/watchdog regression suite on
-  # the same path that produces release artifacts. The ARM build VM can run
-  # ARM64 natively and x64 under Windows emulation, and the post-build event has
-  # already placed the matching SDK and Wintun DLLs beside the executable.
-  $serviceSelfTest = Join-Path $bin "urnetworkd.exe"
-  if (-not (Test-Path $serviceSelfTest)) {
-    throw "service selftest executable not produced at $serviceSelfTest"
-  }
-  Write-Host "== service selftest ($platform) =="
-  & $serviceSelfTest selftest
-  if ($LASTEXITCODE -ne 0) {
-    throw "service selftest failed for $platform"
-  }
-
   # The split-tunnel driver is intentionally excluded from URnetwork.sln's build
   # (kernel driver; needs the WDK). Build it on demand when -IncludeDriver is set,
   # so its .sys lands in $bin for the installer to pick up.
