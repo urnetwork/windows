@@ -1,0 +1,6 @@
+>>> staging local sdk: /Users/brien/urnetwork/sdk -> /Users/brien/urnetwork/build/sdk
+rsync(53004): warning: /Users/brien/urnetwork/build/sdk//./v2026: not empty, cannot delete
+>>> staging local connect: /Users/brien/urnetwork/connect -> /Users/brien/urnetwork/build/connect
+>>> staging local glog: /Users/brien/urnetwork/glog -> /Users/brien/urnetwork/build/glog
+>>> staging local goidenticons: /Users/brien/urnetwork/goidenticons -> /Users/brien/urnetwork/build/goidenticons
+>>> staging local windows: /Users/brien/urnetwork/windows -> /Users/brien/urnetwork/build/windows

@@ -134,9 +134,9 @@ class TunnelController {
   // transition; it does NOT retroactively change the policy in force.
   //
   //   * While the tunnel is UP with a policy already installed nothing changes
-  //     either way: the connected policy is the leak fix (IPv6 blocked, DNS
-  //     pinned to the tunnel's resolvers) and it applies whether or not the kill
-  //     switch is on. Leak prevention is not a preference.
+  //     either way: the connected policy pins DNS to the tunnel's IPv4
+  //     resolvers. IPv6 is not configured on Wintun and remains on the
+  //     underlying network rather than being blackholed.
   //   * Turning it OFF while armed-and-disconnected lifts the block
   //     immediately, because the user asking for their network back is the one
   //     case where waiting for a transition is the wrong answer.
@@ -386,6 +386,11 @@ class TunnelController {
   std::atomic<int> stopAfterStep_{0};
   std::string error_;
   std::string rpcHostPort_;
+  // Exact identity of the DeviceLocal and the per-start mTLS generation. Both
+  // are echoed in live status so an app may adopt only its own credentials;
+  // host:port alone is reusable and therefore is not an identity.
+  std::string activeInstanceId_;
+  std::string rpcSessionId_;
   int64_t upSinceMillis_ = 0;
 
   std::filesystem::path storageDir_;

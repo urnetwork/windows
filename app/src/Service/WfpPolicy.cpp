@@ -151,7 +151,7 @@ WfpCondition CondV6(WfpField field, const uint8_t (&addr)[16], uint8_t prefix) {
 // Link-local unicast, and the link-scope multicast range that carries every
 // NDP/DHCPv6 group we care about (ff02::1, ff02::2, ff02::1:2, and the whole
 // solicited-node block ff02::1:ff00:0/104). Neither can be routed off the link,
-// so permitting them is not a v6 leak even while all other v6 is blocked.
+// so permitting them is not a v6 leak in the disconnected kill-switch states.
 constexpr uint8_t kV6LinkLocal[16] = {0xfe, 0x80};
 constexpr uint8_t kV6LinkLocalMcast[16] = {0xff, 0x02};
 constexpr uint8_t kV6DhcpRelayAgentsAndServers[16] = {
@@ -206,7 +206,12 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
   // The ONE state that carries filter 9b. Everything else about Connecting is
   // Armed, byte for byte — which is what makes the superset relation checkable.
   const bool connecting = state == WfpState::Connecting;
-  const bool v6 = cfg.block_ipv6;
+  // Connected mirrors the other clients' IPv4-only tunnel policy: Wintun has
+  // no IPv6 configuration, and host IPv6 remains on the underlying network
+  // instead of being captured or blackholed. Armed and Connecting still use a
+  // v6 floor because there is no connected tunnel and the kill switch is the
+  // controlling policy in those states.
+  const bool blockV6 = cfg.block_ipv6_when_disconnected && !connected;
 
   // === BASELINE SUBLAYER ===================================================
 
@@ -282,11 +287,6 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
                        false, kWeightExempt,
                        {CondLocalInterface(cfg.tun_luid)}));
     }
-    for (WfpLayer l : {WfpLayer::ConnectV6, WfpLayer::RecvAcceptV6}) {
-      f.push_back(Spec("urnetwork-permit-tun-v6", l, WfpSublayer::Baseline,
-                       false, kWeightExempt,
-                       {CondLocalInterface(cfg.tun_luid)}));
-    }
   }
 
   // 4. LAN. Built from net::kLocalBypassV4 — THE SAME TABLE the tun's route set
@@ -294,8 +294,9 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
   //    sends out the physical NIC, no more and no less. Writing this list a
   //    second time is the bug NetPolicy.h exists to prevent.
   //
-  //    No v6 LAN permit (fc00::/7): we block v6 entirely, and fe80::/10 is
-  //    already covered by the NDP and DHCPv6 filters below.
+  //    No special v6 LAN permit is needed. Connected leaves IPv6 to the host's
+  //    existing routes; Armed and Connecting apply the address-family floor,
+  //    with fe80::/10 maintenance covered by NDP and DHCPv6 below.
   if (cfg.allow_lan) {
     std::vector<WfpCondition> lan;
     for (const auto& p : net::kLocalBypassV4)
@@ -322,8 +323,9 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
                    {CondProtocol(kProtoUdp), CondLocalPort(kPortDhcpClient),
                     CondRemotePort(kPortDhcpServer)}));
 
-  // 6. DHCPv6 + NDP. Kept even though all other v6 is blocked: rank-4 says the
-  //    v6 link never comes up cleanly without NDP, DAD fails, and on some
+  // 6. DHCPv6 + NDP. Kept while the disconnected kill-switch states block
+  //    other v6: rank-4 says the v6 link never comes up cleanly without NDP,
+  //    DAD fails, and on some
   //    drivers that stalls interface init and slows the WHOLE stack, v4
   //    included. Every address here is link-scoped and cannot leave the link.
   //
@@ -423,11 +425,10 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
                    WfpSublayer::Baseline, true, kWeightMin));
   f.push_back(Spec("urnetwork-block-all-v4-in", WfpLayer::RecvAcceptV4,
                    WfpSublayer::Baseline, true, kWeightMin));
-  if (v6) {
-    // R7. This is the whole IPv6 fix: two unconditional ALE blocks. It catches
-    // TCP connect, the first UDP packet per tuple and raw sockets, and adding
-    // it triggers ALE REAUTHORIZATION so flows established before we armed die
-    // on their next packet instead of continuing to leak.
+  if (blockV6) {
+    // The disconnected kill-switch floor catches TCP connect, the first UDP
+    // packet per tuple and raw sockets. Connected intentionally omits it: the
+    // IPv4-only Wintun must not become an IPv6 blackhole.
     f.push_back(Spec("urnetwork-block-all-v6-out", WfpLayer::ConnectV6,
                      WfpSublayer::Baseline, true, kWeightMin));
     f.push_back(Spec("urnetwork-block-all-v6-in", WfpLayer::RecvAcceptV6,
@@ -1130,10 +1131,10 @@ bool WfpPolicy::ApplyLocked(WfpState state, const WfpConfig& cfg) {
   const WfpState prior = state_;
   state_ = state;
   LogInfo("wfp: policy {} -> {} ({} filters; tun_luid={:#x} tunnel_resolvers={} "
-          "host_resolvers={} block_ipv6={} lan={})",
+          "host_resolvers={} disconnected_ipv6_floor={} lan={})",
           ToString(prior), ToString(state), filterIds_.size(), cfg.tun_luid,
           cfg.tunnel_resolvers_v4.size(), cfg.host_resolvers_v4.size(),
-          cfg.block_ipv6 ? "yes" : "no",
+          cfg.block_ipv6_when_disconnected ? "yes" : "no",
           cfg.allow_lan ? "permitted" : "blocked");
 
   // THE DNS HOLE, AT BOTH EDGES. The owner has to be able to read off the log

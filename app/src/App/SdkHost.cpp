@@ -10,13 +10,14 @@
 #include <chrono>
 #include <cwctype>
 #include <fstream>
-#include <iterator>
+#include <limits>
 #include <random>
 #include <thread>
 #include <unordered_map>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <wincrypt.h>
 
 #include "Ids.h"
 #include "Log.h"
@@ -27,13 +28,112 @@
 namespace urnw {
 namespace {
 
-// Persisted RPC session (last-good), mirroring macOS RpcSessionStore. Lets the
-// app reattach its DeviceRemote to a still-running service tunnel.
+// Persisted RPC session, mirroring macOS RpcSessionStore. Lets the app reattach
+// its DeviceRemote to a still-running service tunnel.
 //
 // The struct and both conversions live in Common/RpcSessionBlob.h — pure, so
 // the service selftest pins the round trip, the missing-instance_id migration
 // and the malformed cases. Only the two file handles are left here.
 using RpcSession = rpcsession::Blob;
+
+struct RpcSessionLoad {
+  std::optional<RpcSession> record;
+  std::string diagnostic = "missing";
+  bool legacyPlaintext = false;
+};
+
+constexpr char kRpcSessionFileMagic[] = "URNETRPC1\n";
+constexpr char kRpcSessionEntropy[] = "URnetwork Windows RPC session v1";
+constexpr std::uint64_t kMaxRpcSessionFileBytes = 1024 * 1024;
+
+std::mutex& RpcSessionFileMutex() {
+  static std::mutex mutex;
+  return mutex;
+}
+
+DATA_BLOB RpcSessionEntropy() {
+  DATA_BLOB entropy{};
+  entropy.pbData = reinterpret_cast<BYTE*>(const_cast<char*>(kRpcSessionEntropy));
+  entropy.cbData = static_cast<DWORD>(sizeof(kRpcSessionEntropy) - 1);
+  return entropy;
+}
+
+std::optional<std::string> ProtectRpcSession(std::string_view plaintext) {
+  if (plaintext.size() > std::numeric_limits<DWORD>::max()) return std::nullopt;
+  DATA_BLOB input{};
+  input.pbData = reinterpret_cast<BYTE*>(const_cast<char*>(plaintext.data()));
+  input.cbData = static_cast<DWORD>(plaintext.size());
+  DATA_BLOB output{};
+  DATA_BLOB entropy = RpcSessionEntropy();
+  if (!::CryptProtectData(&input, L"URnetwork RPC session", &entropy, nullptr,
+                          nullptr, CRYPTPROTECT_UI_FORBIDDEN, &output)) {
+    return std::nullopt;
+  }
+  std::string encrypted(reinterpret_cast<const char*>(output.pbData), output.cbData);
+  ::LocalFree(output.pbData);
+  return encrypted;
+}
+
+std::optional<std::string> UnprotectRpcSession(std::string_view encrypted) {
+  if (encrypted.size() > std::numeric_limits<DWORD>::max()) return std::nullopt;
+  DATA_BLOB input{};
+  input.pbData = reinterpret_cast<BYTE*>(const_cast<char*>(encrypted.data()));
+  input.cbData = static_cast<DWORD>(encrypted.size());
+  DATA_BLOB output{};
+  DATA_BLOB entropy = RpcSessionEntropy();
+  if (!::CryptUnprotectData(&input, nullptr, &entropy, nullptr, nullptr,
+                            CRYPTPROTECT_UI_FORBIDDEN, &output)) {
+    return std::nullopt;
+  }
+  std::string plaintext(reinterpret_cast<const char*>(output.pbData), output.cbData);
+  ::SecureZeroMemory(output.pbData, output.cbData);
+  ::LocalFree(output.pbData);
+  return plaintext;
+}
+
+std::optional<std::string> ReadRpcSessionBytes() {
+  const std::filesystem::path path = RpcSessionFile();
+  HANDLE file = ::CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (file == INVALID_HANDLE_VALUE) return std::nullopt;
+  LARGE_INTEGER size{};
+  if (!::GetFileSizeEx(file, &size) || size.QuadPart <= 0 ||
+      static_cast<std::uint64_t>(size.QuadPart) > kMaxRpcSessionFileBytes) {
+    ::CloseHandle(file);
+    return std::nullopt;
+  }
+  std::string bytes(static_cast<std::size_t>(size.QuadPart), '\0');
+  DWORD read = 0;
+  const bool ok = ::ReadFile(file, bytes.data(), static_cast<DWORD>(bytes.size()),
+                             &read, nullptr) &&
+                  read == bytes.size();
+  ::CloseHandle(file);
+  if (!ok) return std::nullopt;
+  return bytes;
+}
+
+bool WriteRpcSessionBytes(std::string_view bytes) {
+  if (bytes.empty() || bytes.size() > std::numeric_limits<DWORD>::max()) return false;
+  const std::filesystem::path path = RpcSessionFile();
+  std::filesystem::path temp = path;
+  temp += L".tmp." + std::to_wstring(::GetCurrentProcessId());
+  HANDLE file = ::CreateFileW(temp.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                              FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_TEMPORARY,
+                              nullptr);
+  if (file == INVALID_HANDLE_VALUE) return false;
+  DWORD written = 0;
+  const bool wrote = ::WriteFile(file, bytes.data(), static_cast<DWORD>(bytes.size()),
+                                 &written, nullptr) &&
+                     written == bytes.size();
+  const bool flushed = wrote && ::FlushFileBuffers(file);
+  ::CloseHandle(file);
+  if (!flushed || !::MoveFileExW(temp.c_str(), path.c_str(),
+                                 MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+    ::DeleteFileW(temp.c_str());
+    return false;
+  }
+  return true;
+}
 
 // URNETWORK_RPC_ONLY: ask the service for a session that stops before it would
 // touch the machine's routes or DNS (spec P1).
@@ -87,23 +187,67 @@ proto::StartMode StartModeFromEnvironment() {
   return proto::StartMode::Tunnel;
 }
 
-void SaveRpcSession(const RpcSession& s) {
-  std::ofstream f(RpcSessionFile(), std::ios::trunc);
-  if (f) f << rpcsession::Serialize(s);
+bool SaveRpcSession(const RpcSession& s) {
+  std::scoped_lock lock(RpcSessionFileMutex());
+  std::string plaintext = rpcsession::Serialize(s);
+  auto encrypted = ProtectRpcSession(plaintext);
+  ::SecureZeroMemory(plaintext.data(), plaintext.size());
+  if (!encrypted) return false;
+  std::string fileBytes(kRpcSessionFileMagic, sizeof(kRpcSessionFileMagic) - 1);
+  fileBytes.append(*encrypted);
+  const bool saved = WriteRpcSessionBytes(fileBytes);
+  ::SecureZeroMemory(encrypted->data(), encrypted->size());
+  return saved;
 }
 
-std::optional<RpcSession> LoadRpcSession() {
-  std::ifstream f(RpcSessionFile());
-  if (!f) return std::nullopt;
-  // Read the whole file and hand the BYTES to the pure parser, rather than
-  // parsing off the stream: the selftest can then exercise exactly the code
-  // path this call takes, which it could not do through an ifstream.
-  const std::string text((std::istreambuf_iterator<char>(f)),
-                         std::istreambuf_iterator<char>());
-  return rpcsession::Parse(text);
+RpcSessionLoad LoadRpcSession() {
+  std::scoped_lock lock(RpcSessionFileMutex());
+  std::error_code existenceError;
+  const bool exists = std::filesystem::exists(RpcSessionFile(), existenceError);
+  auto bytes = ReadRpcSessionBytes();
+  if (!bytes) {
+    RpcSessionLoad result;
+    if (exists || existenceError) result.diagnostic = "present-but-unreadable";
+    return result;
+  }
+
+  const std::string_view all(*bytes);
+  const std::string_view magic(kRpcSessionFileMagic,
+                               sizeof(kRpcSessionFileMagic) - 1);
+  std::string plaintext;
+  RpcSessionLoad result;
+  if (all.starts_with(magic)) {
+    auto decrypted = UnprotectRpcSession(all.substr(magic.size()));
+    ::SecureZeroMemory(bytes->data(), bytes->size());
+    if (!decrypted) {
+      result.diagnostic = "encrypted-but-unreadable";
+      return result;
+    }
+    plaintext = std::move(*decrypted);
+  } else {
+    // Migration only. Old builds left the client private key in plaintext.
+    // Parse it so diagnostics can identify it, but its version/session id make
+    // it structurally non-adoptable; the caller removes it promptly.
+    plaintext = std::move(*bytes);
+    result.legacyPlaintext = true;
+  }
+
+  result.record = rpcsession::Parse(plaintext);
+  if (!result.record) {
+    result.diagnostic = "corrupt";
+  } else if (result.legacyPlaintext) {
+    result.diagnostic = "legacy-plaintext";
+  } else if (!rpcsession::IsAdoptable(*result.record)) {
+    result.diagnostic = "unsupported-or-incomplete";
+  } else {
+    result.diagnostic = rpcsession::ToString(result.record->state);
+  }
+  ::SecureZeroMemory(plaintext.data(), plaintext.size());
+  return result;
 }
 
 void ClearRpcSession() {
+  std::scoped_lock lock(RpcSessionFileMutex());
   std::error_code ec;
   std::filesystem::remove(RpcSessionFile(), ec);
 }
@@ -1513,22 +1657,22 @@ void SdkHost::PublishModeNotice() {
   // confident claim that the service is running with --rpc-only.
   // RefreshModeNotice() is public and is exactly what a view calls when it is
   // constructed, which makes that the common path, not an edge case.
+  // A bounded secure-control failure can coexist with a live DeviceRemote: the
+  // object was constructed, but it never reached an authenticated RPC level.
+  // Keep that notice standing across window recreation just like a bootstrap
+  // failure; CheckSessionSync clears it when the same generation recovers.
+  if (!sessionFailure_.empty()) {
+    ModeNotice failed;
+    failed.active = true;
+    failed.kind = ModeNotice::Kind::SessionFailed;
+    failed.message = sessionFailure_;
+    DeliverModeNotice(failed);
+    return;
+  }
   if (!device_) {
-    // ...but "no device" is not always "nothing to say". If the last bootstrap
-    // FAILED, that reason stands until a session exists, and it must survive
-    // long enough for a view that did not exist at the time to receive it.
-    if (!sessionFailure_.empty()) {
-      ModeNotice failed;
-      failed.active = true;
-      failed.kind = ModeNotice::Kind::SessionFailed;
-      failed.message = sessionFailure_;
-      DeliverModeNotice(failed);
-      return;
-    }
     DeliverModeNotice(ModeNotice{});
     return;
   }
-  sessionFailure_.clear();  // a live session supersedes any earlier failure
   ModeNotice n;
   if (sessionMode_.load() == proto::StartMode::RpcOnly) {
     n.active = true;
@@ -1727,6 +1871,7 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
   // "failed to start tunnel session", which is actively misleading for a mode
   // mismatch or an out-of-date service.
   bootstrapError_.clear();
+  bootstrapServiceRetryable_ = false;
   // ...and the D8 outcome flag with it: a false return with this set is not a
   // failure, it is the click-only policy declining a cold start. The worker
   // reads it to keep the decline off the failure-notice channel.
@@ -1738,16 +1883,16 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
   }
   // The instance id THIS bootstrap will pair its DeviceRemote with.
   //
-  // Mutable, and the reattach branch below overwrites it. The disk value is
-  // only correct for a session THIS call is about to start: LocalState rotates
-  // .instance_id on any changed by-client JWT string, and a JWT refresh
-  // re-signs the same client, so the disk id drifts away from the id the
-  // service's running DeviceLocal was born with. Reattaching with the drifted
-  // id is what made DeviceLocalRpc.Sync refuse every sync of a reattached
-  // session for its whole life (see RpcSessionBlob.h).
+  // Mutable, and the reattach branch below overwrites it. Current SDK builds
+  // preserve LocalState.instance_id across a JWT refresh, but installations
+  // affected by the older rotation bug can still have a disk id different from
+  // the one the service's running DeviceLocal was born with. Reattaching with
+  // that drifted id is what made DeviceLocalRpc.Sync refuse every sync of a
+  // reattached session for its whole life (see RpcSessionBlob.h).
   std::string instanceId = localState_->getInstanceId();
 
   if (!service_.IsConnected() && !service_.Connect()) {
+    bootstrapServiceRetryable_ = true;
     bootstrapError_ =
         "the URnetwork service is not running or cannot be reached";
     LogError("sdkhost: service not reachable");
@@ -1755,7 +1900,8 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
   }
 
   try {
-    std::string clientPem, serverCertPem, hostPort;
+    std::string clientPem, serverCertPem, hostPort, rpcSessionId;
+    RpcSession persistenceRecord;
 
     proto::TunnelStatus hello = service_.Hello();
     // hello is a full TunnelStatus and it is the ONLY status a reattach ever
@@ -1766,6 +1912,35 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
     // may be perfectly healthy, until some unrelated start/stop happened to
     // correct it.
     AdoptServiceFacts(hello);
+
+    // Version 3 is the first protocol in which a live status proves which
+    // DeviceLocal and which mTLS generation own the listener. Refuse before a
+    // start: an older service would discard rpc_session_id and its Start()
+    // begins by tearing down any existing tunnel.
+    if (hello.protocol_version < proto::kFirstRpcSessionIdentityVersion) {
+      bootstrapServiceRetryable_ = true;
+      bootstrapError_ = std::format(
+          "the running URnetwork service uses control protocol v{}; v{}+ is "
+          "required for safe RPC session adoption. Update the service.",
+          hello.protocol_version, proto::kFirstRpcSessionIdentityVersion);
+      LogError("sdkhost: REFUSING to start or adopt an RPC session: service "
+               "protocol v{} cannot report instance_id/rpc_session_id "
+               "(requires v{}+)",
+               hello.protocol_version, proto::kFirstRpcSessionIdentityVersion);
+      return false;
+    }
+    if (hello.protocol_version > proto::kProtocolVersion) {
+      bootstrapServiceRetryable_ = true;
+      bootstrapError_ = std::format(
+          "the running URnetwork service uses control protocol v{}, but this "
+          "app understands through v{}. Update the app or reinstall the "
+          "matching app and service together.",
+          hello.protocol_version, proto::kProtocolVersion);
+      LogError("sdkhost: REFUSING service protocol v{} with app protocol v{}; "
+               "a partial upgrade/downgrade cannot be adopted safely",
+               hello.protocol_version, proto::kProtocolVersion);
+      return false;
+    }
 
     if (requestedMode_ == proto::StartMode::RpcOnly) {
       // A service older than kFirstStartModeVersion has no `mode` handler: it
@@ -1818,29 +1993,31 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
     // for. "At least as capable" was wrong in the rpc-only direction: a tunnel
     // does carry rpc-only traffic, but attaching to it also confers the power
     // to revert it â€” refused above.
-    auto saved = LoadRpcSession();
+    RpcSessionLoad loaded = LoadRpcSession();
+    auto& saved = loaded.record;
+    LogInfo("sdkhost: rpc session storage is {}", loaded.diagnostic);
+    if (loaded.legacyPlaintext) {
+      // Old builds persisted the client private key in cleartext. It lacks the
+      // generation required for adoption anyway; remove it now rather than
+      // leave credential material exposed until the next successful start.
+      ClearRpcSession();
+      LogWarn("sdkhost: removed legacy plaintext rpc session credentials; a "
+              "future explicit Connect will create a protected v1 record");
+    }
     const bool liveIsSufficient =
         proto::IsSessionLive(hello.state) && hello.mode == requestedMode_;
-    bool reattaching =
-        liveIsSufficient && saved && hello.rpc_listen_hostport == saved->host_port;
-    // MIGRATION. A blob written before instance_id existed (or one whose id is
-    // not a shape the SDK can parse) cannot be paired, and there is no safe way
-    // to fake it: an empty id maps to a nil *Id across the cgo boundary and
-    // yields a DeviceRemote handle that answers nothing, and the nil UUID would
-    // SKIP the service's pairing check rather than pass it. So this one launch
-    // gives up the reattach and starts a session of its own, which restores the
-    // user's tunnel AND writes a blob the next launch can pair with. It costs
-    // the running tunnel a stop/start once, and only once, per machine.
-    if (reattaching && saved->instance_id.empty()) {
-      LogWarn("sdkhost: the saved rpc session at {} has no usable device "
-              "instance id — it was written by a build from before the id was "
-              "persisted. Reattaching without it would leave every rpc sync "
-              "refused and the app reading Disconnected over a live tunnel, so "
-              "the reattach is given up: a Connect starts a fresh session "
-              "right here, and a reattach-only resume declines and waits for "
-              "the next Connect press (D8). Either way this happens once.",
-              saved->host_port);
-      reattaching = false;
+    const bool reattaching =
+        liveIsSufficient && saved &&
+        rpcsession::MatchesLiveSession(*saved, hello.instance_id,
+                                       hello.rpc_session_id,
+                                       hello.rpc_listen_hostport);
+    if (liveIsSufficient && !reattaching) {
+      LogWarn("sdkhost: refusing RPC adoption: the live service identity does "
+              "not exactly match an adoptable saved record (storage={}, "
+              "status_instance={}, status_session={}, status_rpc={})",
+              loaded.diagnostic, hello.instance_id.empty() ? "missing" : "set",
+              hello.rpc_session_id.empty() ? "missing" : "set",
+              hello.rpc_listen_hostport);
     }
     // D8, owner decision: THE TUNNEL STARTS ONLY ON AN EXPLICIT CONNECT
     // GESTURE. An EnsureSession — the resume path at launch, a network-server
@@ -1864,6 +2041,8 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
       clientPem = saved->client_pem;
       serverCertPem = saved->server_cert_pem;
       hostPort = saved->host_port;
+      rpcSessionId = saved->rpc_session_id;
+      persistenceRecord = *saved;
       // THE FIX. Pair with the id the session was STARTED with, which the blob
       // carries, not the id sitting on disk now — those differ after any JWT
       // refresh, and DeviceLocalRpc.Sync refuses a nonzero id that is not its
@@ -1884,6 +2063,9 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
       // fresh session: generate per-session RPC key material
       urnet::DeviceRpcKeyMaterial km = urnet::generateDeviceRpcKeyMaterial();
       hostPort = RandomLoopbackHostPort();
+      rpcSessionId = urnet::generateNonce();
+      clientPem = km.getClientPem();
+      serverCertPem = km.getServerCertPem();
 
       proto::StartTunnel cfg;
       cfg.by_jwt = clientJwt;
@@ -1895,6 +2077,7 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
       cfg.rpc_server_pem = km.getServerPem();
       cfg.rpc_client_cert_pem = km.getClientCertPem();
       cfg.rpc_listen_hostport = hostPort;
+      cfg.rpc_session_id = rpcSessionId;
       cfg.mode = requestedMode_;
       // The kill switch now drives a WFP policy in the SERVICE, not just the
       // SDK's routeLocal flag, so the service has to know the persisted
@@ -1910,6 +2093,24 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
         if (auto ov = ReadSdkList(logged, "getBlockActionOverrides (local seed)",
                                [&] { return localState_->getBlockActionOverrides(); }))
           ComputeAppSplit(*ov, cfg.excluded_app_paths, cfg.allowlist_mode);
+      }
+
+      // Pending is durable BEFORE the service starts. If this process dies
+      // after the service binds RPC but before DeviceRemote syncs, the next
+      // process still has the one set of credentials that can adopt it.
+      persistenceRecord = {.version = rpcsession::kCurrentVersion,
+                           .state = rpcsession::State::Pending,
+                           .client_pem = clientPem,
+                           .server_cert_pem = serverCertPem,
+                           .host_port = hostPort,
+                           .instance_id = instanceId,
+                           .rpc_session_id = rpcSessionId};
+      if (!SaveRpcSession(persistenceRecord)) {
+        bootstrapError_ =
+            "could not securely persist the RPC credentials before tunnel start";
+        LogError("sdkhost: refusing to start: DPAPI/atomic persistence of the "
+                 "pending rpc session failed");
+        return false;
       }
 
       proto::TunnelStatus st = service_.StartTunnel(cfg);
@@ -1930,6 +2131,17 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
                               : st.error;
         LogError("sdkhost: service failed to start a {} session: {}",
                  proto::ToString(cfg.mode), st.error);
+        return false;
+      }
+      if (st.instance_id != instanceId || st.rpc_session_id != rpcSessionId ||
+          st.rpc_listen_hostport != hostPort) {
+        bootstrapError_ =
+            "the service returned a different RPC session identity; the new "
+            "session was stopped rather than paired with unknown credentials";
+        LogError("sdkhost: REFUSING fresh RPC session: service identity did not "
+                 "echo the requested instance/session/endpoint exactly");
+        service_.StopTunnel();
+        ClearRpcSession();
         return false;
       }
       // The mode we GOT, stored only once the mismatch below has been resolved.
@@ -1965,7 +2177,6 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
         // degrades to RpcOnly, which was fail-safe while a mismatch meant
         // refusal and is NOT fail-safe under adopt. Refusing to check here
         // while checking in the branch above would apply "the peer may be
-        // misreporting" to only one direction.
         if (st.routes_installed) {
           bootstrapError_ =
               "the service reported an rpc-only session but also reported that "
@@ -2011,22 +2222,47 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
                 "is carried (routes_installed={}).",
                 hostPort, st.routes_installed ? "yes" : "no");
       }
-      clientPem = km.getClientPem();
-      serverCertPem = km.getServerCertPem();
-      // instanceId is the SAME string that went into cfg.instance_id above, so
-      // the blob records the id the service's DeviceLocal was actually born
-      // with. Reading LocalState again here instead would reintroduce the whole
-      // bug on any refresh that lands during start_tunnel.
-      SaveRpcSession({.client_pem = clientPem,
-                      .server_cert_pem = serverCertPem,
-                      .host_port = hostPort,
-                      .instance_id = instanceId});
     }
 
     // The controlling DeviceRemote dials the service's mTLS RPC listener.
     device_ = urnet::newDeviceRemoteWithDefaults(*networkSpace_, clientJwt, instanceId);
     ++sessionGeneration_;
+    const std::uint64_t generation = sessionGeneration_;
+    activeRpcPersistenceGeneration_.store(generation, std::memory_order_release);
+    confirmedRpcPersistenceGeneration_.store(
+        persistenceRecord.state == rpcsession::State::Confirmed ? generation : 0,
+        std::memory_order_release);
+
+    // Register BEFORE setRpcServer: a loopback sync may complete immediately,
+    // and a transition-only listener installed afterwards would miss the only
+    // event that confirms the pending credential record.
+    auto remoteChanged = [this, generation,
+                          record = persistenceRecord](bool remoteConnected) mutable {
+      if (remoteConnected) {
+        std::scoped_lock persistenceLock(rpcPersistenceMutex_);
+        if (activeRpcPersistenceGeneration_.load(std::memory_order_acquire) ==
+                generation &&
+            confirmedRpcPersistenceGeneration_.load(std::memory_order_acquire) !=
+                generation) {
+          record.state = rpcsession::State::Confirmed;
+          if (SaveRpcSession(record)) {
+            confirmedRpcPersistenceGeneration_.store(generation,
+                                                      std::memory_order_release);
+            LogInfo("sdkhost: rpc session credentials confirmed after authenticated "
+                    "DeviceRemote sync");
+          } else {
+            LogWarn("sdkhost: authenticated rpc sync succeeded, but the confirmed "
+                    "credential state could not be persisted");
+          }
+        }
+      }
+      if (onRemoteChanged_) onRemoteChanged_(remoteConnected);
+    };
+    subs_.push_back(device_->addRemoteChangeListener(remoteChanged));
     device_->setRpcServer(clientPem, serverCertPem, hostPort);
+    // Listener APIs are edge-triggered. Perform the level check as well so an
+    // already-connected remote cannot remain pending forever.
+    remoteChanged(device_->getRemoteConnected());
     {
       std::scoped_lock lock(wfpStateMutex_);
       sessionRpcHostPort_ = hostPort;
@@ -2048,11 +2284,6 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
           if (!onTunnel_) return;
           onTunnel_(SessionStatus(location.has_value()));
         }));
-    subs_.push_back(device_->addRemoteChangeListener([this](bool remoteConnected) {
-      // availability for the peers status line: with the rpc down the peer
-      // count is unavailable (not zero), and the UI renders it disabled
-      if (onRemoteChanged_) onRemoteChanged_(remoteConnected);
-    }));
     // Re-apply the persisted performance profile onto the (re)created device
     // (macOS DeviceManager parity: LocalState is the profile's persistence).
     try {
@@ -2102,6 +2333,7 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
     return true;
   } catch (const std::exception& e) {
     bootstrapError_ = e.what();
+    bootstrapServiceRetryable_ = !service_.IsConnected();
     LogError("sdkhost: bootstrap failed: {}", e.what());
     return false;
   }
@@ -3879,10 +4111,11 @@ void SdkHost::ConnectBestAvailableFromRow() {
   RequestSession(std::move(r));
 }
 
-void SdkHost::EnsureSession(const char* reason) {
+void SdkHost::EnsureSession(const char* reason, bool automaticRecovery) {
   SessionRequest r;
   r.kind = ConnectKind::None;
   r.reason = reason;
+  r.automaticRecovery = automaticRecovery;
   RequestSession(std::move(r));
 }
 
@@ -4111,6 +4344,8 @@ void SdkHost::SessionWorkerLoop() {
       const bool connecting = req.kind == ConnectKind::BestAvailable ||
                               req.kind == ConnectKind::Location;
       if (ok) {
+        serviceRecoveryNeeded_.store(false, std::memory_order_release);
+        watchdogCv_.notify_all();
         if (plan.sdkConnect && req.kind != ConnectKind::None) ConnectLocked(req);
         // An rpc-only session is live and driveable and carries NOTHING. On a
         // Connect press that is the answer to "why did pressing this change
@@ -4125,6 +4360,8 @@ void SdkHost::SessionWorkerLoop() {
         // error. Fall through to the stats push, which is what puts the button
         // back to its idle label.
       } else if (bootstrapDeclined_) {
+        serviceRecoveryNeeded_.store(false, std::memory_order_release);
+        watchdogCv_.notify_all();
         // D8: the attach-only bootstrap found nothing to reattach to and, by
         // the click-only rule, started nothing. NOT a failure and NOT a
         // notice: the machine is exactly as the user left it, the app renders
@@ -4137,9 +4374,14 @@ void SdkHost::SessionWorkerLoop() {
         // guards, and the handlers it invokes only marshal (see the threading
         // note on SetModeNoticeHandler).
         const std::string why = bootstrapError_;
-        LogError("sdkhost: '{}' could not start a session: {}", req.reason,
-                 why.empty() ? "unknown" : why);
-        PublishSessionFailure(why);
+        if (req.automaticRecovery) {
+          LogWarn("sdkhost: quiet automatic recovery attempt failed: {}",
+                  why.empty() ? "unknown" : why);
+        } else {
+          LogError("sdkhost: '{}' could not start a session: {}", req.reason,
+                   why.empty() ? "unknown" : why);
+          PublishSessionFailure(why);
+        }
         // ...and start watching, if the reason was that there is no service to
         // talk to. THE WATCHDOG CANNOT ONLY ARM ON A DROP: the commonest way
         // into this state is a launch that found no service at all, which is
@@ -4148,15 +4390,14 @@ void SdkHost::SessionWorkerLoop() {
         // hand), and without this the app would sit signed-in and sessionless
         // until something asked it again.
         //
-        // Gated on the pipe genuinely not being there, NOT merely on the
-        // bootstrap having failed. If the pipe IS listening and the handshake
-        // still failed, retrying on a timer would rediscover the same listening
-        // pipe every 3 s and fail the same way, logging it each time — a spin
-        // that reports itself as progress. That case is left to the next
-        // Connect press, which is a person deciding to try again.
-        if (!service_.IsConnected() &&
-            !::WaitNamedPipeW(ids::kControlPipeName, NMPWAIT_NOWAIT)) {
+        // A missing pipe and a listening-but-incompatible pipe are both
+        // recoverable during an installer swap. The watchdog is quiet and
+        // exponentially backed off, so keeping it alive cannot spam the user.
+        if (bootstrapServiceRetryable_) {
           ScheduleServiceRetry();
+        } else {
+          serviceRecoveryNeeded_.store(false, std::memory_order_release);
+          watchdogCv_.notify_all();
         }
       }
     }
@@ -4246,6 +4487,7 @@ void SdkHost::ConnectLocked(const SessionRequest& request) {
 // ---- the service-reconnect watchdog ----------------------------------------
 
 void SdkHost::ScheduleServiceRetry() {
+  serviceRecoveryNeeded_.store(true, std::memory_order_release);
   {
     std::scoped_lock lock(watchdogMutex_);
     if (watchdogStop_) return;
@@ -4264,31 +4506,39 @@ void SdkHost::ScheduleServiceRetry() {
 }
 
 void SdkHost::ServiceWatchdogLoop() {
-  // A CHEAP PROBE, not a bootstrap. Retrying BootstrapSession on a timer would
-  // publish a session-failure notice every few seconds at the user, which is
-  // worse than the silence it replaces. WaitNamedPipe with a zero timeout only
-  // asks whether an instance is available; it opens nothing and disturbs
-  // nothing (Startup.cpp's diagnostics use the same call).
-  constexpr auto kInterval = std::chrono::seconds(3);
-  LogInfo("sdkhost: watching for the URnetwork service to come back");
+  LogInfo("sdkhost: watching for a recoverable URnetwork service/session");
+  std::size_t attempt = 0;
   for (;;) {
+    const auto delay = recovery::ServiceRetryDelay(attempt);
     {
       std::unique_lock<std::mutex> lock(watchdogMutex_);
-      watchdogCv_.wait_for(lock, kInterval, [this] { return watchdogStop_; });
-      if (watchdogStop_) {
+      watchdogCv_.wait_for(lock, delay, [this] {
+        return watchdogStop_ ||
+               !serviceRecoveryNeeded_.load(std::memory_order_acquire);
+      });
+      if (watchdogStop_ ||
+          !serviceRecoveryNeeded_.load(std::memory_order_acquire)) {
         watchdogRunning_ = false;
         return;
       }
     }
-    if (service_.IsConnected()) break;  // something else already reconnected
-    if (!::WaitNamedPipeW(ids::kControlPipeName, NMPWAIT_NOWAIT)) continue;
-    LogInfo("sdkhost: the URnetwork service is listening again");
+    if (!loggedIn_.load(std::memory_order_acquire)) {
+      serviceRecoveryNeeded_.store(false, std::memory_order_release);
+      break;
+    }
+    const bool pipeAvailable =
+        service_.IsConnected() ||
+        ::WaitNamedPipeW(ids::kControlPipeName, NMPWAIT_NOWAIT);
+    if (!pipeAvailable) {
+      ++attempt;
+      continue;
+    }
+    LogInfo("sdkhost: automatic service recovery attempt {} (next backoff {}s)",
+            attempt + 1, static_cast<long long>(delay.count()));
     // Only a signed-in client has a session to restore. A signed-out one gets
     // its session from the sign-in itself (RegisterNetworkClient).
-    if (loggedIn_.load(std::memory_order_acquire)) {
-      EnsureSession("the service came back");
-    }
-    break;
+    EnsureSession("automatic service recovery", /*automaticRecovery=*/true);
+    ++attempt;
   }
   std::scoped_lock lock(watchdogMutex_);
   watchdogRunning_ = false;
@@ -4298,6 +4548,7 @@ void SdkHost::StopServiceWatchdog() {
   {
     std::scoped_lock lock(watchdogMutex_);
     watchdogStop_ = true;
+    serviceRecoveryNeeded_.store(false, std::memory_order_release);
   }
   watchdogCv_.notify_all();
   if (watchdog_.joinable()) watchdog_.join();
@@ -4314,7 +4565,12 @@ void SdkHost::ArmSyncWatchdogLocked(std::uint64_t generation, bool reattached) {
   if (syncStop_) return;
   syncGeneration_ = generation;
   syncReattached_ = reattached;
-  syncDeadline_ = std::chrono::steady_clock::now() + kSyncSettleDeadline;
+  syncPendingSince_ = std::chrono::steady_clock::now();
+  syncPendingWarned_ = false;
+  syncPendingFailurePublished_ = false;
+  // Inspect immediately. A permanent instance/certificate refusal may already
+  // be present after setRpcServer; waiting five seconds adds no information.
+  syncDeadline_ = std::chrono::steady_clock::now();
   if (syncRunning_) {
     // A check for an older session is still pending. Do NOT start a second
     // thread — wake the one that exists so it re-reads the new generation and
@@ -4352,125 +4608,120 @@ void SdkHost::SyncWatchdogLoop() {
       reattached = syncReattached_;
     }
 
-    CheckSessionSync(generation, reattached);
+    const RpcSyncState state = CheckSessionSync(generation, reattached);
 
+    bool publishPendingFailure = false;
     {
       std::scoped_lock lock(syncMutex_);
       // A bootstrap that landed while the check was running re-armed us; go
       // round again rather than exit and leave that session unwatched.
       if (!syncStop_ && syncGeneration_ != generation) continue;
-      syncRunning_ = false;
-      return;
+      if (syncStop_ || state == RpcSyncState::Stale ||
+          state == RpcSyncState::Refused) {
+        syncRunning_ = false;
+        return;
+      }
+
+      const auto now = std::chrono::steady_clock::now();
+      if (state == RpcSyncState::Healthy) {
+        syncPendingSince_ = now;
+        syncPendingWarned_ = false;
+        syncPendingFailurePublished_ = false;
+        syncDeadline_ = now + kSyncHealthyPoll;
+      } else {
+        if (!syncPendingWarned_ && now - syncPendingSince_ >= kSyncSettleDeadline) {
+          syncPendingWarned_ = true;
+          LogWarn("sdkhost: the device rpc has not synced within {}ms and the "
+                  "service has refused nothing. The sdk is still retrying and "
+                  "this watchdog will keep observing the session.",
+                  static_cast<long long>(kSyncSettleDeadline.count()));
+        }
+        if (!syncPendingFailurePublished_ &&
+            now - syncPendingSince_ >= kSyncFailureDeadline) {
+          syncPendingFailurePublished_ = true;
+          publishPendingFailure = true;
+        }
+        syncDeadline_ = now + kSyncPendingPoll;
+      }
     }
+    if (publishPendingFailure) PublishPendingSyncFailure(generation);
   }
 }
 
-void SdkHost::CheckSessionSync(std::uint64_t generation, bool reattached) {
-  // Must not be called holding mutex_ — it takes mutex_ here and RELEASES it
-  // before asking the session worker for a replacement, because that worker
-  // takes mutex_ for the whole of the bootstrap it is being asked to run.
-  bool degrade = false;
-  std::optional<urnet::ConnectLocation> resume;
-  {
-    std::scoped_lock lock(mutex_);
-    if (generation != sessionGeneration_ || !device_) return;  // superseded
+void SdkHost::PublishPendingSyncFailure(std::uint64_t generation) {
+  // Non-destructive by design. A pending sync has not been refused, and a
+  // reattached tunnel may still be carrying traffic for the machine. Publish
+  // the loss of app control, keep observing, and clear this standing notice as
+  // soon as the same generation reaches the connected level.
+  std::scoped_lock lock(mutex_);
+  if (generation != sessionGeneration_ || !device_) return;
+  try {
+    if (device_->getRemoteConnected() || !device_->getSyncError().empty()) return;
+  } catch (const std::exception&) {
+    // An unreadable pending level is exactly the state the bounded notice is
+    // meant to expose; the watchdog will keep retrying the observation.
+  }
+  syncPendingFailureGeneration_ = generation;
+  sessionFailure_ =
+      "The VPN service is running, but this app has not completed its secure "
+      "control connection. The tunnel was left running while recovery "
+      "continues; use the tray emergency stop if traffic is unavailable.";
+  ModeNotice notice;
+  notice.active = true;
+  notice.kind = ModeNotice::Kind::SessionFailed;
+  notice.message = sessionFailure_;
+  DeliverModeNotice(notice);
+}
 
-    std::string syncError;
-    bool remoteConnected = false;
-    try {
-      syncError = device_->getSyncError();
-      remoteConnected = device_->getRemoteConnected();
-    } catch (const std::exception& e) {
-      LogWarn("sdkhost: could not read the rpc sync state: {}", e.what());
-      return;
-    }
+SdkHost::RpcSyncState SdkHost::CheckSessionSync(std::uint64_t generation,
+                                               bool reattached) {
+  // Must not be called holding mutex_. The check and any resulting teardown are
+  // serialized with bootstrap so a stale generation cannot affect a new one.
+  std::scoped_lock lock(mutex_);
+  if (generation != sessionGeneration_ || !device_) return RpcSyncState::Stale;
 
-    if (remoteConnected) {
-      // The pairing holds. A non-empty error alongside a live remote is a sync
-      // that failed and then recovered — worth one line, never worth an action.
-      if (!syncError.empty()) {
-        LogInfo("sdkhost: the device rpc is synced; an earlier sync had "
-                "reported '{}' and it has since recovered.", syncError);
-      }
-      return;
-    }
-    if (syncError.empty()) {
-      // Not connected and nothing refused: the ordinary "the local end has not
-      // answered YET" case (GetSyncError's own documented pairing with
-      // GetRemoteConnected). Slow is not broken, and the SDK keeps retrying.
-      LogWarn("sdkhost: the device rpc has not synced within {}ms and the "
-              "service has refused nothing — it is still coming up. Nothing to "
-              "do; the sdk keeps retrying.",
-              static_cast<long long>(kSyncSettleDeadline.count()));
-      return;
-    }
-
-    // A REFUSAL. This is the state that used to be invisible: the app renders,
-    // logs "session bootstrapped", and every value it shows is the empty
-    // fallback of a DeviceRemote whose service pointer will never be set,
-    // because the remote re-sends the same rejected pairing every 500ms for as
-    // long as the process lives. Say the SDK's own words, at WARN, once.
-    LogWarn("sdkhost: THE SERVICE REFUSED THIS SESSION'S DEVICE RPC — '{}'. "
-            "Nothing this app shows about the tunnel can be trusted while that "
-            "is true: the connect view controller has no service to ask, so it "
-            "reports no location, no providers and no throughput, and the app "
-            "reads Disconnected over whatever the service is really doing. The "
-            "sdk will retry this forever and it can never succeed.",
-            syncError);
-
-    if (!reattached) {
-      // A session THIS process just started, refused. Restarting it would
-      // rebuild the same pairing and be refused the same way, so there is no
-      // automatic recovery here — only the truth, on the channel built for it.
-      PublishSessionFailure(
-          "The URnetwork service refused this app's control connection. "
-          "Nothing is connected. Restart the URnetwork service, then try "
-          "again.");
-      return;
-    }
-
-    // A REATTACH, refused. Here there IS something better to do: give up the
-    // adopted session and start one of our own, which pairs by construction.
-    // That costs the running tunnel a stop and a start — deliberately, because
-    // the alternative on this branch is an app that stays wrong until the user
-    // works out that killing the service is what fixes it.
-    if (localState_) {
-      try {
-        resume = localState_->getConnectLocation();
-      } catch (const std::exception& e) {
-        LogWarn("sdkhost: could not read the stored connect location: {}", e.what());
-      }
-    }
-    // With a stored destination the replacement request is a connect and the
-    // running tunnel is rebuilt around it — the user was mid-session seconds
-    // ago and losing their tunnel over our pairing bug would be making them
-    // pay for it. With NO stored destination there is nothing to reconnect,
-    // and under D8 the ensure that follows will not cold-start an idle tunnel
-    // to replace this one: the app returns to an honest Disconnected and the
-    // next Connect press starts fresh.
-    LogWarn("sdkhost: dropping the reattached session (the tunnel stops). {}",
-            resume ? "The stored destination will be reconnected."
-                   : "No stored destination — the app returns to Disconnected; "
-                     "the next Connect starts fresh (D8).");
-    try {
-      // Also clears the saved rpc blob, so the next launch cannot reattach to
-      // the session this refusal proved unusable.
-      TeardownSessionLocked();
-    } catch (const std::exception& e) {
-      LogError("sdkhost: teardown of the refused session failed: {}", e.what());
-      return;
-    }
-    degrade = true;
+  std::string syncError;
+  bool remoteConnected = false;
+  try {
+    // Error first: a permanent refusal is actionable even if a remote-change
+    // edge was missed.
+    syncError = device_->getSyncError();
+    remoteConnected = device_->getRemoteConnected();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: could not read the rpc sync state: {}", e.what());
+    return RpcSyncState::Pending;
   }
 
-  if (!degrade) return;
-  SessionRequest r;
-  r.reason = "the reattached session's device rpc was refused";
-  if (resume) {
-    r.kind = ConnectKind::Location;
-    r.location = std::move(resume);
+  if (remoteConnected) {
+    if (syncPendingFailureGeneration_ == generation) {
+      syncPendingFailureGeneration_ = 0;
+      sessionFailure_.clear();
+      PublishModeNotice();
+    }
+    return RpcSyncState::Healthy;
   }
-  RequestSession(std::move(r));
+  if (syncError.empty()) return RpcSyncState::Pending;
+
+  LogWarn("sdkhost: THE SERVICE REFUSED THIS SESSION'S DEVICE RPC — '{}'. "
+          "The app will not keep presenting empty remote state as a working "
+          "control session.",
+          syncError);
+  try {
+    // A reattached tunnel may still be carrying traffic for other processes;
+    // never destroy it merely because adoption failed. A fresh session belongs
+    // to this process and is stopped because it cannot be controlled safely.
+    TeardownSessionLocked(/*stopTunnel=*/!reattached);
+  } catch (const std::exception& e) {
+    LogError("sdkhost: teardown of the refused rpc session failed: {}", e.what());
+  }
+  PublishSessionFailure(
+      reattached
+          ? "The running tunnel rejected this app's saved control credentials. "
+            "It was left running and was not restarted. Press Connect to replace "
+            "it with a new session."
+          : "The URnetwork service refused this app's control connection. The "
+            "new tunnel was stopped; restart the service, then try again.");
+  return RpcSyncState::Refused;
 }
 
 void SdkHost::StopSyncWatchdog() {
@@ -4729,12 +4980,18 @@ void SdkHost::TeardownSessionLocked(bool stopTunnel) {
               e.what());
     }
   }
+  // Invalidate persistence callbacks before removing listeners. A callback
+  // already in flight can then finish without rewriting a record this teardown
+  // is about to remove.
+  activeRpcPersistenceGeneration_.store(0, std::memory_order_release);
+  confirmedRpcPersistenceGeneration_.store(0, std::memory_order_release);
   ClosePresentationLocked();
   subs_.clear();
   if (device_) { device_->close(); device_.reset(); }
   // A pending rpc-sync check must not act on the session that is ending — its
   // generation stops matching here, which is the whole point of the counter.
   ++sessionGeneration_;
+  syncPendingFailureGeneration_ = 0;
   hasSession_.store(false, std::memory_order_release);
   {
     std::scoped_lock lock(wfpStateMutex_);
@@ -4745,7 +5002,10 @@ void SdkHost::TeardownSessionLocked(bool stopTunnel) {
   // Tunnel. A status built between this teardown and the next bootstrap must
   // not be able to render "connected".
   sessionMode_.store(proto::StartMode::RpcOnly);
-  ClearRpcSession();
+  {
+    std::scoped_lock persistenceLock(rpcPersistenceMutex_);
+    ClearRpcSession();
+  }
   // Not a failure — a deliberate teardown. Clearing this BEFORE the publish
   // below is what makes that publish a retraction instead of a re-raise of
   // whatever the last failure was.
@@ -4777,6 +5037,8 @@ void SdkHost::Logout() {
     // Before SetAuthState, and not waiting on the async logout above: the auth
     // handler runs synchronously from here and the window asks IsLoggedIn().
     loggedIn_.store(false, std::memory_order_release);
+    serviceRecoveryNeeded_.store(false, std::memory_order_release);
+    watchdogCv_.notify_all();
     sessionFailure_.clear();  // belongs to the session that just ended
     SetAuthState(AuthState::LoggedOut);
     LogInfo("sdkhost: logged out");

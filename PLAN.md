@@ -207,8 +207,10 @@ carries lifecycle/config. Last-good rpc session persists like `RpcSessionStore` 
 > *downstream of the OS routing decision*, so it only sees packets the kernel already
 > routed into the tun and cannot cover IPv6, LAN, other adapters' DNS, split-tunnel
 > exclusions, or a dead `urnetworkd`, which is the case a kill switch exists for; and
-> (b) the same user-mode WFP session is the mitigation for **R6 (DNS leak) and R7 (IPv6
-> leak)**, both of which are confirmed live, not hypothetical. It is therefore a
+> (b) the same user-mode WFP session is the mitigation for **R6 (DNS leak)** and the
+> disconnected kill-switch floor. R7 was subsequently resolved as a product policy:
+> connected IPv6 stays on the underlying network rather than being captured or
+> blackholed by the IPv4-only tunnel, and that exception is disclosed. WFP is therefore a
 > prerequisite for the tunnel milestone, not polish after it. Tracked as P7a. See
 > `docs/superpowers/research/2026-08-08-windows-leak-prevention-wfp.md`.
 
@@ -244,9 +246,9 @@ carries lifecycle/config. Last-good rpc session persists like `RpcSessionStore` 
   (registry), interface metrics, or a WFP port-53 block scoped to non-tun interfaces while
   connected. Pick and validate in M1 with a leak test; Win10 has no per-adapter DoH, so DoH
   `tunnelDnsSetting` modes fall back to plain DNS to the in-tunnel resolver there.
-- **R7 — IPv6 leaks.** Confirm what the macOS tunnel does for v6; if the tunnel is v4-only,
-  Windows must blackhole/block v6 while connected (route ::/1+8000::/1 to tun or WFP block)
-  or v6 traffic bypasses the VPN entirely.
+- **R7 — IPv6 policy (resolved).** Match the Apple IPv4-only tunnel: configure no IPv6
+  Wintun address, route, or DNS server, and leave host IPv6 on the underlying network while
+  connected instead of blackholing it. Disclose that connected IPv6 bypasses the VPN.
 - **R8 — multi-user Windows sessions.** One service/tunnel, potentially multiple logged-in
   users. v1 policy: single tunnel owned by the session that authenticated; the mTLS rpc keys
   already gate control (only the owning session holds clientPem); pipe SDDL allows

@@ -1,7 +1,8 @@
 // Applies to the wintun adapter what NEPacketTunnelNetworkSettings applies on
-// macOS: the tunnel local address, MTU, split-default routes, and DNS. Also
-// discovers the physical egress interface (best non-tun default route) for the
-// R1 socket self-exclusion.
+// macOS: the tunnel local address, MTU, split-default routes, and DNS. The
+// Wintun interface is also prevented from synthesizing an IPv6 link-local
+// address; physical-interface IPv6 is untouched. Also discovers the physical
+// egress interface (best non-tun default route) for the R1 socket self-exclusion.
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
@@ -20,8 +21,8 @@ struct TunnelNetworkSettings {
   std::string local_address_v4;      // e.g. "169.254.2.1" (DeviceLocal.tunnelLocalAddress)
   uint8_t prefix_v4 = 24;
   uint32_t mtu = 1440;
-  std::vector<std::string> dns_servers;  // resolvers to set on the tun interface
-  std::string dns_search;                // optional search domain
+  std::vector<std::string> dns_servers_v4;  // IPv4 resolvers set on the tun interface
+  std::string dns_search;                   // optional search domain
 };
 
 // Physical egress selection for R1.
@@ -37,6 +38,10 @@ class NetworkConfig {
   // Apply address + MTU + routes + DNS to the tun interface. Idempotent-ish:
   // Revert() undoes what Apply() added.
   bool Apply(const TunnelNetworkSettings& settings);
+
+  // Pure preflight used by Apply and the self-test. Remote providers currently
+  // forward IPv4 only, so no IPv6 address or DNS transport may reach Wintun.
+  static bool IsIpv4OnlyTunnelSettings(const TunnelNetworkSettings& settings);
 
   // Remove the routes/addresses/DNS added by Apply(), restoring prior state.
   void Revert();

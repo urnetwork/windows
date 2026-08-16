@@ -182,14 +182,16 @@ this section becomes the fallback for loose builds.
   both arches). No mac llvm-mingw needed; the mac only builds the Linux SDK (zig).
 - Build the solution for ARM64; smoke-test on an arm64 Windows box/VM.
 
-## 4. Close the leak guards (R6/R7) — implement + validate in M1
+## 4. Close the DNS leak guard and enforce the IPv6 policy — implement + validate in M1
 
 - **R6 DNS leaks:** Windows resolves per-adapter, so setting the tun DNS isn't
   enough. Add an NRPT rule (or a WFP port-53 block scoped to non-tun interfaces)
   while connected; validate with a DNS-leak test. Win10 has no per-adapter DoH —
   fall back to plain DNS to the in-tunnel resolver.
-- **R7 IPv6 leaks:** confirm whether the tunnel is v4-only; if so, blackhole/block
-  v6 while connected (route `::/1`+`8000::/1` to the tun, or a WFP v6 block).
+- **R7 IPv6 policy (resolved):** the tunnel is IPv4-only. Do not advertise an
+  IPv6 Wintun address, route, or DNS server, and do not blackhole host IPv6 while
+  connected; it remains on the underlying network. The disconnected kill-switch
+  states may still block IPv6 as part of their no-network policy.
 
 ## 5. Split-tunnel driver hardening + signing (R10)
 

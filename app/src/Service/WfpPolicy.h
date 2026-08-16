@@ -1,7 +1,8 @@
 // The leak-prevention layer: a user-mode Windows Filtering Platform policy
-// owned by urnetworkd. This is what closes R6 (DNS leaks to other adapters'
-// resolvers) and R7 (all IPv6 leaving in the clear, because our tunnel is
-// v4-only), and it is what the kill-switch toggle actually drives.
+// owned by urnetworkd. This closes R6 (DNS leaks to other adapters' resolvers)
+// and is what the kill-switch toggle actually drives. The connected tunnel is
+// deliberately IPv4-only without capturing or blocking host IPv6; the IPv6
+// floor below applies only while the kill switch has no connected tunnel.
 //
 // Spec: docs/superpowers/research/2026-08-08-windows-leak-prevention-wfp.md
 //
@@ -178,7 +179,10 @@ struct WfpConfig {
   // visible, not so it can be flipped casually.
   bool allow_lan = true;
 
-  // Block IPv6 at the two v6 ALE layers. NOT DisabledComponents and NOT
+  // Block IPv6 at the two v6 ALE layers while Armed or Connecting. Connected
+  // deliberately leaves host IPv6 on the physical network: Wintun receives no
+  // IPv6 address, route, or DNS server, and we do not turn that absence into a
+  // blackhole. NOT DisabledComponents and NOT
   // Set-NetAdapterBinding: Microsoft calls unbinding an unsupported
   // configuration, it is per-adapter so a dock or hotspot leaks anyway, and it
   // is persistent machine state that survives our process dying. Route
@@ -186,7 +190,7 @@ struct WfpConfig {
   // an RA, and they make connections hang to TCP timeout instead of failing
   // fast — which defeats Happy Eyeballs. A WFP block fails instantly, so v4
   // fallback happens in milliseconds.
-  bool block_ipv6 = true;
+  bool block_ipv6_when_disconnected = true;
 
   // Block LLMNR (5355), mDNS (5353) and NetBIOS name service (137/138/139).
   // Port 53 is not the only way a name becomes an address, and LLMNR in

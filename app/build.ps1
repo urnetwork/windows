@@ -123,6 +123,22 @@ $env:URN_VERSION = $Version
 & $msbuild URnetwork.sln /t:restore /nologo /v:minimal
 if ($LASTEXITCODE -ne 0) { throw "NuGet (PackageReference) restore failed" }
 
+# Protocol v3 is only safe to roll out if an MSI upgrade replaces the service
+# process, not merely the files underneath the old process. Keep the WiX
+# stop/start contract on the release build path so a packaging edit cannot
+# silently strand a v3 app talking to a still-running older daemon.
+$installerSource = Join-Path $PSScriptRoot "installer\Package.wxs"
+[xml]$installerXml = Get-Content -Raw $installerSource
+$serviceControl = $installerXml.SelectSingleNode(
+  "//*[local-name()='ServiceControl' and @Name='urnetworkd']"
+)
+if (-not $serviceControl -or
+    $serviceControl.Start -ne "install" -or
+    $serviceControl.Stop -ne "both" -or
+    $serviceControl.Wait -ne "yes") {
+  throw "MSI must synchronously stop the old urnetworkd and start the matching service on upgrade"
+}
+
 foreach ($platform in $Platforms) {
   Write-Host "== building $platform $Configuration =="
 
@@ -136,6 +152,20 @@ foreach ($platform in $Platforms) {
   }
 
   $bin = "$PSScriptRoot\build\$platform\$Configuration"
+
+  # Keep the service's pure protocol/persistence/watchdog regression suite on
+  # the same path that produces release artifacts. The ARM build VM can run
+  # ARM64 natively and x64 under Windows emulation, and the post-build event has
+  # already placed the matching SDK and Wintun DLLs beside the executable.
+  $serviceSelfTest = Join-Path $bin "urnetworkd.exe"
+  if (-not (Test-Path $serviceSelfTest)) {
+    throw "service selftest executable not produced at $serviceSelfTest"
+  }
+  Write-Host "== service selftest ($platform) =="
+  & $serviceSelfTest selftest
+  if ($LASTEXITCODE -ne 0) {
+    throw "service selftest failed for $platform"
+  }
 
   # The split-tunnel driver is intentionally excluded from URnetwork.sln's build
   # (kernel driver; needs the WDK). Build it on demand when -IncludeDriver is set,

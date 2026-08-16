@@ -18,17 +18,18 @@
 // DeviceLocal was born with at start_tunnel. The remote's SyncRequest carries
 // it and DeviceLocalRpc.Sync REFUSES every sync whose nonzero instance id is
 // not the local's ("device instance mismatch: remote expects X, local is Y").
-// The app used to pass whatever instance id was on disk AT LAUNCH — but the SDK
-// rotates that id on any changed by-client JWT string, and a JWT refresh
-// re-signs the same client, so the disk id rotates while the running
-// DeviceLocal keeps the one it was born with. Any refresh between tunnel start
-// and app restart therefore made reattach permanently unpairable. Persisting
-// the id WITH the session is what makes the pairing survive the refresh.
+// The app used to pass whatever instance id was on disk AT LAUNCH. Older SDK
+// builds rotated that id when a refreshed JWT changed, while the running
+// DeviceLocal kept the one it was born with. A refresh between tunnel start and
+// app restart therefore made reattach permanently unpairable on affected
+// installations. Persisting the id WITH the session both repairs those installs
+// and makes session identity independent of future account-state migrations.
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -37,8 +38,22 @@
 
 namespace urnw::rpcsession {
 
+inline constexpr std::int64_t kCurrentVersion = 1;
+
+enum class State { Pending, Confirmed, Invalid };
+
+inline constexpr const char* ToString(State state) noexcept {
+  if (state == State::Confirmed) return "confirmed";
+  if (state == State::Pending) return "pending";
+  return "invalid";
+}
+
 // The blob, as it is on disk. Field names are the JSON keys.
 struct Blob {
+  // Zero identifies the unversioned record written by older builds. It may be
+  // inspected for migration diagnostics, but it is never safe to adopt.
+  std::int64_t version = kCurrentVersion;
+  State state = State::Pending;
   // Per-session mTLS material for the loopback RPC listener.
   std::string client_pem;
   std::string server_cert_pem;
@@ -58,6 +73,9 @@ struct Blob {
   // that throws nothing and works at nothing. Verified against sdk main; do not
   // rediscover it the hard way.
   std::string instance_id;
+  // Random generation shared with the service. A host:port can be reused by a
+  // later listener; this value makes that different session distinguishable.
+  std::string rpc_session_id;
 };
 
 namespace blob_detail {
@@ -75,6 +93,17 @@ inline std::string StringField(const nlohmann::json& j, const char* key) {
   const auto it = j.find(key);
   if (it == j.end() || !it->is_string()) return {};
   return it->get<std::string>();
+}
+
+inline std::int64_t IntegerField(const nlohmann::json& j, const char* key,
+                                 std::int64_t fallback) noexcept {
+  const auto it = j.find(key);
+  if (it == j.end() || !it->is_number_integer()) return fallback;
+  try {
+    return it->get<std::int64_t>();
+  } catch (...) {
+    return fallback;
+  }
 }
 
 }  // namespace blob_detail
@@ -110,15 +139,44 @@ inline constexpr bool IsPairableInstanceId(std::string_view s) noexcept {
   return anyNonZero;
 }
 
+inline constexpr bool IsOpaqueSessionId(std::string_view s) noexcept {
+  // generateNonce() emits much more entropy than this lower bound. The upper
+  // bound prevents a corrupt file becoming an unbounded control message while
+  // keeping the representation free to evolve.
+  if (s.size() < 16 || s.size() > 256) return false;
+  for (const unsigned char c : s) {
+    if (c <= 0x20 || c == 0x7f) return false;
+  }
+  return true;
+}
+
+inline bool IsAdoptable(const Blob& b) noexcept {
+  const bool knownState = b.state == State::Pending || b.state == State::Confirmed;
+  return b.version == kCurrentVersion && knownState &&
+         IsPairableInstanceId(b.instance_id) &&
+         IsOpaqueSessionId(b.rpc_session_id) && !b.client_pem.empty() &&
+         !b.server_cert_pem.empty() && !b.host_port.empty();
+}
+
+inline bool MatchesLiveSession(const Blob& b, std::string_view instanceId,
+                               std::string_view rpcSessionId,
+                               std::string_view hostPort) noexcept {
+  return IsAdoptable(b) && b.instance_id == instanceId &&
+         b.rpc_session_id == rpcSessionId && b.host_port == hostPort;
+}
+
 // The blob as it goes to disk. Always writes every key, including an empty
 // instance_id: a writer that omits fields it happens not to have makes "this
 // build did not know about the field" and "this session had no id" look
 // identical to the next reader, and only one of those is worth a migration.
 inline std::string Serialize(const Blob& b) {
-  const nlohmann::json j = {{"client_pem", b.client_pem},
+  const nlohmann::json j = {{"version", b.version},
+                            {"state", ToString(b.state)},
+                            {"client_pem", b.client_pem},
                             {"server_cert_pem", b.server_cert_pem},
                             {"host_port", b.host_port},
-                            {"instance_id", b.instance_id}};
+                            {"instance_id", b.instance_id},
+                            {"rpc_session_id", b.rpc_session_id}};
   return j.dump();
 }
 
@@ -142,6 +200,11 @@ inline std::optional<Blob> Parse(std::string_view text) {
   if (j.is_discarded() || !j.is_object()) return std::nullopt;
 
   Blob b;
+  b.version = blob_detail::IntegerField(j, "version", 0);
+  const std::string state = blob_detail::StringField(j, "state");
+  b.state = state == "confirmed" ? State::Confirmed
+            : state == "pending" ? State::Pending
+                                   : State::Invalid;
   b.client_pem = blob_detail::StringField(j, "client_pem");
   b.server_cert_pem = blob_detail::StringField(j, "server_cert_pem");
   b.host_port = blob_detail::StringField(j, "host_port");
@@ -149,6 +212,7 @@ inline std::optional<Blob> Parse(std::string_view text) {
 
   const std::string id = blob_detail::StringField(j, "instance_id");
   b.instance_id = IsPairableInstanceId(id) ? id : std::string{};
+  b.rpc_session_id = blob_detail::StringField(j, "rpc_session_id");
   return b;
 }
 

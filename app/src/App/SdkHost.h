@@ -25,6 +25,7 @@
 #include "ProviderLocations.h"
 #include "Sdk.h"
 #include "ServiceClient.h"
+#include "ServiceRecoveryPolicy.h"
 #include "WalletConnect.h"
 
 namespace urnw {
@@ -659,7 +660,7 @@ class SdkHost {
   //
   // Called from: the resume path in Initialize(), a network-server change that
   // lands on a signed-in space, and the service-reconnect watchdog.
-  void EnsureSession(const char* reason);
+  void EnsureSession(const char* reason, bool automaticRecovery = false);
 
   // Whether a live service session exists, LOCK-FREE.
   //
@@ -1067,9 +1068,10 @@ class SdkHost {
     enum class Kind {
       // A live session that deliberately carries no traffic (rpc-only).
       RpcOnly,
-      // No session at all: the service is unreachable, too old, or refused.
-      // The user is still SIGNED IN — this is not an authentication failure
-      // and must not route anyone to the sign-in screen.
+      // The service is unreachable/too old/refused, or a constructed session
+      // has not completed its authenticated control channel by the bounded
+      // deadline. The user remains SIGNED IN, and the pending case is
+      // non-destructive: its tunnel is left running while observation continues.
       SessionFailed,
     };
     bool active = false;
@@ -1198,6 +1200,9 @@ class SdkHost {
     // Eligible for CancelPendingRowConnect: only a settling row click may be
     // silently discarded. An explicit press or a Disconnect never is.
     bool coalesced = false;
+    // Watchdog retries retain the already-published standing failure instead
+    // of re-publishing it on every backoff attempt.
+    bool automaticRecovery = false;
   };
   // The queued intent in the vocabulary the pure decision table speaks
   // (Common/ConnectAction.h). Location covers both the immediate "connect to
@@ -1255,10 +1260,11 @@ class SdkHost {
   // only ran at launch and at sign-in. So a service restarted under a running
   // app was invisible to it forever.
   //
-  // This waits for the pipe to come back — probed with WaitNamedPipe, which
-  // costs nothing and does not disturb the channel — and then asks the session
-  // worker for a session. It does NOT bootstrap on its own: a failing bootstrap
-  // every few seconds would publish a session-failure notice every few seconds.
+  // This waits for the pipe to come back and asks the session worker for a
+  // quiet recovery attempt. It also survives a listening pipe whose hello is
+  // temporarily unusable (notably an installer replacing a protocol-v2
+  // service with v3). Attempts use ServiceRecoveryPolicy's capped exponential
+  // schedule, and never re-publish the standing failure on each attempt.
   void ScheduleServiceRetry();
   void ServiceWatchdogLoop();
   void StopServiceWatchdog();  // called from the destructor; joins the thread
@@ -1268,6 +1274,7 @@ class SdkHost {
   std::condition_variable watchdogCv_;
   bool watchdogStop_ = false;
   bool watchdogRunning_ = false;
+  std::atomic<bool> serviceRecoveryNeeded_{false};
 
   // ---- the presentation worker (D4) -----------------------------------------
   //
@@ -1298,20 +1305,25 @@ class SdkHost {
   // A refusal is permanent by construction (the remote retries the same rejected
   // pairing every 500ms forever), so there is no amount of waiting that fixes it.
   //
-  // The design is therefore: one BOUNDED look, on a deadline, off the UI thread,
-  // that turns silence into either a WARN with the SDK's own error text or, on a
-  // reattach, a fall back to a fresh session that the user can actually drive.
-  // It is armed by BootstrapSession and it exits on its own; it never polls.
+  // The design is therefore: inspect immediately, then keep a small bounded
+  // poll alive for the lifetime of the generation. Pending sync is warned once
+  // after the settle interval; a refusal is terminal and handled immediately;
+  // a healthy session is checked less frequently so a later transport refusal
+  // cannot become invisible.
   //
   // Generation, not a pointer: a session torn down and rebuilt while a check was
   // pending could hand back a DeviceRemote at the same address, and acting on
   // the WRONG session here means stopping a tunnel that is working.
   static constexpr std::chrono::milliseconds kSyncSettleDeadline{5000};
+  static constexpr std::chrono::milliseconds kSyncFailureDeadline{20000};
+  static constexpr std::chrono::milliseconds kSyncPendingPoll{500};
+  static constexpr std::chrono::milliseconds kSyncHealthyPoll{2000};
+  enum class RpcSyncState { Stale, Healthy, Pending, Refused };
   void ArmSyncWatchdogLocked(std::uint64_t generation, bool reattached);
   void SyncWatchdogLoop();
-  // The one look. Caller must NOT hold mutex_ (this takes it, then releases it
-  // before asking for a replacement session).
-  void CheckSessionSync(std::uint64_t generation, bool reattached);
+  // One observation. Caller must not hold mutex_; this serializes with the
+  // current bootstrap and may tear down only the matching generation.
+  RpcSyncState CheckSessionSync(std::uint64_t generation, bool reattached);
   void StopSyncWatchdog();  // called from the destructor; joins the thread
 
   std::thread syncWatchdog_;
@@ -1322,9 +1334,20 @@ class SdkHost {
   std::uint64_t syncGeneration_ = 0;
   bool syncReattached_ = false;
   std::chrono::steady_clock::time_point syncDeadline_{};
+  std::chrono::steady_clock::time_point syncPendingSince_{};
+  bool syncPendingWarned_ = false;
+  bool syncPendingFailurePublished_ = false;
+  std::uint64_t syncPendingFailureGeneration_ = 0;
+  void PublishPendingSyncFailure(std::uint64_t generation);
   // Bumped under mutex_ every time device_ is created or destroyed. A watchdog
   // holding a stale value has nothing to say about the session that is live now.
   std::uint64_t sessionGeneration_ = 0;
+  // Lock-free guards for the SDK's remote-change callback. It may run while
+  // BootstrapSession holds mutex_, so taking that lock merely to mark the
+  // encrypted credential envelope confirmed would risk a callback deadlock.
+  std::atomic<std::uint64_t> activeRpcPersistenceGeneration_{0};
+  std::atomic<std::uint64_t> confirmedRpcPersistenceGeneration_{0};
+  std::mutex rpcPersistenceMutex_;
   // After obtaining a network JWT, register this device and store the client JWT.
   // A live session (guest upgrade) is torn down first: the new jwt invalidates
   // the running device, and BootstrapSession rebuilds under the new auth.
@@ -1570,8 +1593,8 @@ class SdkHost {
   // Build and push the persistent notice from the CURRENT session state.
   // Caller holds mutex_ (it reads device_).
   void PublishModeNotice();
-  // Push a "there is no session, and here is why" notice. The user stays
-  // signed in; see ModeNotice::Kind::SessionFailed.
+  // Push a "there is no usable app control session, and here is why" notice.
+  // The user stays signed in; see ModeNotice::Kind::SessionFailed.
   void PublishSessionFailure(const std::string& why);
   // Copies of the two handlers, taken under noticeMutex_. Invoke the COPIES, so
   // the lock is never held across the calls.
@@ -1684,6 +1707,10 @@ class SdkHost {
   // Set on every failure path and read by the session worker; guarded by
   // mutex_, which BootstrapSession's caller already holds.
   std::string bootstrapError_;
+  // Per-attempt classification: a missing/restarting/incompatible service can
+  // recover without user input and keeps the capped service watchdog alive.
+  // Credential/identity refusals are not retried blindly.
+  bool bootstrapServiceRetryable_ = false;
   // The last BootstrapSession() returned false because the click-only rule
   // (D8) declined a cold start on an attach-only request — not because
   // anything failed. The worker reads it to log the outcome at INFO and skip

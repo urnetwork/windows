@@ -27,6 +27,7 @@
 #include "Protocol.h"
 #include "RpcSessionBlob.h"
 #include "Sdk.h"
+#include "ServiceRecoveryPolicy.h"
 #include "StopBudget.h"
 #include "ThreadGuard.h"
 #include "TunnelWatchdog.h"
@@ -169,6 +170,30 @@ void TestNetPolicyTable() {
         probeDetail);
 }
 
+void TestTunnelNetworkSettingsPolicy() {
+  Section("NetworkConfig — IPv4-only tunnel interface policy");
+
+  TunnelNetworkSettings settings;
+  settings.local_address_v4 = "169.254.2.1";
+  settings.prefix_v4 = 24;
+  settings.dns_servers_v4 = {"65.49.70.65", "9.9.9.9"};
+  Check(NetworkConfig::IsIpv4OnlyTunnelSettings(settings),
+        "an IPv4 address and IPv4 DNS servers are accepted");
+
+  settings.local_address_v4 = "fd00::1";
+  Check(!NetworkConfig::IsIpv4OnlyTunnelSettings(settings),
+        "an IPv6 tunnel address is rejected before Wintun is mutated");
+
+  settings.local_address_v4 = "169.254.2.1";
+  settings.dns_servers_v4 = {"2001:4860:4860::8888"};
+  Check(!NetworkConfig::IsIpv4OnlyTunnelSettings(settings),
+        "an IPv6 tunnel DNS transport is rejected before Wintun is mutated");
+
+  settings.dns_servers_v4 = {"resolver.example"};
+  Check(!NetworkConfig::IsIpv4OnlyTunnelSettings(settings),
+        "a hostname cannot bypass the IPv4-literal tunnel contract");
+}
+
 // --- part 2: the filter set -------------------------------------------------
 
 using Specs = std::vector<WfpFilterSpec>;
@@ -300,9 +325,6 @@ void TestFilterSet() {
     Check(HasName(set, "urnetwork-block-all-v4-out") &&
               HasName(set, "urnetwork-block-all-v4-in"),
           std::format("{}: blocks all IPv4 at both ALE layers", label));
-    Check(HasName(set, "urnetwork-block-all-v6-out") &&
-              HasName(set, "urnetwork-block-all-v6-in"),
-          std::format("{}: blocks all IPv6 at both ALE layers (R7)", label));
     Check(HasName(set, "urnetwork-block-dns-v4") &&
               HasName(set, "urnetwork-block-dns-v6"),
           std::format("{}: hard-blocks remote port 53 in the DNS sublayer (R6)",
@@ -327,12 +349,22 @@ void TestFilterSet() {
     Check(HasName(set, "urnetwork-permit-dhcpv6-out") &&
               HasName(set, "urnetwork-permit-ndp-rs-out") &&
               HasName(set, "urnetwork-permit-ndp-ra-in"),
-          std::format("{}: permits DHCPv6 and NDP even while v6 is blocked",
-                      label));
+          std::format("{}: preserves DHCPv6 and NDP maintenance traffic", label));
     Check(HasName(set, "urnetwork-permit-lan-out") &&
               HasName(set, "urnetwork-permit-lan-in"),
           std::format("{}: permits the LAN", label));
   }
+
+  Check(HasName(armed, "urnetwork-block-all-v6-out") &&
+            HasName(armed, "urnetwork-block-all-v6-in") &&
+            HasName(connecting, "urnetwork-block-all-v6-out") &&
+            HasName(connecting, "urnetwork-block-all-v6-in"),
+        "Armed and Connecting apply the IPv6 kill-switch floor while no tunnel "
+        "is connected");
+  Check(!HasName(connected, "urnetwork-block-all-v6-out") &&
+            !HasName(connected, "urnetwork-block-all-v6-in"),
+        "Connected does not capture or blackhole IPv6; it remains on the "
+        "underlying network outside the IPv4-only Wintun interface");
 
   // --- the states differ ONLY where they should ----------------------------
   const std::string kHostResolverPermit = "urnetwork-permit-dns-host-resolver";
@@ -344,8 +376,9 @@ void TestFilterSet() {
         "neither Armed nor Connecting has a tun permit or a tunnel-resolver DNS "
         "permit (there is no tun in either)");
   Check(CountName(connected, "urnetwork-permit-tun-v4") == 2 &&
-            CountName(connected, "urnetwork-permit-tun-v6") == 2,
-        "Connected permits the tun LUID at all four ALE layers");
+            !HasName(connected, "urnetwork-permit-tun-v6"),
+        "Connected permits only IPv4 on the Wintun LUID; no IPv6 tunnel path "
+        "is advertised");
   Check(CountName(connected, "urnetwork-permit-dns-tunnel-resolver") == 1,
         "Connected permits exactly one tunnel resolver (one was configured)");
 
@@ -447,25 +480,30 @@ void TestFilterSet() {
                                                : *onlyInConnecting.begin()));
   }
 
-  // Everything Armed permits, Connected must also permit. There is no exception
-  // any more: Armed no longer carries the host-resolver permit, so the narrowing
-  // that used to need spelling out has moved to the Connecting -> Connected
-  // edge below. Any name present in Armed but absent from Connected would be a
-  // transition window where the policy is briefly weaker in the direction that
-  // breaks the machine.
+  // Everything Armed permits, Connected must also permit. Connected deliberately
+  // removes only the two IPv6 block filters: removing a block widens effective
+  // policy and lets IPv6 remain on the underlying network without advertising it
+  // on the tunnel. Any other name present in Armed but absent from Connected
+  // would be a transition window where the policy is briefly weaker in the
+  // direction that breaks the machine.
+  const auto isDisconnectedIpv6Floor = [](const std::string& name) {
+    return name == "urnetwork-block-all-v6-out" ||
+           name == "urnetwork-block-all-v6-in";
+  };
   std::set<std::string> connectedNames;
   for (const auto& f : connected) connectedNames.insert(f.name);
   bool superset = true;
   std::string missing;
   for (const auto& f : armed) {
-    if (!connectedNames.count(f.name)) {
+    if (!connectedNames.count(f.name) &&
+        !isDisconnectedIpv6Floor(f.name)) {
       superset = false;
       missing = f.name;
     }
   }
   Check(superset,
-        "Connected is a superset of Armed with NO exceptions (no transition "
-        "window)",
+        "Connected retains every Armed filter except the disconnected IPv6 "
+        "block floor; removing those blocks is a widening, not a leak window",
         missing);
 
   // ...and as a MULTISET, which is the stronger claim the dead-tunnel failsafe
@@ -473,45 +511,45 @@ void TestFilterSet() {
   //
   // With the kill switch ON a failsafe teardown takes Connected -> Armed while
   // the machine is still routed at the tun, on a path the user did not ask for.
-  // The promise made about that path is "nothing is leaking" — and that promise
-  // is only true if the transition is a PURE NARROWING. The set-based check
-  // above would pass if Armed carried two copies of a permit Connected carries
-  // once; a multiset difference cannot.
+  // The promise made about that path is "nothing is leaking." Adding the two
+  // IPv6 block filters is part of that narrowing: IPv6 may use the underlying
+  // network only during a connected session. A multiset difference pins this
+  // exception to exactly one inbound and one outbound block.
   {
     const std::multiset<std::string> a = Names(armed);
     const std::multiset<std::string> c = Names(connected);
     std::multiset<std::string> onlyInArmed;
     std::set_difference(a.begin(), a.end(), c.begin(), c.end(),
                         std::inserter(onlyInArmed, onlyInArmed.end()));
-    Check(onlyInArmed.empty(),
-          "Connected -> Armed is a PURE NARROWING, counted rather than merely "
-          "named — so a failsafe teardown with the kill switch on can only ever "
-          "permit LESS than the session it ended, which is what makes 'nothing "
-          "is leaking' a fact about the filter set rather than a hope",
-          onlyInArmed.empty() ? "" : *onlyInArmed.begin());
+    const std::multiset<std::string> expectedOnlyInArmed = {
+        "urnetwork-block-all-v6-in", "urnetwork-block-all-v6-out"};
+    Check(onlyInArmed == expectedOnlyInArmed,
+          "Connected -> Armed adds exactly the inbound and outbound IPv6 block "
+          "floor; adding those blocks makes the failsafe transition narrower",
+          std::format("expected 2 IPv6 blocks, found {}", onlyInArmed.size()));
     Check(c.size() > a.size(),
           "…and strictly less: Armed drops the tun permit, the UI app permit "
           "and the tunnel-resolver DNS permit that Connected carries",
           std::format("armed={} connected={}", a.size(), c.size()));
   }
 
-  // The Connecting -> Connected edge is where the deliberate narrowing lives.
-  // Connected does not merely drop the host-resolver permit, it REPLACES it with
-  // a strictly narrower one (the tunnel's own resolvers, over the tun), and
-  // carrying it forward would permit the physical adapter's resolvers while
-  // connected — which IS the R6 leak.
+  // The Connecting -> Connected edge replaces the host-resolver permit with a
+  // strictly narrower one (the tunnel's own resolvers, over the tun). It also
+  // removes the disconnected IPv6 block floor so physical IPv6 remains outside
+  // the IPv4-only tunnel for the connected session.
   bool connectedSupersetOfConnecting = true;
   std::string missingOnConnect;
   for (const auto& f : connecting) {
     if (f.name == kHostResolverPermit) continue;
+    if (isDisconnectedIpv6Floor(f.name)) continue;
     if (!connectedNames.count(f.name)) {
       connectedSupersetOfConnecting = false;
       missingOnConnect = f.name;
     }
   }
   Check(connectedSupersetOfConnecting,
-        "Connected is a superset of Connecting apart from the one deliberately "
-        "narrowed DNS permit",
+        "Connected retains every Connecting filter except the narrowed DNS "
+        "permit and the deliberately removed disconnected IPv6 block floor",
         missingOnConnect);
   Check(HasName(connecting, kHostResolverPermit) &&
             !HasName(armed, kHostResolverPermit) &&
@@ -664,12 +702,11 @@ void TestFilterSet() {
         "an index-based permit can end up permitting another adapter)");
 
   // --- config knobs actually do something ----------------------------------
-  WfpConfig noV6 = cfg;
-  noV6.block_ipv6 = false;
-  const Specs v6Open = BuildFilterSet(WfpState::Connected, noV6);
+  WfpConfig noV6 = NoTunnelConfig(cfg);
+  noV6.block_ipv6_when_disconnected = false;
+  const Specs v6Open = BuildFilterSet(WfpState::Armed, noV6);
   Check(!HasName(v6Open, "urnetwork-block-all-v6-out"),
-        "block_ipv6=false removes the v6 floor (and reopens R7 — it exists for "
-        "the day the tunnel carries v6, not as a preference)");
+        "block_ipv6_when_disconnected=false removes the disconnected v6 floor");
 
   WfpConfig noNameBlock = cfg;
   noNameBlock.block_local_name_resolution = false;
@@ -1977,6 +2014,8 @@ void TestStatusEgressWire() {
   s.routes_installed = true;
   s.egress_index4 = 17;
   s.egress_index6 = 23;
+  s.instance_id = "019fe9cc-3e1a-7a4b-9c2d-0a1b2c3d4e5f";
+  s.rpc_session_id = "rpc-session-0123456789abcdef";
 
   const nlohmann::json j = s;
   Check(j.contains("egress_index4") && j.contains("egress_index6"),
@@ -1986,6 +2025,23 @@ void TestStatusEgressWire() {
   Check(back.egress_index4 == 17 && back.egress_index6 == 23,
         "both survive the round trip",
         std::format("got v4={} v6={}", back.egress_index4, back.egress_index6));
+  Check(back.instance_id == s.instance_id &&
+            back.rpc_session_id == s.rpc_session_id,
+        "the exact DeviceLocal and RPC generation identities survive too");
+  Check(proto::kProtocolVersion >= proto::kFirstRpcSessionIdentityVersion,
+        "the wire version advertises support for the required adoption identity");
+
+  proto::StartTunnel start;
+  start.instance_id = s.instance_id;
+  start.rpc_session_id = s.rpc_session_id;
+  start.rpc_listen_hostport = "127.0.0.1:12035";
+  start.rpc_server_pem = "server";
+  start.rpc_client_cert_pem = "client";
+  const proto::StartTunnel startBack =
+      nlohmann::json(start).get<proto::StartTunnel>();
+  Check(startBack.instance_id == start.instance_id &&
+            startBack.rpc_session_id == start.rpc_session_id,
+        "start_tunnel carries both sides of the exact session identity");
 
   // A peer too old to send them. `from_json` must leave the defaults rather than
   // throw, and the default must be 0 — which the app reads as "do not bind",
@@ -1999,6 +2055,15 @@ void TestStatusEgressWire() {
             legacy.routes_installed,
         "a status from a peer that does not send them parses fine and reads 0 — "
         "no protocol bump was needed, and the app treats 0 as 'do not bind'");
+
+  old.erase("instance_id");
+  old.erase("rpc_session_id");
+  old.erase("protocol_version");
+  legacy = old.get<proto::TunnelStatus>();
+  Check(legacy.instance_id.empty() && legacy.rpc_session_id.empty() &&
+            legacy.protocol_version == 0,
+        "a pre-v3 status parses but cannot claim a live session identity or "
+        "current protocol support");
 
   // ---- the failsafe's two fields (task #41) ---------------------------------
   //
@@ -3289,6 +3354,7 @@ void TestRpcSessionBlob() {
 
   // The shape the SDK actually emits: canonical, dashed, lowercase.
   const std::string kId = "019fe9cc-3e1a-7a4b-9c2d-0a1b2c3d4e5f";
+  const std::string kSession = "rpc-session-0123456789abcdef";
 
   // ---- the round trip -------------------------------------------------------
   //
@@ -3302,6 +3368,8 @@ void TestRpcSessionBlob() {
     out.server_cert_pem = "-----BEGIN CERTIFICATE-----\nserver\n-----END CERTIFICATE-----";
     out.host_port = "127.0.0.1:12035";
     out.instance_id = kId;
+    out.rpc_session_id = kSession;
+    out.state = State::Confirmed;
     const auto back = Parse(Serialize(out));
     Check(back.has_value(), "a serialized blob parses back");
     if (back) {
@@ -3311,6 +3379,15 @@ void TestRpcSessionBlob() {
       Check(back->host_port == out.host_port, "…host_port survives the round trip");
       Check(back->instance_id == out.instance_id,
             "…AND the instance id — the field the pairing fix turns on");
+      Check(back->version == kCurrentVersion && back->state == State::Confirmed &&
+                back->rpc_session_id == kSession,
+            "…plus the envelope version, confirmed state and RPC generation");
+      Check(IsAdoptable(*back), "the complete current record is adoptable");
+      Check(MatchesLiveSession(*back, kId, kSession, out.host_port),
+            "an exact live instance/session/endpoint match is accepted");
+      Check(!MatchesLiveSession(*back, kId, kSession + "x", out.host_port) &&
+                !MatchesLiveSession(*back, kId, kSession, "127.0.0.1:12036"),
+            "a reused endpoint or different generation is never adopted");
     }
   }
 
@@ -3333,6 +3410,8 @@ void TestRpcSessionBlob() {
       Check(legacy->instance_id.empty(),
             "…and an empty instance id, which the caller reads as "
             "not-reattachable");
+      Check(legacy->version == 0 && !IsAdoptable(*legacy),
+            "…and version zero makes legacy plaintext structurally non-adoptable");
     }
   }
 
@@ -3402,6 +3481,25 @@ void TestRpcSessionBlob() {
     Check(ok.has_value() && ok->instance_id == kId,
           "…while a real id comes through untouched");
   }
+
+  // Pending records are intentional: the app writes one before asking the
+  // service to start so a crash in that window remains recoverable. Both
+  // pending and confirmed are adoptable, but unknown states/versions are not.
+  Blob pending;
+  pending.client_pem = "client";
+  pending.server_cert_pem = "server";
+  pending.host_port = "127.0.0.1:12035";
+  pending.instance_id = kId;
+  pending.rpc_session_id = kSession;
+  Check(IsAdoptable(pending), "a complete pending record can recover a mid-start crash");
+  pending.state = State::Invalid;
+  Check(!IsAdoptable(pending), "an unknown state is not guessed into adoption");
+  pending.state = State::Confirmed;
+  pending.version = kCurrentVersion + 1;
+  Check(!IsAdoptable(pending), "an unknown envelope version is not adopted");
+  pending.version = kCurrentVersion;
+  pending.rpc_session_id = "short";
+  Check(!IsAdoptable(pending), "a missing or malformed RPC generation is refused");
 }
 
 }  // namespace
@@ -4335,6 +4433,22 @@ void TestConnectGesture() {
   }
 }
 
+void TestServiceRecoveryPolicy() {
+  Section("Service recovery — capped exponential retry without a hot loop");
+  using recovery::ServiceRetryDelay;
+  Check(ServiceRetryDelay(0) == std::chrono::seconds{1},
+        "the first automatic recovery is prompt");
+  Check(ServiceRetryDelay(1) == std::chrono::seconds{2} &&
+            ServiceRetryDelay(2) == std::chrono::seconds{4} &&
+            ServiceRetryDelay(3) == std::chrono::seconds{8},
+        "early attempts back off exponentially");
+  Check(ServiceRetryDelay(8) == std::chrono::seconds{300} &&
+            ServiceRetryDelay(1000) == std::chrono::seconds{300},
+        "long-lived mismatch recovery caps at five minutes");
+  Check(proto::kProtocolVersion >= proto::kFirstRpcSessionIdentityVersion,
+        "the shipped app/service protocol includes exact RPC identities");
+}
+
 int RunSelfTest() {
   g_pass = 0;
   g_fail = 0;
@@ -4356,6 +4470,7 @@ int RunSelfTest() {
       "verb's binPath quoting and its exit-code verdicts are right.\n");
 
   TestNetPolicyTable();
+  TestTunnelNetworkSettingsPolicy();
   TestFilterSet();
   TestServiceDnsPath();
   TestDnsDisclosureShape();
@@ -4369,6 +4484,7 @@ int RunSelfTest() {
   TestVersionGrammar();
   TestUpdateFormats();
   TestInstallVerb();
+  TestServiceRecoveryPolicy();
   TestConnectionHealth();
   TestFlowOwner();
   TestConnectGesture();

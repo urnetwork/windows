@@ -2,6 +2,7 @@
 #include "ControlServer.h"
 
 #include "Log.h"
+#include "RpcSessionBlob.h"
 #include "Sdk.h"  // urnet::flushGlog — see PushState
 
 namespace urnw {
@@ -42,6 +43,18 @@ nlohmann::json ControlServer::Handle(const nlohmann::json& request) {
       reply.status = tunnel_.Status();
     } else if (type == proto::msg::kStartTunnel) {
       proto::StartTunnel cfg = request.get<proto::StartTunnel>();
+      // Validate the security-critical adoption identity BEFORE Start(), whose
+      // first operation tears down any existing tunnel. This also makes an old
+      // app fail closed instead of replacing a live v3 session with one that no
+      // future process can identify safely.
+      if (!rpcsession::IsPairableInstanceId(cfg.instance_id) ||
+          !rpcsession::IsOpaqueSessionId(cfg.rpc_session_id) ||
+          cfg.rpc_server_pem.empty() || cfg.rpc_client_cert_pem.empty() ||
+          !cfg.rpc_listen_hostport.starts_with("127.0.0.1:")) {
+        throw std::runtime_error(
+            "start_tunnel requires an exact instance id, RPC session id, "
+            "loopback endpoint, and per-session mTLS credentials");
+      }
       proto::TunnelStatus st = tunnel_.Start(cfg);
       // "ok" means "I did what you asked" — live AND in the mode requested.
       // A clamped process serving a tunnel request produces a live session, but

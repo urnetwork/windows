@@ -23,6 +23,69 @@ bool ParseV4(const std::string& s, IN_ADDR& out) {
   return ::inet_pton(AF_INET, s.c_str(), &out) == 1;
 }
 
+// Windows defaults IPv6 interfaces to LinkLocalAlwaysOn, which can synthesize
+// a fe80:: address even when the app never supplies an IPv6 address. Keep the
+// Wintun interface genuinely IPv4-only without touching IPv6 on any physical
+// interface. Router discovery/default routes are disabled as a second guard,
+// and an address created before this policy landed is removed explicitly.
+bool EnforceIpv4OnlyTunnelInterface(NET_LUID tun) {
+  MIB_IPINTERFACE_ROW row;
+  ::InitializeIpInterfaceEntry(&row);
+  row.Family = AF_INET6;
+  row.InterfaceLuid = tun;
+  DWORD err = ::GetIpInterfaceEntry(&row);
+  if (err == ERROR_NOT_FOUND || err == ERROR_FILE_NOT_FOUND ||
+      err == ERROR_NOT_SUPPORTED) {
+    LogInfo("netcfg: tunnel has no IPv6 interface row; IPv4-only policy already "
+            "satisfied");
+    return true;
+  }
+  if (err != NO_ERROR) {
+    LogError("netcfg: cannot inspect tunnel IPv6 interface policy: {}", err);
+    return false;
+  }
+
+  row.LinkLocalAddressBehavior = LinkLocalAlwaysOff;
+  row.RouterDiscoveryBehavior = RouterDiscoveryDisabled;
+  row.AdvertisingEnabled = FALSE;
+  row.AdvertiseDefaultRoute = FALSE;
+  row.DisableDefaultRoutes = TRUE;
+  err = ::SetIpInterfaceEntry(&row);
+  if (err != NO_ERROR) {
+    LogError("netcfg: cannot suppress IPv6 on Wintun: {}", err);
+    return false;
+  }
+
+  PMIB_UNICASTIPADDRESS_TABLE addresses = nullptr;
+  err = ::GetUnicastIpAddressTable(AF_INET6, &addresses);
+  if (err != NO_ERROR) {
+    LogError("netcfg: cannot verify Wintun has no IPv6 addresses: {}", err);
+    return false;
+  }
+  bool clean = true;
+  size_t removed = 0;
+  for (ULONG i = 0; i < addresses->NumEntries; ++i) {
+    const auto& address = addresses->Table[i];
+    if (address.InterfaceLuid.Value != tun.Value) continue;
+    const DWORD deleteErr = ::DeleteUnicastIpAddressEntry(&address);
+    if (deleteErr == NO_ERROR || deleteErr == ERROR_NOT_FOUND) {
+      ++removed;
+    } else {
+      clean = false;
+      LogError("netcfg: cannot remove an automatically generated Wintun IPv6 "
+               "address: {}",
+               deleteErr);
+    }
+  }
+  ::FreeMibTable(addresses);
+  if (clean) {
+    LogInfo("netcfg: Wintun IPv6 disabled (link-local addresses removed={}); "
+            "physical IPv6 unchanged",
+            removed);
+  }
+  return clean;
+}
+
 // Add a route through the tun for one half of the default range (0.0.0.0/1 and
 // 128.0.0.0/1 together cover all of 0.0.0.0/0 while sorting above the physical
 // default route, so the tun captures everything without deleting the existing
@@ -155,12 +218,41 @@ bool NetworkConfig::FlushResolverCache() {
   return true;
 }
 
+bool NetworkConfig::IsIpv4OnlyTunnelSettings(
+    const TunnelNetworkSettings& settings) {
+  IN_ADDR address{};
+  if (!ParseV4(settings.local_address_v4, address) || settings.prefix_v4 == 0 ||
+      settings.prefix_v4 > 32) {
+    return false;
+  }
+  for (const auto& server : settings.dns_servers_v4) {
+    IN_ADDR dns{};
+    if (!ParseV4(server, dns)) return false;
+  }
+  return true;
+}
+
 bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
+  if (!IsIpv4OnlyTunnelSettings(settings)) {
+    LogError("netcfg: refusing non-IPv4 tunnel configuration (addr={}/{} "
+             "dns-count={})",
+             settings.local_address_v4, settings.prefix_v4,
+             settings.dns_servers_v4.size());
+    return false;
+  }
   settings_ = settings;
 
   // Arm the crash path before the FIRST mutation, not after the last one: a
   // crash halfway through the route loop must still be cleanable.
   ArmCrashRevert(tunLuid_);
+
+  // Do this before installing the IPv4 address or routes. A newly-created
+  // Wintun can otherwise gain an automatic IPv6 link-local address merely by
+  // coming up, despite receiving no IPv6 settings from the SDK.
+  if (!EnforceIpv4OnlyTunnelInterface(tunLuid_)) {
+    DisarmCrashRevert();
+    return false;
+  }
 
   // --- tun local address ---
   IN_ADDR addr{};
@@ -227,8 +319,9 @@ bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
   // stops entirely rather than leaking. Fail-closed is the better of the two,
   // and it is still a state the user must be told about.
   dns_applied_ = false;
-  if (!settings.dns_servers.empty()) {
-    dns_applied_ = SetTunDns(tunLuid_, settings.dns_servers, settings.dns_search);
+  if (!settings.dns_servers_v4.empty()) {
+    dns_applied_ =
+        SetTunDns(tunLuid_, settings.dns_servers_v4, settings.dns_search);
     if (!dns_applied_)
       LogError("netcfg: tun DNS NOT SET — the tunnel is up but name resolution "
                "is not tunnelled (R6). Without the firewall layer queries go to "
@@ -246,7 +339,7 @@ bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
   // address and our bypass table are changed independently — which is exactly
   // the class of drift NetPolicy.h exists to make impossible, so say so loudly
   // rather than debug it later from a "DNS is broken" report.
-  for (const auto& server : settings.dns_servers) {
+  for (const auto& server : settings.dns_servers_v4) {
     IN_ADDR s{};
     if (!ParseV4(server, s)) continue;
     if (net::IsLocalBypassV4(ntohl(s.S_un.S_addr))) {
@@ -261,7 +354,7 @@ bool NetworkConfig::Apply(const TunnelNetworkSettings& settings) {
   applied_ = true;
   LogInfo("netcfg: applied addr={}/{} mtu={} dns={} dns_applied={}",
           settings.local_address_v4, settings.prefix_v4, settings.mtu,
-          settings.dns_servers.size(), dns_applied_ ? "yes" : "NO");
+          settings.dns_servers_v4.size(), dns_applied_ ? "yes" : "NO");
   return true;
 }
 

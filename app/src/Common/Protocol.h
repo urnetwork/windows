@@ -46,11 +46,16 @@ namespace urnw::proto {
 //    DEGRADED reading — the app understates its protection rather than
 //    overstating it. `mode` had to be versioned because its absence meant the
 //    opposite: routes rewritten by a request that asked for none.
-inline constexpr int kProtocolVersion = 2;
+// 3: every live session reports the exact DeviceLocal instance and an opaque
+//    RPC session generation. These fields are required for safe adoption; a
+//    port match alone cannot prove that saved mTLS material belongs to the
+//    listener currently bound there.
+inline constexpr int kProtocolVersion = 3;
 
 // The first version that understands StartTunnel::mode. Below this, an absent
 // `mode` on the wire means "ignored", not "defaulted".
 inline constexpr int kFirstStartModeVersion = 2;
+inline constexpr int kFirstRpcSessionIdentityVersion = 3;
 
 // ---- message type tags ----------------------------------------------------
 
@@ -165,6 +170,7 @@ struct StartTunnel {
   std::string rpc_server_pem;      // server key+cert the service presents
   std::string rpc_client_cert_pem; // client cert the service pins (mTLS)
   std::string rpc_listen_hostport; // e.g. "127.0.0.1:12042"
+  std::string rpc_session_id;      // opaque per-session adoption generation
   // split tunnel: process image paths. In denylist mode (allowlist_mode=false)
   // these are BYPASS paths (they leave the tunnel; everyone else tunnels). In
   // allowlist mode they are the KEEP-ON-TUNNEL paths (only these tunnel; everyone
@@ -203,9 +209,15 @@ struct SetKillSwitch {
 struct TunnelStatus {
   TunnelState state = TunnelState::Stopped;
   std::string rpc_listen_hostport;  // echoed so the app can dial the DeviceRemote
+  std::string instance_id;          // exact live DeviceLocal pairing identity
+  std::string rpc_session_id;       // exact live RPC credential generation
   std::string error;                // set when state == Error
   std::string service_version;
-  int protocol_version = kProtocolVersion;
+  // Zero is the fail-closed default for an absent field. Initialising this to
+  // the current version would let an old peer that omitted it pass feature
+  // gates for fields it silently ignores. The service sets its real version
+  // explicitly in every status it publishes.
+  int protocol_version = 0;
   // best-effort counters (authoritative stats come over the device RPC)
   int64_t tunnel_local_up_millis = 0;
   // The mode of the session this status describes. Reported separately from
@@ -312,6 +324,7 @@ inline void to_json(nlohmann::json& j, const StartTunnel& v) {
       {"rpc_server_pem", v.rpc_server_pem},
       {"rpc_client_cert_pem", v.rpc_client_cert_pem},
       {"rpc_listen_hostport", v.rpc_listen_hostport},
+      {"rpc_session_id", v.rpc_session_id},
       {"excluded_app_paths", v.excluded_app_paths},
       {"allowlist_mode", v.allowlist_mode},
       {"mode", ToString(v.mode)},
@@ -340,6 +353,7 @@ inline void from_json(const nlohmann::json& j, StartTunnel& v) {
   get("rpc_server_pem", v.rpc_server_pem);
   get("rpc_client_cert_pem", v.rpc_client_cert_pem);
   get("rpc_listen_hostport", v.rpc_listen_hostport);
+  get("rpc_session_id", v.rpc_session_id);
   get("excluded_app_paths", v.excluded_app_paths);
   get("allowlist_mode", v.allowlist_mode);
   get("kill_switch", v.kill_switch);
@@ -368,6 +382,8 @@ inline void to_json(nlohmann::json& j, const TunnelStatus& v) {
   j = {
       {"state", ToString(v.state)},
       {"rpc_listen_hostport", v.rpc_listen_hostport},
+      {"instance_id", v.instance_id},
+      {"rpc_session_id", v.rpc_session_id},
       {"error", v.error},
       {"service_version", v.service_version},
       {"protocol_version", v.protocol_version},
@@ -395,6 +411,8 @@ inline void from_json(const nlohmann::json& j, TunnelStatus& v) {
     if (auto it = j.find(k); it != j.end() && !it->is_null()) it->get_to(out);
   };
   get("rpc_listen_hostport", v.rpc_listen_hostport);
+  get("instance_id", v.instance_id);
+  get("rpc_session_id", v.rpc_session_id);
   get("error", v.error);
   get("service_version", v.service_version);
   get("protocol_version", v.protocol_version);
