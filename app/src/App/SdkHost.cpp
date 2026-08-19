@@ -2301,6 +2301,23 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
     } catch (const std::exception& e) {
       LogWarn("sdkhost: restore provide control mode failed: {}", e.what());
     }
+    // Seed the transport policies (TRANSPORTSTATS) from the app-side mirror,
+    // ONLY when one exists: nullopt means never edited here, and the service's
+    // persisted (or default) policy stands. Setting a nullopt would normalize
+    // the service's policy back to the default on every bootstrap. The seed
+    // queues on the remote and is applied on the next sync, before the
+    // destination, then persisted service-side; offline reads answer with it.
+    // See ApplyTransportSettings for why the mirror exists.
+    try {
+      if (auto settings = localState_->getTransportSettings()) {
+        device_->setTransportSettings(settings);
+      }
+      if (auto settings = localState_->getProviderTransportSettings()) {
+        device_->setProviderTransportSettings(settings);
+      }
+    } catch (const std::exception& e) {
+      LogWarn("sdkhost: restore transport settings failed: {}", e.what());
+    }
     if (presentationActive_) {
       SubscribeStats();
       SubscribeDrawer();
@@ -2667,6 +2684,23 @@ void SdkHost::SubscribeDrawer() {
   presentationSubs_.push_back(device_->addBlockerEnabledChangeListener([this](bool on) {
     if (onBlockerEnabled_) onBlockerEnabled_(on);
   }));
+  // transport settings, client + provider policies (TRANSPORTSTATS): the dns
+  // settings pattern -- fired by the service's DeviceLocal on change, forwarded
+  // over the rpc, re-fired with the service's truth on every sync, and locally
+  // by the DeviceRemote for an edit queued while the rpc is down. Seeded below
+  // with the getters, like dns.
+  presentationSubs_.push_back(device_->addTransportSettingsChangeListener(
+      [this](std::optional<urnet::TransportSettings> settings) {
+        if (onTransportSettings_) {
+          onTransportSettings_(TransportSettingsKind::Client, std::move(settings));
+        }
+      }));
+  presentationSubs_.push_back(device_->addProviderTransportSettingsChangeListener(
+      [this](std::optional<urnet::TransportSettings> settings) {
+        if (onTransportSettings_) {
+          onTransportSettings_(TransportSettingsKind::Provider, std::move(settings));
+        }
+      }));
   // NO routeLocal LISTENER HERE, and its absence is deliberate. This block used
   // to also push `addRouteLocalChangeListener` into `onRouteLocal_`, which the
   // window turned into ApplyKillSwitchUi. That whole mechanism was replaced: the
@@ -2712,7 +2746,44 @@ void SdkHost::SubscribeDrawer() {
   PushLocalOverrideAppsToDriver();  // seed the driver once the device + service are up
   if (onDnsSettings_) onDnsSettings_(device_->getDnsResolverSettings());
   if (onBlockerEnabled_) onBlockerEnabled_(device_->getBlockerEnabled());
+  if (onTransportSettings_) {
+    onTransportSettings_(TransportSettingsKind::Client, device_->getTransportSettings());
+    onTransportSettings_(TransportSettingsKind::Provider,
+                         device_->getProviderTransportSettings());
+  }
 }
+
+namespace {
+// The SDK's TransportDistribution onto the app snapshot the bar draws. A
+// struct-shaped getter (the generated from_json early-returns a default value
+// for a null document), so unlike the *List getters this cannot throw on nil --
+// but the read is still routed through ReadSdkList by the caller for the one
+// remaining hazard, a malformed document, which must never take the listener
+// thread down.
+TransportDistributionSnapshot MapTransportDistribution(
+    std::optional<urnet::TransportDistribution> const& distribution) {
+  TransportDistributionSnapshot snapshot;
+  if (!distribution) return snapshot;
+  if (distribution->Shares) {
+    snapshot.shares.reserve(distribution->Shares->size());
+    for (const auto& share : *distribution->Shares) {
+      TransportShareRow row;
+      row.transportType = share.TransportType;
+      row.egressByteCount = share.EgressByteCount;
+      row.ingressByteCount = share.IngressByteCount;
+      row.share = share.Share;
+      row.boundary = share.Boundary;
+      row.percent = share.Percent;
+      row.used = share.Used;
+      row.enabled = share.Enabled;
+      snapshot.shares.push_back(std::move(row));
+    }
+  }
+  snapshot.byteCount = distribution->ByteCount;
+  snapshot.active = distribution->Active;
+  return snapshot;
+}
+}  // namespace
 
 void SdkHost::PublishThroughput() {
   if (!contractVc_) return;
@@ -2723,12 +2794,29 @@ void SdkHost::PublishThroughput() {
     points = std::move(*p);
   int64_t window = contractVc_->getWindowDurationSeconds();
   if (window <= 0) window = 60;
+  // The window's remote traffic by transport, read on the SAME tick as the
+  // points (TRANSPORTSTATS): the SDK view controller computes the shares,
+  // boundaries, percents, used and enabled flags; the app only draws them.
+  // Published only when it actually changed, so an idle tick (the series keeps
+  // notifying while any retained point is active) does not retrigger the bar.
+  static std::atomic<bool> loggedDistribution{false};
+  TransportDistributionSnapshot distribution = MapTransportDistribution(
+      ReadSdkList(loggedDistribution, "getTransportDistribution",
+                  [&] { return contractVc_->getTransportDistribution(); }));
+  bool distributionChanged = false;
   {
     std::scoped_lock lock(drawerMutex_);
     lastThroughputPoints_ = points;
     throughputWindowSeconds_ = window;
+    if (distribution != lastTransportDistribution_) {
+      lastTransportDistribution_ = distribution;
+      distributionChanged = true;
+    }
   }
   if (onThroughput_) onThroughput_(std::move(points), window);
+  if (distributionChanged && onTransportDistribution_) {
+    onTransportDistribution_(std::move(distribution));
+  }
 }
 
 void SdkHost::PublishContractRows() {
@@ -3017,8 +3105,14 @@ void SdkHost::ClearDrawer() {
     lastBlockedCount_ = 0;
     lastSplitRules_.clear();
     lastProviderLocations_.clear();
+    lastTransportDistribution_ = {};
   }
   if (onThroughput_) onThroughput_({}, 60);
+  if (onTransportDistribution_) onTransportDistribution_({});
+  if (onTransportSettings_) {
+    onTransportSettings_(TransportSettingsKind::Client, std::nullopt);
+    onTransportSettings_(TransportSettingsKind::Provider, std::nullopt);
+  }
   if (onContractRows_) onContractRows_({});
   if (onBlockActions_) onBlockActions_({});
   if (onBlockStats_) onBlockStats_(0, 0);
@@ -3093,6 +3187,32 @@ bool SdkHost::CurrentBlockerEnabled() {
     LogWarn("sdkhost: get blocker failed: {}", e.what());
     return false;
   }
+}
+
+TransportDistributionSnapshot SdkHost::CurrentTransportDistribution() {
+  std::scoped_lock lock(drawerMutex_);
+  return lastTransportDistribution_;
+}
+
+std::optional<urnet::TransportSettings> SdkHost::CurrentTransportSettings(
+    TransportSettingsKind kind) {
+  try {
+    if (device_) {
+      return kind == TransportSettingsKind::Provider ? device_->getProviderTransportSettings()
+                                                     : device_->getTransportSettings();
+    }
+    // no session: the app-side mirror is what the next bootstrap will seed the
+    // device with, so it is the truth the editor and the unused footer should
+    // show meanwhile (nullopt when never edited here)
+    if (localState_) {
+      return kind == TransportSettingsKind::Provider
+                 ? localState_->getProviderTransportSettings()
+                 : localState_->getTransportSettings();
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: get transport settings failed: {}", e.what());
+  }
+  return std::nullopt;
 }
 
 PerformanceSettings SdkHost::CurrentPerformanceSettings() {
@@ -3246,6 +3366,42 @@ void SdkHost::ApplyDnsSettings(const urnet::DnsResolverSettings& settings) {
     LogWarn("sdkhost: set dns settings failed: {}", e.what());
   }
   if (onDnsSettings_) onDnsSettings_(CurrentDnsSettings());
+}
+
+void SdkHost::ApplyTransportSettings(TransportSettingsKind kind,
+                                     const urnet::TransportSettings& settings) {
+  std::scoped_lock lock(mutex_);
+  const bool provider = kind == TransportSettingsKind::Provider;
+  // the device first: attached, the service applies it (make-before-break
+  // migration of the live window) and persists it; detached, the DeviceRemote
+  // queues it for the next sync. Both fire the change listener.
+  if (device_) {
+    try {
+      if (provider) {
+        device_->setProviderTransportSettings(settings);
+      } else {
+        device_->setTransportSettings(settings);
+      }
+    } catch (const std::exception& e) {
+      LogWarn("sdkhost: set {} transport settings failed: {}",
+              provider ? "provider" : "client", e.what());
+    }
+  }
+  // then the app-side mirror, with or without a device: it seeds the device on
+  // the next bootstrap and answers the offline reads (see the header note)
+  if (localState_) {
+    try {
+      if (provider) {
+        localState_->setProviderTransportSettings(settings);
+      } else {
+        localState_->setTransportSettings(settings);
+      }
+    } catch (const std::exception& e) {
+      LogWarn("sdkhost: persist {} transport settings failed: {}",
+              provider ? "provider" : "client", e.what());
+    }
+  }
+  if (onTransportSettings_) onTransportSettings_(kind, CurrentTransportSettings(kind));
 }
 
 void SdkHost::CreateSplitRule(const std::vector<std::string>& hosts) {

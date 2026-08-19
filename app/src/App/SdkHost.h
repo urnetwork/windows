@@ -299,6 +299,63 @@ inline bool operator==(const AppRule& a, const AppRule& b) {
 }
 inline bool operator!=(const AppRule& a, const AppRule& b) { return !(a == b); }
 
+// ---- transport distribution + transport settings (TRANSPORTSTATS) ----------
+// One transport's slice of the stats window's REMOTE traffic, ready to render as
+// a segment of the transport bar plus its legend entry. A mirror of the SDK
+// ContractViewController's TransportShare: every render value -- the byte share,
+// the cumulative boundary (the segment's right edge as a fraction of the bar,
+// so drawing every segment from its neighbours' boundaries tiles exactly 100%
+// at every tween frame), the whole percent (the used ones sum to exactly 100; a
+// used sliver can be 0 -> "<1%"), used, enabled -- is computed by the SDK view
+// controller so the math is shared and tested once for every platform. The app
+// only maps names/colors and draws.
+struct TransportShareRow {
+  std::string transportType;  // sdk id: h3 | h1 | dns | dnspump | p2p | unknown
+  int64_t egressByteCount = 0;
+  int64_t ingressByteCount = 0;
+  double share = 0;     // fraction of the window's remote bytes, 0..1
+  double boundary = 0;  // cumulative share through this transport, 0..1
+  int64_t percent = 0;  // whole percent for the legend
+  bool used = false;    // carried traffic in the window: segment + legend entry
+  bool enabled = false; // enabled by the transport settings: unused footer entry when idle
+};
+
+inline bool operator==(const TransportShareRow& a, const TransportShareRow& b) {
+  return a.transportType == b.transportType && a.egressByteCount == b.egressByteCount &&
+         a.ingressByteCount == b.ingressByteCount && a.share == b.share &&
+         a.boundary == b.boundary && a.percent == b.percent && a.used == b.used &&
+         a.enabled == b.enabled;
+}
+inline bool operator!=(const TransportShareRow& a, const TransportShareRow& b) {
+  return !(a == b);
+}
+
+// The window's remote traffic partitioned by the transport that carried it, in
+// the SDK's stable order (h3, h1, dns, dnspump, p2p, unknown) with every
+// transport present. Follows the same window as the throughput points, so it
+// drains to inactive as traffic ages out. Empty shares = no feed.
+struct TransportDistributionSnapshot {
+  std::vector<TransportShareRow> shares;
+  int64_t byteCount = 0;
+  bool active = false;  // any transport carried traffic in the window
+};
+
+inline bool operator==(const TransportDistributionSnapshot& a,
+                       const TransportDistributionSnapshot& b) {
+  return a.shares == b.shares && a.byteCount == b.byteCount && a.active == b.active;
+}
+inline bool operator!=(const TransportDistributionSnapshot& a,
+                       const TransportDistributionSnapshot& b) {
+  return !(a == b);
+}
+
+// Which device transport policy a surface reads/edits: the CLIENT policy (the
+// carrier this device uses to reach providers) or the PROVIDER policy (the
+// carrier it uses when relaying for remote clients). Both are SDK
+// TransportSettings; the SDK owns every rule (default priorities, the fixed
+// preference order, the last-enabled-mode refusal, normalization).
+enum class TransportSettingsKind { Client, Provider };
+
 // ---- reliability / developer surface ---------------------------------------
 // One read of everything the developer screen shows, taken under a single lock
 // so the four getters cannot disagree with each other about which session they
@@ -390,6 +447,13 @@ class SdkHost {
   using SplitRulesHandler = std::function<void(std::vector<SplitRule>)>;
   using DnsSettingsHandler = std::function<void(std::optional<urnet::DnsResolverSettings>)>;
   using BlockerEnabledHandler = std::function<void(bool)>;
+  // The transport bar's feed: the client (remote) distribution, published from
+  // the SAME throughput tick as the points and only when it changed.
+  using TransportDistributionHandler = std::function<void(TransportDistributionSnapshot)>;
+  // The client / provider transport policy in force (device change listeners +
+  // the initial read); nullopt = no device / no policy known.
+  using TransportSettingsHandler =
+      std::function<void(TransportSettingsKind, std::optional<urnet::TransportSettings>)>;
   // Location/provider chooser feeds (invoked on SDK callback threads; payloads
   // by value so the UI can marshal them onto its thread).
   using LocationsHandler =
@@ -819,6 +883,12 @@ class SdkHost {
   void SetSplitRulesHandler(SplitRulesHandler h) { onSplitRules_ = std::move(h); }
   void SetDnsSettingsHandler(DnsSettingsHandler h) { onDnsSettings_ = std::move(h); }
   void SetBlockerEnabledHandler(BlockerEnabledHandler h) { onBlockerEnabled_ = std::move(h); }
+  void SetTransportDistributionHandler(TransportDistributionHandler h) {
+    onTransportDistribution_ = std::move(h);
+  }
+  void SetTransportSettingsHandler(TransportSettingsHandler h) {
+    onTransportSettings_ = std::move(h);
+  }
   void SetLocationsHandler(LocationsHandler h) { onLocations_ = std::move(h); }
   void SetPeersHandler(PeersHandler h) { onPeers_ = std::move(h); }
   // R4: a SECOND, independent subscriber to the same two feeds.
@@ -893,6 +963,16 @@ class SdkHost {
   std::vector<SplitRule> CurrentSplitRules();
   std::optional<urnet::DnsResolverSettings> CurrentDnsSettings();
   bool CurrentBlockerEnabled();
+  // The last published transport distribution (TRANSPORTSTATS). A cache read
+  // like CurrentSplitRules, no rpc: the value is refreshed by PublishThroughput
+  // on every throughput tick.
+  TransportDistributionSnapshot CurrentTransportDistribution();
+  // The client / provider transport policy: the device's when there is a
+  // session (offline the DeviceRemote answers with the pending or last known
+  // policy), else the app LocalState mirror (see ApplyTransportSettings), else
+  // nullopt (never edited -> the SDK default stands; the editor falls back to
+  // urnet::defaultTransportSettings()).
+  std::optional<urnet::TransportSettings> CurrentTransportSettings(TransportSettingsKind kind);
   PerformanceSettings CurrentPerformanceSettings();
 
   // Drawer mutations (called from the UI thread).
@@ -925,6 +1005,19 @@ class SdkHost {
   std::string CurrentProvideControlMode();
   void SetProvideControlMode(const std::string& mode);
   void ApplyDnsSettings(const urnet::DnsResolverSettings& settings);
+  // Apply a transport policy (client or provider) to the device AND mirror it
+  // into the app LocalState. The service's DeviceLocal persists the policy in
+  // ITS local state and restores it at creation, so a policy set while the
+  // tunnel runs survives service restarts with no app involvement -- but the
+  // app (%LOCALAPPDATA%\URnetwork\app) and the service (ProgramData) do not
+  // share storage, and a DeviceRemote only holds pending state in memory. So an
+  // edit made with no session would be lost on relaunch and offline reads would
+  // show the default. Hence the mirror, and BootstrapSession seeds the device
+  // from it (apple DeviceManager.initDevice parity). The applied policy comes
+  // back through the change listener (the service's truth when attached, the
+  // queued value when not).
+  void ApplyTransportSettings(TransportSettingsKind kind,
+                              const urnet::TransportSettings& settings);
   void CreateSplitRule(const std::vector<std::string>& hosts);
   void UpdateSplitRule(const std::string& overrideId, const std::vector<std::string>& hosts);
   void RemoveSplitRule(const std::string& overrideId);
@@ -1529,6 +1622,8 @@ class SdkHost {
   int64_t lastAllowedCount_ = 0;
   int64_t lastBlockedCount_ = 0;
   std::vector<SplitRule> lastSplitRules_;
+  // the dedup baseline for the transport bar feed (PublishThroughput)
+  TransportDistributionSnapshot lastTransportDistribution_;
   // The value-compare baselines for the two signal-only provider feeds; see
   // CurrentProviderLocations() for why an identity compare is not enough.
   std::vector<ProviderLocationRow> lastProviderLocations_;
@@ -1780,6 +1875,8 @@ class SdkHost {
 
   DnsSettingsHandler onDnsSettings_;
   BlockerEnabledHandler onBlockerEnabled_;
+  TransportDistributionHandler onTransportDistribution_;
+  TransportSettingsHandler onTransportSettings_;
   LocationsHandler onLocations_;
   PeersHandler onPeers_;
   // R4: the Network destination's copy of the two feeds above (SetLocationsObserver)

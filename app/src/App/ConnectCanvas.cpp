@@ -693,11 +693,10 @@ void ConnectCanvas::ShuffleBlobs() {
   std::array<winrt::Windows::UI::Color, 5> palette = {
       colors::kUrCoral,
       colors::kUrGreen,
-      // urLightBlue (#D6E6F4) is the one blob colour with no token of its own in
-      // UrColors.h, which is byte-matched across the clients and not ours to
-      // extend. Two existing tokens blended land on #D9E1F8 — the same pale ice
-      // blue to the eye, and no new palette entry.
-      Blend(colors::kOffWhite, colors::kToggleAccent, 0.2),
+      // urLightBlue (#D6E6F4). This used to be a blend of two other tokens
+      // (#D9E1F8) because the palette had no entry for it; the transport bar
+      // needed the real token (H1's color), so the blob uses it too.
+      colors::kUrLightBlue,
       colors::kAccent,  // urLightYellow
       colors::kUrPink,  // .accent (#ED8FFF)
   };

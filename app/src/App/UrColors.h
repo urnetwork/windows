@@ -72,8 +72,16 @@ inline constexpr winrt::Windows::UI::Color kUrGreen{255, 0x87, 0xFB, 0x67};
 inline constexpr winrt::Windows::UI::Color kUrPink{255, 0xED, 0x8F, 0xFF};
 // blocked bytes
 inline constexpr winrt::Windows::UI::Color kUrCoral{255, 0xFF, 0x6C, 0x58};
-// used balance (usage bar)
+// used balance (usage bar); the P2P transport segment
 inline constexpr winrt::Windows::UI::Color kUrElectricBlue{255, 0x00, 0x39, 0xDE};
+// ---- transport bar (TRANSPORTSTATS) ----
+// The two brand tokens the transport distribution bar needs that nothing else on
+// windows used yet: urLightBlue (H1) and urYellow (whodis pump), byte-matched to
+// the apple/android assets. The other transports reuse tokens above: H3 kUrGreen,
+// whodis kUrPink, P2P kUrElectricBlue, queued kTextMuted. Coral is deliberately
+// NOT a transport color -- the Blocked chart next to the bar is coral.
+inline constexpr winrt::Windows::UI::Color kUrLightBlue{255, 0xD6, 0xE6, 0xF4};
+inline constexpr winrt::Windows::UI::Color kUrYellow{255, 0xE6, 0xEA, 0x23};
 // blocked packets (maroon reads as near-black against the dark background)
 inline constexpr winrt::Windows::UI::Color kUrMutedCoral{255, 0xC8, 0x60, 0x4F};
 // idle / none status (0 network peers): amber

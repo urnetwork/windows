@@ -1145,6 +1145,18 @@ void ConnectPage::BuildCharts() {
   ClipToBounds(w_.RemoteChartHost());
   ClipToBounds(w_.BlockedChartHost());
   ClipToBounds(w_.LocalChartHost());
+  // The transport distribution bar (TRANSPORTSTATS): the window's remote traffic
+  // by transport, full width directly under the Remote plot in the activity
+  // pane. Its click opens the client transport settings editor; the bar is its
+  // own row (a pane-row Button), so there is no surrounding card click to win
+  // over here. The window may be gone by the time a click lands, so the
+  // callback resolves the weak window ref like every other XAML handler.
+  transportBar_ = std::make_unique<urnw::TransportBar>(
+      w_.TransportBarHost(), [weak = w_.get_weak()] {
+        if (auto self = weak.get()) {
+          self->connect().ShowTransportSettingsSheet(urnw::TransportSettingsKind::Client);
+        }
+      });
 }
 
 void ConnectPage::WireDrawerFeeds() {
@@ -1227,6 +1239,32 @@ void ConnectPage::WireDrawerFeeds() {
         auto& page = self->connect();
         page.dnsSettings_ = settings;
         page.ApplyDnsCard(settings);
+      }
+    });
+  });
+  // the transport distribution: SdkHost reads it on the same throughput tick as
+  // the points and pushes only when it changed, so this can apply every push
+  sdk.SetTransportDistributionHandler([queue, weak](urnw::TransportDistributionSnapshot d) {
+    queue.TryEnqueue([weak, d = std::move(d)] {
+      if (auto self = weak.get()) {
+        auto& page = self->connect();
+        if (page.transportBar_) page.transportBar_->SetDistribution(d);
+      }
+    });
+  });
+  // the transport policies in force: cached for the editor (an open editor is
+  // not reset by a push, dns parity); the bar's unused footer follows the policy
+  // through the SDK view controller's enabled flags, not through this
+  sdk.SetTransportSettingsHandler([queue, weak](urnw::TransportSettingsKind kind,
+                                                std::optional<urnet::TransportSettings> settings) {
+    queue.TryEnqueue([weak, kind, settings = std::move(settings)] {
+      if (auto self = weak.get()) {
+        auto& page = self->connect();
+        if (kind == urnw::TransportSettingsKind::Provider) {
+          page.providerTransportSettings_ = settings;
+        } else {
+          page.clientTransportSettings_ = settings;
+        }
       }
     });
   });
@@ -1329,6 +1367,10 @@ void ConnectPage::ResyncDrawer() {
   sdk.CurrentBlockCounts(allowedCount_, blockedCount_);
   splitRules_ = sdk.CurrentSplitRules();
   dnsSettings_ = sdk.CurrentDnsSettings();
+  if (transportBar_) transportBar_->SetDistribution(sdk.CurrentTransportDistribution());
+  clientTransportSettings_ = sdk.CurrentTransportSettings(urnw::TransportSettingsKind::Client);
+  providerTransportSettings_ =
+      sdk.CurrentTransportSettings(urnw::TransportSettingsKind::Provider);
   ApplySplitRuleCount();  // also rebuilds the split-rules list
   ApplyDnsCard(dnsSettings_);
   ApplyConnectionsList();
@@ -2183,6 +2225,9 @@ void ConnectPage::OnChartTick() {
     remoteChart_->Tick();
     blockedChart_->Tick();
     localChart_->Tick();
+    // the transport bar's boundary tween / empty fade; returns immediately
+    // unless one is in flight (TransferChart's rule)
+    if (transportBar_) transportBar_->Tick();
     // the hero's only per-frame path; it returns immediately unless a point
     // transition is in flight
     if (canvas_) canvas_->Tick();
@@ -2531,6 +2576,26 @@ winrt::fire_and_forget ConnectPage::ShowDnsSheet() {
   } catch (...) {
   }
   dnsSheet_.reset();
+  w_.SetSheetOpen(false);
+}
+
+winrt::fire_and_forget ConnectPage::ShowTransportSettingsSheet(
+    urnw::TransportSettingsKind kind) {
+  if (w_.sheetOpen()) co_return;
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    // the draft opens on the policy in force (the last change-listener push, or
+    // the SDK default when none is known) and applies together on Update; live
+    // pushes don't reset the open editor (dns parity)
+    transportSheet_ = urnw::TransportSettingsSheet::Create(
+        self->Content().XamlRoot(), Sdk(), kind,
+        kind == urnw::TransportSettingsKind::Provider ? providerTransportSettings_
+                                                      : clientTransportSettings_);
+    co_await transportSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  transportSheet_.reset();
   w_.SetSheetOpen(false);
 }
 

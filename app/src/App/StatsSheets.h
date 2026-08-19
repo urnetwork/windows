@@ -1,7 +1,8 @@
 // Detail sheets opened from the connect drawer stats cards, as ContentDialogs
 // (macOS parity: client contracts, split rules + rule editor, custom DNS
-// editor). Plain C++ helpers (no runtime classes); all methods run on the UI
-// thread. The window forwards live store pushes into the open sheet.
+// editor, transport settings editor). Plain C++ helpers (no runtime classes);
+// all methods run on the UI thread. The window forwards live store pushes into
+// the open sheet.
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
@@ -313,6 +314,75 @@ class DnsEditorSheet : public std::enable_shared_from_this<DnsEditorSheet> {
   std::optional<Draft> defaults_;        // most secure defaults
   std::string countryCode_;              // lowercased
   std::string countryName_;
+  bool updating_ = false;
+};
+
+// ---- Transport settings editor (TRANSPORTSTATS) -----------------------------
+// Editor for the device transport policy -- one carrier, or Auto with a
+// per-carrier enable -- opened from the transport distribution bar under the
+// Remote chart (client policy) or a provider surface (provider policy). Same
+// shape as DnsEditorSheet: a draft, Update applies the draft together via
+// SdkHost::ApplyTransportSettings and the dialog closes; live pushes do not
+// reset the open editor.
+//
+// The draft is an SDK TransportSettings value edited ONLY through the SDK's
+// by-value helpers (urnet::transportSettingsWithMode /
+// transportSettingsWithAutoModeEnabled; dirty via transportSettingsEqual; the
+// mode list from urnet::selectableTransportModes; the defaults from
+// urnet::defaultTransportSettings / defaultProviderTransportSettings), so the
+// editing rules -- a newly enabled carrier takes its default priority, the
+// preference order is fixed, the last enabled carrier cannot be disabled, an
+// empty Auto policy normalizes to the full default -- live in one place for
+// every platform. This sheet holds no policy rule of its own.
+class TransportSettingsSheet : public std::enable_shared_from_this<TransportSettingsSheet> {
+ public:
+  // `current` is the policy in force (SdkHost::CurrentTransportSettings); nullopt
+  // (no device, never edited) opens on the SDK default policy for the kind.
+  static std::shared_ptr<TransportSettingsSheet> Create(
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
+      TransportSettingsKind kind, std::optional<urnet::TransportSettings> const& current);
+
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+
+ private:
+  // one selectable row of the mode list; mode "" is Auto
+  struct ModeRowUi {
+    std::string mode;
+    winrt::Microsoft::UI::Xaml::Controls::FontIcon check{nullptr};
+  };
+  // one enable switch of the "Enabled under Auto" section
+  struct AutoRowUi {
+    std::string mode;
+    winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch toggle{nullptr};
+  };
+
+  TransportSettingsSheet(SdkHost& sdk, TransportSettingsKind kind) : sdk_(sdk), kind_(kind) {}
+
+  void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  void BuildModeRow(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent,
+                    std::string const& mode);
+  void BuildAutoRow(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent,
+                    std::string const& mode);
+  // replace the draft (already an SDK-edited copy) and re-sync every control
+  void SetDraft(std::optional<urnet::TransportSettings> draft);
+  void SyncFromDraft();  // draft -> checks / switches / restore / Update (guarded)
+  // the draft's selected single mode ("" = Auto), through the SDK vocabulary
+  std::string SelectedMode() const;
+  bool IsDirty() const;
+  bool IsDefault() const;
+
+  SdkHost& sdk_;
+  TransportSettingsKind kind_;
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
+  std::vector<ModeRowUi> modeRows_;
+  std::vector<AutoRowUi> autoRows_;
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel autoSection_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel restoreSection_{nullptr};
+
+  std::optional<urnet::TransportSettings> draft_;
+  std::optional<urnet::TransportSettings> original_;
+  std::optional<urnet::TransportSettings> defaults_;
+  std::vector<std::string> selectableModes_;  // the SDK's list, in its order
   bool updating_ = false;
 };
 

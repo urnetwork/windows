@@ -21,8 +21,6 @@ namespace urnw {
 namespace {
 
 constexpr DWORD kRingCapacity = 0x400000;  // 4 MiB (power of two, within wintun bounds)
-constexpr uint32_t kTunnelMtu = 1440;      // matches macOS
-
 std::filesystem::path ExeDir() {
   wchar_t buf[MAX_PATH];
   DWORD n = ::GetModuleFileNameW(nullptr, buf, MAX_PATH);

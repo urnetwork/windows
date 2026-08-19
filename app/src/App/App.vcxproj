@@ -298,6 +298,7 @@
     <ClCompile Include="Startup.cpp" />
     <ClCompile Include="SubscriptionBalance.cpp" />
     <ClCompile Include="TransferChart.cpp" />
+    <ClCompile Include="TransportBar.cpp" />
     <ClCompile Include="UsageBar.cpp" />
     <ClCompile Include="WalletConnect.cpp" />
     <ClCompile Include="ServiceClient.cpp" />
@@ -342,6 +343,7 @@
     <ClInclude Include="Startup.h" />
     <ClInclude Include="SubscriptionBalance.h" />
     <ClInclude Include="TransferChart.h" />
+    <ClInclude Include="TransportBar.h" />
     <ClInclude Include="UsageBar.h" />
     <ClInclude Include="UrColors.h" />
     <ClInclude Include="UrComponents.h" />

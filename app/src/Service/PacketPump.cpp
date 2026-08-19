@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Log.h"
+#include "NetworkConfig.h"
 #include "ThreadGuard.h"
 
 namespace urnw {
@@ -180,7 +181,7 @@ void PacketPump::OutboundLoop() {
   HANDLE waits[2] = {readEvent, stopEvent_};
   constexpr size_t kMaxPacketCount = 64;
   std::vector<uint8_t> packetBatchBytes;
-  packetBatchBytes.reserve(kMaxPacketCount * (2 + 1440));
+  packetBatchBytes.reserve(kMaxPacketCount * (2 + kTunnelMtu));
 
   while (running_.load()) {
     // Drain everything currently in the ring, then wait for more.

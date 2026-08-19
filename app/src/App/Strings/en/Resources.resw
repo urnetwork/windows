@@ -1578,6 +1578,14 @@ right way</value>
     <value>Edit split rule</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="enabled_under_auto" xml:space="preserve">
+    <value>Enabled under Auto</value>
+    <comment>Section header of the per-transport enable toggles shown when the transport mode is Auto.</comment>
+  </data>
+  <data name="enabled_under_auto_footer" xml:space="preserve">
+    <value>Listed in preference order: H3 and H1 first, then whodis, then whodis pump. The order is fixed. At least one transport stays enabled.</value>
+    <comment>Footer of the Auto transports section explaining the fixed preference order.</comment>
+  </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>Enjoying URnetwork?</value>
     <comment>Call to action</comment>
@@ -2832,6 +2840,10 @@ and most decentralized ingress and egress protocol.</value>
     <value>Provider statistics</value>
     <comment>Title of a section that shows statistics about the provider.</comment>
   </data>
+  <data name="provider_transports" xml:space="preserve">
+    <value>Provider transports</value>
+    <comment>Title of the transport settings editor for the provider transport policy.</comment>
+  </data>
   <data name="providing" xml:space="preserve">
     <value>Providing</value>
     <comment>Used in Main/Account/Wallets/WalletsView.swift.</comment>
@@ -3089,6 +3101,10 @@ and most decentralized ingress and egress protocol.</value>
   <data name="resolvers" xml:space="preserve">
     <value>Resolvers</value>
     <comment>A section header for the DNS resolvers.</comment>
+  </data>
+  <data name="restore_default_transports" xml:space="preserve">
+    <value>Restore default transports</value>
+    <comment>Button that resets the transport settings draft to the SDK default policy.</comment>
   </data>
   <data name="restore_most_secure_settings" xml:space="preserve">
     <value>Restore to most secure settings</value>
@@ -4439,6 +4455,50 @@ as it should be.</value>
   <data name="transfer_submitted_details" xml:space="preserve">
     <value>Your transfer has been initiated and will complete once the transaction is processed on chain.</value>
     <comment>Transfer Submitted Overlay</comment>
+  </data>
+  <data name="transport" xml:space="preserve">
+    <value>Transport</value>
+    <comment>Section header of the transport mode selection (Auto or a single transport).</comment>
+  </data>
+  <data name="transport_auto_description" xml:space="preserve">
+    <value>Recommended. Uses the enabled transports below.</value>
+    <comment>Subtitle of the Auto transport mode row.</comment>
+  </data>
+  <data name="transport_client_footer" xml:space="preserve">
+    <value>The transport this device uses to reach providers. Auto tries the enabled transports in preference order and keeps every healthy transport of the same tier connected in parallel.</value>
+    <comment>Footer of the client transport mode section.</comment>
+  </data>
+  <data name="transport_dns_description" xml:space="preserve">
+    <value>Disguised as DNS traffic. For networks that filter direct connections.</value>
+    <comment>One line description of the whodis (DNS) transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_dnspump_description" xml:space="preserve">
+    <value>Disguised as DNS traffic with a constant reply pump. Lowest bandwidth, highest availability.</value>
+    <comment>One line description of the whodis pump (DNS pump) transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_h1_description" xml:space="preserve">
+    <value>Direct over TLS. Works on most networks.</value>
+    <comment>One line description of the H1 transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_h3_description" xml:space="preserve">
+    <value>Direct over QUIC. Fastest where it is not filtered.</value>
+    <comment>One line description of the H3 transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_provider_footer" xml:space="preserve">
+    <value>The transport this device uses while providing for others. Auto tries the enabled transports in preference order and keeps every healthy transport of the same tier connected in parallel.</value>
+    <comment>Footer of the provider transport mode section.</comment>
+  </data>
+  <data name="transport_queued" xml:space="preserve">
+    <value>queued</value>
+    <comment>Transport bar label for traffic admitted for sending but not yet attributed to a physical transport.</comment>
+  </data>
+  <data name="transport_unused" xml:space="preserve">
+    <value>unused</value>
+    <comment>Prefix of the transport bar footer listing the enabled transports that carried no traffic in the stats window.</comment>
+  </data>
+  <data name="transports" xml:space="preserve">
+    <value>Transports</value>
+    <comment>Title of the transport distribution bar under the client statistics chart and of the transport settings editor.</comment>
   </data>
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>Trusted by over 100,000 private networks</value>

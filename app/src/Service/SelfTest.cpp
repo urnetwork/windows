@@ -174,6 +174,8 @@ void TestTunnelNetworkSettingsPolicy() {
   Section("NetworkConfig — IPv4-only tunnel interface policy");
 
   TunnelNetworkSettings settings;
+  Check(settings.mtu == kTunnelMtu && settings.mtu == 1100,
+        "the tunnel MTU preserves one-packet H3 DATAGRAM eligibility");
   settings.local_address_v4 = "169.254.2.1";
   settings.prefix_v4 = 24;
   settings.dns_servers_v4 = {"65.49.70.65", "9.9.9.9"};

@@ -72,14 +72,17 @@ inline winrt::Windows::Foundation::IInspectable LocBox(std::string_view key) {
 // Every id introduced this way is reported for the store, and the list extracts
 // mechanically rather than living in a doc that would go stale on the next row:
 //
-//     grep -ohE '"(dev|adv|svc|upd|conn)_[a-z0-9_]+"' app/src/App/*.cpp | sort -u
+//     grep -ohE '"(dev|adv|svc|upd|conn|transport)_[a-z0-9_]+"' app/src/App/*.cpp | sort -u
 //
 // (svc_ is the service-manager surface — the setup/start/update banner and the
 // uninstall row — and upd_ is the update checker's banner and Settings toggle;
 // both added with the beta distribution work, same rules. conn_ is the
 // aggregate connection-health surface (#27): the Evaluating/Degraded status
 // words and the blocked-traffic disclosure, shared by the status line and the
-// tray tooltip.)
+// tray tooltip. transport_ is the transport distribution bar + transport
+// settings editor (TRANSPORTSTATS), a surface new on every platform at once;
+// its strings were added to the apple catalog by hand and reach the store with
+// the next localization sync.)
 //
 // Do NOT use this for a key that DOES exist — that hides a working translation
 // behind an English default. And do not put a bare literal in the UI instead.

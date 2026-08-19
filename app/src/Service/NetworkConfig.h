@@ -17,10 +17,14 @@
 
 namespace urnw {
 
+// Mirrors sdk.GetDefaultTunnelMtu/connect.DefaultMtu. One full encrypted
+// tunnel packet plus the UR envelope fits one initial H3 QUIC DATAGRAM.
+inline constexpr uint32_t kTunnelMtu = 1100;
+
 struct TunnelNetworkSettings {
   std::string local_address_v4;      // e.g. "169.254.2.1" (DeviceLocal.tunnelLocalAddress)
   uint8_t prefix_v4 = 24;
-  uint32_t mtu = 1440;
+  uint32_t mtu = kTunnelMtu;
   std::vector<std::string> dns_servers_v4;  // IPv4 resolvers set on the tun interface
   std::string dns_search;                   // optional search domain
 };

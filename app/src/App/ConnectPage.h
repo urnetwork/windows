@@ -30,6 +30,7 @@
 #include "ServiceSetup.h"
 #include "StatsSheets.h"
 #include "TransferChart.h"
+#include "TransportBar.h"
 #include "UpdateChecker.h"
 #include "UrComponents.h"  // kit::PaneListRowButton (the selectable activity row)
 
@@ -277,6 +278,11 @@ class ConnectPage {
   winrt::fire_and_forget ShowClientContractsSheet();
   winrt::fire_and_forget ShowSplitRulesSheet();
   winrt::fire_and_forget ShowDnsSheet();
+  // The transport settings editor (TRANSPORTSTATS), opened from the transport
+  // distribution bar under the Remote chart with the CLIENT policy. The
+  // provider policy has no surface on windows yet (there is no provider stats
+  // pane), but the sheet and the SdkHost path are parameterized for it.
+  winrt::fire_and_forget ShowTransportSettingsSheet(urnw::TransportSettingsKind kind);
   winrt::fire_and_forget ShowLocationChooserSheet();
   // The connected providers and where they are: globe + list, opened from the
   // "Connected to N providers" row (android ProviderLocationsScreen parity).
@@ -326,6 +332,13 @@ class ConnectPage {
   std::unique_ptr<urnw::TransferChart> remoteChart_;
   std::unique_ptr<urnw::TransferChart> blockedChart_;
   std::unique_ptr<urnw::TransferChart> localChart_;
+  // the transport distribution bar directly under the Remote chart (TRANSPORTSTATS)
+  std::unique_ptr<urnw::TransportBar> transportBar_;
+  // the client / provider transport policies in force, from SdkHost's change
+  // listeners (nullopt = unknown -> the editor opens on the SDK default). Cached
+  // here so the sheet opens on the last push, like dnsSettings_.
+  std::optional<urnet::TransportSettings> clientTransportSettings_;
+  std::optional<urnet::TransportSettings> providerTransportSettings_;
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer chartTimer_{nullptr};
   uint32_t chartTickCount_ = 0;
   std::vector<urnw::ContractPeerRow> contractRows_;
@@ -378,6 +391,7 @@ class ConnectPage {
   std::shared_ptr<urnw::ClientContractsSheet> contractsSheet_;
   std::shared_ptr<urnw::SplitRulesSheet> splitRulesSheet_;
   std::shared_ptr<urnw::DnsEditorSheet> dnsSheet_;
+  std::shared_ptr<urnw::TransportSettingsSheet> transportSheet_;
   std::shared_ptr<urnw::LocationChooserSheet> locationSheet_;
   std::shared_ptr<urnw::ProviderLocationsSheet> providerLocationsSheet_;
 };

@@ -1050,6 +1050,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Border Style="{StaticResource UrPaneHeaderStyle}">
@@ -1072,7 +1073,15 @@
                                 BorderThickness="0,0,0,1" Padding="12,0">
                             <Grid x:Name="RemoteChartHost" Height="150" />
                         </Border>
-                        <Border Grid.Row="2" Style="{StaticResource UrGroupHeaderStyle}">
+                        <!-- The transport distribution bar (TRANSPORTSTATS): the window's
+                             remote traffic by transport, directly under the Remote plot and
+                             the same 12px inset, so it lines up with it. Built into this host
+                             by ConnectPage::BuildCharts (urnw::TransportBar) as ONE pane-row
+                             Button (title "Transports", the bar, the legend, the unused
+                             footer) whose click opens the transport settings editor. Its
+                             own hairline is the row's, so no rule here. -->
+                        <Grid Grid.Row="2" x:Name="TransportBarHost" />
+                        <Border Grid.Row="3" Style="{StaticResource UrGroupHeaderStyle}">
                             <Grid>
                                 <TextBlock x:Name="ConnectionsLabel"
                                            Style="{StaticResource UrGroupHeaderTextStyle}" />
@@ -1083,7 +1092,7 @@
                         <!-- The list FILLS the rest of the pane. Its empty state is a
                              centred line in that same full-height area, never a short
                              card floating in space. -->
-                        <Grid Grid.Row="3">
+                        <Grid Grid.Row="4">
                             <ScrollViewer x:Name="ConnectionsScroll"
                                           HorizontalScrollBarVisibility="Disabled"
                                           VerticalScrollBarVisibility="Auto">
