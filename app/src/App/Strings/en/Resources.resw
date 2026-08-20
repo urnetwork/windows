@@ -1583,7 +1583,7 @@ right way</value>
     <comment>Section header of the per-transport enable toggles shown when the transport mode is Auto.</comment>
   </data>
   <data name="enabled_under_auto_footer" xml:space="preserve">
-    <value>Listed in preference order: H3 and H1 first, then whodis, then whodis pump. The order is fixed. At least one transport stays enabled.</value>
+    <value>Listed in preference order: H1 first, then H3, whodis, and whodis pump. The order is fixed. At least one transport stays enabled.</value>
     <comment>Footer of the Auto transports section explaining the fixed preference order.</comment>
   </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
@@ -4460,6 +4460,14 @@ as it should be.</value>
     <value>Transport</value>
     <comment>Section header of the transport mode selection (Auto or a single transport).</comment>
   </data>
+  <data name="transport_auto_degraded" xml:space="preserve">
+    <value>Auto is degraded because system constraints prevent some enabled transports from running.</value>
+    <comment>Generic warning banner in the transport settings editor when the Auto policy is degraded for a constraint this app version does not recognize (the SDK may report new constraint kinds; "memory" has its own banner).</comment>
+  </data>
+  <data name="transport_auto_degraded_memory" xml:space="preserve">
+    <value>Auto is degraded because system memory limits prevent some enabled transports from running.</value>
+    <comment>Warning banner in the transport settings editor when the Auto policy is degraded because the platform memory budget cannot admit every enabled transport.</comment>
+  </data>
   <data name="transport_auto_description" xml:space="preserve">
     <value>Recommended. Uses the enabled transports below.</value>
     <comment>Subtitle of the Auto transport mode row.</comment>
@@ -4491,6 +4499,10 @@ as it should be.</value>
   <data name="transport_queued" xml:space="preserve">
     <value>queued</value>
     <comment>Transport bar label for traffic admitted for sending but not yet attributed to a physical transport.</comment>
+  </data>
+  <data name="transport_unavailable_system_constraints" xml:space="preserve">
+    <value>Unavailable due to system constraints</value>
+    <comment>Accessibility label / tooltip on the warning icon next to a transport that is enabled under Auto but not currently eligible under a system constraint (for example the platform memory budget). A runtime warning, not a settings restriction: the toggle stays editable.</comment>
   </data>
   <data name="transport_unused" xml:space="preserve">
     <value>unused</value>

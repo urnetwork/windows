@@ -973,6 +973,10 @@ class SdkHost {
   // nullopt (never edited -> the SDK default stands; the editor falls back to
   // urnet::defaultTransportSettings()).
   std::optional<urnet::TransportSettings> CurrentTransportSettings(TransportSettingsKind kind);
+  // Runtime Auto eligibility reported by the service process that owns the
+  // memory budget. There is no app-side fallback: without a live/last-known
+  // device status the editor simply omits constraint indicators.
+  std::optional<urnet::TransportStatus> CurrentTransportStatus(TransportSettingsKind kind);
   PerformanceSettings CurrentPerformanceSettings();
 
   // Drawer mutations (called from the UI thread).

@@ -354,6 +354,7 @@ class TransportSettingsSheet : public std::enable_shared_from_this<TransportSett
   struct AutoRowUi {
     std::string mode;
     winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch toggle{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::FontIcon constrained{nullptr};
   };
 
   TransportSettingsSheet(SdkHost& sdk, TransportSettingsKind kind) : sdk_(sdk), kind_(kind) {}
@@ -377,11 +378,13 @@ class TransportSettingsSheet : public std::enable_shared_from_this<TransportSett
   std::vector<ModeRowUi> modeRows_;
   std::vector<AutoRowUi> autoRows_;
   winrt::Microsoft::UI::Xaml::Controls::StackPanel autoSection_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock degradedNotice_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel restoreSection_{nullptr};
 
   std::optional<urnet::TransportSettings> draft_;
   std::optional<urnet::TransportSettings> original_;
   std::optional<urnet::TransportSettings> defaults_;
+  std::optional<urnet::TransportStatus> status_;
   std::vector<std::string> selectableModes_;  // the SDK's list, in its order
   bool updating_ = false;
 };

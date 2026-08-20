@@ -344,6 +344,7 @@
     <ClInclude Include="SubscriptionBalance.h" />
     <ClInclude Include="TransferChart.h" />
     <ClInclude Include="TransportBar.h" />
+    <ClInclude Include="TransportStatusPresentation.h" />
     <ClInclude Include="UsageBar.h" />
     <ClInclude Include="UrColors.h" />
     <ClInclude Include="UrComponents.h" />

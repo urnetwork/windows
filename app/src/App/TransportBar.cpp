@@ -240,8 +240,9 @@ winrt::Windows::UI::Color TransportColor(std::string const& transportType) {
   if (transportType == urnet::TransportTypeDns) return colors::kUrPink;
   if (transportType == urnet::TransportTypeDnsPump) return colors::kUrYellow;
   if (transportType == urnet::TransportTypeP2p) return colors::kUrElectricBlue;
-  // unknown (queued) and any newer vocabulary: neutral
-  return colors::kTextMuted;
+  // unknown (queued) and any newer vocabulary: a dark neutral -- muted gray
+  // read too close to the pale H1 blue in the bar
+  return colors::kTextFaint;
 }
 
 // ---- TransportBar -----------------------------------------------------------
@@ -561,9 +562,15 @@ void TransportBar::RebuildLegend() {
     item.Orientation(Orientation::Horizontal);
     item.Spacing(5);
     item.Children().Append(MakeDot(TransportColor(share->transportType)));
-    item.Children().Append(MakeLabel(TransportName(share->transportType), 11, textBrush_));
+    TextBlock name = MakeLabel(TransportName(share->transportType), 11, textBrush_);
+    // bottom-align the labels within the chip: the Consolas percent face has
+    // different metrics from the name face, so centering would skew their
+    // baselines against each other
+    name.VerticalAlignment(VerticalAlignment::Bottom);
+    item.Children().Append(name);
     TextBlock percent = MakeLabel(PercentText(*share), 11, mutedBrush_);
     percent.FontFamily(FontFamily(L"Consolas"));  // the chart's numeric labels' face
+    percent.VerticalAlignment(VerticalAlignment::Bottom);
     item.Children().Append(percent);
     percentLabels_.push_back(percent);
     AppendInline(legend_, item);
@@ -593,7 +600,9 @@ void TransportBar::RebuildUnused() {
     item.Orientation(Orientation::Horizontal);
     item.Spacing(5);
     item.Children().Append(MakeHollowDot(TransportColor(type)));
-    item.Children().Append(MakeLabel(TransportName(type), 11, faintBrush_));
+    TextBlock name = MakeLabel(TransportName(type), 11, faintBrush_);
+    name.VerticalAlignment(VerticalAlignment::Bottom);
+    item.Children().Append(name);
     AppendInline(unused_, item);
   }
   unusedKey_ = key;

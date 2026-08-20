@@ -3215,6 +3215,19 @@ std::optional<urnet::TransportSettings> SdkHost::CurrentTransportSettings(
   return std::nullopt;
 }
 
+std::optional<urnet::TransportStatus> SdkHost::CurrentTransportStatus(
+    TransportSettingsKind kind) {
+  try {
+    if (device_) {
+      return kind == TransportSettingsKind::Provider ? device_->getProviderTransportStatus()
+                                                     : device_->getTransportStatus();
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: get transport status failed: {}", e.what());
+  }
+  return std::nullopt;
+}
+
 PerformanceSettings SdkHost::CurrentPerformanceSettings() {
   PerformanceSettings s;
   std::optional<urnet::PerformanceProfile> profile;

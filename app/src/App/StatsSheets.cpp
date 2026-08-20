@@ -4,6 +4,7 @@
 #include "StatsSheets.h"
 
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
+#include <winrt/Microsoft.UI.Xaml.Automation.h>  // Narrator names for the constraint warnings
 #include <winrt/Microsoft.UI.Xaml.Documents.h>  // RichTextBlock chip-flow inlines
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
@@ -19,6 +20,7 @@
 #include "StatsFormat.h"
 #include "Strings.h"  // Widen: the sdk's utf-8 data into the utf-16 ui
 #include "TransportBar.h"  // TransportName / TransportDetail / TransportColor
+#include "TransportStatusPresentation.h"
 #include "UrColors.h"
 
 using namespace winrt;
@@ -1668,6 +1670,7 @@ std::shared_ptr<TransportSettingsSheet> TransportSettingsSheet::Create(
   }
   sheet->original_ = current ? current : sheet->defaults_;
   sheet->draft_ = sheet->original_;
+  sheet->status_ = sdk.CurrentTransportStatus(kind);
   // The selectable modes in the SDK's preference order (h3, h1, dns, dnspump).
   // Every transport list in the app shows them in this order and never a
   // hardcoded one; a StringList getter, so it carries the *List null-unwrap
@@ -1729,14 +1732,20 @@ void TransportSettingsSheet::Build(XamlRoot const& root) {
   autoSection_.Spacing(12);
   autoSection_.Children().Append(
       SectionHeader(TransportText("enabled_under_auto", L"Enabled under Auto")));
+  degradedNotice_ = MakeText(
+      TransportText("transport_auto_degraded_memory",
+                    L"Auto is degraded because system memory limits prevent some enabled "
+                    L"transports from running."),
+      12, SolidColorBrush(colors::kUrAmber), true);
+  autoSection_.Children().Append(degradedNotice_);
   StackPanel autoList;
   autoList.Spacing(2);
   for (const auto& mode : selectableModes_) BuildAutoRow(autoList, mode);
   autoSection_.Children().Append(autoList);
   autoSection_.Children().Append(MakeText(
       TransportText("enabled_under_auto_footer",
-                    L"Listed in preference order: H3 and H1 first, then whodis, then whodis "
-                    L"pump. The order is fixed. At least one transport stays enabled."),
+                    L"Listed in preference order: H1 first, then H3, whodis, and whodis pump. "
+                    L"The order is fixed. At least one transport stays enabled."),
       11, FaintBrush(), true));
   body.Children().Append(autoSection_);
 
@@ -1826,6 +1835,19 @@ void TransportSettingsSheet::BuildAutoRow(StackPanel const& parent, std::string 
   label.VerticalAlignment(VerticalAlignment::Center);
   label.Children().Append(MakeDot(TransportColor(mode), 10));
   label.Children().Append(MakeText(TransportName(mode), 13));
+  // a runtime warning, not an editing restriction: the toggle stays editable
+  FontIcon constrained;
+  constrained.Glyph(L"\uE7BA");  // Segoe Fluent Warning
+  constrained.FontSize(14);
+  constrained.Foreground(SolidColorBrush(colors::kUrAmber));
+  constrained.Visibility(Visibility::Collapsed);
+  const hstring constraintLabel = TransportText("transport_unavailable_system_constraints",
+                                                L"Unavailable due to system constraints");
+  ToolTipService::SetToolTip(constrained, winrt::box_value(constraintLabel));
+  // announce the reason to Narrator too; color + tooltip alone are not
+  // discoverable
+  Automation::AutomationProperties::SetName(constrained, constraintLabel);
+  label.Children().Append(constrained);
   Grid::SetColumn(label, 0);
   row.Children().Append(label);
 
@@ -1847,7 +1869,7 @@ void TransportSettingsSheet::BuildAutoRow(StackPanel const& parent, std::string 
   }
   Grid::SetColumn(toggle, 1);
   row.Children().Append(toggle);
-  autoRows_.push_back(AutoRowUi{mode, toggle});
+  autoRows_.push_back(AutoRowUi{mode, toggle, constrained});
   parent.Children().Append(row);
 }
 
@@ -1892,6 +1914,32 @@ void TransportSettingsSheet::SyncFromDraft() {
                                      [&] { return urnet::transportSettingsAutoModes(draft_); })) {
     autoModes = *modes;
   }
+  // the status was fetched at Create() paired with the applied policy of that
+  // moment (original_), so decorations render only while the draft equals it:
+  // a status must never be interpreted against an unrelated draft
+  std::vector<std::string> eligibleModes;
+  if (status_ && status_->auto_eligible_modes) {
+    eligibleModes.assign(status_->auto_eligible_modes->begin(),
+                         status_->auto_eligible_modes->end());
+  }
+  const TransportStatusPresentation decorations = TransportStatusDecorations(
+      IsAuto(), urnet::transportSettingsEqual(draft_, original_), autoModes,
+      status_.has_value(), status_ && status_->auto_degraded, eligibleModes,
+      status_ ? status_->auto_constraint : "");
+  degradedNotice_.Visibility(decorations.showBanner ? Visibility::Visible
+                                                    : Visibility::Collapsed);
+  if (decorations.showBanner) {
+    // memory has its own wording, any other constraint the generic
+    // system-constraint wording
+    degradedNotice_.Text(
+        decorations.memoryConstraint
+            ? TransportText("transport_auto_degraded_memory",
+                            L"Auto is degraded because system memory limits prevent some "
+                            L"enabled transports from running.")
+            : TransportText("transport_auto_degraded",
+                            L"Auto is degraded because system constraints prevent some "
+                            L"enabled transports from running."));
+  }
   for (auto& row : autoRows_) {
     const bool on = std::find(autoModes.begin(), autoModes.end(), row.mode) != autoModes.end();
     row.toggle.IsOn(on);
@@ -1899,6 +1947,9 @@ void TransportSettingsSheet::SyncFromDraft() {
     // an empty Auto policy would resolve to the full default), so show it
     // disabled rather than let a flip snap back
     row.toggle.IsEnabled(!(on && autoModes.size() == 1));
+    row.constrained.Visibility(decorations.constrainedModes.count(row.mode) != 0
+                                   ? Visibility::Visible
+                                   : Visibility::Collapsed);
   }
   restoreSection_.Visibility(IsDefault() ? Visibility::Collapsed : Visibility::Visible);
   dialog_.IsPrimaryButtonEnabled(IsDirty());
