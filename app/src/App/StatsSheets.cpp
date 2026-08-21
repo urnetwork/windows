@@ -1923,7 +1923,7 @@ void TransportSettingsSheet::SyncFromDraft() {
                          status_->auto_eligible_modes->end());
   }
   const TransportStatusPresentation decorations = TransportStatusDecorations(
-      IsAuto(), urnet::transportSettingsEqual(draft_, original_), autoModes,
+      isAuto, urnet::transportSettingsEqual(draft_, original_), autoModes,
       status_.has_value(), status_ && status_->auto_degraded, eligibleModes,
       status_ ? status_->auto_constraint : "");
   degradedNotice_.Visibility(decorations.showBanner ? Visibility::Visible
