@@ -27,11 +27,12 @@ umask 077
 
 here="$(cd "$(dirname "$0")" && pwd)"
 root="${URNETWORK_ROOT:-$(dirname "$here")}"
-vault="${UR_ACCEPT_VAULT:-$root/vault/main/test-acceptance.yml}"
+vault="${UR_ACCEPT_VAULT:-$root/vault/main/tests.yml}"
 fixture="${UR_ACCEPT_FIXTURE:-$here/tests/__acceptance__/fixtures/windows-main.secret}"
 repeat_count="${UR_ACCEPT_REPEAT:-1}"
 skip_build="${SKIP_BUILD:-0}"
 keep_fixture="${UR_ACCEPT_KEEP_FIXTURE:-0}"
+result_matrix="${UR_ACCEPT_RESULT_FILE:-}"
 version="${EXTERNAL_WARP_VERSION:-0.0.0-0}"
 out_dir="${UR_ACCEPT_WINDOWS_OUT:-$here/out/acceptance}"
 
@@ -70,9 +71,11 @@ die() { echo "[windows acceptance] ERROR: $*" >&2; exit 1; }
 command -v timeout >/dev/null 2>&1 || die "GNU timeout is required (brew install coreutils)"
 node "$root/build/all/acceptance/preflight-main.mjs" || exit 1
 [ -f "$vault" ] || die "no acceptance vault at $vault"
-acc_user="$(awk -F': *' '$1=="user"{print $2; exit}' "$vault")"
-acc_pass="$(awk -F': *' '$1=="pass"{print $2; exit}' "$vault")"
-[ -n "$acc_user" ] && [ -n "$acc_pass" ] || die "$vault must contain user: and pass:"
+config_reader="$root/tests/read-tests-config.sh"
+[ -x "$config_reader" ] || die "test config reader is missing: $config_reader"
+UR_ACCEPT_VAULT="$vault" "$config_reader" --ready validate
+acc_user="$(UR_ACCEPT_VAULT="$vault" "$config_reader" get data_plane_account.email)"
+acc_pass="$(UR_ACCEPT_VAULT="$vault" "$config_reader" get data_plane_account.password)"
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
 artifacts="$here/tests/__acceptance__/$timestamp"
@@ -82,6 +85,8 @@ chmod 700 "$run_dir" "$(dirname "$fixture")"
 credentials="$run_dir/credentials"
 printf '%s\n%s\n' "$acc_user" "$acc_pass" >"$credentials"
 chmod 600 "$credentials"
+tests_json="$run_dir/tests.json"
+UR_ACCEPT_VAULT="$vault" "$config_reader" write-json "$tests_json"
 unset acc_pass
 
 # Use the same VM lifecycle implementation as the product build.
@@ -147,6 +152,16 @@ cleanup() {
     echo "[windows acceptance] could not remove $run_dir" >&2
     exit_status=1
   fi
+  if [ -n "$result_matrix" ]; then
+    mkdir -p "$(dirname "$result_matrix")"
+    matrix_status=PASS
+    matrix_detail="Windows SDK/service acceptance completed"
+    if [ "$exit_status" -ne 0 ]; then matrix_status=FAIL; matrix_detail="Windows acceptance runner failed; see artifacts"; fi
+    for matrix_case in email phone solana bittensor instant password data-plane; do
+      printf 'windows\t%s\t%s\t%s\n' "$matrix_case" "$matrix_status" "$matrix_detail" >>"$result_matrix"
+    done
+    chmod 600 "$result_matrix"
+  fi
   echo
   if [ "$exit_status" -eq 0 ]; then
     echo "[windows acceptance] ✓ ACCEPTANCE PASSED (artifacts: $artifacts)"
@@ -186,6 +201,7 @@ win_ssh_probe 60 "powershell -NoProfile -Command \"New-Item -ItemType Directory 
 acceptance_scp_to "$msi" "$remote/urnetwork.msi"
 acceptance_scp_to "$run_dir/agent.exe" "$remote/agent.exe"
 acceptance_scp_to "$credentials" "$remote/credentials"
+acceptance_scp_to "$tests_json" "$remote/tests.json"
 acceptance_scp_to "$root/build/all/acceptance/run-windows.ps1" "$remote/run.ps1"
 if [ -f "$fixture" ]; then
   acceptance_scp_to "$fixture" "$remote/guest-secret-key"
@@ -193,7 +209,7 @@ fi
 
 echo "[windows acceptance] running $repeat_count complete repetition(s)"
 set +e
-win_ssh_probe "$((600 + repeat_count * 600))" "powershell -NoProfile -ExecutionPolicy Bypass -File $remote/run.ps1 -Msi $remote/urnetwork.msi -ExpectedMsiSha256 $msi_sha256 -AppVersion $version -SdkVersion $sdk_version -Repeat $repeat_count -Agent $remote/agent.exe -Credentials $remote/credentials -Fixture $remote/guest-secret-key -WorkDir $remote/results" \
+win_ssh_probe "$((900 + repeat_count * 900))" "powershell -NoProfile -ExecutionPolicy Bypass -File $remote/run.ps1 -Msi $remote/urnetwork.msi -ExpectedMsiSha256 $msi_sha256 -AppVersion $version -SdkVersion $sdk_version -Repeat $repeat_count -Agent $remote/agent.exe -Credentials $remote/credentials -Tests $remote/tests.json -Fixture $remote/guest-secret-key -WorkDir $remote/results" \
   2>&1 | tee "$artifacts/run.log"
 acceptance_status=${PIPESTATUS[0]}
 set -e
@@ -203,7 +219,7 @@ if [ "$acceptance_status" -ne 0 ]; then
     >/dev/null 2>&1 || true
 fi
 
-for name in result.json agent.log install.log uninstall.log urnetworkd.log failure.txt uninstall-failure.txt active-client-id; do
+for name in result.json agent.log install.log uninstall.log urnetworkd.log failure.txt uninstall-failure.txt private-input-cleanup-failure.txt active-client-id; do
   if win_ssh_probe 30 "powershell -NoProfile -Command \"if (Test-Path -LiteralPath '$remote/results/$name') { exit 0 } else { exit 1 }\"" >/dev/null 2>&1; then
     if [ "$name" = active-client-id ]; then
       if ! acceptance_scp_from "$remote/results/$name" "$artifacts/$name"; then

@@ -1471,6 +1471,12 @@ class SdkHost {
   // of a bring-up. start_tunnel is the reconciler there.
   void TeardownSessionLocked(bool stopTunnel = true);
   void SetupWalletCallbacks();
+  void RequestWalletChallenge(
+      const std::string& blockchain, const std::string& walletAddress,
+      std::function<void(std::optional<std::string> message, std::string error)> done);
+  void SubmitCreateNetwork(const CreateNetworkParams& params,
+                           std::optional<urnet::WalletAuthArgs> walletAuth,
+                           std::function<void(AuthResult)> done);
   // The wallet signed the challenge: authLogin{wallet_auth}. `signature` is what
   // the chain's verifier expects (base64 for SOL, hex for TAO).
   void AuthLoginWithWallet(const std::string& address, const std::string& signature,
@@ -1830,6 +1836,10 @@ class SdkHost {
   // both are cleared whenever the other starts.
   std::function<void(bool, std::string, std::string, std::string)> walletSignDone_;
   std::string walletSignMessage_;
+  // Exact single-use server challenge being signed by an authentication flow.
+  // Kept separate from walletSignMessage_, which also serves signed-in utility
+  // signature requests.
+  std::string walletAuthMessage_;
   // the instant network's jwt, held between CreateInstantAccount and
   // ConfirmInstantAccount so the seedphrase is read before the session exists
   std::optional<std::string> pendingInstantJwt_;
@@ -1837,8 +1847,9 @@ class SdkHost {
   // create-network step (the auth-jwt analogue of pendingWalletAuth_)
   std::optional<std::string> pendingAuthJwt_;
   GoogleSignIn google_;
-  // the signed wallet auth of a wallet that has no network yet, held for the
-  // create-network step (cleared on success, logout, or a new wallet sign-in)
+  // Identity of a wallet that has no network yet. The discovery signature has
+  // already been consumed; create-network always requests a fresh bound
+  // challenge before this value can be submitted.
   std::optional<urnet::WalletAuthArgs> pendingWalletAuth_;
 
   AuthStateHandler onAuth_;

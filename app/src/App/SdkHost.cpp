@@ -736,20 +736,92 @@ void SdkHost::StartLogin(const std::string& userAuth,
 void SdkHost::CreateNetwork(const CreateNetworkParams& params,
                             std::function<void(AuthResult)> done) {
   SetAuthState(AuthState::Authenticating);
+  if (params.useWalletAuth) {
+    std::optional<urnet::WalletAuthArgs> identity;
+    {
+      std::scoped_lock lock(mutex_);
+      identity = pendingWalletAuth_;
+    }
+    if (!identity) {
+      AuthResult r{false, false, "no wallet sign-in is pending"};
+      SetAuthState(AuthState::Error, r.error);
+      if (done) done(r);
+      return;
+    }
+
+    const std::string blockchain = identity->blockchain.value_or(std::string());
+    const std::string expectedAddress =
+        identity->wallet_address.value_or(std::string());
+    RequestWalletChallenge(
+        blockchain, expectedAddress,
+        [this, params, identity = *identity, expectedAddress, blockchain,
+         done = std::move(done)](std::optional<std::string> message,
+                                 std::string error) mutable {
+      if (!message) {
+        AuthResult r{false, false,
+                     error.empty() ? "could not fetch wallet challenge" : error};
+        SetAuthState(AuthState::LoggedOut, r.error);
+        if (done) done(r);
+        return;
+      }
+
+      CancelPendingWalletFlows("superseded by wallet network creation");
+      walletSignMessage_ = *message;
+      walletSignDone_ =
+          [this, params, identity, expectedAddress, message = *message,
+           done = std::move(done)](bool ok, std::string publicKey,
+                                   std::string signature,
+                                   std::string signError) mutable {
+        if (!ok) {
+          AuthResult r{false, false,
+                       signError.empty() ? "wallet signing failed" : signError};
+          SetAuthState(AuthState::LoggedOut, r.error);
+          if (done) done(r);
+          return;
+        }
+        if (publicKey != expectedAddress) {
+          AuthResult r{false, false,
+                       "wallet account changed; use the same account to create the network"};
+          SetAuthState(AuthState::LoggedOut, r.error);
+          if (done) done(r);
+          return;
+        }
+
+        auto createAuth = identity;
+        createAuth.wallet_address = publicKey;
+        createAuth.wallet_message = message;
+        createAuth.wallet_signature = signature;
+        SubmitCreateNetwork(params, std::move(createAuth), std::move(done));
+      };
+
+      if (blockchain == urnet::TAO) {
+        wallet_.SignMessageBittensor(*message);
+      } else {
+        wallet_.SignMessage(*message);
+      }
+    });
+    return;
+  }
+
+  SubmitCreateNetwork(params, std::nullopt, std::move(done));
+}
+
+void SdkHost::SubmitCreateNetwork(const CreateNetworkParams& params,
+                                  std::optional<urnet::WalletAuthArgs> walletAuth,
+                                  std::function<void(AuthResult)> done) {
   urnet::NetworkCreateArgs args;
   args.user_name = std::string();
   args.network_name = params.networkName;
   args.terms = params.terms;
   args.verify_use_numeric = true;
   if (params.useWalletAuth) {
-    std::scoped_lock lock(mutex_);
-    if (!pendingWalletAuth_) {
+    if (!walletAuth) {
       AuthResult r{false, false, "no wallet sign-in is pending"};
       SetAuthState(AuthState::Error, r.error);
       if (done) done(r);
       return;
     }
-    args.wallet_auth = *pendingWalletAuth_;
+    args.wallet_auth = std::move(walletAuth);
   } else if (params.useAuthJwt) {
     std::scoped_lock lock(mutex_);
     if (!pendingAuthJwt_) {
@@ -1278,18 +1350,27 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
 
 // ---- Sign in with a wallet (Solana / Bittensor via ur.io/wallet-connect) ----
 
-// The challenge every client signs for wallet sign-in (macOS/Linux/android
-// parity). No nonce: the server only enforces one when present.
-static constexpr const char* kWalletSignInMessage = "Welcome to URnetwork";
-
 void SdkHost::SetupWalletCallbacks() {
-  wallet_.on_public_key = [this](std::string, WalletConnect::Provider provider) {
+  wallet_.on_public_key = [this](std::string publicKey, WalletConnect::Provider provider) {
     // Solana connects first, then signs. Bittensor has no connect step (it
     // returns the address with the signature), so nothing to chain here.
     if (provider == WalletConnect::Provider::Bittensor) return;
-    // a bare signature request carries its own message (Seeker verification);
-    // sign-in signs the fixed challenge
-    wallet_.SignMessage(walletSignDone_ ? walletSignMessage_ : kWalletSignInMessage);
+    // A bare signature request carries its own message (Seeker verification).
+    if (walletSignDone_) {
+      wallet_.SignMessage(walletSignMessage_);
+      return;
+    }
+
+    RequestWalletChallenge(urnet::SOL, publicKey,
+                           [this](std::optional<std::string> message, std::string error) {
+      if (!message) {
+        if (wallet_.on_error)
+          wallet_.on_error(error.empty() ? "could not fetch wallet challenge" : error);
+        return;
+      }
+      walletAuthMessage_ = *message;
+      wallet_.SignMessage(*message);
+    });
   };
   wallet_.on_signature = [this](std::string publicKey, std::string signature,
                                 WalletConnect::Provider provider) {
@@ -1297,7 +1378,7 @@ void SdkHost::SetupWalletCallbacks() {
       done(true, std::move(publicKey), std::move(signature), std::string());
       return;
     }
-    AuthLoginWithWallet(publicKey, signature, kWalletSignInMessage, provider);
+    AuthLoginWithWallet(publicKey, signature, walletAuthMessage_, provider);
   };
   wallet_.on_error = [this](std::string err) {
     // A failed signature request is NOT a failed sign-in: the user is signed in
@@ -1362,8 +1443,46 @@ void SdkHost::SignInWithBittensor(std::function<void(AuthResult)> done) {
   }
   CancelPendingWalletFlows("superseded by a wallet sign-in");
   walletAuthDone_ = std::move(done);
-  // one step: the bridge returns the address and the signature together
-  wallet_.SignMessageBittensor(kWalletSignInMessage);
+  RequestWalletChallenge(urnet::TAO, std::string(),
+                         [this](std::optional<std::string> message, std::string error) {
+    if (!message) {
+      if (wallet_.on_error)
+        wallet_.on_error(error.empty() ? "could not fetch wallet challenge" : error);
+      return;
+    }
+    walletAuthMessage_ = *message;
+    // one step: the bridge returns the address and the signature together
+    wallet_.SignMessageBittensor(*message);
+  });
+}
+
+void SdkHost::RequestWalletChallenge(
+    const std::string& blockchain, const std::string& walletAddress,
+    std::function<void(std::optional<std::string> message, std::string error)> done) {
+  urnet::AuthWalletChallengeArgs args;
+  args.blockchain = blockchain;
+  if (!walletAddress.empty()) args.wallet_address = walletAddress;
+  api_->authWalletChallenge(args, [done = std::move(done)](
+                                      std::optional<urnet::AuthWalletChallengeResult> result,
+                                      std::optional<std::string> err) mutable {
+    if (err) {
+      done(std::nullopt, *err);
+      return;
+    }
+    if (!result) {
+      done(std::nullopt, "wallet challenge returned no result");
+      return;
+    }
+    if (result->error && !result->error->message.empty()) {
+      done(std::nullopt, result->error->message);
+      return;
+    }
+    if (!result->message_template || result->message_template->empty()) {
+      done(std::nullopt, "wallet challenge returned no message");
+      return;
+    }
+    done(*result->message_template, std::string());
+  });
 }
 
 void SdkHost::SignWithSolanaWallet(
