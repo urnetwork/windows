@@ -20,6 +20,7 @@
 #   UR_ACCEPT_REPEAT=<n>           repetition count
 #   UR_ACCEPT_KEEP_FIXTURE=1       retain the account after a successful run
 #   UR_ACCEPT_WINDOWS_OUT=<path>   MSI build output cache
+#   UR_ACCEPT_WINDOWS_BUILD_TIMEOUT=<seconds> local build deadline (default 7200)
 #   EXTERNAL_WARP_VERSION=<v>      local artifact version (default 0.0.0-0)
 #   WARP_VERSION=<v>               local SDK marker (derived when omitted)
 set -euo pipefail
@@ -35,6 +36,9 @@ keep_fixture="${UR_ACCEPT_KEEP_FIXTURE:-0}"
 result_matrix="${UR_ACCEPT_RESULT_FILE:-}"
 version="${EXTERNAL_WARP_VERSION:-0.0.0-0}"
 out_dir="${UR_ACCEPT_WINDOWS_OUT:-$here/out/acceptance}"
+# shellcheck source=test-main-config.sh
+source "$here/test-main-config.sh"
+build_timeout="$(windows_acceptance_build_timeout)" || exit $?
 
 case "$version" in
   ''|*[!A-Za-z0-9.+-]*) echo "EXTERNAL_WARP_VERSION contains unsupported characters" >&2; exit 2 ;;
@@ -111,7 +115,7 @@ acceptance_scp_from() {
 }
 
 release_retained_client() {
-  local active_client="$artifacts/active-client-id"
+  local active_client="${1:-$artifacts/active-client-id}"
   [ -f "$active_client" ] || return 0
   echo "[windows acceptance] releasing retained network client"
   UR_ACCEPT_CREDENTIALS_FILE="$credentials" \
@@ -157,7 +161,7 @@ cleanup() {
     matrix_status=PASS
     matrix_detail="Windows SDK/service acceptance completed"
     if [ "$exit_status" -ne 0 ]; then matrix_status=FAIL; matrix_detail="Windows acceptance runner failed; see artifacts"; fi
-    for matrix_case in email phone solana bittensor instant password data-plane; do
+    for matrix_case in email phone solana bittensor instant password data-plane peer-to-peer; do
       printf 'windows\t%s\t%s\t%s\n' "$matrix_case" "$matrix_status" "$matrix_detail" >>"$result_matrix"
     done
     chmod 600 "$result_matrix"
@@ -176,7 +180,7 @@ trap 'exit 130' INT TERM
 if [ "$skip_build" -ne 1 ]; then
   echo "[windows acceptance] building local Windows artifacts"
   SRC_HOME="$root" EXTERNAL_WARP_VERSION="$version" OUT_DIR="$out_dir" \
-    timeout 3600 "$root/build/all/build-windows.sh" 2>&1 | tee "$artifacts/build.log"
+    timeout "$build_timeout" "$root/build/all/build-windows.sh" 2>&1 | tee "$artifacts/build.log"
 else
   echo "[windows acceptance] reusing $out_dir"
 fi
@@ -203,10 +207,13 @@ acceptance_scp_to "$run_dir/agent.exe" "$remote/agent.exe"
 acceptance_scp_to "$credentials" "$remote/credentials"
 acceptance_scp_to "$tests_json" "$remote/tests.json"
 acceptance_scp_to "$root/build/all/acceptance/run-windows.ps1" "$remote/run.ps1"
+acceptance_scp_to "$root/build/all/acceptance/run-windows-lib.ps1" "$remote/run-windows-lib.ps1"
+acceptance_scp_to "$root/build/all/acceptance/run-windows-lib.test.ps1" "$remote/run-windows-lib.test.ps1"
 if [ -f "$fixture" ]; then
   acceptance_scp_to "$fixture" "$remote/guest-secret-key"
 fi
 
+win_ssh_probe 60 "powershell -NoProfile -ExecutionPolicy Bypass -File $remote/run-windows-lib.test.ps1 -Fixture $remote/urnetwork.msi"
 echo "[windows acceptance] running $repeat_count complete repetition(s)"
 set +e
 win_ssh_probe "$((900 + repeat_count * 900))" "powershell -NoProfile -ExecutionPolicy Bypass -File $remote/run.ps1 -Msi $remote/urnetwork.msi -ExpectedMsiSha256 $msi_sha256 -AppVersion $version -SdkVersion $sdk_version -Repeat $repeat_count -Agent $remote/agent.exe -Credentials $remote/credentials -Tests $remote/tests.json -Fixture $remote/guest-secret-key -WorkDir $remote/results" \
@@ -219,16 +226,18 @@ if [ "$acceptance_status" -ne 0 ]; then
     >/dev/null 2>&1 || true
 fi
 
-for name in result.json agent.log install.log uninstall.log urnetworkd.log failure.txt uninstall-failure.txt private-input-cleanup-failure.txt active-client-id; do
+for name in result.json agent.log selftest.log selftest.err.log peer-provider.log peer-provider.stdout.log peer-provider/result.json install.log uninstall.log urnetworkd.log failure.txt app-restore-failure.txt uninstall-failure.txt private-input-cleanup-failure.txt active-client-id peer-provider/active-client-id; do
   if win_ssh_probe 30 "powershell -NoProfile -Command \"if (Test-Path -LiteralPath '$remote/results/$name') { exit 0 } else { exit 1 }\"" >/dev/null 2>&1; then
-    if [ "$name" = active-client-id ]; then
-      if ! acceptance_scp_from "$remote/results/$name" "$artifacts/$name"; then
+    destination="$artifacts/$name"
+    mkdir -p "$(dirname "$destination")"
+    case "$name" in active-client-id|peer-provider/active-client-id)
+      if ! acceptance_scp_from "$remote/results/$name" "$destination"; then
         echo "could not retrieve the retained network client ID" >&2
         acceptance_status=1
       fi
-    else
-      acceptance_scp_from "$remote/results/$name" "$artifacts/$name" || true
-    fi
+      ;;
+    *) acceptance_scp_from "$remote/results/$name" "$destination" || true ;;
+    esac
   fi
 done
 if win_ssh_probe 30 "powershell -NoProfile -Command \"if (Test-Path -LiteralPath '$remote/guest-secret-key') { exit 0 } else { exit 1 }\"" >/dev/null 2>&1; then
@@ -243,6 +252,9 @@ if ! shutdown_acceptance_vm; then
   acceptance_status=1
 fi
 if ! release_retained_client; then
+  acceptance_status=1
+fi
+if ! release_retained_client "$artifacts/peer-provider/active-client-id"; then
   acceptance_status=1
 fi
 if [ "$acceptance_status" -eq 0 ] && [ -f "$fixture" ] && [ "$keep_fixture" -ne 1 ]; then
