@@ -8,6 +8,7 @@
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.UI.ViewManagement.h>
 
 #include "AppController.h"
 #include "Log.h"
