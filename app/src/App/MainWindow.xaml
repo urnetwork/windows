@@ -381,6 +381,21 @@
                                  TextChanged="OnBonusCodeChanged" />
                         <TextBlock x:Name="BonusStatusText" Style="{StaticResource UrSupportingTextStyle}"
                                    />
+                        <!-- referral accepted: the gold king-frog chip (replaces the
+                             supporting line while the code is valid) -->
+                        <StackPanel x:Name="BonusAppliedChip" Orientation="Horizontal"
+                                    Spacing="8" Visibility="Collapsed"
+                                    HorizontalAlignment="Left" Padding="12,6"
+                                    CornerRadius="16"
+                                    BorderBrush="{StaticResource UrReferralGoldBrush}"
+                                    BorderThickness="1">
+                            <Image Source="ms-appx:///Assets/ReferralFrog.png"
+                                   Width="20" Height="20"
+                                   AutomationProperties.AccessibilityView="Raw" />
+                            <TextBlock x:Name="BonusAppliedText" VerticalAlignment="Center"
+                                       Style="{StaticResource UrCaptionTextStyle}"
+                                       Foreground="{StaticResource UrReferralGoldLightBrush}" />
+                        </StackPanel>
                         <Button x:Name="CreateButton" IsEnabled="False"
                                 Style="{StaticResource AccentButtonStyle}"
                                 HorizontalAlignment="Stretch" Click="OnCreateNetwork" />
@@ -2416,5 +2431,76 @@
             <StackPanel x:Name="StatusStripFields" Orientation="Horizontal"
                         Spacing="0" VerticalAlignment="Center" />
         </Border>
+
+        <!-- REFERRAL CROWNING. One-time full-window gold celebration when the
+             network's first referral lands (the ur.io referral king frog).
+             Later referrals get ReferralSnackbar instead. All text is set in
+             code (MainWindow::OnReferralCelebration); the aura pulse is a
+             code-built animation so reduced-motion can skip it. Spans every
+             row on purpose: a crowning covers the whole window. -->
+        <Grid x:Name="ReferralCelebrationOverlay" Grid.Row="0" Grid.RowSpan="4"
+              Visibility="Collapsed" Background="#F5101010">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Spacing="16" MaxWidth="400" Margin="24,48">
+                    <Grid HorizontalAlignment="Center" Width="240" Height="240">
+                        <Ellipse x:Name="ReferralCelebrationAura" Width="240" Height="240">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush>
+                                    <GradientStop Color="#47F5B93C" Offset="0" />
+                                    <GradientStop Color="#00F5B93C" Offset="1" />
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <Image Source="ms-appx:///Assets/ReferralFrog.png"
+                               Width="144" Height="144"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               AutomationProperties.AccessibilityView="Raw" />
+                    </Grid>
+                    <TextBlock x:Name="ReferralCelebrationTitle" TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Style="{StaticResource UrTitleTextStyle}"
+                               Foreground="{StaticResource UrReferralGoldLightBrush}" />
+                    <TextBlock x:Name="ReferralCelebrationDetail" TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Style="{StaticResource UrBodyTextStyle}" />
+                    <Border Background="#59000000"
+                            BorderBrush="{StaticResource UrReferralGoldBrush}"
+                            BorderThickness="1" CornerRadius="22" Padding="18,8">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="ReferralCelebrationCode"
+                                       FontWeight="Bold" FontSize="18"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       FontFamily="{StaticResource UrBodyFontFamily}"
+                                       Foreground="{StaticResource UrReferralGoldLightBrush}" />
+                            <Button x:Name="ReferralCelebrationCopy" Grid.Column="1"
+                                    Background="Transparent" BorderThickness="0"
+                                    Foreground="{StaticResource UrReferralGoldLightBrush}" />
+                        </Grid>
+                    </Border>
+                    <Button x:Name="ReferralCelebrationShare" HorizontalAlignment="Stretch"
+                            Background="{StaticResource UrReferralGoldBrush}"
+                            Foreground="{StaticResource UrReferralGoldInkBrush}"
+                            FontFamily="{StaticResource UrBodyFontFamily}" FontWeight="Bold"
+                            CornerRadius="22" Padding="0,10" />
+                </StackPanel>
+            </ScrollViewer>
+            <Button x:Name="ReferralCelebrationClose" HorizontalAlignment="Right"
+                    VerticalAlignment="Top" Margin="16"
+                    Background="Transparent" BorderThickness="0">
+                <FontIcon Glyph="&#xE711;" FontSize="14" />
+            </Button>
+        </Grid>
+
+        <!-- the referral gold toast: a friend joined with your code, for
+             referrals after the first (kit::Snackbar on the gold style) -->
+        <muxc:InfoBar x:Name="ReferralSnackbar" Grid.Row="1"
+                      Style="{StaticResource UrGoldSnackbarStyle}"
+                      VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                      Margin="24" MaxWidth="480" IsOpen="False" />
     </Grid>
 </Window>

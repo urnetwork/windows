@@ -180,6 +180,15 @@ void AppController::Start() {
         self->OnBalanceChanged(snapshot, poll);
     }
   });
+  // Referral celebrations (the king-frog gold moments). The store only polls
+  // while the window is visible, so a celebration always has a window to land
+  // in; the visibility check is belt-and-suspenders.
+  balance_.SetReferralCelebrationHandler([this](const ReferralCelebration& celebration) {
+    if (windowVisible_ && window_) {
+      if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+        self->OnReferralCelebration(celebration);
+    }
+  });
 
   // Debounced placement save. Restarted on every move/resize the user makes,
   // so it lands once they settle rather than once per drag frame.

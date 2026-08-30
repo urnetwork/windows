@@ -23,11 +23,13 @@ bool ParseV4(const std::string& s, IN_ADDR& out) {
   return ::inet_pton(AF_INET, s.c_str(), &out) == 1;
 }
 
-// Windows defaults IPv6 interfaces to LinkLocalAlwaysOn, which can synthesize
-// a fe80:: address even when the app never supplies an IPv6 address. Keep the
-// Wintun interface genuinely IPv4-only without touching IPv6 on any physical
-// interface. Router discovery/default routes are disabled as a second guard,
-// and an address created before this policy landed is removed explicitly.
+// Windows defaults IPv6 interfaces to LinkLocalAlwaysOn, which synthesizes a
+// fe80:: address even when the app never supplies an IPv6 address. On a Wintun
+// AF_INET6 row, SetIpInterfaceEntry rejects LinkLocalAlwaysOff with
+// ERROR_INVALID_PARAMETER. Leave that unsupported property unchanged, disable
+// router discovery/default routes, and explicitly remove the generated address.
+// With discovery disabled the deleted address stays absent after the IPv4
+// address brings the adapter up. No physical-interface IPv6 state is touched.
 bool EnforceIpv4OnlyTunnelInterface(NET_LUID tun) {
   MIB_IPINTERFACE_ROW row;
   ::InitializeIpInterfaceEntry(&row);
@@ -45,11 +47,7 @@ bool EnforceIpv4OnlyTunnelInterface(NET_LUID tun) {
     return false;
   }
 
-  row.LinkLocalAddressBehavior = LinkLocalAlwaysOff;
-  row.RouterDiscoveryBehavior = RouterDiscoveryDisabled;
-  row.AdvertisingEnabled = FALSE;
-  row.AdvertiseDefaultRoute = FALSE;
-  row.DisableDefaultRoutes = TRUE;
+  NetworkConfig::PrepareIpv4OnlyTunnelInterfaceRow(row);
   err = ::SetIpInterfaceEntry(&row);
   if (err != NO_ERROR) {
     LogError("netcfg: cannot suppress IPv6 on Wintun: {}", err);
@@ -192,6 +190,19 @@ DnsFlushFn ResolveDnsFlush() {
 }
 
 }  // namespace
+
+void NetworkConfig::PrepareIpv4OnlyTunnelInterfaceRow(
+    MIB_IPINTERFACE_ROW& row) {
+  // The zero-only SitePrefixLength rule applies to AF_INET, not AF_INET6. More
+  // importantly, Windows 11 rejects LinkLocalAlwaysOff on a Wintun IPv6 row
+  // with ERROR_INVALID_PARAMETER. LinkLocalUnchanged is the API's explicit
+  // setter sentinel; the generated fe80:: address is deleted below instead.
+  row.LinkLocalAddressBehavior = LinkLocalUnchanged;
+  row.RouterDiscoveryBehavior = RouterDiscoveryDisabled;
+  row.AdvertisingEnabled = FALSE;
+  row.AdvertiseDefaultRoute = FALSE;
+  row.DisableDefaultRoutes = TRUE;
+}
 
 bool NetworkConfig::ResolverCacheFlushAvailable() {
   return ResolveDnsFlush() != nullptr;

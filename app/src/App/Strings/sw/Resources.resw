@@ -2306,20 +2306,20 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
     <comment>Call to action</comment>
   </data>
   <data name="refer_friends_perks" xml:space="preserve">
-    <value>Unapata +{} GiB/mwezi maisha yote</value>
-    <comment>Call to action</comment>
+    <value>Unapata +{} GiB/siku maisha yote</value>
+    <comment>Referral perk bullet on the introduction referral screen. The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="refer_friends_they_get_data" xml:space="preserve">
-    <value>Rafiki yako anapata +{} GiB/mwezi maisha yote</value>
-    <comment>Call to action</comment>
+    <value>Rafiki yako anapata +{} GiB/siku maisha yote</value>
+    <comment>Referral perk bullet on the introduction referral screen (the referred side). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral" xml:space="preserve">
     <value>Rufaa</value>
     <comment>Call to action</comment>
   </data>
   <data name="referral_bonus" xml:space="preserve">
-    <value>+{} GiB/mwezi</value>
-    <comment>Call to action</comment>
+    <value>+{} GiB/siku</value>
+    <comment>Referral earn rate shown next to the referral count (usage bar). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral_bonus_applied" xml:space="preserve">
     <value>Bonasi ya rufaa imetumika</value>
@@ -2329,6 +2329,14 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
     <value>Bonasi ya rufaa imetumika</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="referral_celebration_detail.one" xml:space="preserve">
+    <value>Rafiki amejiunga sasa hivi na URnetwork kwa msimbo wako. Nyote wawili mnapata +{1} GiB za data bila malipo kwa siku — maisha yote.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_celebration_detail.other" xml:space="preserve">
+    <value>Marafiki {0} wamejiunga sasa hivi na URnetwork kwa msimbo wako. Kila mmoja anakuletea +{1} GiB za data bila malipo kwa siku — maisha yote.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
   <data name="referral_code" xml:space="preserve">
     <value>Msimbo wa rufaa</value>
     <comment>Call to action</comment>
@@ -2337,6 +2345,14 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
     <value>Msimbo huu umetumika tayari</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_crowned_congrats.one" xml:space="preserve">
+    <value>Rafiki amejiunga — unapata +{1} GiB kwa siku, maisha yote.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
+  <data name="referral_crowned_congrats.other" xml:space="preserve">
+    <value>Marafiki {0} wamejiunga — unapata +{1} GiB kwa siku, maisha yote.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
   <data name="referral_network" xml:space="preserve">
     <value>Mtandao wa rufaa</value>
     <comment>Call to action</comment>
@@ -2344,6 +2360,14 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
+  </data>
+  <data name="referral_royal_welcome" xml:space="preserve">
+    <value>Karibu ya kifalme!</value>
+    <comment>Celebration headline shown the moment a referral code is accepted (signup bonus sheet and the settings referral sheet). Royal king-frog theme, matches the ur.io referral panel.</comment>
+  </data>
+  <data name="referral_royal_welcome_detail" xml:space="preserve">
+    <value>Rufaa imethibitishwa — wewe na rafiki yako mtapata kila mmoja +{} GiB kwa siku za data bila malipo, maisha yote.</value>
+    <comment>Detail line under the royal-welcome headline when a referral code is accepted. {data} is the daily bonus in GiB each side earns (pro.yml referral, currently 3).</comment>
   </data>
   <data name="referral_royalty" xml:space="preserve">
     <value>Wewe ni bingwa wa rufaa!</value>
@@ -2356,6 +2380,14 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
   <data name="referral_summary" xml:space="preserve">
     <value>Msimbo: {0} · Rufaa: {1} · Marafiki huweka msimbo wanapojisajili</value>
     <comment>One-line referral summary: the network's referral code, how many referrals it has, and how friends use it. The arguments are the referral code and the number of referrals.</comment>
+  </data>
+  <data name="referral_toast_joined.one" xml:space="preserve">
+    <value>Rafiki amejiunga kwa msimbo wako! +{1} GiB kwa siku, maisha yote.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_toast_joined.other" xml:space="preserve">
+    <value>Marafiki {0} wamejiunga kwa msimbo wako! +{1} GiB kwa siku kwa kila mmoja, maisha yote.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
   </data>
   <data name="referrals" xml:space="preserve">
     <value>Rufaa</value>

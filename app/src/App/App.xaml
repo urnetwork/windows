@@ -277,6 +277,14 @@
                  rather than as decoration. -->
             <SolidColorBrush x:Key="UrProGoldBrush" Color="#FFC400" />
             <SolidColorBrush x:Key="UrProGoldLightBrush" Color="#FFE082" />
+            <!-- Referral gold. The ur.io referral-panel palette (#F5B93C family),
+                 used only for the referral king-frog moments - a warmer gold
+                 than the Pro gold so the Pro ring keeps its meaning while
+                 referral royalty gets its own. Ink is the site's text-on-gold. -->
+            <SolidColorBrush x:Key="UrReferralGoldBrush" Color="#F5B93C" />
+            <SolidColorBrush x:Key="UrReferralGoldLightBrush" Color="#FFD76A" />
+            <SolidColorBrush x:Key="UrReferralGoldPaleBrush" Color="#FFE38A" />
+            <SolidColorBrush x:Key="UrReferralGoldInkBrush" Color="#241A05" />
             <!-- connect status dot: android circle_indicator_{green,yellow,blue} -->
             <SolidColorBrush x:Key="UrStatusConnectingBrush" Color="#E6EA23" />
             <SolidColorBrush x:Key="UrStatusIdleBrush" Color="#2A60FF" />
@@ -752,6 +760,12 @@
                 <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
                 <Setter Property="IsClosable" Value="True" />
                 <Setter Property="CornerRadius" Value="8" />
+            </Style>
+            <!-- the referral gold toast (a friend joined with your code): the
+                 same snackbar mechanics on a gold-bordered surface -->
+            <Style x:Key="UrGoldSnackbarStyle" TargetType="InfoBar" BasedOn="{StaticResource UrSnackbarStyle}">
+                <Setter Property="BorderBrush" Value="{StaticResource UrReferralGoldBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
             </Style>
 
             <!-- ================================================================

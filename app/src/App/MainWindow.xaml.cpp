@@ -1139,6 +1139,108 @@ void MainWindow::OnBalanceChanged(urnw::BalanceSnapshot const& snapshot,
   ApplyBalance();
 }
 
+// ---- referral crowning (the ur.io king-frog gold celebrations) --------------
+//
+// The store observed new referrals for this network. The first ever earns the
+// full-window gold crowning overlay; later batches get the passing gold toast.
+// Baseline bookkeeping already happened in the store, so showing UI is all
+// that is left to do here.
+void MainWindow::OnReferralCelebration(urnw::ReferralCelebration const& celebration) {
+  if (celebration.isFirst) {
+    ShowReferralCelebration(celebration);
+    return;
+  }
+  if (!referralSnackbar_) {
+    referralSnackbar_ =
+        std::make_unique<urnw::kit::Snackbar>(ReferralSnackbar(), DispatcherQueue());
+  }
+  referralSnackbar_->Show(
+      hstring{urnw::PluralFormat("referral_toast_joined", celebration.joined,
+                                 celebration.joined, int64_t{3})},
+      InfoBarSeverity::Informational);
+}
+
+void MainWindow::ShowReferralCelebration(urnw::ReferralCelebration const& celebration) {
+  namespace anim = Microsoft::UI::Xaml::Media::Animation;
+
+  ReferralCelebrationTitle().Text(Loc("referral_royalty"));
+  ReferralCelebrationDetail().Text(
+      hstring{urnw::PluralFormat("referral_celebration_detail", celebration.joined,
+                                 celebration.joined, int64_t{3})});
+
+  const auto code = Balance().ReferralCode();
+  ReferralCelebrationCode().Text(code ? H(*code) : L"");
+  ReferralCelebrationCopy().Content(LocBox("copy"));
+  ReferralCelebrationShare().Content(LocBox("share"));
+
+  if (!referralCelebrationWired_) {
+    referralCelebrationWired_ = true;
+    auto weak = get_weak();
+    ReferralCelebrationClose().Click([weak](auto const&, auto const&) {
+      if (auto self = weak.get()) self->HideReferralCelebration();
+    });
+    ReferralCelebrationCopy().Click([weak](auto const&, auto const&) {
+      auto self = weak.get();
+      if (!self) return;
+      const auto current = Balance().ReferralCode();
+      if (!current) return;
+      winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
+      package.SetText(H(*current));
+      winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
+      self->ReferralCelebrationCopy().Content(LocBox("copied"));
+    });
+    // windows has no share sheet in this app: "share" copies the invite
+    // message, exactly like the account menu's share item
+    ReferralCelebrationShare().Click([weak](auto const&, auto const&) {
+      auto self = weak.get();
+      if (!self) return;
+      const auto current = Balance().ReferralCode();
+      if (!current) return;
+      winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
+      package.SetText(
+          hstring{urnw::Format("referral_share_message", urnw::Widen(*current))});
+      winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
+      self->HideReferralCelebration();
+      if (!self->referralSnackbar_) {
+        self->referralSnackbar_ = std::make_unique<urnw::kit::Snackbar>(
+            self->ReferralSnackbar(), self->DispatcherQueue());
+      }
+      self->referralSnackbar_->Show(Loc("bonus_referral_code_copied_to_clipboard"),
+                                    InfoBarSeverity::Success);
+    });
+  }
+
+  ReferralCelebrationOverlay().Visibility(Visibility::Visible);
+
+  // the site's aura pulse; skipped when the system disables animations
+  if (winrt::Windows::UI::ViewManagement::UISettings().AnimationsEnabled()) {
+    if (!referralAuraStoryboard_) {
+      anim::DoubleAnimation pulse;
+      pulse.From(0.55);
+      pulse.To(0.95);
+      pulse.Duration(Duration{
+          std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+              std::chrono::milliseconds(1700)),
+          DurationType::TimeSpan});
+      pulse.AutoReverse(true);
+      pulse.RepeatBehavior(anim::RepeatBehavior{
+          .Count = 0, .Duration = {}, .Type = anim::RepeatBehaviorType::Forever});
+      anim::Storyboard::SetTarget(pulse, ReferralCelebrationAura());
+      anim::Storyboard::SetTargetProperty(pulse, L"Opacity");
+      referralAuraStoryboard_ = anim::Storyboard{};
+      referralAuraStoryboard_.Children().Append(pulse);
+    }
+    referralAuraStoryboard_.Begin();
+  }
+}
+
+void MainWindow::HideReferralCelebration() {
+  if (referralAuraStoryboard_) referralAuraStoryboard_.Stop();
+  ReferralCelebrationOverlay().Visibility(Visibility::Collapsed);
+  // reset the copy acknowledgement for the next showing
+  ReferralCelebrationCopy().Content(LocBox("copy"));
+}
+
 void MainWindow::ApplyBalance() {
   // plan value: Guest / Free / Pro (macOS AccountRootView)
   const hstring plan = balance_.guest ? Loc("guest")
@@ -1179,10 +1281,11 @@ void MainWindow::ApplyBalance() {
   const hstring daily = H(urnw::FormatByteCountCompact(balance_.startBalanceByteCount));
   AccountDailyValue().Text(daily);
 
-  // referral rows: "Total Referrals: N" and "+N*30 GiB/Month"
+  // referral rows: "Total Referrals: N" and "+N*3 GiB/Day" (the server grants
+  // 3 GiB per referral per 24h -- pro.yml referral; this row said GiB/Month)
   const int64_t totalReferrals = account_ ? account_->totalReferrals() : 0;
   const hstring totals = hstring{urnw::Format("total_referrals_lld", totalReferrals)};
-  const hstring bonus = hstring{urnw::Format("referral_bonus", totalReferrals * 30)};
+  const hstring bonus = hstring{urnw::Format("referral_bonus", totalReferrals * 3)};
   AccountReferralTotals().Text(totals);
   AccountReferralBonus().Text(bonus);
 

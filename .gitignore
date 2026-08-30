@@ -6,3 +6,6 @@
 # Per-worktree app state (URNETWORK_APP_ROOT), so concurrent worktrees do not
 # share one LocalState/rpc_session/log. Never committed.
 .localstate*/
+
+# Local main-acceptance diagnostics may contain account and service state.
+tests/__acceptance__/

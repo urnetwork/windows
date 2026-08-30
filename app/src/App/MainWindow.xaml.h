@@ -294,8 +294,14 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnStatsChanged(urnw::LiveStats const& stats);
   void OnBalanceChanged(urnw::BalanceSnapshot const& snapshot,
                         urnw::BalancePollState const& poll);
+  // A batch of newly observed referrals: the first ever shows the full-window
+  // gold crowning overlay, later ones the gold toast.
+  void OnReferralCelebration(urnw::ReferralCelebration const& celebration);
 
  private:
+  // ---- referral crowning overlay ----
+  void ShowReferralCelebration(urnw::ReferralCelebration const& celebration);
+  void HideReferralCelebration();
   // every label in the window: the window's own chrome and nav, then each page's
   void ApplyStrings();
   // The selected destination's API loads. Called by the navigation relay AND by
@@ -334,6 +340,12 @@ struct MainWindow : MainWindowT<MainWindow> {
   // path in this window shares. Read in one place so they cannot drift.
   bool PreviewSampleRequested() const;
 
+
+  // ---- referral crowning state ----
+  // click handlers attach on first show, not per show, so they never stack
+  bool referralCelebrationWired_ = false;
+  winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard referralAuraStoryboard_{nullptr};
+  std::unique_ptr<urnw::kit::Snackbar> referralSnackbar_;
 
   // ---- balance / plan (SubscriptionBalanceStore relay) ----
   void UpdateBalanceWarning();  // insufficient-balance InfoBar gating

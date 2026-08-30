@@ -261,23 +261,8 @@ void ClearRpcSession() {
 // silently deletes every other one. An unreadable or corrupt file is an empty
 // object, never a throw: a preference is not worth taking the app down for.
 
-nlohmann::json LoadAppPrefs() {
-  std::ifstream f(AppPrefsFile());
-  if (!f) return nlohmann::json::object();
-  try {
-    nlohmann::json j = nlohmann::json::parse(f);
-    if (j.is_object()) return j;
-  } catch (...) {
-  }
-  return nlohmann::json::object();
-}
-
-void SaveAppPref(const char* key, const nlohmann::json& value) {
-  nlohmann::json j = LoadAppPrefs();
-  j[key] = value;
-  std::ofstream f(AppPrefsFile(), std::ios::trunc);
-  if (f) f << j.dump();
-}
+// LoadAppPrefs / SaveAppPref moved to Common/Paths at the third
+// preference site, as the note below prescribed.
 
 }  // namespace
 
@@ -644,11 +629,13 @@ void SdkHost::LoginWithCode(const std::string& authCode,
   });
 }
 
-void SdkHost::LoginAsGuest(std::function<void(AuthResult)> done) {
+void SdkHost::LoginAsGuest(std::function<void(AuthResult)> done,
+                           std::optional<std::string> referralCode) {
   SetAuthState(AuthState::Authenticating);
   urnet::NetworkCreateArgs args;
   args.terms = true;  // the sheet's button is gated on the terms consent
   args.guest_mode = true;
+  if (referralCode && !referralCode->empty()) args.referral_code = *referralCode;
 
   api_->networkCreate(args, [this, done](std::optional<urnet::NetworkCreateResult> result,
                                          std::optional<std::string> err) {

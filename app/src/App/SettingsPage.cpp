@@ -276,6 +276,12 @@ void SettingsPage::BuildReferralSection(Panel const& host) {
   auto referralButton = NavRow(card, Loc("referral_network"), referralNetworkValue_);
   referralButton.Click([this](auto const&, auto const&) { ShowReferralNetworkSheet(); });
 
+  // Refer friends - the gold king-frog refer panel (parity with the account
+  // row on android/apple that opens the gold refer surface).
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock unusedReferValue;
+  auto referFriendsButton = NavRow(card, Loc("refer_and_earn"), unusedReferValue);
+  referFriendsButton.Click([this](auto const&, auto const&) { ShowReferSheet(); });
+
   // Both rows start in the state that says WHY they are empty. Without this they
   // rendered as blank cells before any load ran - the exact "is this empty,
   // loading, or broken?" ambiguity FieldState exists to remove, and it was
@@ -1266,6 +1272,121 @@ winrt::fire_and_forget SettingsPage::ShowReferralNetworkSheet() {
   } catch (...) {
   }
   referralSheet_.reset();
+  w_.SetSheetOpen(false);
+}
+
+winrt::fire_and_forget SettingsPage::ShowReferSheet() {
+  if (w_.sheetOpen()) co_return;
+  auto self = w_.get_strong();
+  w_.SetSheetOpen(true);
+  try {
+    auto dialog = rows::MakeSheet(self->Content().XamlRoot(), Loc("refer_and_earn"));
+
+    StackPanel content;
+    content.Spacing(12);
+    content.MinWidth(400);
+
+    // the crowned frog; the crowned state gets the royal heading + congrats
+    const int64_t totalReferrals = urnw::pages::Balance().TotalReferrals();
+    const bool crowned = 0 < totalReferrals;
+
+    Image frog;
+    winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap{
+        winrt::Windows::Foundation::Uri{L"ms-appx:///Assets/ReferralFrog.png"}};
+    frog.Source(bitmap);
+    frog.Width(108);
+    frog.Height(108);
+    frog.HorizontalAlignment(HorizontalAlignment::Center);
+    content.Children().Append(frog);
+
+    TextBlock heading;
+    heading.Text(crowned ? Loc("referral_royalty") : Loc("refer_friends_header"));
+    heading.FontSize(24);
+    heading.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
+    heading.TextWrapping(TextWrapping::Wrap);
+    heading.TextAlignment(TextAlignment::Center);
+    heading.Foreground(urnw::colors::ReferralGoldLightBrush());
+    content.Children().Append(heading);
+
+    TextBlock detail;
+    detail.Text(Loc("refer_friends_detail"));
+    detail.TextWrapping(TextWrapping::Wrap);
+    detail.TextAlignment(TextAlignment::Center);
+    content.Children().Append(detail);
+
+    if (crowned) {
+      TextBlock congrats;
+      congrats.Text(hstring{
+          L"\U0001F451 " +
+          urnw::PluralFormat("referral_crowned_congrats", totalReferrals, totalReferrals,
+                             std::min<int64_t>(totalReferrals, 20) * 3)});
+      congrats.TextWrapping(TextWrapping::Wrap);
+      congrats.TextAlignment(TextAlignment::Center);
+      congrats.Foreground(urnw::colors::ReferralGoldLightBrush());
+      content.Children().Append(congrats);
+    }
+
+    TextBlock hint;
+    hint.Text(Loc("refer_friends_code_hint"));
+    hint.Style(Lookup(L"UrCaptionTextStyle"));
+    hint.TextWrapping(TextWrapping::Wrap);
+    hint.TextAlignment(TextAlignment::Center);
+    content.Children().Append(hint);
+
+    // the code, gold on a dark pill, with a copy action
+    Border pill;
+    pill.BorderBrush(urnw::colors::ReferralGoldBrush());
+    pill.BorderThickness(Thickness{1, 1, 1, 1});
+    pill.CornerRadius(CornerRadius{20, 20, 20, 20});
+    pill.Padding(Thickness{18, 8, 12, 8});
+    Grid pillGrid;
+    pillGrid.ColumnSpacing(12);
+    {
+      ColumnDefinition star;
+      star.Width(GridLength{1, GridUnitType::Star});
+      pillGrid.ColumnDefinitions().Append(star);
+      ColumnDefinition autoCol;
+      autoCol.Width(GridLength{0, GridUnitType::Auto});
+      pillGrid.ColumnDefinitions().Append(autoCol);
+    }
+    TextBlock codeText;
+    codeText.Text(H(referralCode_));
+    codeText.FontSize(18);
+    codeText.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
+    codeText.VerticalAlignment(VerticalAlignment::Center);
+    codeText.Foreground(urnw::colors::ReferralGoldLightBrush());
+    pillGrid.Children().Append(codeText);
+    Button copyButton;
+    copyButton.Content(LocBox("copy"));
+    Grid::SetColumn(copyButton, 1);
+    copyButton.Click([this, copyButton](auto const&, auto const&) {
+      if (referralCode_.empty()) return;
+      CopyToClipboard(referralCode_);
+      copyButton.Content(LocBox("copied"));
+    });
+    pillGrid.Children().Append(copyButton);
+    pill.Child(pillGrid);
+    content.Children().Append(pill);
+
+    // "share" copies the invite message, like the account menu's share item
+    Button shareButton;
+    shareButton.Content(LocBox("share"));
+    shareButton.HorizontalAlignment(HorizontalAlignment::Stretch);
+    shareButton.Background(urnw::colors::ReferralGoldBrush());
+    shareButton.Foreground(urnw::colors::ReferralGoldInkBrush());
+    shareButton.CornerRadius(CornerRadius{20, 20, 20, 20});
+    shareButton.Click([this, shareButton](auto const&, auto const&) {
+      if (referralCode_.empty()) return;
+      CopyToClipboard(urnw::Narrow(
+          urnw::Format("referral_share_message", urnw::Widen(referralCode_))));
+      shareButton.Content(LocBox("copied"));
+    });
+    content.Children().Append(shareButton);
+
+    dialog.Content(content);
+    co_await dialog.ShowAsync();
+  } catch (...) {
+  }
   w_.SetSheetOpen(false);
 }
 

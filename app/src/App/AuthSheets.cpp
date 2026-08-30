@@ -12,6 +12,7 @@
 #include "BalanceSheets.h"  // SetTermsMarkerText (the terms/privacy link inlines)
 #include "Ids.h"
 #include "Localization.h"
+#include "PageContext.h"
 #include "Log.h"
 #include "Strings.h"
 #include "UrColors.h"
@@ -107,6 +108,29 @@ void GuestModeSheet::Build(XamlRoot const& root) {
   termsRow.Children().Append(termsText);
   content.Children().Append(termsRow);
 
+  // optional referral code (android/apple instant-account parity): the server
+  // links the referral on the guest create path too
+  codeBox_ = TextBox();
+  codeBox_.Header(winrt::box_value(Loc("bonus_referral_code_label")));
+  codeBox_.PlaceholderText(Loc("enter_a_bonus_referral_code"));
+  if (auto style = Application::Current()
+                       .Resources()
+                       .TryLookup(winrt::box_value(L"UrTextInputStyle"))
+                       .try_as<Style>()) {
+    codeBox_.Style(style);
+  }
+  codeBox_.TextChanged([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->codeStatus_.Visibility(Visibility::Collapsed);
+  });
+  content.Children().Append(codeBox_);
+
+  codeStatus_ = TextBlock();
+  codeStatus_.FontSize(12);
+  codeStatus_.Foreground(colors::DangerBrush());
+  codeStatus_.TextWrapping(TextWrapping::Wrap);
+  codeStatus_.Visibility(Visibility::Collapsed);
+  content.Children().Append(codeStatus_);
+
   errorText_ = TextBlock();
   errorText_.FontSize(12);
   errorText_.Foreground(colors::DangerBrush());
@@ -130,14 +154,55 @@ void GuestModeSheet::Submit() {
   dialog_.IsPrimaryButtonEnabled(false);
   termsCheck_.IsEnabled(false);
   errorText_.Visibility(Visibility::Collapsed);
+  codeStatus_.Visibility(Visibility::Collapsed);
 
   auto queue = dialog_.DispatcherQueue();
   auto weak = weak_from_this();
-  sdk_.LoginAsGuest([queue, weak](AuthResult r) {
-    queue.TryEnqueue([weak, r] {
-      if (auto self = weak.lock()) self->ApplyResult(r.ok, r.error);
+
+  const std::string code = pages::TrimWhitespace(Narrow(codeBox_.Text().c_str()));
+  if (code.empty()) {
+    sdk_.LoginAsGuest([queue, weak](AuthResult r) {
+      queue.TryEnqueue([weak, r] {
+        if (auto self = weak.lock()) self->ApplyResult(r.ok, r.error);
+      });
     });
-  });
+    return;
+  }
+
+  // a code was entered: it must validate before the create, so a typo shows
+  // an error instead of silently dropping the bonus
+  urnet::ValidateReferralCodeArgs args;
+  args.referral_code = code;
+  sdk_.api().validateReferralCode(
+      args, [queue, weak, code](std::optional<urnet::ValidateReferralCodeResult> result,
+                                std::optional<std::string> err) {
+        const bool ok = !err && result.has_value();
+        const bool valid = ok && result->is_valid;
+        const bool capped = ok && result->is_capped;
+        queue.TryEnqueue([weak, code, ok, valid, capped] {
+          auto self = weak.lock();
+          if (!self) return;
+          if (!ok || !valid || capped) {
+            self->creating_ = false;
+            self->termsCheck_.IsEnabled(true);
+            self->dialog_.IsPrimaryButtonEnabled(true);
+            self->codeStatus_.Text(!ok    ? Loc("something_went_wrong")
+                                   : capped ? Loc("referral_code_capped")
+                                            : Loc("invalid_referral_code"));
+            self->codeStatus_.Visibility(Visibility::Visible);
+            return;
+          }
+          auto queue2 = self->dialog_.DispatcherQueue();
+          auto weak2 = self->weak_from_this();
+          self->sdk_.LoginAsGuest(
+              [queue2, weak2](AuthResult r) {
+                queue2.TryEnqueue([weak2, r] {
+                  if (auto inner = weak2.lock()) inner->ApplyResult(r.ok, r.error);
+                });
+              },
+              code);
+        });
+      });
 }
 
 void GuestModeSheet::ApplyResult(bool ok, std::string const& error) {

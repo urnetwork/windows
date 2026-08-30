@@ -141,12 +141,16 @@ std::wstring Localized(std::string_view key) {
   return Widen(key);
 }
 
-std::wstring Plural(std::string_view key, int64_t count) {
+std::wstring PluralRaw(std::string_view key, int64_t count) {
   const std::string name =
       std::string{key} + "." + std::string{PluralCategory(PrimaryLanguage(), count)};
   std::wstring fmt = Localized(name);
   if (fmt == Widen(name)) fmt = Localized(std::string{key} + ".other");  // fallback
-  return std::vformat(fmt, std::make_wformat_args(count));
+  return fmt;
+}
+
+std::wstring Plural(std::string_view key, int64_t count) {
+  return std::vformat(PluralRaw(key, count), std::make_wformat_args(count));
 }
 
 }  // namespace urnw

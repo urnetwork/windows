@@ -429,6 +429,41 @@ void CopyToClipboard(std::string const& text) {
   winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
 }
 
+// The royal-welcome panel: the crowned frog in gold plus confirmation copy
+// (the referral king-frog moment, matching the ur.io referral panel and the
+// android/apple sheets).
+StackPanel MakeRoyalWelcomePanel() {
+  StackPanel panel;
+  panel.Spacing(12);
+  panel.MinWidth(400);
+
+  Image frog;
+  winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap{
+      winrt::Windows::Foundation::Uri{L"ms-appx:///Assets/ReferralFrog.png"}};
+  frog.Source(bitmap);
+  frog.Width(108);
+  frog.Height(108);
+  frog.HorizontalAlignment(HorizontalAlignment::Center);
+  panel.Children().Append(frog);
+
+  TextBlock title;
+  title.Text(Loc("referral_royal_welcome"));
+  title.FontSize(24);
+  title.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
+  title.TextWrapping(TextWrapping::Wrap);
+  title.TextAlignment(TextAlignment::Center);
+  title.Foreground(colors::ReferralGoldLightBrush());
+  panel.Children().Append(title);
+
+  TextBlock detail;
+  detail.Text(hstring{urnw::Format("referral_royal_welcome_detail", int64_t{3})});
+  detail.TextWrapping(TextWrapping::Wrap);
+  detail.TextAlignment(TextAlignment::Center);
+  panel.Children().Append(detail);
+
+  return panel;
+}
+
 ContentDialog MakeSheet(XamlRoot const& root, hstring const& title) {
   ContentDialog dialog;
   dialog.XamlRoot(root);
@@ -940,8 +975,10 @@ void ReferralNetworkSheet::Submit() {
           self->busy_ = false;
           if (error.empty()) {
             self->codeBox_.Text(L"");
-            self->Load();  // re-read the network the code resolved to
             if (self->onChanged_) self->onChanged_();
+            // linking a referral network is the royal-welcome moment; the
+            // sheet dismisses itself after the beat (reopening re-Loads)
+            self->ShowRoyalWelcome();
             return;
           }
           // A rejected code is the common failure and has its own string; a
@@ -949,6 +986,24 @@ void ReferralNetworkSheet::Submit() {
           self->ShowError(Loc("invalid_referral_code_please_try_again"));
         });
       });
+}
+
+void ReferralNetworkSheet::ShowRoyalWelcome() {
+  dialog_.Title(winrt::box_value(hstring{}));
+  dialog_.PrimaryButtonText(hstring{});
+  dialog_.IsPrimaryButtonEnabled(false);
+  dialog_.Content(MakeRoyalWelcomePanel());
+
+  royalTimer_ = dialog_.DispatcherQueue().CreateTimer();
+  royalTimer_.Interval(std::chrono::milliseconds(2000));
+  royalTimer_.IsRepeating(false);
+  royalTimer_.Tick([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) {
+      if (self->royalTimer_) self->royalTimer_.Stop();
+      self->dialog_.Hide();
+    }
+  });
+  royalTimer_.Start();
 }
 
 // Arm the confirm. A ContentDialog cannot open a second ContentDialog, so the

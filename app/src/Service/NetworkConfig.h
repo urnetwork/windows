@@ -11,9 +11,13 @@
 #include <string>
 #include <vector>
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <ifdef.h>  // NET_LUID
+#endif
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#include <netioapi.h>  // MIB_IPINTERFACE_ROW
 
 namespace urnw {
 
@@ -46,6 +50,12 @@ class NetworkConfig {
   // Pure preflight used by Apply and the self-test. Remote providers currently
   // forward IPv4 only, so no IPv6 address or DNS transport may reach Wintun.
   static bool IsIpv4OnlyTunnelSettings(const TunnelNetworkSettings& settings);
+
+  // Prepare an AF_INET6 row returned by GetIpInterfaceEntry for the IPv4-only
+  // Wintun policy. The setter rejects LinkLocalAlwaysOff on this adapter, so the
+  // helper uses the supported unchanged sentinel and suppresses IPv6 routing;
+  // Apply removes the generated link-local address explicitly.
+  static void PrepareIpv4OnlyTunnelInterfaceRow(MIB_IPINTERFACE_ROW& row);
 
   // Remove the routes/addresses/DNS added by Apply(), restoring prior state.
   void Revert();

@@ -142,6 +142,9 @@ class SettingsPage {
   winrt::fire_and_forget ShowAuthCodeSheet();
   winrt::fire_and_forget ShowAddAuthSheet();
   winrt::fire_and_forget ShowReferralNetworkSheet();
+  // the gold king-frog refer panel (the ur.io referral panel): code, crowned
+  // status and a copy-the-invite action
+  winrt::fire_and_forget ShowReferSheet();
   winrt::fire_and_forget ShowIdentitySheet();
   winrt::fire_and_forget ShowDeleteAccountSheet();
 

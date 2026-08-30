@@ -2304,20 +2304,20 @@
     <comment>Call to action</comment>
   </data>
   <data name="refer_friends_perks" xml:space="preserve">
-    <value>आपको जीवनभर +{} GiB/महीना मिलेगा</value>
-    <comment>Call to action</comment>
+    <value>आपको जीवनभर +{} GiB/दिन मिलेगा</value>
+    <comment>Referral perk bullet on the introduction referral screen. The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="refer_friends_they_get_data" xml:space="preserve">
-    <value>आपके दोस्त को जीवनभर +{} GiB/महीना मिलेगा</value>
-    <comment>Call to action</comment>
+    <value>आपके दोस्त को जीवनभर +{} GiB/दिन मिलेगा</value>
+    <comment>Referral perk bullet on the introduction referral screen (the referred side). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral" xml:space="preserve">
     <value>रेफ़रल</value>
     <comment>Call to action</comment>
   </data>
   <data name="referral_bonus" xml:space="preserve">
-    <value>+{} GiB/महीना</value>
-    <comment>Call to action</comment>
+    <value>+{} GiB/दिन</value>
+    <comment>Referral earn rate shown next to the referral count (usage bar). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral_bonus_applied" xml:space="preserve">
     <value>रेफरल बोनस लागू किया गया</value>
@@ -2327,6 +2327,14 @@
     <value>रेफरल बोनस लागू किया गया</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="referral_celebration_detail.one" xml:space="preserve">
+    <value>आपके कोड से एक दोस्त अभी URnetwork से जुड़ा। आप दोनों को जीवनभर हर दिन +{1} GiB मुफ़्त डेटा मिलेगा।</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_celebration_detail.other" xml:space="preserve">
+    <value>आपके कोड से {0} दोस्त अभी URnetwork से जुड़े। हर दोस्त से आपको जीवनभर हर दिन +{1} GiB मुफ़्त डेटा मिलेगा।</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
   <data name="referral_code" xml:space="preserve">
     <value>रेफरल कोड</value>
     <comment>Call to action</comment>
@@ -2335,6 +2343,14 @@
     <value>यह कोड पहले ही उपयोग हो चुका है</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_crowned_congrats.one" xml:space="preserve">
+    <value>एक दोस्त जुड़ चुका है — आप जीवनभर +{1} GiB/दिन कमा रहे हैं।</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
+  <data name="referral_crowned_congrats.other" xml:space="preserve">
+    <value>{0} दोस्त जुड़ चुके हैं — आप जीवनभर +{1} GiB/दिन कमा रहे हैं।</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
   <data name="referral_network" xml:space="preserve">
     <value>रेफ़रल नेटवर्क</value>
     <comment>Call to action</comment>
@@ -2342,6 +2358,14 @@
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
+  </data>
+  <data name="referral_royal_welcome" xml:space="preserve">
+    <value>शाही स्वागत है!</value>
+    <comment>Celebration headline shown the moment a referral code is accepted (signup bonus sheet and the settings referral sheet). Royal king-frog theme, matches the ur.io referral panel.</comment>
+  </data>
+  <data name="referral_royal_welcome_detail" xml:space="preserve">
+    <value>रेफ़रल की पुष्टि हो गई — आपको और आपके दोस्त, दोनों को जीवनभर +{} GiB/दिन मुफ़्त डेटा मिलेगा।</value>
+    <comment>Detail line under the royal-welcome headline when a referral code is accepted. {data} is the daily bonus in GiB each side earns (pro.yml referral, currently 3).</comment>
   </data>
   <data name="referral_royalty" xml:space="preserve">
     <value>आप तो रेफ़रल के सुपरस्टार हैं!</value>
@@ -2354,6 +2378,14 @@
   <data name="referral_summary" xml:space="preserve">
     <value>कोड: {0} · रेफ़रल: {1} · दोस्त साइन अप करते समय कोड डालते हैं</value>
     <comment>One-line referral summary: the network's referral code, how many referrals it has, and how friends use it. The arguments are the referral code and the number of referrals.</comment>
+  </data>
+  <data name="referral_toast_joined.one" xml:space="preserve">
+    <value>आपके कोड से एक दोस्त जुड़ा! जीवनभर +{1} GiB/दिन।</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_toast_joined.other" xml:space="preserve">
+    <value>आपके कोड से {0} दोस्त जुड़े! हर एक से जीवनभर +{1} GiB/दिन।</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
   </data>
   <data name="referrals" xml:space="preserve">
     <value>रेफ़रल</value>

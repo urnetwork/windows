@@ -616,6 +616,7 @@ void LoginPage::EnterCreateStep(std::string const& userAuth, CreateMode mode) {
   // fresh create — the sdk/api shape, not a UI choice): hide the bonus row
   w_.BonusCodeBox().Visibility(guestUpgrade ? Visibility::Collapsed : Visibility::Visible);
   w_.BonusStatusText().Visibility(guestUpgrade ? Visibility::Collapsed : Visibility::Visible);
+  w_.BonusAppliedChip().Visibility(Visibility::Collapsed);
 
   w_.CreateNameBox().Text(L"");
   w_.CreatePasswordBox().Password(L"");
@@ -712,6 +713,8 @@ void LoginPage::OnBonusCodeChanged(IInspectable const&, TextChangedEventArgs con
   ++bonusCheckGeneration_;  // drop any validation still in flight
   bonusValid_ = false;
   bonusCapped_ = false;
+  w_.BonusAppliedChip().Visibility(Visibility::Collapsed);
+  w_.BonusStatusText().Visibility(Visibility::Visible);
   kit::ApplySupportingText(w_.BonusStatusText(), hstring(),
                            kit::ValidationState::NotChecked);
   if (bonusCheckTimer_) {
@@ -750,12 +753,22 @@ void LoginPage::ApplyBonusValidation(uint32_t generation, bool ok, bool valid,
   bonusCapped_ = ok && capped;
   auto const line = w_.BonusStatusText();
   if (!ok) {
+    w_.BonusAppliedChip().Visibility(Visibility::Collapsed);
+    line.Visibility(Visibility::Visible);
     kit::ApplySupportingText(line, Loc("something_went_wrong"), kit::ValidationState::Invalid);
   } else if (bonusValid_ && !bonusCapped_) {
-    kit::ApplySupportingText(line, Loc("referral_bonus_applied_2"), kit::ValidationState::Valid);
+    // referral royalty: the gold king-frog chip replaces the supporting line
+    // (the same moment android/apple celebrate with the royal welcome)
+    w_.BonusAppliedText().Text(Loc("referral_bonus_applied_2"));
+    w_.BonusAppliedChip().Visibility(Visibility::Visible);
+    line.Visibility(Visibility::Collapsed);
   } else if (bonusCapped_) {
+    w_.BonusAppliedChip().Visibility(Visibility::Collapsed);
+    line.Visibility(Visibility::Visible);
     kit::ApplySupportingText(line, Loc("referral_code_capped"), kit::ValidationState::Invalid);
   } else {
+    w_.BonusAppliedChip().Visibility(Visibility::Collapsed);
+    line.Visibility(Visibility::Visible);
     kit::ApplySupportingText(line, Loc("invalid_referral_code"), kit::ValidationState::Invalid);
   }
 }

@@ -2306,20 +2306,20 @@ le plus vaste, le plus sûr et le plus décentralisé au monde.</value>
     <comment>Call to action</comment>
   </data>
   <data name="refer_friends_perks" xml:space="preserve">
-    <value>Vous recevez +{} GiB/mois à vie</value>
-    <comment>Call to action</comment>
+    <value>Vous recevez +{} GiB/jour à vie</value>
+    <comment>Referral perk bullet on the introduction referral screen. The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="refer_friends_they_get_data" xml:space="preserve">
-    <value>Votre ami reçoit +{} GiB/mois à vie</value>
-    <comment>Call to action</comment>
+    <value>Votre ami reçoit +{} GiB/jour à vie</value>
+    <comment>Referral perk bullet on the introduction referral screen (the referred side). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral" xml:space="preserve">
     <value>Parrainage</value>
     <comment>Call to action</comment>
   </data>
   <data name="referral_bonus" xml:space="preserve">
-    <value>+{} GiB/mois</value>
-    <comment>Call to action</comment>
+    <value>+{} GiB/jour</value>
+    <comment>Referral earn rate shown next to the referral count (usage bar). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral_bonus_applied" xml:space="preserve">
     <value>Bonus de parrainage appliqué</value>
@@ -2329,6 +2329,14 @@ le plus vaste, le plus sûr et le plus décentralisé au monde.</value>
     <value>Bonus de parrainage appliqué</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="referral_celebration_detail.one" xml:space="preserve">
+    <value>Un ami vient de rejoindre URnetwork avec votre code. Vous gagnez tous les deux +{1} GiB de données gratuites par jour — à vie.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_celebration_detail.other" xml:space="preserve">
+    <value>{0} amis viennent de rejoindre URnetwork avec votre code. Chacun vous rapporte +{1} GiB de données gratuites par jour — à vie.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
   <data name="referral_code" xml:space="preserve">
     <value>Code de parrainage</value>
     <comment>Call to action</comment>
@@ -2337,6 +2345,14 @@ le plus vaste, le plus sûr et le plus décentralisé au monde.</value>
     <value>Ce code a déjà été utilisé</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_crowned_congrats.one" xml:space="preserve">
+    <value>Un ami a rejoint — vous gagnez +{1} GiB/jour, à vie.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
+  <data name="referral_crowned_congrats.other" xml:space="preserve">
+    <value>{0} amis ont rejoint — vous gagnez +{1} GiB/jour, à vie.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
   <data name="referral_network" xml:space="preserve">
     <value>Réseau de parrainage</value>
     <comment>Call to action</comment>
@@ -2344,6 +2360,14 @@ le plus vaste, le plus sûr et le plus décentralisé au monde.</value>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
+  </data>
+  <data name="referral_royal_welcome" xml:space="preserve">
+    <value>Un accueil royal !</value>
+    <comment>Celebration headline shown the moment a referral code is accepted (signup bonus sheet and the settings referral sheet). Royal king-frog theme, matches the ur.io referral panel.</comment>
+  </data>
+  <data name="referral_royal_welcome_detail" xml:space="preserve">
+    <value>Parrainage confirmé — vous et votre ami recevez chacun +{} GiB/jour de données gratuites, à vie.</value>
+    <comment>Detail line under the royal-welcome headline when a referral code is accepted. {data} is the daily bonus in GiB each side earns (pro.yml referral, currently 3).</comment>
   </data>
   <data name="referral_royalty" xml:space="preserve">
     <value>Vous êtes une star du parrainage !</value>
@@ -2356,6 +2380,14 @@ le plus vaste, le plus sûr et le plus décentralisé au monde.</value>
   <data name="referral_summary" xml:space="preserve">
     <value>Code : {0} · Parrainages : {1} · Vos amis saisissent le code lors de leur inscription</value>
     <comment>One-line referral summary: the network's referral code, how many referrals it has, and how friends use it. The arguments are the referral code and the number of referrals.</comment>
+  </data>
+  <data name="referral_toast_joined.one" xml:space="preserve">
+    <value>Un ami a rejoint avec votre code ! +{1} GiB/jour, à vie.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_toast_joined.other" xml:space="preserve">
+    <value>{0} amis ont rejoint avec votre code ! +{1} GiB/jour chacun, à vie.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
   </data>
   <data name="referrals" xml:space="preserve">
     <value>Parrainages</value>

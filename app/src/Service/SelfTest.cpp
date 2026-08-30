@@ -173,6 +173,25 @@ void TestNetPolicyTable() {
 void TestTunnelNetworkSettingsPolicy() {
   Section("NetworkConfig — IPv4-only tunnel interface policy");
 
+  MIB_IPINTERFACE_ROW row{};
+  row.SitePrefixLength = 64;
+  row.LinkLocalAddressBehavior = LinkLocalAlwaysOn;
+  row.RouterDiscoveryBehavior = RouterDiscoveryEnabled;
+  row.AdvertisingEnabled = TRUE;
+  row.AdvertiseDefaultRoute = TRUE;
+  row.DisableDefaultRoutes = FALSE;
+  NetworkConfig::PrepareIpv4OnlyTunnelInterfaceRow(row);
+  Check(row.SitePrefixLength == 64,
+        "the IPv6 interface row preserves its valid SitePrefixLength (the "
+        "zero-only setter rule is IPv4-specific)");
+  Check(row.LinkLocalAddressBehavior == LinkLocalUnchanged,
+        "the Wintun IPv6 row uses the supported link-local unchanged sentinel "
+        "instead of LinkLocalAlwaysOff, which Windows rejects with error 87");
+  Check(row.RouterDiscoveryBehavior == RouterDiscoveryDisabled &&
+            !row.AdvertisingEnabled && !row.AdvertiseDefaultRoute &&
+            row.DisableDefaultRoutes,
+        "the Wintun interface row disables IPv6 discovery and default routes");
+
   TunnelNetworkSettings settings;
   Check(settings.mtu == kTunnelMtu && settings.mtu == 1100,
         "the tunnel MTU preserves one-packet H3 DATAGRAM eligibility");
@@ -234,12 +253,11 @@ WfpConfig NoTunnelConfig(const WfpConfig& base) {
   return cfg;
 }
 
-// A DNS-sublayer PERMIT on remote port 53 that a query from ANOTHER PROCESS can
-// match — i.e. matched by remote ADDRESS, not by app id and not by the loopback
-// flag. This is the shape the service's own name resolution needs, because that
-// resolution is performed by the DNS Client service inside svchost.exe and not
-// by urnetworkd.exe. See WfpPolicy.cpp filters 9 and 9b.
-bool IsServiceDnsPath(const WfpFilterSpec& f) {
+// A DNS-sublayer permit on remote port 53 that Windows' shared resolver can
+// match: remote-address scoped, not app-id scoped and not merely loopback. The
+// bound SDK uses the exact-image in-process path; this is the compatibility and
+// ordinary system-resolver path. See WfpPolicy.cpp filters 9b and 10.
+bool IsSharedDnsPath(const WfpFilterSpec& f) {
   if (f.block || f.sublayer != WfpSublayer::Dns) return false;
   bool port53 = false, byAddress = false;
   for (const auto& c : f.conditions) {
@@ -252,22 +270,19 @@ bool IsServiceDnsPath(const WfpFilterSpec& f) {
   return port53 && byAddress;
 }
 
-bool HasServiceDnsPath(const Specs& s) {
+bool HasSharedDnsPath(const Specs& s) {
   for (const auto& f : s)
-    if (IsServiceDnsPath(f)) return true;
+    if (IsSharedDnsPath(f)) return true;
   return false;
 }
 
 bool HasName(const Specs& s, const std::string& name);
 
-// Can a name be resolved at all in this state, by EITHER route the policy has:
-// a permit our own resolution can actually match, or the port-53 hard block
-// having stood down (which permits plaintext DNS to any server via filter 7's
-// lift). This is the predicate the reachability guard below is written in: a
-// state a connection attempt runs in must be resolvable one way or the other,
-// and Armed must be resolvable NEITHER way.
-bool CanResolve(const Specs& s) {
-  return HasServiceDnsPath(s) || !HasName(s, "urnetwork-block-dns-v4");
+// Whether Windows' shared resolver can resolve: either an address-scoped path
+// exists, or the port-53 hard block stood down. Exact-image SDK queries are a
+// separate path and intentionally do not make this predicate true.
+bool CanUseSharedResolver(const Specs& s) {
+  return HasSharedDnsPath(s) || !HasName(s, "urnetwork-block-dns-v4");
 }
 
 // The multiset of filter names, so two policies can be compared as sets without
@@ -357,6 +372,27 @@ void TestFilterSet() {
           std::format("{}: permits the LAN", label));
   }
 
+  {
+    const WfpFilterSpec* serviceDns =
+        Find(connected, "urnetwork-permit-service-dns-v4");
+    bool appId = false, udp = false, tcp = false, port53 = false;
+    if (serviceDns) {
+      for (const auto& c : serviceDns->conditions) {
+        if (c.field == WfpField::AppId &&
+            c.app_path == cfg.service_image_path)
+          appId = true;
+        if (c.field == WfpField::Protocol && c.number == 17) udp = true;
+        if (c.field == WfpField::Protocol && c.number == 6) tcp = true;
+        if (c.field == WfpField::RemotePort && c.number == 53) port53 = true;
+      }
+    }
+    Check(serviceDns != nullptr && !serviceDns->block &&
+              serviceDns->sublayer == WfpSublayer::Dns && appId && udp && tcp &&
+              port53 && serviceDns->conditions.size() == 4,
+          "the service's DNS exemption is exact-image UDP/TCP port 53 — it "
+          "cannot override the LLMNR, mDNS or NetBIOS blocks beside it");
+  }
+
   Check(HasName(armed, "urnetwork-block-all-v6-out") &&
             HasName(armed, "urnetwork-block-all-v6-in") &&
             HasName(connecting, "urnetwork-block-all-v6-out") &&
@@ -403,12 +439,16 @@ void TestFilterSet() {
         "Connected permits URnetwork.exe at all four ALE layers — the app's own "
         "sdk instance can reach the platform off-tunnel while connected");
   Check(!HasName(armed, "urnetwork-permit-app-v4") &&
-            !HasName(armed, "urnetwork-permit-app-v6"),
+            !HasName(armed, "urnetwork-permit-app-v6") &&
+            !HasName(armed, "urnetwork-permit-app-dns-v4") &&
+            !HasName(armed, "urnetwork-permit-app-dns-v6"),
         "ARMED DOES NOT PERMIT THE APP, even with app_image_path set. The armed "
         "state permits urnetworkd and nothing else, so a kill switch cannot put "
         "user traffic on the physical NIC in the clear");
   Check(!HasName(connecting, "urnetwork-permit-app-v4") &&
-            !HasName(connecting, "urnetwork-permit-app-v6"),
+            !HasName(connecting, "urnetwork-permit-app-v6") &&
+            !HasName(connecting, "urnetwork-permit-app-dns-v4") &&
+            !HasName(connecting, "urnetwork-permit-app-dns-v6"),
         "Connecting does not permit the app either — it is Armed plus filter 9b "
         "and nothing else, which is what keeps the Armed -> Connecting "
         "transition one-directional");
@@ -423,7 +463,9 @@ void TestFilterSet() {
       const Specs set = BuildFilterSet(
           s, s == WfpState::Connected ? noApp : NoTunnelConfig(noApp));
       if (HasName(set, "urnetwork-permit-app-v4") ||
-          HasName(set, "urnetwork-permit-app-v6"))
+          HasName(set, "urnetwork-permit-app-v6") ||
+          HasName(set, "urnetwork-permit-app-dns-v4") ||
+          HasName(set, "urnetwork-permit-app-dns-v6"))
         none = false;
     }
     Check(none,
@@ -432,22 +474,37 @@ void TestFilterSet() {
           "before this filter existed");
   }
   {
-    // It must be an APP-ID permit and nothing else. A permit that quietly grew
-    // an address or interface condition would be a different filter wearing the
-    // same name, and the disclosure logic keys off structure.
+    // The baseline permit is app-id-only. Its DNS counterpart must repeat that
+    // same identity in the DNS sublayer and narrow it to UDP/TCP port 53. This
+    // is the live failure boundary: the egress-bound resolver opens the query
+    // in URnetwork.exe, and a baseline permit cannot overrule a different
+    // sublayer's block.
     const WfpFilterSpec* app = Find(connected, "urnetwork-permit-app-v4");
     Check(app != nullptr && app->conditions.size() == 1 &&
               app->conditions[0].field == WfpField::AppId &&
               app->sublayer == WfpSublayer::Baseline && !app->block,
           "the app permit is a single ALE_APP_ID condition in the BASELINE "
-          "sublayer — not an address permit, and not in the DNS sublayer (the "
-          "app resolves through svchost, so an app-id DNS permit would match "
-          "nothing)");
-    Check(!HasName(connected, "urnetwork-permit-app-dns-v4") &&
-              !HasName(connected, "urnetwork-permit-app-dns-v6"),
-          "no app permit is repeated in the DNS sublayer — the app's name "
-          "resolution still goes to the tunnel's resolvers over the tun, and "
-          "this policy does not pretend otherwise");
+          "sublayer — not an address or interface permit");
+    const WfpFilterSpec* appDns =
+        Find(connected, "urnetwork-permit-app-dns-v4");
+    bool appId = false, udp = false, tcp = false, port53 = false;
+    if (appDns) {
+      for (const auto& c : appDns->conditions) {
+        if (c.field == WfpField::AppId && c.app_path == cfg.app_image_path)
+          appId = true;
+        if (c.field == WfpField::Protocol && c.number == 17) udp = true;
+        if (c.field == WfpField::Protocol && c.number == 6) tcp = true;
+        if (c.field == WfpField::RemotePort && c.number == 53) port53 = true;
+      }
+    }
+    Check(appDns != nullptr && !appDns->block &&
+              appDns->sublayer == WfpSublayer::Dns && appId && udp && tcp &&
+              port53 && appDns->conditions.size() == 4 &&
+              CountName(connected, "urnetwork-permit-app-dns-v4") == 1 &&
+              CountName(connected, "urnetwork-permit-app-dns-v6") == 1,
+          "Connected repeats the exact URnetwork.exe identity at both DNS "
+          "layers, narrowed to UDP/TCP port 53 — a cold in-process egress "
+          "lookup cannot be defeated by the DNS block");
   }
 
   // --- CONNECTING IS EXACTLY ARMED PLUS ONE FILTER -------------------------
@@ -766,16 +823,13 @@ void TestFilterSet() {
 // down). The transition is TunnelController's responsibility; that it exists at
 // all is asserted by the reachability guard at the end of this section.
 //
-// The trap these assertions exist to catch: the DNS-sublayer permit for our own
-// service is scoped on the app id of urnetworkd.exe, and OUR NAME RESOLUTION
-// DOES NOT COME OUT OF urnetworkd.exe. The SDK is Go; Go on Windows resolves
-// through the OS resolver (net/conf.go returns the fallback order
-// unconditionally for GOOS=windows, i.e. net/lookup_windows.go's GetAddrInfoW),
-// which is an RPC into the DNS Client service — so the wire query is issued by
-// svchost.exe. An app-id permit for urnetworkd never matches it. That is
-// already documented one filter further down, where it was used to scope the
-// tunnel-resolver permit on address rather than identity; it was not applied to
-// the service's own permit.
+// The bound connect resolver now issues SDK queries in-process, so exact-image
+// permits for urnetworkd.exe and URnetwork.exe are real paths. They are not,
+// however, paths for Dnscache or another process using Windows' shared resolver.
+// The address-scoped Connecting fallback remains the recovery path for a system
+// lookup made before the bind is active, and the tunnel-resolver permit remains
+// the shared path while Connected. These assertions keep those two guarantees
+// separate instead of allowing one exact-image permit to masquerade as both.
 
 void TestServiceDnsPath() {
   Section("every state a connection attempt runs in can resolve — and ARMED "
@@ -801,9 +855,9 @@ void TestServiceDnsPath() {
 
   // --- ARMED: no permit, block present -------------------------------------
   // The product decision, asserted as policy rather than described in prose.
-  Check(!HasServiceDnsPath(armed),
-        "ARMED has NO DNS path — no port-53 permit that a query from another "
-        "process could match",
+  Check(!HasSharedDnsPath(armed),
+        "ARMED has no shared DNS path — no port-53 permit that Dnscache or "
+        "another process could match",
         "the permit is address-scoped and therefore machine-wide; keeping it "
         "while idle lets every process on the box resolve in plaintext for as "
         "long as the kill switch is on");
@@ -814,33 +868,35 @@ void TestServiceDnsPath() {
         "ARMED carries the port-53 hard block at BOTH ALE connect layers, "
         "unconditionally — armed-with-a-block-and-no-path is the design, not "
         "the unrecoverable state");
-  Check(!CanResolve(armed),
-        "nothing resolves while ARMED, by either route: no matchable permit AND "
-        "no stood-down block. That IS the kill switch");
+  Check(!CanUseSharedResolver(armed),
+        "the shared Windows resolver cannot resolve while ARMED: there is no "
+        "address-scoped path and the hard block remains. The exact-image "
+        "service control path is intentionally separate");
 
   // --- CONNECTING and CONNECTED: a path, always ----------------------------
-  Check(HasServiceDnsPath(connecting),
-        "CONNECTING has at least one DNS path the service can actually use (a "
-        "port-53 permit matched by ADDRESS, not by app id)",
-        "without this a connect attempt cannot resolve, so an armed machine can "
-        "never come back and cannot be recovered from inside the product");
-  Check(HasServiceDnsPath(connected),
-        "CONNECTED has at least one DNS path the service can actually use");
+  Check(HasSharedDnsPath(connecting),
+        "CONNECTING has a compatibility path the shared Windows resolver can "
+        "use (a port-53 permit matched by address, not by app id)",
+        "without it a fallback lookup before the SDK bind can make an armed "
+        "machine unable to complete its connection attempt");
+  Check(HasSharedDnsPath(connected),
+        "CONNECTED has a tunnel-scoped path the shared resolver can use");
 
   // The app-id permit must NOT be mistaken for that path. If this ever passes,
   // the whole section above has stopped meaning anything.
   const WfpFilterSpec* appIdPermit =
       Find(connecting, "urnetwork-permit-service-dns-v4");
-  Check(appIdPermit && !IsServiceDnsPath(*appIdPermit),
-        "the app-id DNS permit is NOT counted as a service DNS path — the "
-        "query is issued by svchost.exe (GetAddrInfoW), so it never matches");
+  Check(appIdPermit && !IsSharedDnsPath(*appIdPermit),
+        "the service app-id DNS permit is not counted as a shared DNS path — "
+        "it carries in-process SDK queries but cannot carry Dnscache or another "
+        "process");
 
   // Same for the loopback permit: it gets the query to a local stub, but the
   // stub's own upstream is a separate port-53 socket the block still catches.
   const WfpFilterSpec* loopbackPermit =
       Find(connecting, "urnetwork-permit-dns-loopback-v4");
-  Check(loopbackPermit && !IsServiceDnsPath(*loopbackPermit),
-        "the loopback DNS permit is NOT counted as a service DNS path — it "
+  Check(loopbackPermit && !IsSharedDnsPath(*loopbackPermit),
+        "the loopback DNS permit is not counted as a shared DNS path — it "
         "reaches a local stub whose own upstream is still blocked");
 
   // --- THE INVARIANT, over a matrix of configs -----------------------------
@@ -888,7 +944,7 @@ void TestServiceDnsPath() {
       const Specs set = BuildFilterSet(s, c.cfg);
       const bool blocks = HasName(set, "urnetwork-block-dns-v4") ||
                           HasName(set, "urnetwork-block-dns-v6");
-      if (blocks && !HasServiceDnsPath(set)) {
+      if (blocks && !HasSharedDnsPath(set)) {
         invariant = false;
         broke = std::format("{} / {}", c.label, ToString(s));
       }
@@ -896,8 +952,8 @@ void TestServiceDnsPath() {
   }
   Check(invariant,
         "NO state a connection is attempted from hard-blocks port 53 without a "
-        "DNS path the service can use — the unrecoverable state is unreachable "
-        "by construction",
+        "shared DNS path — the compatibility lookup cannot be stranded by "
+        "construction",
         broke);
 
   // DIRECTION 2 — path => block, in the connecting states. Standing down is the
@@ -908,7 +964,7 @@ void TestServiceDnsPath() {
     for (WfpState s : {WfpState::Armed, WfpState::Connecting, WfpState::Connected}) {
       if (!AttemptsConnection(s)) continue;
       const Specs set = BuildFilterSet(s, c.cfg);
-      if (HasServiceDnsPath(set) && !HasName(set, "urnetwork-block-dns-v4")) {
+      if (HasSharedDnsPath(set) && !HasName(set, "urnetwork-block-dns-v4")) {
         blocksWhenItCan = false;
         slack = std::format("{} / {}", c.label, ToString(s));
       }
@@ -929,7 +985,8 @@ void TestServiceDnsPath() {
   for (const auto& c : cases) {
     const Specs set = BuildFilterSet(WfpState::Armed, c.cfg);
     if (!HasName(set, "urnetwork-block-dns-v4") ||
-        !HasName(set, "urnetwork-block-dns-v6") || CanResolve(set)) {
+        !HasName(set, "urnetwork-block-dns-v6") ||
+        CanUseSharedResolver(set)) {
       armedAlwaysBlocks = false;
       armedSlack = c.label;
     }
@@ -943,25 +1000,24 @@ void TestServiceDnsPath() {
   // THE REACHABILITY GUARD — the split cannot silently produce an
   // unreconnectable machine.
   //
-  // Armed is a dead end by design: nothing resolves there (direction 3). That is
-  // only safe because a connect attempt does not run in Armed — it runs in
-  // Connecting, which TunnelController enters BEFORE step 3/8, where the first
-  // name is resolved. So the guard is: for every config shape, the state
-  // reachable from Armed by starting a connection can resolve, by one route or
-  // the other. If this ever fails, arming has become a one-way door again and no
-  // amount of retrying gets out of it.
+  // Armed deliberately has no shared resolver path. That is safe because a
+  // connection attempt first enters Connecting, where any Windows/system lookup
+  // made before the in-process SDK bind is active has a compatibility path (or
+  // the hard block stands down). If this fails, that fallback can make arming a
+  // one-way door even though exact-image SDK resolution itself still works.
   bool reachable = true;
   std::string dead;
   for (const auto& c : cases) {
-    if (!CanResolve(BuildFilterSet(WfpState::Connecting, c.cfg))) {
+    if (!CanUseSharedResolver(BuildFilterSet(WfpState::Connecting, c.cfg))) {
       reachable = false;
       dead = c.label;
     }
   }
   Check(reachable,
         "from ARMED, the state a connection attempt enters (CONNECTING) can "
-        "always resolve — by a matchable permit, or by the block standing down. "
-        "Arming is never a one-way door",
+        "always use the shared resolver — by an address-scoped permit, or by "
+        "the block standing down. A fallback lookup cannot make arming a "
+        "one-way door",
         dead);
 
   // What standing down actually opens, asserted rather than asserted-in-prose:

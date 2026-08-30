@@ -2395,20 +2395,20 @@
     <comment>Call to action</comment>
   </data>
   <data name="refer_friends_perks" xml:space="preserve">
-    <value>Вы получаете +{} GiB/месяц навсегда</value>
-    <comment>Call to action</comment>
+    <value>Вы получаете +{} GiB/день навсегда</value>
+    <comment>Referral perk bullet on the introduction referral screen. The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="refer_friends_they_get_data" xml:space="preserve">
-    <value>Ваш друг получает +{} GiB/месяц навсегда</value>
-    <comment>Call to action</comment>
+    <value>Ваш друг получает +{} GiB/день навсегда</value>
+    <comment>Referral perk bullet on the introduction referral screen (the referred side). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral" xml:space="preserve">
     <value>Реферал</value>
     <comment>Call to action</comment>
   </data>
   <data name="referral_bonus" xml:space="preserve">
-    <value>+{} GiB/месяц</value>
-    <comment>Call to action</comment>
+    <value>+{} GiB/день</value>
+    <comment>Referral earn rate shown next to the referral count (usage bar). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral_bonus_applied" xml:space="preserve">
     <value>Реферальный бонус применен</value>
@@ -2418,6 +2418,22 @@
     <value>Применен реферальный бонус</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="referral_celebration_detail.one" xml:space="preserve">
+    <value>Друг только что присоединился к URnetwork по вашему коду. Вы оба получаете +{1} GiB бесплатных данных в день — навсегда.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_celebration_detail.few" xml:space="preserve">
+    <value>{0} друга только что присоединились к URnetwork по вашему коду. Каждый приносит вам +{1} GiB бесплатных данных в день — навсегда.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_celebration_detail.many" xml:space="preserve">
+    <value>{0} друзей только что присоединились к URnetwork по вашему коду. Каждый приносит вам +{1} GiB бесплатных данных в день — навсегда.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_celebration_detail.other" xml:space="preserve">
+    <value>{0} друзей только что присоединились к URnetwork по вашему коду. Каждый приносит вам +{1} GiB бесплатных данных в день — навсегда.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
   <data name="referral_code" xml:space="preserve">
     <value>Реферальный код</value>
     <comment>Call to action</comment>
@@ -2426,6 +2442,22 @@
     <value>Этот код уже был использован</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_crowned_congrats.one" xml:space="preserve">
+    <value>Присоединился друг — вы получаете +{1} GiB в день, навсегда.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
+  <data name="referral_crowned_congrats.few" xml:space="preserve">
+    <value>Присоединились {0} друга — вы получаете +{1} GiB в день, навсегда.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
+  <data name="referral_crowned_congrats.many" xml:space="preserve">
+    <value>Присоединились {0} друзей — вы получаете +{1} GiB в день, навсегда.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
+  <data name="referral_crowned_congrats.other" xml:space="preserve">
+    <value>Присоединились {0} друзей — вы получаете +{1} GiB в день, навсегда.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
   <data name="referral_network" xml:space="preserve">
     <value>Реферальная сеть</value>
     <comment>Call to action</comment>
@@ -2433,6 +2465,14 @@
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
+  </data>
+  <data name="referral_royal_welcome" xml:space="preserve">
+    <value>Королевский приём!</value>
+    <comment>Celebration headline shown the moment a referral code is accepted (signup bonus sheet and the settings referral sheet). Royal king-frog theme, matches the ur.io referral panel.</comment>
+  </data>
+  <data name="referral_royal_welcome_detail" xml:space="preserve">
+    <value>Реферал подтверждён — вы и ваш друг получаете по +{} GiB бесплатных данных в день, навсегда.</value>
+    <comment>Detail line under the royal-welcome headline when a referral code is accepted. {data} is the daily bonus in GiB each side earns (pro.yml referral, currently 3).</comment>
   </data>
   <data name="referral_royalty" xml:space="preserve">
     <value>Вы — звезда рефералов!</value>
@@ -2445,6 +2485,22 @@
   <data name="referral_summary" xml:space="preserve">
     <value>Код: {0} · Рефералы: {1} · Друзья вводят код при регистрации</value>
     <comment>One-line referral summary: the network's referral code, how many referrals it has, and how friends use it. The arguments are the referral code and the number of referrals.</comment>
+  </data>
+  <data name="referral_toast_joined.one" xml:space="preserve">
+    <value>Друг присоединился по вашему коду! +{1} GiB в день, навсегда.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_toast_joined.few" xml:space="preserve">
+    <value>{0} друга присоединились по вашему коду! По +{1} GiB в день за каждого, навсегда.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_toast_joined.many" xml:space="preserve">
+    <value>{0} друзей присоединились по вашему коду! По +{1} GiB в день за каждого, навсегда.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_toast_joined.other" xml:space="preserve">
+    <value>{0} друзей присоединились по вашему коду! По +{1} GiB в день за каждого, навсегда.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
   </data>
   <data name="referrals" xml:space="preserve">
     <value>Рефералы</value>

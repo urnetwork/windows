@@ -2263,20 +2263,20 @@
     <comment>Call to action</comment>
   </data>
   <data name="refer_friends_perks" xml:space="preserve">
-    <value>你获得 +{} GiB/月，终身享有</value>
-    <comment>Call to action</comment>
+    <value>你获得 +{} GiB/天，终身享有</value>
+    <comment>Referral perk bullet on the introduction referral screen. The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="refer_friends_they_get_data" xml:space="preserve">
-    <value>你的朋友获得 +{} GiB/月，终身享有</value>
-    <comment>Call to action</comment>
+    <value>你的朋友获得 +{} GiB/天，终身享有</value>
+    <comment>Referral perk bullet on the introduction referral screen (the referred side). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral" xml:space="preserve">
     <value>推荐</value>
     <comment>Call to action</comment>
   </data>
   <data name="referral_bonus" xml:space="preserve">
-    <value>+{} GiB/月</value>
-    <comment>Call to action</comment>
+    <value>+{} GiB/天</value>
+    <comment>Referral earn rate shown next to the referral count (usage bar). The referral grant is per day (pro.yml referral.period: 24h).</comment>
   </data>
   <data name="referral_bonus_applied" xml:space="preserve">
     <value>已应用推荐奖励</value>
@@ -2286,6 +2286,10 @@
     <value>已应用推荐奖金</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="referral_celebration_detail.other" xml:space="preserve">
+    <value>{0} 位好友刚刚通过你的推荐码加入 URnetwork。每位好友都让你终身每天多获得 +{1} GiB 免费流量。</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
   <data name="referral_code" xml:space="preserve">
     <value>推荐码</value>
     <comment>Call to action</comment>
@@ -2294,6 +2298,10 @@
     <value>此代码已被用完</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_crowned_congrats.other" xml:space="preserve">
+    <value>已有 {0} 位好友加入——你正终身每天多获得 +{1} GiB。</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
   <data name="referral_network" xml:space="preserve">
     <value>推荐网络</value>
     <comment>Call to action</comment>
@@ -2301,6 +2309,14 @@
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
+  </data>
+  <data name="referral_royal_welcome" xml:space="preserve">
+    <value>王者般的欢迎！</value>
+    <comment>Celebration headline shown the moment a referral code is accepted (signup bonus sheet and the settings referral sheet). Royal king-frog theme, matches the ur.io referral panel.</comment>
+  </data>
+  <data name="referral_royal_welcome_detail" xml:space="preserve">
+    <value>推荐已确认——你和好友每人每天获得 +{} GiB 免费流量，终身有效。</value>
+    <comment>Detail line under the royal-welcome headline when a referral code is accepted. {data} is the daily bonus in GiB each side earns (pro.yml referral, currently 3).</comment>
   </data>
   <data name="referral_royalty" xml:space="preserve">
     <value>你是推荐王者！</value>
@@ -2313,6 +2329,10 @@
   <data name="referral_summary" xml:space="preserve">
     <value>推荐码：{0} · 推荐人数：{1} · 好友注册时输入该码</value>
     <comment>One-line referral summary: the network's referral code, how many referrals it has, and how friends use it. The arguments are the referral code and the number of referrals.</comment>
+  </data>
+  <data name="referral_toast_joined.other" xml:space="preserve">
+    <value>{0} 位好友通过你的推荐码加入了！每位 +{1} GiB/天，终身有效。</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
   </data>
   <data name="referrals" xml:space="preserve">
     <value>推荐</value>

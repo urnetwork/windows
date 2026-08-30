@@ -49,12 +49,23 @@ inline constexpr winrt::Windows::UI::Color kToggleAccent{255, 0x63, 0x8B, 0xFC};
 
 // ---- entitlement ----
 // Pro gold. Android reserves this for the Pro entitlement across the whole
-// product -- the profile ring, the network-name button on ur.io, the referral
-// panel -- and for NOTHING else, so that gold reads as "this account is Pro"
-// rather than as decoration. Do not reuse it for warnings, highlights or chrome;
-// kAccent / kUrAmber cover those.
+// product -- the profile ring, the network-name button on ur.io -- and for
+// NOTHING else, so that gold reads as "this account is Pro" rather than as
+// decoration. Do not reuse it for warnings, highlights or chrome; kAccent /
+// kUrAmber cover those.
 inline constexpr winrt::Windows::UI::Color kProGold{255, 0xFF, 0xC4, 0x00};
 inline constexpr winrt::Windows::UI::Color kProGoldLight{255, 0xFF, 0xE0, 0x82};
+
+// ---- referral royalty ----
+// Referral gold. The ur.io referral-panel palette (#F5B93C family), used only
+// for the referral king-frog moments -- deliberately a warmer gold than
+// kProGold so the Pro ring keeps its meaning while referral royalty gets its
+// own. (Also distinct from kUrAmber #F5C242, which is a status color.)
+inline constexpr winrt::Windows::UI::Color kReferralGold{255, 0xF5, 0xB9, 0x3C};
+inline constexpr winrt::Windows::UI::Color kReferralGoldLight{255, 0xFF, 0xD7, 0x6A};
+inline constexpr winrt::Windows::UI::Color kReferralGoldPale{255, 0xFF, 0xE3, 0x8A};
+// text on gold surfaces (the site's ink)
+inline constexpr winrt::Windows::UI::Color kReferralGoldInk{255, 0x24, 0x1A, 0x05};
 
 // ---- connect status ----
 // The dot beside the connect status line, from android's
@@ -125,6 +136,15 @@ inline winrt::Microsoft::UI::Xaml::Media::SolidColorBrush SheetBrush() {
 }
 inline winrt::Microsoft::UI::Xaml::Media::SolidColorBrush ProGoldBrush() {
   return MakeBrush(kProGold);
+}
+inline winrt::Microsoft::UI::Xaml::Media::SolidColorBrush ReferralGoldBrush() {
+  return MakeBrush(kReferralGold);
+}
+inline winrt::Microsoft::UI::Xaml::Media::SolidColorBrush ReferralGoldLightBrush() {
+  return MakeBrush(kReferralGoldLight);
+}
+inline winrt::Microsoft::UI::Xaml::Media::SolidColorBrush ReferralGoldInkBrush() {
+  return MakeBrush(kReferralGoldInk);
 }
 inline winrt::Microsoft::UI::Xaml::Media::SolidColorBrush AccentBrush() {
   return MakeBrush(kAccent);

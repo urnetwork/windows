@@ -7,6 +7,7 @@
 #include <chrono>
 
 #include "Log.h"
+#include "Paths.h"
 
 namespace urnw {
 namespace {
@@ -36,6 +37,7 @@ constexpr int64_t kConfirmBudgetMillis = 120 * 1000;
 SubscriptionBalanceStore::~SubscriptionBalanceStore() {
   if (backgroundTimer_) backgroundTimer_.Stop();
   if (confirmTimer_) confirmTimer_.Stop();
+  if (referralTimer_) referralTimer_.Stop();
 }
 
 void SubscriptionBalanceStore::Initialize(
@@ -46,6 +48,12 @@ void SubscriptionBalanceStore::Initialize(
   backgroundTimer_.Interval(kBackgroundInterval);
   backgroundTimer_.Tick([this](auto const&, auto const&) {
     Fetch();
+  });
+
+  referralTimer_ = queue_.CreateTimer();
+  referralTimer_.Interval(kBackgroundInterval);
+  referralTimer_.Tick([this](auto const&, auto const&) {
+    FetchReferral();
   });
 
   confirmTimer_ = queue_.CreateTimer();
@@ -82,8 +90,12 @@ void SubscriptionBalanceStore::Start() {
   }
   Publish();
 
-  if (visible_) Fetch();
+  if (visible_) {
+    Fetch();
+    FetchReferral();
+  }
   EnsureBackgroundPolling();
+  EnsureReferralPolling();
 }
 
 void SubscriptionBalanceStore::Stop() {
@@ -92,6 +104,10 @@ void SubscriptionBalanceStore::Stop() {
   loading_ = false;
   StopConfirmation(/*timedOut=*/false);
   StopBackground();
+  StopReferralPolling();
+  referralCode_.reset();
+  totalReferrals_ = 0;
+  referralLoading_ = false;
   timedOut_ = false;
   snapshot_ = {};
   jwtPro_ = false;
@@ -105,10 +121,13 @@ void SubscriptionBalanceStore::SetVisible(bool visible) {
   visible_ = visible;
   if (!visible_) {
     StopBackground();
+    StopReferralPolling();
     PauseConfirmationPolling();
     return;
   }
   if (!started_) return;
+  FetchReferral();
+  EnsureReferralPolling();
   if (confirming_) {
     ResumeConfirmationPolling();
     return;
@@ -248,6 +267,75 @@ void SubscriptionBalanceStore::StopConfirmation(bool timedOut) {
   if (confirmTimer_) confirmTimer_.Stop();
   confirming_ = false;
   if (timedOut) timedOut_ = true;
+}
+
+// ---- referrals (the king-frog gold celebrations) ----------------------------
+
+void SubscriptionBalanceStore::FetchReferral() {
+  // IsLoggedIn(), same reasoning as Fetch(): this sits behind a background
+  // poller and getNetworkReferralCode is authenticated.
+  if (referralLoading_ || !sdk_.IsLoggedIn()) return;
+  referralLoading_ = true;
+  const uint32_t generation = generation_;
+  auto queue = queue_;
+  sdk_.api().getNetworkReferralCode(
+      [this, queue, generation](
+          std::optional<urnet::GetNetworkReferralCodeResult> result,
+          std::optional<std::string> err) {
+        // sdk callback thread: only marshal (the store lives for the process,
+        // owned by AppController)
+        queue.TryEnqueue([this, generation, result = std::move(result),
+                          err = std::move(err)] {
+          if (generation != generation_) return;  // logout superseded this fetch
+          referralLoading_ = false;
+          if (err || !result || result->error) {
+            if (err) LogWarn("referral: fetch failed: {}", *err);
+            return;  // keep the last reading; the poll retries
+          }
+          referralCode_ = result->referral_code;
+          totalReferrals_ = result->total_referrals;
+          if (result->referral_code) {
+            MaybeCelebrateReferrals(*result->referral_code, result->total_referrals);
+          }
+        });
+      });
+}
+
+// The celebration baseline is the count the last celebration (or the first
+// observation) left behind, persisted per network in the app prefs so an
+// increment observed on this machine celebrates exactly once.
+void SubscriptionBalanceStore::MaybeCelebrateReferrals(std::string const& code,
+                                                       int64_t count) {
+  auto jwt = sdk_.ParsedJwt();
+  if (!jwt || !jwt->NetworkId) return;
+  const std::string key = "referral_celebrated_count_" + *jwt->NetworkId;
+
+  nlohmann::json prefs = LoadAppPrefs();
+  if (!prefs.contains(key)) {
+    // first observation for this network on this machine: baseline only --
+    // pre-existing referrals are old news, not a surprise
+    SaveAppPref(key.c_str(), count);
+    return;
+  }
+
+  const int64_t previous = prefs.value(key, int64_t{0});
+  if (count > previous) {
+    ReferralCelebration celebration{count - previous, previous == 0};
+    SaveAppPref(key.c_str(), count);
+    if (onReferralCelebration_) onReferralCelebration_(celebration);
+  } else if (count < previous) {
+    // referrals can be unlinked; re-baseline quietly
+    SaveAppPref(key.c_str(), count);
+  }
+}
+
+void SubscriptionBalanceStore::EnsureReferralPolling() {
+  if (!referralTimer_ || !started_ || !visible_) return;
+  if (!referralTimer_.IsRunning()) referralTimer_.Start();
+}
+
+void SubscriptionBalanceStore::StopReferralPolling() {
+  if (referralTimer_) referralTimer_.Stop();
 }
 
 void SubscriptionBalanceStore::Publish() {

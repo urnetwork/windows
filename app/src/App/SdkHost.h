@@ -488,8 +488,11 @@ class SdkHost {
   // Guest mode (macOS GuestModeSheet / linux LoginAsGuest parity): one tap
   // creates a throwaway network — networkCreate{guest_mode, terms}, no user
   // auth — then registers this device like any other sign-in. Upgradeable to a
-  // full account later (UpgradeGuest).
-  void LoginAsGuest(std::function<void(AuthResult)> done);
+  // full account later (UpgradeGuest). Guests can be referred too: a validated
+  // referral code rides along on the create (the server links the referral on
+  // any create path).
+  void LoginAsGuest(std::function<void(AuthResult)> done,
+                    std::optional<std::string> referralCode = std::nullopt);
 
   // Account discovery: authLogin{user_auth} routes an email/phone to the
   // password, create or verify step (macOS LoginInitialViewModel parity).
@@ -1684,11 +1687,10 @@ class SdkHost {
   // outright. The other half is the Connected-only app-id permit the service
   // installs (WfpConfig::app_image_path). Do not land one without the other.
   //
-  // WHAT IT DOES NOT FIX, stated so nobody assumes otherwise: name resolution.
-  // Go on Windows resolves through GetAddrInfoW, so the query leaves svchost.exe
-  // and goes to whatever resolver the stack picks — which, while connected, is
-  // the tunnel's, over the tun. A cold cache plus a tunnel with no working exit
-  // still cannot resolve. This moves the SOCKETS, not the resolver.
+  // Name resolution uses connect's Windows in-process resolver while this bind
+  // is active. Its query socket is therefore also owned by URnetwork.exe and
+  // pinned to this interface; the service's Connected policy repeats the exact
+  // app-id exemption at UDP/TCP port 53 in the DNS sublayer for that reason.
   //
   // Idempotent and change-gated; safe from the pipe reader thread.
   void ApplySdkEgressBind(int64_t index4, int64_t index6, const char* why);

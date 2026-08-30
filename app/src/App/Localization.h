@@ -37,4 +37,19 @@ std::wstring Format(std::string_view key, const Args&... args) {
 //   Plural("host_count", 4)  ->  L"4 hosts"
 std::wstring Plural(std::string_view key, int64_t count);
 
+// The plural form of `key` for `count`, selected with the CLDR rule for the
+// current language, returned unformatted -- for plural keys that carry extra
+// placeholders beyond the count.
+std::wstring PluralRaw(std::string_view key, int64_t count);
+
+// Plural() for keys with extra placeholders: {0} is the count, {1}... the rest.
+// (A category may use any subset of the placeholders -- "one" forms often spell
+// the count out -- which std::format allows.)
+//
+//   PluralFormat("referral_toast_joined", n, n, gibPerDay)
+template <typename... Args>
+std::wstring PluralFormat(std::string_view key, int64_t count, const Args&... args) {
+  return std::vformat(PluralRaw(key, count), std::make_wformat_args(args...));
+}
+
 }  // namespace urnw

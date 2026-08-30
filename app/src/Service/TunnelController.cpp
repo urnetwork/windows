@@ -179,11 +179,11 @@ bool TunnelController::ApplyWfpLocked(WfpState state) {
                      : 0;
   cfg.tunnel_resolvers_v4 =
       state == WfpState::Connected ? appliedResolvers_ : std::vector<std::string>{};
-  // CONNECTING ONLY. There is no tunnel resolver yet, so without this the
-  // port-53 block has nothing to permit and OUR OWN name resolution dies with
-  // everyone else's — and ours does not come out of this process: the SDK is Go,
-  // Go on Windows resolves through GetAddrInfoW, and the wire query is issued by
-  // the DNS Client service in svchost.exe, so the app-id permit cannot match it.
+  // CONNECTING ONLY. There is no tunnel resolver yet. The bound SDK normally
+  // resolves in-process and matches the exact service-image permit, but a
+  // Windows/system fallback lookup before that bind is active leaves through
+  // Dnscache in svchost.exe. This address-scoped path keeps that transition
+  // recoverable without widening the idle Armed policy.
   //
   // Deliberately NOT read for Armed. The permit it produces is address-scoped
   // and therefore machine-wide, and Armed is the idle state — nothing is
@@ -203,9 +203,9 @@ bool TunnelController::ApplyWfpLocked(WfpState state) {
               "this attempt rather than leaving it unable to resolve — see the "
               "wfp warning that follows for exactly what that opens.");
     } else {
-      LogInfo("wfp: connecting-state DNS path = the host's own resolvers [{}] "
-              "(read fresh; our name resolution leaves svchost, not this "
-              "process, so it cannot be permitted by app id)",
+      LogInfo("wfp: connecting-state compatibility DNS path = the host's own "
+              "resolvers [{}] (read fresh; Windows fallback lookups leave "
+              "Dnscache in svchost and cannot be permitted by our app id)",
               Join(cfg.host_resolvers_v4));
     }
   }

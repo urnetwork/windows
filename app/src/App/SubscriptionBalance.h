@@ -21,6 +21,8 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <string>
 
 #include <winrt/Microsoft.UI.Dispatching.h>
 
@@ -48,10 +50,19 @@ struct BalancePollState {
   bool timedOut = false;
 };
 
+// A batch of newly observed referrals for the local network. `isFirst` marks
+// the crowning: the count went from zero to earned, which gets the full-screen
+// celebration; later batches get the gold toast.
+struct ReferralCelebration {
+  int64_t joined = 0;
+  bool isFirst = false;
+};
+
 class SubscriptionBalanceStore {
  public:
   using ChangeHandler =
       std::function<void(BalanceSnapshot const&, BalancePollState const&)>;
+  using ReferralCelebrationHandler = std::function<void(ReferralCelebration const&)>;
 
   explicit SubscriptionBalanceStore(SdkHost& sdk) : sdk_(sdk) {}
   ~SubscriptionBalanceStore();
@@ -97,8 +108,25 @@ class SubscriptionBalanceStore {
   BalanceSnapshot Current() const { return snapshot_; }
   BalancePollState CurrentPoll() const { return {confirming_, timedOut_}; }
 
+  // ---- referrals (the king-frog gold celebrations) --------------------------
+  // The network's referral code + total, refreshed on its own 30s poll while
+  // the window is visible. Unlike the balance poll this never stops for Pro:
+  // referrals keep landing either way. An observed increment over the
+  // persisted per-network baseline fires the celebration handler exactly once
+  // (the first observation only records the baseline, so pre-existing
+  // referrals -- reinstall, second machine -- are old news, not a surprise).
+  void SetReferralCelebrationHandler(ReferralCelebrationHandler h) {
+    onReferralCelebration_ = std::move(h);
+  }
+  std::optional<std::string> ReferralCode() const { return referralCode_; }
+  int64_t TotalReferrals() const { return totalReferrals_; }
+
  private:
   void Fetch();
+  void FetchReferral();
+  void MaybeCelebrateReferrals(std::string const& code, int64_t count);
+  void EnsureReferralPolling();
+  void StopReferralPolling();
   void Apply(urnet::SubscriptionBalanceResult const& result);
   // Pro with a positive balance: nothing left to poll for (macOS
   // isSupporterWithBalance).
@@ -118,7 +146,12 @@ class SubscriptionBalanceStore {
   winrt::Microsoft::UI::Dispatching::DispatcherQueue queue_{nullptr};
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer backgroundTimer_{nullptr};
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer confirmTimer_{nullptr};
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer referralTimer_{nullptr};
   ChangeHandler onChange_;
+  ReferralCelebrationHandler onReferralCelebration_;
+  std::optional<std::string> referralCode_;
+  int64_t totalReferrals_ = 0;
+  bool referralLoading_ = false;
   BalanceSnapshot snapshot_;
   bool started_ = false;
   bool visible_ = false;

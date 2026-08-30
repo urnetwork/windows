@@ -438,9 +438,10 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
   // === DNS SUBLAYER ========================================================
   // Enumerate what to ALLOW, never what to block.
 
-  // Whether THIS state has a path by which the SERVICE's own name resolution
-  // can reach a resolver. Set by the two address-scoped permits below (9b and
-  // 10) and read by filter 12.
+  // Whether THIS state has a path by which Windows' shared DNS resolver can
+  // reach a resolver. Set by the two address-scoped permits below (9b and 10)
+  // and read by filter 12. The exact-image in-process paths in 9 and 9a do not
+  // make Dnscache usable by other processes and therefore do not count here.
   //
   // It is NOT read as "install the block only if this is true" any more — that
   // form of the invariant died with the Armed/Connecting split, because Armed is
@@ -452,37 +453,40 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
   //
   // Deliberately NOT set by filter 9 (app id) or filter 11 (loopback). See why
   // at each of them.
-  bool serviceDnsPath = false;
+  bool sharedDnsPath = false;
 
-  // 9. OUR OWN SERVICE, AGAIN — and this one is a correction to the research
-  //    note, not a copy of it. §4.1 permits urnetworkd in the BASELINE sublayer
-  //    only (filter C1). Block beats permit ACROSS sublayers, so the port-53
-  //    hard block below would also block urnetworkd's own name resolution, and
-  //    a service that cannot resolve the platform host cannot reconnect — the
-  //    rank-1 unrecoverable state, reintroduced through the sublayer it was
-  //    exempted from. The exemption has to be repeated here.
-  //
-  //    IT IS NOT SUFFICIENT, AND ON ITS OWN IT MATCHES NOTHING WE NEED. The
-  //    SDK is Go, and Go on Windows resolves through the OS resolver:
-  //    net/conf.go returns the fallback order unconditionally for GOOS=windows,
-  //    which is net/lookup_windows.go's GetAddrInfoW. Nothing in this repo sets
-  //    ConnectSettings.Resolver (there is no API on the vendored SDK to set it)
-  //    and nothing sets GODEBUG=netdns=go, so the wire query is issued by the
-  //    DNS Client service inside svchost.exe — a different process, whose
-  //    app id is not ours. This filter covers only sockets urnetworkd opens to
-  //    port 53 ITSELF, which today is none; it is kept so that the day the SDK
-  //    gains an in-process resolver the permit is already correct. The filter
-  //    that actually keeps the service resolving is 9b.
-  //
-  //    This is the same fact filter 10 below is already scoped around. It was
-  //    applied there and not here.
+  // 9. OUR OWN SERVICE, AGAIN. The SDK's Windows egress resolver deliberately
+  //    issues its wire queries in-process so they can be bound to the physical
+  //    interface. The baseline app-id permit cannot beat the DNS sublayer's
+  //    hard block, so the exact service image needs a port-53 permit here too.
+  //    Keep the protocol/port conditions: an unconditional app-id permit in
+  //    this sublayer would also override the LLMNR, mDNS and NetBIOS blocks.
   if (!cfg.service_image_path.empty()) {
+    std::vector<WfpCondition> c;
+    PushUdpTcp(c);
+    c.push_back(CondRemotePort(kPortDns));
+    c.push_back(CondAppId(cfg.service_image_path));
     f.push_back(Spec("urnetwork-permit-service-dns-v4", WfpLayer::ConnectV4,
-                     WfpSublayer::Dns, false, kWeightMax,
-                     {CondAppId(cfg.service_image_path)}));
+                     WfpSublayer::Dns, false, kWeightMax, c));
     f.push_back(Spec("urnetwork-permit-service-dns-v6", WfpLayer::ConnectV6,
-                     WfpSublayer::Dns, false, kWeightMax,
-                     {CondAppId(cfg.service_image_path)}));
+                     WfpSublayer::Dns, false, kWeightMax, std::move(c)));
+  }
+
+  // 9a. THE UI PROCESS, CONNECTED ONLY. SdkHost gives its separate SDK the
+  //     service-reported egress interface, which activates the same in-process
+  //     resolver. Repeat the exact-image exemption in this higher-priority
+  //     sublayer or a cold lookup/reconnect is blocked even though ordinary UI
+  //     control sockets pass the baseline app permit. Armed and Connecting are
+  //     deliberately unchanged.
+  if (connected && !cfg.app_image_path.empty()) {
+    std::vector<WfpCondition> c;
+    PushUdpTcp(c);
+    c.push_back(CondRemotePort(kPortDns));
+    c.push_back(CondAppId(cfg.app_image_path));
+    f.push_back(Spec("urnetwork-permit-app-dns-v4", WfpLayer::ConnectV4,
+                     WfpSublayer::Dns, false, kWeightMax, c));
+    f.push_back(Spec("urnetwork-permit-app-dns-v6", WfpLayer::ConnectV6,
+                     WfpSublayer::Dns, false, kWeightMax, std::move(c)));
   }
 
   // 9b. THE HOST'S OWN RESOLVERS, and ONLY while a connection attempt is
@@ -550,7 +554,7 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
     if (addrs > 0) {
       f.push_back(Spec("urnetwork-permit-dns-host-resolver", WfpLayer::ConnectV4,
                        WfpSublayer::Dns, false, kWeightMedium, std::move(c)));
-      serviceDnsPath = true;
+      sharedDnsPath = true;
     }
   }
 
@@ -571,7 +575,7 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
       f.push_back(Spec("urnetwork-permit-dns-tunnel-resolver",
                        WfpLayer::ConnectV4, WfpSublayer::Dns, false,
                        kWeightMedium, std::move(c)));
-      serviceDnsPath = true;
+      sharedDnsPath = true;
     }
   }
 
@@ -629,7 +633,7 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
   //     adapter DNS, or loopback-only — and the log line in Apply() names it so
   //     it is never silent. It now also ends with the attempt: the next return to
   //     Armed reinstates the block unconditionally.
-  if (!AttemptsConnection(state) || serviceDnsPath) {
+  if (!AttemptsConnection(state) || sharedDnsPath) {
     std::vector<WfpCondition> c;
     PushUdpTcp(c);
     c.push_back(CondRemotePort(kPortDns));

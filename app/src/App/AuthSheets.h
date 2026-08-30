@@ -40,6 +40,11 @@ class GuestModeSheet : public std::enable_shared_from_this<GuestModeSheet> {
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::CheckBox termsCheck_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock errorText_{nullptr};
+  // optional referral code: guests can be referred too (android/apple instant
+  // account parity). Validated before the create; a bad code keeps the sheet
+  // open rather than silently dropping the bonus.
+  winrt::Microsoft::UI::Xaml::Controls::TextBox codeBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock codeStatus_{nullptr};
   bool creating_ = false;
 };
 

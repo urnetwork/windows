@@ -148,15 +148,14 @@ struct WfpConfig {
 
   // The resolvers the HOST is configured with on its own adapters. READ ONLY IN
   // Connecting: there is no tun yet, so there is no tunnel resolver, and this is
-  // the only path our own name resolution has.
+  // the compatibility path for any lookup made before the SDK's physical
+  // egress bind activates its in-process resolver.
   //
-  // This exists because the service's own name resolution DOES NOT COME OUT OF
-  // urnetworkd.exe. Go on Windows resolves through the OS resolver
-  // (net/lookup_windows.go -> GetAddrInfoW), which is an RPC into the DNS
-  // Client service; the wire query is issued by svchost.exe. So the app-id
-  // permit in the DNS sublayer cannot match it, and without an ADDRESS-scoped
-  // permit a connecting machine cannot resolve the platform host and therefore
-  // cannot connect at all. See filter 9b in WfpPolicy.cpp.
+  // The bound SDK path now resolves in-process and matches the exact
+  // urnetworkd.exe permit in the DNS sublayer. Windows/system lookup paths can
+  // still leave through Dnscache in svchost.exe before that bind is installed;
+  // this address-scoped filter is the bounded Connecting-only fallback for
+  // that transition. See filters 9 and 9b in WfpPolicy.cpp.
   //
   // THE SAME FACT IS WHY Armed IGNORES THIS FIELD. An address-scoped permit is
   // machine-wide — it cannot be narrowed to us, because the query is not ours by
@@ -244,6 +243,10 @@ struct WfpConfig {
   //   * this permit alone changes nothing, because WFP permits do not reroute:
   //     without the bind the app's packets are still inside the tun, where they
   //     are already permitted by the tun-LUID filter.
+  // The same pair applies to DNS: connect uses an in-process egress-bound
+  // resolver on Windows, so BuildFilterSet repeats this exact image identity at
+  // UDP/TCP port 53 in the higher-priority DNS sublayer. A baseline permit
+  // alone cannot overrule that sublayer's hard block.
   //
   // WHAT IT COSTS, stated plainly. While Connected, URnetwork.exe may send and
   // receive on the physical NIC in the clear. That is a real exposure and it is
@@ -253,11 +256,9 @@ struct WfpConfig {
   // observable, and it does not touch what the kill switch promises, because the
   // kill switch is about Armed.
   //
-  // NOT REPEATED IN THE DNS SUBLAYER, for filter 9's reason: the app is Go too,
-  // Go on Windows resolves through GetAddrInfoW, and the wire query leaves
-  // svchost.exe, so an app-id permit there would match nothing. The app's name
-  // resolution therefore still goes to the tunnel's resolvers over the tun. See
-  // the note in TunnelController::AppImagePath.
+  // Repeated in the DNS sublayer: the bound connect resolver issues its wire
+  // query in-process, so it carries this exact app identity. Without that second
+  // permit the higher-priority port-53 block defeats the baseline exemption.
   std::wstring app_image_path;
 };
 

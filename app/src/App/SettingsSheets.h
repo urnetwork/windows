@@ -277,6 +277,9 @@ class ReferralNetworkSheet : public std::enable_shared_from_this<ReferralNetwork
   void ArmUnlink();
   void DisarmUnlink();
   void Unlink();
+  // Linking a referral network is the royal-welcome moment: swap the sheet to
+  // the gold king frog for a beat, then dismiss.
+  void ShowRoyalWelcome();
   void ShowError(winrt::hstring const& message);
 
   SdkHost& sdk_;
@@ -291,6 +294,8 @@ class ReferralNetworkSheet : public std::enable_shared_from_this<ReferralNetwork
   std::string currentName_;
   bool unlinkArmed_ = false;
   bool busy_ = false;
+  // holds the royal-welcome auto-dismiss so it cannot leak through a cycle
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer royalTimer_{nullptr};
 };
 
 // ---- Blocked locations (apple BlockedLocationsView + AddBlockedLocationSheet)

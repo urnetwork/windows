@@ -67,23 +67,8 @@ constexpr const char* kRequiredPayload[] = {
 // that deletes everyone else's) is the part that must match, which the
 // selftest cannot check but a reviewer can. A third preference site is the
 // signal to promote this into Common/Paths.
-nlohmann::json LoadAppPrefs() {
-  std::ifstream f(AppPrefsFile());
-  if (!f) return nlohmann::json::object();
-  try {
-    nlohmann::json j = nlohmann::json::parse(f);
-    if (j.is_object()) return j;
-  } catch (...) {
-  }
-  return nlohmann::json::object();
-}
-
-void SaveAppPref(const char* key, const nlohmann::json& value) {
-  nlohmann::json j = LoadAppPrefs();
-  j[key] = value;
-  std::ofstream f(AppPrefsFile(), std::ios::trunc);
-  if (f) f << j.dump();
-}
+// LoadAppPrefs / SaveAppPref moved to Common/Paths at the third
+// preference site, as the note above prescribed.
 
 constexpr char kAutoCheckPrefKey[] = "check_updates_automatically";
 
