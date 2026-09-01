@@ -40,8 +40,8 @@
          logic reads it; the OS resource loader never consults MSI metadata
          at all. Suppressing ICE03 does NOT suppress other ICEs — confirmed
          locally that ICE60 still runs with ICE03 suppressed. Private app
-         fonts are authored explicitly with neutral language metadata in
-         Package.wxs. -->
+         fonts are authored explicitly as companion files of the versioned app
+         executable in Package.wxs. -->
     <SuppressIces>ICE03</SuppressIces>
   </PropertyGroup>
   <ItemGroup>

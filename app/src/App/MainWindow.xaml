@@ -196,7 +196,7 @@
                             Click="OnSignInWithBittensor">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <!-- android res/drawable/bittensor_logo.xml, converted by
-                                 tools/vd2xaml.py. Upstream its fillColor is #FFFFFFFF,
+                                 tools/vd2xaml. Upstream its fillColor is #FFFFFFFF,
                                  which is invisible on the white SECONDARY button it
                                  sits on over there; drawn here in the button's content
                                  colour so it can actually be seen. -->

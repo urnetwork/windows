@@ -57,7 +57,7 @@ nothing — that is the only failure mode fonts have here. Check, in order:
    or a build that predates the harvested `RuntimeFiles` component group, not
    a missing-asset regression.
 2. The family name after `#`. Re-read it rather than trusting this table:
-   `python tools/...` is not needed — any font inspector, or PowerShell's
+   the regeneration tool is not needed — any font inspector, or PowerShell's
    `[System.Drawing.Text.PrivateFontCollection]`, will report name id 1.
 3. The URI form. `ms-appx:///` is what the rest of this app uses (see
    `ReferralFrog.png` in `MainWindow.xaml`) and is what WinUI documents, but an
@@ -69,11 +69,11 @@ nothing — that is the only failure mode fonts have here. Check, in order:
 
 The `.ico` files here are the real URnetwork brand icons, generated from the
 macOS asset catalog (`apple/app/network/Assets.xcassets`) by
-`tools/make-icons.py` (Pillow). They are committed (small, stable, needed at
+the Go command in `tools/make-icons`. They are committed (small, stable, needed at
 build time). Regenerate when the brand art changes:
 
 ```
-python3 tools/make-icons.py
+go run ./tools/make-icons
 ```
 
 `App.rc` maps each to a resource id in `resource.h`.

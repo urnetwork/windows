@@ -45,20 +45,6 @@
         <!-- Tray app + SDK -->
         <Component Id="AppExe" Guid="*">
           <File Id="URnetworkExe" Source="$(var.BinDir)\URnetwork.exe" KeyPath="yes" />
-          <!-- These fonts are private app assets, not globally registered
-               system fonts. OpenType metadata gives each file a version but
-               no language, so harvesting them as independent files violates
-               ICE60. Make them non-keypath companions of the versioned app:
-               repair/upgrade decisions follow URnetwork.exe without inventing
-               language metadata or adding entries to the Font table. -->
-          <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extended.otf"
-                Subdirectory="Assets\Fonts" CompanionFile="URnetworkExe" />
-          <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extra_condensed.otf"
-                Subdirectory="Assets\Fonts" CompanionFile="URnetworkExe" />
-          <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_bit_bold.ttf"
-                Subdirectory="Assets\Fonts" CompanionFile="URnetworkExe" />
-          <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_montreal_regular.ttf"
-                Subdirectory="Assets\Fonts" CompanionFile="URnetworkExe" />
           <!-- Start Menu entry, so the installed app is launchable the way a
                normal Windows app is (owner report: without one the MSI leaves
                the exe reachable only by path). It lives in THIS component so
@@ -72,6 +58,29 @@
           <Shortcut Id="StartMenuShortcut" Name="URnetwork" Advertise="yes"
                     Directory="ProgramMenuFolder"
                     WorkingDirectory="INSTALLFOLDER" Icon="AppIcon.ico" />
+        </Component>
+        <!-- These fonts are private app assets, not globally registered
+             system fonts. OpenType metadata gives each file a version but no
+             language, so harvesting them as independently versioned files
+             violates ICE60. Make them companions of the versioned app:
+             repair/upgrade decisions follow URnetwork.exe without inventing
+             language metadata or adding entries to the Font table.
+
+             WiX v5 permits Subdirectory on Component, not on File children of
+             Component. The directory itself is the component key path because
+             companion files cannot be key paths. The fixed component GUID is
+             safe across x64 and ARM64 because these assets and their target
+             path are identical in both packages. -->
+        <Component Id="PrivateFonts" Guid="2a2cbad5-8a12-41b9-82ee-62c0494b5b61"
+                   Subdirectory="Assets\Fonts" KeyPath="yes">
+          <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extended.otf"
+                CompanionFile="URnetworkExe" />
+          <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extra_condensed.otf"
+                CompanionFile="URnetworkExe" />
+          <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_bit_bold.ttf"
+                CompanionFile="URnetworkExe" />
+          <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_montreal_regular.ttf"
+                CompanionFile="URnetworkExe" />
         </Component>
         <Component Id="SdkDll" Guid="*">
           <File Id="URnetworkSdkDll" Source="$(var.BinDir)\URnetworkSdk.dll" KeyPath="yes" />
@@ -221,6 +230,7 @@
 
     <Feature Id="Main" Title="URnetwork" Level="1">
       <ComponentRef Id="AppExe" />
+      <ComponentRef Id="PrivateFonts" />
       <ComponentRef Id="SdkDll" />
       <ComponentRef Id="ResourcesPri" />
       <ComponentRef Id="ServiceExe" />

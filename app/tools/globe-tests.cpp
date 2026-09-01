@@ -462,7 +462,7 @@ void WorldTopologyTests(const std::string& assetPath) {
     std::cout << "  (total ring points: " << totalPoints << ")\n";
   }
   {
-    // independently decoded (python): the first ring of the USA MultiPolygon
+    // independently decoded: the first ring of the USA MultiPolygon
     // (Hawaii) has 17 points and starts at (-155.541355, 19.084175)
     TEST_CASE("dequantizesKnownUsaCoordinates");
     const CountryShape* usa = nullptr;

@@ -37,8 +37,13 @@ jobs:
       - name: Check out Windows repo
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
       - name: Build and installer contract regression
-        run: python3 tests/build-contract.test.py
+        run: go test ./tests
 
       # Same version scheme as the android and apple beta lines: the official
       # date format with warpctl's counter (seconds since the company founding
@@ -106,11 +111,6 @@ jobs:
             echo 'package goidenticons' > goidenticons/render_v2_ci_shim.go
             echo 'func RenderPngV2(data []byte, size int) ([]byte, error) { return RenderPng(data, size) }' >> goidenticons/render_v2_ci_shim.go
           fi
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: stable
 
       # amd64 goes through mingw-w64 from apt; arm64 needs llvm-mingw, which
       # has no apt package -- the pinned upstream release tarball is the same

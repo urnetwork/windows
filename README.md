@@ -92,7 +92,8 @@ dotnet build installer\Installer.wixproj -c Release -p:Platform=x64
 `tools\build-local.ps1` wraps steps 1–2 for a normal edit/build loop (~60s).
 
 Add the app icons under `app/src/App/Assets/` first (see that folder's README);
-they are generated from the macOS art by `app/tools/make-icons.py`.
+they are generated from the macOS art by the Go command in
+`app/tools/make-icons`.
 
 The app log is at `%LOCALAPPDATA%\URnetwork\app\logs\urnetwork-app.log`.
 
