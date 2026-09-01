@@ -45,6 +45,20 @@
         <!-- Tray app + SDK -->
         <Component Id="AppExe" Guid="*">
           <File Id="URnetworkExe" Source="$(var.BinDir)\URnetwork.exe" KeyPath="yes" />
+          <!-- These fonts are private app assets, not globally registered
+               system fonts. OpenType metadata gives each file a version but
+               no language, so harvesting them as independent files violates
+               ICE60. Make them non-keypath companions of the versioned app:
+               repair/upgrade decisions follow URnetwork.exe without inventing
+               language metadata or adding entries to the Font table. -->
+          <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extended.otf"
+                Subdirectory="Assets\Fonts" CompanionFile="URnetworkExe" />
+          <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extra_condensed.otf"
+                Subdirectory="Assets\Fonts" CompanionFile="URnetworkExe" />
+          <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_bit_bold.ttf"
+                Subdirectory="Assets\Fonts" CompanionFile="URnetworkExe" />
+          <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_montreal_regular.ttf"
+                Subdirectory="Assets\Fonts" CompanionFile="URnetworkExe" />
           <!-- Start Menu entry, so the installed app is launchable the way a
                normal Windows app is (owner report: without one the MSI leaves
                the exe reachable only by path). It lives in THIS component so
@@ -171,11 +185,8 @@
          subtree, add a targeted Exclude for that specific path rather than
          reintroducing the double-"**" form.
 
-         The four private app fonts are also excluded and authored as explicit
-         File entries below. OpenType version metadata makes Windows Installer
-         treat them as versioned files, but they are app-local assets rather
-         than system-registered fonts. LANGID 0 records that they are neutral
-         and prevents needless repair copies without registering them globally. -->
+         The four private app fonts are also excluded because the AppExe
+         component above authors them explicitly as companion files. -->
     <ComponentGroup Id="RuntimeFiles" Directory="INSTALLFOLDER">
       <Files Include="$(var.BinDir)\**">
         <Exclude Files="$(var.BinDir)\URnetwork.exe" />
@@ -193,14 +204,6 @@
         <Exclude Files="$(var.BinDir)\Assets\Fonts\pp_neue_bit_bold.ttf" />
         <Exclude Files="$(var.BinDir)\Assets\Fonts\pp_neue_montreal_regular.ttf" />
       </Files>
-      <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extended.otf"
-            Subdirectory="Assets\Fonts" DefaultLanguage="0" />
-      <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extra_condensed.otf"
-            Subdirectory="Assets\Fonts" DefaultLanguage="0" />
-      <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_bit_bold.ttf"
-            Subdirectory="Assets\Fonts" DefaultLanguage="0" />
-      <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_montreal_regular.ttf"
-            Subdirectory="Assets\Fonts" DefaultLanguage="0" />
     </ComponentGroup>
 
     <!-- urnetwork:// protocol handler (OAuth callbacks + deep links) -->

@@ -122,17 +122,33 @@ def test_installer_contract() -> None:
     if not FONT_NAMES.issubset(excluded):
         fail(f"private fonts are not excluded from generic harvesting: {sorted(FONT_NAMES - excluded)}")
 
+    app_component = next(
+        (
+            node
+            for node in package.findall(f".//{{{WIX_NS}}}Component")
+            if node.attrib.get("Id") == "AppExe"
+        ),
+        None,
+    )
+    if app_component is None:
+        fail("AppExe component is missing")
+
     explicit = {}
-    for node in runtime.findall(f"{{{WIX_NS}}}File"):
+    for node in app_component.findall(f"{{{WIX_NS}}}File"):
         source = node.attrib.get("Source", "").replace("\\", "/")
         name = Path(source).name
         if name in FONT_NAMES:
             explicit[name] = node
     if set(explicit) != FONT_NAMES:
-        fail(f"private font metadata is incomplete: {sorted(FONT_NAMES - set(explicit))}")
+        fail(
+            "private fonts are not companion files in the AppExe component: "
+            f"{sorted(FONT_NAMES - set(explicit))}"
+        )
     for name, node in explicit.items():
-        if node.attrib.get("DefaultLanguage") != "0":
-            fail(f"{name} is not authored as language-neutral")
+        if node.attrib.get("CompanionFile") != "URnetworkExe":
+            fail(f"{name} does not inherit versioning from URnetworkExe")
+        if "DefaultLanguage" in node.attrib:
+            fail(f"{name} invents language metadata absent from the font file")
         if node.attrib.get("Subdirectory", "").replace("\\", "/") != "Assets/Fonts":
             fail(f"{name} would not install under Assets/Fonts")
         if "TrueType" in node.attrib or "FontTitle" in node.attrib:
