@@ -982,6 +982,10 @@ right way</value>
     <value>{0} sent / {1} acquitted</value>
     <comment>Developer tools screen: formatted value readout for 'busy probes'.</comment>
   </data>
+  <data name="dev_choose_logs" xml:space="preserve">
+    <value>Choose logs…</value>
+    <comment>Developer tools screen: action for choosing individual log files to export.</comment>
+  </data>
   <data name="dev_cluster_affinity" xml:space="preserve">
     <value>Group IPs by site</value>
     <comment>Developer tools screen (reliability surface): cluster affinity control label.</comment>
@@ -1045,6 +1049,46 @@ right way</value>
   <data name="dev_exits" xml:space="preserve">
     <value>Exits</value>
     <comment>Developer tools screen (reliability surface): exits control label.</comment>
+  </data>
+  <data name="dev_export_all_logs" xml:space="preserve">
+    <value>Export all logs (raw)</value>
+    <comment>Developer tools screen: action for exporting all diagnostic logs without redaction.</comment>
+  </data>
+  <data name="dev_export_failed" xml:space="preserve">
+    <value>Export failed: {}</value>
+    <comment>Developer tools screen: error shown when diagnostic log export fails.</comment>
+  </data>
+  <data name="dev_export_not_included" xml:space="preserve">
+    <value>Not included: {}</value>
+    <comment>Developer tools screen: explanation that a requested diagnostic item was omitted from an export.</comment>
+  </data>
+  <data name="dev_export_redacted_logs" xml:space="preserve">
+    <value>Export redacted logs</value>
+    <comment>Developer tools screen: action for exporting diagnostic logs with sensitive traffic details redacted.</comment>
+  </data>
+  <data name="dev_export_selected" xml:space="preserve">
+    <value>Export selected</value>
+    <comment>Developer tools screen: action for exporting the selected diagnostic log files.</comment>
+  </data>
+  <data name="dev_export_share" xml:space="preserve">
+    <value>Share diagnostic bundle</value>
+    <comment>Developer tools screen: action for sharing a diagnostic bundle.</comment>
+  </data>
+  <data name="dev_export_summary.one" xml:space="preserve">
+    <value>Exported {0} log file ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.other" xml:space="preserve">
+    <value>Exported {0} log files ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_unavailable" xml:space="preserve">
+    <value>Not available: {}</value>
+    <comment>Developer tools screen: explanation that a diagnostic export option is unavailable.</comment>
+  </data>
+  <data name="dev_exporting" xml:space="preserve">
+    <value>Exporting…</value>
+    <comment>Developer tools screen: progress label shown while a diagnostic bundle is being exported.</comment>
   </data>
   <data name="dev_flows_opened" xml:space="preserve">
     <value>Flows opened</value>
@@ -1121,6 +1165,50 @@ right way</value>
   <data name="dev_load_corroboration_detail" xml:space="preserve">
     <value>Extra silent destinations required per this many flows before a busy exit can be benched on soft evidence: a 24-flow exit at 8 needs 3 silent sites, not 2. Off keeps the flat minimum</value>
     <comment>Developer tools screen: explanatory subtext under the 'load corroboration' control.</comment>
+  </data>
+  <data name="dev_log_verbosity" xml:space="preserve">
+    <value>Log detail</value>
+    <comment>Developer tools screen: control label for diagnostic log detail.</comment>
+  </data>
+  <data name="dev_log_verbosity_default" xml:space="preserve">
+    <value>Default</value>
+    <comment>Developer tools screen: default diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_default_detail" xml:space="preserve">
+    <value>Connection errors and contract pings</value>
+    <comment>Developer tools screen: explanation of the default diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_trace" xml:space="preserve">
+    <value>Trace</value>
+    <comment>Developer tools screen: trace diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_trace_detail" xml:space="preserve">
+    <value>Transport and window internals. Very large logs</value>
+    <comment>Developer tools screen: explanation of the trace diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_unavailable" xml:space="preserve">
+    <value>Unavailable</value>
+    <comment>Developer tools screen: label used when the diagnostic log detail level cannot be read.</comment>
+  </data>
+  <data name="dev_log_verbosity_unavailable_detail" xml:space="preserve">
+    <value>There is no device to read the log level from yet. Sign in first</value>
+    <comment>Developer tools screen: explanation shown when the diagnostic log detail level cannot be read.</comment>
+  </data>
+  <data name="dev_log_verbosity_verbose" xml:space="preserve">
+    <value>Verbose</value>
+    <comment>Developer tools screen: verbose diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_verbose_detail" xml:space="preserve">
+    <value>Contract accounting and per-packet block decisions. Includes destination IP addresses</value>
+    <comment>Developer tools screen: explanation of the verbose diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_warning" xml:space="preserve">
+    <value>At Verbose and above the logs contain the destination IP addresses and ports of the traffic you send. Use “Export redacted logs” to share them; the raw bundle should not leave this device.</value>
+    <comment>Developer tools screen: privacy warning shown when detailed traffic logging is enabled.</comment>
+  </data>
+  <data name="dev_log_verbosity_warning_title" xml:space="preserve">
+    <value>Logs are recording your real traffic</value>
+    <comment>Developer tools screen: title for the detailed traffic logging privacy warning.</comment>
   </data>
   <data name="dev_max_flows_per_exit" xml:space="preserve">
     <value>Max connections per exit</value>
@@ -1297,6 +1385,10 @@ right way</value>
   <data name="dev_section_detection" xml:space="preserve">
     <value>Detection</value>
     <comment>Developer tools screen: section heading for the detection controls.</comment>
+  </data>
+  <data name="dev_section_diagnostics" xml:space="preserve">
+    <value>Diagnostics</value>
+    <comment>Developer tools screen: section heading for diagnostic log controls.</comment>
   </data>
   <data name="dev_section_observability" xml:space="preserve">
     <value>Observability</value>
