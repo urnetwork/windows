@@ -74,6 +74,7 @@ esac
 die() { echo "[windows acceptance] ERROR: $*" >&2; exit 1; }
 command -v timeout >/dev/null 2>&1 || die "GNU timeout is required (brew install coreutils)"
 node "$root/build/all/acceptance/preflight-main.mjs" || exit 1
+python3 "$here/tests/build-contract.test.py"
 [ -f "$vault" ] || die "no acceptance vault at $vault"
 config_reader="$root/tests/read-tests-config.sh"
 [ -x "$config_reader" ] || die "test config reader is missing: $config_reader"

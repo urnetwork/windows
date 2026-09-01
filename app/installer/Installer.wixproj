@@ -18,6 +18,10 @@
          driver component into the package; otherwise the .sys is omitted so the MSI
          builds without the (WDK-built) driver. -->
     <DefineConstants Condition="'$(IncludeDriver)'=='true'">$(DefineConstants);IncludeDriver</DefineConstants>
+    <!-- Installer warnings describe upgrade/repair correctness, not polish.
+         The known third-party ICE03 exception below is narrowly suppressed;
+         every other WiX warning must stop the package build. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- ICE03 (generic column-type/range validation across standard MSI tables)
          fails post-build on the harvested WindowsAppRuntime payload, not on
          anything this project authors: some locale .mui satellites carry a
@@ -35,9 +39,9 @@
          nothing here builds an MSP, so nothing in this package's install
          logic reads it; the OS resource loader never consults MSI metadata
          at all. Suppressing ICE03 does NOT suppress other ICEs — confirmed
-         locally that ICE60 (unrelated: flags the 4 unversioned brand fonts
-         under Assets\Fonts for having no Language and not being recognized
-         as a Font) still runs and still warns with ICE03 suppressed. -->
+         locally that ICE60 still runs with ICE03 suppressed. Private app
+         fonts are authored explicitly with neutral language metadata in
+         Package.wxs. -->
     <SuppressIces>ICE03</SuppressIces>
   </PropertyGroup>
   <ItemGroup>

@@ -4,7 +4,9 @@
 #include <chrono>
 #include <fstream>
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <winsock2.h>   // AF_INET / AF_INET6
 #include <windows.h>
 

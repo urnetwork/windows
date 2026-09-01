@@ -14,7 +14,9 @@
 #include "Sdk.h"
 #include "Wintun.h"
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 namespace urnw {

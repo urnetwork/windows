@@ -77,7 +77,11 @@
       <!-- the sources are utf-8 and narrow literals carry non-ascii (e.g. the
            "…" in the host-cluster truncation). without /utf-8 msvc reads them
            in the system code page and mojibakes the strings -->
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <!-- These two warnings previously repeated through every build while
+           hiding real compile-contract drift: project-wide Win32 macro
+           redefinitions and generated XAML units compiled with PCH metadata
+           that did not match their own command line. Keep both fatal. -->
+      <AdditionalOptions>/utf-8 /we4005 /we4651 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <ResourceCompile>
       <!-- The same five definitions for rc.exe, so the VERSIONINFO resources

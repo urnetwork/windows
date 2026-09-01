@@ -5,7 +5,9 @@
 // before the IP helpers, and ws2tcpip before iphlpapi so iphlpapi's IPv6
 // table types (which reference ws2ipdef's SOCKADDR_INET-adjacent types) see
 // them already declared.
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>

@@ -154,7 +154,11 @@
            stringizes it (Startup.cpp). A `\"` -escaped literal does not survive
            MSBuild's command-line quoting here — verified: cl then sees the value
            end at `L` and the TU fails with C2065 'L': undeclared identifier. -->
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;URN_WINDOWSAPPSDK_VERSION_RAW=$(UrnWindowsAppSdkVersion);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- Keep the Windows App SDK deployment mode in the project-wide item
+           defaults. UrnCompileGeneratedXamlImpl creates ClCompile items during
+           execution, so they inherit these defaults without expanding metadata
+           from the source _UrnGenXamlCpp items (which have none). -->
+      <PreprocessorDefinitions>MICROSOFT_WINDOWSAPPSDK_SELFCONTAINED=1;DISABLE_XAML_GENERATED_MAIN;URN_WINDOWSAPPSDK_VERSION_RAW=$(UrnWindowsAppSdkVersion);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebugDLL</RuntimeLibrary>
       <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreadedDLL</RuntimeLibrary>
       <Optimization Condition="'$(Configuration)'=='Release'">MaxSpeed</Optimization>
@@ -499,6 +503,11 @@
       <_UrnGenXamlCpp Include="$(MSBuildProjectDirectory)\XamlMetaDataProvider.cpp" Condition="Exists('$(MSBuildProjectDirectory)\XamlMetaDataProvider.cpp')" />
       <_UrnGenXamlCpp Include="$(GeneratedFilesDir)XamlMetaDataProvider.cpp"         Condition="Exists('$(GeneratedFilesDir)XamlMetaDataProvider.cpp')" />
       <_UrnGenXamlCpp Include="$(GeneratedFilesDir)module.g.cpp"                     Condition="Exists('$(GeneratedFilesDir)module.g.cpp')" />
+      <!-- The project-wide ClCompile defaults carry every preprocessor
+           definition, including MICROSOFT_WINDOWSAPPSDK_SELFCONTAINED. Do not
+           author metadata here: %(PreprocessorDefinitions) batches against the
+           source _UrnGenXamlCpp list and fails with MSB4096 because generated
+           source items do not define that metadata. -->
       <ClCompile Include="@(_UrnGenXamlCpp)" />
     </ItemGroup>
   </Target>

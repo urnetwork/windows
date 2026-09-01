@@ -37,6 +37,9 @@ jobs:
       - name: Check out Windows repo
         uses: actions/checkout@v4
 
+      - name: Build and installer contract regression
+        run: python3 tests/build-contract.test.py
+
       # Same version scheme as the android and apple beta lines: the official
       # date format with warpctl's counter (seconds since the company founding
       # times 10), derived from the RUN's creation time so every job of one run

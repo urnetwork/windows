@@ -3,7 +3,9 @@
 
 // WinRT-free translation unit (App.vcxproj PrecompiledHeader=NotUsing), so the
 // Win32 crypto header is included directly rather than via the WinUI pch.
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <wincrypt.h>  // CryptStringToBinaryA (crypt32.lib, already linked)
 

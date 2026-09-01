@@ -80,7 +80,6 @@
                           Start="auto" ErrorControl="normal"
                           Description="Runs the URnetwork VPN tunnel."
                           Account="LocalSystem">
-            <ServiceConfig DelayedAutoStart="no" OnInstall="yes" OnReinstall="yes" />
             <!-- restart on crash (plan M4) -->
             <util:ServiceConfig xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
                                 FirstFailureActionType="restart"
@@ -170,7 +169,13 @@
          belt-and-suspenders guard in the zip packager with nothing to
          guard against here. If BinDir ever legitimately grows an obj\
          subtree, add a targeted Exclude for that specific path rather than
-         reintroducing the double-"**" form. -->
+         reintroducing the double-"**" form.
+
+         The four private app fonts are also excluded and authored as explicit
+         File entries below. OpenType version metadata makes Windows Installer
+         treat them as versioned files, but they are app-local assets rather
+         than system-registered fonts. LANGID 0 records that they are neutral
+         and prevents needless repair copies without registering them globally. -->
     <ComponentGroup Id="RuntimeFiles" Directory="INSTALLFOLDER">
       <Files Include="$(var.BinDir)\**">
         <Exclude Files="$(var.BinDir)\URnetwork.exe" />
@@ -183,7 +188,19 @@
         <Exclude Files="$(var.BinDir)\**\*.lib" />
         <Exclude Files="$(var.BinDir)\**\*.exp" />
         <Exclude Files="$(var.BinDir)\**\*.ilk" />
+        <Exclude Files="$(var.BinDir)\Assets\Fonts\abcgravity_extended.otf" />
+        <Exclude Files="$(var.BinDir)\Assets\Fonts\abcgravity_extra_condensed.otf" />
+        <Exclude Files="$(var.BinDir)\Assets\Fonts\pp_neue_bit_bold.ttf" />
+        <Exclude Files="$(var.BinDir)\Assets\Fonts\pp_neue_montreal_regular.ttf" />
       </Files>
+      <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extended.otf"
+            Subdirectory="Assets\Fonts" DefaultLanguage="0" />
+      <File Source="$(var.BinDir)\Assets\Fonts\abcgravity_extra_condensed.otf"
+            Subdirectory="Assets\Fonts" DefaultLanguage="0" />
+      <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_bit_bold.ttf"
+            Subdirectory="Assets\Fonts" DefaultLanguage="0" />
+      <File Source="$(var.BinDir)\Assets\Fonts\pp_neue_montreal_regular.ttf"
+            Subdirectory="Assets\Fonts" DefaultLanguage="0" />
     </ComponentGroup>
 
     <!-- urnetwork:// protocol handler (OAuth callbacks + deep links) -->

@@ -223,16 +223,48 @@
     <value>Apps</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="apps_excluded_count.zero" xml:space="preserve">
+    <value>{} apps excluded</value>
+    <comment>transfer stats and split rules</comment>
+  </data>
   <data name="apps_excluded_count.one" xml:space="preserve">
     <value>{} app excluded</value>
+    <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="apps_excluded_count.two" xml:space="preserve">
+    <value>{} apps excluded</value>
+    <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="apps_excluded_count.few" xml:space="preserve">
+    <value>{} apps excluded</value>
+    <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="apps_excluded_count.many" xml:space="preserve">
+    <value>{} apps excluded</value>
     <comment>transfer stats and split rules</comment>
   </data>
   <data name="apps_excluded_count.other" xml:space="preserve">
     <value>{} apps excluded</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="apps_included_count.zero" xml:space="preserve">
+    <value>{} apps included</value>
+    <comment>transfer stats and split rules</comment>
+  </data>
   <data name="apps_included_count.one" xml:space="preserve">
     <value>{} app included</value>
+    <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="apps_included_count.two" xml:space="preserve">
+    <value>{} apps included</value>
+    <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="apps_included_count.few" xml:space="preserve">
+    <value>{} apps included</value>
+    <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="apps_included_count.many" xml:space="preserve">
+    <value>{} apps included</value>
     <comment>transfer stats and split rules</comment>
   </data>
   <data name="apps_included_count.other" xml:space="preserve">
@@ -686,8 +718,24 @@ right way</value>
     <value>Connected: {}...</value>
     <comment>A label showing the public key of the connected wallet.</comment>
   </data>
+  <data name="connected_provider_count.zero" xml:space="preserve">
+    <value>Connected to {} providers</value>
+    <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
+  </data>
   <data name="connected_provider_count.one" xml:space="preserve">
     <value>Connected to {} provider</value>
+    <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
+  </data>
+  <data name="connected_provider_count.two" xml:space="preserve">
+    <value>Connected to {} providers</value>
+    <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
+  </data>
+  <data name="connected_provider_count.few" xml:space="preserve">
+    <value>Connected to {} providers</value>
+    <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
+  </data>
+  <data name="connected_provider_count.many" xml:space="preserve">
+    <value>Connected to {} providers</value>
     <comment>A message indicating that the device is connected to a certain number of providers. The argument is the number of providers.</comment>
   </data>
   <data name="connected_provider_count.other" xml:space="preserve">
@@ -722,8 +770,24 @@ right way</value>
     <value>Contract</value>
     <comment>A label displayed in the center of a contract circle.</comment>
   </data>
+  <data name="contract_count.zero" xml:space="preserve">
+    <value>{} contracts</value>
+    <comment>A label that shows the number of contracts for a given client. The argument is the number of contracts.</comment>
+  </data>
   <data name="contract_count.one" xml:space="preserve">
     <value>{} contract</value>
+    <comment>A label that shows the number of contracts for a given client. The argument is the number of contracts.</comment>
+  </data>
+  <data name="contract_count.two" xml:space="preserve">
+    <value>{} contracts</value>
+    <comment>A label that shows the number of contracts for a given client. The argument is the number of contracts.</comment>
+  </data>
+  <data name="contract_count.few" xml:space="preserve">
+    <value>{} contracts</value>
+    <comment>A label that shows the number of contracts for a given client. The argument is the number of contracts.</comment>
+  </data>
+  <data name="contract_count.many" xml:space="preserve">
+    <value>{} contracts</value>
     <comment>A label that shows the number of contracts for a given client. The argument is the number of contracts.</comment>
   </data>
   <data name="contract_count.other" xml:space="preserve">
@@ -1074,8 +1138,24 @@ right way</value>
     <value>Share diagnostic bundle</value>
     <comment>Developer tools screen: action for sharing a diagnostic bundle.</comment>
   </data>
+  <data name="dev_export_summary.zero" xml:space="preserve">
+    <value>Exported {0} log files ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
   <data name="dev_export_summary.one" xml:space="preserve">
     <value>Exported {0} log file ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.two" xml:space="preserve">
+    <value>Exported {0} log files ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.few" xml:space="preserve">
+    <value>Exported {0} log files ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.many" xml:space="preserve">
+    <value>Exported {0} log files ({1})</value>
     <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
   </data>
   <data name="dev_export_summary.other" xml:space="preserve">
@@ -1948,8 +2028,24 @@ right way</value>
     <value>Hide Provider List</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>
   </data>
+  <data name="host_count.zero" xml:space="preserve">
+    <value>{} hosts</value>
+    <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
   <data name="host_count.one" xml:space="preserve">
     <value>{} host</value>
+    <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
+  <data name="host_count.two" xml:space="preserve">
+    <value>{} hosts</value>
+    <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
+  <data name="host_count.few" xml:space="preserve">
+    <value>{} hosts</value>
+    <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
+  </data>
+  <data name="host_count.many" xml:space="preserve">
+    <value>{} hosts</value>
     <comment>A label that shows the number of hosts for a split rule. The argument is the number of hosts.</comment>
   </data>
   <data name="host_count.other" xml:space="preserve">
@@ -2040,8 +2136,24 @@ right way</value>
     <value>IP address</value>
     <comment>dns settings</comment>
   </data>
+  <data name="ip_count.zero" xml:space="preserve">
+    <value>{} IPs</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
   <data name="ip_count.one" xml:space="preserve">
     <value>{} IP</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.two" xml:space="preserve">
+    <value>{} IPs</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.few" xml:space="preserve">
+    <value>{} IPs</value>
+    <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
+  </data>
+  <data name="ip_count.many" xml:space="preserve">
+    <value>{} IPs</value>
     <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
   </data>
   <data name="ip_count.other" xml:space="preserve">
@@ -2502,8 +2614,24 @@ Claim your bonus by creating a network!</value>
     <value>Network name unavailable</value>
     <comment>Create Network Form</comment>
   </data>
+  <data name="network_peer_count.zero" xml:space="preserve">
+    <value>You have {} other devices online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
   <data name="network_peer_count.one" xml:space="preserve">
     <value>You have {} other device online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.two" xml:space="preserve">
+    <value>You have {} other devices online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.few" xml:space="preserve">
+    <value>You have {} other devices online</value>
+    <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
+  </data>
+  <data name="network_peer_count.many" xml:space="preserve">
+    <value>You have {} other devices online</value>
     <comment>A label showing the number of connected network peers that have provide enabled. Shown under the location in the connect drawer and as the pinned section title in the location chooser. The argument is the number of peers.</comment>
   </data>
   <data name="network_peer_count.other" xml:space="preserve">
@@ -2518,7 +2646,23 @@ Claim your bonus by creating a network!</value>
     <value>Never</value>
     <comment>Call to action</comment>
   </data>
+  <data name="new_items_count.zero" xml:space="preserve">
+    <value>{} new</value>
+    <comment>A count of new routing events that have not yet been scrolled into view.</comment>
+  </data>
   <data name="new_items_count.one" xml:space="preserve">
+    <value>{} new</value>
+    <comment>A count of new routing events that have not yet been scrolled into view.</comment>
+  </data>
+  <data name="new_items_count.two" xml:space="preserve">
+    <value>{} new</value>
+    <comment>A count of new routing events that have not yet been scrolled into view.</comment>
+  </data>
+  <data name="new_items_count.few" xml:space="preserve">
+    <value>{} new</value>
+    <comment>A count of new routing events that have not yet been scrolled into view.</comment>
+  </data>
+  <data name="new_items_count.many" xml:space="preserve">
     <value>{} new</value>
     <comment>A count of new routing events that have not yet been scrolled into view.</comment>
   </data>
@@ -2829,7 +2973,23 @@ and most decentralized ingress and egress protocol.</value>
   <data name="plus_amount_usdc" xml:space="preserve">
     <value>+{} USDC</value>
   </data>
+  <data name="plus_n_more.zero" xml:space="preserve">
+    <value>+ {} more</value>
+    <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
+  </data>
   <data name="plus_n_more.one" xml:space="preserve">
+    <value>+ {} more</value>
+    <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
+  </data>
+  <data name="plus_n_more.two" xml:space="preserve">
+    <value>+ {} more</value>
+    <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
+  </data>
+  <data name="plus_n_more.few" xml:space="preserve">
+    <value>+ {} more</value>
+    <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
+  </data>
+  <data name="plus_n_more.many" xml:space="preserve">
     <value>+ {} more</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
   </data>
@@ -2913,8 +3073,24 @@ and most decentralized ingress and egress protocol.</value>
     <value>Provider contracts</value>
     <comment>A label for the provider contracts screen.</comment>
   </data>
+  <data name="provider_count.zero" xml:space="preserve">
+    <value>{} providers</value>
+    <comment>A label that shows the number of providers for a location. The argument is the number of providers.</comment>
+  </data>
   <data name="provider_count.one" xml:space="preserve">
     <value>{} provider</value>
+    <comment>A label that shows the number of providers for a location. The argument is the number of providers.</comment>
+  </data>
+  <data name="provider_count.two" xml:space="preserve">
+    <value>{} providers</value>
+    <comment>A label that shows the number of providers for a location. The argument is the number of providers.</comment>
+  </data>
+  <data name="provider_count.few" xml:space="preserve">
+    <value>{} providers</value>
+    <comment>A label that shows the number of providers for a location. The argument is the number of providers.</comment>
+  </data>
+  <data name="provider_count.many" xml:space="preserve">
+    <value>{} providers</value>
     <comment>A label that shows the number of providers for a location. The argument is the number of providers.</comment>
   </data>
   <data name="provider_count.other" xml:space="preserve">
@@ -2956,8 +3132,24 @@ and most decentralized ingress and egress protocol.</value>
     <value>Providing</value>
     <comment>Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
+  <data name="providing_client_count.zero" xml:space="preserve">
+    <value>Providing to {} clients</value>
+    <comment>Provide status showing how many clients the device is currently providing bandwidth to. The argument is the number of clients.</comment>
+  </data>
   <data name="providing_client_count.one" xml:space="preserve">
     <value>Providing to {} client</value>
+    <comment>Provide status showing how many clients the device is currently providing bandwidth to. The argument is the number of clients.</comment>
+  </data>
+  <data name="providing_client_count.two" xml:space="preserve">
+    <value>Providing to {} clients</value>
+    <comment>Provide status showing how many clients the device is currently providing bandwidth to. The argument is the number of clients.</comment>
+  </data>
+  <data name="providing_client_count.few" xml:space="preserve">
+    <value>Providing to {} clients</value>
+    <comment>Provide status showing how many clients the device is currently providing bandwidth to. The argument is the number of clients.</comment>
+  </data>
+  <data name="providing_client_count.many" xml:space="preserve">
+    <value>Providing to {} clients</value>
     <comment>Provide status showing how many clients the device is currently providing bandwidth to. The argument is the number of clients.</comment>
   </data>
   <data name="providing_client_count.other" xml:space="preserve">
@@ -3088,8 +3280,24 @@ and most decentralized ingress and egress protocol.</value>
     <value>Referral Bonus applied</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
+  <data name="referral_celebration_detail.zero" xml:space="preserve">
+    <value>{0} friends just joined URnetwork with your code. Each one earns you +{1} GiB a day of free data — for life.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
   <data name="referral_celebration_detail.one" xml:space="preserve">
     <value>A friend just joined URnetwork with your code. You're both earning +{1} GiB a day of free data — for life.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_celebration_detail.two" xml:space="preserve">
+    <value>{0} friends just joined URnetwork with your code. Each one earns you +{1} GiB a day of free data — for life.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_celebration_detail.few" xml:space="preserve">
+    <value>{0} friends just joined URnetwork with your code. Each one earns you +{1} GiB a day of free data — for life.</value>
+    <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_celebration_detail.many" xml:space="preserve">
+    <value>{0} friends just joined URnetwork with your code. Each one earns you +{1} GiB a day of free data — for life.</value>
     <comment>Body of the one-time full-screen crowning celebration shown to the referrer when a friend joins with their code. {count} is the number of friends that just joined, {data} the daily GiB bonus per referral (currently 3).</comment>
   </data>
   <data name="referral_celebration_detail.other" xml:space="preserve">
@@ -3104,8 +3312,24 @@ and most decentralized ingress and egress protocol.</value>
     <value>This code has been used up</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_crowned_congrats.zero" xml:space="preserve">
+    <value>{0} friends have joined — you're earning +{1} GiB/day, for life.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
   <data name="referral_crowned_congrats.one" xml:space="preserve">
     <value>A friend has joined — you're earning +{1} GiB/day, for life.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
+  <data name="referral_crowned_congrats.two" xml:space="preserve">
+    <value>{0} friends have joined — you're earning +{1} GiB/day, for life.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
+  <data name="referral_crowned_congrats.few" xml:space="preserve">
+    <value>{0} friends have joined — you're earning +{1} GiB/day, for life.</value>
+    <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
+  </data>
+  <data name="referral_crowned_congrats.many" xml:space="preserve">
+    <value>{0} friends have joined — you're earning +{1} GiB/day, for life.</value>
     <comment>Crowned status line on the gold refer overlay once the network has referrals. {count} is total referrals, {data} the total daily GiB the referrer earns (min(count, 20) × 3).</comment>
   </data>
   <data name="referral_crowned_congrats.other" xml:space="preserve">
@@ -3140,8 +3364,24 @@ and most decentralized ingress and egress protocol.</value>
     <value>Code: {0} · Referrals: {1} · Friends enter the code when they sign up</value>
     <comment>One-line referral summary: the network's referral code, how many referrals it has, and how friends use it. The arguments are the referral code and the number of referrals.</comment>
   </data>
+  <data name="referral_toast_joined.zero" xml:space="preserve">
+    <value>{0} friends joined with your code! +{1} GiB/day each, for life.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
   <data name="referral_toast_joined.one" xml:space="preserve">
     <value>A friend joined with your code! +{1} GiB/day, for life.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_toast_joined.two" xml:space="preserve">
+    <value>{0} friends joined with your code! +{1} GiB/day each, for life.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_toast_joined.few" xml:space="preserve">
+    <value>{0} friends joined with your code! +{1} GiB/day each, for life.</value>
+    <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
+  </data>
+  <data name="referral_toast_joined.many" xml:space="preserve">
+    <value>{0} friends joined with your code! +{1} GiB/day each, for life.</value>
     <comment>Gold toast shown to the referrer for referrals after the first (the first gets the full-screen celebration). {count} friends just joined, {data} is the daily GiB bonus per referral (currently 3).</comment>
   </data>
   <data name="referral_toast_joined.other" xml:space="preserve">
@@ -4321,8 +4561,24 @@ world's content</value>
     <value>We're sorry to see you go!</value>
     <comment>Call to action</comment>
   </data>
+  <data name="split_rule_count.zero" xml:space="preserve">
+    <value>{} split rules</value>
+    <comment>A label displaying the number of split rules. The argument is the count of split rules.</comment>
+  </data>
   <data name="split_rule_count.one" xml:space="preserve">
     <value>{} split rule</value>
+    <comment>A label displaying the number of split rules. The argument is the count of split rules.</comment>
+  </data>
+  <data name="split_rule_count.two" xml:space="preserve">
+    <value>{} split rules</value>
+    <comment>A label displaying the number of split rules. The argument is the count of split rules.</comment>
+  </data>
+  <data name="split_rule_count.few" xml:space="preserve">
+    <value>{} split rules</value>
+    <comment>A label displaying the number of split rules. The argument is the count of split rules.</comment>
+  </data>
+  <data name="split_rule_count.many" xml:space="preserve">
+    <value>{} split rules</value>
     <comment>A label displaying the number of split rules. The argument is the count of split rules.</comment>
   </data>
   <data name="split_rule_count.other" xml:space="preserve">
@@ -4560,7 +4816,23 @@ as it should be.</value>
     <value>total payouts</value>
     <comment>Wallets Screen</comment>
   </data>
+  <data name="total_referral_count.zero" xml:space="preserve">
+    <value>Total referrals: {}</value>
+    <comment>Call to action</comment>
+  </data>
   <data name="total_referral_count.one" xml:space="preserve">
+    <value>Total referrals: {}</value>
+    <comment>Call to action</comment>
+  </data>
+  <data name="total_referral_count.two" xml:space="preserve">
+    <value>Total referrals: {}</value>
+    <comment>Call to action</comment>
+  </data>
+  <data name="total_referral_count.few" xml:space="preserve">
+    <value>Total referrals: {}</value>
+    <comment>Call to action</comment>
+  </data>
+  <data name="total_referral_count.many" xml:space="preserve">
     <value>Total referrals: {}</value>
     <comment>Call to action</comment>
   </data>

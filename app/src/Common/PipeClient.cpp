@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "PipeClient.h"
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 #include <chrono>
