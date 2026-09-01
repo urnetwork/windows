@@ -23,8 +23,15 @@
 #   UR_ACCEPT_WINDOWS_BUILD_TIMEOUT=<seconds> local build deadline (default 7200)
 #   EXTERNAL_WARP_VERSION=<v>      local artifact version (default 0.0.0-0)
 #   WARP_VERSION=<v>               local SDK marker (derived when omitted)
+main() {
 set -euo pipefail
 umask 077
+
+# Bash normally parses a script incrementally. Keeping the complete long-lived
+# runner inside one function forces Bash to parse it before the first build or
+# VM operation starts, so an editor replacing this file during a run cannot
+# shift the interpreter's live file offset and corrupt the remaining commands.
+acceptance_finished=0
 
 here="$(cd "$(dirname "$0")" && pwd)"
 root="${URNETWORK_ROOT:-$(dirname "$here")}"
@@ -145,6 +152,10 @@ shutdown_acceptance_vm() {
 
 cleanup() {
   exit_status=$?
+  if [ "${acceptance_finished:-0}" -ne 1 ]; then
+    echo "[windows acceptance] runner exited before recording a final result" >&2
+    exit_status=1
+  fi
   if ! shutdown_acceptance_vm; then
     echo "[windows acceptance] could not stop the acceptance VM" >&2
     exit_status=1
@@ -267,4 +278,8 @@ if [ "$acceptance_status" -eq 0 ] && [ -f "$fixture" ] && [ "$keep_fixture" -ne 
   fi
 fi
 
+acceptance_finished=1
 exit "$acceptance_status"
+}
+
+main "$@"

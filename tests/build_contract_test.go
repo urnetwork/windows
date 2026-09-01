@@ -220,6 +220,34 @@ func TestGeneratedXamlPCHContract(t *testing.T) {
 	}
 }
 
+func TestAcceptanceHarnessImmutabilityContract(t *testing.T) {
+	root := repositoryRoot(t)
+	filename := filepath.Join(root, "test-main.sh")
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	mainStart := strings.Index(source, "\nmain() {\n")
+	workStart := strings.Index(source, "\nset -euo pipefail\n")
+	if mainStart < 0 || workStart < 0 || mainStart > workStart {
+		t.Fatal("test-main.sh must parse its complete long-running body as main before executing work")
+	}
+
+	trimmed := strings.TrimSpace(source)
+	if !strings.HasSuffix(trimmed, "}\n\nmain \"$@\"") {
+		t.Fatal("test-main.sh must invoke its already-parsed main function as the final command")
+	}
+	initialized := strings.Index(source, "acceptance_finished=0")
+	guarded := strings.Index(source, "${acceptance_finished:-0}")
+	finished := strings.LastIndex(source, "acceptance_finished=1")
+	finalExit := strings.LastIndex(source, "exit \"$acceptance_status\"")
+	if initialized < 0 || guarded < 0 || finished < 0 || finalExit < 0 ||
+		!(initialized < guarded && guarded < finished && finished < finalExit) {
+		t.Fatal("test-main.sh completion sentinel cannot distinguish an early exit from a completed acceptance run")
+	}
+}
+
 func TestInstallerContract(t *testing.T) {
 	root := repositoryRoot(t)
 	packageXML := parseXML(t, filepath.Join(root, "app", "installer", "Package.wxs"))
