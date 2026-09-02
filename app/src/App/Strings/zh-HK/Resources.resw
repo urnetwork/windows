@@ -72,10 +72,6 @@
     <value>此帳戶需要驗證。請查看您的電郵。</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>帳戶積分</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>活動</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>添加登入方式</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>添加錢包</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>提供功能預設關閉。請在下方選擇裝置何時提供。</value>
@@ -358,10 +350,6 @@
     <value>使用 Bittensor 登入</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>Bittensor 錢包會儲存以備日後使用，暫時未能接收支付。</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>攔截廣告和追蹤器</value>
     <comment>dns settings</comment>
@@ -398,10 +386,6 @@
     <value>你每月都能獲得免費數據，推薦朋友還可賺取更多。</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>提升你的頻寬</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>提升你的頻寬</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -435,10 +419,6 @@
   <data name="cancel" xml:space="preserve">
     <value>取消</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>目前支援 Solana 和 Polygon 錢包</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>更改</value>
@@ -483,18 +463,6 @@
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>請在瀏覽器中完成購買。付款確認後，您的計劃將在此處自動更新。</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetwork 為您承擔轉帳費用。</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>轉帳至外部錢包</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>轉帳 USDC</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>城市</value>
@@ -564,10 +532,6 @@
     <value>對端</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>確認 Seeker 代幣</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>連接</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -580,29 +544,13 @@
     <value>連接錢包</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>連接帶有 Seeker 預售代幣的錢包</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>連接並開啟連結</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>連接錢包</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>目前支援 Solana 和 Polygon 上的 USDC 地址。</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>連接選項</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>連接 Saga 錢包</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>連接帶有 Saga Genesis 或 Seeker 預購代幣的錢包</value>
@@ -808,17 +756,9 @@
     <value>{} 支付</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>預設每月獲得 {} GiB。以下是賺取額外頻寬的方法：</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>預設</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>預設</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>刪除</value>
@@ -944,10 +884,6 @@
     <value>看不到嗎？</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>推薦朋友 = +{} GiB/月</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>每天保持連接 = 每日賺取高達 {} GiB</value>
     <comment>Call to action</comment>
@@ -959,10 +895,6 @@
   <data name="earnings" xml:space="preserve">
     <value>收益</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>您正在獲得 x2 積分</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>編輯裝置名稱</value>
@@ -1003,9 +935,6 @@
   <data name="enter_a_password" xml:space="preserve">
     <value>請輸入密碼</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>請輸入 Solana USDC 錢包地址</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>輸入餘額碼</value>
@@ -1477,10 +1406,6 @@
     <value>最低用戶/IP比率以存取內容</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>設為默認</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>管理應用程式</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1611,10 +1536,6 @@
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>需要更多數據、更快速度？</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>淨賺積分</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1802,10 +1723,6 @@
     <value>沒有進行中的合約</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>此錢包沒有任何支付記錄</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>我們找不到任何供應商。</value>
     <comment>Locations List</comment>
@@ -1874,10 +1791,6 @@
     <value>或</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>或使用錢包</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>參與</value>
     <comment>Call to action</comment>
@@ -1923,18 +1836,6 @@
     <value>付款問題</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>支付錢包</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>支付</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>每週日 00:00 UTC 進行支付，並且需要達到最低 USDC 門檻。</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 個對等節點</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -1954,10 +1855,6 @@
   <data name="pending_mb_provided" xml:space="preserve">
     <value>待處理：提供了 {} MB</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>待處理的支付</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>固定到單一供應商</value>
@@ -2002,10 +1899,6 @@
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ 另外 {} 個</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>積分明細</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>後量子加密</value>
@@ -2489,10 +2382,6 @@
     <value>已發送！感謝您的反饋。</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>設定錢包</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>設定</value>
     <comment>Account Screen</comment>
@@ -2512,10 +2401,6 @@
   <data name="share_urnetwork" xml:space="preserve">
     <value>分享 URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>你與他人分享，我們與你分享。當你為網絡中的其他人提供數據時，即可賺取收益分成。</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>顯示</value>
@@ -2731,10 +2616,6 @@
     <value>您的 Pro 訂閱透過 Stripe 計費。您可以在下方隨時更新付款資料或取消訂閱。</value>
     <comment>Subscription: Stripe-billed body</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>請確保您的錢包中有足夠的 USDC 資金。在某些情況下，如果錢包資金不足，付款請求可能會失敗。</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>使用 Solana 登入</value>
     <comment>Call to action</comment>
@@ -2783,10 +2664,6 @@
     <value>開始2星期免費試用</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>要開始賺取收益，請將您的加密貨幣錢包連接到 URnetwork，或使用 Circle 設定一個。</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>要開始賺取收益，請加入網絡</value>
     <comment>Guest mode overlay</comment>
@@ -2826,10 +2703,6 @@
   <data name="step_two" xml:space="preserve">
     <value>步驟 2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>已儲存以備將來使用，暫無支付</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>強匿名化</value>
@@ -2946,10 +2819,6 @@
     <value>客戶端總數</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>總支付額</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.other" xml:space="preserve">
     <value>推薦總數：{}</value>
     <comment>Call to action</comment>
@@ -2985,10 +2854,6 @@
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>獲超過100,000個私人網絡信任</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
-  </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>獲超過 {} 個私人網絡信任</value>
-    <comment>Call to action</comment>
   </data>
   <data name="try_again" xml:space="preserve">
     <value>再試一次</value>
@@ -3033,10 +2898,6 @@
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>解鎖更快的速度，並優先體驗新功能。</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>未支付的已提供數據</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>*（可能不穩定）</value>
@@ -3109,12 +2970,6 @@
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>URnetwork VPN 已啟動</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>目前支援 Solana 上的 USDC 地址</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>USDC 錢包地址</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>使用最穩定的供應商</value>
@@ -3219,18 +3074,6 @@
     <value>錢包</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>錢包地址</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>錢包地址</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>複製並貼上於此</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>無法連接錢包。</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -3250,10 +3093,6 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>已添加錢包登入方式</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>錢包</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>歡迎來到URnetwork</value>

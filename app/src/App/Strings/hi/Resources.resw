@@ -72,10 +72,6 @@
     <value>इस खाते के लिए सत्यापन आवश्यक है। अपना ईमेल देखें।</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>खाता अंक</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>गतिविधि</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>साइन-इन विधि जोड़ें</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>वॉलेट जोड़ें</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>आप सेटिंग को "हमेशा" पर समायोजित कर सकते हैं ताकि मुफ्त डेटा तेजी से भर सके।</value>
@@ -366,10 +358,6 @@
     <value>Bittensor से साइन इन करें</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>Bittensor वॉलेट भविष्य के उपयोग के लिए सहेजे जाते हैं और अभी भुगतान प्राप्त नहीं कर सकते।</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>विज्ञापन और ट्रैकर ब्लॉक करें</value>
     <comment>dns settings</comment>
@@ -406,10 +394,6 @@
     <value>नेटवर्क में भाग लेकर और बैंडविड्थ प्रदान करके आप पुरस्कार कमा सकते हैं।</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>अपनी बैंडविड्थ बढ़ाएँ - हर दिन अधिक कमाएँ</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>अपनी बैंडविड्थ बढ़ाएँ</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -442,10 +426,6 @@
   <data name="cancel" xml:space="preserve">
     <value>रद्द करें</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>Solana और Polygon वॉलेट वर्तमान में समर्थित हैं</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>बदलें</value>
@@ -490,18 +470,6 @@
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>ब्राउज़र में अपनी खरीदारी पूरी करें। भुगतान की पुष्टि होते ही आपकी योजना यहां अपने आप अपडेट हो जाएगी।</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetwork आपके हस्तांतरण शुल्क को कवर करता है।</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>बाहरी वॉलेट में ट्रांसफर करें</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>USDC ट्रांसफर करें</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>शहर</value>
@@ -571,10 +539,6 @@
     <value>साथी</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>सीकर टोकन की पुष्टि करें</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>कनेक्ट करें</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -587,29 +551,13 @@
     <value>एक वॉलेट कनेक्ट करें</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>Seeker प्री-ऑर्डर टोकन के साथ एक वॉलेट कनेक्ट करें</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>कनेक्ट करें और लिंक खोलें</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>बाहरी वॉलेट कनेक्ट करें</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>Solana और Polygon पर USDC पते वर्तमान में समर्थित हैं।</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>कनेक्शन विकल्प</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>Saga वॉलेट कनेक्ट करें</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>सागा जेनेसिस या सीकर प्री-ऑर्डर टोकन के साथ एक वॉलेट कनेक्ट करें</value>
@@ -823,17 +771,9 @@
     <value>{} भुगतान</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>डिफ़ॉल्ट रूप से, आपको {} GiB/महीना मिलता है। ऐसे आप अतिरिक्त बैंडविड्थ कमा सकते हैं:</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>डिफ़ॉल्ट</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>डिफ़ॉल्ट</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>डिलीट करें</value>
@@ -959,10 +899,6 @@
     <value>आपको यह दिखाई नहीं दे रहा है?</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>मित्र को रेफ़र करें = +{} GiB/महीना</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>रोज़ाना जुड़े रहें = प्रतिदिन {} GiB तक कमाएँ</value>
     <comment>Call to action</comment>
@@ -974,10 +910,6 @@
   <data name="earnings" xml:space="preserve">
     <value>आय</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>आप x2 अंक कमा रहे हैं</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>डिवाइस का नाम संपादित करें</value>
@@ -1018,9 +950,6 @@
   <data name="enter_a_password" xml:space="preserve">
     <value>पासवर्ड दर्ज करें</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Solana USDC वॉलेट पता दर्ज करें</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>बैलेंस कोड दर्ज करें</value>
@@ -1499,10 +1428,6 @@
     <value>कंटेंट एक्सेस के लिए सबसे कम यूज़र/IP अनुपात</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>डिफ़ॉल्ट बनाएं</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>ऐप्लिकेशन प्रबंधित करें</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1633,10 +1558,6 @@
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>क्या आपको अधिक डेटा, तेज़ी से चाहिए?</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>अर्जित शुद्ध अंक</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1831,10 +1752,6 @@
     <value>कोई खुला कॉन्ट्रैक्ट नहीं</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>इस वॉलेट के लिए कोई भुगतान नहीं मिला</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>हमें कोई प्रदाता नहीं मिला।</value>
     <comment>Locations List</comment>
@@ -1903,10 +1820,6 @@
     <value>या</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>या वॉलेट का उपयोग करें</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>भाग लें</value>
     <comment>Call to action</comment>
@@ -1952,18 +1865,6 @@
     <value>भुगतान में समस्या</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>पेआउट वॉलेट</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>भुगतान</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>भुगतान हर रविवार 00:00 UTC पर होते हैं, और न्यूनतम USDC सीमा पूरी करनी होती है।</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 पीयर</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -1983,10 +1884,6 @@
   <data name="pending_mb_provided" xml:space="preserve">
     <value>लंबित: {} एमबी प्रदान किए गए</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>लंबित भुगतान</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>एक प्रदाता पर पिन करें</value>
@@ -2035,10 +1932,6 @@
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ {} और</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>अंक विवरण</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>पोस्ट-क्वांटम एन्क्रिप्शन</value>
@@ -2542,10 +2435,6 @@
     <value>भेज दिया गया! प्रतिक्रिया के लिए धन्यवाद।</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>वॉलेट सेट करें</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>सेटिंग</value>
     <comment>Account Screen</comment>
@@ -2565,10 +2454,6 @@
   <data name="share_urnetwork" xml:space="preserve">
     <value>URnetwork शेयर करें</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>आप दूसरों के साथ साझा करते हैं, हम आपके साथ साझा करते हैं। जब आप नेटवर्क में दूसरों को डेटा प्रदान करते हैं तो राजस्व का एक हिस्सा अर्जित करें।</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>दिखाएं</value>
@@ -2784,10 +2669,6 @@
     <value>आपकी Pro सदस्यता Stripe के माध्यम से बिल की जाती है। नीचे कभी भी अपने भुगतान विवरण अपडेट करें या सदस्यता रद्द करें।</value>
     <comment>Subscription: Stripe-billed body</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>कृपया सुनिश्चित करें कि आपके वॉलेट में पर्याप्त USDC फंड्स हैं। कुछ मामलों में, यदि वॉलेट में पर्याप्त फंड्स नहीं हैं तो भुगतान अनुरोध विफल हो सकता है।</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Solana से साइन इन करें</value>
     <comment>Call to action</comment>
@@ -2840,10 +2721,6 @@
     <value>2 सप्ताह की मुफ्त ट्रायल शुरू करें</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>कमाई शुरू करने के लिए, अपने क्रिप्टोकरेंसी वॉलेट को URnetwork से कनेक्ट करें या Circle के साथ एक सेट करें।</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>कमाई शुरू करने के लिए, नेटवर्क से जुड़ें</value>
     <comment>Guest mode overlay</comment>
@@ -2882,10 +2759,6 @@
   <data name="step_two" xml:space="preserve">
     <value>चरण 2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>भविष्य के उपयोग के लिए सहेजा गया, अभी कोई भुगतान नहीं</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>मजबूत गुमनामीकरण</value>
@@ -3002,10 +2875,6 @@
     <value>कुल क्लाइंट्स</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>कुल भुगतान</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.one" xml:space="preserve">
     <value>कुल रेफ़रल: {}</value>
     <comment>Call to action</comment>
@@ -3045,10 +2914,6 @@
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>100,000 से अधिक निजी नेटवर्क द्वारा विश्वसनीय</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
-  </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>{} से अधिक निजी नेटवर्क द्वारा विश्वसनीय</value>
-    <comment>Call to action</comment>
   </data>
   <data name="try_again" xml:space="preserve">
     <value>पुनः प्रयास करें</value>
@@ -3093,10 +2958,6 @@
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>और भी तेज़ गति अनलॉक करें और नई सुविधाओं तक जल्दी पहुंच प्राप्त करें।</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>बिना भुगतान का डेटा प्रदान किया गया</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (अस्थिर हो सकता है)</value>
@@ -3169,12 +3030,6 @@
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>URnetwork VPN शुरू हो गया</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>Solana पर USDC पतों का वर्तमान में समर्थन किया जाता है</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>USDC वॉलेट पता</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>सबसे स्थिर प्रदाता का उपयोग करता है</value>
@@ -3279,18 +3134,6 @@
     <value>वॉलेट</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>वॉलेट पता</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>वॉलेट पता</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>यहां कॉपी और पेस्ट करें</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>वॉलेट कनेक्ट करने में विफल।</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -3310,10 +3153,6 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>वॉलेट साइन-इन विधि जोड़ी गई</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>वॉलेट</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>URnetwork में आपका स्वागत है</value>

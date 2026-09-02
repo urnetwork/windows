@@ -72,10 +72,6 @@
     <value>Цей обліковий запис потребує підтвердження. Перевірте свою електронну пошту.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>Бали акаунта</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>Активність</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>Додати спосіб входу</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>Додати гаманець</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Надання за замовчуванням вимкнено. Нижче виберіть, коли ваш пристрій надає дані.</value>
@@ -382,10 +374,6 @@
     <value>Увійти через Bittensor</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>Гаманці Bittensor зберігаються для майбутнього використання і поки не можуть отримувати виплати.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>Блокувати рекламу та трекери</value>
     <comment>dns settings</comment>
@@ -422,10 +410,6 @@
     <value>Щомісяця ви отримуєте безкоштовні дані та можете заробити більше, запрошуючи друзів.</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>Збільшіть пропускну здатність</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>Збільшіть пропускну здатність</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -459,10 +443,6 @@
   <data name="cancel" xml:space="preserve">
     <value>Скасувати</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>Наразі підтримуються гаманці Solana та Polygon</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>Змінити</value>
@@ -507,18 +487,6 @@
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>Завершіть покупку в браузері. Ваш план оновиться тут автоматично, щойно оплату буде підтверджено.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetwork покриває ваші комісії за переказ.</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>Переказ на зовнішній гаманець</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>Переказати USDC</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>Міста</value>
@@ -588,10 +556,6 @@
     <value>Партнер</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>Підтвердити токен Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>Підключитися</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -604,29 +568,13 @@
     <value>Підключіть гаманець</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>Підключіть гаманець за допомогою токена попереднього замовлення Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>Підключитися та відкрити посилання</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>Підключити гаманець</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>Наразі підтримуються адреси USDC у мережах Solana та Polygon.</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>Параметри підключення</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>Підключити гаманець Saga</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>Підключіть гаманець із токеном Saga Genesis або токеном попереднього замовлення Seeker</value>
@@ -856,17 +804,9 @@
     <value>Виплата {}</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>За замовчуванням ви отримуєте {} ГіБ/місяць. Ось як можна отримати додаткову пропускну здатність:</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>За замовчуванням</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>За замовчуванням</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Видалити</value>
@@ -992,10 +932,6 @@
     <value>Не бачите?</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>Порекомендуйте друга = +{} ГіБ/місяць</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>Залишайтеся на зв'язку щодня = Заробляйте до {} ГіБ/день</value>
     <comment>Call to action</comment>
@@ -1007,10 +943,6 @@
   <data name="earnings" xml:space="preserve">
     <value>Заробіток</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>Ви заробляєте x2 бали</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>Редагувати назву пристрою</value>
@@ -1051,9 +983,6 @@
   <data name="enter_a_password" xml:space="preserve">
     <value>Введіть пароль</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Введіть адресу гаманця USDC на Solana</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Введіть код балансу</value>
@@ -1549,10 +1478,6 @@
     <value>Найнижче співвідношення користувачів до IP для доступу до контенту</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>Зробити за замовчуванням</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>Керувати застосунками</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1683,10 +1608,6 @@
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>Потрібно більше даних, швидше?</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>чистих зароблених балів</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1898,10 +1819,6 @@
     <value>Немає відкритих контрактів</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>Виплат для цього гаманця не знайдено</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>Ми не змогли знайти жодного провайдера.</value>
     <comment>Locations List</comment>
@@ -1970,10 +1887,6 @@
     <value>або</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>Або скористайтеся гаманцем</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Брати участь</value>
     <comment>Call to action</comment>
@@ -2019,18 +1932,6 @@
     <value>Проблема з оплатою</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>Гаманці для виплат</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>Виплати</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>Виплати відбуваються щонеділі о 00:00 UTC і вимагають досягнення мінімального порогу USDC.</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 вузол</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -2050,10 +1951,6 @@
   <data name="pending_mb_provided" xml:space="preserve">
     <value>Очікується: надано {} МБ</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>Очікувана виплата</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>Закріпити за одним провайдером</value>
@@ -2110,10 +2007,6 @@
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ ще {}</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>Розподіл балів</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Постквантове шифрування</value>
@@ -2657,10 +2550,6 @@
     <value>Надіслано! Дякуємо за відгук.</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>Налаштувати гаманець</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>Налаштування</value>
     <comment>Account Screen</comment>
@@ -2680,10 +2569,6 @@
   <data name="share_urnetwork" xml:space="preserve">
     <value>Поділитися URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>Ви ділитесь з іншими, ми ділимось з вами. Отримуйте частку доходу, коли надаєте дані іншим у мережі.</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>Показати</value>
@@ -2899,10 +2784,6 @@
     <value>Ваша підписка Pro оплачується через Stripe. Нижче ви можете будь-коли оновити платіжні дані або скасувати підписку.</value>
     <comment>Subscription: Stripe-billed body</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>Будь ласка, переконайтеся, що у вашому гаманці достатньо коштів USDC. У деяких випадках запити на оплату не проходять, якщо в гаманці недостатньо коштів.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Увійти через Solana</value>
     <comment>Call to action</comment>
@@ -2963,10 +2844,6 @@
     <value>Почати двотижневий безкоштовний пробний період</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>Щоб почати заробляти, підключіть свій криптовалютний гаманець до URnetwork або створіть його з Circle.</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>Щоб почати заробляти, приєднайтеся до мережі</value>
     <comment>Guest mode overlay</comment>
@@ -3006,10 +2883,6 @@
   <data name="step_two" xml:space="preserve">
     <value>Крок 2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>збережено для майбутнього використання, виплат поки немає</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Посилена анонімізація</value>
@@ -3126,10 +2999,6 @@
     <value>Всього клієнтів</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>всього виплат</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.one" xml:space="preserve">
     <value>Всього рефералів: {}</value>
     <comment>Call to action</comment>
@@ -3178,10 +3047,6 @@
     <value>Довіряють понад 100 000 приватних мереж</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>Довіряють понад {} приватних мереж</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="try_again" xml:space="preserve">
     <value>Спробуйте ще раз</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
@@ -3225,10 +3090,6 @@
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>Отримайте ще вищу швидкість та перший доступ до нових функцій.</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>неоплачені надані дані</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (може бути нестабільним)</value>
@@ -3301,12 +3162,6 @@
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>URnetwork VPN запущено</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>Адреси USDC на Solana наразі підтримуються</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>Адреса гаманця USDC</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>Використовується найстабільніший провайдер</value>
@@ -3411,18 +3266,6 @@
     <value>Гаманець</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>Адреса гаманця</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>Адреса гаманця</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>Скопіюйте та вставте сюди</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>Не вдалося підключити гаманець.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -3442,10 +3285,6 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>Спосіб входу через гаманець додано</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>Гаманці</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>Ласкаво просимо до URnetwork</value>

@@ -72,10 +72,6 @@
     <value>Tài khoản này cần được xác minh. Hãy kiểm tra email của bạn.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>Điểm tài khoản</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>Hoạt động</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>Thêm phương thức đăng nhập</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>Thêm ví</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Cung cấp được tắt theo mặc định. Chọn bên dưới khi nào thiết bị của bạn cung cấp.</value>
@@ -358,10 +350,6 @@
     <value>Đăng nhập bằng Bittensor</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>Ví Bittensor được lưu để dùng trong tương lai và chưa thể nhận thanh toán.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>Chặn quảng cáo và trình theo dõi</value>
     <comment>dns settings</comment>
@@ -398,10 +386,6 @@
     <value>Bạn nhận dữ liệu miễn phí mỗi tháng và có thể kiếm thêm bằng cách giới thiệu bạn bè.</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>Tăng băng thông của bạn</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>Tăng băng thông của bạn</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -435,10 +419,6 @@ cách đúng đắn</value>
   <data name="cancel" xml:space="preserve">
     <value>Hủy</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>Hiện hỗ trợ ví Solana và Polygon</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>Thay đổi</value>
@@ -483,18 +463,6 @@ cách đúng đắn</value>
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>Hoàn tất giao dịch mua trong trình duyệt. Kế hoạch của bạn sẽ tự động cập nhật tại đây sau khi thanh toán được xác nhận.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetwork chi trả phí chuyển khoản cho bạn.</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>Chuyển đến ví bên ngoài</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>Chuyển USDC</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>Thành phố</value>
@@ -564,10 +532,6 @@ cách đúng đắn</value>
     <value>Đối tác</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>Xác nhận Token Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>Kết nối</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -580,29 +544,13 @@ cách đúng đắn</value>
     <value>Kết nối ví</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>Kết nối ví với Mã thông báo Đặt hàng trước Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>Kết nối và mở liên kết</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>Kết nối ví</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>Hiện hỗ trợ địa chỉ USDC trên Solana và Polygon.</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>Tùy chọn kết nối</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>Kết nối ví Saga</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>Kết nối ví có token Saga Genesis hoặc token đặt trước Seeker</value>
@@ -808,17 +756,9 @@ cách đúng đắn</value>
     <value>Thanh toán {}</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>Mặc định bạn nhận được {} GiB/tháng. Đây là cách bạn có thể kiếm thêm băng thông:</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>Mặc định</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>Mặc định</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Xóa</value>
@@ -944,10 +884,6 @@ cách đúng đắn</value>
     <value>Không thấy?</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>Giới thiệu bạn bè = +{} GiB/tháng</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>Kết nối hàng ngày = Kiếm tới {} GiB/ngày</value>
     <comment>Call to action</comment>
@@ -959,10 +895,6 @@ cách đúng đắn</value>
   <data name="earnings" xml:space="preserve">
     <value>Thu nhập</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>Bạn đang kiếm được điểm x2</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>Sửa tên thiết bị</value>
@@ -1003,9 +935,6 @@ cách đúng đắn</value>
   <data name="enter_a_password" xml:space="preserve">
     <value>Nhập mật khẩu</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Nhập địa chỉ ví USDC trên Solana</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Nhập mã số dư</value>
@@ -1477,10 +1406,6 @@ gặp lại bạn</value>
     <value>Tỷ lệ người dùng/IP thấp nhất để truy cập nội dung</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>Đặt làm mặc định</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>Quản lý ứng dụng</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1611,10 +1536,6 @@ gặp lại bạn</value>
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>Cần thêm dữ liệu, nhanh hơn?</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>điểm ròng đã kiếm được</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1802,10 +1723,6 @@ Nhận thưởng bằng cách tạo mạng!</value>
     <value>Không có hợp đồng đang mở</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>Không tìm thấy khoản thanh toán nào cho ví này</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>Chúng tôi không tìm thấy nhà cung cấp nào.</value>
     <comment>Locations List</comment>
@@ -1874,10 +1791,6 @@ Nhận thưởng bằng cách tạo mạng!</value>
     <value>hoặc</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>Hoặc dùng ví</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Tham gia</value>
     <comment>Call to action</comment>
@@ -1923,18 +1836,6 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>Sự cố thanh toán</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>Ví thanh toán</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>Thanh toán</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>Thanh toán diễn ra vào mỗi Chủ Nhật lúc 00:00 UTC và yêu cầu đạt ngưỡng USDC tối thiểu.</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 nút ngang hàng</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -1954,10 +1855,6 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
   <data name="pending_mb_provided" xml:space="preserve">
     <value>Đang chờ xử lý: đã cung cấp {} MB</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>Thanh toán đang chờ</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>Ghim vào một nhà cung cấp</value>
@@ -2002,10 +1899,6 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ {} nữa</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>Phân tích điểm</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Mã hóa hậu lượng tử</value>
@@ -2489,10 +2382,6 @@ nội dung thế giới</value>
     <value>Đã gửi! Cảm ơn phản hồi của bạn.</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>Thiết lập ví</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>Cài đặt</value>
     <comment>Account Screen</comment>
@@ -2512,10 +2401,6 @@ nội dung thế giới</value>
   <data name="share_urnetwork" xml:space="preserve">
     <value>Chia sẻ URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>Bạn chia sẻ với người khác, chúng tôi chia sẻ với bạn. Kiếm được phần doanh thu khi bạn cung cấp dữ liệu cho người khác trong mạng.</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>Hiện</value>
@@ -2731,10 +2616,6 @@ nội dung thế giới</value>
     <value>Gói đăng ký Pro của bạn được thanh toán qua Stripe. Cập nhật thông tin thanh toán hoặc hủy bất cứ lúc nào ở bên dưới.</value>
     <comment>Subscription: Stripe-billed body</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>Vui lòng đảm bảo bạn có đủ USDC trong ví. Trong một số trường hợp, yêu cầu thanh toán sẽ thất bại nếu ví không đủ tiền.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Đăng nhập bằng Solana</value>
     <comment>Call to action</comment>
@@ -2783,10 +2664,6 @@ nội dung thế giới</value>
     <value>Bắt đầu dùng thử miễn phí 2 tuần</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>Để bắt đầu kiếm tiền, kết nối ví tiền mã hóa của bạn với URnetwork hoặc tạo ví với Circle.</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>Để bắt đầu kiếm tiền, hãy tham gia mạng</value>
     <comment>Guest mode overlay</comment>
@@ -2826,10 +2703,6 @@ như nó vốn phải thế.</value>
   <data name="step_two" xml:space="preserve">
     <value>Bước 2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>được lưu để dùng sau, chưa có khoản chi trả</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Ẩn danh mạnh</value>
@@ -2946,10 +2819,6 @@ như nó vốn phải thế.</value>
     <value>Tổng số máy khách</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>tổng thanh toán</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.other" xml:space="preserve">
     <value>Tổng số giới thiệu: {}</value>
     <comment>Call to action</comment>
@@ -2985,10 +2854,6 @@ như nó vốn phải thế.</value>
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>Được hơn 100.000 mạng riêng tin tưởng</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
-  </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>Được hơn {} mạng riêng tin tưởng</value>
-    <comment>Call to action</comment>
   </data>
   <data name="try_again" xml:space="preserve">
     <value>Thử lại</value>
@@ -3033,10 +2898,6 @@ như nó vốn phải thế.</value>
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>Mở khóa tốc độ nhanh hơn và ưu tiên trải nghiệm các tính năng mới.</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>Dữ liệu đã cung cấp chưa thanh toán</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (có thể không ổn định)</value>
@@ -3109,12 +2970,6 @@ như nó vốn phải thế.</value>
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>URnetwork VPN đã khởi động</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>Hiện tại hỗ trợ địa chỉ USDC trên Solana</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>Địa chỉ ví USDC</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>Sử dụng nhà cung cấp ổn định nhất</value>
@@ -3219,18 +3074,6 @@ như nó vốn phải thế.</value>
     <value>Ví</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>Địa chỉ ví</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>Địa chỉ ví</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>Sao chép và dán vào đây</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>Không thể kết nối ví.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -3250,10 +3093,6 @@ như nó vốn phải thế.</value>
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>Đã thêm phương thức đăng nhập bằng ví</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>Ví</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>Chào mừng đến với URnetwork</value>

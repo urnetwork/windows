@@ -72,10 +72,6 @@
     <value>Этот аккаунт требует подтверждения. Проверьте свою электронную почту.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>Очки аккаунта</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>Активность</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>Добавить способ входа</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>Добавить кошелек</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Вы можете изменить настройку на «Всегда», чтобы быстрее получать бесплатные данные.</value>
@@ -382,10 +374,6 @@
     <value>Войти через Bittensor</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>Кошельки Bittensor сохраняются для будущего использования и пока не могут получать выплаты.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>Блокировать рекламу и трекеры</value>
     <comment>dns settings</comment>
@@ -422,10 +410,6 @@
     <value>Участвуя в сети и предоставляя пропускную способность, вы можете получать награды.</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>Увеличьте пропускную способность — зарабатывайте больше каждый день</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>Увеличьте пропускную способность</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -459,10 +443,6 @@
   <data name="cancel" xml:space="preserve">
     <value>Отмена</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>В настоящее время поддерживаются кошельки Solana и Polygon</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>Изменить</value>
@@ -507,18 +487,6 @@
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>Завершите покупку в браузере. Ваш тариф обновится здесь автоматически, как только платеж будет подтвержден.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetwork покрывает ваши комиссии за перевод.</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>Перевод на внешний кошелек</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>Перевод USDC</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>Города</value>
@@ -588,10 +556,6 @@
     <value>Партнёр</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>Подтвердить токен Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>Подключить</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -604,29 +568,13 @@
     <value>Подключите кошелек</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>Подключите кошелек с токеном предзаказа Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>Подключиться и открыть ссылку</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>Подключить внешний кошелек</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>В настоящее время поддерживаются адреса USDC в сетях Solana и Polygon.</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>Параметры подключения</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>Подключить кошелек Saga</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>Подключите кошелек с токеном Saga Genesis или Seeker Pre-Order</value>
@@ -856,17 +804,9 @@
     <value>Выплата за {}</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>По умолчанию вы получаете {} GiB/месяц. Вот как можно заработать дополнительную пропускную способность:</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>По умолчанию</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>По умолчанию</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Удалить</value>
@@ -992,10 +932,6 @@
     <value>Не видите письмо?</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>Пригласите друга = +{} GiB/месяц</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>Оставайтесь на связи ежедневно = Зарабатывайте до {} GiB/день</value>
     <comment>Call to action</comment>
@@ -1007,10 +943,6 @@
   <data name="earnings" xml:space="preserve">
     <value>Заработок</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>Вы зарабатываете x2 очков</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>Изменить имя устройства</value>
@@ -1051,9 +983,6 @@
   <data name="enter_a_password" xml:space="preserve">
     <value>Введите пароль</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Введите адрес кошелька USDC в сети Solana</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Введите код баланса</value>
@@ -1549,10 +1478,6 @@
     <value>Самое низкое соотношение пользователей к IP для доступа к контенту</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>Сделать по умолчанию</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>Управление приложениями</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1683,10 +1608,6 @@
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>Нужно больше данных и выше скорость?</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>заработано очков (нетто)</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1898,10 +1819,6 @@
     <value>Нет открытых контрактов</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>Для этого кошелька не найдено выплат</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>Нам не удалось найти провайдеров.</value>
     <comment>Locations List</comment>
@@ -1970,10 +1887,6 @@
     <value>или</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>Или используйте кошелек</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Участвовать</value>
     <comment>Call to action</comment>
@@ -2019,18 +1932,6 @@
     <value>Проблема с оплатой</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>Кошельки для выплат</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>Выплаты</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>Выплаты происходят каждое воскресенье в 00:00 UTC и требуют достижения минимального порога USDC.</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 узел</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -2050,10 +1951,6 @@
   <data name="pending_mb_provided" xml:space="preserve">
     <value>В ожидании: предоставлено {} МБ</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>Ожидаемая выплата</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>Закрепить за одним провайдером</value>
@@ -2110,10 +2007,6 @@
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ ещё {}</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>Разбивка очков</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Постквантовое шифрование</value>
@@ -2669,10 +2562,6 @@
     <value>Отправлено! Спасибо за отзыв.</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>Настроить кошелек</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>Настройки</value>
     <comment>Account Screen</comment>
@@ -2692,10 +2581,6 @@
   <data name="share_urnetwork" xml:space="preserve">
     <value>Поделиться URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>Вы делитесь с другими, мы делимся с вами. Получайте долю дохода, предоставляя данные другим участникам сети.</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>Показать</value>
@@ -2774,10 +2659,6 @@
   <data name="site_app_add" xml:space="preserve">
     <value>Добавить</value>
     <comment>App wallets/blocked: add button</comment>
-  </data>
-  <data name="site_app_add_wallet" xml:space="preserve">
-    <value>Добавить кошелёк</value>
-    <comment>App wallets: add wallet heading</comment>
   </data>
   <data name="site_app_allowed" xml:space="preserve">
     <value>разрешено</value>
@@ -3047,10 +2928,6 @@
     <value>Способы входа</value>
     <comment>App profile: login methods section</comment>
   </data>
-  <data name="site_app_make_payout_wallet" xml:space="preserve">
-    <value>Назначить кошельком для выплат</value>
-    <comment>App wallets: make payout wallet action</comment>
-  </data>
   <data name="site_app_manage_subscription" xml:space="preserve">
     <value>Управление подпиской</value>
     <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
@@ -3091,10 +2968,6 @@
     <value>Пока нет заблокированных локаций</value>
     <comment>App blocked locations: empty state</comment>
   </data>
-  <data name="site_app_no_payouts" xml:space="preserve">
-    <value>Пока нет выплат</value>
-    <comment>App wallets: payouts empty state</comment>
-  </data>
   <data name="site_app_no_provider_activity" xml:space="preserve">
     <value>Нет активности раздачи за этот период.</value>
     <comment>App provider: no provider throughput</comment>
@@ -3111,25 +2984,9 @@
     <value>Трафика пока нет</value>
     <comment>Connect drawer: throughput empty state</comment>
   </data>
-  <data name="site_app_no_wallets" xml:space="preserve">
-    <value>Пока нет кошельков — добавьте, чтобы получать выплаты</value>
-    <comment>App wallets: empty state</comment>
-  </data>
   <data name="site_app_paid_on" xml:space="preserve">
     <value>Оплачено</value>
     <comment>App payout detail: paid time</comment>
-  </data>
-  <data name="site_app_payout_not_found" xml:space="preserve">
-    <value>Эта выплата не найдена.</value>
-    <comment>App payout detail: not found</comment>
-  </data>
-  <data name="site_app_payout_wallet" xml:space="preserve">
-    <value>Кошелёк для выплат</value>
-    <comment>App wallets: payout wallet label</comment>
-  </data>
-  <data name="site_app_payouts" xml:space="preserve">
-    <value>Выплаты</value>
-    <comment>App wallets: payouts section</comment>
   </data>
   <data name="site_app_peak_clients" xml:space="preserve">
     <value>Пик клиентов</value>
@@ -3270,14 +3127,6 @@
   <data name="site_app_wallet" xml:space="preserve">
     <value>Кошелёк</value>
     <comment>App wallets: wallet label</comment>
-  </data>
-  <data name="site_app_wallet_address" xml:space="preserve">
-    <value>Адрес кошелька</value>
-    <comment>App wallets: wallet address input</comment>
-  </data>
-  <data name="site_app_wallets" xml:space="preserve">
-    <value>Кошельки</value>
-    <comment>App account: wallets row/screen title</comment>
   </data>
   <data name="site_best_available" xml:space="preserve">
     <value>Лучший доступный</value>
@@ -3539,10 +3388,6 @@
     <value>Произошла непредвиденная ошибка.</value>
     <comment>Account panel: generic unexpected error</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>Пожалуйста, убедитесь, что у вас достаточно средств USDC в вашем кошельке. В некоторых случаях запросы на оплату не проходят, если в кошельке недостаточно средств.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Войти через Solana</value>
     <comment>Call to action</comment>
@@ -3603,10 +3448,6 @@
     <value>Начать двухнедельный бесплатный пробный период</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>Чтобы начать зарабатывать, подключите свой криптовалютный кошелек к URnetwork или создайте новый с помощью Circle.</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>Чтобы начать зарабатывать, присоединяйтесь к сети</value>
     <comment>Guest mode overlay</comment>
@@ -3646,10 +3487,6 @@
   <data name="step_two" xml:space="preserve">
     <value>Шаг 2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>сохранен для будущего использования, выплаты пока недоступны</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Усиленная анонимизация</value>
@@ -3766,10 +3603,6 @@
     <value>Всего клиентов</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>всего выплат</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.one" xml:space="preserve">
     <value>Всего рефералов: {}</value>
     <comment>Call to action</comment>
@@ -3818,10 +3651,6 @@
     <value>Доверяют более 100 000 частных сетей</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>Доверяют более чем {} частных сетей</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="try_again" xml:space="preserve">
     <value>Попробовать снова</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
@@ -3865,10 +3694,6 @@
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>Получите доступ к еще более высоким скоростям и первым пробуйте новые функции.</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>Предоставленные неоплаченные данные</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (может быть нестабильным)</value>
@@ -3941,12 +3766,6 @@
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>URnetwork VPN запущен</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>В настоящее время поддерживаются адреса USDC в сети Solana</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>Адрес кошелька USDC</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>Используется самый стабильный провайдер</value>
@@ -4051,18 +3870,6 @@
     <value>Кошелек</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>Адрес кошелька</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>Адрес кошелька</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>Скопируйте и вставьте сюда</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>Не удалось подключить кошелек.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -4082,10 +3889,6 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>Способ входа через кошелек добавлен</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>Кошельки</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>Добро пожаловать в URnetwork</value>

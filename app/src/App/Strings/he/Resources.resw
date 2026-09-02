@@ -72,10 +72,6 @@
     <value>חשבון זה דורש אימות. בדוק את תיבת הדואר שלך.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>נקודות חשבון</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>פעילות</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>הוסף שיטת התחברות</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>הוסף ארנק</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>האספקה כבויה כברירת מחדל. בחר למטה מתי המכשיר שלך מספק.</value>
@@ -382,10 +374,6 @@
     <value>התחבר עם Bittensor</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>ארנקי Bittensor נשמרים לשימוש עתידי ועדיין לא יכולים לקבל תשלומים.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>חסום פרסומות ורכיבי מעקב</value>
     <comment>dns settings</comment>
@@ -422,10 +410,6 @@
     <value>אתה מקבל נתונים חינם בכל חודש, ואפשר להרוויח עוד על ידי המלצה על חברים.</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>הגבר את רוחב הפס שלך</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>הגבר את רוחב הפס שלך</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -459,10 +443,6 @@
   <data name="cancel" xml:space="preserve">
     <value>ביטול</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>ארנקי Solana ו-Polygon נתמכים כרגע</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>שנה</value>
@@ -507,18 +487,6 @@
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>השלימו את הרכישה בדפדפן. התוכנית שלכם תתעדכן כאן אוטומטית ברגע שהתשלום יאושר.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetwork מכסה את עמלות ההעברה שלך.</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>העברה לארנק חיצוני</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>העבר USDC</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>ערים</value>
@@ -588,10 +556,6 @@
     <value>הצד השני</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>אמת אסימון Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>התחבר</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -604,29 +568,13 @@
     <value>חבר ארנק</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>חבר ארנק עם אסימון הזמנה מוקדמת של Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>התחבר ופתח קישור</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>חבר ארנק</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>כתובות USDC ב-Solana וב-Polygon נתמכות כרגע.</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>אפשרויות חיבור</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>חבר ארנק Saga</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>חבר ארנק עם טוקן Saga Genesis או טוקן ההזמנה המוקדמת של Seeker</value>
@@ -856,17 +804,9 @@
     <value>{} תשלום</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>כברירת מחדל תקבל {} GiB/חודש. כך תוכל להרוויח רוחב פס נוסף:</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>ברירת מחדל</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>ברירת מחדל</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>מחק</value>
@@ -992,10 +932,6 @@
     <value>לא רואה את זה?</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>המלץ על חבר = +{} GiB/חודש</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>הישאר מחובר מדי יום = תרוויח עד {} GiB/יום</value>
     <comment>Call to action</comment>
@@ -1007,10 +943,6 @@
   <data name="earnings" xml:space="preserve">
     <value>רווחים</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>אתה מרוויח פי 2 נקודות</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>ערוך את שם המכשיר</value>
@@ -1051,9 +983,6 @@
   <data name="enter_a_password" xml:space="preserve">
     <value>הזן סיסמה</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>הזן כתובת ארנק USDC ב-Solana</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>הזן קוד יתרה</value>
@@ -1549,10 +1478,6 @@
     <value>יחס המשתמשים/כתובת IP הנמוך ביותר לגישה לתוכן</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>הפוך לברירת מחדל</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>ניהול אפליקציות</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1683,10 +1608,6 @@
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>צריך יותר נתונים, מהר יותר?</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>נקודות נטו שהושגו</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1898,10 +1819,6 @@
     <value>אין חוזים פתוחים</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>לא נמצאו תשלומים עבור ארנק זה</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>לא הצלחנו למצוא ספקים.</value>
     <comment>Locations List</comment>
@@ -1970,10 +1887,6 @@
     <value>או</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>או השתמשו בארנק</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>השתתף</value>
     <comment>Call to action</comment>
@@ -2019,18 +1932,6 @@
     <value>בעיה בתשלום</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>ארנקי תשלום</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>תשלומים</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>התשלומים מתבצעים בכל יום ראשון בשעה 00:00 UTC ודורשים עמידה בסף מינימלי של USDC.</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>עמית אחד</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -2050,10 +1951,6 @@
   <data name="pending_mb_provided" xml:space="preserve">
     <value>ממתין: סופקו {} מגה-בייט</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>תשלום ממתין</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>הצמד לספק אחד</value>
@@ -2110,10 +2007,6 @@
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ {} נוספים</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>פירוט נקודות</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>הצפנה פוסט-קוונטית</value>
@@ -2657,10 +2550,6 @@
     <value>נשלח! תודה על המשוב.</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>הגדר ארנק</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>הגדרות</value>
     <comment>Account Screen</comment>
@@ -2680,10 +2569,6 @@
   <data name="share_urnetwork" xml:space="preserve">
     <value>שתף URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>אתה משתף עם אחרים, אנחנו משתפים איתך. הרווח חלק מההכנסות כשאתה מספק נתונים לאחרים ברשת.</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>הצג</value>
@@ -2899,10 +2784,6 @@
     <value>המנוי Pro שלך מחויב דרך Stripe. עדכן את פרטי התשלום או בטל בכל עת למטה.</value>
     <comment>Subscription: Stripe-billed body</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>ודא שיש לך מספיק כספי USDC בארנק. במקרים מסוימים, בקשות תשלום נכשלות אם אין מספיק כסף בארנק.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>התחבר עם Solana</value>
     <comment>Call to action</comment>
@@ -2963,10 +2844,6 @@
     <value>התחל ניסיון חינם לשבועיים</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>כדי להתחיל להרוויח, חבר את ארנק הקריפטו שלך ל-URnetwork או הגדר אחד עם Circle.</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>כדי להתחיל להרוויח, הצטרף לרשת</value>
     <comment>Guest mode overlay</comment>
@@ -3006,10 +2883,6 @@
   <data name="step_two" xml:space="preserve">
     <value>שלב 2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>נשמר לשימוש עתידי, ללא תשלומים בשלב זה</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>אנונימיזציה חזקה</value>
@@ -3126,10 +2999,6 @@
     <value>סך הלקוחות</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>סך התשלומים</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.one" xml:space="preserve">
     <value>סך ההפניות: {}</value>
     <comment>Call to action</comment>
@@ -3178,10 +3047,6 @@
     <value>נמצא באמון של מעל 100,000 רשתות פרטיות</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>נמצא באמון של מעל {} רשתות פרטיות</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="try_again" xml:space="preserve">
     <value>נסה שוב</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
@@ -3225,10 +3090,6 @@
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>פתח מהירויות גבוהות עוד יותר וגישה ראשונה לתכונות חדשות.</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>נתונים שסופקו וטרם שולמו</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (עשוי להיות לא יציב)</value>
@@ -3301,12 +3162,6 @@
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>URnetwork VPN הופעל</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>כתובות USDC ב-Solana נתמכות כרגע</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>כתובת ארנק USDC</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>משתמש בספק היציב ביותר</value>
@@ -3411,18 +3266,6 @@
     <value>ארנק</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>כתובת ארנק</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>כתובת ארנק</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>העתק והדבק כאן</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>חיבור הארנק נכשל.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -3442,10 +3285,6 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>שיטת התחברות באמצעות ארנק נוספה</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>ארנקים</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>ברוך הבא ל-URnetwork</value>

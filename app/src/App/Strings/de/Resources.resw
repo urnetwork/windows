@@ -72,10 +72,6 @@
     <value>Dieses Konto muss bestätigt werden. Überprüfe deine E-Mails.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>Kontopunkte</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>Aktivität</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>Anmeldemethode hinzufügen</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>Wallet hinzufügen</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Du kannst die Einstellung auf „Immer“ setzen, um die kostenlosen Daten schneller zu füllen.</value>
@@ -366,10 +358,6 @@
     <value>Mit Bittensor anmelden</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>Bittensor-Wallets werden für die spätere Nutzung gespeichert und können noch keine Auszahlungen empfangen.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>Werbung und Tracker blockieren</value>
     <comment>dns settings</comment>
@@ -406,10 +394,6 @@
     <value>Durch die Teilnahme am Netzwerk und das Bereitstellen von Bandbreite kannst du Belohnungen verdienen.</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>Steigere deine Bandbreite – Verdiene jeden Tag mehr</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>Steigere deine Bandbreite</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -443,10 +427,6 @@ richtig auf</value>
   <data name="cancel" xml:space="preserve">
     <value>Brich ab</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>Solana- und Polygon-Wallets werden derzeit unterstützt</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>Ändere</value>
@@ -491,18 +471,6 @@ richtig auf</value>
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>Schließe den Kauf im Browser ab. Dein Plan wird hier automatisch aktualisiert, sobald die Zahlung bestätigt ist.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetwork übernimmt deine Überweisungsgebühren.</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>An eine externe Wallet überweisen</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>USDC überweisen</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>Städte</value>
@@ -572,10 +540,6 @@ richtig auf</value>
     <value>Gegenstelle</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>Seeker-Token bestätigen</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>Verbinde</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -588,29 +552,13 @@ richtig auf</value>
     <value>Verbinde eine Wallet</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>Verbinde eine Wallet mit dem Seeker Pre-Order Token</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>Verbinden und Link öffnen</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>Externe Wallet verbinden</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>USDC-Adressen auf Solana und Polygon werden derzeit unterstützt.</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>Verbindungsoptionen</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>Saga Wallet verbinden</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>Verbinde eine Wallet mit dem Saga Genesis oder Seeker Vorbestellungs-Token</value>
@@ -824,17 +772,9 @@ richtig auf</value>
     <value>Auszahlung am {}</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>Standardmäßig erhältst du {} GiB/Monat. So kannst du zusätzliche Bandbreite verdienen:</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>Standard</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>Standard</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Löschen</value>
@@ -960,10 +900,6 @@ richtig auf</value>
     <value>Siehst du ihn nicht?</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>Freund empfehlen = +{} GiB/Monat</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>Täglich verbunden bleiben = Verdiene bis zu {} GiB/Tag</value>
     <comment>Call to action</comment>
@@ -975,10 +911,6 @@ richtig auf</value>
   <data name="earnings" xml:space="preserve">
     <value>Einnahmen</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>Du verdienst x2 Punkte</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>Gerätenamen bearbeiten</value>
@@ -1019,9 +951,6 @@ richtig auf</value>
   <data name="enter_a_password" xml:space="preserve">
     <value>Gib ein Passwort ein</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Gib eine Solana USDC-Wallet-Adresse ein</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Guthabencode eingeben</value>
@@ -1501,10 +1430,6 @@ gesendet haben, um deine Identität zu überprüfen.</value>
     <value>Niedrigstes Nutzer/IP-Verhältnis für den Zugriff auf Inhalte</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>Als Standard festlegen</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>Apps verwalten</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1635,10 +1560,6 @@ gesendet haben, um deine Identität zu überprüfen.</value>
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>Benötigst du mehr Daten, schneller?</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>Netto-Punkte verdient</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1833,10 +1754,6 @@ gesendet haben, um deine Identität zu überprüfen.</value>
     <value>Keine offenen Verträge</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>Keine Auszahlungen für diese Wallet gefunden</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>Wir haben keine Anbieter gefunden.</value>
     <comment>Locations List</comment>
@@ -1905,10 +1822,6 @@ gesendet haben, um deine Identität zu überprüfen.</value>
     <value>oder</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>Oder eine Wallet verwenden</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Teilnehmen</value>
     <comment>Call to action</comment>
@@ -1954,18 +1867,6 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
     <value>Zahlungsproblem</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>Auszahlungs-Wallets</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>Auszahlungen</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>Auszahlungen erfolgen jeden Sonntag um 00:00 UTC und erfordern das Erreichen eines Mindest-USDC-Schwellenwerts.</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 Peer</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -1985,10 +1886,6 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
   <data name="pending_mb_provided" xml:space="preserve">
     <value>Ausstehend: {} MB bereitgestellt</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>Ausstehende Auszahlung</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>An einen Anbieter anheften</value>
@@ -2037,10 +1934,6 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ {} weitere</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>Punkteübersicht</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Post-Quanten-Verschlüsselung</value>
@@ -2557,10 +2450,6 @@ der Welt</value>
     <value>Gesendet! Danke für dein Feedback.</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>Wallet einrichten</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>Einstellungen</value>
     <comment>Account Screen</comment>
@@ -2580,10 +2469,6 @@ der Welt</value>
   <data name="share_urnetwork" xml:space="preserve">
     <value>URnetwork teilen</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>Du teilst mit anderen, wir teilen mit dir. Verdiene einen Teil der Einnahmen, wenn du Daten an andere im Netzwerk weitergibst.</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>Anzeigen</value>
@@ -2662,10 +2547,6 @@ der Welt</value>
   <data name="site_app_add" xml:space="preserve">
     <value>Hinzufügen</value>
     <comment>App wallets/blocked: add button</comment>
-  </data>
-  <data name="site_app_add_wallet" xml:space="preserve">
-    <value>Wallet hinzufügen</value>
-    <comment>App wallets: add wallet heading</comment>
   </data>
   <data name="site_app_allowed" xml:space="preserve">
     <value>erlaubt</value>
@@ -2935,10 +2816,6 @@ der Welt</value>
     <value>Anmeldemethoden</value>
     <comment>App profile: login methods section</comment>
   </data>
-  <data name="site_app_make_payout_wallet" xml:space="preserve">
-    <value>Als Auszahlungs-Wallet festlegen</value>
-    <comment>App wallets: make payout wallet action</comment>
-  </data>
   <data name="site_app_manage_subscription" xml:space="preserve">
     <value>Abonnement verwalten</value>
     <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
@@ -2979,10 +2856,6 @@ der Welt</value>
     <value>Noch keine blockierten Standorte</value>
     <comment>App blocked locations: empty state</comment>
   </data>
-  <data name="site_app_no_payouts" xml:space="preserve">
-    <value>Noch keine Auszahlungen</value>
-    <comment>App wallets: payouts empty state</comment>
-  </data>
   <data name="site_app_no_provider_activity" xml:space="preserve">
     <value>Keine Bereitstellungsaktivität in diesem Zeitraum.</value>
     <comment>App provider: no provider throughput</comment>
@@ -2999,25 +2872,9 @@ der Welt</value>
     <value>Noch kein Datenverkehr</value>
     <comment>Connect drawer: throughput empty state</comment>
   </data>
-  <data name="site_app_no_wallets" xml:space="preserve">
-    <value>Noch keine Wallets — füge eine hinzu, um Auszahlungen zu erhalten</value>
-    <comment>App wallets: empty state</comment>
-  </data>
   <data name="site_app_paid_on" xml:space="preserve">
     <value>Bezahlt</value>
     <comment>App payout detail: paid time</comment>
-  </data>
-  <data name="site_app_payout_not_found" xml:space="preserve">
-    <value>Diese Auszahlung konnte nicht gefunden werden.</value>
-    <comment>App payout detail: not found</comment>
-  </data>
-  <data name="site_app_payout_wallet" xml:space="preserve">
-    <value>Auszahlungs-Wallet</value>
-    <comment>App wallets: payout wallet label</comment>
-  </data>
-  <data name="site_app_payouts" xml:space="preserve">
-    <value>Auszahlungen</value>
-    <comment>App wallets: payouts section</comment>
   </data>
   <data name="site_app_peak_clients" xml:space="preserve">
     <value>Max. Clients</value>
@@ -3158,14 +3015,6 @@ der Welt</value>
   <data name="site_app_wallet" xml:space="preserve">
     <value>Wallet</value>
     <comment>App wallets: wallet label</comment>
-  </data>
-  <data name="site_app_wallet_address" xml:space="preserve">
-    <value>Wallet-Adresse</value>
-    <comment>App wallets: wallet address input</comment>
-  </data>
-  <data name="site_app_wallets" xml:space="preserve">
-    <value>Wallets</value>
-    <comment>App account: wallets row/screen title</comment>
   </data>
   <data name="site_best_available" xml:space="preserve">
     <value>Bestmöglich</value>
@@ -3427,10 +3276,6 @@ der Welt</value>
     <value>Etwas Unerwartetes ist passiert.</value>
     <comment>Account panel: generic unexpected error</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>Bitte stelle sicher, dass du genügend USDC-Guthaben in deiner Wallet hast. In manchen Fällen schlagen Zahlungsaufforderungen fehl, wenn nicht genügend Guthaben vorhanden ist.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Mit Solana anmelden</value>
     <comment>Call to action</comment>
@@ -3483,10 +3328,6 @@ der Welt</value>
     <value>Starte die zweiwöchige kostenlose Testphase</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>Um mit dem Verdienen zu beginnen, verbinde deine Kryptowährungs-Wallet mit URnetwork oder richte eine mit Circle ein.</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>Um mit dem Verdienen zu beginnen, trete dem Netzwerk bei</value>
     <comment>Guest mode overlay</comment>
@@ -3526,10 +3367,6 @@ wie es sein sollte.</value>
   <data name="step_two" xml:space="preserve">
     <value>Schritt 2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>für die spätere Verwendung gespeichert, noch keine Auszahlungen</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Starke Anonymisierung</value>
@@ -3646,10 +3483,6 @@ wie es sein sollte.</value>
     <value>Gesamtanzahl Clients</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>Gesamtauszahlungen</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.one" xml:space="preserve">
     <value>Gesamtanzahl Empfehlungen: {}</value>
     <comment>Call to action</comment>
@@ -3689,10 +3522,6 @@ wie es sein sollte.</value>
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>Vertraut von über 100.000 privaten Netzwerken</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
-  </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>Vertraut von über {} privaten Netzwerken</value>
-    <comment>Call to action</comment>
   </data>
   <data name="try_again" xml:space="preserve">
     <value>Erneut versuchen</value>
@@ -3737,10 +3566,6 @@ wie es sein sollte.</value>
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>Schalte noch schnellere Geschwindigkeiten frei und erhalte vorrangigen Zugriff auf neue Funktionen.</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>Unbezahlte Daten bereitgestellt</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (kann instabil sein)</value>
@@ -3813,12 +3638,6 @@ wie es sein sollte.</value>
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>URnetwork VPN gestartet</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>USDC-Adressen auf Solana werden derzeit unterstützt</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>USDC-Wallet-Adresse</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>Verwendet den stabilsten Anbieter</value>
@@ -3923,18 +3742,6 @@ wie es sein sollte.</value>
     <value>Wallet</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>Wallet-Adresse</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>Wallet-Adresse</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>Hier kopieren und einfügen</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>Wallet konnte nicht verbunden werden.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -3954,10 +3761,6 @@ wie es sein sollte.</value>
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>Wallet-Anmeldemethode hinzugefügt</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>Wallets</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>Willkommen bei URnetwork</value>

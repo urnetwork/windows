@@ -72,10 +72,6 @@
     <value>Det här kontot behöver verifieras. Kolla din e-post.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>Kontopoäng</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>Aktivitet</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>Lägg till inloggningsmetod</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>Lägg till plånbok</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Tillhandahållande är av som standard. Välj nedan när din enhet ska tillhandahålla.</value>
@@ -366,10 +358,6 @@
     <value>Logga in med Bittensor</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>Bittensor-plånböcker sparas för framtida bruk och kan inte ta emot utbetalningar än.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>Blockera annonser och spårare</value>
     <comment>dns settings</comment>
@@ -406,10 +394,6 @@
     <value>Du får gratis data varje månad och kan tjäna mer genom att tipsa vänner.</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>Öka din bandbredd</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>Öka din bandbredd</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -443,10 +427,6 @@ rätt sätt</value>
   <data name="cancel" xml:space="preserve">
     <value>Avbryt</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>Solana- och Polygon-plånböcker stöds för närvarande</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>Ändra</value>
@@ -491,18 +471,6 @@ rätt sätt</value>
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>Slutför ditt köp i webbläsaren. Din plan uppdateras här automatiskt när betalningen har bekräftats.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetwork täcker dina överföringsavgifter.</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>Överför till extern plånbok</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>Överför USDC</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>Städer</value>
@@ -572,10 +540,6 @@ rätt sätt</value>
     <value>Motpart</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>Bekräfta Seeker-token</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>Anslut</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -588,29 +552,13 @@ rätt sätt</value>
     <value>Anslut en plånbok</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>Anslut en plånbok med Seeker Förbeställnings-token</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>Anslut och öppna länk</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>Anslut plånbok</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>USDC-adresser på Solana och Polygon stöds för närvarande.</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>Anslutningsalternativ</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>Anslut Saga-plånbok</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>Anslut en plånbok med Saga Genesis- eller Seeker Pre-Order-token</value>
@@ -824,17 +772,9 @@ rätt sätt</value>
     <value>{} utbetalning</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>Som standard får du {} GiB/månad. Så här kan du tjäna extra bandbredd:</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>Standard</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>Standard</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Radera</value>
@@ -960,10 +900,6 @@ rätt sätt</value>
     <value>Ser du det inte?</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>Tipsa en vän = +{} GiB/månad</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>Var ansluten dagligen = Tjäna upp till {} GiB/dag</value>
     <comment>Call to action</comment>
@@ -975,10 +911,6 @@ rätt sätt</value>
   <data name="earnings" xml:space="preserve">
     <value>Intäkter</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>Du tjänar x2 poäng</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>Redigera enhetsnamn</value>
@@ -1019,9 +951,6 @@ rätt sätt</value>
   <data name="enter_a_password" xml:space="preserve">
     <value>Ange ett lösenord</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Ange en Solana USDC-plånboksadress</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Ange saldo-kod</value>
@@ -1501,10 +1430,6 @@ skickade till dig för att verifiera din identitet.</value>
     <value>Lägsta användare/IP-kvot för att komma åt innehåll</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>Gör till standard</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>Hantera appar</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1635,10 +1560,6 @@ skickade till dig för att verifiera din identitet.</value>
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>Behöver du mer data, snabbare?</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>nettopoäng intjänade</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1834,10 +1755,6 @@ Hämta din bonus genom att skapa ett nätverk!</value>
     <value>Inga öppna kontrakt</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>Inga utbetalningar hittades för denna plånbok</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>Vi kunde inte hitta några leverantörer.</value>
     <comment>Locations List</comment>
@@ -1906,10 +1823,6 @@ Hämta din bonus genom att skapa ett nätverk!</value>
     <value>eller</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>Eller använd en plånbok</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Delta</value>
     <comment>Call to action</comment>
@@ -1955,18 +1868,6 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Betalningsproblem</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>Utbetalningsplånböcker</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>Utbetalningar</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>Utbetalningar sker varje söndag kl. 00:00 UTC och kräver att en minsta USDC-gräns uppnås.</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 nod</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -1986,10 +1887,6 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   <data name="pending_mb_provided" xml:space="preserve">
     <value>Väntar: {} MB tillhandahållna</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>Väntande utbetalning</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>Fäst vid en leverantör</value>
@@ -2038,10 +1935,6 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ {} till</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>Poängfördelning</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Postkvantkryptering</value>
@@ -2545,10 +2438,6 @@ innehåll i världen</value>
     <value>Skickat! Tack för din feedback.</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>Konfigurera plånbok</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>Inställningar</value>
     <comment>Account Screen</comment>
@@ -2568,10 +2457,6 @@ innehåll i världen</value>
   <data name="share_urnetwork" xml:space="preserve">
     <value>Dela URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>Du delar med andra, vi delar med dig. Tjäna en del av intäkterna när du tillhandahåller data till andra i nätverket.</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>Visa</value>
@@ -2787,10 +2672,6 @@ innehåll i världen</value>
     <value>Din Pro-prenumeration faktureras via Stripe. Uppdatera dina betaluppgifter eller avsluta när som helst nedan.</value>
     <comment>Subscription: Stripe-billed body</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>Se till att du har tillräckligt med USDC i din plånbok. I vissa fall misslyckas betalningsförfrågningar om det inte finns tillräckliga medel i plånboken.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Logga in med Solana</value>
     <comment>Call to action</comment>
@@ -2843,10 +2724,6 @@ innehåll i världen</value>
     <value>Starta 2 veckors gratis provperiod</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>För att börja tjäna, anslut din kryptovaluta-plånbok till URnetwork eller skapa en med Circle.</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>För att börja tjäna, gå med i nätverket</value>
     <comment>Guest mode overlay</comment>
@@ -2886,10 +2763,6 @@ som det borde vara.</value>
   <data name="step_two" xml:space="preserve">
     <value>Steg 2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>sparad för framtida bruk, inga utbetalningar än</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Stark anonymisering</value>
@@ -3006,10 +2879,6 @@ som det borde vara.</value>
     <value>Totalt antal klienter</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>totala utbetalningar</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.one" xml:space="preserve">
     <value>Totalt antal rekommendationer: {}</value>
     <comment>Call to action</comment>
@@ -3049,10 +2918,6 @@ som det borde vara.</value>
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>Betrodd av över 100 000 privata nätverk</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
-  </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>Betrodd av över {} privata nätverk</value>
-    <comment>Call to action</comment>
   </data>
   <data name="try_again" xml:space="preserve">
     <value>Försök igen</value>
@@ -3097,10 +2962,6 @@ som det borde vara.</value>
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>Lås upp ännu snabbare hastigheter och få först tillgång till nya funktioner.</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>Obetalda data tillhandahållen</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (kan vara instabil)</value>
@@ -3173,12 +3034,6 @@ som det borde vara.</value>
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>URnetwork VPN startad</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>USDC-adresser på Solana stöds för närvarande</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>USDC-plånboksadress</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>Använder den stabilaste leverantören</value>
@@ -3283,18 +3138,6 @@ som det borde vara.</value>
     <value>Plånbok</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>Plånboksadress</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>Plånboksadress</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>Kopiera och klistra in här</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>Det gick inte att ansluta plånboken.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -3314,10 +3157,6 @@ som det borde vara.</value>
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>Inloggningsmetod med plånbok tillagd</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>Plånböcker</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>Välkommen till URnetwork</value>

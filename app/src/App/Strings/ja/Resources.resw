@@ -72,10 +72,6 @@
     <value>このアカウントは確認が必要です。メールを確認してください。</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>アカウントポイント</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>アクティビティ</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>サインイン方法を追加</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>ウォレットを追加</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>設定を「常に」に変更すると、無料データがより早く増えます。</value>
@@ -358,10 +350,6 @@
     <value>Bittensorでサインイン</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>Bittensorウォレットは将来の利用のために保存されますが、まだ支払いは受け取れません。</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>広告とトラッカーをブロック</value>
     <comment>dns settings</comment>
@@ -398,10 +386,6 @@
     <value>ネットワークに参加し、帯域幅を提供することで報酬を得ることができます。</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>帯域幅を増やして、毎日もっと稼ごう</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>帯域幅を増やそう</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -435,10 +419,6 @@
   <data name="cancel" xml:space="preserve">
     <value>キャンセル</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>現在、SolanaとPolygonのウォレットがサポートされています</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>変更</value>
@@ -483,18 +463,6 @@
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>ブラウザで購入を完了してください。支払いが確認されると、プランはここで自動的に更新されます。</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetworkが送金手数料を負担します。</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>外部ウォレットへ送金</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>USDC送金</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>都市</value>
@@ -564,10 +532,6 @@
     <value>相手</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>シーカートークンを確認</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>接続</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -580,29 +544,13 @@
     <value>ウォレットを接続</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>Seekerプレオーダートークンでウォレットを接続</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>接続してリンクを開く</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>外部ウォレットを接続</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>現在、SolanaとPolygonのUSDCアドレスがサポートされています。</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>接続オプション</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>Sagaウォレットを接続</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>Saga Genesisまたはシーカー事前予約トークンでウォレットを接続する</value>
@@ -808,17 +756,9 @@
     <value>{} の支払い</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>デフォルトでは、{} GiB/月が付与されます。追加の帯域幅を獲得する方法はこちらです：</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>デフォルト</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>デフォルト</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>削除</value>
@@ -944,10 +884,6 @@
     <value>メールが見つかりませんか？</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>友達を紹介 = +{} GiB/月</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>毎日接続を維持 = 最大 {} GiB/日を獲得</value>
     <comment>Call to action</comment>
@@ -959,10 +895,6 @@
   <data name="earnings" xml:space="preserve">
     <value>収益</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>あなたは x2 ポイントを獲得しています</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>デバイス名を編集</value>
@@ -1003,9 +935,6 @@
   <data name="enter_a_password" xml:space="preserve">
     <value>パスワードを入力</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Solana USDCウォレットアドレスを入力してください</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>残高コードを入力</value>
@@ -1475,10 +1404,6 @@
     <value>コンテンツにアクセスするための最も低いユーザー/IP比率</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>デフォルトに設定</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>アプリを管理</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1609,10 +1534,6 @@
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>より多くのデータをより速く必要ですか？</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>純獲得ポイント</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1799,10 +1720,6 @@
     <value>有効な契約はありません</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>このウォレットの支払いが見つかりません</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>プロバイダーが見つかりませんでした。</value>
     <comment>Locations List</comment>
@@ -1871,10 +1788,6 @@
     <value>または</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>またはウォレットを使う</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>参加する</value>
     <comment>Call to action</comment>
@@ -1920,18 +1833,6 @@
     <value>支払いの問題</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>支払いウォレット</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>支払い</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>支払いは毎週日曜日の00:00 UTCに行われ、最低USDC基準を満たす必要があります。</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 ピア</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -1951,10 +1852,6 @@
   <data name="pending_mb_provided" xml:space="preserve">
     <value>保留中: {} MB 提供済み</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>保留中の支払い</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>1つのプロバイダーに固定</value>
@@ -1999,10 +1896,6 @@
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ 他{}件</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>ポイントの内訳</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>ポスト量子暗号</value>
@@ -2486,10 +2379,6 @@
     <value>送信しました！フィードバックありがとうございます。</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>ウォレットをセットアップ</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>設定</value>
     <comment>Account Screen</comment>
@@ -2509,10 +2398,6 @@
   <data name="share_urnetwork" xml:space="preserve">
     <value>URnetworkを共有</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>あなたが他の人と共有すれば、私たちもあなたと共有します。ネットワーク内の他の人にデータを提供すると、収益の一部を獲得できます。</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>表示</value>
@@ -2728,10 +2613,6 @@
     <value>Pro サブスクリプションは Stripe 経由で請求されています。以下でいつでもお支払い情報の更新や解約ができます。</value>
     <comment>Subscription: Stripe-billed body</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>ウォレットに十分なUSDC資金があることを確認してください。場合によっては、ウォレットの資金が不足していると支払いが失敗することがあります。</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Solanaでサインイン</value>
     <comment>Call to action</comment>
@@ -2780,10 +2661,6 @@
     <value>2週間の無料トライアルを開始</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>収益を得始めるには、暗号通貨ウォレットをURnetworkに接続するか、Circleでセットアップしてください。</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>収益を得始めるには、ネットワークに参加してください</value>
     <comment>Guest mode overlay</comment>
@@ -2823,10 +2700,6 @@
   <data name="step_two" xml:space="preserve">
     <value>ステップ2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>将来の利用のために保存されます（支払いはまだありません）</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>強力な匿名化</value>
@@ -2943,10 +2816,6 @@
     <value>クライアント合計</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>総支払額</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.other" xml:space="preserve">
     <value>紹介合計: {}</value>
     <comment>Call to action</comment>
@@ -2982,10 +2851,6 @@
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>10万以上のプライベートネットワークに信頼されています</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
-  </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>{}以上のプライベートネットワークに信頼されています</value>
-    <comment>Call to action</comment>
   </data>
   <data name="try_again" xml:space="preserve">
     <value>再試行</value>
@@ -3030,10 +2895,6 @@
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>さらに高速な速度と新機能への優先アクセスをアンロックします。</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>未払いのデータが提供されました</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>*（不安定な場合があります）</value>
@@ -3106,12 +2967,6 @@
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>URnetwork VPN が起動しました</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>Solana上のUSDCアドレスは現在サポートされています</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>USDCウォレットアドレス</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>最も安定したプロバイダーを使用します</value>
@@ -3216,18 +3071,6 @@
     <value>ウォレット</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>ウォレットアドレス</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>ウォレットアドレス</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>ここにコピーして貼り付けてください</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>ウォレットを接続できませんでした。</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -3247,10 +3090,6 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>ウォレットのサインイン方法を追加しました</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>ウォレット</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>URnetworkへようこそ</value>

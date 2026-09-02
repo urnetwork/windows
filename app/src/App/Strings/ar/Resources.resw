@@ -72,10 +72,6 @@
     <value>يحتاج هذا الحساب إلى التحقق. تحقق من بريدك الإلكتروني.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>نقاط الحساب</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>النشاط</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>إضافة طريقة تسجيل الدخول</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>إضافة محفظة</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>ضبط الإعداد على "دائمًا" لزيادة البيانات المجانية بشكل أسرع.</value>
@@ -398,10 +390,6 @@
     <value>تسجيل الدخول باستخدام Bittensor</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>يتم حفظ محافظ Bittensor للاستخدام المستقبلي ولا يمكنها استلام المدفوعات بعد.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>حظر الإعلانات والمتعقبات</value>
     <comment>dns settings</comment>
@@ -438,10 +426,6 @@
     <value>من خلال المشاركة في الشبكة وتوفير عرض النطاق الترددي، يمكنك كسب المكافآت.</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>عزز عرض النطاق الترددي لديك - اربح المزيد كل يوم</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>عزّز عرض النطاق الترددي لديك</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -475,10 +459,6 @@
   <data name="cancel" xml:space="preserve">
     <value>ألغِ</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>محافظ Solana و Polygon مدعومة حاليًا</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>غيّر</value>
@@ -523,18 +503,6 @@
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>أكمل عملية الشراء في المتصفح. سيتم تحديث خطتك هنا تلقائيًا بمجرد تأكيد الدفع.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>URnetwork تغطي رسوم التحويل الخاصة بك.</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>التحويل إلى محفظة خارجية</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>تحويل USDC</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>المدن</value>
@@ -604,10 +572,6 @@
     <value>الطرف المقابل</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>تأكيد رمز Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>اربط</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -620,29 +584,13 @@
     <value>ربط محفظة</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>ربط محفظة برمز طلب Seeker المسبق</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>الاتصال وفتح الرابط</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>ربط محفظة خارجية</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>عناوين USDC على Solana و Polygon مدعومة حاليًا.</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>خيارات الاتصال</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>ربط محفظة Saga</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>قم بتوصيل محفظة برمز الطلب المسبق لـ Seeker</value>
@@ -888,17 +836,9 @@
     <value>دفعة {}</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>بشكل افتراضي، تحصل على {} GiB/شهر. إليك كيفية كسب عرض نطاق إضافي:</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>افتراضي</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>الافتراضي</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>حذف</value>
@@ -1024,10 +964,6 @@
     <value>ألا تراه؟</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>إحالة صديق = +{} GiB/شهر</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>البقاء متصلاً يوميًا = اربح حتى {} GiB/يوم</value>
     <comment>Call to action</comment>
@@ -1039,10 +975,6 @@
   <data name="earnings" xml:space="preserve">
     <value>الأرباح</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>أنت تكسب نقاط x2</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>تعديل اسم الجهاز</value>
@@ -1083,9 +1015,6 @@
   <data name="enter_a_password" xml:space="preserve">
     <value>أدخل كلمة مرور</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>أدخل عنوان محفظة USDC على Solana</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>أدخل رمز الرصيد</value>
@@ -1596,10 +1525,6 @@
     <value>أقل نسبة مستخدم/عنوان IP للوصول إلى المحتوى</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>جعل الافتراضي</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>إدارة التطبيقات</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1730,10 +1655,6 @@
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>هل تحتاج إلى المزيد من البيانات وبشكل أسرع؟</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>صافي النقاط المكتسبة</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1960,10 +1881,6 @@
     <value>لا توجد عقود مفتوحة</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>لم يتم العثور على مدفوعات لهذه المحفظة</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>لم نعثر على أي مزود.</value>
     <comment>Locations List</comment>
@@ -2032,10 +1949,6 @@
     <value>أو</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>أو استخدم محفظة</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>شارك</value>
     <comment>Call to action</comment>
@@ -2081,18 +1994,6 @@
     <value>مشكلة في الدفع</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>محافظ الدفع</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>المدفوعات</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>تحدث الدفعات كل يوم أحد في الساعة 00:00 بتوقيت UTC، ويتطلب ذلك تحقيق حد أدنى من USDC.</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>قرين واحد</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -2112,10 +2013,6 @@
   <data name="pending_mb_provided" xml:space="preserve">
     <value>قيد الانتظار: تم توفير {} ميغابايت</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>دفعة معلقة</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>ثبّت على مزود واحد</value>
@@ -2180,10 +2077,6 @@
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ {} أخرى</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>تفصيل النقاط</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>التشفير ما بعد الكمومي</value>
@@ -2780,10 +2673,6 @@
     <value>تم الإرسال! شكرًا على ملاحظاتك.</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>إعداد المحفظة</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>الإعدادات</value>
     <comment>Account Screen</comment>
@@ -2803,10 +2692,6 @@
   <data name="share_urnetwork" xml:space="preserve">
     <value>مشاركة URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>أنت تشارك مع الآخرين، ونحن نشارك معك. اكسب حصة من الإيرادات عندما تقدم بيانات للآخرين على الشبكة.</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>إظهار</value>
@@ -2885,10 +2770,6 @@
   <data name="site_app_add" xml:space="preserve">
     <value>إضافة</value>
     <comment>App wallets/blocked: add button</comment>
-  </data>
-  <data name="site_app_add_wallet" xml:space="preserve">
-    <value>إضافة محفظة</value>
-    <comment>App wallets: add wallet heading</comment>
   </data>
   <data name="site_app_allowed" xml:space="preserve">
     <value>مسموح</value>
@@ -3158,10 +3039,6 @@
     <value>طرق تسجيل الدخول</value>
     <comment>App profile: login methods section</comment>
   </data>
-  <data name="site_app_make_payout_wallet" xml:space="preserve">
-    <value>تعيين محفظة الدفعات</value>
-    <comment>App wallets: make payout wallet action</comment>
-  </data>
   <data name="site_app_manage_subscription" xml:space="preserve">
     <value>إدارة الاشتراك</value>
     <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
@@ -3202,10 +3079,6 @@
     <value>لا توجد مواقع محظورة بعد</value>
     <comment>App blocked locations: empty state</comment>
   </data>
-  <data name="site_app_no_payouts" xml:space="preserve">
-    <value>لا توجد دفعات بعد</value>
-    <comment>App wallets: payouts empty state</comment>
-  </data>
   <data name="site_app_no_provider_activity" xml:space="preserve">
     <value>لا يوجد نشاط تزويد في هذه الفترة.</value>
     <comment>App provider: no provider throughput</comment>
@@ -3222,25 +3095,9 @@
     <value>لا توجد حركة مرور بعد</value>
     <comment>Connect drawer: throughput empty state</comment>
   </data>
-  <data name="site_app_no_wallets" xml:space="preserve">
-    <value>لا توجد محافظ بعد — أضف واحدة لاستلام الدفعات</value>
-    <comment>App wallets: empty state</comment>
-  </data>
   <data name="site_app_paid_on" xml:space="preserve">
     <value>تاريخ الدفع</value>
     <comment>App payout detail: paid time</comment>
-  </data>
-  <data name="site_app_payout_not_found" xml:space="preserve">
-    <value>تعذّر العثور على هذه الدفعة.</value>
-    <comment>App payout detail: not found</comment>
-  </data>
-  <data name="site_app_payout_wallet" xml:space="preserve">
-    <value>محفظة الدفعات</value>
-    <comment>App wallets: payout wallet label</comment>
-  </data>
-  <data name="site_app_payouts" xml:space="preserve">
-    <value>الدفعات</value>
-    <comment>App wallets: payouts section</comment>
   </data>
   <data name="site_app_peak_clients" xml:space="preserve">
     <value>ذروة العملاء</value>
@@ -3381,14 +3238,6 @@
   <data name="site_app_wallet" xml:space="preserve">
     <value>محفظة</value>
     <comment>App wallets: wallet label</comment>
-  </data>
-  <data name="site_app_wallet_address" xml:space="preserve">
-    <value>عنوان المحفظة</value>
-    <comment>App wallets: wallet address input</comment>
-  </data>
-  <data name="site_app_wallets" xml:space="preserve">
-    <value>المحافظ</value>
-    <comment>App account: wallets row/screen title</comment>
   </data>
   <data name="site_best_available" xml:space="preserve">
     <value>الأفضل المتاح</value>
@@ -3650,10 +3499,6 @@
     <value>حدث خطأ غير متوقع.</value>
     <comment>Account panel: generic unexpected error</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>يرجى التأكد من أن لديك رصيد كافٍ من USDC في محفظتك. في بعض الحالات، قد تفشل مطالبات الدفع إذا لم تكن هناك أموال كافية في المحفظة.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>تسجيل الدخول باستخدام Solana</value>
     <comment>Call to action</comment>
@@ -3722,10 +3567,6 @@
     <value>ابدأ تجربة مجانية لمدة أسبوعين</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>للبدء في الربح، اربط محفظة العملات المشفرة الخاصة بك بـ URnetwork أو قم بإعداد واحدة باستخدام Circle.</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>للبدء في الربح، انضم إلى الشبكة</value>
     <comment>Guest mode overlay</comment>
@@ -3765,10 +3606,6 @@
   <data name="step_two" xml:space="preserve">
     <value>الخطوة2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>مخزنة للاستخدام المستقبلي، لا توجد مدفوعات بعد</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>إخفاء الهوية القوي</value>
@@ -3885,10 +3722,6 @@
     <value>إجمالي العملاء</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>إجمالي المدفوعات</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.zero" xml:space="preserve">
     <value>إجمالي الإحالات: {}</value>
     <comment>Call to action</comment>
@@ -3945,10 +3778,6 @@
     <value>موثوق به من قبل أكثر من 100,000 شبكة خاصة</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>موثوق به من قبل أكثر من {} شبكة خاصة</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="try_again" xml:space="preserve">
     <value>حاول مرة أخرى</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
@@ -3992,10 +3821,6 @@
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>افتح سرعات أعلى واحصل على أولوية الوصول إلى الميزات الجديدة.</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>تم توفير بيانات غير مدفوعة</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (قد يكون غير مستقر)</value>
@@ -4068,12 +3893,6 @@
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>تم تشغيل URnetwork VPN</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>حاليًا يتم دعم عناوين USDC على Solana</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>عنوان محفظة USDC</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>استخدام مزود الخدمة الأكثر استقرارًا</value>
@@ -4178,18 +3997,6 @@
     <value>المحفظة</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>عنوان المحفظة</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>عنوان المحفظة</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>انسخ والصق هنا</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>تعذر ربط المحفظة.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -4209,10 +4016,6 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>تمت إضافة طريقة تسجيل الدخول عبر المحفظة</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>محافظ</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>مرحبًا بك في URnetwork</value>

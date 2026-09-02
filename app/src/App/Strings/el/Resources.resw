@@ -72,10 +72,6 @@
     <value>Αυτός ο λογαριασμός χρειάζεται επαλήθευση. Ελέγξτε το email σας.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
   </data>
-  <data name="account_points" xml:space="preserve">
-    <value>Πόντοι λογαριασμού</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="activity" xml:space="preserve">
     <value>Δραστηριότητα</value>
     <comment>A heading for the list of current block actions.</comment>
@@ -106,10 +102,6 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>Προσθήκη μεθόδου σύνδεσης</value>
     <comment>Button text for adding a sign-in method.</comment>
-  </data>
-  <data name="add_wallet" xml:space="preserve">
-    <value>Προσθήκη πορτοφολιού</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Μπορείτε να ρυθμίσετε την επιλογή σε «Πάντα» για να γεμίσετε τα δωρεάν δεδομένα πιο γρήγορα.</value>
@@ -366,10 +358,6 @@
     <value>Σύνδεση με Bittensor</value>
     <comment>Call to action</comment>
   </data>
-  <data name="bittensor_wallet_future_use" xml:space="preserve">
-    <value>Τα πορτοφόλια Bittensor αποθηκεύονται για μελλοντική χρήση και δεν μπορούν ακόμη να λάβουν πληρωμές.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>Αποκλεισμός διαφημίσεων και ιχνηλατών</value>
     <comment>dns settings</comment>
@@ -406,10 +394,6 @@
     <value>Συμμετέχοντας στο δίκτυο και παρέχοντας εύρος ζώνης μπορείτε να κερδίσετε ανταμοιβές.</value>
     <comment>A description of how users can earn more data by referring friends.</comment>
   </data>
-  <data name="boost_bandwidth_title" xml:space="preserve">
-    <value>Ενίσχυσε το εύρος ζώνης σου - Κέρδισε περισσότερα κάθε μέρα</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="boost_your_bandwidth" xml:space="preserve">
     <value>Ενισχύστε το εύρος ζώνης σας</value>
     <comment>A title for the introductory usage bar.</comment>
@@ -443,10 +427,6 @@
   <data name="cancel" xml:space="preserve">
     <value>Ακύρωση</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="chains_supported" xml:space="preserve">
-    <value>Τα πορτοφόλια Solana και Polygon υποστηρίζονται αυτήν τη στιγμή</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>Αλλαγή</value>
@@ -491,18 +471,6 @@
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>Ολοκληρώστε την αγορά στο πρόγραμμα περιήγησης. Το πρόγραμμά σας θα ενημερωθεί εδώ αυτόματα μόλις επιβεβαιωθεί η πληρωμή.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
-  </data>
-  <data name="circle_transfer_fee_coverage" xml:space="preserve">
-    <value>Το URnetwork καλύπτει τα έξοδα μεταφοράς σας.</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_header" xml:space="preserve">
-    <value>Μεταφορά σε εξωτερικό πορτοφόλι</value>
-    <comment>Circle Wallet Transfer Screen</comment>
-  </data>
-  <data name="circle_transfer_topbar_title" xml:space="preserve">
-    <value>Μεταφορά USDC</value>
-    <comment>Circle Wallet Transfer Screen</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>Πόλεις</value>
@@ -572,10 +540,6 @@
     <value>Συμβαλλόμενος</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
-  <data name="confirm_seeker_token" xml:space="preserve">
-    <value>Επιβεβαίωση Token Seeker</value>
-    <comment>Used in Main/Account/Settings/SettingsView.swift.</comment>
-  </data>
   <data name="connect" xml:space="preserve">
     <value>Σύνδεση</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -588,29 +552,13 @@
     <value>Συνδέστε ένα πορτοφόλι</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
-  <data name="connect_a_wallet_with_the_seeker_pre_order_token" xml:space="preserve">
-    <value>Συνδέστε ένα πορτοφόλι με το Seeker Pre-Order Token</value>
-    <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
-  </data>
   <data name="connect_and_open" xml:space="preserve">
     <value>Σύνδεση και άνοιγμα συνδέσμου</value>
     <comment>Call to action</comment>
   </data>
-  <data name="connect_external_wallet" xml:space="preserve">
-    <value>Σύνδεση εξωτερικού πορτοφολιού</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="connect_external_wallet_supported_chains" xml:space="preserve">
-    <value>Οι διευθύνσεις USDC σε Solana και Polygon υποστηρίζονται αυτήν τη στιγμή.</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="connect_options" xml:space="preserve">
     <value>Επιλογές σύνδεσης</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
-  </data>
-  <data name="connect_saga_wallet" xml:space="preserve">
-    <value>Σύνδεση πορτοφολιού Saga</value>
-    <comment>Setup Wallet</comment>
   </data>
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>Συνδέστε ένα πορτοφόλι με το Saga Genesis ή το Seeker Pre-Order Token</value>
@@ -824,17 +772,9 @@
     <value>Πληρωμή {}</value>
     <comment>Call to action</comment>
   </data>
-  <data name="default_bandwidth_earn_more_by" xml:space="preserve">
-    <value>Από προεπιλογή, λαμβάνετε {} GiB/μήνα. Δείτε πώς μπορείτε να κερδίσετε επιπλέον εύρος ζώνης:</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="default_option" xml:space="preserve">
     <value>Προεπιλογή</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_wallet" xml:space="preserve">
-    <value>Προεπιλογή</value>
-    <comment>Call to action</comment>
   </data>
   <data name="delete" xml:space="preserve">
     <value>Διαγραφή</value>
@@ -960,10 +900,6 @@
     <value>Δεν το βλέπεις;</value>
     <comment>Prompt shown when user doesn't see the verification email or SMS.</comment>
   </data>
-  <data name="earn_more_bullet_refer" xml:space="preserve">
-    <value>Προτείνετε έναν φίλο = +{} GiB/μήνα</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="earn_more_bullet_stay_connected" xml:space="preserve">
     <value>Μείνετε συνδεδεμένοι καθημερινά = Κερδίστε έως {} GiB/ημέρα</value>
     <comment>Call to action</comment>
@@ -975,10 +911,6 @@
   <data name="earnings" xml:space="preserve">
     <value>Κέρδη</value>
     <comment>Wallet Screen</comment>
-  </data>
-  <data name="earnings_doubled" xml:space="preserve">
-    <value>Κερδίζετε x2 πόντους</value>
-    <comment>Call to action</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>Επεξεργασία ονόματος συσκευής</value>
@@ -1019,9 +951,6 @@
   <data name="enter_a_password" xml:space="preserve">
     <value>Εισαγάγετε έναν κωδικό πρόσβασης</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
-  </data>
-  <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
-    <value>Εισαγάγετε μια διεύθυνση πορτοφολιού USDC στο Solana</value>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Εισαγάγετε τον κωδικό υπολοίπου</value>
@@ -1501,10 +1430,6 @@
     <value>Η χαμηλότερη αναλογία χρηστών/IP για πρόσβαση σε περιεχόμενο</value>
     <comment>Call to action</comment>
   </data>
-  <data name="make_default" xml:space="preserve">
-    <value>Ορισμός ως προεπιλογή</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="manage_apps" xml:space="preserve">
     <value>Διαχείριση εφαρμογών</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
@@ -1635,10 +1560,6 @@
   </data>
   <data name="need_more_data_faster" xml:space="preserve">
     <value>Χρειάζεστε περισσότερα δεδομένα, πιο γρήγορα;</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="net_points_earned" xml:space="preserve">
-    <value>Καθαροί πόντοι που κερδήθηκαν</value>
     <comment>Call to action</comment>
   </data>
   <data name="net_provided" xml:space="preserve">
@@ -1833,10 +1754,6 @@
     <value>Δεν υπάρχουν ανοιχτά συμβόλαια</value>
     <comment>A label displayed when there are no open contracts.</comment>
   </data>
-  <data name="no_payouts_found" xml:space="preserve">
-    <value>Δεν βρέθηκαν πληρωμές για αυτό το πορτοφόλι</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>Δεν βρέθηκαν πάροχοι.</value>
     <comment>Locations List</comment>
@@ -1905,10 +1822,6 @@
     <value>ή</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
   </data>
-  <data name="or_use_a_wallet" xml:space="preserve">
-    <value>Ή χρησιμοποιήστε πορτοφόλι</value>
-    <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Συμμετοχή</value>
     <comment>Call to action</comment>
@@ -1954,18 +1867,6 @@
     <value>Πρόβλημα πληρωμής</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
   </data>
-  <data name="payout_wallets" xml:space="preserve">
-    <value>Πορτοφόλια πληρωμής</value>
-    <comment>Wallet Screen</comment>
-  </data>
-  <data name="payouts" xml:space="preserve">
-    <value>Πληρωμές</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="payouts_amount_threshold" xml:space="preserve">
-    <value>Οι πληρωμές πραγματοποιούνται κάθε Κυριακή στις 00:00 UTC και απαιτούν την επίτευξη ενός ελάχιστου ορίου USDC.</value>
-    <comment>Wallet Screen</comment>
-  </data>
   <data name="peer_count_one" xml:space="preserve">
     <value>1 κόμβος</value>
     <comment>Post quantum identity panel: peer identity count indicator, singular.</comment>
@@ -1985,10 +1886,6 @@
   <data name="pending_mb_provided" xml:space="preserve">
     <value>Σε εκκρεμότητα: παρέχονται {} MB</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
-  </data>
-  <data name="pending_payout" xml:space="preserve">
-    <value>Εκκρεμής πληρωμή</value>
-    <comment>Call to action</comment>
   </data>
   <data name="pin_app" xml:space="preserve">
     <value>Καρφίτσωμα σε έναν πάροχο</value>
@@ -2037,10 +1934,6 @@
   <data name="plus_n_more.other" xml:space="preserve">
     <value>+ {} ακόμη</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
-  </data>
-  <data name="points_breakdown" xml:space="preserve">
-    <value>Ανάλυση πόντων</value>
-    <comment>Call to action</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Μετακβαντική κρυπτογράφηση</value>
@@ -2545,10 +2438,6 @@
     <value>Στάλθηκε! Ευχαριστούμε για τα σχόλιά σας.</value>
     <comment>Snackbar shown after feedback is sent successfully. Used in Main/Feedback/FeedbackView.swift.</comment>
   </data>
-  <data name="set_up_wallet" xml:space="preserve">
-    <value>Ρύθμιση πορτοφολιού</value>
-    <comment>Account Screen</comment>
-  </data>
   <data name="settings" xml:space="preserve">
     <value>Ρυθμίσεις</value>
     <comment>Account Screen</comment>
@@ -2568,10 +2457,6 @@
   <data name="share_urnetwork" xml:space="preserve">
     <value>Κοινοποίηση URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
-  </data>
-  <data name="share_with_others" xml:space="preserve">
-    <value>Μοιράζεστε με άλλους, μοιραζόμαστε μαζί σας. Κερδίστε ένα μερίδιο εσόδων όταν παρέχετε δεδομένα σε άλλους στο δίκτυο.</value>
-    <comment>Setup wallet</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>Εμφάνιση</value>
@@ -2787,10 +2672,6 @@
     <value>Η συνδρομή σας Pro χρεώνεται μέσω Stripe. Ενημερώστε τα στοιχεία πληρωμής ή ακυρώστε ανά πάσα στιγμή παρακάτω.</value>
     <comment>Subscription: Stripe-billed body</comment>
   </data>
-  <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
-    <value>Βεβαιωθείτε ότι έχετε επαρκή κεφάλαια USDC στο πορτοφόλι σας. Σε ορισμένες περιπτώσεις, οι ειδοποιήσεις πληρωμής αποτυγχάνουν αν δεν υπάρχουν αρκετά χρήματα στο πορτοφόλι.</value>
-    <comment>Call to action</comment>
-  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Είσοδος με Solana</value>
     <comment>Call to action</comment>
@@ -2843,10 +2724,6 @@
     <value>Ξεκινήστε τη δωρεάν δοκιμή δύο εβδομάδων</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
-  <data name="start_earning" xml:space="preserve">
-    <value>Για να ξεκινήσετε να κερδίζετε, συνδέστε το πορτοφόλι κρυπτονομισμάτων σας στο URnetwork ή ρυθμίστε ένα με το Circle.</value>
-    <comment>Setup wallet</comment>
-  </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>Για να ξεκινήσετε να κερδίζετε, γίνετε μέλος του δικτύου</value>
     <comment>Guest mode overlay</comment>
@@ -2886,10 +2763,6 @@
   <data name="step_two" xml:space="preserve">
     <value>Βήμα 2</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="stored_for_future_use" xml:space="preserve">
-    <value>αποθηκεύεται για μελλοντική χρήση, χωρίς πληρωμές προς το παρόν</value>
-    <comment>Suffix on a Bittensor (TAO) wallet row: the wallet is recorded but cannot receive payouts yet.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Ισχυρή ανωνυμοποίηση</value>
@@ -3006,10 +2879,6 @@
     <value>Συνολικοί πελάτες</value>
     <comment>Call to action</comment>
   </data>
-  <data name="total_payouts" xml:space="preserve">
-    <value>συνολικές πληρωμές</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="total_referral_count.one" xml:space="preserve">
     <value>Συνολικές παραπομπές: {}</value>
     <comment>Call to action</comment>
@@ -3049,10 +2918,6 @@
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>Εμπιστεύεται από πάνω από 100.000 ιδιωτικά δίκτυα</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
-  </data>
-  <data name="trusted_by_private_networks" xml:space="preserve">
-    <value>Εμπιστεύεται από πάνω από {} ιδιωτικά δίκτυα</value>
-    <comment>Call to action</comment>
   </data>
   <data name="try_again" xml:space="preserve">
     <value>Δοκιμάστε ξανά</value>
@@ -3097,10 +2962,6 @@
   <data name="unlock_supporter_tooltip" xml:space="preserve">
     <value>Ξεκλειδώστε ακόμη μεγαλύτερες ταχύτητες και αποκτήστε πρώιμη πρόσβαση σε νέες δυνατότητες.</value>
     <comment>Settings</comment>
-  </data>
-  <data name="unpaid_data_provided" xml:space="preserve">
-    <value>Παρέχονται μη πληρωμένα δεδομένα</value>
-    <comment>Wallet Screen</comment>
   </data>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (μπορεί να είναι ασταθές)</value>
@@ -3173,12 +3034,6 @@
   <data name="urnetwork_vpn_started" xml:space="preserve">
     <value>Το URnetwork VPN ξεκίνησε</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
-  </data>
-  <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
-    <value>Υποστηρίζονται αυτήν τη στιγμή διευθύνσεις USDC στο Solana</value>
-  </data>
-  <data name="usdc_wallet_address" xml:space="preserve">
-    <value>Διεύθυνση πορτοφολιού USDC</value>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>Χρησιμοποιεί τον πιο σταθερό πάροχο</value>
@@ -3283,18 +3138,6 @@
     <value>Πορτοφόλι</value>
     <comment>Account Screen</comment>
   </data>
-  <data name="wallet_address" xml:space="preserve">
-    <value>Διεύθυνση πορτοφολιού</value>
-    <comment>Call to action</comment>
-  </data>
-  <data name="wallet_address_label" xml:space="preserve">
-    <value>Διεύθυνση πορτοφολιού</value>
-    <comment>Wallets Screen</comment>
-  </data>
-  <data name="wallet_address_placeholder" xml:space="preserve">
-    <value>Αντιγράψτε και επικολλήστε εδώ</value>
-    <comment>Wallets Screen</comment>
-  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>Δεν ήταν δυνατή η σύνδεση του πορτοφολιού.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
@@ -3314,10 +3157,6 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>Η μέθοδος σύνδεσης με πορτοφόλι προστέθηκε</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
-  </data>
-  <data name="wallets" xml:space="preserve">
-    <value>Πορτοφόλια</value>
-    <comment>Wallets Screen</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>Καλώς ήρθατε στο URnetwork</value>
