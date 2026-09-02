@@ -246,11 +246,25 @@ struct MainWindow : MainWindowT<MainWindow> {
       winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
   void OnConnectWallet(winrt::Windows::Foundation::IInspectable const&,
                        winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // Earnings: the manual-address fallback, the connected wallet's change
+  // action, the claim dialog, the Top 200 route and the ur.xyz link.
+  void OnEnterAddressManually(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnConnectWalletAddress(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnChangeWallet(winrt::Windows::Foundation::IInspectable const&,
+                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnClaimAlpha(winrt::Windows::Foundation::IInspectable const&,
+                    winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnClaimTop200(winrt::Windows::Foundation::IInspectable const&,
+                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnLearnUrXyz(winrt::Windows::Foundation::IInspectable const&,
+                    winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // wallet: Seeker-token multiplier verification. leaderboard: the
   // public/private switch.
   void OnVerifySeeker(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // R4: the ledger pane's Payouts / Leaderboard switch (Earnings).
+  // R4: the ledger pane's History / Leaderboard switch (Earnings).
   void OnEarningsTableChanged(
       winrt::Microsoft::UI::Xaml::Controls::SelectorBar const&,
       winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);

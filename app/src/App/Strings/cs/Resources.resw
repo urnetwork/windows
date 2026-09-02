@@ -252,10 +252,6 @@
   <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
     <value>Opravdu chcete odstranit {} jako způsob přihlášení?</value>
   </data>
-  <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
-    <value>Opravdu chcete tuto peněženku odstranit?</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="auth_code" xml:space="preserve">
     <value>Ověřovací kód</value>
     <comment>Call to action</comment>
@@ -643,10 +639,6 @@ správným způsobem</value>
     <value>Připojit se k URnetwork VPN</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="connect_wallet" xml:space="preserve">
-    <value>Připojit peněženku</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="connected" xml:space="preserve">
     <value>Připojeno</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
@@ -871,10 +863,6 @@ správným způsobem</value>
     <value>Výchozí</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
-  <data name="default_txt" xml:space="preserve">
-    <value>VÝCHOZÍ</value>
-    <comment>Used in Shared/Views/PayoutWalletTag.swift.</comment>
-  </data>
   <data name="default_wallet" xml:space="preserve">
     <value>Výchozí</value>
     <comment>Call to action</comment>
@@ -1063,10 +1051,6 @@ správným způsobem</value>
     <value>Zadejte heslo</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
-    <value>Zadejte adresu peněženky Solana nebo Bittensor</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>Zadejte adresu peněženky USDC v síti Solana</value>
   </data>
@@ -1086,10 +1070,6 @@ správným způsobem</value>
     <value>Vkročte do URnetwork</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
   </data>
-  <data name="enter_wallet_address" xml:space="preserve">
-    <value>Vložte adresu peněženky</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>Chyba při změně názvu sítě</value>
     <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
@@ -1105,10 +1085,6 @@ správným způsobem</value>
   <data name="error_connecting_wallet" xml:space="preserve">
     <value>Při připojování peněženky došlo k chybě.</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>Při připojování peněženky došlo k chybě: {}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>Při vytváření sítě došlo k chybě. Zkuste to prosím později.</value>
@@ -1137,14 +1113,6 @@ správným způsobem</value>
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>Při odesílání ověřovacího kódu došlo k chybě.</value>
     <comment>Inline error on the verify page when resending the verification code fails. Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet" xml:space="preserve">
-    <value>Chyba při nastavování výchozí peněženky</value>
-    <comment>Snackbar shown when setting the default payout wallet fails. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>Chyba při nastavování výchozí peněženky: {}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>Při aktualizaci názvu zařízení došlo k chybě.</value>
@@ -1719,10 +1687,6 @@ správným způsobem</value>
     <value>získané net body</value>
     <comment>Call to action</comment>
   </data>
-  <data name="net_points_earned_2" xml:space="preserve">
-    <value>Získané "net" body</value>
-    <comment>Used in Shared/Views/AccountPointsBreakdown.swift.</comment>
-  </data>
   <data name="net_provided" xml:space="preserve">
     <value>Poskytnutá čistá hodnota</value>
     <comment>Call to action</comment>
@@ -1799,10 +1763,6 @@ správným způsobem</value>
     <value>Někdo vás pozval, abyste se připojili 🥳 
 Získejte svůj bonus vytvořením sítě!</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_earnings" xml:space="preserve">
-    <value>Výnosy ze sítě</value>
-    <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
   <data name="network_name_changed_to_n" xml:space="preserve">
     <value>Název sítě byl změněn na {}</value>
@@ -2012,10 +1972,6 @@ Získejte svůj bonus vytvořením sítě!</value>
     <value>Nebo použijte peněženku</value>
     <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
   </data>
-  <data name="other" xml:space="preserve">
-    <value>Jiné</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Zapojit se</value>
     <comment>Call to action</comment>
@@ -2057,21 +2013,9 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>Připojit se pomocí Stripe</value>
     <comment>Call to action</comment>
   </data>
-  <data name="payment_pending" xml:space="preserve">
-    <value>Čekající platba</value>
-    <comment>Used in Main/Account/PayoutItem/PayoutItemView.swift.</comment>
-  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>Problém s platbou</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
-  </data>
-  <data name="payout" xml:space="preserve">
-    <value>Výplata</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>Výplatní peněženka byla aktualizována</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="payout_wallets" xml:space="preserve">
     <value>Výplatní peněženky</value>
@@ -2562,10 +2506,6 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>Odstranit tento způsob přihlášení?</value>
   </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>Odstranit peněženku</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>Znovu odeslat odkaz</value>
     <comment>Reset link sent</comment>
@@ -2617,10 +2557,6 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   <data name="rules" xml:space="preserve">
     <value>Pravidla</value>
     <comment>A heading for the pinned split rules.</comment>
-  </data>
-  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
-    <value>2× více dat zdarma i z doporučení</value>
-    <comment>A description of the benefits of using a Seeker Token.</comment>
   </data>
   <data name="save" xml:space="preserve">
     <value>Uložit</value>
@@ -2969,10 +2905,6 @@ kontent světa</value>
     <value>Přihlaste se pomocí Solana</value>
     <comment>Call to action</comment>
   </data>
-  <data name="solana_usdc_addresses_and_bittensor_tao" xml:space="preserve">
-    <value>Podporovány jsou adresy USDC na síti Solana a adresy Bittensor (TAO). Peněženky Bittensor se ukládají pro budoucí použití a zatím nemohou přijímat výplaty.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>Něco se pokazilo.</value>
     <comment>Something went wrong error message</comment>
@@ -3161,10 +3093,6 @@ jaký by měl být.</value>
     <value>Došlo k chybě při ověřování vašeho ověřovacího kódu. Zkuste to prosím znovu nebo vygenerujte nový kód.</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
-  <data name="these_wallets_are_not_affiliated_or_controlled" xml:space="preserve">
-    <value>Tyto peněženky nejsou přidružené ani kontrolované společností URnetwork. Výdělky budeme posílat do připojené peněženky.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
     <value>⚠️ Toto je jediná chvíle, kdy ji uvidíte.</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
@@ -3183,10 +3111,6 @@ jaký by měl být.</value>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Přihlásit se</value>
-  </data>
-  <data name="to_start_earning_connect_your_solana_wallet_to" xml:space="preserve">
-    <value>Chcete-li začít vydělávat, připojte svou peněženku Solana k síti URnetwork.</value>
-    <comment>Used in Main/Account/Wallets/EmptyWallets/EmptyWalletsView.swift.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>Nejlepší shody</value>
@@ -3508,12 +3432,6 @@ jaký by měl být.</value>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>Tato peněženka zatím není propojena s žádnou sítí. Zvolte název sítě a vytvořte ji.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
-  </data>
-  <data name="wallet_provider" xml:space="preserve">
-    <value>{} Peněženka</value>
-  </data>
-  <data name="wallet_provider_lower" xml:space="preserve">
-    <value>{} peněženky</value>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>Přihlášení peněženkou se nezdařilo</value>

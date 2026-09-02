@@ -1485,6 +1485,33 @@ void SdkHost::SignWithSolanaWallet(
   wallet_.Connect(provider);  // continues on the deep-link callback
 }
 
+void SdkHost::SignWithBittensorWallet(
+    const std::string& walletAddress, const std::string& purpose,
+    std::function<void(bool, std::string, std::string, std::string, std::string)> done) {
+  // Not a sign-in: the auth state does not move (see on_error above).
+  CancelPendingWalletFlows("superseded by a wallet signature request");
+  // The bridge answers with the address and the signature; the message it
+  // signed is the one this flow handed it, kept in walletSignMessage_ until
+  // the answer (or a superseding flow) arrives.
+  walletSignDone_ = [this, done = std::move(done)](bool ok, std::string address,
+                                                   std::string signature, std::string error) {
+    done(ok, std::move(address), std::move(signature), walletSignMessage_, std::move(error));
+  };
+  RequestWalletChallenge(
+      urnet::TAO, walletAddress,
+      [this, purpose](std::optional<std::string> message, std::string error) {
+        if (!message) {
+          if (auto signDone = std::exchange(walletSignDone_, nullptr)) {
+            signDone(false, std::string(), std::string(),
+                     error.empty() ? "could not fetch wallet challenge" : error);
+          }
+          return;
+        }
+        walletSignMessage_ = *message;
+        wallet_.SignMessageBittensor(*message, purpose);
+      });
+}
+
 void SdkHost::HandleDeepLink(const std::string& url) {
   // Google SSO does NOT come back this way: Google issues custom-scheme
   // redirects to iOS/Android client types only, so the desktop flow uses a

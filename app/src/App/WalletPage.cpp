@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MPL-2.0
 #include "pch.h"
 
 #include "WalletPage.h"
@@ -7,6 +7,7 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
+#include <winrt/Windows.System.h>
 #include <winrt/Windows.UI.Text.h>
 
 #include <algorithm>
@@ -18,14 +19,14 @@
 #include <iterator>
 #include <string_view>
 
+#include "EarningsSheets.h"
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
 #include "StatsFormat.h"
 #include "Strings.h"
 #include "UrColors.h"
-#include "UrComponents.h"  // kit::MakeEmptyStateCard
-#include "WalletSheets.h"
+#include "UrComponents.h"
 
 using namespace winrt;
 using namespace winrt::Microsoft::UI::Xaml;
@@ -42,20 +43,62 @@ using winrt::Windows::Foundation::IInspectable;
 
 namespace {
 
+// The wallet bridge opens a browser and the user may take a while in it; a
+// plain api call does not.
+constexpr int kBridgeTimeoutMs = 180'000;
+constexpr int kApiTimeoutMs = 20'000;
+
+// The bridge's purpose for a signature that attaches a coldkey to the provider
+// (the sign-in leaves it empty).
+constexpr const char* kConnectPurpose = "connect";
+
+// Where the claim and head-spot routes live on the web app.
+constexpr const char* kUrXyzUrl = "https://ur.xyz";
+constexpr const char* kTop200Path = "/app/account/top200";
+
+// A head score this close to the eviction floor is worth a warning.
+constexpr double kDemotionWarningRatio = 1.15;
+
 // A stat tile's value, in the colour its state deserves. The dash is a
-// PLACEHOLDER, not a number, and it was rendering in the full text colour at
-// 26pt condensed - three big bright dashes across the top of Wallet that read
-// as "the answer is nothing" rather than "no answer yet". Faint for the
-// placeholder, text colour for a real figure.
+// PLACEHOLDER, not a number: faint for the placeholder, text colour for a real
+// figure.
 void SetStatValue(TextBlock const& value, hstring const& text, bool loaded) {
   if (!value) return;
   value.Text(text);
   value.Foreground(loaded ? urnw::colors::TextBrush() : urnw::colors::FaintBrush());
 }
 
-
 using ShapeEllipse = winrt::Microsoft::UI::Xaml::Shapes::Ellipse;
 using ShapePolyline = winrt::Microsoft::UI::Xaml::Shapes::Polyline;
+
+// The SDK's stable error codes (SnErrorCode*), in the store's words. A code
+// the store has no sentence for shows the SDK's message as it came, so a new
+// server state is visible rather than blank.
+hstring SnErrorText(std::optional<urnet::SnError> const& error, int64_t epoch = 0) {
+  if (!error) return Loc("something_went_wrong");
+  const std::string code = error->code.value_or(std::string());
+  if (code == "invalid_ss58_address") return Loc("invalid_ss58_address");
+  if (code == "wallet_blocked") return Loc("wallet_blocked");
+  if (code == "connect_wallet_first") return Loc("connect_wallet_first");
+  if (code == "chain_rpc_unreachable" || code == "chain_rpc_error") {
+    return Loc("chain_rpc_unreachable");
+  }
+  if (code == "needs_gas") return Loc("add_tao_for_gas");
+  if (code == "claims_for_epoch_expired") {
+    return hstring{urnw::Format("claims_for_epoch_expired", epoch)};
+  }
+  if (code == "already_claimed") return Loc("claim_confirmed");
+  if (code == "claim_failed" && error->message.empty()) return Loc("claim_failed");
+  if (!error->message.empty()) return H(error->message);
+  return code.empty() ? Loc("something_went_wrong") : H(code);
+}
+
+// A transport failure as an SnError, so one path renders both.
+urnet::SnError TransportError(std::string const& message) {
+  urnet::SnError error;
+  error.message = message;
+  return error;
+}
 
 // The four account-point events the server emits (iOS AccountPointEvent).
 constexpr const char* kEventPayout = "payout";
@@ -94,28 +137,6 @@ ColumnDefinition AutoColumn() {
   ColumnDefinition col;
   col.Width(GridLengthHelper::FromValueAndType(1, GridUnitType::Auto));
   return col;
-}
-
-// A style from App.xaml by key. The component kit is markup (see App.xaml); a
-// code-built control joins it by wearing the same style, not by re-setting the
-// same properties.
-Style KitStyle(std::wstring_view key) {
-  return Application::Current()
-      .Resources()
-      .Lookup(winrt::box_value(hstring{key}))
-      .as<Style>();
-}
-
-// The payment's timestamp for ordering and display: completion when it
-// completed, otherwise when it was created.
-std::string PaymentTime(urnet::AccountPayment const& p) {
-  if (p.complete_time && !p.complete_time->empty()) return *p.complete_time;
-  if (p.create_time && !p.create_time->empty()) return *p.create_time;
-  return {};
-}
-
-bool PaymentCompleted(urnet::AccountPayment const& p) {
-  return p.completed && *p.completed;
 }
 
 // "1.2 GiB" from a MiB float (the leaderboard's unit; iOS formatMiB).
@@ -188,15 +209,10 @@ UIElement BuildReliabilityChart(std::vector<double> weights, std::vector<double>
   canvas.Children().Append(weightLine);
 
   // A Canvas has no layout size of its own, so the series can only be plotted
-  // once the host has been measured - and again on every resize, which a
-  // resizable desktop window does have.
-  //
-  // The three lines are held WEAKLY. Holding them by value made the handler own
-  // strong references to three Polylines that are descendants of the very Grid
-  // raising the event: host -> canvas -> line -> handler -> line, a cycle
-  // neither end of which can ever be collected. LoadWallet() rebuilds this
-  // panel on every visit to the destination and after every wallet change, so
-  // it was one leaked chart per load for the life of the process.
+  // once the host has been measured - and again on every resize. The three
+  // lines are held WEAKLY: holding them by value made the handler own strong
+  // references to descendants of the very Grid raising the event, a cycle
+  // that leaked one chart per load for the life of the process.
   auto weakMean = winrt::make_weak(meanLine);
   auto weakWeight = winrt::make_weak(weightLine);
   auto weakClient = winrt::make_weak(clientLine);
@@ -223,38 +239,18 @@ UIElement BuildReliabilityChart(std::vector<double> weights, std::vector<double>
 
 // ---- --preview-ui sample data ----------------------------------------------
 //
-// WHY THIS EXISTS. --preview-ui deliberately makes no API call (Startup.h): with
-// no token every request would be an unauthenticated hit on the production API,
-// so every panel on this destination renders EMPTY. That is worth looking at and
-// it is not the populated one - and a wallet card, a payouts table, a points
-// breakdown, a reliability chart and a leaderboard row are exactly the things
-// where "reads correct" has never been evidence on this project. Without this
-// they could ship having never been drawn.
-//
-// So: with --preview-ui ALREADY on, URNETWORK_PREVIEW_SAMPLE=1 pushes obviously
-// synthetic rows through the SAME Apply* functions the API path uses. Two gates
-// and a warning in the log every time, because data on screen that did not come
-// from the server is the one thing a screenshot cannot show you.
-//
-// THIS COMMENT USED TO SAY "no network", AND THAT WAS FALSE. The sample makes
-// the cards and rows interactive, and interactive meant a real sheet with a
-// real Remove behind it: two clicks put an authenticated-looking removeWallet
-// on the wire from a build with no account. The gates keep the api at arm's
-// length from the LOAD paths only; what actually holds the line is
-// WalletPage::CanCallApi(), which every action on this destination now passes
-// through. See its comment in WalletPage.h.
-//
-// The values are deliberately not plausible as anybody's account: the wallet
-// addresses spell what they are.
+// --preview-ui deliberately makes no API call (Startup.h): with no token every
+// request would be an unauthenticated hit on the production API, so every
+// panel on this destination renders EMPTY. With --preview-ui ALREADY on,
+// URNETWORK_PREVIEW_SAMPLE=1 pushes obviously synthetic rows through the SAME
+// Apply* functions the API path uses. Two gates and a warning in the log every
+// time, because data on screen that did not come from the server is the one
+// thing a screenshot cannot show you. What holds the line for the ACTIONS is
+// WalletPage::CanCallApi(), which every one of them passes through.
 constexpr const char* kSampleOwnNetworkId = "sample-network-self";
-// The addresses spell what they are, and their LAST SIX characters differ per
-// chain on purpose: every surface in this destination shows a wallet as
-// MaskAddress's "***" + last six, so three samples ending in the same word made
-// all three cards, all three ledger rows and both sheets read "***SAMPLE" -
-// which is exactly the thing the masked address exists to tell apart.
-constexpr const char* kSampleSolAddress = "SAMPLEwa11etADDRESSnotREALsolana00SOLSMP";
-constexpr const char* kSampleMaticAddress = "0xSAMPLEwa11etADDRESSnotREALpolygonMATSMP";
-constexpr const char* kSampleTaoAddress = "5SAMPLEwa11etADDRESSnotREALbittensorTAOSMP";
+constexpr const char* kSampleColdkey = "5SAMPLEcoldkeyADDRESSnotREALbittensorSMPL";
+constexpr const char* kSampleGasAddress = "0xSAMPLEgasKEYaddressNOTreal000000000000";
+constexpr const char* kSampleGasMirror = "5SAMPLEgasMIRRORss58notREALbittensorMIRR";
 
 bool PreviewSample() {
   static const bool on = [] {
@@ -266,7 +262,7 @@ bool PreviewSample() {
     const bool enabled = std::string_view(value) == "1";
     if (enabled) {
       urnw::LogWarn(
-          "preview-sample: rendering SYNTHETIC wallet/leaderboard rows - none of "
+          "preview-sample: rendering SYNTHETIC earnings/leaderboard rows - none of "
           "this came from the api");
     }
     return enabled;
@@ -274,85 +270,19 @@ bool PreviewSample() {
   return on;
 }
 
-std::vector<urnet::AccountWallet> SampleWallets() {
-  urnet::AccountWallet sol;
-  sol.wallet_id = "5a3e0000-0000-4000-8000-00000000501a";
-  sol.blockchain = urnet::SOL;
-  sol.wallet_address = kSampleSolAddress;
-  sol.default_token_type = "USDC";
-  sol.active = true;
-  sol.has_seeker_token = true;
-
-  urnet::AccountWallet matic;
-  matic.wallet_id = "5a3e0000-0000-4000-8000-0000000a71c0";
-  matic.blockchain = urnet::MATIC;
-  matic.wallet_address = kSampleMaticAddress;
-  matic.default_token_type = "USDC";
-  matic.active = true;
-
-  urnet::AccountWallet tao;
-  tao.wallet_id = "5a3e0000-0000-4000-8000-00000000007a";
-  tao.blockchain = urnet::TAO;
-  tao.wallet_address = kSampleTaoAddress;
-  tao.default_token_type = "USDC";
-  tao.active = true;
-  return {sol, matic, tao};
-}
-
-std::vector<urnet::AccountPayment> SamplePayments() {
-  // The address travels WITH the payment. It used to be hardcoded to the solana
-  // one for all three, so the polygon payout rendered under a solana address -
-  // in the ledger, in the wallet sheet and in the payout detail. A sample whose
-  // whole job is to show what a populated screen looks like must not show a
-  // wrong one.
-  auto make = [](const char* id, const char* wallet, const char* chain, const char* address,
-                 double amount, const char* when, const char* tx, bool completed) {
-    urnet::AccountPayment p;
-    p.payment_id = id;
-    p.wallet_id = wallet;
-    p.blockchain = chain;
-    p.token_type = "USDC";
-    p.token_amount = amount;
-    p.complete_time = completed ? std::optional<std::string>(when) : std::nullopt;
-    p.create_time = when;
-    p.completed = completed;
-    p.wallet_address = address;
-    if (tx) p.tx_hash = tx;
-    p.payout_byte_count = 8'123'456'789;
-    return p;
-  };
-  return {
-      make("5a3e0000-0000-4000-8000-0000000000a1", "5a3e0000-0000-4000-8000-00000000501a",
-           urnet::SOL, kSampleSolAddress, 0, "2026-08-02T00:00:00Z", nullptr, false),
-      make("5a3e0000-0000-4000-8000-0000000000a2", "5a3e0000-0000-4000-8000-00000000501a",
-           urnet::SOL, kSampleSolAddress, 12.34, "2026-07-26T00:00:00Z",
-           "SAMPLEtxHASHnotREAL2222222222222222", true),
-      make("5a3e0000-0000-4000-8000-0000000000a3", "5a3e0000-0000-4000-8000-0000000a71c0",
-           urnet::MATIC, kSampleMaticAddress, 8.90, "2026-07-19T00:00:00Z",
-           "0xSAMPLEtxHASHnotREAL33333333333333", true),
-  };
-}
-
 std::vector<urnet::AccountPoint> SamplePoints() {
-  auto make = [](const char* event, int64_t nanoPoints, const char* paymentId) {
+  auto make = [](const char* event, int64_t nanoPoints) {
     urnet::AccountPoint p;
     p.event = event;
     p.point_value = nanoPoints;
-    p.account_payment_id = paymentId;
     return p;
   };
-  // urnet::nanoPointsToPoints divides by 1e6, not 1e9. At 1e9 this sample drew
-  // 36,955,000 net points against a $21 lifetime payout - a thousand times the
-  // real scale, on the one screen whose entire job is to show what the real
-  // scale looks like.
+  // urnet::nanoPointsToPoints divides by 1e6
   const int64_t nano = 1'000'000;
   return {
-      make(kEventPayout, 12'340 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
-      make(kEventReferral, 2'100 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
-      make(kEventReliability, 860 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
-      make(kEventMultiplier, 12'340 * nano, "5a3e0000-0000-4000-8000-0000000000a2"),
-      make(kEventPayout, 8'900 * nano, "5a3e0000-0000-4000-8000-0000000000a3"),
-      make(kEventReliability, 415 * nano, "5a3e0000-0000-4000-8000-0000000000a3"),
+      make(kEventPayout, 12'340 * nano),      make(kEventReferral, 2'100 * nano),
+      make(kEventReliability, 860 * nano),    make(kEventMultiplier, 12'340 * nano),
+      make(kEventPayout, 8'900 * nano),       make(kEventReliability, 415 * nano),
   };
 }
 
@@ -429,18 +359,15 @@ bool WalletPage::CanCallApi() const {
   return !w_.previewUi() && Sdk().apiReady() && Sdk().IsLoggedIn();
 }
 
+bool WalletPage::CanClaim() const { return CanCallApi() && Sdk().hasDevice(); }
+
 void WalletPage::RefuseNoSession() {
-  urnw::LogWarn("wallet: refusing an api call - no session (preview={})",
-                w_.previewUi());
+  urnw::LogWarn("earnings: refusing an api call - no session (preview={})", w_.previewUi());
   Notify(Loc("please_login_to_urnetwork"), InfoBarSeverity::Error);
 }
 
-// The bar the user can SEE. Wallet and Leaderboard are one destination now, but
-// they are still two PANES, and a message about the leaderboard switch raised on
-// the wallet pane's bar is a message beside content it has nothing to do with -
-// which is the defect this function was written for. So it keys off which pane
-// the message belongs to: the leaderboard's bar lives in pane C beside its own
-// ranking rows, the wallet's in pane A beside the form that raises it.
+// The bar the user can SEE: the leaderboard's lives in pane C beside its own
+// ranking rows, the earnings pane's in pane A beside the form that raises it.
 void WalletPage::Notify(hstring const& message, InfoBarSeverity severity) {
   if (w_.LeaderboardHost().Visibility() == Visibility::Visible) {
     leaderboardSnackbar_.Show(message, severity);
@@ -458,15 +385,13 @@ uint32_t WalletPage::BeginFlow(Flow& flow, int timeoutMs, std::function<void()> 
   flow.timer.Stop();
   flow.timer.Interval(std::chrono::milliseconds(timeoutMs));
   // Bumping the generation is what makes the give-up final: the real answer,
-  // whenever it turns up, no longer matches and is dropped. Without that a
-  // watchdog that has already told the user it failed could be contradicted
-  // minutes later by a success that re-enables and reloads under them.
+  // whenever it turns up, no longer matches and is dropped.
   flow.timer.Tick([weak = w_.get_weak(), &flow, generation,
                    onTimeout = std::move(onTimeout)](auto const&, auto const&) {
     auto self = weak.get();
     if (!self || flow.generation != generation) return;
     ++flow.generation;
-    urnw::LogError("wallet: a request never answered - giving up on it");
+    urnw::LogError("earnings: a request never answered - giving up on it");
     onTimeout();
   });
   flow.timer.Start();
@@ -480,8 +405,8 @@ bool WalletPage::SettleFlow(Flow& flow, uint32_t generation) {
 }
 
 void WalletPage::Initialize() {
-  // debounce the connect-wallet address validation while typing (apple parity):
-  // each keystroke restarts the window, and only the pause validates.
+  // debounce the manual-address validation while typing: each keystroke
+  // restarts the window, and only the pause validates.
   walletValidateTimer_ = w_.DispatcherQueue().CreateTimer();
   walletValidateTimer_.Interval(std::chrono::milliseconds(300));
   walletValidateTimer_.IsRepeating(false);
@@ -490,49 +415,55 @@ void WalletPage::Initialize() {
   });
 }
 
+void WalletPage::OpenUrl(std::string const& url) {
+  try {
+    winrt::Windows::System::Launcher::LaunchUriAsync(winrt::Windows::Foundation::Uri(H(url)));
+  } catch (...) {
+    urnw::LogWarn("earnings: could not open {}", url);
+  }
+}
+
 void WalletPage::ApplyStrings() {
   // the three pane headers, and a landmark name each
-  w_.WalletPaneATitle().Text(Loc("payout_wallets"));
-  // NOT "Account points": that is the name of the first GROUP in this pane, and
-  // a pane header repeating its own first group header reads as a stutter. The
-  // pane is the four things that explain the figure beside it.
-  w_.WalletPaneCTitle().Text(Loc("network_earnings"));
+  w_.WalletPaneATitle().Text(Loc("earnings"));
+  w_.WalletPaneCTitle().Text(Loc("earnings_network_pane_title"));
   namespace automation = winrt::Microsoft::UI::Xaml::Automation;
-  automation::AutomationProperties::SetName(w_.WalletPaneA(), Loc("payout_wallets"));
-  automation::AutomationProperties::SetName(w_.WalletPaneB(), Loc("payouts"));
-  automation::AutomationProperties::SetName(w_.WalletPaneC(), Loc("network_earnings"));
+  automation::AutomationProperties::SetName(w_.WalletPaneA(), Loc("earnings"));
+  automation::AutomationProperties::SetName(w_.WalletPaneB(), Loc("epoch_history"));
+  automation::AutomationProperties::SetName(w_.WalletPaneC(), Loc("earnings_network_pane_title"));
 
   // the ledger pane's switch
-  w_.PayoutsTabItem().Text(Loc("payouts"));
+  w_.HistoryTabItem().Text(Loc("epoch_history"));
   w_.LeaderboardTabItem().Text(Loc("leaderboard"));
   if (!w_.EarningsTableBar().SelectedItem()) {
-    w_.EarningsTableBar().SelectedItem(w_.PayoutsTabItem());
+    w_.EarningsTableBar().SelectedItem(w_.HistoryTabItem());
   }
 
   // pane A
-  w_.UpgradeButton().Content(LocBox("upgrade_with_stripe"));
-  w_.WalletUnpaidLabel().Text(Loc("unpaid_data_provided"));
-  w_.WalletPendingLabel().Text(Loc("pending_payout"));
-  w_.WalletReferralsLabel().Text(Loc("total_referrals"));
-  w_.PayoutsThresholdText().Text(Loc("payouts_amount_threshold"));
-  w_.PayoutWalletsHeading().Text(Loc("payout_wallets"));
-  w_.WalletsEmptyText().Text(Loc("to_start_earning_connect_your_solana_wallet_to"));
-  w_.WalletsEmptyNote().Text(Loc("these_wallets_are_not_affiliated_or_controlled"));
-  w_.ConnectWalletHeading().Text(Loc("connect_a_wallet"));
-  // supported chains, then the bittensor caveat: two store sentences rather than a
-  // third near-duplicate of both
-  w_.ConnectWalletChainsText().Text(
-      hstring{urnw::Localized("connect_external_wallet_supported_chains") + L" " +
-              urnw::Localized("bittensor_wallet_future_use")});
-  w_.WalletAddressBox().PlaceholderText(Loc("enter_wallet_address"));
+  w_.PointsHeadlineLabel().Text(Loc("points_earned"));
+  w_.ProtocolNoteText().Text(Loc("sn_protocol_note"));
+  w_.LearnUrXyzButton().Content(LocBox("learn_at_ur_xyz"));
+  w_.BittensorWalletHeading().Text(Loc("bittensor_wallet"));
+  w_.WalletConnectedNote().Text(Loc("wallet_connected_to_protocol"));
+  w_.ChangeWalletButton().Content(LocBox("earnings_change_wallet"));
+  w_.WalletNotRetroactiveText().Text(Loc("wallet_not_retroactive"));
+  w_.ConnectWalletButton().Content(LocBox("connect_bittensor_wallet"));
+  w_.EnterAddressManuallyButton().Content(LocBox("enter_address_manually"));
+  w_.WalletAddressBox().PlaceholderText(Loc("earnings_address_placeholder"));
   automation::AutomationProperties::SetName(w_.WalletAddressBox(),
-                                            Loc("enter_wallet_address"));
-  w_.ConnectWalletButton().Content(LocBox("connect"));
+                                            Loc("earnings_address_placeholder"));
+  w_.ConnectAddressButton().Content(LocBox("connect"));
+  w_.UnclaimedHeading().Text(Loc("unclaimed"));
+  w_.ClaimButton().Content(LocBox("claim"));
+  w_.Top200Heading().Text(Loc("top200"));
+  w_.Top200Button().Content(LocBox("claim_your_spot"));
+  w_.Top200Warning().Text(Loc("top200_demotion_warning"));
+  w_.UpgradeButton().Content(LocBox("upgrade_with_stripe"));
 
   // pane C
-  w_.AccountPointsHeading().Text(Loc("account_points"));
   w_.EarningMultipliersHeading().Text(Loc("earning_multipliers"));
-  w_.VerifySeekerButton().Content(LocBox("verify_seeker_token_btn"));
+  w_.SeekerPointsOnlyText().Text(Loc("seeker_points_only"));
+  w_.VerifySeekerButton().Content(LocBox("verify_seeker"));
   w_.NetworkReliabilityHeading().Text(Loc("site_app_network_reliability"));
   w_.LeaderboardRankLabel().Text(Loc("current_ranking"));
   w_.LeaderboardNetProvidedLabel().Text(Loc("net_provided"));
@@ -543,114 +474,50 @@ void WalletPage::ApplyStrings() {
   // an unloaded destination is blank, which reads as "there is nothing" rather
   // than "nothing has been asked for".
   const hstring loading = Loc("loading");
-  w_.WalletsStatusText().Text(loading);
   w_.AccountPointsStatusText().Text(loading);
+  w_.WalletStatusText().Text(loading);
+  w_.ClaimsStatusText().Text(loading);
   w_.ReliabilityStatusText().Text(loading);
-  w_.PayoutsStatusText().Text(loading);
-  w_.PayoutsStatusText().Visibility(Visibility::Visible);
+  w_.HistoryStatusText().Text(loading);
+  w_.HistoryStatusText().Visibility(Visibility::Visible);
   w_.LeaderboardStatusText().Text(loading);
   w_.LeaderboardStatusText().Visibility(Visibility::Visible);
   const hstring dash{L"-"};
-  SetStatValue(w_.WalletUnpaidValue(), dash, false);
-  SetStatValue(w_.WalletPendingValue(), dash, false);
-  SetStatValue(w_.WalletReferralsValue(), dash, false);
+  SetStatValue(w_.PointsHeadlineValue(), dash, false);
+  SetStatValue(w_.UnclaimedValue(), dash, false);
   SetStatValue(w_.LeaderboardRankValue(), dash, false);
   SetStatValue(w_.LeaderboardNetProvidedValue(), dash, false);
   ApplySeekerState();
+  ShowManualPanel(manualPanelOpen_);
 }
 
 // The ledger pane shows ONE table at a time; this is the switch in its header.
-void WalletPage::OnEarningsTableChanged(SelectorBar const&,
+void WalletPage::OnEarningsTableChanged(SelectorBar const& bar,
                                         SelectorBarSelectionChangedEventArgs const&) {
-  const bool payouts = w_.EarningsTableBar().SelectedItem() != w_.LeaderboardTabItem();
-  w_.PayoutsHost().Visibility(payouts ? Visibility::Visible : Visibility::Collapsed);
-  w_.LeaderboardHost().Visibility(payouts ? Visibility::Collapsed : Visibility::Visible);
+  const bool leaderboard = bar.SelectedItem() == w_.LeaderboardTabItem();
+  w_.HistoryHost().Visibility(leaderboard ? Visibility::Collapsed : Visibility::Visible);
+  w_.LeaderboardHost().Visibility(leaderboard ? Visibility::Visible : Visibility::Collapsed);
   ApplyLedgerMeta();
-  // The leaderboard is a SEPARATE fetch from the wallet loads, and the merge
-  // means selecting the destination no longer implies it. Ask for it the first
-  // time the tab is looked at, not on every switch.
-  if (!payouts && !leaderboardRequested_) {
-    leaderboardRequested_ = true;
-    LoadLeaderboard();
-  }
 }
 
-// ---- wallet --------------------------------------------------------------
+// ---- loading ---------------------------------------------------------------
 
-// Eight independent requests, each settling its own panel. They are NOT chained:
-// a destination that blanks every list because one endpoint 500'd tells the user
-// less than one that shows six panels and one failure.
 void WalletPage::LoadWallet() {
   if (!Sdk().IsLoggedIn()) return;  // the caller's guard is not the only one
+  if (auto jwt = Sdk().ParsedJwt(); jwt && jwt->NetworkId) ownNetworkId_ = *jwt->NetworkId;
+  LoadPoints();
+  LoadSeeker();
+  LoadReliability();
+  LoadEpochs();
+  LoadSnWallet();  // continues into LoadClaims/LoadGas once the coldkey is known
+  LoadHead();
+}
+
+void WalletPage::RefreshAfterWalletChange() { LoadWallet(); }
+
+void WalletPage::LoadPoints() {
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
-
-  if (auto jwt = Sdk().ParsedJwt(); jwt && jwt->NetworkId) ownNetworkId_ = *jwt->NetworkId;
-
-  w_.WalletsStatusText().Text(Loc("loading"));
-  w_.WalletsStatusText().Visibility(Visibility::Visible);
-  Sdk().api().getAccountWallets(
-      [queue, weak](std::optional<urnet::GetAccountWalletsResult> result,
-                    std::optional<std::string> err) {
-        const bool ok = result && result->wallets && !err;
-        std::vector<urnet::AccountWallet> wallets;
-        if (ok) wallets = *result->wallets;
-        if (!ok) {
-          urnw::LogError("wallet: getAccountWallets failed{}",
-                         err ? (": " + *err) : std::string());
-        }
-        queue.TryEnqueue([weak, wallets = std::move(wallets), ok] {
-          if (auto self = weak.get())
-            self->wallet().ApplyWallets(wallets, ok ? Fetch::Ready : Fetch::Failed);
-        });
-      });
-
-  Sdk().api().getPayoutWallet([queue, weak](std::optional<urnet::GetPayoutWalletIdResult> result,
-                                            std::optional<std::string> err) {
-    // A miss is not an error: an account with no payout wallet set answers with
-    // no id. Only log the transport failure.
-    if (err) urnw::LogError("wallet: getPayoutWallet failed: {}", *err);
-    std::string walletId;
-    if (result && result->wallet_id) walletId = *result->wallet_id;
-    queue.TryEnqueue([weak, walletId] {
-      if (auto self = weak.get()) self->wallet().ApplyPayoutWalletId(walletId);
-    });
-  });
-
-  Sdk().api().getTransferStats([queue, weak](std::optional<urnet::TransferStatsResult> result,
-                                             std::optional<std::string> err) {
-    const bool ok = result && !err;
-    const int64_t unpaid = ok ? result->unpaid_bytes_provided : 0;
-    if (!ok) {
-      urnw::LogError("wallet: getTransferStats failed{}", err ? (": " + *err) : std::string());
-    }
-    queue.TryEnqueue([weak, unpaid, ok] {
-      if (auto self = weak.get()) self->wallet().ApplyTransferStats(unpaid, ok);
-    });
-  });
-
-  Sdk().api().walletBalance([queue, weak](std::optional<urnet::WalletBalanceResult> result,
-                                          std::optional<std::string> err) {
-    const bool ok = result && result->wallet_info && !err;
-    const int64_t nanoCents = ok ? result->wallet_info->balance_usdc_nano_cents : 0;
-    if (!ok) {
-      urnw::LogError("wallet: walletBalance failed{}", err ? (": " + *err) : std::string());
-    }
-    queue.TryEnqueue([weak, nanoCents, ok] {
-      if (auto self = weak.get()) self->wallet().ApplyWalletBalance(nanoCents, ok);
-    });
-  });
-
-  Sdk().api().getNetworkReferralCode(
-      [queue, weak](std::optional<urnet::GetNetworkReferralCodeResult> result,
-                    std::optional<std::string> err) {
-        const bool ok = result && !err;
-        const int64_t total = ok ? result->total_referrals : 0;
-        queue.TryEnqueue([weak, total, ok] {
-          if (auto self = weak.get()) self->wallet().ApplyReferrals(total, ok);
-        });
-      });
-
   w_.AccountPointsStatusText().Text(Loc("loading"));
   w_.AccountPointsStatusText().Visibility(Visibility::Visible);
   Sdk().api().getAccountPoints([queue, weak](std::optional<urnet::AccountPointsResult> result,
@@ -659,14 +526,45 @@ void WalletPage::LoadWallet() {
     std::vector<urnet::AccountPoint> points;
     if (ok && result->network_points) points = *result->network_points;
     if (!ok) {
-      urnw::LogError("wallet: getAccountPoints failed{}", err ? (": " + *err) : std::string());
+      urnw::LogError("earnings: getAccountPoints failed{}", err ? (": " + *err) : std::string());
     }
     queue.TryEnqueue([weak, points = std::move(points), ok] {
       if (auto self = weak.get())
         self->wallet().ApplyPoints(points, ok ? Fetch::Ready : Fetch::Failed);
     });
   });
+}
 
+// The Seeker flag still lives on the account's wallets (has_seeker_token on
+// the verified Solana wallet). Nothing else about those wallets is shown.
+void WalletPage::LoadSeeker() {
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().api().getAccountWallets(
+      [queue, weak](std::optional<urnet::GetAccountWalletsResult> result,
+                    std::optional<std::string> err) {
+        bool holder = false;
+        if (result && result->wallets && !err) {
+          for (auto const& wallet : *result->wallets) {
+            if (wallet.has_seeker_token) holder = true;
+          }
+        } else {
+          urnw::LogError("earnings: getAccountWallets failed{}",
+                         err ? (": " + *err) : std::string());
+        }
+        queue.TryEnqueue([weak, holder] {
+          if (auto self = weak.get()) {
+            self->wallet().seekerHolder_ = holder;
+            self->wallet().ApplySeekerState();
+            self->wallet().RebuildPointsRows();
+          }
+        });
+      });
+}
+
+void WalletPage::LoadReliability() {
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
   w_.ReliabilityStatusText().Text(Loc("loading"));
   w_.ReliabilityStatusText().Visibility(Visibility::Visible);
   Sdk().api().getNetworkReliability(
@@ -677,181 +575,255 @@ void WalletPage::LoadWallet() {
         const bool ok = result && error.empty();
         std::optional<urnet::ReliabilityWindow> window;
         if (ok && result->reliability_window) window = *result->reliability_window;
-        if (!ok) urnw::LogError("wallet: getNetworkReliability failed: {}", error);
+        if (!ok) urnw::LogError("earnings: getNetworkReliability failed: {}", error);
         queue.TryEnqueue([weak, window, ok] {
           if (auto self = weak.get())
             self->wallet().ApplyReliability(window, ok ? Fetch::Ready : Fetch::Failed);
         });
       });
+}
 
-  w_.PayoutsStatusText().Text(Loc("loading"));
-  w_.PayoutsStatusText().Visibility(Visibility::Visible);
-  Sdk().api().getAccountPayments(
-      [queue, weak](std::optional<urnet::GetNetworkAccountPaymentsResult> result,
-                    std::optional<std::string> err) {
-        std::string error = err ? *err : std::string();
-        if (error.empty() && result && result->error) error = result->error->message;
-        const bool ok = result && error.empty();
-        std::vector<urnet::AccountPayment> payments;
-        if (ok && result->account_payments) payments = *result->account_payments;
-        if (!ok) urnw::LogError("wallet: getAccountPayments failed: {}", error);
-        queue.TryEnqueue([weak, payments = std::move(payments), ok] {
-          if (auto self = weak.get())
-            self->wallet().ApplyPayments(payments, ok ? Fetch::Ready : Fetch::Failed);
+// GET /account/epochs: one row per finalized epoch, points and the network's
+// share of the block.
+void WalletPage::LoadEpochs() {
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  w_.HistoryStatusText().Text(Loc("loading"));
+  w_.HistoryStatusText().Visibility(Visibility::Visible);
+  Sdk().api().accountEpochs([queue, weak](std::optional<urnet::AccountEpochsResult> result,
+                                          std::optional<std::string> err) {
+    std::string error = err ? *err : std::string();
+    if (error.empty() && result && result->error) error = result->error->message;
+    const bool ok = result && error.empty();
+    std::vector<EpochRow> rows;
+    if (ok && result->epochs) {
+      for (auto const& e : *result->epochs) {
+        EpochRow row;
+        row.epoch = e.epoch;
+        row.startMillis = e.start_millis;
+        row.endMillis = e.end_millis;
+        row.points = e.points;
+        row.shareBps = e.share_bps;
+        rows.push_back(row);
+      }
+    }
+    if (!ok) urnw::LogError("earnings: accountEpochs failed: {}", error);
+    queue.TryEnqueue([weak, rows = std::move(rows), ok] {
+      if (auto self = weak.get())
+        self->wallet().ApplyEpochs(rows, ok ? Fetch::Ready : Fetch::Failed);
+    });
+  });
+}
+
+// The coldkey attached to this provider. The device caches it (local state
+// ".sn_wallet") and knows its own client id, so it is the first source; with
+// no device session (before the first connect, or after Disconnect tore the
+// DeviceRemote down) the account setting answers instead.
+void WalletPage::LoadSnWallet() {
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  w_.WalletStatusText().Text(Loc("loading"));
+  if (Sdk().hasDevice()) {
+    std::optional<SnWalletInfo> info;
+    try {
+      if (auto wallet = Sdk().device().getSnWallet()) {
+        info = SnWalletInfo{wallet->coldkey_ss58, wallet->client_id.value_or(std::string()),
+                            wallet->set_at_millis};
+      }
+    } catch (const std::exception& e) {
+      urnw::LogError("earnings: getSnWallet failed: {}", e.what());
+    }
+    ApplySnWallet(info, Fetch::Ready);
+    return;
+  }
+  Sdk().api().snGetWallet([queue, weak](std::optional<urnet::SnGetWalletResult> result,
+                                        std::optional<std::string> err) {
+    std::string error = err ? *err : std::string();
+    if (error.empty() && result && result->error) error = result->error->message;
+    const bool ok = result && error.empty();
+    std::optional<SnWalletInfo> info;
+    if (ok && result->wallet && !result->wallet->coldkey_ss58.empty()) {
+      info = SnWalletInfo{result->wallet->coldkey_ss58,
+                          result->wallet->client_id.value_or(std::string()),
+                          result->wallet->set_at_millis};
+    }
+    if (!ok) urnw::LogError("earnings: snGetWallet failed: {}", error);
+    queue.TryEnqueue([weak, info, ok] {
+      if (auto self = weak.get())
+        self->wallet().ApplySnWallet(info, ok ? Fetch::Ready : Fetch::Failed);
+    });
+  });
+}
+
+// GET /sn/head: whether this network qualifies for (or holds) a head mining
+// spot, per the validators' consensus as the server currently estimates it.
+void WalletPage::LoadHead() {
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().api().snHead([queue, weak](std::optional<urnet::SnHeadResult> result,
+                                   std::optional<std::string> err) {
+    std::string error = err ? *err : std::string();
+    if (error.empty() && result && result->error) error = result->error->message;
+    const bool ok = result && error.empty();
+    std::optional<HeadInfo> head;
+    if (ok) {
+      HeadInfo h;
+      h.eligible = result->eligible;
+      h.score = result->score;
+      h.floor = result->floor;
+      h.rankEstimate = result->rank_estimate;
+      h.cutoff = result->cutoff > 0 ? result->cutoff : 200;
+      h.bound = result->bound;
+      h.hotkey = result->hotkey.value_or(std::string());
+      h.uid = result->uid.value_or(0);
+      h.rank = result->rank.value_or(0);
+      head = h;
+    }
+    if (!ok) urnw::LogError("earnings: snHead failed: {}", error);
+    queue.TryEnqueue([weak, head, ok] {
+      if (auto self = weak.get())
+        self->wallet().ApplyHead(head, ok ? Fetch::Ready : Fetch::Failed);
+    });
+  });
+}
+
+// The vault, read by the SDK on this device: entitlements, leafClaimed and the
+// published payout artifact, verified against the vault's root. Nothing from a
+// URnetwork API.
+void WalletPage::LoadClaims() {
+  if (!snWallet_) return;
+  if (!Sdk().hasDevice()) {
+    ApplyClaims({}, 0, Fetch::Failed, std::nullopt);
+    return;
+  }
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  w_.ClaimsStatusText().Text(Loc("loading"));
+  w_.ClaimsStatusText().Visibility(Visibility::Visible);
+  Sdk().device().snClaims([queue, weak](std::optional<urnet::SnClaimsResult> result,
+                                        std::optional<std::string> err) {
+    std::optional<urnet::SnError> error;
+    if (err) error = TransportError(*err);
+    else if (result && result->error) error = result->error;
+    else if (!result) error = TransportError("snClaims returned no result");
+    const bool ok = !error.has_value();
+    std::vector<EpochClaim> claims;
+    int64_t total = 0;
+    if (ok) {
+      total = result->total_claimable_rao;
+      if (result->claims) {
+        for (auto const& c : *result->claims) {
+          EpochClaim claim;
+          claim.epoch = c.epoch;
+          claim.shareBps = c.share_bps;
+          claim.amountRao = c.amount_rao;
+          claim.status = c.status;
+          claim.claimOpenBlock = c.claim_open_block;
+          claim.expiryBlock = c.expiry_block;
+          claim.txHash = c.tx_hash.value_or(std::string());
+          claim.message = c.message.value_or(std::string());
+          claims.push_back(std::move(claim));
+        }
+      }
+    }
+    if (!ok) {
+      urnw::LogError("earnings: snClaims failed: {} {}", error->code.value_or(std::string()),
+                     error->message);
+    }
+    queue.TryEnqueue([weak, claims = std::move(claims), total, ok, error] {
+      if (auto self = weak.get())
+        self->wallet().ApplyClaims(claims, total, ok ? Fetch::Ready : Fetch::Failed, error);
+    });
+  });
+}
+
+void WalletPage::EnsureChainSettings(std::function<void()> then) {
+  if (!Sdk().hasDevice()) {
+    then();
+    return;
+  }
+  bool configured = chainSynced_;
+  if (!configured) {
+    try {
+      if (auto settings = Sdk().device().getSnChainSettings()) {
+        configured = !settings->vault_address.empty() &&
+                     !settings->coordinator_address.empty() && !settings->no_id.empty();
+      }
+    } catch (const std::exception& e) {
+      urnw::LogWarn("earnings: getSnChainSettings failed: {}", e.what());
+    }
+  }
+  if (configured) {
+    chainSynced_ = true;
+    then();
+    return;
+  }
+  // GET /sn/epoch through the device: it stores the vault, coordinator,
+  // operator id, netuid and rpc url it answers with. A failure still runs
+  // `then`, so the tile shows the SDK's chain_not_configured reason rather
+  // than "Loading" forever.
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().device().syncSnChainSettings(
+      [queue, weak, then](std::optional<urnet::SnEpochResult> result,
+                          std::optional<std::string> err) {
+        const bool ok = result && !err;
+        if (!ok) {
+          urnw::LogError("earnings: syncSnChainSettings failed{}",
+                         err ? (": " + *err) : std::string());
+        }
+        queue.TryEnqueue([weak, then, ok] {
+          if (auto self = weak.get()) {
+            if (ok) self->wallet().chainSynced_ = true;
+            then();
+          }
         });
       });
 }
 
-void WalletPage::RefreshAfterWalletChange() { LoadWallet(); }
-
-void WalletPage::ApplyWallets(std::vector<urnet::AccountWallet> const& wallets, Fetch state) {
-  wallets_ = wallets;
-  seekerHolder_ = false;
-  for (auto const& wallet : wallets_) {
-    if (wallet.has_seeker_token) seekerHolder_ = true;
-  }
-
-  if (state == Fetch::Failed) {
-    w_.WalletsStatusText().Text(Loc("something_went_wrong"));
-    w_.WalletsStatusText().Visibility(Visibility::Visible);
-    w_.WalletCardsPanel().Children().Clear();
-    w_.WalletsEmptyPanel().Visibility(Visibility::Collapsed);
-    ApplySeekerState();
+// The SDK-held gas key (created on first use, never exported) and its TAO
+// balance on the subtensor EVM.
+void WalletPage::LoadGas() {
+  if (!snWallet_ || !Sdk().hasDevice()) {
+    ApplyGas(std::nullopt);
     return;
   }
-  // The empty state is onboarding copy, not a status line: it says what
-  // connecting a wallet is FOR, which "None" does not (iOS EmptyWalletsView).
-  w_.WalletsStatusText().Visibility(Visibility::Collapsed);
-  const bool empty = wallets_.empty();
-  w_.WalletsEmptyPanel().Visibility(empty ? Visibility::Visible : Visibility::Collapsed);
-  kit::SetTextOrCollapse(w_.WalletPaneAMeta(),
-                         empty ? hstring{} : hstring{std::to_wstring(wallets_.size())});
-  RebuildWalletCards();
-  ApplySeekerState();
-}
-
-void WalletPage::ApplyPayoutWalletId(std::string const& walletId) {
-  // Preserve the current selection when the server answers with no id (iOS
-  // PayoutWalletViewModel): dropping the marker on a transient nil would make
-  // the default wallet look unset.
-  if (walletId.empty()) return;
-  payoutWalletId_ = walletId;
-  RebuildWalletCards();
-}
-
-void WalletPage::RebuildWalletCards() {
-  w_.WalletCardsPanel().Children().Clear();
-  for (auto const& wallet : wallets_) {
-    w_.WalletCardsPanel().Children().Append(BuildWalletCard(wallet));
-  }
-}
-
-UIElement WalletPage::BuildWalletCard(urnet::AccountWallet const& wallet) {
-  const bool isPayout =
-      wallet.wallet_id && !wallet.wallet_id->empty() && *wallet.wallet_id == payoutWalletId_;
-
-  // ONE ROW PER WALLET, on the pane's 44px grid. It used to be a 248x132 card in
-  // a horizontally-scrolling strip - three boxes side by side inside a vertical
-  // page, which is the phone layout this model exists to delete, and which put
-  // the third wallet off the right edge of a 360dip rail.
-  auto row = kit::MakePaneTwoLineRowButton(
-      hstring{MaskAddress(wallet.wallet_address)}, hstring{ChainDisplayName(wallet.blockchain)});
-  row.value.Text(hstring{urnw::Format(
-      "amount_usdc", FormatUsdcAmount(TotalPaidToWallet(wallet.wallet_id.value_or(std::string()))))});
-  // The payout wallet is the one that matters and it is marked in the ONE way
-  // the pane vocabulary marks a state: colour on the figure it applies to, with
-  // the fact repeated in the row's accessible name below.
-  if (isPayout) row.value.Foreground(colors::MakeBrush(colors::kUrGreen));
-
-  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
-  std::wstring name = urnw::Format("wallet_provider", ChainDisplayName(wallet.blockchain)) +
-                      L", " + MaskAddress(wallet.wallet_address);
-  if (isPayout) name += L", " + std::wstring{Loc("default_wallet")};
-  automation::AutomationProperties::SetName(row.root, hstring{name});
-
-  row.root.Click([weak = w_.get_weak(), wallet](auto const&, auto const&) {
-    if (auto self = weak.get()) self->wallet().ShowWalletDetail(wallet);
-  });
-  return row.root;
-}
-
-
-winrt::fire_and_forget WalletPage::ShowWalletDetail(urnet::AccountWallet wallet) {
-  if (w_.sheetOpen()) co_return;  // only one ContentDialog can show at a time
-  auto self = w_.get_strong();
-  // The sheet is READABLE with no session (that is the point of the preview)
-  // but not ACTABLE: its two buttons write. This is the flag that stops a
-  // sample card's Remove reaching the api.
-  const bool allowActions = CanCallApi();
-  const bool isPayout =
-      wallet.wallet_id && !wallet.wallet_id->empty() && *wallet.wallet_id == payoutWalletId_;
-
-  // only the payments that landed in THIS wallet (iOS WalletView)
-  std::vector<urnet::AccountPayment> mine;
-  for (auto const& payment : payments_) {
-    if (payment.wallet_id && wallet.wallet_id && *payment.wallet_id == *wallet.wallet_id) {
-      mine.push_back(payment);
-    }
-  }
-
-  auto weak = w_.get_weak();
-  self->SetSheetOpen(true);
+  GasKeyInfo info;
   try {
-    walletSheet_ = urnw::WalletDetailSheet::Create(
-        self->Content().XamlRoot(), Sdk(), wallet, isPayout, mine, allowActions,
-        [weak] {
-          if (auto w = weak.get()) w->wallet().RefreshAfterWalletChange();
-        },
-        [weak](hstring message) {
-          // success only: the sheet is gone by the time this runs
-          if (auto w = weak.get()) {
-            w->wallet().Notify(message, InfoBarSeverity::Success);
-          }
-        });
-    co_await self->wallet().walletSheet_->Dialog().ShowAsync();
-  } catch (winrt::hresult_error const& e) {
-    // Silence here is how a click that opens nothing stays a mystery.
-    urnw::LogError("wallet: the wallet sheet failed to open: {}",
-                   urnw::Narrow(std::wstring{e.message()}));
-  } catch (...) {
-    urnw::LogError("wallet: the wallet sheet failed to open");
+    if (auto key = Sdk().device().getSnGasKey()) {
+      info.address = key->address;
+      info.mirrorSs58 = key->mirror_ss58;
+    }
+  } catch (const std::exception& e) {
+    urnw::LogError("earnings: getSnGasKey failed: {}", e.what());
   }
-  self->wallet().walletSheet_.reset();
-  self->SetSheetOpen(false);
+  if (info.address.empty()) {
+    ApplyGas(std::nullopt);
+    return;
+  }
+  ApplyGas(info);  // the address first; the balance follows
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().device().snGasBalance([queue, weak, info](std::optional<urnet::SnGasBalanceResult> result,
+                                                  std::optional<std::string> err) mutable {
+    std::string error = err ? *err : std::string();
+    if (error.empty() && result && result->error) error = result->error->message;
+    if (result && error.empty()) {
+      info.tao = result->tao;
+    } else {
+      urnw::LogError("earnings: snGasBalance failed: {}", error);
+    }
+    queue.TryEnqueue([weak, info] {
+      if (auto self = weak.get()) self->wallet().ApplyGas(info);
+    });
+  });
 }
 
-// ---- header stats --------------------------------------------------------
-
-void WalletPage::ApplyTransferStats(int64_t unpaidBytes, bool ok) {
-  SetStatValue(w_.WalletUnpaidValue(),
-               ok ? hstring{urnw::Widen(urnw::FormatByteCountCompact(unpaidBytes))}
-                  : hstring{L"-"},
-               ok);
-}
-
-void WalletPage::ApplyWalletBalance(int64_t balanceUsdcNanoCents, bool ok) {
-  // The pending balance the payout threshold is measured against. The threshold
-  // sentence itself sits under the card (payouts_amount_threshold): the server
-  // does not report the figure, so naming a number here would be an invention.
-  SetStatValue(
-      w_.WalletPendingValue(),
-      ok ? hstring{urnw::Format("amount_usdc",
-                                FormatUsdcAmount(urnet::nanoCentsToUsd(balanceUsdcNanoCents)))}
-         : hstring{L"-"},
-      ok);
-}
-
-void WalletPage::ApplyReferrals(int64_t totalReferrals, bool ok) {
-  SetStatValue(w_.WalletReferralsValue(),
-               ok ? hstring{std::to_wstring(totalReferrals)} : hstring{L"-"}, ok);
-}
-
-// ---- account points ------------------------------------------------------
+// ---- points --------------------------------------------------------------
 
 void WalletPage::ApplyPoints(std::vector<urnet::AccountPoint> const& points, Fetch state) {
-  points_ = points;
   accountPoints_ = {};
-  for (auto const& point : points_) {
+  for (auto const& point : points) {
     const double value = urnet::nanoPointsToPoints(point.point_value);
     accountPoints_.net += value;
     if (point.event == kEventPayout) accountPoints_.payout += value;
@@ -863,164 +835,647 @@ void WalletPage::ApplyPoints(std::vector<urnet::AccountPoint> const& points, Fet
   if (state == Fetch::Failed) {
     w_.AccountPointsStatusText().Text(Loc("something_went_wrong"));
     w_.AccountPointsStatusText().Visibility(Visibility::Visible);
+    SetStatValue(w_.PointsHeadlineValue(), L"-", false);
     w_.AccountPointsPanel().Children().Clear();
-    w_.AccountPointsCard().Visibility(Visibility::Collapsed);
     return;
   }
   w_.AccountPointsStatusText().Visibility(Visibility::Collapsed);
-  w_.AccountPointsCard().Visibility(Visibility::Visible);
-  RebuildPointsCard();
-  RebuildWalletCards();  // the per-wallet totals do not move, but the seeker row does
+  SetStatValue(w_.PointsHeadlineValue(), hstring{FormatPointsValue(accountPoints_.net)}, true);
+  RebuildPointsRows();
 }
 
-void WalletPage::RebuildPointsCard() {
-  w_.AccountPointsPanel().Children().Clear();
-  w_.AccountPointsPanel().Children().Append(
-      urnw::BuildPointsBreakdown(accountPoints_, seekerHolder_));
-}
-
-PointsBreakdown WalletPage::BreakdownForPayment(std::string const& paymentId) const {
-  PointsBreakdown out;
-  if (paymentId.empty()) return out;
-  for (auto const& point : points_) {
-    if (!point.account_payment_id || *point.account_payment_id != paymentId) continue;
-    const double value = urnet::nanoPointsToPoints(point.point_value);
-    out.net += value;
-    if (point.event == kEventPayout) out.payout += value;
-    else if (point.event == kEventReferral) out.referral += value;
-    else if (point.event == kEventMultiplier) out.multiplier += value;
-    else if (point.event == kEventReliability) out.reliability += value;
-  }
-  return out;
-}
-
-double WalletPage::TotalPaidToWallet(std::string const& walletId) const {
-  if (walletId.empty()) return 0;
-  double total = 0;
-  for (auto const& payment : payments_) {
-    if (!PaymentCompleted(payment)) continue;
-    if (!payment.wallet_id || *payment.wallet_id != walletId) continue;
-    total += payment.token_amount.value_or(0.0);
-  }
-  return total;
-}
-
-// ---- payouts -------------------------------------------------------------
-
-void WalletPage::ApplyPayments(std::vector<urnet::AccountPayment> const& payments, Fetch state) {
-  payments_ = payments;
-  // newest first; the SDK does not promise an order
-  std::sort(payments_.begin(), payments_.end(),
-            [](urnet::AccountPayment const& a, urnet::AccountPayment const& b) {
-              return PaymentTime(a) > PaymentTime(b);
-            });
-
-  // RebuildWalletCards() on EVERY path, not just the happy one. The per-wallet
-  // "total payouts" figure is computed from payments_, so a failed or empty
-  // fetch that cleared the ledger while leaving the cards alone left last
-  // load's totals on screen underneath a "Something went wrong" - stale numbers
-  // presented as current, which is worse than no numbers.
-  if (state == Fetch::Failed) {
-    w_.PayoutsStatusText().Text(Loc("something_went_wrong"));
-    w_.PayoutsStatusText().Visibility(Visibility::Visible);
-    w_.PayoutsPanel().Children().Clear();
-    RebuildWalletCards();
-    return;
-  }
-  if (payments_.empty()) {
-    w_.PayoutsStatusText().Visibility(Visibility::Collapsed);
-    w_.PayoutsPanel().Children().Clear();
-    w_.PayoutsPanel().Children().Append(
-        urnw::kit::MakeEmptyStateCard(L"", Loc("site_app_no_payouts")));
-    RebuildWalletCards();
-    return;
-  }
-  w_.PayoutsStatusText().Visibility(Visibility::Collapsed);
-  RebuildPayouts();
-  RebuildWalletCards();  // per-wallet totals come from the payments
-}
-
-// The desktop advantage over the phone: the ledger is a table with column
-// headers, not a stack of two-line cells. Every row is a Button so it is
-// keyboard reachable and opens the payout detail.
-void WalletPage::RebuildPayouts() {
-  auto panel = w_.PayoutsPanel();
+// The breakdown as rows on the pane's grid: providing, referral, reliability,
+// and the Seeker 2x only for a holder (it is points only, and it is the one
+// row that says so).
+void WalletPage::RebuildPointsRows() {
+  auto panel = w_.AccountPointsPanel();
   panel.Children().Clear();
+  auto add = [&panel](hstring const& key, double value) {
+    auto row = kit::MakePaneKeyValueRow(key, hstring{FormatPointsValue(value)});
+    panel.Children().Append(row.root);
+  };
+  add(Loc("providing"), accountPoints_.payout);
+  add(Loc("referral"), accountPoints_.referral);
+  add(Loc("reliability"), accountPoints_.reliability);
+  if (seekerHolder_) {
+    auto row = kit::MakePaneKeyValueRow(
+        Loc("seeker_token_verified"),
+        hstring{urnw::Format("plus_amount", FormatPointsValue(accountPoints_.multiplier))});
+    row.value.Foreground(colors::MakeBrush(colors::kUrGreen));
+    panel.Children().Append(row.root);
+  }
+}
 
-  // Stars with minimums, through the shared table builder, so the payouts table,
-  // the leaderboard table and Account's balance-code table are ONE row species
-  // and narrow rather than clip.
-  const std::vector<double> weights{2, 2, 3, 3};
-  panel.Children().Append(kit::MakePaneTableHeader(
-      weights, {Loc("payout"), Loc("amount"), Loc("site_app_wallet"), Loc("transaction")}));
+// ---- the coldkey -----------------------------------------------------------
 
-  for (auto const& payment : payments_) {
-    auto cells = kit::MakePaneTableRow(weights);
-    const bool completed = PaymentCompleted(payment);
+void WalletPage::ApplySnWallet(std::optional<SnWalletInfo> wallet, Fetch state) {
+  snWallet_ = std::move(wallet);
+  walletState_ = state;
+  const bool connected = snWallet_.has_value();
 
-    cells.cells[0].Text(hstring{ShortDate(PaymentTime(payment))});
-    cells.cells[1].Text(
-        completed ? hstring{urnw::Format("plus_amount_usdc",
-                                         FormatUsdcAmount(payment.token_amount.value_or(0.0)))}
-                  : Loc("pending_payout"));
-    // Lime is the earnings accent and this is the only place on the row where a
-    // figure is money that ARRIVED; pending keeps the muted default.
-    if (completed) cells.cells[1].Foreground(colors::MakeBrush(colors::kUrGreen));
-    cells.cells[2].Text(hstring{MaskAddress(payment.wallet_address)});
-    const std::string hash = payment.tx_hash.value_or(std::string());
-    cells.cells[3].Text(hash.empty() ? Loc("none") : hstring{MaskAddress(hash)});
+  if (state == Fetch::Failed && !connected) {
+    w_.WalletStatusText().Text(Loc("something_went_wrong"));
+    w_.WalletStatusText().Visibility(Visibility::Visible);
+  } else {
+    kit::SetTextOrCollapse(w_.WalletStatusText(),
+                           connected ? hstring{ShortAddress(snWallet_->coldkeySs58)} : hstring{});
+  }
+  w_.WalletConnectedPanel().Visibility(connected ? Visibility::Visible : Visibility::Collapsed);
+  w_.WalletDisconnectedPanel().Visibility(connected ? Visibility::Collapsed : Visibility::Visible);
+  if (connected) {
+    w_.WalletAddressText().Text(hstring{urnw::Widen(snWallet_->coldkeySs58)});
+    w_.ManualAddressPanel().Visibility(Visibility::Collapsed);
+  }
 
-    // The row opens the payout detail, so it is a Button wearing the pane row's
-    // metrics rather than a Border: keyboard reachable, hover and press states
-    // from the platform, and an automation peer.
-    Button row;
-    row.Style(KitStyle(L"UrPaneRowButtonStyle"));
-    row.Height(36);
-    row.MinHeight(36);
-    row.Padding(Thickness{0, 0, 0, 0});
-    row.Content(cells.root);
-    // cells.root is itself a bordered row; inside a Button it would draw the
-    // hairline twice over the button's own.
-    cells.root.BorderThickness(Thickness{0, 0, 0, 0});
-
-    // A Button over a Grid has no automatic name, so all three ledger rows were
-    // unnamed buttons. By DATE for every row, pending included: naming a pending
-    // row "Pending payout" duplicated its own amount cell and left the row
-    // without the one thing that tells it apart from the other pending rows.
-    namespace automation = winrt::Microsoft::UI::Xaml::Automation;
-    automation::AutomationProperties::SetName(
-        row, hstring{urnw::Format("date_payout", ShortDate(PaymentTime(payment)))});
-    automation::AutomationProperties::SetAccessibilityView(
-        cells.cells[0], automation::Peers::AccessibilityView::Raw);
-
-    row.Click([weak = w_.get_weak(), payment](auto const&, auto const&) {
-      if (auto self = weak.get()) self->wallet().ShowPayoutDetail(payment);
+  // THE SUBNET LAYER: the unclaimed tile exists only once a coldkey is
+  // attached, and the history's alpha column with it. Not retroactive: earlier
+  // epochs stay points only.
+  w_.UnclaimedPanel().Visibility(connected ? Visibility::Visible : Visibility::Collapsed);
+  if (!connected) {
+    claims_.clear();
+    totalClaimableRao_ = 0;
+    gas_.reset();
+  }
+  RebuildHistory();
+  if (connected && !w_.previewUi()) {
+    EnsureChainSettings([weak = w_.get_weak()] {
+      if (auto self = weak.get()) {
+        self->wallet().LoadClaims();
+        self->wallet().LoadGas();
+      }
     });
-    panel.Children().Append(row);
+  }
+}
+
+void WalletPage::SetConnectingWallet(bool connecting) {
+  connectingWallet_ = connecting;
+  w_.ConnectWalletButton().IsEnabled(!connecting);
+  w_.ChangeWalletButton().IsEnabled(!connecting);
+  w_.ConnectAddressButton().IsEnabled(!connecting && manualAddressOk_);
+  // "Waiting" is a state the user must be able to SEE: the browser is open
+  // and the app is waiting for it to come back.
+  kit::SetTextOrCollapse(w_.WalletConnectStatusText(),
+                         connecting ? Loc("opening_wallet_in_browser") : hstring{});
+}
+
+// Both doors lead here. `pinnedAddress` is the pasted address (the challenge
+// is fetched for it and the bridge has to answer with it), or empty for the
+// bridge's own pick.
+void WalletPage::StartWalletConnect(std::string const& pinnedAddress) {
+  if (connectingWallet_ || w_.sheetOpen()) return;
+  // Before the browser opens, not after: with no session this ends in a
+  // server write, and it opens a BROWSER on the way there.
+  if (!CanCallApi()) {
+    RefuseNoSession();
+    return;
+  }
+  SetConnectingWallet(true);
+
+  // WalletConnect has no timeout, and its on_error only fires when the deep
+  // link comes BACK carrying an error. A closed browser tab produces nothing
+  // at all - so the watchdog is what re-enables the buttons.
+  const uint32_t generation =
+      BeginFlow(connectFlow_, kBridgeTimeoutMs, [weak = w_.get_weak()] {
+        if (auto self = weak.get()) {
+          self->wallet().SetConnectingWallet(false);
+          self->wallet().Notify(Loc("wallet_connect_failed"), InfoBarSeverity::Error);
+        }
+      });
+
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().SignWithBittensorWallet(
+      pinnedAddress, kConnectPurpose,
+      [queue, weak, generation, pinnedAddress](bool ok, std::string address,
+                                               std::string signature, std::string message,
+                                               std::string error) {
+        // on whichever thread delivered the deep link
+        queue.TryEnqueue([weak, generation, ok, address, signature, message, error,
+                          pinnedAddress] {
+          if (auto self = weak.get()) {
+            self->wallet().ApplyWalletSigned(generation, ok, address, signature, message, error,
+                                             pinnedAddress);
+          }
+        });
+      });
+}
+
+void WalletPage::OnConnectWallet(IInspectable const&, RoutedEventArgs const&) {
+  StartWalletConnect(std::string());
+}
+
+void WalletPage::OnChangeWallet(IInspectable const&, RoutedEventArgs const&) {
+  StartWalletConnect(std::string());
+}
+
+// The signature is back. The address is validated BEFORE anything is sent to
+// the account: a syntax failure is rejected outright, a banned address is
+// blocked and goes nowhere, an address with no chain activity is allowed with
+// a warning (the pasted path already showed it while typing).
+void WalletPage::ApplyWalletSigned(uint32_t generation, bool ok, std::string const& address,
+                                   std::string const& signature, std::string const& message,
+                                   std::string const& error, std::string const& expectedAddress) {
+  if (connectFlow_.generation != generation) {
+    urnw::LogWarn("earnings: dropping a wallet signature for an abandoned request (ok={})", ok);
+    return;
+  }
+  if (!ok) {
+    SettleFlow(connectFlow_, generation);
+    SetConnectingWallet(false);
+    urnw::LogError("earnings: wallet signature failed: {}", error);
+    Notify(error.empty() ? Loc("wallet_connect_failed") : H(error), InfoBarSeverity::Error);
+    return;
+  }
+  if (!expectedAddress.empty() && address != expectedAddress) {
+    SettleFlow(connectFlow_, generation);
+    SetConnectingWallet(false);
+    Notify(Loc("earnings_wallet_mismatch"), InfoBarSeverity::Error);
+    return;
+  }
+  if (!urnet::validateSs58(address)) {
+    SettleFlow(connectFlow_, generation);
+    SetConnectingWallet(false);
+    Notify(Loc("invalid_ss58_address"), InfoBarSeverity::Error);
+    return;
+  }
+  // The device validates the address itself before anything is sent (a
+  // banned address goes nowhere; a never-seen one comes back as a warning),
+  // and the pasted address was already checked while typing. Only the api
+  // fallback needs the check here.
+  const bool manualChecked =
+      !expectedAddress.empty() && manualAddressOk_ && expectedAddress == manualAddress_;
+  if (Sdk().hasDevice() || manualChecked) {
+    SubmitWalletConnect(generation, address, signature, message);
+    return;
+  }
+  kit::SetTextOrCollapse(w_.WalletConnectStatusText(), Loc("checking_wallet_address"));
+  auto weak = w_.get_weak();
+  ValidateAddressRemote(
+      address, [weak, generation, address, signature, message](std::optional<AddressVerdict> v) {
+        auto self = weak.get();
+        if (!self) return;
+        auto& page = self->wallet();
+        if (page.connectFlow_.generation != generation) return;
+        if (!v) {
+          page.SettleFlow(page.connectFlow_, generation);
+          page.SetConnectingWallet(false);
+          page.Notify(Loc("something_went_wrong"), InfoBarSeverity::Error);
+          return;
+        }
+        if (v->banned) {
+          page.SettleFlow(page.connectFlow_, generation);
+          page.SetConnectingWallet(false);
+          page.Notify(Loc("wallet_blocked"), InfoBarSeverity::Error);
+          return;
+        }
+        if (!v->validSyntax) {
+          page.SettleFlow(page.connectFlow_, generation);
+          page.SetConnectingWallet(false);
+          page.Notify(Loc("invalid_ss58_address"), InfoBarSeverity::Error);
+          return;
+        }
+        if (!v->existsOnChain) {
+          page.Notify(Loc("wallet_looks_new_warning"), InfoBarSeverity::Warning);
+        }
+        page.SubmitWalletConnect(generation, address, signature, message);
+      });
+}
+
+// Attach the signed coldkey to THIS device's provider (Device.connectSnWallet,
+// which knows its client id and caches the answer), or to the account when
+// there is no device session to route through.
+void WalletPage::SubmitWalletConnect(uint32_t generation, std::string const& address,
+                                     std::string const& signature, std::string const& message) {
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  // the bridge round trip is over; from here it is one api call
+  BeginFlow(connectFlow_, kApiTimeoutMs, [weak] {
+    if (auto self = weak.get()) {
+      self->wallet().SetConnectingWallet(false);
+      self->wallet().Notify(Loc("wallet_connect_failed"), InfoBarSeverity::Error);
+    }
+  });
+  const uint32_t submitGeneration = connectFlow_.generation;
+  (void)generation;
+
+  auto deliver = [queue, weak, submitGeneration](std::optional<urnet::SnError> error,
+                                                 std::string warning) {
+    queue.TryEnqueue([weak, submitGeneration, error, warning] {
+      if (auto self = weak.get()) {
+        self->wallet().ApplyWalletConnectResult(submitGeneration, !error.has_value(), error,
+                                                warning);
+      }
+    });
+  };
+
+  if (Sdk().hasDevice()) {
+    Sdk().device().connectSnWallet(
+        address, signature, message,
+        [deliver](std::optional<urnet::SnConnectWalletResult> result,
+                  std::optional<std::string> err) {
+          std::optional<urnet::SnError> error;
+          if (err) error = TransportError(*err);
+          else if (result && result->error) error = result->error;
+          else if (!result) error = TransportError("connectSnWallet returned no result");
+          if (error) {
+            urnw::LogError("earnings: connectSnWallet failed: {} {}",
+                           error->code.value_or(std::string()), error->message);
+          }
+          deliver(error, (result && !error) ? result->warning.value_or(std::string())
+                                            : std::string());
+        });
+    return;
+  }
+  urnet::SnSetWalletArgs args;
+  args.coldkey_ss58 = address;
+  args.signature = signature;
+  args.message = message;
+  Sdk().api().snSetWallet(args, [deliver](std::optional<urnet::SnSetWalletResult> result,
+                                          std::optional<std::string> err) {
+    std::optional<urnet::SnError> error;
+    if (err) error = TransportError(*err);
+    else if (result && result->error) error = result->error;
+    else if (!result) error = TransportError("snSetWallet returned no result");
+    if (error) {
+      urnw::LogError("earnings: snSetWallet failed: {} {}", error->code.value_or(std::string()),
+                     error->message);
+    }
+    deliver(error, std::string());
+  });
+}
+
+void WalletPage::ApplyWalletConnectResult(uint32_t generation, bool ok,
+                                          std::optional<urnet::SnError> const& error,
+                                          std::string const& warning) {
+  if (!SettleFlow(connectFlow_, generation)) {
+    urnw::LogWarn("earnings: dropping a connect result for an abandoned request (ok={})", ok);
+    return;
+  }
+  SetConnectingWallet(false);
+  if (!ok) {
+    Notify(error ? SnErrorText(error) : Loc("wallet_connect_failed"), InfoBarSeverity::Error);
+    return;
+  }
+  // The SDK's warning is a store key (wallet_looks_new_warning): the wallet is
+  // connected, and the one thing worth saying is the warning.
+  if (!warning.empty()) {
+    const std::wstring text = urnw::Localized(warning);
+    Notify(text == urnw::Widen(warning) ? Loc("wallet_connected") : hstring{text},
+           InfoBarSeverity::Warning);
+  } else {
+    Notify(Loc("wallet_connected"), InfoBarSeverity::Success);
+  }
+  w_.WalletAddressBox().Text(L"");  // clears the verdict through OnWalletAddressChanged
+  ShowManualPanel(false);
+  LoadSnWallet();  // the coldkey, then the claims and the gas key behind it
+}
+
+// ---- the manual address (still signed) --------------------------------------
+
+void WalletPage::ShowManualPanel(bool show) {
+  manualPanelOpen_ = show;
+  w_.ManualAddressPanel().Visibility(show ? Visibility::Visible : Visibility::Collapsed);
+}
+
+void WalletPage::OnEnterAddressManually(IInspectable const&, RoutedEventArgs const&) {
+  ShowManualPanel(!manualPanelOpen_);
+  if (manualPanelOpen_) w_.WalletAddressBox().Focus(FocusState::Programmatic);
+}
+
+void WalletPage::OnWalletAddressChanged(IInspectable const&, TextChangedEventArgs const&) {
+  manualAddressOk_ = false;
+  manualAddress_.clear();
+  ++walletValidateGeneration_;  // drop any validation still in flight
+  w_.ConnectAddressButton().IsEnabled(false);
+  w_.WalletAddressVerdictText().Text(L"");
+  w_.WalletAddressVerdictText().Foreground(colors::MutedBrush());
+  if (walletValidateTimer_) {
+    walletValidateTimer_.Stop();  // restart the debounce window on every keystroke
+    walletValidateTimer_.Start();
+  }
+}
+
+// Syntax first, locally, through the SDK's own ss58 check: a typo never
+// reaches the network. Then the unauthenticated validate call.
+void WalletPage::ValidateWalletAddress() {
+  const std::string address =
+      TrimWhitespace(urnw::Narrow(w_.WalletAddressBox().Text().c_str()));
+  if (address.empty()) return;
+  const uint32_t generation = ++walletValidateGeneration_;
+  if (!urnet::validateSs58(address)) {
+    w_.WalletAddressVerdictText().Text(Loc("invalid_ss58_address"));
+    w_.WalletAddressVerdictText().Foreground(colors::DangerBrush());
+    return;
+  }
+  // The validate call needs no token, but --preview-ui asks the network for
+  // nothing and a build with no api has nothing to ask.
+  if (w_.previewUi() || !Sdk().apiReady()) return;
+  w_.WalletAddressVerdictText().Text(Loc("checking_wallet_address"));
+  w_.WalletAddressVerdictText().Foreground(colors::MutedBrush());
+  auto weak = w_.get_weak();
+  ValidateAddressRemote(address, [weak, generation, address](std::optional<AddressVerdict> v) {
+    if (auto self = weak.get()) {
+      self->wallet().manualAddress_ = address;
+      self->wallet().ApplyManualVerdict(generation, v);
+    }
+  });
+}
+
+void WalletPage::ValidateAddressRemote(std::string const& address,
+                                       std::function<void(std::optional<AddressVerdict>)> done) {
+  auto queue = w_.DispatcherQueue();
+  Sdk().api().snValidateWallet(
+      address, [queue, done = std::move(done)](std::optional<urnet::SnValidateWalletResult> result,
+                                               std::optional<std::string> err) {
+        std::string error = err ? *err : std::string();
+        if (error.empty() && result && result->error) error = result->error->message;
+        std::optional<AddressVerdict> verdict;
+        if (result && error.empty()) {
+          AddressVerdict v;
+          v.validSyntax = result->valid_syntax;
+          v.existsOnChain = result->exists_on_chain;
+          v.banned = result->banned;
+          v.message = result->message.value_or(std::string());
+          verdict = v;
+        } else {
+          urnw::LogError("earnings: snValidateWallet failed: {}", error);
+        }
+        queue.TryEnqueue([done, verdict] { done(verdict); });
+      });
+}
+
+void WalletPage::ApplyManualVerdict(uint32_t generation, std::optional<AddressVerdict> verdict) {
+  if (generation != walletValidateGeneration_) return;  // a later edit superseded this
+  manualAddressOk_ = false;
+  auto text = w_.WalletAddressVerdictText();
+  if (!verdict) {
+    text.Text(Loc("something_went_wrong"));
+    text.Foreground(colors::DangerBrush());
+  } else if (verdict->banned) {
+    // blocked: the address goes nowhere
+    text.Text(Loc("wallet_blocked"));
+    text.Foreground(colors::DangerBrush());
+  } else if (!verdict->validSyntax) {
+    text.Text(Loc("invalid_ss58_address"));
+    text.Foreground(colors::DangerBrush());
+  } else if (!verdict->existsOnChain) {
+    // a warning, and the user may continue
+    text.Text(Loc("wallet_looks_new_warning"));
+    text.Foreground(colors::MakeBrush(colors::kUrAmber));
+    manualAddressOk_ = true;
+  } else {
+    text.Text(L"");
+    manualAddressOk_ = true;
+  }
+  w_.ConnectAddressButton().IsEnabled(manualAddressOk_ && !connectingWallet_);
+}
+
+// The pasted address is only ever attached SIGNED: the bridge signs the
+// challenge issued for it, and the answer has to come from that address.
+void WalletPage::OnConnectWalletAddress(IInspectable const&, RoutedEventArgs const&) {
+  if (!manualAddressOk_ || manualAddress_.empty()) return;
+  StartWalletConnect(manualAddress_);
+}
+
+// ---- history ---------------------------------------------------------------
+
+void WalletPage::ApplyEpochs(std::vector<EpochRow> const& epochs, Fetch state) {
+  epochs_ = epochs;
+  epochsState_ = state;
+  // newest first; the server does not promise an order
+  std::sort(epochs_.begin(), epochs_.end(),
+            [](EpochRow const& a, EpochRow const& b) { return a.epoch > b.epoch; });
+  RebuildHistory();
+}
+
+const EpochClaim* WalletPage::ClaimForEpoch(int64_t epoch) const {
+  for (auto const& claim : claims_) {
+    if (claim.epoch == epoch) return &claim;
+  }
+  return nullptr;
+}
+
+// The desktop advantage over the phone: the history is a table with column
+// headers. Points, always; the SN25a and status columns only with a wallet,
+// filled from the vault for the epochs since it was attached and "-" before.
+void WalletPage::RebuildHistory() {
+  auto panel = w_.HistoryPanel();
+  panel.Children().Clear();
+  if (epochsState_ == Fetch::Failed) {
+    w_.HistoryStatusText().Text(Loc("something_went_wrong"));
+    w_.HistoryStatusText().Visibility(Visibility::Visible);
+    ApplyLedgerMeta();
+    return;
+  }
+  if (epochsState_ == Fetch::Loading) {
+    ApplyLedgerMeta();
+    return;
+  }
+  if (epochs_.empty()) {
+    w_.HistoryStatusText().Text(Loc("no_points_yet"));
+    w_.HistoryStatusText().Visibility(Visibility::Visible);
+    ApplyLedgerMeta();
+    return;
+  }
+  w_.HistoryStatusText().Visibility(Visibility::Collapsed);
+
+  const bool withAlpha = snWallet_.has_value();
+  std::vector<double> weights{2, 2, 2, 2};
+  std::vector<hstring> titles{Loc("earnings_epoch_column"), Loc("earnings_date_column"),
+                              Loc("earnings_points_column"), Loc("earnings_share_column")};
+  if (withAlpha) {
+    weights.push_back(2);
+    weights.push_back(2);
+    titles.push_back(Loc("sn_alpha_symbol"));
+    titles.push_back(Loc("earnings_status_column"));
+  }
+  // two leading text columns (epoch, date); every column after them is a figure
+  panel.Children().Append(kit::MakePaneTableHeader(weights, titles, /*textColumns=*/2));
+
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  for (auto const& epoch : epochs_) {
+    auto row = kit::MakePaneTableRow(weights, 36, /*textColumns=*/2);
+    row.cells[0].Text(hstring{urnw::Format("epoch_row_title", epoch.epoch)});
+    row.cells[1].Text(hstring{DateFromMillis(epoch.endMillis)});
+    row.cells[2].Text(hstring{FormatPointsValue(epoch.points)});
+    row.cells[3].Text(hstring{FormatShareBpsValue(epoch.shareBps)});
+    if (withAlpha) {
+      const EpochClaim* claim = ClaimForEpoch(epoch.epoch);
+      if (claim) {
+        row.cells[4].Text(hstring{FormatAlphaRao(claim->amountRao)});
+        row.cells[5].Text(ClaimStatusText(claim->status));
+        // Lime is the earnings accent: alpha that can be claimed now, or was.
+        if (claim->status == "claimable" || claim->status == "claimed") {
+          row.cells[4].Foreground(colors::MakeBrush(colors::kUrGreen));
+        }
+        if (claim->status == "expired") row.cells[5].Foreground(colors::DangerBrush());
+      } else {
+        // before the wallet, or not finalized: points only
+        row.cells[4].Text(L"-");
+        row.cells[4].Foreground(colors::FaintBrush());
+        row.cells[5].Text(L"");
+      }
+    }
+    automation::AutomationProperties::SetName(
+        row.root, hstring{urnw::Format("epoch_row_title", epoch.epoch) + L", " +
+                          urnw::Format("points_short", FormatPointsValue(epoch.points))});
+    panel.Children().Append(row.root);
   }
   ApplyLedgerMeta();
 }
 
+// The ledger pane's header figure belongs to whichever table is showing.
+void WalletPage::ApplyLedgerMeta() {
+  const bool history = w_.LeaderboardHost().Visibility() != Visibility::Visible;
+  const int64_t count = history ? static_cast<int64_t>(epochs_.size()) : leaderboardCount_;
+  kit::SetTextOrCollapse(w_.WalletPaneBMeta(),
+                         count <= 0 ? hstring{} : hstring{std::to_wstring(count)});
+}
 
-winrt::fire_and_forget WalletPage::ShowPayoutDetail(urnet::AccountPayment payment) {
+// ---- claims, gas, head -----------------------------------------------------
+
+void WalletPage::ApplyClaims(std::vector<EpochClaim> const& claims, int64_t totalClaimableRao,
+                             Fetch state, std::optional<urnet::SnError> const& error) {
+  claims_ = claims;
+  totalClaimableRao_ = totalClaimableRao;
+  claimsState_ = state;
+  size_t claimable = 0;
+  for (auto const& claim : claims_) {
+    if (claim.status == "claimable") ++claimable;
+  }
+
+  if (state == Fetch::Failed) {
+    const bool noDevice = !Sdk().hasDevice();
+    w_.ClaimsStatusText().Text(noDevice ? hstring{} : Loc("something_went_wrong"));
+    w_.ClaimsStatusText().Visibility(noDevice ? Visibility::Collapsed : Visibility::Visible);
+    SetStatValue(w_.UnclaimedValue(), L"-", false);
+    w_.UnclaimedNote().Text(noDevice ? Loc("earnings_claims_need_session") : SnErrorText(error));
+    w_.ClaimButton().IsEnabled(false);
+    RebuildHistory();
+    return;
+  }
+  w_.ClaimsStatusText().Visibility(Visibility::Collapsed);
+  SetStatValue(w_.UnclaimedValue(), hstring{FormatAlphaRao(totalClaimableRao_)}, true);
+  if (totalClaimableRao_ > 0) w_.UnclaimedValue().Foreground(colors::MakeBrush(colors::kUrGreen));
+  w_.UnclaimedNote().Text(
+      claimable > 0
+          ? hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(claimable))}
+          : Loc("wallet_connected_to_protocol"));
+  // Live: only with something to claim and a device to send from. Under the
+  // preview's sample the dialog still OPENS (read-only, its action disabled)
+  // so it can be looked at.
+  const bool previewSample = w_.previewUi() && PreviewSample() && !claims_.empty();
+  w_.ClaimButton().IsEnabled((totalClaimableRao_ > 0 && CanClaim()) || previewSample);
+  RebuildHistory();
+}
+
+void WalletPage::ApplyGas(std::optional<GasKeyInfo> gas) { gas_ = std::move(gas); }
+
+void WalletPage::ApplyHead(std::optional<HeadInfo> head, Fetch state) {
+  head_ = std::move(head);
+  const bool show = state == Fetch::Ready && head_ && (head_->eligible || head_->bound);
+  w_.Top200Panel().Visibility(show ? Visibility::Visible : Visibility::Collapsed);
+  if (!show) return;
+  if (head_->bound) {
+    w_.Top200Status().Text(hstring{urnw::Format("top200_bound_status", head_->uid, head_->rank)});
+    w_.Top200Detail().Text(Loc("top200_bound_detail"));
+    w_.Top200Button().Visibility(Visibility::Collapsed);
+  } else {
+    w_.Top200Status().Text(Loc("top200_you_qualify"));
+    w_.Top200Detail().Text(
+        hstring{urnw::Format("top200_detail", head_->rankEstimate, head_->cutoff)});
+    w_.Top200Button().Visibility(Visibility::Visible);
+  }
+  const bool nearFloor =
+      head_->floor > 0 && head_->score > 0 && head_->score < head_->floor * kDemotionWarningRatio;
+  w_.Top200Warning().Visibility(nearFloor ? Visibility::Visible : Visibility::Collapsed);
+}
+
+std::string WalletPage::ExplorerTxUrl() const {
+  try {
+    // the device's merged view first (synced from /sn/epoch), the defaults
+    // otherwise
+    if (Sdk().hasDevice()) {
+      if (auto settings = Sdk().device().getSnChainSettings();
+          settings && !settings->explorer_tx_url.empty()) {
+        return settings->explorer_tx_url;
+      }
+    }
+    if (auto settings = urnet::defaultSnChainSettings()) return settings->explorer_tx_url;
+  } catch (const std::exception& e) {
+    urnw::LogWarn("earnings: chain settings unavailable: {}", e.what());
+  }
+  return {};
+}
+
+// Device.snClaim, as the dialog's Claimer: the SDK builds the claim calldata
+// from the published artifact, signs with the gas key and sends it to the
+// vault, reporting per epoch. Nothing here touches a URnetwork API.
+Claimer WalletPage::MakeClaimer() {
+  return [](std::vector<int64_t> epochs, ClaimEvents events) {
+    if (!Sdk().hasDevice()) {
+      if (events.failed) {
+        for (int64_t epoch : epochs) events.failed(epoch, "no device");
+      }
+      if (events.done) events.done();
+      return;
+    }
+    urnet::SnClaimCallback callback;
+    callback.sent = [events](int64_t epoch, const std::string& txHash) {
+      if (events.sent) events.sent(epoch, txHash);
+    };
+    callback.confirmed = [events](int64_t epoch, const std::string& txHash, int64_t amountRao) {
+      if (events.confirmed) events.confirmed(epoch, txHash, amountRao);
+    };
+    callback.failed = [events](int64_t epoch, const std::string& message) {
+      if (events.failed) events.failed(epoch, message);
+    };
+    callback.done = [events]() {
+      if (events.done) events.done();
+    };
+    Sdk().device().snClaim(epochs, callback);
+  };
+}
+
+winrt::fire_and_forget WalletPage::OnClaimAlpha(IInspectable const&, RoutedEventArgs const&) {
   if (w_.sheetOpen()) co_return;
+  if (!snWallet_) {
+    Notify(Loc("connect_wallet_first"), InfoBarSeverity::Error);
+    co_return;
+  }
   auto self = w_.get_strong();
-  const auto breakdown = BreakdownForPayment(payment.payment_id.value_or(std::string()));
-  const bool seeker = seekerHolder_;
+  // Readable with no session (that is the point of the preview) but not
+  // ACTABLE: its one button sends a transaction.
+  const bool allowActions = CanClaim();
+  GasKeyInfo gas = gas_.value_or(GasKeyInfo{});
+  auto weak = w_.get_weak();
   self->SetSheetOpen(true);
   try {
-    payoutSheet_ = urnw::PayoutDetailSheet::Create(self->Content().XamlRoot(), payment,
-                                                   breakdown, seeker);
-    co_await self->wallet().payoutSheet_->Dialog().ShowAsync();
+    claimSheet_ = urnw::ClaimAlphaSheet::Create(
+        self->Content().XamlRoot(), self->DispatcherQueue(), claims_, gas, ExplorerTxUrl(),
+        allowActions, MakeClaimer(), [weak] {
+          // at least one epoch confirmed: the tile and the history move
+          if (auto w = weak.get()) {
+            w->wallet().LoadClaims();
+            w->wallet().LoadGas();
+          }
+        });
+    co_await self->wallet().claimSheet_->Dialog().ShowAsync();
   } catch (winrt::hresult_error const& e) {
-    urnw::LogError("payout: the payout sheet failed to open: {}",
+    urnw::LogError("earnings: the claim sheet failed to open: {}",
                    urnw::Narrow(std::wstring{e.message()}));
   } catch (...) {
-    urnw::LogError("payout: the payout sheet failed to open");
+    urnw::LogError("earnings: the claim sheet failed to open");
   }
-  self->wallet().payoutSheet_.reset();
+  self->wallet().claimSheet_.reset();
   self->SetSheetOpen(false);
 }
+
+void WalletPage::OnClaimTop200(IInspectable const&, RoutedEventArgs const&) {
+  OpenUrl("https://" + Sdk().linkHostName() + kTop200Path);
+}
+
+void WalletPage::OnLearnUrXyz(IInspectable const&, RoutedEventArgs const&) { OpenUrl(kUrXyzUrl); }
 
 // ---- network reliability -------------------------------------------------
 
@@ -1133,7 +1588,7 @@ void WalletPage::ApplyReliability(std::optional<urnet::ReliabilityWindow> window
   }
 }
 
-// ---- earning multiplier (Seeker) -----------------------------------------
+// ---- the Seeker multiplier (points only) ------------------------------------
 
 void WalletPage::ApplySeekerState() {
   if (seekerHolder_) {
@@ -1143,25 +1598,18 @@ void WalletPage::ApplySeekerState() {
     w_.VerifySeekerButton().Visibility(Visibility::Collapsed);
     return;
   }
-  // "Waiting" is a state the user must be able to SEE. The button greyed itself
-  // out for the length of the bridge round trip and said nothing, which is
-  // indistinguishable from broken - and, before the watchdog below, it was
-  // permanent whenever the browser tab was simply closed.
+  // "Waiting" is a state the user must be able to SEE.
   w_.SeekerStatusText().Text(verifyingSeeker_ ? Loc("opening_wallet_in_browser")
                                               : Loc("connect_seeker_wallet"));
   w_.VerifySeekerButton().Visibility(Visibility::Visible);
   w_.VerifySeekerButton().IsEnabled(!verifyingSeeker_);
 }
 
-// Claim the 2x multiplier by proving the wallet holds the Seeker / Saga token
+// Claim the 2x multiplier by proving a Solana wallet holds the Seeker token
 // (android SettingsScreen.signAndVerifySeekerHolder). The wallet signs a
-// timestamped challenge through the ur.io/wallet-connect browser bridge and the
-// signed triple goes to Api.verifySeekerHolder â€” the address alone proves
-// nothing, so there is no shortcut past the signature.
-//
-// android puts up its wallet picker through Mobile Wallet Adapter; the browser
-// bridge needs the provider baked into the url it opens, so the picker is a
-// dialog here, exactly as the Solana sign-in does it (LoginPage).
+// timestamped challenge through the ur.io/wallet-connect browser bridge and
+// the signed triple goes to Api.verifySeekerHolder. Points only: the Seeker
+// wallet has no bearing on SN25a, which settles on the Bittensor coldkey.
 winrt::fire_and_forget WalletPage::OnVerifySeeker(IInspectable const&, RoutedEventArgs const&) {
   if (w_.sheetOpen() || verifyingSeeker_) co_return;
   // Before the wallet picker, not after: with no session this ends in
@@ -1198,10 +1646,8 @@ winrt::fire_and_forget WalletPage::OnVerifySeeker(IInspectable const&, RoutedEve
   self->wallet().verifyingSeeker_ = true;
   self->wallet().ApplySeekerState();
 
-  // WalletConnect has no timeout, and its on_error only fires when the deep
-  // link comes BACK carrying an error. A closed browser tab produces nothing at
-  // all - so this flag stayed true forever and Verify Seeker was dead until the
-  // app was restarted, with nothing on screen to say why.
+  // A closed browser tab produces nothing at all, so the watchdog is what
+  // brings the button back.
   const uint32_t generation = self->wallet().BeginFlow(
       self->wallet().seekerFlow_, kBridgeTimeoutMs, [weak = self->get_weak()] {
         if (auto w = weak.get()) {
@@ -1268,156 +1714,10 @@ void WalletPage::ApplySeekerResult(uint32_t generation, bool ok,
                                           urnw::Widen(serverError))}),
          ok ? InfoBarSeverity::Success : InfoBarSeverity::Error);
   if (ok) {
-    LoadWallet();  // has_seeker_token now reads true on the verified wallet
+    LoadSeeker();  // has_seeker_token now reads true on the verified wallet
     return;
   }
   ApplySeekerState();
-}
-
-// ---- connect wallet (external wallet, by address) -------------------------
-// Paste an address; the server validates it per chain and the first chain that
-// accepts it wins. Bittensor connects by address only (no signature), matching
-// apple/android â€” the signed bridge flow is sign-in, not wallet connect.
-
-void WalletPage::OnWalletAddressChanged(IInspectable const&, TextChangedEventArgs const&) {
-  walletValidation_ = {};
-  walletChain_.clear();
-  ++walletValidateGeneration_;  // drop any validation still in flight
-  w_.ConnectWalletButton().IsEnabled(false);
-  w_.WalletChainText().Text(L"");
-  if (walletValidateTimer_) {
-    walletValidateTimer_.Stop();  // restart the debounce window on every keystroke
-    walletValidateTimer_.Start();
-  }
-}
-
-void WalletPage::ValidateWalletAddress() {
-  const std::string address = urnw::Narrow(w_.WalletAddressBox().Text().c_str());
-  // the shortest supported address (solana base58) is 32 characters
-  //
-  // apiReady() was the only gate here and it is not a session check - it is
-  // api_.has_value(), true from SDK init - so typing 32 characters under
-  // --preview-ui put THREE walletValidateAddress calls on the wire, one per
-  // chain, with no token. This is a question asked of the server; it goes
-  // through the same guard as every other one. Silently: the user did not ask
-  // for anything, they typed.
-  if (address.size() < 32 || !CanCallApi()) return;
-  const uint32_t generation = ++walletValidateGeneration_;
-
-  auto queue = w_.DispatcherQueue();
-  auto weak = w_.get_weak();
-  const std::string chains[] = {urnet::SOL, urnet::MATIC, urnet::TAO};
-  for (std::string const& chain : chains) {
-    urnet::WalletValidateAddressArgs args;
-    args.address = address;
-    args.chain = chain;
-    Sdk().api().walletValidateAddress(
-        args, [queue, weak, chain, generation](
-                  std::optional<urnet::WalletValidateAddressResult> result,
-                  std::optional<std::string> err) {
-          // The error was DISCARDED here, and it is the only difference between
-          // "the server says this is not a $chain address" and "the question
-          // never got an answer". Both drew an empty verdict line and a dead
-          // Connect button, so a validator that was failing outright looked
-          // exactly like a user typo. Found the hard way: three genuinely valid
-          // addresses in a row came back with nothing to say.
-          if (err) {
-            urnw::LogError("wallet: walletValidateAddress({}) failed: {}", chain, *err);
-          }
-          const bool valid = result && result->valid && *result->valid;
-          queue.TryEnqueue([weak, chain, generation, valid] {
-            if (auto self = weak.get())
-              self->wallet().ApplyWalletValidation(chain, generation, valid);
-          });
-        });
-  }
-}
-
-void WalletPage::ApplyWalletValidation(std::string const& chain, uint32_t generation,
-                                       bool valid) {
-  if (generation != walletValidateGeneration_) return;  // a later edit superseded this
-  if (chain == urnet::SOL) walletValidation_.sol = valid;
-  else if (chain == urnet::MATIC) walletValidation_.matic = valid;
-  else if (chain == urnet::TAO) walletValidation_.tao = valid;
-
-  if (walletValidation_.sol) walletChain_ = urnet::SOL;
-  else if (walletValidation_.matic) walletChain_ = urnet::MATIC;
-  else if (walletValidation_.tao) walletChain_ = urnet::TAO;
-  else walletChain_.clear();
-
-  w_.ConnectWalletButton().IsEnabled(!walletChain_.empty() && !connectingWallet_);
-  if (walletChain_ == urnet::TAO) {
-    w_.WalletChainText().Text(Loc("bittensor_wallet_future_use"));
-  } else if (!walletChain_.empty()) {
-    w_.WalletChainText().Text(
-        hstring{urnw::Format("wallet_provider_lower", ChainDisplayName(walletChain_))});
-  } else {
-    w_.WalletChainText().Text(L"");
-  }
-}
-
-void WalletPage::OnConnectWallet(IInspectable const&, RoutedEventArgs const&) {
-  const std::string address = urnw::Narrow(w_.WalletAddressBox().Text().c_str());
-  if (address.empty() || walletChain_.empty() || connectingWallet_) return;
-  if (!CanCallApi()) {
-    RefuseNoSession();
-    return;
-  }
-  connectingWallet_ = true;
-  w_.ConnectWalletButton().IsEnabled(false);
-
-  // createAccountWallet with no answer left connectingWallet_ true forever and
-  // the Connect button greyed out for the life of the process.
-  const uint32_t generation =
-      BeginFlow(connectFlow_, kApiTimeoutMs, [weak = w_.get_weak()] {
-        if (auto self = weak.get()) {
-          self->wallet().connectingWallet_ = false;
-          self->wallet().w_.ConnectWalletButton().IsEnabled(
-              !self->wallet().walletChain_.empty());
-          self->wallet().Notify(Loc("wallet_connect_failed"), InfoBarSeverity::Error);
-        }
-      });
-
-  // WalletViewController::addExternalWallet parity: the account wallet is created
-  // on the chain the server validated, with the USDC token type.
-  urnet::CreateAccountWalletArgs args;
-  args.blockchain = walletChain_;
-  args.wallet_address = address;
-  args.default_token_type = "USDC";
-
-  auto queue = w_.DispatcherQueue();
-  auto weak = w_.get_weak();
-  Sdk().api().createAccountWallet(
-      args, [queue, weak, generation](std::optional<urnet::CreateAccountWalletResult> result,
-                                      std::optional<std::string> err) {
-        const bool ok = result && result->wallet_id && !result->wallet_id->empty();
-        // this runs on an sdk thread; hand the raw outcome to the ui thread and
-        // let it do the lookup (the store is read from the ui thread throughout)
-        const std::string error = ok ? std::string() : (err ? *err : std::string());
-        queue.TryEnqueue([weak, ok, error, generation] {
-          if (auto self = weak.get())
-            self->wallet().ApplyWalletConnectResult(generation, ok, error);
-        });
-      });
-}
-
-void WalletPage::ApplyWalletConnectResult(uint32_t generation, bool ok,
-                                          std::string const& serverError) {
-  if (!SettleFlow(connectFlow_, generation)) {
-    urnw::LogWarn("wallet: dropping a connect result for an abandoned request (ok={})", ok);
-    return;
-  }
-  connectingWallet_ = false;
-  // a server error is not localizable; show it when there is one
-  Notify(ok ? Loc("wallet_connected")
-            : (serverError.empty() ? Loc("wallet_connect_failed") : H(serverError)),
-         ok ? InfoBarSeverity::Success : InfoBarSeverity::Error);
-  if (!ok) {
-    w_.ConnectWalletButton().IsEnabled(!walletChain_.empty());
-    return;
-  }
-  w_.WalletAddressBox().Text(L"");  // clears the verdict through OnWalletAddressChanged
-  LoadWallet();                     // refresh the list with the new wallet
 }
 
 void WalletPage::ShowPreviewSnackbar() {
@@ -1429,23 +1729,56 @@ void WalletPage::ShowPreviewSnackbar() {
 // like. Settle them all on their empty state instead.
 void WalletPage::ShowPreviewWalletState() {
   if (PreviewSample()) {
-    ApplyWallets(SampleWallets(), Fetch::Ready);
-    ApplyPayoutWalletId("5a3e0000-0000-4000-8000-00000000501a");
-    ApplyTransferStats(41'237'481'984, /*ok=*/true);
-    ApplyWalletBalance(1'234'500'000'000, /*ok=*/true);
-    ApplyReferrals(7, /*ok=*/true);
-    ApplyPayments(SamplePayments(), Fetch::Ready);
+    seekerHolder_ = true;
     ApplyPoints(SamplePoints(), Fetch::Ready);
     ApplyReliability(SampleReliability(), Fetch::Ready);
+    std::vector<EpochRow> epochs;
+    for (int i = 0; i < 4; ++i) {
+      EpochRow row;
+      row.epoch = 120 - i;
+      row.endMillis = 1'785'000'000'000LL - i * 7LL * 86'400'000LL;
+      row.startMillis = row.endMillis - 7LL * 86'400'000LL;
+      row.points = 3'120.0 - 410.0 * i;
+      row.shareBps = 71 - 9 * i;
+      epochs.push_back(row);
+    }
+    ApplyEpochs(epochs, Fetch::Ready);
+    ApplySnWallet(SnWalletInfo{kSampleColdkey, "sample-client", 1'783'000'000'000LL},
+                  Fetch::Ready);
+    std::vector<EpochClaim> claims;
+    auto claim = [](int64_t epoch, int64_t rao, const char* status, const char* tx) {
+      EpochClaim c;
+      c.epoch = epoch;
+      c.shareBps = 71;
+      c.amountRao = rao;
+      c.status = status;
+      if (tx) c.txHash = tx;
+      return c;
+    };
+    claims.push_back(claim(120, 3'241'000'000, "claimable", nullptr));
+    claims.push_back(claim(119, 2'980'500'000, "claimed", "0xSAMPLEtxHASHnotREAL111111"));
+    claims.push_back(claim(118, 2'700'000'000, "expired", nullptr));
+    ApplyClaims(claims, 3'241'000'000, Fetch::Ready, std::nullopt);
+    GasKeyInfo gas;
+    gas.address = kSampleGasAddress;
+    gas.mirrorSs58 = kSampleGasMirror;
+    gas.tao = 0.0;  // the funding hint renders
+    ApplyGas(gas);
+    HeadInfo head;
+    head.eligible = true;
+    head.score = 41.5;
+    head.floor = 38.0;
+    head.rankEstimate = 172;
+    head.cutoff = 200;
+    ApplyHead(head, Fetch::Ready);
     return;
   }
-  ApplyWallets({}, Fetch::Ready);
-  ApplyTransferStats(0, /*ok=*/false);
-  ApplyWalletBalance(0, /*ok=*/false);
-  ApplyReferrals(0, /*ok=*/false);
   ApplyPoints({}, Fetch::Ready);
-  ApplyPayments({}, Fetch::Ready);
   ApplyReliability(std::nullopt, Fetch::Ready);
+  ApplyEpochs({}, Fetch::Ready);
+  ApplySnWallet(std::nullopt, Fetch::Ready);
+  ApplyGas(std::nullopt);
+  ApplyHead(std::nullopt, Fetch::Ready);
 }
 
 // ---- leaderboard ---------------------------------------------------------
@@ -1465,10 +1798,6 @@ void WalletPage::ShowPreviewLeaderboardState() {
   ApplyLeaderboard({}, Fetch::Ready);
 }
 
-// The panel used to draw one heading and nothing else whether the fetch was in
-// flight, had come back empty, or had failed - and a failure was silent in the
-// log too, so there was no way at all to tell "this screen is broken" from
-// "there is no data". All three now say which they are.
 void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, Fetch state) {
   auto rows = w_.LeaderboardRows();
   rows.Children().Clear();
@@ -1478,15 +1807,13 @@ void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, 
     return;
   }
   if (earners.empty()) {
-    // ONE CENTRED LINE in the full-height pane. It used to be a glyph on a card,
-    // which in a pane is a rounded island back inside a column.
     w_.LeaderboardStatusText().Text(Loc("site_app_leaderboard_empty"));
     w_.LeaderboardStatusText().Visibility(Visibility::Visible);
     return;
   }
   w_.LeaderboardStatusText().Visibility(Visibility::Collapsed);
 
-  // The same table builder the payouts ledger and Account's balance codes use.
+  // The same table builder the history table uses.
   const std::vector<double> weights{1, 5, 2};
   rows.Children().Append(
       kit::MakePaneTableHeader(weights,
@@ -1498,8 +1825,7 @@ void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, 
     ++rank;
     const bool isOwn = !ownNetworkId_.empty() && earner.network_id == ownNetworkId_;
     // A network that has not opted in is on the board by its numbers only; the
-    // name is never rendered. Profanity is masked the same way - the server
-    // flags it and the client is what decides not to draw it.
+    // name is never rendered. Profanity is masked the same way.
     const bool masked = !isOwn && (!earner.is_public || earner.contains_profanity);
 
     auto row = kit::MakePaneTableRow(weights, 36, /*textColumns=*/2);
@@ -1510,7 +1836,7 @@ void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, 
 
     // The account's own row is the point of the table, so it is marked - in
     // colour AND with the pane's fill step, because colour alone is never the
-    // only signal (spec, Colour semantics).
+    // only signal.
     if (isOwn) {
       auto own = colors::MakeBrush(colors::kUrGreen);
       for (auto const& cell : row.cells) cell.Foreground(own);
@@ -1523,17 +1849,6 @@ void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, 
   leaderboardCount_ = static_cast<int64_t>(earners.size());
   ApplyLedgerMeta();
 }
-
-// The ledger pane's header figure belongs to whichever table is showing. One
-// pane, two tables, one count - and a payout count left over the leaderboard is
-// a wrong number, not a stale one.
-void WalletPage::ApplyLedgerMeta() {
-  const bool payouts = w_.LeaderboardHost().Visibility() != Visibility::Visible;
-  const int64_t count = payouts ? static_cast<int64_t>(payments_.size()) : leaderboardCount_;
-  kit::SetTextOrCollapse(w_.WalletPaneBMeta(),
-                         count <= 0 ? hstring{} : hstring{std::to_wstring(count)});
-}
-
 
 void WalletPage::ApplyRanking(urnet::NetworkRanking const& ranking, bool ok) {
   if (!ok) {
@@ -1568,9 +1883,6 @@ void WalletPage::LoadLeaderboard() {
 
   if (auto jwt = Sdk().ParsedJwt(); jwt && jwt->NetworkId) ownNetworkId_ = *jwt->NetworkId;
 
-  // [queue, weak], like every other SDK callback in this file. This one used to
-  // capture a raw `this` and call w_.DispatcherQueue() from the SDK thread -
-  // the only two places in the split that did (the other is OnSendFeedback).
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
 
@@ -1616,10 +1928,6 @@ void WalletPage::OnLeaderboardPublicToggled(IInspectable const&, RoutedEventArgs
     SetRankingToggle(rankingPublic_);  // one in flight: snap back
     return;
   }
-  // This switch is live under a plain `--preview-ui=leaderboard`, with no env
-  // var and no sample data in sight: one click used to be one
-  // setNetworkLeaderboardPublic at the api. Put the switch back where the
-  // server has it and say why.
   if (!CanCallApi()) {
     SetRankingToggle(rankingPublic_);
     RefuseNoSession();

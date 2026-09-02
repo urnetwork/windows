@@ -228,10 +228,6 @@
   <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
     <value>{} をサインイン方法から削除してもよろしいですか？</value>
   </data>
-  <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
-    <value>このウォレットを削除してもよろしいですか？</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="auth_code" xml:space="preserve">
     <value>認証コード</value>
     <comment>Call to action</comment>
@@ -620,10 +616,6 @@
     <value>URnetwork VPNに接続</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="connect_wallet" xml:space="preserve">
-    <value>ウォレットを接続</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="connected" xml:space="preserve">
     <value>接続済み</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
@@ -824,10 +816,6 @@
     <value>デフォルト</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
-  <data name="default_txt" xml:space="preserve">
-    <value>デフォルト</value>
-    <comment>Used in Shared/Views/PayoutWalletTag.swift.</comment>
-  </data>
   <data name="default_wallet" xml:space="preserve">
     <value>デフォルト</value>
     <comment>Call to action</comment>
@@ -1016,10 +1004,6 @@
     <value>パスワードを入力</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
-    <value>SolanaまたはBittensorのウォレットアドレスを入力</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>Solana USDCウォレットアドレスを入力してください</value>
   </data>
@@ -1039,10 +1023,6 @@
     <value>URnetworkに入る</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
   </data>
-  <data name="enter_wallet_address" xml:space="preserve">
-    <value>ウォレットアドレスを入力</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>ネットワーク名の変更中にエラーが発生しました</value>
     <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
@@ -1058,10 +1038,6 @@
   <data name="error_connecting_wallet" xml:space="preserve">
     <value>ウォレットの接続中にエラーが発生しました。</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>ウォレットの接続中にエラーが発生しました：{}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>ネットワークの作成中にエラーが発生しました。後でもう一度お試しください。</value>
@@ -1090,14 +1066,6 @@
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>確認コードの送信中にエラーが発生しました。</value>
     <comment>Inline error on the verify page when resending the verification code fails. Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet" xml:space="preserve">
-    <value>デフォルトウォレットの設定中にエラーが発生しました</value>
-    <comment>Snackbar shown when setting the default payout wallet fails. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>デフォルトウォレットの設定中にエラーが発生しました：{}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>デバイス名の更新中にエラーが発生しました。</value>
@@ -1647,10 +1615,6 @@
     <value>純獲得ポイント</value>
     <comment>Call to action</comment>
   </data>
-  <data name="net_points_earned_2" xml:space="preserve">
-    <value>獲得した純ポイント</value>
-    <comment>Used in Shared/Views/AccountPointsBreakdown.swift.</comment>
-  </data>
   <data name="net_provided" xml:space="preserve">
     <value>提供済みネット</value>
     <comment>Call to action</comment>
@@ -1726,10 +1690,6 @@
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>誰かがあなたを招待しています 🥳\nネットワークを作成してボーナスを獲得しましょう！</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_earnings" xml:space="preserve">
-    <value>ネットワーク収益</value>
-    <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
   <data name="network_name_changed_to_n" xml:space="preserve">
     <value>ネットワーク名を {} に変更しました</value>
@@ -1915,10 +1875,6 @@
     <value>またはウォレットを使う</value>
     <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
   </data>
-  <data name="other" xml:space="preserve">
-    <value>その他</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>参加する</value>
     <comment>Call to action</comment>
@@ -1960,21 +1916,9 @@
     <value>Stripeで参加する</value>
     <comment>Call to action</comment>
   </data>
-  <data name="payment_pending" xml:space="preserve">
-    <value>支払い保留中</value>
-    <comment>Used in Main/Account/PayoutItem/PayoutItemView.swift.</comment>
-  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>支払いの問題</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
-  </data>
-  <data name="payout" xml:space="preserve">
-    <value>支払い</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>支払いウォレットを更新しました</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="payout_wallets" xml:space="preserve">
     <value>支払いウォレット</value>
@@ -2393,10 +2337,6 @@
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>このサインイン方法を削除しますか？</value>
   </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>ウォレットを削除</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>リンクを再送信</value>
     <comment>Reset link sent</comment>
@@ -2448,10 +2388,6 @@
   <data name="rules" xml:space="preserve">
     <value>ルール</value>
     <comment>A heading for the pinned split rules.</comment>
-  </data>
-  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
-    <value>無料データと紹介データが2倍</value>
-    <comment>A description of the benefits of using a Seeker Token.</comment>
   </data>
   <data name="save" xml:space="preserve">
     <value>保存</value>
@@ -2800,10 +2736,6 @@
     <value>Solanaでサインイン</value>
     <comment>Call to action</comment>
   </data>
-  <data name="solana_usdc_addresses_and_bittensor_tao" xml:space="preserve">
-    <value>Solana USDCアドレスとBittensor（TAO）アドレスに対応しています。Bittensorウォレットは将来の利用のために保存されますが、まだ支払いは受け取れません。</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>エラーが発生しました。</value>
     <comment>Something went wrong error message</comment>
@@ -2980,10 +2912,6 @@
     <value>認証コードの検証中にエラーが発生しました。もう一度お試しください、または新しいコードを生成してください。</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
-  <data name="these_wallets_are_not_affiliated_or_controlled" xml:space="preserve">
-    <value>これらのウォレットはURnetworkと提携しておらず、URnetworkによって管理されていません。収益は接続されたウォレットに送金されます。</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
     <value>⚠️ 表示されるのはこの一度きりです。</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
@@ -3002,10 +2930,6 @@
   </data>
   <data name="title_login" xml:space="preserve">
     <value>ログイン</value>
-  </data>
-  <data name="to_start_earning_connect_your_solana_wallet_to" xml:space="preserve">
-    <value>収益を得るには、SolanaウォレットをURnetworkに接続してください。</value>
-    <comment>Used in Main/Account/Wallets/EmptyWallets/EmptyWalletsView.swift.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>トップマッチ</value>
@@ -3315,12 +3239,6 @@
   <data name="wallet_needs_network" xml:space="preserve">
     <value>このウォレットはまだネットワークにリンクされていません。ネットワーク名を選んで作成してください。</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
-  </data>
-  <data name="wallet_provider" xml:space="preserve">
-    <value>{}ウォレット</value>
-  </data>
-  <data name="wallet_provider_lower" xml:space="preserve">
-    <value>{}ウォレット</value>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>ウォレットでのサインインに失敗しました</value>

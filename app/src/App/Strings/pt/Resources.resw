@@ -236,10 +236,6 @@
   <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
     <value>Tem a certeza de que pretende remover {} como método de início de sessão?</value>
   </data>
-  <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
-    <value>Tem a certeza que pretende remover esta carteira?</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="auth_code" xml:space="preserve">
     <value>Código de autenticação</value>
     <comment>Call to action</comment>
@@ -628,10 +624,6 @@ maneira certa</value>
     <value>Ligar a URnetwork VPN</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="connect_wallet" xml:space="preserve">
-    <value>Conectar carteira</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="connected" xml:space="preserve">
     <value>Conectado</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
@@ -840,10 +832,6 @@ maneira certa</value>
     <value>Predefinido</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
-  <data name="default_txt" xml:space="preserve">
-    <value>PADRÃO</value>
-    <comment>Used in Shared/Views/PayoutWalletTag.swift.</comment>
-  </data>
   <data name="default_wallet" xml:space="preserve">
     <value>Padrão</value>
     <comment>Call to action</comment>
@@ -1032,10 +1020,6 @@ maneira certa</value>
     <value>Introduza uma senha</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
-    <value>Introduza um endereço de carteira Solana ou Bittensor</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>Introduza um endereço de carteira USDC na Solana</value>
   </data>
@@ -1055,10 +1039,6 @@ maneira certa</value>
     <value>Entrar no URnetwork</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
   </data>
-  <data name="enter_wallet_address" xml:space="preserve">
-    <value>Introduza o endereço da carteira</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>Erro ao alterar o nome da rede</value>
     <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
@@ -1074,10 +1054,6 @@ maneira certa</value>
   <data name="error_connecting_wallet" xml:space="preserve">
     <value>Ocorreu um erro ao ligar a sua carteira.</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>Ocorreu um erro ao ligar a sua carteira: {}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>Ocorreu um erro ao criar a sua rede. Tente novamente mais tarde.</value>
@@ -1106,14 +1082,6 @@ maneira certa</value>
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>Ocorreu um erro ao enviar o código de verificação.</value>
     <comment>Inline error on the verify page when resending the verification code fails. Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet" xml:space="preserve">
-    <value>Erro ao definir a carteira predefinida</value>
-    <comment>Snackbar shown when setting the default payout wallet fails. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>Erro ao definir a carteira predefinida: {}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>Ocorreu um erro ao atualizar o nome do dispositivo.</value>
@@ -1673,10 +1641,6 @@ enviamos para você verificar sua identidade.</value>
     <value>Pontos líquidos ganhos</value>
     <comment>Call to action</comment>
   </data>
-  <data name="net_points_earned_2" xml:space="preserve">
-    <value>Pontos líquidos ganhos</value>
-    <comment>Used in Shared/Views/AccountPointsBreakdown.swift.</comment>
-  </data>
   <data name="net_provided" xml:space="preserve">
     <value>Rede Fornecida</value>
     <comment>Call to action</comment>
@@ -1752,10 +1716,6 @@ enviamos para você verificar sua identidade.</value>
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>Alguém convidou-te para te juntares 🥳\nReivindica o teu bónus criando uma rede!</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_earnings" xml:space="preserve">
-    <value>Ganhos da rede</value>
-    <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
   <data name="network_name_changed_to_n" xml:space="preserve">
     <value>Nome da rede alterado para {}</value>
@@ -1949,10 +1909,6 @@ enviamos para você verificar sua identidade.</value>
     <value>Ou use uma carteira</value>
     <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
   </data>
-  <data name="other" xml:space="preserve">
-    <value>Outro</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Participar</value>
     <comment>Call to action</comment>
@@ -1994,21 +1950,9 @@ e mais descentralizado protocolo de entrada e saída do mundo.</value>
     <value>Junte-se com Stripe</value>
     <comment>Call to action</comment>
   </data>
-  <data name="payment_pending" xml:space="preserve">
-    <value>Pagamento pendente</value>
-    <comment>Used in Main/Account/PayoutItem/PayoutItemView.swift.</comment>
-  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>Problema no pagamento</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
-  </data>
-  <data name="payout" xml:space="preserve">
-    <value>Pagamento</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>Carteira de pagamento atualizada</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="payout_wallets" xml:space="preserve">
     <value>Carteiras de pagamento</value>
@@ -2451,10 +2395,6 @@ e mais descentralizado protocolo de entrada e saída do mundo.</value>
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>Remover este método de início de sessão?</value>
   </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>Remover carteira</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>Reenviar link</value>
     <comment>Reset link sent</comment>
@@ -2506,10 +2446,6 @@ e mais descentralizado protocolo de entrada e saída do mundo.</value>
   <data name="rules" xml:space="preserve">
     <value>Regras</value>
     <comment>A heading for the pinned split rules.</comment>
-  </data>
-  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
-    <value>2x os seus dados gratuitos e de referências</value>
-    <comment>A description of the benefits of using a Seeker Token.</comment>
   </data>
   <data name="save" xml:space="preserve">
     <value>Salvar</value>
@@ -2858,10 +2794,6 @@ conteúdo do mundo</value>
     <value>Iniciar sessão com Solana</value>
     <comment>Call to action</comment>
   </data>
-  <data name="solana_usdc_addresses_and_bittensor_tao" xml:space="preserve">
-    <value>Endereços USDC em Solana e endereços Bittensor (TAO) são compatíveis. As carteiras Bittensor são guardadas para uso futuro e ainda não podem receber pagamentos.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>Algo deu errado.</value>
     <comment>Something went wrong error message</comment>
@@ -3042,10 +2974,6 @@ como ela deveria ser.</value>
     <value>Ocorreu um erro ao validar o seu código de autenticação. Tente novamente ou gere um novo.</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
-  <data name="these_wallets_are_not_affiliated_or_controlled" xml:space="preserve">
-    <value>Estas carteiras não são afiliadas nem controladas pela URnetwork. Enviaremos os ganhos para a carteira conectada.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
     <value>⚠️ Esta é a única vez que a vai ver.</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
@@ -3064,10 +2992,6 @@ como ela deveria ser.</value>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Entrar</value>
-  </data>
-  <data name="to_start_earning_connect_your_solana_wallet_to" xml:space="preserve">
-    <value>Para começar a ganhar, ligue a sua carteira Solana ao URnetwork.</value>
-    <comment>Used in Main/Account/Wallets/EmptyWallets/EmptyWalletsView.swift.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>Melhores correspondências</value>
@@ -3381,12 +3305,6 @@ como ela deveria ser.</value>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>Esta carteira ainda não está associada a uma rede. Escolha um nome de rede para criar uma.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
-  </data>
-  <data name="wallet_provider" xml:space="preserve">
-    <value>Carteira {}</value>
-  </data>
-  <data name="wallet_provider_lower" xml:space="preserve">
-    <value>carteira {}</value>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>Falha ao iniciar sessão com a carteira</value>

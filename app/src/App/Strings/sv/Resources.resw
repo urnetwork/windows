@@ -236,10 +236,6 @@
   <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
     <value>Är du säker på att du vill ta bort {} som inloggningsmetod?</value>
   </data>
-  <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
-    <value>Är du säker på att du vill ta bort denna plånbok?</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="auth_code" xml:space="preserve">
     <value>Autentiseringskod</value>
     <comment>Call to action</comment>
@@ -628,10 +624,6 @@ rätt sätt</value>
     <value>Anslut URnetwork VPN</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="connect_wallet" xml:space="preserve">
-    <value>Anslut plånbok</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="connected" xml:space="preserve">
     <value>Ansluten</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
@@ -840,10 +832,6 @@ rätt sätt</value>
     <value>Standard</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
-  <data name="default_txt" xml:space="preserve">
-    <value>STANDARD</value>
-    <comment>Used in Shared/Views/PayoutWalletTag.swift.</comment>
-  </data>
   <data name="default_wallet" xml:space="preserve">
     <value>Standard</value>
     <comment>Call to action</comment>
@@ -1032,10 +1020,6 @@ rätt sätt</value>
     <value>Ange ett lösenord</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
-    <value>Ange en Solana- eller Bittensor-plånboksadress</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>Ange en Solana USDC-plånboksadress</value>
   </data>
@@ -1055,10 +1039,6 @@ rätt sätt</value>
     <value>Gå in i URnetwork</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
   </data>
-  <data name="enter_wallet_address" xml:space="preserve">
-    <value>Ange plånboksadress</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>Fel vid ändring av nätverksnamn</value>
     <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
@@ -1074,10 +1054,6 @@ rätt sätt</value>
   <data name="error_connecting_wallet" xml:space="preserve">
     <value>Ett fel uppstod när din plånbok skulle anslutas.</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>Ett fel uppstod när din plånbok skulle anslutas: {}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>Ett fel uppstod när ditt nätverk skulle skapas. Försök igen senare.</value>
@@ -1106,14 +1082,6 @@ rätt sätt</value>
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>Ett fel uppstod när verifieringskoden skickades.</value>
     <comment>Inline error on the verify page when resending the verification code fails. Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet" xml:space="preserve">
-    <value>Fel vid inställning av standardplånbok</value>
-    <comment>Snackbar shown when setting the default payout wallet fails. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>Fel vid inställning av standardplånbok: {}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>Ett fel uppstod när enhetsnamnet skulle uppdateras.</value>
@@ -1673,10 +1641,6 @@ skickade till dig för att verifiera din identitet.</value>
     <value>nettopoäng intjänade</value>
     <comment>Call to action</comment>
   </data>
-  <data name="net_points_earned_2" xml:space="preserve">
-    <value>Nettopoäng intjänade</value>
-    <comment>Used in Shared/Views/AccountPointsBreakdown.swift.</comment>
-  </data>
   <data name="net_provided" xml:space="preserve">
     <value>Nettotillhandahållen</value>
     <comment>Call to action</comment>
@@ -1753,10 +1717,6 @@ skickade till dig för att verifiera din identitet.</value>
     <value>Någon har bjudit in dig 🥳 
 Hämta din bonus genom att skapa ett nätverk!</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_earnings" xml:space="preserve">
-    <value>Nätverksintäkter</value>
-    <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
   <data name="network_name_changed_to_n" xml:space="preserve">
     <value>Nätverksnamnet ändrades till {}</value>
@@ -1950,10 +1910,6 @@ Hämta din bonus genom att skapa ett nätverk!</value>
     <value>Eller använd en plånbok</value>
     <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
   </data>
-  <data name="other" xml:space="preserve">
-    <value>Annat</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Delta</value>
     <comment>Call to action</comment>
@@ -1995,21 +1951,9 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Gå med via Stripe</value>
     <comment>Call to action</comment>
   </data>
-  <data name="payment_pending" xml:space="preserve">
-    <value>Betalning väntar</value>
-    <comment>Used in Main/Account/PayoutItem/PayoutItemView.swift.</comment>
-  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>Betalningsproblem</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
-  </data>
-  <data name="payout" xml:space="preserve">
-    <value>Utbetalning</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>Utbetalningsplånbok uppdaterad</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="payout_wallets" xml:space="preserve">
     <value>Utbetalningsplånböcker</value>
@@ -2452,10 +2396,6 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>Ta bort den här inloggningsmetoden?</value>
   </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>Ta bort plånbok</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>Skicka länken igen</value>
     <comment>Reset link sent</comment>
@@ -2507,10 +2447,6 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
   <data name="rules" xml:space="preserve">
     <value>Regler</value>
     <comment>A heading for the pinned split rules.</comment>
-  </data>
-  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
-    <value>2x din gratis- och referensdata</value>
-    <comment>A description of the benefits of using a Seeker Token.</comment>
   </data>
   <data name="save" xml:space="preserve">
     <value>Spara</value>
@@ -2859,10 +2795,6 @@ innehåll i världen</value>
     <value>Logga in med Solana</value>
     <comment>Call to action</comment>
   </data>
-  <data name="solana_usdc_addresses_and_bittensor_tao" xml:space="preserve">
-    <value>Solana USDC-adresser och Bittensor-adresser (TAO) stöds. Bittensor-plånböcker sparas för framtida bruk och kan inte ta emot utbetalningar än.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>Något gick fel.</value>
     <comment>Something went wrong error message</comment>
@@ -3043,10 +2975,6 @@ som det borde vara.</value>
     <value>Det uppstod ett fel när din autentiseringskod validerades. Försök igen eller generera en ny.</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
-  <data name="these_wallets_are_not_affiliated_or_controlled" xml:space="preserve">
-    <value>Dessa plånböcker är inte anslutna till eller kontrollerade av URnetwork. Vi kommer att skicka intäkter till den anslutna plånboken.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
     <value>⚠️ Det här är enda gången du ser den.</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
@@ -3065,10 +2993,6 @@ som det borde vara.</value>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Logga in</value>
-  </data>
-  <data name="to_start_earning_connect_your_solana_wallet_to" xml:space="preserve">
-    <value>För att börja tjäna, anslut din Solana-plånbok till URnetwork.</value>
-    <comment>Used in Main/Account/Wallets/EmptyWallets/EmptyWalletsView.swift.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>Bästa träffar</value>
@@ -3382,12 +3306,6 @@ som det borde vara.</value>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>Den här plånboken är inte kopplad till något nätverk ännu. Välj ett nätverksnamn för att skapa ett.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
-  </data>
-  <data name="wallet_provider" xml:space="preserve">
-    <value>{}-plånbok</value>
-  </data>
-  <data name="wallet_provider_lower" xml:space="preserve">
-    <value>{}-plånbok</value>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>Inloggning med plånbok misslyckades</value>

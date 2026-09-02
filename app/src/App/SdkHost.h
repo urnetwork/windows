@@ -665,6 +665,19 @@ class SdkHost {
                             std::function<void(bool ok, std::string address,
                                                std::string signature, std::string error)> done);
 
+  // Sign a server-issued TAO challenge with a Bittensor wallet through the
+  // bridge WITHOUT authenticating: the signed triple attaches the coldkey to
+  // the provider (Api.snSetWallet / Device.connectSnWallet, Earnings). The
+  // challenge is fetched for `walletAddress` when the user pasted one (the
+  // bridge must then answer with that same address; the caller checks), or
+  // for whichever wallet the bridge picks when it is empty. `purpose` goes to
+  // the bridge ("connect"). `done` gets the address, the hex sr25519 signature
+  // and the exact message that was signed; same threading caveat as above.
+  void SignWithBittensorWallet(const std::string& walletAddress, const std::string& purpose,
+                               std::function<void(bool ok, std::string address,
+                                                  std::string signature, std::string message,
+                                                  std::string error)> done);
+
   // Route a urnetwork:// deep link (wallet callback; later OAuth) into the host.
   // Called from the app's protocol-activation handler.
   void HandleDeepLink(const std::string& url);

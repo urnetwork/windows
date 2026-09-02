@@ -200,7 +200,7 @@ void WalletConnect::SignMessage(const std::string& message) {
   OpenUrl(url);
 }
 
-void WalletConnect::SignMessageBittensor(const std::string& message) {
+void WalletConnect::SignMessageBittensor(const std::string& message, const std::string& purpose) {
   // No connect handshake and no encryption envelope: the bridge drives an
   // injected substrate wallet (Bittensor Wallet, SubWallet, Talisman,
   // polkadot-js) and returns the ss58 address with the sr25519 signature.
@@ -213,6 +213,7 @@ void WalletConnect::SignMessageBittensor(const std::string& message) {
   std::string url = std::string(kWebBridge) + "?provider=" + Host(Provider::Bittensor) +
                     "&method=signMessage&message=" + Esc(message) +
                     "&redirect_link=" + Esc(redirect);
+  if (!purpose.empty()) url += "&purpose=" + Esc(purpose);
   // The WalletConnect Cloud project id lets the bridge pair with a wallet app;
   // without one the bridge falls back to injected (extension) wallets only.
   const std::string projectId = config::kWalletConnectProjectId;

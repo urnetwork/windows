@@ -1770,29 +1770,27 @@
                 </Grid>
 
                 <!-- ==== EARNINGS: THE PANE SHELL (R4) =====================
-                     Wallet and Leaderboard MERGED into one destination (spec
-                     §7 / override #2). They were two rail items over one
-                     subject: what the network earned, and where it stands.
+                     Earnings and Leaderboard are one destination: what the
+                     network earned, and where it stands. Points first: points
+                     are URnetwork's own system and always the headline. The
+                     subnet layer (a Bittensor coldkey, unclaimed SN25a, the
+                     claim dialog, the alpha column) appears only once a wallet
+                     is connected, and is never retroactive.
 
-                       col 0  WALLETS    where the money goes - the three
-                                         figures, the payout wallets, the form
-                                         that adds one
-                       col 2  LEDGER     the payouts table, and the leaderboard
-                                         table, one at a time, both filling to
-                                         the floor
-                       col 4  POINTS     why the number is what it is - points,
-                                         multipliers, reliability, own rank
+                       col 0  EARNINGS   the points figure and its breakdown,
+                                         the protocol note, the Bittensor
+                                         wallet, the unclaimed tile, Top 200
+                       col 2  LEDGER     the per-epoch history table, and the
+                                         leaderboard table, one at a time, both
+                                         filling to the floor
+                       col 4  NETWORK    why the number is what it is - own
+                                         rank, the Seeker multiplier, reliability
 
-                     THE LEDGER PANE IS TABBED, and that is the deviation from
-                     "2-3 panes, one subject each" worth arguing for. Payouts
-                     and the leaderboard are both wide multi-column tables that
-                     want the same space, and neither is worth reading four
-                     columns at a time in a 380dip rail. A third table pane
-                     would have made the window three narrow tables; stacking
-                     them in one pane would have put a second table below the
-                     fold of the first. One pane, one table at a time, the
-                     switch in the pane's own header strip - which is what the
-                     40px header is for.
+                     THE LEDGER PANE IS TABBED: history and the leaderboard are
+                     both wide multi-column tables that want the same space,
+                     and neither is worth reading four columns at a time in a
+                     380dip rail. One pane, one table at a time, the switch in
+                     the pane's own header strip.
 
                      Everything dynamic is built by WalletPage into the named
                      hosts below. -->
@@ -1806,7 +1804,7 @@
                         <ColumnDefinition x:Name="WalletPaneCColumn" Width="380" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- ============ PANE A: WALLETS ============ -->
+                    <!-- ============ PANE A: EARNINGS ============ -->
                     <Grid Grid.Column="0" x:Name="WalletPaneA">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -1823,110 +1821,171 @@
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <!-- THE THREE FIGURES. Rows on the pane's grid,
-                                     not three stat tiles: a tile is a card, and
-                                     three of them across a 360 rail is a stack
-                                     of boxes with one number each. -->
+                                <!-- THE FIGURE: net points, in the display face,
+                                     with its caption and the fetch state beside
+                                     it. The breakdown rows follow on the pane's
+                                     grid. -->
                                 <Border Style="{StaticResource UrPaneRowStyle}"
-                                        MinHeight="0" Padding="12,12">
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock x:Name="WalletPendingLabel"
-                                                   Style="{StaticResource UrKeyTextStyle}"
-                                                   VerticalAlignment="Bottom" />
-                                        <TextBlock x:Name="WalletPendingValue" Grid.Column="1"
-                                                   FontFamily="{StaticResource UrBodyFontFamily}"
-                                                   FontSize="22" FontWeight="SemiBold"
-                                                   HorizontalAlignment="Right" />
-                                    </Grid>
+                                        MinHeight="0" Padding="12,14,12,10">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock x:Name="PointsHeadlineValue"
+                                                   FontFamily="{StaticResource UrHeadingCondensedFontFamily}"
+                                                   FontSize="44" />
+                                        <Grid>
+                                            <TextBlock x:Name="PointsHeadlineLabel"
+                                                       Style="{StaticResource UrKeyTextStyle}" />
+                                            <TextBlock x:Name="AccountPointsStatusText"
+                                                       HorizontalAlignment="Right"
+                                                       Style="{StaticResource UrPaneMetaStyle}" />
+                                        </Grid>
+                                    </StackPanel>
                                 </Border>
-                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock x:Name="WalletUnpaidLabel"
-                                                   Style="{StaticResource UrKeyTextStyle}" />
-                                        <TextBlock x:Name="WalletUnpaidValue" Grid.Column="1"
-                                                   Style="{StaticResource UrValueTextStyle}" />
-                                    </Grid>
-                                </Border>
-                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
-                                    <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock x:Name="WalletReferralsLabel"
-                                                   Style="{StaticResource UrKeyTextStyle}" />
-                                        <TextBlock x:Name="WalletReferralsValue" Grid.Column="1"
-                                                   Style="{StaticResource UrValueTextStyle}" />
-                                    </Grid>
-                                </Border>
-                                <Border Style="{StaticResource UrPaneRowStyle}"
-                                        MinHeight="0" Padding="12,8">
-                                    <TextBlock x:Name="PayoutsThresholdText" TextWrapping="Wrap"
-                                               Style="{StaticResource UrRowNoteStyle}"
-                                               TextTrimming="None" />
-                                </Border>
-                                <Button x:Name="UpgradeButton"
-                                        Style="{StaticResource UrPaneActionPrimaryStyle}"
-                                        Click="OnOpenUpgrade" />
+                                <StackPanel x:Name="AccountPointsPanel" />
 
-                                <!-- payout wallets ............................. -->
+                                <!-- the protocol note and the ur.xyz link -->
+                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,10">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock x:Name="ProtocolNoteText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" />
+                                        <HyperlinkButton x:Name="LearnUrXyzButton"
+                                                         Padding="0" Margin="0"
+                                                         HorizontalAlignment="Left"
+                                                         Click="OnLearnUrXyz" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- bittensor wallet ........................... -->
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
                                     <Grid>
-                                        <TextBlock x:Name="PayoutWalletsHeading"
+                                        <TextBlock x:Name="BittensorWalletHeading"
                                                    Style="{StaticResource UrGroupHeaderTextStyle}" />
-                                        <TextBlock x:Name="WalletsStatusText"
+                                        <TextBlock x:Name="WalletStatusText"
                                                    HorizontalAlignment="Right"
                                                    Style="{StaticResource UrPaneMetaStyle}" />
                                     </Grid>
                                 </Border>
-                                <StackPanel x:Name="WalletCardsPanel" />
-                                <!-- onboarding copy, so it keeps its two shipped
-                                     sentences - but as a padded block on the
-                                     pane's grid, not a floating card -->
-                                <Border x:Name="WalletsEmptyPanel" Visibility="Collapsed"
+                                <!-- connected: the coldkey, what it means, change -->
+                                <Border x:Name="WalletConnectedPanel" Visibility="Collapsed"
                                         BorderBrush="{StaticResource UrBorderBrush}"
-                                        BorderThickness="0,0,0,1" Padding="12,12">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock x:Name="WalletsEmptyText" TextWrapping="Wrap"
+                                        BorderThickness="0,0,0,1" Padding="12,10">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock x:Name="WalletAddressText"
                                                    Style="{StaticResource UrKeyTextStyle}"
-                                                   TextTrimming="None" />
-                                        <TextBlock x:Name="WalletsEmptyNote" TextWrapping="Wrap"
+                                                   IsTextSelectionEnabled="True"
+                                                   TextWrapping="Wrap" TextTrimming="None" />
+                                        <TextBlock x:Name="WalletConnectedNote" TextWrapping="Wrap"
                                                    Style="{StaticResource UrRowNoteStyle}"
                                                    TextTrimming="None" />
+                                        <Button x:Name="ChangeWalletButton"
+                                                Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                                HorizontalAlignment="Stretch"
+                                                Click="OnChangeWallet" />
+                                    </StackPanel>
+                                </Border>
+                                <!-- not connected: the not-retroactive line, the
+                                     bridge button, and the manual paste fallback
+                                     (still signed) folded under a link -->
+                                <Border x:Name="WalletDisconnectedPanel"
+                                        BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,10">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock x:Name="WalletNotRetroactiveText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" />
+                                        <Button x:Name="ConnectWalletButton"
+                                                Style="{StaticResource UrPaneActionPrimaryStyle}"
+                                                HorizontalAlignment="Stretch"
+                                                Click="OnConnectWallet" />
+                                        <TextBlock x:Name="WalletConnectStatusText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
+                                                   TextTrimming="None" Visibility="Collapsed" />
+                                        <HyperlinkButton x:Name="EnterAddressManuallyButton"
+                                                         Padding="0" Margin="0"
+                                                         HorizontalAlignment="Left"
+                                                         Click="OnEnterAddressManually" />
+                                        <StackPanel x:Name="ManualAddressPanel" Visibility="Collapsed"
+                                                    Spacing="8">
+                                            <TextBox x:Name="WalletAddressBox"
+                                                     Style="{StaticResource UrTextInputStyle}"
+                                                     TextChanged="OnWalletAddressChanged" />
+                                            <TextBlock x:Name="WalletAddressVerdictText"
+                                                       Style="{StaticResource UrRowNoteStyle}"
+                                                       TextTrimming="None" TextWrapping="Wrap" />
+                                            <Button x:Name="ConnectAddressButton"
+                                                    Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                                    HorizontalAlignment="Stretch"
+                                                    IsEnabled="False"
+                                                    Click="OnConnectWalletAddress" />
+                                        </StackPanel>
                                     </StackPanel>
                                 </Border>
 
-                                <!-- connect a wallet ........................... -->
-                                <Border Style="{StaticResource UrGroupHeaderStyle}">
-                                    <TextBlock x:Name="ConnectWalletHeading"
-                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
-                                </Border>
-                                <Border BorderBrush="{StaticResource UrBorderBrush}"
-                                        BorderThickness="0,0,0,1" Padding="12,12">
-                                    <StackPanel Spacing="10">
-                                        <TextBlock x:Name="ConnectWalletChainsText"
-                                                   TextWrapping="Wrap"
-                                                   Style="{StaticResource UrRowNoteStyle}"
-                                                   TextTrimming="None" />
-                                        <TextBox x:Name="WalletAddressBox"
-                                                 Style="{StaticResource UrTextInputStyle}"
-                                                 TextChanged="OnWalletAddressChanged" />
-                                        <TextBlock x:Name="WalletChainText"
-                                                   Style="{StaticResource UrRowNoteStyle}"
-                                                   TextTrimming="None" TextWrapping="Wrap" />
-                                        <Button x:Name="ConnectWalletButton"
-                                                HorizontalAlignment="Stretch"
-                                                IsEnabled="False" Click="OnConnectWallet" />
-                                    </StackPanel>
-                                </Border>
+                                <!-- unclaimed SN25a: only with a wallet .......... -->
+                                <StackPanel x:Name="UnclaimedPanel" Visibility="Collapsed">
+                                    <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                        <Grid>
+                                            <TextBlock x:Name="UnclaimedHeading"
+                                                       Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                            <TextBlock x:Name="ClaimsStatusText"
+                                                       HorizontalAlignment="Right"
+                                                       Style="{StaticResource UrPaneMetaStyle}" />
+                                        </Grid>
+                                    </Border>
+                                    <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                            BorderThickness="0,0,0,1" Padding="12,10">
+                                        <StackPanel Spacing="6">
+                                            <TextBlock x:Name="UnclaimedValue"
+                                                       FontFamily="{StaticResource UrHeadingCondensedFontFamily}"
+                                                       FontSize="32" />
+                                            <TextBlock x:Name="UnclaimedNote" TextWrapping="Wrap"
+                                                       Style="{StaticResource UrRowNoteStyle}"
+                                                       TextTrimming="None" />
+                                            <Button x:Name="ClaimButton"
+                                                    Style="{StaticResource UrPaneActionPrimaryStyle}"
+                                                    HorizontalAlignment="Stretch"
+                                                    IsEnabled="False"
+                                                    Click="OnClaimAlpha" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- top 200: a head mining spot .................. -->
+                                <StackPanel x:Name="Top200Panel" Visibility="Collapsed">
+                                    <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                        <TextBlock x:Name="Top200Heading"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                    </Border>
+                                    <Border x:Name="Top200Card"
+                                            BorderBrush="{StaticResource UrReferralGoldBrush}"
+                                            BorderThickness="0,0,0,1" Padding="12,10">
+                                        <StackPanel Spacing="6">
+                                            <TextBlock x:Name="Top200Status"
+                                                       Style="{StaticResource UrKeyTextStyle}"
+                                                       Foreground="{StaticResource UrReferralGoldLightBrush}"
+                                                       TextWrapping="Wrap" TextTrimming="None" />
+                                            <TextBlock x:Name="Top200Detail" TextWrapping="Wrap"
+                                                       Style="{StaticResource UrRowNoteStyle}"
+                                                       TextTrimming="None" />
+                                            <TextBlock x:Name="Top200Warning" TextWrapping="Wrap"
+                                                       Style="{StaticResource UrRowNoteStyle}"
+                                                       Foreground="{StaticResource UrReferralGoldLightBrush}"
+                                                       TextTrimming="None" Visibility="Collapsed" />
+                                            <Button x:Name="Top200Button"
+                                                    Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                                    HorizontalAlignment="Stretch"
+                                                    Click="OnClaimTop200" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- the checkout stays where it was: a signed-in
+                                     free account can upgrade from here; the
+                                     window owns its visibility -->
+                                <Button x:Name="UpgradeButton"
+                                        Style="{StaticResource UrPaneActionPrimaryStyle}"
+                                        Click="OnOpenUpgrade" />
                                 <muxc:InfoBar x:Name="WalletInfo"
                                               Style="{StaticResource UrSnackbarStyle}"
                                               Margin="12,8" IsOpen="False" />
@@ -1955,7 +2014,7 @@
                                 <muxc:SelectorBar x:Name="EarningsTableBar"
                                                   VerticalAlignment="Center"
                                                   SelectionChanged="OnEarningsTableChanged">
-                                    <muxc:SelectorBarItem x:Name="PayoutsTabItem" />
+                                    <muxc:SelectorBarItem x:Name="HistoryTabItem" />
                                     <muxc:SelectorBarItem x:Name="LeaderboardTabItem" />
                                 </muxc:SelectorBar>
                                 <TextBlock x:Name="WalletPaneBMeta" Grid.Column="1"
@@ -1964,14 +2023,15 @@
                             </Grid>
                         </Border>
                         <Grid Grid.Row="1">
-                            <!-- PAYOUTS. Fills to the floor; its empty state is a
-                                 centred line in that same full-height area. -->
-                            <Grid x:Name="PayoutsHost">
+                            <!-- HISTORY: one row per finalized epoch. Fills to the
+                                 floor; its empty state is a centred line in that
+                                 same full-height area. -->
+                            <Grid x:Name="HistoryHost">
                                 <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                                               VerticalScrollBarVisibility="Auto">
-                                    <StackPanel x:Name="PayoutsPanel" />
+                                    <StackPanel x:Name="HistoryPanel" />
                                 </ScrollViewer>
-                                <TextBlock x:Name="PayoutsStatusText"
+                                <TextBlock x:Name="HistoryStatusText"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                            TextAlignment="Center" TextWrapping="Wrap"
                                            MaxWidth="320" Margin="16" IsHitTestVisible="False"
@@ -1995,7 +2055,7 @@
                     <Border x:Name="WalletPaneCRule" Grid.Column="3"
                             Style="{StaticResource UrPaneVRuleStyle}" />
 
-                    <!-- ============ PANE C: POINTS ============ -->
+                    <!-- ============ PANE C: NETWORK ============ -->
                     <Grid Grid.Column="4" x:Name="WalletPaneC">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -2063,23 +2123,8 @@
                                               Style="{StaticResource UrSnackbarStyle}"
                                               Margin="12,8" IsOpen="False" />
 
-                                <!-- account points ............................. -->
-                                <Border Style="{StaticResource UrGroupHeaderStyle}">
-                                    <Grid>
-                                        <TextBlock x:Name="AccountPointsHeading"
-                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
-                                        <TextBlock x:Name="AccountPointsStatusText"
-                                                   HorizontalAlignment="Right"
-                                                   Style="{StaticResource UrPaneMetaStyle}" />
-                                    </Grid>
-                                </Border>
-                                <Border x:Name="AccountPointsCard" Visibility="Collapsed"
-                                        BorderBrush="{StaticResource UrBorderBrush}"
-                                        BorderThickness="0,0,0,1" Padding="12,10">
-                                    <StackPanel x:Name="AccountPointsPanel" />
-                                </Border>
-
-                                <!-- earning multipliers ........................ -->
+                                <!-- earning multipliers: the Seeker token, points
+                                     only ........................................ -->
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
                                     <TextBlock x:Name="EarningMultipliersHeading"
                                                Style="{StaticResource UrGroupHeaderTextStyle}" />
@@ -2089,6 +2134,9 @@
                                     <StackPanel Spacing="10">
                                         <TextBlock x:Name="SeekerStatusText" TextWrapping="Wrap"
                                                    Style="{StaticResource UrKeyTextStyle}"
+                                                   TextTrimming="None" />
+                                        <TextBlock x:Name="SeekerPointsOnlyText" TextWrapping="Wrap"
+                                                   Style="{StaticResource UrRowNoteStyle}"
                                                    TextTrimming="None" />
                                         <Button x:Name="VerifySeekerButton"
                                                 HorizontalAlignment="Stretch"

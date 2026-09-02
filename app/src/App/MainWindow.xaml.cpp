@@ -1879,6 +1879,24 @@ void MainWindow::OnWalletAddressChanged(IInspectable const& s,
 void MainWindow::OnConnectWallet(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnConnectWallet(s, e);
 }
+void MainWindow::OnEnterAddressManually(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnEnterAddressManually(s, e);
+}
+void MainWindow::OnConnectWalletAddress(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnConnectWalletAddress(s, e);
+}
+void MainWindow::OnChangeWallet(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnChangeWallet(s, e);
+}
+void MainWindow::OnClaimAlpha(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnClaimAlpha(s, e);
+}
+void MainWindow::OnClaimTop200(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnClaimTop200(s, e);
+}
+void MainWindow::OnLearnUrXyz(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnLearnUrXyz(s, e);
+}
 void MainWindow::OnVerifySeeker(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnVerifySeeker(s, e);
 }

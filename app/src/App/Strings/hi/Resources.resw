@@ -236,10 +236,6 @@
   <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
     <value>क्या आप वाकई {} को साइन-इन विधि के रूप में हटाना चाहते हैं?</value>
   </data>
-  <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
-    <value>क्या आप वाकई इस वॉलेट को हटाना चाहते हैं?</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="auth_code" xml:space="preserve">
     <value>ऑथ कोड</value>
     <comment>Call to action</comment>
@@ -627,10 +623,6 @@
     <value>URnetwork VPN कनेक्ट करें</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="connect_wallet" xml:space="preserve">
-    <value>वॉलेट कनेक्ट करें</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="connected" xml:space="preserve">
     <value>कनेक्टेड</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
@@ -839,10 +831,6 @@
     <value>डिफ़ॉल्ट</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
-  <data name="default_txt" xml:space="preserve">
-    <value>डिफ़ॉल्ट</value>
-    <comment>Used in Shared/Views/PayoutWalletTag.swift.</comment>
-  </data>
   <data name="default_wallet" xml:space="preserve">
     <value>डिफ़ॉल्ट</value>
     <comment>Call to action</comment>
@@ -1031,10 +1019,6 @@
     <value>पासवर्ड दर्ज करें</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
-    <value>Solana या Bittensor वॉलेट पता दर्ज करें</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>Solana USDC वॉलेट पता दर्ज करें</value>
   </data>
@@ -1054,10 +1038,6 @@
     <value>URnetwork में प्रवेश करें</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
   </data>
-  <data name="enter_wallet_address" xml:space="preserve">
-    <value>वॉलेट पता दर्ज करें</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>नेटवर्क का नाम बदलने में त्रुटि</value>
     <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
@@ -1073,10 +1053,6 @@
   <data name="error_connecting_wallet" xml:space="preserve">
     <value>आपका वॉलेट कनेक्ट करते समय त्रुटि हुई।</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>आपका वॉलेट कनेक्ट करते समय त्रुटि हुई: {}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>आपका नेटवर्क बनाते समय त्रुटि हुई। कृपया बाद में पुनः प्रयास करें।</value>
@@ -1105,14 +1081,6 @@
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>सत्यापन कोड भेजने में त्रुटि हुई।</value>
     <comment>Inline error on the verify page when resending the verification code fails. Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet" xml:space="preserve">
-    <value>डिफ़ॉल्ट वॉलेट सेट करने में त्रुटि</value>
-    <comment>Snackbar shown when setting the default payout wallet fails. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>डिफ़ॉल्ट वॉलेट सेट करने में त्रुटि: {}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>डिवाइस का नाम अपडेट करते समय त्रुटि हुई।</value>
@@ -1671,10 +1639,6 @@
     <value>अर्जित शुद्ध अंक</value>
     <comment>Call to action</comment>
   </data>
-  <data name="net_points_earned_2" xml:space="preserve">
-    <value>कुल अर्जित अंक</value>
-    <comment>Used in Shared/Views/AccountPointsBreakdown.swift.</comment>
-  </data>
   <data name="net_provided" xml:space="preserve">
     <value>प्रदान किया गया नेट</value>
     <comment>Call to action</comment>
@@ -1750,10 +1714,6 @@
   <data name="network_create_bonus_message" xml:space="preserve">
     <value>किसी ने आपको जुड़ने के लिए आमंत्रित किया 🥳\nनेटवर्क बनाकर अपना बोनस प्राप्त करें!</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_earnings" xml:space="preserve">
-    <value>नेटवर्क आय</value>
-    <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
   <data name="network_name_changed_to_n" xml:space="preserve">
     <value>नेटवर्क का नाम बदलकर {} कर दिया गया</value>
@@ -1947,10 +1907,6 @@
     <value>या वॉलेट का उपयोग करें</value>
     <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
   </data>
-  <data name="other" xml:space="preserve">
-    <value>अन्य</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>भाग लें</value>
     <comment>Call to action</comment>
@@ -1992,21 +1948,9 @@
     <value>Stripe के साथ जुड़ें</value>
     <comment>Call to action</comment>
   </data>
-  <data name="payment_pending" xml:space="preserve">
-    <value>भुगतान लंबित है</value>
-    <comment>Used in Main/Account/PayoutItem/PayoutItemView.swift.</comment>
-  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>भुगतान में समस्या</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
-  </data>
-  <data name="payout" xml:space="preserve">
-    <value>भुगतान</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>पेआउट वॉलेट अपडेट किया गया</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="payout_wallets" xml:space="preserve">
     <value>पेआउट वॉलेट</value>
@@ -2449,10 +2393,6 @@
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>इस साइन-इन विधि को हटाएं?</value>
   </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>वॉलेट हटाएं</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>लिंक फिर से भेजें</value>
     <comment>Reset link sent</comment>
@@ -2504,10 +2444,6 @@
   <data name="rules" xml:space="preserve">
     <value>नियम</value>
     <comment>A heading for the pinned split rules.</comment>
-  </data>
-  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
-    <value>मुफ़्त और रेफ़रल डेटा 2 गुना</value>
-    <comment>A description of the benefits of using a Seeker Token.</comment>
   </data>
   <data name="save" xml:space="preserve">
     <value>सहेजें</value>
@@ -2856,10 +2792,6 @@
     <value>Solana से साइन इन करें</value>
     <comment>Call to action</comment>
   </data>
-  <data name="solana_usdc_addresses_and_bittensor_tao" xml:space="preserve">
-    <value>Solana USDC पते और Bittensor (TAO) पते समर्थित हैं। Bittensor वॉलेट भविष्य के उपयोग के लिए सहेजे जाते हैं और अभी भुगतान प्राप्त नहीं कर सकते।</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>कुछ गलत हो गया।</value>
     <comment>Something went wrong error message</comment>
@@ -3039,10 +2971,6 @@
     <value>आपके ऑथ कोड को सत्यापित करने में त्रुटि हुई। कृपया फिर से प्रयास करें या नया कोड जनरेट करें।</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
-  <data name="these_wallets_are_not_affiliated_or_controlled" xml:space="preserve">
-    <value>ये वॉलेट URnetwork से संबद्ध या नियंत्रित नहीं हैं। हम कनेक्टेड वॉलेट में कमाई भेजेंगे।</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
     <value>⚠️ यह आपको सिर्फ़ इसी एक बार दिखाई देगा।</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
@@ -3061,10 +2989,6 @@
   </data>
   <data name="title_login" xml:space="preserve">
     <value>लॉग इन करें</value>
-  </data>
-  <data name="to_start_earning_connect_your_solana_wallet_to" xml:space="preserve">
-    <value>कमाई शुरू करने के लिए, अपना Solana वॉलेट URnetwork से कनेक्ट करें।</value>
-    <comment>Used in Main/Account/Wallets/EmptyWallets/EmptyWalletsView.swift.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>सबसे अच्छे मिलान</value>
@@ -3378,12 +3302,6 @@
   <data name="wallet_needs_network" xml:space="preserve">
     <value>यह वॉलेट अभी किसी नेटवर्क से जुड़ा नहीं है। नेटवर्क बनाने के लिए एक नेटवर्क नाम चुनें।</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
-  </data>
-  <data name="wallet_provider" xml:space="preserve">
-    <value>{} वॉलेट</value>
-  </data>
-  <data name="wallet_provider_lower" xml:space="preserve">
-    <value>{} वॉलेट</value>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>वॉलेट से साइन इन विफल</value>

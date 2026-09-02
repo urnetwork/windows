@@ -228,10 +228,6 @@
   <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
     <value>แน่ใจหรือไม่ว่าต้องการลบ {} ออกจากวิธีลงชื่อเข้าใช้</value>
   </data>
-  <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
-    <value>คุณแน่ใจหรือไม่ว่าต้องการลบกระเป๋าเงินนี้?</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="auth_code" xml:space="preserve">
     <value>รหัสยืนยัน</value>
     <comment>Call to action</comment>
@@ -620,10 +616,6 @@
     <value>เชื่อมต่อ URnetwork VPN</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="connect_wallet" xml:space="preserve">
-    <value>เชื่อมต่อกระเป๋าเงิน</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="connected" xml:space="preserve">
     <value>เชื่อมต่อแล้ว</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
@@ -824,10 +816,6 @@
     <value>ค่าเริ่มต้น</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
-  <data name="default_txt" xml:space="preserve">
-    <value>ค่าเริ่มต้น</value>
-    <comment>Used in Shared/Views/PayoutWalletTag.swift.</comment>
-  </data>
   <data name="default_wallet" xml:space="preserve">
     <value>ค่าเริ่มต้น</value>
     <comment>Call to action</comment>
@@ -1016,10 +1004,6 @@
     <value>กรอกรหัสผ่าน</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
-    <value>กรอกที่อยู่กระเป๋าเงิน Solana หรือ Bittensor</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>ป้อนที่อยู่กระเป๋าเงิน USDC บน Solana</value>
   </data>
@@ -1039,10 +1023,6 @@
     <value>เข้าสู่ URnetwork</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
   </data>
-  <data name="enter_wallet_address" xml:space="preserve">
-    <value>ป้อนที่อยู่กระเป๋าเงิน</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>เกิดข้อผิดพลาดขณะเปลี่ยนชื่อเครือข่าย</value>
     <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
@@ -1058,10 +1038,6 @@
   <data name="error_connecting_wallet" xml:space="preserve">
     <value>เกิดข้อผิดพลาดในการเชื่อมต่อกระเป๋าเงินของคุณ</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>เกิดข้อผิดพลาดในการเชื่อมต่อกระเป๋าเงินของคุณ: {}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>เกิดข้อผิดพลาดในการสร้างเครือข่ายของคุณ กรุณาลองใหม่ภายหลัง</value>
@@ -1090,14 +1066,6 @@
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>เกิดข้อผิดพลาดในการส่งรหัสยืนยัน</value>
     <comment>Inline error on the verify page when resending the verification code fails. Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet" xml:space="preserve">
-    <value>เกิดข้อผิดพลาดในการตั้งค่ากระเป๋าเงินเริ่มต้น</value>
-    <comment>Snackbar shown when setting the default payout wallet fails. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>เกิดข้อผิดพลาดในการตั้งค่ากระเป๋าเงินเริ่มต้น: {}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>เกิดข้อผิดพลาดในการอัปเดตชื่ออุปกรณ์</value>
@@ -1649,10 +1617,6 @@
     <value>คะแนนที่ได้รับ</value>
     <comment>Call to action</comment>
   </data>
-  <data name="net_points_earned_2" xml:space="preserve">
-    <value>แต้มสุทธิที่ได้รับ</value>
-    <comment>Used in Shared/Views/AccountPointsBreakdown.swift.</comment>
-  </data>
   <data name="net_provided" xml:space="preserve">
     <value>แบนด์วิธที่ให้บริการแล้ว</value>
     <comment>Call to action</comment>
@@ -1729,10 +1693,6 @@
     <value>มีใครบางคนเชิญคุณอยู่ 🥳 
 รับรางวัลโบนัสของคุณโดยการสร้างระบบเครือข่ายสิ!</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_earnings" xml:space="preserve">
-    <value>รายได้ของเครือข่าย</value>
-    <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
   <data name="network_name_changed_to_n" xml:space="preserve">
     <value>เปลี่ยนชื่อเครือข่ายเป็น {} แล้ว</value>
@@ -1918,10 +1878,6 @@
     <value>หรือใช้กระเป๋าเงิน</value>
     <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
   </data>
-  <data name="other" xml:space="preserve">
-    <value>อื่นๆ</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>เข้าร่วม</value>
     <comment>Call to action</comment>
@@ -1963,21 +1919,9 @@
     <value>เข้าร่วมด้วย Stripe</value>
     <comment>Call to action</comment>
   </data>
-  <data name="payment_pending" xml:space="preserve">
-    <value>การชำระเงินรอดำเนินการ</value>
-    <comment>Used in Main/Account/PayoutItem/PayoutItemView.swift.</comment>
-  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>ปัญหาการชำระเงิน</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
-  </data>
-  <data name="payout" xml:space="preserve">
-    <value>การจ่ายเงิน</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>อัปเดตกระเป๋ารับยอดจ่ายแล้ว</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="payout_wallets" xml:space="preserve">
     <value>กระเป๋ารับยอดจ่าย</value>
@@ -2396,10 +2340,6 @@
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>ลบวิธีลงชื่อเข้าใช้นี้หรือไม่</value>
   </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>ลบกระเป๋าเงิน</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>ส่งลิงก์ใหม่อีกครั้ง</value>
     <comment>Reset link sent</comment>
@@ -2451,10 +2391,6 @@
   <data name="rules" xml:space="preserve">
     <value>กฎ</value>
     <comment>A heading for the pinned split rules.</comment>
-  </data>
-  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
-    <value>เพิ่มดาต้าฟรีและดาต้าจากการแนะนำเป็น 2 เท่า</value>
-    <comment>A description of the benefits of using a Seeker Token.</comment>
   </data>
   <data name="save" xml:space="preserve">
     <value>บันทึก</value>
@@ -2803,10 +2739,6 @@
     <value>เข้าสู่ระบบด้วยเครือข่าย Solana</value>
     <comment>Call to action</comment>
   </data>
-  <data name="solana_usdc_addresses_and_bittensor_tao" xml:space="preserve">
-    <value>รองรับที่อยู่ USDC บน Solana และที่อยู่ Bittensor (TAO) กระเป๋า Bittensor จะถูกบันทึกไว้ใช้ในอนาคต และยังรับยอดจ่ายไม่ได้</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>มีบางอย่างผิดปกติ</value>
     <comment>Something went wrong error message</comment>
@@ -2983,10 +2915,6 @@
     <value>เกิดข้อผิดพลาดในการตรวจสอบรหัสยืนยันของคุณ โปรดลองอีกครั้งหรือสร้างรหัสใหม่</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
-  <data name="these_wallets_are_not_affiliated_or_controlled" xml:space="preserve">
-    <value>กระเป๋าเงินเหล่านี้ไม่ได้เป็นพันธมิตรหรือควบคุมโดย URnetwork เราจะส่งรายได้ไปยังกระเป๋าเงินที่เชื่อมต่อ</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
     <value>⚠️ นี่เป็นครั้งเดียวเท่านั้นที่คุณจะเห็นวลีนี้</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
@@ -3005,10 +2933,6 @@
   </data>
   <data name="title_login" xml:space="preserve">
     <value>เข้าสู่ระบบ</value>
-  </data>
-  <data name="to_start_earning_connect_your_solana_wallet_to" xml:space="preserve">
-    <value>เพื่อเริ่มรับรายได้ เชื่อมต่อกระเป๋าเงิน Solana ของคุณกับ URnetwork</value>
-    <comment>Used in Main/Account/Wallets/EmptyWallets/EmptyWalletsView.swift.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>คำค้นที่ใกล้เคียง</value>
@@ -3318,12 +3242,6 @@
   <data name="wallet_needs_network" xml:space="preserve">
     <value>กระเป๋าเงินนี้ยังไม่ได้เชื่อมโยงกับเครือข่ายใด เลือกชื่อเครือข่ายเพื่อสร้างใหม่</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
-  </data>
-  <data name="wallet_provider" xml:space="preserve">
-    <value>กระเป๋าเงิน {}</value>
-  </data>
-  <data name="wallet_provider_lower" xml:space="preserve">
-    <value>กระเป๋าเงิน {}</value>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>เข้าสู่ระบบด้วยกระเป๋าเงินไม่สำเร็จ</value>

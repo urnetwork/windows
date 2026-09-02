@@ -44,8 +44,10 @@ class WalletConnect {
   // Bittensor: no connect handshake — the bridge signs `message` with an
   // injected substrate wallet (or a WalletConnect pairing, when a project id is
   // configured) and returns the address and signature together on the
-  // urnetwork://bittensor-sign-message callback.
-  void SignMessageBittensor(const std::string& message);
+  // urnetwork://bittensor-sign-message callback. `purpose` is shown by the
+  // bridge and echoed back: empty for sign-in, "connect" when the signature
+  // attaches the coldkey to the provider (Earnings).
+  void SignMessageBittensor(const std::string& message, const std::string& purpose = std::string());
 
   // Route a urnetwork:// callback here. Returns true if it was a wallet callback.
   bool HandleDeepLink(const std::string& url);

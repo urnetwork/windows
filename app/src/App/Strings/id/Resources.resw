@@ -228,10 +228,6 @@
   <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
     <value>Yakin ingin menghapus {} sebagai metode masuk?</value>
   </data>
-  <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
-    <value>Apakah Anda yakin ingin menghapus dompet ini?</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="auth_code" xml:space="preserve">
     <value>Kode otentikasi</value>
     <comment>Call to action</comment>
@@ -620,10 +616,6 @@ cara yang benar</value>
     <value>Hubungkan URnetwork VPN</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="connect_wallet" xml:space="preserve">
-    <value>Hubungkan Dompet</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="connected" xml:space="preserve">
     <value>Terhubung</value>
     <comment>Used in Main/Connect/ConnectButton/StatusIndicator/ConnectStatusIndicator.swift.</comment>
@@ -824,10 +816,6 @@ cara yang benar</value>
     <value>Default</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
   </data>
-  <data name="default_txt" xml:space="preserve">
-    <value>DEFAULT</value>
-    <comment>Used in Shared/Views/PayoutWalletTag.swift.</comment>
-  </data>
   <data name="default_wallet" xml:space="preserve">
     <value>Default</value>
     <comment>Call to action</comment>
@@ -1016,10 +1004,6 @@ cara yang benar</value>
     <value>Masukkan kata sandi</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
-    <value>Masukkan alamat dompet Solana atau Bittensor</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>Masukkan alamat dompet USDC Solana</value>
   </data>
@@ -1039,10 +1023,6 @@ cara yang benar</value>
     <value>Masuk URnetwork</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
   </data>
-  <data name="enter_wallet_address" xml:space="preserve">
-    <value>Masukkan alamat dompet</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>Kesalahan saat mengubah nama jaringan</value>
     <comment>Error message displayed in a snackbar when there was an error changing the network name.</comment>
@@ -1058,10 +1038,6 @@ cara yang benar</value>
   <data name="error_connecting_wallet" xml:space="preserve">
     <value>Terjadi kesalahan saat menghubungkan dompet Anda.</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>Terjadi kesalahan saat menghubungkan dompet Anda: {}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>Terjadi kesalahan saat membuat jaringan Anda. Silakan coba lagi nanti.</value>
@@ -1090,14 +1066,6 @@ cara yang benar</value>
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>Terjadi kesalahan saat mengirim kode verifikasi.</value>
     <comment>Inline error on the verify page when resending the verification code fails. Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet" xml:space="preserve">
-    <value>Kesalahan saat mengatur dompet default</value>
-    <comment>Snackbar shown when setting the default payout wallet fails. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>Kesalahan saat mengatur dompet default: {}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>Terjadi kesalahan saat memperbarui nama perangkat.</value>
@@ -1649,10 +1617,6 @@ kami kirimkan untuk memverifikasi identitas Anda.</value>
     <value>poin bersih yang diperoleh</value>
     <comment>Call to action</comment>
   </data>
-  <data name="net_points_earned_2" xml:space="preserve">
-    <value>Poin bersih yang diperoleh</value>
-    <comment>Used in Shared/Views/AccountPointsBreakdown.swift.</comment>
-  </data>
   <data name="net_provided" xml:space="preserve">
     <value>Bersih Disediakan</value>
     <comment>Call to action</comment>
@@ -1729,10 +1693,6 @@ kami kirimkan untuk memverifikasi identitas Anda.</value>
     <value>Seseorang mengundang Anda untuk bergabung 🥳 
 Klaim bonus Anda dengan membuat jaringan!</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_earnings" xml:space="preserve">
-    <value>Penghasilan Jaringan</value>
-    <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
   <data name="network_name_changed_to_n" xml:space="preserve">
     <value>Nama jaringan diubah menjadi {}</value>
@@ -1918,10 +1878,6 @@ Klaim bonus Anda dengan membuat jaringan!</value>
     <value>Atau gunakan dompet</value>
     <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
   </data>
-  <data name="other" xml:space="preserve">
-    <value>Lainnya</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="participate" xml:space="preserve">
     <value>Berpartisipasi</value>
     <comment>Call to action</comment>
@@ -1963,21 +1919,9 @@ terbesar, teraman, dan paling terdesentralisasi di dunia.</value>
     <value>Bergabung dengan Stripe</value>
     <comment>Call to action</comment>
   </data>
-  <data name="payment_pending" xml:space="preserve">
-    <value>Pembayaran tertunda</value>
-    <comment>Used in Main/Account/PayoutItem/PayoutItemView.swift.</comment>
-  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>Masalah pembayaran</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
-  </data>
-  <data name="payout" xml:space="preserve">
-    <value>Pembayaran</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>Dompet pembayaran diperbarui</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="payout_wallets" xml:space="preserve">
     <value>Dompet Pembayaran</value>
@@ -2396,10 +2340,6 @@ terbesar, teraman, dan paling terdesentralisasi di dunia.</value>
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>Hapus metode masuk ini?</value>
   </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>Hapus dompet</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>Kirim ulang tautan</value>
     <comment>Reset link sent</comment>
@@ -2451,10 +2391,6 @@ terbesar, teraman, dan paling terdesentralisasi di dunia.</value>
   <data name="rules" xml:space="preserve">
     <value>Aturan</value>
     <comment>A heading for the pinned split rules.</comment>
-  </data>
-  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
-    <value>2x data gratis dan data referensi Anda</value>
-    <comment>A description of the benefits of using a Seeker Token.</comment>
   </data>
   <data name="save" xml:space="preserve">
     <value>Simpan</value>
@@ -2803,10 +2739,6 @@ konten dunia</value>
     <value>Masuk dengan Solana</value>
     <comment>Call to action</comment>
   </data>
-  <data name="solana_usdc_addresses_and_bittensor_tao" xml:space="preserve">
-    <value>Alamat USDC Solana dan alamat Bittensor (TAO) didukung. Dompet Bittensor disimpan untuk penggunaan mendatang dan belum bisa menerima pembayaran.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>Terjadi kesalahan.</value>
     <comment>Something went wrong error message</comment>
@@ -2983,10 +2915,6 @@ sebagaimana mestinya.</value>
     <value>Terjadi kesalahan saat memvalidasi kode autentikasi Anda. Silakan coba lagi atau buat kode baru.</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
-  <data name="these_wallets_are_not_affiliated_or_controlled" xml:space="preserve">
-    <value>Dompet-dompet ini tidak berafiliasi dengan atau dikendalikan oleh URnetwork. Kami akan mengirim pendapatan ke dompet yang terhubung.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
     <value>⚠️ Ini satu-satunya kesempatan Anda melihatnya.</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
@@ -3005,10 +2933,6 @@ sebagaimana mestinya.</value>
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Masuk</value>
-  </data>
-  <data name="to_start_earning_connect_your_solana_wallet_to" xml:space="preserve">
-    <value>Untuk mulai menghasilkan, hubungkan dompet Solana Anda ke URnetwork.</value>
-    <comment>Used in Main/Account/Wallets/EmptyWallets/EmptyWalletsView.swift.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>Kecocokan Teratas</value>
@@ -3318,12 +3242,6 @@ sebagaimana mestinya.</value>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>Dompet ini belum tertaut ke jaringan mana pun. Pilih nama jaringan untuk membuatnya.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
-  </data>
-  <data name="wallet_provider" xml:space="preserve">
-    <value>Dompet {}</value>
-  </data>
-  <data name="wallet_provider_lower" xml:space="preserve">
-    <value>dompet {}</value>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>Gagal masuk dengan dompet</value>

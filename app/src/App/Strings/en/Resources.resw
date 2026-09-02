@@ -111,6 +111,10 @@
     <value>Add Sign-In Method</value>
     <comment>Button text for adding a sign-in method.</comment>
   </data>
+  <data name="add_tao_for_gas" xml:space="preserve">
+    <value>Add TAO for gas</value>
+    <comment>State when the gas key has no TAO.</comment>
+  </data>
   <data name="add_wallet" xml:space="preserve">
     <value>Add wallet</value>
     <comment>Wallets Screen</comment>
@@ -282,10 +286,6 @@
   <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
     <value>Are you sure you want to remove {} as a sign-in method?</value>
   </data>
-  <data name="are_you_sure_you_want_to_remove_this_wallet" xml:space="preserve">
-    <value>Are you sure you want to remove this wallet?</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="asset_statements" xml:space="preserve">
     <value>[{ "include": "https://ur.io/.well-known/assetlinks.json" }]</value>
     <comment>Call to action</comment>
@@ -436,13 +436,13 @@
     <value>Best value</value>
     <comment>Gold pill on the recommended (annual) plan card.</comment>
   </data>
-  <data name="bittensor" xml:space="preserve">
-    <value>Bittensor</value>
-    <comment>Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
   <data name="bittensor_sign_in" xml:space="preserve">
     <value>Sign in with Bittensor</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="bittensor_wallet" xml:space="preserve">
+    <value>Bittensor wallet</value>
+    <comment>Label of the connected wallet block.</comment>
   </data>
   <data name="bittensor_wallet_future_use" xml:space="preserve">
     <value>Bittensor wallets are stored for future use and can't receive payouts yet.</value>
@@ -522,6 +522,10 @@ right way</value>
     <value>Cancel</value>
     <comment>Call to action</comment>
   </data>
+  <data name="chain_rpc_unreachable" xml:space="preserve">
+    <value>The chain RPC is unreachable. Try again.</value>
+    <comment>Error when the subnet RPC cannot be reached.</comment>
+  </data>
   <data name="chains_supported" xml:space="preserve">
     <value>Solana and Polygon wallets are currently supported</value>
     <comment>Wallet Screen</comment>
@@ -566,6 +570,10 @@ right way</value>
     <value>Checking for Solana Transactions</value>
     <comment>Call to action</comment>
   </data>
+  <data name="checking_wallet_address" xml:space="preserve">
+    <value>Checking address…</value>
+    <comment>Progress text while the address is validated.</comment>
+  </data>
   <data name="checkout_browser_launch_failed" xml:space="preserve">
     <value>We couldn't open your browser. Copy this link into a browser to finish checkout:</value>
     <comment>Upgrade sheet: the system browser could not be opened for the hosted checkout url. The app appends the url itself on the next line (selectable) so the user can copy it into a browser by hand — never advancing to the waiting page with no payment page open.</comment>
@@ -598,6 +606,30 @@ right way</value>
     <value>Claim</value>
     <comment>Call to action</comment>
   </data>
+  <data name="claim_across_epochs" xml:space="preserve">
+    <value>Across {} finalized epochs</value>
+    <comment>Subtitle of the claim dialog.</comment>
+  </data>
+  <data name="claim_alpha_title" xml:space="preserve">
+    <value>Claim SN25α</value>
+    <comment>Title of the claim dialog.</comment>
+  </data>
+  <data name="claim_amount_button" xml:space="preserve">
+    <value>Claim {}</value>
+    <comment>Claim button with the amount.</comment>
+  </data>
+  <data name="claim_confirmed" xml:space="preserve">
+    <value>Claimed</value>
+    <comment>Claim state: confirmed on chain.</comment>
+  </data>
+  <data name="claim_expired" xml:space="preserve">
+    <value>Expired</value>
+    <comment>Claim state: past the vault's expiry block.</comment>
+  </data>
+  <data name="claim_failed" xml:space="preserve">
+    <value>Failed</value>
+    <comment>Claim state: failed.</comment>
+  </data>
   <data name="claim_multiplier" xml:space="preserve">
     <value>Claim Multiplier</value>
     <comment>Call to action</comment>
@@ -605,6 +637,38 @@ right way</value>
   <data name="claim_network_name_hint" xml:space="preserve">
     <value>Claim a custom network name to replace your auto-generated one</value>
     <comment>A description of the benefits of claiming a custom network name.</comment>
+  </data>
+  <data name="claim_sending_linux" xml:space="preserve">
+    <value>Sending…</value>
+    <comment>Per-epoch status while the claim transaction is being sent.</comment>
+  </data>
+  <data name="claim_sends_from_device" xml:space="preserve">
+    <value>Your device sends the claim to the vault contract. Gas is paid in TAO from your gas key. Alpha lands on your coldkey.</value>
+    <comment>Explainer under the claim button.</comment>
+  </data>
+  <data name="claim_sent" xml:space="preserve">
+    <value>Sent</value>
+    <comment>Claim state: transaction sent.</comment>
+  </data>
+  <data name="claim_to_address_linux" xml:space="preserve">
+    <value>To {}</value>
+    <comment>Destination line on the claim dialog: the coldkey the alpha lands on.</comment>
+  </data>
+  <data name="claim_unavailable_linux" xml:space="preserve">
+    <value>Claiming is not available on this device yet.</value>
+    <comment>Shown when the device cannot send claims (no gas key on this host).</comment>
+  </data>
+  <data name="claim_your_spot" xml:space="preserve">
+    <value>Claim your spot</value>
+    <comment>Button on the Top 200 tile.</comment>
+  </data>
+  <data name="claims_for_epoch_expired" xml:space="preserve">
+    <value>Claims for epoch {} have expired.</value>
+    <comment>Error when an epoch can no longer be claimed.</comment>
+  </data>
+  <data name="claims_open_after_finalization" xml:space="preserve">
+    <value>Claims open 48 hours after an epoch is finalized and stay open for the vault's expiry window.</value>
+    <comment>Explainer in the claim dialog.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Client contracts</value>
@@ -682,6 +746,10 @@ right way</value>
     <value>Connect and open link</value>
     <comment>Call to action</comment>
   </data>
+  <data name="connect_bittensor_wallet" xml:space="preserve">
+    <value>Connect Bittensor wallet</value>
+    <comment>Button to connect a Bittensor coldkey.</comment>
+  </data>
   <data name="connect_external_wallet" xml:space="preserve">
     <value>Connect external wallet</value>
     <comment>Wallets Screen</comment>
@@ -710,9 +778,9 @@ right way</value>
     <value>Connect URnetwork VPN</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="connect_wallet" xml:space="preserve">
-    <value>Connect Wallet</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  <data name="connect_wallet_first" xml:space="preserve">
+    <value>Connect a Bittensor wallet first.</value>
+    <comment>Error when claiming without a wallet.</comment>
   </data>
   <data name="connected" xml:space="preserve">
     <value>Connected</value>
@@ -965,10 +1033,6 @@ right way</value>
   <data name="default_option" xml:space="preserve">
     <value>Default</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
-  </data>
-  <data name="default_txt" xml:space="preserve">
-    <value>DEFAULT</value>
-    <comment>Used in Shared/Views/PayoutWalletTag.swift.</comment>
   </data>
   <data name="default_wallet" xml:space="preserve">
     <value>Default</value>
@@ -1750,9 +1814,69 @@ right way</value>
     <value>Earnings</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="earnings_address_placeholder" xml:space="preserve">
+    <value>Enter a Bittensor address</value>
+    <comment>Placeholder of the manual Bittensor address field on the Earnings page.</comment>
+  </data>
+  <data name="earnings_change_wallet" xml:space="preserve">
+    <value>Change wallet</value>
+    <comment>Button on the Earnings page that starts connecting a different Bittensor wallet.</comment>
+  </data>
+  <data name="earnings_claim_sending" xml:space="preserve">
+    <value>Sending…</value>
+    <comment>Progress text while a claim transaction is being sent.</comment>
+  </data>
+  <data name="earnings_claims_need_session" xml:space="preserve">
+    <value>Claims load from the chain once the app has a session. Press Connect first.</value>
+    <comment>Shown in place of the unclaimed figure when the app has no device session to read the chain with.</comment>
+  </data>
+  <data name="earnings_copy_address" xml:space="preserve">
+    <value>Copy address</value>
+    <comment>Button that copies an address to the clipboard.</comment>
+  </data>
+  <data name="earnings_date_column" xml:space="preserve">
+    <value>Date</value>
+    <comment>Column header of the per-epoch history table: the date the epoch ended.</comment>
+  </data>
   <data name="earnings_doubled" xml:space="preserve">
     <value>You're earning x2 points</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="earnings_email_support" xml:space="preserve">
+    <value>Questions about earlier payouts? Email support@ur.io.</value>
+    <comment>Line about past payouts.</comment>
+  </data>
+  <data name="earnings_epoch_column" xml:space="preserve">
+    <value>Epoch</value>
+    <comment>Column header of the per-epoch history table.</comment>
+  </data>
+  <data name="earnings_gas_balance" xml:space="preserve">
+    <value>Gas balance</value>
+    <comment>Label of the gas key's TAO balance in the claim dialog.</comment>
+  </data>
+  <data name="earnings_network_pane_title" xml:space="preserve">
+    <value>Your network</value>
+    <comment>Title of the Earnings destination's third pane: own rank, multipliers and reliability.</comment>
+  </data>
+  <data name="earnings_points_column" xml:space="preserve">
+    <value>Points</value>
+    <comment>Column header of the per-epoch history table: points earned in the epoch.</comment>
+  </data>
+  <data name="earnings_share_column" xml:space="preserve">
+    <value>Share</value>
+    <comment>Column header of the per-epoch history table: the network's share of the block.</comment>
+  </data>
+  <data name="earnings_status_column" xml:space="preserve">
+    <value>Status</value>
+    <comment>Column header of the per-epoch history table: the claim status of the epoch's alpha.</comment>
+  </data>
+  <data name="earnings_view_transaction" xml:space="preserve">
+    <value>View transaction</value>
+    <comment>Link that opens a claim transaction in the block explorer.</comment>
+  </data>
+  <data name="earnings_wallet_mismatch" xml:space="preserve">
+    <value>The wallet that signed is not the address you entered.</value>
+    <comment>Error when the wallet that signed the connect challenge is not the address the user entered.</comment>
   </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>Edit device name</value>
@@ -1802,12 +1926,12 @@ right way</value>
     <value>Enter a password</value>
     <comment>Placeholder text for the password field in the add auth sheet.</comment>
   </data>
-  <data name="enter_a_solana_or_bittensor_wallet_address" xml:space="preserve">
-    <value>Enter a Solana or Bittensor wallet address</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
-  </data>
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>Enter a Solana USDC wallet address</value>
+  </data>
+  <data name="enter_address_manually" xml:space="preserve">
+    <value>Enter address manually</value>
+    <comment>Fallback link to paste an ss58 address.</comment>
   </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Enter balance code</value>
@@ -1825,9 +1949,33 @@ right way</value>
     <value>Enter URnetwork</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
   </data>
-  <data name="enter_wallet_address" xml:space="preserve">
-    <value>Enter wallet address</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  <data name="epoch_column_epoch_linux" xml:space="preserve">
+    <value>Epoch</value>
+    <comment>History table column: the epoch number.</comment>
+  </data>
+  <data name="epoch_column_points_linux" xml:space="preserve">
+    <value>Points</value>
+    <comment>History table column: points earned.</comment>
+  </data>
+  <data name="epoch_column_share_linux" xml:space="preserve">
+    <value>Share of block</value>
+    <comment>History table column: the network's share of the block.</comment>
+  </data>
+  <data name="epoch_column_status_linux" xml:space="preserve">
+    <value>Status</value>
+    <comment>History table column: the claim status of the epoch's alpha.</comment>
+  </data>
+  <data name="epoch_history" xml:space="preserve">
+    <value>History</value>
+    <comment>Label of the per-epoch history list.</comment>
+  </data>
+  <data name="epoch_row_title" xml:space="preserve">
+    <value>Epoch {}</value>
+    <comment>History row title.</comment>
+  </data>
+  <data name="epoch_share_of_block" xml:space="preserve">
+    <value>{} of block</value>
+    <comment>History row: the network's share of the block.</comment>
   </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>Error changing network name</value>
@@ -1844,10 +1992,6 @@ right way</value>
   <data name="error_connecting_wallet" xml:space="preserve">
     <value>There was an error connecting your wallet.</value>
     <comment>Snackbar shown when connecting a wallet fails. Used in Main/Account/Wallets/WalletsView.swift.</comment>
-  </data>
-  <data name="error_connecting_wallet_with_reason" xml:space="preserve">
-    <value>There was an error connecting your wallet: {}</value>
-    <comment>Snackbar shown when connecting a wallet fails, with the underlying error message. Used in Main/Account/Wallets/WalletsView.swift.</comment>
   </data>
   <data name="error_creating_network" xml:space="preserve">
     <value>There was an error creating your network. Please try again later.</value>
@@ -1876,14 +2020,6 @@ right way</value>
   <data name="error_sending_verification_code" xml:space="preserve">
     <value>There was an error sending the verification code.</value>
     <comment>Inline error on the verify page when resending the verification code fails. Matches the apple CreateNetworkVerifyView literal.</comment>
-  </data>
-  <data name="error_setting_default_wallet" xml:space="preserve">
-    <value>Error setting default wallet</value>
-    <comment>Snackbar shown when setting the default payout wallet fails. Used in Main/Account/Wallet/WalletView.swift.</comment>
-  </data>
-  <data name="error_setting_default_wallet_with_reason" xml:space="preserve">
-    <value>Error setting default wallet: {}</value>
-    <comment>Snackbar shown when setting the default payout wallet fails, with the underlying error message. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="error_updating_device_name" xml:space="preserve">
     <value>There was an error updating the device name.</value>
@@ -1968,6 +2104,10 @@ right way</value>
   <data name="friends_save_too" xml:space="preserve">
     <value>Your friends save too -- everyone wins.</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="gas_key" xml:space="preserve">
+    <value>Gas key</value>
+    <comment>Label of the gas key row.</comment>
   </data>
   <data name="general" xml:space="preserve">
     <value>General</value>
@@ -2132,9 +2272,21 @@ right way</value>
     <value>Insufficient funds</value>
     <comment>Circle Wallet Transfer Screen</comment>
   </data>
+  <data name="intro_control_manual_ios" xml:space="preserve">
+    <value>Open Control Center, tap +, then Add a Control, and pick URnetwork.</value>
+    <comment>How to add the quick connect control on iOS (no add-control API).</comment>
+  </data>
+  <data name="intro_control_manual_macos" xml:space="preserve">
+    <value>Open Control Center, choose Edit Controls, and add URnetwork.</value>
+    <comment>How to add the quick connect control on macOS.</comment>
+  </data>
   <data name="intro_quick_connect_details" xml:space="preserve">
     <value>Turn URnetwork on and off from Quick Settings, and keep an eye on it from your home screen.</value>
     <comment>Detail line of the last onboarding page.</comment>
+  </data>
+  <data name="intro_quick_connect_details_apple" xml:space="preserve">
+    <value>Turn URnetwork on and off from Control Center, and keep an eye on it from your Home Screen.</value>
+    <comment>Detail line of the last onboarding page on iOS/macOS (Control Center instead of Quick Settings).</comment>
   </data>
   <data name="intro_quick_connect_title" xml:space="preserve">
     <value>Connect in one tap</value>
@@ -2156,6 +2308,14 @@ right way</value>
     <value>Long-press your home screen, choose Widgets, and pick URnetwork.</value>
     <comment>Manual steps for adding widgets on launchers without the pin dialog.</comment>
   </data>
+  <data name="intro_widgets_manual_ios" xml:space="preserve">
+    <value>Long-press the Home Screen, tap +, search URnetwork, and add a widget.</value>
+    <comment>How to add a Home Screen widget on iOS (no pin-widget API).</comment>
+  </data>
+  <data name="intro_widgets_manual_macos" xml:space="preserve">
+    <value>Open the widget gallery from Notification Center, search URnetwork, and drag a widget to the desktop.</value>
+    <comment>How to add a desktop widget on macOS.</comment>
+  </data>
   <data name="intro_widgets_tap_to_add" xml:space="preserve">
     <value>Tap a widget to add it to your home screen.</value>
     <comment>Hint under the widget previews on the last onboarding page: tapping a preview asks the launcher to add that widget.</comment>
@@ -2171,6 +2331,10 @@ right way</value>
   <data name="invalid_referral_code_please_try_again" xml:space="preserve">
     <value>Invalid referral code. Please try again.</value>
     <comment>Used in Main/Account/Settings/UpdateReferralNetworkSheet/UpdateReferralNetworkSheetViewModel.swift.</comment>
+  </data>
+  <data name="invalid_ss58_address" xml:space="preserve">
+    <value>That is not a valid Bittensor address.</value>
+    <comment>Validation error for a coldkey address.</comment>
   </data>
   <data name="ip_address" xml:space="preserve">
     <value>IP address</value>
@@ -2267,6 +2431,10 @@ right way</value>
   <data name="leaderboard_description" xml:space="preserve">
     <value>The leaderboard is the sum of the last 4 payments. It is updated each payment cycle.</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="learn_at_ur_xyz" xml:space="preserve">
+    <value>Learn how it works at ur.xyz</value>
+    <comment>Link text under the protocol note.</comment>
   </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>Learn more about the multiplier</value>
@@ -2396,10 +2564,6 @@ sent you to verify your identity.</value>
   <data name="manage_subscription" xml:space="preserve">
     <value>Manage subscription</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="masked_value" xml:space="preserve">
-    <value>***{}</value>
-    <comment>Used in Authenticate/CreateNetwork/CreateNetworkView.swift.</comment>
   </data>
   <data name="max_n" xml:space="preserve">
     <value>max {}</value>
@@ -2533,10 +2697,6 @@ sent you to verify your identity.</value>
     <value>net points earned</value>
     <comment>Call to action</comment>
   </data>
-  <data name="net_points_earned_2" xml:space="preserve">
-    <value>Net points earned</value>
-    <comment>Used in Shared/Views/AccountPointsBreakdown.swift.</comment>
-  </data>
   <data name="net_provided" xml:space="preserve">
     <value>Net Provided</value>
     <comment>Call to action</comment>
@@ -2613,10 +2773,6 @@ sent you to verify your identity.</value>
     <value>Someone invited you to join 🥳 
 Claim your bonus by creating a network!</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="network_earnings" xml:space="preserve">
-    <value>Network earnings</value>
-    <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
   <data name="network_name_changed_to_n" xml:space="preserve">
     <value>Network name changed to {}</value>
@@ -2742,6 +2898,10 @@ Claim your bonus by creating a network!</value>
     <value>No blocked locations</value>
     <comment>Call to action</comment>
   </data>
+  <data name="no_claims_yet_linux" xml:space="preserve">
+    <value>Nothing to claim yet. Alpha accrues from the next finalized epoch.</value>
+    <comment>Empty state of the unclaimed tile once a wallet is connected.</comment>
+  </data>
   <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
     <value>No email, phone, or password needed. Your account is secured by a seedphrase.</value>
     <comment>A description of the benefits of creating an Instant Account.</comment>
@@ -2769,6 +2929,10 @@ Claim your bonus by creating a network!</value>
   <data name="no_payouts_found" xml:space="preserve">
     <value>No payouts found for this wallet</value>
     <comment>Wallet Screen</comment>
+  </data>
+  <data name="no_points_yet" xml:space="preserve">
+    <value>No epochs yet. Points appear after your first finalized epoch.</value>
+    <comment>Empty state of the points history.</comment>
   </data>
   <data name="no_previous_purchases_were_found" xml:space="preserve">
     <value>No previous purchases were found.</value>
@@ -2850,9 +3014,9 @@ Claim your bonus by creating a network!</value>
     <value>Or use a wallet</value>
     <comment>Separator label above the wallet sign-in buttons on the sign-in panel.</comment>
   </data>
-  <data name="other" xml:space="preserve">
-    <value>Other</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
+  <data name="paid_in_usdc_on_solana" xml:space="preserve">
+    <value>Paid in USDC on Solana.</value>
+    <comment>The one USDC mention: the Solana subscription payment note.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>Participate</value>
@@ -2907,10 +3071,6 @@ and most decentralized ingress and egress protocol.</value>
     <value>Your payment could not be completed.</value>
     <comment>Shown in the payment-problem dialog when the Stripe payment sheet reports a failure. The sheet's own error detail is appended by the caller.</comment>
   </data>
-  <data name="payment_pending" xml:space="preserve">
-    <value>Payment Pending</value>
-    <comment>Used in Main/Account/PayoutItem/PayoutItemView.swift.</comment>
-  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>Payment problem</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
@@ -2922,14 +3082,6 @@ and most decentralized ingress and egress protocol.</value>
   <data name="payment_received_title" xml:space="preserve">
     <value>Payment received</value>
     <comment>Title for the post-purchase overlay and the confirmation-timeout dialog. Deliberately claims only what is known -- the payment was received -- not that the plan is active yet.</comment>
-  </data>
-  <data name="payout" xml:space="preserve">
-    <value>Payout</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
-  <data name="payout_wallet_updated" xml:space="preserve">
-    <value>Payout wallet updated</value>
-    <comment>Snackbar shown after the payout wallet is changed. Used in Main/Account/Wallet/WalletView.swift.</comment>
   </data>
   <data name="payout_wallets" xml:space="preserve">
     <value>Payout Wallets</value>
@@ -2991,6 +3143,22 @@ and most decentralized ingress and egress protocol.</value>
     <value>Plan</value>
     <comment>Upgrade subscription overlay</comment>
   </data>
+  <data name="plan_monthly_price" xml:space="preserve">
+    <value>$5/month</value>
+    <comment>The monthly plan card's price on the Linux onboarding page.</comment>
+  </data>
+  <data name="plan_price_per_month" xml:space="preserve">
+    <value>{}/month</value>
+    <comment>Monthly plan card label: the store-formatted price per month.</comment>
+  </data>
+  <data name="plan_price_per_year" xml:space="preserve">
+    <value>{}/year</value>
+    <comment>Yearly plan card label: the store-formatted price per year.</comment>
+  </data>
+  <data name="plan_yearly_price" xml:space="preserve">
+    <value>$40/year</value>
+    <comment>The yearly plan card's price on the Linux onboarding page.</comment>
+  </data>
   <data name="please_install_phantom_or_solflare_to_use_this" xml:space="preserve">
     <value>Please install Phantom or Solflare to use this feature</value>
     <comment>Used in Shared/Views/SolanaSignMessageSheet.swift.</comment>
@@ -3044,6 +3212,14 @@ and most decentralized ingress and egress protocol.</value>
   <data name="points_breakdown" xml:space="preserve">
     <value>Points breakdown</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="points_earned" xml:space="preserve">
+    <value>Points earned</value>
+    <comment>Headline label of the earnings screen.</comment>
+  </data>
+  <data name="points_short" xml:space="preserve">
+    <value>{} pts</value>
+    <comment>Points count with unit for history rows.</comment>
   </data>
   <data name="polygon" xml:space="preserve">
     <value>Polygon</value>
@@ -3530,10 +3706,6 @@ and most decentralized ingress and egress protocol.</value>
   <data name="remove_this_sign_in_method" xml:space="preserve">
     <value>Remove this sign-in method?</value>
   </data>
-  <data name="remove_wallet" xml:space="preserve">
-    <value>Remove wallet</value>
-    <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
-  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>Resend link</value>
     <comment>Reset link sent</comment>
@@ -3602,13 +3774,13 @@ and most decentralized ingress and egress protocol.</value>
     <value>Rules</value>
     <comment>A heading for the pinned split rules.</comment>
   </data>
-  <data name="s_2x_your_free_and_referral_data" xml:space="preserve">
-    <value>2x your free and referral data</value>
-    <comment>A description of the benefits of using a Seeker Token.</comment>
-  </data>
   <data name="save" xml:space="preserve">
     <value>Save</value>
     <comment>Profile</comment>
+  </data>
+  <data name="save_33_percent" xml:space="preserve">
+    <value>Save 33%</value>
+    <comment>Line under the yearly plan's price: the saving against paying monthly.</comment>
   </data>
   <data name="save_logs" xml:space="preserve">
     <value>Save logs</value>
@@ -3651,6 +3823,10 @@ world's content</value>
     <value>Seedphrase</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seeker_points_only" xml:space="preserve">
+    <value>The Seeker multiplier applies to points only.</value>
+    <comment>Note on the Seeker verification action.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker Token Verified!</value>
     <comment>Call to action</comment>
@@ -3690,6 +3866,10 @@ world's content</value>
   <data name="send_reset_link_2" xml:space="preserve">
     <value>Send reset link</value>
     <comment>Used in Authenticate/ResetPassword/ResetPasswordView.swift.</comment>
+  </data>
+  <data name="send_tao_to_mirror" xml:space="preserve">
+    <value>Send about {0} TAO to {1} to cover gas.</value>
+    <comment>Instruction to fund the gas key.</comment>
   </data>
   <data name="send_us_your_feedback_directly_or_join_our" xml:space="preserve">
     <value>Send us your feedback directly or [join our Discord](https://discord.com/invite/RUNZXMwPRK) for direct support.</value>
@@ -3901,6 +4081,22 @@ world's content</value>
     <value>Cities</value>
     <comment>App connect location picker: cities section</comment>
   </data>
+  <data name="site_app_claim_no_evm_wallet" xml:space="preserve">
+    <value>No browser wallet was found. Install an EVM wallet extension such as MetaMask and connect the key that pays gas, or claim from the URnetwork app on your device.</value>
+    <comment>App claim: no injected EVM wallet</comment>
+  </data>
+  <data name="site_app_claim_nothing" xml:space="preserve">
+    <value>Nothing to claim yet.</value>
+    <comment>App claim: empty state</comment>
+  </data>
+  <data name="site_app_claim_opens_soon" xml:space="preserve">
+    <value>Opens soon</value>
+    <comment>App claim: epoch status when the claim window has not opened</comment>
+  </data>
+  <data name="site_app_claimable" xml:space="preserve">
+    <value>Claimable</value>
+    <comment>App claim: epoch status</comment>
+  </data>
   <data name="site_app_clients" xml:space="preserve">
     <value>Clients</value>
     <comment>Reliability: clients series</comment>
@@ -3936,6 +4132,10 @@ world's content</value>
   <data name="site_app_connections" xml:space="preserve">
     <value>Connections</value>
     <comment>App settings: connections section</comment>
+  </data>
+  <data name="site_app_continue_anyway" xml:space="preserve">
+    <value>Continue anyway</value>
+    <comment>App earnings: proceed after the new-wallet warning</comment>
   </data>
   <data name="site_app_contracts" xml:space="preserve">
     <value>Contracts</value>
@@ -4037,6 +4237,14 @@ world's content</value>
     <value>Reset to recommended</value>
     <comment>App connect DNS: reset to default</comment>
   </data>
+  <data name="site_app_earn_multiplier" xml:space="preserve">
+    <value>Multiplier</value>
+    <comment>App earnings: points breakdown row</comment>
+  </data>
+  <data name="site_app_earn_reliability" xml:space="preserve">
+    <value>Reliability</value>
+    <comment>App earnings: points breakdown row</comment>
+  </data>
   <data name="site_app_earnings" xml:space="preserve">
     <value>Network earnings</value>
     <comment>App account: network earnings card</comment>
@@ -4048,6 +4256,10 @@ world's content</value>
   <data name="site_app_enter_referral" xml:space="preserve">
     <value>Enter referral code</value>
     <comment>App settings: referral code input placeholder</comment>
+  </data>
+  <data name="site_app_epoch_finalizing" xml:space="preserve">
+    <value>Finalizing</value>
+    <comment>App claim: epoch status before finalization</comment>
   </data>
   <data name="site_app_ext_needed" xml:space="preserve">
     <value>The URnetwork browser extension is not available in this browser</value>
@@ -4209,6 +4421,10 @@ world's content</value>
     <value>Plan</value>
     <comment>Connect drawer: plan section label</comment>
   </data>
+  <data name="site_app_points_col" xml:space="preserve">
+    <value>Points</value>
+    <comment>App earnings: history column header</comment>
+  </data>
   <data name="site_app_private_network" xml:space="preserve">
     <value>Private network</value>
     <comment>App leaderboard: hidden network row label</comment>
@@ -4281,6 +4497,10 @@ world's content</value>
     <value>Save</value>
     <comment>App: save button</comment>
   </data>
+  <data name="site_app_sdk_not_ready" xml:space="preserve">
+    <value>Claim data is not available in this version of the web app. Reload and try again.</value>
+    <comment>App earnings/claim: the loaded wasm SDK predates the subnet exports</comment>
+  </data>
   <data name="site_app_send" xml:space="preserve">
     <value>Send</value>
     <comment>App support: send button</comment>
@@ -4296,6 +4516,10 @@ world's content</value>
   <data name="site_app_shuffle" xml:space="preserve">
     <value>Shuffle</value>
     <comment>App connect screen: shuffle providers button</comment>
+  </data>
+  <data name="site_app_sign_and_connect" xml:space="preserve">
+    <value>Sign and connect</value>
+    <comment>App earnings: manual address entry button (the wallet still signs the challenge)</comment>
   </data>
   <data name="site_app_stay_in_touch" xml:space="preserve">
     <value>Stay in touch</value>
@@ -4313,6 +4537,82 @@ world's content</value>
     <value>Transfer</value>
     <comment>Connect drawer: live transfer timeseries section</comment>
   </data>
+  <data name="site_app_top200_add_signature" xml:space="preserve">
+    <value>Add device</value>
+    <comment>App top200: post a device's binding payload</comment>
+  </data>
+  <data name="site_app_top200_apply_hotkey_sig" xml:space="preserve">
+    <value>Apply hotkey signature</value>
+    <comment>App top200: re-check every device with the hotkey signature</comment>
+  </data>
+  <data name="site_app_top200_bad_signature" xml:space="preserve">
+    <value>Paste the binding payload exactly as the app shows it.</value>
+    <comment>App top200: unparseable paste</comment>
+  </data>
+  <data name="site_app_top200_binding_incomplete" xml:space="preserve">
+    <value>Calldata appears once the device signature and the hotkey signature both verify.</value>
+    <comment>App top200: binding not complete</comment>
+  </data>
+  <data name="site_app_top200_calldata" xml:space="preserve">
+    <value>Binding calldata</value>
+    <comment>App top200: calldata label</comment>
+  </data>
+  <data name="site_app_top200_device" xml:space="preserve">
+    <value>Device</value>
+    <comment>App top200: device row label</comment>
+  </data>
+  <data name="site_app_top200_device_signature" xml:space="preserve">
+    <value>Device signature</value>
+    <comment>App top200: signature textarea label</comment>
+  </data>
+  <data name="site_app_top200_digest" xml:space="preserve">
+    <value>Digest</value>
+    <comment>App top200: binding digest label</comment>
+  </data>
+  <data name="site_app_top200_hotkey" xml:space="preserve">
+    <value>Hotkey</value>
+    <comment>App top200: hotkey input label</comment>
+  </data>
+  <data name="site_app_top200_hotkey_sign_hint" xml:space="preserve">
+    <value>Sign each binding digest with the hotkey using your own tooling (snclaim bind-head) and paste the signature here.</value>
+    <comment>App top200: how to produce the hotkey signature</comment>
+  </data>
+  <data name="site_app_top200_hotkey_signature" xml:space="preserve">
+    <value>Hotkey signature (hex)</value>
+    <comment>App top200: hotkey signature input</comment>
+  </data>
+  <data name="site_app_top200_intro" xml:space="preserve">
+    <value>Head miners are the top {cutoff} networks by routable egress IP breadth. A head spot is paid natively by the subnet every tempo, straight to your coldkey.</value>
+    <comment>App top200: intro</comment>
+  </data>
+  <data name="site_app_top200_not_eligible" xml:space="preserve">
+    <value>Not eligible yet. Your score is {score} and the eviction floor is {floor}.</value>
+    <comment>App top200: status when not eligible</comment>
+  </data>
+  <data name="site_app_top200_signatures_added" xml:space="preserve">
+    <value>{count} devices added</value>
+    <comment>App top200: progress</comment>
+  </data>
+  <data name="site_app_top200_step_bind" xml:space="preserve">
+    <value>Each provider device signs its fleet binding from its app under Account › Top 200. Paste each device's binding payload here, one device at a time.</value>
+    <comment>App top200: step 2</comment>
+  </data>
+  <data name="site_app_top200_step_register" xml:space="preserve">
+    <value>Register a hotkey on subnet {netuid} with btcli, then enter it below.</value>
+    <comment>App top200: step 1</comment>
+  </data>
+  <data name="site_app_top200_step_submit" xml:space="preserve">
+    <value>Submit the binding from your own EVM wallet. URnetwork never sends transactions for you.</value>
+    <comment>App top200: step 3</comment>
+  </data>
+  <data name="site_app_top200_submit" xml:space="preserve">
+    <value>Submit binding</value>
+    <comment>App top200: send the binding tx from the injected wallet</comment>
+  </data>
+  <data name="site_app_top200_unavailable" xml:space="preserve">
+    <value>Head spot status is not available right now.</value>
+    <comment>App top200: GET /sn/head unavailable</comment>
+  </data>
   <data name="site_app_total_referrals" xml:space="preserve">
     <value>Total referrals</value>
     <comment>App account: total referrals label</comment>
@@ -4329,6 +4629,10 @@ world's content</value>
     <value>Verified</value>
     <comment>App profile: verified badge</comment>
   </data>
+  <data name="site_app_view_transaction" xml:space="preserve">
+    <value>View transaction</value>
+    <comment>App claim/top200: explorer link</comment>
+  </data>
   <data name="site_app_wallet" xml:space="preserve">
     <value>Wallet</value>
     <comment>App wallets: wallet label</comment>
@@ -4336,6 +4640,14 @@ world's content</value>
   <data name="site_app_wallet_address" xml:space="preserve">
     <value>Wallet address</value>
     <comment>App wallets: wallet address input</comment>
+  </data>
+  <data name="site_app_wallet_connected" xml:space="preserve">
+    <value>Connected</value>
+    <comment>App earnings: badge next to the connected Bittensor coldkey</comment>
+  </data>
+  <data name="site_app_wallet_mismatch" xml:space="preserve">
+    <value>Sign with the wallet that holds this address.</value>
+    <comment>App earnings: the bridge signed with a different account than the typed address</comment>
   </data>
   <data name="site_app_wallets" xml:space="preserve">
     <value>Wallets</value>
@@ -4641,6 +4953,26 @@ world's content</value>
     <value>Skip</value>
     <comment>Small muted button at the top of the post-login onboarding flow that leaves the whole flow.</comment>
   </data>
+  <data name="sn_alpha_symbol" xml:space="preserve">
+    <value>SN25α</value>
+    <comment>The subnet alpha token symbol.</comment>
+  </data>
+  <data name="sn_protocol_note" xml:space="preserve">
+    <value>SN25α are your earnings on the UR protocol. The UR protocol is an open source protocol from URnetwork. Connect a Bittensor wallet to settle them as SN25α through the UR protocol.</value>
+    <comment>Note on the earnings screen explaining alpha and the wallet.</comment>
+  </data>
+  <data name="sn_status_claimable" xml:space="preserve">
+    <value>Claimable</value>
+    <comment>Claim status of an epoch whose alpha can be claimed now.</comment>
+  </data>
+  <data name="sn_status_not_finalized" xml:space="preserve">
+    <value>Not finalized</value>
+    <comment>Claim status of an epoch the vault has not finalized yet.</comment>
+  </data>
+  <data name="sn_status_open" xml:space="preserve">
+    <value>Open</value>
+    <comment>Claim status of an epoch that is still open (not yet finalized on chain).</comment>
+  </data>
   <data name="solana" xml:space="preserve">
     <value>Solana</value>
     <comment>Blockchain name. A product name: never translated.</comment>
@@ -4656,10 +4988,6 @@ world's content</value>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Sign in with Solana</value>
     <comment>Call to action</comment>
-  </data>
-  <data name="solana_usdc_addresses_and_bittensor_tao" xml:space="preserve">
-    <value>Solana USDC addresses and Bittensor (TAO) addresses are supported. Bittensor wallets are stored for future use and can't receive payouts yet.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
   </data>
   <data name="solflare" xml:space="preserve">
     <value>Solflare</value>
@@ -4785,6 +5113,10 @@ as it should be.</value>
     <value>Strong Anonymization</value>
     <comment>Connect drawer: strong anonymization toggle — the inverse of allow direct (direct connections expose the real source IP to the provider).</comment>
   </data>
+  <data name="subscribe" xml:space="preserve">
+    <value>Subscribe</value>
+    <comment>Button on the plan picker for the monthly plan, which has no free trial.</comment>
+  </data>
   <data name="subscription_purchased_under_different_account" xml:space="preserve">
     <value>Your subscription was purchased under a different account. Log in to that account to use it.</value>
     <comment>The store purchase belongs to a different network than the one logged in — crediting must not go to the wrong account, so tell the user which way out exists. Apple: restore-purchases outcome (Shared/ViewModels/AppStoreSubscriptionManager.swift). Android: terminal `wrong_network` answer from the Play purchase report (google/PlanViewModel.kt); the purchase is still acknowledged so Play does not auto-refund it.</comment>
@@ -4857,6 +5189,10 @@ as it should be.</value>
     <value>System</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
   </data>
+  <data name="tao_amount_linux" xml:space="preserve">
+    <value>{} TAO</value>
+    <comment>A TAO amount with its unit (the gas key balance).</comment>
+  </data>
   <data name="tap_to_connect" xml:space="preserve">
     <value>Tap to connect</value>
     <comment>Connect</comment>
@@ -4893,10 +5229,6 @@ as it should be.</value>
     <value>There was an error validating your auth code. Please try again or generate a new one</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
-  <data name="these_wallets_are_not_affiliated_or_controlled" xml:space="preserve">
-    <value>These wallets are not affiliated or controlled by URnetwork. We will send earnings into the connected wallet.</value>
-    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
-  </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
     <value>⚠️ This is the ONLY time you'll see this.</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
@@ -4920,9 +5252,29 @@ as it should be.</value>
   <data name="title_login" xml:space="preserve">
     <value>Login</value>
   </data>
-  <data name="to_start_earning_connect_your_solana_wallet_to" xml:space="preserve">
-    <value>To start earning, connect your Solana wallet to URnetwork.</value>
-    <comment>Used in Main/Account/Wallets/EmptyWallets/EmptyWalletsView.swift.</comment>
+  <data name="top200" xml:space="preserve">
+    <value>Top 200</value>
+    <comment>Badge text for the head mining spot.</comment>
+  </data>
+  <data name="top200_bound_detail" xml:space="preserve">
+    <value>Emission is paid to your coldkey directly. Bindings renew per epoch.</value>
+    <comment>Detail under the bound status.</comment>
+  </data>
+  <data name="top200_bound_status" xml:space="preserve">
+    <value>UID {0} · rank #{1}</value>
+    <comment>Status row once bound.</comment>
+  </data>
+  <data name="top200_demotion_warning" xml:space="preserve">
+    <value>Your score is close to the eviction floor. Add routable IPs to keep the spot.</value>
+    <comment>Warning when the score nears the floor.</comment>
+  </data>
+  <data name="top200_detail" xml:space="preserve">
+    <value>Your network's routable IP breadth ranks about #{0} of {1} head spots. Head miners earn SN25α natively, every tempo.</value>
+    <comment>Detail of the Top 200 tile when eligible.</comment>
+  </data>
+  <data name="top200_you_qualify" xml:space="preserve">
+    <value>You qualify</value>
+    <comment>Headline of the Top 200 tile when eligible.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>Top Matches</value>
@@ -5072,6 +5424,10 @@ as it should be.</value>
     <value>Could not start the connection</value>
     <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
+  <data name="unclaimed" xml:space="preserve">
+    <value>Unclaimed</value>
+    <comment>Label of the unclaimed alpha tile.</comment>
+  </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>Unencrypted DNS</value>
     <comment>A label displayed in the custom dns settings section.</comment>
@@ -5176,10 +5532,6 @@ as it should be.</value>
     <value>URnetwork VPN started</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
-  <data name="usdc" xml:space="preserve">
-    <value>USDC</value>
-    <comment>Used in Main/Account/AccountRootView.swift.</comment>
-  </data>
   <data name="usdc_addresses_on_solana_are_currently_supported" xml:space="preserve">
     <value>USDC addresses on Solana are currently supported</value>
   </data>
@@ -5266,6 +5618,10 @@ as it should be.</value>
     <value>Verification code</value>
     <comment>Label for the verification code input field</comment>
   </data>
+  <data name="verify_seeker" xml:space="preserve">
+    <value>Verify Seeker</value>
+    <comment>Standalone Seeker verification action (points multiplier only).</comment>
+  </data>
   <data name="verify_seeker_token_btn" xml:space="preserve">
     <value>Verify Seeker Pre-Order Token</value>
     <comment>Call to action</comment>
@@ -5310,23 +5666,37 @@ as it should be.</value>
     <value>Copy and paste here</value>
     <comment>Wallets Screen</comment>
   </data>
+  <data name="wallet_blocked" xml:space="preserve">
+    <value>This wallet can't be used with URnetwork.</value>
+    <comment>Error when a wallet address is on the operator's ban list; the user cannot continue.</comment>
+  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>Failed to connect the wallet.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
+  </data>
+  <data name="wallet_connect_signed_note_linux" xml:space="preserve">
+    <value>Your wallet signs a message to prove it is yours. Nothing is sent on chain.</value>
+    <comment>Note under the manual address entry: the wallet only signs a proof of ownership.</comment>
   </data>
   <data name="wallet_connected" xml:space="preserve">
     <value>Wallet connected.</value>
     <comment>Confirmation shown after an external wallet is connected to the account.</comment>
   </data>
+  <data name="wallet_connected_to_protocol" xml:space="preserve">
+    <value>Connected to the UR protocol. Claims land here. Alpha accrues from the next epoch after connecting.</value>
+    <comment>Line under the connected coldkey.</comment>
+  </data>
+  <data name="wallet_looks_new_warning" xml:space="preserve">
+    <value>This address has no activity on the Bittensor chain yet. It looks like a new wallet. Make sure it is yours before continuing.</value>
+    <comment>Warning when a wallet address has no activity on the Bittensor chain yet; the user may continue.</comment>
+  </data>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>This wallet isn't linked to a network yet. Pick a network name to create one.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
   </data>
-  <data name="wallet_provider" xml:space="preserve">
-    <value>{} Wallet</value>
-  </data>
-  <data name="wallet_provider_lower" xml:space="preserve">
-    <value>{} wallet</value>
+  <data name="wallet_not_retroactive" xml:space="preserve">
+    <value>Connect a wallet to earn SN25α from the next epoch. Earlier epochs are not settled retroactively.</value>
+    <comment>Line on the wallet block before a wallet is connected.</comment>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>Wallet sign-in failed</value>
@@ -5335,6 +5705,10 @@ as it should be.</value>
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>Wallet sign-in method added</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
+  <data name="wallet_signature_mismatch_linux" xml:space="preserve">
+    <value>The wallet that signed is not the address you entered.</value>
+    <comment>Error when the bridge signed with a different wallet than the address the user typed.</comment>
   </data>
   <data name="wallets" xml:space="preserve">
     <value>Wallets</value>
