@@ -366,6 +366,13 @@ bool LoginPage::IsGuestUpgrade() const {
   return createMode_ == CreateMode::GuestUpgrade;
 }
 
+bool LoginPage::ConsumeNewNetwork() {
+  const bool pending = newNetworkPending_;
+  newNetworkPending_ = false;
+  verifyIsNewNetwork_ = false;
+  return pending;
+}
+
 void LoginPage::ClearGuestUpgrade() { createMode_ = CreateMode::Password; }
 
 void LoginPage::BeginGuestUpgrade() {
@@ -799,17 +806,23 @@ void LoginPage::OnCreateNetwork(IInspectable const&, RoutedEventArgs const&) {
 
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
-  auto done = [queue, weak](urnw::AuthResult r) {
-    queue.TryEnqueue([weak, r] {
+  // a guest upgrade keeps the network it already has; every other create is a
+  // new network, and a new network gets the onboarding flow
+  const bool newNetwork = createMode_ != CreateMode::GuestUpgrade;
+  auto done = [queue, weak, newNetwork](urnw::AuthResult r) {
+    queue.TryEnqueue([weak, r, newNetwork] {
       auto self = weak.get();
       if (!self) return;
       auto& page = self->login();
       page.creatingNetwork_ = false;
       page.ValidateCreateForm();
       if (r.verification_required) {
+        page.verifyIsNewNetwork_ = newNetwork;
         page.EnterVerifyStep(page.loginUserAuth_);
       } else if (!r.ok && !r.error.empty()) {
         page.ShowLoginErrorFor(LoginStep::Create, H(r.error));
+      } else if (r.ok) {
+        page.newNetworkPending_ = newNetwork;
       }
       // success: the auth state relay swaps the panel for the home view
     });
@@ -887,6 +900,9 @@ void LoginPage::SubmitVerifyCode() {
         // clear the entered code so retyping can resubmit (macOS parity)
         self->VerifyCodeBox().Text(L"");
         page.ShowLoginErrorFor(LoginStep::Verify, Loc("verify_input_invalid"));
+      } else if (page.verifyIsNewNetwork_) {
+        page.verifyIsNewNetwork_ = false;
+        page.newNetworkPending_ = true;
       }
       // success: the auth state relay swaps the panel for the home view
     });
@@ -1315,10 +1331,12 @@ winrt::fire_and_forget LoginPage::ShowSeedphraseSheet(std::string seedphrase) {
                                           InfoBarSeverity::Success);
           }
         },
-        [confirmed] {
+        [confirmed, weak] {
           *confirmed = true;
           // Only now does a session exist. The auth-state relay swaps the
-          // panel for the home view when registration lands.
+          // panel for the home view when registration lands, and the instant
+          // network is new: it gets the onboarding flow.
+          if (auto self = weak.get()) self->login().newNetworkPending_ = true;
           Sdk().ConfirmInstantAccount([](urnw::AuthResult) {});
         });
     co_await seedphraseSheet_->Dialog().ShowAsync();

@@ -1232,8 +1232,18 @@
                                     <Button x:Name="ProviderCountLine" MinHeight="34"
                                             Style="{StaticResource UrPaneRowButtonStyle}"
                                             Click="OnProviderCountClick">
-                                        <TextBlock x:Name="ProviderCountText"
-                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                        <!-- the caret says the line opens the provider
+                                             details, as on iOS -->
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock x:Name="ProviderCountText"
+                                                       Style="{StaticResource UrKeyTextStyle}"
+                                                       VerticalAlignment="Center" />
+                                            <FontIcon Glyph="&#xE76C;" FontSize="12"
+                                                      FontFamily="{StaticResource UrIconFontFamily}"
+                                                      Foreground="{StaticResource UrTextMutedBrush}"
+                                                      VerticalAlignment="Center"
+                                                      AutomationProperties.AccessibilityView="Raw" />
+                                        </StackPanel>
                                     </Button>
                                 </StackPanel>
                                 <!-- the key/value rows are built into this host by
@@ -2495,6 +2505,11 @@
                 <FontIcon Glyph="&#xE711;" FontSize="14" />
             </Button>
         </Grid>
+
+        <!-- the post-sign-up onboarding flow (Onboarding.cpp builds its four
+             pages into this grid; shown once, right after a network is created) -->
+        <Grid x:Name="OnboardingOverlay" Grid.Row="1" Grid.RowSpan="3"
+              Visibility="Collapsed" Background="{StaticResource UrBackgroundBrush}" />
 
         <!-- the referral gold toast: a friend joined with your code, for
              referrals after the first (kit::Snackbar on the gold style) -->

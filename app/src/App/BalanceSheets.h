@@ -94,6 +94,12 @@ class RedeemCodeSheet : public std::enable_shared_from_this<RedeemCodeSheet> {
 //     path never hard-fails for want of a webview.
 class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
  public:
+  // The sheet with the checkout already started for `yearly` (the onboarding
+  // page picked the plan; the sheet's own products page would only ask again).
+  static std::shared_ptr<UpgradeSheet> CreateForCheckout(
+      winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
+      SubscriptionBalanceStore& balance, bool yearly);
+
   static std::shared_ptr<UpgradeSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
       SubscriptionBalanceStore& balance);

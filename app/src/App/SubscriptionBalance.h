@@ -50,6 +50,29 @@ struct BalancePollState {
   bool timedOut = false;
 };
 
+// The referral program's numbers. The server's pro.yml is the single source of
+// truth and GET /account/referral-code carries them with the code
+// (max_referrals, bonus_per_referral_bytes, referred_bonus_bytes,
+// bonus_period_seconds), so every app prints the same cap and bonus. The
+// defaults only cover the moment before the first fetch and a server that
+// reports no terms.
+struct ReferralTerms {
+  int64_t maxReferrals = 20;
+  int64_t bonusGibPerDay = 3;
+  int64_t referredBonusGibPerDay = 3;
+
+  // how many of the network's referrals it is paid for
+  int64_t PaidReferrals(int64_t totalReferrals) const {
+    if (totalReferrals <= 0) return 0;
+    if (0 < maxReferrals && maxReferrals < totalReferrals) return maxReferrals;
+    return totalReferrals;
+  }
+  // the GiB/day the network earns from its referrals
+  int64_t EarnedGibPerDay(int64_t totalReferrals) const {
+    return PaidReferrals(totalReferrals) * bonusGibPerDay;
+  }
+};
+
 // A batch of newly observed referrals for the local network. `isFirst` marks
 // the crowning: the count went from zero to earned, which gets the full-screen
 // celebration; later batches get the gold toast.
@@ -120,6 +143,8 @@ class SubscriptionBalanceStore {
   }
   std::optional<std::string> ReferralCode() const { return referralCode_; }
   int64_t TotalReferrals() const { return totalReferrals_; }
+  // the cap and bonus, from the server with the code (defaults until then)
+  urnw::ReferralTerms ReferralTerms() const { return terms_; }
 
  private:
   void Fetch();
@@ -151,6 +176,7 @@ class SubscriptionBalanceStore {
   ReferralCelebrationHandler onReferralCelebration_;
   std::optional<std::string> referralCode_;
   int64_t totalReferrals_ = 0;
+  urnw::ReferralTerms terms_;
   bool referralLoading_ = false;
   BalanceSnapshot snapshot_;
   bool started_ = false;

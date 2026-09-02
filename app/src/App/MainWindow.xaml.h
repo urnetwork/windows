@@ -18,6 +18,7 @@
 #include "DeveloperPage.h"
 #include "LocationSheets.h"
 #include "LoginPage.h"
+#include "Onboarding.h"
 #include "Protocol.h"
 #include "SdkHost.h"
 #include "ServiceSetup.h"
@@ -302,6 +303,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // ---- referral crowning overlay ----
   void ShowReferralCelebration(urnw::ReferralCelebration const& celebration);
   void HideReferralCelebration();
+
+  // the post-sign-up onboarding flow, over the home view
+  void ShowOnboarding();
+  void HideOnboarding();
+  winrt::fire_and_forget ShowUpgradeCheckout(bool yearly);
   // every label in the window: the window's own chrome and nav, then each page's
   void ApplyStrings();
   // The selected destination's API loads. Called by the navigation relay AND by
@@ -346,6 +352,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   bool referralCelebrationWired_ = false;
   winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard referralAuraStoryboard_{nullptr};
   std::unique_ptr<urnw::kit::Snackbar> referralSnackbar_;
+  std::shared_ptr<urnw::Onboarding> onboarding_;
 
   // ---- balance / plan (SubscriptionBalanceStore relay) ----
   void UpdateBalanceWarning();  // insufficient-balance InfoBar gating

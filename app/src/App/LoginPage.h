@@ -70,6 +70,11 @@ class LoginPage {
   void ShowErrorOnCurrentStep(winrt::hstring const& message);
   bool IsGuestUpgrade() const;
   void ClearGuestUpgrade();
+
+  // True once, right after this sign-in created a network (sign-up, its
+  // verification step, or an instant account): the window shows the
+  // onboarding flow for it. An existing account signing in never sets it.
+  bool ConsumeNewNetwork();
   // The plan card's create-account affordance for a guest: the create step in
   // guest-upgrade mode, shown over the login flow while the session stays live.
   void BeginGuestUpgrade();
@@ -199,6 +204,8 @@ class LoginPage {
   CreateMode createMode_ = CreateMode::Password;  // what the create step submits
   bool creatingNetwork_ = false;
   bool verifying_ = false;
+  bool newNetworkPending_ = false;  // see ConsumeNewNetwork
+  bool verifyIsNewNetwork_ = false;  // the verify step follows a sign-up
   bool sendingReset_ = false;
   // create-network name availability (debounced; the generation drops stale checks)
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer nameCheckTimer_{nullptr};

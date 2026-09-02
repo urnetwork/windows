@@ -419,6 +419,16 @@ std::shared_ptr<UpgradeSheet> UpgradeSheet::Create(XamlRoot const& root, SdkHost
   return sheet;
 }
 
+std::shared_ptr<UpgradeSheet> UpgradeSheet::CreateForCheckout(XamlRoot const& root, SdkHost& sdk,
+                                                              SubscriptionBalanceStore& balance,
+                                                              bool yearly) {
+  auto sheet = Create(root, sdk, balance);
+  sheet->yearlySelected_ = yearly;
+  sheet->ApplySelection();
+  sheet->BeginCheckout();
+  return sheet;
+}
+
 Border UpgradeSheet::BuildProductCard(bool yearly) {
   Border card;
   card.CornerRadius(CornerRadius{8, 8, 8, 8});

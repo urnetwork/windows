@@ -432,6 +432,10 @@
     <value>Best matches</value>
     <comment>Label for a list or section showing the best matching results.</comment>
   </data>
+  <data name="best_value" xml:space="preserve">
+    <value>Best value</value>
+    <comment>Gold pill on the recommended (annual) plan card.</comment>
+  </data>
   <data name="bittensor" xml:space="preserve">
     <value>Bittensor</value>
     <comment>Used in Main/Account/Wallet/WalletView.swift.</comment>
@@ -953,6 +957,10 @@ right way</value>
   <data name="default_bandwidth_earn_more_by" xml:space="preserve">
     <value>By default, you get {} GiB/month. Here's how you can earn extra bandwidth:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="default_daily_data" xml:space="preserve">
+    <value>By default, you get {} every day.</value>
+    <comment>Onboarding data page: the daily free allowance, formatted from the server's balance (pro.yml free.data per data_period).</comment>
   </data>
   <data name="default_option" xml:space="preserve">
     <value>Default</value>
@@ -2104,6 +2112,10 @@ right way</value>
     <value>Includes 2 week free trial</value>
     <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
+  <data name="includes_free_trial_days" xml:space="preserve">
+    <value>Includes {} day free trial</value>
+    <comment>Line under the annual plan card. The number of days is the free trial length.</comment>
+  </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Insufficient balance</value>
     <comment>Call to action</comment>
@@ -2119,6 +2131,34 @@ right way</value>
   <data name="insufficient_funds" xml:space="preserve">
     <value>Insufficient funds</value>
     <comment>Circle Wallet Transfer Screen</comment>
+  </data>
+  <data name="intro_quick_connect_details" xml:space="preserve">
+    <value>Turn URnetwork on and off from Quick Settings, and keep an eye on it from your home screen.</value>
+    <comment>Detail line of the last onboarding page.</comment>
+  </data>
+  <data name="intro_quick_connect_title" xml:space="preserve">
+    <value>Connect in one tap</value>
+    <comment>Title of the last onboarding page: the quick connect tile and the home screen widgets.</comment>
+  </data>
+  <data name="intro_quick_tile_added" xml:space="preserve">
+    <value>Added to Quick Settings</value>
+    <comment>Label shown on the last onboarding page once the quick connect tile is in Quick Settings.</comment>
+  </data>
+  <data name="intro_quick_tile_manual" xml:space="preserve">
+    <value>Open Quick Settings, tap the pencil, and drag URnetwork into place.</value>
+    <comment>Manual steps for adding the quick connect tile on Android versions without the system add-tile request (before Android 13).</comment>
+  </data>
+  <data name="intro_verifiable_encryption" xml:space="preserve">
+    <value>URnetwork gives you verifiable encryption for everyday use.</value>
+    <comment>Tagline under 'Welcome to URnetwork' on the first onboarding page. Replaces 'URnetwork is the most local and most private network on the planet.'</comment>
+  </data>
+  <data name="intro_widgets_manual" xml:space="preserve">
+    <value>Long-press your home screen, choose Widgets, and pick URnetwork.</value>
+    <comment>Manual steps for adding widgets on launchers without the pin dialog.</comment>
+  </data>
+  <data name="intro_widgets_tap_to_add" xml:space="preserve">
+    <value>Tap a widget to add it to your home screen.</value>
+    <comment>Hint under the widget previews on the last onboarding page: tapping a preview asks the launcher to add that widget.</comment>
   </data>
   <data name="invalid_balance_code" xml:space="preserve">
     <value>Invalid balance code</value>
@@ -2774,6 +2814,10 @@ Claim your bonus by creating a network!</value>
     <value>On</value>
     <comment>A label for a DNS setting that is enabled.</comment>
   </data>
+  <data name="onboarding_step_of" xml:space="preserve">
+    <value>Step {0} of {1}</value>
+    <comment>Accessibility description of the onboarding step bubbles: the current step and the total.</comment>
+  </data>
   <data name="one_gib_per_day" xml:space="preserve">
     <value>1 GiB/Day</value>
     <comment>Call to action</comment>
@@ -3053,9 +3097,33 @@ and most decentralized ingress and egress protocol.</value>
     <value>Provide</value>
     <comment>Label of the switch that turns on providing bandwidth to the network.</comment>
   </data>
+  <data name="provide_intro_bullet_devices" xml:space="preserve">
+    <value>Allow your devices to share internet with each other</value>
+    <comment>First bullet on the onboarding Contribute bandwidth page.</comment>
+  </data>
+  <data name="provide_intro_bullet_people" xml:space="preserve">
+    <value>Share your internet with other people ❤️</value>
+    <comment>Second bullet on the onboarding Contribute bandwidth page, with a heart.</comment>
+  </data>
+  <data name="provide_intro_lead" xml:space="preserve">
+    <value>Your choice, completely optional:</value>
+    <comment>Lead line above the two bullets on the onboarding Contribute bandwidth page.</comment>
+  </data>
   <data name="provide_mode" xml:space="preserve">
     <value>Provide mode</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="provide_mode_always_description" xml:space="preserve">
+    <value>Provides to everyone whenever the app is running.</value>
+    <comment>One-line explanation of the Always provide mode in the onboarding Contribute bandwidth picker.</comment>
+  </data>
+  <data name="provide_mode_auto_description" xml:space="preserve">
+    <value>Provides to everyone while you're connected, otherwise only to your own devices.</value>
+    <comment>One-line explanation of the Auto provide mode in the onboarding Contribute bandwidth picker: public providing only while connected, same-network peers otherwise.</comment>
+  </data>
+  <data name="provide_mode_network_description" xml:space="preserve">
+    <value>Provides only to your own network's devices.</value>
+    <comment>One-line explanation of the Network provide mode in the onboarding Contribute bandwidth picker: the private provider for the network's own devices.</comment>
   </data>
   <data name="provider_connected_duration_hours" xml:space="preserve">
     <value>{0}h {1}m</value>
@@ -3340,6 +3408,18 @@ and most decentralized ingress and egress protocol.</value>
     <value>Referral network</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_panel_detail" xml:space="preserve">
+    <value>Every verified referral gives each of you {} GiB/day for free, for life.</value>
+    <comment>Detail line of the gold referral panel. The amount is the daily GiB each side earns per verified referral (pro.yml referral).</comment>
+  </data>
+  <data name="referral_panel_heading" xml:space="preserve">
+    <value>Refer a friend and you both get free data</value>
+    <comment>Heading of the gold referral panel (the ur.io referral panel) before the network has a referral.</comment>
+  </data>
+  <data name="referral_panel_none" xml:space="preserve">
+    <value>No friends yet. Share your code and watch the crown appear. 👑</value>
+    <comment>Status line of the gold referral panel while the network has no referral yet.</comment>
+  </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
@@ -3506,9 +3586,17 @@ and most decentralized ingress and egress protocol.</value>
     <value>Review URnetwork</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="route_internet" xml:space="preserve">
+    <value>Internet</value>
+    <comment>Right stop label of the onboarding route line the anonymized member travels along.</comment>
+  </data>
   <data name="route_local" xml:space="preserve">
     <value>Allow local traffic when disconnected</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="route_you" xml:space="preserve">
+    <value>You</value>
+    <comment>Left stop label of the onboarding route line the anonymized member travels along (you -&gt; URnetwork -&gt; internet).</comment>
   </data>
   <data name="rules" xml:space="preserve">
     <value>Rules</value>
@@ -3623,6 +3711,22 @@ world's content</value>
     <value>Settings</value>
     <comment>Account Screen</comment>
   </data>
+  <data name="settings_add_quick_tile" xml:space="preserve">
+    <value>Add quick connect tile</value>
+    <comment>Settings row that asks the system to add the Quick Settings tile (Android 13+).</comment>
+  </data>
+  <data name="settings_add_quick_tile_description" xml:space="preserve">
+    <value>Connect and disconnect from the Quick Settings panel and the lock screen.</value>
+    <comment>Description under the add-tile settings row.</comment>
+  </data>
+  <data name="settings_add_widgets" xml:space="preserve">
+    <value>Add Home Screen widgets</value>
+    <comment>Settings row that opens the widget picker to pin the app's widgets.</comment>
+  </data>
+  <data name="settings_add_widgets_description" xml:space="preserve">
+    <value>Quick connect, transfer balance, providers on the globe and your top contracts.</value>
+    <comment>Description under the add-widgets settings row.</comment>
+  </data>
   <data name="share" xml:space="preserve">
     <value>Share</value>
     <comment>Call to action</comment>
@@ -3642,6 +3746,14 @@ world's content</value>
   <data name="share_with_others" xml:space="preserve">
     <value>You share with others, we share with you. Earn a share of revenue when you provide data to others in the network.</value>
     <comment>Setup wallet</comment>
+  </data>
+  <data name="shortcut_connect_long" xml:space="preserve">
+    <value>Connect to URnetwork</value>
+    <comment>Long label of the launcher shortcut that connects the VPN.</comment>
+  </data>
+  <data name="shortcut_disconnect_long" xml:space="preserve">
+    <value>Disconnect from URnetwork</value>
+    <comment>Long label of the launcher shortcut that disconnects the VPN.</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>Show</value>
@@ -4525,9 +4637,17 @@ world's content</value>
     <value>Something unexpected happened.</value>
     <comment>Account panel: generic unexpected error</comment>
   </data>
+  <data name="skip" xml:space="preserve">
+    <value>Skip</value>
+    <comment>Small muted button at the top of the post-login onboarding flow that leaves the whole flow.</comment>
+  </data>
   <data name="solana" xml:space="preserve">
     <value>Solana</value>
     <comment>Blockchain name. A product name: never translated.</comment>
+  </data>
+  <data name="solana_one_time_payment" xml:space="preserve">
+    <value>Paying with Solana is a one-time yearly payment, with no free trial.</value>
+    <comment>Note under the Solana payment button on the plan picker: Solana is a one-time yearly payment, the free trial is Stripe only.</comment>
   </data>
   <data name="solana_payment_insufficient_funds_warning" xml:space="preserve">
     <value>Please make sure you have sufficient USDC funds in your wallet. In some instances, payment prompts fail if there are insufficient funds in the wallet.</value>
@@ -4616,6 +4736,10 @@ world's content</value>
   <data name="start_earning_join" xml:space="preserve">
     <value>To start earning, join the network</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="start_free_trial" xml:space="preserve">
+    <value>Start free trial</value>
+    <comment>Primary button of the plan picker (onboarding and upgrade): starts the paid plan's free trial. Replaces 'Join the movement'.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>Stay completely private and anonymous</value>
@@ -5232,6 +5356,190 @@ as it should be.</value>
     <value>When you refer a friend:</value>
     <comment>Call to action</comment>
   </data>
+  <data name="widget_client" xml:space="preserve">
+    <value>Client</value>
+    <comment>Dashboard widget chart title: this device's own traffic.</comment>
+  </data>
+  <data name="widget_connect_once" xml:space="preserve">
+    <value>Connect once to see your traffic here</value>
+    <comment>Dashboard widget footer before the tunnel has ever written data.</comment>
+  </data>
+  <data name="widget_connect_to_see_contracts" xml:space="preserve">
+    <value>Connect to see your contracts</value>
+    <comment>Contracts widget empty state while the tunnel is down.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.zero" xml:space="preserve">
+    <value>{0} contracts, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.one" xml:space="preserve">
+    <value>{0} contract, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.two" xml:space="preserve">
+    <value>{0} contracts, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.few" xml:space="preserve">
+    <value>{0} contracts, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.many" xml:space="preserve">
+    <value>{0} contracts, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.other" xml:space="preserve">
+    <value>{0} contracts, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contracts_description" xml:space="preserve">
+    <value>Your top client contracts, flowing as they come and go.</value>
+    <comment>Description of the contracts widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_control_description" xml:space="preserve">
+    <value>Connect or disconnect the URnetwork VPN.</value>
+    <comment>Description of the quick connect control in the Control Center gallery.</comment>
+  </data>
+  <data name="widget_dashboard_description" xml:space="preserve">
+    <value>Transfer balance, connected location and traffic, with quick connect.</value>
+    <comment>Description of the dashboard widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_globe_description" xml:space="preserve">
+    <value>Your connected providers on the globe.</value>
+    <comment>Description of the provider globe widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_more_providers" xml:space="preserve">
+    <value>+{} more</value>
+    <comment>Provider globe widget: providers not shown in the list. The argument is a count.</comment>
+  </data>
+  <data name="widget_no_contracts" xml:space="preserve">
+    <value>No contracts</value>
+    <comment>Contracts widget empty state while connected with no open client contracts.</comment>
+  </data>
+  <data name="widget_no_providers" xml:space="preserve">
+    <value>No providers</value>
+    <comment>Badge on the small provider globe widget when no providers are connected.</comment>
+  </data>
+  <data name="widget_not_providing" xml:space="preserve">
+    <value>Not providing</value>
+    <comment>Dashboard widget provider chart label when providing is off.</comment>
+  </data>
+  <data name="widget_not_signed_in" xml:space="preserve">
+    <value>Not signed in</value>
+    <comment>Quick connect control / widget value when the app has no tunnel configuration yet (fresh install or logged out).</comment>
+  </data>
+  <data name="widget_open" xml:space="preserve">
+    <value>Open</value>
+    <comment>Button on the Home Screen widget that opens the app when the tunnel is not configured yet.</comment>
+  </data>
+  <data name="widget_open_to_set_up" xml:space="preserve">
+    <value>Open URnetwork to set up</value>
+    <comment>Widget subtitle when the app has no tunnel configuration yet.</comment>
+  </data>
+  <data name="widget_peak_rate" xml:space="preserve">
+    <value>{} peak</value>
+    <comment>Chart label; the argument is a formatted byte rate such as '1.2 MB/s'.</comment>
+  </data>
+  <data name="widget_peer_count.zero" xml:space="preserve">
+    <value>{} peers</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.one" xml:space="preserve">
+    <value>{} peer</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.two" xml:space="preserve">
+    <value>{} peers</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.few" xml:space="preserve">
+    <value>{} peers</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.many" xml:space="preserve">
+    <value>{} peers</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.other" xml:space="preserve">
+    <value>{} peers</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_provider" xml:space="preserve">
+    <value>Provider</value>
+    <comment>Dashboard widget chart title: traffic relayed for others while providing.</comment>
+  </data>
+  <data name="widget_provider_count.zero" xml:space="preserve">
+    <value>{} providers</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.one" xml:space="preserve">
+    <value>{} provider</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.two" xml:space="preserve">
+    <value>{} providers</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.few" xml:space="preserve">
+    <value>{} providers</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.many" xml:space="preserve">
+    <value>{} providers</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.other" xml:space="preserve">
+    <value>{} providers</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count_providing.zero" xml:space="preserve">
+    <value>{} providers · providing</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.one" xml:space="preserve">
+    <value>{} provider · providing</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.two" xml:space="preserve">
+    <value>{} providers · providing</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.few" xml:space="preserve">
+    <value>{} providers · providing</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.many" xml:space="preserve">
+    <value>{} providers · providing</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.other" xml:space="preserve">
+    <value>{} providers · providing</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_mode_title" xml:space="preserve">
+    <value>Provider · {}</value>
+    <comment>Title above the provider traffic chart in the dashboard widget: the chart name with the current provide mode (Auto, Always, Network, Never).</comment>
+  </data>
+  <data name="widget_provider_stats_when_enabled" xml:space="preserve">
+    <value>Provider stats will appear when the provider is enabled.</value>
+    <comment>Shown in the dashboard widget in place of the provider traffic chart while providing is off.</comment>
+  </data>
+  <data name="widget_quick_tile_added" xml:space="preserve">
+    <value>Quick connect tile added</value>
+    <comment>Toast after the system added the Quick Settings tile.</comment>
+  </data>
+  <data name="widget_toggle_intent_title" xml:space="preserve">
+    <value>Toggle URnetwork VPN</value>
+    <comment>Title of the Set-Value intent behind the quick connect control and widget toggle (shown by the system in Shortcuts/debug UI).</comment>
+  </data>
+  <data name="widget_updated_ago" xml:space="preserve">
+    <value>Updated {}</value>
+    <comment>Dashboard widget footer; the argument is a localized relative time such as '3 min. ago'.</comment>
+  </data>
+  <data name="widget_updated_just_now" xml:space="preserve">
+    <value>Updated just now</value>
+    <comment>Dashboard widget footer in the widget gallery preview.</comment>
+  </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>Auto</value>
     <comment>Connect drawer: the auto connection mode (no fixed window type).</comment>
@@ -5268,6 +5576,10 @@ as it should be.</value>
     <value>You get 3 GiB/day for life</value>
     <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
   </data>
+  <data name="you_get_free_data_every_day" xml:space="preserve">
+    <value>You get free data every day.</value>
+    <comment>Detail line under the onboarding data page title.</comment>
+  </data>
   <data name="you_have_1_other_device_online" xml:space="preserve">
     <value>You have 1 other device online</value>
   </data>
@@ -5290,6 +5602,10 @@ as it should be.</value>
     <value>You're premium.</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="your_bandwidth" xml:space="preserve">
+    <value>Your bandwidth</value>
+    <comment>Title of the onboarding data page (was 'Boost your bandwidth').</comment>
+  </data>
   <data name="your_email" xml:space="preserve">
     <value>Your email</value>
     <comment>Label for the empty text field.</comment>
@@ -5309,6 +5625,10 @@ as it should be.</value>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>Your purchase needs to be approved before it can complete. UR Pro will turn on by itself once it goes through — there's no need to buy again.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="your_referral_code" xml:space="preserve">
+    <value>Your referral code</value>
+    <comment>Label above the referral code pill in the gold referral panel.</comment>
   </data>
   <data name="your_referral_link" xml:space="preserve">
     <value>Your referral link</value>

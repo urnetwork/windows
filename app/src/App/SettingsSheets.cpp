@@ -456,7 +456,8 @@ StackPanel MakeRoyalWelcomePanel() {
   panel.Children().Append(title);
 
   TextBlock detail;
-  detail.Text(hstring{urnw::Format("referral_royal_welcome_detail", int64_t{3})});
+  detail.Text(hstring{urnw::Format("referral_royal_welcome_detail",
+                                   urnw::pages::Balance().ReferralTerms().bonusGibPerDay)});
   detail.TextWrapping(TextWrapping::Wrap);
   detail.TextAlignment(TextAlignment::Center);
   panel.Children().Append(detail);

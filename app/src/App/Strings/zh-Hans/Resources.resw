@@ -2306,6 +2306,18 @@
     <value>推荐网络</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_panel_detail" xml:space="preserve">
+    <value>每一次通过验证的推荐，都会让你们双方各获得每天 {} GiB 免费流量，终身有效。</value>
+    <comment>Detail line of the gold referral panel. The amount is the daily GiB each side earns per verified referral (pro.yml referral).</comment>
+  </data>
+  <data name="referral_panel_heading" xml:space="preserve">
+    <value>推荐好友，双方都获得免费流量</value>
+    <comment>Heading of the gold referral panel (the ur.io referral panel) before the network has a referral.</comment>
+  </data>
+  <data name="referral_panel_none" xml:space="preserve">
+    <value>还没有好友——分享你的推荐码，皇冠即将出现。👑</value>
+    <comment>Status line of the gold referral panel while the network has no referral yet.</comment>
+  </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
@@ -4050,6 +4062,10 @@
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>你的购买需要获得批准才能完成。一旦通过，UR Pro 会自动开启 — 无需重新购买。</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="your_referral_code" xml:space="preserve">
+    <value>你的推荐码</value>
+    <comment>Label above the referral code pill in the gold referral panel.</comment>
   </data>
   <data name="your_referral_link" xml:space="preserve">
     <value>你的推荐链接</value>

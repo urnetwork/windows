@@ -1319,7 +1319,7 @@ winrt::fire_and_forget SettingsPage::ShowReferSheet() {
       congrats.Text(hstring{
           L"\U0001F451 " +
           urnw::PluralFormat("referral_crowned_congrats", totalReferrals, totalReferrals,
-                             std::min<int64_t>(totalReferrals, 20) * 3)});
+                             urnw::pages::Balance().ReferralTerms().EarnedGibPerDay(totalReferrals))});
       congrats.TextWrapping(TextWrapping::Wrap);
       congrats.TextAlignment(TextAlignment::Center);
       congrats.Foreground(urnw::colors::ReferralGoldLightBrush());

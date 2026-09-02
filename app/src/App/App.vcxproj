@@ -273,6 +273,7 @@
     <ClCompile Include="LoginPage.cpp" />
     <ClCompile Include="PageContext.cpp" />
     <ClCompile Include="SettingsPage.cpp" />
+    <ClCompile Include="Onboarding.cpp" />
     <ClCompile Include="SettingsSheets.cpp" />
     <ClCompile Include="WalletPage.cpp" />
     <ClCompile Include="WalletSheets.cpp" />
@@ -322,6 +323,7 @@
     <ClInclude Include="LoginPage.h" />
     <ClInclude Include="PageContext.h" />
     <ClInclude Include="SettingsPage.h" />
+    <ClInclude Include="Onboarding.h" />
     <ClInclude Include="SettingsSheets.h" />
     <ClInclude Include="WalletPage.h" />
     <ClInclude Include="WalletSheets.h" />
@@ -367,6 +369,15 @@
   <!-- loose image assets, copied next to the exe for ms-appx:/// XAML sources -->
   <ItemGroup>
     <CopyFileToFolders Include="Assets\ReferralFrog.png">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\UrPerson1.png">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\UrPerson2.png">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\UrPerson3.png">
       <DestinationFolders>$(OutDir)Assets</DestinationFolders>
     </CopyFileToFolders>
     <!-- the app icon, for the integrated title bar's 20epx app mark (R1). It is

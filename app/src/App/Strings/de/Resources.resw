@@ -2357,6 +2357,18 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
     <value>Empfehlungsnetzwerk</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_panel_detail" xml:space="preserve">
+    <value>Jede verifizierte Empfehlung bringt Ihnen beiden je {} GiB/Tag kostenlos, auf Lebenszeit.</value>
+    <comment>Detail line of the gold referral panel. The amount is the daily GiB each side earns per verified referral (pro.yml referral).</comment>
+  </data>
+  <data name="referral_panel_heading" xml:space="preserve">
+    <value>Freunde einladen und Sie beide bekommen kostenlose Daten</value>
+    <comment>Heading of the gold referral panel (the ur.io referral panel) before the network has a referral.</comment>
+  </data>
+  <data name="referral_panel_none" xml:space="preserve">
+    <value>Noch keine Freunde – teilen Sie Ihren Code und die Krone erscheint. 👑</value>
+    <comment>Status line of the gold referral panel while the network has no referral yet.</comment>
+  </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
@@ -4114,6 +4126,10 @@ wie es sein sollte.</value>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>Dein Kauf muss noch genehmigt werden, bevor er abgeschlossen werden kann. UR Pro wird automatisch aktiviert, sobald es so weit ist – du musst nichts erneut kaufen.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="your_referral_code" xml:space="preserve">
+    <value>Ihr Empfehlungscode</value>
+    <comment>Label above the referral code pill in the gold referral panel.</comment>
   </data>
   <data name="your_referral_link" xml:space="preserve">
     <value>Dein Empfehlungslink</value>

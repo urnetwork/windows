@@ -271,6 +271,42 @@ void SubscriptionBalanceStore::StopConfirmation(bool timedOut) {
 
 // ---- referrals (the king-frog gold celebrations) ----------------------------
 
+// The SDK zip built after 2026-09-02 carries the referral terms on
+// GetNetworkReferralCodeResult (server pro.yml referral, via the api). Define
+// URNW_SDK_REFERRAL_TERMS=0 to build against an older zip, which leaves the
+// display defaults in force.
+#ifndef URNW_SDK_REFERRAL_TERMS
+#define URNW_SDK_REFERRAL_TERMS 1
+#endif
+
+namespace {
+
+// bytes granted per period -> whole GiB per day, the number the apps print;
+// 0 when either value is unknown
+int64_t GibPerDay(int64_t byteCount, int64_t periodSeconds) {
+  if (byteCount <= 0 || periodSeconds <= 0) return 0;
+  const double perDay = static_cast<double>(byteCount) * 86400.0 / static_cast<double>(periodSeconds);
+  return static_cast<int64_t>(perDay / (1024.0 * 1024.0 * 1024.0) + 0.5);
+}
+
+// The server's terms, keeping a default for any value the server left at zero
+// (no pro.yml: no cap, no grant).
+ReferralTerms TermsFromResult(urnet::GetNetworkReferralCodeResult const& result) {
+  ReferralTerms terms;
+#if URNW_SDK_REFERRAL_TERMS
+  if (0 < result.max_referrals) terms.maxReferrals = result.max_referrals;
+  const int64_t bonus = GibPerDay(result.bonus_per_referral_bytes, result.bonus_period_seconds);
+  if (0 < bonus) terms.bonusGibPerDay = bonus;
+  const int64_t referred = GibPerDay(result.referred_bonus_bytes, result.bonus_period_seconds);
+  if (0 < referred) terms.referredBonusGibPerDay = referred;
+#else
+  (void)result;
+#endif
+  return terms;
+}
+
+}  // namespace
+
 void SubscriptionBalanceStore::FetchReferral() {
   // IsLoggedIn(), same reasoning as Fetch(): this sits behind a background
   // poller and getNetworkReferralCode is authenticated.
@@ -294,6 +330,7 @@ void SubscriptionBalanceStore::FetchReferral() {
           }
           referralCode_ = result->referral_code;
           totalReferrals_ = result->total_referrals;
+          terms_ = TermsFromResult(*result);
           if (result->referral_code) {
             MaybeCelebrateReferrals(*result->referral_code, result->total_referrals);
           }

@@ -2357,6 +2357,18 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Red de referidos</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_panel_detail" xml:space="preserve">
+    <value>Cada referido verificado les da a cada uno {} GiB/día gratis, de por vida.</value>
+    <comment>Detail line of the gold referral panel. The amount is the daily GiB each side earns per verified referral (pro.yml referral).</comment>
+  </data>
+  <data name="referral_panel_heading" xml:space="preserve">
+    <value>Refiere a un amigo y los dos consiguen datos gratis</value>
+    <comment>Heading of the gold referral panel (the ur.io referral panel) before the network has a referral.</comment>
+  </data>
+  <data name="referral_panel_none" xml:space="preserve">
+    <value>Aún no hay amigos. Comparte tu código y verás aparecer la corona. 👑</value>
+    <comment>Status line of the gold referral panel while the network has no referral yet.</comment>
+  </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
@@ -4114,6 +4126,10 @@ como debería ser.</value>
   <data name="your_purchase_needs_to_be_approved_before_it_can" xml:space="preserve">
     <value>Tu compra necesita aprobación para completarse. UR Pro se activará solo en cuanto se apruebe — no hace falta que vuelvas a comprar.</value>
     <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
+  </data>
+  <data name="your_referral_code" xml:space="preserve">
+    <value>Tu código de referido</value>
+    <comment>Label above the referral code pill in the gold referral panel.</comment>
   </data>
   <data name="your_referral_link" xml:space="preserve">
     <value>Tu enlace de referido</value>

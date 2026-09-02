@@ -1134,6 +1134,7 @@ void MainWindow::LoadCurrentDestination() {
 
 void MainWindow::OnBalanceChanged(urnw::BalanceSnapshot const& snapshot,
                                   urnw::BalancePollState const& poll) {
+  if (onboarding_ && onboarding_->Visible()) onboarding_->OnBalance(snapshot);
   balance_ = snapshot;
   balancePoll_ = poll;
   ApplyBalance();
@@ -1156,7 +1157,7 @@ void MainWindow::OnReferralCelebration(urnw::ReferralCelebration const& celebrat
   }
   referralSnackbar_->Show(
       hstring{urnw::PluralFormat("referral_toast_joined", celebration.joined,
-                                 celebration.joined, int64_t{3})},
+                                 celebration.joined, Balance().ReferralTerms().bonusGibPerDay)},
       InfoBarSeverity::Informational);
 }
 
@@ -1166,7 +1167,7 @@ void MainWindow::ShowReferralCelebration(urnw::ReferralCelebration const& celebr
   ReferralCelebrationTitle().Text(Loc("referral_royalty"));
   ReferralCelebrationDetail().Text(
       hstring{urnw::PluralFormat("referral_celebration_detail", celebration.joined,
-                                 celebration.joined, int64_t{3})});
+                                 celebration.joined, Balance().ReferralTerms().bonusGibPerDay)});
 
   const auto code = Balance().ReferralCode();
   ReferralCelebrationCode().Text(code ? H(*code) : L"");
@@ -1234,6 +1235,46 @@ void MainWindow::ShowReferralCelebration(urnw::ReferralCelebration const& celebr
   }
 }
 
+// ---- onboarding ---------------------------------------------------------------
+
+void MainWindow::ShowOnboarding() {
+  if (!onboarding_) {
+    auto weak = get_weak();
+    urnw::Onboarding::Actions actions;
+    actions.finish = [weak] {
+      if (auto self = weak.get()) self->HideOnboarding();
+    };
+    actions.startCheckout = [weak](bool yearly) {
+      if (auto self = weak.get()) self->ShowUpgradeCheckout(yearly);
+    };
+    actions.redeemCode = [weak] {
+      if (auto self = weak.get()) self->ShowRedeemSheet();
+    };
+    onboarding_ = urnw::Onboarding::Create(OnboardingOverlay(), std::move(actions));
+  }
+  onboarding_->Show();
+}
+
+void MainWindow::HideOnboarding() {
+  if (onboarding_) onboarding_->Hide();
+}
+
+// The upgrade sheet opened straight on the checkout for the plan the
+// onboarding page picked (its own products page would only ask again).
+winrt::fire_and_forget MainWindow::ShowUpgradeCheckout(bool yearly) {
+  if (sheetOpen_) co_return;
+  auto self = get_strong();
+  self->sheetOpen_ = true;
+  try {
+    self->upgradeSheet_ =
+        urnw::UpgradeSheet::CreateForCheckout(Content().XamlRoot(), Sdk(), Balance(), yearly);
+    co_await self->upgradeSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  self->upgradeSheet_.reset();
+  self->sheetOpen_ = false;
+}
+
 void MainWindow::HideReferralCelebration() {
   if (referralAuraStoryboard_) referralAuraStoryboard_.Stop();
   ReferralCelebrationOverlay().Visibility(Visibility::Collapsed);
@@ -1285,7 +1326,8 @@ void MainWindow::ApplyBalance() {
   // 3 GiB per referral per 24h -- pro.yml referral; this row said GiB/Month)
   const int64_t totalReferrals = account_ ? account_->totalReferrals() : 0;
   const hstring totals = hstring{urnw::Format("total_referrals_lld", totalReferrals)};
-  const hstring bonus = hstring{urnw::Format("referral_bonus", totalReferrals * 3)};
+  const hstring bonus = hstring{urnw::Format(
+      "referral_bonus", Balance().ReferralTerms().EarnedGibPerDay(totalReferrals))};
   AccountReferralTotals().Text(totals);
   AccountReferralBonus().Text(bonus);
 
@@ -1604,9 +1646,13 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
     // Whatever destination is still selected from the PREVIOUS session is now
     // showing that session's data against this one's token. Re-read it.
     LoadCurrentDestination();
+    // a network this sign-in just created gets the onboarding flow; an
+    // existing account signing in never does
+    if (login_->ConsumeNewNetwork()) ShowOnboarding();
   }
   if (!loggedIn && wasVisible) {
     // signed out: the flow starts over
+    HideOnboarding();
     login_->ResetToInitialStep();
     // ...and every page drops the account it was describing. Without this the
     // next sign-in inherits the previous network's name, auth and referral
