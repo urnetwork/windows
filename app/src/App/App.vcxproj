@@ -341,6 +341,7 @@
     <ClInclude Include="TransportStatusPresentation.h" />
     <ClInclude Include="UsageBar.h" />
     <ClInclude Include="UrColors.h" />
+    <ClInclude Include="ProvideModeVisual.h" />
     <ClInclude Include="UrComponents.h" />
     <ClInclude Include="WalletConnect.h" />
     <ClInclude Include="WindowShell.h" />

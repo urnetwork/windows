@@ -269,6 +269,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnWalletNotRetroactive(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnWalletProvideMode(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // wallet: Seeker-token multiplier verification. leaderboard: the
   // public/private switch.
   void OnVerifySeeker(winrt::Windows::Foundation::IInspectable const&,

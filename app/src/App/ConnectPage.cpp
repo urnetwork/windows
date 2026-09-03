@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+#include "ProvideModeVisual.h"
 #include "pch.h"
 
 #include "ConnectPage.h"
@@ -983,20 +984,9 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // (0 none, 1 network, 2 friends-and-family, 3 public) — per-case only.
   // Solid dot = Network tier; dot + outer ring = Public tier (amber while
   // paused — pause stops public only); coral = not providing.
-  auto provideColor = urnw::colors::kUrCoral;
-  bool provideRing = false;
-  switch (stats.provideMode) {
-    case 3:  // public
-      provideColor = stats.providePaused ? urnw::colors::kUrAmber : urnw::colors::kUrGreen;
-      provideRing = true;
-      break;
-    case 1:  // network (also Auto while idle)
-    case 2:  // friends-and-family
-      provideColor = urnw::colors::kUrGreen;
-      break;
-    default:
-      break;
-  }
+  const auto provideVisual = urnw::ProvideModeVisualFor(stats.provideMode, stats.providePaused);
+  const auto provideColor = provideVisual.color;
+  const bool provideRing = provideVisual.ring;
   // discoverability line (apple/android parity): a paused device stays
   // discoverable — pause stops public provide only
   w_.DiscoverableText().Text(Loc(stats.provideEnabled && stats.provideHasNetworkKey

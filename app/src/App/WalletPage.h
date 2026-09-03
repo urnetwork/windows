@@ -34,6 +34,10 @@
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
 #include "EarningsSheets.h"
+
+namespace urnw {
+struct LiveStats;
+}
 #include "SdkHost.h"
 #include "UrComponents.h"
 
@@ -177,6 +181,11 @@ class WalletPage {
   void LoadPoints();
   void LoadSeeker();
   void LoadReliability();
+  // The provide-mode row (the Connect page's indicator + label with the
+  // current mode) and the providing gate: with providing off the reliability
+  // chart hides and the group says so, the same gate and message as the
+  // stats widget.
+  void ApplyProvideState(urnw::LiveStats const& stats);
   void LoadEpochs();
   void LoadSnWallet();
   void LoadHead();
@@ -268,6 +277,7 @@ class WalletPage {
 
   // ---- state
   std::string ownNetworkId_;
+  bool providingEnabled_ = true;  // the reliability chart follows the provide mode
   PointsBreakdown accountPoints_;
   bool seekerHolder_ = false;
   bool verifyingSeeker_ = false;

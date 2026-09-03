@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+#include "ProvideModeVisual.h"
 #include "pch.h"
 
 #include "WalletPage.h"
@@ -482,6 +483,8 @@ void WalletPage::ApplyStrings() {
   w_.SeekerPointsOnlyText().Text(Loc("seeker_points_only"));
   w_.VerifySeekerButton().Content(LocBox("verify_seeker"));
   w_.NetworkReliabilityHeading().Text(Loc("site_app_network_reliability"));
+  w_.WalletProvideModeLabel().Text(Loc("provide_mode"));
+  w_.WalletProvideModeValue().Text(Loc(Sdk().CurrentProvideControlMode().c_str()));
   w_.LeaderboardRankLabel().Text(Loc("current_ranking"));
   w_.LeaderboardNetProvidedLabel().Text(Loc("net_provided"));
   w_.LeaderboardPublicLabel().Text(Loc("display_network_on_leaderboard"));
@@ -1502,6 +1505,14 @@ void WalletPage::OnWalletNotRetroactive(IInspectable const&, RoutedEventArgs con
 // ---- network reliability -------------------------------------------------
 
 void WalletPage::ApplyReliability(std::optional<urnet::ReliabilityWindow> window, Fetch state) {
+  if (!providingEnabled_) {
+    // providing is off: the chart hides and the group says so, the same gate
+    // and message as the stats widget
+    w_.ReliabilityStatusText().Text(Loc("providing_disabled"));
+    w_.ReliabilityStatusText().Visibility(Visibility::Visible);
+    w_.ReliabilityCard().Visibility(Visibility::Collapsed);
+    return;
+  }
   reliability_ = window;
   auto panel = w_.ReliabilityPanel();
   panel.Children().Clear();
@@ -2701,3 +2712,20 @@ void WalletPage::SettlePointsBoardPreview() {
 }
 
 }  // namespace urnw
+
+void WalletPage::ApplyProvideState(urnw::LiveStats const& stats) {
+  const auto visual = urnw::ProvideModeVisualFor(stats.provideMode, stats.providePaused);
+  w_.WalletProvideModeDot().Fill(urnw::colors::MakeBrush(visual.color));
+  w_.WalletProvideModeRing().Stroke(urnw::colors::MakeBrush(visual.color));
+  w_.WalletProvideModeRing().Visibility(visual.ring ? Visibility::Visible : Visibility::Collapsed);
+  // the control mode strings are the store keys of their labels
+  w_.WalletProvideModeValue().Text(Loc(Sdk().CurrentProvideControlMode().c_str()));
+  const bool enabled = stats.provideEnabled;
+  if (enabled == providingEnabled_) return;
+  providingEnabled_ = enabled;
+  if (enabled) {
+    LoadReliability();  // repaint the chart the gate was hiding
+  } else {
+    ApplyReliability(std::nullopt, Fetch::Ready);  // the gate paints the message
+  }
+}

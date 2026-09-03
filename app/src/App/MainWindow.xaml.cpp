@@ -1728,6 +1728,7 @@ void MainWindow::OnTunnelStateChanged(urnw::proto::TunnelStatus const& status) {
 
 void MainWindow::OnStatsChanged(urnw::LiveStats const& stats) {
   connect_->ApplyStats(stats);
+  if (wallet_) wallet_->ApplyProvideState(stats);  // the Earnings provide row + gate
   // The status strip's three page-independent facts. The connection half is
   // pushed by ConnectPage out of the SAME ApplyConnectStatus that draws the
   // hero, so the strip and the connect screen cannot disagree about the state.
@@ -1932,6 +1933,12 @@ void MainWindow::OnClaimTop200(IInspectable const& s, RoutedEventArgs const& e) 
 }
 void MainWindow::OnWalletNotRetroactive(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnWalletNotRetroactive(s, e);
+}
+
+// The provide mode is changed on the Connect page (its provide group); the
+// Earnings row is a shortcut there.
+void MainWindow::OnWalletProvideMode(IInspectable const&, RoutedEventArgs const&) {
+  HomeNav().SelectedItem(ConnectNavItem());
 }
 void MainWindow::OnVerifySeeker(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnVerifySeeker(s, e);

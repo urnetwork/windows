@@ -2247,6 +2247,40 @@
                                     </StackPanel>
                                 </Border>
 
+                                <!-- provide mode: the Connect page's indicator + label with
+                                     the current mode; the whole row opens the Connect page
+                                     where it is changed -->
+                                <Border Style="{StaticResource UrPaneRowStyle}">
+                                    <Button x:Name="WalletProvideModeButton"
+                                            Background="Transparent" BorderThickness="0"
+                                            Padding="0" Margin="0"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            Click="OnWalletProvideMode">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Width="12" Height="12" VerticalAlignment="Center"
+                                                  Margin="0,0,8,0">
+                                                <Ellipse x:Name="WalletProvideModeRing" Width="12" Height="12"
+                                                         StrokeThickness="1.5" Visibility="Collapsed" />
+                                                <Ellipse x:Name="WalletProvideModeDot" Width="7" Height="7" />
+                                            </Grid>
+                                            <TextBlock x:Name="WalletProvideModeLabel" Grid.Column="1"
+                                                       Style="{StaticResource UrKeyTextStyle}" />
+                                            <TextBlock x:Name="WalletProvideModeValue" Grid.Column="2"
+                                                       Style="{StaticResource UrKeyTextStyle}"
+                                                       Margin="0,0,6,0" />
+                                            <FontIcon Grid.Column="3" Glyph="&#xE76C;" FontSize="12"
+                                                      Style="{StaticResource UrRowIconStyle}" />
+                                        </Grid>
+                                    </Button>
+                                </Border>
+
                                 <!-- network reliability ........................ -->
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
                                     <Grid>
