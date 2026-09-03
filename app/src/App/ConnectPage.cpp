@@ -927,11 +927,17 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // #27: gated on the AGGREGATE, not the raw SDK bit — "Connected to N
   // providers" under a headline reading "Finding providers…" is the exact
   // contradiction the aggregate exists to remove.
+  // While connecting the same row reads "Connecting to providers" and still
+  // opens the sheet (it lists the providers known so far, or its own
+  // "Connecting to providers" empty line) — android/apple parity, where the
+  // status label is the tap target in both states.
+  const bool providersConnecting = stats.health == urnw::health::State::Connecting;
   urnw::kit::SetTextOrCollapse(
       w_.ProviderCountText(),
       stats.connected && stats.health == urnw::health::State::Connected
           ? hstring{urnw::Plural("connected_provider_count", stats.providerCount)}
-          : hstring{L""});
+          : providersConnecting ? hstring{Loc("connecting_status_indicator")}
+                                : hstring{L""});
 
   // Live throughput feed: down / up bit rate. This is the ACTIVITY PANE's own
   // header figure now — the pane whose chart and connections table it describes
@@ -941,8 +947,9 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
       stats.connected ? H("↓ " + urnw::FormatBitRate(stats.downBitsPerSecond) +
                           "   ↑ " + urnw::FormatBitRate(stats.upBitsPerSecond))
                       : hstring(L""));
-  w_.LiveStatsGroup().Visibility(stats.connected ? Visibility::Visible
-                                                 : Visibility::Collapsed);
+  w_.LiveStatsGroup().Visibility(stats.connected || providersConnecting
+                                     ? Visibility::Visible
+                                     : Visibility::Collapsed);
   // R3: the statistics pane draws the session as key/value rows, so it needs the
   // figures rather than only the prose lines above.
   downBitsPerSecond_ = stats.downBitsPerSecond;
@@ -2526,9 +2533,11 @@ void ConnectPage::OnPeersLineClick(IInspectable const&, RoutedEventArgs const&) 
 
 void ConnectPage::OnProviderCountClick(IInspectable const&, RoutedEventArgs const&) {
   // LiveStatsGroup is already collapsed while disconnected, so this guard is
-  // belt-and-braces — but the sheet has nothing to draw without a connection,
-  // and an empty globe reads as a broken one rather than an idle one.
-  if (!connected_) return;
+  // belt-and-braces — the sheet has nothing to draw without a session. While
+  // connecting it opens too, listing the providers known so far (its empty
+  // state reads "Connecting to providers").
+  const bool connecting = health_ == urnw::health::State::Connecting;
+  if (!connected_ && !connecting) return;
   ShowProviderLocationsSheet();
 }
 
