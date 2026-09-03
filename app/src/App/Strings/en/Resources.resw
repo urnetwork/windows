@@ -2462,10 +2462,6 @@ right way</value>
     <value>The leaderboard is the sum of the last 4 payments. It is updated each payment cycle.</value>
     <comment>Call to action</comment>
   </data>
-  <data name="learn_at_ur_xyz" xml:space="preserve">
-    <value>Learn how it works at ur.xyz</value>
-    <comment>Link text under the protocol note.</comment>
-  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>Learn more about the multiplier</value>
     <comment>Call to action</comment>
@@ -5076,10 +5072,6 @@ world's content</value>
     <value>SN25α</value>
     <comment>The subnet alpha token symbol.</comment>
   </data>
-  <data name="sn_protocol_note" xml:space="preserve">
-    <value>SN25α are your earnings on the UR protocol. The UR protocol is an open source protocol from URnetwork. Connect a Bittensor wallet to settle them as SN25α through the UR protocol.</value>
-    <comment>Note on the earnings screen explaining alpha and the wallet.</comment>
-  </data>
   <data name="sn_status_claimable" xml:space="preserve">
     <value>Claimable</value>
     <comment>Claim status of an epoch whose alpha can be claimed now.</comment>
@@ -5978,6 +5970,10 @@ as it should be.</value>
   <data name="widget_updated_just_now" xml:space="preserve">
     <value>Updated just now</value>
     <comment>Dashboard widget footer in the widget gallery preview.</comment>
+  </data>
+  <data name="widgets" xml:space="preserve">
+    <value>Widgets</value>
+    <comment>Account: the Widgets section (quick connect control and Home Screen widgets, with how to add them).</comment>
   </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>Auto</value>

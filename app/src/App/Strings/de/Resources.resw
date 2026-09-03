@@ -3978,6 +3978,10 @@ wie es sein sollte.</value>
     <value>Wenn du einen Freund empfiehlst:</value>
     <comment>Call to action</comment>
   </data>
+  <data name="widgets" xml:space="preserve">
+    <value>Widgets</value>
+    <comment>Account: the Widgets section (quick connect control and Home Screen widgets, with how to add them).</comment>
+  </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>Automatisch</value>
     <comment>Connect drawer: the auto connection mode (no fixed window type).</comment>

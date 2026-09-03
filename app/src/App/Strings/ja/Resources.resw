@@ -3319,6 +3319,10 @@
     <value>友達を紹介するとき：</value>
     <comment>Call to action</comment>
   </data>
+  <data name="widgets" xml:space="preserve">
+    <value>ウィジェット</value>
+    <comment>Account: the Widgets section (quick connect control and Home Screen widgets, with how to add them).</comment>
+  </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>自動</value>
     <comment>Connect drawer: the auto connection mode (no fixed window type).</comment>

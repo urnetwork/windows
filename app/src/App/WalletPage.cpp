@@ -460,12 +460,10 @@ void WalletPage::ApplyStrings() {
 
   // pane A
   w_.PointsHeadlineLabel().Text(Loc("points_earned"));
-  w_.ProtocolNoteText().Text(Loc("sn_protocol_note"));
-  w_.LearnUrXyzButton().Content(LocBox("learn_at_ur_xyz"));
   w_.BittensorWalletHeading().Text(Loc("bittensor_wallet"));
   w_.WalletConnectedNote().Text(Loc("wallet_connected_to_protocol"));
   w_.ChangeWalletButton().Content(LocBox("earnings_change_wallet"));
-  w_.WalletNotRetroactiveText().Text(Loc("wallet_not_retroactive"));
+  w_.WalletNotRetroactiveLink().Content(LocBox("wallet_not_retroactive"));
   w_.ConnectWalletButton().Content(LocBox("connect_bittensor_wallet"));
   w_.EnterAddressManuallyButton().Content(LocBox("enter_address_manually"));
   w_.WalletAddressBox().PlaceholderText(Loc("earnings_address_placeholder"));
@@ -1497,7 +1495,9 @@ void WalletPage::OnClaimTop200(IInspectable const&, RoutedEventArgs const&) {
   OpenUrl("https://" + Sdk().linkHostName() + kTop200Path);
 }
 
-void WalletPage::OnLearnUrXyz(IInspectable const&, RoutedEventArgs const&) { OpenUrl(kUrXyzUrl); }
+void WalletPage::OnWalletNotRetroactive(IInspectable const&, RoutedEventArgs const&) {
+  OpenUrl(kUrXyzUrl);
+}
 
 // ---- network reliability -------------------------------------------------
 

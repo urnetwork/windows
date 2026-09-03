@@ -3322,6 +3322,10 @@ như nó vốn phải thế.</value>
     <value>Khi bạn giới thiệu bạn bè:</value>
     <comment>Call to action</comment>
   </data>
+  <data name="widgets" xml:space="preserve">
+    <value>Tiện ích</value>
+    <comment>Account: the Widgets section (quick connect control and Home Screen widgets, with how to add them).</comment>
+  </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>Tự động</value>
     <comment>Connect drawer: the auto connection mode (no fixed window type).</comment>

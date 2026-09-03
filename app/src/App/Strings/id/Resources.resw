@@ -3322,6 +3322,10 @@ sebagaimana mestinya.</value>
     <value>Saat Anda mereferensikan teman:</value>
     <comment>Call to action</comment>
   </data>
+  <data name="widgets" xml:space="preserve">
+    <value>Widget</value>
+    <comment>Account: the Widgets section (quick connect control and Home Screen widgets, with how to add them).</comment>
+  </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>Otomatis</value>
     <comment>Connect drawer: the auto connection mode (no fixed window type).</comment>

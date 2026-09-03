@@ -83,8 +83,8 @@ class WalletPage {
                                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnClaimTop200(winrt::Windows::Foundation::IInspectable const&,
                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnLearnUrXyz(winrt::Windows::Foundation::IInspectable const&,
-                    winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnWalletNotRetroactive(winrt::Windows::Foundation::IInspectable const&,
+                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   winrt::fire_and_forget OnVerifySeeker(winrt::Windows::Foundation::IInspectable const&,
                                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnEarningsTableChanged(

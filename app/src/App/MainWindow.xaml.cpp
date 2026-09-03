@@ -1930,8 +1930,8 @@ void MainWindow::OnClaimAlpha(IInspectable const& s, RoutedEventArgs const& e) {
 void MainWindow::OnClaimTop200(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnClaimTop200(s, e);
 }
-void MainWindow::OnLearnUrXyz(IInspectable const& s, RoutedEventArgs const& e) {
-  wallet_->OnLearnUrXyz(s, e);
+void MainWindow::OnWalletNotRetroactive(IInspectable const& s, RoutedEventArgs const& e) {
+  wallet_->OnWalletNotRetroactive(s, e);
 }
 void MainWindow::OnVerifySeeker(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnVerifySeeker(s, e);

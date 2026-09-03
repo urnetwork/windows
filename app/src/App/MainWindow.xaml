@@ -1885,18 +1885,6 @@
                                 <StackPanel x:Name="AccountPointsPanel" />
 
                                 <!-- the protocol note and the ur.xyz link -->
-                                <Border BorderBrush="{StaticResource UrBorderBrush}"
-                                        BorderThickness="0,0,0,1" Padding="12,10">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock x:Name="ProtocolNoteText" TextWrapping="Wrap"
-                                                   Style="{StaticResource UrRowNoteStyle}"
-                                                   TextTrimming="None" />
-                                        <HyperlinkButton x:Name="LearnUrXyzButton"
-                                                         Padding="0" Margin="0"
-                                                         HorizontalAlignment="Left"
-                                                         Click="OnLearnUrXyz" />
-                                    </StackPanel>
-                                </Border>
 
                                 <!-- bittensor wallet ........................... -->
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
@@ -1933,9 +1921,11 @@
                                         BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,10">
                                     <StackPanel Spacing="10">
-                                        <TextBlock x:Name="WalletNotRetroactiveText" TextWrapping="Wrap"
-                                                   Style="{StaticResource UrRowNoteStyle}"
-                                                   TextTrimming="None" />
+                                        <!-- the whole sentence opens the protocol site -->
+                                        <HyperlinkButton x:Name="WalletNotRetroactiveLink"
+                                                         Padding="0" Margin="0"
+                                                         HorizontalAlignment="Left"
+                                                         Click="OnWalletNotRetroactive" />
                                         <Button x:Name="ConnectWalletButton"
                                                 Style="{StaticResource UrPaneActionPrimaryStyle}"
                                                 HorizontalAlignment="Stretch"

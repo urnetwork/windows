@@ -3514,6 +3514,10 @@
     <value>כשאתה ממליץ על חבר:</value>
     <comment>Call to action</comment>
   </data>
+  <data name="widgets" xml:space="preserve">
+    <value>ווידג'טים</value>
+    <comment>Account: the Widgets section (quick connect control and Home Screen widgets, with how to add them).</comment>
+  </data>
   <data name="window_type_auto" xml:space="preserve">
     <value>אוטומטי</value>
     <comment>Connect drawer: the auto connection mode (no fixed window type).</comment>
