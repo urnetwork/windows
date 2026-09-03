@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-#include "ProvideModeVisual.h"
 #include "pch.h"
 
 #include "WalletPage.h"
+#include "ProvideModeVisual.h"
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
@@ -2710,8 +2710,6 @@ void WalletPage::SettlePointsBoardPreview() {
   w_.PointsStatusText().Visibility(Visibility::Visible);
 }
 
-}  // namespace urnw
-
 void WalletPage::ApplyProvideState(urnw::LiveStats const& stats) {
   const auto visual = urnw::ProvideModeVisualFor(stats.provideMode, stats.providePaused);
   w_.WalletProvideModeDot().Fill(urnw::colors::MakeBrush(visual.color));
@@ -2731,3 +2729,5 @@ void WalletPage::ApplyProvideState(urnw::LiveStats const& stats) {
     ApplyReliability(std::nullopt, Fetch::Ready);  // the gate paints the message
   }
 }
+
+}  // namespace urnw

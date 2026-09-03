@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-#include "ProvideModeVisual.h"
 #include "pch.h"
 
 #include "ConnectPage.h"
+#include "ProvideModeVisual.h"
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>

@@ -318,6 +318,42 @@ func TestWalletSetErrorIsAdaptedToCommonSnError(t *testing.T) {
 	}
 }
 
+func TestWalletProvideStateCompileContracts(t *testing.T) {
+	for _, name := range []string{"ConnectPage.cpp", "WalletPage.cpp"} {
+		source := readAppSource(t, name)
+		pch := strings.Index(source, `#include "pch.h"`)
+		visual := strings.Index(source, `#include "ProvideModeVisual.h"`)
+		if pch < 0 || visual < 0 || pch > visual {
+			t.Fatalf("%s must include pch.h before ProvideModeVisual.h because the app compiles with /Yu", name)
+		}
+	}
+
+	header := readAppSource(t, "WalletPage.h")
+	classStart := strings.Index(header, "class WalletPage {")
+	if classStart < 0 {
+		t.Fatal("WalletPage declaration is missing")
+	}
+	classBody := header[classStart:]
+	publicStart := strings.Index(classBody, "public:")
+	privateStart := strings.Index(classBody, "private:")
+	applyProvideState := strings.Index(classBody, "void ApplyProvideState(urnw::LiveStats const& stats);")
+	if publicStart < 0 || privateStart < 0 || applyProvideState < publicStart || applyProvideState >= privateStart {
+		t.Fatal("WalletPage::ApplyProvideState must be public because MainWindow relays live stats to it")
+	}
+
+	source := readAppSource(t, "WalletPage.cpp")
+	definition := strings.Index(source, "void WalletPage::ApplyProvideState(urnw::LiveStats const& stats)")
+	namespaceEnd := strings.LastIndex(source, "}  // namespace urnw")
+	if definition < 0 || namespaceEnd < definition {
+		t.Fatal("WalletPage::ApplyProvideState must be defined inside namespace urnw")
+	}
+
+	window := readAppSource(t, "MainWindow.xaml.cpp")
+	if !strings.Contains(window, "wallet_->ApplyProvideState(stats);") {
+		t.Fatal("MainWindow no longer relays live stats to the Earnings provide-state renderer")
+	}
+}
+
 func TestTunnelWatchdogObservesDestinationGenerationAndReadiness(t *testing.T) {
 	header := readServiceSource(t, "TunnelWatchdog.h")
 	source := readServiceSource(t, "TunnelWatchdog.cpp")

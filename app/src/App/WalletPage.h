@@ -57,6 +57,12 @@ class WalletPage {
   void Initialize();  // the address-validation debounce timer
   void ApplyStrings();
 
+  // The provide-mode row (the Connect page's indicator + label with the
+  // current mode) and the providing gate: with providing off the reliability
+  // chart hides and the group says so, the same gate and message as the
+  // stats widget. MainWindow relays each live-stats update here.
+  void ApplyProvideState(urnw::LiveStats const& stats);
+
   // Every Earnings fetch: points, the Seeker flag, reliability, the epoch
   // history, the coldkey, the head-spot status - and, once the coldkey is
   // known, the claims and the gas key from the chain. Each settles its own
@@ -180,11 +186,6 @@ class WalletPage {
   void LoadPoints();
   void LoadSeeker();
   void LoadReliability();
-  // The provide-mode row (the Connect page's indicator + label with the
-  // current mode) and the providing gate: with providing off the reliability
-  // chart hides and the group says so, the same gate and message as the
-  // stats widget.
-  void ApplyProvideState(urnw::LiveStats const& stats);
   void LoadEpochs();
   void LoadSnWallet();
   void LoadHead();
