@@ -1657,6 +1657,10 @@ cách đúng đắn</value>
     <value>Bảng xếp hạng là tổng của 4 khoản thanh toán gần nhất. Nó được cập nhật sau mỗi chu kỳ thanh toán.</value>
     <comment>Call to action</comment>
   </data>
+  <data name="learn_more" xml:space="preserve">
+    <value>Tìm hiểu thêm</value>
+    <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
+  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>Tìm hiểu thêm về hệ số nhân</value>
     <comment>Call to action</comment>

@@ -1657,6 +1657,10 @@
     <value>リーダーボードは過去4回の支払いの合計です。支払いサイクルごとに更新されます。</value>
     <comment>Call to action</comment>
   </data>
+  <data name="learn_more" xml:space="preserve">
+    <value>詳しく見る</value>
+    <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
+  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>倍率について詳しく見る</value>
     <comment>Call to action</comment>

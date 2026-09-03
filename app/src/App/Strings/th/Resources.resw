@@ -1657,6 +1657,10 @@
     <value>กระดานจัดอันดับจะรวมยอดจาก 4 ยอดนำจ่ายล่าสุด และจะอัพเดตแต่ละรอบการนำจ่าย</value>
     <comment>Call to action</comment>
   </data>
+  <data name="learn_more" xml:space="preserve">
+    <value>เรียนรู้เพิ่มเติม</value>
+    <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
+  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>เรียนรู้เพิ่มเติมเกี่ยวกับตัวคูณ</value>
     <comment>Call to action</comment>

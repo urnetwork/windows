@@ -9,6 +9,7 @@
 #include "MainWindow.g.h"
 
 #include <memory>
+#include <winrt/Microsoft.UI.Xaml.Documents.h>
 #include <string>
 #include <vector>
 
@@ -267,8 +268,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                     winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnClaimTop200(winrt::Windows::Foundation::IInspectable const&,
                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  void OnWalletNotRetroactive(winrt::Windows::Foundation::IInspectable const&,
-                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnWalletLearnMore(winrt::Microsoft::UI::Xaml::Documents::Hyperlink const&,
+                         winrt::Microsoft::UI::Xaml::Documents::HyperlinkClickEventArgs const&);
   void OnWalletProvideMode(winrt::Windows::Foundation::IInspectable const&,
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // wallet: Seeker-token multiplier verification. leaderboard: the

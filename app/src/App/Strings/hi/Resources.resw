@@ -1680,6 +1680,10 @@
     <value>लीडरबोर्ड पिछले 4 भुगतानों का योग है। यह प्रत्येक भुगतान चक्र में अपडेट किया जाता है।</value>
     <comment>Call to action</comment>
   </data>
+  <data name="learn_more" xml:space="preserve">
+    <value>और जानें</value>
+    <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
+  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>गुणक के बारे में और जानें</value>
     <comment>Call to action</comment>

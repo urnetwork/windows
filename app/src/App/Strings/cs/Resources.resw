@@ -1728,6 +1728,10 @@ správným způsobem</value>
     <value>Žebříček je součtem posledních 4 plateb. Je aktualizován každý platební cyklus.</value>
     <comment>Call to action</comment>
   </data>
+  <data name="learn_more" xml:space="preserve">
+    <value>Zjistit více</value>
+    <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
+  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>Další informace o násobiteli</value>
     <comment>Call to action</comment>

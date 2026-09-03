@@ -1931,8 +1931,10 @@ void MainWindow::OnClaimAlpha(IInspectable const& s, RoutedEventArgs const& e) {
 void MainWindow::OnClaimTop200(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnClaimTop200(s, e);
 }
-void MainWindow::OnWalletNotRetroactive(IInspectable const& s, RoutedEventArgs const& e) {
-  wallet_->OnWalletNotRetroactive(s, e);
+void MainWindow::OnWalletLearnMore(
+    winrt::Microsoft::UI::Xaml::Documents::Hyperlink const&,
+    winrt::Microsoft::UI::Xaml::Documents::HyperlinkClickEventArgs const&) {
+  wallet_->OpenProtocolSite();
 }
 
 // The provide mode is changed on the Connect page (its provide group); the

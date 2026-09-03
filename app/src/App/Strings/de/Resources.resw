@@ -1681,6 +1681,10 @@ richtig auf</value>
     <value>Die Bestenliste ist die Summe der letzten 4 Zahlungen. Sie wird bei jedem Zahlungszyklus aktualisiert.</value>
     <comment>Call to action</comment>
   </data>
+  <data name="learn_more" xml:space="preserve">
+    <value>Mehr erfahren</value>
+    <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
+  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>Mehr über den Multiplikator erfahren</value>
     <comment>Call to action</comment>

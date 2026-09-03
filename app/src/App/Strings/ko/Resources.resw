@@ -1657,6 +1657,10 @@
     <value>리더보드는 최근 4번의 결제 합계입니다. 각 결제 주기마다 업데이트됩니다.</value>
     <comment>Call to action</comment>
   </data>
+  <data name="learn_more" xml:space="preserve">
+    <value>자세히 알아보기</value>
+    <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
+  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>배수에 대해 자세히 알아보기</value>
     <comment>Call to action</comment>

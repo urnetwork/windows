@@ -3046,6 +3046,10 @@ right way</value>
     <value>The leaderboard is the sum of the last 4 payments. It is updated each payment cycle.</value>
     <comment>Call to action</comment>
   </data>
+  <data name="learn_more" xml:space="preserve">
+    <value>Learn more</value>
+    <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
+  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>Learn more about the multiplier</value>
     <comment>Call to action</comment>

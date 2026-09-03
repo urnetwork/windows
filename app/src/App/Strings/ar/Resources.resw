@@ -1777,6 +1777,10 @@
     <value>لوحة الصدارة هي مجموع آخر 4 دفعات. يتم تحديثها كل دورة دفع.</value>
     <comment>Call to action</comment>
   </data>
+  <data name="learn_more" xml:space="preserve">
+    <value>اعرف المزيد</value>
+    <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
+  </data>
   <data name="learn_more_about_multiplier" xml:space="preserve">
     <value>معرفة المزيد حول المضاعف</value>
     <comment>Call to action</comment>

@@ -1921,18 +1921,11 @@
                                         BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,10">
                                     <StackPanel Spacing="10">
-                                        <!-- plain note; the whole sentence opens the protocol
-                                             site, the outward glyph after the last word says the
-                                             click leaves the app -->
-                                        <Button x:Name="WalletNotRetroactiveButton"
-                                                Background="Transparent" BorderThickness="0"
-                                                Padding="0" Margin="0"
-                                                HorizontalAlignment="Stretch"
-                                                HorizontalContentAlignment="Left"
-                                                Click="OnWalletNotRetroactive">
-                                            <TextBlock Style="{StaticResource UrRowNoteStyle}"
-                                                       TextWrapping="Wrap" TextTrimming="None"><Run x:Name="WalletNotRetroactiveRun" /><Run Text="&#xA0;" /><Run FontFamily="{StaticResource UrIconFontFamily}" Text="&#xE8A7;" /></TextBlock>
-                                        </Button>
+                                        <!-- plain note, then a "Learn more" link in the pink
+                                             accent with the outward glyph that opens the protocol
+                                             site; inline, so it shares the last line when it fits -->
+                                        <TextBlock Style="{StaticResource UrRowNoteStyle}"
+                                                   TextWrapping="Wrap" TextTrimming="None"><Run x:Name="WalletNotRetroactiveRun" /><Run Text="&#xA0;" /><Hyperlink Foreground="{StaticResource UrPinkBrush}" UnderlineStyle="None" Click="OnWalletLearnMore"><Run x:Name="WalletLearnMoreRun" /><Run Text="&#xA0;" /><Run FontFamily="{StaticResource UrIconFontFamily}" Text="&#xE8A7;" /></Hyperlink></TextBlock>
                                         <Button x:Name="ConnectWalletButton"
                                                 Style="{StaticResource UrPaneActionPrimaryStyle}"
                                                 HorizontalAlignment="Stretch"

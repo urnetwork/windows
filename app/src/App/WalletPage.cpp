@@ -465,6 +465,7 @@ void WalletPage::ApplyStrings() {
   w_.WalletConnectedNote().Text(Loc("wallet_connected_to_protocol"));
   w_.ChangeWalletButton().Content(LocBox("earnings_change_wallet"));
   w_.WalletNotRetroactiveRun().Text(Loc("wallet_not_retroactive"));
+  w_.WalletLearnMoreRun().Text(Loc("learn_more"));
   w_.ConnectWalletButton().Content(LocBox("connect_bittensor_wallet"));
   w_.EnterAddressManuallyButton().Content(LocBox("enter_address_manually"));
   w_.WalletAddressBox().PlaceholderText(Loc("earnings_address_placeholder"));
@@ -1498,9 +1499,7 @@ void WalletPage::OnClaimTop200(IInspectable const&, RoutedEventArgs const&) {
   OpenUrl("https://" + Sdk().linkHostName() + kTop200Path);
 }
 
-void WalletPage::OnWalletNotRetroactive(IInspectable const&, RoutedEventArgs const&) {
-  OpenUrl(kUrXyzUrl);
-}
+void WalletPage::OpenProtocolSite() { OpenUrl(kUrXyzUrl); }
 
 // ---- network reliability -------------------------------------------------
 
@@ -2720,7 +2719,10 @@ void WalletPage::ApplyProvideState(urnw::LiveStats const& stats) {
   w_.WalletProvideModeRing().Visibility(visual.ring ? Visibility::Visible : Visibility::Collapsed);
   // the control mode strings are the store keys of their labels
   w_.WalletProvideModeValue().Text(Loc(Sdk().CurrentProvideControlMode().c_str()));
-  const bool enabled = stats.provideEnabled;
+  // the gate reads the same value the row shows: the provide mode the user
+  // picked. Never hides every provider plot behind the disabled message,
+  // whatever the device's live provide state says.
+  const bool enabled = Sdk().CurrentProvideControlMode() != "never";
   if (enabled == providingEnabled_) return;
   providingEnabled_ = enabled;
   if (enabled) {
