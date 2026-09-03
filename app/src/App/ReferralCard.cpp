@@ -11,6 +11,7 @@
 #include "PageContext.h"
 #include "SettingsSheets.h"
 #include "Strings.h"
+#include "SubscriptionBalance.h"
 #include "UrColors.h"
 
 using namespace winrt;

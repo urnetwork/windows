@@ -247,6 +247,40 @@ func TestReferralSheetIncludesCompleteBalanceStoreType(t *testing.T) {
 	}
 }
 
+func TestReferralCardIncludesCompleteBalanceStoreType(t *testing.T) {
+	source := readAppSource(t, "ReferralCard.cpp")
+	if !strings.Contains(source, `#include "SubscriptionBalance.h"`) {
+		t.Fatal("ReferralCard.cpp calls SubscriptionBalanceStore methods through PageContext but includes only its forward declaration")
+	}
+}
+
+func TestReferralsPageIncludesCompleteAutomationType(t *testing.T) {
+	source := readAppSource(t, "ReferralsPage.cpp")
+	if !strings.Contains(source, `#include <winrt/Microsoft.UI.Xaml.Automation.h>`) {
+		t.Fatal("ReferralsPage.cpp calls AutomationProperties methods without including their complete C++/WinRT type")
+	}
+}
+
+func TestReferralReloadIsPublicForMainWindowNavigation(t *testing.T) {
+	header := readAppSource(t, "SettingsPage.h")
+	classStart := strings.Index(header, "class SettingsPage {")
+	if classStart < 0 {
+		t.Fatal("SettingsPage declaration is missing")
+	}
+	classBody := header[classStart:]
+	publicStart := strings.Index(classBody, "public:")
+	privateStart := strings.Index(classBody, "private:")
+	loadReferral := strings.Index(classBody, "void LoadReferral();")
+	if publicStart < 0 || privateStart < 0 || loadReferral < publicStart || loadReferral >= privateStart {
+		t.Fatal("SettingsPage::LoadReferral must be public because MainWindow invokes it when opening the referrals destination")
+	}
+
+	window := readAppSource(t, "MainWindow.xaml.cpp")
+	if !strings.Contains(window, "settings_->LoadReferral();") {
+		t.Fatal("MainWindow no longer reloads shared referral state when opening the referrals destination")
+	}
+}
+
 func TestOnboardingUsesUnambiguousWinRTNumericAndInspectableTypes(t *testing.T) {
 	source := readAppSource(t, "Onboarding.cpp")
 	for _, required := range []string{

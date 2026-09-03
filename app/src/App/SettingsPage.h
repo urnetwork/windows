@@ -75,6 +75,10 @@ class SettingsPage {
   // method, and by the remove path after it unlinks one.
   void LoadNetworkUser();
 
+  // Re-read the referral network when MainWindow opens the dedicated
+  // referrals destination. The destination and Settings share this state.
+  void LoadReferral();
+
   // Drop everything describing the account that just signed out, and put every
   // field back to NoSession. The network name is the dangerous one: it is what
   // the delete-account gate compares against, and Api::networkDelete acts on
@@ -112,7 +116,6 @@ class SettingsPage {
 
   // ---- loads ----
   void LoadDeviceInfo();
-  void LoadReferral();
   void LoadPreferences();
   // `state` is the terminal state of the network-user load; only Loaded
   // renders rows, and every other state renders the line that names it.

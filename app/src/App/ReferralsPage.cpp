@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Windows.UI.ViewManagement.h>
 
 #include "Localization.h"
