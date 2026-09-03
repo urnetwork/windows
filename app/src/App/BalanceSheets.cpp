@@ -423,90 +423,10 @@ std::shared_ptr<UpgradeSheet> UpgradeSheet::CreateForCheckout(XamlRoot const& ro
                                                               SubscriptionBalanceStore& balance,
                                                               bool yearly) {
   auto sheet = Create(root, sdk, balance);
-  sheet->yearlySelected_ = yearly;
-  sheet->ApplySelection();
+  sheet->plans_.Select(yearly);
+  sheet->subscribeButton_.Content(winrt::box_value(PlanPicker::CtaLabel(yearly)));
   sheet->BeginCheckout();
   return sheet;
-}
-
-Border UpgradeSheet::BuildProductCard(bool yearly) {
-  Border card;
-  card.CornerRadius(CornerRadius{8, 8, 8, 8});
-  card.BorderThickness(Thickness{2, 2, 2, 2});
-  card.Padding(Thickness{16, 16, 16, 16});
-  card.Background(colors::CardBrush());
-
-  Grid row;
-  ColumnDefinition c0, c1, c2;
-  c0.Width(GridLength{0, GridUnitType::Auto});
-  c1.Width(GridLength{1, GridUnitType::Star});
-  c2.Width(GridLength{0, GridUnitType::Auto});
-  row.ColumnDefinitions().Append(c0);
-  row.ColumnDefinitions().Append(c1);
-  row.ColumnDefinitions().Append(c2);
-  row.ColumnSpacing(14);
-
-  // selection dot
-  ShapeEllipse dot;
-  dot.Width(14);
-  dot.Height(14);
-  dot.StrokeThickness(2);
-  dot.VerticalAlignment(VerticalAlignment::Center);
-  row.Children().Append(dot);
-
-  StackPanel labels;
-  labels.Spacing(2);
-  labels.VerticalAlignment(VerticalAlignment::Center);
-  auto title = MakeText(yearly ? Loc("yearly") : Loc("monthly"), 18, colors::TextBrush());
-  title.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
-  labels.Children().Append(title);
-  if (yearly) {
-    labels.Children().Append(
-        MakeText(Loc("includes_2_week_free_trial"), 13, colors::MutedBrush()));
-  }
-  Grid::SetColumn(labels, 1);
-  row.Children().Append(labels);
-
-  if (yearly) {
-    // "Most Popular" capsule (macOS ProductOptionCard badge)
-    Border chip;
-    chip.CornerRadius(CornerRadius{10, 10, 10, 10});
-    chip.Padding(Thickness{10, 4, 10, 4});
-    chip.VerticalAlignment(VerticalAlignment::Center);
-    chip.Background(colors::MakeBrush(colors::kUrGreen));
-    auto chipText = MakeText(Loc("most_popular"), 11,
-                             colors::MakeBrush(colors::kInverseText));
-    chipText.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
-    chip.Child(chipText);
-    Grid::SetColumn(chip, 2);
-    row.Children().Append(chip);
-  }
-
-  card.Child(row);
-
-  if (yearly) {
-    yearlyDot_ = dot;
-  } else {
-    monthlyDot_ = dot;
-  }
-  card.Tapped([weak = weak_from_this(), yearly](auto const&, auto const&) {
-    if (auto self = weak.lock()) {
-      self->yearlySelected_ = yearly;
-      self->ApplySelection();
-    }
-  });
-  return card;
-}
-
-void UpgradeSheet::ApplySelection() {
-  auto apply = [](Border const& card, ShapeEllipse const& dot, bool selected) {
-    if (!card || !dot) return;
-    card.BorderBrush(selected ? colors::AccentBrush() : colors::FaintBrush());
-    dot.Stroke(selected ? colors::AccentBrush() : colors::MutedBrush());
-    dot.Fill(selected ? colors::AccentBrush() : colors::MakeBrush(kTransparent));
-  };
-  apply(yearlyCard_, yearlyDot_, yearlySelected_);
-  apply(monthlyCard_, monthlyDot_, !yearlySelected_);
 }
 
 void UpgradeSheet::Build(XamlRoot const& root) {
@@ -529,16 +449,18 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   productsPanel_.Children().Append(
       MakeText(Loc("unlock_speed"), 14, colors::MutedBrush(), true));
 
-  yearlyCard_ = BuildProductCard(/*yearly=*/true);
-  yearlyCard_.Margin(Thickness{0, 8, 0, 0});
-  productsPanel_.Children().Append(yearlyCard_);
-  monthlyCard_ = BuildProductCard(/*yearly=*/false);
-  productsPanel_.Children().Append(monthlyCard_);
-  ApplySelection();
-
-  // the app has no price api: the authoritative price appears on the Stripe page
-  productsPanel_.Children().Append(
-      MakeText(Loc("pricing_shown_at_checkout"), 12, colors::FaintBrush(), true));
+  // the plan picker the onboarding welcome page shows: yearly in the gold
+  // dress with the trial, selected by default, monthly plain below it. One
+  // component, so Get Pro and onboarding cannot drift; the prices are the
+  // same store literals onboarding prints.
+  auto plans = plans_.Build();
+  plans.Margin(Thickness{0, 36, 0, 0});  // room for the halo and the Best value pill
+  productsPanel_.Children().Append(plans);
+  plans_.onSelect = [weak = weak_from_this()](bool yearly) {
+    if (auto self = weak.lock()) {
+      self->subscribeButton_.Content(winrt::box_value(PlanPicker::CtaLabel(yearly)));
+    }
+  };
 
   checkoutErrorText_ = MakeText(hstring{L""}, 12, colors::DangerBrush(), true);
   // selectable: a failed browser launch appends the checkout url for the user
@@ -550,7 +472,8 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   // subscribe row: the accent button with a small in-flight ring
   Grid subscribeRow;
   subscribeButton_ = Button();
-  subscribeButton_.Content(winrt::box_value(Loc("join_the_movement")));
+  // only the yearly plan carries the trial: the button says what the click does
+  subscribeButton_.Content(winrt::box_value(PlanPicker::CtaLabel(plans_.Yearly())));
   subscribeButton_.HorizontalAlignment(HorizontalAlignment::Stretch);
   if (auto style = AccentButtonStyle()) subscribeButton_.Style(*style);
   subscribeButton_.Click([weak = weak_from_this()](auto const&, auto const&) {
@@ -714,6 +637,7 @@ void UpgradeSheet::ShowCheckoutError(hstring const& message) {
   checkingOut_ = false;
   subscribeRing_.IsActive(false);
   subscribeButton_.IsEnabled(true);
+  plans_.SetEnabled(true);
   checkoutErrorText_.Text(message);
   checkoutErrorText_.Visibility(Visibility::Visible);
 }
@@ -723,6 +647,7 @@ void UpgradeSheet::BeginCheckout() {
   checkingOut_ = true;
   hostedFallbackTried_ = false;
   subscribeButton_.IsEnabled(false);
+  plans_.SetEnabled(false);
   subscribeRing_.IsActive(true);
   checkoutErrorText_.Visibility(Visibility::Collapsed);
 
@@ -739,7 +664,7 @@ void UpgradeSheet::RequestSession(bool embedded) {
     return;
   }
   urnet::StripeCreateCheckoutSessionArgs args;
-  args.item_id = yearlySelected_ ? "pro_yearly" : "pro_monthly";
+  args.item_id = plans_.Yearly() ? "pro_yearly" : "pro_monthly";
   args.ui_mode = embedded ? "embedded" : "hosted";
 
   auto queue = dialog_.DispatcherQueue();
@@ -812,6 +737,7 @@ winrt::fire_and_forget UpgradeSheet::LaunchHosted(std::string url) {
   self->checkingOut_ = false;
   self->subscribeRing_.IsActive(false);
   self->subscribeButton_.IsEnabled(true);
+  self->plans_.SetEnabled(true);
   // bridge the webhook gap: poll until the server confirms Pro
   self->waitingBodyText_.Text(Loc("checkout_opened_in_browser"));
   self->balance_.StartConfirmationPolling();
@@ -828,6 +754,7 @@ winrt::fire_and_forget UpgradeSheet::OpenEmbedded(std::string clientSecret) {
   checkingOut_ = false;
   subscribeRing_.IsActive(false);
   subscribeButton_.IsEnabled(true);
+  plans_.SetEnabled(true);
 
   // fresh control per attempt (a closed WebView2 cannot be revived); the old
   // one, if any, is torn down first

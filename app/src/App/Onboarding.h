@@ -21,15 +21,11 @@
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 
+#include "PlanPicker.h"
 #include "ReferralCard.h"
 #include "SubscriptionBalance.h"
 
 namespace urnw {
-
-// The free trial the yearly plan starts with, in days, as printed on the plan
-// card. The trial itself is the server's Stripe checkout session setting
-// (subscription_stripe_controller: trial_period_days) and must match this.
-inline constexpr int64_t kFreeTrialDays = 15;
 
 class Onboarding : public std::enable_shared_from_this<Onboarding> {
  public:
@@ -62,6 +58,7 @@ class Onboarding : public std::enable_shared_from_this<Onboarding> {
   void ApplyBubbles();
 
   winrt::Microsoft::UI::Xaml::Controls::StackPanel BuildWelcome();
+  void ApplyPlanCta(bool yearly);
   winrt::Microsoft::UI::Xaml::Controls::StackPanel BuildBandwidth();
   winrt::Microsoft::UI::Xaml::Controls::StackPanel BuildProviding();
   winrt::Microsoft::UI::Xaml::Controls::StackPanel BuildReferral();
@@ -71,10 +68,6 @@ class Onboarding : public std::enable_shared_from_this<Onboarding> {
   void StartTrip();
   void StopTrip();
   void PlaceWalker(double fraction);
-
-  // page 1: the plan cards
-  winrt::Microsoft::UI::Xaml::Controls::Border BuildPlanCard(bool yearly);
-  void ApplyPlanSelection();
 
   // the connector's flight between the route slot and the header slot
   void FlyConnector(bool toHeader);
@@ -118,12 +111,8 @@ class Onboarding : public std::enable_shared_from_this<Onboarding> {
   int person_ = 0;
   double travel_ = 0;
 
-  // page 1: plans
-  bool yearlySelected_ = true;
-  winrt::Microsoft::UI::Xaml::Controls::Border yearlyCard_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::Border monthlyCard_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse yearlyDot_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse monthlyDot_{nullptr};
+  // page 1: plans (the picker shared with the upgrade sheet)
+  PlanPicker plans_;
   winrt::Microsoft::UI::Xaml::Controls::Button checkoutButton_{nullptr};
   winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard haloStoryboard_{nullptr};
 

@@ -956,6 +956,10 @@ kwa njia sahihi</value>
     <value>Lebo ya emoji</value>
     <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
   </data>
+  <data name="emoji_tag_delete_last" xml:space="preserve">
+    <value>Futa emoji ya mwisho</value>
+    <comment>Points leaderboard: the emoji editor's backspace key, removes the last emoji of the tag.</comment>
+  </data>
   <data name="emoji_tag_error_empty" xml:space="preserve">
     <value>Ongeza angalau emoji moja.</value>
     <comment>Points leaderboard: emoji editor error when the field has no emoji.</comment>
@@ -971,6 +975,10 @@ kwa njia sahihi</value>
   <data name="emoji_tag_hint" xml:space="preserve">
     <value>Chagua emoji 1 hadi {} zitakazoonekana kando ya mtandao wako.</value>
     <comment>Points leaderboard: the emoji editor's explanation. {max} is the most emoji allowed (6).</comment>
+  </data>
+  <data name="emoji_tag_shuffle" xml:space="preserve">
+    <value>Pendekeza nyingine</value>
+    <comment>Points leaderboard: the emoji editor's shuffle button, replaces the draft with a new random suggestion.</comment>
   </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>Unafurahia URnetwork?</value>
@@ -1452,6 +1460,10 @@ kwa njia sahihi</value>
     <value>Ni vizuri
  kukuona tena</value>
     <comment>Login password</comment>
+  </data>
+  <data name="login_tile_secret_key" xml:space="preserve">
+    <value>Seed</value>
+    <comment>Login stack: small tile caption for signing in with an instant account's seed (the seedphrase). One short word: the tile is a quarter of the row wide.</comment>
   </data>
   <data name="login_verify_check_phone" xml:space="preserve">
     <value>Angalia simu yako</value>
@@ -2010,10 +2022,6 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
     <value>Ufunguo wako wa utambulisho huhifadhiwa ndani ya kifaa hiki. Ikiwa ufunguo wa mshirika yeyote unaonekana tofauti na ufunguo wake uliohifadhiwa ndani ya kifaa, inamaanisha mwendeshaji wa mtandao hawezi kuaminiwa.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
-  </data>
-  <data name="pricing_shown_at_checkout" xml:space="preserve">
-    <value>Bei inaonyeshwa wakati wa malipo.</value>
-    <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
   </data>
   <data name="private_network" xml:space="preserve">
     <value>Mtandao wa kibinafsi</value>

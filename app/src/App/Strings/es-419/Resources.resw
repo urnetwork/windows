@@ -1951,10 +1951,6 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Tu clave de identidad se guarda localmente en este dispositivo. Si la clave de algún par se ve diferente de la clave guardada localmente, significa que no se puede confiar en el operador de la red.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
-  <data name="pricing_shown_at_checkout" xml:space="preserve">
-    <value>El precio se muestra al pagar.</value>
-    <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
-  </data>
   <data name="private_network" xml:space="preserve">
     <value>Red privada</value>
     <comment>Network name when privacy is enabled</comment>

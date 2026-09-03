@@ -956,6 +956,10 @@
     <value>Ετικέτα emoji</value>
     <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
   </data>
+  <data name="emoji_tag_delete_last" xml:space="preserve">
+    <value>Διαγραφή τελευταίου emoji</value>
+    <comment>Points leaderboard: the emoji editor's backspace key, removes the last emoji of the tag.</comment>
+  </data>
   <data name="emoji_tag_error_empty" xml:space="preserve">
     <value>Προσθέστε τουλάχιστον ένα emoji.</value>
     <comment>Points leaderboard: emoji editor error when the field has no emoji.</comment>
@@ -971,6 +975,10 @@
   <data name="emoji_tag_hint" xml:space="preserve">
     <value>Επιλέξτε 1 έως {} emoji που θα εμφανίζονται δίπλα στο δίκτυό σας.</value>
     <comment>Points leaderboard: the emoji editor's explanation. {max} is the most emoji allowed (6).</comment>
+  </data>
+  <data name="emoji_tag_shuffle" xml:space="preserve">
+    <value>Άλλη πρόταση</value>
+    <comment>Points leaderboard: the emoji editor's shuffle button, replaces the draft with a new random suggestion.</comment>
   </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>Απολαμβάνετε το URnetwork;</value>
@@ -1452,6 +1460,10 @@
     <value>Χάρηκα που σε
 ξαναβλέπω</value>
     <comment>Login password</comment>
+  </data>
+  <data name="login_tile_secret_key" xml:space="preserve">
+    <value>Seed</value>
+    <comment>Login stack: small tile caption for signing in with an instant account's seed (the seedphrase). One short word: the tile is a quarter of the row wide.</comment>
   </data>
   <data name="login_verify_check_phone" xml:space="preserve">
     <value>Ελέγξτε το τηλέφωνό σας</value>
@@ -2010,10 +2022,6 @@
   <data name="post_quantum_identity_explanation" xml:space="preserve">
     <value>Το κλειδί ταυτότητάς σας αποθηκεύεται τοπικά σε αυτή τη συσκευή. Αν το κλειδί κάποιου κόμβου εμφανίζεται διαφορετικό από το τοπικά αποθηκευμένο κλειδί του, σημαίνει ότι δεν μπορείτε να εμπιστευτείτε τον διαχειριστή του δικτύου.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
-  </data>
-  <data name="pricing_shown_at_checkout" xml:space="preserve">
-    <value>Η τιμή εμφανίζεται κατά την πληρωμή.</value>
-    <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
   </data>
   <data name="private_network" xml:space="preserve">
     <value>Ιδιωτικό δίκτυο</value>

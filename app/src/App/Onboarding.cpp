@@ -157,50 +157,6 @@ hstring Upper(hstring const& text) {
   return hstring{upper};
 }
 
-// Pro gold, top to bottom light -> gold (the Best value pill, the copy button).
-LinearGradientBrush GoldGradient(winrt::Windows::UI::Color light,
-                                 winrt::Windows::UI::Color gold) {
-  LinearGradientBrush brush;
-  brush.StartPoint(Point{0, 0});
-  brush.EndPoint(Point{0, 1});
-  GradientStop top;
-  top.Color(light);
-  top.Offset(0);
-  brush.GradientStops().Append(top);
-  GradientStop bottom;
-  bottom.Color(gold);
-  bottom.Offset(1);
-  brush.GradientStops().Append(bottom);
-  return brush;
-}
-
-// A soft halo behind a box: a rounded rectangle filled with a radial gradient
-// that reaches zero alpha well inside its own edge, so it never draws a hard
-// box (measured on Android: a gradient that stops at the edge reads as a
-// brown rectangle).
-ShapeRectangle MakeHalo(winrt::Windows::UI::Color color, uint8_t alpha, double spill) {
-  ShapeRectangle halo;
-  halo.Margin(Thickness{-spill, -spill, -spill, -spill});
-  halo.RadiusX(24);
-  halo.RadiusY(24);
-  halo.IsHitTestVisible(false);
-  RadialGradientBrush brush;
-  GradientStop centre;
-  centre.Color(colors::WithAlpha(color, alpha));
-  centre.Offset(0);
-  brush.GradientStops().Append(centre);
-  GradientStop mid;
-  mid.Color(colors::WithAlpha(color, static_cast<uint8_t>(alpha / 3)));
-  mid.Offset(0.55);
-  brush.GradientStops().Append(mid);
-  GradientStop edge;
-  edge.Color(colors::WithAlpha(color, 0));
-  edge.Offset(0.92);
-  brush.GradientStops().Append(edge);
-  halo.Fill(brush);
-  return halo;
-}
-
 // The whole gibibytes for prose ("30 GiB"); anything else in the compact form.
 std::wstring FormatDailyAllowance(int64_t byteCount) {
   constexpr int64_t kGib = 1024LL * 1024LL * 1024LL;
@@ -709,88 +665,9 @@ void Onboarding::StopTrip() {
   if (walker_) walker_.Opacity(0);
 }
 
-Border Onboarding::BuildPlanCard(bool yearly) {
-  // the recommended plan wears the Pro-gold dress: halo, gold wash, gold
-  // border, the Best value pill; the other card is the plain selectable card
-  Border card;
-  card.CornerRadius(CornerRadius{12, 12, 12, 12});
-  card.BorderThickness(Thickness{2, 2, 2, 2});
-  card.Padding(Thickness{20, 18, 20, 18});
-  card.Background(yearly ? colors::MakeBrush(colors::kBackground) : colors::CardBrush());
-
-  Grid row;
-  ColumnDefinition c0, c1;
-  c0.Width(GridLength{0, GridUnitType::Auto});
-  c1.Width(GridLength{1, GridUnitType::Star});
-  row.ColumnDefinitions().Append(c0);
-  row.ColumnDefinitions().Append(c1);
-  row.ColumnSpacing(14);
-
-  ShapeEllipse dot;
-  dot.Width(14);
-  dot.Height(14);
-  dot.StrokeThickness(2);
-  dot.VerticalAlignment(VerticalAlignment::Center);
-  row.Children().Append(dot);
-
-  StackPanel labels;
-  labels.Spacing(2);
-  labels.VerticalAlignment(VerticalAlignment::Center);
-  // the Stripe prices, as on the other apps ($40 a year is a third off twelve
-  // months at $5); price strings are product literals, not store keys
-  auto title = MakeLead(yearly ? hstring{L"$40/year"} : hstring{L"$5/month"}, 22);
-  labels.Children().Append(title);
-  if (yearly) {
-    labels.Children().Append(MakeText(hstring{L"Save 33%"}, 13, colors::MutedBrush()));
-    labels.Children().Append(
-        MakeText(hstring{Format("includes_free_trial_days", kFreeTrialDays)}, 13,
-                 colors::MakeBrush(colors::kProGoldLight)));
-  }
-  Grid::SetColumn(labels, 1);
-  row.Children().Append(labels);
-
-  if (yearly) {
-    yearlyDot_ = dot;
-    // the gold wash inside the black ground, under the row
-    Border wash;
-    wash.CornerRadius(CornerRadius{10, 10, 10, 10});
-    wash.Background(colors::MakeBrush(colors::WithAlpha(colors::kProGold, 0x14)));
-    wash.Margin(Thickness{-20, -18, -20, -18});
-    wash.IsHitTestVisible(false);
-    Grid dressed;
-    dressed.Children().Append(wash);
-    dressed.Children().Append(row);
-    card.Child(dressed);
-  } else {
-    monthlyDot_ = dot;
-    card.Child(row);
-  }
-
-  card.Tapped([weak = weak_from_this(), yearly](auto const&, auto const&) {
-    if (auto self = weak.lock()) {
-      self->yearlySelected_ = yearly;
-      self->ApplyPlanSelection();
-    }
-  });
-  return card;
-}
-
-void Onboarding::ApplyPlanSelection() {
-  auto apply = [](Border const& card, ShapeEllipse const& dot, bool selected, bool gold) {
-    if (!card || !dot) return;
-    const auto accent = gold ? colors::ProGoldBrush() : colors::MakeBrush(colors::kUrPink);
-    card.BorderBrush(selected ? accent
-                     : gold  ? colors::MakeBrush(colors::WithAlpha(colors::kProGold, 0x99))
-                             : colors::MutedBrush());
-    dot.Stroke(selected ? accent : colors::MutedBrush());
-    dot.Fill(selected ? accent : colors::MakeBrush(kTransparent));
-  };
-  apply(yearlyCard_, yearlyDot_, yearlySelected_, true);
-  apply(monthlyCard_, monthlyDot_, !yearlySelected_, false);
-  if (checkoutButton_) {
-    checkoutButton_.Content(
-        winrt::box_value(yearlySelected_ ? Loc("start_free_trial") : Loc("pay_with_stripe")));
-  }
+// only the yearly plan carries the trial: the button says what the click does
+void Onboarding::ApplyPlanCta(bool yearly) {
+  if (checkoutButton_) checkoutButton_.Content(winrt::box_value(PlanPicker::CtaLabel(yearly)));
 }
 
 StackPanel Onboarding::BuildWelcome() {
@@ -807,51 +684,23 @@ StackPanel Onboarding::BuildWelcome() {
   tagline.Margin(Thickness{0, 16, 0, 0});
   page.Children().Append(tagline);
 
-  // the plans: room for the halo and the pill, and air after the tagline
-  Grid plans;
+  // the plans (the shared picker): room for the halo and the pill, and air
+  // after the tagline
+  auto plans = plans_.Build();
   plans.Margin(Thickness{0, 52, 0, 0});
-  auto halo = MakeHalo(colors::kProGold, 0x5C, 28);
-  halo.VerticalAlignment(VerticalAlignment::Top);
-  plans.Children().Append(halo);
-
-  StackPanel cards;
-  cards.Spacing(16);
-  yearlyCard_ = BuildPlanCard(/*yearly=*/true);
-  Grid recommended;
-  recommended.Children().Append(yearlyCard_);
-  Border pill;
-  pill.CornerRadius(CornerRadius{16, 16, 16, 16});
-  pill.Padding(Thickness{16, 6, 16, 6});
-  pill.HorizontalAlignment(HorizontalAlignment::Right);
-  pill.VerticalAlignment(VerticalAlignment::Top);
-  pill.Margin(Thickness{0, -16, 12, 0});
-  pill.Background(GoldGradient(colors::kProGoldLight, colors::kProGold));
-  pill.BorderThickness(Thickness{1, 1, 1, 1});
-  pill.BorderBrush(colors::MakeBrush(colors::WithAlpha(colors::kOffWhite, 0x73)));
-  auto pillText = MakeLead(Loc("best_value"), 20);
-  pillText.Foreground(colors::MakeBrush(colors::kInverseText));
-  pill.Child(pillText);
-  recommended.Children().Append(pill);
-  cards.Children().Append(recommended);
-  monthlyCard_ = BuildPlanCard(/*yearly=*/false);
-  cards.Children().Append(monthlyCard_);
-  plans.Children().Append(cards);
   page.Children().Append(plans);
+  plans_.onSelect = [weak = weak_from_this()](bool yearly) {
+    if (auto self = weak.lock()) self->ApplyPlanCta(yearly);
+  };
 
-  // halo height follows the yearly card
-  yearlyCard_.SizeChanged([halo, weak = weak_from_this()](auto const&, SizeChangedEventArgs const& e) {
-    halo.Height(e.NewSize().Height + 56);
-  });
-
-  checkoutButton_ = MakePrimaryButton(Loc("start_free_trial"));
+  checkoutButton_ = MakePrimaryButton(PlanPicker::CtaLabel(plans_.Yearly()));
   checkoutButton_.Margin(Thickness{0, 16, 0, 0});
   checkoutButton_.Click([weak = weak_from_this()](auto const&, auto const&) {
     if (auto self = weak.lock()) {
-      if (self->actions_.startCheckout) self->actions_.startCheckout(self->yearlySelected_);
+      if (self->actions_.startCheckout) self->actions_.startCheckout(self->plans_.Yearly());
     }
   });
   page.Children().Append(checkoutButton_);
-  ApplyPlanSelection();
 
   // the other ways in, as quiet links at the bottom: the screen is about
   // starting the free trial
@@ -876,7 +725,7 @@ StackPanel Onboarding::BuildWelcome() {
   page.Children().Append(links);
 
   if (animations_) {
-    haloStoryboard_ = PulseOpacity(halo, 0.6, 1.0, 2200);
+    haloStoryboard_ = PulseOpacity(plans_.Halo(), 0.6, 1.0, 2200);
     haloStoryboard_.Begin();
   }
   return page;

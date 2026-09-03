@@ -15,6 +15,7 @@
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 
 #include "SdkHost.h"
+#include "PlanPicker.h"
 #include "SubscriptionBalance.h"
 
 namespace urnw {
@@ -120,8 +121,6 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   enum class Page { Products, Checkout, Waiting, Success, TimedOut };
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
-  winrt::Microsoft::UI::Xaml::Controls::Border BuildProductCard(bool yearly);
-  void ApplySelection();
   void BeginCheckout();
   // Create a Stripe session in the given ui mode and route the result: embedded
   // → OpenEmbedded (or retry once as hosted), hosted → LaunchHosted.
@@ -159,14 +158,11 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   winrt::Microsoft::UI::Xaml::Controls::Grid webviewSlot_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::WebView2 webview_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ProgressRing checkoutRing_{nullptr};
-  // the two product cards + their selection dots
-  winrt::Microsoft::UI::Xaml::Controls::Border yearlyCard_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::Border monthlyCard_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse yearlyDot_{nullptr};
-  winrt::Microsoft::UI::Xaml::Shapes::Ellipse monthlyDot_{nullptr};
+  // the plan cards: the picker the onboarding welcome page shows (yearly in
+  // the gold dress with the trial, selected by default; monthly plain, no trial)
+  PlanPicker plans_;
 
   Page page_ = Page::Products;
-  bool yearlySelected_ = true;  // macOS default: yearly, "Most Popular"
   bool checkingOut_ = false;
   bool closed_ = false;  // the dialog was dismissed; drop in-flight checkout legs
   // embedded-checkout attempt state (linux UpgradeSheet parity)

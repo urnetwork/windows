@@ -956,6 +956,10 @@ modo giusto</value>
     <value>Tag emoji</value>
     <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
   </data>
+  <data name="emoji_tag_delete_last" xml:space="preserve">
+    <value>Elimina l'ultimo emoji</value>
+    <comment>Points leaderboard: the emoji editor's backspace key, removes the last emoji of the tag.</comment>
+  </data>
   <data name="emoji_tag_error_empty" xml:space="preserve">
     <value>Aggiungi almeno un emoji.</value>
     <comment>Points leaderboard: emoji editor error when the field has no emoji.</comment>
@@ -971,6 +975,10 @@ modo giusto</value>
   <data name="emoji_tag_hint" xml:space="preserve">
     <value>Scegli da 1 a {} emoji da mostrare accanto alla tua rete.</value>
     <comment>Points leaderboard: the emoji editor's explanation. {max} is the most emoji allowed (6).</comment>
+  </data>
+  <data name="emoji_tag_shuffle" xml:space="preserve">
+    <value>Suggerisci un altro</value>
+    <comment>Points leaderboard: the emoji editor's shuffle button, replaces the draft with a new random suggestion.</comment>
   </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>Ti piace URnetwork?</value>
@@ -1452,6 +1460,10 @@ modo giusto</value>
     <value>È bello
 rivederti</value>
     <comment>Login password</comment>
+  </data>
+  <data name="login_tile_secret_key" xml:space="preserve">
+    <value>Seed</value>
+    <comment>Login stack: small tile caption for signing in with an instant account's seed (the seedphrase). One short word: the tile is a quarter of the row wide.</comment>
   </data>
   <data name="login_verify_check_phone" xml:space="preserve">
     <value>Controlla il tuo telefono</value>
@@ -2011,10 +2023,6 @@ più grande, sicuro e decentralizzato al mondo.</value>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
     <value>La tua chiave di identità è archiviata localmente su questo dispositivo. Se la chiave di un peer risulta diversa dalla chiave memorizzata localmente, significa che l'operatore della rete non è affidabile.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
-  </data>
-  <data name="pricing_shown_at_checkout" xml:space="preserve">
-    <value>Il prezzo viene mostrato al momento del pagamento.</value>
-    <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
   </data>
   <data name="private_network" xml:space="preserve">
     <value>Rete privata</value>

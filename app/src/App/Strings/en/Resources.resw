@@ -1791,10 +1791,6 @@ right way</value>
     <value>Date</value>
     <comment>Column header of the per-epoch history table: the date the epoch ended.</comment>
   </data>
-  <data name="earnings_email_support" xml:space="preserve">
-    <value>Questions about earlier payouts? Email support@ur.io.</value>
-    <comment>Line about past payouts.</comment>
-  </data>
   <data name="earnings_epoch_column" xml:space="preserve">
     <value>Epoch</value>
     <comment>Column header of the per-epoch history table.</comment>
@@ -1859,6 +1855,10 @@ right way</value>
     <value>{0} / {1}</value>
     <comment>Points leaderboard: the emoji editor's counter, {count} emoji entered out of {max} allowed.</comment>
   </data>
+  <data name="emoji_tag_delete_last" xml:space="preserve">
+    <value>Delete last emoji</value>
+    <comment>Points leaderboard: the emoji editor's backspace key, removes the last emoji of the tag.</comment>
+  </data>
   <data name="emoji_tag_error_empty" xml:space="preserve">
     <value>Add at least one emoji.</value>
     <comment>Points leaderboard: emoji editor error when the field has no emoji.</comment>
@@ -1874,6 +1874,10 @@ right way</value>
   <data name="emoji_tag_hint" xml:space="preserve">
     <value>Pick 1 to {} emoji to show next to your network.</value>
     <comment>Points leaderboard: the emoji editor's explanation. {max} is the most emoji allowed (6).</comment>
+  </data>
+  <data name="emoji_tag_shuffle" xml:space="preserve">
+    <value>Suggest another</value>
+    <comment>Points leaderboard: the emoji editor's shuffle button, replaces the draft with a new random suggestion.</comment>
   </data>
   <data name="enabled_under_auto" xml:space="preserve">
     <value>Enabled under Auto</value>
@@ -2511,8 +2515,8 @@ see you again</value>
     <comment>Login password</comment>
   </data>
   <data name="login_tile_secret_key" xml:space="preserve">
-    <value>Secret key</value>
-    <comment>Login stack: small tile caption for signing in with an instant account's secret key</comment>
+    <value>Seed</value>
+    <comment>Login stack: small tile caption for signing in with an instant account's seed (the seedphrase). One short word: the tile is a quarter of the row wide.</comment>
   </data>
   <data name="login_verify_check_phone" xml:space="preserve">
     <value>Check your phone</value>
@@ -3195,10 +3199,6 @@ and most decentralized ingress and egress protocol.</value>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
     <value>Your identity key is stored locally on this device. If any peer's key appears different than their locally stored key, it means the network operator cannot be trusted.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
-  </data>
-  <data name="pricing_shown_at_checkout" xml:space="preserve">
-    <value>Pricing is shown at checkout.</value>
-    <comment>Note under the subscription product cards on desktop: the app has no price API, so the authoritative price appears on the Stripe checkout page.</comment>
   </data>
   <data name="private_network" xml:space="preserve">
     <value>Private Network</value>
