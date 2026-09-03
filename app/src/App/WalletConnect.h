@@ -56,6 +56,20 @@ class WalletConnect {
   // carries it; the caller checks both. on_sso fires on the callback.
   void OpenSso(const std::string& provider, const std::string& state, const std::string& nonce);
 
+  // Sign in with Apple straight against Apple: Apple has no desktop SDK and no
+  // popup flow the bridge page can run without Apple JS, so the browser opens
+  // Apple's authorize page (client_id = the Apple Services ID, redirect_uri =
+  // <api>/auth/apple/callback), Apple posts the result to the api, and the api
+  // redirects to urnetwork://oauth/apple?state=…&id_token=… (or &error=…),
+  // which HandleDeepLink routes to on_sso with provider "apple" — the same
+  // state + nonce checks as the bridge accept it. The api picks the
+  // urnetwork:// scheme from the `platform` claim inside `state`
+  // (AppleOAuthState); the state is otherwise opaque.
+  void OpenAppleOAuth(const std::string& apiUrl, const std::string& state,
+                      const std::string& nonce);
+  // The state of one Apple attempt: base64url of {"platform":"windows","token":…}.
+  static std::string AppleOAuthState(const std::string& token);
+
   // Route a urnetwork:// callback here. Returns true if it was a bridge callback
   // (a wallet or an sso one).
   bool HandleDeepLink(const std::string& url);
@@ -85,6 +99,7 @@ class WalletConnect {
   void HandleSignMessage(Provider p, const std::string& query);
   void HandleBittensor(const std::string& host, const std::string& query);
   void HandleSso(const std::string& query);
+  void HandleAppleOAuth(const std::string& url);
 
   std::optional<urnet::WalletKeyPair> dappKeyPair_;
   std::optional<std::string> connectedPublicKey_;

@@ -1618,9 +1618,23 @@ void SdkHost::SignInWithSso(const std::string& provider, std::function<void(Auth
   // Fresh per attempt: `state` is echoed by the bridge and `nonce` rides inside
   // the identity token the provider issues, so a stale or replayed callback can
   // match neither. Both come from the SDK's random source, like a wallet nonce.
-  ssoAttempt_ = SsoAttempt{provider, urnet::generateNonce(), urnet::generateNonce()};
+  // Apple goes straight to Apple (no bridge page): its state carries the
+  // platform claim the api's callback reads to redirect back to this app.
+  const bool apple = provider == "apple";
+  const std::string state =
+      apple ? WalletConnect::AppleOAuthState(urnet::generateNonce()) : urnet::generateNonce();
+  ssoAttempt_ = SsoAttempt{provider, state, urnet::generateNonce()};
   // opens the browser; the rest continues on the deep-link callback (on_sso)
-  wallet_.OpenSso(provider, ssoAttempt_->state, ssoAttempt_->nonce);
+  if (apple) {
+    std::string apiUrl;
+    {
+      std::scoped_lock lock(mutex_);
+      if (networkSpace_) apiUrl = networkSpace_->getApiUrl();
+    }
+    wallet_.OpenAppleOAuth(apiUrl, ssoAttempt_->state, ssoAttempt_->nonce);
+  } else {
+    wallet_.OpenSso(provider, ssoAttempt_->state, ssoAttempt_->nonce);
+  }
 }
 
 void SdkHost::AuthLoginWithSso(const std::string& provider, const std::string& idToken,

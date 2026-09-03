@@ -25,6 +25,13 @@ constexpr const char* kWebBridge = "https://ur.io/wallet-connect";
 // Google / Apple sign-in: the same site, the provider's own web flow
 constexpr const char* kSsoBridge = "https://ur.io/sso";
 constexpr const char* kSsoRedirect = "urnetwork://sso";
+// Sign in with Apple (OpenAppleOAuth): Apple's web flow, the api's callback
+constexpr const char* kAppleAuthorize = "https://appleid.apple.com/auth/authorize";
+constexpr const char* kAppleServicesId = "network.ur.service";  // the web client id
+constexpr const char* kAppleCallbackPath = "/auth/apple/callback";
+constexpr const char* kAppleReturnHost = "oauth";   // urnetwork://oauth/apple
+constexpr const char* kAppleReturnPath = "/apple";
+constexpr const char* kPlatform = "windows";
 constexpr const char* kAppUrl = "https://ur.io";
 constexpr const char* kCluster = "mainnet-beta";
 
@@ -88,6 +95,27 @@ std::string Base64(const uint8_t* data, size_t len) {
   }
   s.resize(n);
   return s;
+}
+
+// The path of a url (between the host and the query), "" when there is none.
+std::string UrlPath(const std::string& url) {
+  auto scheme = url.find("://");
+  size_t start = (scheme == std::string::npos) ? 0 : scheme + 3;
+  auto q = url.find('?', start);
+  auto slash = url.find('/', start);
+  if (slash == std::string::npos || (q != std::string::npos && q < slash)) return std::string();
+  return url.substr(slash, q == std::string::npos ? std::string::npos : q - slash);
+}
+
+// base64url without padding, for the Apple attempt state.
+std::string Base64Url(const std::string& s) {
+  std::string out = Base64(reinterpret_cast<const uint8_t*>(s.data()), s.size());
+  for (auto& c : out) {
+    if (c == '+') c = '-';
+    else if (c == '/') c = '_';
+  }
+  while (!out.empty() && out.back() == '=') out.pop_back();
+  return out;
 }
 
 void SplitUrl(const std::string& url, std::string& host, std::string& query) {
@@ -234,11 +262,50 @@ void WalletConnect::OpenSso(const std::string& provider, const std::string& stat
   OpenUrl(url);
 }
 
+std::string WalletConnect::AppleOAuthState(const std::string& token) {
+  const nlohmann::json claims = {{"platform", kPlatform}, {"token", token}};
+  return Base64Url(claims.dump());
+}
+
+void WalletConnect::OpenAppleOAuth(const std::string& apiUrl, const std::string& state,
+                                   const std::string& nonce) {
+  if (apiUrl.empty()) {
+    if (on_error) on_error("no api url for the Apple sign-in callback");
+    return;
+  }
+  std::string origin = apiUrl;
+  while (!origin.empty() && origin.back() == '/') origin.pop_back();
+  std::string url = std::string(kAppleAuthorize) + "?client_id=" + Esc(kAppleServicesId) +
+                    "&redirect_uri=" + Esc(origin + kAppleCallbackPath) +
+                    "&response_type=" + Esc("code id_token") + "&response_mode=form_post" +
+                    "&scope=" + Esc("name email") + "&state=" + Esc(state) + "&nonce=" + Esc(nonce);
+  OpenUrl(url);
+}
+
+void WalletConnect::HandleAppleOAuth(const std::string& url) {
+  // urnetwork://oauth/apple?state=…&id_token=…  (or &error=…)
+  if (UrlPath(url) != kAppleReturnPath) {
+    if (on_error) on_error("unknown oauth callback");
+    return;
+  }
+  auto q = url.find('?');
+  auto params = ParseQuery(q == std::string::npos ? std::string() : url.substr(q + 1));
+  const std::string state = params.count("state") ? params["state"] : std::string();
+  const std::string idToken = params.count("id_token") ? params["id_token"] : std::string();
+  std::string error = params.count("error") ? params["error"] : std::string();
+  if (error.empty() && idToken.empty()) error = "sign-in returned no identity token";
+  if (on_sso) on_sso("apple", idToken, state, error);
+}
+
 bool WalletConnect::HandleDeepLink(const std::string& url) {
   std::string host, query;
   SplitUrl(url, host, query);
   if (host == "sso") {
     HandleSso(query);
+    return true;
+  }
+  if (host == kAppleReturnHost) {
+    HandleAppleOAuth(url);
     return true;
   }
   auto provider = ProviderForHost(host);
