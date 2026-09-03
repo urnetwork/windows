@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <iterator>
 
+#include "EmojiKeyboard.h"
 #include "Localization.h"
 #include "Log.h"
 #include "PageContext.h"
@@ -609,6 +610,277 @@ void ClaimAlphaSheet::OpenTx(std::string const& txHash) {
   } catch (...) {
     urnw::LogWarn("claim sheet: could not open {}", url);
   }
+}
+
+// ---- EmojiTagSheet ----------------------------------------------------------
+
+namespace {
+
+// the keyboard's grid: keys per row, and one key's footprint
+constexpr int kEmojiKeysPerRow = 8;
+constexpr double kEmojiKeySize = 40;
+
+hstring EmojiText(std::string const& utf8) { return hstring{urnw::Widen(utf8)}; }
+
+// a Segoe Fluent glyph as a button's content
+FontIcon GlyphIcon(wchar_t const* glyph) {
+  FontIcon icon;
+  icon.Glyph(glyph);
+  icon.FontSize(16);
+  return icon;
+}
+
+}  // namespace
+
+std::shared_ptr<EmojiTagSheet> EmojiTagSheet::Create(XamlRoot const& root,
+                                                     std::string currentTag, Saver saver) {
+  auto sheet = std::shared_ptr<EmojiTagSheet>(
+      new EmojiTagSheet(std::move(currentTag), std::move(saver)));
+  sheet->Build(root);
+  return sheet;
+}
+
+EmojiTagSheet::EmojiTagSheet(std::string currentTag, Saver saver)
+    : currentTag_(std::move(currentTag)), saver_(std::move(saver)) {
+  // a network with no tag starts from the SDK's suggestion; one with a tag
+  // starts from the tag, split into the emoji the backspace removes one by one
+  draft_ = emoji::SplitEmoji(currentTag_.empty() ? urnet::suggestEmojiTag(0) : currentTag_);
+}
+
+void EmojiTagSheet::Build(XamlRoot const& root) {
+  dialog_ = MakeDialog(root, Loc("emoji_tag"));
+  dialog_.PrimaryButtonText(Loc("save"));
+  dialog_.CloseButtonText(Loc("cancel"));
+  if (!currentTag_.empty()) dialog_.SecondaryButtonText(Loc("clear"));
+  dialog_.DefaultButton(ContentDialogButton::Primary);
+
+  StackPanel content;
+  content.Spacing(8);
+  content.MinWidth(400);
+
+  content.Children().Append(MakeText(hstring{urnw::Format("emoji_tag_hint", urnet::EmojiTagMaxCount)},
+                                     12, colors::MutedBrush(), true));
+  content.Children().Append(BuildDraftRow());
+
+  supportText_ = MakeText(hstring{}, 12, colors::MutedBrush(), true);
+  content.Children().Append(supportText_);
+
+  content.Children().Append(BuildKeyboard());
+  dialog_.Content(content);
+
+  dialog_.PrimaryButtonClick(
+      [weak = weak_from_this()](auto const&, ContentDialogButtonClickEventArgs const& args) {
+        args.Cancel(true);  // Submit decides whether the sheet closes
+        if (auto self = weak.lock()) {
+          if (!self->normalized_.empty()) self->Submit(self->normalized_);
+        }
+      });
+  dialog_.SecondaryButtonClick(
+      [weak = weak_from_this()](auto const&, ContentDialogButtonClickEventArgs const& args) {
+        args.Cancel(true);
+        if (auto self = weak.lock()) self->Submit(std::string());  // clear
+      });
+
+  ApplyDraft();
+}
+
+UIElement EmojiTagSheet::BuildDraftRow() {
+  Grid row;
+  row.ColumnSpacing(6);
+  row.ColumnDefinitions().Append(StarColumn());
+  row.ColumnDefinitions().Append(AutoColumn());
+  row.ColumnDefinitions().Append(AutoColumn());
+
+  // the draft: a read-only line, edited only through the keys
+  Border field;
+  field.Background(colors::CardBrush());
+  field.CornerRadius(CornerRadiusHelper::FromUniformRadius(8));
+  field.Padding(ThicknessHelper::FromLengths(12, 6, 12, 6));
+  field.MinHeight(52);
+  draftText_ = MakeText(hstring{}, 28, colors::TextBrush());
+  draftText_.VerticalAlignment(VerticalAlignment::Center);
+  field.Child(draftText_);
+  Grid::SetColumn(field, 0);
+  row.Children().Append(field);
+
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+
+  backspaceButton_ = Button();
+  backspaceButton_.Content(GlyphIcon(L""));
+  backspaceButton_.Width(44);
+  backspaceButton_.Height(44);
+  automation::AutomationProperties::SetName(backspaceButton_, Loc("emoji_tag_delete_last"));
+  ToolTipService::SetToolTip(backspaceButton_, winrt::box_value(Loc("emoji_tag_delete_last")));
+  backspaceButton_.Click([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->DropLast();
+  });
+  Grid::SetColumn(backspaceButton_, 1);
+  row.Children().Append(backspaceButton_);
+
+  shuffleButton_ = Button();
+  shuffleButton_.Content(GlyphIcon(L""));
+  shuffleButton_.Width(44);
+  shuffleButton_.Height(44);
+  automation::AutomationProperties::SetName(shuffleButton_, Loc("emoji_tag_shuffle"));
+  ToolTipService::SetToolTip(shuffleButton_, winrt::box_value(Loc("emoji_tag_shuffle")));
+  shuffleButton_.Click([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->Shuffle();
+  });
+  Grid::SetColumn(shuffleButton_, 2);
+  row.Children().Append(shuffleButton_);
+  return row;
+}
+
+// The keyboard: a strip of group glyphs, and the selected group's keys in
+// rows of kEmojiKeysPerRow. One group at a time keeps the dialog light; the
+// strip is the only navigation and it is entirely emoji, so it needs no words.
+UIElement EmojiTagSheet::BuildKeyboard() {
+  StackPanel keyboard;
+  keyboard.Spacing(6);
+
+  groupStrip_ = StackPanel();
+  groupStrip_.Orientation(Orientation::Horizontal);
+  groupStrip_.Spacing(2);
+  auto const& groups = emoji::Groups();
+  for (size_t i = 0; i < groups.size(); ++i) {
+    Button tab;
+    tab.Content(winrt::box_value(EmojiText(emoji::EncodeUtf8(groups[i].icon))));
+    tab.Width(kEmojiKeySize);
+    tab.Height(36);
+    tab.Padding(ThicknessHelper::FromUniformLength(0));
+    tab.FontSize(18);
+    tab.Click([weak = weak_from_this(), i](auto const&, auto const&) {
+      if (auto self = weak.lock()) self->ShowGroup(i);
+    });
+    groupButtons_.push_back(tab);
+    groupStrip_.Children().Append(tab);
+  }
+  keyboard.Children().Append(groupStrip_);
+
+  ScrollViewer scroller;
+  scroller.Height(232);
+  scroller.HorizontalScrollBarVisibility(ScrollBarVisibility::Disabled);
+  scroller.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
+  keysPanel_ = StackPanel();
+  keysPanel_.Spacing(2);
+  scroller.Content(keysPanel_);
+  keyboard.Children().Append(scroller);
+
+  ShowGroup(0);
+  return keyboard;
+}
+
+void EmojiTagSheet::ShowGroup(size_t index) {
+  auto const& groups = emoji::Groups();
+  if (index >= groups.size()) return;
+  group_ = index;
+  for (size_t i = 0; i < groupButtons_.size(); ++i) {
+    groupButtons_[i].Background(i == index ? colors::CardBrush() : nullptr);
+  }
+  keysPanel_.Children().Clear();
+  keys_.clear();
+  StackPanel row{nullptr};
+  int inRow = 0;
+  for (char32_t cp : groups[index].emoji) {
+    if (!row || inRow == kEmojiKeysPerRow) {
+      row = StackPanel();
+      row.Orientation(Orientation::Horizontal);
+      row.Spacing(2);
+      keysPanel_.Children().Append(row);
+      inRow = 0;
+    }
+    const std::string utf8 = emoji::EncodeUtf8(cp);
+    Button key;
+    key.Content(winrt::box_value(EmojiText(utf8)));
+    key.Width(kEmojiKeySize);
+    key.Height(kEmojiKeySize);
+    key.Padding(ThicknessHelper::FromUniformLength(0));
+    key.FontSize(20);
+    key.IsEnabled(!full_ && !saving_);
+    key.Click([weak = weak_from_this(), utf8](auto const&, auto const&) {
+      if (auto self = weak.lock()) self->Append(utf8);
+    });
+    keys_.push_back(key);
+    row.Children().Append(key);
+    ++inRow;
+  }
+}
+
+void EmojiTagSheet::Append(std::string const& emoji) {
+  if (full_ || saving_) return;
+  draft_.push_back(emoji);
+  ApplyDraft();
+}
+
+void EmojiTagSheet::DropLast() {
+  if (saving_ || draft_.empty()) return;
+  draft_.pop_back();
+  ApplyDraft();
+}
+
+void EmojiTagSheet::Shuffle() {
+  if (saving_) return;
+  draft_ = emoji::SplitEmoji(urnet::suggestEmojiTag(0));
+  ApplyDraft();
+}
+
+void EmojiTagSheet::ApplyDraft() {
+  const std::string draft = emoji::Join(draft_);
+  const auto verdict = urnet::validateEmojiTag(draft);
+  const bool ok = verdict && verdict->ok;
+  const int64_t count = verdict ? verdict->count : 0;
+  normalized_ = ok ? verdict->normalized : std::string();
+  const emoji::TagError error = emoji::ErrorFor(ok, verdict ? verdict->reason : std::string());
+  const bool showsError = emoji::ShowsError(draft, error);
+  full_ = ok && count >= urnet::EmojiTagMaxCount;
+
+  draftText_.Text(EmojiText(draft));
+
+  hstring support;
+  if (showsError) {
+    switch (error) {
+      case emoji::TagError::Empty:
+        support = Loc("emoji_tag_error_empty");
+        break;
+      case emoji::TagError::TooMany:
+        support = hstring{urnw::Format("emoji_tag_error_too_many", urnet::EmojiTagMaxCount)};
+        break;
+      default:
+        support = Loc("emoji_tag_error_not_emoji");
+        break;
+    }
+  } else {
+    support = hstring{urnw::Format("emoji_tag_counter", count, urnet::EmojiTagMaxCount)};
+  }
+  supportText_.Text(support);
+  supportText_.Foreground(showsError ? colors::DangerBrush() : colors::MutedBrush());
+
+  backspaceButton_.IsEnabled(!draft_.empty() && !saving_);
+  shuffleButton_.IsEnabled(!saving_);
+  for (auto const& key : keys_) key.IsEnabled(!full_ && !saving_);
+  dialog_.IsPrimaryButtonEnabled(emoji::CanSave(ok, normalized_, currentTag_, saving_));
+  dialog_.IsSecondaryButtonEnabled(!saving_);
+}
+
+void EmojiTagSheet::Submit(std::string const& tag) {
+  if (saving_ || !saver_) return;
+  saving_ = true;
+  ApplyDraft();
+  supportText_.Foreground(colors::MutedBrush());
+  saver_(tag, [weak = weak_from_this()](std::string error) {
+    if (auto self = weak.lock()) self->ApplyResult(error);
+  });
+}
+
+void EmojiTagSheet::ApplyResult(std::string const& error) {
+  saving_ = false;
+  if (error.empty()) {
+    dialog_.Hide();
+    return;
+  }
+  ApplyDraft();
+  supportText_.Text(H(error));
+  supportText_.Foreground(colors::DangerBrush());
 }
 
 }  // namespace urnw

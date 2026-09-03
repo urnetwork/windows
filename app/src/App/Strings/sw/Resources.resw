@@ -952,6 +952,34 @@ kwa njia sahihi</value>
     <value>Hariri sheria ya mgawanyo</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="emoji_group_activities" xml:space="preserve">
+    <value>Shughuli</value>
+    <comment>Emoji keyboard group: sports, games and activities.</comment>
+  </data>
+  <data name="emoji_group_animals" xml:space="preserve">
+    <value>Wanyama na asili</value>
+    <comment>Emoji keyboard group: animals and nature.</comment>
+  </data>
+  <data name="emoji_group_food" xml:space="preserve">
+    <value>Chakula na vinywaji</value>
+    <comment>Emoji keyboard group: food and drink.</comment>
+  </data>
+  <data name="emoji_group_objects" xml:space="preserve">
+    <value>Vitu</value>
+    <comment>Emoji keyboard group: objects.</comment>
+  </data>
+  <data name="emoji_group_smileys" xml:space="preserve">
+    <value>Nyuso</value>
+    <comment>Emoji keyboard group: smileys and faces.</comment>
+  </data>
+  <data name="emoji_group_symbols" xml:space="preserve">
+    <value>Alama</value>
+    <comment>Emoji keyboard group: symbols.</comment>
+  </data>
+  <data name="emoji_group_travel" xml:space="preserve">
+    <value>Safari na mahali</value>
+    <comment>Emoji keyboard group: travel and places.</comment>
+  </data>
   <data name="emoji_tag" xml:space="preserve">
     <value>Lebo ya emoji</value>
     <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
@@ -1256,10 +1284,6 @@ kwa njia sahihi</value>
   <data name="included" xml:space="preserve">
     <value>Imejumuishwa</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="includes_2_week_free_trial" xml:space="preserve">
-    <value>Inajumuisha jaribio la bure la wiki 2</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Salio halitoshi</value>
@@ -1589,10 +1613,6 @@ kutumia ili kuthibitisha utambulisho wako.</value>
   <data name="monthly" xml:space="preserve">
     <value>Kila mwezi</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
-  </data>
-  <data name="most_popular" xml:space="preserve">
-    <value>Maarufu zaidi</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>IP nyingi</value>
@@ -2461,6 +2481,18 @@ maudhui ya dunia</value>
     <value>Kifungu cha seed</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_invalid_word_count" xml:space="preserve">
+    <value>Kifungu cha seed lazima kiwe na maneno 12 au 24</value>
+    <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_paste_hint" xml:space="preserve">
+    <value>Bandika hapa kifungu chako cha seed cha maneno 12 au 24</value>
+    <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
+  </data>
+  <data name="seedphrase_required" xml:space="preserve">
+    <value>Tafadhali weka kifungu cha seed</value>
+    <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Tokeni ya Seeker imethibitishwa!</value>
     <comment>Call to action</comment>
@@ -2711,6 +2743,18 @@ maudhui ya dunia</value>
     <value>Sakinisha programu</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_login_seed_not_recognized" xml:space="preserve">
+    <value>Seed haikutambuliwa.</value>
+    <comment>Login stack: error when the entered seed does not match an account.</comment>
+  </data>
+  <data name="site_login_seed_title" xml:space="preserve">
+    <value>Ingia kwa seed ya akaunti ya papo hapo</value>
+    <comment>Login stack: tooltip on the Seed tile, signing in with an instant account's seed.</comment>
+  </data>
+  <data name="site_login_seed_view_title" xml:space="preserve">
+    <value>Ingia kwa seed</value>
+    <comment>Login stack: title of the seed sign-in view.</comment>
+  </data>
   <data name="site_manage" xml:space="preserve">
     <value>Dhibiti</value>
     <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
@@ -2870,10 +2914,6 @@ maudhui ya dunia</value>
   <data name="split_rules_info_note" xml:space="preserve">
     <value>Utengaji hutumika kwa kundi zima la mtandao linalohusiana, hivyo trafiki inayohusiana hunaswa pamoja.</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="start_2_week_free_trial" xml:space="preserve">
-    <value>Anza jaribio la bure la wiki 2</value>
-    <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>Ili kuanza kupata, jiunge na mtandao</value>

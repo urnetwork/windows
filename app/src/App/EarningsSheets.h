@@ -172,4 +172,63 @@ class ClaimAlphaSheet : public std::enable_shared_from_this<ClaimAlphaSheet> {
   winrt::Microsoft::UI::Xaml::Controls::Button claimButton_{nullptr};
 };
 
+// ---- EmojiTagSheet ----------------------------------------------------------
+//
+// The points leaderboard's emoji tag editor (android/POINTSLEADERBOARD.md and
+// its amendment). The tag is composed on an EMOJI-ONLY keyboard: the draft is
+// a read-only line the keys below append to, a backspace removes one emoji at
+// a time (one grapheme, never half a sequence), and there is no text box, so
+// nothing but emoji can ever be typed or pasted. A network with no tag starts
+// from the SDK's random 1-3 emoji suggestion and the shuffle key re-rolls it;
+// a suggestion is only a draft until Save. Every change is validated by the
+// SDK exactly the way the server validates it (validateEmojiTag), so the
+// counter and the Save button always say what the server would say.
+//
+// `saver(tag, done)` stores the tag (an empty tag clears it) and calls
+// done(error) on the UI thread; an empty error closes the sheet, anything
+// else is shown under the draft and the sheet stays open.
+class EmojiTagSheet : public std::enable_shared_from_this<EmojiTagSheet> {
+ public:
+  using Saver = std::function<void(std::string tag, std::function<void(std::string)> done)>;
+
+  static std::shared_ptr<EmojiTagSheet> Create(winrt::Microsoft::UI::Xaml::XamlRoot const& root,
+                                               std::string currentTag, Saver saver);
+
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+
+ private:
+  EmojiTagSheet(std::string currentTag, Saver saver);
+
+  void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  winrt::Microsoft::UI::Xaml::UIElement BuildDraftRow();
+  winrt::Microsoft::UI::Xaml::UIElement BuildKeyboard();
+  void ShowGroup(size_t index);
+  void Append(std::string const& emoji);
+  void DropLast();
+  void Shuffle();
+  // re-validates the draft through the SDK and renders the line, the counter
+  // or the error, the keys and the buttons from the verdict
+  void ApplyDraft();
+  void Submit(std::string const& tag);
+  void ApplyResult(std::string const& error);
+
+  std::string currentTag_;
+  std::vector<std::string> draft_;  // one element per emoji
+  Saver saver_;
+  bool saving_ = false;
+  bool full_ = false;  // the draft holds the maximum: keys are disabled
+  std::string normalized_;  // the SDK's form of a valid draft
+  size_t group_ = 0;
+
+  winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock draftText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock supportText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button backspaceButton_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button shuffleButton_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel groupStrip_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel keysPanel_{nullptr};
+  std::vector<winrt::Microsoft::UI::Xaml::Controls::Button> groupButtons_;
+  std::vector<winrt::Microsoft::UI::Xaml::Controls::Button> keys_;
+};
+
 }  // namespace urnw

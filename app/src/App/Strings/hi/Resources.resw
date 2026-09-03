@@ -951,6 +951,34 @@
     <value>स्प्लिट नियम संपादित करें</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="emoji_group_activities" xml:space="preserve">
+    <value>गतिविधियां</value>
+    <comment>Emoji keyboard group: sports, games and activities.</comment>
+  </data>
+  <data name="emoji_group_animals" xml:space="preserve">
+    <value>जानवर और प्रकृति</value>
+    <comment>Emoji keyboard group: animals and nature.</comment>
+  </data>
+  <data name="emoji_group_food" xml:space="preserve">
+    <value>खाना और पेय</value>
+    <comment>Emoji keyboard group: food and drink.</comment>
+  </data>
+  <data name="emoji_group_objects" xml:space="preserve">
+    <value>वस्तुएं</value>
+    <comment>Emoji keyboard group: objects.</comment>
+  </data>
+  <data name="emoji_group_smileys" xml:space="preserve">
+    <value>स्माइली</value>
+    <comment>Emoji keyboard group: smileys and faces.</comment>
+  </data>
+  <data name="emoji_group_symbols" xml:space="preserve">
+    <value>प्रतीक</value>
+    <comment>Emoji keyboard group: symbols.</comment>
+  </data>
+  <data name="emoji_group_travel" xml:space="preserve">
+    <value>यात्रा और स्थान</value>
+    <comment>Emoji keyboard group: travel and places.</comment>
+  </data>
   <data name="emoji_tag" xml:space="preserve">
     <value>इमोजी टैग</value>
     <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
@@ -1255,10 +1283,6 @@
   <data name="included" xml:space="preserve">
     <value>शामिल</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="includes_2_week_free_trial" xml:space="preserve">
-    <value>2 सप्ताह की मुफ्त ट्रायल शामिल है</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>अपर्याप्त शेष राशि</value>
@@ -1587,10 +1611,6 @@
   <data name="monthly" xml:space="preserve">
     <value>मासिक</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
-  </data>
-  <data name="most_popular" xml:space="preserve">
-    <value>सबसे लोकप्रिय</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>एकाधिक IP</value>
@@ -2459,6 +2479,18 @@
     <value>सीड फ़्रेज़</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_invalid_word_count" xml:space="preserve">
+    <value>सीड फ़्रेज़ में 12 या 24 शब्द होने चाहिए</value>
+    <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_paste_hint" xml:space="preserve">
+    <value>अपना 12 या 24 शब्दों का सीड फ़्रेज़ यहाँ पेस्ट करें</value>
+    <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
+  </data>
+  <data name="seedphrase_required" xml:space="preserve">
+    <value>कृपया सीड फ़्रेज़ दर्ज करें</value>
+    <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker टोकन सत्यापित हुआ!</value>
     <comment>Call to action</comment>
@@ -2709,6 +2741,18 @@
     <value>ऐप इंस्टॉल करें</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_login_seed_not_recognized" xml:space="preserve">
+    <value>सीड पहचाना नहीं गया।</value>
+    <comment>Login stack: error when the entered seed does not match an account.</comment>
+  </data>
+  <data name="site_login_seed_title" xml:space="preserve">
+    <value>इंस्टेंट खाते के सीड से साइन इन करें</value>
+    <comment>Login stack: tooltip on the Seed tile, signing in with an instant account's seed.</comment>
+  </data>
+  <data name="site_login_seed_view_title" xml:space="preserve">
+    <value>सीड से साइन इन करें</value>
+    <comment>Login stack: title of the seed sign-in view.</comment>
+  </data>
   <data name="site_manage" xml:space="preserve">
     <value>प्रबंधित करें</value>
     <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
@@ -2868,10 +2912,6 @@
   <data name="split_rules_info_note" xml:space="preserve">
     <value>अपवाद पूरे संबद्ध नेटवर्क क्लस्टर पर लागू होते हैं, इसलिए संबंधित ट्रैफ़िक एक साथ शामिल हो जाता है।</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="start_2_week_free_trial" xml:space="preserve">
-    <value>2 सप्ताह की मुफ्त ट्रायल शुरू करें</value>
-    <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>कमाई शुरू करने के लिए, नेटवर्क से जुड़ें</value>

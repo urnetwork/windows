@@ -2079,17 +2079,72 @@
                                            MaxWidth="320" Margin="16" IsHitTestVisible="False"
                                            Style="{StaticResource UrSupportingTextStyle}" />
                             </Grid>
-                            <!-- LEADERBOARD. The same pane, the same floor. -->
+                            <!-- LEADERBOARD. The same pane, the same floor. Two boards
+                                 behind one more switch: Data (the last-4-payments
+                                 board) and Points (the all-time points board,
+                                 android/POINTSLEADERBOARD.md). The handlers are wired
+                                 in code (WalletPage::InitializePointsBoard). -->
                             <Grid x:Name="LeaderboardHost" Visibility="Collapsed">
-                                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                                              VerticalScrollBarVisibility="Auto">
-                                    <StackPanel x:Name="LeaderboardRows" />
-                                </ScrollViewer>
-                                <TextBlock x:Name="LeaderboardStatusText"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           TextAlignment="Center" TextWrapping="Wrap"
-                                           MaxWidth="320" Margin="16" IsHitTestVisible="False"
-                                           Style="{StaticResource UrSupportingTextStyle}" />
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <muxc:SelectorBar x:Name="LeaderboardBoardBar" Margin="12,6,12,0">
+                                    <muxc:SelectorBarItem x:Name="DataBoardItem" />
+                                    <muxc:SelectorBarItem x:Name="PointsBoardItem" />
+                                </muxc:SelectorBar>
+                                <Grid x:Name="LeaderboardDataHost" Grid.Row="1">
+                                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <StackPanel x:Name="LeaderboardRows" />
+                                    </ScrollViewer>
+                                    <TextBlock x:Name="LeaderboardStatusText"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               TextAlignment="Center" TextWrapping="Wrap"
+                                               MaxWidth="320" Margin="16" IsHitTestVisible="False"
+                                               Style="{StaticResource UrSupportingTextStyle}" />
+                                </Grid>
+                                <!-- the points board: sort chips, the ranked rows (paged
+                                     in by the SDK controller as the list nears its end),
+                                     a footer for the page spinner / the error / retry -->
+                                <Grid x:Name="PointsHost" Grid.Row="1" Visibility="Collapsed">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <muxc:SelectorBar x:Name="PointsSortBar" Margin="12,6,12,0">
+                                        <muxc:SelectorBarItem x:Name="PointsSortPointsItem" />
+                                        <muxc:SelectorBarItem x:Name="PointsSortBlocksItem" />
+                                        <muxc:SelectorBarItem x:Name="PointsSortStreakItem" />
+                                    </muxc:SelectorBar>
+                                    <ScrollViewer x:Name="PointsScroll" Grid.Row="1"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <StackPanel>
+                                            <StackPanel x:Name="PointsRows" />
+                                            <StackPanel x:Name="PointsFooter" Padding="12"
+                                                        HorizontalAlignment="Center" Spacing="8">
+                                                <muxc:ProgressRing x:Name="PointsFooterRing"
+                                                                   Width="24" Height="24"
+                                                                   IsActive="False"
+                                                                   Visibility="Collapsed" />
+                                                <TextBlock x:Name="PointsFooterText"
+                                                           TextWrapping="Wrap" TextAlignment="Center"
+                                                           MaxWidth="320" Visibility="Collapsed"
+                                                           Style="{StaticResource UrSupportingTextStyle}" />
+                                                <Button x:Name="PointsRetryButton"
+                                                        HorizontalAlignment="Center"
+                                                        Visibility="Collapsed"
+                                                        Style="{StaticResource UrSecondaryButtonStyle}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                    <TextBlock x:Name="PointsStatusText" Grid.Row="1"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               TextAlignment="Center" TextWrapping="Wrap"
+                                               MaxWidth="320" Margin="16" IsHitTestVisible="False"
+                                               Style="{StaticResource UrSupportingTextStyle}" />
+                                </Grid>
                             </Grid>
                         </Grid>
                     </Grid>
@@ -2112,9 +2167,17 @@
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel>
+                                <!-- the points board's network block: this network's
+                                     emoji tag and name, its points / blocks / streak
+                                     with their ranks, the opt-in switch. Built in code
+                                     (WalletPage::BuildPointsNetworkHost); shown while
+                                     the ledger pane shows the Points board. -->
+                                <StackPanel x:Name="PointsNetworkHost" Visibility="Collapsed" />
                                 <!-- own ranking: the one thing you came to the
                                      leaderboard for, beside the table rather
-                                     than above it -->
+                                     than above it. The data board's block; hidden
+                                     while the Points board shows. -->
+                                <StackPanel x:Name="DataRankingHost">
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
                                     <TextBlock x:Name="LeaderboardRankLabel"
                                                Style="{StaticResource UrGroupHeaderTextStyle}" />
@@ -2161,6 +2224,7 @@
                                                Style="{StaticResource UrRowNoteStyle}"
                                                TextTrimming="None" />
                                 </Border>
+                                </StackPanel>
                                 <muxc:InfoBar x:Name="LeaderboardInfo"
                                               Style="{StaticResource UrSnackbarStyle}"
                                               Margin="12,8" IsOpen="False" />

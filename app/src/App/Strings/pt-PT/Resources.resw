@@ -952,6 +952,34 @@ maneira certa</value>
     <value>Editar regra de divisão</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="emoji_group_activities" xml:space="preserve">
+    <value>Atividades</value>
+    <comment>Emoji keyboard group: sports, games and activities.</comment>
+  </data>
+  <data name="emoji_group_animals" xml:space="preserve">
+    <value>Animais e natureza</value>
+    <comment>Emoji keyboard group: animals and nature.</comment>
+  </data>
+  <data name="emoji_group_food" xml:space="preserve">
+    <value>Comida e bebida</value>
+    <comment>Emoji keyboard group: food and drink.</comment>
+  </data>
+  <data name="emoji_group_objects" xml:space="preserve">
+    <value>Objetos</value>
+    <comment>Emoji keyboard group: objects.</comment>
+  </data>
+  <data name="emoji_group_smileys" xml:space="preserve">
+    <value>Smileys</value>
+    <comment>Emoji keyboard group: smileys and faces.</comment>
+  </data>
+  <data name="emoji_group_symbols" xml:space="preserve">
+    <value>Símbolos</value>
+    <comment>Emoji keyboard group: symbols.</comment>
+  </data>
+  <data name="emoji_group_travel" xml:space="preserve">
+    <value>Viagens e lugares</value>
+    <comment>Emoji keyboard group: travel and places.</comment>
+  </data>
   <data name="emoji_tag" xml:space="preserve">
     <value>Etiqueta de emoji</value>
     <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
@@ -1256,10 +1284,6 @@ maneira certa</value>
   <data name="included" xml:space="preserve">
     <value>Incluídas</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="includes_2_week_free_trial" xml:space="preserve">
-    <value>Inclui teste gratuito de 2 semanas</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Saldo insuficiente</value>
@@ -1589,10 +1613,6 @@ lhe enviámos para verificar a sua identidade.</value>
   <data name="monthly" xml:space="preserve">
     <value>Mensal</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
-  </data>
-  <data name="most_popular" xml:space="preserve">
-    <value>Mais popular</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>Vários IP</value>
@@ -2461,6 +2481,18 @@ conteúdo do mundo</value>
     <value>Frase-semente</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_invalid_word_count" xml:space="preserve">
+    <value>A frase-semente tem de ter 12 ou 24 palavras</value>
+    <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_paste_hint" xml:space="preserve">
+    <value>Cole aqui a sua frase-semente de 12 ou 24 palavras</value>
+    <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
+  </data>
+  <data name="seedphrase_required" xml:space="preserve">
+    <value>Introduza uma frase-semente</value>
+    <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Token Seeker verificado!</value>
     <comment>Call to action</comment>
@@ -2711,6 +2743,18 @@ conteúdo do mundo</value>
     <value>Instalar a aplicação</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_login_seed_not_recognized" xml:space="preserve">
+    <value>Semente não reconhecida.</value>
+    <comment>Login stack: error when the entered seed does not match an account.</comment>
+  </data>
+  <data name="site_login_seed_title" xml:space="preserve">
+    <value>Iniciar sessão com a semente de uma conta instantânea</value>
+    <comment>Login stack: tooltip on the Seed tile, signing in with an instant account's seed.</comment>
+  </data>
+  <data name="site_login_seed_view_title" xml:space="preserve">
+    <value>Iniciar sessão com semente</value>
+    <comment>Login stack: title of the seed sign-in view.</comment>
+  </data>
   <data name="site_manage" xml:space="preserve">
     <value>Gerir</value>
     <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
@@ -2870,10 +2914,6 @@ conteúdo do mundo</value>
   <data name="split_rules_info_note" xml:space="preserve">
     <value>As exclusões aplicam-se a todo o cluster de rede coassociado, para que o tráfego relacionado seja abrangido em conjunto.</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="start_2_week_free_trial" xml:space="preserve">
-    <value>Inicie o teste gratuito de 2 semanas</value>
-    <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>Para começar a ganhar, entre na rede</value>

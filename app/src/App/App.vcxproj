@@ -313,6 +313,7 @@
     <ClInclude Include="Onboarding.h" />
     <ClInclude Include="PlanPicker.h" />
     <ClInclude Include="SettingsSheets.h" />
+    <ClInclude Include="EmojiKeyboard.h" />
     <ClInclude Include="WalletPage.h" />
     <ClInclude Include="EarningsSheets.h" />
     <ClInclude Include="AppController.h" />

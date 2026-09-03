@@ -952,6 +952,34 @@ rätt sätt</value>
     <value>Redigera delningsregel</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="emoji_group_activities" xml:space="preserve">
+    <value>Aktiviteter</value>
+    <comment>Emoji keyboard group: sports, games and activities.</comment>
+  </data>
+  <data name="emoji_group_animals" xml:space="preserve">
+    <value>Djur &amp; natur</value>
+    <comment>Emoji keyboard group: animals and nature.</comment>
+  </data>
+  <data name="emoji_group_food" xml:space="preserve">
+    <value>Mat &amp; dryck</value>
+    <comment>Emoji keyboard group: food and drink.</comment>
+  </data>
+  <data name="emoji_group_objects" xml:space="preserve">
+    <value>Föremål</value>
+    <comment>Emoji keyboard group: objects.</comment>
+  </data>
+  <data name="emoji_group_smileys" xml:space="preserve">
+    <value>Smileys</value>
+    <comment>Emoji keyboard group: smileys and faces.</comment>
+  </data>
+  <data name="emoji_group_symbols" xml:space="preserve">
+    <value>Symboler</value>
+    <comment>Emoji keyboard group: symbols.</comment>
+  </data>
+  <data name="emoji_group_travel" xml:space="preserve">
+    <value>Resor &amp; platser</value>
+    <comment>Emoji keyboard group: travel and places.</comment>
+  </data>
   <data name="emoji_tag" xml:space="preserve">
     <value>Emoji-tagg</value>
     <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
@@ -1256,10 +1284,6 @@ rätt sätt</value>
   <data name="included" xml:space="preserve">
     <value>Inkluderad</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="includes_2_week_free_trial" xml:space="preserve">
-    <value>Inkluderar 2 veckors gratis provperiod</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Otillräckligt saldo</value>
@@ -1589,10 +1613,6 @@ skickade till dig för att verifiera din identitet.</value>
   <data name="monthly" xml:space="preserve">
     <value>Månadsvis</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
-  </data>
-  <data name="most_popular" xml:space="preserve">
-    <value>Mest populär</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>Flera IP-adresser</value>
@@ -2462,6 +2482,18 @@ innehåll i världen</value>
     <value>Seedfras</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_invalid_word_count" xml:space="preserve">
+    <value>Seedfrasen måste bestå av 12 eller 24 ord</value>
+    <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_paste_hint" xml:space="preserve">
+    <value>Klistra in din seedfras på 12 eller 24 ord här</value>
+    <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
+  </data>
+  <data name="seedphrase_required" xml:space="preserve">
+    <value>Ange en seedfras</value>
+    <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker-token verifierat!</value>
     <comment>Call to action</comment>
@@ -2712,6 +2744,18 @@ innehåll i världen</value>
     <value>Installera appen</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_login_seed_not_recognized" xml:space="preserve">
+    <value>Seed känns inte igen.</value>
+    <comment>Login stack: error when the entered seed does not match an account.</comment>
+  </data>
+  <data name="site_login_seed_title" xml:space="preserve">
+    <value>Logga in med ett snabbkontos seed</value>
+    <comment>Login stack: tooltip on the Seed tile, signing in with an instant account's seed.</comment>
+  </data>
+  <data name="site_login_seed_view_title" xml:space="preserve">
+    <value>Logga in med seed</value>
+    <comment>Login stack: title of the seed sign-in view.</comment>
+  </data>
   <data name="site_manage" xml:space="preserve">
     <value>Hantera</value>
     <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
@@ -2871,10 +2915,6 @@ innehåll i världen</value>
   <data name="split_rules_info_note" xml:space="preserve">
     <value>Undantag gäller hela det sammankopplade nätverksklustret, så relaterad trafik fångas upp tillsammans.</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="start_2_week_free_trial" xml:space="preserve">
-    <value>Starta 2 veckors gratis provperiod</value>
-    <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>För att börja tjäna, gå med i nätverket</value>

@@ -936,6 +936,34 @@
     <value>編輯分流規則</value>
     <comment>A label displayed above the split rule editor.</comment>
   </data>
+  <data name="emoji_group_activities" xml:space="preserve">
+    <value>活動</value>
+    <comment>Emoji keyboard group: sports, games and activities.</comment>
+  </data>
+  <data name="emoji_group_animals" xml:space="preserve">
+    <value>動物與自然</value>
+    <comment>Emoji keyboard group: animals and nature.</comment>
+  </data>
+  <data name="emoji_group_food" xml:space="preserve">
+    <value>食物與飲品</value>
+    <comment>Emoji keyboard group: food and drink.</comment>
+  </data>
+  <data name="emoji_group_objects" xml:space="preserve">
+    <value>物品</value>
+    <comment>Emoji keyboard group: objects.</comment>
+  </data>
+  <data name="emoji_group_smileys" xml:space="preserve">
+    <value>表情</value>
+    <comment>Emoji keyboard group: smileys and faces.</comment>
+  </data>
+  <data name="emoji_group_symbols" xml:space="preserve">
+    <value>符號</value>
+    <comment>Emoji keyboard group: symbols.</comment>
+  </data>
+  <data name="emoji_group_travel" xml:space="preserve">
+    <value>旅行與地點</value>
+    <comment>Emoji keyboard group: travel and places.</comment>
+  </data>
   <data name="emoji_tag" xml:space="preserve">
     <value>表情標籤</value>
     <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
@@ -1236,10 +1264,6 @@
   <data name="included" xml:space="preserve">
     <value>已包含</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="includes_2_week_free_trial" xml:space="preserve">
-    <value>包括2星期免費試用</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>餘額不足</value>
@@ -1565,10 +1589,6 @@
   <data name="monthly" xml:space="preserve">
     <value>按月</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
-  </data>
-  <data name="most_popular" xml:space="preserve">
-    <value>最受歡迎</value>
-    <comment>Used in Shared/Views/ProductOptionCard.swift.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>多個 IP</value>
@@ -2406,6 +2426,18 @@
     <value>助記詞</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_invalid_word_count" xml:space="preserve">
+    <value>助記詞必須是 12 或 24 個單字</value>
+    <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_paste_hint" xml:space="preserve">
+    <value>在此貼上你的 12 或 24 個單字的助記詞</value>
+    <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
+  </data>
+  <data name="seedphrase_required" xml:space="preserve">
+    <value>請輸入助記詞</value>
+    <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker 權杖已驗證！</value>
     <comment>Call to action</comment>
@@ -2656,6 +2688,18 @@
     <value>安裝應用程式</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_login_seed_not_recognized" xml:space="preserve">
+    <value>無法識別助記詞。</value>
+    <comment>Login stack: error when the entered seed does not match an account.</comment>
+  </data>
+  <data name="site_login_seed_title" xml:space="preserve">
+    <value>使用即時帳戶的助記詞登入</value>
+    <comment>Login stack: tooltip on the Seed tile, signing in with an instant account's seed.</comment>
+  </data>
+  <data name="site_login_seed_view_title" xml:space="preserve">
+    <value>使用助記詞登入</value>
+    <comment>Login stack: title of the seed sign-in view.</comment>
+  </data>
   <data name="site_manage" xml:space="preserve">
     <value>管理</value>
     <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
@@ -2811,10 +2855,6 @@
   <data name="split_rules_info_note" xml:space="preserve">
     <value>排除會套用至整個關聯網絡叢集，因此相關流量會一併排除。</value>
     <comment>transfer stats and split rules</comment>
-  </data>
-  <data name="start_2_week_free_trial" xml:space="preserve">
-    <value>開始2星期免費試用</value>
-    <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
   </data>
   <data name="start_earning_join" xml:space="preserve">
     <value>要開始賺取收益，請加入網絡</value>

@@ -43,6 +43,8 @@ struct MainWindow;
 
 namespace urnw {
 
+class EmojiTagSheet;
+
 class WalletPage {
  public:
   explicit WalletPage(winrt::URnetwork::implementation::MainWindow& window);
@@ -92,6 +94,36 @@ class WalletPage {
                                   winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   void RefreshAfterWalletChange();
+
+  // ---- the points board (android/POINTSLEADERBOARD.md) ----------------------
+  // The leaderboard is two boards behind one switch: Data (the last-4-payments
+  // board above) and Points (the all-time points board). The Points board is
+  // the SDK's PointsLeaderboardViewController rendered as it is: rows, ranks,
+  // sort and pages all come from the controller; nothing here sorts, ranks or
+  // pages. ShowPointsBoard flips the switch; the controller is opened the first
+  // time the Points board shows and closed with the page.
+  void ShowPointsBoard(bool points);
+  winrt::fire_and_forget OnEditEmoji();
+
+  // ---- the points board's row (public: built by a free helper in the .cpp)
+  // One ranked network as the list renders it: a value copy of the SDK row
+  // (the controller re-emits fresh rows on every event) with the texts the
+  // SDK preformats. `displayName` is empty when the row is anonymous; the
+  // list then shows the localized "Anonymous". `emojiTag` shows either way.
+  struct PointsRow {
+    std::string networkId;
+    std::string displayName;
+    std::string emojiTag;
+    bool anonymous = false;
+    std::string totalPointsText;
+    std::string blocksText;
+    std::string streakText;
+    std::string longestStreakText;
+    std::string rankPointsText;
+    std::string rankBlocksText;
+    std::string rankStreakText;
+    bool operator==(PointsRow const&) const = default;
+  };
 
  private:
   // THE ONE GATE for every server call this destination makes. --preview-ui
@@ -270,6 +302,76 @@ class WalletPage {
   Flow rankingFlow_;
 
   std::shared_ptr<urnw::ClaimAlphaSheet> claimSheet_;
+
+  struct PointsStatTile {
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock value{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::Border chip{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock rank{nullptr};
+  };
+
+  void InitializePointsBoard();  // wires the switch, the sort bar, the scroll, retry
+  void ApplyPointsBoardStrings();
+  void BuildPointsNetworkHost();  // pane C's block, built in code (rebuilt on strings)
+  // Opens the controller on the current device (or shows why it cannot);
+  // safe to call on every look: a controller on a device that is still the
+  // device is kept.
+  void EnsurePointsBoard();
+  void ClosePointsBoard(bool deviceAlive);
+  // Mirrors the controller into the page: rows (value-compared, so a no-op
+  // event does not re-render the table), sort, loading, end, error, `me`.
+  void ReadPointsBoard();
+  void RenderPointsRows();
+  void RenderPointsHeader();
+  void RenderPointsFooter();
+  void OnPointsSortChanged(std::string const& sort);
+  void OnPointsScroll();
+  void OnPointsRetry();
+  void OnPointsPublicToggled();
+  void SetPointsToggle(bool isPublic);
+  void ApplyPointsPublicResult(uint32_t generation, bool ok, bool requested,
+                               std::string const& serverError);
+  void SaveEmojiTag(std::string tag, std::function<void(std::string)> done);
+  void SettlePointsBoardPreview();
+
+  // false once the page is gone: the controller's listener and the sheet's
+  // completions marshal through the window and must not reach a dead page
+  std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
+  std::optional<urnet::PointsLeaderboardViewController> pointsVc_;
+  std::optional<urnet::Sub> pointsSub_;
+  uint64_t pointsVcDevice_ = 0;  // the device handle the controller was opened on
+  bool pointsBoardShowing_ = false;
+  std::vector<PointsRow> pointsRows_;
+  std::string pointsSort_ = urnet::PointsLeaderboardSortPoints;
+  std::string pointsRenderedSort_;
+  bool pointsLoading_ = false;
+  bool pointsEnd_ = false;
+  bool pointsHasLoaded_ = false;  // the first page landed (rows, an empty end, or an error)
+  std::string pointsError_;
+  int64_t pointsTotalRanked_ = 0;
+  std::optional<PointsRow> pointsMe_;
+  bool pointsPublic_ = false;  // this network's opt-in, from `me`, updated locally on toggle
+  std::string emojiTag_;       // this network's tag, from `me`, updated locally on save
+  bool settingPointsPublic_ = false;
+  bool applyingPointsToggle_ = false;  // ECHO GUARD on the opt-in switch
+  bool savingEmojiTag_ = false;
+  // after a local toggle or save, `me` from an older in-flight page could
+  // briefly disagree with what the user just did; the local values win until
+  // a response newer than the edit lands
+  uint64_t ownFlagsClock_ = 0;
+  uint64_t ownFlagsEditedAt_ = 0;
+  uint64_t ownFlagsAppliedAt_ = 0;
+  Flow pointsPublicFlow_;
+  std::shared_ptr<urnw::EmojiTagSheet> emojiSheet_;
+
+  // pane C's block (BuildPointsNetworkHost)
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsGroupMeta_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsEmojiText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsNameText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button editEmojiButton_{nullptr};
+  PointsStatTile pointsTiles_[3];
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsLongestText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch pointsPublicToggle_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsPrivateHint_{nullptr};
 };
 
 }  // namespace urnw

@@ -20,9 +20,11 @@
 #include <string_view>
 
 #include "EarningsSheets.h"
+#include "EmojiKeyboard.h"
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
+#include "SettingsSheets.h"
 #include "StatsFormat.h"
 #include "Strings.h"
 #include "UrColors.h"
@@ -355,10 +357,17 @@ WalletPage::WalletPage(winrt::URnetwork::implementation::MainWindow& window)
       leaderboardSnackbar_(window.LeaderboardInfo(), window.DispatcherQueue()) {}
 
 WalletPage::~WalletPage() {
+  *alive_ = false;  // the controller's listener and the sheet's completions stop here
   if (walletValidateTimer_) walletValidateTimer_.Stop();
   if (seekerFlow_.timer) seekerFlow_.timer.Stop();
   if (connectFlow_.timer) connectFlow_.timer.Stop();
   if (rankingFlow_.timer) rankingFlow_.timer.Stop();
+  if (pointsPublicFlow_.timer) pointsPublicFlow_.timer.Stop();
+  try {
+    ClosePointsBoard(/*deviceAlive=*/true);
+  } catch (...) {
+    // the host may already be gone at teardown; nothing left to close on
+  }
 }
 
 // See the long note on the declaration (WalletPage.h): guarding the LOAD paths
@@ -421,6 +430,7 @@ void WalletPage::Initialize() {
   walletValidateTimer_.Tick([weak = w_.get_weak()](auto const&, auto const&) {
     if (auto self = weak.get()) self->wallet().ValidateWalletAddress();
   });
+  InitializePointsBoard();
 }
 
 void WalletPage::OpenUrl(std::string const& url) {
@@ -446,6 +456,7 @@ void WalletPage::ApplyStrings() {
   if (!w_.EarningsTableBar().SelectedItem()) {
     w_.EarningsTableBar().SelectedItem(w_.HistoryTabItem());
   }
+  ApplyPointsBoardStrings();
 
   // pane A
   w_.PointsHeadlineLabel().Text(Loc("points_earned"));
@@ -506,6 +517,7 @@ void WalletPage::OnEarningsTableChanged(SelectorBar const& bar,
   w_.HistoryHost().Visibility(leaderboard ? Visibility::Collapsed : Visibility::Visible);
   w_.LeaderboardHost().Visibility(leaderboard ? Visibility::Visible : Visibility::Collapsed);
   ApplyLedgerMeta();
+  if (leaderboard && pointsBoardShowing_) EnsurePointsBoard();
 }
 
 // ---- loading ---------------------------------------------------------------
@@ -1335,7 +1347,9 @@ void WalletPage::RebuildHistory() {
 // The ledger pane's header figure belongs to whichever table is showing.
 void WalletPage::ApplyLedgerMeta() {
   const bool history = w_.LeaderboardHost().Visibility() != Visibility::Visible;
-  const int64_t count = history ? static_cast<int64_t>(epochs_.size()) : leaderboardCount_;
+  const int64_t boardCount =
+      pointsBoardShowing_ ? static_cast<int64_t>(pointsRows_.size()) : leaderboardCount_;
+  const int64_t count = history ? static_cast<int64_t>(epochs_.size()) : boardCount;
   kit::SetTextOrCollapse(w_.WalletPaneBMeta(),
                          count <= 0 ? hstring{} : hstring{std::to_wstring(count)});
 }
@@ -1800,10 +1814,12 @@ void WalletPage::ShowPreviewLeaderboardState() {
     ranking.leaderboard_public = true;
     ApplyRanking(ranking, /*ok=*/true);
     ApplyLeaderboard(SampleEarners(), Fetch::Ready);
+    SettlePointsBoardPreview();
     return;
   }
   ApplyRanking({}, /*ok=*/false);
   ApplyLeaderboard({}, Fetch::Ready);
+  SettlePointsBoardPreview();
 }
 
 void WalletPage::ApplyLeaderboard(urnet::LeaderboardEarnersList const& earners, Fetch state) {
@@ -1886,6 +1902,7 @@ void WalletPage::SetRankingToggle(bool isPublic) {
 
 void WalletPage::LoadLeaderboard() {
   if (!Sdk().IsLoggedIn()) return;  // the caller's guard is not the only one
+  if (pointsBoardShowing_) EnsurePointsBoard();
   w_.LeaderboardStatusText().Text(Loc("loading"));
   w_.LeaderboardStatusText().Visibility(Visibility::Visible);
 
@@ -1992,6 +2009,695 @@ void WalletPage::ApplyRankingPublicResult(uint32_t generation, bool ok, bool req
   }
   rankingPublic_ = requested;
   LoadLeaderboard();  // the board itself changes: our row masks or unmasks
+}
+
+// ---- the points board -----------------------------------------------------
+//
+// The all-time points leaderboard (android/POINTSLEADERBOARD.md), the Android
+// screen's structure on the ledger pane: a Data | Points switch above the
+// board, sort chips above the rows, rows paged in by the SDK controller as the
+// list nears its end, and this network's own block beside it on pane C. The
+// controller (PointsLeaderboardViewController) is the ONLY source of rows,
+// ranks, sort and pages; this file only mirrors its state and forwards the
+// sort, load-more and refresh intents.
+
+namespace {
+
+constexpr double kPointsRowHeight = 36;
+constexpr double kPointsTableHeaderHeight = 28;  // the column-name strip above the rows
+
+hstring Utf8(std::string const& s) { return hstring{urnw::Widen(s)}; }
+
+// a Segoe Fluent glyph as a button's content
+FontIcon PointsGlyph(wchar_t const* glyph) {
+  FontIcon icon;
+  icon.Glyph(glyph);
+  icon.FontSize(14);
+  return icon;
+}
+
+ColumnDefinition PointsAutoColumn() {
+  ColumnDefinition col;
+  col.Width(GridLengthHelper::Auto());
+  return col;
+}
+
+// a pane row with the pane's hairline, whose height is its content
+Border PointsPaneRow(double padY) {
+  Border row;
+  row.BorderBrush(colors::BorderBrush());
+  row.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+  row.Padding(ThicknessHelper::FromLengths(12, padY, 12, padY));
+  return row;
+}
+
+}  // namespace
+
+namespace {
+WalletPage::PointsRow ToPointsRow(urnet::PointsLeaderboardRow const& row) {
+  WalletPage::PointsRow out;
+  out.networkId = row.network_id.value_or(std::string());
+  out.displayName = row.display_name.value_or(std::string());
+  out.emojiTag = row.emoji_tag.value_or(std::string());
+  out.anonymous = row.anonymous;
+  out.totalPointsText = row.total_points_text.value_or(std::string());
+  out.blocksText = row.blocks_with_points_text.value_or(std::string());
+  out.streakText = row.streak_text.value_or(std::string());
+  out.longestStreakText = row.longest_streak_text.value_or(std::string());
+  out.rankPointsText = row.rank_points_text.value_or(std::string());
+  out.rankBlocksText = row.rank_blocks_text.value_or(std::string());
+  out.rankStreakText = row.rank_streak_text.value_or(std::string());
+  return out;
+}
+}  // namespace
+
+void WalletPage::InitializePointsBoard() {
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+  w_.LeaderboardBoardBar().SelectionChanged(
+      [weak, alive](SelectorBar const& bar, SelectorBarSelectionChangedEventArgs const&) {
+        if (!*alive) return;
+        if (auto self = weak.get()) {
+          self->wallet().ShowPointsBoard(bar.SelectedItem() == self->PointsBoardItem());
+        }
+      });
+  w_.PointsSortBar().SelectionChanged(
+      [weak, alive](SelectorBar const& bar, SelectorBarSelectionChangedEventArgs const&) {
+        if (!*alive) return;
+        auto self = weak.get();
+        if (!self) return;
+        auto const item = bar.SelectedItem();
+        std::string sort = urnet::PointsLeaderboardSortPoints;
+        if (item == self->PointsSortBlocksItem()) {
+          sort = urnet::PointsLeaderboardSortBlocks;
+        } else if (item == self->PointsSortStreakItem()) {
+          sort = urnet::PointsLeaderboardSortStreak;
+        }
+        self->wallet().OnPointsSortChanged(sort);
+      });
+  w_.PointsScroll().ViewChanged(
+      [weak, alive](IInspectable const&, ScrollViewerViewChangedEventArgs const&) {
+        if (!*alive) return;
+        if (auto self = weak.get()) self->wallet().OnPointsScroll();
+      });
+  w_.PointsRetryButton().Click([weak, alive](IInspectable const&, RoutedEventArgs const&) {
+    if (!*alive) return;
+    if (auto self = weak.get()) self->wallet().OnPointsRetry();
+  });
+}
+
+void WalletPage::ApplyPointsBoardStrings() {
+  w_.DataBoardItem().Text(Loc("data"));
+  w_.PointsBoardItem().Text(Loc("points"));
+  if (!w_.LeaderboardBoardBar().SelectedItem()) {
+    w_.LeaderboardBoardBar().SelectedItem(w_.DataBoardItem());
+  }
+  w_.PointsSortPointsItem().Text(Loc("points"));
+  w_.PointsSortBlocksItem().Text(Loc("blocks"));
+  w_.PointsSortStreakItem().Text(Loc("streak"));
+  if (!w_.PointsSortBar().SelectedItem()) {
+    w_.PointsSortBar().SelectedItem(w_.PointsSortPointsItem());
+  }
+  w_.PointsRetryButton().Content(LocBox("try_again"));
+  w_.PointsStatusText().Text(Loc("loading"));
+  w_.PointsStatusText().Visibility(Visibility::Visible);
+  BuildPointsNetworkHost();
+  RenderPointsHeader();
+  RenderPointsFooter();
+}
+
+// Pane C's block for the Points board: the group strip with the ranked count,
+// the identity line (emoji tag, own name, the pencil), the three dimensions
+// each with its rank chip, the longest streak, the opt-in switch with its
+// hint, and what the board measures. The Android header card, on the pane's
+// row rhythm.
+void WalletPage::BuildPointsNetworkHost() {
+  auto host = w_.PointsNetworkHost();
+  host.Children().Clear();
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+
+  auto group = kit::MakePaneGroupHeader(Loc("points"));
+  pointsGroupMeta_ = group.meta;
+  host.Children().Append(group.root);
+
+  // identity
+  {
+    auto row = PointsPaneRow(10);
+    Grid grid;
+    grid.ColumnSpacing(10);
+    grid.ColumnDefinitions().Append(PointsAutoColumn());
+    grid.ColumnDefinitions().Append(StarColumn());
+    grid.ColumnDefinitions().Append(PointsAutoColumn());
+
+    pointsEmojiText_ = MakeText(hstring{}, 26, colors::TextBrush());
+    pointsEmojiText_.VerticalAlignment(VerticalAlignment::Center);
+    Grid::SetColumn(pointsEmojiText_, 0);
+    grid.Children().Append(pointsEmojiText_);
+
+    pointsNameText_ = MakeText(hstring{L"-"}, 14, colors::TextBrush());
+    pointsNameText_.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+    pointsNameText_.TextTrimming(TextTrimming::CharacterEllipsis);
+    pointsNameText_.VerticalAlignment(VerticalAlignment::Center);
+    Grid::SetColumn(pointsNameText_, 1);
+    grid.Children().Append(pointsNameText_);
+
+    editEmojiButton_ = Button();
+    editEmojiButton_.Content(PointsGlyph(L""));
+    editEmojiButton_.Width(36);
+    editEmojiButton_.Height(36);
+    editEmojiButton_.Padding(ThicknessHelper::FromUniformLength(0));
+    editEmojiButton_.Click([weak, alive](IInspectable const&, RoutedEventArgs const&) {
+      if (!*alive) return;
+      if (auto self = weak.get()) self->wallet().OnEditEmoji();
+    });
+    Grid::SetColumn(editEmojiButton_, 2);
+    grid.Children().Append(editEmojiButton_);
+
+    row.Child(grid);
+    host.Children().Append(row);
+  }
+
+  // the three dimensions, each with its own rank
+  {
+    auto row = PointsPaneRow(10);
+    Grid grid;
+    grid.ColumnSpacing(8);
+    const hstring labels[3] = {Loc("points"), Loc("blocks"), Loc("streak")};
+    for (int i = 0; i < 3; ++i) {
+      grid.ColumnDefinitions().Append(StarColumn());
+      StackPanel tile;
+      tile.Spacing(2);
+      tile.Children().Append(MakeText(labels[i], 12, colors::MutedBrush()));
+      pointsTiles_[i].value = MakeValue(hstring{L"-"}, 22, colors::FaintBrush());
+      tile.Children().Append(pointsTiles_[i].value);
+      Border chip;
+      chip.CornerRadius(CornerRadiusHelper::FromUniformRadius(4));
+      chip.Padding(ThicknessHelper::FromLengths(6, 1, 6, 1));
+      chip.HorizontalAlignment(HorizontalAlignment::Left);
+      chip.Background(colors::CardBrush());
+      pointsTiles_[i].rank = MakeText(hstring{L"-"}, 11, colors::MutedBrush());
+      pointsTiles_[i].rank.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+      chip.Child(pointsTiles_[i].rank);
+      pointsTiles_[i].chip = chip;
+      tile.Children().Append(chip);
+      Grid::SetColumn(tile, i);
+      grid.Children().Append(tile);
+    }
+    StackPanel column;
+    column.Spacing(6);
+    column.Children().Append(grid);
+    pointsLongestText_ = MakeText(hstring{}, 12, colors::MutedBrush(), true);
+    column.Children().Append(pointsLongestText_);
+    row.Child(column);
+    host.Children().Append(row);
+  }
+
+  // the opt-in switch
+  {
+    auto row = kit::MakePaneTwoLineRow(Loc("show_on_points_leaderboard"), {}, 44);
+    pointsPublicToggle_ = ToggleSwitch();
+    pointsPublicToggle_.Style(rows::Lookup(L"UrSwitchToggleStyle"));
+    pointsPublicToggle_.Width(44);
+    automation::AutomationProperties::SetLabeledBy(pointsPublicToggle_, row.title);
+    pointsPublicToggle_.Toggled([weak, alive](IInspectable const&, RoutedEventArgs const&) {
+      if (!*alive) return;
+      if (auto self = weak.get()) self->wallet().OnPointsPublicToggled();
+    });
+    row.trailing.Children().Append(pointsPublicToggle_);
+    host.Children().Append(row.root);
+  }
+  {
+    auto row = PointsPaneRow(8);
+    pointsPrivateHint_ =
+        MakeText(Loc("points_leaderboard_private_hint"), 12, colors::MutedBrush(), true);
+    row.Child(pointsPrivateHint_);
+    host.Children().Append(row);
+  }
+
+  // what the board measures
+  {
+    auto row = PointsPaneRow(8);
+    row.Child(MakeText(Loc("points_leaderboard_description"), 12, colors::MutedBrush(), true));
+    host.Children().Append(row);
+  }
+}
+
+void WalletPage::ShowPointsBoard(bool points) {
+  pointsBoardShowing_ = points;
+  w_.LeaderboardDataHost().Visibility(points ? Visibility::Collapsed : Visibility::Visible);
+  w_.PointsHost().Visibility(points ? Visibility::Visible : Visibility::Collapsed);
+  w_.DataRankingHost().Visibility(points ? Visibility::Collapsed : Visibility::Visible);
+  w_.PointsNetworkHost().Visibility(points ? Visibility::Visible : Visibility::Collapsed);
+  ApplyLedgerMeta();
+  if (points) EnsurePointsBoard();
+}
+
+void WalletPage::EnsurePointsBoard() {
+  if (w_.previewUi()) {
+    SettlePointsBoardPreview();
+    return;
+  }
+  // the controller lives on the device: no session or no device, no board
+  if (!Sdk().IsLoggedIn() || !Sdk().hasDevice()) {
+    ClosePointsBoard(/*deviceAlive=*/false);
+    w_.PointsStatusText().Text(Loc("please_login_to_urnetwork"));
+    w_.PointsStatusText().Visibility(Visibility::Visible);
+    return;
+  }
+  const uint64_t device = Sdk().device().handle();
+  if (pointsVc_ && pointsVcDevice_ == device) return;  // still the device it was opened on
+  ClosePointsBoard(pointsVcDevice_ == device);
+  pointsVcDevice_ = device;
+  try {
+    pointsVc_.emplace(Sdk().device().openPointsLeaderboardViewController());
+  } catch (std::exception const& e) {
+    urnw::LogError("points board: could not open the controller: {}", e.what());
+    pointsVc_.reset();
+    pointsVcDevice_ = 0;
+    w_.PointsStatusText().Text(Loc("something_went_wrong"));
+    w_.PointsStatusText().Visibility(Visibility::Visible);
+    return;
+  }
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+  // the SDK calls from its own thread; the state is read on the UI thread
+  pointsSub_.emplace(pointsVc_->addPointsLeaderboardListener([queue, weak, alive] {
+    queue.TryEnqueue([weak, alive] {
+      if (!*alive) return;
+      if (auto self = weak.get()) self->wallet().ReadPointsBoard();
+    });
+  }));
+  pointsVc_->start();
+  // a sort picked before the controller existed is applied now
+  if (pointsVc_->getSort() != pointsSort_) pointsVc_->setSort(pointsSort_);
+  w_.PointsStatusText().Text(Loc("loading"));
+  w_.PointsStatusText().Visibility(Visibility::Visible);
+  ReadPointsBoard();
+}
+
+void WalletPage::ClosePointsBoard(bool deviceAlive) {
+  pointsSub_.reset();  // unsubscribes
+  if (pointsVc_) {
+    // the controller must be closed on the device that opened it; a device
+    // that is gone took its controllers with it
+    if (deviceAlive && Sdk().hasDevice() && Sdk().device().handle() == pointsVcDevice_) {
+      Sdk().device().closePointsLeaderboardViewController(*pointsVc_);
+    }
+    pointsVc_.reset();
+  }
+  pointsVcDevice_ = 0;
+  pointsRows_.clear();
+  pointsHasLoaded_ = false;
+  pointsLoading_ = false;
+  pointsEnd_ = false;
+  pointsError_.clear();
+  pointsMe_.reset();
+  RenderPointsRows();
+  RenderPointsHeader();
+  RenderPointsFooter();
+}
+
+void WalletPage::ReadPointsBoard() {
+  if (!pointsVc_) return;
+  std::vector<PointsRow> next;
+  try {
+    if (auto list = pointsVc_->getRows()) {
+      next.reserve(list->size());
+      for (auto const& row : *list) next.push_back(ToPointsRow(row));
+    }
+    pointsSort_ = pointsVc_->getSort();
+    if (pointsSort_.empty()) pointsSort_ = urnet::PointsLeaderboardSortPoints;
+    pointsLoading_ = pointsVc_->isLoading();
+    pointsEnd_ = pointsVc_->isEndReached();
+    pointsError_ = pointsVc_->getErrorMessage();
+    pointsTotalRanked_ = pointsVc_->getTotalRanked();
+    if (auto me = pointsVc_->getMe()) {
+      pointsMe_ = me->Row ? std::optional<PointsRow>(ToPointsRow(*me->Row)) : std::nullopt;
+      if (ownFlagsAppliedAt_ >= ownFlagsEditedAt_) {
+        pointsPublic_ = me->PointsLeaderboardPublic;
+        emojiTag_ = pointsMe_ ? pointsMe_->emojiTag : std::string();
+      }
+    }
+  } catch (std::exception const& e) {
+    // a malformed document must never take the page down
+    urnw::LogError("points board: reading the controller failed: {}", e.what());
+    return;
+  } catch (...) {
+    urnw::LogError("points board: reading the controller failed");
+    return;
+  }
+  const bool rowsChanged = next != pointsRows_ || pointsRenderedSort_ != pointsSort_;
+  if (next != pointsRows_) pointsRows_ = std::move(next);
+  if (!pointsLoading_ && (!pointsRows_.empty() || pointsEnd_ || !pointsError_.empty())) {
+    pointsHasLoaded_ = true;
+  }
+
+  // the sort bar follows the controller (a same-sort reselect is a no-op below)
+  SelectorBarItem item = w_.PointsSortPointsItem();
+  if (pointsSort_ == urnet::PointsLeaderboardSortBlocks) {
+    item = w_.PointsSortBlocksItem();
+  } else if (pointsSort_ == urnet::PointsLeaderboardSortStreak) {
+    item = w_.PointsSortStreakItem();
+  }
+  if (w_.PointsSortBar().SelectedItem() != item) w_.PointsSortBar().SelectedItem(item);
+
+  if (rowsChanged) RenderPointsRows();
+  RenderPointsHeader();
+  RenderPointsFooter();
+  if (pointsBoardShowing_) ApplyLedgerMeta();
+
+  // a page that does not fill the pane can never be scrolled to its end, so
+  // the next one is asked for once layout has run (the controller refuses a
+  // second in-flight page and a page past the end)
+  if (!pointsLoading_ && !pointsEnd_ && !pointsRows_.empty()) {
+    auto weak = w_.get_weak();
+    auto alive = alive_;
+    w_.DispatcherQueue().TryEnqueue(
+        winrt::Microsoft::UI::Dispatching::DispatcherQueuePriority::Low, [weak, alive] {
+          if (!*alive) return;
+          auto self = weak.get();
+          if (!self) return;
+          auto& page = self->wallet();
+          if (page.pointsVc_ && !page.pointsLoading_ && !page.pointsEnd_ &&
+              self->PointsScroll().ScrollableHeight() <= 0) {
+            page.pointsVc_->loadMore();
+          }
+        });
+  }
+}
+
+void WalletPage::RenderPointsRows() {
+  auto rows = w_.PointsRows();
+  rows.Children().Clear();
+  pointsRenderedSort_ = pointsSort_;
+  if (pointsRows_.empty()) return;
+
+  // The same table builder the data board uses; rank and network read as
+  // text, the three figures read right.
+  const std::vector<double> weights{1, 5, 2, 1, 1};
+  rows.Children().Append(kit::MakePaneTableHeader(
+      weights, {Loc("current_ranking"), Loc("network"), Loc("points"), Loc("blocks"), Loc("streak")},
+      /*textColumns=*/2));
+
+  const bool byBlocks = pointsSort_ == urnet::PointsLeaderboardSortBlocks;
+  const bool byStreak = pointsSort_ == urnet::PointsLeaderboardSortStreak;
+  const size_t activeColumn = byBlocks ? 3 : (byStreak ? 4 : 2);
+  const std::string ownId = pointsMe_ ? pointsMe_->networkId : std::string();
+  const hstring anonymous = Loc("anonymous");
+
+  for (auto const& r : pointsRows_) {
+    const bool isOwn = !ownId.empty() && r.networkId == ownId;
+    auto row = kit::MakePaneTableRow(weights, kPointsRowHeight, /*textColumns=*/2);
+    row.cells[0].Text(Utf8(byBlocks ? r.rankBlocksText : (byStreak ? r.rankStreakText : r.rankPointsText)));
+    // the emoji tag shows either way; the name only when the network is not anonymous
+    const bool anon = r.anonymous || r.displayName.empty();
+    std::wstring name = anon ? std::wstring{anonymous} : std::wstring{Utf8(r.displayName)};
+    if (!r.emojiTag.empty()) name = std::wstring{Utf8(r.emojiTag)} + L"  " + name;
+    row.cells[1].Text(hstring{name});
+    row.cells[2].Text(Utf8(r.totalPointsText));
+    row.cells[3].Text(Utf8(r.blocksText));
+    row.cells[4].Text(Utf8(r.streakText));
+    // the sorted figure reads in the text voice; the other two step back
+    for (size_t i = 2; i < row.cells.size(); ++i) {
+      row.cells[i].Foreground(i == activeColumn ? colors::TextBrush() : colors::MutedBrush());
+      if (i == activeColumn) {
+        row.cells[i].FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+      }
+    }
+    if (anon) row.cells[1].Foreground(colors::MutedBrush());
+    // the account's own row is the point of the table: colour AND the pane's
+    // fill step, because colour alone is never the only signal
+    if (isOwn) {
+      auto own = colors::MakeBrush(colors::kUrGreen);
+      for (auto const& cell : row.cells) cell.Foreground(own);
+      row.root.Background(colors::CardBrush());
+    }
+    rows.Children().Append(row.root);
+  }
+}
+
+void WalletPage::RenderPointsHeader() {
+  if (!pointsNameText_) return;  // not built yet
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  const bool hasMe = pointsMe_.has_value();
+
+  kit::SetTextOrCollapse(pointsEmojiText_, Utf8(emojiTag_));
+  pointsNameText_.Text(hasMe && !pointsMe_->displayName.empty() ? Utf8(pointsMe_->displayName)
+                                                                : hstring{L"-"});
+  const hstring editName = Loc(emojiTag_.empty() ? "add_emoji" : "edit_emoji");
+  automation::AutomationProperties::SetName(editEmojiButton_, editName);
+  ToolTipService::SetToolTip(editEmojiButton_, winrt::box_value(editName));
+  kit::SetTextOrCollapse(
+      pointsGroupMeta_,
+      pointsTotalRanked_ > 0
+          ? hstring{urnw::Format("ranked_networks_count",
+                                 urnw::Widen(urnet::formatPoints(static_cast<double>(pointsTotalRanked_))))}
+          : hstring{});
+
+  const std::string values[3] = {hasMe ? pointsMe_->totalPointsText : std::string(),
+                                 hasMe ? pointsMe_->blocksText : std::string(),
+                                 hasMe ? pointsMe_->streakText : std::string()};
+  const std::string ranks[3] = {hasMe ? pointsMe_->rankPointsText : std::string(),
+                                hasMe ? pointsMe_->rankBlocksText : std::string(),
+                                hasMe ? pointsMe_->rankStreakText : std::string()};
+  const bool emphasized[3] = {pointsSort_ == urnet::PointsLeaderboardSortPoints,
+                              pointsSort_ == urnet::PointsLeaderboardSortBlocks,
+                              pointsSort_ == urnet::PointsLeaderboardSortStreak};
+  winrt::Windows::UI::Color tint = colors::kUrGreen;
+  tint.A = 46;  // the chip's green wash behind the sorted dimension
+  for (int i = 0; i < 3; ++i) {
+    SetStatValue(pointsTiles_[i].value, values[i].empty() ? hstring{L"-"} : Utf8(values[i]),
+                 !values[i].empty());
+    pointsTiles_[i].rank.Text(ranks[i].empty() ? hstring{L"-"} : Utf8(ranks[i]));
+    pointsTiles_[i].rank.Foreground(emphasized[i] ? colors::MakeBrush(colors::kUrGreen)
+                                                  : colors::MutedBrush());
+    pointsTiles_[i].chip.Background(emphasized[i] ? colors::MakeBrush(tint) : colors::CardBrush());
+  }
+  kit::SetTextOrCollapse(pointsLongestText_,
+                         hasMe ? hstring{std::wstring{Loc("longest_streak")} + L": " +
+                                         std::wstring{Utf8(pointsMe_->longestStreakText)}}
+                               : hstring{});
+
+  SetPointsToggle(pointsPublic_);
+  pointsPublicToggle_.IsEnabled(!settingPointsPublic_);
+  pointsPrivateHint_.Visibility(pointsPublic_ ? Visibility::Collapsed : Visibility::Visible);
+}
+
+void WalletPage::RenderPointsFooter() {
+  const bool showError = !pointsLoading_ && !pointsError_.empty();
+  // the page spinner only once there are rows to page after; before the first
+  // page the centred status line says "Loading..." on its own
+  const bool paging = pointsLoading_ && !pointsRows_.empty();
+  w_.PointsFooterRing().IsActive(paging);
+  w_.PointsFooterRing().Visibility(paging ? Visibility::Visible : Visibility::Collapsed);
+  kit::SetTextOrCollapse(w_.PointsFooterText(), showError ? Utf8(pointsError_) : hstring{});
+  w_.PointsRetryButton().Visibility(showError ? Visibility::Visible : Visibility::Collapsed);
+  if (!pointsVc_) return;  // the status line already says why there is no board
+  if (pointsRows_.empty() && !showError) {
+    w_.PointsStatusText().Text(pointsHasLoaded_ ? Loc("points_leaderboard_empty")
+                                                : Loc("loading"));
+    w_.PointsStatusText().Visibility(Visibility::Visible);
+  } else {
+    w_.PointsStatusText().Visibility(Visibility::Collapsed);
+  }
+}
+
+// Switches the sort; the controller clears its rows and reloads.
+void WalletPage::OnPointsSortChanged(std::string const& sort) {
+  if (sort == pointsSort_ || !urnet::isPointsLeaderboardSort(sort)) return;
+  // reflect the chip immediately; the controller confirms on its event
+  pointsSort_ = sort;
+  if (pointsVc_) pointsVc_->setSort(sort);
+  RenderPointsRows();
+  RenderPointsHeader();
+}
+
+// Asks for the next page when the last visible row is within reach of the end.
+void WalletPage::OnPointsScroll() {
+  if (!pointsVc_) return;
+  auto const scroll = w_.PointsScroll();
+  const int64_t rowCount = static_cast<int64_t>(pointsRows_.size());
+  const int64_t last = emoji::LastVisibleRow(scroll.VerticalOffset(), scroll.ViewportHeight(),
+                                             kPointsTableHeaderHeight, kPointsRowHeight, rowCount);
+  if (emoji::ShouldLoadMore(last, rowCount, pointsLoading_, pointsEnd_)) pointsVc_->loadMore();
+}
+
+// Retries after an error: the controller re-requests the same page.
+void WalletPage::OnPointsRetry() {
+  if (!pointsVc_) {
+    EnsurePointsBoard();
+    return;
+  }
+  if (pointsRows_.empty()) {
+    ownFlagsAppliedAt_ = ++ownFlagsClock_;  // the next `me` is newer than any local edit
+    pointsVc_->refresh();
+  } else {
+    pointsVc_->loadMore();
+  }
+}
+
+void WalletPage::SetPointsToggle(bool isPublic) {
+  if (!pointsPublicToggle_) return;
+  applyingPointsToggle_ = true;
+  pointsPublicToggle_.IsOn(isPublic);
+  applyingPointsToggle_ = false;
+}
+
+void WalletPage::OnPointsPublicToggled() {
+  // the handler cannot tell a user flip from the programmatic write that
+  // renders the answer, so the write sets a flag and this returns
+  if (applyingPointsToggle_) return;
+  const bool requested = pointsPublicToggle_.IsOn();
+  if (requested == pointsPublic_) return;
+  if (settingPointsPublic_) {
+    SetPointsToggle(pointsPublic_);  // one in flight: snap back
+    return;
+  }
+  if (!CanCallApi()) {
+    SetPointsToggle(pointsPublic_);
+    RefuseNoSession();
+    return;
+  }
+  settingPointsPublic_ = true;
+  pointsPublicToggle_.IsEnabled(false);
+
+  auto alive = alive_;
+  const uint32_t generation =
+      BeginFlow(pointsPublicFlow_, kApiTimeoutMs, [weak = w_.get_weak(), alive] {
+        if (!*alive) return;
+        if (auto self = weak.get()) {
+          auto& page = self->wallet();
+          page.settingPointsPublic_ = false;
+          page.pointsPublicToggle_.IsEnabled(true);
+          page.SetPointsToggle(page.pointsPublic_);
+          page.Notify(Loc("something_went_wrong"), InfoBarSeverity::Error);
+        }
+      });
+
+  urnet::SetPointsLeaderboardPublicArgs args;
+  args.public_ = requested;
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().api().setPointsLeaderboardPublic(
+      args, [queue, weak, alive, requested,
+             generation](std::optional<urnet::SetPointsLeaderboardPublicResult> result,
+                         std::optional<std::string> err) {
+        std::string error = err ? *err : std::string();
+        if (error.empty() && result && result->error) error = result->error->message;
+        const bool ok = result && error.empty();
+        if (!ok) urnw::LogError("points board: setPointsLeaderboardPublic failed: {}", error);
+        queue.TryEnqueue([weak, alive, ok, requested, error, generation] {
+          if (!*alive) return;
+          if (auto self = weak.get()) {
+            self->wallet().ApplyPointsPublicResult(generation, ok, requested, error);
+          }
+        });
+      });
+}
+
+void WalletPage::ApplyPointsPublicResult(uint32_t generation, bool ok, bool requested,
+                                         std::string const& serverError) {
+  if (!SettleFlow(pointsPublicFlow_, generation)) return;
+  settingPointsPublic_ = false;
+  pointsPublicToggle_.IsEnabled(true);
+  if (ok) {
+    // the local value wins until a `me` newer than this edit lands
+    ownFlagsEditedAt_ = ++ownFlagsClock_;
+    pointsPublic_ = requested;
+    RenderPointsHeader();
+    // the list shows or hides the own row; `me` is re-read too
+    if (pointsVc_) {
+      ownFlagsAppliedAt_ = ++ownFlagsClock_;
+      pointsVc_->refresh();
+    }
+    return;
+  }
+  SetPointsToggle(pointsPublic_);
+  Notify(serverError.empty() ? Loc("something_went_wrong") : H(serverError),
+         InfoBarSeverity::Error);
+}
+
+// Stores the tag (already normalized by the SDK), or an empty string to clear
+// it; `done` gets the server's message on failure, on the UI thread.
+void WalletPage::SaveEmojiTag(std::string tag, std::function<void(std::string)> done) {
+  if (savingEmojiTag_) return;
+  if (!CanCallApi()) {
+    RefuseNoSession();
+    done(urnw::Narrow(std::wstring{Loc("please_login_to_urnetwork")}));
+    return;
+  }
+  savingEmojiTag_ = true;
+  urnet::SetEmojiTagArgs args;
+  args.emoji_tag = tag;
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+  Sdk().api().setEmojiTag(
+      args, [queue, weak, alive, done](std::optional<urnet::SetEmojiTagResult> result,
+                                       std::optional<std::string> err) {
+        std::string error = err ? *err : std::string();
+        if (error.empty() && result && result->error) error = result->error->message;
+        if (error.empty() && !result) error = "set emoji tag: no result";
+        const std::string stored =
+            error.empty() && result && result->emoji_tag ? *result->emoji_tag : std::string();
+        if (!error.empty()) urnw::LogError("points board: setEmojiTag failed: {}", error);
+        queue.TryEnqueue([weak, alive, done, error, stored] {
+          if (!*alive) return;
+          auto self = weak.get();
+          if (!self) return;
+          auto& page = self->wallet();
+          page.savingEmojiTag_ = false;
+          if (error.empty()) {
+            page.ownFlagsEditedAt_ = ++page.ownFlagsClock_;
+            page.emojiTag_ = stored;
+            page.RenderPointsHeader();
+            if (page.pointsVc_) {
+              page.ownFlagsAppliedAt_ = ++page.ownFlagsClock_;
+              page.pointsVc_->refresh();
+            }
+          }
+          if (done) done(error);
+        });
+      });
+}
+
+winrt::fire_and_forget WalletPage::OnEditEmoji() {
+  if (w_.sheetOpen()) co_return;
+  if (!CanCallApi()) {
+    RefuseNoSession();
+    co_return;
+  }
+  auto self = w_.get_strong();
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+  self->SetSheetOpen(true);
+  try {
+    emojiSheet_ = urnw::EmojiTagSheet::Create(
+        self->Content().XamlRoot(), emojiTag_,
+        [weak, alive](std::string tag, std::function<void(std::string)> done) {
+          if (!*alive) return;
+          if (auto w = weak.get()) w->wallet().SaveEmojiTag(std::move(tag), std::move(done));
+        });
+    co_await self->wallet().emojiSheet_->Dialog().ShowAsync();
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("points board: the emoji sheet failed to open: {}",
+                   urnw::Narrow(std::wstring{e.message()}));
+  } catch (...) {
+    urnw::LogError("points board: the emoji sheet failed to open");
+  }
+  self->wallet().emojiSheet_.reset();
+  self->SetSheetOpen(false);
+}
+
+// --preview-ui: the board on its real empty state, with no controller
+void WalletPage::SettlePointsBoardPreview() {
+  ClosePointsBoard(/*deviceAlive=*/false);
+  pointsHasLoaded_ = true;
+  w_.PointsStatusText().Text(Loc("points_leaderboard_empty"));
+  w_.PointsStatusText().Visibility(Visibility::Visible);
 }
 
 }  // namespace urnw
