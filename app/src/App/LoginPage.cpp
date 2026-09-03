@@ -1112,10 +1112,10 @@ void LoginPage::ApplyWalletSignInResult(urnw::AuthResult const& result) {
   ShowLoginErrorFor(LoginStep::Initial, H(result.error));
 }
 
-// ---- Sign in with Google / Apple (ur.io SSO browser bridge) ----------------
-// Neither has a native desktop flow here, so both open https://ur.io/sso in the
-// default browser: the bridge runs the same Google / Apple sign-in the ur.io
-// login dialog runs and returns the identity token on urnetwork://sso, which
+// ---- Sign in with Google / Apple (the provider's web flow) ------------------
+// Neither has a native desktop flow here, so both open the provider's own
+// sign-in page in the default browser with the api's callback as the redirect;
+// the api returns the identity token on urnetwork://oauth/<provider>, which
 // protocol activation routes back into SdkHost (SdkHost::SignInWithSso checks
 // the attempt's state and nonce before authLogin). Everything here does is
 // disable the sign-in affordances while that is happening and surface whatever

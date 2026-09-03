@@ -49,11 +49,13 @@ class WalletConnect {
   // attaches the coldkey to the provider (Earnings).
   void SignMessageBittensor(const std::string& message, const std::string& purpose = std::string());
 
-  // Google / Apple sign-in through the ur.io/sso bridge, the same browser round
-  // trip: the bridge runs the provider's web flow (the one the ur.io login
-  // dialog runs) and returns the identity token on urnetwork://sso. `state` is
-  // echoed back untouched and `nonce` is handed to the provider so the token
-  // carries it; the caller checks both. on_sso fires on the callback.
+  // Sign-in through the ur.io/sso bridge, the same browser round trip: the
+  // bridge runs the provider's web flow (the one the ur.io login dialog runs)
+  // and returns the identity token on urnetwork://sso. `state` is echoed back
+  // untouched and `nonce` is handed to the provider so the token carries it;
+  // the caller checks both. on_sso fires on the callback. Google and Apple
+  // now go to the provider directly (OpenGoogleOAuth / OpenAppleOAuth); the
+  // bridge and its urnetwork://sso return stay routed for any other provider.
   void OpenSso(const std::string& provider, const std::string& state, const std::string& nonce);
 
   // Sign in with Apple straight against Apple: Apple has no desktop SDK and no
@@ -67,8 +69,20 @@ class WalletConnect {
   // (AppleOAuthState); the state is otherwise opaque.
   void OpenAppleOAuth(const std::string& apiUrl, const std::string& state,
                       const std::string& nonce);
-  // The state of one Apple attempt: base64url of {"platform":"windows","token":…}.
+  // Sign in with Google the same way (no bridge page): the browser opens
+  // Google's authorize page (client_id = the ur.io web sign-in client,
+  // redirect_uri = <api>/auth/google/callback, response_type=code), Google
+  // redirects to the api with an authorization code, the api exchanges it for
+  // the identity token and redirects to urnetwork://oauth/google?state=…
+  // &id_token=… (or &error=…), which HandleDeepLink routes to on_sso with
+  // provider "google". The state carries the same platform claim.
+  void OpenGoogleOAuth(const std::string& apiUrl, const std::string& state,
+                       const std::string& nonce);
+  // The state of one Apple or Google attempt: base64url of
+  // {"platform":"windows","token":…}. The api's callbacks read the platform
+  // claim to pick the return scheme; the token is what makes it unique.
   static std::string AppleOAuthState(const std::string& token);
+  static std::string OAuthState(const std::string& token);
 
   // Route a urnetwork:// callback here. Returns true if it was a bridge callback
   // (a wallet or an sso one).
@@ -99,7 +113,8 @@ class WalletConnect {
   void HandleSignMessage(Provider p, const std::string& query);
   void HandleBittensor(const std::string& host, const std::string& query);
   void HandleSso(const std::string& query);
-  void HandleAppleOAuth(const std::string& url);
+  // urnetwork://oauth/<apple|google>?state=…&id_token=… (or &error=…)
+  void HandleOAuthReturn(const std::string& url);
 
   std::optional<urnet::WalletKeyPair> dappKeyPair_;
   std::optional<std::string> connectedPublicKey_;

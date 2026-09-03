@@ -577,16 +577,18 @@ class SdkHost {
   // Drop the pending instant network jwt without registering (sheet dismissed).
   void DiscardInstantAccount();
 
-  // ---- Google / Apple SSO (ur.io/sso browser bridge) -----------------------
+  // ---- Google / Apple SSO (the provider's web flow, the api's callback) ------
   // Neither identity provider has a native desktop flow here, so both run in
-  // the default browser through https://ur.io/sso: the bridge runs the same
-  // Google / Apple sign-in the ur.io login dialog runs (the same client ids, so
-  // the server accepts the token exactly as it does for the web) and returns
-  // the identity token on urnetwork://sso, which HandleDeepLink routes here.
-  // The attempt's `state` must be echoed and the token must carry the attempt's
-  // `nonce` claim before the token goes to authLogin{auth_jwt_type:<provider>};
-  // an identity with no network yet routes to the create-network step the same
-  // way a wallet does. `provider` is "google" or "apple".
+  // the default browser against the provider itself: Google's authorize page
+  // (code flow) or Apple's, with <api>/auth/<provider>/callback as the
+  // redirect. The api hands the identity token back on
+  // urnetwork://oauth/<provider>, which HandleDeepLink routes here (the same
+  // client ids the ur.io login dialog uses, so the server accepts the token
+  // exactly as it does for the web). The attempt's `state` must be echoed and
+  // the token must carry the attempt's `nonce` claim before the token goes to
+  // authLogin{auth_jwt_type:<provider>}; an identity with no network yet routes
+  // to the create-network step the same way a wallet does. `provider` is
+  // "google" or "apple".
   void SignInWithSso(const std::string& provider, std::function<void(AuthResult)> done);
   // An SSO identity authenticated but has no network: the id token is retained
   // for CreateNetwork (name + terms, no password), like a wallet.

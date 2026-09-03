@@ -371,8 +371,9 @@ urnet::NetworkSpace SdkHost::BuildNetworkSpace() {
   values.migration_host_name = "bringyour.com";
   values.store = "";
   values.wallet = "circle";
-  // Google (and Apple) sign-in run through the ur.io/sso browser bridge, which
-  // needs nothing compiled in, so the space always offers it (SignInWithSso).
+  // Google (and Apple) sign-in run in the system browser against the provider,
+  // with the api's callback returning the token (SignInWithSso); nothing is
+  // compiled in, so the space always offers it.
   values.sso_google = true;
   values.env_secret = "";
 
@@ -1587,7 +1588,8 @@ void SdkHost::SignWithBittensorWallet(
 
 void SdkHost::HandleDeepLink(const std::string& url) {
   // Every browser round trip answers here: the wallet bridge hosts and the
-  // urnetwork://sso host the Google / Apple bridge returns on (on_sso below).
+  // urnetwork://sso (the bridge) and urnetwork://oauth/<provider> (the api's
+  // Google / Apple callbacks) return on (on_sso below).
   wallet_.HandleDeepLink(url);
 }
 
@@ -1615,25 +1617,24 @@ void SdkHost::SignInWithSso(const std::string& provider, std::function<void(Auth
   // the bridge has ONE pair of callbacks: whatever was waiting is TOLD
   CancelPendingWalletFlows("superseded by a sign-in");
   walletAuthDone_ = std::move(done);
-  // Fresh per attempt: `state` is echoed by the bridge and `nonce` rides inside
-  // the identity token the provider issues, so a stale or replayed callback can
+  // Fresh per attempt: `state` is echoed by the provider and `nonce` rides
+  // inside the identity token it issues, so a stale or replayed callback can
   // match neither. Both come from the SDK's random source, like a wallet nonce.
-  // Apple goes straight to Apple (no bridge page): its state carries the
-  // platform claim the api's callback reads to redirect back to this app.
-  const bool apple = provider == "apple";
-  const std::string state =
-      apple ? WalletConnect::AppleOAuthState(urnet::generateNonce()) : urnet::generateNonce();
+  // Both providers go straight to the provider (no bridge page): the state
+  // carries the platform claim the api's callback reads to redirect back to
+  // this app (urnetwork://oauth/<provider>).
+  const std::string state = WalletConnect::OAuthState(urnet::generateNonce());
   ssoAttempt_ = SsoAttempt{provider, state, urnet::generateNonce()};
+  std::string apiUrl;
+  {
+    std::scoped_lock lock(mutex_);
+    if (networkSpace_) apiUrl = networkSpace_->getApiUrl();
+  }
   // opens the browser; the rest continues on the deep-link callback (on_sso)
-  if (apple) {
-    std::string apiUrl;
-    {
-      std::scoped_lock lock(mutex_);
-      if (networkSpace_) apiUrl = networkSpace_->getApiUrl();
-    }
+  if (provider == "apple") {
     wallet_.OpenAppleOAuth(apiUrl, ssoAttempt_->state, ssoAttempt_->nonce);
   } else {
-    wallet_.OpenSso(provider, ssoAttempt_->state, ssoAttempt_->nonce);
+    wallet_.OpenGoogleOAuth(apiUrl, ssoAttempt_->state, ssoAttempt_->nonce);
   }
 }
 

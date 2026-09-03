@@ -29,8 +29,16 @@ constexpr const char* kSsoRedirect = "urnetwork://sso";
 constexpr const char* kAppleAuthorize = "https://appleid.apple.com/auth/authorize";
 constexpr const char* kAppleServicesId = "network.ur.service";  // the web client id
 constexpr const char* kAppleCallbackPath = "/auth/apple/callback";
-constexpr const char* kAppleReturnHost = "oauth";   // urnetwork://oauth/apple
+constexpr const char* kOAuthReturnHost = "oauth";   // urnetwork://oauth/<provider>
 constexpr const char* kAppleReturnPath = "/apple";
+// Sign in with Google (OpenGoogleOAuth): Google's web flow (authorization
+// code), the api's callback exchanges the code and returns the identity token
+constexpr const char* kGoogleAuthorize = "https://accounts.google.com/o/oauth2/v2/auth";
+// the ur.io web sign-in client (SsoBridge.jsx); the api's callback holds its secret
+constexpr const char* kGoogleClientId =
+    "338638865390-cg4m0t700mq9073smhn9do81mr640ig1.apps.googleusercontent.com";
+constexpr const char* kGoogleCallbackPath = "/auth/google/callback";
+constexpr const char* kGoogleReturnPath = "/google";
 constexpr const char* kPlatform = "windows";
 constexpr const char* kAppUrl = "https://ur.io";
 constexpr const char* kCluster = "mainnet-beta";
@@ -262,9 +270,28 @@ void WalletConnect::OpenSso(const std::string& provider, const std::string& stat
   OpenUrl(url);
 }
 
-std::string WalletConnect::AppleOAuthState(const std::string& token) {
+std::string WalletConnect::OAuthState(const std::string& token) {
   const nlohmann::json claims = {{"platform", kPlatform}, {"token", token}};
   return Base64Url(claims.dump());
+}
+
+std::string WalletConnect::AppleOAuthState(const std::string& token) { return OAuthState(token); }
+
+void WalletConnect::OpenGoogleOAuth(const std::string& apiUrl, const std::string& state,
+                                    const std::string& nonce) {
+  if (apiUrl.empty()) {
+    if (on_error) on_error("no api url for the Google sign-in callback");
+    return;
+  }
+  std::string origin = apiUrl;
+  while (!origin.empty() && origin.back() == '/') origin.pop_back();
+  // the code flow: google only hands the identity token to a server, so the
+  // api's callback exchanges the code and redirects it back to this app
+  std::string url = std::string(kGoogleAuthorize) + "?client_id=" + Esc(kGoogleClientId) +
+                    "&redirect_uri=" + Esc(origin + kGoogleCallbackPath) +
+                    "&response_type=code" + "&scope=" + Esc("openid email profile") +
+                    "&state=" + Esc(state) + "&nonce=" + Esc(nonce) + "&prompt=select_account";
+  OpenUrl(url);
 }
 
 void WalletConnect::OpenAppleOAuth(const std::string& apiUrl, const std::string& state,
@@ -282,9 +309,16 @@ void WalletConnect::OpenAppleOAuth(const std::string& apiUrl, const std::string&
   OpenUrl(url);
 }
 
-void WalletConnect::HandleAppleOAuth(const std::string& url) {
-  // urnetwork://oauth/apple?state=…&id_token=…  (or &error=…)
-  if (UrlPath(url) != kAppleReturnPath) {
+void WalletConnect::HandleOAuthReturn(const std::string& url) {
+  // urnetwork://oauth/apple?state=…&id_token=…  (or &error=…), and the same
+  // shape on urnetwork://oauth/google: the path names the provider
+  const std::string path = UrlPath(url);
+  std::string provider;
+  if (path == kAppleReturnPath) {
+    provider = "apple";
+  } else if (path == kGoogleReturnPath) {
+    provider = "google";
+  } else {
     if (on_error) on_error("unknown oauth callback");
     return;
   }
@@ -294,7 +328,7 @@ void WalletConnect::HandleAppleOAuth(const std::string& url) {
   const std::string idToken = params.count("id_token") ? params["id_token"] : std::string();
   std::string error = params.count("error") ? params["error"] : std::string();
   if (error.empty() && idToken.empty()) error = "sign-in returned no identity token";
-  if (on_sso) on_sso("apple", idToken, state, error);
+  if (on_sso) on_sso(provider, idToken, state, error);
 }
 
 bool WalletConnect::HandleDeepLink(const std::string& url) {
@@ -304,8 +338,8 @@ bool WalletConnect::HandleDeepLink(const std::string& url) {
     HandleSso(query);
     return true;
   }
-  if (host == kAppleReturnHost) {
-    HandleAppleOAuth(url);
+  if (host == kOAuthReturnHost) {
+    HandleOAuthReturn(url);
     return true;
   }
   auto provider = ProviderForHost(host);
