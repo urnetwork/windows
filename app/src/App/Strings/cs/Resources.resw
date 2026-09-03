@@ -362,10 +362,6 @@
     <value>Kódy zůstatku</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
-  <data name="become_a" xml:space="preserve">
-    <value>Staň se</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
-  </data>
   <data name="become_supporter" xml:space="preserve">
     <value>Získat UR Pro</value>
     <comment>Settings</comment>
@@ -2389,6 +2385,10 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>Síť doporučení</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_network_updated" xml:space="preserve">
+    <value>Síť doporučení byla aktualizována</value>
+    <comment>Snackbar on the Referrals screen after the referral network was changed.</comment>
+  </data>
   <data name="referral_points" xml:space="preserve">
     <value>Body za doporučení</value>
     <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
@@ -2436,6 +2436,10 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   <data name="referrals" xml:space="preserve">
     <value>Doporučení</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
+  </data>
+  <data name="refresh" xml:space="preserve">
+    <value>Obnovit</value>
+    <comment>Generic refresh action (a button that reloads the current list or view), e.g. the points leaderboard tab.</comment>
   </data>
   <data name="regenerate_seedphrase" xml:space="preserve">
     <value>Vygenerovat seed frázi znovu</value>
@@ -2850,9 +2854,25 @@ kontent světa</value>
     <value>Připraveno k připojení</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copy_seedphrase" xml:space="preserve">
+    <value>Kopírovat seedphrase</value>
+    <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="site_install_app" xml:space="preserve">
     <value>Nainstalovat aplikaci</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_instant_no_seedphrase" xml:space="preserve">
+    <value>Účet byl vytvořen bez obnovitelné seedphrase. Kontaktujte prosím podporu.</value>
+    <comment>Instant account creation: error when the server returned no seedphrase for the new account.</comment>
+  </data>
+  <data name="site_instant_seedphrase_only_recovery" xml:space="preserve">
+    <value>Není potřeba e-mail ani heslo. 24slovná seedphrase je jediný způsob, jak účet obnovit.</value>
+    <comment>Instant account creation: hint that the seedphrase is the only way to recover the account.</comment>
+  </data>
+  <data name="site_login_seed_hint" xml:space="preserve">
+    <value>Zadejte 24slovnou seedphrase zobrazenou při vytvoření okamžitého účtu.</value>
+    <comment>Login stack: hint above the seedphrase field when signing in with an instant account's seed.</comment>
   </data>
   <data name="site_login_seed_not_recognized" xml:space="preserve">
     <value>Seed nebyl rozpoznán.</value>
@@ -2873,6 +2893,14 @@ kontent světa</value>
   <data name="site_manage_subscription_hint" xml:space="preserve">
     <value>Zobrazte datum obnovení, stav automatického obnovení a možnosti zrušení.</value>
     <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_save_your_seedphrase" xml:space="preserve">
+    <value>Uložte si seedphrase</value>
+    <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
+  </data>
+  <data name="site_seedphrase_copy_failed" xml:space="preserve">
+    <value>Seedphrase se nepodařilo zkopírovat. Označte a zkopírujte slova níže.</value>
+    <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
   </data>
   <data name="site_sub_active_until" xml:space="preserve">
     <value>Aktivní do {date}</value>
@@ -3106,10 +3134,6 @@ jaký by měl být.</value>
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
-  <data name="supporter_2" xml:space="preserve">
-    <value>Podporovatel</value>
-    <comment>Used in Shared/ViewModels/SubscriptionBalanceViewModel.swift.</comment>
-  </data>
   <data name="switch_account" xml:space="preserve">
     <value>Přepnutí účtu</value>
     <comment>Call to action</comment>
@@ -3336,10 +3360,6 @@ jaký by měl být.</value>
   <data name="urnetwork_status" xml:space="preserve">
     <value>Status URnetwork</value>
     <comment>Used in NetworkApp.swift.</comment>
-  </data>
-  <data name="urnetwork_supporter" xml:space="preserve">
-    <value>Podporovatel URnetwork</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
   <data name="urnetwork_system_menu" xml:space="preserve">
     <value>Systémové menu URnetwork</value>

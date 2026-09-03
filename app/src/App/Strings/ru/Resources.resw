@@ -362,10 +362,6 @@
     <value>Коды баланса</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
-  <data name="become_a" xml:space="preserve">
-    <value>Станьте</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
-  </data>
   <data name="become_supporter" xml:space="preserve">
     <value>Получить UR Pro</value>
     <comment>Settings</comment>
@@ -2391,6 +2387,10 @@
     <value>Реферальная сеть</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_network_updated" xml:space="preserve">
+    <value>Реферальная сеть обновлена</value>
+    <comment>Snackbar on the Referrals screen after the referral network was changed.</comment>
+  </data>
   <data name="referral_panel_detail" xml:space="preserve">
     <value>Каждый подтверждённый реферал даёт каждому из вас по {} ГиБ в день бесплатно, навсегда.</value>
     <comment>Detail line of the gold referral panel. The amount is the daily GiB each side earns per verified referral (pro.yml referral).</comment>
@@ -2450,6 +2450,10 @@
   <data name="referrals" xml:space="preserve">
     <value>Рефералы</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
+  </data>
+  <data name="refresh" xml:space="preserve">
+    <value>Обновить</value>
+    <comment>Generic refresh action (a button that reloads the current list or view), e.g. the points leaderboard tab.</comment>
   </data>
   <data name="regenerate_seedphrase" xml:space="preserve">
     <value>Создать сид-фразу заново</value>
@@ -3280,6 +3284,10 @@
     <value>Готово к подключению</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copy_seedphrase" xml:space="preserve">
+    <value>Скопировать сид-фразу</value>
+    <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="site_copy_url" xml:space="preserve">
     <value>Копировать URL</value>
     <comment>Account panel: copy a proxy's URL</comment>
@@ -3352,6 +3360,14 @@
     <value>Установить приложение</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_instant_no_seedphrase" xml:space="preserve">
+    <value>Аккаунт создан без восстанавливаемой сид-фразы. Обратитесь в поддержку.</value>
+    <comment>Instant account creation: error when the server returned no seedphrase for the new account.</comment>
+  </data>
+  <data name="site_instant_seedphrase_only_recovery" xml:space="preserve">
+    <value>Email и пароль не нужны. Сид-фраза из 24 слов — единственный способ восстановить аккаунт.</value>
+    <comment>Instant account creation: hint that the seedphrase is the only way to recover the account.</comment>
+  </data>
   <data name="site_invalid_balance_code" xml:space="preserve">
     <value>Неверный код баланса.</value>
     <comment>Account panel: invalid balance code</comment>
@@ -3387,6 +3403,10 @@
   <data name="site_locations" xml:space="preserve">
     <value>Локации</value>
     <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_login_seed_hint" xml:space="preserve">
+    <value>Введите сид-фразу из 24 слов, показанную при создании мгновенного аккаунта.</value>
+    <comment>Login stack: hint above the seedphrase field when signing in with an instant account's seed.</comment>
   </data>
   <data name="site_login_seed_not_recognized" xml:space="preserve">
     <value>Сид не распознан.</value>
@@ -3452,6 +3472,10 @@
     <value>Роли</value>
     <comment>Account panel: client info — roles label</comment>
   </data>
+  <data name="site_save_your_seedphrase" xml:space="preserve">
+    <value>Сохраните сид-фразу</value>
+    <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
+  </data>
   <data name="site_saved" xml:space="preserve">
     <value>Сохранено</value>
     <comment>Account panel: preference saved flash</comment>
@@ -3459,6 +3483,10 @@
   <data name="site_searching" xml:space="preserve">
     <value>Поиск…</value>
     <comment>Account panel: location search in progress</comment>
+  </data>
+  <data name="site_seedphrase_copy_failed" xml:space="preserve">
+    <value>Не удалось скопировать сид-фразу. Выделите и скопируйте слова ниже.</value>
+    <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>Имя пользователя — это токен из URL; пароль пустой.</value>
@@ -3700,10 +3728,6 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
-  <data name="supporter_2" xml:space="preserve">
-    <value>Спонсор</value>
-    <comment>Used in Shared/ViewModels/SubscriptionBalanceViewModel.swift.</comment>
-  </data>
   <data name="switch_account" xml:space="preserve">
     <value>Сменить аккаунт</value>
     <comment>Call to action</comment>
@@ -3930,10 +3954,6 @@
   <data name="urnetwork_status" xml:space="preserve">
     <value>Статус URnetwork</value>
     <comment>Used in NetworkApp.swift.</comment>
-  </data>
-  <data name="urnetwork_supporter" xml:space="preserve">
-    <value>Поддерживающий URnetwork</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
   <data name="urnetwork_system_menu" xml:space="preserve">
     <value>Системное меню URnetwork</value>

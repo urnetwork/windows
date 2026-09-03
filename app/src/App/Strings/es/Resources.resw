@@ -346,10 +346,6 @@
     <value>Códigos de saldo</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
-  <data name="become_a" xml:space="preserve">
-    <value>Conviértete en</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
-  </data>
   <data name="become_supporter" xml:space="preserve">
     <value>Obtener UR Pro</value>
     <comment>Settings</comment>
@@ -2286,6 +2282,10 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Red de referidos</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_network_updated" xml:space="preserve">
+    <value>Red de referidos actualizada</value>
+    <comment>Snackbar on the Referrals screen after the referral network was changed.</comment>
+  </data>
   <data name="referral_panel_detail" xml:space="preserve">
     <value>Cada referido verificado les da a cada uno {} GiB/día gratis, de por vida.</value>
     <comment>Detail line of the gold referral panel. The amount is the daily GiB each side earns per verified referral (pro.yml referral).</comment>
@@ -2337,6 +2337,10 @@ más grande, seguro y descentralizado del mundo.</value>
   <data name="referrals" xml:space="preserve">
     <value>Referidos</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
+  </data>
+  <data name="refresh" xml:space="preserve">
+    <value>Actualizar</value>
+    <comment>Generic refresh action (a button that reloads the current list or view), e.g. the points leaderboard tab.</comment>
   </data>
   <data name="regenerate_seedphrase" xml:space="preserve">
     <value>Vuelve a generar la frase semilla</value>
@@ -3168,6 +3172,10 @@ del mundo</value>
     <value>Listo para conectar</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copy_seedphrase" xml:space="preserve">
+    <value>Copiar frase semilla</value>
+    <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="site_copy_url" xml:space="preserve">
     <value>Copiar URL</value>
     <comment>Account panel: copy a proxy's URL</comment>
@@ -3240,6 +3248,14 @@ del mundo</value>
     <value>Instalar la app</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_instant_no_seedphrase" xml:space="preserve">
+    <value>La cuenta se creó sin una frase semilla recuperable. Contacta con soporte.</value>
+    <comment>Instant account creation: error when the server returned no seedphrase for the new account.</comment>
+  </data>
+  <data name="site_instant_seedphrase_only_recovery" xml:space="preserve">
+    <value>No hace falta correo ni contraseña. Una frase semilla de 24 palabras es la única forma de recuperar la cuenta.</value>
+    <comment>Instant account creation: hint that the seedphrase is the only way to recover the account.</comment>
+  </data>
   <data name="site_invalid_balance_code" xml:space="preserve">
     <value>Código de saldo no válido.</value>
     <comment>Account panel: invalid balance code</comment>
@@ -3275,6 +3291,10 @@ del mundo</value>
   <data name="site_locations" xml:space="preserve">
     <value>Ubicaciones</value>
     <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_login_seed_hint" xml:space="preserve">
+    <value>Introduce la frase semilla de 24 palabras que se mostró al crear la cuenta instantánea.</value>
+    <comment>Login stack: hint above the seedphrase field when signing in with an instant account's seed.</comment>
   </data>
   <data name="site_login_seed_not_recognized" xml:space="preserve">
     <value>Semilla no reconocida.</value>
@@ -3340,6 +3360,10 @@ del mundo</value>
     <value>Roles</value>
     <comment>Account panel: client info — roles label</comment>
   </data>
+  <data name="site_save_your_seedphrase" xml:space="preserve">
+    <value>Guarda tu frase semilla</value>
+    <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
+  </data>
   <data name="site_saved" xml:space="preserve">
     <value>Guardado</value>
     <comment>Account panel: preference saved flash</comment>
@@ -3347,6 +3371,10 @@ del mundo</value>
   <data name="site_searching" xml:space="preserve">
     <value>Buscando…</value>
     <comment>Account panel: location search in progress</comment>
+  </data>
+  <data name="site_seedphrase_copy_failed" xml:space="preserve">
+    <value>No se pudo copiar la frase semilla. Selecciona y copia las palabras de abajo.</value>
+    <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>El usuario es el token de la URL; la contraseña está vacía.</value>
@@ -3580,10 +3608,6 @@ como debería ser.</value>
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
-  <data name="supporter_2" xml:space="preserve">
-    <value>Colaborador</value>
-    <comment>Used in Shared/ViewModels/SubscriptionBalanceViewModel.swift.</comment>
-  </data>
   <data name="switch_account" xml:space="preserve">
     <value>Cambiar cuenta</value>
     <comment>Call to action</comment>
@@ -3802,10 +3826,6 @@ como debería ser.</value>
   <data name="urnetwork_status" xml:space="preserve">
     <value>Estado de URnetwork</value>
     <comment>Used in NetworkApp.swift.</comment>
-  </data>
-  <data name="urnetwork_supporter" xml:space="preserve">
-    <value>Colaborador de URnetwork</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
   <data name="urnetwork_system_menu" xml:space="preserve">
     <value>Menú del sistema de URnetwork</value>

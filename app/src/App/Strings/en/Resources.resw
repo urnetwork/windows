@@ -413,10 +413,6 @@
     <value>Balance Codes</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
-  <data name="become_a" xml:space="preserve">
-    <value>Become a</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
-  </data>
   <data name="become_supporter" xml:space="preserve">
     <value>Get UR Pro</value>
     <comment>Settings</comment>
@@ -1266,6 +1262,38 @@ right way</value>
   <data name="dev_heartbeat_detail" xml:space="preserve">
     <value>How often one line summarizing live state is written to the log for later forensics. Off silences it; shorter spots a transition, longer keeps more buffer</value>
     <comment>Developer tools screen: explanatory subtext under the 'heartbeat' control.</comment>
+  </data>
+  <data name="dev_ip_family" xml:space="preserve">
+    <value>Control connections</value>
+    <comment>Developer screen: title of the control-plane IP family setting.</comment>
+  </data>
+  <data name="dev_ip_family_auto" xml:space="preserve">
+    <value>Automatic</value>
+    <comment>Developer screen: the automatic IP family option.</comment>
+  </data>
+  <data name="dev_ip_family_auto_demoted_detail" xml:space="preserve">
+    <value>Automatic. {}.</value>
+    <comment>Developer screen: the automatic option's detail when one family was demoted; {reason} is the demotion reason.</comment>
+  </data>
+  <data name="dev_ip_family_auto_detail" xml:space="preserve">
+    <value>Uses whichever family connects first, and routes around one that fails after connecting.</value>
+    <comment>Developer screen: detail line of the automatic IP family option.</comment>
+  </data>
+  <data name="dev_ip_family_force4" xml:space="preserve">
+    <value>Force IPv4</value>
+    <comment>Developer screen: the IPv4-only option.</comment>
+  </data>
+  <data name="dev_ip_family_force4_detail" xml:space="preserve">
+    <value>Control-plane connections use IPv4 only. Turn this off on an IPv6-only network.</value>
+    <comment>Developer screen: detail line of the IPv4-only option.</comment>
+  </data>
+  <data name="dev_ip_family_force6" xml:space="preserve">
+    <value>Force IPv6</value>
+    <comment>Developer screen: the IPv6-only option.</comment>
+  </data>
+  <data name="dev_ip_family_force6_detail" xml:space="preserve">
+    <value>Control-plane connections use IPv6 only. Turn this off if the app cannot reach the server.</value>
+    <comment>Developer screen: detail line of the IPv6-only option.</comment>
   </data>
   <data name="dev_load_corroboration" xml:space="preserve">
     <value>Load corroboration</value>
@@ -3563,6 +3591,10 @@ and most decentralized ingress and egress protocol.</value>
     <value>Referral network</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_network_updated" xml:space="preserve">
+    <value>Referral network updated</value>
+    <comment>Snackbar on the Referrals screen after the referral network was changed.</comment>
+  </data>
   <data name="referral_panel_detail" xml:space="preserve">
     <value>Every verified referral gives each of you {} GiB/day for free, for life.</value>
     <comment>Detail line of the gold referral panel. The amount is the daily GiB each side earns per verified referral (pro.yml referral).</comment>
@@ -3630,6 +3662,10 @@ and most decentralized ingress and egress protocol.</value>
   <data name="referrals" xml:space="preserve">
     <value>Referrals</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
+  </data>
+  <data name="refresh" xml:space="preserve">
+    <value>Refresh</value>
+    <comment>Generic refresh action (a button that reloads the current list or view), e.g. the points leaderboard tab.</comment>
   </data>
   <data name="regenerate_seedphrase" xml:space="preserve">
     <value>Regenerate Seedphrase</value>
@@ -4676,6 +4712,10 @@ world's content</value>
     <value>Copied</value>
     <comment>Account panel: a copy button after it copied</comment>
   </data>
+  <data name="site_copy_seedphrase" xml:space="preserve">
+    <value>Copy Seedphrase</value>
+    <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="site_copy_url" xml:space="preserve">
     <value>Copy URL</value>
     <comment>Account panel: copy a proxy's URL</comment>
@@ -4752,6 +4792,14 @@ world's content</value>
     <value>Install the app</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_instant_no_seedphrase" xml:space="preserve">
+    <value>The account was created without a recoverable seedphrase. Please contact support.</value>
+    <comment>Instant account creation: error when the server returned no seedphrase for the new account.</comment>
+  </data>
+  <data name="site_instant_seedphrase_only_recovery" xml:space="preserve">
+    <value>No email or password is needed. A 24-word seedphrase is the only way to recover the account.</value>
+    <comment>Instant account creation: hint that the seedphrase is the only way to recover the account.</comment>
+  </data>
   <data name="site_invalid_balance_code" xml:space="preserve">
     <value>Invalid balance code.</value>
     <comment>Account panel: invalid balance code</comment>
@@ -4791,6 +4839,10 @@ world's content</value>
   <data name="site_locations" xml:space="preserve">
     <value>Locations</value>
     <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_login_seed_hint" xml:space="preserve">
+    <value>Enter the 24-word seedphrase shown when the instant account was created.</value>
+    <comment>Login stack: hint above the seedphrase field when signing in with an instant account's seed.</comment>
   </data>
   <data name="site_login_seed_not_recognized" xml:space="preserve">
     <value>Seed not recognized.</value>
@@ -4872,6 +4924,10 @@ world's content</value>
     <value>Roles</value>
     <comment>Account panel: client info — roles label</comment>
   </data>
+  <data name="site_save_your_seedphrase" xml:space="preserve">
+    <value>Save Your Seedphrase</value>
+    <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
+  </data>
   <data name="site_saved" xml:space="preserve">
     <value>Saved</value>
     <comment>Account panel: preference saved flash</comment>
@@ -4879,6 +4935,10 @@ world's content</value>
   <data name="site_searching" xml:space="preserve">
     <value>Searching…</value>
     <comment>Account panel: location search in progress</comment>
+  </data>
+  <data name="site_seedphrase_copy_failed" xml:space="preserve">
+    <value>Could not copy the seedphrase. Select and copy the words below.</value>
+    <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>Username is the token in the URL; password is empty.</value>
@@ -5191,10 +5251,6 @@ as it should be.</value>
   <data name="supporter" xml:space="preserve">
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
-  </data>
-  <data name="supporter_2" xml:space="preserve">
-    <value>Supporter</value>
-    <comment>Used in Shared/ViewModels/SubscriptionBalanceViewModel.swift.</comment>
   </data>
   <data name="switch_account" xml:space="preserve">
     <value>Switch Account</value>
@@ -5546,10 +5602,6 @@ as it should be.</value>
   <data name="urnetwork_status" xml:space="preserve">
     <value>URnetwork Status</value>
     <comment>Used in NetworkApp.swift.</comment>
-  </data>
-  <data name="urnetwork_supporter" xml:space="preserve">
-    <value>URnetwork Supporter</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
   <data name="urnetwork_system_menu" xml:space="preserve">
     <value>URnetwork System Menu</value>

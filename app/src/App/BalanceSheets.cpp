@@ -439,11 +439,10 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   productsPanel_ = StackPanel();
   productsPanel_.Spacing(12);
 
-  productsPanel_.Children().Append(MakeText(Loc("become_a"), 20, colors::TextBrush()));
-  auto supporterTitle = MakeText(Loc("urnetwork_supporter"), 28, colors::TextBrush(), true);
-  supporterTitle.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
-  supporterTitle.Margin(Thickness{0, -8, 0, 0});
-  productsPanel_.Children().Append(supporterTitle);
+  // "Get Pro", the same heading onboarding, Android and Apple give this sheet
+  auto proTitle = MakeText(Loc("get_pro"), 28, colors::TextBrush(), true);
+  proTitle.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
+  productsPanel_.Children().Append(proTitle);
   productsPanel_.Children().Append(
       MakeText(Loc("support_us"), 14, colors::MutedBrush(), true));
   productsPanel_.Children().Append(

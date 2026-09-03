@@ -338,10 +338,6 @@
     <value>잔액 코드</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
-  <data name="become_a" xml:space="preserve">
-    <value>당신도</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
-  </data>
   <data name="become_supporter" xml:space="preserve">
     <value>UR Pro로 업그레이드</value>
     <comment>Settings</comment>
@@ -2234,6 +2230,10 @@
     <value>추천 네트워크</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_network_updated" xml:space="preserve">
+    <value>추천 네트워크가 업데이트되었습니다</value>
+    <comment>Snackbar on the Referrals screen after the referral network was changed.</comment>
+  </data>
   <data name="referral_points" xml:space="preserve">
     <value>추천 포인트</value>
     <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
@@ -2269,6 +2269,10 @@
   <data name="referrals" xml:space="preserve">
     <value>추천</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
+  </data>
+  <data name="refresh" xml:space="preserve">
+    <value>새로고침</value>
+    <comment>Generic refresh action (a button that reloads the current list or view), e.g. the points leaderboard tab.</comment>
   </data>
   <data name="regenerate_seedphrase" xml:space="preserve">
     <value>시드 문구 다시 생성</value>
@@ -2683,9 +2687,25 @@
     <value>연결 준비 완료</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copy_seedphrase" xml:space="preserve">
+    <value>시드 문구 복사</value>
+    <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="site_install_app" xml:space="preserve">
     <value>앱 설치</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_instant_no_seedphrase" xml:space="preserve">
+    <value>복구 가능한 시드 문구 없이 계정이 생성되었습니다. 지원팀에 문의하세요.</value>
+    <comment>Instant account creation: error when the server returned no seedphrase for the new account.</comment>
+  </data>
+  <data name="site_instant_seedphrase_only_recovery" xml:space="preserve">
+    <value>이메일이나 비밀번호가 필요 없습니다. 24단어 시드 문구가 계정을 복구하는 유일한 방법입니다.</value>
+    <comment>Instant account creation: hint that the seedphrase is the only way to recover the account.</comment>
+  </data>
+  <data name="site_login_seed_hint" xml:space="preserve">
+    <value>인스턴트 계정을 만들 때 표시된 24단어 시드 문구를 입력하세요.</value>
+    <comment>Login stack: hint above the seedphrase field when signing in with an instant account's seed.</comment>
   </data>
   <data name="site_login_seed_not_recognized" xml:space="preserve">
     <value>시드를 인식할 수 없습니다.</value>
@@ -2706,6 +2726,14 @@
   <data name="site_manage_subscription_hint" xml:space="preserve">
     <value>갱신일, 자동 갱신 상태, 해지 옵션을 확인하세요.</value>
     <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_save_your_seedphrase" xml:space="preserve">
+    <value>시드 문구를 저장하세요</value>
+    <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
+  </data>
+  <data name="site_seedphrase_copy_failed" xml:space="preserve">
+    <value>시드 문구를 복사할 수 없습니다. 아래 단어를 선택하여 복사하세요.</value>
+    <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
   </data>
   <data name="site_sub_active_until" xml:space="preserve">
     <value>{date}까지 활성</value>
@@ -2927,10 +2955,6 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
-  <data name="supporter_2" xml:space="preserve">
-    <value>서포터</value>
-    <comment>Used in Shared/ViewModels/SubscriptionBalanceViewModel.swift.</comment>
-  </data>
   <data name="switch_account" xml:space="preserve">
     <value>계정 전환</value>
     <comment>Call to action</comment>
@@ -3145,10 +3169,6 @@
   <data name="urnetwork_status" xml:space="preserve">
     <value>URnetwork 상태</value>
     <comment>Used in NetworkApp.swift.</comment>
-  </data>
-  <data name="urnetwork_supporter" xml:space="preserve">
-    <value>URnetwork 후원자</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
   <data name="urnetwork_system_menu" xml:space="preserve">
     <value>URnetwork 시스템 메뉴</value>

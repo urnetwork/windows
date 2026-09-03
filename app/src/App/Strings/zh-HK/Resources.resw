@@ -338,10 +338,6 @@
     <value>餘額碼</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
-  <data name="become_a" xml:space="preserve">
-    <value>成為</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
-  </data>
   <data name="become_supporter" xml:space="preserve">
     <value>獲取 UR Pro</value>
     <comment>Settings</comment>
@@ -2235,6 +2231,10 @@
     <value>推薦網絡</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_network_updated" xml:space="preserve">
+    <value>推薦網絡已更新</value>
+    <comment>Snackbar on the Referrals screen after the referral network was changed.</comment>
+  </data>
   <data name="referral_points" xml:space="preserve">
     <value>推薦積分</value>
     <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
@@ -2270,6 +2270,10 @@
   <data name="referrals" xml:space="preserve">
     <value>推薦</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
+  </data>
+  <data name="refresh" xml:space="preserve">
+    <value>重新整理</value>
+    <comment>Generic refresh action (a button that reloads the current list or view), e.g. the points leaderboard tab.</comment>
   </data>
   <data name="regenerate_seedphrase" xml:space="preserve">
     <value>重新產生助記詞</value>
@@ -2684,9 +2688,25 @@
     <value>準備連接</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copy_seedphrase" xml:space="preserve">
+    <value>複製助記詞</value>
+    <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="site_install_app" xml:space="preserve">
     <value>安裝應用程式</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_instant_no_seedphrase" xml:space="preserve">
+    <value>該帳戶建立時沒有可用於復原的助記詞。請聯絡支援。</value>
+    <comment>Instant account creation: error when the server returned no seedphrase for the new account.</comment>
+  </data>
+  <data name="site_instant_seedphrase_only_recovery" xml:space="preserve">
+    <value>無需電郵或密碼。24 個單詞的助記詞是復原帳戶的唯一方式。</value>
+    <comment>Instant account creation: hint that the seedphrase is the only way to recover the account.</comment>
+  </data>
+  <data name="site_login_seed_hint" xml:space="preserve">
+    <value>輸入建立即時帳戶時顯示的 24 個單詞的助記詞。</value>
+    <comment>Login stack: hint above the seedphrase field when signing in with an instant account's seed.</comment>
   </data>
   <data name="site_login_seed_not_recognized" xml:space="preserve">
     <value>無法識別助記詞。</value>
@@ -2707,6 +2727,14 @@
   <data name="site_manage_subscription_hint" xml:space="preserve">
     <value>查看續訂日期、自動續訂狀態和取消選項。</value>
     <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_save_your_seedphrase" xml:space="preserve">
+    <value>儲存你的助記詞</value>
+    <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
+  </data>
+  <data name="site_seedphrase_copy_failed" xml:space="preserve">
+    <value>無法複製助記詞。請選取並複製下方的單詞。</value>
+    <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
   </data>
   <data name="site_sub_active_until" xml:space="preserve">
     <value>有效期至 {date}</value>
@@ -2928,10 +2956,6 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
-  <data name="supporter_2" xml:space="preserve">
-    <value>支持者</value>
-    <comment>Used in Shared/ViewModels/SubscriptionBalanceViewModel.swift.</comment>
-  </data>
   <data name="switch_account" xml:space="preserve">
     <value>切換帳戶</value>
     <comment>Call to action</comment>
@@ -3146,10 +3170,6 @@
   <data name="urnetwork_status" xml:space="preserve">
     <value>URnetwork 狀態</value>
     <comment>Used in NetworkApp.swift.</comment>
-  </data>
-  <data name="urnetwork_supporter" xml:space="preserve">
-    <value>URnetwork 支持者</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
   <data name="urnetwork_system_menu" xml:space="preserve">
     <value>URnetwork 系統選單</value>

@@ -378,10 +378,6 @@
     <value>رموز الرصيد</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
-  <data name="become_a" xml:space="preserve">
-    <value>كن</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
-  </data>
   <data name="become_supporter" xml:space="preserve">
     <value>احصل على UR Pro</value>
     <comment>Settings</comment>
@@ -2493,6 +2489,10 @@
     <value>شبكة الإحالة</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_network_updated" xml:space="preserve">
+    <value>تم تحديث شبكة الإحالة</value>
+    <comment>Snackbar on the Referrals screen after the referral network was changed.</comment>
+  </data>
   <data name="referral_panel_detail" xml:space="preserve">
     <value>كل إحالة موثّقة تمنح كلاً منكما {} جيبي بايت يومياً مجاناً، مدى الحياة.</value>
     <comment>Detail line of the gold referral panel. The amount is the daily GiB each side earns per verified referral (pro.yml referral).</comment>
@@ -2560,6 +2560,10 @@
   <data name="referrals" xml:space="preserve">
     <value>الإحالات</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
+  </data>
+  <data name="refresh" xml:space="preserve">
+    <value>تحديث</value>
+    <comment>Generic refresh action (a button that reloads the current list or view), e.g. the points leaderboard tab.</comment>
   </data>
   <data name="regenerate_seedphrase" xml:space="preserve">
     <value>أعد إنشاء عبارة الاسترداد</value>
@@ -3391,6 +3395,10 @@
     <value>جاهز للاتصال</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copy_seedphrase" xml:space="preserve">
+    <value>نسخ عبارة الاسترداد</value>
+    <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="site_copy_url" xml:space="preserve">
     <value>نسخ الرابط</value>
     <comment>Account panel: copy a proxy's URL</comment>
@@ -3463,6 +3471,14 @@
     <value>ثبّت التطبيق</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_instant_no_seedphrase" xml:space="preserve">
+    <value>تم إنشاء الحساب بدون عبارة استرداد قابلة للاستعادة. يرجى التواصل مع الدعم.</value>
+    <comment>Instant account creation: error when the server returned no seedphrase for the new account.</comment>
+  </data>
+  <data name="site_instant_seedphrase_only_recovery" xml:space="preserve">
+    <value>لا حاجة إلى بريد إلكتروني أو كلمة مرور. عبارة الاسترداد المكونة من 24 كلمة هي الطريقة الوحيدة لاستعادة الحساب.</value>
+    <comment>Instant account creation: hint that the seedphrase is the only way to recover the account.</comment>
+  </data>
   <data name="site_invalid_balance_code" xml:space="preserve">
     <value>رمز رصيد غير صالح.</value>
     <comment>Account panel: invalid balance code</comment>
@@ -3498,6 +3514,10 @@
   <data name="site_locations" xml:space="preserve">
     <value>المواقع</value>
     <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_login_seed_hint" xml:space="preserve">
+    <value>أدخل عبارة الاسترداد المكونة من 24 كلمة التي ظهرت عند إنشاء الحساب الفوري.</value>
+    <comment>Login stack: hint above the seedphrase field when signing in with an instant account's seed.</comment>
   </data>
   <data name="site_login_seed_not_recognized" xml:space="preserve">
     <value>البذرة غير معروفة.</value>
@@ -3563,6 +3583,10 @@
     <value>الأدوار</value>
     <comment>Account panel: client info — roles label</comment>
   </data>
+  <data name="site_save_your_seedphrase" xml:space="preserve">
+    <value>احفظ عبارة الاسترداد</value>
+    <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
+  </data>
   <data name="site_saved" xml:space="preserve">
     <value>تم الحفظ</value>
     <comment>Account panel: preference saved flash</comment>
@@ -3570,6 +3594,10 @@
   <data name="site_searching" xml:space="preserve">
     <value>جارٍ البحث…</value>
     <comment>Account panel: location search in progress</comment>
+  </data>
+  <data name="site_seedphrase_copy_failed" xml:space="preserve">
+    <value>تعذر نسخ عبارة الاسترداد. حدد الكلمات أدناه وانسخها.</value>
+    <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>اسم المستخدم هو الرمز الموجود في الرابط؛ وكلمة المرور فارغة.</value>
@@ -3819,10 +3847,6 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
-  <data name="supporter_2" xml:space="preserve">
-    <value>داعم</value>
-    <comment>Used in Shared/ViewModels/SubscriptionBalanceViewModel.swift.</comment>
-  </data>
   <data name="switch_account" xml:space="preserve">
     <value>تبديل الحساب</value>
     <comment>Call to action</comment>
@@ -4057,10 +4081,6 @@
   <data name="urnetwork_status" xml:space="preserve">
     <value>حالة URnetwork</value>
     <comment>Used in NetworkApp.swift.</comment>
-  </data>
-  <data name="urnetwork_supporter" xml:space="preserve">
-    <value>داعم URnetwork</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
   <data name="urnetwork_system_menu" xml:space="preserve">
     <value>قائمة نظام URnetwork</value>

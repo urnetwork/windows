@@ -338,10 +338,6 @@
     <value>รหัสยอดเงิน</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
-  <data name="become_a" xml:space="preserve">
-    <value>มาเป็น</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
-  </data>
   <data name="become_supporter" xml:space="preserve">
     <value>รับ UR Pro</value>
     <comment>Settings</comment>
@@ -2235,6 +2231,10 @@
     <value>แนะนำเครือข่าย</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_network_updated" xml:space="preserve">
+    <value>อัปเดตเครือข่ายแนะนำแล้ว</value>
+    <comment>Snackbar on the Referrals screen after the referral network was changed.</comment>
+  </data>
   <data name="referral_points" xml:space="preserve">
     <value>คะแนนแนะนำ</value>
     <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
@@ -2270,6 +2270,10 @@
   <data name="referrals" xml:space="preserve">
     <value>การแนะนำ</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
+  </data>
+  <data name="refresh" xml:space="preserve">
+    <value>รีเฟรช</value>
+    <comment>Generic refresh action (a button that reloads the current list or view), e.g. the points leaderboard tab.</comment>
   </data>
   <data name="regenerate_seedphrase" xml:space="preserve">
     <value>สร้างวลีกู้คืนใหม่</value>
@@ -2684,9 +2688,25 @@
     <value>พร้อมเชื่อมต่อ</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copy_seedphrase" xml:space="preserve">
+    <value>คัดลอกซีดเฟรส</value>
+    <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="site_install_app" xml:space="preserve">
     <value>ติดตั้งแอป</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
+  </data>
+  <data name="site_instant_no_seedphrase" xml:space="preserve">
+    <value>บัญชีถูกสร้างโดยไม่มีซีดเฟรสสำหรับกู้คืน โปรดติดต่อฝ่ายสนับสนุน</value>
+    <comment>Instant account creation: error when the server returned no seedphrase for the new account.</comment>
+  </data>
+  <data name="site_instant_seedphrase_only_recovery" xml:space="preserve">
+    <value>ไม่ต้องใช้อีเมลหรือรหัสผ่าน ซีดเฟรส 24 คำเป็นวิธีเดียวในการกู้คืนบัญชี</value>
+    <comment>Instant account creation: hint that the seedphrase is the only way to recover the account.</comment>
+  </data>
+  <data name="site_login_seed_hint" xml:space="preserve">
+    <value>กรอกซีดเฟรส 24 คำที่แสดงเมื่อสร้างบัญชีด่วน</value>
+    <comment>Login stack: hint above the seedphrase field when signing in with an instant account's seed.</comment>
   </data>
   <data name="site_login_seed_not_recognized" xml:space="preserve">
     <value>ไม่รู้จักซีดนี้</value>
@@ -2707,6 +2727,14 @@
   <data name="site_manage_subscription_hint" xml:space="preserve">
     <value>ดูวันต่ออายุ สถานะการต่ออายุอัตโนมัติ และตัวเลือกการยกเลิก</value>
     <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_save_your_seedphrase" xml:space="preserve">
+    <value>บันทึกซีดเฟรสของคุณ</value>
+    <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
+  </data>
+  <data name="site_seedphrase_copy_failed" xml:space="preserve">
+    <value>คัดลอกซีดเฟรสไม่ได้ โปรดเลือกและคัดลอกคำด้านล่าง</value>
+    <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
   </data>
   <data name="site_sub_active_until" xml:space="preserve">
     <value>ใช้งานได้ถึง {date}</value>
@@ -2928,10 +2956,6 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
-  <data name="supporter_2" xml:space="preserve">
-    <value>ผู้สนับสนุน</value>
-    <comment>Used in Shared/ViewModels/SubscriptionBalanceViewModel.swift.</comment>
-  </data>
   <data name="switch_account" xml:space="preserve">
     <value>สลับบัญชี</value>
     <comment>Call to action</comment>
@@ -3146,10 +3170,6 @@
   <data name="urnetwork_status" xml:space="preserve">
     <value>สถานะ URnetwork</value>
     <comment>Used in NetworkApp.swift.</comment>
-  </data>
-  <data name="urnetwork_supporter" xml:space="preserve">
-    <value>ผู้สนับสนุน URnetwork</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
   <data name="urnetwork_system_menu" xml:space="preserve">
     <value>เมนูระบบ URnetwork</value>

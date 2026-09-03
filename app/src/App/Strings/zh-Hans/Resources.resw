@@ -338,10 +338,6 @@
     <value>余额码</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
-  <data name="become_a" xml:space="preserve">
-    <value>成为</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
-  </data>
   <data name="become_supporter" xml:space="preserve">
     <value>升级为 UR Pro</value>
     <comment>Settings</comment>
@@ -2235,6 +2231,10 @@
     <value>推荐网络</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_network_updated" xml:space="preserve">
+    <value>推荐网络已更新</value>
+    <comment>Snackbar on the Referrals screen after the referral network was changed.</comment>
+  </data>
   <data name="referral_panel_detail" xml:space="preserve">
     <value>每一次通过验证的推荐，都会让你们双方各获得每天 {} GiB 免费流量，终身有效。</value>
     <comment>Detail line of the gold referral panel. The amount is the daily GiB each side earns per verified referral (pro.yml referral).</comment>
@@ -2282,6 +2282,10 @@
   <data name="referrals" xml:space="preserve">
     <value>推荐</value>
     <comment>Used in Shared/Views/ReferBar.swift.</comment>
+  </data>
+  <data name="refresh" xml:space="preserve">
+    <value>刷新</value>
+    <comment>Generic refresh action (a button that reloads the current list or view), e.g. the points leaderboard tab.</comment>
   </data>
   <data name="regenerate_seedphrase" xml:space="preserve">
     <value>重新生成助记词</value>
@@ -3112,6 +3116,10 @@
     <value>准备连接</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copy_seedphrase" xml:space="preserve">
+    <value>复制助记词</value>
+    <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
+  </data>
   <data name="site_copy_url" xml:space="preserve">
     <value>复制URL</value>
     <comment>Account panel: copy a proxy's URL</comment>
@@ -3184,6 +3192,14 @@
     <value>安装应用</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_instant_no_seedphrase" xml:space="preserve">
+    <value>该账户创建时没有可用于恢复的助记词。请联系支持。</value>
+    <comment>Instant account creation: error when the server returned no seedphrase for the new account.</comment>
+  </data>
+  <data name="site_instant_seedphrase_only_recovery" xml:space="preserve">
+    <value>无需邮箱或密码。24 个单词的助记词是恢复账户的唯一方式。</value>
+    <comment>Instant account creation: hint that the seedphrase is the only way to recover the account.</comment>
+  </data>
   <data name="site_invalid_balance_code" xml:space="preserve">
     <value>余额码无效。</value>
     <comment>Account panel: invalid balance code</comment>
@@ -3219,6 +3235,10 @@
   <data name="site_locations" xml:space="preserve">
     <value>位置</value>
     <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_login_seed_hint" xml:space="preserve">
+    <value>输入创建即时账户时显示的 24 个单词的助记词。</value>
+    <comment>Login stack: hint above the seedphrase field when signing in with an instant account's seed.</comment>
   </data>
   <data name="site_login_seed_not_recognized" xml:space="preserve">
     <value>无法识别助记词。</value>
@@ -3284,6 +3304,10 @@
     <value>角色</value>
     <comment>Account panel: client info — roles label</comment>
   </data>
+  <data name="site_save_your_seedphrase" xml:space="preserve">
+    <value>保存你的助记词</value>
+    <comment>Instant account creation: heading of the view that shows the new seedphrase once.</comment>
+  </data>
   <data name="site_saved" xml:space="preserve">
     <value>已保存</value>
     <comment>Account panel: preference saved flash</comment>
@@ -3291,6 +3315,10 @@
   <data name="site_searching" xml:space="preserve">
     <value>正在搜索…</value>
     <comment>Account panel: location search in progress</comment>
+  </data>
+  <data name="site_seedphrase_copy_failed" xml:space="preserve">
+    <value>无法复制助记词。请选中并复制下面的单词。</value>
+    <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>用户名为URL中的令牌；密码为空。</value>
@@ -3520,10 +3548,6 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
-  <data name="supporter_2" xml:space="preserve">
-    <value>支持者</value>
-    <comment>Used in Shared/ViewModels/SubscriptionBalanceViewModel.swift.</comment>
-  </data>
   <data name="switch_account" xml:space="preserve">
     <value>切换帐户</value>
     <comment>Call to action</comment>
@@ -3738,10 +3762,6 @@
   <data name="urnetwork_status" xml:space="preserve">
     <value>URnetwork 状态</value>
     <comment>Used in NetworkApp.swift.</comment>
-  </data>
-  <data name="urnetwork_supporter" xml:space="preserve">
-    <value>URnetwork 支持者</value>
-    <comment>Used in Shared/Views/UpgradeSubscriptionSheet.swift.</comment>
   </data>
   <data name="urnetwork_system_menu" xml:space="preserve">
     <value>URnetwork 系统菜单</value>
