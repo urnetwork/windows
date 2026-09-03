@@ -21,6 +21,8 @@
 #include <windows.h>
 #include <wincrypt.h>
 
+#include <nlohmann/json.hpp>
+
 #include "Ids.h"
 #include "Log.h"
 #include "Paths.h"
@@ -28,6 +30,43 @@
 #include "Strings.h"
 
 namespace urnw {
+
+namespace {
+// The string claim `claim` of a JWT's payload, read WITHOUT verifying the token:
+// the server verifies the signature; this only checks that the token the bridge
+// handed back is the one this attempt asked for (its nonce).
+std::optional<std::string> JwtClaimString(const std::string& jwt, const char* claim) {
+  const auto first = jwt.find('.');
+  if (first == std::string::npos) return std::nullopt;
+  const auto second = jwt.find('.', first + 1);
+  if (second == std::string::npos) return std::nullopt;
+  // base64url -> base64 (RFC 7515: '-' '_' and no padding)
+  std::string b64 = jwt.substr(first + 1, second - first - 1);
+  for (auto& c : b64) {
+    if (c == '-') c = '+';
+    else if (c == '_') c = '/';
+  }
+  while (b64.size() % 4 != 0) b64.push_back('=');
+  DWORD n = 0;
+  if (!CryptStringToBinaryA(b64.c_str(), static_cast<DWORD>(b64.size()), CRYPT_STRING_BASE64,
+                            nullptr, &n, nullptr, nullptr) || n == 0) {
+    return std::nullopt;
+  }
+  std::string payload(n, '\0');
+  if (!CryptStringToBinaryA(b64.c_str(), static_cast<DWORD>(b64.size()), CRYPT_STRING_BASE64,
+                            reinterpret_cast<BYTE*>(payload.data()), &n, nullptr, nullptr)) {
+    return std::nullopt;
+  }
+  payload.resize(n);
+  try {
+    const auto j = nlohmann::json::parse(payload);
+    if (!j.contains(claim) || !j[claim].is_string()) return std::nullopt;
+    return j[claim].get<std::string>();
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+}  // namespace
 namespace {
 
 // Persisted RPC session, mirroring macOS RpcSessionStore. Lets the app reattach
@@ -332,10 +371,9 @@ urnet::NetworkSpace SdkHost::BuildNetworkSpace() {
   values.migration_host_name = "bringyour.com";
   values.store = "";
   values.wallet = "circle";
-  // Only claim Google SSO when this build can actually run the flow. The value
-  // used to be a flat false; it is now tied to the compiled-in OAuth client id
-  // so the space, SsoGoogleEnabled() and the login button can never disagree.
-  values.sso_google = GoogleSignIn::Configured();
+  // Google (and Apple) sign-in run through the ur.io/sso browser bridge, which
+  // needs nothing compiled in, so the space always offers it (SignInWithSso).
+  values.sso_google = true;
   values.env_secret = "";
 
   // URNETWORK_NETWORK_HOST points the client at a different backend, so that a
@@ -819,7 +857,7 @@ void SdkHost::SubmitCreateNetwork(const CreateNetworkParams& params,
       if (done) done(r);
       return;
     }
-    args.auth_jwt_type = "google";
+    args.auth_jwt_type = pendingAuthJwtType_.empty() ? std::string("google") : pendingAuthJwtType_;
     args.auth_jwt = *pendingAuthJwt_;
   } else {
     args.user_auth = params.userAuth;
@@ -853,6 +891,7 @@ void SdkHost::SubmitCreateNetwork(const CreateNetworkParams& params,
         // consumed by this create, or unused by it
         pendingWalletAuth_.reset();
         pendingAuthJwt_.reset();
+        pendingAuthJwtType_.clear();
       }
       RegisterNetworkClient(*result->network->by_jwt, done);
       return;
@@ -1133,6 +1172,7 @@ bool SdkHost::ApplyNetworkServer(const std::string& hostName, const std::string&
     }
     pendingWalletAuth_.reset();
     pendingAuthJwt_.reset();
+    pendingAuthJwtType_.clear();
     pendingInstantJwt_.reset();
 
     try {
@@ -1155,7 +1195,7 @@ bool SdkHost::ApplyNetworkServer(const std::string& hostName, const std::string&
       values.migration_host_name = official ? std::string("bringyour.com") : std::string();
       values.store = "";
       values.wallet = "circle";
-      values.sso_google = GoogleSignIn::Configured();
+      values.sso_google = true;  // the ur.io/sso bridge, see SignInWithSso
       values.env_secret = "";
       values.api_url = apiUrl;
       values.platform_url = connectUrl;
@@ -1369,6 +1409,36 @@ void SdkHost::SetupWalletCallbacks() {
     }
     AuthLoginWithWallet(publicKey, signature, walletAuthMessage_, provider);
   };
+  wallet_.on_sso = [this](std::string provider, std::string authJwt, std::string state,
+                          std::string error) {
+    // NO ATTEMPT IN FLIGHT (see on_error below): a late or replayed callback
+    // must not be able to move the auth state.
+    if (!ssoAttempt_) {
+      LogWarn("sdkhost: an sso callback arrived with no sign-in in flight, ignoring it");
+      return;
+    }
+    // Not this attempt: the bridge echoes `state` untouched, so a mismatch is a
+    // stale tab or a forged link, not an answer.
+    if (state.empty() || state != ssoAttempt_->state || provider != ssoAttempt_->provider) {
+      LogWarn("sdkhost: an sso callback did not match the sign-in in flight, ignoring it");
+      return;
+    }
+    const SsoAttempt attempt = *ssoAttempt_;
+    ssoAttempt_.reset();
+    if (!error.empty() || authJwt.empty()) {
+      if (wallet_.on_error) wallet_.on_error(error.empty() ? "sign-in returned no identity token" : error);
+      return;
+    }
+    // The token must be the one this attempt asked for: the provider put the
+    // attempt's nonce inside it.
+    const auto nonce = JwtClaimString(authJwt, "nonce");
+    if (!nonce || *nonce != attempt.nonce) {
+      if (wallet_.on_error) wallet_.on_error("the identity token did not match this sign-in");
+      return;
+    }
+    auto done = std::exchange(walletAuthDone_, nullptr);
+    AuthLoginWithSso(attempt.provider, authJwt, done ? done : [](AuthResult) {});
+  };
   wallet_.on_error = [this](std::string err) {
     // A failed signature request is NOT a failed sign-in: the user is signed in
     // throughout, and pushing AuthState::Error here would tear the session down
@@ -1401,6 +1471,9 @@ void SdkHost::SetupWalletCallbacks() {
 // for a reply that could no longer come. Neither caller can see that from
 // where it stands.
 void SdkHost::CancelPendingWalletFlows(const char* reason) {
+  // an sso attempt answers through walletAuthDone_ below; its state/nonce die
+  // with it so the bridge's late answer is ignored rather than acted on
+  ssoAttempt_.reset();
   if (auto signDone = std::exchange(walletSignDone_, nullptr)) {
     LogWarn("sdkhost: a wallet signature request was superseded ({})", reason);
     signDone(false, std::string(), std::string(), reason);
@@ -1513,69 +1586,55 @@ void SdkHost::SignWithBittensorWallet(
 }
 
 void SdkHost::HandleDeepLink(const std::string& url) {
-  // Google SSO does NOT come back this way: Google issues custom-scheme
-  // redirects to iOS/Android client types only, so the desktop flow uses a
-  // loopback socket instead (GoogleSignIn.h). This stays wallet-only.
+  // Every browser round trip answers here: the wallet bridge hosts and the
+  // urnetwork://sso host the Google / Apple bridge returns on (on_sso below).
   wallet_.HandleDeepLink(url);
 }
 
-// ---- Sign in with Google (system browser, loopback OAuth + PKCE) ------------
+// ---- Sign in with Google / Apple (ur.io/sso browser bridge) -----------------
 
-bool SdkHost::SsoGoogleEnabled() {
-  if (!GoogleSignIn::Configured()) return false;
-  std::scoped_lock lock(mutex_);
-  if (!networkSpace_) return false;
-  try {
-    return networkSpace_->getSsoGoogle();
-  } catch (const std::exception& e) {
-    LogWarn("sdkhost: read sso_google failed: {}", e.what());
-    return false;
-  }
-}
 
 bool SdkHost::HasPendingAuthJwt() {
   std::scoped_lock lock(mutex_);
   return pendingAuthJwt_.has_value();
 }
 
-void SdkHost::SignInWithGoogle(std::function<void(AuthResult)> done) {
-  if (!GoogleSignIn::Configured()) {
-    // Unreachable from the UI (the button is hidden), but a caller that got
-    // here must not silently do nothing.
-    if (done) done({false, false, "this build has no Google OAuth client id"});
+void SdkHost::SignInWithSso(const std::string& provider, std::function<void(AuthResult)> done) {
+  if (provider != "google" && provider != "apple") {
+    if (done) done({false, false, "unknown sign-in provider"});
     return;
   }
   SetAuthState(AuthState::Authenticating);
   {
     std::scoped_lock lock(mutex_);
-    pendingAuthJwt_.reset();  // a fresh sign-in supersedes any retained token
+    // a fresh sign-in supersedes any retained token or wallet auth
+    pendingAuthJwt_.reset();
+    pendingAuthJwtType_.clear();
+    pendingWalletAuth_.reset();
   }
-  google_.Start([this, done](std::string idToken, std::string error) {
-    // On a GoogleSignIn worker thread. Errors here are already sentences.
-    if (idToken.empty()) {
-      AuthResult r{false, false, error.empty() ? "Google sign-in failed" : error};
-      SetAuthState(AuthState::LoggedOut, r.error);
-      if (done) done(r);
-      return;
-    }
-    AuthLoginWithGoogle(idToken, done);
-  });
+  // the bridge has ONE pair of callbacks: whatever was waiting is TOLD
+  CancelPendingWalletFlows("superseded by a sign-in");
+  walletAuthDone_ = std::move(done);
+  // Fresh per attempt: `state` is echoed by the bridge and `nonce` rides inside
+  // the identity token the provider issues, so a stale or replayed callback can
+  // match neither. Both come from the SDK's random source, like a wallet nonce.
+  ssoAttempt_ = SsoAttempt{provider, urnet::generateNonce(), urnet::generateNonce()};
+  // opens the browser; the rest continues on the deep-link callback (on_sso)
+  wallet_.OpenSso(provider, ssoAttempt_->state, ssoAttempt_->nonce);
 }
 
-void SdkHost::AuthLoginWithGoogle(const std::string& idToken,
-                                  std::function<void(AuthResult)> done) {
+void SdkHost::AuthLoginWithSso(const std::string& provider, const std::string& idToken,
+                               std::function<void(AuthResult)> done) {
   urnet::AuthLoginArgs args;
-  args.auth_jwt_type = "google";
+  args.auth_jwt_type = provider;
   args.auth_jwt = idToken;
-  // UNDER mutex_, unlike every other caller here, because this one is the odd
-  // one out: it runs on a GoogleSignIn WORKER thread, minutes after the button
-  // was pressed, while the user is free to open Change Network API on the UI
-  // thread — and ApplyNetworkServer reassigns api_ under this same lock, which
-  // RELEASES the handle this line is about to call through. urnet::Api is
-  // move-only (detail::Handle deletes its copy constructor), so there is no
-  // way to take a private reference to it; holding the lock across the
-  // dispatch is what there is. authLogin queues its callback onto an SDK
-  // thread rather than running it inline, so this does not re-enter.
+  // UNDER mutex_: the browser answers minutes after the pill was pressed, and
+  // in between the user is free to open Change Network API, whose
+  // ApplyNetworkServer reassigns api_ under this same lock and RELEASES the
+  // handle this line is about to call through. urnet::Api is move-only, so
+  // holding the lock across the dispatch is what there is. authLogin queues its
+  // callback onto an SDK thread rather than running it inline, so this does
+  // not re-enter.
   std::scoped_lock lock(mutex_);
   if (!api_) {
     AuthResult r{false, false, "the network session went away during sign-in"};
@@ -1583,9 +1642,9 @@ void SdkHost::AuthLoginWithGoogle(const std::string& idToken,
     if (done) done(r);
     return;
   }
-  // The id token is a bearer credential; nothing below logs the args.
-  api_->authLogin(args, [this, idToken, done](std::optional<urnet::AuthLoginResult> result,
-                                              std::optional<std::string> err) {
+  // The identity token is a bearer credential; nothing below logs the args.
+  api_->authLogin(args, [this, provider, idToken, done](std::optional<urnet::AuthLoginResult> result,
+                                                        std::optional<std::string> err) {
     if (err || !result) {
       AuthResult r{false, false, err ? *err : "no result"};
       SetAuthState(AuthState::Error, r.error);
@@ -1602,12 +1661,14 @@ void SdkHost::AuthLoginWithGoogle(const std::string& idToken,
       RegisterNetworkClient(result->network->by_jwt, done ? done : [](AuthResult) {});
       return;
     }
-    // Authenticated, but this Google identity has no network yet: retain the
-    // token and let the UI route to the create-network step (name + terms, no
-    // password), the same shape the wallet path uses.
+    // Authenticated, but this identity has no network yet: retain the token
+    // (and which provider issued it) and let the UI route to the
+    // create-network step (name + terms, no password), the same shape the
+    // wallet path uses.
     {
       std::scoped_lock lock(mutex_);
       pendingAuthJwt_ = idToken;
+      pendingAuthJwtType_ = provider;
     }
     AuthResult r;
     r.auth_needs_network = true;
@@ -5328,6 +5389,7 @@ void SdkHost::Logout() {
   try {
     pendingWalletAuth_.reset();
     pendingAuthJwt_.reset();
+    pendingAuthJwtType_.clear();
     // A pending instant network belongs to whoever was mid-signup, not to the
     // session being ended; dropping it here means a later Confirm cannot
     // register a device against a stale jwt.

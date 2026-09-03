@@ -210,34 +210,31 @@ void LoginPage::UpdateCarouselRunning() {
 // ---- strings ---------------------------------------------------------------
 
 void LoginPage::ApplyStrings() {
-  // sign in — initial (account discovery). Order and wording follow android
-  // ungoogle/LoginInitial.kt: the label sits above the field as its own
-  // URTextInputLabel, and the wallet options are separated from Get started by
-  // a bare centred "or" rather than by a section heading.
+  // sign in — initial. The login stack rule every app follows (ur.io
+  // ConnectDialog is the reference): three full-width pills, then the other
+  // ways in as square icon tiles four per row, then a bare centred "or" and the
+  // email / phone field with its URTextInputLabel above it.
+  w_.GoogleSignInText().Text(Loc("sign_in_with_google"));
+  w_.AppleSignInText().Text(Loc("sign_in_with_apple"));
+  w_.InstantAccountButton().Content(LocBox("create_instant_account"));
+  // The tiles carry a one-word caption; the sentence each stands for is their
+  // UIA name (ApplySignInAutomationNames). Secret key is the seedphrase sign-in
+  // (macOS LoginSeedphrase); Auth code is SdkHost::LoginWithCode.
+  w_.SeedphraseTileText().Text(Loc("login_tile_secret_key"));
+  w_.AuthCodeButtonText().Text(Loc("auth_code"));
+  w_.BittensorSignInText().Text(Loc("bittensor"));
+  w_.SolanaSignInText().Text(Loc("solana"));
+  w_.OrDivider().Text(Loc("or"));
   w_.EmailLabel().Text(Loc("user_auth_label"));
   w_.EmailBox().PlaceholderText(Loc("user_auth_input_placeholder"));
   w_.GetStartedButton().Content(LocBox("get_started"));
-  w_.OrDivider().Text(Loc("or"));
-  w_.GoogleSignInText().Text(Loc("sign_in_with_google"));
-  w_.BittensorSignInText().Text(Loc("bittensor_sign_in"));
-  w_.SolanaSignInText().Text(Loc("solana_sign_in"));
-  // SdkHost::LoginWithCode is the auth-code login the other platforms ship
-  w_.AuthCodeButtonText().Text(Loc("auth_code_login_button_text"));
-  // The seedphrase pair (macOS LoginSeedphrase / CreateNetworkInstant). Every
-  // seedphrase / instant-account string was ABSENT from the shared store —
-  // macOS hardcodes all fourteen as Swift literals, so `npm run gen` has never
-  // seen them — and they were added to Strings/en/Resources.resw here. They
-  // still have to land in urnetwork/localizations for the other 27 locales;
-  // see this branch's report.
-  w_.SeedphraseSignInButton().Content(LocBox("sign_in_with_seedphrase"));
-  w_.InstantAccountButton().Content(LocBox("create_instant_account"));
   // bottom-left, quiet text: point the client at another network API
   w_.NetworkServerLink().Content(LocBox("change_network_api"));
   // MainWindow calls ApplyStrings BEFORE Initialize, so on the first pass there
   // is no carousel yet; Initialize paints it once it exists.
   if (carousel_) carousel_->ApplyStrings();
 
-  UpdateGoogleSignInVisibility();
+  ApplySignInAutomationNames();
 
   // sign in — seedphrase step
   w_.SeedphraseBackButton().Content(LocBox("back"));
@@ -300,34 +297,23 @@ void LoginPage::ApplyStrings() {
   w_.SendResetButton().Content(LocBox("send_reset_link_2"));
 }
 
-// Whether "Sign in with Google" is offered at all.
-//
-// SdkHost::SsoGoogleEnabled() is the purpose-built answer — GoogleSignIn::
-// Configured() (is an OAuth client id compiled in?) AND the active network
-// space's getSsoGoogle() (does this server offer it?). It had ZERO callers;
-// the gate here was apiReady(), which is api_.has_value(), true from SDK init
-// on every build. The result was a Google button shipped visible and always
-// failing in every default build, and three comments (GoogleSignIn.h,
-// Config.h, SdkHost::SignInWithGoogle) that all described the opposite. Those
-// three were right, so this now agrees with them.
-//
-// Called from ApplyStrings AND after a network-server switch: the space is
-// what supplies half the answer, and switching spaces replaces it.
-void LoginPage::UpdateGoogleSignInVisibility() {
-  const bool enabled = Sdk().SsoGoogleEnabled();
-  w_.GoogleSignInButton().Visibility(enabled ? Visibility::Visible
-                                             : Visibility::Collapsed);
-  // The button's content is a Viewbox + a TextBlock inside a StackPanel, not a
-  // string, so ContentControl derived NO name from it and UIA announced it as
-  // an unnamed button. Every other pill on this screen has the same shape.
+// The pills' content is a Viewbox + a TextBlock inside a StackPanel and the
+// tiles' an icon over a caption, not a string, so ContentControl derives NO
+// name from them and UIA announced each as an unnamed button. A tile's caption
+// is deliberately one word ("Bittensor"); the name is the whole sentence.
+void LoginPage::ApplySignInAutomationNames() {
   Automation::AutomationProperties::SetName(w_.GoogleSignInButton(),
                                             Loc("sign_in_with_google"));
+  Automation::AutomationProperties::SetName(w_.AppleSignInButton(),
+                                            Loc("sign_in_with_apple"));
+  Automation::AutomationProperties::SetName(w_.SeedphraseSignInButton(),
+                                            Loc("sign_in_with_seedphrase"));
+  Automation::AutomationProperties::SetName(w_.AuthCodeButton(),
+                                            Loc("auth_code_login_button_text"));
   Automation::AutomationProperties::SetName(w_.BittensorSignInButton(),
                                             Loc("bittensor_sign_in"));
   Automation::AutomationProperties::SetName(w_.SolanaSignInButton(),
                                             Loc("solana_sign_in"));
-  Automation::AutomationProperties::SetName(w_.AuthCodeButton(),
-                                            Loc("auth_code_login_button_text"));
 }
 
 // ---- window-level calls ----------------------------------------------------
@@ -1094,6 +1080,7 @@ void LoginPage::SetWalletSignInEnabled(bool enabled) {
   w_.SolanaSignInButton().IsEnabled(enabled);
   w_.AuthCodeButton().IsEnabled(enabled);
   w_.GoogleSignInButton().IsEnabled(enabled);
+  w_.AppleSignInButton().IsEnabled(enabled);
   w_.SeedphraseSignInButton().IsEnabled(enabled);
   w_.InstantAccountButton().IsEnabled(enabled);
   // NOT a flat `IsEnabled(enabled)`: Get started also depends on the field
@@ -1125,23 +1112,35 @@ void LoginPage::ApplyWalletSignInResult(urnw::AuthResult const& result) {
   ShowLoginErrorFor(LoginStep::Initial, H(result.error));
 }
 
-// ---- Sign in with Google (system browser) ----------------------------------
-// The round trip is GoogleSignIn's: it opens the browser, waits on a loopback
-// socket and exchanges the code. Everything here does is disable the sign-in
-// affordances while that is happening and surface whatever comes back.
+// ---- Sign in with Google / Apple (ur.io SSO browser bridge) ----------------
+// Neither has a native desktop flow here, so both open https://ur.io/sso in the
+// default browser: the bridge runs the same Google / Apple sign-in the ur.io
+// login dialog runs and returns the identity token on urnetwork://sso, which
+// protocol activation routes back into SdkHost (SdkHost::SignInWithSso checks
+// the attempt's state and nonce before authLogin). Everything here does is
+// disable the sign-in affordances while that is happening and surface whatever
+// comes back.
 
-void LoginPage::OnSignInWithGoogle(IInspectable const&, RoutedEventArgs const&) {
+void LoginPage::StartSsoSignIn(const char* provider) {
   SetInitialLoginError(hstring());
   SetWalletSignInEnabled(false);
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
-  Sdk().SignInWithGoogle([queue, weak](urnw::AuthResult r) {
+  Sdk().SignInWithSso(provider, [queue, weak](urnw::AuthResult r) {
     queue.TryEnqueue([weak, r] {
       // ApplyWalletSignInResult already handles "authenticated but no network
       // yet" for both credentials and re-enables the buttons.
       if (auto self = weak.get()) self->login().ApplyWalletSignInResult(r);
     });
   });
+}
+
+void LoginPage::OnSignInWithGoogle(IInspectable const&, RoutedEventArgs const&) {
+  StartSsoSignIn("google");
+}
+
+void LoginPage::OnSignInWithApple(IInspectable const&, RoutedEventArgs const&) {
+  StartSsoSignIn("apple");
 }
 
 // ---- Sign in with a seedphrase (macOS LoginSeedphraseView) -----------------
@@ -1385,9 +1384,9 @@ winrt::fire_and_forget LoginPage::OnChangeNetworkServer(IInspectable const&,
   networkServerSheet_.reset();
   w_.SetSheetOpen(false);
   // A switch re-derives the Api and the LocalState, so the flow starts over on
-  // whatever the new server says about this client — including whether that
-  // server offers Google SSO, which is otherwise only read once at startup.
-  UpdateGoogleSignInVisibility();
+  // whatever the new server says about this client. (The sign-in pills no
+  // longer depend on the server: Google and Apple run through the ur.io/sso
+  // bridge, which needs nothing from the space.)
   ResetToInitialStep();
 }
 

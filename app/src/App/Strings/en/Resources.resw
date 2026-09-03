@@ -425,6 +425,10 @@
     <value>Best value</value>
     <comment>Gold pill on the recommended (annual) plan card.</comment>
   </data>
+  <data name="bittensor" xml:space="preserve">
+    <value>Bittensor</value>
+    <comment>Used in Main/Account/Wallet/WalletView.swift.</comment>
+  </data>
   <data name="bittensor_sign_in" xml:space="preserve">
     <value>Sign in with Bittensor</value>
     <comment>Call to action</comment>
@@ -2462,6 +2466,10 @@ right way</value>
 see you again</value>
     <comment>Login password</comment>
   </data>
+  <data name="login_tile_secret_key" xml:space="preserve">
+    <value>Secret key</value>
+    <comment>Login stack: small tile caption for signing in with an instant account's secret key</comment>
+  </data>
   <data name="login_verify_check_phone" xml:space="preserve">
     <value>Check your phone</value>
     <comment>Call to action</comment>
@@ -3853,6 +3861,10 @@ world's content</value>
   <data name="sign_in_methods" xml:space="preserve">
     <value>Sign-In Methods</value>
   </data>
+  <data name="sign_in_with_apple" xml:space="preserve">
+    <value>Sign in with Apple</value>
+    <comment>Login stack: full-width Apple sign-in button on platforms that use the ur.io browser bridge</comment>
+  </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>Sign in with code</value>
     <comment>Button that signs in with a pasted auth code instead of a password.</comment>
@@ -4255,6 +4267,18 @@ world's content</value>
   <data name="site_app_no_traffic" xml:space="preserve">
     <value>No traffic yet</value>
     <comment>Connect drawer: throughput empty state</comment>
+  </data>
+  <data name="site_app_onboarding_ext_body" xml:space="preserve">
+    <value>URnetwork routes this browser through its extension. Install it, and the Connect button here is ready to go.</value>
+    <comment>Onboarding: install-the-extension step body</comment>
+  </data>
+  <data name="site_app_onboarding_ext_browsers" xml:space="preserve">
+    <value>Available for Chrome, Edge, Brave and Firefox.</value>
+    <comment>Onboarding: install-the-extension step, supported browsers note</comment>
+  </data>
+  <data name="site_app_onboarding_ext_title" xml:space="preserve">
+    <value>Connect this browser</value>
+    <comment>Onboarding: install-the-extension step title</comment>
   </data>
   <data name="site_app_paid_on" xml:space="preserve">
     <value>Paid</value>

@@ -20,7 +20,6 @@
 
 #include "ConnectAction.h"
 #include "ConnectionHealth.h"
-#include "GoogleSignIn.h"
 #include "PostQuantumIdentity.h"
 #include "ProviderLocations.h"
 #include "Sdk.h"
@@ -578,20 +577,19 @@ class SdkHost {
   // Drop the pending instant network jwt without registering (sheet dismissed).
   void DiscardInstantAccount();
 
-  // ---- Google SSO ----------------------------------------------------------
-  // Whether this build can offer "Sign in with Google" at all: the active
-  // network space says the server supports it AND an OAuth client id was
-  // compiled in (urnw::config::kGoogleOAuthClientId). With no client id there
-  // is no flow to run, so the button is HIDDEN rather than shown-and-broken.
-  bool SsoGoogleEnabled();
-  // OAuth 2.0 authorization-code + PKCE through the SYSTEM BROWSER, with a
-  // loopback redirect (RFC 8252). No native SSO SDK, no embedded webview. The
-  // resulting Google id_token goes to authLogin{auth_jwt_type:"google"}; a
-  // Google identity with no network yet routes to the create-network step the
-  // same way a wallet does.
-  void SignInWithGoogle(std::function<void(AuthResult)> done);
-  // A Google identity authenticated but has no network: the id token is
-  // retained for CreateNetwork (name + terms, no password), like a wallet.
+  // ---- Google / Apple SSO (ur.io/sso browser bridge) -----------------------
+  // Neither identity provider has a native desktop flow here, so both run in
+  // the default browser through https://ur.io/sso: the bridge runs the same
+  // Google / Apple sign-in the ur.io login dialog runs (the same client ids, so
+  // the server accepts the token exactly as it does for the web) and returns
+  // the identity token on urnetwork://sso, which HandleDeepLink routes here.
+  // The attempt's `state` must be echoed and the token must carry the attempt's
+  // `nonce` claim before the token goes to authLogin{auth_jwt_type:<provider>};
+  // an identity with no network yet routes to the create-network step the same
+  // way a wallet does. `provider` is "google" or "apple".
+  void SignInWithSso(const std::string& provider, std::function<void(AuthResult)> done);
+  // An SSO identity authenticated but has no network: the id token is retained
+  // for CreateNetwork (name + terms, no password), like a wallet.
   bool HasPendingAuthJwt();
 
   // ---- network server (iOS NetworkServerSheet parity) ----------------------
@@ -1497,10 +1495,12 @@ class SdkHost {
   // the chain's verifier expects (base64 for SOL, hex for TAO).
   void AuthLoginWithWallet(const std::string& address, const std::string& signature,
                            const std::string& message, WalletConnect::Provider provider);
-  // The browser returned a Google id token: authLogin{auth_jwt_type:"google"}.
-  // An identity with no network yet is retained in pendingAuthJwt_ and the UI
-  // routes to the create-network step, exactly as the wallet path does.
-  void AuthLoginWithGoogle(const std::string& idToken, std::function<void(AuthResult)> done);
+  // The bridge returned an identity token: authLogin{auth_jwt_type:provider}.
+  // An identity with no network yet is retained in pendingAuthJwt_ (with its
+  // provider in pendingAuthJwtType_) and the UI routes to the create-network
+  // step, exactly as the wallet path does.
+  void AuthLoginWithSso(const std::string& provider, const std::string& idToken,
+                        std::function<void(AuthResult)> done);
   // Bring up the controlling DeviceRemote — by reattaching to a session the
   // service already holds (the saved-blob path), or by asking the service to
   // start one. `reason` is the gesture's static reason string; the one
@@ -1858,10 +1858,20 @@ class SdkHost {
   // the instant network's jwt, held between CreateInstantAccount and
   // ConfirmInstantAccount so the seedphrase is read before the session exists
   std::optional<std::string> pendingInstantJwt_;
-  // a Google id token whose identity has no network yet, held for the
-  // create-network step (the auth-jwt analogue of pendingWalletAuth_)
+  // an SSO identity token whose identity has no network yet, held for the
+  // create-network step (the auth-jwt analogue of pendingWalletAuth_), with
+  // the provider it came from ("google" | "apple") for auth_jwt_type
   std::optional<std::string> pendingAuthJwt_;
-  GoogleSignIn google_;
+  std::string pendingAuthJwtType_;
+  // The sso bridge attempt in flight: its provider, the state the bridge must
+  // echo and the nonce the returned token must carry. Cleared by its answer or
+  // by a superseding flow (CancelPendingWalletFlows).
+  struct SsoAttempt {
+    std::string provider;
+    std::string state;
+    std::string nonce;
+  };
+  std::optional<SsoAttempt> ssoAttempt_;
   // Identity of a wallet that has no network yet. The discovery signature has
   // already been consumed; create-network always requests a fresh bound
   // challenge before this value can be submitted.

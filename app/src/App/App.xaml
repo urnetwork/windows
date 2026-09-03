@@ -383,6 +383,27 @@
                 <Setter Property="Foreground" Value="Black" />
             </Style>
 
+            <!-- The login stack's small square icon tiles (ur.io ConnectDialog
+                 .iconBtn; every app): the secondary pill's surface at a fixed
+                 64px, no side padding, an icon over an 11px caption. The row
+                 they sit in is a four-star-column Grid, so four of them fill
+                 the row edge to edge and a fifth would start a second row. -->
+            <Style x:Key="UrTileButtonStyle" TargetType="Button" BasedOn="{StaticResource UrSecondaryButtonStyle}">
+                <Setter Property="Height" Value="64" />
+                <Setter Property="MinHeight" Value="64" />
+                <Setter Property="Padding" Value="4,0" />
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontWeight" Value="Normal" />
+            </Style>
+            <Style x:Key="UrTileCaptionStyle" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="TextAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            </Style>
+
             <!-- URTextInputLabel: 12sp in TextMuted, 8dp above the field -->
             <Style x:Key="UrTextInputLabelStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />

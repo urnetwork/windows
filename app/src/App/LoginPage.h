@@ -122,8 +122,11 @@ class LoginPage {
   // gates Get started on a non-empty field (iOS/android parity)
   void OnUserAuthChanged(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+  // Google / Apple through the ur.io SSO browser bridge (SdkHost::SignInWithSso)
   void OnSignInWithGoogle(winrt::Windows::Foundation::IInspectable const&,
                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnSignInWithApple(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // seedphrase sign-in step
   void OnSignInWithSeedphrase(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -174,6 +177,9 @@ class LoginPage {
   winrt::fire_and_forget ShowGuestModeSheet();  // terms consent -> LoginAsGuest
   void SetWalletSignInEnabled(bool enabled);
   void ApplyWalletSignInResult(urnw::AuthResult const& result);
+  // Google or Apple: open the ur.io SSO bridge and wait for its urnetwork://sso
+  // answer; `provider` is "google" or "apple".
+  void StartSsoSignIn(const char* provider);
   // seedphrase step: word count -> the warning line + the submit gate
   void ValidateSeedphrase();
   // Empty the seedphrase field. It is UIA-readable (and writable) by any
@@ -188,10 +194,10 @@ class LoginPage {
   // run the carousel only when it is on the initial step, on screen, and its
   // slot has not been collapsed by the layout above
   void UpdateCarouselRunning();
-  // Show or hide "Sign in with Google" from SdkHost::SsoGoogleEnabled(), and
-  // name the icon-plus-text sign-in buttons for UIA. Re-run after a
-  // network-server switch: the space supplies half the answer.
-  void UpdateGoogleSignInVisibility();
+  // Name the icon-plus-text pills and the icon tiles for UIA: their content is
+  // a panel, not a string, so ContentControl derives no name from it, and a
+  // tile's caption is a short word where the name should be the sentence.
+  void ApplySignInAutomationNames();
 
   winrt::URnetwork::implementation::MainWindow& w_;
 

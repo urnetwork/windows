@@ -49,7 +49,15 @@ class WalletConnect {
   // attaches the coldkey to the provider (Earnings).
   void SignMessageBittensor(const std::string& message, const std::string& purpose = std::string());
 
-  // Route a urnetwork:// callback here. Returns true if it was a wallet callback.
+  // Google / Apple sign-in through the ur.io/sso bridge, the same browser round
+  // trip: the bridge runs the provider's web flow (the one the ur.io login
+  // dialog runs) and returns the identity token on urnetwork://sso. `state` is
+  // echoed back untouched and `nonce` is handed to the provider so the token
+  // carries it; the caller checks both. on_sso fires on the callback.
+  void OpenSso(const std::string& provider, const std::string& state, const std::string& nonce);
+
+  // Route a urnetwork:// callback here. Returns true if it was a bridge callback
+  // (a wallet or an sso one).
   bool HandleDeepLink(const std::string& url);
 
   bool connected() const { return connectedPublicKey_.has_value(); }
@@ -60,6 +68,12 @@ class WalletConnect {
   // Solana, hex sr25519 for Bittensor.
   std::function<void(std::string publicKey, std::string signature, Provider)> on_signature;
   std::function<void(std::string error)> on_error;
+  // urnetwork://sso?provider=<p>&auth_jwt=<token>&state=<state>, or
+  // ?provider=<p>&error=<message>&state=<state>. `error` is non-empty when the
+  // bridge reported one or returned no token.
+  std::function<void(std::string provider, std::string authJwt, std::string state,
+                     std::string error)>
+      on_sso;
 
  private:
   static const char* Host(Provider p);
@@ -70,6 +84,7 @@ class WalletConnect {
   void HandleConnect(Provider p, const std::string& query);
   void HandleSignMessage(Provider p, const std::string& query);
   void HandleBittensor(const std::string& host, const std::string& query);
+  void HandleSso(const std::string& query);
 
   std::optional<urnet::WalletKeyPair> dappKeyPair_;
   std::optional<std::string> connectedPublicKey_;

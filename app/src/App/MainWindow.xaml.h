@@ -194,9 +194,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // gates Get started on a non-empty field
   void OnUserAuthChanged(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-  // Google SSO through the system browser (loopback OAuth + PKCE)
+  // Google / Apple SSO through the ur.io/sso browser bridge
   void OnSignInWithGoogle(winrt::Windows::Foundation::IInspectable const&,
                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnSignInWithApple(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // seedphrase sign-in, and the instant (seedphrase-only) account
   void OnSignInWithSeedphrase(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
