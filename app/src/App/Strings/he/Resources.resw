@@ -52,6 +52,10 @@
   <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
     <value>ביטוי סיד מאפשר לך לשחזר את החשבון שלך אם תאבד את הגישה אליו. שמור אותו במקום בטוח.</value>
   </data>
+  <data name="about" xml:space="preserve">
+    <value>אודות</value>
+    <comment>Settings: heading of the about section.</comment>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>כדי לגשת לקוד האימות שלך, צור חשבון והתחבר ל-{link}ur.io{/link}. עבור אל חשבון -&gt; הגדרות -&gt; צור/העתק קוד אימות -&gt; הדבק -&gt; נכנסת!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -110,6 +114,242 @@
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>האספקה כבויה כברירת מחדל. בחר למטה מתי המכשיר שלך מספק.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
+  </data>
+  <data name="adv_action_id" xml:space="preserve">
+    <value>מזהה פעולה</value>
+    <comment>Connection inspector: label of the action id row.</comment>
+  </data>
+  <data name="adv_addresses" xml:space="preserve">
+    <value>כתובות</value>
+    <comment>Connection inspector: label of the addresses row.</comment>
+  </data>
+  <data name="adv_advanced_mode" xml:space="preserve">
+    <value>מצב מתקדם</value>
+    <comment>Settings: switch that turns advanced mode on.</comment>
+  </data>
+  <data name="adv_advanced_mode_note" xml:space="preserve">
+    <value>מציג ערכים גולמיים, מזהים, את בודק החיבור ואת כוונון האמינות בכל האפליקציה.</value>
+    <comment>Settings: explanation under the advanced mode switch.</comment>
+  </data>
+  <data name="adv_bytes_total" xml:space="preserve">
+    <value>בייטים (סה״כ)</value>
+    <comment>Connection inspector: label of the total bytes row.</comment>
+  </data>
+  <data name="adv_clear_selection" xml:space="preserve">
+    <value>נקה בחירה</value>
+    <comment>Connection inspector: button that clears the selected connection.</comment>
+  </data>
+  <data name="adv_exit_dial_failures" xml:space="preserve">
+    <value>כשלי חיוג</value>
+    <comment>Connection inspector: label of the exit dial failures row.</comment>
+  </data>
+  <data name="adv_exit_flows" xml:space="preserve">
+    <value>זרימות ליעד זה</value>
+    <comment>Connection inspector: label of the flows to the selected destination.</comment>
+  </data>
+  <data name="adv_exit_flows_total" xml:space="preserve">
+    <value>זרימות יציאה</value>
+    <comment>Connection inspector: label of the exit flows row.</comment>
+  </data>
+  <data name="adv_exit_ok" xml:space="preserve">
+    <value>תקין</value>
+    <comment>Connection inspector: exit state, OK.</comment>
+  </data>
+  <data name="adv_exit_proven" xml:space="preserve">
+    <value>מוכח</value>
+    <comment>Connection inspector: exit state, proven.</comment>
+  </data>
+  <data name="adv_exit_quarantined" xml:space="preserve">
+    <value>בהסגר</value>
+    <comment>Connection inspector: exit state, quarantined.</comment>
+  </data>
+  <data name="adv_exit_state" xml:space="preserve">
+    <value>מצב יציאה</value>
+    <comment>Connection inspector: label of the exit state row.</comment>
+  </data>
+  <data name="adv_exit_tier" xml:space="preserve">
+    <value>דרגת יציאה</value>
+    <comment>Connection inspector: label of the exit tier row.</comment>
+  </data>
+  <data name="adv_exit_warning" xml:space="preserve">
+    <value>אזהרה</value>
+    <comment>Connection inspector: exit state, warning.</comment>
+  </data>
+  <data name="adv_exit_warning_cause" xml:space="preserve">
+    <value>סיבת האזהרה</value>
+    <comment>Connection inspector: label of the warning cause row.</comment>
+  </data>
+  <data name="adv_exits" xml:space="preserve">
+    <value>יציאות</value>
+    <comment>Connection inspector: heading of the exits section.</comment>
+  </data>
+  <data name="adv_host" xml:space="preserve">
+    <value>מארח</value>
+    <comment>Connection inspector: label of the host row.</comment>
+  </data>
+  <data name="adv_inspector" xml:space="preserve">
+    <value>בודק</value>
+    <comment>Connection inspector: heading of the inspector pane.</comment>
+  </data>
+  <data name="adv_kill_switch_applying" xml:space="preserve">
+    <value>מחיל…</value>
+    <comment>Kill switch: status while the change is being applied.</comment>
+  </data>
+  <data name="adv_kill_switch_armed_way_out" xml:space="preserve">
+    <value>כבו את הקיל סוויץ' כדי לשחזר גישה רגילה בלי להתחבר.</value>
+    <comment>Kill switch: how to restore normal access while the block is armed.</comment>
+  </data>
+  <data name="adv_kill_switch_deliberate" xml:space="preserve">
+    <value>לחיצה על התנתק תמיד משחזרת את האינטרנט מיד. הקיל סוויץ' חל רק על ניתוקים שלא ביקשתם - מנהרה שהפסיקה להעביר תעבורה, שינוי רשת או עצירת שירות URnetwork.</value>
+    <comment>Settings, kill switch: Disconnect always restores the internet; the switch only covers drops the user did not ask for.</comment>
+  </data>
+  <data name="adv_kill_switch_dns_window" xml:space="preserve">
+    <value>כשהוא פעיל ושום דבר לא מתחבר, שום דבר לא יוצא מהמכשיר הזה - כולל בירורי שמות. במהלך ניסיון התחברות, בירורי שמות מכל אפליקציה במכשיר הזה יכולים לצאת לא מוצפנים כדי ש-URnetwork יגיע לשרתים שלו; כל השאר נשאר חסום.</value>
+    <comment>Settings, kill switch: what may leave the device while the switch is on, and the name-lookup window during a connection attempt.</comment>
+  </data>
+  <data name="adv_kill_switch_note" xml:space="preserve">
+    <value>אם המנהרה נופלת במפתיע, חסום את התעבורה של המכשיר הזה במקום לתת לה לצאת ללא הגנה.</value>
+    <comment>Settings: explanation under the kill switch switch.</comment>
+  </data>
+  <data name="adv_kill_switch_recovery" xml:space="preserve">
+    <value>אם המכשיר הזה לא מצליח להגיע לרשת, ייתכן שחסימה שהותקנה קודם עדיין בתוקף; הסירו אותה באמצעות: {}</value>
+    <comment>Kill switch: how to remove a block that is still in place when the device cannot reach the network; {command} is the shell command.</comment>
+  </data>
+  <data name="adv_kill_switch_state_armed" xml:space="preserve">
+    <value>בתוקף: שום דבר מלבד תעבורת הרשת המקומית לא יוצא מהמכשיר הזה עד שתתחברו.</value>
+    <comment>Kill switch status: in force and armed, only local traffic leaves until connected.</comment>
+  </data>
+  <data name="adv_kill_switch_state_connected" xml:space="preserve">
+    <value>בתוקף: אם המנהרה תיפול, התעבורה של המכשיר הזה תיחסם במקום לצאת ללא הגנה.</value>
+    <comment>Kill switch status: in force while connected, traffic is blocked if the tunnel drops.</comment>
+  </data>
+  <data name="adv_kill_switch_state_failed" xml:space="preserve">
+    <value>שירות המערכת של URnetwork לא הצליח להתקין את הקיל סוויץ', ולכן התעבורה לא נחסמת.</value>
+    <comment>Kill switch status: the system service could not install the block.</comment>
+  </data>
+  <data name="adv_kill_switch_state_not_in_force" xml:space="preserve">
+    <value>הקיל סוויץ' אינו בתוקף: התעבורה שלכם לא נחסמת.</value>
+    <comment>Kill switch status: not in force, traffic is not blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_pending" xml:space="preserve">
+    <value>עדיין שום דבר לא חסום — זה נכנס לתוקף ברגע שתתחברו.</value>
+    <comment>Kill switch status: nothing is blocked yet, takes effect on connect.</comment>
+  </data>
+  <data name="adv_kill_switch_state_still_installed" xml:space="preserve">
+    <value>הקיל סוויץ' כבוי, אבל לשירות המערכת של URnetwork עדיין מותקנת חסימה, ולכן התעבורה של המכשיר הזה נחסמת.</value>
+    <comment>Kill switch status: the switch is off but the service still has a block installed, so traffic is blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_unknown" xml:space="preserve">
+    <value>לא ניתן לבדוק כרגע אם הקיל סוויץ' בתוקף.</value>
+    <comment>Kill switch status: cannot be checked right now.</comment>
+  </data>
+  <data name="adv_kill_switch_still_installed_fix" xml:space="preserve">
+    <value>הפעלת הקיל סוויץ' וכיבויו שוב מבקשים מהשירות להסיר אותה; אם זה לא עובד, הסירו אותה באמצעות: {}</value>
+    <comment>Kill switch: how to clear a block the service still has installed; {command} is the shell command to use if toggling does not work.</comment>
+  </data>
+  <data name="adv_last_decision" xml:space="preserve">
+    <value>החלטה אחרונה</value>
+    <comment>Connection inspector: label of the last routing decision row.</comment>
+  </data>
+  <data name="adv_matched" xml:space="preserve">
+    <value>התאמה</value>
+    <comment>Connection inspector: label of the matched rule row.</comment>
+  </data>
+  <data name="adv_na" xml:space="preserve">
+    <value>—</value>
+    <comment>Connection inspector: placeholder dash for a value that is not available.</comment>
+  </data>
+  <data name="adv_no_selection" xml:space="preserve">
+    <value>לא נבחר חיבור</value>
+    <comment>Connection inspector: shown when no connection is selected.</comment>
+  </data>
+  <data name="adv_none" xml:space="preserve">
+    <value>אין</value>
+    <comment>Connection inspector: value shown when a field has nothing.</comment>
+  </data>
+  <data name="adv_override_id" xml:space="preserve">
+    <value>עקיפה</value>
+    <comment>Connection inspector: label of the override id row.</comment>
+  </data>
+  <data name="adv_packets_total" xml:space="preserve">
+    <value>חבילות (סה״כ)</value>
+    <comment>Connection inspector: label of the total packets row.</comment>
+  </data>
+  <data name="adv_probe_age" xml:space="preserve">
+    <value>גיל הבדיקה</value>
+    <comment>Connection inspector: label of the probe age row.</comment>
+  </data>
+  <data name="adv_protected" xml:space="preserve">
+    <value>מוגן</value>
+    <comment>Connection inspector: label of the protected row.</comment>
+  </data>
+  <data name="adv_providers_load_failed" xml:space="preserve">
+    <value>לא ניתן לטעון את רשימת הספקים.</value>
+    <comment>Network page: error when the provider list could not be loaded.</comment>
+  </data>
+  <data name="adv_raw_status" xml:space="preserve">
+    <value>מצב גולמי</value>
+    <comment>Connection inspector: label of the raw status row.</comment>
+  </data>
+  <data name="adv_reason" xml:space="preserve">
+    <value>סיבה</value>
+    <comment>Connection inspector: label of the decision reason row.</comment>
+  </data>
+  <data name="adv_reason_block" xml:space="preserve">
+    <value>עקיפת חסימה</value>
+    <comment>Connection inspector: decision reason, a block override applied.</comment>
+  </data>
+  <data name="adv_reason_default" xml:space="preserve">
+    <value>מדיניות ברירת מחדל</value>
+    <comment>Connection inspector: decision reason, the default policy applied.</comment>
+  </data>
+  <data name="adv_reason_override" xml:space="preserve">
+    <value>עקיפה</value>
+    <comment>Connection inspector: decision reason, an override applied.</comment>
+  </data>
+  <data name="adv_reason_route" xml:space="preserve">
+    <value>עקיפת ניתוב</value>
+    <comment>Connection inspector: decision reason, a route override applied.</comment>
+  </data>
+  <data name="adv_select_a_row" xml:space="preserve">
+    <value>בחרו שורה בפעילות כדי לבדוק אותה</value>
+    <comment>Connection inspector: hint to select a row in the Activity list.</comment>
+  </data>
+  <data name="adv_selected" xml:space="preserve">
+    <value>נבחרו</value>
+    <comment>Connection inspector: suffix after the count of selected rows.</comment>
+  </data>
+  <data name="adv_selection_gone" xml:space="preserve">
+    <value>החיבור הזה כבר לא מופיע ברשימה</value>
+    <comment>Connection inspector: shown when the selected connection is no longer listed.</comment>
+  </data>
+  <data name="adv_session_exit_country" xml:space="preserve">
+    <value>מדינת היציאה של ההפעלה</value>
+    <comment>Connection inspector: label of the session exit country row.</comment>
+  </data>
+  <data name="adv_unknown_exit" xml:space="preserve">
+    <value>לא בטבלת הניתוב</value>
+    <comment>Connection inspector: exit value when the destination is not in the routing table.</comment>
+  </data>
+  <data name="adv_verdict_blocked" xml:space="preserve">
+    <value>נחסם — לא נשלחו חבילות</value>
+    <comment>Connection inspector: verdict, the connection was blocked and no packets were sent.</comment>
+  </data>
+  <data name="adv_verdict_local" xml:space="preserve">
+    <value>עקף את המנהרה — לא מוגן</value>
+    <comment>Connection inspector: verdict, the connection bypassed the tunnel and is not protected.</comment>
+  </data>
+  <data name="adv_verdict_tunnelled" xml:space="preserve">
+    <value>עבר במנהרה של URnetwork</value>
+    <comment>Connection inspector: verdict, the connection went through the URnetwork tunnel.</comment>
+  </data>
+  <data name="adv_via_exit" xml:space="preserve">
+    <value>דרך יציאה</value>
+    <comment>Connection inspector: label of the via-exit row.</comment>
+  </data>
+  <data name="advanced" xml:space="preserve">
+    <value>מתקדם</value>
+    <comment>Settings: heading of the advanced section.</comment>
   </data>
   <data name="all_the_content_in_the_world_from_urnetwork" xml:space="preserve">
     <value>כל התוכן בעולם מ-URnetwork</value>
@@ -196,6 +436,10 @@
   <data name="app_too_old_for_daemon" xml:space="preserve">
     <value>האפליקציה הזו ישנה יותר משירות המערכת המותקן של URnetwork. עדכן את האפליקציה כדי להתחבר.</value>
     <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="app_version" xml:space="preserve">
+    <value>גרסת האפליקציה</value>
+    <comment>Settings, about: label of the app version row.</comment>
   </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>שיטת ההתחברות של Apple נוספה</value>
@@ -568,6 +812,18 @@
     <value>הצד השני</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
+  <data name="conn_connect_on_launch" xml:space="preserve">
+    <value>התחבר אוטומטית כשהאפליקציה נפתחת</value>
+    <comment>Settings: switch that connects automatically when the app starts.</comment>
+  </data>
+  <data name="conn_connect_on_launch_note" xml:space="preserve">
+    <value>כבוי כברירת מחדל. כשמופעל, URnetwork מתחבר לספק שבחרתם ברגע שתפתחו את האפליקציה. זה משנה את ההפעלה הבאה - לא מתחבר עכשיו.</value>
+    <comment>Settings: explanation under the connect-on-launch switch.</comment>
+  </data>
+  <data name="conn_not_protected" xml:space="preserve">
+    <value>תעבורת האינטרנט שלכם אינה מוגנת.</value>
+    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+  </data>
   <data name="connect" xml:space="preserve">
     <value>התחבר</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -780,6 +1036,30 @@
     <value>DNS מותאם אישית</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
   </data>
+  <data name="daemon_auth_check_failed" xml:space="preserve">
+    <value>שירות המערכת של URnetwork לא הצליח לבדוק אם החשבון הזה רשאי להתחבר, ולכן לא התחבר. נסו שוב.</value>
+    <comment>Connect error: the system service could not check whether the account may connect.</comment>
+  </data>
+  <data name="daemon_auth_denied" xml:space="preserve">
+    <value>מדיניות המכשיר הזה לא מאפשרת לחשבון הזה להתחבר דרך URnetwork. מנהל מערכת יכול לשנות זאת.</value>
+    <comment>Connect error: the device policy does not allow this account to connect.</comment>
+  </data>
+  <data name="daemon_auth_required" xml:space="preserve">
+    <value>התחברות מההפעלה הזו דורשת הרשאת מנהל. לחצו שוב על התחבר כדי להישאל, או השתמשו בהפעלה שעל מסך המכשיר הזה.</value>
+    <comment>Connect error: administrator permission is needed from this session.</comment>
+  </data>
+  <data name="daemon_auth_timeout" xml:space="preserve">
+    <value>בקשת ההרשאה לא נענתה, ולכן שום דבר לא התחבר. לחצו על התחבר כדי לנסות שוב.</value>
+    <comment>Connect error: the permission request was not answered.</comment>
+  </data>
+  <data name="daemon_auth_unavailable" xml:space="preserve">
+    <value>למכשיר הזה אין שירות הרשאות polkit, ולכן שירות המערכת של URnetwork משתמש בקבוצה 'urnetwork'. הוסיפו אליה את המשתמש שלכם, התנתקו והתחברו מחדש.</value>
+    <comment>Connect error: no polkit service, the daemon falls back to the urnetwork group.</comment>
+  </data>
+  <data name="daemon_no_answer" xml:space="preserve">
+    <value>שירות המערכת של URnetwork לא הגיב.</value>
+    <comment>Error: the system service did not answer.</comment>
+  </data>
   <data name="daemon_sdk_mismatch" xml:space="preserve">
     <value>האפליקציה ושירות המערכת של URnetwork הם גרסאות בנייה שונות. עדכן את שניהם לאותה גרסה.</value>
     <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
@@ -787,6 +1067,10 @@
   <data name="daemon_too_old" xml:space="preserve">
     <value>שירות המערכת של URnetwork אינו מעודכן. עדכן אותו כדי להתחבר.</value>
     <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_tunnel_owned_by_other_user" xml:space="preserve">
+    <value>משתמש אחר במכשיר הזה מחובר דרך URnetwork. נתקו אותו מההפעלה שלו, או השתלטו עליו בהרשאת מנהל.</value>
+    <comment>Connect error: another user on the device holds the tunnel.</comment>
   </data>
   <data name="daemon_unreachable" xml:space="preserve">
     <value>שירות המערכת של URnetwork אינו פועל. התקן או הפעל אותו ונסה שוב.</value>
@@ -895,6 +1179,14 @@
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>הגדרות ברירת המחדל הבטוחות אינן מוחלות</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="dns_not_on_tunnel" xml:space="preserve">
+    <value>ה-DNS לא עובר במנהרה — השמות שאתם מחפשים נפתרים מחוץ לה.</value>
+    <comment>Connect drawer: warning that DNS is resolving outside the tunnel.</comment>
+  </data>
+  <data name="dns_on_tunnel" xml:space="preserve">
+    <value>ה-DNS עובר במנהרה</value>
+    <comment>Connect drawer: status that DNS goes through the tunnel.</comment>
   </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS דרך HTTPS</value>
@@ -1321,6 +1613,14 @@
     <value>נכלל</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="instant_account_explainer" xml:space="preserve">
+    <value>לא צריך אימייל, טלפון או סיסמה. החשבון שלכם מאובטח בביטוי סיד.</value>
+    <comment>Instant account: explains that no email, phone or password is needed.</comment>
+  </data>
+  <data name="instant_account_failed" xml:space="preserve">
+    <value>לא ניתן ליצור את החשבון. נסו שוב.</value>
+    <comment>Instant account: error when the account could not be created.</comment>
+  </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>יתרה לא מספקת</value>
     <comment>Call to action</comment>
@@ -1657,6 +1957,10 @@
   <data name="monthly" xml:space="preserve">
     <value>חודשי</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
+  </data>
+  <data name="more_options" xml:space="preserve">
+    <value>אפשרויות נוספות</value>
+    <comment>Connect page: button that reveals more options.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>כתובות IP מרובות</value>
@@ -2602,6 +2906,14 @@
     <value>ביטוי הסיד חייב להכיל 12 או 24 מילים</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
   </data>
+  <data name="seedphrase_login_failed" xml:space="preserve">
+    <value>הכניסה עם ביטוי סיד נכשלה</value>
+    <comment>Login: error title when signing in with a seedphrase failed.</comment>
+  </data>
+  <data name="seedphrase_only_time" xml:space="preserve">
+    <value>⚠️ זו הפעם היחידה שתראו את זה.</value>
+    <comment>Seedphrase sheet: warning that this is the only time the seedphrase is shown.</comment>
+  </data>
   <data name="seedphrase_paste_hint" xml:space="preserve">
     <value>הדביקו כאן את ביטוי הסיד בן 12 או 24 המילים</value>
     <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
@@ -2609,6 +2921,14 @@
   <data name="seedphrase_required" xml:space="preserve">
     <value>יש להזין ביטוי סיד</value>
     <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
+  <data name="seedphrase_store_safely" xml:space="preserve">
+    <value>כתבו אותו ושמרו אותו במקום בטוח. אם תאבדו אותו, תאבדו את הגישה לחשבון שלכם.</value>
+    <comment>Seedphrase sheet: advice to write the seedphrase down and store it safely.</comment>
+  </data>
+  <data name="seedphrase_word_count_warning" xml:space="preserve">
+    <value>אלה {} מילים — ביטוי סיד הוא 12 או 24 מילים</value>
+    <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>אסימון Seeker אומת!</value>
@@ -3136,6 +3456,22 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="svc_service_label" xml:space="preserve">
+    <value>שירות VPN</value>
+    <comment>Settings: label of the VPN service row.</comment>
+  </data>
+  <data name="svc_uninstall_action" xml:space="preserve">
+    <value>הסר התקנה</value>
+    <comment>Settings: button that uninstalls the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_confirm" xml:space="preserve">
+    <value>פעולה זו עוצרת את שירות URnetwork ומסירה את יחידת ה-systemd שלו. האפליקציה לא תוכל להתחבר עד שהוא יוגדר מחדש. תתבקשו לתת הרשאת מנהל.</value>
+    <comment>Settings: confirmation text before uninstalling the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_note" xml:space="preserve">
+    <value>הסרת שירות ה-systemd שבו URnetwork משתמש להעברת תעבורה.</value>
+    <comment>Settings: explanation under the uninstall service button.</comment>
+  </data>
   <data name="switch_account" xml:space="preserve">
     <value>החלף חשבון</value>
     <comment>Call to action</comment>
@@ -3283,6 +3619,10 @@
     <value>לא ניתן היה להתחיל את החיבור</value>
     <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
+  <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
+    <value>החיבור נעצר.</value>
+    <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>DNS לא מוצפן</value>
     <comment>A label displayed in the custom dns settings section.</comment>
@@ -3314,6 +3654,14 @@
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (עשוי להיות לא יציב)</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="upd_auto_check" xml:space="preserve">
+    <value>בדוק עדכונים אוטומטית</value>
+    <comment>Settings: switch that checks for updates automatically.</comment>
+  </data>
+  <data name="upd_auto_check_note" xml:space="preserve">
+    <value>חיפוש גרסאות חדשות זמן קצר אחרי ההפעלה ובכל שש שעות. שום דבר לא מותקן בלי לחיצה.</value>
+    <comment>Settings: explanation under the automatic update check switch.</comment>
   </data>
   <data name="update" xml:space="preserve">
     <value>עדכן</value>

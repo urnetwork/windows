@@ -52,6 +52,10 @@
   <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
     <value>如果你无法访问帐户，助记词可以帮你恢复。请妥善保管。</value>
   </data>
+  <data name="about" xml:space="preserve">
+    <value>关于</value>
+    <comment>Settings: heading of the about section.</comment>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>要获取您的认证码，请创建账户并登录{link}ur.io{/link}。进入账户 -&gt; 设置 -&gt; 创建/复制认证码 -&gt; 粘贴 -&gt; 完成！</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -110,6 +114,242 @@
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>您可以将设置调整为“始终”，以更快地填充免费数据</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
+  </data>
+  <data name="adv_action_id" xml:space="preserve">
+    <value>操作 ID</value>
+    <comment>Connection inspector: label of the action id row.</comment>
+  </data>
+  <data name="adv_addresses" xml:space="preserve">
+    <value>地址</value>
+    <comment>Connection inspector: label of the addresses row.</comment>
+  </data>
+  <data name="adv_advanced_mode" xml:space="preserve">
+    <value>高级模式</value>
+    <comment>Settings: switch that turns advanced mode on.</comment>
+  </data>
+  <data name="adv_advanced_mode_note" xml:space="preserve">
+    <value>在整个应用中显示原始值、标识符、连接检查器和可靠性调节项。</value>
+    <comment>Settings: explanation under the advanced mode switch.</comment>
+  </data>
+  <data name="adv_bytes_total" xml:space="preserve">
+    <value>字节（总计）</value>
+    <comment>Connection inspector: label of the total bytes row.</comment>
+  </data>
+  <data name="adv_clear_selection" xml:space="preserve">
+    <value>清除选择</value>
+    <comment>Connection inspector: button that clears the selected connection.</comment>
+  </data>
+  <data name="adv_exit_dial_failures" xml:space="preserve">
+    <value>拨号失败</value>
+    <comment>Connection inspector: label of the exit dial failures row.</comment>
+  </data>
+  <data name="adv_exit_flows" xml:space="preserve">
+    <value>到此目标的流</value>
+    <comment>Connection inspector: label of the flows to the selected destination.</comment>
+  </data>
+  <data name="adv_exit_flows_total" xml:space="preserve">
+    <value>出口流</value>
+    <comment>Connection inspector: label of the exit flows row.</comment>
+  </data>
+  <data name="adv_exit_ok" xml:space="preserve">
+    <value>正常</value>
+    <comment>Connection inspector: exit state, OK.</comment>
+  </data>
+  <data name="adv_exit_proven" xml:space="preserve">
+    <value>已验证</value>
+    <comment>Connection inspector: exit state, proven.</comment>
+  </data>
+  <data name="adv_exit_quarantined" xml:space="preserve">
+    <value>已隔离</value>
+    <comment>Connection inspector: exit state, quarantined.</comment>
+  </data>
+  <data name="adv_exit_state" xml:space="preserve">
+    <value>出口状态</value>
+    <comment>Connection inspector: label of the exit state row.</comment>
+  </data>
+  <data name="adv_exit_tier" xml:space="preserve">
+    <value>出口层级</value>
+    <comment>Connection inspector: label of the exit tier row.</comment>
+  </data>
+  <data name="adv_exit_warning" xml:space="preserve">
+    <value>警告</value>
+    <comment>Connection inspector: exit state, warning.</comment>
+  </data>
+  <data name="adv_exit_warning_cause" xml:space="preserve">
+    <value>警告原因</value>
+    <comment>Connection inspector: label of the warning cause row.</comment>
+  </data>
+  <data name="adv_exits" xml:space="preserve">
+    <value>出口</value>
+    <comment>Connection inspector: heading of the exits section.</comment>
+  </data>
+  <data name="adv_host" xml:space="preserve">
+    <value>主机</value>
+    <comment>Connection inspector: label of the host row.</comment>
+  </data>
+  <data name="adv_inspector" xml:space="preserve">
+    <value>检查器</value>
+    <comment>Connection inspector: heading of the inspector pane.</comment>
+  </data>
+  <data name="adv_kill_switch_applying" xml:space="preserve">
+    <value>正在应用…</value>
+    <comment>Kill switch: status while the change is being applied.</comment>
+  </data>
+  <data name="adv_kill_switch_armed_way_out" xml:space="preserve">
+    <value>关闭断网保护即可在不连接的情况下恢复正常访问。</value>
+    <comment>Kill switch: how to restore normal access while the block is armed.</comment>
+  </data>
+  <data name="adv_kill_switch_deliberate" xml:space="preserve">
+    <value>按下断开连接总会立即恢复互联网。断网保护仅针对非你所愿的断开 - 隧道停止传输流量、网络切换，或 URnetwork 服务停止。</value>
+    <comment>Settings, kill switch: Disconnect always restores the internet; the switch only covers drops the user did not ask for.</comment>
+  </data>
+  <data name="adv_kill_switch_dns_window" xml:space="preserve">
+    <value>在开启且没有任何连接进行时，任何数据都不会离开此设备 - 包括域名查询。在尝试连接期间，此设备上任何应用的域名查询可以明文发出，以便 URnetwork 连接其服务器；其他一切仍被阻断。</value>
+    <comment>Settings, kill switch: what may leave the device while the switch is on, and the name-lookup window during a connection attempt.</comment>
+  </data>
+  <data name="adv_kill_switch_note" xml:space="preserve">
+    <value>如果隧道意外断开，则阻断此设备的流量，而不是让其在无保护的情况下流出。</value>
+    <comment>Settings: explanation under the kill switch switch.</comment>
+  </data>
+  <data name="adv_kill_switch_recovery" xml:space="preserve">
+    <value>如果此设备无法连接网络，先前安装的阻断可能仍在生效；使用以下命令移除：{}</value>
+    <comment>Kill switch: how to remove a block that is still in place when the device cannot reach the network; {command} is the shell command.</comment>
+  </data>
+  <data name="adv_kill_switch_state_armed" xml:space="preserve">
+    <value>生效中：在你连接之前，只有本地网络流量会离开此设备。</value>
+    <comment>Kill switch status: in force and armed, only local traffic leaves until connected.</comment>
+  </data>
+  <data name="adv_kill_switch_state_connected" xml:space="preserve">
+    <value>生效中：如果隧道断开，此设备的流量将被阻断，而不会在无保护的情况下流出。</value>
+    <comment>Kill switch status: in force while connected, traffic is blocked if the tunnel drops.</comment>
+  </data>
+  <data name="adv_kill_switch_state_failed" xml:space="preserve">
+    <value>URnetwork 系统服务无法安装断网保护，因此流量未被阻断。</value>
+    <comment>Kill switch status: the system service could not install the block.</comment>
+  </data>
+  <data name="adv_kill_switch_state_not_in_force" xml:space="preserve">
+    <value>断网保护未生效：你的流量未被阻断。</value>
+    <comment>Kill switch status: not in force, traffic is not blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_pending" xml:space="preserve">
+    <value>尚未阻断任何流量 — 将在你连接的那一刻生效。</value>
+    <comment>Kill switch status: nothing is blocked yet, takes effect on connect.</comment>
+  </data>
+  <data name="adv_kill_switch_state_still_installed" xml:space="preserve">
+    <value>断网保护已关闭，但 URnetwork 系统服务仍安装着一个阻断，因此此设备的流量正被阻断。</value>
+    <comment>Kill switch status: the switch is off but the service still has a block installed, so traffic is blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_unknown" xml:space="preserve">
+    <value>目前无法检查断网保护是否生效。</value>
+    <comment>Kill switch status: cannot be checked right now.</comment>
+  </data>
+  <data name="adv_kill_switch_still_installed_fix" xml:space="preserve">
+    <value>打开断网保护再关闭，会请求服务将其移除；如果无效，使用以下命令移除：{}</value>
+    <comment>Kill switch: how to clear a block the service still has installed; {command} is the shell command to use if toggling does not work.</comment>
+  </data>
+  <data name="adv_last_decision" xml:space="preserve">
+    <value>最后决策</value>
+    <comment>Connection inspector: label of the last routing decision row.</comment>
+  </data>
+  <data name="adv_matched" xml:space="preserve">
+    <value>匹配</value>
+    <comment>Connection inspector: label of the matched rule row.</comment>
+  </data>
+  <data name="adv_na" xml:space="preserve">
+    <value>—</value>
+    <comment>Connection inspector: placeholder dash for a value that is not available.</comment>
+  </data>
+  <data name="adv_no_selection" xml:space="preserve">
+    <value>未选择连接</value>
+    <comment>Connection inspector: shown when no connection is selected.</comment>
+  </data>
+  <data name="adv_none" xml:space="preserve">
+    <value>无</value>
+    <comment>Connection inspector: value shown when a field has nothing.</comment>
+  </data>
+  <data name="adv_override_id" xml:space="preserve">
+    <value>覆盖</value>
+    <comment>Connection inspector: label of the override id row.</comment>
+  </data>
+  <data name="adv_packets_total" xml:space="preserve">
+    <value>数据包（总计）</value>
+    <comment>Connection inspector: label of the total packets row.</comment>
+  </data>
+  <data name="adv_probe_age" xml:space="preserve">
+    <value>探测时间</value>
+    <comment>Connection inspector: label of the probe age row.</comment>
+  </data>
+  <data name="adv_protected" xml:space="preserve">
+    <value>受保护</value>
+    <comment>Connection inspector: label of the protected row.</comment>
+  </data>
+  <data name="adv_providers_load_failed" xml:space="preserve">
+    <value>无法加载提供者列表。</value>
+    <comment>Network page: error when the provider list could not be loaded.</comment>
+  </data>
+  <data name="adv_raw_status" xml:space="preserve">
+    <value>原始状态</value>
+    <comment>Connection inspector: label of the raw status row.</comment>
+  </data>
+  <data name="adv_reason" xml:space="preserve">
+    <value>原因</value>
+    <comment>Connection inspector: label of the decision reason row.</comment>
+  </data>
+  <data name="adv_reason_block" xml:space="preserve">
+    <value>阻断覆盖</value>
+    <comment>Connection inspector: decision reason, a block override applied.</comment>
+  </data>
+  <data name="adv_reason_default" xml:space="preserve">
+    <value>默认策略</value>
+    <comment>Connection inspector: decision reason, the default policy applied.</comment>
+  </data>
+  <data name="adv_reason_override" xml:space="preserve">
+    <value>覆盖</value>
+    <comment>Connection inspector: decision reason, an override applied.</comment>
+  </data>
+  <data name="adv_reason_route" xml:space="preserve">
+    <value>路由覆盖</value>
+    <comment>Connection inspector: decision reason, a route override applied.</comment>
+  </data>
+  <data name="adv_select_a_row" xml:space="preserve">
+    <value>在“活动”中选择一行以检查</value>
+    <comment>Connection inspector: hint to select a row in the Activity list.</comment>
+  </data>
+  <data name="adv_selected" xml:space="preserve">
+    <value>已选择</value>
+    <comment>Connection inspector: suffix after the count of selected rows.</comment>
+  </data>
+  <data name="adv_selection_gone" xml:space="preserve">
+    <value>该连接已不在列表中</value>
+    <comment>Connection inspector: shown when the selected connection is no longer listed.</comment>
+  </data>
+  <data name="adv_session_exit_country" xml:space="preserve">
+    <value>会话出口国家</value>
+    <comment>Connection inspector: label of the session exit country row.</comment>
+  </data>
+  <data name="adv_unknown_exit" xml:space="preserve">
+    <value>不在路由表中</value>
+    <comment>Connection inspector: exit value when the destination is not in the routing table.</comment>
+  </data>
+  <data name="adv_verdict_blocked" xml:space="preserve">
+    <value>已阻断 — 未发送数据包</value>
+    <comment>Connection inspector: verdict, the connection was blocked and no packets were sent.</comment>
+  </data>
+  <data name="adv_verdict_local" xml:space="preserve">
+    <value>绕过了隧道 — 未受保护</value>
+    <comment>Connection inspector: verdict, the connection bypassed the tunnel and is not protected.</comment>
+  </data>
+  <data name="adv_verdict_tunnelled" xml:space="preserve">
+    <value>通过 URnetwork 隧道传输</value>
+    <comment>Connection inspector: verdict, the connection went through the URnetwork tunnel.</comment>
+  </data>
+  <data name="adv_via_exit" xml:space="preserve">
+    <value>经由出口</value>
+    <comment>Connection inspector: label of the via-exit row.</comment>
+  </data>
+  <data name="advanced" xml:space="preserve">
+    <value>高级</value>
+    <comment>Settings: heading of the advanced section.</comment>
   </data>
   <data name="all_the_content_in_the_world_from_urnetwork" xml:space="preserve">
     <value>来自 URnetwork 的全球内容</value>
@@ -196,6 +436,10 @@
   <data name="app_too_old_for_daemon" xml:space="preserve">
     <value>此应用比已安装的 URnetwork 系统服务旧。请更新应用以进行连接。</value>
     <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="app_version" xml:space="preserve">
+    <value>应用版本</value>
+    <comment>Settings, about: label of the app version row.</comment>
   </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>已添加 Apple 登录方式</value>
@@ -544,6 +788,18 @@
     <value>对端</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
+  <data name="conn_connect_on_launch" xml:space="preserve">
+    <value>应用启动时自动连接</value>
+    <comment>Settings: switch that connects automatically when the app starts.</comment>
+  </data>
+  <data name="conn_connect_on_launch_note" xml:space="preserve">
+    <value>默认关闭。开启后，URnetwork 会在你打开应用时立即连接到所选提供者。这会影响下次启动 - 现在不会连接。</value>
+    <comment>Settings: explanation under the connect-on-launch switch.</comment>
+  </data>
+  <data name="conn_not_protected" xml:space="preserve">
+    <value>你的互联网流量未受保护。</value>
+    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+  </data>
   <data name="connect" xml:space="preserve">
     <value>连接</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -732,6 +988,30 @@
     <value>自定义 DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
   </data>
+  <data name="daemon_auth_check_failed" xml:space="preserve">
+    <value>URnetwork 系统服务无法检查此账户是否允许连接，因此未连接。请重试。</value>
+    <comment>Connect error: the system service could not check whether the account may connect.</comment>
+  </data>
+  <data name="daemon_auth_denied" xml:space="preserve">
+    <value>此设备的策略不允许此账户通过 URnetwork 连接。管理员可以更改。</value>
+    <comment>Connect error: the device policy does not allow this account to connect.</comment>
+  </data>
+  <data name="daemon_auth_required" xml:space="preserve">
+    <value>从此会话连接需要管理员权限。再次按下连接以获取提示，或使用此设备屏幕上的会话。</value>
+    <comment>Connect error: administrator permission is needed from this session.</comment>
+  </data>
+  <data name="daemon_auth_timeout" xml:space="preserve">
+    <value>权限请求未得到响应，因此未连接。按下连接重试。</value>
+    <comment>Connect error: the permission request was not answered.</comment>
+  </data>
+  <data name="daemon_auth_unavailable" xml:space="preserve">
+    <value>此设备没有 polkit 授权服务，因此 URnetwork 系统服务改用 'urnetwork' 用户组。将你的用户加入该组，然后注销并重新登录。</value>
+    <comment>Connect error: no polkit service, the daemon falls back to the urnetwork group.</comment>
+  </data>
+  <data name="daemon_no_answer" xml:space="preserve">
+    <value>URnetwork 系统服务没有响应。</value>
+    <comment>Error: the system service did not answer.</comment>
+  </data>
   <data name="daemon_sdk_mismatch" xml:space="preserve">
     <value>应用与 URnetwork 系统服务的构建版本不同。请将两者更新到同一版本。</value>
     <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
@@ -739,6 +1019,10 @@
   <data name="daemon_too_old" xml:space="preserve">
     <value>URnetwork 系统服务版本过旧。请更新后再连接。</value>
     <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_tunnel_owned_by_other_user" xml:space="preserve">
+    <value>此设备上的另一位用户正通过 URnetwork 连接。请从其会话中断开连接，或使用管理员权限接管。</value>
+    <comment>Connect error: another user on the device holds the tunnel.</comment>
   </data>
   <data name="daemon_unreachable" xml:space="preserve">
     <value>URnetwork 系统服务未运行。请安装或启动该服务，然后重试。</value>
@@ -847,6 +1131,14 @@
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>默认安全设置未应用</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="dns_not_on_tunnel" xml:space="preserve">
+    <value>DNS 未经过隧道 — 你查询的域名正在隧道外解析。</value>
+    <comment>Connect drawer: warning that DNS is resolving outside the tunnel.</comment>
+  </data>
+  <data name="dns_on_tunnel" xml:space="preserve">
+    <value>DNS 正经过隧道</value>
+    <comment>Connect drawer: status that DNS goes through the tunnel.</comment>
   </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS over HTTPS</value>
@@ -1261,6 +1553,14 @@
     <value>已包含</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="instant_account_explainer" xml:space="preserve">
+    <value>无需电子邮件、电话或密码。你的账户由助记词保护。</value>
+    <comment>Instant account: explains that no email, phone or password is needed.</comment>
+  </data>
+  <data name="instant_account_failed" xml:space="preserve">
+    <value>无法创建账户。请重试。</value>
+    <comment>Instant account: error when the account could not be created.</comment>
+  </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>余额不足</value>
     <comment>Call to action</comment>
@@ -1585,6 +1885,10 @@
   <data name="monthly" xml:space="preserve">
     <value>按月</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
+  </data>
+  <data name="more_options" xml:space="preserve">
+    <value>更多选项</value>
+    <comment>Connect page: button that reveals more options.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>多个 IP</value>
@@ -2446,6 +2750,14 @@
     <value>助记词必须是 12 或 24 个单词</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
   </data>
+  <data name="seedphrase_login_failed" xml:space="preserve">
+    <value>助记词登录失败</value>
+    <comment>Login: error title when signing in with a seedphrase failed.</comment>
+  </data>
+  <data name="seedphrase_only_time" xml:space="preserve">
+    <value>⚠️ 这是你唯一一次看到它。</value>
+    <comment>Seedphrase sheet: warning that this is the only time the seedphrase is shown.</comment>
+  </data>
   <data name="seedphrase_paste_hint" xml:space="preserve">
     <value>在此粘贴你的 12 或 24 个单词的助记词</value>
     <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
@@ -2453,6 +2765,14 @@
   <data name="seedphrase_required" xml:space="preserve">
     <value>请输入助记词</value>
     <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
+  <data name="seedphrase_store_safely" xml:space="preserve">
+    <value>请写下来并妥善保管。如果丢失，你将无法访问你的账户。</value>
+    <comment>Seedphrase sheet: advice to write the seedphrase down and store it safely.</comment>
+  </data>
+  <data name="seedphrase_word_count_warning" xml:space="preserve">
+    <value>这是 {} 个词 — 助记词应为 12 或 24 个词</value>
+    <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker 令牌已验证</value>
@@ -3548,6 +3868,22 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="svc_service_label" xml:space="preserve">
+    <value>VPN 服务</value>
+    <comment>Settings: label of the VPN service row.</comment>
+  </data>
+  <data name="svc_uninstall_action" xml:space="preserve">
+    <value>卸载</value>
+    <comment>Settings: button that uninstalls the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_confirm" xml:space="preserve">
+    <value>这会停止 URnetwork 服务并移除其 systemd 单元。在重新设置之前应用无法连接。系统将请求管理员权限。</value>
+    <comment>Settings: confirmation text before uninstalling the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_note" xml:space="preserve">
+    <value>移除 URnetwork 用于传输流量的 systemd 服务。</value>
+    <comment>Settings: explanation under the uninstall service button.</comment>
+  </data>
   <data name="switch_account" xml:space="preserve">
     <value>切换帐户</value>
     <comment>Call to action</comment>
@@ -3683,6 +4019,10 @@
     <value>无法启动连接</value>
     <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
+  <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
+    <value>连接已停止。</value>
+    <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>未加密 DNS</value>
     <comment>A label displayed in the custom dns settings section.</comment>
@@ -3714,6 +4054,14 @@
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>*（可能不稳定）</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="upd_auto_check" xml:space="preserve">
+    <value>自动检查更新</value>
+    <comment>Settings: switch that checks for updates automatically.</comment>
+  </data>
+  <data name="upd_auto_check_note" xml:space="preserve">
+    <value>启动后不久及每六小时查找新版本。未经点击绝不会安装任何内容。</value>
+    <comment>Settings: explanation under the automatic update check switch.</comment>
   </data>
   <data name="update" xml:space="preserve">
     <value>更新</value>

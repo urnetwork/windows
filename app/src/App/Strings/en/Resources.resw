@@ -52,6 +52,10 @@
   <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
     <value>A seedphrase lets you recover your account if you lose access. Store it safely.</value>
   </data>
+  <data name="about" xml:space="preserve">
+    <value>About</value>
+    <comment>Settings: heading of the about section.</comment>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>To Access your Auth Code, create an account and sign in to {link}ur.io{/link}. Head over to Account -&gt; Settings -&gt; Create/Copy Auth code -&gt; Paste -&gt; UR In!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -118,6 +122,242 @@
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Providing is off by default. Choose when your device provides below.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
+  </data>
+  <data name="adv_action_id" xml:space="preserve">
+    <value>Action id</value>
+    <comment>Connection inspector: label of the action id row.</comment>
+  </data>
+  <data name="adv_addresses" xml:space="preserve">
+    <value>Addresses</value>
+    <comment>Connection inspector: label of the addresses row.</comment>
+  </data>
+  <data name="adv_advanced_mode" xml:space="preserve">
+    <value>Advanced mode</value>
+    <comment>Settings: switch that turns advanced mode on.</comment>
+  </data>
+  <data name="adv_advanced_mode_note" xml:space="preserve">
+    <value>Show raw values, identifiers, the connection inspector and the reliability tuning surface across the app.</value>
+    <comment>Settings: explanation under the advanced mode switch.</comment>
+  </data>
+  <data name="adv_bytes_total" xml:space="preserve">
+    <value>Bytes (total)</value>
+    <comment>Connection inspector: label of the total bytes row.</comment>
+  </data>
+  <data name="adv_clear_selection" xml:space="preserve">
+    <value>Clear selection</value>
+    <comment>Connection inspector: button that clears the selected connection.</comment>
+  </data>
+  <data name="adv_exit_dial_failures" xml:space="preserve">
+    <value>Dial failures</value>
+    <comment>Connection inspector: label of the exit dial failures row.</comment>
+  </data>
+  <data name="adv_exit_flows" xml:space="preserve">
+    <value>Flows to this destination</value>
+    <comment>Connection inspector: label of the flows to the selected destination.</comment>
+  </data>
+  <data name="adv_exit_flows_total" xml:space="preserve">
+    <value>Exit flows</value>
+    <comment>Connection inspector: label of the exit flows row.</comment>
+  </data>
+  <data name="adv_exit_ok" xml:space="preserve">
+    <value>OK</value>
+    <comment>Connection inspector: exit state, OK.</comment>
+  </data>
+  <data name="adv_exit_proven" xml:space="preserve">
+    <value>Proven</value>
+    <comment>Connection inspector: exit state, proven.</comment>
+  </data>
+  <data name="adv_exit_quarantined" xml:space="preserve">
+    <value>Quarantined</value>
+    <comment>Connection inspector: exit state, quarantined.</comment>
+  </data>
+  <data name="adv_exit_state" xml:space="preserve">
+    <value>Exit state</value>
+    <comment>Connection inspector: label of the exit state row.</comment>
+  </data>
+  <data name="adv_exit_tier" xml:space="preserve">
+    <value>Exit tier</value>
+    <comment>Connection inspector: label of the exit tier row.</comment>
+  </data>
+  <data name="adv_exit_warning" xml:space="preserve">
+    <value>Warning</value>
+    <comment>Connection inspector: exit state, warning.</comment>
+  </data>
+  <data name="adv_exit_warning_cause" xml:space="preserve">
+    <value>Warning cause</value>
+    <comment>Connection inspector: label of the warning cause row.</comment>
+  </data>
+  <data name="adv_exits" xml:space="preserve">
+    <value>Exits</value>
+    <comment>Connection inspector: heading of the exits section.</comment>
+  </data>
+  <data name="adv_host" xml:space="preserve">
+    <value>Host</value>
+    <comment>Connection inspector: label of the host row.</comment>
+  </data>
+  <data name="adv_inspector" xml:space="preserve">
+    <value>Inspector</value>
+    <comment>Connection inspector: heading of the inspector pane.</comment>
+  </data>
+  <data name="adv_kill_switch_applying" xml:space="preserve">
+    <value>Applying…</value>
+    <comment>Kill switch: status while the change is being applied.</comment>
+  </data>
+  <data name="adv_kill_switch_armed_way_out" xml:space="preserve">
+    <value>Turn the kill switch off to restore normal access without connecting.</value>
+    <comment>Kill switch: how to restore normal access while the block is armed.</comment>
+  </data>
+  <data name="adv_kill_switch_deliberate" xml:space="preserve">
+    <value>Pressing Disconnect always restores your internet straight away. The kill switch only applies to drops you did not ask for - a tunnel that stops carrying traffic, a network change, or the URnetwork service stopping.</value>
+    <comment>Settings, kill switch: Disconnect always restores the internet; the switch only covers drops the user did not ask for.</comment>
+  </data>
+  <data name="adv_kill_switch_dns_window" xml:space="preserve">
+    <value>While it is on and nothing is connecting, nothing leaves this device - name lookups included. During a connection attempt, name lookups from any app on this device can leave in the clear so URnetwork can reach its servers; everything else stays blocked.</value>
+    <comment>Settings, kill switch: what may leave the device while the switch is on, and the name-lookup window during a connection attempt.</comment>
+  </data>
+  <data name="adv_kill_switch_note" xml:space="preserve">
+    <value>If the tunnel drops unexpectedly, block this device's traffic instead of letting it out unprotected.</value>
+    <comment>Settings: explanation under the kill switch switch.</comment>
+  </data>
+  <data name="adv_kill_switch_recovery" xml:space="preserve">
+    <value>If this device cannot reach the network, a block installed earlier may still be in place; remove it with: {}</value>
+    <comment>Kill switch: how to remove a block that is still in place when the device cannot reach the network; {command} is the shell command.</comment>
+  </data>
+  <data name="adv_kill_switch_state_armed" xml:space="preserve">
+    <value>In force: nothing but local network traffic leaves this device until you connect.</value>
+    <comment>Kill switch status: in force and armed, only local traffic leaves until connected.</comment>
+  </data>
+  <data name="adv_kill_switch_state_connected" xml:space="preserve">
+    <value>In force: if the tunnel drops, this device's traffic is blocked instead of going out unprotected.</value>
+    <comment>Kill switch status: in force while connected, traffic is blocked if the tunnel drops.</comment>
+  </data>
+  <data name="adv_kill_switch_state_failed" xml:space="preserve">
+    <value>The URnetwork system service could not install the kill switch, so your traffic is NOT being blocked.</value>
+    <comment>Kill switch status: the system service could not install the block.</comment>
+  </data>
+  <data name="adv_kill_switch_state_not_in_force" xml:space="preserve">
+    <value>The kill switch is NOT in force: your traffic is not being blocked.</value>
+    <comment>Kill switch status: not in force, traffic is not blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_pending" xml:space="preserve">
+    <value>Nothing is blocked yet — this takes effect the moment you connect.</value>
+    <comment>Kill switch status: nothing is blocked yet, takes effect on connect.</comment>
+  </data>
+  <data name="adv_kill_switch_state_still_installed" xml:space="preserve">
+    <value>The kill switch is off, but the URnetwork system service still has a block installed, so this device's traffic is being blocked.</value>
+    <comment>Kill switch status: the switch is off but the service still has a block installed, so traffic is blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_unknown" xml:space="preserve">
+    <value>Whether the kill switch is in force cannot be checked right now.</value>
+    <comment>Kill switch status: cannot be checked right now.</comment>
+  </data>
+  <data name="adv_kill_switch_still_installed_fix" xml:space="preserve">
+    <value>Turning the kill switch on and then off again asks the service to clear it; if that does not work, remove it with: {}</value>
+    <comment>Kill switch: how to clear a block the service still has installed; {command} is the shell command to use if toggling does not work.</comment>
+  </data>
+  <data name="adv_last_decision" xml:space="preserve">
+    <value>Last decision</value>
+    <comment>Connection inspector: label of the last routing decision row.</comment>
+  </data>
+  <data name="adv_matched" xml:space="preserve">
+    <value>Matched</value>
+    <comment>Connection inspector: label of the matched rule row.</comment>
+  </data>
+  <data name="adv_na" xml:space="preserve">
+    <value>—</value>
+    <comment>Connection inspector: placeholder dash for a value that is not available.</comment>
+  </data>
+  <data name="adv_no_selection" xml:space="preserve">
+    <value>No connection selected</value>
+    <comment>Connection inspector: shown when no connection is selected.</comment>
+  </data>
+  <data name="adv_none" xml:space="preserve">
+    <value>none</value>
+    <comment>Connection inspector: value shown when a field has nothing.</comment>
+  </data>
+  <data name="adv_override_id" xml:space="preserve">
+    <value>Override</value>
+    <comment>Connection inspector: label of the override id row.</comment>
+  </data>
+  <data name="adv_packets_total" xml:space="preserve">
+    <value>Packets (total)</value>
+    <comment>Connection inspector: label of the total packets row.</comment>
+  </data>
+  <data name="adv_probe_age" xml:space="preserve">
+    <value>Probe age</value>
+    <comment>Connection inspector: label of the probe age row.</comment>
+  </data>
+  <data name="adv_protected" xml:space="preserve">
+    <value>Protected</value>
+    <comment>Connection inspector: label of the protected row.</comment>
+  </data>
+  <data name="adv_providers_load_failed" xml:space="preserve">
+    <value>Could not load the provider list.</value>
+    <comment>Network page: error when the provider list could not be loaded.</comment>
+  </data>
+  <data name="adv_raw_status" xml:space="preserve">
+    <value>Raw status</value>
+    <comment>Connection inspector: label of the raw status row.</comment>
+  </data>
+  <data name="adv_reason" xml:space="preserve">
+    <value>Reason</value>
+    <comment>Connection inspector: label of the decision reason row.</comment>
+  </data>
+  <data name="adv_reason_block" xml:space="preserve">
+    <value>Block override</value>
+    <comment>Connection inspector: decision reason, a block override applied.</comment>
+  </data>
+  <data name="adv_reason_default" xml:space="preserve">
+    <value>Default policy</value>
+    <comment>Connection inspector: decision reason, the default policy applied.</comment>
+  </data>
+  <data name="adv_reason_override" xml:space="preserve">
+    <value>Override</value>
+    <comment>Connection inspector: decision reason, an override applied.</comment>
+  </data>
+  <data name="adv_reason_route" xml:space="preserve">
+    <value>Route override</value>
+    <comment>Connection inspector: decision reason, a route override applied.</comment>
+  </data>
+  <data name="adv_select_a_row" xml:space="preserve">
+    <value>Select a row in Activity to inspect it</value>
+    <comment>Connection inspector: hint to select a row in the Activity list.</comment>
+  </data>
+  <data name="adv_selected" xml:space="preserve">
+    <value>selected</value>
+    <comment>Connection inspector: suffix after the count of selected rows.</comment>
+  </data>
+  <data name="adv_selection_gone" xml:space="preserve">
+    <value>That connection is no longer listed</value>
+    <comment>Connection inspector: shown when the selected connection is no longer listed.</comment>
+  </data>
+  <data name="adv_session_exit_country" xml:space="preserve">
+    <value>Session exit country</value>
+    <comment>Connection inspector: label of the session exit country row.</comment>
+  </data>
+  <data name="adv_unknown_exit" xml:space="preserve">
+    <value>Not in the routing table</value>
+    <comment>Connection inspector: exit value when the destination is not in the routing table.</comment>
+  </data>
+  <data name="adv_verdict_blocked" xml:space="preserve">
+    <value>Blocked — no packets sent</value>
+    <comment>Connection inspector: verdict, the connection was blocked and no packets were sent.</comment>
+  </data>
+  <data name="adv_verdict_local" xml:space="preserve">
+    <value>Bypassed the tunnel — not protected</value>
+    <comment>Connection inspector: verdict, the connection bypassed the tunnel and is not protected.</comment>
+  </data>
+  <data name="adv_verdict_tunnelled" xml:space="preserve">
+    <value>Tunnelled through URnetwork</value>
+    <comment>Connection inspector: verdict, the connection went through the URnetwork tunnel.</comment>
+  </data>
+  <data name="adv_via_exit" xml:space="preserve">
+    <value>Via exit</value>
+    <comment>Connection inspector: label of the via-exit row.</comment>
+  </data>
+  <data name="advanced" xml:space="preserve">
+    <value>Advanced</value>
+    <comment>Settings: heading of the advanced section.</comment>
   </data>
   <data name="all_the_content_in_the_world_from_urnetwork" xml:space="preserve">
     <value>All the content in the world from URnetwork</value>
@@ -207,6 +447,10 @@
   <data name="app_too_old_for_daemon" xml:space="preserve">
     <value>This app is older than the installed URnetwork system service. Update the app to connect.</value>
     <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="app_version" xml:space="preserve">
+    <value>App version</value>
+    <comment>Settings, about: label of the app version row.</comment>
   </data>
   <data name="apple" xml:space="preserve">
     <value>Apple</value>
@@ -703,6 +947,18 @@ right way</value>
     <value>Companion</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
+  <data name="conn_connect_on_launch" xml:space="preserve">
+    <value>Connect automatically when the app starts</value>
+    <comment>Settings: switch that connects automatically when the app starts.</comment>
+  </data>
+  <data name="conn_connect_on_launch_note" xml:space="preserve">
+    <value>Off by default. When on, URnetwork connects to your selected provider as soon as you open the app. This changes the next launch - it does not connect now.</value>
+    <comment>Settings: explanation under the connect-on-launch switch.</comment>
+  </data>
+  <data name="conn_not_protected" xml:space="preserve">
+    <value>Your internet traffic is not protected.</value>
+    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+  </data>
   <data name="connect" xml:space="preserve">
     <value>Connect</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -947,6 +1203,30 @@ right way</value>
     <value>Custom DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
   </data>
+  <data name="daemon_auth_check_failed" xml:space="preserve">
+    <value>The URnetwork system service could not check whether this account is allowed to connect, so it did not connect. Try again.</value>
+    <comment>Connect error: the system service could not check whether the account may connect.</comment>
+  </data>
+  <data name="daemon_auth_denied" xml:space="preserve">
+    <value>This device's policy does not allow this account to connect through URnetwork. An administrator can change that.</value>
+    <comment>Connect error: the device policy does not allow this account to connect.</comment>
+  </data>
+  <data name="daemon_auth_required" xml:space="preserve">
+    <value>Connecting from this session needs administrator permission. Press Connect again to be asked, or use the session at this device's screen.</value>
+    <comment>Connect error: administrator permission is needed from this session.</comment>
+  </data>
+  <data name="daemon_auth_timeout" xml:space="preserve">
+    <value>The permission request was not answered, so nothing was connected. Press Connect to try again.</value>
+    <comment>Connect error: the permission request was not answered.</comment>
+  </data>
+  <data name="daemon_auth_unavailable" xml:space="preserve">
+    <value>This device has no polkit authorization service, so the URnetwork system service falls back to the 'urnetwork' group. Add your user to it and sign out and back in.</value>
+    <comment>Connect error: no polkit service, the daemon falls back to the urnetwork group.</comment>
+  </data>
+  <data name="daemon_no_answer" xml:space="preserve">
+    <value>The URnetwork system service did not answer.</value>
+    <comment>Error: the system service did not answer.</comment>
+  </data>
   <data name="daemon_sdk_mismatch" xml:space="preserve">
     <value>The app and the URnetwork system service are different builds. Update both to the same version.</value>
     <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
@@ -954,6 +1234,10 @@ right way</value>
   <data name="daemon_too_old" xml:space="preserve">
     <value>The URnetwork system service is out of date. Update it to connect.</value>
     <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_tunnel_owned_by_other_user" xml:space="preserve">
+    <value>Another user on this device is connected through URnetwork. Disconnect it from their session, or take it over with administrator permission.</value>
+    <comment>Connect error: another user on the device holds the tunnel.</comment>
   </data>
   <data name="daemon_unreachable" xml:space="preserve">
     <value>The URnetwork system service is not running. Install or start it, then try again.</value>
@@ -1003,6 +1287,14 @@ right way</value>
     <value>Delete account</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
+  <data name="dev_action_declined" xml:space="preserve">
+    <value>No change: the SDK declined that action.</value>
+    <comment>Developer page: report line when the SDK refused a requested action.</comment>
+  </data>
+  <data name="dev_actions_are_requests" xml:space="preserve">
+    <value>Actions are requests: confirm them in the measurements and exit rows, which refresh underneath.</value>
+    <comment>Developer page: note that the action buttons only request changes.</comment>
+  </data>
   <data name="dev_affinity_performance" xml:space="preserve">
     <value>Performance-aware affinity</value>
     <comment>Developer tools screen (reliability surface): performance-aware affinity control label.</comment>
@@ -1018,6 +1310,10 @@ right way</value>
   <data name="dev_affinity_sticky_detail" xml:space="preserve">
     <value>A site's new connections stay on the exit its earlier ones already use, even past the flow cap, so a busy site keeps one egress IP. The cap still limits which exits collect new sites. Off restores the strict cap</value>
     <comment>Developer tools screen: explanatory subtext under the 'affinity sticky' control.</comment>
+  </data>
+  <data name="dev_app_version" xml:space="preserve">
+    <value>App version</value>
+    <comment>Developer page: label of the app version row.</comment>
   </data>
   <data name="dev_behaviour" xml:space="preserve">
     <value>Behaviour</value>
@@ -1071,6 +1367,10 @@ right way</value>
     <value>{0} sent / {1} acquitted</value>
     <comment>Developer tools screen: formatted value readout for 'busy probes'.</comment>
   </data>
+  <data name="dev_check_updates" xml:space="preserve">
+    <value>Check for updates</value>
+    <comment>Developer page: button that checks for a new release now.</comment>
+  </data>
   <data name="dev_choose_logs" xml:space="preserve">
     <value>Choose logs…</value>
     <comment>Developer tools screen: action for choosing individual log files to export.</comment>
@@ -1083,6 +1383,66 @@ right way</value>
     <value>Keeps a site on one exit when its hostname is not visible</value>
     <comment>Developer tools screen: explanatory subtext under the 'cluster affinity' control.</comment>
   </data>
+  <data name="dev_col_actions" xml:space="preserve">
+    <value>Actions</value>
+    <comment>Developer page: table column header for the per-row action buttons.</comment>
+  </data>
+  <data name="dev_col_connect" xml:space="preserve">
+    <value>Connect</value>
+    <comment>Developer page: table column header for the connect timing.</comment>
+  </data>
+  <data name="dev_col_destination" xml:space="preserve">
+    <value>Destination</value>
+    <comment>Developer page: table column header for a destination host.</comment>
+  </data>
+  <data name="dev_col_dns" xml:space="preserve">
+    <value>DNS</value>
+    <comment>Developer page: table column header for the DNS timing.</comment>
+  </data>
+  <data name="dev_col_exit" xml:space="preserve">
+    <value>Exit</value>
+    <comment>Developer page: table column header for the exit a flow uses.</comment>
+  </data>
+  <data name="dev_col_failed_dials" xml:space="preserve">
+    <value>Failed dials</value>
+    <comment>Developer page: table column header for the number of failed dials.</comment>
+  </data>
+  <data name="dev_col_flows" xml:space="preserve">
+    <value>Flows</value>
+    <comment>Developer page: table column header for the number of flows.</comment>
+  </data>
+  <data name="dev_col_kind" xml:space="preserve">
+    <value>Kind</value>
+    <comment>Developer page: table column header for the probe kind.</comment>
+  </data>
+  <data name="dev_col_outcome" xml:space="preserve">
+    <value>Outcome</value>
+    <comment>Developer page: table column header for a probe outcome.</comment>
+  </data>
+  <data name="dev_col_state" xml:space="preserve">
+    <value>State</value>
+    <comment>Developer page: table column header for an exit state.</comment>
+  </data>
+  <data name="dev_col_target" xml:space="preserve">
+    <value>Target</value>
+    <comment>Developer page: table column header for a probe target.</comment>
+  </data>
+  <data name="dev_col_tier" xml:space="preserve">
+    <value>Tier</value>
+    <comment>Developer page: table column header for an exit tier.</comment>
+  </data>
+  <data name="dev_col_total" xml:space="preserve">
+    <value>Total</value>
+    <comment>Developer page: table column header for the total timing.</comment>
+  </data>
+  <data name="dev_col_ttfb" xml:space="preserve">
+    <value>TTFB</value>
+    <comment>Developer page: table column header for time to first byte.</comment>
+  </data>
+  <data name="dev_col_window" xml:space="preserve">
+    <value>Window</value>
+    <comment>Developer page: table column header for the measurement window.</comment>
+  </data>
   <data name="dev_comparative_connect" xml:space="preserve">
     <value>Cut dead connects early</value>
     <comment>Developer tools screen (reliability surface): comparative connect control label.</comment>
@@ -1090,6 +1450,26 @@ right way</value>
   <data name="dev_comparative_connect_detail" xml:space="preserve">
     <value>Drop an exit that has established nothing sooner when two sibling exits are receiving. Off waits the full 30s connect bar</value>
     <comment>Developer tools screen: explanatory subtext under the 'comparative connect' control.</comment>
+  </data>
+  <data name="dev_count_affected" xml:space="preserve">
+    <value>affected</value>
+    <comment>Developer page: suffix after a count of affected flows.</comment>
+  </data>
+  <data name="dev_declined_exit" xml:space="preserve">
+    <value>No change: the SDK declined that exit</value>
+    <comment>Developer page: report line when the SDK refused an exit action.</comment>
+  </data>
+  <data name="dev_destinations" xml:space="preserve">
+    <value>Destinations</value>
+    <comment>Developer page: heading of the destinations table.</comment>
+  </data>
+  <data name="dev_destinations_detail" xml:space="preserve">
+    <value>Which exit each destination's flows are landing on. A site spread over several rows is a site that lost its single egress IP.</value>
+    <comment>Developer page: explanation under the destinations table.</comment>
+  </data>
+  <data name="dev_developer" xml:space="preserve">
+    <value>Developer</value>
+    <comment>Developer page: page title.</comment>
   </data>
   <data name="dev_dial_failure_rerace" xml:space="preserve">
     <value>Retry refused connects elsewhere</value>
@@ -1110,6 +1490,10 @@ right way</value>
   <data name="dev_drop_exit" xml:space="preserve">
     <value>Drop</value>
     <comment>Developer tools screen (reliability surface): drop exit control label.</comment>
+  </data>
+  <data name="dev_dropped_exit" xml:space="preserve">
+    <value>Dropped exit</value>
+    <comment>Developer page: report line after an exit was dropped.</comment>
   </data>
   <data name="dev_effective_tier" xml:space="preserve">
     <value>Live tier demotion</value>
@@ -1138,6 +1522,10 @@ right way</value>
   <data name="dev_exits" xml:space="preserve">
     <value>Exits</value>
     <comment>Developer tools screen (reliability surface): exits control label.</comment>
+  </data>
+  <data name="dev_exits_actions_detail" xml:space="preserve">
+    <value>Drop, Stall and Shuffle degrade the live connection on purpose, immediately. Nothing here is queued or retried — an action that misses is reported, not replayed.</value>
+    <comment>Developer page: explanation of the drop, stall and shuffle actions.</comment>
   </data>
   <data name="dev_export_all_logs" xml:space="preserve">
     <value>Export all logs (raw)</value>
@@ -1263,6 +1651,10 @@ right way</value>
     <value>How often one line summarizing live state is written to the log for later forensics. Off silences it; shorter spots a transition, longer keeps more buffer</value>
     <comment>Developer tools screen: explanatory subtext under the 'heartbeat' control.</comment>
   </data>
+  <data name="dev_intro" xml:space="preserve">
+    <value>Tools for diagnosing connection freezes. These act on the live connection.</value>
+    <comment>Developer page: intro line under the title.</comment>
+  </data>
   <data name="dev_ip_family" xml:space="preserve">
     <value>Control connections</value>
     <comment>Developer screen: title of the control-plane IP family setting.</comment>
@@ -1367,6 +1759,10 @@ right way</value>
     <value>What a provider failure costs. Reset, run a test, read back.</value>
     <comment>Developer tools screen: explanatory subtext under the 'measurements' control.</comment>
   </data>
+  <data name="dev_migrate" xml:space="preserve">
+    <value>Migrate</value>
+    <comment>Developer page: button that migrates the live connection.</comment>
+  </data>
   <data name="dev_migrate_exit" xml:space="preserve">
     <value>Migrate</value>
     <comment>Developer tools screen (reliability surface): migrate exit control label.</comment>
@@ -1379,9 +1775,41 @@ right way</value>
     <value>How many distinct destinations must be silent before an exit is convicted on no-receive, so one dead site cannot remove a working exit. Off lets a single destination convict</value>
     <comment>Developer tools screen: explanatory subtext under the 'min blackhole destinations' control.</comment>
   </data>
+  <data name="dev_never_came_back_value" xml:space="preserve">
+    <value>{0} of {1}</value>
+    <comment>Developer page: value of the flows that never came back, {done} of {total}.</comment>
+  </data>
+  <data name="dev_no_destinations" xml:space="preserve">
+    <value>No destinations yet.</value>
+    <comment>Developer page: empty state of the destinations table.</comment>
+  </data>
+  <data name="dev_no_device" xml:space="preserve">
+    <value>No session. Sign in and connect to use these tools.</value>
+    <comment>Developer page: shown when there is no session to act on.</comment>
+  </data>
   <data name="dev_no_exits" xml:space="preserve">
     <value>No exits. Connect first.</value>
     <comment>Developer tools screen (reliability surface): no exits control label.</comment>
+  </data>
+  <data name="dev_no_probe_results" xml:space="preserve">
+    <value>No probe results yet. Start the suite.</value>
+    <comment>Developer page: empty state of the probe results table.</comment>
+  </data>
+  <data name="dev_no_provider_failures" xml:space="preserve">
+    <value>No provider failures yet.</value>
+    <comment>Developer page: empty state of the provider failures table.</comment>
+  </data>
+  <data name="dev_not_applied" xml:space="preserve">
+    <value>Not applied: there is no reliability override in force to change.</value>
+    <comment>Developer page: report line when no reliability override is in force.</comment>
+  </data>
+  <data name="dev_not_issued" xml:space="preserve">
+    <value>Not issued: there is no live session to act on.</value>
+    <comment>Developer page: report line when there is no live session to act on.</comment>
+  </data>
+  <data name="dev_nothing_in_force" xml:space="preserve">
+    <value>No reliability override is in force, so the settings sections are hidden rather than shown at zero. The measurements and exit readout below are live.</value>
+    <comment>Developer page: note shown when no reliability override is in force.</comment>
   </data>
   <data name="dev_open_tools" xml:space="preserve">
     <value>Open developer tools</value>
@@ -1390,6 +1818,18 @@ right way</value>
   <data name="dev_probe_all" xml:space="preserve">
     <value>Probe all exits now</value>
     <comment>Developer tools screen (reliability surface): probe all control label.</comment>
+  </data>
+  <data name="dev_probe_all_exits_now" xml:space="preserve">
+    <value>Probe all exits now</value>
+    <comment>Developer page: button that probes every exit now.</comment>
+  </data>
+  <data name="dev_probe_failed" xml:space="preserve">
+    <value>failed</value>
+    <comment>Developer page: probe outcome, failed.</comment>
+  </data>
+  <data name="dev_probe_ok" xml:space="preserve">
+    <value>ok</value>
+    <comment>Developer page: probe outcome, ok.</comment>
   </data>
   <data name="dev_probe_providers" xml:space="preserve">
     <value>Probe providers</value>
@@ -1407,6 +1847,42 @@ right way</value>
     <value>How many health sites one qualification pass dials through an exit. 0 probes the entire embedded list; a smaller number rotates through it in blocks</value>
     <comment>Developer tools screen: explanatory subtext under the 'probe sample hosts' control.</comment>
   </data>
+  <data name="dev_probe_suite" xml:space="preserve">
+    <value>Probe suite</value>
+    <comment>Developer page: heading of the probe suite section.</comment>
+  </data>
+  <data name="dev_probe_suite_detail" xml:space="preserve">
+    <value>Dials real targets through the live connection and times each stage. Runs with the SDK's own default configuration.</value>
+    <comment>Developer page: explanation of the probe suite.</comment>
+  </data>
+  <data name="dev_probe_suite_idle" xml:space="preserve">
+    <value>Not running.</value>
+    <comment>Developer page: probe suite status when it is not running.</comment>
+  </data>
+  <data name="dev_probe_suite_not_started" xml:space="preserve">
+    <value>Probe suite did not start: no live session, or one is already running.</value>
+    <comment>Developer page: report line when the probe suite could not start.</comment>
+  </data>
+  <data name="dev_probe_suite_running" xml:space="preserve">
+    <value>Running.</value>
+    <comment>Developer page: probe suite status while it runs.</comment>
+  </data>
+  <data name="dev_probe_suite_start" xml:space="preserve">
+    <value>Start probe suite</value>
+    <comment>Developer page: button that starts the probe suite.</comment>
+  </data>
+  <data name="dev_probe_suite_started" xml:space="preserve">
+    <value>Probe suite started</value>
+    <comment>Developer page: report line after the probe suite started.</comment>
+  </data>
+  <data name="dev_probe_suite_stop" xml:space="preserve">
+    <value>Stop</value>
+    <comment>Developer page: button that stops the probe suite.</comment>
+  </data>
+  <data name="dev_probe_suite_stopped" xml:space="preserve">
+    <value>Probe suite stopped</value>
+    <comment>Developer page: report line after the probe suite stopped.</comment>
+  </data>
   <data name="dev_probe_timeout" xml:space="preserve">
     <value>Probe wait</value>
     <comment>Developer tools screen (reliability surface): probe timeout control label.</comment>
@@ -1414,6 +1890,10 @@ right way</value>
   <data name="dev_probe_timeout_detail" xml:space="preserve">
     <value>How long a qualification probe waits for an answer. Off uses the built-in 4s. It only bounds waiting for proof, it never convicts</value>
     <comment>Developer tools screen: explanatory subtext under the 'probe timeout' control.</comment>
+  </data>
+  <data name="dev_probed_exits" xml:space="preserve">
+    <value>Probed exits</value>
+    <comment>Developer page: heading of the probed exits table.</comment>
   </data>
   <data name="dev_probes" xml:space="preserve">
     <value>Probes</value>
@@ -1426,6 +1906,10 @@ right way</value>
   <data name="dev_probes_value" xml:space="preserve">
     <value>{0} sent / {1} answered</value>
     <comment>Developer tools screen: formatted value readout for 'probes'.</comment>
+  </data>
+  <data name="dev_quic_flows_rebound_value" xml:space="preserve">
+    <value>{0} ({1} accepted / {2} re-dialed)</value>
+    <comment>Developer page: value of the QUIC flows that rebound: {count} total, {accepted} accepted, {redialed} re-dialed.</comment>
   </data>
   <data name="dev_quic_rebind" xml:space="preserve">
     <value>Rebind QUIC on exit loss</value>
@@ -1454,6 +1938,10 @@ right way</value>
   <data name="dev_recovery_missed_value" xml:space="preserve">
     <value>{0} of {1}</value>
     <comment>Developer tools screen: formatted value readout for 'recovery missed'.</comment>
+  </data>
+  <data name="dev_recovery_time_value" xml:space="preserve">
+    <value>avg {0}, worst {1}</value>
+    <comment>Developer page: value of the recovery time, {average} and {worst} are durations.</comment>
   </data>
   <data name="dev_recovery_value" xml:space="preserve">
     <value>avg {0}, worst {1}</value>
@@ -1487,6 +1975,10 @@ right way</value>
     <value>Removals the storm breaker held back after a correlated burst</value>
     <comment>Developer tools screen: explanatory subtext under the 'removals deferred' control.</comment>
   </data>
+  <data name="dev_requested" xml:space="preserve">
+    <value>Requested:</value>
+    <comment>Developer page: label before the requested value of an override.</comment>
+  </data>
   <data name="dev_reset_defaults" xml:space="preserve">
     <value>Reset to shipped defaults</value>
     <comment>Developer tools screen (reliability surface): reset defaults control label.</comment>
@@ -1494,6 +1986,10 @@ right way</value>
   <data name="dev_reset_measurements" xml:space="preserve">
     <value>Reset measurements</value>
     <comment>Developer tools screen (reliability surface): reset measurements control label.</comment>
+  </data>
+  <data name="dev_reset_to_shipped_defaults" xml:space="preserve">
+    <value>Reset to shipped defaults</value>
+    <comment>Developer page: button that resets the reliability settings.</comment>
   </data>
   <data name="dev_scheduler_pause_recovery" xml:space="preserve">
     <value>Suspend recovery window</value>
@@ -1559,6 +2055,38 @@ right way</value>
     <value>Moves later connections onto the exit the first one already uses</value>
     <comment>Developer tools screen: explanatory subtext under the 'server name bridge' control.</comment>
   </data>
+  <data name="dev_service_detached" xml:space="preserve">
+    <value>The URnetwork service is not attached, so the live connection cannot be read.</value>
+    <comment>Developer page: shown when the system service is not attached.</comment>
+  </data>
+  <data name="dev_session_log" xml:space="preserve">
+    <value>Session log</value>
+    <comment>Developer page: heading of the daemon session log.</comment>
+  </data>
+  <data name="dev_session_log_denied" xml:space="preserve">
+    <value>This account may drive the daemon but may not read its log.</value>
+    <comment>Developer page: shown when this account may not read the daemon log.</comment>
+  </data>
+  <data name="dev_session_log_detail" xml:space="preserve">
+    <value>What the daemon has written since it started. The reliability lines ([rel] event=...) are how a knob below proves it changed something.</value>
+    <comment>Developer page: explanation of the session log.</comment>
+  </data>
+  <data name="dev_session_log_dropped" xml:space="preserve">
+    <value>{} lines were dropped before this point</value>
+    <comment>Developer page: line in the session log when {count} earlier lines were dropped.</comment>
+  </data>
+  <data name="dev_session_log_empty" xml:space="preserve">
+    <value>The daemon has not written anything yet.</value>
+    <comment>Developer page: empty state of the session log.</comment>
+  </data>
+  <data name="dev_session_log_follow" xml:space="preserve">
+    <value>Follow</value>
+    <comment>Developer page: toggle that follows the session log tail.</comment>
+  </data>
+  <data name="dev_session_log_restarted" xml:space="preserve">
+    <value>The daemon restarted. This is a new log; the previous run's lines are gone.</value>
+    <comment>Developer page: note when the daemon restarted and the log began again.</comment>
+  </data>
   <data name="dev_shuffle_exits" xml:space="preserve">
     <value>Shuffle all exits</value>
     <comment>Developer tools screen (reliability surface): shuffle exits control label.</comment>
@@ -1579,6 +2107,10 @@ right way</value>
     <value>Stall</value>
     <comment>Developer tools screen (reliability surface): stall exit control label.</comment>
   </data>
+  <data name="dev_stalled_exit" xml:space="preserve">
+    <value>Stalled exit</value>
+    <comment>Developer page: report line after an exit was stalled.</comment>
+  </data>
   <data name="dev_standing_reserve" xml:space="preserve">
     <value>Keep a spare exit warm</value>
     <comment>Developer tools screen (reliability surface): standing reserve control label.</comment>
@@ -1586,6 +2118,30 @@ right way</value>
   <data name="dev_standing_reserve_detail" xml:space="preserve">
     <value>Size each window one exit beyond its target so a replacement is already connected. Off waits until a loss to backfill</value>
     <comment>Developer tools screen: explanatory subtext under the 'standing reserve' control.</comment>
+  </data>
+  <data name="dev_state_benched" xml:space="preserve">
+    <value>benched</value>
+    <comment>Developer page: exit state, benched.</comment>
+  </data>
+  <data name="dev_state_done" xml:space="preserve">
+    <value>done</value>
+    <comment>Developer page: exit state, done.</comment>
+  </data>
+  <data name="dev_state_p2p" xml:space="preserve">
+    <value>p2p</value>
+    <comment>Developer page: exit state, p2p.</comment>
+  </data>
+  <data name="dev_state_proven" xml:space="preserve">
+    <value>proven</value>
+    <comment>Developer page: exit state, proven.</comment>
+  </data>
+  <data name="dev_state_warned" xml:space="preserve">
+    <value>warned</value>
+    <comment>Developer page: exit state, warned.</comment>
+  </data>
+  <data name="dev_sync" xml:space="preserve">
+    <value>Sync</value>
+    <comment>Developer page: button that syncs the reliability settings.</comment>
   </data>
   <data name="dev_tcp_collapse_hold" xml:space="preserve">
     <value>Release stuck retransmits</value>
@@ -1623,6 +2179,14 @@ right way</value>
     <value>Tells DNS and QUIC the path is gone instead of going silent</value>
     <comment>Developer tools screen: explanatory subtext under the 'udp teardown' control.</comment>
   </data>
+  <data name="dev_unstalled_exit" xml:space="preserve">
+    <value>Cleared stall on exit</value>
+    <comment>Developer page: report line after a stall was cleared on an exit.</comment>
+  </data>
+  <data name="dev_update_check_failed" xml:space="preserve">
+    <value>The update check failed — see the app log.</value>
+    <comment>Developer page: report line when the update check failed.</comment>
+  </data>
   <data name="dev_uplink_gate" xml:space="preserve">
     <value>Uplink silence gate</value>
     <comment>Developer tools screen (reliability surface): uplink gate control label.</comment>
@@ -1654,6 +2218,10 @@ right way</value>
   <data name="dev_worst_loss_value" xml:space="preserve">
     <value>{} connections</value>
     <comment>Developer tools screen: formatted value readout for 'worst loss'.</comment>
+  </data>
+  <data name="dev_worst_single_failure_value" xml:space="preserve">
+    <value>{} connections</value>
+    <comment>Developer page: value of the worst single failure, {count} connections.</comment>
   </data>
   <data name="developer" xml:space="preserve">
     <value>Developer</value>
@@ -1730,6 +2298,14 @@ right way</value>
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>The default safe settings are not applied</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="dns_not_on_tunnel" xml:space="preserve">
+    <value>DNS is NOT going through the tunnel — names you look up are resolving outside it.</value>
+    <comment>Connect drawer: warning that DNS is resolving outside the tunnel.</comment>
+  </data>
+  <data name="dns_on_tunnel" xml:space="preserve">
+    <value>DNS is going through the tunnel</value>
+    <comment>Connect drawer: status that DNS goes through the tunnel.</comment>
   </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS over HTTPS</value>
@@ -2286,6 +2862,14 @@ right way</value>
     <value>Includes {} day free trial</value>
     <comment>Line under the annual plan card. The number of days is the free trial length.</comment>
   </data>
+  <data name="instant_account_explainer" xml:space="preserve">
+    <value>No email, phone, or password needed. Your account is secured by a seedphrase.</value>
+    <comment>Instant account: explains that no email, phone or password is needed.</comment>
+  </data>
+  <data name="instant_account_failed" xml:space="preserve">
+    <value>Could not create the account. Please try again.</value>
+    <comment>Instant account: error when the account could not be created.</comment>
+  </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Insufficient balance</value>
     <comment>Call to action</comment>
@@ -2690,6 +3274,10 @@ sent you to verify your identity.</value>
   <data name="monthly" xml:space="preserve">
     <value>Monthly</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
+  </data>
+  <data name="more_options" xml:space="preserve">
+    <value>More options</value>
+    <comment>Connect page: button that reveals more options.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>Multiple IPs</value>
@@ -3842,6 +4430,14 @@ world's content</value>
     <value>Seedphrase must be 12 or 24 words</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
   </data>
+  <data name="seedphrase_login_failed" xml:space="preserve">
+    <value>Seedphrase sign-in failed</value>
+    <comment>Login: error title when signing in with a seedphrase failed.</comment>
+  </data>
+  <data name="seedphrase_only_time" xml:space="preserve">
+    <value>⚠️ This is the ONLY time you'll see this.</value>
+    <comment>Seedphrase sheet: warning that this is the only time the seedphrase is shown.</comment>
+  </data>
   <data name="seedphrase_paste_hint" xml:space="preserve">
     <value>Paste your 12 or 24-word seedphrase here</value>
     <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
@@ -3849,6 +4445,14 @@ world's content</value>
   <data name="seedphrase_required" xml:space="preserve">
     <value>Please enter a seedphrase</value>
     <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
+  <data name="seedphrase_store_safely" xml:space="preserve">
+    <value>Write it down and store it somewhere safe. If you lose it, you'll lose access to your account.</value>
+    <comment>Seedphrase sheet: advice to write the seedphrase down and store it safely.</comment>
+  </data>
+  <data name="seedphrase_word_count_warning" xml:space="preserve">
+    <value>That's {} words — a seedphrase is 12 or 24 words</value>
+    <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
   <data name="seeker_points_only" xml:space="preserve">
     <value>The Seeker multiplier applies to points only.</value>
@@ -5244,6 +5848,22 @@ as it should be.</value>
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="svc_service_label" xml:space="preserve">
+    <value>VPN service</value>
+    <comment>Settings: label of the VPN service row.</comment>
+  </data>
+  <data name="svc_uninstall_action" xml:space="preserve">
+    <value>Uninstall</value>
+    <comment>Settings: button that uninstalls the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_confirm" xml:space="preserve">
+    <value>This stops the URnetwork service and removes its systemd unit. The app can't connect until it is set up again. You will be asked for administrator permission.</value>
+    <comment>Settings: confirmation text before uninstalling the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_note" xml:space="preserve">
+    <value>Remove the systemd service URnetwork uses to carry traffic.</value>
+    <comment>Settings: explanation under the uninstall service button.</comment>
+  </data>
   <data name="switch_account" xml:space="preserve">
     <value>Switch Account</value>
     <comment>Call to action</comment>
@@ -5511,6 +6131,10 @@ as it should be.</value>
     <value>Could not start the connection</value>
     <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
+  <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
+    <value>The connection stopped.</value>
+    <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
   <data name="unclaimed" xml:space="preserve">
     <value>Unclaimed</value>
     <comment>Label of the unclaimed alpha tile.</comment>
@@ -5546,6 +6170,14 @@ as it should be.</value>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (may be unstable)</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="upd_auto_check" xml:space="preserve">
+    <value>Check for updates automatically</value>
+    <comment>Settings: switch that checks for updates automatically.</comment>
+  </data>
+  <data name="upd_auto_check_note" xml:space="preserve">
+    <value>Look for new releases shortly after launch and every six hours. Nothing is ever installed without a click.</value>
+    <comment>Settings: explanation under the automatic update check switch.</comment>
   </data>
   <data name="update" xml:space="preserve">
     <value>Update</value>

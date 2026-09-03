@@ -52,6 +52,10 @@
   <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
     <value>Fraza seed pozwala odzyskać konto, jeśli stracisz do niego dostęp. Przechowuj ją w bezpiecznym miejscu.</value>
   </data>
+  <data name="about" xml:space="preserve">
+    <value>Informacje</value>
+    <comment>Settings: heading of the about section.</comment>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>Aby uzyskać dostęp do swojego kodu uwierzytelniającego, utwórz konto i zaloguj się na {link}ur.io{/link}. Przejdź do Konto -&gt; Ustawienia -&gt; Utwórz/Skopiuj kod uwierzytelniający -&gt; Wklej -&gt; Gotowe!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -110,6 +114,242 @@
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Możesz ustawić opcję na „Zawsze”, aby szybciej zapełnić darmowe dane.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
+  </data>
+  <data name="adv_action_id" xml:space="preserve">
+    <value>ID akcji</value>
+    <comment>Connection inspector: label of the action id row.</comment>
+  </data>
+  <data name="adv_addresses" xml:space="preserve">
+    <value>Adresy</value>
+    <comment>Connection inspector: label of the addresses row.</comment>
+  </data>
+  <data name="adv_advanced_mode" xml:space="preserve">
+    <value>Tryb zaawansowany</value>
+    <comment>Settings: switch that turns advanced mode on.</comment>
+  </data>
+  <data name="adv_advanced_mode_note" xml:space="preserve">
+    <value>Pokazuje surowe wartości, identyfikatory, inspektor połączenia i ustawienia niezawodności w całej aplikacji.</value>
+    <comment>Settings: explanation under the advanced mode switch.</comment>
+  </data>
+  <data name="adv_bytes_total" xml:space="preserve">
+    <value>Bajty (łącznie)</value>
+    <comment>Connection inspector: label of the total bytes row.</comment>
+  </data>
+  <data name="adv_clear_selection" xml:space="preserve">
+    <value>Wyczyść zaznaczenie</value>
+    <comment>Connection inspector: button that clears the selected connection.</comment>
+  </data>
+  <data name="adv_exit_dial_failures" xml:space="preserve">
+    <value>Nieudane połączenia</value>
+    <comment>Connection inspector: label of the exit dial failures row.</comment>
+  </data>
+  <data name="adv_exit_flows" xml:space="preserve">
+    <value>Przepływy do tego celu</value>
+    <comment>Connection inspector: label of the flows to the selected destination.</comment>
+  </data>
+  <data name="adv_exit_flows_total" xml:space="preserve">
+    <value>Przepływy wyjściowe</value>
+    <comment>Connection inspector: label of the exit flows row.</comment>
+  </data>
+  <data name="adv_exit_ok" xml:space="preserve">
+    <value>OK</value>
+    <comment>Connection inspector: exit state, OK.</comment>
+  </data>
+  <data name="adv_exit_proven" xml:space="preserve">
+    <value>Sprawdzony</value>
+    <comment>Connection inspector: exit state, proven.</comment>
+  </data>
+  <data name="adv_exit_quarantined" xml:space="preserve">
+    <value>W kwarantannie</value>
+    <comment>Connection inspector: exit state, quarantined.</comment>
+  </data>
+  <data name="adv_exit_state" xml:space="preserve">
+    <value>Stan wyjścia</value>
+    <comment>Connection inspector: label of the exit state row.</comment>
+  </data>
+  <data name="adv_exit_tier" xml:space="preserve">
+    <value>Poziom wyjścia</value>
+    <comment>Connection inspector: label of the exit tier row.</comment>
+  </data>
+  <data name="adv_exit_warning" xml:space="preserve">
+    <value>Ostrzeżenie</value>
+    <comment>Connection inspector: exit state, warning.</comment>
+  </data>
+  <data name="adv_exit_warning_cause" xml:space="preserve">
+    <value>Przyczyna ostrzeżenia</value>
+    <comment>Connection inspector: label of the warning cause row.</comment>
+  </data>
+  <data name="adv_exits" xml:space="preserve">
+    <value>Wyjścia</value>
+    <comment>Connection inspector: heading of the exits section.</comment>
+  </data>
+  <data name="adv_host" xml:space="preserve">
+    <value>Host</value>
+    <comment>Connection inspector: label of the host row.</comment>
+  </data>
+  <data name="adv_inspector" xml:space="preserve">
+    <value>Inspektor</value>
+    <comment>Connection inspector: heading of the inspector pane.</comment>
+  </data>
+  <data name="adv_kill_switch_applying" xml:space="preserve">
+    <value>Stosowanie…</value>
+    <comment>Kill switch: status while the change is being applied.</comment>
+  </data>
+  <data name="adv_kill_switch_armed_way_out" xml:space="preserve">
+    <value>Wyłącz Kill switch, aby przywrócić normalny dostęp bez łączenia się.</value>
+    <comment>Kill switch: how to restore normal access while the block is armed.</comment>
+  </data>
+  <data name="adv_kill_switch_deliberate" xml:space="preserve">
+    <value>Naciśnięcie Rozłącz zawsze natychmiast przywraca internet. Kill switch dotyczy tylko zerwań, o które nie prosiłeś - tunelu, który przestał przenosić ruch, zmiany sieci lub zatrzymania usługi URnetwork.</value>
+    <comment>Settings, kill switch: Disconnect always restores the internet; the switch only covers drops the user did not ask for.</comment>
+  </data>
+  <data name="adv_kill_switch_dns_window" xml:space="preserve">
+    <value>Gdy jest włączony i nic się nie łączy, z tego urządzenia nie wychodzi nic - łącznie z zapytaniami o nazwy. Podczas próby połączenia zapytania o nazwy z dowolnej aplikacji na tym urządzeniu mogą wyjść niezaszyfrowane, aby URnetwork dotarł do swoich serwerów; cała reszta pozostaje zablokowana.</value>
+    <comment>Settings, kill switch: what may leave the device while the switch is on, and the name-lookup window during a connection attempt.</comment>
+  </data>
+  <data name="adv_kill_switch_note" xml:space="preserve">
+    <value>Jeśli tunel nieoczekiwanie się zerwie, zablokuj ruch tego urządzenia zamiast wypuszczać go bez ochrony.</value>
+    <comment>Settings: explanation under the kill switch switch.</comment>
+  </data>
+  <data name="adv_kill_switch_recovery" xml:space="preserve">
+    <value>Jeśli to urządzenie nie może połączyć się z siecią, wcześniej zainstalowana blokada może nadal obowiązywać; usuń ją poleceniem: {}</value>
+    <comment>Kill switch: how to remove a block that is still in place when the device cannot reach the network; {command} is the shell command.</comment>
+  </data>
+  <data name="adv_kill_switch_state_armed" xml:space="preserve">
+    <value>Obowiązuje: dopóki się nie połączysz, z tego urządzenia wychodzi tylko ruch w sieci lokalnej.</value>
+    <comment>Kill switch status: in force and armed, only local traffic leaves until connected.</comment>
+  </data>
+  <data name="adv_kill_switch_state_connected" xml:space="preserve">
+    <value>Obowiązuje: jeśli tunel się zerwie, ruch tego urządzenia zostanie zablokowany zamiast wyjść bez ochrony.</value>
+    <comment>Kill switch status: in force while connected, traffic is blocked if the tunnel drops.</comment>
+  </data>
+  <data name="adv_kill_switch_state_failed" xml:space="preserve">
+    <value>Usługa systemowa URnetwork nie mogła zainstalować Kill switch, więc ruch nie jest blokowany.</value>
+    <comment>Kill switch status: the system service could not install the block.</comment>
+  </data>
+  <data name="adv_kill_switch_state_not_in_force" xml:space="preserve">
+    <value>Kill switch NIE obowiązuje: twój ruch nie jest blokowany.</value>
+    <comment>Kill switch status: not in force, traffic is not blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_pending" xml:space="preserve">
+    <value>Nic nie jest jeszcze blokowane — zacznie obowiązywać w chwili połączenia.</value>
+    <comment>Kill switch status: nothing is blocked yet, takes effect on connect.</comment>
+  </data>
+  <data name="adv_kill_switch_state_still_installed" xml:space="preserve">
+    <value>Kill switch jest wyłączony, ale usługa systemowa URnetwork nadal ma zainstalowaną blokadę, więc ruch tego urządzenia jest blokowany.</value>
+    <comment>Kill switch status: the switch is off but the service still has a block installed, so traffic is blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_unknown" xml:space="preserve">
+    <value>Nie można teraz sprawdzić, czy Kill switch obowiązuje.</value>
+    <comment>Kill switch status: cannot be checked right now.</comment>
+  </data>
+  <data name="adv_kill_switch_still_installed_fix" xml:space="preserve">
+    <value>Włączenie i ponowne wyłączenie Kill switch prosi usługę o jej usunięcie; jeśli to nie zadziała, usuń ją poleceniem: {}</value>
+    <comment>Kill switch: how to clear a block the service still has installed; {command} is the shell command to use if toggling does not work.</comment>
+  </data>
+  <data name="adv_last_decision" xml:space="preserve">
+    <value>Ostatnia decyzja</value>
+    <comment>Connection inspector: label of the last routing decision row.</comment>
+  </data>
+  <data name="adv_matched" xml:space="preserve">
+    <value>Dopasowanie</value>
+    <comment>Connection inspector: label of the matched rule row.</comment>
+  </data>
+  <data name="adv_na" xml:space="preserve">
+    <value>—</value>
+    <comment>Connection inspector: placeholder dash for a value that is not available.</comment>
+  </data>
+  <data name="adv_no_selection" xml:space="preserve">
+    <value>Nie wybrano połączenia</value>
+    <comment>Connection inspector: shown when no connection is selected.</comment>
+  </data>
+  <data name="adv_none" xml:space="preserve">
+    <value>brak</value>
+    <comment>Connection inspector: value shown when a field has nothing.</comment>
+  </data>
+  <data name="adv_override_id" xml:space="preserve">
+    <value>Nadpisanie</value>
+    <comment>Connection inspector: label of the override id row.</comment>
+  </data>
+  <data name="adv_packets_total" xml:space="preserve">
+    <value>Pakiety (łącznie)</value>
+    <comment>Connection inspector: label of the total packets row.</comment>
+  </data>
+  <data name="adv_probe_age" xml:space="preserve">
+    <value>Wiek sondy</value>
+    <comment>Connection inspector: label of the probe age row.</comment>
+  </data>
+  <data name="adv_protected" xml:space="preserve">
+    <value>Chronione</value>
+    <comment>Connection inspector: label of the protected row.</comment>
+  </data>
+  <data name="adv_providers_load_failed" xml:space="preserve">
+    <value>Nie udało się wczytać listy dostawców.</value>
+    <comment>Network page: error when the provider list could not be loaded.</comment>
+  </data>
+  <data name="adv_raw_status" xml:space="preserve">
+    <value>Surowy stan</value>
+    <comment>Connection inspector: label of the raw status row.</comment>
+  </data>
+  <data name="adv_reason" xml:space="preserve">
+    <value>Powód</value>
+    <comment>Connection inspector: label of the decision reason row.</comment>
+  </data>
+  <data name="adv_reason_block" xml:space="preserve">
+    <value>Nadpisanie blokady</value>
+    <comment>Connection inspector: decision reason, a block override applied.</comment>
+  </data>
+  <data name="adv_reason_default" xml:space="preserve">
+    <value>Zasada domyślna</value>
+    <comment>Connection inspector: decision reason, the default policy applied.</comment>
+  </data>
+  <data name="adv_reason_override" xml:space="preserve">
+    <value>Nadpisanie</value>
+    <comment>Connection inspector: decision reason, an override applied.</comment>
+  </data>
+  <data name="adv_reason_route" xml:space="preserve">
+    <value>Nadpisanie trasy</value>
+    <comment>Connection inspector: decision reason, a route override applied.</comment>
+  </data>
+  <data name="adv_select_a_row" xml:space="preserve">
+    <value>Wybierz wiersz w Aktywności, aby go sprawdzić</value>
+    <comment>Connection inspector: hint to select a row in the Activity list.</comment>
+  </data>
+  <data name="adv_selected" xml:space="preserve">
+    <value>zaznaczono</value>
+    <comment>Connection inspector: suffix after the count of selected rows.</comment>
+  </data>
+  <data name="adv_selection_gone" xml:space="preserve">
+    <value>To połączenie nie jest już na liście</value>
+    <comment>Connection inspector: shown when the selected connection is no longer listed.</comment>
+  </data>
+  <data name="adv_session_exit_country" xml:space="preserve">
+    <value>Kraj wyjścia sesji</value>
+    <comment>Connection inspector: label of the session exit country row.</comment>
+  </data>
+  <data name="adv_unknown_exit" xml:space="preserve">
+    <value>Brak w tablicy routingu</value>
+    <comment>Connection inspector: exit value when the destination is not in the routing table.</comment>
+  </data>
+  <data name="adv_verdict_blocked" xml:space="preserve">
+    <value>Zablokowano — nie wysłano pakietów</value>
+    <comment>Connection inspector: verdict, the connection was blocked and no packets were sent.</comment>
+  </data>
+  <data name="adv_verdict_local" xml:space="preserve">
+    <value>Ominięto tunel — bez ochrony</value>
+    <comment>Connection inspector: verdict, the connection bypassed the tunnel and is not protected.</comment>
+  </data>
+  <data name="adv_verdict_tunnelled" xml:space="preserve">
+    <value>Przez tunel URnetwork</value>
+    <comment>Connection inspector: verdict, the connection went through the URnetwork tunnel.</comment>
+  </data>
+  <data name="adv_via_exit" xml:space="preserve">
+    <value>Przez wyjście</value>
+    <comment>Connection inspector: label of the via-exit row.</comment>
+  </data>
+  <data name="advanced" xml:space="preserve">
+    <value>Zaawansowane</value>
+    <comment>Settings: heading of the advanced section.</comment>
   </data>
   <data name="all_the_content_in_the_world_from_urnetwork" xml:space="preserve">
     <value>Cała światowa treść z URnetwork</value>
@@ -196,6 +436,10 @@
   <data name="app_too_old_for_daemon" xml:space="preserve">
     <value>Ta aplikacja jest starsza niż zainstalowana usługa systemowa URnetwork. Zaktualizuj aplikację, aby się połączyć.</value>
     <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="app_version" xml:space="preserve">
+    <value>Wersja aplikacji</value>
+    <comment>Settings, about: label of the app version row.</comment>
   </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>Dodano metodę logowania Apple</value>
@@ -568,6 +812,18 @@ właściwy sposób</value>
     <value>Partner</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
+  <data name="conn_connect_on_launch" xml:space="preserve">
+    <value>Łącz automatycznie przy uruchomieniu aplikacji</value>
+    <comment>Settings: switch that connects automatically when the app starts.</comment>
+  </data>
+  <data name="conn_connect_on_launch_note" xml:space="preserve">
+    <value>Domyślnie wyłączone. Gdy włączone, URnetwork łączy się z wybranym dostawcą zaraz po otwarciu aplikacji. Zmiana dotyczy następnego uruchomienia - teraz nie łączy.</value>
+    <comment>Settings: explanation under the connect-on-launch switch.</comment>
+  </data>
+  <data name="conn_not_protected" xml:space="preserve">
+    <value>Twój ruch internetowy nie jest chroniony.</value>
+    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+  </data>
   <data name="connect" xml:space="preserve">
     <value>Połącz</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -780,6 +1036,30 @@ właściwy sposób</value>
     <value>Własny DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
   </data>
+  <data name="daemon_auth_check_failed" xml:space="preserve">
+    <value>Usługa systemowa URnetwork nie mogła sprawdzić, czy to konto może się łączyć, więc nie połączyła. Spróbuj ponownie.</value>
+    <comment>Connect error: the system service could not check whether the account may connect.</comment>
+  </data>
+  <data name="daemon_auth_denied" xml:space="preserve">
+    <value>Zasady tego urządzenia nie pozwalają temu kontu łączyć się przez URnetwork. Administrator może to zmienić.</value>
+    <comment>Connect error: the device policy does not allow this account to connect.</comment>
+  </data>
+  <data name="daemon_auth_required" xml:space="preserve">
+    <value>Łączenie z tej sesji wymaga uprawnień administratora. Naciśnij Połącz ponownie, aby zostać zapytanym, lub użyj sesji na ekranie tego urządzenia.</value>
+    <comment>Connect error: administrator permission is needed from this session.</comment>
+  </data>
+  <data name="daemon_auth_timeout" xml:space="preserve">
+    <value>Prośba o uprawnienia pozostała bez odpowiedzi, więc nic się nie połączyło. Naciśnij Połącz, aby spróbować ponownie.</value>
+    <comment>Connect error: the permission request was not answered.</comment>
+  </data>
+  <data name="daemon_auth_unavailable" xml:space="preserve">
+    <value>To urządzenie nie ma usługi autoryzacji polkit, więc usługa systemowa URnetwork korzysta z grupy 'urnetwork'. Dodaj do niej swojego użytkownika, a potem wyloguj się i zaloguj ponownie.</value>
+    <comment>Connect error: no polkit service, the daemon falls back to the urnetwork group.</comment>
+  </data>
+  <data name="daemon_no_answer" xml:space="preserve">
+    <value>Usługa systemowa URnetwork nie odpowiedziała.</value>
+    <comment>Error: the system service did not answer.</comment>
+  </data>
   <data name="daemon_sdk_mismatch" xml:space="preserve">
     <value>Aplikacja i usługa systemowa URnetwork to różne kompilacje. Zaktualizuj obie do tej samej wersji.</value>
     <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
@@ -787,6 +1067,10 @@ właściwy sposób</value>
   <data name="daemon_too_old" xml:space="preserve">
     <value>Usługa systemowa URnetwork jest nieaktualna. Zaktualizuj ją, aby się połączyć.</value>
     <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_tunnel_owned_by_other_user" xml:space="preserve">
+    <value>Inny użytkownik tego urządzenia jest połączony przez URnetwork. Rozłącz go z jego sesji lub przejmij połączenie z uprawnieniami administratora.</value>
+    <comment>Connect error: another user on the device holds the tunnel.</comment>
   </data>
   <data name="daemon_unreachable" xml:space="preserve">
     <value>Usługa systemowa URnetwork nie jest uruchomiona. Zainstaluj ją lub uruchom, a następnie spróbuj ponownie.</value>
@@ -895,6 +1179,14 @@ właściwy sposób</value>
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>Domyślne bezpieczne ustawienia nie są zastosowane</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="dns_not_on_tunnel" xml:space="preserve">
+    <value>DNS NIE przechodzi przez tunel — wyszukiwane nazwy są rozwiązywane poza nim.</value>
+    <comment>Connect drawer: warning that DNS is resolving outside the tunnel.</comment>
+  </data>
+  <data name="dns_on_tunnel" xml:space="preserve">
+    <value>DNS przechodzi przez tunel</value>
+    <comment>Connect drawer: status that DNS goes through the tunnel.</comment>
   </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS przez HTTPS</value>
@@ -1321,6 +1613,14 @@ właściwy sposób</value>
     <value>Uwzględnione</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="instant_account_explainer" xml:space="preserve">
+    <value>Nie potrzeba e-maila, telefonu ani hasła. Twoje konto jest zabezpieczone frazą seed.</value>
+    <comment>Instant account: explains that no email, phone or password is needed.</comment>
+  </data>
+  <data name="instant_account_failed" xml:space="preserve">
+    <value>Nie udało się utworzyć konta. Spróbuj ponownie.</value>
+    <comment>Instant account: error when the account could not be created.</comment>
+  </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Niewystarczające saldo</value>
     <comment>Call to action</comment>
@@ -1657,6 +1957,10 @@ który wysłaliśmy, aby zweryfikować twoją tożsamość.</value>
   <data name="monthly" xml:space="preserve">
     <value>Miesięcznie</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
+  </data>
+  <data name="more_options" xml:space="preserve">
+    <value>Więcej opcji</value>
+    <comment>Connect page: button that reveals more options.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>Wiele adresów IP</value>
@@ -2601,6 +2905,14 @@ treść świata</value>
     <value>Fraza seed musi mieć 12 lub 24 słowa</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
   </data>
+  <data name="seedphrase_login_failed" xml:space="preserve">
+    <value>Logowanie frazą seed nie powiodło się</value>
+    <comment>Login: error title when signing in with a seedphrase failed.</comment>
+  </data>
+  <data name="seedphrase_only_time" xml:space="preserve">
+    <value>⚠️ To JEDYNY raz, kiedy to zobaczysz.</value>
+    <comment>Seedphrase sheet: warning that this is the only time the seedphrase is shown.</comment>
+  </data>
   <data name="seedphrase_paste_hint" xml:space="preserve">
     <value>Wklej tutaj swoją frazę seed składającą się z 12 lub 24 słów</value>
     <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
@@ -2608,6 +2920,14 @@ treść świata</value>
   <data name="seedphrase_required" xml:space="preserve">
     <value>Wpisz frazę seed</value>
     <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
+  <data name="seedphrase_store_safely" xml:space="preserve">
+    <value>Zapisz ją i przechowuj w bezpiecznym miejscu. Jeśli ją zgubisz, stracisz dostęp do konta.</value>
+    <comment>Seedphrase sheet: advice to write the seedphrase down and store it safely.</comment>
+  </data>
+  <data name="seedphrase_word_count_warning" xml:space="preserve">
+    <value>To {} słów — fraza seed ma 12 lub 24 słowa</value>
+    <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Token Seeker zweryfikowany!</value>
@@ -3135,6 +3455,22 @@ takiego, jakim powinien być.</value>
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="svc_service_label" xml:space="preserve">
+    <value>Usługa VPN</value>
+    <comment>Settings: label of the VPN service row.</comment>
+  </data>
+  <data name="svc_uninstall_action" xml:space="preserve">
+    <value>Odinstaluj</value>
+    <comment>Settings: button that uninstalls the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_confirm" xml:space="preserve">
+    <value>To zatrzymuje usługę URnetwork i usuwa jej jednostkę systemd. Aplikacja nie będzie mogła się łączyć, dopóki usługa nie zostanie ponownie skonfigurowana. Zostaniesz poproszony o uprawnienia administratora.</value>
+    <comment>Settings: confirmation text before uninstalling the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_note" xml:space="preserve">
+    <value>Usuń usługę systemd, której URnetwork używa do przenoszenia ruchu.</value>
+    <comment>Settings: explanation under the uninstall service button.</comment>
+  </data>
   <data name="switch_account" xml:space="preserve">
     <value>Przełącz konto</value>
     <comment>Call to action</comment>
@@ -3282,6 +3618,10 @@ takiego, jakim powinien być.</value>
     <value>Nie udało się nawiązać połączenia</value>
     <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
+  <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
+    <value>Połączenie zostało przerwane.</value>
+    <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>Niezaszyfrowany DNS</value>
     <comment>A label displayed in the custom dns settings section.</comment>
@@ -3313,6 +3653,14 @@ takiego, jakim powinien być.</value>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (może być niestabilny)</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="upd_auto_check" xml:space="preserve">
+    <value>Sprawdzaj aktualizacje automatycznie</value>
+    <comment>Settings: switch that checks for updates automatically.</comment>
+  </data>
+  <data name="upd_auto_check_note" xml:space="preserve">
+    <value>Szukaj nowych wydań krótko po uruchomieniu i co sześć godzin. Nic nigdy nie jest instalowane bez kliknięcia.</value>
+    <comment>Settings: explanation under the automatic update check switch.</comment>
   </data>
   <data name="update" xml:space="preserve">
     <value>Aktualizuj</value>

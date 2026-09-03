@@ -52,6 +52,10 @@
   <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
     <value>تتيح لك عبارة الاسترداد استعادة حسابك إذا فقدت إمكانية الوصول. احفظها في مكان آمن.</value>
   </data>
+  <data name="about" xml:space="preserve">
+    <value>حول</value>
+    <comment>Settings: heading of the about section.</comment>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>للوصول إلى رمز المصادقة الخاص بك، أنشئ حسابًا وسجّل الدخول إلى {link}ur.io{/link}. انتقل إلى الحساب -&gt; الإعدادات -&gt; إنشاء/نسخ رمز المصادقة -&gt; لصق -&gt; أنت جاهز!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -110,6 +114,242 @@
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>ضبط الإعداد على "دائمًا" لزيادة البيانات المجانية بشكل أسرع.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
+  </data>
+  <data name="adv_action_id" xml:space="preserve">
+    <value>معرّف الإجراء</value>
+    <comment>Connection inspector: label of the action id row.</comment>
+  </data>
+  <data name="adv_addresses" xml:space="preserve">
+    <value>العناوين</value>
+    <comment>Connection inspector: label of the addresses row.</comment>
+  </data>
+  <data name="adv_advanced_mode" xml:space="preserve">
+    <value>الوضع المتقدم</value>
+    <comment>Settings: switch that turns advanced mode on.</comment>
+  </data>
+  <data name="adv_advanced_mode_note" xml:space="preserve">
+    <value>يعرض القيم الخام والمعرّفات وفاحص الاتصال وأدوات ضبط الموثوقية في كل أنحاء التطبيق.</value>
+    <comment>Settings: explanation under the advanced mode switch.</comment>
+  </data>
+  <data name="adv_bytes_total" xml:space="preserve">
+    <value>البايتات (الإجمالي)</value>
+    <comment>Connection inspector: label of the total bytes row.</comment>
+  </data>
+  <data name="adv_clear_selection" xml:space="preserve">
+    <value>مسح التحديد</value>
+    <comment>Connection inspector: button that clears the selected connection.</comment>
+  </data>
+  <data name="adv_exit_dial_failures" xml:space="preserve">
+    <value>إخفاقات الاتصال</value>
+    <comment>Connection inspector: label of the exit dial failures row.</comment>
+  </data>
+  <data name="adv_exit_flows" xml:space="preserve">
+    <value>التدفقات إلى هذه الوجهة</value>
+    <comment>Connection inspector: label of the flows to the selected destination.</comment>
+  </data>
+  <data name="adv_exit_flows_total" xml:space="preserve">
+    <value>تدفقات المخرج</value>
+    <comment>Connection inspector: label of the exit flows row.</comment>
+  </data>
+  <data name="adv_exit_ok" xml:space="preserve">
+    <value>حسنًا</value>
+    <comment>Connection inspector: exit state, OK.</comment>
+  </data>
+  <data name="adv_exit_proven" xml:space="preserve">
+    <value>مُثبت</value>
+    <comment>Connection inspector: exit state, proven.</comment>
+  </data>
+  <data name="adv_exit_quarantined" xml:space="preserve">
+    <value>في الحجر</value>
+    <comment>Connection inspector: exit state, quarantined.</comment>
+  </data>
+  <data name="adv_exit_state" xml:space="preserve">
+    <value>حالة المخرج</value>
+    <comment>Connection inspector: label of the exit state row.</comment>
+  </data>
+  <data name="adv_exit_tier" xml:space="preserve">
+    <value>فئة المخرج</value>
+    <comment>Connection inspector: label of the exit tier row.</comment>
+  </data>
+  <data name="adv_exit_warning" xml:space="preserve">
+    <value>تحذير</value>
+    <comment>Connection inspector: exit state, warning.</comment>
+  </data>
+  <data name="adv_exit_warning_cause" xml:space="preserve">
+    <value>سبب التحذير</value>
+    <comment>Connection inspector: label of the warning cause row.</comment>
+  </data>
+  <data name="adv_exits" xml:space="preserve">
+    <value>المخارج</value>
+    <comment>Connection inspector: heading of the exits section.</comment>
+  </data>
+  <data name="adv_host" xml:space="preserve">
+    <value>المضيف</value>
+    <comment>Connection inspector: label of the host row.</comment>
+  </data>
+  <data name="adv_inspector" xml:space="preserve">
+    <value>الفاحص</value>
+    <comment>Connection inspector: heading of the inspector pane.</comment>
+  </data>
+  <data name="adv_kill_switch_applying" xml:space="preserve">
+    <value>جارٍ التطبيق…</value>
+    <comment>Kill switch: status while the change is being applied.</comment>
+  </data>
+  <data name="adv_kill_switch_armed_way_out" xml:space="preserve">
+    <value>أوقف مفتاح القتل لاستعادة الوصول الطبيعي دون الاتصال.</value>
+    <comment>Kill switch: how to restore normal access while the block is armed.</comment>
+  </data>
+  <data name="adv_kill_switch_deliberate" xml:space="preserve">
+    <value>الضغط على قطع الاتصال يعيد الإنترنت فورًا دائمًا. لا ينطبق مفتاح القتل إلا على الانقطاعات التي لم تطلبها - نفق توقف عن نقل البيانات، أو تغيّر في الشبكة، أو توقف خدمة URnetwork.</value>
+    <comment>Settings, kill switch: Disconnect always restores the internet; the switch only covers drops the user did not ask for.</comment>
+  </data>
+  <data name="adv_kill_switch_dns_window" xml:space="preserve">
+    <value>عندما يكون مفعّلًا ولا يوجد اتصال جارٍ، لا يغادر أي شيء هذا الجهاز - بما في ذلك استعلامات الأسماء. أثناء محاولة الاتصال، يمكن لاستعلامات الأسماء من أي تطبيق على هذا الجهاز الخروج دون تشفير ليتمكن URnetwork من الوصول إلى خوادمه؛ ويبقى كل شيء آخر محجوبًا.</value>
+    <comment>Settings, kill switch: what may leave the device while the switch is on, and the name-lookup window during a connection attempt.</comment>
+  </data>
+  <data name="adv_kill_switch_note" xml:space="preserve">
+    <value>إذا انقطع النفق فجأة، فاحجب حركة هذا الجهاز بدلًا من تركها تخرج دون حماية.</value>
+    <comment>Settings: explanation under the kill switch switch.</comment>
+  </data>
+  <data name="adv_kill_switch_recovery" xml:space="preserve">
+    <value>إذا تعذّر على هذا الجهاز الوصول إلى الشبكة، فقد يكون حجب مثبّت سابقًا لا يزال ساريًا؛ أزله باستخدام: {}</value>
+    <comment>Kill switch: how to remove a block that is still in place when the device cannot reach the network; {command} is the shell command.</comment>
+  </data>
+  <data name="adv_kill_switch_state_armed" xml:space="preserve">
+    <value>ساري المفعول: لا يغادر هذا الجهاز سوى حركة الشبكة المحلية حتى تتصل.</value>
+    <comment>Kill switch status: in force and armed, only local traffic leaves until connected.</comment>
+  </data>
+  <data name="adv_kill_switch_state_connected" xml:space="preserve">
+    <value>ساري المفعول: إذا انقطع النفق، تُحجب حركة هذا الجهاز بدلًا من الخروج دون حماية.</value>
+    <comment>Kill switch status: in force while connected, traffic is blocked if the tunnel drops.</comment>
+  </data>
+  <data name="adv_kill_switch_state_failed" xml:space="preserve">
+    <value>تعذّر على خدمة نظام URnetwork تثبيت مفتاح القتل، لذا لا تُحجب حركة البيانات.</value>
+    <comment>Kill switch status: the system service could not install the block.</comment>
+  </data>
+  <data name="adv_kill_switch_state_not_in_force" xml:space="preserve">
+    <value>مفتاح القتل غير ساري المفعول: حركة بياناتك لا تُحجب.</value>
+    <comment>Kill switch status: not in force, traffic is not blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_pending" xml:space="preserve">
+    <value>لم يُحجب شيء بعد — يسري هذا لحظة اتصالك.</value>
+    <comment>Kill switch status: nothing is blocked yet, takes effect on connect.</comment>
+  </data>
+  <data name="adv_kill_switch_state_still_installed" xml:space="preserve">
+    <value>مفتاح القتل متوقف، لكن خدمة نظام URnetwork لا يزال لديها حجب مثبّت، لذا تُحجب حركة هذا الجهاز.</value>
+    <comment>Kill switch status: the switch is off but the service still has a block installed, so traffic is blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_unknown" xml:space="preserve">
+    <value>يتعذّر التحقق الآن مما إذا كان مفتاح القتل ساري المفعول.</value>
+    <comment>Kill switch status: cannot be checked right now.</comment>
+  </data>
+  <data name="adv_kill_switch_still_installed_fix" xml:space="preserve">
+    <value>تشغيل مفتاح القتل ثم إيقافه مجددًا يطلب من الخدمة إزالته؛ إذا لم ينجح ذلك، أزله باستخدام: {}</value>
+    <comment>Kill switch: how to clear a block the service still has installed; {command} is the shell command to use if toggling does not work.</comment>
+  </data>
+  <data name="adv_last_decision" xml:space="preserve">
+    <value>آخر قرار</value>
+    <comment>Connection inspector: label of the last routing decision row.</comment>
+  </data>
+  <data name="adv_matched" xml:space="preserve">
+    <value>مطابق</value>
+    <comment>Connection inspector: label of the matched rule row.</comment>
+  </data>
+  <data name="adv_na" xml:space="preserve">
+    <value>—</value>
+    <comment>Connection inspector: placeholder dash for a value that is not available.</comment>
+  </data>
+  <data name="adv_no_selection" xml:space="preserve">
+    <value>لم يتم تحديد اتصال</value>
+    <comment>Connection inspector: shown when no connection is selected.</comment>
+  </data>
+  <data name="adv_none" xml:space="preserve">
+    <value>لا شيء</value>
+    <comment>Connection inspector: value shown when a field has nothing.</comment>
+  </data>
+  <data name="adv_override_id" xml:space="preserve">
+    <value>التجاوز</value>
+    <comment>Connection inspector: label of the override id row.</comment>
+  </data>
+  <data name="adv_packets_total" xml:space="preserve">
+    <value>الحزم (الإجمالي)</value>
+    <comment>Connection inspector: label of the total packets row.</comment>
+  </data>
+  <data name="adv_probe_age" xml:space="preserve">
+    <value>عمر الفحص</value>
+    <comment>Connection inspector: label of the probe age row.</comment>
+  </data>
+  <data name="adv_protected" xml:space="preserve">
+    <value>محمي</value>
+    <comment>Connection inspector: label of the protected row.</comment>
+  </data>
+  <data name="adv_providers_load_failed" xml:space="preserve">
+    <value>تعذّر تحميل قائمة المزوّدين.</value>
+    <comment>Network page: error when the provider list could not be loaded.</comment>
+  </data>
+  <data name="adv_raw_status" xml:space="preserve">
+    <value>الحالة الخام</value>
+    <comment>Connection inspector: label of the raw status row.</comment>
+  </data>
+  <data name="adv_reason" xml:space="preserve">
+    <value>السبب</value>
+    <comment>Connection inspector: label of the decision reason row.</comment>
+  </data>
+  <data name="adv_reason_block" xml:space="preserve">
+    <value>تجاوز حجب</value>
+    <comment>Connection inspector: decision reason, a block override applied.</comment>
+  </data>
+  <data name="adv_reason_default" xml:space="preserve">
+    <value>السياسة الافتراضية</value>
+    <comment>Connection inspector: decision reason, the default policy applied.</comment>
+  </data>
+  <data name="adv_reason_override" xml:space="preserve">
+    <value>تجاوز</value>
+    <comment>Connection inspector: decision reason, an override applied.</comment>
+  </data>
+  <data name="adv_reason_route" xml:space="preserve">
+    <value>تجاوز المسار</value>
+    <comment>Connection inspector: decision reason, a route override applied.</comment>
+  </data>
+  <data name="adv_select_a_row" xml:space="preserve">
+    <value>حدد صفًا في النشاط لفحصه</value>
+    <comment>Connection inspector: hint to select a row in the Activity list.</comment>
+  </data>
+  <data name="adv_selected" xml:space="preserve">
+    <value>محدد</value>
+    <comment>Connection inspector: suffix after the count of selected rows.</comment>
+  </data>
+  <data name="adv_selection_gone" xml:space="preserve">
+    <value>هذا الاتصال لم يعد مدرجًا</value>
+    <comment>Connection inspector: shown when the selected connection is no longer listed.</comment>
+  </data>
+  <data name="adv_session_exit_country" xml:space="preserve">
+    <value>بلد مخرج الجلسة</value>
+    <comment>Connection inspector: label of the session exit country row.</comment>
+  </data>
+  <data name="adv_unknown_exit" xml:space="preserve">
+    <value>غير موجود في جدول التوجيه</value>
+    <comment>Connection inspector: exit value when the destination is not in the routing table.</comment>
+  </data>
+  <data name="adv_verdict_blocked" xml:space="preserve">
+    <value>محجوب — لم تُرسل أي حزم</value>
+    <comment>Connection inspector: verdict, the connection was blocked and no packets were sent.</comment>
+  </data>
+  <data name="adv_verdict_local" xml:space="preserve">
+    <value>تجاوز النفق — غير محمي</value>
+    <comment>Connection inspector: verdict, the connection bypassed the tunnel and is not protected.</comment>
+  </data>
+  <data name="adv_verdict_tunnelled" xml:space="preserve">
+    <value>مُمرَّر عبر URnetwork</value>
+    <comment>Connection inspector: verdict, the connection went through the URnetwork tunnel.</comment>
+  </data>
+  <data name="adv_via_exit" xml:space="preserve">
+    <value>عبر المخرج</value>
+    <comment>Connection inspector: label of the via-exit row.</comment>
+  </data>
+  <data name="advanced" xml:space="preserve">
+    <value>متقدم</value>
+    <comment>Settings: heading of the advanced section.</comment>
   </data>
   <data name="all_the_content_in_the_world_from_urnetwork" xml:space="preserve">
     <value>كل المحتوى في العالم من URnetwork</value>
@@ -196,6 +436,10 @@
   <data name="app_too_old_for_daemon" xml:space="preserve">
     <value>هذا التطبيق أقدم من خدمة نظام URnetwork المثبّتة. حدّث التطبيق للاتصال.</value>
     <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="app_version" xml:space="preserve">
+    <value>إصدار التطبيق</value>
+    <comment>Settings, about: label of the app version row.</comment>
   </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>تمت إضافة طريقة تسجيل الدخول عبر Apple</value>
@@ -584,6 +828,18 @@
     <value>الطرف المقابل</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
+  <data name="conn_connect_on_launch" xml:space="preserve">
+    <value>الاتصال تلقائيًا عند بدء التطبيق</value>
+    <comment>Settings: switch that connects automatically when the app starts.</comment>
+  </data>
+  <data name="conn_connect_on_launch_note" xml:space="preserve">
+    <value>متوقف افتراضيًا. عند التفعيل، يتصل URnetwork بالمزوّد الذي اخترته بمجرد فتح التطبيق. هذا يغيّر التشغيل التالي - ولا يتصل الآن.</value>
+    <comment>Settings: explanation under the connect-on-launch switch.</comment>
+  </data>
+  <data name="conn_not_protected" xml:space="preserve">
+    <value>حركة الإنترنت لديك غير محمية.</value>
+    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+  </data>
   <data name="connect" xml:space="preserve">
     <value>اربط</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -812,6 +1068,30 @@
     <value>DNS مخصص</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
   </data>
+  <data name="daemon_auth_check_failed" xml:space="preserve">
+    <value>تعذّر على خدمة نظام URnetwork التحقق مما إذا كان هذا الحساب مسموحًا له بالاتصال، لذا لم تتصل. حاول مجددًا.</value>
+    <comment>Connect error: the system service could not check whether the account may connect.</comment>
+  </data>
+  <data name="daemon_auth_denied" xml:space="preserve">
+    <value>سياسة هذا الجهاز لا تسمح لهذا الحساب بالاتصال عبر URnetwork. يمكن للمسؤول تغيير ذلك.</value>
+    <comment>Connect error: the device policy does not allow this account to connect.</comment>
+  </data>
+  <data name="daemon_auth_required" xml:space="preserve">
+    <value>الاتصال من هذه الجلسة يتطلب إذن المسؤول. اضغط اتصال مجددًا ليُطلب منك، أو استخدم الجلسة على شاشة هذا الجهاز.</value>
+    <comment>Connect error: administrator permission is needed from this session.</comment>
+  </data>
+  <data name="daemon_auth_timeout" xml:space="preserve">
+    <value>لم تتم الإجابة على طلب الإذن، لذا لم يتصل شيء. اضغط اتصال للمحاولة مجددًا.</value>
+    <comment>Connect error: the permission request was not answered.</comment>
+  </data>
+  <data name="daemon_auth_unavailable" xml:space="preserve">
+    <value>لا توجد خدمة تفويض polkit على هذا الجهاز، لذا تعود خدمة نظام URnetwork إلى مجموعة 'urnetwork'. أضف مستخدمك إليها ثم سجّل الخروج وعُد للدخول.</value>
+    <comment>Connect error: no polkit service, the daemon falls back to the urnetwork group.</comment>
+  </data>
+  <data name="daemon_no_answer" xml:space="preserve">
+    <value>خدمة نظام URnetwork لم تستجب.</value>
+    <comment>Error: the system service did not answer.</comment>
+  </data>
   <data name="daemon_sdk_mismatch" xml:space="preserve">
     <value>التطبيق وخدمة نظام URnetwork من إصدارَي بناء مختلفين. حدّث كليهما إلى الإصدار نفسه.</value>
     <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
@@ -819,6 +1099,10 @@
   <data name="daemon_too_old" xml:space="preserve">
     <value>خدمة نظام URnetwork قديمة. حدّثها للاتصال.</value>
     <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_tunnel_owned_by_other_user" xml:space="preserve">
+    <value>مستخدم آخر على هذا الجهاز متصل عبر URnetwork. اقطع الاتصال من جلسته، أو استولِ عليه بإذن المسؤول.</value>
+    <comment>Connect error: another user on the device holds the tunnel.</comment>
   </data>
   <data name="daemon_unreachable" xml:space="preserve">
     <value>خدمة نظام URnetwork غير قيد التشغيل. ثبّتها أو شغّلها، ثم أعد المحاولة.</value>
@@ -927,6 +1211,14 @@
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>الإعدادات الآمنة الافتراضية غير مطبقة</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="dns_not_on_tunnel" xml:space="preserve">
+    <value>DNS لا يمر عبر النفق — الأسماء التي تبحث عنها تُحلّ خارجه.</value>
+    <comment>Connect drawer: warning that DNS is resolving outside the tunnel.</comment>
+  </data>
+  <data name="dns_on_tunnel" xml:space="preserve">
+    <value>DNS يمر عبر النفق</value>
+    <comment>Connect drawer: status that DNS goes through the tunnel.</comment>
   </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS عبر HTTPS</value>
@@ -1361,6 +1653,14 @@
     <value>مشمول</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="instant_account_explainer" xml:space="preserve">
+    <value>لا حاجة إلى بريد إلكتروني أو هاتف أو كلمة مرور. حسابك محمي بعبارة الاسترداد.</value>
+    <comment>Instant account: explains that no email, phone or password is needed.</comment>
+  </data>
+  <data name="instant_account_failed" xml:space="preserve">
+    <value>تعذّر إنشاء الحساب. يرجى المحاولة مجددًا.</value>
+    <comment>Instant account: error when the account could not be created.</comment>
+  </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>رصيد غير كافٍ</value>
     <comment>Call to action</comment>
@@ -1704,6 +2004,10 @@
   <data name="monthly" xml:space="preserve">
     <value>شهري</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
+  </data>
+  <data name="more_options" xml:space="preserve">
+    <value>خيارات إضافية</value>
+    <comment>Connect page: button that reveals more options.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>عناوين IP متعددة</value>
@@ -2725,6 +3029,14 @@
     <value>يجب أن تتكون عبارة الاسترداد من 12 أو 24 كلمة</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
   </data>
+  <data name="seedphrase_login_failed" xml:space="preserve">
+    <value>فشل تسجيل الدخول بعبارة الاسترداد</value>
+    <comment>Login: error title when signing in with a seedphrase failed.</comment>
+  </data>
+  <data name="seedphrase_only_time" xml:space="preserve">
+    <value>⚠️ هذه هي المرة الوحيدة التي سترى فيها هذا.</value>
+    <comment>Seedphrase sheet: warning that this is the only time the seedphrase is shown.</comment>
+  </data>
   <data name="seedphrase_paste_hint" xml:space="preserve">
     <value>الصق عبارة الاسترداد المكونة من 12 أو 24 كلمة هنا</value>
     <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
@@ -2732,6 +3044,14 @@
   <data name="seedphrase_required" xml:space="preserve">
     <value>يرجى إدخال عبارة الاسترداد</value>
     <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
+  <data name="seedphrase_store_safely" xml:space="preserve">
+    <value>اكتبها واحفظها في مكان آمن. إذا فقدتها، ستفقد الوصول إلى حسابك.</value>
+    <comment>Seedphrase sheet: advice to write the seedphrase down and store it safely.</comment>
+  </data>
+  <data name="seedphrase_word_count_warning" xml:space="preserve">
+    <value>هذه {} كلمة — عبارة الاسترداد تتكون من 12 أو 24 كلمة</value>
+    <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>تم التحقق من رمز Seeker!</value>
@@ -3847,6 +4167,22 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="svc_service_label" xml:space="preserve">
+    <value>خدمة VPN</value>
+    <comment>Settings: label of the VPN service row.</comment>
+  </data>
+  <data name="svc_uninstall_action" xml:space="preserve">
+    <value>إلغاء التثبيت</value>
+    <comment>Settings: button that uninstalls the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_confirm" xml:space="preserve">
+    <value>هذا يوقف خدمة URnetwork ويزيل وحدة systemd الخاصة بها. لن يتمكن التطبيق من الاتصال حتى تُعدّ الخدمة مجددًا. سيُطلب منك إذن المسؤول.</value>
+    <comment>Settings: confirmation text before uninstalling the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_note" xml:space="preserve">
+    <value>إزالة خدمة systemd التي يستخدمها URnetwork لنقل حركة البيانات.</value>
+    <comment>Settings: explanation under the uninstall service button.</comment>
+  </data>
   <data name="switch_account" xml:space="preserve">
     <value>تبديل الحساب</value>
     <comment>Call to action</comment>
@@ -4002,6 +4338,10 @@
     <value>تعذّر بدء الاتصال</value>
     <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
+  <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
+    <value>توقف الاتصال.</value>
+    <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>DNS غير مشفر</value>
     <comment>A label displayed in the custom dns settings section.</comment>
@@ -4033,6 +4373,14 @@
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (قد يكون غير مستقر)</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="upd_auto_check" xml:space="preserve">
+    <value>التحقق من التحديثات تلقائيًا</value>
+    <comment>Settings: switch that checks for updates automatically.</comment>
+  </data>
+  <data name="upd_auto_check_note" xml:space="preserve">
+    <value>البحث عن إصدارات جديدة بعد التشغيل بقليل وكل ست ساعات. لا يُثبّت أي شيء أبدًا دون نقرة.</value>
+    <comment>Settings: explanation under the automatic update check switch.</comment>
   </data>
   <data name="update" xml:space="preserve">
     <value>تحديث</value>

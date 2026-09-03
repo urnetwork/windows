@@ -52,6 +52,10 @@
   <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
     <value>Μια φράση ανάκτησης σάς επιτρέπει να ανακτήσετε τον λογαριασμό σας αν χάσετε την πρόσβαση. Φυλάξτε την με ασφάλεια.</value>
   </data>
+  <data name="about" xml:space="preserve">
+    <value>Πληροφορίες</value>
+    <comment>Settings: heading of the about section.</comment>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>Για να αποκτήσετε πρόσβαση στον κωδικό ταυτοποίησης, δημιουργήστε λογαριασμό και συνδεθείτε στο {link}ur.io{/link}. Μεταβείτε σε Λογαριασμός -&gt; Ρυθμίσεις -&gt; Δημιουργία/Αντιγραφή κωδικού ταυτοποίησης -&gt; Επικόλληση -&gt; Έτοιμοι!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -110,6 +114,242 @@
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Μπορείτε να ρυθμίσετε την επιλογή σε «Πάντα» για να γεμίσετε τα δωρεάν δεδομένα πιο γρήγορα.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
+  </data>
+  <data name="adv_action_id" xml:space="preserve">
+    <value>Αναγνωριστικό ενέργειας</value>
+    <comment>Connection inspector: label of the action id row.</comment>
+  </data>
+  <data name="adv_addresses" xml:space="preserve">
+    <value>Διευθύνσεις</value>
+    <comment>Connection inspector: label of the addresses row.</comment>
+  </data>
+  <data name="adv_advanced_mode" xml:space="preserve">
+    <value>Προηγμένη λειτουργία</value>
+    <comment>Settings: switch that turns advanced mode on.</comment>
+  </data>
+  <data name="adv_advanced_mode_note" xml:space="preserve">
+    <value>Εμφανίζει ακατέργαστες τιμές, αναγνωριστικά, τον επιθεωρητή σύνδεσης και τις ρυθμίσεις αξιοπιστίας σε όλη την εφαρμογή.</value>
+    <comment>Settings: explanation under the advanced mode switch.</comment>
+  </data>
+  <data name="adv_bytes_total" xml:space="preserve">
+    <value>Byte (σύνολο)</value>
+    <comment>Connection inspector: label of the total bytes row.</comment>
+  </data>
+  <data name="adv_clear_selection" xml:space="preserve">
+    <value>Καθαρισμός επιλογής</value>
+    <comment>Connection inspector: button that clears the selected connection.</comment>
+  </data>
+  <data name="adv_exit_dial_failures" xml:space="preserve">
+    <value>Αποτυχίες κλήσης</value>
+    <comment>Connection inspector: label of the exit dial failures row.</comment>
+  </data>
+  <data name="adv_exit_flows" xml:space="preserve">
+    <value>Ροές προς αυτόν τον προορισμό</value>
+    <comment>Connection inspector: label of the flows to the selected destination.</comment>
+  </data>
+  <data name="adv_exit_flows_total" xml:space="preserve">
+    <value>Ροές εξόδου</value>
+    <comment>Connection inspector: label of the exit flows row.</comment>
+  </data>
+  <data name="adv_exit_ok" xml:space="preserve">
+    <value>OK</value>
+    <comment>Connection inspector: exit state, OK.</comment>
+  </data>
+  <data name="adv_exit_proven" xml:space="preserve">
+    <value>Αποδεδειγμένη</value>
+    <comment>Connection inspector: exit state, proven.</comment>
+  </data>
+  <data name="adv_exit_quarantined" xml:space="preserve">
+    <value>Σε καραντίνα</value>
+    <comment>Connection inspector: exit state, quarantined.</comment>
+  </data>
+  <data name="adv_exit_state" xml:space="preserve">
+    <value>Κατάσταση εξόδου</value>
+    <comment>Connection inspector: label of the exit state row.</comment>
+  </data>
+  <data name="adv_exit_tier" xml:space="preserve">
+    <value>Βαθμίδα εξόδου</value>
+    <comment>Connection inspector: label of the exit tier row.</comment>
+  </data>
+  <data name="adv_exit_warning" xml:space="preserve">
+    <value>Προειδοποίηση</value>
+    <comment>Connection inspector: exit state, warning.</comment>
+  </data>
+  <data name="adv_exit_warning_cause" xml:space="preserve">
+    <value>Αιτία προειδοποίησης</value>
+    <comment>Connection inspector: label of the warning cause row.</comment>
+  </data>
+  <data name="adv_exits" xml:space="preserve">
+    <value>Έξοδοι</value>
+    <comment>Connection inspector: heading of the exits section.</comment>
+  </data>
+  <data name="adv_host" xml:space="preserve">
+    <value>Κεντρικός υπολογιστής</value>
+    <comment>Connection inspector: label of the host row.</comment>
+  </data>
+  <data name="adv_inspector" xml:space="preserve">
+    <value>Επιθεωρητής</value>
+    <comment>Connection inspector: heading of the inspector pane.</comment>
+  </data>
+  <data name="adv_kill_switch_applying" xml:space="preserve">
+    <value>Εφαρμογή…</value>
+    <comment>Kill switch: status while the change is being applied.</comment>
+  </data>
+  <data name="adv_kill_switch_armed_way_out" xml:space="preserve">
+    <value>Απενεργοποιήστε το Kill switch για να επαναφέρετε την κανονική πρόσβαση χωρίς σύνδεση.</value>
+    <comment>Kill switch: how to restore normal access while the block is armed.</comment>
+  </data>
+  <data name="adv_kill_switch_deliberate" xml:space="preserve">
+    <value>Το πάτημα της Αποσύνδεσης επαναφέρει πάντα αμέσως το διαδίκτυο. Το Kill switch ισχύει μόνο για διακοπές που δεν ζητήσατε - μια σήραγγα που σταματά να μεταφέρει κίνηση, μια αλλαγή δικτύου ή τη διακοπή της υπηρεσίας URnetwork.</value>
+    <comment>Settings, kill switch: Disconnect always restores the internet; the switch only covers drops the user did not ask for.</comment>
+  </data>
+  <data name="adv_kill_switch_dns_window" xml:space="preserve">
+    <value>Όσο είναι ενεργό και τίποτα δεν συνδέεται, τίποτα δεν φεύγει από αυτήν τη συσκευή - ούτε οι αναζητήσεις ονομάτων. Κατά τη διάρκεια μιας προσπάθειας σύνδεσης, οι αναζητήσεις ονομάτων από οποιαδήποτε εφαρμογή σε αυτήν τη συσκευή μπορούν να βγουν ακρυπτογράφητες ώστε το URnetwork να φτάσει στους διακομιστές του· όλα τα υπόλοιπα παραμένουν αποκλεισμένα.</value>
+    <comment>Settings, kill switch: what may leave the device while the switch is on, and the name-lookup window during a connection attempt.</comment>
+  </data>
+  <data name="adv_kill_switch_note" xml:space="preserve">
+    <value>Αν η σήραγγα πέσει απροσδόκητα, αποκλείστε την κίνηση αυτής της συσκευής αντί να την αφήσετε να βγει απροστάτευτη.</value>
+    <comment>Settings: explanation under the kill switch switch.</comment>
+  </data>
+  <data name="adv_kill_switch_recovery" xml:space="preserve">
+    <value>Αν αυτή η συσκευή δεν μπορεί να συνδεθεί στο δίκτυο, ίσως ισχύει ακόμη ένας αποκλεισμός που εγκαταστάθηκε νωρίτερα· αφαιρέστε τον με: {}</value>
+    <comment>Kill switch: how to remove a block that is still in place when the device cannot reach the network; {command} is the shell command.</comment>
+  </data>
+  <data name="adv_kill_switch_state_armed" xml:space="preserve">
+    <value>Σε ισχύ: μόνο η κίνηση τοπικού δικτύου φεύγει από αυτήν τη συσκευή μέχρι να συνδεθείτε.</value>
+    <comment>Kill switch status: in force and armed, only local traffic leaves until connected.</comment>
+  </data>
+  <data name="adv_kill_switch_state_connected" xml:space="preserve">
+    <value>Σε ισχύ: αν η σήραγγα πέσει, η κίνηση αυτής της συσκευής αποκλείεται αντί να βγει απροστάτευτη.</value>
+    <comment>Kill switch status: in force while connected, traffic is blocked if the tunnel drops.</comment>
+  </data>
+  <data name="adv_kill_switch_state_failed" xml:space="preserve">
+    <value>Η υπηρεσία συστήματος URnetwork δεν μπόρεσε να εγκαταστήσει το Kill switch, οπότε η κίνηση δεν αποκλείεται.</value>
+    <comment>Kill switch status: the system service could not install the block.</comment>
+  </data>
+  <data name="adv_kill_switch_state_not_in_force" xml:space="preserve">
+    <value>Το Kill switch ΔΕΝ είναι σε ισχύ: η κίνησή σας δεν αποκλείεται.</value>
+    <comment>Kill switch status: not in force, traffic is not blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_pending" xml:space="preserve">
+    <value>Τίποτα δεν έχει αποκλειστεί ακόμη — ισχύει τη στιγμή που θα συνδεθείτε.</value>
+    <comment>Kill switch status: nothing is blocked yet, takes effect on connect.</comment>
+  </data>
+  <data name="adv_kill_switch_state_still_installed" xml:space="preserve">
+    <value>Το Kill switch είναι απενεργοποιημένο, αλλά η υπηρεσία συστήματος URnetwork έχει ακόμη έναν εγκατεστημένο αποκλεισμό, οπότε η κίνηση αυτής της συσκευής αποκλείεται.</value>
+    <comment>Kill switch status: the switch is off but the service still has a block installed, so traffic is blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_unknown" xml:space="preserve">
+    <value>Δεν είναι δυνατό να ελεγχθεί αυτήν τη στιγμή αν το Kill switch είναι σε ισχύ.</value>
+    <comment>Kill switch status: cannot be checked right now.</comment>
+  </data>
+  <data name="adv_kill_switch_still_installed_fix" xml:space="preserve">
+    <value>Η ενεργοποίηση και εκ νέου απενεργοποίηση του Kill switch ζητά από την υπηρεσία να τον καθαρίσει· αν αυτό δεν λειτουργήσει, αφαιρέστε τον με: {}</value>
+    <comment>Kill switch: how to clear a block the service still has installed; {command} is the shell command to use if toggling does not work.</comment>
+  </data>
+  <data name="adv_last_decision" xml:space="preserve">
+    <value>Τελευταία απόφαση</value>
+    <comment>Connection inspector: label of the last routing decision row.</comment>
+  </data>
+  <data name="adv_matched" xml:space="preserve">
+    <value>Ταίριαξε</value>
+    <comment>Connection inspector: label of the matched rule row.</comment>
+  </data>
+  <data name="adv_na" xml:space="preserve">
+    <value>—</value>
+    <comment>Connection inspector: placeholder dash for a value that is not available.</comment>
+  </data>
+  <data name="adv_no_selection" xml:space="preserve">
+    <value>Δεν έχει επιλεγεί σύνδεση</value>
+    <comment>Connection inspector: shown when no connection is selected.</comment>
+  </data>
+  <data name="adv_none" xml:space="preserve">
+    <value>κανένα</value>
+    <comment>Connection inspector: value shown when a field has nothing.</comment>
+  </data>
+  <data name="adv_override_id" xml:space="preserve">
+    <value>Παράκαμψη</value>
+    <comment>Connection inspector: label of the override id row.</comment>
+  </data>
+  <data name="adv_packets_total" xml:space="preserve">
+    <value>Πακέτα (σύνολο)</value>
+    <comment>Connection inspector: label of the total packets row.</comment>
+  </data>
+  <data name="adv_probe_age" xml:space="preserve">
+    <value>Ηλικία ελέγχου</value>
+    <comment>Connection inspector: label of the probe age row.</comment>
+  </data>
+  <data name="adv_protected" xml:space="preserve">
+    <value>Προστατευμένο</value>
+    <comment>Connection inspector: label of the protected row.</comment>
+  </data>
+  <data name="adv_providers_load_failed" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η φόρτωση της λίστας παρόχων.</value>
+    <comment>Network page: error when the provider list could not be loaded.</comment>
+  </data>
+  <data name="adv_raw_status" xml:space="preserve">
+    <value>Ακατέργαστη κατάσταση</value>
+    <comment>Connection inspector: label of the raw status row.</comment>
+  </data>
+  <data name="adv_reason" xml:space="preserve">
+    <value>Αιτία</value>
+    <comment>Connection inspector: label of the decision reason row.</comment>
+  </data>
+  <data name="adv_reason_block" xml:space="preserve">
+    <value>Παράκαμψη αποκλεισμού</value>
+    <comment>Connection inspector: decision reason, a block override applied.</comment>
+  </data>
+  <data name="adv_reason_default" xml:space="preserve">
+    <value>Προεπιλεγμένη πολιτική</value>
+    <comment>Connection inspector: decision reason, the default policy applied.</comment>
+  </data>
+  <data name="adv_reason_override" xml:space="preserve">
+    <value>Παράκαμψη</value>
+    <comment>Connection inspector: decision reason, an override applied.</comment>
+  </data>
+  <data name="adv_reason_route" xml:space="preserve">
+    <value>Παράκαμψη διαδρομής</value>
+    <comment>Connection inspector: decision reason, a route override applied.</comment>
+  </data>
+  <data name="adv_select_a_row" xml:space="preserve">
+    <value>Επιλέξτε μια γραμμή στη Δραστηριότητα για να την επιθεωρήσετε</value>
+    <comment>Connection inspector: hint to select a row in the Activity list.</comment>
+  </data>
+  <data name="adv_selected" xml:space="preserve">
+    <value>επιλεγμένα</value>
+    <comment>Connection inspector: suffix after the count of selected rows.</comment>
+  </data>
+  <data name="adv_selection_gone" xml:space="preserve">
+    <value>Αυτή η σύνδεση δεν εμφανίζεται πλέον στη λίστα</value>
+    <comment>Connection inspector: shown when the selected connection is no longer listed.</comment>
+  </data>
+  <data name="adv_session_exit_country" xml:space="preserve">
+    <value>Χώρα εξόδου συνεδρίας</value>
+    <comment>Connection inspector: label of the session exit country row.</comment>
+  </data>
+  <data name="adv_unknown_exit" xml:space="preserve">
+    <value>Δεν υπάρχει στον πίνακα δρομολόγησης</value>
+    <comment>Connection inspector: exit value when the destination is not in the routing table.</comment>
+  </data>
+  <data name="adv_verdict_blocked" xml:space="preserve">
+    <value>Αποκλείστηκε — δεν στάλθηκαν πακέτα</value>
+    <comment>Connection inspector: verdict, the connection was blocked and no packets were sent.</comment>
+  </data>
+  <data name="adv_verdict_local" xml:space="preserve">
+    <value>Παρέκαμψε τη σήραγγα — χωρίς προστασία</value>
+    <comment>Connection inspector: verdict, the connection bypassed the tunnel and is not protected.</comment>
+  </data>
+  <data name="adv_verdict_tunnelled" xml:space="preserve">
+    <value>Μέσω σήραγγας URnetwork</value>
+    <comment>Connection inspector: verdict, the connection went through the URnetwork tunnel.</comment>
+  </data>
+  <data name="adv_via_exit" xml:space="preserve">
+    <value>Μέσω εξόδου</value>
+    <comment>Connection inspector: label of the via-exit row.</comment>
+  </data>
+  <data name="advanced" xml:space="preserve">
+    <value>Για προχωρημένους</value>
+    <comment>Settings: heading of the advanced section.</comment>
   </data>
   <data name="all_the_content_in_the_world_from_urnetwork" xml:space="preserve">
     <value>Όλο το περιεχόμενο του κόσμου από το URnetwork</value>
@@ -196,6 +436,10 @@
   <data name="app_too_old_for_daemon" xml:space="preserve">
     <value>Αυτή η εφαρμογή είναι παλαιότερη από την εγκατεστημένη υπηρεσία συστήματος URnetwork. Ενημερώστε την εφαρμογή για να συνδεθείτε.</value>
     <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="app_version" xml:space="preserve">
+    <value>Έκδοση εφαρμογής</value>
+    <comment>Settings, about: label of the app version row.</comment>
   </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>Η μέθοδος σύνδεσης Apple προστέθηκε</value>
@@ -552,6 +796,18 @@
     <value>Συμβαλλόμενος</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
+  <data name="conn_connect_on_launch" xml:space="preserve">
+    <value>Αυτόματη σύνδεση κατά την εκκίνηση της εφαρμογής</value>
+    <comment>Settings: switch that connects automatically when the app starts.</comment>
+  </data>
+  <data name="conn_connect_on_launch_note" xml:space="preserve">
+    <value>Απενεργοποιημένο από προεπιλογή. Όταν είναι ενεργό, το URnetwork συνδέεται στον επιλεγμένο πάροχο μόλις ανοίξετε την εφαρμογή. Αυτό αλλάζει την επόμενη εκκίνηση - δεν συνδέεται τώρα.</value>
+    <comment>Settings: explanation under the connect-on-launch switch.</comment>
+  </data>
+  <data name="conn_not_protected" xml:space="preserve">
+    <value>Η κίνηση του διαδικτύου σας δεν προστατεύεται.</value>
+    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+  </data>
   <data name="connect" xml:space="preserve">
     <value>Σύνδεση</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -748,6 +1004,30 @@
     <value>Προσαρμοσμένο DNS</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
   </data>
+  <data name="daemon_auth_check_failed" xml:space="preserve">
+    <value>Η υπηρεσία συστήματος URnetwork δεν μπόρεσε να ελέγξει αν αυτός ο λογαριασμός επιτρέπεται να συνδεθεί, οπότε δεν συνδέθηκε. Δοκιμάστε ξανά.</value>
+    <comment>Connect error: the system service could not check whether the account may connect.</comment>
+  </data>
+  <data name="daemon_auth_denied" xml:space="preserve">
+    <value>Η πολιτική αυτής της συσκευής δεν επιτρέπει σε αυτόν τον λογαριασμό να συνδεθεί μέσω URnetwork. Ένας διαχειριστής μπορεί να το αλλάξει.</value>
+    <comment>Connect error: the device policy does not allow this account to connect.</comment>
+  </data>
+  <data name="daemon_auth_required" xml:space="preserve">
+    <value>Η σύνδεση από αυτήν τη συνεδρία χρειάζεται άδεια διαχειριστή. Πατήστε ξανά Σύνδεση για να ερωτηθείτε, ή χρησιμοποιήστε τη συνεδρία στην οθόνη αυτής της συσκευής.</value>
+    <comment>Connect error: administrator permission is needed from this session.</comment>
+  </data>
+  <data name="daemon_auth_timeout" xml:space="preserve">
+    <value>Το αίτημα άδειας δεν απαντήθηκε, οπότε δεν έγινε σύνδεση. Πατήστε Σύνδεση για να δοκιμάσετε ξανά.</value>
+    <comment>Connect error: the permission request was not answered.</comment>
+  </data>
+  <data name="daemon_auth_unavailable" xml:space="preserve">
+    <value>Αυτή η συσκευή δεν έχει υπηρεσία εξουσιοδότησης polkit, οπότε η υπηρεσία συστήματος URnetwork χρησιμοποιεί την ομάδα 'urnetwork'. Προσθέστε τον χρήστη σας σε αυτήν και αποσυνδεθείτε και συνδεθείτε ξανά.</value>
+    <comment>Connect error: no polkit service, the daemon falls back to the urnetwork group.</comment>
+  </data>
+  <data name="daemon_no_answer" xml:space="preserve">
+    <value>Η υπηρεσία συστήματος URnetwork δεν απάντησε.</value>
+    <comment>Error: the system service did not answer.</comment>
+  </data>
   <data name="daemon_sdk_mismatch" xml:space="preserve">
     <value>Η εφαρμογή και η υπηρεσία συστήματος URnetwork είναι διαφορετικά builds. Ενημερώστε και τα δύο στην ίδια έκδοση.</value>
     <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
@@ -755,6 +1035,10 @@
   <data name="daemon_too_old" xml:space="preserve">
     <value>Η υπηρεσία συστήματος URnetwork είναι παρωχημένη. Ενημερώστε την για να συνδεθείτε.</value>
     <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_tunnel_owned_by_other_user" xml:space="preserve">
+    <value>Ένας άλλος χρήστης σε αυτήν τη συσκευή είναι συνδεδεμένος μέσω URnetwork. Αποσυνδέστε το από τη συνεδρία του, ή αναλάβετέ το με άδεια διαχειριστή.</value>
+    <comment>Connect error: another user on the device holds the tunnel.</comment>
   </data>
   <data name="daemon_unreachable" xml:space="preserve">
     <value>Η υπηρεσία συστήματος URnetwork δεν εκτελείται. Εγκαταστήστε ή εκκινήστε την και δοκιμάστε ξανά.</value>
@@ -863,6 +1147,14 @@
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>Οι προεπιλεγμένες ασφαλείς ρυθμίσεις δεν έχουν εφαρμοστεί</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="dns_not_on_tunnel" xml:space="preserve">
+    <value>Το DNS ΔΕΝ περνά από τη σήραγγα — τα ονόματα που αναζητάτε επιλύονται εκτός αυτής.</value>
+    <comment>Connect drawer: warning that DNS is resolving outside the tunnel.</comment>
+  </data>
+  <data name="dns_on_tunnel" xml:space="preserve">
+    <value>Το DNS περνά από τη σήραγγα</value>
+    <comment>Connect drawer: status that DNS goes through the tunnel.</comment>
   </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS μέσω HTTPS</value>
@@ -1281,6 +1573,14 @@
     <value>Συμπερίληψη</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="instant_account_explainer" xml:space="preserve">
+    <value>Δεν χρειάζεται email, τηλέφωνο ή κωδικός πρόσβασης. Ο λογαριασμός σας προστατεύεται από μια φράση ανάκτησης.</value>
+    <comment>Instant account: explains that no email, phone or password is needed.</comment>
+  </data>
+  <data name="instant_account_failed" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η δημιουργία του λογαριασμού. Δοκιμάστε ξανά.</value>
+    <comment>Instant account: error when the account could not be created.</comment>
+  </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Ανεπαρκές υπόλοιπο</value>
     <comment>Call to action</comment>
@@ -1609,6 +1909,10 @@
   <data name="monthly" xml:space="preserve">
     <value>Μηνιαία</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
+  </data>
+  <data name="more_options" xml:space="preserve">
+    <value>Περισσότερες επιλογές</value>
+    <comment>Connect page: button that reveals more options.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>Πολλαπλές IP</value>
@@ -2490,6 +2794,14 @@
     <value>Η φράση ανάκτησης πρέπει να έχει 12 ή 24 λέξεις</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
   </data>
+  <data name="seedphrase_login_failed" xml:space="preserve">
+    <value>Η σύνδεση με φράση ανάκτησης απέτυχε</value>
+    <comment>Login: error title when signing in with a seedphrase failed.</comment>
+  </data>
+  <data name="seedphrase_only_time" xml:space="preserve">
+    <value>⚠️ Αυτή είναι η ΜΟΝΗ φορά που θα το δείτε.</value>
+    <comment>Seedphrase sheet: warning that this is the only time the seedphrase is shown.</comment>
+  </data>
   <data name="seedphrase_paste_hint" xml:space="preserve">
     <value>Επικολλήστε εδώ τη φράση ανάκτησης 12 ή 24 λέξεων</value>
     <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
@@ -2497,6 +2809,14 @@
   <data name="seedphrase_required" xml:space="preserve">
     <value>Εισαγάγετε μια φράση ανάκτησης</value>
     <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
+  <data name="seedphrase_store_safely" xml:space="preserve">
+    <value>Γράψτε την και φυλάξτε την κάπου ασφαλή. Αν τη χάσετε, θα χάσετε την πρόσβαση στον λογαριασμό σας.</value>
+    <comment>Seedphrase sheet: advice to write the seedphrase down and store it safely.</comment>
+  </data>
+  <data name="seedphrase_word_count_warning" xml:space="preserve">
+    <value>Αυτές είναι {} λέξεις — μια φράση ανάκτησης έχει 12 ή 24 λέξεις</value>
+    <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Το διακριτικό Seeker επαληθεύτηκε!</value>
@@ -3016,6 +3336,22 @@
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="svc_service_label" xml:space="preserve">
+    <value>Υπηρεσία VPN</value>
+    <comment>Settings: label of the VPN service row.</comment>
+  </data>
+  <data name="svc_uninstall_action" xml:space="preserve">
+    <value>Απεγκατάσταση</value>
+    <comment>Settings: button that uninstalls the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_confirm" xml:space="preserve">
+    <value>Αυτό σταματά την υπηρεσία URnetwork και αφαιρεί τη μονάδα systemd της. Η εφαρμογή δεν μπορεί να συνδεθεί μέχρι να ρυθμιστεί ξανά. Θα σας ζητηθεί άδεια διαχειριστή.</value>
+    <comment>Settings: confirmation text before uninstalling the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_note" xml:space="preserve">
+    <value>Αφαίρεση της υπηρεσίας systemd που χρησιμοποιεί το URnetwork για τη μεταφορά κίνησης.</value>
+    <comment>Settings: explanation under the uninstall service button.</comment>
+  </data>
   <data name="switch_account" xml:space="preserve">
     <value>Αλλαγή λογαριασμού</value>
     <comment>Call to action</comment>
@@ -3155,6 +3491,10 @@
     <value>Δεν ήταν δυνατή η εκκίνηση της σύνδεσης</value>
     <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
+  <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
+    <value>Η σύνδεση σταμάτησε.</value>
+    <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>Μη κρυπτογραφημένο DNS</value>
     <comment>A label displayed in the custom dns settings section.</comment>
@@ -3186,6 +3526,14 @@
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (μπορεί να είναι ασταθές)</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="upd_auto_check" xml:space="preserve">
+    <value>Αυτόματος έλεγχος για ενημερώσεις</value>
+    <comment>Settings: switch that checks for updates automatically.</comment>
+  </data>
+  <data name="upd_auto_check_note" xml:space="preserve">
+    <value>Αναζήτηση νέων εκδόσεων λίγο μετά την εκκίνηση και κάθε έξι ώρες. Τίποτα δεν εγκαθίσταται ποτέ χωρίς κλικ.</value>
+    <comment>Settings: explanation under the automatic update check switch.</comment>
   </data>
   <data name="update" xml:space="preserve">
     <value>Ενημέρωση</value>

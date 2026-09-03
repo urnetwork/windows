@@ -52,6 +52,10 @@
   <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
     <value>Kifungu cha seed hukuwezesha kurejesha akaunti yako ukipoteza ufikiaji. Kihifadhi mahali salama.</value>
   </data>
+  <data name="about" xml:space="preserve">
+    <value>Kuhusu</value>
+    <comment>Settings: heading of the about section.</comment>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>Ili kupata nambari yako ya uthibitishaji, tengeneza akaunti na uingie kwenye {link}ur.io{/link}. Nenda kwa Akaunti -&gt; Mipangilio -&gt; Tengeneza/Nakili nambari ya uthibitishaji -&gt; Bandika -&gt; Umefanikiwa!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -110,6 +114,242 @@
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Unaweza kuweka chaguo kuwa "Daima" ili kujaza data ya bure haraka zaidi.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
+  </data>
+  <data name="adv_action_id" xml:space="preserve">
+    <value>Kitambulisho cha kitendo</value>
+    <comment>Connection inspector: label of the action id row.</comment>
+  </data>
+  <data name="adv_addresses" xml:space="preserve">
+    <value>Anwani</value>
+    <comment>Connection inspector: label of the addresses row.</comment>
+  </data>
+  <data name="adv_advanced_mode" xml:space="preserve">
+    <value>Hali ya kina</value>
+    <comment>Settings: switch that turns advanced mode on.</comment>
+  </data>
+  <data name="adv_advanced_mode_note" xml:space="preserve">
+    <value>Huonyesha thamani ghafi, vitambulisho, kikagua muunganisho na mipangilio ya uaminifu kote kwenye programu.</value>
+    <comment>Settings: explanation under the advanced mode switch.</comment>
+  </data>
+  <data name="adv_bytes_total" xml:space="preserve">
+    <value>Baiti (jumla)</value>
+    <comment>Connection inspector: label of the total bytes row.</comment>
+  </data>
+  <data name="adv_clear_selection" xml:space="preserve">
+    <value>Futa uteuzi</value>
+    <comment>Connection inspector: button that clears the selected connection.</comment>
+  </data>
+  <data name="adv_exit_dial_failures" xml:space="preserve">
+    <value>Kushindwa kupiga</value>
+    <comment>Connection inspector: label of the exit dial failures row.</comment>
+  </data>
+  <data name="adv_exit_flows" xml:space="preserve">
+    <value>Mitiririko kwenda mahali hapa</value>
+    <comment>Connection inspector: label of the flows to the selected destination.</comment>
+  </data>
+  <data name="adv_exit_flows_total" xml:space="preserve">
+    <value>Mitiririko ya kutoka</value>
+    <comment>Connection inspector: label of the exit flows row.</comment>
+  </data>
+  <data name="adv_exit_ok" xml:space="preserve">
+    <value>Sawa</value>
+    <comment>Connection inspector: exit state, OK.</comment>
+  </data>
+  <data name="adv_exit_proven" xml:space="preserve">
+    <value>Imethibitishwa</value>
+    <comment>Connection inspector: exit state, proven.</comment>
+  </data>
+  <data name="adv_exit_quarantined" xml:space="preserve">
+    <value>Imewekwa karantini</value>
+    <comment>Connection inspector: exit state, quarantined.</comment>
+  </data>
+  <data name="adv_exit_state" xml:space="preserve">
+    <value>Hali ya kutoka</value>
+    <comment>Connection inspector: label of the exit state row.</comment>
+  </data>
+  <data name="adv_exit_tier" xml:space="preserve">
+    <value>Daraja ya kutoka</value>
+    <comment>Connection inspector: label of the exit tier row.</comment>
+  </data>
+  <data name="adv_exit_warning" xml:space="preserve">
+    <value>Onyo</value>
+    <comment>Connection inspector: exit state, warning.</comment>
+  </data>
+  <data name="adv_exit_warning_cause" xml:space="preserve">
+    <value>Sababu ya onyo</value>
+    <comment>Connection inspector: label of the warning cause row.</comment>
+  </data>
+  <data name="adv_exits" xml:space="preserve">
+    <value>Njia za kutoka</value>
+    <comment>Connection inspector: heading of the exits section.</comment>
+  </data>
+  <data name="adv_host" xml:space="preserve">
+    <value>Mwenyeji</value>
+    <comment>Connection inspector: label of the host row.</comment>
+  </data>
+  <data name="adv_inspector" xml:space="preserve">
+    <value>Kikagua</value>
+    <comment>Connection inspector: heading of the inspector pane.</comment>
+  </data>
+  <data name="adv_kill_switch_applying" xml:space="preserve">
+    <value>Inatumika…</value>
+    <comment>Kill switch: status while the change is being applied.</comment>
+  </data>
+  <data name="adv_kill_switch_armed_way_out" xml:space="preserve">
+    <value>Zima Kill switch ili kurejesha ufikiaji wa kawaida bila kuunganisha.</value>
+    <comment>Kill switch: how to restore normal access while the block is armed.</comment>
+  </data>
+  <data name="adv_kill_switch_deliberate" xml:space="preserve">
+    <value>Kubonyeza Tenganisha hurejesha intaneti mara moja kila wakati. Kill switch hutumika tu kwa kukatika ambako hukuomba - handaki linaloacha kubeba trafiki, mabadiliko ya mtandao, au huduma ya URnetwork kusimama.</value>
+    <comment>Settings, kill switch: Disconnect always restores the internet; the switch only covers drops the user did not ask for.</comment>
+  </data>
+  <data name="adv_kill_switch_dns_window" xml:space="preserve">
+    <value>Ikiwa imewashwa na hakuna kinachounganisha, hakuna kinachotoka kwenye kifaa hiki - pamoja na utafutaji wa majina. Wakati wa jaribio la kuunganisha, utafutaji wa majina kutoka programu yoyote kwenye kifaa hiki unaweza kutoka bila usimbaji ili URnetwork ifikie seva zake; kila kitu kingine hubaki kimezuiwa.</value>
+    <comment>Settings, kill switch: what may leave the device while the switch is on, and the name-lookup window during a connection attempt.</comment>
+  </data>
+  <data name="adv_kill_switch_note" xml:space="preserve">
+    <value>Ikiwa handaki litakatika ghafla, zuia trafiki ya kifaa hiki badala ya kuiacha itoke bila ulinzi.</value>
+    <comment>Settings: explanation under the kill switch switch.</comment>
+  </data>
+  <data name="adv_kill_switch_recovery" xml:space="preserve">
+    <value>Ikiwa kifaa hiki hakiwezi kufikia mtandao, kizuizi kilichowekwa awali huenda bado kipo; kiondoe kwa: {}</value>
+    <comment>Kill switch: how to remove a block that is still in place when the device cannot reach the network; {command} is the shell command.</comment>
+  </data>
+  <data name="adv_kill_switch_state_armed" xml:space="preserve">
+    <value>Inatumika: hakuna kinachotoka kwenye kifaa hiki isipokuwa trafiki ya mtandao wa ndani hadi uunganishe.</value>
+    <comment>Kill switch status: in force and armed, only local traffic leaves until connected.</comment>
+  </data>
+  <data name="adv_kill_switch_state_connected" xml:space="preserve">
+    <value>Inatumika: ikiwa handaki litakatika, trafiki ya kifaa hiki huzuiwa badala ya kutoka bila ulinzi.</value>
+    <comment>Kill switch status: in force while connected, traffic is blocked if the tunnel drops.</comment>
+  </data>
+  <data name="adv_kill_switch_state_failed" xml:space="preserve">
+    <value>Huduma ya mfumo ya URnetwork haikuweza kusakinisha Kill switch, kwa hivyo trafiki haizuiwi.</value>
+    <comment>Kill switch status: the system service could not install the block.</comment>
+  </data>
+  <data name="adv_kill_switch_state_not_in_force" xml:space="preserve">
+    <value>Kill switch HAITUMIKI: trafiki yako haizuiwi.</value>
+    <comment>Kill switch status: not in force, traffic is not blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_pending" xml:space="preserve">
+    <value>Bado hakuna kilichozuiwa — hii huanza kutumika wakati unapounganisha.</value>
+    <comment>Kill switch status: nothing is blocked yet, takes effect on connect.</comment>
+  </data>
+  <data name="adv_kill_switch_state_still_installed" xml:space="preserve">
+    <value>Kill switch imezimwa, lakini huduma ya mfumo ya URnetwork bado ina kizuizi kilichosakinishwa, kwa hivyo trafiki ya kifaa hiki inazuiwa.</value>
+    <comment>Kill switch status: the switch is off but the service still has a block installed, so traffic is blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_unknown" xml:space="preserve">
+    <value>Haiwezekani kuangalia sasa ikiwa Kill switch inatumika.</value>
+    <comment>Kill switch status: cannot be checked right now.</comment>
+  </data>
+  <data name="adv_kill_switch_still_installed_fix" xml:space="preserve">
+    <value>Kuwasha Kill switch kisha kuizima tena huiomba huduma ikiondoe; ikiwa hilo halifanyi kazi, kiondoe kwa: {}</value>
+    <comment>Kill switch: how to clear a block the service still has installed; {command} is the shell command to use if toggling does not work.</comment>
+  </data>
+  <data name="adv_last_decision" xml:space="preserve">
+    <value>Uamuzi wa mwisho</value>
+    <comment>Connection inspector: label of the last routing decision row.</comment>
+  </data>
+  <data name="adv_matched" xml:space="preserve">
+    <value>Ililingana</value>
+    <comment>Connection inspector: label of the matched rule row.</comment>
+  </data>
+  <data name="adv_na" xml:space="preserve">
+    <value>—</value>
+    <comment>Connection inspector: placeholder dash for a value that is not available.</comment>
+  </data>
+  <data name="adv_no_selection" xml:space="preserve">
+    <value>Hakuna muunganisho uliochaguliwa</value>
+    <comment>Connection inspector: shown when no connection is selected.</comment>
+  </data>
+  <data name="adv_none" xml:space="preserve">
+    <value>hakuna</value>
+    <comment>Connection inspector: value shown when a field has nothing.</comment>
+  </data>
+  <data name="adv_override_id" xml:space="preserve">
+    <value>Ubatilishaji</value>
+    <comment>Connection inspector: label of the override id row.</comment>
+  </data>
+  <data name="adv_packets_total" xml:space="preserve">
+    <value>Pakiti (jumla)</value>
+    <comment>Connection inspector: label of the total packets row.</comment>
+  </data>
+  <data name="adv_probe_age" xml:space="preserve">
+    <value>Umri wa uchunguzi</value>
+    <comment>Connection inspector: label of the probe age row.</comment>
+  </data>
+  <data name="adv_protected" xml:space="preserve">
+    <value>Imelindwa</value>
+    <comment>Connection inspector: label of the protected row.</comment>
+  </data>
+  <data name="adv_providers_load_failed" xml:space="preserve">
+    <value>Imeshindwa kupakia orodha ya watoa huduma.</value>
+    <comment>Network page: error when the provider list could not be loaded.</comment>
+  </data>
+  <data name="adv_raw_status" xml:space="preserve">
+    <value>Hali ghafi</value>
+    <comment>Connection inspector: label of the raw status row.</comment>
+  </data>
+  <data name="adv_reason" xml:space="preserve">
+    <value>Sababu</value>
+    <comment>Connection inspector: label of the decision reason row.</comment>
+  </data>
+  <data name="adv_reason_block" xml:space="preserve">
+    <value>Ubatilishaji wa kuzuia</value>
+    <comment>Connection inspector: decision reason, a block override applied.</comment>
+  </data>
+  <data name="adv_reason_default" xml:space="preserve">
+    <value>Sera chaguomsingi</value>
+    <comment>Connection inspector: decision reason, the default policy applied.</comment>
+  </data>
+  <data name="adv_reason_override" xml:space="preserve">
+    <value>Ubatilishaji</value>
+    <comment>Connection inspector: decision reason, an override applied.</comment>
+  </data>
+  <data name="adv_reason_route" xml:space="preserve">
+    <value>Ubatilishaji wa njia</value>
+    <comment>Connection inspector: decision reason, a route override applied.</comment>
+  </data>
+  <data name="adv_select_a_row" xml:space="preserve">
+    <value>Chagua safu katika Shughuli ili kuikagua</value>
+    <comment>Connection inspector: hint to select a row in the Activity list.</comment>
+  </data>
+  <data name="adv_selected" xml:space="preserve">
+    <value>zimechaguliwa</value>
+    <comment>Connection inspector: suffix after the count of selected rows.</comment>
+  </data>
+  <data name="adv_selection_gone" xml:space="preserve">
+    <value>Muunganisho huo hauko tena kwenye orodha</value>
+    <comment>Connection inspector: shown when the selected connection is no longer listed.</comment>
+  </data>
+  <data name="adv_session_exit_country" xml:space="preserve">
+    <value>Nchi ya kutoka ya kipindi</value>
+    <comment>Connection inspector: label of the session exit country row.</comment>
+  </data>
+  <data name="adv_unknown_exit" xml:space="preserve">
+    <value>Haipo kwenye jedwali la njia</value>
+    <comment>Connection inspector: exit value when the destination is not in the routing table.</comment>
+  </data>
+  <data name="adv_verdict_blocked" xml:space="preserve">
+    <value>Imezuiwa — hakuna pakiti zilizotumwa</value>
+    <comment>Connection inspector: verdict, the connection was blocked and no packets were sent.</comment>
+  </data>
+  <data name="adv_verdict_local" xml:space="preserve">
+    <value>Ilipita handaki — haijalindwa</value>
+    <comment>Connection inspector: verdict, the connection bypassed the tunnel and is not protected.</comment>
+  </data>
+  <data name="adv_verdict_tunnelled" xml:space="preserve">
+    <value>Kupitia handaki la URnetwork</value>
+    <comment>Connection inspector: verdict, the connection went through the URnetwork tunnel.</comment>
+  </data>
+  <data name="adv_via_exit" xml:space="preserve">
+    <value>Kupitia njia ya kutoka</value>
+    <comment>Connection inspector: label of the via-exit row.</comment>
+  </data>
+  <data name="advanced" xml:space="preserve">
+    <value>Za kina</value>
+    <comment>Settings: heading of the advanced section.</comment>
   </data>
   <data name="all_the_content_in_the_world_from_urnetwork" xml:space="preserve">
     <value>Maudhui yote ya dunia kutoka URnetwork</value>
@@ -196,6 +436,10 @@
   <data name="app_too_old_for_daemon" xml:space="preserve">
     <value>Programu hii ni ya zamani kuliko huduma ya mfumo ya URnetwork iliyosakinishwa. Sasisha programu ili kuunganisha.</value>
     <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="app_version" xml:space="preserve">
+    <value>Toleo la programu</value>
+    <comment>Settings, about: label of the app version row.</comment>
   </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>Njia ya kuingia ya Apple imeongezwa</value>
@@ -552,6 +796,18 @@ kwa njia sahihi</value>
     <value>Mshirika</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
+  <data name="conn_connect_on_launch" xml:space="preserve">
+    <value>Unganisha kiotomatiki programu inapoanza</value>
+    <comment>Settings: switch that connects automatically when the app starts.</comment>
+  </data>
+  <data name="conn_connect_on_launch_note" xml:space="preserve">
+    <value>Imezimwa kwa chaguomsingi. Ikiwashwa, URnetwork huunganisha kwa mtoa huduma uliyemchagua mara tu unapofungua programu. Hii hubadilisha uzinduzi ujao - haiunganishi sasa.</value>
+    <comment>Settings: explanation under the connect-on-launch switch.</comment>
+  </data>
+  <data name="conn_not_protected" xml:space="preserve">
+    <value>Trafiki yako ya intaneti hailindwi.</value>
+    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+  </data>
   <data name="connect" xml:space="preserve">
     <value>Unganisha</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -748,6 +1004,30 @@ kwa njia sahihi</value>
     <value>DNS maalum</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
   </data>
+  <data name="daemon_auth_check_failed" xml:space="preserve">
+    <value>Huduma ya mfumo ya URnetwork haikuweza kuangalia ikiwa akaunti hii inaruhusiwa kuunganisha, kwa hivyo haikuunganisha. Jaribu tena.</value>
+    <comment>Connect error: the system service could not check whether the account may connect.</comment>
+  </data>
+  <data name="daemon_auth_denied" xml:space="preserve">
+    <value>Sera ya kifaa hiki hairuhusu akaunti hii kuunganisha kupitia URnetwork. Msimamizi anaweza kubadilisha hilo.</value>
+    <comment>Connect error: the device policy does not allow this account to connect.</comment>
+  </data>
+  <data name="daemon_auth_required" xml:space="preserve">
+    <value>Kuunganisha kutoka kipindi hiki kunahitaji ruhusa ya msimamizi. Bonyeza Unganisha tena ili uulizwe, au tumia kipindi kilicho kwenye skrini ya kifaa hiki.</value>
+    <comment>Connect error: administrator permission is needed from this session.</comment>
+  </data>
+  <data name="daemon_auth_timeout" xml:space="preserve">
+    <value>Ombi la ruhusa halikujibiwa, kwa hivyo hakuna kilichounganishwa. Bonyeza Unganisha ili kujaribu tena.</value>
+    <comment>Connect error: the permission request was not answered.</comment>
+  </data>
+  <data name="daemon_auth_unavailable" xml:space="preserve">
+    <value>Kifaa hiki hakina huduma ya uidhinishaji ya polkit, kwa hivyo huduma ya mfumo ya URnetwork hutumia kikundi cha 'urnetwork'. Ongeza mtumiaji wako ndani yake kisha utoke na uingie tena.</value>
+    <comment>Connect error: no polkit service, the daemon falls back to the urnetwork group.</comment>
+  </data>
+  <data name="daemon_no_answer" xml:space="preserve">
+    <value>Huduma ya mfumo ya URnetwork haikujibu.</value>
+    <comment>Error: the system service did not answer.</comment>
+  </data>
   <data name="daemon_sdk_mismatch" xml:space="preserve">
     <value>Programu na huduma ya mfumo ya URnetwork ni miundo tofauti. Sasisha vyote viwili hadi toleo lile lile.</value>
     <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
@@ -755,6 +1035,10 @@ kwa njia sahihi</value>
   <data name="daemon_too_old" xml:space="preserve">
     <value>Huduma ya mfumo ya URnetwork imepitwa na wakati. Isasishe ili kuunganisha.</value>
     <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_tunnel_owned_by_other_user" xml:space="preserve">
+    <value>Mtumiaji mwingine kwenye kifaa hiki ameunganishwa kupitia URnetwork. Tenganisha kutoka kipindi chake, au chukua udhibiti kwa ruhusa ya msimamizi.</value>
+    <comment>Connect error: another user on the device holds the tunnel.</comment>
   </data>
   <data name="daemon_unreachable" xml:space="preserve">
     <value>Huduma ya mfumo ya URnetwork haifanyi kazi. Isakinishe au ianzishe, kisha ujaribu tena.</value>
@@ -863,6 +1147,14 @@ kwa njia sahihi</value>
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>Mipangilio salama ya chaguomsingi haijatumika</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="dns_not_on_tunnel" xml:space="preserve">
+    <value>DNS HAIPITI kwenye handaki — majina unayotafuta yanatatuliwa nje yake.</value>
+    <comment>Connect drawer: warning that DNS is resolving outside the tunnel.</comment>
+  </data>
+  <data name="dns_on_tunnel" xml:space="preserve">
+    <value>DNS inapita kwenye handaki</value>
+    <comment>Connect drawer: status that DNS goes through the tunnel.</comment>
   </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS kupitia HTTPS</value>
@@ -1281,6 +1573,14 @@ kwa njia sahihi</value>
     <value>Imejumuishwa</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="instant_account_explainer" xml:space="preserve">
+    <value>Hakuna barua pepe, simu, au nenosiri linalohitajika. Akaunti yako inalindwa na kifungu cha seed.</value>
+    <comment>Instant account: explains that no email, phone or password is needed.</comment>
+  </data>
+  <data name="instant_account_failed" xml:space="preserve">
+    <value>Imeshindwa kuunda akaunti. Tafadhali jaribu tena.</value>
+    <comment>Instant account: error when the account could not be created.</comment>
+  </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Salio halitoshi</value>
     <comment>Call to action</comment>
@@ -1609,6 +1909,10 @@ kutumia ili kuthibitisha utambulisho wako.</value>
   <data name="monthly" xml:space="preserve">
     <value>Kila mwezi</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
+  </data>
+  <data name="more_options" xml:space="preserve">
+    <value>Chaguo zaidi</value>
+    <comment>Connect page: button that reveals more options.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>IP nyingi</value>
@@ -2489,6 +2793,14 @@ maudhui ya dunia</value>
     <value>Kifungu cha seed lazima kiwe na maneno 12 au 24</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
   </data>
+  <data name="seedphrase_login_failed" xml:space="preserve">
+    <value>Kuingia kwa kifungu cha seed kumeshindwa</value>
+    <comment>Login: error title when signing in with a seedphrase failed.</comment>
+  </data>
+  <data name="seedphrase_only_time" xml:space="preserve">
+    <value>⚠️ Hii ndiyo mara PEKEE utakayoona hili.</value>
+    <comment>Seedphrase sheet: warning that this is the only time the seedphrase is shown.</comment>
+  </data>
   <data name="seedphrase_paste_hint" xml:space="preserve">
     <value>Bandika hapa kifungu chako cha seed cha maneno 12 au 24</value>
     <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
@@ -2496,6 +2808,14 @@ maudhui ya dunia</value>
   <data name="seedphrase_required" xml:space="preserve">
     <value>Tafadhali weka kifungu cha seed</value>
     <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
+  <data name="seedphrase_store_safely" xml:space="preserve">
+    <value>Kiandike na ukihifadhi mahali salama. Ukikipoteza, utapoteza ufikiaji wa akaunti yako.</value>
+    <comment>Seedphrase sheet: advice to write the seedphrase down and store it safely.</comment>
+  </data>
+  <data name="seedphrase_word_count_warning" xml:space="preserve">
+    <value>Hayo ni maneno {} — kifungu cha seed kina maneno 12 au 24</value>
+    <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Tokeni ya Seeker imethibitishwa!</value>
@@ -3015,6 +3335,22 @@ kama inavyopaswa kuwa.</value>
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="svc_service_label" xml:space="preserve">
+    <value>Huduma ya VPN</value>
+    <comment>Settings: label of the VPN service row.</comment>
+  </data>
+  <data name="svc_uninstall_action" xml:space="preserve">
+    <value>Ondoa</value>
+    <comment>Settings: button that uninstalls the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_confirm" xml:space="preserve">
+    <value>Hii husimamisha huduma ya URnetwork na kuondoa kitengo chake cha systemd. Programu haiwezi kuunganisha hadi isanidiwe tena. Utaombwa ruhusa ya msimamizi.</value>
+    <comment>Settings: confirmation text before uninstalling the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_note" xml:space="preserve">
+    <value>Ondoa huduma ya systemd ambayo URnetwork hutumia kubeba trafiki.</value>
+    <comment>Settings: explanation under the uninstall service button.</comment>
+  </data>
   <data name="switch_account" xml:space="preserve">
     <value>Badilisha Akaunti</value>
     <comment>Call to action</comment>
@@ -3154,6 +3490,10 @@ kama inavyopaswa kuwa.</value>
     <value>Imeshindwa kuanzisha muunganisho</value>
     <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
+  <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
+    <value>Muunganisho umesimama.</value>
+    <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>DNS isiyosimbwa</value>
     <comment>A label displayed in the custom dns settings section.</comment>
@@ -3185,6 +3525,14 @@ kama inavyopaswa kuwa.</value>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (huenda isiwe imara)</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="upd_auto_check" xml:space="preserve">
+    <value>Angalia masasisho kiotomatiki</value>
+    <comment>Settings: switch that checks for updates automatically.</comment>
+  </data>
+  <data name="upd_auto_check_note" xml:space="preserve">
+    <value>Tafuta matoleo mapya muda mfupi baada ya kuzindua na kila saa sita. Hakuna kinachosakinishwa bila kubofya.</value>
+    <comment>Settings: explanation under the automatic update check switch.</comment>
   </data>
   <data name="update" xml:space="preserve">
     <value>Sasisha</value>

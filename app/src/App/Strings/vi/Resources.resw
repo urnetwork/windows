@@ -52,6 +52,10 @@
   <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
     <value>Cụm từ khôi phục giúp bạn khôi phục tài khoản nếu mất quyền truy cập. Hãy cất giữ ở nơi an toàn.</value>
   </data>
+  <data name="about" xml:space="preserve">
+    <value>Giới thiệu</value>
+    <comment>Settings: heading of the about section.</comment>
+  </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
     <value>Để truy cập mã xác thực, hãy tạo tài khoản và đăng nhập vào {link}ur.io{/link}. Vào Tài khoản -&gt; Cài đặt -&gt; Tạo/Sao chép mã xác thực -&gt; Dán -&gt; Xong!</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
@@ -110,6 +114,242 @@
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Cung cấp được tắt theo mặc định. Chọn bên dưới khi nào thiết bị của bạn cung cấp.</value>
     <comment>A description of the user's ability to provide bandwidth.</comment>
+  </data>
+  <data name="adv_action_id" xml:space="preserve">
+    <value>ID hành động</value>
+    <comment>Connection inspector: label of the action id row.</comment>
+  </data>
+  <data name="adv_addresses" xml:space="preserve">
+    <value>Địa chỉ</value>
+    <comment>Connection inspector: label of the addresses row.</comment>
+  </data>
+  <data name="adv_advanced_mode" xml:space="preserve">
+    <value>Chế độ nâng cao</value>
+    <comment>Settings: switch that turns advanced mode on.</comment>
+  </data>
+  <data name="adv_advanced_mode_note" xml:space="preserve">
+    <value>Hiển thị giá trị thô, mã định danh, trình kiểm tra kết nối và các tùy chỉnh độ tin cậy trên toàn ứng dụng.</value>
+    <comment>Settings: explanation under the advanced mode switch.</comment>
+  </data>
+  <data name="adv_bytes_total" xml:space="preserve">
+    <value>Byte (tổng)</value>
+    <comment>Connection inspector: label of the total bytes row.</comment>
+  </data>
+  <data name="adv_clear_selection" xml:space="preserve">
+    <value>Bỏ chọn</value>
+    <comment>Connection inspector: button that clears the selected connection.</comment>
+  </data>
+  <data name="adv_exit_dial_failures" xml:space="preserve">
+    <value>Lỗi quay số</value>
+    <comment>Connection inspector: label of the exit dial failures row.</comment>
+  </data>
+  <data name="adv_exit_flows" xml:space="preserve">
+    <value>Luồng đến đích này</value>
+    <comment>Connection inspector: label of the flows to the selected destination.</comment>
+  </data>
+  <data name="adv_exit_flows_total" xml:space="preserve">
+    <value>Luồng thoát</value>
+    <comment>Connection inspector: label of the exit flows row.</comment>
+  </data>
+  <data name="adv_exit_ok" xml:space="preserve">
+    <value>OK</value>
+    <comment>Connection inspector: exit state, OK.</comment>
+  </data>
+  <data name="adv_exit_proven" xml:space="preserve">
+    <value>Đã chứng minh</value>
+    <comment>Connection inspector: exit state, proven.</comment>
+  </data>
+  <data name="adv_exit_quarantined" xml:space="preserve">
+    <value>Đã cách ly</value>
+    <comment>Connection inspector: exit state, quarantined.</comment>
+  </data>
+  <data name="adv_exit_state" xml:space="preserve">
+    <value>Trạng thái thoát</value>
+    <comment>Connection inspector: label of the exit state row.</comment>
+  </data>
+  <data name="adv_exit_tier" xml:space="preserve">
+    <value>Cấp thoát</value>
+    <comment>Connection inspector: label of the exit tier row.</comment>
+  </data>
+  <data name="adv_exit_warning" xml:space="preserve">
+    <value>Cảnh báo</value>
+    <comment>Connection inspector: exit state, warning.</comment>
+  </data>
+  <data name="adv_exit_warning_cause" xml:space="preserve">
+    <value>Nguyên nhân cảnh báo</value>
+    <comment>Connection inspector: label of the warning cause row.</comment>
+  </data>
+  <data name="adv_exits" xml:space="preserve">
+    <value>Điểm thoát</value>
+    <comment>Connection inspector: heading of the exits section.</comment>
+  </data>
+  <data name="adv_host" xml:space="preserve">
+    <value>Máy chủ</value>
+    <comment>Connection inspector: label of the host row.</comment>
+  </data>
+  <data name="adv_inspector" xml:space="preserve">
+    <value>Trình kiểm tra</value>
+    <comment>Connection inspector: heading of the inspector pane.</comment>
+  </data>
+  <data name="adv_kill_switch_applying" xml:space="preserve">
+    <value>Đang áp dụng…</value>
+    <comment>Kill switch: status while the change is being applied.</comment>
+  </data>
+  <data name="adv_kill_switch_armed_way_out" xml:space="preserve">
+    <value>Tắt Kill switch để khôi phục truy cập bình thường mà không cần kết nối.</value>
+    <comment>Kill switch: how to restore normal access while the block is armed.</comment>
+  </data>
+  <data name="adv_kill_switch_deliberate" xml:space="preserve">
+    <value>Nhấn Ngắt kết nối luôn khôi phục internet ngay lập tức. Kill switch chỉ áp dụng cho những lần rớt mà bạn không yêu cầu - đường hầm ngừng truyền lưu lượng, thay đổi mạng, hoặc dịch vụ URnetwork dừng lại.</value>
+    <comment>Settings, kill switch: Disconnect always restores the internet; the switch only covers drops the user did not ask for.</comment>
+  </data>
+  <data name="adv_kill_switch_dns_window" xml:space="preserve">
+    <value>Khi đang bật và không có gì đang kết nối, không có gì rời khỏi thiết bị này - kể cả tra cứu tên. Trong lúc thử kết nối, tra cứu tên từ bất kỳ ứng dụng nào trên thiết bị này có thể đi ra không mã hóa để URnetwork tiếp cận máy chủ của mình; mọi thứ khác vẫn bị chặn.</value>
+    <comment>Settings, kill switch: what may leave the device while the switch is on, and the name-lookup window during a connection attempt.</comment>
+  </data>
+  <data name="adv_kill_switch_note" xml:space="preserve">
+    <value>Nếu đường hầm bị rớt bất ngờ, chặn lưu lượng của thiết bị này thay vì để nó thoát ra mà không được bảo vệ.</value>
+    <comment>Settings: explanation under the kill switch switch.</comment>
+  </data>
+  <data name="adv_kill_switch_recovery" xml:space="preserve">
+    <value>Nếu thiết bị này không thể kết nối mạng, một chặn được cài đặt trước đó có thể vẫn còn; gỡ bỏ bằng: {}</value>
+    <comment>Kill switch: how to remove a block that is still in place when the device cannot reach the network; {command} is the shell command.</comment>
+  </data>
+  <data name="adv_kill_switch_state_armed" xml:space="preserve">
+    <value>Đang có hiệu lực: chỉ lưu lượng mạng cục bộ rời khỏi thiết bị này cho đến khi bạn kết nối.</value>
+    <comment>Kill switch status: in force and armed, only local traffic leaves until connected.</comment>
+  </data>
+  <data name="adv_kill_switch_state_connected" xml:space="preserve">
+    <value>Đang có hiệu lực: nếu đường hầm bị rớt, lưu lượng của thiết bị này sẽ bị chặn thay vì thoát ra mà không được bảo vệ.</value>
+    <comment>Kill switch status: in force while connected, traffic is blocked if the tunnel drops.</comment>
+  </data>
+  <data name="adv_kill_switch_state_failed" xml:space="preserve">
+    <value>Dịch vụ hệ thống URnetwork không thể cài đặt Kill switch, nên lưu lượng không bị chặn.</value>
+    <comment>Kill switch status: the system service could not install the block.</comment>
+  </data>
+  <data name="adv_kill_switch_state_not_in_force" xml:space="preserve">
+    <value>Kill switch KHÔNG có hiệu lực: lưu lượng của bạn không bị chặn.</value>
+    <comment>Kill switch status: not in force, traffic is not blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_pending" xml:space="preserve">
+    <value>Chưa có gì bị chặn — sẽ có hiệu lực ngay khi bạn kết nối.</value>
+    <comment>Kill switch status: nothing is blocked yet, takes effect on connect.</comment>
+  </data>
+  <data name="adv_kill_switch_state_still_installed" xml:space="preserve">
+    <value>Kill switch đã tắt, nhưng dịch vụ hệ thống URnetwork vẫn còn một chặn được cài đặt, nên lưu lượng của thiết bị này đang bị chặn.</value>
+    <comment>Kill switch status: the switch is off but the service still has a block installed, so traffic is blocked.</comment>
+  </data>
+  <data name="adv_kill_switch_state_unknown" xml:space="preserve">
+    <value>Hiện không thể kiểm tra Kill switch có đang hiệu lực hay không.</value>
+    <comment>Kill switch status: cannot be checked right now.</comment>
+  </data>
+  <data name="adv_kill_switch_still_installed_fix" xml:space="preserve">
+    <value>Bật rồi tắt lại Kill switch sẽ yêu cầu dịch vụ gỡ bỏ nó; nếu không được, gỡ bỏ bằng: {}</value>
+    <comment>Kill switch: how to clear a block the service still has installed; {command} is the shell command to use if toggling does not work.</comment>
+  </data>
+  <data name="adv_last_decision" xml:space="preserve">
+    <value>Quyết định gần nhất</value>
+    <comment>Connection inspector: label of the last routing decision row.</comment>
+  </data>
+  <data name="adv_matched" xml:space="preserve">
+    <value>Khớp</value>
+    <comment>Connection inspector: label of the matched rule row.</comment>
+  </data>
+  <data name="adv_na" xml:space="preserve">
+    <value>—</value>
+    <comment>Connection inspector: placeholder dash for a value that is not available.</comment>
+  </data>
+  <data name="adv_no_selection" xml:space="preserve">
+    <value>Chưa chọn kết nối</value>
+    <comment>Connection inspector: shown when no connection is selected.</comment>
+  </data>
+  <data name="adv_none" xml:space="preserve">
+    <value>không có</value>
+    <comment>Connection inspector: value shown when a field has nothing.</comment>
+  </data>
+  <data name="adv_override_id" xml:space="preserve">
+    <value>Ghi đè</value>
+    <comment>Connection inspector: label of the override id row.</comment>
+  </data>
+  <data name="adv_packets_total" xml:space="preserve">
+    <value>Gói (tổng)</value>
+    <comment>Connection inspector: label of the total packets row.</comment>
+  </data>
+  <data name="adv_probe_age" xml:space="preserve">
+    <value>Tuổi của thăm dò</value>
+    <comment>Connection inspector: label of the probe age row.</comment>
+  </data>
+  <data name="adv_protected" xml:space="preserve">
+    <value>Được bảo vệ</value>
+    <comment>Connection inspector: label of the protected row.</comment>
+  </data>
+  <data name="adv_providers_load_failed" xml:space="preserve">
+    <value>Không thể tải danh sách nhà cung cấp.</value>
+    <comment>Network page: error when the provider list could not be loaded.</comment>
+  </data>
+  <data name="adv_raw_status" xml:space="preserve">
+    <value>Trạng thái thô</value>
+    <comment>Connection inspector: label of the raw status row.</comment>
+  </data>
+  <data name="adv_reason" xml:space="preserve">
+    <value>Lý do</value>
+    <comment>Connection inspector: label of the decision reason row.</comment>
+  </data>
+  <data name="adv_reason_block" xml:space="preserve">
+    <value>Ghi đè chặn</value>
+    <comment>Connection inspector: decision reason, a block override applied.</comment>
+  </data>
+  <data name="adv_reason_default" xml:space="preserve">
+    <value>Chính sách mặc định</value>
+    <comment>Connection inspector: decision reason, the default policy applied.</comment>
+  </data>
+  <data name="adv_reason_override" xml:space="preserve">
+    <value>Ghi đè</value>
+    <comment>Connection inspector: decision reason, an override applied.</comment>
+  </data>
+  <data name="adv_reason_route" xml:space="preserve">
+    <value>Ghi đè tuyến</value>
+    <comment>Connection inspector: decision reason, a route override applied.</comment>
+  </data>
+  <data name="adv_select_a_row" xml:space="preserve">
+    <value>Chọn một hàng trong Hoạt động để kiểm tra</value>
+    <comment>Connection inspector: hint to select a row in the Activity list.</comment>
+  </data>
+  <data name="adv_selected" xml:space="preserve">
+    <value>đã chọn</value>
+    <comment>Connection inspector: suffix after the count of selected rows.</comment>
+  </data>
+  <data name="adv_selection_gone" xml:space="preserve">
+    <value>Kết nối đó không còn trong danh sách</value>
+    <comment>Connection inspector: shown when the selected connection is no longer listed.</comment>
+  </data>
+  <data name="adv_session_exit_country" xml:space="preserve">
+    <value>Quốc gia thoát của phiên</value>
+    <comment>Connection inspector: label of the session exit country row.</comment>
+  </data>
+  <data name="adv_unknown_exit" xml:space="preserve">
+    <value>Không có trong bảng định tuyến</value>
+    <comment>Connection inspector: exit value when the destination is not in the routing table.</comment>
+  </data>
+  <data name="adv_verdict_blocked" xml:space="preserve">
+    <value>Đã chặn — không gửi gói nào</value>
+    <comment>Connection inspector: verdict, the connection was blocked and no packets were sent.</comment>
+  </data>
+  <data name="adv_verdict_local" xml:space="preserve">
+    <value>Đã bỏ qua đường hầm — không được bảo vệ</value>
+    <comment>Connection inspector: verdict, the connection bypassed the tunnel and is not protected.</comment>
+  </data>
+  <data name="adv_verdict_tunnelled" xml:space="preserve">
+    <value>Qua đường hầm URnetwork</value>
+    <comment>Connection inspector: verdict, the connection went through the URnetwork tunnel.</comment>
+  </data>
+  <data name="adv_via_exit" xml:space="preserve">
+    <value>Qua điểm thoát</value>
+    <comment>Connection inspector: label of the via-exit row.</comment>
+  </data>
+  <data name="advanced" xml:space="preserve">
+    <value>Nâng cao</value>
+    <comment>Settings: heading of the advanced section.</comment>
   </data>
   <data name="all_the_content_in_the_world_from_urnetwork" xml:space="preserve">
     <value>Tất cả nội dung trên thế giới từ URnetwork</value>
@@ -196,6 +436,10 @@
   <data name="app_too_old_for_daemon" xml:space="preserve">
     <value>Ứng dụng này cũ hơn dịch vụ hệ thống URnetwork đã cài đặt. Hãy cập nhật ứng dụng để kết nối.</value>
     <comment>Shown on the linux home screen when the urnetworkd system service rejected this app for speaking an older control protocol than the service supports. The fix is updating the app, not the service.</comment>
+  </data>
+  <data name="app_version" xml:space="preserve">
+    <value>Phiên bản ứng dụng</value>
+    <comment>Settings, about: label of the app version row.</comment>
   </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>Đã thêm phương thức đăng nhập Apple</value>
@@ -544,6 +788,18 @@ cách đúng đắn</value>
     <value>Đối tác</value>
     <comment>A label displayed next to a companion contract.</comment>
   </data>
+  <data name="conn_connect_on_launch" xml:space="preserve">
+    <value>Tự động kết nối khi ứng dụng khởi động</value>
+    <comment>Settings: switch that connects automatically when the app starts.</comment>
+  </data>
+  <data name="conn_connect_on_launch_note" xml:space="preserve">
+    <value>Mặc định tắt. Khi bật, URnetwork sẽ kết nối với nhà cung cấp bạn đã chọn ngay khi mở ứng dụng. Áp dụng cho lần khởi động tiếp theo - không kết nối ngay bây giờ.</value>
+    <comment>Settings: explanation under the connect-on-launch switch.</comment>
+  </data>
+  <data name="conn_not_protected" xml:space="preserve">
+    <value>Lưu lượng internet của bạn không được bảo vệ.</value>
+    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+  </data>
   <data name="connect" xml:space="preserve">
     <value>Kết nối</value>
     <comment>Button text to connect to URnetwork VPN</comment>
@@ -732,6 +988,30 @@ cách đúng đắn</value>
     <value>DNS tùy chỉnh</value>
     <comment>Title of a section in the connect drawer that shows the custom dns settings.</comment>
   </data>
+  <data name="daemon_auth_check_failed" xml:space="preserve">
+    <value>Dịch vụ hệ thống URnetwork không thể kiểm tra tài khoản này có được phép kết nối hay không, nên đã không kết nối. Hãy thử lại.</value>
+    <comment>Connect error: the system service could not check whether the account may connect.</comment>
+  </data>
+  <data name="daemon_auth_denied" xml:space="preserve">
+    <value>Chính sách của thiết bị này không cho phép tài khoản này kết nối qua URnetwork. Quản trị viên có thể thay đổi điều đó.</value>
+    <comment>Connect error: the device policy does not allow this account to connect.</comment>
+  </data>
+  <data name="daemon_auth_required" xml:space="preserve">
+    <value>Kết nối từ phiên này cần quyền quản trị viên. Nhấn Kết nối lần nữa để được hỏi, hoặc dùng phiên tại màn hình của thiết bị này.</value>
+    <comment>Connect error: administrator permission is needed from this session.</comment>
+  </data>
+  <data name="daemon_auth_timeout" xml:space="preserve">
+    <value>Yêu cầu quyền không được trả lời, nên không có gì được kết nối. Nhấn Kết nối để thử lại.</value>
+    <comment>Connect error: the permission request was not answered.</comment>
+  </data>
+  <data name="daemon_auth_unavailable" xml:space="preserve">
+    <value>Thiết bị này không có dịch vụ ủy quyền polkit, nên dịch vụ hệ thống URnetwork dùng nhóm 'urnetwork' thay thế. Thêm người dùng của bạn vào nhóm đó rồi đăng xuất và đăng nhập lại.</value>
+    <comment>Connect error: no polkit service, the daemon falls back to the urnetwork group.</comment>
+  </data>
+  <data name="daemon_no_answer" xml:space="preserve">
+    <value>Dịch vụ hệ thống URnetwork không phản hồi.</value>
+    <comment>Error: the system service did not answer.</comment>
+  </data>
   <data name="daemon_sdk_mismatch" xml:space="preserve">
     <value>Ứng dụng và dịch vụ hệ thống URnetwork là hai bản dựng khác nhau. Hãy cập nhật cả hai lên cùng một phiên bản.</value>
     <comment>Shown on the linux home screen when the app and the urnetworkd system service carry different URnetwork SDK builds (they update on independent schedules and must match exactly). The fix is updating both to the same release.</comment>
@@ -739,6 +1019,10 @@ cách đúng đắn</value>
   <data name="daemon_too_old" xml:space="preserve">
     <value>Dịch vụ hệ thống URnetwork đã lỗi thời. Hãy cập nhật để kết nối.</value>
     <comment>Shown on the linux home screen when the installed urnetworkd system service speaks an older control protocol than this app supports. Distinct from daemon_unreachable by contract; the fix is updating the service, not the app.</comment>
+  </data>
+  <data name="daemon_tunnel_owned_by_other_user" xml:space="preserve">
+    <value>Một người dùng khác trên thiết bị này đang kết nối qua URnetwork. Hãy ngắt kết nối từ phiên của họ, hoặc tiếp quản bằng quyền quản trị viên.</value>
+    <comment>Connect error: another user on the device holds the tunnel.</comment>
   </data>
   <data name="daemon_unreachable" xml:space="preserve">
     <value>Dịch vụ hệ thống URnetwork không chạy. Hãy cài đặt hoặc khởi động dịch vụ, rồi thử lại.</value>
@@ -847,6 +1131,14 @@ cách đúng đắn</value>
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>Cài đặt an toàn mặc định chưa được áp dụng</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="dns_not_on_tunnel" xml:space="preserve">
+    <value>DNS KHÔNG đi qua đường hầm — các tên bạn tra cứu đang được phân giải bên ngoài nó.</value>
+    <comment>Connect drawer: warning that DNS is resolving outside the tunnel.</comment>
+  </data>
+  <data name="dns_on_tunnel" xml:space="preserve">
+    <value>DNS đang đi qua đường hầm</value>
+    <comment>Connect drawer: status that DNS goes through the tunnel.</comment>
   </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS qua HTTPS</value>
@@ -1261,6 +1553,14 @@ cách đúng đắn</value>
     <value>Đã bao gồm</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="instant_account_explainer" xml:space="preserve">
+    <value>Không cần email, điện thoại hay mật khẩu. Tài khoản của bạn được bảo vệ bằng cụm từ khôi phục.</value>
+    <comment>Instant account: explains that no email, phone or password is needed.</comment>
+  </data>
+  <data name="instant_account_failed" xml:space="preserve">
+    <value>Không thể tạo tài khoản. Vui lòng thử lại.</value>
+    <comment>Instant account: error when the account could not be created.</comment>
+  </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Không đủ số dư</value>
     <comment>Call to action</comment>
@@ -1585,6 +1885,10 @@ gặp lại bạn</value>
   <data name="monthly" xml:space="preserve">
     <value>Hằng tháng</value>
     <comment>Billing period name on the monthly subscription product card in the upgrade flow.</comment>
+  </data>
+  <data name="more_options" xml:space="preserve">
+    <value>Tùy chọn khác</value>
+    <comment>Connect page: button that reveals more options.</comment>
   </data>
   <data name="multiple_ips" xml:space="preserve">
     <value>Nhiều IP</value>
@@ -2434,6 +2738,14 @@ nội dung thế giới</value>
     <value>Cụm từ khôi phục phải gồm 12 hoặc 24 từ</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
   </data>
+  <data name="seedphrase_login_failed" xml:space="preserve">
+    <value>Đăng nhập bằng cụm từ khôi phục thất bại</value>
+    <comment>Login: error title when signing in with a seedphrase failed.</comment>
+  </data>
+  <data name="seedphrase_only_time" xml:space="preserve">
+    <value>⚠️ Đây là lần DUY NHẤT bạn thấy điều này.</value>
+    <comment>Seedphrase sheet: warning that this is the only time the seedphrase is shown.</comment>
+  </data>
   <data name="seedphrase_paste_hint" xml:space="preserve">
     <value>Dán cụm từ khôi phục gồm 12 hoặc 24 từ của bạn vào đây</value>
     <comment>Seed sign-in sheet: placeholder of the seedphrase field (android accepts 12 or 24 words).</comment>
@@ -2441,6 +2753,14 @@ nội dung thế giới</value>
   <data name="seedphrase_required" xml:space="preserve">
     <value>Vui lòng nhập cụm từ khôi phục</value>
     <comment>Seed sign-in sheet: error when Sign in is tapped with an empty seedphrase field.</comment>
+  </data>
+  <data name="seedphrase_store_safely" xml:space="preserve">
+    <value>Hãy ghi lại và cất ở nơi an toàn. Nếu làm mất, bạn sẽ mất quyền truy cập vào tài khoản.</value>
+    <comment>Seedphrase sheet: advice to write the seedphrase down and store it safely.</comment>
+  </data>
+  <data name="seedphrase_word_count_warning" xml:space="preserve">
+    <value>Đó là {} từ — cụm từ khôi phục gồm 12 hoặc 24 từ</value>
+    <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Đã xác minh Mã thông báo Seeker!</value>
@@ -2956,6 +3276,22 @@ như nó vốn phải thế.</value>
     <value>Pro</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
+  <data name="svc_service_label" xml:space="preserve">
+    <value>Dịch vụ VPN</value>
+    <comment>Settings: label of the VPN service row.</comment>
+  </data>
+  <data name="svc_uninstall_action" xml:space="preserve">
+    <value>Gỡ cài đặt</value>
+    <comment>Settings: button that uninstalls the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_confirm" xml:space="preserve">
+    <value>Thao tác này dừng dịch vụ URnetwork và gỡ bỏ unit systemd của nó. Ứng dụng không thể kết nối cho đến khi thiết lập lại. Bạn sẽ được yêu cầu quyền quản trị viên.</value>
+    <comment>Settings: confirmation text before uninstalling the VPN service.</comment>
+  </data>
+  <data name="svc_uninstall_note" xml:space="preserve">
+    <value>Gỡ bỏ dịch vụ systemd mà URnetwork dùng để truyền lưu lượng.</value>
+    <comment>Settings: explanation under the uninstall service button.</comment>
+  </data>
   <data name="switch_account" xml:space="preserve">
     <value>Chuyển tài khoản</value>
     <comment>Call to action</comment>
@@ -3091,6 +3427,10 @@ như nó vốn phải thế.</value>
     <value>Không thể khởi động kết nối</value>
     <comment>Generic fallback on the linux home screen when the urnetworkd system service accepted the request but starting the VPN tunnel failed and no more specific error text is available.</comment>
   </data>
+  <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
+    <value>Kết nối đã dừng.</value>
+    <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>DNS không mã hóa</value>
     <comment>A label displayed in the custom dns settings section.</comment>
@@ -3122,6 +3462,14 @@ như nó vốn phải thế.</value>
   <data name="unstable_providers_warning" xml:space="preserve">
     <value>* (có thể không ổn định)</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="upd_auto_check" xml:space="preserve">
+    <value>Tự động kiểm tra cập nhật</value>
+    <comment>Settings: switch that checks for updates automatically.</comment>
+  </data>
+  <data name="upd_auto_check_note" xml:space="preserve">
+    <value>Tìm bản phát hành mới ngay sau khi khởi động và mỗi sáu giờ. Không bao giờ cài đặt gì nếu không nhấp.</value>
+    <comment>Settings: explanation under the automatic update check switch.</comment>
   </data>
   <data name="update" xml:space="preserve">
     <value>Cập nhật</value>
