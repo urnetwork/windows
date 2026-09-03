@@ -88,6 +88,10 @@
     <value>Dodaj zablokowaną lokalizację</value>
     <comment>Call to action</comment>
   </data>
+  <data name="add_emoji" xml:space="preserve">
+    <value>Dodaj emoji</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor when no tag is set yet.</comment>
+  </data>
   <data name="add_referral_code" xml:space="preserve">
     <value>Dodaj kod polecający</value>
     <comment>Call to action</comment>
@@ -140,6 +144,10 @@
   </data>
   <data name="amount_per_month" xml:space="preserve">
     <value>{}/miesiąc</value>
+  </data>
+  <data name="anonymous" xml:space="preserve">
+    <value>Anonimowy</value>
+    <comment>Points leaderboard: the name shown for a listed network whose name is not public.</comment>
   </data>
   <data name="anything_else" xml:space="preserve">
     <value>Coś jeszcze?</value>
@@ -398,6 +406,10 @@
     <value>Zablokowane lokalizacje</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
+  <data name="blocks" xml:space="preserve">
+    <value>Bloki</value>
+    <comment>Points leaderboard: stat tile label and sort chip. A block is one finalized payout epoch.</comment>
+  </data>
   <data name="bonus_referral_code_copied_to_clipboard" xml:space="preserve">
     <value>Skopiowano bonusowy kod polecający do schowka</value>
     <comment>Snackbar shown after copying the bonus referral code. Used in Shared/Views/Introduction/ParticipateReferView.swift, Main/Account/Settings/SettingsForm-iOS.swift and Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -503,6 +515,10 @@ właściwy sposób</value>
   <data name="claim_network_name_hint" xml:space="preserve">
     <value>Uzyskaj własną nazwę sieci, która zastąpi nazwę wygenerowaną automatycznie</value>
     <comment>A description of the benefits of claiming a custom network name.</comment>
+  </data>
+  <data name="clear" xml:space="preserve">
+    <value>Wyczyść</value>
+    <comment>General UI string: a button that clears a field or setting.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Kontrakty klienta</value>
@@ -948,6 +964,10 @@ właściwy sposób</value>
     <value>Edytuj nazwę urządzenia</value>
     <comment>device</comment>
   </data>
+  <data name="edit_emoji" xml:space="preserve">
+    <value>Edytuj emoji</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor for an existing tag.</comment>
+  </data>
   <data name="edit_network_name" xml:space="preserve">
     <value>Edytuj nazwę sieci</value>
     <comment>Button on the profile screen to edit the network name.</comment>
@@ -963,6 +983,26 @@ właściwy sposób</value>
   <data name="edit_split_rule" xml:space="preserve">
     <value>Edytuj regułę podziału</value>
     <comment>A label displayed above the split rule editor.</comment>
+  </data>
+  <data name="emoji_tag" xml:space="preserve">
+    <value>Tag emoji</value>
+    <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
+  </data>
+  <data name="emoji_tag_error_empty" xml:space="preserve">
+    <value>Dodaj co najmniej jedno emoji.</value>
+    <comment>Points leaderboard: emoji editor error when the field has no emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_not_emoji" xml:space="preserve">
+    <value>Dozwolone są tylko emoji.</value>
+    <comment>Points leaderboard: emoji editor error when the field contains anything that is not an emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_too_many" xml:space="preserve">
+    <value>Użyj najwyżej {} emoji.</value>
+    <comment>Points leaderboard: emoji editor error when more than {max} emoji were entered.</comment>
+  </data>
+  <data name="emoji_tag_hint" xml:space="preserve">
+    <value>Wybierz od 1 do {} emoji wyświetlanych obok Twojej sieci.</value>
+    <comment>Points leaderboard: the emoji editor's explanation. {max} is the most emoji allowed (6).</comment>
   </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>Czy podoba Ci się URnetwork?</value>
@@ -1474,6 +1514,10 @@ który wysłaliśmy, aby zweryfikować twoją tożsamość.</value>
     <value>Masz wiadomość</value>
     <comment>Header for verify screen</comment>
   </data>
+  <data name="longest_streak" xml:space="preserve">
+    <value>Najdłuższa seria</value>
+    <comment>Points leaderboard: secondary stat, the best run of consecutive blocks with points.</comment>
+  </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>Najniższy stosunek użytkowników do IP przy dostępie do treści</value>
     <comment>Call to action</comment>
@@ -1836,7 +1880,7 @@ który wysłaliśmy, aby zweryfikować twoją tożsamość.</value>
   </data>
   <data name="none" xml:space="preserve">
     <value>Brak</value>
-    <comment>Call to action</comment>
+    <comment>Empty value: the Referrals section shows it when no referral network is linked (apple), and the android referral network row.</comment>
   </data>
   <data name="notifications_label" xml:space="preserve">
     <value>Powiadomienia</value>
@@ -2007,6 +2051,22 @@ zdecentralizowanym na świecie protokole wejścia i wyjścia.</value>
     <value>+ jeszcze {}</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
   </data>
+  <data name="points" xml:space="preserve">
+    <value>Punkty</value>
+    <comment>Points leaderboard: tab label, stat tile label and sort chip.</comment>
+  </data>
+  <data name="points_leaderboard_description" xml:space="preserve">
+    <value>Punkty od początku. Blok to jedna sfinalizowana epoka; seria liczy kolejne bloki z punktami aż do ostatniego.</value>
+    <comment>Points leaderboard: the explanation under the list header.</comment>
+  </data>
+  <data name="points_leaderboard_empty" xml:space="preserve">
+    <value>W rankingu punktów nie ma jeszcze nikogo.</value>
+    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+  </data>
+  <data name="points_leaderboard_private_hint" xml:space="preserve">
+    <value>Widzisz to tylko Ty. Włącz, aby pojawić się w rankingu.</value>
+    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+  </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Szyfrowanie postkwantowe</value>
     <comment>Connect drawer: post quantum encryption toggle label.</comment>
@@ -2158,6 +2218,10 @@ zdecentralizowanym na świecie protokole wejścia i wyjścia.</value>
     <value>Zakończ URnetwork</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="ranked_networks_count" xml:space="preserve">
+    <value>{} sklasyfikowanych sieci</value>
+    <comment>Points leaderboard: how many networks hold a rank. {count} is preformatted with separators.</comment>
+  </data>
   <data name="ready_to_connect" xml:space="preserve">
     <value>Gotowy do połączenia</value>
     <comment>Call to action</comment>
@@ -2297,6 +2361,10 @@ zdecentralizowanym na świecie protokole wejścia i wyjścia.</value>
   <data name="referral_network" xml:space="preserve">
     <value>Sieć poleceń</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="referral_points" xml:space="preserve">
+    <value>Punkty za polecenia</value>
+    <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
   </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
@@ -2577,6 +2645,10 @@ treść świata</value>
     <value>Pokaż ikonę UR po połączeniu</value>
     <comment>Call to action</comment>
   </data>
+  <data name="show_on_points_leaderboard" xml:space="preserve">
+    <value>Pokaż w rankingu punktów</value>
+    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+  </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>Pokaż listę dostawców</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>
@@ -2669,7 +2741,7 @@ treść świata</value>
   </data>
   <data name="site_app_manage_subscription" xml:space="preserve">
     <value>Zarządzaj subskrypcją</value>
-    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+    <comment>App sidebar and account panel: opens Manage Subscription (every billing store, renewal date, auto-renew, cancel)</comment>
   </data>
   <data name="site_app_mode_auto" xml:space="preserve">
     <value>Automatycznie</value>
@@ -2743,6 +2815,66 @@ treść świata</value>
     <value>Zainstaluj aplikację</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_manage" xml:space="preserve">
+    <value>Zarządzaj</value>
+    <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
+  </data>
+  <data name="site_manage_subscription_hint" xml:space="preserve">
+    <value>Zobacz datę odnowienia, stan automatycznego odnawiania i opcje anulowania.</value>
+    <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_sub_active_until" xml:space="preserve">
+    <value>Aktywna do {date}</value>
+    <comment>Subscription: date line when the store did not answer whether it auto-renews. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_auto_renew_off" xml:space="preserve">
+    <value>Automatyczne odnawianie wyłączone</value>
+    <comment>Subscription: status chip — the subscription will not renew itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_on" xml:space="preserve">
+    <value>Automatyczne odnawianie włączone</value>
+    <comment>Subscription: status chip — the subscription renews itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_unknown" xml:space="preserve">
+    <value>Automatyczne odnawianie nieznane</value>
+    <comment>Subscription: status chip — the store did not answer whether it auto-renews.</comment>
+  </data>
+  <data name="site_sub_billed_solana" xml:space="preserve">
+    <value>Opłacono w USDC w sieci Solana.</value>
+    <comment>Subscription: store sentence for a Pro year paid with USDC on Solana.</comment>
+  </data>
+  <data name="site_sub_billing_details" xml:space="preserve">
+    <value>Szczegóły rozliczeń</value>
+    <comment>Subscription: secondary link that opens Stripe's billing portal (payment details, invoices). Shown only when the network has a Stripe customer.</comment>
+  </data>
+  <data name="site_sub_cancel" xml:space="preserve">
+    <value>Anuluj subskrypcję</value>
+    <comment>Subscription: the cancel button for a Stripe-billed subscription (cancels at the end of the paid period).</comment>
+  </data>
+  <data name="site_sub_cancel_confirm" xml:space="preserve">
+    <value>Anulować z końcem okresu? Pro pozostanie do {date}.</value>
+    <comment>Subscription: inline confirmation before cancelling. {date} is the end of the paid period, a localized date.</comment>
+  </data>
+  <data name="site_sub_cancel_keep" xml:space="preserve">
+    <value>Zachowaj</value>
+    <comment>Subscription: back out of the cancellation.</comment>
+  </data>
+  <data name="site_sub_cancel_yes" xml:space="preserve">
+    <value>Tak, anuluj</value>
+    <comment>Subscription: confirm the cancellation.</comment>
+  </data>
+  <data name="site_sub_change_error" xml:space="preserve">
+    <value>Nie udało się zmienić subskrypcji. Spróbuj ponownie.</value>
+    <comment>Subscription: a cancel or resume request failed.</comment>
+  </data>
+  <data name="site_sub_details_error" xml:space="preserve">
+    <value>Nie udało się wczytać szczegółów odnowienia. Pokazujemy to, co wiemy.</value>
+    <comment>Subscription: shown when the details request (dates, auto-renew) failed and the screen falls back to the list of billing stores.</comment>
+  </data>
+  <data name="site_sub_ends_on" xml:space="preserve">
+    <value>Kończy się {date}</value>
+    <comment>Subscription: date line when auto-renew is off (cancelled, or a one-time USDC year). {date} is a localized date.</comment>
+  </data>
   <data name="site_sub_free_body" xml:space="preserve">
     <value>Korzystasz z planu Free. Przejdź na Pro, aby uzyskać więcej danych i funkcji.</value>
     <comment>Subscription: free plan body</comment>
@@ -2778,6 +2910,18 @@ treść świata</value>
   <data name="site_sub_platform_body_google" xml:space="preserve">
     <value>Twoja subskrypcja Pro jest rozliczana przez Google Play. Aby ją zmienić lub anulować, zarządzaj subskrypcjami w Google Play.</value>
     <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_renews_on" xml:space="preserve">
+    <value>Odnowi się {date}</value>
+    <comment>Subscription: date line when auto-renew is on. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_resume" xml:space="preserve">
+    <value>Wznów subskrypcję</value>
+    <comment>Subscription: undo a pending cancellation while the paid period is still running.</comment>
+  </data>
+  <data name="site_sub_solana_no_renew" xml:space="preserve">
+    <value>Nie odnawia się. Po zakończeniu zapłać ponownie w USDC.</value>
+    <comment>Subscription: note under a USDC-paid year — it is a one-time payment with nothing to cancel.</comment>
   </data>
   <data name="site_sub_stripe_body" xml:space="preserve">
     <value>Twoja subskrypcja Pro jest rozliczana przez Stripe. Poniżej możesz w każdej chwili zaktualizować dane płatności lub anulować subskrypcję.</value>
@@ -2882,6 +3026,10 @@ takiego, jakim powinien być.</value>
   <data name="step_two" xml:space="preserve">
     <value>Krok 2</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="streak" xml:space="preserve">
+    <value>Seria</value>
+    <comment>Points leaderboard: stat tile label and sort chip. Consecutive blocks with points.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Silna anonimizacja</value>

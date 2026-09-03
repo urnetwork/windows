@@ -142,9 +142,6 @@ class SettingsPage {
   winrt::fire_and_forget ShowAuthCodeSheet();
   winrt::fire_and_forget ShowAddAuthSheet();
   winrt::fire_and_forget ShowReferralNetworkSheet();
-  // the gold king-frog refer panel (the ur.io referral panel): code, crowned
-  // status and a copy-the-invite action
-  winrt::fire_and_forget ShowReferSheet();
   winrt::fire_and_forget ShowIdentitySheet();
   winrt::fire_and_forget ShowDeleteAccountSheet();
 
@@ -158,8 +155,6 @@ class SettingsPage {
   // ---- the code-built controls the loads write into ----
   winrt::Microsoft::UI::Xaml::Controls::TextBlock clientIdValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button clientIdCopy_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::TextBlock referralCodeValue_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::Button referralCodeCopy_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock referralNetworkValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel authMethodsPanel_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock deviceNameValue_{nullptr};
@@ -192,7 +187,6 @@ class SettingsPage {
 
   // ---- loaded state ----
   std::string clientId_;
-  std::string referralCode_;
   std::string networkName_;
   std::string deviceName_;
   std::vector<std::string> authTypes_;

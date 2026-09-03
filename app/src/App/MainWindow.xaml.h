@@ -20,6 +20,7 @@
 #include "LoginPage.h"
 #include "Onboarding.h"
 #include "Protocol.h"
+#include "ReferralsPage.h"
 #include "SdkHost.h"
 #include "ServiceSetup.h"
 #include "SettingsPage.h"
@@ -56,6 +57,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   urnw::AccountPage& account() { return *account_; }
   urnw::WalletPage& wallet() { return *wallet_; }
   urnw::SettingsPage& settings() { return *settings_; }
+  urnw::ReferralsPage& referrals() { return *referrals_; }
   urnw::DeveloperPage& developer() { return *developer_; }
 
   // ---- shared window-level state the pages need ----
@@ -77,6 +79,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the SubscriptionBalanceStore relay: it paints the account panel AND the
   // connect drawer from one snapshot, so it stays at window level
   void ApplyBalance();
+  // The "Refer and earn" page: shown in place of the Account panes (it has no
+  // rail item), opened from Account's Referrals row and closed from its own
+  // "‹ Account"; any rail navigation closes it too.
+  void OpenReferrals();
+  void CloseReferrals();
   // last ContractStatus push (ConnectPage::ApplyStats) -> the warning InfoBar
   void SetInsufficientBalance(bool insufficient);
   // ---- the persistent status strip (D4) ----
@@ -405,6 +412,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::unique_ptr<urnw::AccountPage> account_;
   std::unique_ptr<urnw::WalletPage> wallet_;
   std::unique_ptr<urnw::SettingsPage> settings_;
+  std::unique_ptr<urnw::ReferralsPage> referrals_;
+  bool referralsOpen_ = false;  // the Refer and earn page is up in Account's place
   std::unique_ptr<urnw::DeveloperPage> developer_;
 
   // balance / plan state (UI thread only; pushed by the store via AppController)

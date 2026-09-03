@@ -88,6 +88,10 @@
     <value>Thêm vị trí bị chặn</value>
     <comment>Call to action</comment>
   </data>
+  <data name="add_emoji" xml:space="preserve">
+    <value>Thêm emoji</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor when no tag is set yet.</comment>
+  </data>
   <data name="add_referral_code" xml:space="preserve">
     <value>Thêm mã giới thiệu</value>
     <comment>Call to action</comment>
@@ -140,6 +144,10 @@
   </data>
   <data name="amount_per_month" xml:space="preserve">
     <value>{}/tháng</value>
+  </data>
+  <data name="anonymous" xml:space="preserve">
+    <value>Ẩn danh</value>
+    <comment>Points leaderboard: the name shown for a listed network whose name is not public.</comment>
   </data>
   <data name="anything_else" xml:space="preserve">
     <value>Còn gì nữa không?</value>
@@ -374,6 +382,10 @@
     <value>Vị trí bị chặn</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
+  <data name="blocks" xml:space="preserve">
+    <value>Khối</value>
+    <comment>Points leaderboard: stat tile label and sort chip. A block is one finalized payout epoch.</comment>
+  </data>
   <data name="bonus_referral_code_copied_to_clipboard" xml:space="preserve">
     <value>Đã sao chép mã giới thiệu thưởng vào bộ nhớ tạm</value>
     <comment>Snackbar shown after copying the bonus referral code. Used in Shared/Views/Introduction/ParticipateReferView.swift, Main/Account/Settings/SettingsForm-iOS.swift and Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -479,6 +491,10 @@ cách đúng đắn</value>
   <data name="claim_network_name_hint" xml:space="preserve">
     <value>Nhận tên mạng tùy chỉnh để thay thế tên được tạo tự động</value>
     <comment>A description of the benefits of claiming a custom network name.</comment>
+  </data>
+  <data name="clear" xml:space="preserve">
+    <value>Xóa</value>
+    <comment>General UI string: a button that clears a field or setting.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Hợp đồng máy khách</value>
@@ -900,6 +916,10 @@ cách đúng đắn</value>
     <value>Sửa tên thiết bị</value>
     <comment>device</comment>
   </data>
+  <data name="edit_emoji" xml:space="preserve">
+    <value>Sửa emoji</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor for an existing tag.</comment>
+  </data>
   <data name="edit_network_name" xml:space="preserve">
     <value>Sửa tên mạng</value>
     <comment>Button on the profile screen to edit the network name.</comment>
@@ -915,6 +935,26 @@ cách đúng đắn</value>
   <data name="edit_split_rule" xml:space="preserve">
     <value>Chỉnh sửa quy tắc tách luồng</value>
     <comment>A label displayed above the split rule editor.</comment>
+  </data>
+  <data name="emoji_tag" xml:space="preserve">
+    <value>Thẻ emoji</value>
+    <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
+  </data>
+  <data name="emoji_tag_error_empty" xml:space="preserve">
+    <value>Thêm ít nhất một emoji.</value>
+    <comment>Points leaderboard: emoji editor error when the field has no emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_not_emoji" xml:space="preserve">
+    <value>Chỉ cho phép emoji.</value>
+    <comment>Points leaderboard: emoji editor error when the field contains anything that is not an emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_too_many" xml:space="preserve">
+    <value>Dùng tối đa {} emoji.</value>
+    <comment>Points leaderboard: emoji editor error when more than {max} emoji were entered.</comment>
+  </data>
+  <data name="emoji_tag_hint" xml:space="preserve">
+    <value>Chọn 1 đến {} emoji để hiển thị cạnh mạng của bạn.</value>
+    <comment>Points leaderboard: the emoji editor's explanation. {max} is the most emoji allowed (6).</comment>
   </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>Bạn thích URnetwork chứ?</value>
@@ -1402,6 +1442,10 @@ gặp lại bạn</value>
     <value>Bạn có email mới</value>
     <comment>Header for verify screen</comment>
   </data>
+  <data name="longest_streak" xml:space="preserve">
+    <value>Chuỗi dài nhất</value>
+    <comment>Points leaderboard: secondary stat, the best run of consecutive blocks with points.</comment>
+  </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>Tỷ lệ người dùng/IP thấp nhất để truy cập nội dung</value>
     <comment>Call to action</comment>
@@ -1741,7 +1785,7 @@ Nhận thưởng bằng cách tạo mạng!</value>
   </data>
   <data name="none" xml:space="preserve">
     <value>Không có</value>
-    <comment>Call to action</comment>
+    <comment>Empty value: the Referrals section shows it when no referral network is linked (apple), and the android referral network row.</comment>
   </data>
   <data name="notifications_label" xml:space="preserve">
     <value>Thông báo</value>
@@ -1900,6 +1944,22 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>+ {} nữa</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
   </data>
+  <data name="points" xml:space="preserve">
+    <value>Điểm</value>
+    <comment>Points leaderboard: tab label, stat tile label and sort chip.</comment>
+  </data>
+  <data name="points_leaderboard_description" xml:space="preserve">
+    <value>Điểm tích lũy. Một khối là một epoch đã hoàn tất; chuỗi đếm các khối liên tiếp có điểm cho đến khối mới nhất.</value>
+    <comment>Points leaderboard: the explanation under the list header.</comment>
+  </data>
+  <data name="points_leaderboard_empty" xml:space="preserve">
+    <value>Chưa có ai trên bảng xếp hạng điểm.</value>
+    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+  </data>
+  <data name="points_leaderboard_private_hint" xml:space="preserve">
+    <value>Chỉ bạn thấy điều này. Bật để xuất hiện trên bảng xếp hạng.</value>
+    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+  </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Mã hóa hậu lượng tử</value>
     <comment>Connect drawer: post quantum encryption toggle label.</comment>
@@ -2027,6 +2087,10 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>Thoát URnetwork</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="ranked_networks_count" xml:space="preserve">
+    <value>{} mạng được xếp hạng</value>
+    <comment>Points leaderboard: how many networks hold a rank. {count} is preformatted with separators.</comment>
+  </data>
   <data name="ready_to_connect" xml:space="preserve">
     <value>Sẵn sàng kết nối</value>
     <comment>Call to action</comment>
@@ -2142,6 +2206,10 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
   <data name="referral_network" xml:space="preserve">
     <value>Mạng giới thiệu</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="referral_points" xml:space="preserve">
+    <value>Điểm giới thiệu</value>
+    <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
   </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
@@ -2410,6 +2478,10 @@ nội dung thế giới</value>
     <value>Hiện biểu tượng UR khi đã kết nối</value>
     <comment>Call to action</comment>
   </data>
+  <data name="show_on_points_leaderboard" xml:space="preserve">
+    <value>Hiển thị trên bảng xếp hạng điểm</value>
+    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+  </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>Hiển thị danh sách nhà cung cấp</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>
@@ -2502,7 +2574,7 @@ nội dung thế giới</value>
   </data>
   <data name="site_app_manage_subscription" xml:space="preserve">
     <value>Quản lý gói đăng ký</value>
-    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+    <comment>App sidebar and account panel: opens Manage Subscription (every billing store, renewal date, auto-renew, cancel)</comment>
   </data>
   <data name="site_app_mode_auto" xml:space="preserve">
     <value>Tự động</value>
@@ -2576,6 +2648,66 @@ nội dung thế giới</value>
     <value>Cài đặt ứng dụng</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_manage" xml:space="preserve">
+    <value>Quản lý</value>
+    <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
+  </data>
+  <data name="site_manage_subscription_hint" xml:space="preserve">
+    <value>Xem ngày gia hạn, trạng thái tự động gia hạn và tùy chọn hủy.</value>
+    <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_sub_active_until" xml:space="preserve">
+    <value>Hoạt động đến {date}</value>
+    <comment>Subscription: date line when the store did not answer whether it auto-renews. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_auto_renew_off" xml:space="preserve">
+    <value>Tự động gia hạn: tắt</value>
+    <comment>Subscription: status chip — the subscription will not renew itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_on" xml:space="preserve">
+    <value>Tự động gia hạn: bật</value>
+    <comment>Subscription: status chip — the subscription renews itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_unknown" xml:space="preserve">
+    <value>Tự động gia hạn: không rõ</value>
+    <comment>Subscription: status chip — the store did not answer whether it auto-renews.</comment>
+  </data>
+  <data name="site_sub_billed_solana" xml:space="preserve">
+    <value>Đã thanh toán bằng USDC trên Solana.</value>
+    <comment>Subscription: store sentence for a Pro year paid with USDC on Solana.</comment>
+  </data>
+  <data name="site_sub_billing_details" xml:space="preserve">
+    <value>Chi tiết thanh toán</value>
+    <comment>Subscription: secondary link that opens Stripe's billing portal (payment details, invoices). Shown only when the network has a Stripe customer.</comment>
+  </data>
+  <data name="site_sub_cancel" xml:space="preserve">
+    <value>Hủy đăng ký</value>
+    <comment>Subscription: the cancel button for a Stripe-billed subscription (cancels at the end of the paid period).</comment>
+  </data>
+  <data name="site_sub_cancel_confirm" xml:space="preserve">
+    <value>Hủy vào cuối kỳ? Bạn vẫn có Pro đến {date}.</value>
+    <comment>Subscription: inline confirmation before cancelling. {date} is the end of the paid period, a localized date.</comment>
+  </data>
+  <data name="site_sub_cancel_keep" xml:space="preserve">
+    <value>Giữ lại</value>
+    <comment>Subscription: back out of the cancellation.</comment>
+  </data>
+  <data name="site_sub_cancel_yes" xml:space="preserve">
+    <value>Có, hủy</value>
+    <comment>Subscription: confirm the cancellation.</comment>
+  </data>
+  <data name="site_sub_change_error" xml:space="preserve">
+    <value>Không thể cập nhật đăng ký. Vui lòng thử lại.</value>
+    <comment>Subscription: a cancel or resume request failed.</comment>
+  </data>
+  <data name="site_sub_details_error" xml:space="preserve">
+    <value>Không tải được chi tiết gia hạn. Đang hiển thị những gì chúng tôi biết.</value>
+    <comment>Subscription: shown when the details request (dates, auto-renew) failed and the screen falls back to the list of billing stores.</comment>
+  </data>
+  <data name="site_sub_ends_on" xml:space="preserve">
+    <value>Kết thúc vào {date}</value>
+    <comment>Subscription: date line when auto-renew is off (cancelled, or a one-time USDC year). {date} is a localized date.</comment>
+  </data>
   <data name="site_sub_free_body" xml:space="preserve">
     <value>Bạn đang dùng gói Free. Nâng cấp lên Pro để có thêm dữ liệu và tính năng.</value>
     <comment>Subscription: free plan body</comment>
@@ -2611,6 +2743,18 @@ nội dung thế giới</value>
   <data name="site_sub_platform_body_google" xml:space="preserve">
     <value>Gói đăng ký Pro của bạn được thanh toán qua Google Play. Để thay đổi hoặc hủy, hãy quản lý các gói đăng ký của bạn trong Google Play.</value>
     <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_renews_on" xml:space="preserve">
+    <value>Gia hạn vào {date}</value>
+    <comment>Subscription: date line when auto-renew is on. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_resume" xml:space="preserve">
+    <value>Tiếp tục đăng ký</value>
+    <comment>Subscription: undo a pending cancellation while the paid period is still running.</comment>
+  </data>
+  <data name="site_sub_solana_no_renew" xml:space="preserve">
+    <value>Không tự gia hạn. Thanh toán lại bằng USDC khi kết thúc.</value>
+    <comment>Subscription: note under a USDC-paid year — it is a one-time payment with nothing to cancel.</comment>
   </data>
   <data name="site_sub_stripe_body" xml:space="preserve">
     <value>Gói đăng ký Pro của bạn được thanh toán qua Stripe. Cập nhật thông tin thanh toán hoặc hủy bất cứ lúc nào ở bên dưới.</value>
@@ -2703,6 +2847,10 @@ như nó vốn phải thế.</value>
   <data name="step_two" xml:space="preserve">
     <value>Bước 2</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="streak" xml:space="preserve">
+    <value>Chuỗi</value>
+    <comment>Points leaderboard: stat tile label and sort chip. Consecutive blocks with points.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Ẩn danh mạnh</value>

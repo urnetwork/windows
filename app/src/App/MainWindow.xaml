@@ -1724,29 +1724,14 @@
                                      all moved out of Settings -->
                                 <StackPanel x:Name="AccountSecurityHost" />
 
-                                <!-- referrals: the bonus code and the referring
-                                     network, also moved out of Settings -->
-                                <StackPanel x:Name="AccountReferralHost" />
-                                <Border Style="{StaticResource UrPaneRowStyle}"
-                                        MinHeight="0" Padding="12,10">
-                                    <TextBlock x:Name="ReferralText" TextWrapping="Wrap"
-                                               Style="{StaticResource UrKeyTextStyle}"
-                                               TextTrimming="None" />
+                                <!-- referrals: one row that opens the "Refer and earn"
+                                     page (ReferralsView below); the code, the figures
+                                     and the referral network live there now -->
+                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                    <TextBlock x:Name="AccountReferralsGroupLabel"
+                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
                                 </Border>
-                                <!-- referral royalty: a network with at least one
-                                     referral gets the crowned frog mascot (same as
-                                     the ur.io site) -->
-                                <Border x:Name="RoyaltyBadge" Visibility="Collapsed"
-                                        BorderBrush="{StaticResource UrBorderBrush}"
-                                        BorderThickness="0,0,0,1" Padding="12,10">
-                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                        <Image Source="ms-appx:///Assets/ReferralFrog.png"
-                                               Width="40" Height="40"
-                                               AutomationProperties.AccessibilityView="Raw" />
-                                        <TextBlock x:Name="RoyaltyText" VerticalAlignment="Center"
-                                                   Style="{StaticResource UrKeyTextStyle}" />
-                                    </StackPanel>
-                                </Border>
+                                <StackPanel x:Name="AccountReferralsNavHost" />
 
                                 <!-- the irreversible end, last on the page at
                                      every width -->
@@ -1789,6 +1774,40 @@
                                        Margin="16" IsHitTestVisible="False"
                                        Style="{StaticResource UrSupportingTextStyle}" />
                         </Grid>
+                    </Grid>
+                </Grid>
+
+                <!-- ============ REFERRALS: the "Refer and earn" page ============
+                     Reached from Account's Referrals row; it has no rail item of its
+                     own, so the pane header carries "‹ Account". The shared referral
+                     card (progress box + gold panel - ReferralCard.h), the figures and
+                     the referral-network row are built by ReferralsPage into the two
+                     hosts (SettingsPage still builds the referral-network row, which
+                     owns that sheet). -->
+                <Grid x:Name="ReferralsView" Visibility="Collapsed"
+                      Style="{StaticResource UrPaneStyle}">
+                    <Grid x:Name="ReferralsPane" AutomationProperties.LandmarkType="Main">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="12"
+                                            VerticalAlignment="Center">
+                                    <Button x:Name="ReferralsBackButton" Padding="8,4" />
+                                    <TextBlock x:Name="ReferralsPaneTitle" VerticalAlignment="Center"
+                                               Style="{StaticResource UrPaneTitleStyle}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel MaxWidth="760" HorizontalAlignment="Stretch">
+                                <StackPanel x:Name="ReferralsHost" />
+                                <StackPanel x:Name="ReferralsNetworkHost" />
+                            </StackPanel>
+                        </ScrollViewer>
                     </Grid>
                 </Grid>
 

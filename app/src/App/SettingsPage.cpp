@@ -190,7 +190,7 @@ void SettingsPage::BuildSections() {
   // now and follow in their own change.
   rows::SetPaneMode(true);
   BuildSecuritySection(w_.AccountSecurityHost());
-  BuildReferralSection(w_.AccountReferralHost());
+  BuildReferralSection(w_.ReferralsNetworkHost());
   BuildSubscriptionSection(w_.AccountPlanExtraHost());
   BuildDangerSection();
   rows::SetPaneMode(false);
@@ -256,37 +256,21 @@ void SettingsPage::BuildSecuritySection(Panel const& host) {
   });
 }
 
-// WHO REFERRED WHOM. Also onto Account's pane B, directly above the referral
-// summary and the royalty mascot the markup carries.
+// WHO REFERRED WHOM. Built onto the Refer and earn page (ReferralsView), under
+// the shared referral card and the figures ReferralsPage builds: this class
+// still owns the referral-network sheet, its load and its FieldState wiring.
+// The bonus code (with copy and share) is part of the card now.
 void SettingsPage::BuildReferralSection(Panel const& host) {
-  Heading(host, Loc("referrals"), L"");
   auto card = Card(host);
-
-  // Bonus referral code - what a friend types on sign up.
-  referralCodeValue_ =
-      ValueActionRow(card, Loc("bonus_referral_code_label"), Loc("copy"), referralCodeCopy_);
-  referralCodeCopy_.IsEnabled(false);
-  referralCodeCopy_.Click([this](auto const&, auto const&) {
-    if (referralCode_.empty()) return;
-    CopyToClipboard(referralCode_);
-    snackbar_.Show(Loc("bonus_referral_code_copied_to_clipboard"), InfoBarSeverity::Success);
-  });
 
   // Referral network - who referred THIS network, editable in a sheet.
   auto referralButton = NavRow(card, Loc("referral_network"), referralNetworkValue_);
   referralButton.Click([this](auto const&, auto const&) { ShowReferralNetworkSheet(); });
 
-  // Refer friends - the gold king-frog refer panel (parity with the account
-  // row on android/apple that opens the gold refer surface).
-  winrt::Microsoft::UI::Xaml::Controls::TextBlock unusedReferValue;
-  auto referFriendsButton = NavRow(card, Loc("refer_and_earn"), unusedReferValue);
-  referFriendsButton.Click([this](auto const&, auto const&) { ShowReferSheet(); });
-
-  // Both rows start in the state that says WHY they are empty. Without this they
-  // rendered as blank cells before any load ran - the exact "is this empty,
+  // The row starts in the state that says WHY it is empty. Without this it
+  // rendered as a blank cell before any load ran - the exact "is this empty,
   // loading, or broken?" ambiguity FieldState exists to remove, and it was
   // visible on screen because --preview-ui never calls LoadSettings.
-  ApplyFieldState(referralCodeValue_, FieldState::NoSession);
   ApplyFieldState(referralNetworkValue_, FieldState::NoSession);
 }
 
@@ -628,7 +612,6 @@ void SettingsPage::ResetForSignOut() {
   // networkName_ is the dangerous one - it is what the delete gate compares
   // against, and networkDelete acts on whatever JWT is current.
   clientId_.clear();
-  referralCode_.clear();
   networkName_.clear();
   deviceName_.clear();
   authTypes_.clear();
@@ -636,13 +619,11 @@ void SettingsPage::ResetForSignOut() {
 
   // Then the visible state, so nothing on screen still claims to describe it.
   ApplyFieldState(clientIdValue_, FieldState::NoSession);
-  ApplyFieldState(referralCodeValue_, FieldState::NoSession);
   ApplyFieldState(referralNetworkValue_, FieldState::NoSession);
   ApplyFieldState(deviceNameValue_, FieldState::NoSession);
   ApplyFieldState(deviceSpecValue_, FieldState::NoSession);
   RenderAuthMethods(FieldState::NoSession);
   clientIdCopy_.IsEnabled(false);
-  referralCodeCopy_.IsEnabled(false);
   applyingPreference_ = true;
   productUpdates_.IsOn(false);
   applyingPreference_ = false;
@@ -657,7 +638,6 @@ void SettingsPage::LoadSettings() {
     // than sitting on a dash or a spinner that will never resolve. This is the
     // state --preview-ui shows, and the state the owner sees before a login
     // exists on this box.
-    ApplyFieldState(referralCodeValue_, FieldState::NoSession);
     ApplyFieldState(referralNetworkValue_, FieldState::NoSession);
     ApplyFieldState(deviceNameValue_, FieldState::NoSession);
     ApplyFieldState(deviceSpecValue_, FieldState::NoSession);
@@ -796,40 +776,12 @@ void SettingsPage::LoadDeviceInfo() {
 
 void SettingsPage::LoadReferral() {
   if (!Sdk().IsLoggedIn()) {
-    ApplyFieldState(referralCodeValue_, FieldState::NoSession);
     ApplyFieldState(referralNetworkValue_, FieldState::NoSession);
     return;
   }
-  ApplyFieldState(referralCodeValue_, FieldState::Loading);
   ApplyFieldState(referralNetworkValue_, FieldState::Loading);
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
-  Sdk().api().getNetworkReferralCode(
-      [queue, weak](std::optional<urnet::GetNetworkReferralCodeResult> result,
-                    std::optional<std::string> err) {
-        std::string error;
-        if (result && result->error) error = result->error->message;
-        else if (err) error = *err;
-        const bool failed = !error.empty() || !result;
-        if (failed) LogWarn("settings: getNetworkReferralCode failed: {}", error);
-        std::string code;
-        if (!failed && result->referral_code) code = *result->referral_code;
-        queue.TryEnqueue([weak, failed, code] {
-          auto self = weak.get();
-          if (!self) return;
-          auto& page = self->settings();
-          if (failed) {
-            page.referralCode_.clear();
-            page.referralCodeCopy_.IsEnabled(false);
-            ApplyFieldState(page.referralCodeValue_, FieldState::Failed);
-            return;
-          }
-          page.referralCode_ = code;
-          ApplyValue(page.referralCodeValue_, code);
-          page.referralCodeCopy_.IsEnabled(!code.empty());
-        });
-      });
-
   Sdk().api().getReferralNetwork([queue, weak](
                                      std::optional<urnet::GetReferralNetworkResult> result,
                                      std::optional<std::string> err) {
@@ -1272,121 +1224,6 @@ winrt::fire_and_forget SettingsPage::ShowReferralNetworkSheet() {
   } catch (...) {
   }
   referralSheet_.reset();
-  w_.SetSheetOpen(false);
-}
-
-winrt::fire_and_forget SettingsPage::ShowReferSheet() {
-  if (w_.sheetOpen()) co_return;
-  auto self = w_.get_strong();
-  w_.SetSheetOpen(true);
-  try {
-    auto dialog = rows::MakeSheet(self->Content().XamlRoot(), Loc("refer_and_earn"));
-
-    StackPanel content;
-    content.Spacing(12);
-    content.MinWidth(400);
-
-    // the crowned frog; the crowned state gets the royal heading + congrats
-    const int64_t totalReferrals = urnw::pages::Balance().TotalReferrals();
-    const bool crowned = 0 < totalReferrals;
-
-    Image frog;
-    winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap{
-        winrt::Windows::Foundation::Uri{L"ms-appx:///Assets/ReferralFrog.png"}};
-    frog.Source(bitmap);
-    frog.Width(108);
-    frog.Height(108);
-    frog.HorizontalAlignment(HorizontalAlignment::Center);
-    content.Children().Append(frog);
-
-    TextBlock heading;
-    heading.Text(crowned ? Loc("referral_royalty") : Loc("refer_friends_header"));
-    heading.FontSize(24);
-    heading.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
-    heading.TextWrapping(TextWrapping::Wrap);
-    heading.TextAlignment(TextAlignment::Center);
-    heading.Foreground(urnw::colors::ReferralGoldLightBrush());
-    content.Children().Append(heading);
-
-    TextBlock detail;
-    detail.Text(Loc("refer_friends_detail"));
-    detail.TextWrapping(TextWrapping::Wrap);
-    detail.TextAlignment(TextAlignment::Center);
-    content.Children().Append(detail);
-
-    if (crowned) {
-      TextBlock congrats;
-      congrats.Text(hstring{
-          L"\U0001F451 " +
-          urnw::PluralFormat("referral_crowned_congrats", totalReferrals, totalReferrals,
-                             urnw::pages::Balance().ReferralTerms().EarnedGibPerDay(totalReferrals))});
-      congrats.TextWrapping(TextWrapping::Wrap);
-      congrats.TextAlignment(TextAlignment::Center);
-      congrats.Foreground(urnw::colors::ReferralGoldLightBrush());
-      content.Children().Append(congrats);
-    }
-
-    TextBlock hint;
-    hint.Text(Loc("refer_friends_code_hint"));
-    hint.Style(Lookup(L"UrCaptionTextStyle"));
-    hint.TextWrapping(TextWrapping::Wrap);
-    hint.TextAlignment(TextAlignment::Center);
-    content.Children().Append(hint);
-
-    // the code, gold on a dark pill, with a copy action
-    Border pill;
-    pill.BorderBrush(urnw::colors::ReferralGoldBrush());
-    pill.BorderThickness(Thickness{1, 1, 1, 1});
-    pill.CornerRadius(CornerRadius{20, 20, 20, 20});
-    pill.Padding(Thickness{18, 8, 12, 8});
-    Grid pillGrid;
-    pillGrid.ColumnSpacing(12);
-    {
-      ColumnDefinition star;
-      star.Width(GridLength{1, GridUnitType::Star});
-      pillGrid.ColumnDefinitions().Append(star);
-      ColumnDefinition autoCol;
-      autoCol.Width(GridLength{0, GridUnitType::Auto});
-      pillGrid.ColumnDefinitions().Append(autoCol);
-    }
-    TextBlock codeText;
-    codeText.Text(H(referralCode_));
-    codeText.FontSize(18);
-    codeText.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
-    codeText.VerticalAlignment(VerticalAlignment::Center);
-    codeText.Foreground(urnw::colors::ReferralGoldLightBrush());
-    pillGrid.Children().Append(codeText);
-    Button copyButton;
-    copyButton.Content(LocBox("copy"));
-    Grid::SetColumn(copyButton, 1);
-    copyButton.Click([this, copyButton](auto const&, auto const&) {
-      if (referralCode_.empty()) return;
-      CopyToClipboard(referralCode_);
-      copyButton.Content(LocBox("copied"));
-    });
-    pillGrid.Children().Append(copyButton);
-    pill.Child(pillGrid);
-    content.Children().Append(pill);
-
-    // "share" copies the invite message, like the account menu's share item
-    Button shareButton;
-    shareButton.Content(LocBox("share"));
-    shareButton.HorizontalAlignment(HorizontalAlignment::Stretch);
-    shareButton.Background(urnw::colors::ReferralGoldBrush());
-    shareButton.Foreground(urnw::colors::ReferralGoldInkBrush());
-    shareButton.CornerRadius(CornerRadius{20, 20, 20, 20});
-    shareButton.Click([this, shareButton](auto const&, auto const&) {
-      if (referralCode_.empty()) return;
-      CopyToClipboard(urnw::Narrow(
-          urnw::Format("referral_share_message", urnw::Widen(referralCode_))));
-      shareButton.Content(LocBox("copied"));
-    });
-    content.Children().Append(shareButton);
-
-    dialog.Content(content);
-    co_await dialog.ShowAsync();
-  } catch (...) {
-  }
   w_.SetSheetOpen(false);
 }
 

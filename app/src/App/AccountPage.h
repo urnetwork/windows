@@ -1,6 +1,6 @@
 // The Account destination: profile (network name + auth + password), the
-// redeemed balance-code list, and the referral summary. macOS AccountRootView
-// and ProfileView parity.
+// redeemed balance-code list, and the Referrals row that opens the "Refer and
+// earn" page (ReferralsPage). macOS AccountRootView and ProfileView parity.
 //
 // The plan + usage card that sits above these is NOT here: it is written by the
 // SubscriptionBalanceStore relay in MainWindow, which paints the account panel
@@ -32,7 +32,7 @@ class AccountPage {
   void ApplyStrings();
 
   void LoadAccount();
-  void LoadReferralInfo();   // referral code + totals (usage-bar rows)
+  void LoadReferralInfo();   // referral code + totals (pane A's usage-bar rows)
   void LoadBalanceCodes();   // redeemed-codes list (account panel)
 
   // read by MainWindow::ApplyBalance for the "Total Referrals" / bonus rows on
@@ -65,6 +65,8 @@ class AccountPage {
   // The controls the markup cannot carry: the name status line and the
   // password-reset affordance, built into the AccountProfileExtra host panel.
   void BuildProfileExtra();
+  // The Referrals row (pane B) that opens the Refer and earn page.
+  void BuildReferralsNav();
   void SendPasswordReset();
   // Every async field on this surface reaches one of these, for the same reason
   // the settings page does: before it, a 401 and an empty account looked
@@ -95,6 +97,8 @@ class AccountPage {
   winrt::Microsoft::UI::Xaml::Controls::TextBlock nameStatus_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button changePasswordButton_{nullptr};
   bool built_ = false;
+  bool referralsNavBuilt_ = false;
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock referralsNavValue_{nullptr};
   // one-shot: the "nothing has been requested yet" states, applied by
   // ApplyStrings so a load is not needed to make the card readable
   bool initialStatesApplied_ = false;

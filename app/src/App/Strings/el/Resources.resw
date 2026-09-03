@@ -88,6 +88,10 @@
     <value>Προσθήκη αποκλεισμένης τοποθεσίας</value>
     <comment>Call to action</comment>
   </data>
+  <data name="add_emoji" xml:space="preserve">
+    <value>Προσθήκη emoji</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor when no tag is set yet.</comment>
+  </data>
   <data name="add_referral_code" xml:space="preserve">
     <value>Προσθήκη κωδικού παραπομπής</value>
     <comment>Call to action</comment>
@@ -140,6 +144,10 @@
   </data>
   <data name="amount_per_month" xml:space="preserve">
     <value>{}/μήνα</value>
+  </data>
+  <data name="anonymous" xml:space="preserve">
+    <value>Ανώνυμο</value>
+    <comment>Points leaderboard: the name shown for a listed network whose name is not public.</comment>
   </data>
   <data name="anything_else" xml:space="preserve">
     <value>Κάτι άλλο;</value>
@@ -382,6 +390,10 @@
     <value>Αποκλεισμένες τοποθεσίες</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
+  <data name="blocks" xml:space="preserve">
+    <value>Μπλοκ</value>
+    <comment>Points leaderboard: stat tile label and sort chip. A block is one finalized payout epoch.</comment>
+  </data>
   <data name="bonus_referral_code_copied_to_clipboard" xml:space="preserve">
     <value>Ο κωδικός παραπομπής μπόνους αντιγράφηκε στο πρόχειρο</value>
     <comment>Snackbar shown after copying the bonus referral code. Used in Shared/Views/Introduction/ParticipateReferView.swift, Main/Account/Settings/SettingsForm-iOS.swift and Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -487,6 +499,10 @@
   <data name="claim_network_name_hint" xml:space="preserve">
     <value>Αποκτήστε ένα προσαρμοσμένο όνομα δικτύου που θα αντικαταστήσει το αυτόματα δημιουργημένο</value>
     <comment>A description of the benefits of claiming a custom network name.</comment>
+  </data>
+  <data name="clear" xml:space="preserve">
+    <value>Καθαρισμός</value>
+    <comment>General UI string: a button that clears a field or setting.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Συμβόλαια πελάτη</value>
@@ -916,6 +932,10 @@
     <value>Επεξεργασία ονόματος συσκευής</value>
     <comment>device</comment>
   </data>
+  <data name="edit_emoji" xml:space="preserve">
+    <value>Επεξεργασία emoji</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor for an existing tag.</comment>
+  </data>
   <data name="edit_network_name" xml:space="preserve">
     <value>Επεξεργασία ονόματος δικτύου</value>
     <comment>Button on the profile screen to edit the network name.</comment>
@@ -931,6 +951,26 @@
   <data name="edit_split_rule" xml:space="preserve">
     <value>Επεξεργασία κανόνα διαχωρισμού</value>
     <comment>A label displayed above the split rule editor.</comment>
+  </data>
+  <data name="emoji_tag" xml:space="preserve">
+    <value>Ετικέτα emoji</value>
+    <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
+  </data>
+  <data name="emoji_tag_error_empty" xml:space="preserve">
+    <value>Προσθέστε τουλάχιστον ένα emoji.</value>
+    <comment>Points leaderboard: emoji editor error when the field has no emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_not_emoji" xml:space="preserve">
+    <value>Επιτρέπονται μόνο emoji.</value>
+    <comment>Points leaderboard: emoji editor error when the field contains anything that is not an emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_too_many" xml:space="preserve">
+    <value>Χρησιμοποιήστε το πολύ {} emoji.</value>
+    <comment>Points leaderboard: emoji editor error when more than {max} emoji were entered.</comment>
+  </data>
+  <data name="emoji_tag_hint" xml:space="preserve">
+    <value>Επιλέξτε 1 έως {} emoji που θα εμφανίζονται δίπλα στο δίκτυό σας.</value>
+    <comment>Points leaderboard: the emoji editor's explanation. {max} is the most emoji allowed (6).</comment>
   </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>Απολαμβάνετε το URnetwork;</value>
@@ -1426,6 +1466,10 @@
     <value>Έχετε ένα email</value>
     <comment>Header for verify screen</comment>
   </data>
+  <data name="longest_streak" xml:space="preserve">
+    <value>Μεγαλύτερο σερί</value>
+    <comment>Points leaderboard: secondary stat, the best run of consecutive blocks with points.</comment>
+  </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>Η χαμηλότερη αναλογία χρηστών/IP για πρόσβαση σε περιεχόμενο</value>
     <comment>Call to action</comment>
@@ -1772,7 +1816,7 @@
   </data>
   <data name="none" xml:space="preserve">
     <value>Κανένα</value>
-    <comment>Call to action</comment>
+    <comment>Empty value: the Referrals section shows it when no referral network is linked (apple), and the android referral network row.</comment>
   </data>
   <data name="notifications_label" xml:space="preserve">
     <value>Ειδοποιήσεις</value>
@@ -1935,6 +1979,22 @@
     <value>+ {} ακόμη</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
   </data>
+  <data name="points" xml:space="preserve">
+    <value>Πόντοι</value>
+    <comment>Points leaderboard: tab label, stat tile label and sort chip.</comment>
+  </data>
+  <data name="points_leaderboard_description" xml:space="preserve">
+    <value>Πόντοι όλων των εποχών. Ένα μπλοκ είναι μία οριστικοποιημένη εποχή· το σερί μετρά διαδοχικά μπλοκ με πόντους έως το τελευταίο.</value>
+    <comment>Points leaderboard: the explanation under the list header.</comment>
+  </data>
+  <data name="points_leaderboard_empty" xml:space="preserve">
+    <value>Κανείς δεν είναι ακόμη στον πίνακα πόντων.</value>
+    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+  </data>
+  <data name="points_leaderboard_private_hint" xml:space="preserve">
+    <value>Μόνο εσείς το βλέπετε. Ενεργοποιήστε το για να εμφανιστείτε στον πίνακα.</value>
+    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+  </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Μετακβαντική κρυπτογράφηση</value>
     <comment>Connect drawer: post quantum encryption toggle label.</comment>
@@ -2070,6 +2130,10 @@
     <value>Έξοδος από το URnetwork</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="ranked_networks_count" xml:space="preserve">
+    <value>{} δίκτυα με κατάταξη</value>
+    <comment>Points leaderboard: how many networks hold a rank. {count} is preformatted with separators.</comment>
+  </data>
   <data name="ready_to_connect" xml:space="preserve">
     <value>Έτοιμο για σύνδεση</value>
     <comment>Call to action</comment>
@@ -2193,6 +2257,10 @@
   <data name="referral_network" xml:space="preserve">
     <value>Δίκτυο παραπομπών</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="referral_points" xml:space="preserve">
+    <value>Πόντοι παραπομπών</value>
+    <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
   </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
@@ -2466,6 +2534,10 @@
     <value>Εμφάνιση του εικονιδίου UR όταν είστε συνδεδεμένοι</value>
     <comment>Call to action</comment>
   </data>
+  <data name="show_on_points_leaderboard" xml:space="preserve">
+    <value>Εμφάνιση στον πίνακα πόντων</value>
+    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+  </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>Εμφάνιση λίστας παρόχων</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>
@@ -2558,7 +2630,7 @@
   </data>
   <data name="site_app_manage_subscription" xml:space="preserve">
     <value>Διαχείριση συνδρομής</value>
-    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+    <comment>App sidebar and account panel: opens Manage Subscription (every billing store, renewal date, auto-renew, cancel)</comment>
   </data>
   <data name="site_app_mode_auto" xml:space="preserve">
     <value>Αυτόματο</value>
@@ -2632,6 +2704,66 @@
     <value>Εγκατάσταση της εφαρμογής</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_manage" xml:space="preserve">
+    <value>Διαχείριση</value>
+    <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
+  </data>
+  <data name="site_manage_subscription_hint" xml:space="preserve">
+    <value>Δείτε την ημερομηνία ανανέωσης, την αυτόματη ανανέωση και τις επιλογές ακύρωσης.</value>
+    <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_sub_active_until" xml:space="preserve">
+    <value>Ενεργό έως {date}</value>
+    <comment>Subscription: date line when the store did not answer whether it auto-renews. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_auto_renew_off" xml:space="preserve">
+    <value>Αυτόματη ανανέωση ανενεργή</value>
+    <comment>Subscription: status chip — the subscription will not renew itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_on" xml:space="preserve">
+    <value>Αυτόματη ανανέωση ενεργή</value>
+    <comment>Subscription: status chip — the subscription renews itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_unknown" xml:space="preserve">
+    <value>Αυτόματη ανανέωση άγνωστη</value>
+    <comment>Subscription: status chip — the store did not answer whether it auto-renews.</comment>
+  </data>
+  <data name="site_sub_billed_solana" xml:space="preserve">
+    <value>Πληρωμή με USDC στο Solana.</value>
+    <comment>Subscription: store sentence for a Pro year paid with USDC on Solana.</comment>
+  </data>
+  <data name="site_sub_billing_details" xml:space="preserve">
+    <value>Στοιχεία χρέωσης</value>
+    <comment>Subscription: secondary link that opens Stripe's billing portal (payment details, invoices). Shown only when the network has a Stripe customer.</comment>
+  </data>
+  <data name="site_sub_cancel" xml:space="preserve">
+    <value>Ακύρωση συνδρομής</value>
+    <comment>Subscription: the cancel button for a Stripe-billed subscription (cancels at the end of the paid period).</comment>
+  </data>
+  <data name="site_sub_cancel_confirm" xml:space="preserve">
+    <value>Ακύρωση στο τέλος της περιόδου; Διατηρείτε το Pro έως {date}.</value>
+    <comment>Subscription: inline confirmation before cancelling. {date} is the end of the paid period, a localized date.</comment>
+  </data>
+  <data name="site_sub_cancel_keep" xml:space="preserve">
+    <value>Διατήρηση</value>
+    <comment>Subscription: back out of the cancellation.</comment>
+  </data>
+  <data name="site_sub_cancel_yes" xml:space="preserve">
+    <value>Ναι, ακύρωση</value>
+    <comment>Subscription: confirm the cancellation.</comment>
+  </data>
+  <data name="site_sub_change_error" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η ενημέρωση της συνδρομής. Δοκιμάστε ξανά.</value>
+    <comment>Subscription: a cancel or resume request failed.</comment>
+  </data>
+  <data name="site_sub_details_error" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η φόρτωση των λεπτομερειών ανανέωσης. Εμφανίζουμε ό,τι γνωρίζουμε.</value>
+    <comment>Subscription: shown when the details request (dates, auto-renew) failed and the screen falls back to the list of billing stores.</comment>
+  </data>
+  <data name="site_sub_ends_on" xml:space="preserve">
+    <value>Λήγει στις {date}</value>
+    <comment>Subscription: date line when auto-renew is off (cancelled, or a one-time USDC year). {date} is a localized date.</comment>
+  </data>
   <data name="site_sub_free_body" xml:space="preserve">
     <value>Χρησιμοποιείτε το πρόγραμμα Free. Αναβαθμίστε σε Pro για περισσότερα δεδομένα και λειτουργίες.</value>
     <comment>Subscription: free plan body</comment>
@@ -2667,6 +2799,18 @@
   <data name="site_sub_platform_body_google" xml:space="preserve">
     <value>Η συνδρομή σας Pro χρεώνεται μέσω του Google Play. Για να την αλλάξετε ή να την ακυρώσετε, διαχειριστείτε τις συνδρομές σας στο Google Play.</value>
     <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_renews_on" xml:space="preserve">
+    <value>Ανανεώνεται στις {date}</value>
+    <comment>Subscription: date line when auto-renew is on. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_resume" xml:space="preserve">
+    <value>Συνέχιση συνδρομής</value>
+    <comment>Subscription: undo a pending cancellation while the paid period is still running.</comment>
+  </data>
+  <data name="site_sub_solana_no_renew" xml:space="preserve">
+    <value>Δεν ανανεώνεται. Πληρώστε ξανά με USDC όταν λήξει.</value>
+    <comment>Subscription: note under a USDC-paid year — it is a one-time payment with nothing to cancel.</comment>
   </data>
   <data name="site_sub_stripe_body" xml:space="preserve">
     <value>Η συνδρομή σας Pro χρεώνεται μέσω Stripe. Ενημερώστε τα στοιχεία πληρωμής ή ακυρώστε ανά πάσα στιγμή παρακάτω.</value>
@@ -2763,6 +2907,10 @@
   <data name="step_two" xml:space="preserve">
     <value>Βήμα 2</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="streak" xml:space="preserve">
+    <value>Σερί</value>
+    <comment>Points leaderboard: stat tile label and sort chip. Consecutive blocks with points.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Ισχυρή ανωνυμοποίηση</value>

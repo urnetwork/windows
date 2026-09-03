@@ -88,6 +88,10 @@
     <value>अवरुद्ध स्थान जोड़ें</value>
     <comment>Call to action</comment>
   </data>
+  <data name="add_emoji" xml:space="preserve">
+    <value>इमोजी जोड़ें</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor when no tag is set yet.</comment>
+  </data>
   <data name="add_referral_code" xml:space="preserve">
     <value>रेफरल कोड जोड़ें</value>
     <comment>Call to action</comment>
@@ -140,6 +144,10 @@
   </data>
   <data name="amount_per_month" xml:space="preserve">
     <value>{}/माह</value>
+  </data>
+  <data name="anonymous" xml:space="preserve">
+    <value>अनाम</value>
+    <comment>Points leaderboard: the name shown for a listed network whose name is not public.</comment>
   </data>
   <data name="anything_else" xml:space="preserve">
     <value>और कुछ?</value>
@@ -382,6 +390,10 @@
     <value>अवरुद्ध स्थान</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
+  <data name="blocks" xml:space="preserve">
+    <value>ब्लॉक</value>
+    <comment>Points leaderboard: stat tile label and sort chip. A block is one finalized payout epoch.</comment>
+  </data>
   <data name="bonus_referral_code_copied_to_clipboard" xml:space="preserve">
     <value>बोनस रेफरल कोड क्लिपबोर्ड पर कॉपी किया गया</value>
     <comment>Snackbar shown after copying the bonus referral code. Used in Shared/Views/Introduction/ParticipateReferView.swift, Main/Account/Settings/SettingsForm-iOS.swift and Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -486,6 +498,10 @@
   <data name="claim_network_name_hint" xml:space="preserve">
     <value>अपने-आप बने नाम की जगह लेने के लिए कस्टम नेटवर्क नाम चुनें</value>
     <comment>A description of the benefits of claiming a custom network name.</comment>
+  </data>
+  <data name="clear" xml:space="preserve">
+    <value>साफ़ करें</value>
+    <comment>General UI string: a button that clears a field or setting.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>क्लाइंट कॉन्ट्रैक्ट</value>
@@ -915,6 +931,10 @@
     <value>डिवाइस का नाम संपादित करें</value>
     <comment>device</comment>
   </data>
+  <data name="edit_emoji" xml:space="preserve">
+    <value>इमोजी संपादित करें</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor for an existing tag.</comment>
+  </data>
   <data name="edit_network_name" xml:space="preserve">
     <value>नेटवर्क का नाम संपादित करें</value>
     <comment>Button on the profile screen to edit the network name.</comment>
@@ -930,6 +950,26 @@
   <data name="edit_split_rule" xml:space="preserve">
     <value>स्प्लिट नियम संपादित करें</value>
     <comment>A label displayed above the split rule editor.</comment>
+  </data>
+  <data name="emoji_tag" xml:space="preserve">
+    <value>इमोजी टैग</value>
+    <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
+  </data>
+  <data name="emoji_tag_error_empty" xml:space="preserve">
+    <value>कम से कम एक इमोजी जोड़ें।</value>
+    <comment>Points leaderboard: emoji editor error when the field has no emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_not_emoji" xml:space="preserve">
+    <value>केवल इमोजी की अनुमति है।</value>
+    <comment>Points leaderboard: emoji editor error when the field contains anything that is not an emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_too_many" xml:space="preserve">
+    <value>अधिकतम {} इमोजी का उपयोग करें।</value>
+    <comment>Points leaderboard: emoji editor error when more than {max} emoji were entered.</comment>
+  </data>
+  <data name="emoji_tag_hint" xml:space="preserve">
+    <value>अपने नेटवर्क के बगल में दिखाने के लिए 1 से {} इमोजी चुनें।</value>
+    <comment>Points leaderboard: the emoji editor's explanation. {max} is the most emoji allowed (6).</comment>
   </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>क्या आप URnetwork का आनंद ले रहे हैं?</value>
@@ -1424,6 +1464,10 @@
     <value>आपके पास एक ईमेल है</value>
     <comment>Header for verify screen</comment>
   </data>
+  <data name="longest_streak" xml:space="preserve">
+    <value>सबसे लंबी स्ट्रीक</value>
+    <comment>Points leaderboard: secondary stat, the best run of consecutive blocks with points.</comment>
+  </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>कंटेंट एक्सेस के लिए सबसे कम यूज़र/IP अनुपात</value>
     <comment>Call to action</comment>
@@ -1770,7 +1814,7 @@
   </data>
   <data name="none" xml:space="preserve">
     <value>कोई नहीं</value>
-    <comment>Call to action</comment>
+    <comment>Empty value: the Referrals section shows it when no referral network is linked (apple), and the android referral network row.</comment>
   </data>
   <data name="notifications_label" xml:space="preserve">
     <value>सूचनाएं</value>
@@ -1933,6 +1977,22 @@
     <value>+ {} और</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
   </data>
+  <data name="points" xml:space="preserve">
+    <value>पॉइंट</value>
+    <comment>Points leaderboard: tab label, stat tile label and sort chip.</comment>
+  </data>
+  <data name="points_leaderboard_description" xml:space="preserve">
+    <value>अब तक के कुल पॉइंट। एक ब्लॉक एक पूर्ण एपोक है; स्ट्रीक पॉइंट वाले लगातार ब्लॉक गिनती है, जो नवीनतम पर समाप्त होती है।</value>
+    <comment>Points leaderboard: the explanation under the list header.</comment>
+  </data>
+  <data name="points_leaderboard_empty" xml:space="preserve">
+    <value>पॉइंट लीडरबोर्ड पर अभी कोई नहीं है।</value>
+    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+  </data>
+  <data name="points_leaderboard_private_hint" xml:space="preserve">
+    <value>यह सिर्फ आप देख सकते हैं। लीडरबोर्ड पर दिखने के लिए इसे चालू करें।</value>
+    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+  </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>पोस्ट-क्वांटम एन्क्रिप्शन</value>
     <comment>Connect drawer: post quantum encryption toggle label.</comment>
@@ -2068,6 +2128,10 @@
     <value>URnetwork से बाहर निकलें</value>
     <comment>Used in NetworkApp.swift.</comment>
   </data>
+  <data name="ranked_networks_count" xml:space="preserve">
+    <value>{} रैंक वाले नेटवर्क</value>
+    <comment>Points leaderboard: how many networks hold a rank. {count} is preformatted with separators.</comment>
+  </data>
   <data name="ready_to_connect" xml:space="preserve">
     <value>कनेक्ट करने के लिए तैयार</value>
     <comment>Call to action</comment>
@@ -2191,6 +2255,10 @@
   <data name="referral_network" xml:space="preserve">
     <value>रेफ़रल नेटवर्क</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="referral_points" xml:space="preserve">
+    <value>रेफरल पॉइंट</value>
+    <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
   </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
@@ -2463,6 +2531,10 @@
     <value>कनेक्ट होने पर UR आइकन दिखाएँ</value>
     <comment>Call to action</comment>
   </data>
+  <data name="show_on_points_leaderboard" xml:space="preserve">
+    <value>पॉइंट लीडरबोर्ड पर दिखाएँ</value>
+    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+  </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>प्रदाता सूची दिखाएं</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>
@@ -2555,7 +2627,7 @@
   </data>
   <data name="site_app_manage_subscription" xml:space="preserve">
     <value>सदस्यता प्रबंधित करें</value>
-    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+    <comment>App sidebar and account panel: opens Manage Subscription (every billing store, renewal date, auto-renew, cancel)</comment>
   </data>
   <data name="site_app_mode_auto" xml:space="preserve">
     <value>स्वचालित</value>
@@ -2629,6 +2701,66 @@
     <value>ऐप इंस्टॉल करें</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_manage" xml:space="preserve">
+    <value>प्रबंधित करें</value>
+    <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
+  </data>
+  <data name="site_manage_subscription_hint" xml:space="preserve">
+    <value>अपनी नवीनीकरण तिथि, स्वतः नवीनीकरण की स्थिति और रद्द करने के विकल्प देखें।</value>
+    <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_sub_active_until" xml:space="preserve">
+    <value>{date} तक सक्रिय</value>
+    <comment>Subscription: date line when the store did not answer whether it auto-renews. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_auto_renew_off" xml:space="preserve">
+    <value>स्वतः नवीनीकरण बंद</value>
+    <comment>Subscription: status chip — the subscription will not renew itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_on" xml:space="preserve">
+    <value>स्वतः नवीनीकरण चालू</value>
+    <comment>Subscription: status chip — the subscription renews itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_unknown" xml:space="preserve">
+    <value>स्वतः नवीनीकरण अज्ञात</value>
+    <comment>Subscription: status chip — the store did not answer whether it auto-renews.</comment>
+  </data>
+  <data name="site_sub_billed_solana" xml:space="preserve">
+    <value>Solana पर USDC से भुगतान किया गया।</value>
+    <comment>Subscription: store sentence for a Pro year paid with USDC on Solana.</comment>
+  </data>
+  <data name="site_sub_billing_details" xml:space="preserve">
+    <value>बिलिंग विवरण</value>
+    <comment>Subscription: secondary link that opens Stripe's billing portal (payment details, invoices). Shown only when the network has a Stripe customer.</comment>
+  </data>
+  <data name="site_sub_cancel" xml:space="preserve">
+    <value>सदस्यता रद्द करें</value>
+    <comment>Subscription: the cancel button for a Stripe-billed subscription (cancels at the end of the paid period).</comment>
+  </data>
+  <data name="site_sub_cancel_confirm" xml:space="preserve">
+    <value>अवधि के अंत में रद्द करें? {date} तक आपके पास Pro रहेगा।</value>
+    <comment>Subscription: inline confirmation before cancelling. {date} is the end of the paid period, a localized date.</comment>
+  </data>
+  <data name="site_sub_cancel_keep" xml:space="preserve">
+    <value>रखें</value>
+    <comment>Subscription: back out of the cancellation.</comment>
+  </data>
+  <data name="site_sub_cancel_yes" xml:space="preserve">
+    <value>हाँ, रद्द करें</value>
+    <comment>Subscription: confirm the cancellation.</comment>
+  </data>
+  <data name="site_sub_change_error" xml:space="preserve">
+    <value>सदस्यता अपडेट नहीं हो सकी। कृपया फिर से प्रयास करें।</value>
+    <comment>Subscription: a cancel or resume request failed.</comment>
+  </data>
+  <data name="site_sub_details_error" xml:space="preserve">
+    <value>नवीनीकरण विवरण लोड नहीं हो सका। जो पता है वह दिखा रहे हैं।</value>
+    <comment>Subscription: shown when the details request (dates, auto-renew) failed and the screen falls back to the list of billing stores.</comment>
+  </data>
+  <data name="site_sub_ends_on" xml:space="preserve">
+    <value>{date} को समाप्त होगा</value>
+    <comment>Subscription: date line when auto-renew is off (cancelled, or a one-time USDC year). {date} is a localized date.</comment>
+  </data>
   <data name="site_sub_free_body" xml:space="preserve">
     <value>आप Free योजना पर हैं। ज़्यादा डेटा और सुविधाओं के लिए Pro में अपग्रेड करें।</value>
     <comment>Subscription: free plan body</comment>
@@ -2664,6 +2796,18 @@
   <data name="site_sub_platform_body_google" xml:space="preserve">
     <value>आपकी Pro सदस्यता Google Play के माध्यम से बिल की जाती है। इसे बदलने या रद्द करने के लिए, अपनी सदस्यताएँ Google Play में प्रबंधित करें।</value>
     <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_renews_on" xml:space="preserve">
+    <value>{date} को नवीनीकृत होगा</value>
+    <comment>Subscription: date line when auto-renew is on. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_resume" xml:space="preserve">
+    <value>सदस्यता फिर से शुरू करें</value>
+    <comment>Subscription: undo a pending cancellation while the paid period is still running.</comment>
+  </data>
+  <data name="site_sub_solana_no_renew" xml:space="preserve">
+    <value>नवीनीकृत नहीं होता। समाप्त होने पर USDC से फिर से भुगतान करें।</value>
+    <comment>Subscription: note under a USDC-paid year — it is a one-time payment with nothing to cancel.</comment>
   </data>
   <data name="site_sub_stripe_body" xml:space="preserve">
     <value>आपकी Pro सदस्यता Stripe के माध्यम से बिल की जाती है। नीचे कभी भी अपने भुगतान विवरण अपडेट करें या सदस्यता रद्द करें।</value>
@@ -2759,6 +2903,10 @@
   <data name="step_two" xml:space="preserve">
     <value>चरण 2</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="streak" xml:space="preserve">
+    <value>स्ट्रीक</value>
+    <comment>Points leaderboard: stat tile label and sort chip. Consecutive blocks with points.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>मजबूत गुमनामीकरण</value>

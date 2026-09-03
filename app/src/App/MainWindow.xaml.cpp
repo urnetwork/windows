@@ -84,6 +84,7 @@ MainWindow::MainWindow() {
   account_ = std::make_unique<urnw::AccountPage>(*this);
   wallet_ = std::make_unique<urnw::WalletPage>(*this);
   settings_ = std::make_unique<urnw::SettingsPage>(*this);
+  referrals_ = std::make_unique<urnw::ReferralsPage>(*this);
   // Last: its ctor binds SdkHost's mode-notice handler and asks for a refresh,
   // so everything it may paint over must already exist.
   developer_ = std::make_unique<urnw::DeveloperPage>(*this);
@@ -325,6 +326,7 @@ void MainWindow::ApplyStrings() {
   account_->ApplyStrings();
   wallet_->ApplyStrings();
   settings_->ApplyStrings();
+  referrals_->ApplyStrings();
   developer_->ApplyStrings();
 }
 
@@ -1035,6 +1037,10 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   HomeNav().Header(paneShell ? IInspectable{nullptr} : item.Content());
 
   const bool wasConnectVisible = ConnectView().Visibility() == Visibility::Visible;
+  // a rail navigation always lands on the destination itself, never on the
+  // Refer and earn page that may have been open in Account's place
+  referralsOpen_ = false;
+  ReferralsView().Visibility(Visibility::Collapsed);
   ConnectView().Visibility(tag == L"connect" ? Visibility::Visible : Visibility::Collapsed);
   NetworkView().Visibility(tag == L"network" ? Visibility::Visible : Visibility::Collapsed);
   AccountView().Visibility(tag == L"account" ? Visibility::Visible : Visibility::Collapsed);
@@ -1115,6 +1121,7 @@ void MainWindow::LoadCurrentDestination() {
     // they sit on "Please login to URnetwork" on the destination that shows
     // them, which is indistinguishable from being signed out.
     settings_->LoadSettings();
+    if (referralsOpen_) referrals_->Load();  // the page is up in Account's place
   } else if (tag == L"wallet") {
     wallet_->LoadWallet();
   } else if (tag == L"leaderboard") {
@@ -1122,6 +1129,29 @@ void MainWindow::LoadCurrentDestination() {
   } else if (tag == L"settings") {
     settings_->LoadSettings();
   }
+}
+
+// ---- the Refer and earn page (reached from Account's Referrals row) ---------
+
+void MainWindow::OpenReferrals() {
+  referralsOpen_ = true;
+  AccountView().Visibility(Visibility::Collapsed);
+  ReferralsView().Visibility(Visibility::Visible);
+  // With no session (signed out, --preview-ui) Load settles every field on its
+  // no-session state without a request; the referral-network row is
+  // SettingsPage's, so its load runs alongside.
+  referrals_->Load();
+  if (!previewUi_ && Sdk().IsLoggedIn()) {
+    account_->LoadReferralInfo();
+    settings_->LoadReferral();
+    Balance().Refresh();  // the card paints from the store's referral figures
+  }
+}
+
+void MainWindow::CloseReferrals() {
+  referralsOpen_ = false;
+  ReferralsView().Visibility(Visibility::Collapsed);
+  AccountView().Visibility(Visibility::Visible);
 }
 
 // ---- balance / plan (SubscriptionBalanceStore relay) -----------------------
@@ -1135,6 +1165,7 @@ void MainWindow::LoadCurrentDestination() {
 void MainWindow::OnBalanceChanged(urnw::BalanceSnapshot const& snapshot,
                                   urnw::BalancePollState const& poll) {
   if (onboarding_ && onboarding_->Visible()) onboarding_->OnBalance(snapshot);
+  if (referrals_) referrals_->OnBalance();  // the Refer and earn card follows the store
   balance_ = snapshot;
   balancePoll_ = poll;
   ApplyBalance();
@@ -1660,6 +1691,8 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
     // WRONG account, not merely stale text.
     settings_->ResetForSignOut();
     account_->ResetForSignOut();
+    referrals_->ResetForSignOut();
+    if (referralsOpen_) CloseReferrals();
   }
   if (!loggedIn && !wasVisible && login_->IsGuestUpgrade() && !Sdk().IsLoggedIn()) {
     // the guest session ended under the upgrade form (server-side

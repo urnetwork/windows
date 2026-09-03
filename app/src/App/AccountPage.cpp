@@ -102,6 +102,19 @@ void AccountPage::BuildProfileExtra() {
   host.Children().Append(row.root);
 }
 
+// The Referrals row: one whole-row button in pane B that opens the "Refer and
+// earn" page. The code, the figures, the crowned state and the referral
+// network all live there now (spec: referrals are their own section).
+void AccountPage::BuildReferralsNav() {
+  if (referralsNavBuilt_) return;
+  referralsNavBuilt_ = true;
+  rows::SetPaneMode(true);
+  auto card = rows::Card(w_.AccountReferralsNavHost());
+  auto button = rows::NavRow(card, Loc("referrals"), referralsNavValue_);
+  button.Click([this](auto const&, auto const&) { w_.OpenReferrals(); });
+  rows::SetPaneMode(false);
+}
+
 // ---- the profile name's explicit edit mode (R4) ----------------------------
 //
 // The spec's Profile section asks for inline edit with Save appearing only while
@@ -160,8 +173,6 @@ void AccountPage::ResetForSignOut() {
   SetEditingName(false);
   SetAuthText({});
   ApplyAccountState(FieldState::NoSession);
-  ApplyFieldState(w_.ReferralText(), FieldState::NoSession);
-  w_.RoyaltyBadge().Visibility(Visibility::Collapsed);
   RenderBalanceCodes({}, FieldState::NoSession);
 }
 
@@ -180,6 +191,7 @@ void AccountPage::ApplyAccountState(rows::FieldState state) {
 
 void AccountPage::ApplyStrings() {
   BuildProfileExtra();  // idempotent
+  BuildReferralsNav();  // idempotent
 
   // the three pane headers
   w_.AccountPaneATitle().Text(Loc("plan"));
@@ -200,12 +212,13 @@ void AccountPage::ApplyStrings() {
 
   // pane B: profile
   w_.AccountProfileGroupLabel().Text(Loc("profile"));
+  // pane B: the row that opens the Refer and earn page
+  w_.AccountReferralsGroupLabel().Text(Loc("refer_and_earn"));
   w_.AccountNetworkNameLabel().Text(Loc("network_name_label"));
   Automation::AutomationProperties::SetName(w_.NetworkNameRow(), Loc("network_name_label"));
   w_.NetworkNameBox().Header(LocBox("network_name_label"));
   w_.SaveNameButton().Content(LocBox("save"));
   w_.CancelNameButton().Content(LocBox("cancel"));
-  w_.RoyaltyText().Text(Loc("referral_royalty"));
 
   // Every async field on this card starts in the state that says nothing has
   // been requested. Without this they were BLANK before a load - and
@@ -214,7 +227,6 @@ void AccountPage::ApplyStrings() {
   if (!initialStatesApplied_) {
     initialStatesApplied_ = true;
     ApplyAccountState(FieldState::NoSession);
-    ApplyFieldState(w_.ReferralText(), FieldState::NoSession);
     RenderBalanceCodes({}, FieldState::NoSession);
   }
 }
@@ -268,12 +280,7 @@ void AccountPage::LoadAccount() {
 }
 
 void AccountPage::LoadReferralInfo() {
-  if (!Sdk().IsLoggedIn()) {
-    ApplyFieldState(w_.ReferralText(), FieldState::NoSession);
-    w_.RoyaltyBadge().Visibility(Visibility::Collapsed);
-    return;
-  }
-  ApplyFieldState(w_.ReferralText(), FieldState::Loading);
+  if (!Sdk().IsLoggedIn()) return;
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().api().getNetworkReferralCode(
@@ -284,12 +291,6 @@ void AccountPage::LoadReferralInfo() {
         else if (err) error = *err;
         if (!error.empty() || !result) {
           LogWarn("account: getNetworkReferralCode failed: {}", error);
-          queue.TryEnqueue([weak] {
-            auto self = weak.get();
-            if (!self) return;
-            ApplyFieldState(self->ReferralText(), FieldState::Failed);
-            self->RoyaltyBadge().Visibility(Visibility::Collapsed);
-          });
           return;
         }
         std::string code = result->referral_code ? *result->referral_code : std::string();
@@ -300,13 +301,8 @@ void AccountPage::LoadReferralInfo() {
           auto& page = self->account();
           page.referralCode_ = code;
           page.totalReferrals_ = total;
-          // referrals no longer use deep links; friends enter the code on sign up
-          self->ReferralText().Text(
-              hstring{urnw::Format("referral_summary", urnw::Widen(code), total)});
-          // referral royalty: at least one referral earns the crowned frog
-          // mascot (same as the ur.io site)
-          self->RoyaltyBadge().Visibility(0 < total ? Visibility::Visible
-                                                    : Visibility::Collapsed);
+          // the code, the count and the crowned state show on the Refer and
+          // earn page (ReferralsPage); here they feed pane A's referral rows
           self->ApplyBalance();  // the usage-bar referral rows
         });
       });

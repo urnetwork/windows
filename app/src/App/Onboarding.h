@@ -21,6 +21,7 @@
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 
+#include "ReferralCard.h"
 #include "SubscriptionBalance.h"
 
 namespace urnw {
@@ -139,12 +140,7 @@ class Onboarding : public std::enable_shared_from_this<Onboarding> {
   BalanceSnapshot balance_;
 
   // page 4
-  winrt::Microsoft::UI::Xaml::Controls::StackPanel referralPanelHost_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::TextBlock referralCount_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::ColumnDefinition referralUsedColumn_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::ColumnDefinition referralFreeColumn_{nullptr};
-  std::string shownReferralCode_;
-  int64_t shownReferralTotal_ = -1;
+  ReferralCard referralCard_;  // the shared referral progress box + gold panel
 };
 
 }  // namespace urnw

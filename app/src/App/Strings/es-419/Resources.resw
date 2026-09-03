@@ -1772,7 +1772,7 @@ enviamos para verificar tu identidad.</value>
   </data>
   <data name="none" xml:space="preserve">
     <value>Ninguno</value>
-    <comment>Call to action</comment>
+    <comment>Empty value: the Referrals section shows it when no referral network is linked (apple), and the android referral network row.</comment>
   </data>
   <data name="notifications_label" xml:space="preserve">
     <value>Notificaciones</value>
@@ -2194,6 +2194,10 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Red de referidos</value>
     <comment>Call to action</comment>
   </data>
+  <data name="referral_points" xml:space="preserve">
+    <value>Puntos por referencias</value>
+    <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
+  </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
     <comment>A label displaying the number of referrals a user has made. The argument is the number of referrals.</comment>
@@ -2558,7 +2562,7 @@ del mundo</value>
   </data>
   <data name="site_app_manage_subscription" xml:space="preserve">
     <value>Administrar suscripción</value>
-    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+    <comment>App sidebar and account panel: opens Manage Subscription (every billing store, renewal date, auto-renew, cancel)</comment>
   </data>
   <data name="site_app_mode_auto" xml:space="preserve">
     <value>Automático</value>
@@ -2632,6 +2636,66 @@ del mundo</value>
     <value>Instalar la app</value>
     <comment>Mobile app panel: install-the-native-app CTA</comment>
   </data>
+  <data name="site_manage" xml:space="preserve">
+    <value>Administrar</value>
+    <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
+  </data>
+  <data name="site_manage_subscription_hint" xml:space="preserve">
+    <value>Consulta la fecha de renovación, la renovación automática y las opciones de cancelación.</value>
+    <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_sub_active_until" xml:space="preserve">
+    <value>Activa hasta el {date}</value>
+    <comment>Subscription: date line when the store did not answer whether it auto-renews. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_auto_renew_off" xml:space="preserve">
+    <value>Renovación automática desactivada</value>
+    <comment>Subscription: status chip — the subscription will not renew itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_on" xml:space="preserve">
+    <value>Renovación automática activada</value>
+    <comment>Subscription: status chip — the subscription renews itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_unknown" xml:space="preserve">
+    <value>Renovación automática desconocida</value>
+    <comment>Subscription: status chip — the store did not answer whether it auto-renews.</comment>
+  </data>
+  <data name="site_sub_billed_solana" xml:space="preserve">
+    <value>Pagado con USDC en Solana.</value>
+    <comment>Subscription: store sentence for a Pro year paid with USDC on Solana.</comment>
+  </data>
+  <data name="site_sub_billing_details" xml:space="preserve">
+    <value>Datos de facturación</value>
+    <comment>Subscription: secondary link that opens Stripe's billing portal (payment details, invoices). Shown only when the network has a Stripe customer.</comment>
+  </data>
+  <data name="site_sub_cancel" xml:space="preserve">
+    <value>Cancelar suscripción</value>
+    <comment>Subscription: the cancel button for a Stripe-billed subscription (cancels at the end of the paid period).</comment>
+  </data>
+  <data name="site_sub_cancel_confirm" xml:space="preserve">
+    <value>¿Cancelar al final del periodo? Conservas Pro hasta el {date}.</value>
+    <comment>Subscription: inline confirmation before cancelling. {date} is the end of the paid period, a localized date.</comment>
+  </data>
+  <data name="site_sub_cancel_keep" xml:space="preserve">
+    <value>Conservarla</value>
+    <comment>Subscription: back out of the cancellation.</comment>
+  </data>
+  <data name="site_sub_cancel_yes" xml:space="preserve">
+    <value>Sí, cancelar</value>
+    <comment>Subscription: confirm the cancellation.</comment>
+  </data>
+  <data name="site_sub_change_error" xml:space="preserve">
+    <value>No se pudo actualizar la suscripción. Inténtalo de nuevo.</value>
+    <comment>Subscription: a cancel or resume request failed.</comment>
+  </data>
+  <data name="site_sub_details_error" xml:space="preserve">
+    <value>No se pudieron cargar los detalles de renovación. Mostramos lo que sabemos.</value>
+    <comment>Subscription: shown when the details request (dates, auto-renew) failed and the screen falls back to the list of billing stores.</comment>
+  </data>
+  <data name="site_sub_ends_on" xml:space="preserve">
+    <value>Termina el {date}</value>
+    <comment>Subscription: date line when auto-renew is off (cancelled, or a one-time USDC year). {date} is a localized date.</comment>
+  </data>
   <data name="site_sub_free_body" xml:space="preserve">
     <value>Tienes el plan Free. Cambia a Pro para obtener más datos y funciones.</value>
     <comment>Subscription: free plan body</comment>
@@ -2667,6 +2731,18 @@ del mundo</value>
   <data name="site_sub_platform_body_google" xml:space="preserve">
     <value>Tu suscripción Pro se factura a través de Google Play. Para cambiarla o cancelarla, administra tus suscripciones en Google Play.</value>
     <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_renews_on" xml:space="preserve">
+    <value>Se renueva el {date}</value>
+    <comment>Subscription: date line when auto-renew is on. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_resume" xml:space="preserve">
+    <value>Reanudar suscripción</value>
+    <comment>Subscription: undo a pending cancellation while the paid period is still running.</comment>
+  </data>
+  <data name="site_sub_solana_no_renew" xml:space="preserve">
+    <value>No se renueva. Vuelve a pagar con USDC cuando termine.</value>
+    <comment>Subscription: note under a USDC-paid year — it is a one-time payment with nothing to cancel.</comment>
   </data>
   <data name="site_sub_stripe_body" xml:space="preserve">
     <value>Tu suscripción Pro se factura a través de Stripe. Actualiza los datos de pago o cancela cuando quieras más abajo.</value>

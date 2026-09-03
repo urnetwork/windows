@@ -88,6 +88,10 @@
     <value>Добавить заблокированную локацию</value>
     <comment>Call to action</comment>
   </data>
+  <data name="add_emoji" xml:space="preserve">
+    <value>Добавить эмодзи</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor when no tag is set yet.</comment>
+  </data>
   <data name="add_referral_code" xml:space="preserve">
     <value>Добавить реферальный код</value>
     <comment>Call to action</comment>
@@ -140,6 +144,10 @@
   </data>
   <data name="amount_per_month" xml:space="preserve">
     <value>{}/месяц</value>
+  </data>
+  <data name="anonymous" xml:space="preserve">
+    <value>Анонимно</value>
+    <comment>Points leaderboard: the name shown for a listed network whose name is not public.</comment>
   </data>
   <data name="anything_else" xml:space="preserve">
     <value>Что-нибудь еще?</value>
@@ -398,6 +406,10 @@
     <value>Заблокированные локации</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
+  <data name="blocks" xml:space="preserve">
+    <value>Блоки</value>
+    <comment>Points leaderboard: stat tile label and sort chip. A block is one finalized payout epoch.</comment>
+  </data>
   <data name="bonus_referral_code_copied_to_clipboard" xml:space="preserve">
     <value>Бонусный реферальный код скопирован в буфер обмена</value>
     <comment>Snackbar shown after copying the bonus referral code. Used in Shared/Views/Introduction/ParticipateReferView.swift, Main/Account/Settings/SettingsForm-iOS.swift and Main/Account/Settings/SettingsForm-macOS.swift.</comment>
@@ -503,6 +515,10 @@
   <data name="claim_network_name_hint" xml:space="preserve">
     <value>Получите собственное имя сети вместо автоматически созданного</value>
     <comment>A description of the benefits of claiming a custom network name.</comment>
+  </data>
+  <data name="clear" xml:space="preserve">
+    <value>Очистить</value>
+    <comment>General UI string: a button that clears a field or setting.</comment>
   </data>
   <data name="client_contracts" xml:space="preserve">
     <value>Контракты клиента</value>
@@ -948,6 +964,10 @@
     <value>Изменить имя устройства</value>
     <comment>device</comment>
   </data>
+  <data name="edit_emoji" xml:space="preserve">
+    <value>Изменить эмодзи</value>
+    <comment>Points leaderboard: button that opens the emoji tag editor for an existing tag.</comment>
+  </data>
   <data name="edit_network_name" xml:space="preserve">
     <value>Изменить имя сети</value>
     <comment>Button on the profile screen to edit the network name.</comment>
@@ -963,6 +983,26 @@
   <data name="edit_split_rule" xml:space="preserve">
     <value>Изменить правило разделения</value>
     <comment>A label displayed above the split rule editor.</comment>
+  </data>
+  <data name="emoji_tag" xml:space="preserve">
+    <value>Эмодзи-тег</value>
+    <comment>Points leaderboard: the title of the emoji tag editor. One to six emoji shown next to the network.</comment>
+  </data>
+  <data name="emoji_tag_error_empty" xml:space="preserve">
+    <value>Добавьте хотя бы один эмодзи.</value>
+    <comment>Points leaderboard: emoji editor error when the field has no emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_not_emoji" xml:space="preserve">
+    <value>Разрешены только эмодзи.</value>
+    <comment>Points leaderboard: emoji editor error when the field contains anything that is not an emoji.</comment>
+  </data>
+  <data name="emoji_tag_error_too_many" xml:space="preserve">
+    <value>Используйте не более {} эмодзи.</value>
+    <comment>Points leaderboard: emoji editor error when more than {max} emoji were entered.</comment>
+  </data>
+  <data name="emoji_tag_hint" xml:space="preserve">
+    <value>Выберите от 1 до {} эмодзи, которые будут показаны рядом с вашей сетью.</value>
+    <comment>Points leaderboard: the emoji editor's explanation. {max} is the most emoji allowed (6).</comment>
   </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>Вам нравится URnetwork?</value>
@@ -1474,6 +1514,10 @@
     <value>Вам письмо</value>
     <comment>Header for verify screen</comment>
   </data>
+  <data name="longest_streak" xml:space="preserve">
+    <value>Самая длинная серия</value>
+    <comment>Points leaderboard: secondary stat, the best run of consecutive blocks with points.</comment>
+  </data>
   <data name="low_user_ip_ratio" xml:space="preserve">
     <value>Самое низкое соотношение пользователей к IP для доступа к контенту</value>
     <comment>Call to action</comment>
@@ -1837,7 +1881,7 @@
   </data>
   <data name="none" xml:space="preserve">
     <value>Нет</value>
-    <comment>Call to action</comment>
+    <comment>Empty value: the Referrals section shows it when no referral network is linked (apple), and the android referral network row.</comment>
   </data>
   <data name="notifications_label" xml:space="preserve">
     <value>Уведомления</value>
@@ -2008,6 +2052,22 @@
     <value>+ ещё {}</value>
     <comment>Suffix appended to a truncated list of host names and addresses ("a, b, …, c + 3 more"). The argument is the number of values omitted from the list.</comment>
   </data>
+  <data name="points" xml:space="preserve">
+    <value>Очки</value>
+    <comment>Points leaderboard: tab label, stat tile label and sort chip.</comment>
+  </data>
+  <data name="points_leaderboard_description" xml:space="preserve">
+    <value>Очки за всё время. Блок — одна завершённая эпоха; серия считает подряд идущие блоки с очками до последнего.</value>
+    <comment>Points leaderboard: the explanation under the list header.</comment>
+  </data>
+  <data name="points_leaderboard_empty" xml:space="preserve">
+    <value>В таблице лидеров по очкам пока никого нет.</value>
+    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+  </data>
+  <data name="points_leaderboard_private_hint" xml:space="preserve">
+    <value>Это видите только вы. Включите, чтобы появиться в таблице лидеров.</value>
+    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+  </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Постквантовое шифрование</value>
     <comment>Connect drawer: post quantum encryption toggle label.</comment>
@@ -2158,6 +2218,10 @@
   <data name="quit_urnetwork" xml:space="preserve">
     <value>Выйти из URnetwork</value>
     <comment>Used in NetworkApp.swift.</comment>
+  </data>
+  <data name="ranked_networks_count" xml:space="preserve">
+    <value>Сетей в рейтинге: {}</value>
+    <comment>Points leaderboard: how many networks hold a rank. {count} is preformatted with separators.</comment>
   </data>
   <data name="ready_to_connect" xml:space="preserve">
     <value>Готово к подключению</value>
@@ -2310,6 +2374,10 @@
   <data name="referral_panel_none" xml:space="preserve">
     <value>Пока нет друзей — поделитесь кодом, и появится корона. 👑</value>
     <comment>Status line of the gold referral panel while the network has no referral yet.</comment>
+  </data>
+  <data name="referral_points" xml:space="preserve">
+    <value>Реферальные баллы</value>
+    <comment>Referrals screen: label of the points a network earned from its referrals (the payout_linked_account points), shown next to the total referral count.</comment>
   </data>
   <data name="referral_progress_of_five" xml:space="preserve">
     <value>{}/5</value>
@@ -2590,6 +2658,10 @@
     <value>Показывать значок UR при подключении</value>
     <comment>Call to action</comment>
   </data>
+  <data name="show_on_points_leaderboard" xml:space="preserve">
+    <value>Показывать в таблице лидеров по очкам</value>
+    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+  </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>Показать список провайдеров</value>
     <comment>Used in Main/Connect/ConnectView-macOS.swift.</comment>
@@ -2695,10 +2767,6 @@
   <data name="site_app_blocked_locations" xml:space="preserve">
     <value>Заблокированные локации</value>
     <comment>App account: blocked locations row/screen title</comment>
-  </data>
-  <data name="site_app_bonus_referral" xml:space="preserve">
-    <value>Бонусный реферальный код</value>
-    <comment>App settings: bonus referral code section</comment>
   </data>
   <data name="site_app_canceled" xml:space="preserve">
     <value>Отменено</value>
@@ -2930,7 +2998,7 @@
   </data>
   <data name="site_app_manage_subscription" xml:space="preserve">
     <value>Управление подпиской</value>
-    <comment>App sidebar: manage subscription button (opens the Stripe billing portal)</comment>
+    <comment>App sidebar and account panel: opens Manage Subscription (every billing store, renewal date, auto-renew, cancel)</comment>
   </data>
   <data name="site_app_mean_reliability" xml:space="preserve">
     <value>Средняя надёжность</value>
@@ -3047,10 +3115,6 @@
   <data name="site_app_redeemed_on" xml:space="preserve">
     <value>Активировано {date}</value>
     <comment>App balance codes: redeemed date row</comment>
-  </data>
-  <data name="site_app_refer_friends" xml:space="preserve">
-    <value>Пригласить друзей</value>
-    <comment>App account: refer friends card</comment>
   </data>
   <data name="site_app_referral_network" xml:space="preserve">
     <value>Реферальная сеть</value>
@@ -3284,9 +3348,13 @@
     <value>Локации</value>
     <comment>Account panel: location chooser list aria-label</comment>
   </data>
-  <data name="site_manage_billing_hint" xml:space="preserve">
-    <value>Управляйте платёжными данными, просматривайте счета или отмените подписку.</value>
-    <comment>Account panel: billing portal hint for Pro users</comment>
+  <data name="site_manage" xml:space="preserve">
+    <value>Управление</value>
+    <comment>Account panel: the small button on the plan card that opens Manage Subscription in the app.</comment>
+  </data>
+  <data name="site_manage_subscription_hint" xml:space="preserve">
+    <value>Дата продления, автопродление и варианты отмены.</value>
+    <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
   </data>
   <data name="site_no_balance_codes" xml:space="preserve">
     <value>Пока нет активированных кодов баланса</value>
@@ -3344,6 +3412,58 @@
     <value>Имя пользователя — это токен из URL; пароль пустой.</value>
     <comment>Account panel: SOCKS credential note</comment>
   </data>
+  <data name="site_sub_active_until" xml:space="preserve">
+    <value>Активна до {date}</value>
+    <comment>Subscription: date line when the store did not answer whether it auto-renews. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_auto_renew_off" xml:space="preserve">
+    <value>Автопродление выключено</value>
+    <comment>Subscription: status chip — the subscription will not renew itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_on" xml:space="preserve">
+    <value>Автопродление включено</value>
+    <comment>Subscription: status chip — the subscription renews itself.</comment>
+  </data>
+  <data name="site_sub_auto_renew_unknown" xml:space="preserve">
+    <value>Автопродление: неизвестно</value>
+    <comment>Subscription: status chip — the store did not answer whether it auto-renews.</comment>
+  </data>
+  <data name="site_sub_billed_solana" xml:space="preserve">
+    <value>Оплачено в USDC в сети Solana.</value>
+    <comment>Subscription: store sentence for a Pro year paid with USDC on Solana.</comment>
+  </data>
+  <data name="site_sub_billing_details" xml:space="preserve">
+    <value>Платёжные данные</value>
+    <comment>Subscription: secondary link that opens Stripe's billing portal (payment details, invoices). Shown only when the network has a Stripe customer.</comment>
+  </data>
+  <data name="site_sub_cancel" xml:space="preserve">
+    <value>Отменить подписку</value>
+    <comment>Subscription: the cancel button for a Stripe-billed subscription (cancels at the end of the paid period).</comment>
+  </data>
+  <data name="site_sub_cancel_confirm" xml:space="preserve">
+    <value>Отменить в конце периода? Pro останется до {date}.</value>
+    <comment>Subscription: inline confirmation before cancelling. {date} is the end of the paid period, a localized date.</comment>
+  </data>
+  <data name="site_sub_cancel_keep" xml:space="preserve">
+    <value>Оставить</value>
+    <comment>Subscription: back out of the cancellation.</comment>
+  </data>
+  <data name="site_sub_cancel_yes" xml:space="preserve">
+    <value>Да, отменить</value>
+    <comment>Subscription: confirm the cancellation.</comment>
+  </data>
+  <data name="site_sub_change_error" xml:space="preserve">
+    <value>Не удалось изменить подписку. Попробуйте ещё раз.</value>
+    <comment>Subscription: a cancel or resume request failed.</comment>
+  </data>
+  <data name="site_sub_details_error" xml:space="preserve">
+    <value>Не удалось загрузить сведения о продлении. Показываем, что известно.</value>
+    <comment>Subscription: shown when the details request (dates, auto-renew) failed and the screen falls back to the list of billing stores.</comment>
+  </data>
+  <data name="site_sub_ends_on" xml:space="preserve">
+    <value>Заканчивается {date}</value>
+    <comment>Subscription: date line when auto-renew is off (cancelled, or a one-time USDC year). {date} is a localized date.</comment>
+  </data>
   <data name="site_sub_free_body" xml:space="preserve">
     <value>У вас тариф Free. Перейдите на Pro, чтобы получить больше данных и возможностей.</value>
     <comment>Subscription: free plan body</comment>
@@ -3379,6 +3499,18 @@
   <data name="site_sub_platform_body_google" xml:space="preserve">
     <value>Ваша подписка Pro оплачивается через Google Play. Чтобы изменить или отменить её, управляйте подписками в Google Play.</value>
     <comment>Subscription: billing explanation, Google. Full sentence so each language can inflect around the store name naturally.</comment>
+  </data>
+  <data name="site_sub_renews_on" xml:space="preserve">
+    <value>Продлится {date}</value>
+    <comment>Subscription: date line when auto-renew is on. {date} is a localized date.</comment>
+  </data>
+  <data name="site_sub_resume" xml:space="preserve">
+    <value>Возобновить подписку</value>
+    <comment>Subscription: undo a pending cancellation while the paid period is still running.</comment>
+  </data>
+  <data name="site_sub_solana_no_renew" xml:space="preserve">
+    <value>Не продлевается. По окончании оплатите снова в USDC.</value>
+    <comment>Subscription: note under a USDC-paid year — it is a one-time payment with nothing to cancel.</comment>
   </data>
   <data name="site_sub_stripe_body" xml:space="preserve">
     <value>Ваша подписка Pro оплачивается через Stripe. Ниже вы можете в любой момент обновить платёжные данные или отменить подписку.</value>
@@ -3487,6 +3619,10 @@
   <data name="step_two" xml:space="preserve">
     <value>Шаг 2</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="streak" xml:space="preserve">
+    <value>Серия</value>
+    <comment>Points leaderboard: stat tile label and sort chip. Consecutive blocks with points.</comment>
   </data>
   <data name="strong_anonymization" xml:space="preserve">
     <value>Усиленная анонимизация</value>
