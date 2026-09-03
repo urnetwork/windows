@@ -166,20 +166,6 @@ std::wstring FormatDailyAllowance(int64_t byteCount) {
   return Widen(FormatByteCountCompact(byteCount));
 }
 
-Storyboard PulseOpacity(DependencyObject const& target, double from, double to, int millis) {
-  DoubleAnimation pulse;
-  pulse.From(from);
-  pulse.To(to);
-  pulse.Duration(MillisDuration(millis));
-  pulse.AutoReverse(true);
-  pulse.RepeatBehavior(RepeatBehavior{.Count = 0, .Duration = {}, .Type = RepeatBehaviorType::Forever});
-  Storyboard::SetTarget(pulse, target);
-  Storyboard::SetTargetProperty(pulse, L"Opacity");
-  Storyboard storyboard;
-  storyboard.Children().Append(pulse);
-  return storyboard;
-}
-
 }  // namespace
 
 std::shared_ptr<Onboarding> Onboarding::Create(Grid host, Actions actions) {
@@ -725,7 +711,7 @@ StackPanel Onboarding::BuildWelcome() {
   page.Children().Append(links);
 
   if (animations_) {
-    haloStoryboard_ = PulseOpacity(plans_.Halo(), 0.6, 1.0, 2200);
+    haloStoryboard_ = plans_.HaloPulse();
     haloStoryboard_.Begin();
   }
   return page;

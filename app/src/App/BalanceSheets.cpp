@@ -454,6 +454,14 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   // component, so Get Pro and onboarding cannot drift; the prices are the
   // same store literals onboarding prints.
   auto plans = plans_.Build();
+  // the halo breathes exactly as on the onboarding welcome page: the storyboard
+  // can only run once the rectangle is in the tree, so begin on Loaded
+  haloStoryboard_ = plans_.HaloPulse();
+  plans_.Halo().Loaded([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) {
+      if (self->haloStoryboard_ && !self->closed_) self->haloStoryboard_.Begin();
+    }
+  });
   plans.Margin(Thickness{0, 36, 0, 0});  // room for the halo and the Best value pill
   productsPanel_.Children().Append(plans);
   plans_.onSelect = [weak = weak_from_this()](bool yearly) {
@@ -611,6 +619,7 @@ void UpgradeSheet::Build(XamlRoot const& root) {
     // session request cannot open a browser or a webview for it
     if (auto self = weak.lock()) {
       self->closed_ = true;
+      if (self->haloStoryboard_) self->haloStoryboard_.Stop();
       self->TeardownWebView();
     }
   });

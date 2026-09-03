@@ -11,6 +11,7 @@ using namespace winrt;
 using namespace winrt::Microsoft::UI::Xaml;
 using namespace winrt::Microsoft::UI::Xaml::Controls;
 using namespace winrt::Microsoft::UI::Xaml::Media;
+using namespace winrt::Microsoft::UI::Xaml::Media::Animation;
 using winrt::Windows::Foundation::Point;
 using ShapeEllipse = winrt::Microsoft::UI::Xaml::Shapes::Ellipse;
 using ShapeRectangle = winrt::Microsoft::UI::Xaml::Shapes::Rectangle;
@@ -232,6 +233,22 @@ void PlanPicker::SetEnabled(bool enabled) {
 
 hstring PlanPicker::CtaLabel(bool yearly) {
   return yearly ? Loc("start_free_trial") : Loc("subscribe");
+}
+
+Storyboard PlanPicker::HaloPulse() const {
+  DoubleAnimation pulse;
+  pulse.From(0.6);
+  pulse.To(1.0);
+  pulse.Duration(Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+                              std::chrono::milliseconds(2200)),
+                          DurationType::TimeSpan});
+  pulse.AutoReverse(true);
+  pulse.RepeatBehavior(RepeatBehavior{.Count = 0, .Duration = {}, .Type = RepeatBehaviorType::Forever});
+  Storyboard::SetTarget(pulse, state_->halo);
+  Storyboard::SetTargetProperty(pulse, L"Opacity");
+  Storyboard storyboard;
+  storyboard.Children().Append(pulse);
+  return storyboard;
 }
 
 }  // namespace urnw

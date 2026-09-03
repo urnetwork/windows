@@ -36,6 +36,10 @@ class PlanPicker {
   static winrt::hstring CtaLabel(bool yearly);
   // The halo behind the yearly card, for a host that pulses it (onboarding).
   winrt::Microsoft::UI::Xaml::Shapes::Rectangle Halo() const { return state_->halo; }
+  // The halo's pulse (opacity 0.6 <-> 1.0 over 2.2 s, forever): one definition,
+  // so every host that shows the picker breathes the same way. The host owns
+  // the storyboard: Begin() once the halo is loaded, Stop() when it hides.
+  winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard HaloPulse() const;
 
   // Fired on a tap, after the selection changed.
   std::function<void(bool yearly)> onSelect;

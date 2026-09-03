@@ -161,6 +161,8 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   // the plan cards: the picker the onboarding welcome page shows (yearly in
   // the gold dress with the trial, selected by default; monthly plain, no trial)
   PlanPicker plans_;
+  // the yearly card's halo pulse, running while the sheet is open (onboarding parity)
+  winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard haloStoryboard_{nullptr};
 
   Page page_ = Page::Products;
   bool checkingOut_ = false;
