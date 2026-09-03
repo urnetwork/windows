@@ -211,6 +211,8 @@ if ! win_wait_ssh; then
   win_mon "$WIN_MON_SOCK" "screendump $artifacts/vm-boot-failure.ppm"
   die "Windows VM did not reach SSH"
 fi
+win_prepare_hermetic_guest \
+  || die "could not disable Windows auto-servicing in the acceptance VM"
 
 remote=C:/acceptance
 win_ssh_probe 60 "powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -Path '$remote' | Out-Null\""

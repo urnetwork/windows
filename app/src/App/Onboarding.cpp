@@ -27,6 +27,7 @@ using namespace winrt::Microsoft::UI::Xaml::Controls;
 using namespace winrt::Microsoft::UI::Xaml::Media;
 using namespace winrt::Microsoft::UI::Xaml::Media::Animation;
 using winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage;
+using winrt::Windows::Foundation::IInspectable;
 using winrt::Windows::Foundation::Point;
 using winrt::Windows::Foundation::Rect;
 using winrt::Windows::Foundation::TimeSpan;
@@ -388,8 +389,8 @@ void Onboarding::ShowStep(int step) {
   if (animations_) {
     page.Opacity(0);
     DoubleAnimation fade;
-    fade.From(0);
-    fade.To(1);
+    fade.From(0.0);
+    fade.To(1.0);
     fade.Duration(MillisDuration(220));
     Storyboard::SetTarget(fade, page);
     Storyboard::SetTargetProperty(fade, L"Opacity");
@@ -544,7 +545,8 @@ FrameworkElement Onboarding::BuildRoute() {
     auto label = MakeText(text, 13, colors::MakeBrush(colors::WithAlpha(color, 0xE6)));
     label.FontFamily(FontFamily{L"Cascadia Mono, Consolas"});
     label.VerticalAlignment(VerticalAlignment::Center);
-    label.Padding(Thickness{column == 0 ? 0 : 8, 2, column == 4 ? 0 : 8, 2});
+    label.Padding(
+        Thickness{column == 0 ? 0.0 : 8.0, 2.0, column == 4 ? 0.0 : 8.0, 2.0});
     Grid::SetColumn(label, column);
     route.Children().Append(label);
   };

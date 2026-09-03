@@ -14,6 +14,7 @@
 #include "Localization.h"
 #include "Log.h"
 #include "PageContext.h"
+#include "SubscriptionBalance.h"
 #include "Strings.h"
 #include "UrColors.h"
 #include "UrComponents.h"

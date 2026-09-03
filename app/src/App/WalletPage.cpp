@@ -100,6 +100,14 @@ urnet::SnError TransportError(std::string const& message) {
   return error;
 }
 
+// SnSetWallet predates the common coded SnError result shape. Adapt its
+// message explicitly instead of assigning between two unrelated optionals.
+urnet::SnError SetWalletError(urnet::SnSetWalletError const& source) {
+  urnet::SnError error;
+  error.message = source.message;
+  return error;
+}
+
 // The four account-point events the server emits (iOS AccountPointEvent).
 constexpr const char* kEventPayout = "payout";
 constexpr const char* kEventReferral = "payout_linked_account";
@@ -1094,7 +1102,7 @@ void WalletPage::SubmitWalletConnect(uint32_t generation, std::string const& add
                                           std::optional<std::string> err) {
     std::optional<urnet::SnError> error;
     if (err) error = TransportError(*err);
-    else if (result && result->error) error = result->error;
+    else if (result && result->error) error = SetWalletError(*result->error);
     else if (!result) error = TransportError("snSetWallet returned no result");
     if (error) {
       urnw::LogError("earnings: snSetWallet failed: {} {}", error->code.value_or(std::string()),

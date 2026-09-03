@@ -3958,6 +3958,99 @@ void TestDeadTunnelVerdict() {
         "verdict is never decided by the sampling rate");
 }
 
+// A destination replacement is a new connection generation, not 20 more
+// seconds of failure in the old one. The acceptance reproduction replaced a
+// healthy public window with a controlled network peer: formation honestly took
+// 27 seconds, the peer reached Connected, and the old no-inbound clock tore it
+// down 230ms later. This pins the generation/readiness boundary separately from
+// the verdict table so a later watchdog refactor cannot rejoin those clocks.
+void TestDeadTunnelConnectionEpoch() {
+  Section("TunnelWatchdog — destination generations own their traffic grace");
+
+  ConnectionEpochTracker tracker;
+  ConnectionEpochUpdate update = tracker.Observe(/*generation=*/41,
+                                                  /*minSatisfied=*/true);
+  Check(!update.verdictClockReset && !update.trafficClockReset &&
+            tracker.FastVerdictEligible(),
+        "the already-ready generation present when watching starts keeps the "
+        "session's original clocks");
+
+  const int64_t switchAt = 1000;
+  update = tracker.Observe(/*generation=*/42, /*minSatisfied=*/false);
+  Check(update.verdictClockReset && update.trafficClockReset &&
+            !tracker.FastVerdictEligible(),
+        "a real destination rebuild starts a fresh verdict epoch and suppresses "
+        "the 20s traffic verdict while its new window is still forming");
+
+  DeadTunnelSignals forming;
+  forming.tunnelUp = true;
+  forming.routesInstalled = true;
+  forming.upSinceMillis = switchAt;
+  forming.trafficStartMillis = switchAt;
+  forming.provenCount = 0;
+  forming.lastProvenMillis = -1;
+  forming.lastSampleMillis = switchAt + 27000;
+  forming.lastInboundMillis = -1;
+  forming.outboundSinceInbound = 56;
+  forming.providerWindowReady = tracker.FastVerdictEligible();
+  Check(Evaluate(forming, switchAt + 27000).reason == DeadTunnelReason::None,
+        "the exact acceptance shape — 27s of outbound traffic while the "
+        "replacement peer forms — is not judged by the old 20s window");
+  forming.providerWindowReady = true;
+  Check(Evaluate(forming, switchAt + 27000).reason ==
+            DeadTunnelReason::NoInbound,
+        "without the readiness boundary the same deterministic signals fire "
+        "failsafe_no_inbound, reproducing the shipped teardown");
+
+  const int64_t readyAt = switchAt + 27230;
+  update = tracker.Observe(/*generation=*/42, /*minSatisfied=*/true);
+  Check(!update.verdictClockReset && update.trafficClockReset &&
+            tracker.FastVerdictEligible(),
+        "the first ready edge preserves the generation's slow/sdk clocks but "
+        "starts its 20s traffic grace only now");
+
+  DeadTunnelSignals ready = forming;
+  ready.providerWindowReady = tracker.FastVerdictEligible();
+  ready.trafficStartMillis = readyAt;
+  ready.lastSampleMillis = readyAt;
+  ready.outboundSinceInbound = kDeadFastOutboundPackets;
+  Check(Evaluate(ready, readyAt + kDeadFastMillis - 1).reason ==
+            DeadTunnelReason::None,
+        "a newly-ready provider gets the complete fast grace period");
+  ready.lastSampleMillis = readyAt + kDeadFastMillis;
+  Check(Evaluate(ready, readyAt + kDeadFastMillis).reason ==
+            DeadTunnelReason::NoInbound,
+        "a provider that still returns nothing after that fresh grace is torn "
+        "down — the fix moves the boundary rather than disabling the failsafe");
+
+  update = tracker.Observe(/*generation=*/42, /*minSatisfied=*/false);
+  Check(!update.verdictClockReset && !update.trafficClockReset &&
+            tracker.FastVerdictEligible(),
+        "ordinary readiness churn after a generation has carried cannot keep "
+        "resetting the watchdog forever");
+  update = tracker.Observe(/*generation=*/41, /*minSatisfied=*/true);
+  Check(!update.verdictClockReset && !update.trafficClockReset &&
+            tracker.connectionGeneration() == 42,
+        "a stale callback from the retired provider window is ignored instead "
+        "of moving the watchdog back to an old generation");
+  update = tracker.Observe(/*generation=*/43, /*minSatisfied=*/true);
+  Check(update.verdictClockReset && update.trafficClockReset &&
+            tracker.FastVerdictEligible(),
+        "a generation first observed already ready still receives fresh clocks");
+
+  DeadTunnelSignals neverReady = forming;
+  neverReady.providerWindowReady = false;
+  neverReady.outboundSinceInbound = 0;
+  neverReady.lastSampleMillis = switchAt + kDeadSlowMillis;
+  Check(Evaluate(neverReady, switchAt + kDeadSlowMillis).reason ==
+            DeadTunnelReason::NoExit,
+        "window formation is still bounded by the 90s no-exit verdict");
+  neverReady.lastSampleMillis = -1;
+  Check(Evaluate(neverReady, switchAt + kSdkUnresponsiveMillis).reason ==
+            DeadTunnelReason::SdkUnresponsive,
+        "and a wedged sdk is still bounded while the provider window forms");
+}
+
 // The one-line function that decides whether the failsafe hands the machine
 // back its internet or leaves it blocked. Pinned on its own because inverting
 // it is a single character and the consequence is the opposite product.
@@ -4553,6 +4646,7 @@ int RunSelfTest() {
   TestHeartbeat();
   TestWireSerialization();
   TestDeadTunnelVerdict();
+  TestDeadTunnelConnectionEpoch();
   TestFailsafeDisarmChoice();
   TestEgressCoalescer();
 

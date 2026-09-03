@@ -220,6 +220,94 @@ func TestGeneratedXamlPCHContract(t *testing.T) {
 	}
 }
 
+func readAppSource(t *testing.T, name string) string {
+	t.Helper()
+	filename := filepath.Join(repositoryRoot(t), "app", "src", "App", name)
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("read %s: %v", filename, err)
+	}
+	return string(data)
+}
+
+func readServiceSource(t *testing.T, name string) string {
+	t.Helper()
+	filename := filepath.Join(repositoryRoot(t), "app", "src", "Service", name)
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("read %s: %v", filename, err)
+	}
+	return string(data)
+}
+
+func TestReferralSheetIncludesCompleteBalanceStoreType(t *testing.T) {
+	source := readAppSource(t, "SettingsSheets.cpp")
+	if !strings.Contains(source, `#include "SubscriptionBalance.h"`) {
+		t.Fatal("SettingsSheets.cpp calls SubscriptionBalanceStore methods through PageContext but includes only its forward declaration")
+	}
+}
+
+func TestOnboardingUsesUnambiguousWinRTNumericAndInspectableTypes(t *testing.T) {
+	source := readAppSource(t, "Onboarding.cpp")
+	for _, required := range []string{
+		"using winrt::Windows::Foundation::IInspectable;",
+		"fade.From(0.0);",
+		"fade.To(1.0);",
+		"column == 0 ? 0.0 : 8.0",
+		"column == 4 ? 0.0 : 8.0",
+	} {
+		if !strings.Contains(source, required) {
+			t.Fatalf("Onboarding.cpp is missing the C++/WinRT compile contract %q", required)
+		}
+	}
+	for _, ambiguous := range []string{"fade.From(0);", "fade.To(1);"} {
+		if strings.Contains(source, ambiguous) {
+			t.Fatalf("Onboarding.cpp passes ambiguous integral literal in %q", ambiguous)
+		}
+	}
+}
+
+func TestWalletSetErrorIsAdaptedToCommonSnError(t *testing.T) {
+	source := readAppSource(t, "WalletPage.cpp")
+	start := strings.Index(source, "Sdk().api().snSetWallet(")
+	if start < 0 {
+		t.Fatal("SnSetWallet call is missing")
+	}
+	setWalletCall := source[start:]
+	if !strings.Contains(setWalletCall, "error = SetWalletError(*result->error);") {
+		t.Fatal("SnSetWalletError is not explicitly adapted to the common SnError result channel")
+	}
+	rawAssignment := strings.Index(setWalletCall, "error = result->error;")
+	deliver := strings.Index(setWalletCall, "deliver(error")
+	if 0 <= rawAssignment && (deliver < 0 || rawAssignment < deliver) {
+		t.Fatal("unrelated optional<SnSetWalletError> is assigned to optional<SnError>")
+	}
+}
+
+func TestTunnelWatchdogObservesDestinationGenerationAndReadiness(t *testing.T) {
+	header := readServiceSource(t, "TunnelWatchdog.h")
+	source := readServiceSource(t, "TunnelWatchdog.cpp")
+	for _, required := range []string{
+		"ConnectionEpochTracker",
+		"providerWindowReady",
+		"trafficStartMillis",
+	} {
+		if !strings.Contains(header, required) {
+			t.Fatalf("TunnelWatchdog.h is missing the connection-epoch contract %q", required)
+		}
+	}
+	for _, required := range []string{
+		"addWindowStatusChangeListener",
+		"status->ConnectionGeneration",
+		"status->MinSatisfied",
+		"connectionEpoch.FastVerdictEligible()",
+	} {
+		if !strings.Contains(source, required) {
+			t.Fatalf("TunnelWatchdog.cpp is missing the live connection-epoch wiring %q", required)
+		}
+	}
+}
+
 func TestAcceptanceHarnessImmutabilityContract(t *testing.T) {
 	root := repositoryRoot(t)
 	filename := filepath.Join(root, "test-main.sh")
@@ -245,6 +333,25 @@ func TestAcceptanceHarnessImmutabilityContract(t *testing.T) {
 	if initialized < 0 || guarded < 0 || finished < 0 || finalExit < 0 ||
 		!(initialized < guarded && guarded < finished && finished < finalExit) {
 		t.Fatal("test-main.sh completion sentinel cannot distinguish an early exit from a completed acceptance run")
+	}
+}
+
+func TestAcceptanceGuestIsHardenedBeforeInstall(t *testing.T) {
+	root := repositoryRoot(t)
+	filename := filepath.Join(root, "test-main.sh")
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	prepare := strings.Index(source, "win_prepare_hermetic_guest")
+	remoteDir := strings.Index(source, "remote=C:/acceptance")
+	install := strings.Index(source, `-File $remote/run.ps1 -Msi $remote/urnetwork.msi`)
+	if prepare < 0 || remoteDir < 0 || install < 0 {
+		t.Fatalf("acceptance boundary missing: prepare=%d remote=%d install=%d", prepare, remoteDir, install)
+	}
+	if !(prepare < remoteDir && prepare < install) {
+		t.Fatalf("acceptance work starts before guest policy verification: prepare=%d remote=%d install=%d", prepare, remoteDir, install)
 	}
 }
 

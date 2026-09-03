@@ -269,6 +269,18 @@ struct DeadTunnelSignals {
   // When this session reached Up. 0 means there is no session to judge.
   int64_t upSinceMillis = 0;
 
+  // The beginning of the traffic generation being judged by DEAD_FAST. A
+  // destination replacement may honestly spend longer than kDeadFastMillis
+  // forming; its traffic clock starts only when that new provider window first
+  // becomes ready. 0 retains the session-start behavior for callers that have
+  // no separate traffic boundary.
+  int64_t trafficStartMillis = 0;
+  // False only during the initial formation of a new destination generation.
+  // Once that generation has been ready, later window churn cannot turn this
+  // false again and reset the watchdog forever; ConnectionEpochTracker owns
+  // that one-way rule.
+  bool providerWindowReady = true;
+
   // ---- from the SDK sampler ----
   // The proven-exit count from the last COMPLETED getExits().
   int64_t provenCount = 0;
@@ -333,7 +345,10 @@ inline constexpr DeadTunnelVerdict Evaluate(const DeadTunnelSignals& s,
 
   const int64_t sampleAge = detail::AgeSince(s.lastSampleMillis, s.upSinceMillis, nowMillis);
   const int64_t provenAge = detail::AgeSince(s.lastProvenMillis, s.upSinceMillis, nowMillis);
-  const int64_t inboundAge = detail::AgeSince(s.lastInboundMillis, s.upSinceMillis, nowMillis);
+  const int64_t trafficStartMillis =
+      s.trafficStartMillis > 0 ? s.trafficStartMillis : s.upSinceMillis;
+  const int64_t inboundAge =
+      detail::AgeSince(s.lastInboundMillis, trafficStartMillis, nowMillis);
 
   // ---- THE MEASUREMENT OVERRULES THE CLAIM, AND IT DOES SO FIRST ------------
   //
@@ -378,7 +393,8 @@ inline constexpr DeadTunnelVerdict Evaluate(const DeadTunnelSignals& s,
   // ---- DEAD_FAST ------------------------------------------------------------
   // Committed outbound, zero inbound, nothing proven — all three, continuously.
   const bool fastApplies =
-      s.provenCount == 0 && s.outboundSinceInbound >= kDeadFastOutboundPackets;
+      s.providerWindowReady && s.provenCount == 0 &&
+      s.outboundSinceInbound >= kDeadFastOutboundPackets;
   if (fastApplies && inboundAge >= kDeadFastMillis && provenAge >= kDeadFastMillis) {
     v.reason = DeadTunnelReason::NoInbound;
     return v;
@@ -473,6 +489,60 @@ class TrafficTracker {
 };
 
 // ---------------------------------------------------------------------------
+// the destination-generation tracker (pure)
+// ---------------------------------------------------------------------------
+
+// What one WindowStatus observation changes in the evaluator. A destination
+// rebuild resets every verdict clock; the first ready edge of that generation
+// resets only DEAD_FAST's packet/traffic clock. Keeping the two explicit is the
+// distinction that prevents a 27-second honest peer formation from inheriting
+// the old provider's 20-second failure window without giving every reconnect a
+// second 90-second no-exit grace after it is ready.
+struct ConnectionEpochUpdate {
+  bool verdictClockReset = false;
+  bool trafficClockReset = false;
+};
+
+// Consumes the monotonic generation and MinSatisfied values carried by the
+// SDK's WindowStatus. Safe against late callbacks from a retired window: an
+// older generation is ignored. Readiness is one-way inside a generation, so
+// ordinary resize/liveness churn cannot keep resetting the failsafe forever.
+class ConnectionEpochTracker {
+ public:
+  ConnectionEpochUpdate Observe(int64_t connectionGeneration,
+                                bool minSatisfied) {
+    ConnectionEpochUpdate update;
+    if (!initialized_) {
+      initialized_ = true;
+      connectionGeneration_ = connectionGeneration;
+      forming_ = !minSatisfied;
+      return update;
+    }
+    if (connectionGeneration < connectionGeneration_) return update;
+    if (connectionGeneration > connectionGeneration_) {
+      connectionGeneration_ = connectionGeneration;
+      forming_ = !minSatisfied;
+      update.verdictClockReset = true;
+      update.trafficClockReset = true;
+      return update;
+    }
+    if (forming_ && minSatisfied) {
+      forming_ = false;
+      update.trafficClockReset = true;
+    }
+    return update;
+  }
+
+  bool FastVerdictEligible() const { return initialized_ && !forming_; }
+  int64_t connectionGeneration() const { return connectionGeneration_; }
+
+ private:
+  bool initialized_ = false;
+  bool forming_ = false;
+  int64_t connectionGeneration_ = 0;
+};
+
+// ---------------------------------------------------------------------------
 // the network-change coalescer (pure)
 // ---------------------------------------------------------------------------
 //
@@ -559,6 +629,13 @@ struct WatchdogChannel {
   std::atomic<int64_t> exitCount{0};
   std::atomic<int64_t> lastSampleMillis{-1};
   std::atomic<int64_t> lastProvenMillis{-1};
+
+  // The current SDK destination generation and its window readiness, guarded
+  // by `mutex`. WindowStatus carries both in one snapshot; keeping them under
+  // one lock here prevents the evaluator from pairing a new generation with
+  // the retired one's readiness.
+  int64_t connectionGeneration = 0;
+  bool providerWindowMinSatisfied = true;
 
   // the network-change coalescer, guarded by `mutex`
   NotifyCoalescer coalescer;
@@ -648,6 +725,10 @@ class TunnelWatchdog {
   // teardown.
   std::mutex stateMutex_;
   std::shared_ptr<WatchdogChannel> channel_;
+  // Emits every real destination rebuild (including same-location Reconnect)
+  // and every readiness transition. The callback captures only a weak channel,
+  // never this object; Stop unsubscribes before the DeviceLocal is closed.
+  urnet::Sub windowStatusSub_;
   std::thread sampler_;
   std::thread evaluator_;
 
