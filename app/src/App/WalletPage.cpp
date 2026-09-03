@@ -463,7 +463,7 @@ void WalletPage::ApplyStrings() {
   w_.BittensorWalletHeading().Text(Loc("bittensor_wallet"));
   w_.WalletConnectedNote().Text(Loc("wallet_connected_to_protocol"));
   w_.ChangeWalletButton().Content(LocBox("earnings_change_wallet"));
-  w_.WalletNotRetroactiveLink().Content(LocBox("wallet_not_retroactive"));
+  w_.WalletNotRetroactiveRun().Text(Loc("wallet_not_retroactive"));
   w_.ConnectWalletButton().Content(LocBox("connect_bittensor_wallet"));
   w_.EnterAddressManuallyButton().Content(LocBox("enter_address_manually"));
   w_.WalletAddressBox().PlaceholderText(Loc("earnings_address_placeholder"));
