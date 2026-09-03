@@ -122,7 +122,7 @@ class LoginPage {
   // gates Get started on a non-empty field (iOS/android parity)
   void OnUserAuthChanged(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-  // Google / Apple through the ur.io SSO browser bridge (SdkHost::SignInWithSso)
+  // Google / Apple through the provider's web flow (SdkHost::SignInWithSso)
   void OnSignInWithGoogle(winrt::Windows::Foundation::IInspectable const&,
                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignInWithApple(winrt::Windows::Foundation::IInspectable const&,
@@ -177,8 +177,8 @@ class LoginPage {
   winrt::fire_and_forget ShowGuestModeSheet();  // terms consent -> LoginAsGuest
   void SetWalletSignInEnabled(bool enabled);
   void ApplyWalletSignInResult(urnw::AuthResult const& result);
-  // Google or Apple: open the ur.io SSO bridge and wait for its urnetwork://sso
-  // answer; `provider` is "google" or "apple".
+  // Google or Apple: open the provider's sign-in page and wait for the api's
+  // urnetwork://oauth/<provider> answer; `provider` is "google" or "apple".
   void StartSsoSignIn(const char* provider);
   // seedphrase step: word count -> the warning line + the submit gate
   void ValidateSeedphrase();

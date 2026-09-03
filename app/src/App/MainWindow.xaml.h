@@ -201,7 +201,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   // gates Get started on a non-empty field
   void OnUserAuthChanged(winrt::Windows::Foundation::IInspectable const&,
                          winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-  // Google / Apple SSO through the ur.io/sso browser bridge
+  // Google / Apple through the provider's web flow (SdkHost::SignInWithSso)
   void OnSignInWithGoogle(winrt::Windows::Foundation::IInspectable const&,
                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignInWithApple(winrt::Windows::Foundation::IInspectable const&,

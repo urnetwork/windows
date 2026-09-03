@@ -49,27 +49,19 @@ class WalletConnect {
   // attaches the coldkey to the provider (Earnings).
   void SignMessageBittensor(const std::string& message, const std::string& purpose = std::string());
 
-  // Sign-in through the ur.io/sso bridge, the same browser round trip: the
-  // bridge runs the provider's web flow (the one the ur.io login dialog runs)
-  // and returns the identity token on urnetwork://sso. `state` is echoed back
-  // untouched and `nonce` is handed to the provider so the token carries it;
-  // the caller checks both. on_sso fires on the callback. Google and Apple
-  // now go to the provider directly (OpenGoogleOAuth / OpenAppleOAuth); the
-  // bridge and its urnetwork://sso return stay routed for any other provider.
-  void OpenSso(const std::string& provider, const std::string& state, const std::string& nonce);
-
-  // Sign in with Apple straight against Apple: Apple has no desktop SDK and no
-  // popup flow the bridge page can run without Apple JS, so the browser opens
-  // Apple's authorize page (client_id = the Apple Services ID, redirect_uri =
-  // <api>/auth/apple/callback), Apple posts the result to the api, and the api
-  // redirects to urnetwork://oauth/apple?state=…&id_token=… (or &error=…),
-  // which HandleDeepLink routes to on_sso with provider "apple" — the same
-  // state + nonce checks as the bridge accept it. The api picks the
-  // urnetwork:// scheme from the `platform` claim inside `state`
-  // (AppleOAuthState); the state is otherwise opaque.
+  // Sign in with Apple straight against Apple: Apple has no desktop SDK, so
+  // the browser opens Apple's authorize page (client_id = the Apple Services
+  // ID, redirect_uri = <api>/auth/apple/callback), Apple posts the result to
+  // the api, and the api redirects to urnetwork://oauth/apple?state=…
+  // &id_token=… (or &error=…), which HandleDeepLink routes to on_sso with
+  // provider "apple"; the host checks the echoed state and the token's nonce.
+  // `state` is echoed back untouched and `nonce` is handed to the provider so
+  // the token carries it. The api picks the urnetwork:// scheme from the
+  // `platform` claim inside `state` (AppleOAuthState); the state is otherwise
+  // opaque.
   void OpenAppleOAuth(const std::string& apiUrl, const std::string& state,
                       const std::string& nonce);
-  // Sign in with Google the same way (no bridge page): the browser opens
+  // Sign in with Google the same way: the browser opens
   // Google's authorize page (client_id = the ur.io web sign-in client,
   // redirect_uri = <api>/auth/google/callback, response_type=code), Google
   // redirects to the api with an authorization code, the api exchanges it for
@@ -84,8 +76,8 @@ class WalletConnect {
   static std::string AppleOAuthState(const std::string& token);
   static std::string OAuthState(const std::string& token);
 
-  // Route a urnetwork:// callback here. Returns true if it was a bridge callback
-  // (a wallet or an sso one).
+  // Route a urnetwork:// callback here. Returns true if it was a wallet or an
+  // oauth sign-in callback.
   bool HandleDeepLink(const std::string& url);
 
   bool connected() const { return connectedPublicKey_.has_value(); }
@@ -96,9 +88,9 @@ class WalletConnect {
   // Solana, hex sr25519 for Bittensor.
   std::function<void(std::string publicKey, std::string signature, Provider)> on_signature;
   std::function<void(std::string error)> on_error;
-  // urnetwork://sso?provider=<p>&auth_jwt=<token>&state=<state>, or
-  // ?provider=<p>&error=<message>&state=<state>. `error` is non-empty when the
-  // bridge reported one or returned no token.
+  // urnetwork://oauth/<provider>?state=<state>&id_token=<token>, or
+  // ?state=<state>&error=<message>. `error` is non-empty when the api's
+  // callback reported one or returned no token.
   std::function<void(std::string provider, std::string authJwt, std::string state,
                      std::string error)>
       on_sso;
@@ -112,7 +104,6 @@ class WalletConnect {
   void HandleConnect(Provider p, const std::string& query);
   void HandleSignMessage(Provider p, const std::string& query);
   void HandleBittensor(const std::string& host, const std::string& query);
-  void HandleSso(const std::string& query);
   // urnetwork://oauth/<apple|google>?state=…&id_token=… (or &error=…)
   void HandleOAuthReturn(const std::string& url);
 

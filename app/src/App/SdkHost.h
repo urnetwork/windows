@@ -1865,8 +1865,9 @@ class SdkHost {
   // the provider it came from ("google" | "apple") for auth_jwt_type
   std::optional<std::string> pendingAuthJwt_;
   std::string pendingAuthJwtType_;
-  // The sso bridge attempt in flight: its provider, the state the bridge must
-  // echo and the nonce the returned token must carry. Cleared by its answer or
+  // The Google / Apple sign-in attempt in flight: its provider, the state the
+  // api's callback must echo and the nonce the returned token must carry.
+  // Cleared by its answer or
   // by a superseding flow (CancelPendingWalletFlows).
   struct SsoAttempt {
     std::string provider;

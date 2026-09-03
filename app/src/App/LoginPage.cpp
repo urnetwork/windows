@@ -1384,9 +1384,9 @@ winrt::fire_and_forget LoginPage::OnChangeNetworkServer(IInspectable const&,
   networkServerSheet_.reset();
   w_.SetSheetOpen(false);
   // A switch re-derives the Api and the LocalState, so the flow starts over on
-  // whatever the new server says about this client. (The sign-in pills no
-  // longer depend on the server: Google and Apple run through the ur.io/sso
-  // bridge, which needs nothing from the space.)
+  // whatever the new server says about this client. (The sign-in pills do not
+  // depend on the server: Google and Apple open the provider's own web flow,
+  // which needs only the api url for its callback.)
   ResetToInitialStep();
 }
 

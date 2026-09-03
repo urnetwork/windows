@@ -1196,7 +1196,7 @@ bool SdkHost::ApplyNetworkServer(const std::string& hostName, const std::string&
       values.migration_host_name = official ? std::string("bringyour.com") : std::string();
       values.store = "";
       values.wallet = "circle";
-      values.sso_google = true;  // the ur.io/sso bridge, see SignInWithSso
+      values.sso_google = true;  // Google's own web flow with the api's callback, see SignInWithSso
       values.env_secret = "";
       values.api_url = apiUrl;
       values.platform_url = connectUrl;
@@ -1418,7 +1418,7 @@ void SdkHost::SetupWalletCallbacks() {
       LogWarn("sdkhost: an sso callback arrived with no sign-in in flight, ignoring it");
       return;
     }
-    // Not this attempt: the bridge echoes `state` untouched, so a mismatch is a
+    // Not this attempt: the api's callback echoes `state` untouched, so a mismatch is a
     // stale tab or a forged link, not an answer.
     if (state.empty() || state != ssoAttempt_->state || provider != ssoAttempt_->provider) {
       LogWarn("sdkhost: an sso callback did not match the sign-in in flight, ignoring it");
@@ -1588,12 +1588,12 @@ void SdkHost::SignWithBittensorWallet(
 
 void SdkHost::HandleDeepLink(const std::string& url) {
   // Every browser round trip answers here: the wallet bridge hosts and the
-  // urnetwork://sso (the bridge) and urnetwork://oauth/<provider> (the api's
-  // Google / Apple callbacks) return on (on_sso below).
+  // urnetwork://oauth/<provider> return of the api's Google / Apple callbacks
+  // (on_sso below).
   wallet_.HandleDeepLink(url);
 }
 
-// ---- Sign in with Google / Apple (ur.io/sso browser bridge) -----------------
+// ---- Sign in with Google / Apple (the provider's web flow, the api's callback) ---
 
 
 bool SdkHost::HasPendingAuthJwt() {
@@ -1614,15 +1614,15 @@ void SdkHost::SignInWithSso(const std::string& provider, std::function<void(Auth
     pendingAuthJwtType_.clear();
     pendingWalletAuth_.reset();
   }
-  // the bridge has ONE pair of callbacks: whatever was waiting is TOLD
+  // the browser round trip has ONE pair of callbacks: whatever was waiting is TOLD
   CancelPendingWalletFlows("superseded by a sign-in");
   walletAuthDone_ = std::move(done);
   // Fresh per attempt: `state` is echoed by the provider and `nonce` rides
   // inside the identity token it issues, so a stale or replayed callback can
   // match neither. Both come from the SDK's random source, like a wallet nonce.
-  // Both providers go straight to the provider (no bridge page): the state
-  // carries the platform claim the api's callback reads to redirect back to
-  // this app (urnetwork://oauth/<provider>).
+  // Both providers run their own web flow: the state carries the platform
+  // claim the api's callback reads to redirect back to this app
+  // (urnetwork://oauth/<provider>).
   const std::string state = WalletConnect::OAuthState(urnet::generateNonce());
   ssoAttempt_ = SsoAttempt{provider, state, urnet::generateNonce()};
   std::string apiUrl;
@@ -1631,9 +1631,10 @@ void SdkHost::SignInWithSso(const std::string& provider, std::function<void(Auth
     if (networkSpace_) apiUrl = networkSpace_->getApiUrl();
   }
   // opens the browser; the rest continues on the deep-link callback (on_sso)
+  // the guard above admits only these two providers: no other flow exists
   if (provider == "apple") {
     wallet_.OpenAppleOAuth(apiUrl, ssoAttempt_->state, ssoAttempt_->nonce);
-  } else {
+  } else if (provider == "google") {
     wallet_.OpenGoogleOAuth(apiUrl, ssoAttempt_->state, ssoAttempt_->nonce);
   }
 }

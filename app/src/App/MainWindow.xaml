@@ -135,11 +135,11 @@
                     <Grid x:Name="LoginCarouselHost" Height="200" MinHeight="0"
                           Margin="0,0,0,4" />
 
-                    <!-- Sign in with Google, through the ur.io SSO BRIDGE in the
-                         default browser (SdkHost::SignInWithSso): the bridge runs
-                         the same Google flow the ur.io login dialog runs and hands
-                         the identity token back on urnetwork://sso. No OAuth client
-                         has to be compiled in, so the pill is always offered - the
+                    <!-- Sign in with Google, through Google's own web flow in the
+                         default browser (SdkHost::SignInWithSso): the api's
+                         callback exchanges the code and hands the identity token
+                         back on urnetwork://oauth/google. No OAuth secret has to
+                         be compiled in, so the pill is always offered - the
                          loopback flow that used to gate it is gone. -->
                     <Button x:Name="GoogleSignInButton"
                             Style="{StaticResource UrSecondaryButtonStyle}"

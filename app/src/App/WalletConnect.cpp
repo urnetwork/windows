@@ -22,9 +22,6 @@ namespace urnw {
 namespace {
 
 constexpr const char* kWebBridge = "https://ur.io/wallet-connect";
-// Google / Apple sign-in: the same site, the provider's own web flow
-constexpr const char* kSsoBridge = "https://ur.io/sso";
-constexpr const char* kSsoRedirect = "urnetwork://sso";
 // Sign in with Apple (OpenAppleOAuth): Apple's web flow, the api's callback
 constexpr const char* kAppleAuthorize = "https://appleid.apple.com/auth/authorize";
 constexpr const char* kAppleServicesId = "network.ur.service";  // the web client id
@@ -260,16 +257,6 @@ void WalletConnect::SignMessageBittensor(const std::string& message, const std::
   OpenUrl(url);
 }
 
-void WalletConnect::OpenSso(const std::string& provider, const std::string& state,
-                            const std::string& nonce) {
-  // No envelope: an identity token is verified by the server, and the state +
-  // nonce pair is what binds the answer to this attempt.
-  std::string url = std::string(kSsoBridge) + "?provider=" + Esc(provider) +
-                    "&redirect_link=" + Esc(kSsoRedirect) + "&state=" + Esc(state) +
-                    "&nonce=" + Esc(nonce);
-  OpenUrl(url);
-}
-
 std::string WalletConnect::OAuthState(const std::string& token) {
   const nlohmann::json claims = {{"platform", kPlatform}, {"token", token}};
   return Base64Url(claims.dump());
@@ -334,10 +321,6 @@ void WalletConnect::HandleOAuthReturn(const std::string& url) {
 bool WalletConnect::HandleDeepLink(const std::string& url) {
   std::string host, query;
   SplitUrl(url, host, query);
-  if (host == "sso") {
-    HandleSso(query);
-    return true;
-  }
   if (host == kOAuthReturnHost) {
     HandleOAuthReturn(url);
     return true;
@@ -452,19 +435,6 @@ void WalletConnect::HandleBittensor(const std::string& host, const std::string& 
   }
   // The server verifies the hex sr25519 signature as returned (no re-encoding).
   if (on_signature) on_signature(address, signature, Provider::Bittensor);
-}
-
-// The sso bridge returns plain query params: the identity token is a bearer
-// credential the server verifies, so there is nothing to decrypt here. Never
-// logged.
-void WalletConnect::HandleSso(const std::string& query) {
-  auto params = ParseQuery(query);
-  const std::string provider = params.count("provider") ? params["provider"] : std::string();
-  const std::string state = params.count("state") ? params["state"] : std::string();
-  const std::string authJwt = params.count("auth_jwt") ? params["auth_jwt"] : std::string();
-  std::string error = params.count("error") ? params["error"] : std::string();
-  if (error.empty() && authJwt.empty()) error = "sign-in returned no identity token";
-  if (on_sso) on_sso(provider, authJwt, state, error);
 }
 
 }  // namespace urnw
