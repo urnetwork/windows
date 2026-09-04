@@ -135,7 +135,7 @@ MainWindow::MainWindow() {
   // first creates a full account, like the plan card's affordance)
   {
     Button getPro;
-    getPro.Content(LocBox("become_supporter"));
+    getPro.Content(LocBox("get_pro"));  // the same label as every other app
     getPro.Click([weak = get_weak()](auto const&, auto const&) {
       auto self = weak.get();
       if (!self) return;
