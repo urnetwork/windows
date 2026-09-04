@@ -165,9 +165,12 @@ inline constexpr int64_t kLoadMoreThreshold = 10;
 // should be requested. `lastVisibleRow` indexes the ROWS (header and footer
 // excluded); -1 when no row is visible. The controller itself refuses a
 // second in-flight page and a page past the end; this only avoids asking.
+// A failed page parks the list (`hasError`): scrolling never re-requests it,
+// only the footer's retry does, so an unreachable server is asked once.
 inline bool ShouldLoadMore(int64_t lastVisibleRow, int64_t rowCount, bool loading,
-                           bool endReached, int64_t threshold = kLoadMoreThreshold) {
-  if (rowCount <= 0 || loading || endReached || lastVisibleRow < 0) return false;
+                           bool endReached, bool hasError = false,
+                           int64_t threshold = kLoadMoreThreshold) {
+  if (rowCount <= 0 || loading || endReached || hasError || lastVisibleRow < 0) return false;
   return lastVisibleRow >= rowCount - 1 - threshold;
 }
 

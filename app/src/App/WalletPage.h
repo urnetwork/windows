@@ -330,7 +330,8 @@ class WalletPage {
   // Mirrors the controller into the page: rows (value-compared, so a no-op
   // event does not re-render the table), sort, loading, end, error, `me`.
   void ReadPointsBoard();
-  void RenderPointsRows();
+  void RenderPointsRows(size_t fromIndex = 0);
+  std::string OwnPointsName();
   void RenderPointsHeader();
   void RenderPointsFooter();
   void OnPointsSortChanged(std::string const& sort);
@@ -353,6 +354,8 @@ class WalletPage {
   std::vector<PointsRow> pointsRows_;
   std::string pointsSort_ = urnet::PointsLeaderboardSortPoints;
   std::string pointsRenderedSort_;
+  std::string pointsRenderedOwnId_;   // the own id the rows were drawn with
+  size_t pointsRenderedCount_ = 0;    // rows drawn; the next page appends after them
   bool pointsLoading_ = false;
   bool pointsEnd_ = false;
   bool pointsHasLoaded_ = false;  // the first page landed (rows, an empty end, or an error)
@@ -377,6 +380,7 @@ class WalletPage {
   winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsGroupMeta_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsEmojiText_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsNameText_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsRankedText_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button editEmojiButton_{nullptr};
   PointsStatTile pointsTiles_[3];
   winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsLongestText_{nullptr};

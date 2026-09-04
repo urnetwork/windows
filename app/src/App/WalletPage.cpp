@@ -2166,7 +2166,7 @@ void WalletPage::BuildPointsNetworkHost() {
     Grid::SetColumn(pointsEmojiText_, 0);
     grid.Children().Append(pointsEmojiText_);
 
-    pointsNameText_ = MakeText(hstring{L"-"}, 14, colors::TextBrush());
+    pointsNameText_ = MakeText(hstring{}, 14, colors::TextBrush());
     pointsNameText_.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
     pointsNameText_.TextTrimming(TextTrimming::CharacterEllipsis);
     pointsNameText_.VerticalAlignment(VerticalAlignment::Center);
@@ -2185,7 +2185,15 @@ void WalletPage::BuildPointsNetworkHost() {
     Grid::SetColumn(editEmojiButton_, 2);
     grid.Children().Append(editEmojiButton_);
 
-    row.Child(grid);
+    // the identity line, then the ranked count on its own line beneath it,
+    // left-aligned under the emoji
+    StackPanel identity;
+    identity.Spacing(4);
+    identity.Children().Append(grid);
+    pointsRankedText_ = MakeText(hstring{}, 12, colors::MutedBrush());
+    kit::SetTextOrCollapse(pointsRankedText_, hstring{});
+    identity.Children().Append(pointsRankedText_);
+    row.Child(identity);
     host.Children().Append(row);
   }
 
@@ -2359,7 +2367,16 @@ void WalletPage::ReadPointsBoard() {
     urnw::LogError("points board: reading the controller failed");
     return;
   }
-  const bool rowsChanged = next != pointsRows_ || pointsRenderedSort_ != pointsSort_;
+  // the common case is the next page landing below the rows already drawn:
+  // then only the new rows are appended; a sort change, a refresh, a restart
+  // or a newly known own id redraws the list from the top
+  const std::string ownIdNow = pointsMe_ ? pointsMe_->networkId : std::string();
+  const bool sameContext = pointsRenderedSort_ == pointsSort_ && pointsRenderedOwnId_ == ownIdNow;
+  const bool extends = sameContext && pointsRenderedCount_ == pointsRows_.size() &&
+                       next.size() > pointsRows_.size() &&
+                       std::equal(pointsRows_.begin(), pointsRows_.end(), next.begin());
+  const bool rowsChanged = next != pointsRows_ || !sameContext;
+  const size_t renderFrom = extends ? pointsRows_.size() : 0;
   if (next != pointsRows_) pointsRows_ = std::move(next);
   if (!pointsLoading_ && (!pointsRows_.empty() || pointsEnd_ || !pointsError_.empty())) {
     pointsHasLoaded_ = true;
@@ -2374,7 +2391,7 @@ void WalletPage::ReadPointsBoard() {
   }
   if (w_.PointsSortBar().SelectedItem() != item) w_.PointsSortBar().SelectedItem(item);
 
-  if (rowsChanged) RenderPointsRows();
+  if (rowsChanged) RenderPointsRows(renderFrom);
   RenderPointsHeader();
   RenderPointsFooter();
   if (pointsBoardShowing_) ApplyLedgerMeta();
@@ -2382,7 +2399,7 @@ void WalletPage::ReadPointsBoard() {
   // a page that does not fill the pane can never be scrolled to its end, so
   // the next one is asked for once layout has run (the controller refuses a
   // second in-flight page and a page past the end)
-  if (!pointsLoading_ && !pointsEnd_ && !pointsRows_.empty()) {
+  if (!pointsLoading_ && !pointsEnd_ && pointsError_.empty() && !pointsRows_.empty()) {
     auto weak = w_.get_weak();
     auto alive = alive_;
     w_.DispatcherQueue().TryEnqueue(
@@ -2392,39 +2409,54 @@ void WalletPage::ReadPointsBoard() {
           if (!self) return;
           auto& page = self->wallet();
           if (page.pointsVc_ && !page.pointsLoading_ && !page.pointsEnd_ &&
-              self->PointsScroll().ScrollableHeight() <= 0) {
+              page.pointsError_.empty() && self->PointsScroll().ScrollableHeight() <= 0) {
             page.pointsVc_->loadMore();
           }
         });
   }
 }
 
-void WalletPage::RenderPointsRows() {
+// One continuous list: `fromIndex` > 0 appends the rows from that index below
+// the ones already drawn (the next page); 0 redraws everything.
+void WalletPage::RenderPointsRows(size_t fromIndex) {
   auto rows = w_.PointsRows();
-  rows.Children().Clear();
-  pointsRenderedSort_ = pointsSort_;
-  if (pointsRows_.empty()) return;
-
-  // The same table builder the data board uses; rank and network read as
-  // text, the three figures read right.
+  const std::string ownId = pointsMe_ ? pointsMe_->networkId : std::string();
   const std::vector<double> weights{1, 5, 2, 1, 1};
-  rows.Children().Append(kit::MakePaneTableHeader(
-      weights, {Loc("current_ranking"), Loc("network"), Loc("points"), Loc("blocks"), Loc("streak")},
-      /*textColumns=*/2));
+  if (fromIndex == 0 || fromIndex > pointsRows_.size()) {
+    fromIndex = 0;
+    rows.Children().Clear();
+    // The same table builder the data board uses; rank and network read as
+    // text, the three figures read right.
+    if (!pointsRows_.empty()) {
+      rows.Children().Append(kit::MakePaneTableHeader(
+          weights,
+          {Loc("current_ranking"), Loc("network"), Loc("points"), Loc("blocks"), Loc("streak")},
+          /*textColumns=*/2));
+    }
+  }
+  pointsRenderedSort_ = pointsSort_;
+  pointsRenderedOwnId_ = ownId;
+  pointsRenderedCount_ = pointsRows_.size();
+  if (pointsRows_.empty()) return;
 
   const bool byBlocks = pointsSort_ == urnet::PointsLeaderboardSortBlocks;
   const bool byStreak = pointsSort_ == urnet::PointsLeaderboardSortStreak;
   const size_t activeColumn = byBlocks ? 3 : (byStreak ? 4 : 2);
-  const std::string ownId = pointsMe_ ? pointsMe_->networkId : std::string();
   const hstring anonymous = Loc("anonymous");
+  // an anonymous row reads "Anonymous" to everyone but its owner, who sees
+  // their own name (the highlight keys on the network id, never the name)
+  const std::string ownName = OwnPointsName();
 
-  for (auto const& r : pointsRows_) {
+  for (size_t i = fromIndex; i < pointsRows_.size(); ++i) {
+    auto const& r = pointsRows_[i];
     const bool isOwn = !ownId.empty() && r.networkId == ownId;
     auto row = kit::MakePaneTableRow(weights, kPointsRowHeight, /*textColumns=*/2);
     row.cells[0].Text(Utf8(byBlocks ? r.rankBlocksText : (byStreak ? r.rankStreakText : r.rankPointsText)));
     // the emoji tag shows either way; the name only when the network is not anonymous
     const bool anon = r.anonymous || r.displayName.empty();
-    std::wstring name = anon ? std::wstring{anonymous} : std::wstring{Utf8(r.displayName)};
+    std::wstring name = anon ? (isOwn && !ownName.empty() ? std::wstring{Utf8(ownName)}
+                                                          : std::wstring{anonymous})
+                             : std::wstring{Utf8(r.displayName)};
     if (!r.emojiTag.empty()) name = std::wstring{Utf8(r.emojiTag)} + L"  " + name;
     row.cells[1].Text(hstring{name});
     row.cells[2].Text(Utf8(r.totalPointsText));
@@ -2449,19 +2481,29 @@ void WalletPage::RenderPointsRows() {
   }
 }
 
+// The network's own name for the points board: the me row's, or the jwt's
+// until me lands; empty only when signed out.
+std::string WalletPage::OwnPointsName() {
+  if (pointsMe_ && !pointsMe_->displayName.empty()) return pointsMe_->displayName;
+  if (auto jwt = Sdk().ParsedJwt(); jwt && !jwt->NetworkName.empty()) return jwt->NetworkName;
+  return std::string();
+}
+
 void WalletPage::RenderPointsHeader() {
   if (!pointsNameText_) return;  // not built yet
   namespace automation = winrt::Microsoft::UI::Xaml::Automation;
   const bool hasMe = pointsMe_.has_value();
 
   kit::SetTextOrCollapse(pointsEmojiText_, Utf8(emojiTag_));
-  pointsNameText_.Text(hasMe && !pointsMe_->displayName.empty() ? Utf8(pointsMe_->displayName)
-                                                                : hstring{L"-"});
+  // the caller always sees their own name: the me row's, or the jwt's until
+  // me lands
+  pointsNameText_.Text(Utf8(OwnPointsName()));
   const hstring editName = Loc(emojiTag_.empty() ? "add_emoji" : "edit_emoji");
   automation::AutomationProperties::SetName(editEmojiButton_, editName);
   ToolTipService::SetToolTip(editEmojiButton_, winrt::box_value(editName));
+  kit::SetTextOrCollapse(pointsGroupMeta_, hstring{});
   kit::SetTextOrCollapse(
-      pointsGroupMeta_,
+      pointsRankedText_,
       pointsTotalRanked_ > 0
           ? hstring{urnw::Format("ranked_networks_count",
                                  urnw::Widen(urnet::formatPoints(static_cast<double>(pointsTotalRanked_))))}
@@ -2532,7 +2574,9 @@ void WalletPage::OnPointsScroll() {
   const int64_t rowCount = static_cast<int64_t>(pointsRows_.size());
   const int64_t last = emoji::LastVisibleRow(scroll.VerticalOffset(), scroll.ViewportHeight(),
                                              kPointsTableHeaderHeight, kPointsRowHeight, rowCount);
-  if (emoji::ShouldLoadMore(last, rowCount, pointsLoading_, pointsEnd_)) pointsVc_->loadMore();
+  if (emoji::ShouldLoadMore(last, rowCount, pointsLoading_, pointsEnd_, !pointsError_.empty())) {
+    pointsVc_->loadMore();
+  }
 }
 
 // Retries after an error: the controller re-requests the same page.
