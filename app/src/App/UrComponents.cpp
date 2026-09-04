@@ -534,13 +534,13 @@ PaneTableStack MakePaneTableStack(PaneTableRow& row, size_t index) {
     return text;
   };
   out.top = line();
-  out.top.Visibility(Visibility::Collapsed);
   out.bottom = line();
+  out.bottom.Visibility(Visibility::Collapsed);
   stack.Children().Append(out.top);
   stack.Children().Append(out.bottom);
   Controls::Grid::SetColumn(stack, static_cast<int32_t>(index));
   grid.Children().Append(stack);
-  row.cells[index] = out.bottom;
+  row.cells[index] = out.top;
   out.root = stack;
   return out;
 }

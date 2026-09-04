@@ -2138,7 +2138,7 @@ void WalletPage::ApplyPointsBoardStrings() {
 }
 
 // Pane C's block for the Points board: the group strip with the ranked count,
-// the identity line (emoji tag, own name, the pencil), the three dimensions
+// the identity block (own name with the pencil, the emoji tag beneath), the three dimensions
 // each with its rank chip, the longest streak, the opt-in switch with its
 // hint, and what the board measures. The Android header card, on the pane's
 // row rhythm.
@@ -2158,20 +2158,14 @@ void WalletPage::BuildPointsNetworkHost() {
     auto row = PointsPaneRow(10);
     Grid grid;
     grid.ColumnSpacing(10);
-    grid.ColumnDefinitions().Append(PointsAutoColumn());
     grid.ColumnDefinitions().Append(StarColumn());
     grid.ColumnDefinitions().Append(PointsAutoColumn());
-
-    pointsEmojiText_ = MakeText(hstring{}, 26, colors::TextBrush());
-    pointsEmojiText_.VerticalAlignment(VerticalAlignment::Center);
-    Grid::SetColumn(pointsEmojiText_, 0);
-    grid.Children().Append(pointsEmojiText_);
 
     pointsNameText_ = MakeText(hstring{}, 14, colors::TextBrush());
     pointsNameText_.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
     pointsNameText_.TextTrimming(TextTrimming::CharacterEllipsis);
     pointsNameText_.VerticalAlignment(VerticalAlignment::Center);
-    Grid::SetColumn(pointsNameText_, 1);
+    Grid::SetColumn(pointsNameText_, 0);
     grid.Children().Append(pointsNameText_);
 
     editEmojiButton_ = Button();
@@ -2183,14 +2177,18 @@ void WalletPage::BuildPointsNetworkHost() {
       if (!*alive) return;
       if (auto self = weak.get()) self->wallet().OnEditEmoji();
     });
-    Grid::SetColumn(editEmojiButton_, 2);
+    Grid::SetColumn(editEmojiButton_, 1);
     grid.Children().Append(editEmojiButton_);
 
-    // the identity line, then the ranked count on its own line beneath it,
-    // left-aligned under the emoji
+    // the name line with the pencil, the emoji tag on its own line beneath it,
+    // then the ranked count, all left-aligned
     StackPanel identity;
     identity.Spacing(4);
     identity.Children().Append(grid);
+    pointsEmojiText_ = MakeText(hstring{}, 26, colors::TextBrush());
+    pointsEmojiText_.HorizontalAlignment(HorizontalAlignment::Left);
+    kit::SetTextOrCollapse(pointsEmojiText_, hstring{});
+    identity.Children().Append(pointsEmojiText_);
     pointsRankedText_ = MakeText(hstring{}, 12, colors::MutedBrush());
     kit::SetTextOrCollapse(pointsRankedText_, hstring{});
     identity.Children().Append(pointsRankedText_);
@@ -2452,7 +2450,7 @@ void WalletPage::RenderPointsRows(size_t fromIndex) {
     auto const& r = pointsRows_[i];
     const bool isOwn = !ownId.empty() && r.networkId == ownId;
     auto row = kit::MakePaneTableRow(weights, kPointsRowHeight, /*textColumns=*/2);
-    // the tag sits on its own line above the name, so a long tag never
+    // the name sits on its own line above the tag, so a long tag never
     // squeezes the name to a stub in a narrow window
     auto identity = kit::MakePaneTableStack(row, 1);
     row.cells[0].Text(Utf8(byBlocks ? r.rankBlocksText : (byStreak ? r.rankStreakText : r.rankPointsText)));
@@ -2461,8 +2459,8 @@ void WalletPage::RenderPointsRows(size_t fromIndex) {
     std::wstring name = anon ? (isOwn && !ownName.empty() ? std::wstring{Utf8(ownName)}
                                                           : std::wstring{anonymous})
                              : std::wstring{Utf8(r.displayName)};
-    kit::SetTextOrCollapse(identity.top, Utf8(r.emojiTag));
     row.cells[1].Text(hstring{name});
+    kit::SetTextOrCollapse(identity.bottom, Utf8(r.emojiTag));
     row.cells[2].Text(Utf8(r.totalPointsText));
     row.cells[3].Text(Utf8(r.blocksText));
     row.cells[4].Text(Utf8(r.streakText));
