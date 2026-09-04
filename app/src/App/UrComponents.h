@@ -410,6 +410,17 @@ struct PaneTableRow {
 PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height = 36,
                               size_t textColumns = 1);
 
+// Turns one leading text cell of a table row into a two-line stack: `top` (a
+// tag or badge, collapsed while empty) over `bottom`, which takes the cell's
+// place in `row.cells` so callers keep addressing the row's text by index. Rows
+// built with it need a height that fits two lines (52 rather than 36).
+struct PaneTableStack {
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel root{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock top{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock bottom{nullptr};
+};
+PaneTableStack MakePaneTableStack(PaneTableRow& row, size_t index);
+
 // Its header strip: the same weights, the same alignment rule, the column names,
 // on the 28px group rhythm.
 winrt::Microsoft::UI::Xaml::Controls::Border MakePaneTableHeader(

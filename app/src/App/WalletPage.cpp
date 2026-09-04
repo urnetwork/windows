@@ -2033,7 +2033,8 @@ void WalletPage::ApplyRankingPublicResult(uint32_t generation, bool ok, bool req
 
 namespace {
 
-constexpr double kPointsRowHeight = 36;
+// two lines: the emoji tag over the network name
+constexpr double kPointsRowHeight = 52;
 constexpr double kPointsTableHeaderHeight = 28;  // the column-name strip above the rows
 
 hstring Utf8(std::string const& s) { return hstring{urnw::Widen(s)}; }
@@ -2451,13 +2452,16 @@ void WalletPage::RenderPointsRows(size_t fromIndex) {
     auto const& r = pointsRows_[i];
     const bool isOwn = !ownId.empty() && r.networkId == ownId;
     auto row = kit::MakePaneTableRow(weights, kPointsRowHeight, /*textColumns=*/2);
+    // the tag sits on its own line above the name, so a long tag never
+    // squeezes the name to a stub in a narrow window
+    auto identity = kit::MakePaneTableStack(row, 1);
     row.cells[0].Text(Utf8(byBlocks ? r.rankBlocksText : (byStreak ? r.rankStreakText : r.rankPointsText)));
     // the emoji tag shows either way; the name only when the network is not anonymous
     const bool anon = r.anonymous || r.displayName.empty();
     std::wstring name = anon ? (isOwn && !ownName.empty() ? std::wstring{Utf8(ownName)}
                                                           : std::wstring{anonymous})
                              : std::wstring{Utf8(r.displayName)};
-    if (!r.emojiTag.empty()) name = std::wstring{Utf8(r.emojiTag)} + L"  " + name;
+    kit::SetTextOrCollapse(identity.top, Utf8(r.emojiTag));
     row.cells[1].Text(hstring{name});
     row.cells[2].Text(Utf8(r.totalPointsText));
     row.cells[3].Text(Utf8(r.blocksText));

@@ -515,6 +515,36 @@ PaneTableRow MakePaneTableRow(std::vector<double> const& weights, double height,
   return out;
 }
 
+PaneTableStack MakePaneTableStack(PaneTableRow& row, size_t index) {
+  PaneTableStack out;
+  if (!row.root || index >= row.cells.size()) return out;
+  auto grid = row.root.Child().try_as<Controls::Grid>();
+  if (!grid) return out;
+  TextBlock cell = row.cells[index];
+  uint32_t at = 0;
+  if (grid.Children().IndexOf(cell, at)) grid.Children().RemoveAt(at);
+
+  Controls::StackPanel stack;
+  stack.Orientation(Controls::Orientation::Vertical);
+  stack.Spacing(2);
+  stack.VerticalAlignment(VerticalAlignment::Center);
+  auto line = [] {
+    TextBlock text;
+    if (auto style = StyleByKey(L"UrRowTitleStyle")) text.Style(style);
+    return text;
+  };
+  out.top = line();
+  out.top.Visibility(Visibility::Collapsed);
+  out.bottom = line();
+  stack.Children().Append(out.top);
+  stack.Children().Append(out.bottom);
+  Controls::Grid::SetColumn(stack, static_cast<int32_t>(index));
+  grid.Children().Append(stack);
+  row.cells[index] = out.bottom;
+  out.root = stack;
+  return out;
+}
+
 Controls::Border MakePaneTableHeader(std::vector<double> const& weights,
                                      std::vector<winrt::hstring> const& titles,
                                      size_t textColumns) {
