@@ -8,6 +8,8 @@
 #include <vector>
 
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
+#include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 
 #include "BalanceSheets.h"  // SetTermsMarkerText (the terms/privacy link inlines)
 #include "Ids.h"
@@ -260,7 +262,6 @@ void SeedphraseDisplaySheet::Build(XamlRoot const& root) {
   // written down. The Closing handler below is the actual guard; macOS's
   // .interactiveDismissDisabled(true) is the same idea expressed as a modifier.
   dialog_.PrimaryButtonText(Loc("seedphrase_saved_confirm"));
-  dialog_.SecondaryButtonText(Loc("copy_to_clipboard"));
   dialog_.DefaultButton(ContentDialogButton::Primary);
 
   StackPanel content;
@@ -345,14 +346,39 @@ void SeedphraseDisplaySheet::Build(XamlRoot const& root) {
   gridFrame.Child(grid);
   content.Children().Append(gridFrame);
 
-  dialog_.Content(content);
+  // Copy is a SECONDARY action with a leading copy glyph, inside the content
+  // rather than on the dialog's button row: the primary (confirm) is this
+  // sheet's one call to action. A plain Button is the secondary look; only
+  // the confirm carries the accent.
+  Button copyButton;
+  copyButton.HorizontalAlignment(HorizontalAlignment::Stretch);
+  StackPanel copyContent;
+  copyContent.Orientation(Orientation::Horizontal);
+  copyContent.Spacing(8);
+  copyContent.HorizontalAlignment(HorizontalAlignment::Center);
+  FontIcon copyGlyph;
+  copyGlyph.FontFamily(Media::FontFamily(L"Segoe Fluent Icons"));
+  copyGlyph.Glyph(L"\uE8C8");  // Copy
+  copyGlyph.FontSize(16);
+  copyGlyph.VerticalAlignment(VerticalAlignment::Center);
+  // decoration beside a label that already carries the word
+  Automation::AutomationProperties::SetAccessibilityView(
+      copyGlyph, Automation::Peers::AccessibilityView::Raw);
+  copyContent.Children().Append(copyGlyph);
+  TextBlock copyLabel;
+  copyLabel.Text(Loc("copy_to_clipboard"));
+  copyLabel.VerticalAlignment(VerticalAlignment::Center);
+  copyContent.Children().Append(copyLabel);
+  copyButton.Content(copyContent);
+  // the content is a glyph + text panel, not a string: name it for Narrator
+  Automation::AutomationProperties::SetName(copyButton, Loc("copy_to_clipboard"));
+  // Copy leaves the sheet OPEN — copying is not confirming.
+  copyButton.Click([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->CopyToClipboard();
+  });
+  content.Children().Append(copyButton);
 
-  // Copy leaves the sheet OPEN (args.Cancel) — copying is not confirming.
-  dialog_.SecondaryButtonClick(
-      [weak = weak_from_this()](auto const&, ContentDialogButtonClickEventArgs const& args) {
-        args.Cancel(true);
-        if (auto self = weak.lock()) self->CopyToClipboard();
-      });
+  dialog_.Content(content);
   dialog_.PrimaryButtonClick([weak = weak_from_this()](auto const&, auto const&) {
     if (auto self = weak.lock()) {
       self->confirmed_ = true;  // lets Closing through; see the handler below
