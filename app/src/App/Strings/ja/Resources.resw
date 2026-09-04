@@ -1473,6 +1473,10 @@
     <value>参加するだけでURnetworkを一生無料で利用できます</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>戻る</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Googleでログイン</value>
     <comment>Login initial</comment>
@@ -1560,6 +1564,10 @@
   <data name="instant_account_failed" xml:space="preserve">
     <value>アカウントを作成できませんでした。もう一度お試しください。</value>
     <comment>Instant account: error when the account could not be created.</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>メールアドレスやパスワードは不要です。アカウントはシードフレーズで保護されます。</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>残高不足</value>
@@ -2287,7 +2295,7 @@
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
     <value>ポイントリーダーボードにはまだ誰もいません。</value>
-    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+    <comment>Points leaderboard: shown when no network has points yet (every ranked network is listed, so the list is empty only before the first snapshot).</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>オンにするまで、あなたのネットワークは匿名として表示されます。</value>
@@ -2735,9 +2743,17 @@
     <value>シードフレーズ</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>シードフレーズをクリップボードにコピーしました</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
   <data name="seedphrase_invalid_word_count" xml:space="preserve">
     <value>シードフレーズは12語または24語である必要があります</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>本当によろしいですか？シードフレーズを確認できるのはこの一度だけです。戻る前に必ず保存してください。</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
   </data>
   <data name="seedphrase_login_failed" xml:space="preserve">
     <value>シードフレーズでのサインインに失敗しました</value>
@@ -3208,6 +3224,10 @@
   <data name="start_earning_join" xml:space="preserve">
     <value>収益を得始めるには、ネットワークに参加してください</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>とどまる</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>完全にプライベートかつ匿名でいましょう</value>

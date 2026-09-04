@@ -1489,6 +1489,10 @@ bonne manière</value>
     <value>Obtenez URnetwork gratuitement à vie en participant</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>Revenir</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Connectez-vous avec Google</value>
     <comment>Login initial</comment>
@@ -1580,6 +1584,10 @@ bonne manière</value>
   <data name="instant_account_failed" xml:space="preserve">
     <value>Impossible de créer le compte. Veuillez réessayer.</value>
     <comment>Instant account: error when the account could not be created.</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>Ni e-mail ni mot de passe. Votre compte est protégé par une phrase de récupération.</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Solde insuffisant</value>
@@ -2325,7 +2333,7 @@ le plus vaste, le plus sûr et le plus décentralisé au monde.</value>
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
     <value>Personne n'est encore dans le classement des points.</value>
-    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+    <comment>Points leaderboard: shown when no network has points yet (every ranked network is listed, so the list is empty only before the first snapshot).</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>Votre réseau apparaît comme Anonyme tant que cette option est désactivée.</value>
@@ -2794,9 +2802,17 @@ du monde</value>
     <value>Phrase de récupération</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>Phrase de récupération copiée dans le presse-papiers</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
   <data name="seedphrase_invalid_word_count" xml:space="preserve">
     <value>La phrase de récupération doit contenir 12 ou 24 mots</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>Vraiment ? C'est la SEULE fois où vous verrez votre phrase de récupération. Enregistrez-la avant de revenir en arrière.</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
   </data>
   <data name="seedphrase_login_failed" xml:space="preserve">
     <value>Échec de la connexion par phrase de récupération</value>
@@ -3271,6 +3287,10 @@ du monde</value>
   <data name="start_earning_join" xml:space="preserve">
     <value>Pour commencer à gagner, rejoignez le réseau</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>Rester</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>Restez totalement privé et anonyme</value>

@@ -1520,6 +1520,10 @@ správným způsobem</value>
     <value>Získejte URnetwork zdarma na celý život účastí</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>Zpět</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Přihlásit se přes Google</value>
     <comment>Login initial</comment>
@@ -1619,6 +1623,10 @@ správným způsobem</value>
   <data name="instant_account_failed" xml:space="preserve">
     <value>Účet se nepodařilo vytvořit. Zkuste to prosím znovu.</value>
     <comment>Instant account: error when the account could not be created.</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>Není potřeba e-mail ani heslo. Váš účet je zabezpečen seedphrase.</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Nedostatečný zůstatek</value>
@@ -2396,7 +2404,7 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
     <value>V žebříčku bodů zatím nikdo není.</value>
-    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+    <comment>Points leaderboard: shown when no network has points yet (every ranked network is listed, so the list is empty only before the first snapshot).</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>Vaše síť se zobrazuje jako Anonymní, dokud to nezapnete.</value>
@@ -2904,9 +2912,17 @@ kontent světa</value>
     <value>Seed fráze</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>Seedphrase zkopírována do schránky</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
   <data name="seedphrase_invalid_word_count" xml:space="preserve">
     <value>Seed fráze musí mít 12 nebo 24 slov</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>Opravdu? Toto je JEDINÁ chvíle, kdy svou seedphrase uvidíte. Než se vrátíte, ujistěte se, že jste si ji uložili.</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
   </data>
   <data name="seedphrase_login_failed" xml:space="preserve">
     <value>Přihlášení seed frází se nezdařilo</value>
@@ -3389,6 +3405,10 @@ kontent světa</value>
   <data name="start_earning_join" xml:space="preserve">
     <value>Chcete-li začít vydělávat, připojte se k síti</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>Zůstat</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>Zůstaňte zcela soukromí a anonymní</value>

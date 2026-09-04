@@ -1553,6 +1553,10 @@
     <value>احصل على URnetwork مجانًا مدى الحياة من خلال المشاركة</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>رجوع</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>تسجيل الدخول باستخدام Google</value>
     <comment>Login initial</comment>
@@ -1660,6 +1664,10 @@
   <data name="instant_account_failed" xml:space="preserve">
     <value>تعذّر إنشاء الحساب. يرجى المحاولة مجددًا.</value>
     <comment>Instant account: error when the account could not be created.</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>لا حاجة إلى بريد إلكتروني أو كلمة مرور. حسابك محمي بعبارة الاسترداد.</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>رصيد غير كافٍ</value>
@@ -2468,7 +2476,7 @@
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
     <value>لا أحد في لوحة صدارة النقاط بعد.</value>
-    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+    <comment>Points leaderboard: shown when no network has points yet (every ranked network is listed, so the list is empty only before the first snapshot).</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>تظهر شبكتك باسم «مجهول» حتى تفعّل هذا الخيار.</value>
@@ -3029,9 +3037,17 @@
     <value>عبارة الاسترداد</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>تم نسخ عبارة الاسترداد إلى الحافظة</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
   <data name="seedphrase_invalid_word_count" xml:space="preserve">
     <value>يجب أن تتكون عبارة الاسترداد من 12 أو 24 كلمة</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>هل أنت متأكد؟ هذه هي المرة الوحيدة التي سترى فيها عبارة الاسترداد. تأكد من حفظها قبل الرجوع.</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
   </data>
   <data name="seedphrase_login_failed" xml:space="preserve">
     <value>فشل تسجيل الدخول بعبارة الاسترداد</value>
@@ -4102,6 +4118,10 @@
   <data name="start_earning_join" xml:space="preserve">
     <value>للبدء في الربح، انضم إلى الشبكة</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>البقاء</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>ابق خاصًا ومجهول الهوية تمامًا</value>

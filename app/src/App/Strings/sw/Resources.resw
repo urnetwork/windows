@@ -1489,6 +1489,10 @@ kwa njia sahihi</value>
     <value>Pata URnetwork bure maisha yote kwa kushiriki</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>Rudi nyuma</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Ingia ukitumia Google</value>
     <comment>Login initial</comment>
@@ -1580,6 +1584,10 @@ kwa njia sahihi</value>
   <data name="instant_account_failed" xml:space="preserve">
     <value>Imeshindwa kuunda akaunti. Tafadhali jaribu tena.</value>
     <comment>Instant account: error when the account could not be created.</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>Hakuna haja ya barua pepe au nenosiri. Akaunti yako inalindwa na seedphrase.</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Salio halitoshi</value>
@@ -2325,7 +2333,7 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
     <value>Bado hakuna mtu kwenye ubao wa pointi.</value>
-    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+    <comment>Points leaderboard: shown when no network has points yet (every ranked network is listed, so the list is empty only before the first snapshot).</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>Mtandao wako unaonekana kama Bila jina hadi uwashe hii.</value>
@@ -2793,9 +2801,17 @@ maudhui ya dunia</value>
     <value>Kifungu cha seed</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>Seedphrase imenakiliwa kwenye ubao wa kunakili</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
   <data name="seedphrase_invalid_word_count" xml:space="preserve">
     <value>Kifungu cha seed lazima kiwe na maneno 12 au 24</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>Una uhakika? Hii ndiyo mara PEKEE utakayoona seedphrase yako. Hakikisha umeihifadhi kabla ya kurudi.</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
   </data>
   <data name="seedphrase_login_failed" xml:space="preserve">
     <value>Kuingia kwa kifungu cha seed kumeshindwa</value>
@@ -3270,6 +3286,10 @@ maudhui ya dunia</value>
   <data name="start_earning_join" xml:space="preserve">
     <value>Ili kuanza kupata, jiunge na mtandao</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>Baki</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>Kaa faragha kabisa na bila kujulikana</value>

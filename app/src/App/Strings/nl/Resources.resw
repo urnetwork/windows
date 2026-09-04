@@ -1489,6 +1489,10 @@ juiste manier</value>
     <value>Krijg URnetwork gratis voor altijd door deel te nemen</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>Terug</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Log in met google</value>
     <comment>Login initial</comment>
@@ -1580,6 +1584,10 @@ juiste manier</value>
   <data name="instant_account_failed" xml:space="preserve">
     <value>Het account kon niet worden aangemaakt. Probeer het opnieuw.</value>
     <comment>Instant account: error when the account could not be created.</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>Geen e-mail of wachtwoord nodig. Je account wordt beveiligd met een seedphrase.</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Onvoldoende saldo</value>
@@ -2326,7 +2334,7 @@ gedecentraliseerde ingress- en egress-protocol ter wereld.</value>
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
     <value>Er staat nog niemand op het puntenscorebord.</value>
-    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+    <comment>Points leaderboard: shown when no network has points yet (every ranked network is listed, so the list is empty only before the first snapshot).</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>Je netwerk wordt als Anoniem getoond totdat je dit aanzet.</value>
@@ -2794,9 +2802,17 @@ inhoud van de wereld</value>
     <value>Seedphrase</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>Seedphrase gekopieerd naar het klembord</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
   <data name="seedphrase_invalid_word_count" xml:space="preserve">
     <value>De seedphrase moet 12 of 24 woorden bevatten</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>Weet je het zeker? Dit is de ENIGE keer dat je je seedphrase ziet. Sla hem op voordat je teruggaat.</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
   </data>
   <data name="seedphrase_login_failed" xml:space="preserve">
     <value>Aanmelden met seedphrase mislukt</value>
@@ -3271,6 +3287,10 @@ inhoud van de wereld</value>
   <data name="start_earning_join" xml:space="preserve">
     <value>Om te beginnen met verdienen, sluit je aan bij ons netwerk</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>Blijven</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>Blijf volledig privé en anoniem</value>

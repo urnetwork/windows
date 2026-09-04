@@ -1149,6 +1149,10 @@ de la manera correcta</value>
     <value>Obtén URnetwork gratis de por vida participando</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>Volver</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Iniciar sesión con Google</value>
     <comment>Login initial</comment>
@@ -1232,6 +1236,10 @@ de la manera correcta</value>
   <data name="included" xml:space="preserve">
     <value>Incluidas</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>No necesitas correo ni contraseña. Tu cuenta está protegida por una frase semilla.</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Saldo insuficiente</value>
@@ -2414,6 +2422,14 @@ del mundo</value>
     <value>Frase semilla</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>Frase semilla copiada al portapapeles</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>¿Seguro? Esta es la ÚNICA vez que verás tu frase semilla. Asegúrate de haberla guardado antes de volver.</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>¡Token Seeker verificado!</value>
     <comment>Call to action</comment>
@@ -2859,6 +2875,10 @@ del mundo</value>
   <data name="start_earning_join" xml:space="preserve">
     <value>Para empezar a ganar, únete a la red</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>Quedarme</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>Mantente completamente privado y anónimo</value>

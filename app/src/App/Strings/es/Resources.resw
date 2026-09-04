@@ -1489,6 +1489,10 @@ de la manera correcta</value>
     <value>Obtén URnetwork gratis de por vida participando</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>Volver</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Iniciar sesión con Google</value>
     <comment>Login initial</comment>
@@ -1580,6 +1584,10 @@ de la manera correcta</value>
   <data name="instant_account_failed" xml:space="preserve">
     <value>No se pudo crear la cuenta. Inténtalo de nuevo.</value>
     <comment>Instant account: error when the account could not be created.</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>No necesitas correo ni contraseña. Tu cuenta está protegida por una frase semilla.</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Saldo insuficiente</value>
@@ -2325,7 +2333,7 @@ más grande, seguro y descentralizado del mundo.</value>
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
     <value>Todavía no hay nadie en la clasificación de puntos.</value>
-    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+    <comment>Points leaderboard: shown when no network has points yet (every ranked network is listed, so the list is empty only before the first snapshot).</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>Tu red aparece como Anónimo hasta que actives esta opción.</value>
@@ -2806,9 +2814,17 @@ del mundo</value>
     <value>Frase semilla</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>Frase semilla copiada al portapapeles</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
   <data name="seedphrase_invalid_word_count" xml:space="preserve">
     <value>La frase semilla debe tener 12 o 24 palabras</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>¿Seguro? Esta es la ÚNICA vez que verás tu frase semilla. Asegúrate de haberla guardado antes de volver.</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
   </data>
   <data name="seedphrase_login_failed" xml:space="preserve">
     <value>Error al iniciar sesión con la frase semilla</value>
@@ -3863,6 +3879,10 @@ del mundo</value>
   <data name="start_earning_join" xml:space="preserve">
     <value>Para empezar a ganar, únete a la red</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>Quedarme</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>Mantente completamente privado y anónimo</value>

@@ -1473,6 +1473,10 @@
     <value>참여하면 URnetwork를 평생 무료로 이용할 수 있습니다</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>돌아가기</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Google로 로그인</value>
     <comment>Login initial</comment>
@@ -1560,6 +1564,10 @@
   <data name="instant_account_failed" xml:space="preserve">
     <value>계정을 만들 수 없습니다. 다시 시도하세요.</value>
     <comment>Instant account: error when the account could not be created.</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>이메일이나 비밀번호가 필요 없습니다. 계정은 시드 문구로 보호됩니다.</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>잔액 부족</value>
@@ -2289,7 +2297,7 @@
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
     <value>아직 포인트 리더보드에 아무도 없습니다.</value>
-    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+    <comment>Points leaderboard: shown when no network has points yet (every ranked network is listed, so the list is empty only before the first snapshot).</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>이 옵션을 켜기 전까지 내 네트워크는 익명으로 표시됩니다.</value>
@@ -2737,9 +2745,17 @@
     <value>시드 문구</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>시드 문구를 클립보드에 복사했습니다</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
   <data name="seedphrase_invalid_word_count" xml:space="preserve">
     <value>시드 문구는 12개 또는 24개 단어여야 합니다</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>정말인가요? 시드 문구는 지금 한 번만 볼 수 있습니다. 돌아가기 전에 저장했는지 확인하세요.</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
   </data>
   <data name="seedphrase_login_failed" xml:space="preserve">
     <value>시드 문구 로그인 실패</value>
@@ -3210,6 +3226,10 @@
   <data name="start_earning_join" xml:space="preserve">
     <value>수익을 얻기 시작하려면 네트워크에 가입하세요</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>머무르기</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>완전히 비공개 및 익명으로 유지하세요</value>

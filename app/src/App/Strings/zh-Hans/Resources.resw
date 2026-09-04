@@ -1473,6 +1473,10 @@
     <value>通过参与，终身免费获得 URnetwork</value>
     <comment>Call to action</comment>
   </data>
+  <data name="go_back" xml:space="preserve">
+    <value>返回</value>
+    <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>使用 Google 登录</value>
     <comment>Login initial</comment>
@@ -1560,6 +1564,10 @@
   <data name="instant_account_failed" xml:space="preserve">
     <value>无法创建账户。请重试。</value>
     <comment>Instant account: error when the account could not be created.</comment>
+  </data>
+  <data name="instant_account_no_email_password" xml:space="preserve">
+    <value>无需邮箱或密码。您的账户由助记词保护。</value>
+    <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>余额不足</value>
@@ -2290,7 +2298,7 @@
   </data>
   <data name="points_leaderboard_empty" xml:space="preserve">
     <value>积分排行榜上还没有人。</value>
-    <comment>Points leaderboard: shown when no network has opted in yet.</comment>
+    <comment>Points leaderboard: shown when no network has points yet (every ranked network is listed, so the list is empty only before the first snapshot).</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>在你开启此项之前，你的网络显示为匿名。</value>
@@ -2750,9 +2758,17 @@
     <value>助记词</value>
     <comment>A label displayed above a field for entering a seedphrase.</comment>
   </data>
+  <data name="seedphrase_copied_to_clipboard" xml:space="preserve">
+    <value>助记词已复制到剪贴板</value>
+    <comment>Toast shown after the seedphrase is copied to the clipboard.</comment>
+  </data>
   <data name="seedphrase_invalid_word_count" xml:space="preserve">
     <value>助记词必须是 12 或 24 个单词</value>
     <comment>Seed sign-in sheet: error when the pasted seedphrase is not 12 or 24 words long.</comment>
+  </data>
+  <data name="seedphrase_leave_confirm_body" xml:space="preserve">
+    <value>确定吗？这是您唯一一次看到助记词的机会。返回前请务必保存。</value>
+    <comment>Instant account creation: body of the confirmation shown when the user tries to leave the seedphrase screen without saving.</comment>
   </data>
   <data name="seedphrase_login_failed" xml:space="preserve">
     <value>助记词登录失败</value>
@@ -3803,6 +3819,10 @@
   <data name="start_earning_join" xml:space="preserve">
     <value>要开始赚取收入，请加入网络</value>
     <comment>Guest mode overlay</comment>
+  </data>
+  <data name="stay" xml:space="preserve">
+    <value>留下</value>
+    <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
   </data>
   <data name="stay_completely_private_and_anonymous" xml:space="preserve">
     <value>保持完全私密和匿名</value>
