@@ -2329,8 +2329,8 @@ gedecentraliseerde ingress- en egress-protocol ter wereld.</value>
     <comment>Points leaderboard: shown when no network has opted in yet.</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
-    <value>Alleen jij ziet dit. Zet het aan om op het scorebord te verschijnen.</value>
-    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+    <value>Je netwerk wordt als Anoniem getoond totdat je dit aanzet.</value>
+    <comment>Points leaderboard: shown under the own-stats card while the name switch is off. The network is listed either way, as Anonymous until the switch is on.</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Post-quantumversleuteling</value>
@@ -2903,8 +2903,8 @@ inhoud van de wereld</value>
     <comment>Call to action</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">
-    <value>Toon op het puntenscorebord</value>
-    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+    <value>Mijn netwerknaam tonen</value>
+    <comment>Points leaderboard: the switch that reveals this network's name on the list. Every ranked network is listed; off = shown as Anonymous.</comment>
   </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>Toon Provider Lijst</value>

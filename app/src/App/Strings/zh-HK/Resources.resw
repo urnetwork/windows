@@ -2293,8 +2293,8 @@
     <comment>Points leaderboard: shown when no network has opted in yet.</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
-    <value>只有你能看到。開啟後即可出現在排行榜上。</value>
-    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+    <value>在你開啟此項之前，你的網絡顯示為匿名。</value>
+    <comment>Points leaderboard: shown under the own-stats card while the name switch is off. The network is listed either way, as Anonymous until the switch is on.</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>後量子加密</value>
@@ -2847,8 +2847,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">
-    <value>在積分排行榜上顯示</value>
-    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+    <value>顯示我的網絡名稱</value>
+    <comment>Points leaderboard: the switch that reveals this network's name on the list. Every ranked network is listed; off = shown as Anonymous.</comment>
   </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>顯示供應商列表</value>

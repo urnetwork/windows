@@ -3813,8 +3813,8 @@ and most decentralized ingress and egress protocol.</value>
     <comment>Points leaderboard: shown when no network has opted in yet.</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
-    <value>Only you can see this. Turn it on to appear on the leaderboard.</value>
-    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+    <value>Your network appears as Anonymous until you turn this on.</value>
+    <comment>Points leaderboard: shown under the own-stats card while the name switch is off. The network is listed either way, as Anonymous until the switch is on.</comment>
   </data>
   <data name="points_short" xml:space="preserve">
     <value>{} pts</value>
@@ -4575,8 +4575,8 @@ world's content</value>
     <comment>Accessibility label for the kill switch exception information button.</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">
-    <value>Show on the points leaderboard</value>
-    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+    <value>Show my network name</value>
+    <comment>Points leaderboard: the switch that reveals this network's name on the list. Every ranked network is listed; off = shown as Anonymous.</comment>
   </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>Show Provider List</value>

@@ -2399,8 +2399,8 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <comment>Points leaderboard: shown when no network has opted in yet.</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
-    <value>Vidíte to jen vy. Zapněte, abyste se objevili v žebříčku.</value>
-    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+    <value>Vaše síť se zobrazuje jako Anonymní, dokud to nezapnete.</value>
+    <comment>Points leaderboard: shown under the own-stats card while the name switch is off. The network is listed either way, as Anonymous until the switch is on.</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Postkvantové šifrování</value>
@@ -3013,8 +3013,8 @@ kontent světa</value>
     <comment>Call to action</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">
-    <value>Zobrazit v žebříčku bodů</value>
-    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+    <value>Zobrazit název mé sítě</value>
+    <comment>Points leaderboard: the switch that reveals this network's name on the list. Every ranked network is listed; off = shown as Anonymous.</comment>
   </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>Zobrazit seznam poskytovatelů</value>

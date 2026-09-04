@@ -2293,8 +2293,8 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <comment>Points leaderboard: shown when no network has opted in yet.</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
-    <value>Chỉ bạn thấy điều này. Bật để xuất hiện trên bảng xếp hạng.</value>
-    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+    <value>Mạng của bạn hiển thị là Ẩn danh cho đến khi bạn bật tùy chọn này.</value>
+    <comment>Points leaderboard: shown under the own-stats card while the name switch is off. The network is listed either way, as Anonymous until the switch is on.</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Mã hóa hậu lượng tử</value>
@@ -2847,8 +2847,8 @@ nội dung thế giới</value>
     <comment>Call to action</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">
-    <value>Hiển thị trên bảng xếp hạng điểm</value>
-    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+    <value>Hiển thị tên mạng của tôi</value>
+    <comment>Points leaderboard: the switch that reveals this network's name on the list. Every ranked network is listed; off = shown as Anonymous.</comment>
   </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>Hiển thị danh sách nhà cung cấp</value>

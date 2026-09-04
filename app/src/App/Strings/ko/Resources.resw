@@ -2292,8 +2292,8 @@
     <comment>Points leaderboard: shown when no network has opted in yet.</comment>
   </data>
   <data name="points_leaderboard_private_hint" xml:space="preserve">
-    <value>나만 볼 수 있습니다. 켜면 리더보드에 표시됩니다.</value>
-    <comment>Points leaderboard: shown under the own-stats card while the network has not opted in.</comment>
+    <value>이 옵션을 켜기 전까지 내 네트워크는 익명으로 표시됩니다.</value>
+    <comment>Points leaderboard: shown under the own-stats card while the name switch is off. The network is listed either way, as Anonymous until the switch is on.</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>포스트 양자 암호화</value>
@@ -2846,8 +2846,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">
-    <value>포인트 리더보드에 표시</value>
-    <comment>Points leaderboard: the opt-in switch label. Only opted-in networks are listed.</comment>
+    <value>내 네트워크 이름 표시</value>
+    <comment>Points leaderboard: the switch that reveals this network's name on the list. Every ranked network is listed; off = shown as Anonymous.</comment>
   </data>
   <data name="show_provider_list" xml:space="preserve">
     <value>제공업체 목록 표시</value>
