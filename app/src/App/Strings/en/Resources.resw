@@ -2831,7 +2831,7 @@ right way</value>
     <comment>Button text for confirming that the user has saved their seedphrase.</comment>
   </data>
   <data name="identity_key_hash_copied" xml:space="preserve">
-    <value>Identity key hash copied</value>
+    <value>Provider identity key hash copied</value>
     <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
   </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
@@ -3837,11 +3837,11 @@ and most decentralized ingress and egress protocol.</value>
     <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
   </data>
   <data name="post_quantum_identity" xml:space="preserve">
-    <value>Post Quantum Identity</value>
+    <value>Post Quantum Provider Identity</value>
     <comment>Account tab: post quantum identity panel title.</comment>
   </data>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
-    <value>Your identity key is stored locally on this device. If any peer's key appears different than their locally stored key, it means the network operator cannot be trusted.</value>
+    <value>Your provider identity key is stored locally on this device. If any peer's key appears different than their locally stored key, it means the network operator cannot be trusted.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="private_network" xml:space="preserve">

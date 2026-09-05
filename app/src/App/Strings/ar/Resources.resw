@@ -1626,7 +1626,7 @@
     <comment>Button text for confirming that the user has saved their seedphrase.</comment>
   </data>
   <data name="identity_key_hash_copied" xml:space="preserve">
-    <value>تم نسخ بصمة مفتاح الهوية</value>
+    <value>تم نسخ بصمة مفتاح هوية المزوّد</value>
     <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
   </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
@@ -2491,11 +2491,11 @@
     <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
   </data>
   <data name="post_quantum_identity" xml:space="preserve">
-    <value>الهوية ما بعد الكمومية</value>
+    <value>هوية المزوّد ما بعد الكمومية</value>
     <comment>Account tab: post quantum identity panel title.</comment>
   </data>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
-    <value>يُخزَّن مفتاح هويتك محليًا على هذا الجهاز. إذا ظهر مفتاح أي قرين مختلفًا عن مفتاحه المخزَّن محليًا، فهذا يعني أنه لا يمكن الوثوق بمشغّل الشبكة.</value>
+    <value>يُخزَّن مفتاح هوية المزوّد الخاص بك محليًا على هذا الجهاز. إذا ظهر مفتاح أي قرين مختلفًا عن مفتاحه المخزَّن محليًا، فهذا يعني أنه لا يمكن الوثوق بمشغّل الشبكة.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="private_network" xml:space="preserve">

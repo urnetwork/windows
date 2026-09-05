@@ -1526,7 +1526,7 @@ cách đúng đắn</value>
     <comment>Button text for confirming that the user has saved their seedphrase.</comment>
   </data>
   <data name="identity_key_hash_copied" xml:space="preserve">
-    <value>Đã sao chép hash khóa danh tính</value>
+    <value>Đã sao chép hash khóa danh tính nhà cung cấp</value>
     <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
   </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
@@ -2313,11 +2313,11 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
   </data>
   <data name="post_quantum_identity" xml:space="preserve">
-    <value>Danh tính hậu lượng tử</value>
+    <value>Danh tính nhà cung cấp hậu lượng tử</value>
     <comment>Account tab: post quantum identity panel title.</comment>
   </data>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
-    <value>Khóa danh tính của bạn được lưu cục bộ trên thiết bị này. Nếu khóa của bất kỳ nút ngang hàng nào khác với khóa đã lưu cục bộ, điều đó có nghĩa là không thể tin tưởng nhà vận hành mạng.</value>
+    <value>Khóa danh tính nhà cung cấp của bạn được lưu cục bộ trên thiết bị này. Nếu khóa của bất kỳ nút ngang hàng nào khác với khóa đã lưu cục bộ, điều đó có nghĩa là không thể tin tưởng nhà vận hành mạng.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="private_network" xml:space="preserve">

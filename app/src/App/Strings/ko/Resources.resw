@@ -1526,7 +1526,7 @@
     <comment>Button text for confirming that the user has saved their seedphrase.</comment>
   </data>
   <data name="identity_key_hash_copied" xml:space="preserve">
-    <value>신원 키 해시가 복사되었습니다</value>
+    <value>제공업체 신원 키 해시가 복사되었습니다</value>
     <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
   </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
@@ -2312,11 +2312,11 @@
     <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
   </data>
   <data name="post_quantum_identity" xml:space="preserve">
-    <value>포스트 양자 신원</value>
+    <value>포스트 양자 제공업체 신원</value>
     <comment>Account tab: post quantum identity panel title.</comment>
   </data>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
-    <value>신원 키는 이 기기에 로컬로 저장됩니다. 어떤 피어의 키가 로컬에 저장된 키와 다르게 표시되면 네트워크 운영자를 신뢰할 수 없다는 뜻입니다.</value>
+    <value>제공업체 신원 키는 이 기기에 로컬로 저장됩니다. 어떤 피어의 키가 로컬에 저장된 키와 다르게 표시되면 네트워크 운영자를 신뢰할 수 없다는 뜻입니다.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="private_network" xml:space="preserve">

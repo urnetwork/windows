@@ -1546,7 +1546,7 @@ kwa njia sahihi</value>
     <comment>Button text for confirming that the user has saved their seedphrase.</comment>
   </data>
   <data name="identity_key_hash_copied" xml:space="preserve">
-    <value>Heshi ya ufunguo wa utambulisho imenakiliwa</value>
+    <value>Heshi ya ufunguo wa utambulisho wa mtoa huduma imenakiliwa</value>
     <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
   </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
@@ -2348,11 +2348,11 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
     <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
   </data>
   <data name="post_quantum_identity" xml:space="preserve">
-    <value>Utambulisho wa baada ya kwantamu</value>
+    <value>Utambulisho wa mtoa huduma wa baada ya kwantamu</value>
     <comment>Account tab: post quantum identity panel title.</comment>
   </data>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
-    <value>Ufunguo wako wa utambulisho huhifadhiwa ndani ya kifaa hiki. Ikiwa ufunguo wa mshirika yeyote unaonekana tofauti na ufunguo wake uliohifadhiwa ndani ya kifaa, inamaanisha mwendeshaji wa mtandao hawezi kuaminiwa.</value>
+    <value>Ufunguo wako wa utambulisho wa mtoa huduma huhifadhiwa ndani ya kifaa hiki. Ikiwa ufunguo wa mshirika yeyote unaonekana tofauti na ufunguo wake uliohifadhiwa ndani ya kifaa, inamaanisha mwendeshaji wa mtandao hawezi kuaminiwa.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="private_network" xml:space="preserve">

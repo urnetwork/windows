@@ -1526,7 +1526,7 @@
     <comment>Button text for confirming that the user has saved their seedphrase.</comment>
   </data>
   <data name="identity_key_hash_copied" xml:space="preserve">
-    <value>身份密钥哈希已复制</value>
+    <value>提供商身份密钥哈希已复制</value>
     <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
   </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
@@ -2313,11 +2313,11 @@
     <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
   </data>
   <data name="post_quantum_identity" xml:space="preserve">
-    <value>后量子身份</value>
+    <value>后量子提供商身份</value>
     <comment>Account tab: post quantum identity panel title.</comment>
   </data>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
-    <value>你的身份密钥存储在本设备本地。如果某个对等节点的密钥与本地存储的密钥不一致，说明网络运营方不可信。</value>
+    <value>你的提供商身份密钥存储在本设备本地。如果某个对等节点的密钥与本地存储的密钥不一致，说明网络运营方不可信。</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="private_network" xml:space="preserve">

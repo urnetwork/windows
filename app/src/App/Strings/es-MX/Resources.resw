@@ -1546,7 +1546,7 @@ de la manera correcta</value>
     <comment>Button text for confirming that the user has saved their seedphrase.</comment>
   </data>
   <data name="identity_key_hash_copied" xml:space="preserve">
-    <value>Hash de la clave de identidad copiado</value>
+    <value>Hash de la clave de identidad del proveedor copiado</value>
     <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
   </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
@@ -2348,11 +2348,11 @@ más grande, seguro y descentralizado del mundo.</value>
     <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
   </data>
   <data name="post_quantum_identity" xml:space="preserve">
-    <value>Identidad poscuántica</value>
+    <value>Identidad poscuántica del proveedor</value>
     <comment>Account tab: post quantum identity panel title.</comment>
   </data>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
-    <value>Tu clave de identidad se guarda localmente en este dispositivo. Si la clave de algún par se ve diferente de la clave guardada localmente, significa que no se puede confiar en el operador de la red.</value>
+    <value>Tu clave de identidad de proveedor se guarda localmente en este dispositivo. Si la clave de algún par se ve diferente de la clave guardada localmente, significa que no se puede confiar en el operador de la red.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="private_network" xml:space="preserve">

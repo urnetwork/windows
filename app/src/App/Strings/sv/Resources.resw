@@ -1546,7 +1546,7 @@ rätt sätt</value>
     <comment>Button text for confirming that the user has saved their seedphrase.</comment>
   </data>
   <data name="identity_key_hash_copied" xml:space="preserve">
-    <value>Hash för identitetsnyckel kopierad</value>
+    <value>Hash för leverantörens identitetsnyckel kopierad</value>
     <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
   </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
@@ -2349,11 +2349,11 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
   </data>
   <data name="post_quantum_identity" xml:space="preserve">
-    <value>Postkvantidentitet</value>
+    <value>Postkvantidentitet för leverantör</value>
     <comment>Account tab: post quantum identity panel title.</comment>
   </data>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
-    <value>Din identitetsnyckel lagras lokalt på den här enheten. Om någon nods nyckel skiljer sig från den lokalt lagrade nyckeln betyder det att nätverksoperatören inte går att lita på.</value>
+    <value>Din leverantörsidentitetsnyckel lagras lokalt på den här enheten. Om någon nods nyckel skiljer sig från den lokalt lagrade nyckeln betyder det att nätverksoperatören inte går att lita på.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="private_network" xml:space="preserve">

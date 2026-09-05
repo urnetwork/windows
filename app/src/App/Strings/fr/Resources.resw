@@ -1546,7 +1546,7 @@ bonne manière</value>
     <comment>Button text for confirming that the user has saved their seedphrase.</comment>
   </data>
   <data name="identity_key_hash_copied" xml:space="preserve">
-    <value>Empreinte de la clé d'identité copiée</value>
+    <value>Empreinte de la clé d'identité du fournisseur copiée</value>
     <comment>Post quantum identity: toast after tapping an identity key hash to copy it.</comment>
   </data>
   <data name="if_the_problem_persists_contact_us_at_support_ur" xml:space="preserve">
@@ -2348,11 +2348,11 @@ le plus vaste, le plus sûr et le plus décentralisé au monde.</value>
     <comment>Connect drawer: note under the post quantum encryption toggle. Plaintext fallback applies when the provider does not support the e2e sessions.</comment>
   </data>
   <data name="post_quantum_identity" xml:space="preserve">
-    <value>Identité post-quantique</value>
+    <value>Identité post-quantique du fournisseur</value>
     <comment>Account tab: post quantum identity panel title.</comment>
   </data>
   <data name="post_quantum_identity_explanation" xml:space="preserve">
-    <value>Votre clé d'identité est stockée localement sur cet appareil. Si la clé d'un pair diffère de sa clé stockée localement, cela signifie que l'opérateur du réseau n'est pas digne de confiance.</value>
+    <value>Votre clé d'identité de fournisseur est stockée localement sur cet appareil. Si la clé d'un pair diffère de sa clé stockée localement, cela signifie que l'opérateur du réseau n'est pas digne de confiance.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
   </data>
   <data name="private_network" xml:space="preserve">
