@@ -73,7 +73,7 @@ void ReferralsPage::Build() {
   cardBox.Padding(ThicknessHelper::FromLengths(12, 12, 12, 4));
   StackPanel cardPanel;
   cardPanel.Spacing(8);
-  card_.Build(cardPanel, animations, /*progressBox=*/false);
+  card_.Build(cardPanel, animations);
   cardBox.Child(cardPanel);
   host.Children().Append(cardBox);
 

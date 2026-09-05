@@ -23,7 +23,6 @@ using winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage;
 using winrt::Windows::Foundation::Point;
 using winrt::Windows::Foundation::TimeSpan;
 using winrt::Windows::Foundation::Uri;
-using ShapeEllipse = winrt::Microsoft::UI::Xaml::Shapes::Ellipse;
 using ShapeRectangle = winrt::Microsoft::UI::Xaml::Shapes::Rectangle;
 using urnw::pages::Balance;
 using urnw::pages::H;
@@ -137,73 +136,12 @@ Storyboard PulseOpacity(DependencyObject const& target, double from, double to, 
 
 }  // namespace
 
-void ReferralCard::Build(Panel const& host, bool animations, bool progressBox) {
+void ReferralCard::Build(Panel const& host, bool animations) {
   animations_ = animations;
-  if (progressBox) {
-    // the onboarding step's card (android IntroductionReferral): referrals
-    // earned out of the ones that pay, in referral gold, with the legend
-    Border progress;
-    progress.CornerRadius(CornerRadius{12, 12, 12, 12});
-    progress.Background(colors::CardBrush());
-    progress.Padding(Thickness{16, 16, 16, 16});
-    progress.Margin(Thickness{0, 16, 0, 0});
-    StackPanel progressBody;
-    Grid header;
-    ColumnDefinition h0, h1;
-    h0.Width(GridLength{1, GridUnitType::Star});
-    h1.Width(GridLength{0, GridUnitType::Auto});
-    header.ColumnDefinitions().Append(h0);
-    header.ColumnDefinitions().Append(h1);
-    header.Children().Append(MakeLead(Loc("refer_friends_header"), 22));
-    referralCount_ = MakeLead(hstring{L""}, 22);
-    Grid::SetColumn(referralCount_, 1);
-    header.Children().Append(referralCount_);
-    progressBody.Children().Append(header);
-    Grid bar;
-    bar.Height(12);
-    bar.Margin(Thickness{0, 8, 0, 0});
-    referralUsedColumn_ = ColumnDefinition();
-    referralFreeColumn_ = ColumnDefinition();
-    bar.ColumnDefinitions().Append(referralUsedColumn_);
-    bar.ColumnDefinitions().Append(referralFreeColumn_);
-    Border used;
-    used.Background(colors::ReferralGoldBrush());
-    used.CornerRadius(CornerRadius{6, 0, 0, 6});
-    bar.Children().Append(used);
-    Border free;
-    free.Background(colors::FaintBrush());
-    free.CornerRadius(CornerRadius{0, 6, 6, 0});
-    Grid::SetColumn(free, 1);
-    bar.Children().Append(free);
-    progressBody.Children().Append(bar);
-    StackPanel keys;
-    keys.Orientation(Orientation::Horizontal);
-    keys.Spacing(12);
-    keys.Margin(Thickness{0, 4, 0, 0});
-    auto key = [&](hstring const& label, winrt::Windows::UI::Color color) {
-      StackPanel entry;
-      entry.Orientation(Orientation::Horizontal);
-      entry.Spacing(6);
-      ShapeEllipse dot;
-      dot.Width(8);
-      dot.Height(8);
-      dot.Fill(colors::MakeBrush(color));
-      dot.VerticalAlignment(VerticalAlignment::Center);
-      entry.Children().Append(dot);
-      entry.Children().Append(MakeText(label, 12, colors::MutedBrush()));
-      keys.Children().Append(entry);
-    };
-    key(Loc("referrals"), colors::kReferralGold);
-    key(Loc("available_data_key"), colors::kTextFaint);
-    progressBody.Children().Append(keys);
-    progress.Child(progressBody);
-    host.Children().Append(progress);
-  }
-
-  // the gold king-frog panel, rebuilt from the store's referral state; 24
-  // under the card on the onboarding step (with the page's 16 spacing)
+  // the gold king-frog panel, rebuilt from the store's referral state; it is
+  // the only referral progress bar on the onboarding step and the Referrals
+  // page alike
   referralPanelHost_ = StackPanel();
-  referralPanelHost_.Margin(Thickness{0, progressBox ? 8.0 : 0.0, 0, 0});
   host.Children().Append(referralPanelHost_);
 }
 
@@ -216,19 +154,6 @@ void ReferralCard::Apply() {
 
   // "n/max" — or, once the code's cap is reached, the sentence that says so
   const bool capped = 0 < terms.maxReferrals && terms.maxReferrals <= total;
-
-  // the onboarding step's progress box, when it was built
-  if (referralCount_) {
-    const int64_t paid = terms.PaidReferrals(total);
-    referralCount_.Text(capped ? Loc("referral_code_capped")
-                               : hstring{std::to_wstring(total) + L"/" +
-                                         std::to_wstring(terms.maxReferrals)});
-    const double usedWeight = std::max(0.0001, static_cast<double>(paid));
-    const double freeWeight =
-        std::max(0.0001, static_cast<double>(std::max<int64_t>(terms.maxReferrals - paid, 0)));
-    referralUsedColumn_.Width(GridLength{usedWeight, GridUnitType::Star});
-    referralFreeColumn_.Width(GridLength{freeWeight, GridUnitType::Star});
-  }
 
   if (codeText == shownReferralCode_ && total == shownReferralTotal_ &&
       terms.maxReferrals == shownReferralMax_ && referralPanelHost_.Children().Size() != 0) {
