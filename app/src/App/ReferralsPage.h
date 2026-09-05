@@ -2,11 +2,12 @@
 // the Account destination's Referrals row. android/apple Referrals screen and
 // linux ReferralsPage parity:
 //
-//   1. the SHARED referral card (ReferralCard.h): the referral progress box and
-//      the gold king-frog panel — the same two the onboarding "Refer friends"
-//      step shows, so the wording, the bonus figure and the crowned state
-//      cannot drift between the two surfaces. The code with copy and share is
-//      part of the panel.
+//   1. the SHARED referral card (ReferralCard.h): the gold king-frog panel the
+//      onboarding "Refer friends" step shows, so the wording, the bonus figure
+//      and the crowned state cannot drift between the two surfaces. The code
+//      with copy and share, and the referral progress bar with its "joined /
+//      cap" count, are part of the panel (android ReferralsScreen shows the
+//      panel alone; only the onboarding step adds the progress box above it).
 //   2. the figures: total referrals and the referral points earned
 //      (payout_linked_account).
 //   3. the referral network (who referred THIS network), built into

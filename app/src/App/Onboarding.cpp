@@ -871,9 +871,10 @@ StackPanel Onboarding::BuildReferral() {
   page.Children().Append(MakeBullet(hstring{Format("refer_friends_perks", bonus)}));
   page.Children().Append(MakeBullet(hstring{Format("refer_friends_they_get_data", referred)}));
 
-  // the progress box + the gold king-frog panel: the SHARED referral pieces
-  // (the Account "Refer and earn" page shows the same two)
-  referralCard_.Build(page, animations_);
+  // the progress box + the gold king-frog panel (android IntroductionReferral:
+  // the card above the panel; the Account "Refer and earn" page shows the
+  // same panel alone)
+  referralCard_.Build(page, animations_, /*progressBox=*/true);
 
   auto done = MakePrimaryButton(Loc("get_connected"));
   done.Margin(Thickness{0, 24, 0, 0});

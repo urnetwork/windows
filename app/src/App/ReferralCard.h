@@ -20,22 +20,29 @@ namespace urnw {
 
 class ReferralCard {
  public:
-  // Appends the progress box and the panel host to `host`, in that order.
-  // `animations` gates the halo pulse (UISettings().AnimationsEnabled()).
-  void Build(winrt::Microsoft::UI::Xaml::Controls::Panel const& host, bool animations);
+  // Appends the panel host to `host`, preceded by the onboarding step's
+  // progress box ("Refer friends" and "n/max" over the 12px bar with its
+  // legend) when `progressBox` is set — android IntroductionReferral shows
+  // that card above the panel; android's Referrals screen shows the panel
+  // alone, the count living on the 6px bar inside it. `animations` gates the
+  // halo pulse (UISettings().AnimationsEnabled()).
+  void Build(winrt::Microsoft::UI::Xaml::Controls::Panel const& host, bool animations,
+             bool progressBox);
   // Repaints from the balance store (terms, total referrals, code). The panel
-  // is rebuilt only when the code or the count changed.
+  // is rebuilt only when the code, the count or the cap changed.
   void Apply();
   bool built() const { return referralPanelHost_ != nullptr; }
 
  private:
   bool animations_ = true;
   winrt::Microsoft::UI::Xaml::Controls::StackPanel referralPanelHost_{nullptr};
+  // the progress box's live parts; null when the box was not built
   winrt::Microsoft::UI::Xaml::Controls::TextBlock referralCount_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ColumnDefinition referralUsedColumn_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ColumnDefinition referralFreeColumn_{nullptr};
   std::string shownReferralCode_;
   int64_t shownReferralTotal_ = -1;
+  int64_t shownReferralMax_ = -1;
 };
 
 }  // namespace urnw
