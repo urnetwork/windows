@@ -54,6 +54,10 @@ class PlanPicker {
     winrt::Microsoft::UI::Xaml::Shapes::Ellipse yearlyDot{nullptr};
     winrt::Microsoft::UI::Xaml::Shapes::Ellipse monthlyDot{nullptr};
     winrt::Microsoft::UI::Xaml::Shapes::Rectangle halo{nullptr};
+    // the selection pink laid over the gold halo and ground while the yearly
+    // card is selected, so the selection language survives the gold dress
+    winrt::Microsoft::UI::Xaml::Shapes::Rectangle haloSelected{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::Border yearlyTint{nullptr};
     std::function<void(bool yearly)>* onSelect = nullptr;
   };
   static winrt::Microsoft::UI::Xaml::Controls::Border BuildCard(std::shared_ptr<State> const& state,

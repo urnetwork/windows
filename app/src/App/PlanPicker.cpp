@@ -69,6 +69,13 @@ LinearGradientBrush GoldGradient(winrt::Windows::UI::Color light,
   return brush;
 }
 
+// An even mix of two colours, channel by channel: the selected yearly card's
+// gold-purple border.
+winrt::Windows::UI::Color Mix(winrt::Windows::UI::Color a, winrt::Windows::UI::Color b) {
+  return winrt::Windows::UI::Color{static_cast<uint8_t>((a.A + b.A) / 2), static_cast<uint8_t>((a.R + b.R) / 2),
+                                   static_cast<uint8_t>((a.G + b.G) / 2), static_cast<uint8_t>((a.B + b.B) / 2)};
+}
+
 // A soft halo behind a box: a rounded rectangle filled with a radial gradient
 // that reaches zero alpha well inside its own edge, so it never draws a hard
 // box (measured on Android: a gradient that stops at the edge reads as a
@@ -146,8 +153,16 @@ Border PlanPicker::BuildCard(std::shared_ptr<State> const& state, bool yearly) {
     wash.Background(colors::MakeBrush(colors::WithAlpha(colors::kProGold, 0x14)));
     wash.Margin(Thickness{-20, -18, -20, -18});
     wash.IsHitTestVisible(false);
+    // a slight purple tint over the gold wash while selected (Apply toggles it)
+    Border tint;
+    tint.CornerRadius(CornerRadius{10, 10, 10, 10});
+    tint.Background(colors::MakeBrush(colors::WithAlpha(colors::kUrPink, 0x1A)));
+    tint.Margin(Thickness{-20, -18, -20, -18});
+    tint.IsHitTestVisible(false);
+    state->yearlyTint = tint;
     Grid dressed;
     dressed.Children().Append(wash);
+    dressed.Children().Append(tint);
     dressed.Children().Append(row);
     card.Child(dressed);
   } else {
@@ -169,7 +184,9 @@ void PlanPicker::Apply(State const& state) {
   auto apply = [](Border const& card, ShapeEllipse const& dot, bool selected, bool gold) {
     if (!card || !dot) return;
     const auto accent = gold ? colors::ProGoldBrush() : colors::MakeBrush(colors::kUrPink);
-    card.BorderBrush(selected ? accent
+    // the selected gold card's border is an even gold-purple mix, so the
+    // border carries the selection colour too; the dot keeps the gold accent
+    card.BorderBrush(selected ? (gold ? colors::MakeBrush(Mix(colors::kProGold, colors::kUrPink)) : accent)
                      : gold  ? colors::MakeBrush(colors::WithAlpha(colors::kProGold, 0x99))
                              : colors::MutedBrush());
     dot.Stroke(selected ? accent : colors::MutedBrush());
@@ -177,6 +194,10 @@ void PlanPicker::Apply(State const& state) {
   };
   apply(state.yearlyCard, state.yearlyDot, state.yearly, true);
   apply(state.monthlyCard, state.monthlyDot, !state.yearly, false);
+  // the pink halo pass and the purple tint show only while yearly is selected
+  const auto selectedVisibility = state.yearly ? Visibility::Visible : Visibility::Collapsed;
+  if (state.haloSelected) state.haloSelected.Visibility(selectedVisibility);
+  if (state.yearlyTint) state.yearlyTint.Visibility(selectedVisibility);
 }
 
 Grid PlanPicker::Build() {
@@ -188,6 +209,13 @@ Grid PlanPicker::Build() {
   halo.VerticalAlignment(VerticalAlignment::Top);
   plans.Children().Append(halo);
   state_->halo = halo;
+  // the same halo in the selection pink, laid over the gold one at the same
+  // alpha while the yearly card is selected: the glow reads as gold and
+  // purple mixed instead of only the dot changing
+  auto haloSelected = MakeHalo(colors::kUrPink, 0x5C, 28);
+  haloSelected.VerticalAlignment(VerticalAlignment::Top);
+  plans.Children().Append(haloSelected);
+  state_->haloSelected = haloSelected;
 
   StackPanel cards;
   cards.Spacing(16);
@@ -213,8 +241,9 @@ Grid PlanPicker::Build() {
   plans.Children().Append(cards);
 
   // halo height follows the yearly card
-  state_->yearlyCard.SizeChanged([halo](auto const&, SizeChangedEventArgs const& e) {
+  state_->yearlyCard.SizeChanged([halo, haloSelected](auto const&, SizeChangedEventArgs const& e) {
     halo.Height(e.NewSize().Height + 56);
+    haloSelected.Height(e.NewSize().Height + 56);
   });
 
   Apply(*state_);
@@ -248,6 +277,16 @@ Storyboard PlanPicker::HaloPulse() const {
   Storyboard::SetTargetProperty(pulse, L"Opacity");
   Storyboard storyboard;
   storyboard.Children().Append(pulse);
+  // the pink pass breathes in step with the gold halo
+  DoubleAnimation pulseSelected;
+  pulseSelected.From(0.6);
+  pulseSelected.To(1.0);
+  pulseSelected.Duration(pulse.Duration());
+  pulseSelected.AutoReverse(true);
+  pulseSelected.RepeatBehavior(pulse.RepeatBehavior());
+  Storyboard::SetTarget(pulseSelected, state_->haloSelected);
+  Storyboard::SetTargetProperty(pulseSelected, L"Opacity");
+  storyboard.Children().Append(pulseSelected);
   return storyboard;
 }
 
