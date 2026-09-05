@@ -78,6 +78,19 @@ case "$sdk_version" in
   ''|*[!A-Za-z0-9.+-]*) echo "WARP_VERSION contains unsupported characters" >&2; exit 2 ;;
 esac
 
+network_test_gate="$root/tests/network-intensive-suite-lock.sh"
+if [ ! -x "$network_test_gate" ]; then
+  echo "Windows acceptance suite gate is missing or not executable: $network_test_gate" >&2
+  exit 127
+fi
+if [ "${URNETWORK_NETWORK_TEST_LOCK_HELD:-}" != 1 ]; then
+  exec "$network_test_gate" windows-acceptance -- "$here/test-main.sh" "$@"
+fi
+if ! "$network_test_gate" --verify-held; then
+  echo "Windows acceptance inherited an invalid network-intensive lock" >&2
+  exit 70
+fi
+
 die() { echo "[windows acceptance] ERROR: $*" >&2; exit 1; }
 command -v timeout >/dev/null 2>&1 || die "GNU timeout is required (brew install coreutils)"
 node "$root/build/all/acceptance/preflight-main.mjs" || exit 1
