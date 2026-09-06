@@ -1842,9 +1842,17 @@
     <value>개발자 옵션을 끄거나 URnetwork 선택을 해제하거나 앱을 제거하기 전에 URnetwork에서 이 기능을 먼저 끄세요. 그러지 않으면 기기를 다시 시작할 때까지 기기 위치가 고정된 상태로 남을 수 있습니다.</value>
     <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
   </data>
-  <data name="mock_location_error_cleanup_required" xml:space="preserve">
-    <value>URnetwork가 모의 위치를 제거하지 못했습니다. 개발자 옵션에서 URnetwork를 다시 선택한 후 이 기능을 끄거나 기기를 다시 시작하세요.</value>
-    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  <data name="mock_location_error_stuck_detail" xml:space="preserve">
+    <value>사용 중에 URnetwork 선택이 해제되어 Android가 모의 GPS를 고정했습니다. 실제 GPS를 복원하려면 개발자 옵션에서 URnetwork를 다시 선택하거나 휴대전화를 다시 시작하세요.</value>
+    <comment>Recovery instructions in that card, and the only in-app guidance for restoring the device's real GPS.</comment>
+  </data>
+  <data name="mock_location_error_stuck_title" xml:space="preserve">
+    <value>모의 위치가 고정됨</value>
+    <comment>Title of the recovery card shown at the top of the mock location guide when the simulated location is stuck.</comment>
+  </data>
+  <data name="mock_location_grant_permission" xml:space="preserve">
+    <value>권한 허용</value>
+    <comment>Button on the optional location permission step.</comment>
   </data>
   <data name="mock_location_guide_intro" xml:space="preserve">
     <value>사용 설정하면 이 기기의 앱에 실제 위치 대신 가장 오래 연결된 제공업체의 위치가 표시됩니다.</value>
@@ -1862,6 +1870,10 @@
     <value>'휴대전화 정보' 열기</value>
     <comment>Button that opens the Android About phone settings screen.</comment>
   </data>
+  <data name="mock_location_open_app_settings" xml:space="preserve">
+    <value>앱 설정 열기</value>
+    <comment>Button that replaces Grant permission once Android will no longer show the permission dialog, opening the app's settings page instead.</comment>
+  </data>
   <data name="mock_location_open_developer_options" xml:space="preserve">
     <value>개발자 옵션 열기</value>
     <comment>Button that opens the Android developer options settings screen.</comment>
@@ -1878,9 +1890,21 @@
     <value>기기 위치 동기화</value>
     <comment>Settings row label for the device location sync (mock location) feature.</comment>
   </data>
+  <data name="mock_location_status_retrying" xml:space="preserve">
+    <value>다시 시도 중 — 모의 위치 일시중지됨</value>
+    <comment>Settings row status while the mock location engine retries after a transient failure.</comment>
+  </data>
+  <data name="mock_location_status_stuck" xml:space="preserve">
+    <value>GPS 고정됨 — 조치 필요</value>
+    <comment>Settings row status: the simulated location is stuck on because the app was removed from Android's mock-location picker while active.</comment>
+  </data>
   <data name="mock_location_step_developer_options" xml:space="preserve">
     <value>개발자 옵션을 켭니다. '휴대전화 정보'를 열고 '빌드 번호'를 일곱 번 탭하세요.</value>
     <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_permission" xml:space="preserve">
+    <value>선택 사항: Chrome 및 기타 Google Play 앱도 모의 위치를 따르도록 '대략적인 위치' 권한을 허용하세요. 나머지 기능은 이 권한 없이도 작동합니다.</value>
+    <comment>Optional setup step: the approximate location grant that Google Play services needs to mirror the simulated location to its own location provider. The feature works without it.</comment>
   </data>
   <data name="mock_location_step_location_services" xml:space="preserve">
     <value>앱이 위치를 수신할 수 있도록 시스템 설정에서 '위치'를 켜세요.</value>

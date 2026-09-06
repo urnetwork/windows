@@ -1961,9 +1961,17 @@
     <value>أوقف هذه الميزة في URnetwork قبل إيقاف خيارات المطوّرين أو إلغاء اختيار URnetwork أو إلغاء تثبيت التطبيق، وإلا فقد يظل موقع جهازك ثابتًا حتى تعيد تشغيله.</value>
     <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
   </data>
-  <data name="mock_location_error_cleanup_required" xml:space="preserve">
-    <value>تعذّر على URnetwork إزالة الموقع الوهمي. أعد اختيار URnetwork في خيارات المطوّرين ثم أوقف هذه الميزة، أو أعد تشغيل جهازك.</value>
-    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  <data name="mock_location_error_stuck_detail" xml:space="preserve">
+    <value>أُلغي اختيار URnetwork أثناء تفعيل الميزة، لذا جمّد Android موقع GPS الوهمي. أعد اختيار URnetwork في خيارات المطوّرين لاستعادة موقع GPS الحقيقي، أو أعد تشغيل هاتفك.</value>
+    <comment>Recovery instructions in that card, and the only in-app guidance for restoring the device's real GPS.</comment>
+  </data>
+  <data name="mock_location_error_stuck_title" xml:space="preserve">
+    <value>الموقع الوهمي عالق</value>
+    <comment>Title of the recovery card shown at the top of the mock location guide when the simulated location is stuck.</comment>
+  </data>
+  <data name="mock_location_grant_permission" xml:space="preserve">
+    <value>منح الإذن</value>
+    <comment>Button on the optional location permission step.</comment>
   </data>
   <data name="mock_location_guide_intro" xml:space="preserve">
     <value>عند التفعيل، ترى التطبيقات على هذا الجهاز موقع مزود الخدمة الذي كنت متصلاً به لأطول مدة بدلاً من موقعك الحقيقي.</value>
@@ -1981,6 +1989,10 @@
     <value>فتح «لمحة عن الهاتف»</value>
     <comment>Button that opens the Android About phone settings screen.</comment>
   </data>
+  <data name="mock_location_open_app_settings" xml:space="preserve">
+    <value>فتح إعدادات التطبيق</value>
+    <comment>Button that replaces Grant permission once Android will no longer show the permission dialog, opening the app's settings page instead.</comment>
+  </data>
   <data name="mock_location_open_developer_options" xml:space="preserve">
     <value>فتح خيارات المطوّرين</value>
     <comment>Button that opens the Android developer options settings screen.</comment>
@@ -1997,9 +2009,21 @@
     <value>مزامنة موقع الجهاز</value>
     <comment>Settings row label for the device location sync (mock location) feature.</comment>
   </data>
+  <data name="mock_location_status_retrying" xml:space="preserve">
+    <value>تتم إعادة المحاولة، الموقع الوهمي متوقف مؤقتًا</value>
+    <comment>Settings row status while the mock location engine retries after a transient failure.</comment>
+  </data>
+  <data name="mock_location_status_stuck" xml:space="preserve">
+    <value>تجمّد GPS، يلزم اتخاذ إجراء</value>
+    <comment>Settings row status: the simulated location is stuck on because the app was removed from Android's mock-location picker while active.</comment>
+  </data>
   <data name="mock_location_step_developer_options" xml:space="preserve">
     <value>فعّل خيارات المطوّرين: افتح «لمحة عن الهاتف» وانقر على «رقم الإصدار» سبع مرات.</value>
     <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_permission" xml:space="preserve">
+    <value>اختياري: اسمح بالوصول إلى «الموقع التقريبي» حتى يتبع Chrome وتطبيقات Google Play الأخرى الموقع الوهمي أيضًا. وتعمل جميع الميزات الأخرى بدونه.</value>
+    <comment>Optional setup step: the approximate location grant that Google Play services needs to mirror the simulated location to its own location provider. The feature works without it.</comment>
   </data>
   <data name="mock_location_step_location_services" xml:space="preserve">
     <value>فعّل «الموقع الجغرافي» في إعدادات النظام حتى تتمكن التطبيقات من استقبال الموقع.</value>

@@ -1866,9 +1866,17 @@ enviamos para você verificar sua identidade.</value>
     <value>Desative isso no URnetwork antes de desativar as opções do desenvolvedor, desmarcar o URnetwork ou desinstalar o app — caso contrário, a localização do seu dispositivo pode ficar congelada até você reiniciar.</value>
     <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
   </data>
-  <data name="mock_location_error_cleanup_required" xml:space="preserve">
-    <value>O URnetwork não conseguiu remover a localização fictícia. Selecione o URnetwork novamente nas opções do desenvolvedor e desative isso, ou reinicie o dispositivo.</value>
-    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  <data name="mock_location_error_stuck_detail" xml:space="preserve">
+    <value>O URnetwork foi desmarcado enquanto estava ativo, por isso o Android travou o GPS fictício. Selecione o URnetwork novamente nas opções do desenvolvedor para restaurar o seu GPS real, ou reinicie o dispositivo.</value>
+    <comment>Recovery instructions in that card, and the only in-app guidance for restoring the device's real GPS.</comment>
+  </data>
+  <data name="mock_location_error_stuck_title" xml:space="preserve">
+    <value>A localização fictícia está travada</value>
+    <comment>Title of the recovery card shown at the top of the mock location guide when the simulated location is stuck.</comment>
+  </data>
+  <data name="mock_location_grant_permission" xml:space="preserve">
+    <value>Conceder permissão</value>
+    <comment>Button on the optional location permission step.</comment>
   </data>
   <data name="mock_location_guide_intro" xml:space="preserve">
     <value>Quando ativado, os apps neste dispositivo veem a localização do provedor ao qual você está conectado há mais tempo, em vez da sua localização real.</value>
@@ -1886,6 +1894,10 @@ enviamos para você verificar sua identidade.</value>
     <value>Abrir “Sobre o dispositivo”</value>
     <comment>Button that opens the Android About phone settings screen.</comment>
   </data>
+  <data name="mock_location_open_app_settings" xml:space="preserve">
+    <value>Abrir configurações do app</value>
+    <comment>Button that replaces Grant permission once Android will no longer show the permission dialog, opening the app's settings page instead.</comment>
+  </data>
   <data name="mock_location_open_developer_options" xml:space="preserve">
     <value>Abrir opções do desenvolvedor</value>
     <comment>Button that opens the Android developer options settings screen.</comment>
@@ -1902,9 +1914,21 @@ enviamos para você verificar sua identidade.</value>
     <value>Sincronização da localização do dispositivo</value>
     <comment>Settings row label for the device location sync (mock location) feature.</comment>
   </data>
+  <data name="mock_location_status_retrying" xml:space="preserve">
+    <value>Tentando novamente — localização fictícia pausada</value>
+    <comment>Settings row status while the mock location engine retries after a transient failure.</comment>
+  </data>
+  <data name="mock_location_status_stuck" xml:space="preserve">
+    <value>GPS congelado — ação necessária</value>
+    <comment>Settings row status: the simulated location is stuck on because the app was removed from Android's mock-location picker while active.</comment>
+  </data>
   <data name="mock_location_step_developer_options" xml:space="preserve">
     <value>Ative as opções do desenvolvedor: abra “Sobre o dispositivo” e toque sete vezes em “Número da versão”.</value>
     <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_permission" xml:space="preserve">
+    <value>Opcional: permita a localização aproximada para que o Chrome e outros apps do Google Play também sigam a localização fictícia. Todo o resto funciona sem isso.</value>
+    <comment>Optional setup step: the approximate location grant that Google Play services needs to mirror the simulated location to its own location provider. The feature works without it.</comment>
   </data>
   <data name="mock_location_step_location_services" xml:space="preserve">
     <value>Ative a “Localização” nas configurações do sistema para que os apps possam receber a localização.</value>

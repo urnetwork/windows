@@ -1866,9 +1866,17 @@ skickade till dig för att verifiera din identitet.</value>
     <value>Stäng av detta i URnetwork innan du stänger av utvecklaralternativen, avmarkerar URnetwork eller avinstallerar appen — annars kan enhetens plats förbli frusen tills du startar om.</value>
     <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
   </data>
-  <data name="mock_location_error_cleanup_required" xml:space="preserve">
-    <value>URnetwork kunde inte ta bort den simulerade platsen. Välj URnetwork igen under utvecklaralternativen och stäng av detta, eller starta om enheten.</value>
-    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  <data name="mock_location_error_stuck_detail" xml:space="preserve">
+    <value>URnetwork avmarkerades medan detta var aktivt, så Android låste fast den simulerade GPS-signalen. Välj URnetwork igen under utvecklaralternativen för att återställa din verkliga GPS, eller starta om telefonen.</value>
+    <comment>Recovery instructions in that card, and the only in-app guidance for restoring the device's real GPS.</comment>
+  </data>
+  <data name="mock_location_error_stuck_title" xml:space="preserve">
+    <value>Den simulerade platsen har fastnat</value>
+    <comment>Title of the recovery card shown at the top of the mock location guide when the simulated location is stuck.</comment>
+  </data>
+  <data name="mock_location_grant_permission" xml:space="preserve">
+    <value>Ge behörighet</value>
+    <comment>Button on the optional location permission step.</comment>
   </data>
   <data name="mock_location_guide_intro" xml:space="preserve">
     <value>När detta är aktiverat ser appar på den här enheten platsen för den leverantör du har varit ansluten till längst, i stället för din verkliga plats.</value>
@@ -1886,6 +1894,10 @@ skickade till dig för att verifiera din identitet.</value>
     <value>Öppna ”Om telefonen”</value>
     <comment>Button that opens the Android About phone settings screen.</comment>
   </data>
+  <data name="mock_location_open_app_settings" xml:space="preserve">
+    <value>Öppna appinställningar</value>
+    <comment>Button that replaces Grant permission once Android will no longer show the permission dialog, opening the app's settings page instead.</comment>
+  </data>
   <data name="mock_location_open_developer_options" xml:space="preserve">
     <value>Öppna utvecklaralternativ</value>
     <comment>Button that opens the Android developer options settings screen.</comment>
@@ -1902,9 +1914,21 @@ skickade till dig för att verifiera din identitet.</value>
     <value>Synkronisering av enhetens plats</value>
     <comment>Settings row label for the device location sync (mock location) feature.</comment>
   </data>
+  <data name="mock_location_status_retrying" xml:space="preserve">
+    <value>Försöker igen — simulerad plats pausad</value>
+    <comment>Settings row status while the mock location engine retries after a transient failure.</comment>
+  </data>
+  <data name="mock_location_status_stuck" xml:space="preserve">
+    <value>GPS frusen — åtgärd krävs</value>
+    <comment>Settings row status: the simulated location is stuck on because the app was removed from Android's mock-location picker while active.</comment>
+  </data>
   <data name="mock_location_step_developer_options" xml:space="preserve">
     <value>Aktivera utvecklaralternativen: öppna ”Om telefonen” och tryck sju gånger på ”Byggnummer”.</value>
     <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_permission" xml:space="preserve">
+    <value>Valfritt: tillåt ”ungefärlig plats” så att Chrome och andra Google Play-appar också följer den simulerade platsen. Allt annat fungerar utan den behörigheten.</value>
+    <comment>Optional setup step: the approximate location grant that Google Play services needs to mirror the simulated location to its own location provider. The feature works without it.</comment>
   </data>
   <data name="mock_location_step_location_services" xml:space="preserve">
     <value>Aktivera ”Plats” i systeminställningarna så att appar kan ta emot platsen.</value>

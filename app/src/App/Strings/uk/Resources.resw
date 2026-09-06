@@ -1914,9 +1914,17 @@
     <value>Вимкніть цю функцію в URnetwork, перш ніж вимикати параметри розробника, скасовувати вибір URnetwork або видаляти додаток — інакше місцезнаходження пристрою може залишитися замороженим до перезавантаження.</value>
     <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
   </data>
-  <data name="mock_location_error_cleanup_required" xml:space="preserve">
-    <value>URnetwork не вдалося прибрати фіктивне місцезнаходження. Знову виберіть URnetwork у параметрах розробника й вимкніть цю функцію або перезавантажте пристрій.</value>
-    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  <data name="mock_location_error_stuck_detail" xml:space="preserve">
+    <value>Вибір URnetwork було скасовано, поки функція працювала, тому Android заморозив фіктивний GPS. Щоб відновити справжній GPS, знову виберіть URnetwork у параметрах розробника або перезавантажте телефон.</value>
+    <comment>Recovery instructions in that card, and the only in-app guidance for restoring the device's real GPS.</comment>
+  </data>
+  <data name="mock_location_error_stuck_title" xml:space="preserve">
+    <value>Фіктивне місцезнаходження заморожено</value>
+    <comment>Title of the recovery card shown at the top of the mock location guide when the simulated location is stuck.</comment>
+  </data>
+  <data name="mock_location_grant_permission" xml:space="preserve">
+    <value>Надати дозвіл</value>
+    <comment>Button on the optional location permission step.</comment>
   </data>
   <data name="mock_location_guide_intro" xml:space="preserve">
     <value>Коли цю функцію ввімкнено, додатки на цьому пристрої бачать замість вашого реального місцезнаходження локацію провайдера, до якого ви підключені найдовше.</value>
@@ -1934,6 +1942,10 @@
     <value>Відкрити «Про телефон»</value>
     <comment>Button that opens the Android About phone settings screen.</comment>
   </data>
+  <data name="mock_location_open_app_settings" xml:space="preserve">
+    <value>Відкрити налаштування додатка</value>
+    <comment>Button that replaces Grant permission once Android will no longer show the permission dialog, opening the app's settings page instead.</comment>
+  </data>
   <data name="mock_location_open_developer_options" xml:space="preserve">
     <value>Відкрити параметри розробника</value>
     <comment>Button that opens the Android developer options settings screen.</comment>
@@ -1950,9 +1962,21 @@
     <value>Синхронізація місцезнаходження пристрою</value>
     <comment>Settings row label for the device location sync (mock location) feature.</comment>
   </data>
+  <data name="mock_location_status_retrying" xml:space="preserve">
+    <value>Повторна спроба — фіктивне місцезнаходження призупинено</value>
+    <comment>Settings row status while the mock location engine retries after a transient failure.</comment>
+  </data>
+  <data name="mock_location_status_stuck" xml:space="preserve">
+    <value>GPS заморожено — потрібна дія</value>
+    <comment>Settings row status: the simulated location is stuck on because the app was removed from Android's mock-location picker while active.</comment>
+  </data>
   <data name="mock_location_step_developer_options" xml:space="preserve">
     <value>Увімкніть параметри розробника: відкрийте «Про телефон» і сім разів торкніться «Номер збірки».</value>
     <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_permission" xml:space="preserve">
+    <value>Необов'язково: надайте дозвіл на приблизне місцезнаходження, щоб Chrome та інші додатки Google Play теж бачили фіктивне місцезнаходження. Усе інше працює й без цього.</value>
+    <comment>Optional setup step: the approximate location grant that Google Play services needs to mirror the simulated location to its own location provider. The feature works without it.</comment>
   </data>
   <data name="mock_location_step_location_services" xml:space="preserve">
     <value>Увімкніть «Місцезнаходження» в налаштуваннях системи, щоб додатки могли отримувати місцезнаходження.</value>

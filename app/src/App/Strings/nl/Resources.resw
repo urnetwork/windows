@@ -1866,9 +1866,17 @@ naar je hebben gestuurd om je identiteit te verifiëren.</value>
     <value>Zet dit uit in URnetwork voordat je de opties voor ontwikkelaars uitschakelt, URnetwork deselecteert of de app verwijdert — anders kan je apparaatlocatie bevroren blijven totdat je opnieuw opstart.</value>
     <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
   </data>
-  <data name="mock_location_error_cleanup_required" xml:space="preserve">
-    <value>URnetwork kon de gesimuleerde locatie niet verwijderen. Selecteer URnetwork opnieuw in de opties voor ontwikkelaars en zet dit uit, of start je apparaat opnieuw op.</value>
-    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  <data name="mock_location_error_stuck_detail" xml:space="preserve">
+    <value>URnetwork is gedeselecteerd terwijl het actief was, waardoor Android de gesimuleerde GPS heeft vergrendeld. Selecteer URnetwork opnieuw in de opties voor ontwikkelaars om je echte GPS te herstellen, of start je telefoon opnieuw op.</value>
+    <comment>Recovery instructions in that card, and the only in-app guidance for restoring the device's real GPS.</comment>
+  </data>
+  <data name="mock_location_error_stuck_title" xml:space="preserve">
+    <value>Gesimuleerde locatie zit vast</value>
+    <comment>Title of the recovery card shown at the top of the mock location guide when the simulated location is stuck.</comment>
+  </data>
+  <data name="mock_location_grant_permission" xml:space="preserve">
+    <value>Toestemming geven</value>
+    <comment>Button on the optional location permission step.</comment>
   </data>
   <data name="mock_location_guide_intro" xml:space="preserve">
     <value>Als dit is ingeschakeld, zien apps op dit apparaat de locatie van de provider waarmee je het langst verbonden bent, in plaats van je echte locatie.</value>
@@ -1886,6 +1894,10 @@ naar je hebben gestuurd om je identiteit te verifiëren.</value>
     <value>“Over de telefoon” openen</value>
     <comment>Button that opens the Android About phone settings screen.</comment>
   </data>
+  <data name="mock_location_open_app_settings" xml:space="preserve">
+    <value>App-instellingen openen</value>
+    <comment>Button that replaces Grant permission once Android will no longer show the permission dialog, opening the app's settings page instead.</comment>
+  </data>
   <data name="mock_location_open_developer_options" xml:space="preserve">
     <value>Opties voor ontwikkelaars openen</value>
     <comment>Button that opens the Android developer options settings screen.</comment>
@@ -1902,9 +1914,21 @@ naar je hebben gestuurd om je identiteit te verifiëren.</value>
     <value>Synchronisatie van apparaatlocatie</value>
     <comment>Settings row label for the device location sync (mock location) feature.</comment>
   </data>
+  <data name="mock_location_status_retrying" xml:space="preserve">
+    <value>Nieuwe poging — gesimuleerde locatie gepauzeerd</value>
+    <comment>Settings row status while the mock location engine retries after a transient failure.</comment>
+  </data>
+  <data name="mock_location_status_stuck" xml:space="preserve">
+    <value>GPS bevroren — actie vereist</value>
+    <comment>Settings row status: the simulated location is stuck on because the app was removed from Android's mock-location picker while active.</comment>
+  </data>
   <data name="mock_location_step_developer_options" xml:space="preserve">
     <value>Zet de opties voor ontwikkelaars aan: open “Over de telefoon” en tik zeven keer op “Build-nummer”.</value>
     <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_permission" xml:space="preserve">
+    <value>Optioneel: sta locatie bij benadering toe zodat ook Chrome en andere Google Play-apps de gesimuleerde locatie volgen. Al het andere werkt ook zonder deze toestemming.</value>
+    <comment>Optional setup step: the approximate location grant that Google Play services needs to mirror the simulated location to its own location provider. The feature works without it.</comment>
   </data>
   <data name="mock_location_step_location_services" xml:space="preserve">
     <value>Zet “Locatie” aan in de systeeminstellingen zodat apps de locatie kunnen ontvangen.</value>

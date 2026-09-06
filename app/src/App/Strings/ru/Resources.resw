@@ -1914,9 +1914,17 @@
     <value>Отключите эту функцию в URnetwork, прежде чем выключать параметры разработчика, снимать выбор URnetwork или удалять приложение — иначе местоположение устройства может остаться замороженным до перезагрузки.</value>
     <comment>Disclosure shown with the mock location toggle: turn the feature off in URnetwork before removing it as the mock location app, or the device location can stay frozen.</comment>
   </data>
-  <data name="mock_location_error_cleanup_required" xml:space="preserve">
-    <value>URnetwork не удалось убрать фиктивное местоположение. Снова выберите URnetwork в параметрах разработчика и отключите эту функцию или перезагрузите устройство.</value>
-    <comment>Error shown when the app could not remove the simulated location; the user must re-select URnetwork as the mock location app and turn the feature off, or restart.</comment>
+  <data name="mock_location_error_stuck_detail" xml:space="preserve">
+    <value>Выбор URnetwork был снят, пока функция была активна, поэтому Android зафиксировал фиктивный GPS. Снова выберите URnetwork в параметрах разработчика, чтобы восстановить реальный GPS, или перезагрузите телефон.</value>
+    <comment>Recovery instructions in that card, and the only in-app guidance for restoring the device's real GPS.</comment>
+  </data>
+  <data name="mock_location_error_stuck_title" xml:space="preserve">
+    <value>Фиктивное местоположение заморожено</value>
+    <comment>Title of the recovery card shown at the top of the mock location guide when the simulated location is stuck.</comment>
+  </data>
+  <data name="mock_location_grant_permission" xml:space="preserve">
+    <value>Предоставить разрешение</value>
+    <comment>Button on the optional location permission step.</comment>
   </data>
   <data name="mock_location_guide_intro" xml:space="preserve">
     <value>Когда эта функция включена, приложения на этом устройстве видят вместо вашего реального местоположения локацию провайдера, к которому вы подключены дольше всего.</value>
@@ -1934,6 +1942,10 @@
     <value>Открыть «О телефоне»</value>
     <comment>Button that opens the Android About phone settings screen.</comment>
   </data>
+  <data name="mock_location_open_app_settings" xml:space="preserve">
+    <value>Открыть настройки приложения</value>
+    <comment>Button that replaces Grant permission once Android will no longer show the permission dialog, opening the app's settings page instead.</comment>
+  </data>
   <data name="mock_location_open_developer_options" xml:space="preserve">
     <value>Открыть параметры разработчика</value>
     <comment>Button that opens the Android developer options settings screen.</comment>
@@ -1950,9 +1962,21 @@
     <value>Синхронизация местоположения устройства</value>
     <comment>Settings row label for the device location sync (mock location) feature.</comment>
   </data>
+  <data name="mock_location_status_retrying" xml:space="preserve">
+    <value>Повторная попытка — фиктивное местоположение приостановлено</value>
+    <comment>Settings row status while the mock location engine retries after a transient failure.</comment>
+  </data>
+  <data name="mock_location_status_stuck" xml:space="preserve">
+    <value>GPS заморожен — требуется действие</value>
+    <comment>Settings row status: the simulated location is stuck on because the app was removed from Android's mock-location picker while active.</comment>
+  </data>
   <data name="mock_location_step_developer_options" xml:space="preserve">
     <value>Включите параметры разработчика: откройте «О телефоне» и семь раз нажмите на «Номер сборки».</value>
     <comment>Mock location setup step: enable Android developer options by tapping the build number in About phone.</comment>
+  </data>
+  <data name="mock_location_step_location_permission" xml:space="preserve">
+    <value>Необязательно: разрешите доступ к приблизительному местоположению, чтобы Chrome и другие приложения Google Play тоже использовали фиктивное местоположение. Всё остальное работает и без этого.</value>
+    <comment>Optional setup step: the approximate location grant that Google Play services needs to mirror the simulated location to its own location provider. The feature works without it.</comment>
   </data>
   <data name="mock_location_step_location_services" xml:space="preserve">
     <value>Включите «Местоположение» в настройках системы, чтобы приложения могли получать местоположение.</value>
