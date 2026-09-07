@@ -1,4 +1,4 @@
-# Build the URnetwork Windows cgo SDK (URnetworkSdk.dll for x64 + ARM64) NATIVELY
+# Build the selected URnetwork Windows cgo SDK DLLs natively
 # inside the Windows ARM64 build VM, using Go + llvm-mingw provisioned into the
 # image (build/all/windows/packer/scripts/provision.ps1). This replaces the old
 # macOS cross-build (sdk/cgo `make build_windows`): build/all/windows/build.sh
@@ -6,8 +6,7 @@
 # build.ps1. Mirrors sdk/cgo/Makefile's build_windows recipe.
 #
 # Produces, under $SdkDir\build:
-#   windows\amd64\URnetworkSdk.dll (+ urnetwork_sdk.h/.hpp/.def)
-#   windows\arm64\URnetworkSdk.dll (+ urnetwork_sdk.h/.hpp/.def)
+#   windows\<architecture>\URnetworkSdk.dll (+ urnetwork_sdk.h/.hpp/.def)
 #   URnetworkSdkWindows.zip        (the layout fetch-deps.ps1 consumes + run.sh uploads)
 #
 # SPDX-License-Identifier: MPL-2.0
@@ -15,7 +14,8 @@
 param(
   # WARP_VERSION (internal, e.g. 2026.7.6+985989570) - baked into the DLL via -ldflags.
   [Parameter(Mandatory = $true)][string]$Version,
-  [string]$SdkDir = "C:\build\urnetwork\sdk\cgo"
+  [string]$SdkDir = "C:\build\urnetwork\sdk\cgo",
+  [ValidateSet("amd64", "arm64")][string[]]$Architectures = @("amd64", "arm64")
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,8 +28,6 @@ function Require($name) {
 }
 
 Require 'go'
-Require 'x86_64-w64-mingw32-clang'
-Require 'aarch64-w64-mingw32-clang'
 
 if (-not (Test-Path $SdkDir)) { throw "SDK dir not found: $SdkDir (was the build home synced in?)" }
 Set-Location $SdkDir
@@ -62,11 +60,15 @@ $env:GOOS         = "windows"
 $cc = @{ "amd64" = "x86_64-w64-mingw32-clang"; "arm64" = "aarch64-w64-mingw32-clang" }
 $buildDir = Join-Path $SdkDir "build"
 
+foreach ($architecture in $Architectures) {
+  Require $cc[$architecture]
+}
+
 # Start from a clean windows/ tree so a partial/previous run can't leak stale
 # DLLs into the zip.
 Remove-Item (Join-Path $buildDir "windows") -Recurse -Force -ErrorAction SilentlyContinue
 
-foreach ($arch in @("amd64", "arm64")) {
+foreach ($arch in $Architectures) {
   Log "building windows/$arch (CC=$($cc[$arch]))"
   $env:GOARCH = $arch
   $env:CC     = $cc[$arch]
@@ -89,8 +91,7 @@ foreach ($arch in @("amd64", "arm64")) {
   }
 }
 
-# Zip windows\{amd64,arm64}\ -> URnetworkSdkWindows.zip (same layout the mac
-# `make build_windows` produced; the archive root holds the `windows` folder).
+# Preserve the established archive root while including only selected outputs.
 $zip = Join-Path $buildDir "URnetworkSdkWindows.zip"
 Remove-Item $zip -Force -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $buildDir "windows") -DestinationPath $zip

@@ -9,7 +9,7 @@ param(
   [Parameter(Mandatory = $true)][string]$Version,
   # sdk/cgo/build/URnetworkSdkWindows.zip, built in this VM by ..\build-sdk.ps1
   [Parameter(Mandatory = $true)][string]$SdkZip,
-  [string[]]$Platforms = @("x64", "ARM64"),
+  [ValidateSet("x64", "ARM64")][string[]]$Platforms = @("x64", "ARM64"),
   [string]$Configuration = "Release",
   # Build + package the WFP split-tunnel driver (needs the WDK). Off by default:
   # the MSI ships without split tunneling until the kernel-driver build is wired
@@ -107,21 +107,14 @@ Write-Host "== msbuild (x64/emulated - hosts the in-process WinUI markup compile
 Require dotnet
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+Remove-Item (Join-Path $OutDir "*.msi") -Force -ErrorAction SilentlyContinue
 
 # 1. Fetch wintun (pinned) + unzip the SDK + build the per-arch import libs.
-& "$PSScriptRoot\tools\fetch-deps.ps1" -SdkZip $SdkZip
+& "$PSScriptRoot\tools\fetch-deps.ps1" -SdkZip $SdkZip -Platforms $Platforms
 
 # 2. Set the version into the app + installer (single source of truth).
 #    (The SDK Version is baked into the DLL at cross-build time via -ldflags.)
 $env:URN_VERSION = $Version
-
-# Restore NuGet packages for the solution. The App project uses PackageReference
-# (C++/WinRT, Windows App SDK, WebView2, SDK BuildTools); unlike packages.config its
-# restore is an MSBuild target, not `nuget.exe restore`. The build below imports the
-# obj\*.nuget.g.props/targets this produces; without it App.idl falls back to classic
-# MIDL (MIDL2025 on WinRT `namespace`). Restore is config-agnostic; run it once.
-& $msbuild URnetwork.sln /t:restore /nologo /v:minimal
-if ($LASTEXITCODE -ne 0) { throw "NuGet (PackageReference) restore failed" }
 
 # Protocol v3 is only safe to roll out if an MSI upgrade replaces the service
 # process, not merely the files underneath the old process. Keep the WiX
@@ -141,6 +134,16 @@ if (-not $serviceControl -or
 
 foreach ($platform in $Platforms) {
   Write-Host "== building $platform $Configuration =="
+
+  # Restore the selected solution platform. The App project uses PackageReference
+  # (C++/WinRT, Windows App SDK, WebView2, SDK BuildTools); unlike packages.config
+  # its restore is an MSBuild target. Supplying Platform avoids even restoring the
+  # default x64 graph during a focused ARM64 acceptance build.
+  & $msbuild URnetwork.sln /t:restore `
+    /p:Configuration=$Configuration /p:Platform=$platform /nologo /v:minimal
+  if ($LASTEXITCODE -ne 0) {
+    throw "NuGet (PackageReference) restore failed for $platform"
+  }
 
   # 3. Build the solution (Common, Service, App, SplitTunnel driver).
   & $msbuild URnetwork.sln `

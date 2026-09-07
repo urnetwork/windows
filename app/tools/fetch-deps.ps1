@@ -9,7 +9,8 @@
 param(
   # path to sdk/cgo/build/URnetworkSdkWindows.zip (built on the macOS build server)
   [string]$SdkZip = "$PSScriptRoot\..\..\..\sdk\cgo\build\URnetworkSdkWindows.zip",
-  [string]$WintunVersion = "0.14.1"
+  [string]$WintunVersion = "0.14.1",
+  [ValidateSet("x64", "ARM64")][string[]]$Platforms = @("x64", "ARM64")
 )
 
 $ErrorActionPreference = "Stop"
@@ -79,10 +80,16 @@ Get-ChildItem "$wintunExtract\wintun\bin" -Recurse -Filter wintun.dll | ForEach-
   if ($tp -ne $WintunSignerThumbprint) { throw "Wintun signer thumbprint mismatch: $tp" }
 }
 
-New-Item -ItemType Directory -Force -Path "$wintunDir\bin\amd64", "$wintunDir\bin\arm64" | Out-Null
 Copy-Item "$wintunExtract\wintun\include\wintun.h" "$wintunDir\wintun.h" -Force
-Copy-Item "$wintunExtract\wintun\bin\amd64\wintun.dll" "$wintunDir\bin\amd64\wintun.dll" -Force
-Copy-Item "$wintunExtract\wintun\bin\arm64\wintun.dll" "$wintunDir\bin\arm64\wintun.dll" -Force
+$architectures = foreach ($platform in $Platforms) {
+  if ($platform -eq "ARM64") { "arm64" } else { "amd64" }
+}
+foreach ($architecture in $architectures) {
+  $wintunArchitectureDir = Join-Path $wintunDir "bin\$architecture"
+  New-Item -ItemType Directory -Force -Path $wintunArchitectureDir | Out-Null
+  Copy-Item "$wintunExtract\wintun\bin\$architecture\wintun.dll" `
+    (Join-Path $wintunArchitectureDir "wintun.dll") -Force
+}
 
 # Preserve Wintun's license next to the vendored DLL for third-party attribution
 # (the prebuilt binaries are permissively licensed for redistribution; see
@@ -106,7 +113,7 @@ $sdkExtract = Join-Path $env:TEMP "urnetwork-sdk-extract"
 Remove-Item -Recurse -Force $sdkExtract -ErrorAction SilentlyContinue
 Expand-Archive -Path $SdkZip -DestinationPath $sdkExtract
 
-foreach ($arch in @("amd64", "arm64")) {
+foreach ($arch in $architectures) {
   $src = Join-Path $sdkExtract "windows\$arch"
   $dst = Join-Path $thirdParty "urnetwork-sdk\$arch"
   New-Item -ItemType Directory -Force -Path $dst | Out-Null

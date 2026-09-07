@@ -425,6 +425,110 @@ func TestAcceptanceGuestIsHardenedBeforeInstall(t *testing.T) {
 	}
 }
 
+func TestAcceptanceBuildSelectsARM64WithoutOwningUnitSuites(t *testing.T) {
+	root := repositoryRoot(t)
+	data, err := os.ReadFile(filepath.Join(root, "test-main.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	for _, forbidden := range []string{
+		"go test ./tests",
+		"run-windows-lib.test.ps1",
+	} {
+		if strings.Contains(source, forbidden) {
+			t.Fatalf("Windows acceptance still owns unit-test invocation %q", forbidden)
+		}
+	}
+	architecture := strings.Index(source, "WINDOWS_BUILD_ARCHITECTURES=arm64")
+	skipContracts := strings.Index(source, "WINDOWS_BUILD_SKIP_CONTRACT_TESTS=1")
+	build := strings.Index(source, `"$root/build/all/build-windows.sh"`)
+	if architecture < 0 || skipContracts < 0 || build < 0 ||
+		!(architecture < build && skipContracts < build) {
+		t.Fatalf("acceptance ARM64 build selection is not attached to the build invocation: architecture=%d skip=%d build=%d", architecture, skipContracts, build)
+	}
+}
+
+func TestHostUnitRunnerOwnsPortableWindowsContracts(t *testing.T) {
+	root := repositoryRoot(t)
+	data, err := os.ReadFile(filepath.Join(root, "test.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	for _, required := range []string{
+		`run-all run-all-windows-host`,
+		`--verify-held run-all`,
+		`(cd "$here" && go test "$@" ./tests)`,
+		`(cd "$root/build/all/windows" && go test "$@" ./...)`,
+	} {
+		if !strings.Contains(source, required) {
+			t.Errorf("windows/test.sh is missing host-unit ownership contract %q", required)
+		}
+	}
+}
+
+func TestWindowsScriptsApplyTheSelectedArchitectureEndToEnd(t *testing.T) {
+	root := repositoryRoot(t)
+	read := func(relative string) string {
+		filename := filepath.Join(root, filepath.FromSlash(relative))
+		data, err := os.ReadFile(filename)
+		if err != nil {
+			t.Fatalf("read %s: %v", filename, err)
+		}
+		return string(data)
+	}
+
+	sdkBuild := read("build-sdk.ps1")
+	for _, required := range []string{
+		`[ValidateSet("amd64", "arm64")][string[]]$Architectures = @("amd64", "arm64")`,
+		"foreach ($architecture in $Architectures)",
+		"foreach ($arch in $Architectures)",
+	} {
+		if !strings.Contains(sdkBuild, required) {
+			t.Errorf("build-sdk.ps1 is missing selected-architecture contract %q", required)
+		}
+	}
+	if strings.Contains(sdkBuild, `foreach ($arch in @("amd64", "arm64"))`) {
+		t.Fatal("build-sdk.ps1 still compiles both SDK architectures unconditionally")
+	}
+
+	appBuild := read("app/build.ps1")
+	for _, required := range []string{
+		`[ValidateSet("x64", "ARM64")][string[]]$Platforms = @("x64", "ARM64")`,
+		`fetch-deps.ps1" -SdkZip $SdkZip -Platforms $Platforms`,
+		"foreach ($platform in $Platforms)",
+		`/t:restore `,
+		`/p:Configuration=$Configuration /p:Platform=$platform /nologo /v:minimal`,
+		`Remove-Item (Join-Path $OutDir "*.msi")`,
+	} {
+		if !strings.Contains(appBuild, required) {
+			t.Errorf("app/build.ps1 is missing selected-platform contract %q", required)
+		}
+	}
+	restore := strings.Index(appBuild, "& $msbuild URnetwork.sln /t:restore")
+	platformLoop := strings.Index(appBuild, "foreach ($platform in $Platforms)")
+	solutionBuild := strings.Index(appBuild, "/p:Version=$Version /m /nologo /v:minimal")
+	if restore < 0 || platformLoop < 0 || solutionBuild < 0 || !(platformLoop < restore && restore < solutionBuild) {
+		t.Fatalf("solution compile is not scoped to selected platforms: restore=%d loop=%d build=%d", restore, platformLoop, solutionBuild)
+	}
+
+	fetchDependencies := read("app/tools/fetch-deps.ps1")
+	for _, required := range []string{
+		`[ValidateSet("x64", "ARM64")][string[]]$Platforms = @("x64", "ARM64")`,
+		"$architectures = foreach ($platform in $Platforms)",
+		"foreach ($architecture in $architectures)",
+		"foreach ($arch in $architectures)",
+	} {
+		if !strings.Contains(fetchDependencies, required) {
+			t.Errorf("fetch-deps.ps1 is missing selected-platform contract %q", required)
+		}
+	}
+	if strings.Contains(fetchDependencies, `foreach ($arch in @("amd64", "arm64"))`) {
+		t.Fatal("fetch-deps.ps1 still prepares both SDK architectures unconditionally")
+	}
+}
+
 func TestInstallerContract(t *testing.T) {
 	root := repositoryRoot(t)
 	packageXML := parseXML(t, filepath.Join(root, "app", "installer", "Package.wxs"))

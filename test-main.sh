@@ -95,7 +95,6 @@ fi
 die() { echo "[windows acceptance] ERROR: $*" >&2; exit 1; }
 command -v timeout >/dev/null 2>&1 || die "GNU timeout is required (brew install coreutils)"
 node "$root/build/all/acceptance/preflight-main.mjs" || exit 1
-(cd "$here" && go test ./tests)
 [ -f "$vault" ] || die "no acceptance vault at $vault"
 config_reader="$root/tests/read-tests-config.sh"
 [ -x "$config_reader" ] || die "test config reader is missing: $config_reader"
@@ -204,8 +203,10 @@ trap cleanup EXIT
 trap 'exit 130' INT TERM
 
 if [ "$skip_build" -ne 1 ]; then
-  echo "[windows acceptance] building local Windows artifacts"
+  echo "[windows acceptance] building local Windows ARM64 artifacts"
   SRC_HOME="$root" EXTERNAL_WARP_VERSION="$version" OUT_DIR="$out_dir" \
+    WINDOWS_BUILD_ARCHITECTURES=arm64 \
+    WINDOWS_BUILD_SKIP_CONTRACT_TESTS=1 \
     timeout "$build_timeout" "$root/build/all/build-windows.sh" 2>&1 | tee "$artifacts/build.log"
 else
   echo "[windows acceptance] reusing $out_dir"
@@ -236,12 +237,10 @@ acceptance_scp_to "$credentials" "$remote/credentials"
 acceptance_scp_to "$tests_json" "$remote/tests.json"
 acceptance_scp_to "$root/build/all/acceptance/run-windows.ps1" "$remote/run.ps1"
 acceptance_scp_to "$root/build/all/acceptance/run-windows-lib.ps1" "$remote/run-windows-lib.ps1"
-acceptance_scp_to "$root/build/all/acceptance/run-windows-lib.test.ps1" "$remote/run-windows-lib.test.ps1"
 if [ -f "$fixture" ]; then
   acceptance_scp_to "$fixture" "$remote/guest-secret-key"
 fi
 
-win_ssh_probe 60 "powershell -NoProfile -ExecutionPolicy Bypass -File $remote/run-windows-lib.test.ps1 -Fixture $remote/urnetwork.msi"
 echo "[windows acceptance] running $repeat_count complete repetition(s)"
 set +e
 win_ssh_probe "$((900 + repeat_count * 900))" "powershell -NoProfile -ExecutionPolicy Bypass -File $remote/run.ps1 -Msi $remote/urnetwork.msi -ExpectedMsiSha256 $msi_sha256 -AppVersion $version -SdkVersion $sdk_version -Repeat $repeat_count -Agent $remote/agent.exe -Credentials $remote/credentials -Tests $remote/tests.json -Fixture $remote/guest-secret-key -WorkDir $remote/results" \
