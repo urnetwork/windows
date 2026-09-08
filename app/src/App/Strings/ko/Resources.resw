@@ -2347,6 +2347,10 @@
     <value>프라이빗 네트워크</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>URnetwork의 최고의 버전.</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>결제 처리 중</value>
     <comment>Call to action</comment>

@@ -2383,6 +2383,10 @@ más grande, seguro y descentralizado del mundo.</value>
     <value>Red privada</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>La mejor versión de URnetwork.</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>Procesando el pago</value>
     <comment>Call to action</comment>

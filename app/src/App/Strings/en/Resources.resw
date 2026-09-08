@@ -3872,6 +3872,10 @@ and most decentralized ingress and egress protocol.</value>
     <value>Private Network</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>The best version of URnetwork.</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>Processing payment</value>
     <comment>Call to action</comment>

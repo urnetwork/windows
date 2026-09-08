@@ -2384,6 +2384,10 @@ più grande, sicuro e decentralizzato al mondo.</value>
     <value>Rete privata</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>La migliore versione di URnetwork.</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>Elaborazione del pagamento</value>
     <comment>Call to action</comment>

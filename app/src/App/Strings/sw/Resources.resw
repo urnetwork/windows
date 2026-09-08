@@ -2383,6 +2383,10 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
     <value>Mtandao wa kibinafsi</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>Toleo bora zaidi la URnetwork.</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>Inashughulikia malipo</value>
     <comment>Call to action</comment>

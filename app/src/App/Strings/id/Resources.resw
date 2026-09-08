@@ -2348,6 +2348,10 @@ terbesar, teraman, dan paling terdesentralisasi di dunia.</value>
     <value>Jaringan Pribadi</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>Versi terbaik dari URnetwork.</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>Memproses pembayaran</value>
     <comment>Call to action</comment>

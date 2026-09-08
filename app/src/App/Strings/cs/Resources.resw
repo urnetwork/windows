@@ -2454,6 +2454,10 @@ decentralizovaném protokolu na světě pro příchozí a odchozí provoz.</valu
     <value>Soukromá síť</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>Nejlepší verze URnetwork.</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>Zpracovává se platba</value>
     <comment>Call to action</comment>

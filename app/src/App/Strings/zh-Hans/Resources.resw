@@ -2348,6 +2348,10 @@
     <value>私有网络</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>URnetwork 的最佳版本。</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>正在处理付款</value>
     <comment>Call to action</comment>

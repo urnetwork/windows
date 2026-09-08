@@ -2455,6 +2455,10 @@ zdecentralizowanym na świecie protokole wejścia i wyjścia.</value>
     <value>Sieć prywatna</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>Najlepsza wersja URnetwork.</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>Przetwarzanie płatności</value>
     <comment>Call to action</comment>

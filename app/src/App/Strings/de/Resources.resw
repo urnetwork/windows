@@ -2383,6 +2383,10 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
     <value>Privates Netzwerk</value>
     <comment>Network name when privacy is enabled</comment>
   </data>
+  <data name="pro_benefits_simple" xml:space="preserve">
+    <value>Die beste Version von URnetwork.</value>
+    <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>Zahlung wird verarbeitet</value>
     <comment>Call to action</comment>
