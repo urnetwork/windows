@@ -2442,9 +2442,10 @@ void WalletPage::RenderPointsRows(size_t fromIndex) {
   const bool byStreak = pointsSort_ == urnet::PointsLeaderboardSortStreak;
   const size_t activeColumn = byBlocks ? 3 : (byStreak ? 4 : 2);
   const hstring anonymous = Loc("anonymous");
-  // an anonymous row reads "Anonymous" to everyone but its owner, who sees
-  // their own name (the highlight keys on the network id, never the name)
-  const std::string ownName = OwnPointsName();
+  // an anonymous row reads "Anonymous" to everyone, its owner included: the
+  // own row is what the network looks like to others, only highlighted (the
+  // highlight keys on the network id, never the name; the own card carries
+  // the name)
 
   for (size_t i = fromIndex; i < pointsRows_.size(); ++i) {
     auto const& r = pointsRows_[i];
@@ -2456,9 +2457,7 @@ void WalletPage::RenderPointsRows(size_t fromIndex) {
     row.cells[0].Text(Utf8(byBlocks ? r.rankBlocksText : (byStreak ? r.rankStreakText : r.rankPointsText)));
     // the emoji tag shows either way; the name only when the network is not anonymous
     const bool anon = r.anonymous || r.displayName.empty();
-    std::wstring name = anon ? (isOwn && !ownName.empty() ? std::wstring{Utf8(ownName)}
-                                                          : std::wstring{anonymous})
-                             : std::wstring{Utf8(r.displayName)};
+    std::wstring name = anon ? std::wstring{anonymous} : std::wstring{Utf8(r.displayName)};
     row.cells[1].Text(hstring{name});
     kit::SetTextOrCollapse(identity.bottom, Utf8(r.emojiTag));
     row.cells[2].Text(Utf8(r.totalPointsText));
