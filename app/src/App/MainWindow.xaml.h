@@ -66,6 +66,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   // only one ContentDialog can show at a time
   bool sheetOpen() const { return sheetOpen_; }
   void SetSheetOpen(bool open) { sheetOpen_ = open; }
+  // the Pro celebration flight (ProCelebration.h): the free -> Pro flip, the
+  // Account plan label while Pro, and the connect page's easter egg play it
+  void LaunchProCelebration();
   // the login flow over the home view, and back
   void ShowLoginRoot();
   void ShowHomeRoot();
@@ -433,7 +436,6 @@ struct MainWindow : MainWindowT<MainWindow> {
   // on a tap of the Account plan label while Pro.
   std::unique_ptr<urnw::ProCelebrationFlight> proCelebration_;
   bool proPlanTapWired_ = false;
-  void LaunchProCelebration();
 
   bool sheetOpen_ = false;  // only one ContentDialog can show at a time
   // --preview-ui: the home view is pinned regardless of auth state

@@ -314,6 +314,7 @@
     <ClInclude Include="Onboarding.h" />
     <ClInclude Include="PlanPicker.h" />
     <ClInclude Include="ProCelebration.h" />
+    <ClInclude Include="TapSequenceGate.h" />
     <ClInclude Include="SettingsSheets.h" />
     <ClInclude Include="EmojiKeyboard.h" />
     <ClInclude Include="WalletPage.h" />

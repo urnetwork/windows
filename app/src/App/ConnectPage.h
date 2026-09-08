@@ -29,6 +29,7 @@
 #include "SdkHost.h"
 #include "ServiceSetup.h"
 #include "StatsSheets.h"
+#include "TapSequenceGate.h"
 #include "TransferChart.h"
 #include "TransportBar.h"
 #include "UpdateChecker.h"
@@ -300,6 +301,8 @@ class ConnectPage {
   bool connected_ = false;
   // the SDK connect controller's own status (ApplyStats); see ConnectStatus
   ConnectStatus connectStatus_ = ConnectStatus::Disconnected;
+  // the easter egg's five-tap count on the status dot (Initialize wires it)
+  TapSequenceGate connectedIconTaps_;
   // ---- #27: the aggregate connection health ----
   // What the status line/dot/strip/hero actually render now. Derived in
   // SdkHost::ReadStats (ConnectionHealth.h owns the transition table) and

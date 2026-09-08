@@ -102,6 +102,21 @@ void ConnectPage::Initialize() {
   BuildHero();
   WireDrawerFeeds();
 
+  // the easter egg: five taps on the status dot while connected, each within
+  // five seconds of the previous, play the Pro celebration; silent otherwise
+  w_.StatusDot().Tapped([weak = w_.get_weak()](auto const&, auto const&) {
+    auto self = weak.get();
+    if (!self) return;
+    ConnectPage& page = self->connect();
+    if (page.health_ != urnw::health::State::Connected) {
+      page.connectedIconTaps_.Reset();
+      return;
+    }
+    if (page.connectedIconTaps_.Tap(static_cast<int64_t>(GetTickCount64()))) {
+      self->LaunchProCelebration();
+    }
+  });
+
   // shared drawer clock: ~10 fps chart redraw, plus 1s relative-time refresh
   chartTimer_ = w_.DispatcherQueue().CreateTimer();
   chartTimer_.Interval(std::chrono::milliseconds(100));
