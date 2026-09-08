@@ -80,6 +80,7 @@ Get-ChildItem "$wintunExtract\wintun\bin" -Recurse -Filter wintun.dll | ForEach-
   if ($tp -ne $WintunSignerThumbprint) { throw "Wintun signer thumbprint mismatch: $tp" }
 }
 
+New-Item -ItemType Directory -Force -Path $wintunDir | Out-Null
 Copy-Item "$wintunExtract\wintun\include\wintun.h" "$wintunDir\wintun.h" -Force
 $architectures = foreach ($platform in $Platforms) {
   if ($platform -eq "ARM64") { "arm64" } else { "amd64" }

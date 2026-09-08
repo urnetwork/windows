@@ -516,6 +516,7 @@ func TestWindowsScriptsApplyTheSelectedArchitectureEndToEnd(t *testing.T) {
 	fetchDependencies := read("app/tools/fetch-deps.ps1")
 	for _, required := range []string{
 		`[ValidateSet("x64", "ARM64")][string[]]$Platforms = @("x64", "ARM64")`,
+		`New-Item -ItemType Directory -Force -Path $wintunDir`,
 		"$architectures = foreach ($platform in $Platforms)",
 		"foreach ($architecture in $architectures)",
 		"foreach ($arch in $architectures)",
@@ -526,6 +527,11 @@ func TestWindowsScriptsApplyTheSelectedArchitectureEndToEnd(t *testing.T) {
 	}
 	if strings.Contains(fetchDependencies, `foreach ($arch in @("amd64", "arm64"))`) {
 		t.Fatal("fetch-deps.ps1 still prepares both SDK architectures unconditionally")
+	}
+	wintunRoot := strings.Index(fetchDependencies, `New-Item -ItemType Directory -Force -Path $wintunDir`)
+	wintunHeader := strings.Index(fetchDependencies, `Copy-Item "$wintunExtract\wintun\include\wintun.h"`)
+	if wintunRoot < 0 || wintunHeader < 0 || wintunRoot >= wintunHeader {
+		t.Fatalf("Wintun root must exist before copying its header: root=%d header=%d", wintunRoot, wintunHeader)
 	}
 }
 
