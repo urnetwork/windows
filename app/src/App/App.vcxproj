@@ -260,6 +260,7 @@
     <ClCompile Include="SettingsPage.cpp" />
     <ClCompile Include="Onboarding.cpp" />
     <ClCompile Include="PlanPicker.cpp" />
+    <ClCompile Include="ProCelebration.cpp" />
     <ClCompile Include="SettingsSheets.cpp" />
     <ClCompile Include="WalletPage.cpp" />
     <ClCompile Include="EarningsSheets.cpp" />
@@ -312,6 +313,7 @@
     <ClInclude Include="SettingsPage.h" />
     <ClInclude Include="Onboarding.h" />
     <ClInclude Include="PlanPicker.h" />
+    <ClInclude Include="ProCelebration.h" />
     <ClInclude Include="SettingsSheets.h" />
     <ClInclude Include="EmojiKeyboard.h" />
     <ClInclude Include="WalletPage.h" />

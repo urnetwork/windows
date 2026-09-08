@@ -443,10 +443,8 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   auto proTitle = MakeText(Loc("get_pro"), 28, colors::TextBrush(), true);
   proTitle.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
   productsPanel_.Children().Append(proTitle);
-  productsPanel_.Children().Append(
-      MakeText(Loc("support_us"), 14, colors::MutedBrush(), true));
-  productsPanel_.Children().Append(
-      MakeText(Loc("unlock_speed"), 14, colors::MutedBrush(), true));
+  // No explainer under the title: the sheet is the title and the two plan
+  // options (android UpgradeScreenHeader).
 
   // the plan picker the onboarding welcome page shows: yearly in the gold
   // dress with the trial, selected by default, monthly plain below it. One

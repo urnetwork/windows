@@ -1166,9 +1166,26 @@ void MainWindow::OnBalanceChanged(urnw::BalanceSnapshot const& snapshot,
                                   urnw::BalancePollState const& poll) {
   if (onboarding_ && onboarding_->Visible()) onboarding_->OnBalance(snapshot);
   if (referrals_) referrals_->OnBalance();  // the Refer and earn card follows the store
+  // The Pro celebration, once per purchase: the store confirms the free ->
+  // Pro flip after checkout (the upgrade sheet's success page reads the same
+  // snapshot), and the flight plays over whatever is on screen.
+  const bool becamePro = balance_.loaded && !balance_.isPro && !balance_.guest &&
+                         snapshot.isPro && !snapshot.guest;
   balance_ = snapshot;
   balancePoll_ = poll;
   ApplyBalance();
+  if (becamePro) LaunchProCelebration();
+}
+
+// ---- the Pro celebration ----------------------------------------------------
+// One flight at a time; the flight itself declines to start while one is in
+// the air or when the system has animations off, so the callers stay simple.
+void MainWindow::LaunchProCelebration() {
+  if (!proCelebration_) {
+    proCelebration_ = std::make_unique<urnw::ProCelebrationFlight>(ProCelebrationCanvas(),
+                                                                   ProCelebrationVeil());
+  }
+  proCelebration_->Launch();
 }
 
 // ---- referral crowning (the ur.io king-frog gold celebrations) --------------
@@ -1327,6 +1344,17 @@ void MainWindow::ApplyBalance() {
   auto planBrush = balance_.isPro ? urnw::colors::ProGoldBrush()
                                   : urnw::colors::TextBrush();
   AccountPlanValueText().Foreground(planBrush);
+  // a Pro network's plan label replays the Pro celebration on a tap (android
+  // AccountRootSubscription onPlanLabelTap); free and guest labels stay text
+  if (!proPlanTapWired_) {
+    proPlanTapWired_ = true;
+    AccountPlanValueText().Tapped([weak = get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) {
+        if (self->balance_.isPro && !self->balance_.guest) self->LaunchProCelebration();
+      }
+    });
+  }
+  AccountPlanValueText().IsTapEnabled(balance_.isPro && !balance_.guest);
 
   // the upgrade affordances show for a signed-in free account; a guest gets a
   // create-account affordance on the plan cards instead (macOS AccountRootView,

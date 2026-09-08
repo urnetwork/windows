@@ -20,6 +20,7 @@
 #include "LocationSheets.h"
 #include "LoginPage.h"
 #include "Onboarding.h"
+#include "ProCelebration.h"
 #include "Protocol.h"
 #include "ReferralsPage.h"
 #include "SdkHost.h"
@@ -426,6 +427,13 @@ struct MainWindow : MainWindowT<MainWindow> {
   bool insufficientBalance_ = false;  // last ContractStatus push
   std::shared_ptr<urnw::UpgradeSheet> upgradeSheet_;
   std::shared_ptr<urnw::RedeemCodeSheet> redeemSheet_;
+
+  // The Pro celebration (ProCelebration.h): the confetti canvas and the veil
+  // at the bottom of MainWindow.xaml. Plays once at the free -> Pro flip, and
+  // on a tap of the Account plan label while Pro.
+  std::unique_ptr<urnw::ProCelebrationFlight> proCelebration_;
+  bool proPlanTapWired_ = false;
+  void LaunchProCelebration();
 
   bool sheetOpen_ = false;  // only one ContentDialog can show at a time
   // --preview-ui: the home view is pinned regardless of auth state

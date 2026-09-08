@@ -2,6 +2,9 @@
 #include "pch.h"
 #include "PlanPicker.h"
 
+#include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
+
 #include "Localization.h"
 #include "PageContext.h"
 #include "Strings.h"
@@ -111,7 +114,9 @@ Border PlanPicker::BuildCard(std::shared_ptr<State> const& state, bool yearly) {
   Border card;
   card.CornerRadius(CornerRadius{12, 12, 12, 12});
   card.BorderThickness(Thickness{2, 2, 2, 2});
-  card.Padding(Thickness{20, 18, 20, 18});
+  // taller than wide: the plan lines get room to breathe (android
+  // PlanOptionContainer went 24 -> 36; the same 1.5x here)
+  card.Padding(Thickness{20, 27, 20, 27});
   card.Background(yearly ? colors::MakeBrush(colors::kBackground) : colors::CardBrush());
 
   Grid row;
@@ -129,18 +134,37 @@ Border PlanPicker::BuildCard(std::shared_ptr<State> const& state, bool yearly) {
   dot.VerticalAlignment(VerticalAlignment::Center);
   row.Children().Append(dot);
 
-  StackPanel labels;
-  labels.Spacing(2);
-  labels.VerticalAlignment(VerticalAlignment::Center);
   // the Stripe prices, as product literals in the store ($40 a year is a
-  // third off twelve months at $5); the trial line is the yearly plan's only
-  auto title = MakeLead(yearly ? Loc("plan_yearly_price") : Loc("plan_monthly_price"), 22);
-  labels.Children().Append(title);
-  if (yearly) {
-    labels.Children().Append(MakeText(Loc("save_33_percent"), 13, colors::MutedBrush()));
-    labels.Children().Append(
+  // third off twelve months at $5); the trial line is the yearly plan's only.
+  // The yearly card's three lines set the height; the monthly card lays the
+  // same three lines out invisibly (never read aloud) so both cards are equal
+  // height at any text scale, and centers its one visible line in that space
+  // so it sits level with the dot (android SubscriptionOptions).
+  auto makeLines = [](bool visible) {
+    StackPanel lines;
+    lines.Spacing(2);
+    lines.Children().Append(MakeLead(Loc("plan_yearly_price"), 22));
+    lines.Children().Append(MakeText(Loc("save_33_percent"), 13, colors::MutedBrush()));
+    lines.Children().Append(
         MakeText(hstring{Format("includes_free_trial_days", kFreeTrialDays)}, 13,
                  colors::MakeBrush(colors::kProGoldLight)));
+    if (!visible) {
+      lines.Opacity(0);
+      lines.IsHitTestVisible(false);
+      winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAccessibilityView(
+          lines, winrt::Microsoft::UI::Xaml::Automation::Peers::AccessibilityView::Raw);
+    }
+    return lines;
+  };
+  Grid labels;
+  labels.VerticalAlignment(VerticalAlignment::Center);
+  if (yearly) {
+    labels.Children().Append(makeLines(/*visible=*/true));
+  } else {
+    labels.Children().Append(makeLines(/*visible=*/false));
+    auto title = MakeLead(Loc("plan_monthly_price"), 22);
+    title.VerticalAlignment(VerticalAlignment::Center);
+    labels.Children().Append(title);
   }
   Grid::SetColumn(labels, 1);
   row.Children().Append(labels);
@@ -151,13 +175,13 @@ Border PlanPicker::BuildCard(std::shared_ptr<State> const& state, bool yearly) {
     Border wash;
     wash.CornerRadius(CornerRadius{10, 10, 10, 10});
     wash.Background(colors::MakeBrush(colors::WithAlpha(colors::kProGold, 0x14)));
-    wash.Margin(Thickness{-20, -18, -20, -18});
+    wash.Margin(Thickness{-20, -27, -20, -27});
     wash.IsHitTestVisible(false);
     // a slight purple tint over the gold wash while selected (Apply toggles it)
     Border tint;
     tint.CornerRadius(CornerRadius{10, 10, 10, 10});
     tint.Background(colors::MakeBrush(colors::WithAlpha(colors::kUrPink, 0x1A)));
-    tint.Margin(Thickness{-20, -18, -20, -18});
+    tint.Margin(Thickness{-20, -27, -20, -27});
     tint.IsHitTestVisible(false);
     state->yearlyTint = tint;
     Grid dressed;

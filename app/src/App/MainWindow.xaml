@@ -2695,5 +2695,24 @@
                       Style="{StaticResource UrGoldSnackbarStyle}"
                       VerticalAlignment="Bottom" HorizontalAlignment="Center"
                       Margin="24" MaxWidth="480" IsOpen="False" />
+
+        <!-- The Pro celebration (ProCelebration.cpp). The veil softens the whole
+             window under the confetti: an in-app acrylic whose opacity follows
+             the 5 s in / 10 s hold / 5 s out envelope (the project carries no
+             Win2D, so a nearest-neighbour mosaic is not available; the acrylic
+             blur is the closest built-in). The canvas above it hosts the pixel
+             sprites racing left to right. Neither takes input or is announced;
+             both stay collapsed until a flight starts. -->
+        <Rectangle x:Name="ProCelebrationVeil" Grid.Row="0" Grid.RowSpan="4"
+                   IsHitTestVisible="False" Visibility="Collapsed" Opacity="0"
+                   AutomationProperties.AccessibilityView="Raw">
+            <Rectangle.Fill>
+                <AcrylicBrush TintColor="#101010" TintOpacity="0.15" TintLuminosityOpacity="0.3"
+                              FallbackColor="#33101010" />
+            </Rectangle.Fill>
+        </Rectangle>
+        <Canvas x:Name="ProCelebrationCanvas" Grid.Row="0" Grid.RowSpan="4"
+                IsHitTestVisible="False" Visibility="Collapsed"
+                AutomationProperties.AccessibilityView="Raw" />
     </Grid>
 </Window>
