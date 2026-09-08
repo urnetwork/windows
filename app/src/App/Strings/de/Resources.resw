@@ -4028,6 +4028,10 @@ wie es sein sollte.</value>
     <value>Ich stimme den {terms_start}Geschäftsbedingungen{terms_end} und der {privacy_start}Datenschutzrichtlinie{privacy_end} von URnetwork zu</value>
     <comment>Label for the terms and conditions acceptance checkbox. It should read like "I agree to URnetwork's &lt;link&gt;Terms and Services&lt;/link&gt; and &lt;link&gt;Privacy Policy&lt;/link&gt;"  The {terms_start} and {terms_end} markers wrap the "Terms and Services" text. The {privacy_start} and {privacy_end} markers wrap the "Privacy Policy" text.  Platform-specific rendering: - Web: Replace {terms_start} with &lt;a href="/terms"&gt;, {terms_end} with &lt;/a&gt;, etc. - iOS: Use these markers to identify ranges for NSAttributedString link attributes - Android: Use these markers to identify ranges for ClickableSpan </comment>
   </data>
+  <data name="test_animation" xml:space="preserve">
+    <value>Animation testen</value>
+    <comment>Get Pro screen: debug button that replays the Pro celebration animation.</comment>
+  </data>
   <data name="thanks_for_building_the_new_internet_with_us" xml:space="preserve">
     <value>Danke, dass du mit uns das neue Internet aufbaust</value>
     <comment>Used in Shared/Views/PurchaseSuccessView.swift.</comment>
