@@ -103,7 +103,7 @@ void ConnectPage::Initialize() {
   WireDrawerFeeds();
 
   // the easter egg: five taps on the status dot while connected, each within
-  // five seconds of the previous, play the Pro celebration; silent otherwise
+  // two seconds of the previous, play the Pro celebration; silent otherwise
   w_.StatusDot().Tapped([weak = w_.get_weak()](auto const&, auto const&) {
     auto self = weak.get();
     if (!self) return;
