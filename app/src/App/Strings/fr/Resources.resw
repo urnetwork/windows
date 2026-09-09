@@ -2194,6 +2194,10 @@ vous avons envoyé pour vérifier votre identité.</value>
     <value>Aucun code de solde utilisé trouvé</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
+  <data name="no_solana_wallet_found" xml:space="preserve">
+    <value>Aucune application de portefeuille trouvée pour le paiement Solana.</value>
+    <comment>Toast on the plan picker when the solana: payment link has no wallet app to open it.</comment>
+  </data>
   <data name="no_solana_wallets_found" xml:space="preserve">
     <value>Aucun portefeuille Solana trouvé</value>
     <comment>Call to action</comment>

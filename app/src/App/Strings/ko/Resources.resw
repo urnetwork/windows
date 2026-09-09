@@ -2162,6 +2162,10 @@
     <value>사용된 잔액 코드가 없습니다</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
+  <data name="no_solana_wallet_found" xml:space="preserve">
+    <value>Solana 결제를 처리할 지갑 앱을 찾을 수 없습니다.</value>
+    <comment>Toast on the plan picker when the solana: payment link has no wallet app to open it.</comment>
+  </data>
   <data name="no_solana_wallets_found" xml:space="preserve">
     <value>Solana 지갑을 찾을 수 없습니다</value>
     <comment>Call to action</comment>
