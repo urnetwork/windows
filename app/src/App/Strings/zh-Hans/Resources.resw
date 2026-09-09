@@ -868,6 +868,10 @@
     <value>继续</value>
     <comment>Continue button label.</comment>
   </data>
+  <data name="continue_with_free_plan" xml:space="preserve">
+    <value>继续使用免费方案</value>
+    <comment>Onboarding offer screen: the always-visible secondary text link that keeps the free plan and finishes onboarding.</comment>
+  </data>
   <data name="contract" xml:space="preserve">
     <value>合约</value>
     <comment>A label displayed in the center of a contract circle.</comment>
@@ -1223,6 +1227,22 @@
   <data name="edit_split_rule" xml:space="preserve">
     <value>编辑分流规则</value>
     <comment>A label displayed above the split rule editor.</comment>
+  </data>
+  <data name="email_e4_reason_not_needed" xml:space="preserve">
+    <value>还没用上</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 1.</comment>
+  </data>
+  <data name="email_e4_reason_not_working" xml:space="preserve">
+    <value>用不了</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 2.</comment>
+  </data>
+  <data name="email_e4_reason_other" xml:space="preserve">
+    <value>其他原因</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 4.</comment>
+  </data>
+  <data name="email_e4_reason_trust" xml:space="preserve">
+    <value>不确定能不能信任 VPN</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
   <data name="emoji_group_activities" xml:space="preserve">
     <value>活动</value>
@@ -2171,6 +2191,54 @@
     <value>关</value>
     <comment>A label for a DNS setting that is currently off.</comment>
   </data>
+  <data name="offer_available_until" xml:space="preserve">
+    <value>有效期至 {}</value>
+    <comment>Onboarding offer screen: the static deadline sentence; the placeholder is a local date and time.</comment>
+  </data>
+  <data name="offer_cta_start_trial_months_free" xml:space="preserve">
+    <value>开始免费试用，另享 {} 个月免费</value>
+    <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
+  </data>
+  <data name="offer_first_year_price" xml:space="preserve">
+    <value>首年 {}</value>
+    <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
+  </data>
+  <data name="offer_months_free_headline" xml:space="preserve">
+    <value>Pro 免费 {} 个月</value>
+    <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
+  </data>
+  <data name="offer_percent_off_first_year" xml:space="preserve">
+    <value>首年立减 {}%</value>
+    <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_year" xml:space="preserve">
+    <value>免费 {0} 天，首年 {1}，之后 {2}/年。可随时取消。</value>
+    <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_price" xml:space="preserve">
+    <value>之后 {}/年</value>
+    <comment>Plan card with the welcome offer: the renewal price line under the first-year amount.</comment>
+  </data>
+  <data name="offer_timeline_day" xml:space="preserve">
+    <value>第 {} 天</value>
+    <comment>Onboarding offer screen trial timeline: a row label for a day of the trial.</comment>
+  </data>
+  <data name="offer_timeline_first_charge" xml:space="preserve">
+    <value>全年 {}，此前可随时取消</value>
+    <comment>Onboarding offer screen trial timeline: the first-charge row; the placeholder is the discounted yearly amount.</comment>
+  </data>
+  <data name="offer_timeline_reminder" xml:space="preserve">
+    <value>扣费前提醒</value>
+    <comment>Onboarding offer screen trial timeline: the reminder row (two days before the charge).</comment>
+  </data>
+  <data name="offer_timeline_today" xml:space="preserve">
+    <value>今天</value>
+    <comment>Onboarding offer screen trial timeline: the first row's label.</comment>
+  </data>
+  <data name="offer_timeline_trial_starts" xml:space="preserve">
+    <value>免费试用开始</value>
+    <comment>Onboarding offer screen trial timeline: what happens today.</comment>
+  </data>
   <data name="on" xml:space="preserve">
     <value>开</value>
     <comment>A label for a DNS setting that is enabled.</comment>
@@ -2268,6 +2336,10 @@
     <value>待处理：提供了 {} MB</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
   </data>
+  <data name="periodic_product_updates" xml:space="preserve">
+    <value>定期产品更新</value>
+    <comment>Sign-up pages: the marketing opt-out switch shown at collection, on by default.</comment>
+  </data>
   <data name="pin_app" xml:space="preserve">
     <value>固定到一个提供商</value>
     <comment>Android app string: pin app.</comment>
@@ -2287,6 +2359,26 @@
   <data name="plan" xml:space="preserve">
     <value>计划</value>
     <comment>Upgrade subscription overlay</comment>
+  </data>
+  <data name="plan_billed_monthly_cancel_anytime" xml:space="preserve">
+    <value>按月扣费 · 可随时取消</value>
+    <comment>Plan picker: the line under the monthly price.</comment>
+  </data>
+  <data name="plan_billed_yearly_price_for_country" xml:space="preserve">
+    <value>每年扣费一次 · {} 价格</value>
+    <comment>Plan picker on the regional price tier: the line under the yearly price instead of a per-month equivalent; the placeholder is the storefront country's name.</comment>
+  </data>
+  <data name="plan_monthly_equivalent_line" xml:space="preserve">
+    <value>≈ {}/月 · 每年扣费一次</value>
+    <comment>Plan picker: the subordinate line under the yearly price with the per-month equivalent (ceiling-rounded).</comment>
+  </data>
+  <data name="plan_save_percent" xml:space="preserve">
+    <value>省 {}%</value>
+    <comment>Plan picker: the saving badge on the yearly card; the number is the whole percent saved against twelve monthly payments.</comment>
+  </data>
+  <data name="plan_terms_yearly" xml:space="preserve">
+    <value>免费 {0} 天，之后 {1}/年。可随时取消。</value>
+    <comment>Plan picker: the terms line under the button for the yearly plan with its trial.</comment>
   </data>
   <data name="please_install_phantom_or_solflare_to_use_this" xml:space="preserve">
     <value>请安装 Phantom 或 Solflare 以使用此功能</value>
@@ -3576,6 +3668,22 @@
     <value>余额码无效。</value>
     <comment>Account panel: invalid balance code</comment>
   </data>
+  <data name="site_landing_continue_web" xml:space="preserve">
+    <value>在网页上继续</value>
+    <comment>Email landing page: the web fallback link.</comment>
+  </data>
+  <data name="site_landing_get_app" xml:space="preserve">
+    <value>获取应用</value>
+    <comment>Email landing page: the store fallback button.</comment>
+  </data>
+  <data name="site_landing_open_app" xml:space="preserve">
+    <value>在应用中打开</value>
+    <comment>Email landing page: the button that retries the app link.</comment>
+  </data>
+  <data name="site_landing_opening" xml:space="preserve">
+    <value>正在打开 URnetwork…</value>
+    <comment>Email landing page: while the app link is being opened.</comment>
+  </data>
   <data name="site_load_balance_codes_error" xml:space="preserve">
     <value>无法加载余额码</value>
     <comment>Account panel: balance codes load error</comment>
@@ -3644,6 +3752,66 @@
     <value>暂无代理</value>
     <comment>Account panel: empty proxies list</comment>
   </data>
+  <data name="site_offer_available_until" xml:space="preserve">
+    <value>有效期至 {}</value>
+    <comment>Final offer screen: the static deadline line. {when} is a local date and time.</comment>
+  </data>
+  <data name="site_offer_continue_free" xml:space="preserve">
+    <value>继续使用免费方案</value>
+    <comment>Final offer screen: the always-visible decline link.</comment>
+  </data>
+  <data name="site_offer_cta" xml:space="preserve">
+    <value>开始免费试用，享 {} 个月免费</value>
+    <comment>Final offer screen: the one primary button. {months} is a whole number.</comment>
+  </data>
+  <data name="site_offer_day_n" xml:space="preserve">
+    <value>第 {} 天</value>
+    <comment>Trial timeline: a row label for day {day}.</comment>
+  </data>
+  <data name="site_offer_eyebrow" xml:space="preserve">
+    <value>欢迎优惠</value>
+    <comment>Final offer screen: the small eyebrow label above the headline.</comment>
+  </data>
+  <data name="site_offer_first_year" xml:space="preserve">
+    <value>首年 {}</value>
+    <comment>Welcome-offer card: the discounted first-year line. {price} is a formatted amount.</comment>
+  </data>
+  <data name="site_offer_headline" xml:space="preserve">
+    <value>{} 个月 Pro，免费</value>
+    <comment>Final offer screen: the headline. {months} is a whole number.</comment>
+  </data>
+  <data name="site_offer_sheet_line" xml:space="preserve">
+    <value>欢迎优惠：首年立减 {0}%，有效期至 {1}</value>
+    <comment>Upgrade sheet: the welcome-offer line while the offer is active. {percent} whole number, {when} a local date and time.</comment>
+  </data>
+  <data name="site_offer_subline" xml:space="preserve">
+    <value>首年立减 {}%</value>
+    <comment>Final offer screen: the sub-line under the headline. {percent} is a whole number.</comment>
+  </data>
+  <data name="site_offer_terms" xml:space="preserve">
+    <value>在 {} 之前随时取消，不会产生任何费用。</value>
+    <comment>Final offer screen: the terms line under the buttons. {date} is a local date.</comment>
+  </data>
+  <data name="site_offer_then_per_year" xml:space="preserve">
+    <value>之后 {}/年</value>
+    <comment>Welcome-offer card: the regular price after the first year.</comment>
+  </data>
+  <data name="site_offer_timeline_charge" xml:space="preserve">
+    <value>首次扣款：首年 {0}，之后 {1}/年。</value>
+    <comment>Trial timeline: the first-charge row. {price} is the discounted first-year amount, {regular} the regular yearly amount.</comment>
+  </data>
+  <data name="site_offer_timeline_reminder" xml:space="preserve">
+    <value>试用结束前我们会提醒您。</value>
+    <comment>Trial timeline: the reminder row.</comment>
+  </data>
+  <data name="site_offer_timeline_today" xml:space="preserve">
+    <value>免费试用开始，享有完整的 Pro 权限。</value>
+    <comment>Trial timeline: what happens today.</comment>
+  </data>
+  <data name="site_offer_today" xml:space="preserve">
+    <value>今天</value>
+    <comment>Trial timeline: the first row's label.</comment>
+  </data>
   <data name="site_open_app" xml:space="preserve">
     <value>打开应用</value>
     <comment>Account panel: open the in-site web app (/app)</comment>
@@ -3655,6 +3823,66 @@
   <data name="site_operator_client_ui" xml:space="preserve">
     <value>运营者客户端界面</value>
     <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
+  </data>
+  <data name="site_pay_sheet_charge_line" xml:space="preserve">
+    <value>今天 {}，之后按月。随时取消。</value>
+    <comment>Embedded pay page: the immediate charge line (monthly). {price} amount.</comment>
+  </data>
+  <data name="site_pay_sheet_done" xml:space="preserve">
+    <value>支付完成。您可以关闭此窗口。</value>
+    <comment>Embedded pay page: the completion state.</comment>
+  </data>
+  <data name="site_pay_sheet_error" xml:space="preserve">
+    <value>无法完成支付。请检查信息后重试。</value>
+    <comment>Embedded pay page: a failed confirmation.</comment>
+  </data>
+  <data name="site_pay_sheet_missing" xml:space="preserve">
+    <value>此页面需要从 URnetwork 应用中打开。</value>
+    <comment>Embedded pay page: opened without its parameters.</comment>
+  </data>
+  <data name="site_pay_sheet_pay" xml:space="preserve">
+    <value>支付 {}</value>
+    <comment>Embedded pay page: the submit button for an immediate charge.</comment>
+  </data>
+  <data name="site_pay_sheet_title" xml:space="preserve">
+    <value>获取 Pro</value>
+    <comment>Embedded pay page: the title.</comment>
+  </data>
+  <data name="site_pay_sheet_trial_line" xml:space="preserve">
+    <value>今天保存您的卡，{0} 扣款 {1}。在此之前可随时取消。</value>
+    <comment>Embedded pay page: what happens with the card on a trial. {price} amount, {date} local date.</comment>
+  </data>
+  <data name="site_plan_billed_monthly" xml:space="preserve">
+    <value>按月计费 · 随时取消</value>
+    <comment>Plan picker: the monthly card's sub-line.</comment>
+  </data>
+  <data name="site_plan_billed_yearly" xml:space="preserve">
+    <value>每年计费一次</value>
+    <comment>Plan picker: the regional-tier yearly card's sub-line (no per-month equivalent).</comment>
+  </data>
+  <data name="site_plan_monthly_equivalent" xml:space="preserve">
+    <value>≈ {} / 月，按年计费</value>
+    <comment>Plan picker: the yearly plan's per-month equivalent sub-line (ceiling rounded).</comment>
+  </data>
+  <data name="site_plan_monthly_terms" xml:space="preserve">
+    <value>{}/月，按月计费。随时取消。</value>
+    <comment>Under the monthly CTA: the billing terms. {price} is the monthly amount.</comment>
+  </data>
+  <data name="site_plan_per_month" xml:space="preserve">
+    <value>{} / 月</value>
+    <comment>Plan picker: the monthly price line. {price} is a formatted amount.</comment>
+  </data>
+  <data name="site_plan_per_year" xml:space="preserve">
+    <value>{} / 年</value>
+    <comment>Plan picker: the yearly price line. {price} is a formatted amount.</comment>
+  </data>
+  <data name="site_plan_save_percent" xml:space="preserve">
+    <value>节省 {}%</value>
+    <comment>Plan picker: the saving badge on the yearly card. {percent} is a whole number.</comment>
+  </data>
+  <data name="site_plan_trial_terms" xml:space="preserve">
+    <value>{0} 天免费，之后 {1}/年。随时取消。</value>
+    <comment>Under the yearly CTA: the trial terms. {price} is the yearly amount.</comment>
   </data>
   <data name="site_principal" xml:space="preserve">
     <value>主体</value>
@@ -3691,6 +3919,10 @@
   <data name="site_seedphrase_copy_failed" xml:space="preserve">
     <value>无法复制助记词。请选中并复制下面的单词。</value>
     <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
+  </data>
+  <data name="site_signup_product_updates" xml:space="preserve">
+    <value>定期产品更新</value>
+    <comment>Sign-up pages: the product-updates consent row (default on, one tap off)</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>用户名为URL中的令牌；密码为空。</value>
@@ -3803,6 +4035,10 @@
   <data name="site_unexpected_error" xml:space="preserve">
     <value>发生了意外错误。</value>
     <comment>Account panel: generic unexpected error</comment>
+  </data>
+  <data name="site_usdc_offer_term" xml:space="preserve">
+    <value>{1} 个月加 {0} 天 Pro</value>
+    <comment>USDC panel: the term the welcome-offer payment buys.</comment>
   </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>使用 Solana 登录</value>
@@ -4309,6 +4545,10 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>已添加钱包登录方式</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
+  <data name="welcome_offer_eyebrow" xml:space="preserve">
+    <value>欢迎优惠</value>
+    <comment>Onboarding offer screen: the small uppercase eyebrow above the headline.</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>欢迎来到 URnetwork</value>

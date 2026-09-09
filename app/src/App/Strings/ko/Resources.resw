@@ -868,6 +868,10 @@
     <value>계속</value>
     <comment>Continue button label.</comment>
   </data>
+  <data name="continue_with_free_plan" xml:space="preserve">
+    <value>무료 플랜으로 계속</value>
+    <comment>Onboarding offer screen: the always-visible secondary text link that keeps the free plan and finishes onboarding.</comment>
+  </data>
   <data name="contract" xml:space="preserve">
     <value>계약</value>
     <comment>A label displayed in the center of a contract circle.</comment>
@@ -1223,6 +1227,22 @@
   <data name="edit_split_rule" xml:space="preserve">
     <value>분할 규칙 편집</value>
     <comment>A label displayed above the split rule editor.</comment>
+  </data>
+  <data name="email_e4_reason_not_needed" xml:space="preserve">
+    <value>아직 필요하지 않았어요</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 1.</comment>
+  </data>
+  <data name="email_e4_reason_not_working" xml:space="preserve">
+    <value>작동하지 않았어요</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 2.</comment>
+  </data>
+  <data name="email_e4_reason_other" xml:space="preserve">
+    <value>다른 이유</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 4.</comment>
+  </data>
+  <data name="email_e4_reason_trust" xml:space="preserve">
+    <value>VPN을 믿어도 될지 모르겠어요</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
   <data name="emoji_group_activities" xml:space="preserve">
     <value>활동</value>
@@ -2170,6 +2190,54 @@
     <value>꺼짐</value>
     <comment>A label for a DNS setting that is currently off.</comment>
   </data>
+  <data name="offer_available_until" xml:space="preserve">
+    <value>{}까지 이용 가능</value>
+    <comment>Onboarding offer screen: the static deadline sentence; the placeholder is a local date and time.</comment>
+  </data>
+  <data name="offer_cta_start_trial_months_free" xml:space="preserve">
+    <value>무료 체험 시작 + {}개월 무료</value>
+    <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
+  </data>
+  <data name="offer_first_year_price" xml:space="preserve">
+    <value>첫해 {}</value>
+    <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
+  </data>
+  <data name="offer_months_free_headline" xml:space="preserve">
+    <value>Pro {}개월 무료</value>
+    <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
+  </data>
+  <data name="offer_percent_off_first_year" xml:space="preserve">
+    <value>첫해 {}% 할인</value>
+    <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_year" xml:space="preserve">
+    <value>{0}일 무료, 첫해 {1}, 이후 {2}/년. 언제든 취소 가능.</value>
+    <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_price" xml:space="preserve">
+    <value>이후 {}/년</value>
+    <comment>Plan card with the welcome offer: the renewal price line under the first-year amount.</comment>
+  </data>
+  <data name="offer_timeline_day" xml:space="preserve">
+    <value>{}일 차</value>
+    <comment>Onboarding offer screen trial timeline: a row label for a day of the trial.</comment>
+  </data>
+  <data name="offer_timeline_first_charge" xml:space="preserve">
+    <value>연 {}, 그 전에 언제든 취소 가능</value>
+    <comment>Onboarding offer screen trial timeline: the first-charge row; the placeholder is the discounted yearly amount.</comment>
+  </data>
+  <data name="offer_timeline_reminder" xml:space="preserve">
+    <value>결제 전 알림</value>
+    <comment>Onboarding offer screen trial timeline: the reminder row (two days before the charge).</comment>
+  </data>
+  <data name="offer_timeline_today" xml:space="preserve">
+    <value>오늘</value>
+    <comment>Onboarding offer screen trial timeline: the first row's label.</comment>
+  </data>
+  <data name="offer_timeline_trial_starts" xml:space="preserve">
+    <value>무료 체험 시작</value>
+    <comment>Onboarding offer screen trial timeline: what happens today.</comment>
+  </data>
   <data name="on" xml:space="preserve">
     <value>켜짐</value>
     <comment>A label for a DNS setting that is enabled.</comment>
@@ -2267,6 +2335,10 @@
     <value>보류 중: {} MB 제공됨</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
   </data>
+  <data name="periodic_product_updates" xml:space="preserve">
+    <value>정기 제품 업데이트</value>
+    <comment>Sign-up pages: the marketing opt-out switch shown at collection, on by default.</comment>
+  </data>
   <data name="pin_app" xml:space="preserve">
     <value>하나의 제공업체에 고정</value>
     <comment>Android app string: pin app.</comment>
@@ -2286,6 +2358,26 @@
   <data name="plan" xml:space="preserve">
     <value>플랜</value>
     <comment>Upgrade subscription overlay</comment>
+  </data>
+  <data name="plan_billed_monthly_cancel_anytime" xml:space="preserve">
+    <value>매월 청구 · 언제든 취소 가능</value>
+    <comment>Plan picker: the line under the monthly price.</comment>
+  </data>
+  <data name="plan_billed_yearly_price_for_country" xml:space="preserve">
+    <value>연 1회 청구 · {} 가격</value>
+    <comment>Plan picker on the regional price tier: the line under the yearly price instead of a per-month equivalent; the placeholder is the storefront country's name.</comment>
+  </data>
+  <data name="plan_monthly_equivalent_line" xml:space="preserve">
+    <value>≈ {}/월 · 연 1회 청구</value>
+    <comment>Plan picker: the subordinate line under the yearly price with the per-month equivalent (ceiling-rounded).</comment>
+  </data>
+  <data name="plan_save_percent" xml:space="preserve">
+    <value>{}% 절약</value>
+    <comment>Plan picker: the saving badge on the yearly card; the number is the whole percent saved against twelve monthly payments.</comment>
+  </data>
+  <data name="plan_terms_yearly" xml:space="preserve">
+    <value>{0}일 무료, 이후 {1}/년. 언제든 취소 가능.</value>
+    <comment>Plan picker: the terms line under the button for the yearly plan with its trial.</comment>
   </data>
   <data name="please_install_phantom_or_solflare_to_use_this" xml:space="preserve">
     <value>이 기능을 사용하려면 Phantom 또는 Solflare를 설치하십시오</value>
@@ -3712,6 +3804,10 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>지갑 로그인 방법이 추가되었습니다</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
+  <data name="welcome_offer_eyebrow" xml:space="preserve">
+    <value>웰컴 오퍼</value>
+    <comment>Onboarding offer screen: the small uppercase eyebrow above the headline.</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>URnetwork에 오신 것을 환영합니다</value>

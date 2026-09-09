@@ -904,6 +904,10 @@
     <value>Продолжить</value>
     <comment>Continue button label.</comment>
   </data>
+  <data name="continue_with_free_plan" xml:space="preserve">
+    <value>Продолжить с бесплатным планом</value>
+    <comment>Onboarding offer screen: the always-visible secondary text link that keeps the free plan and finishes onboarding.</comment>
+  </data>
   <data name="contract" xml:space="preserve">
     <value>Контракт</value>
     <comment>A label displayed in the center of a contract circle.</comment>
@@ -1271,6 +1275,22 @@
   <data name="edit_split_rule" xml:space="preserve">
     <value>Изменить правило разделения</value>
     <comment>A label displayed above the split rule editor.</comment>
+  </data>
+  <data name="email_e4_reason_not_needed" xml:space="preserve">
+    <value>Пока не понадобилось</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 1.</comment>
+  </data>
+  <data name="email_e4_reason_not_working" xml:space="preserve">
+    <value>Не заработало</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 2.</comment>
+  </data>
+  <data name="email_e4_reason_other" xml:space="preserve">
+    <value>Другое</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 4.</comment>
+  </data>
+  <data name="email_e4_reason_trust" xml:space="preserve">
+    <value>Не уверен, что доверяю VPN</value>
+    <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
   <data name="emoji_group_activities" xml:space="preserve">
     <value>Активности</value>
@@ -2267,6 +2287,54 @@
     <value>Выкл.</value>
     <comment>A label for a DNS setting that is currently off.</comment>
   </data>
+  <data name="offer_available_until" xml:space="preserve">
+    <value>Доступно до {}</value>
+    <comment>Onboarding offer screen: the static deadline sentence; the placeholder is a local date and time.</comment>
+  </data>
+  <data name="offer_cta_start_trial_months_free" xml:space="preserve">
+    <value>Начать пробный период с {} бесплатными месяцами</value>
+    <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
+  </data>
+  <data name="offer_first_year_price" xml:space="preserve">
+    <value>{} за первый год</value>
+    <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
+  </data>
+  <data name="offer_months_free_headline" xml:space="preserve">
+    <value>{} месяца Pro бесплатно</value>
+    <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
+  </data>
+  <data name="offer_percent_off_first_year" xml:space="preserve">
+    <value>Скидка {}% на первый год</value>
+    <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_year" xml:space="preserve">
+    <value>{0} дней бесплатно, далее {1} за первый год, затем {2}/год. Отмена в любой момент.</value>
+    <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_price" xml:space="preserve">
+    <value>далее {}/год</value>
+    <comment>Plan card with the welcome offer: the renewal price line under the first-year amount.</comment>
+  </data>
+  <data name="offer_timeline_day" xml:space="preserve">
+    <value>День {}</value>
+    <comment>Onboarding offer screen trial timeline: a row label for a day of the trial.</comment>
+  </data>
+  <data name="offer_timeline_first_charge" xml:space="preserve">
+    <value>{} за год, до этого можно отменить в любой момент</value>
+    <comment>Onboarding offer screen trial timeline: the first-charge row; the placeholder is the discounted yearly amount.</comment>
+  </data>
+  <data name="offer_timeline_reminder" xml:space="preserve">
+    <value>Напоминание перед списанием</value>
+    <comment>Onboarding offer screen trial timeline: the reminder row (two days before the charge).</comment>
+  </data>
+  <data name="offer_timeline_today" xml:space="preserve">
+    <value>Сегодня</value>
+    <comment>Onboarding offer screen trial timeline: the first row's label.</comment>
+  </data>
+  <data name="offer_timeline_trial_starts" xml:space="preserve">
+    <value>Начало бесплатного периода</value>
+    <comment>Onboarding offer screen trial timeline: what happens today.</comment>
+  </data>
   <data name="on" xml:space="preserve">
     <value>Вкл.</value>
     <comment>A label for a DNS setting that is enabled.</comment>
@@ -2364,6 +2432,10 @@
     <value>В ожидании: предоставлено {} МБ</value>
     <comment>Payout list row label while a payout is still pending: the amount of traffic provided that the pending payout covers. Used in apple Shared/Views/PaymentsList.swift and android ui/wallet/PayoutRow.kt.</comment>
   </data>
+  <data name="periodic_product_updates" xml:space="preserve">
+    <value>Периодические новости о продукте</value>
+    <comment>Sign-up pages: the marketing opt-out switch shown at collection, on by default.</comment>
+  </data>
   <data name="pin_app" xml:space="preserve">
     <value>Закрепить за одним провайдером</value>
     <comment>Android app string: pin app.</comment>
@@ -2383,6 +2455,26 @@
   <data name="plan" xml:space="preserve">
     <value>Тариф</value>
     <comment>Upgrade subscription overlay</comment>
+  </data>
+  <data name="plan_billed_monthly_cancel_anytime" xml:space="preserve">
+    <value>Списание ежемесячно · отмена в любой момент</value>
+    <comment>Plan picker: the line under the monthly price.</comment>
+  </data>
+  <data name="plan_billed_yearly_price_for_country" xml:space="preserve">
+    <value>Списание раз в год · цена для {}</value>
+    <comment>Plan picker on the regional price tier: the line under the yearly price instead of a per-month equivalent; the placeholder is the storefront country's name.</comment>
+  </data>
+  <data name="plan_monthly_equivalent_line" xml:space="preserve">
+    <value>≈ {}/мес · списание раз в год</value>
+    <comment>Plan picker: the subordinate line under the yearly price with the per-month equivalent (ceiling-rounded).</comment>
+  </data>
+  <data name="plan_save_percent" xml:space="preserve">
+    <value>Экономия {}%</value>
+    <comment>Plan picker: the saving badge on the yearly card; the number is the whole percent saved against twelve monthly payments.</comment>
+  </data>
+  <data name="plan_terms_yearly" xml:space="preserve">
+    <value>{0} дней бесплатно, далее {1}/год. Отмена в любой момент.</value>
+    <comment>Plan picker: the terms line under the button for the yearly plan with its trial.</comment>
   </data>
   <data name="please_install_phantom_or_solflare_to_use_this" xml:space="preserve">
     <value>Пожалуйста, установите Phantom или Solflare, чтобы использовать эту функцию</value>
@@ -3744,6 +3836,22 @@
     <value>Неверный код баланса.</value>
     <comment>Account panel: invalid balance code</comment>
   </data>
+  <data name="site_landing_continue_web" xml:space="preserve">
+    <value>Продолжить в браузере</value>
+    <comment>Email landing page: the web fallback link.</comment>
+  </data>
+  <data name="site_landing_get_app" xml:space="preserve">
+    <value>Скачать приложение</value>
+    <comment>Email landing page: the store fallback button.</comment>
+  </data>
+  <data name="site_landing_open_app" xml:space="preserve">
+    <value>Открыть в приложении</value>
+    <comment>Email landing page: the button that retries the app link.</comment>
+  </data>
+  <data name="site_landing_opening" xml:space="preserve">
+    <value>Открываем URnetwork…</value>
+    <comment>Email landing page: while the app link is being opened.</comment>
+  </data>
   <data name="site_load_balance_codes_error" xml:space="preserve">
     <value>Не удалось загрузить коды баланса</value>
     <comment>Account panel: balance codes load error</comment>
@@ -3812,6 +3920,66 @@
     <value>Пока нет прокси</value>
     <comment>Account panel: empty proxies list</comment>
   </data>
+  <data name="site_offer_available_until" xml:space="preserve">
+    <value>Действует до {}</value>
+    <comment>Final offer screen: the static deadline line. {when} is a local date and time.</comment>
+  </data>
+  <data name="site_offer_continue_free" xml:space="preserve">
+    <value>Продолжить с бесплатным планом</value>
+    <comment>Final offer screen: the always-visible decline link.</comment>
+  </data>
+  <data name="site_offer_cta" xml:space="preserve">
+    <value>Начать пробный период с {} бесплатными месяцами</value>
+    <comment>Final offer screen: the one primary button. {months} is a whole number.</comment>
+  </data>
+  <data name="site_offer_day_n" xml:space="preserve">
+    <value>День {}</value>
+    <comment>Trial timeline: a row label for day {day}.</comment>
+  </data>
+  <data name="site_offer_eyebrow" xml:space="preserve">
+    <value>Приветственное предложение</value>
+    <comment>Final offer screen: the small eyebrow label above the headline.</comment>
+  </data>
+  <data name="site_offer_first_year" xml:space="preserve">
+    <value>{} за первый год</value>
+    <comment>Welcome-offer card: the discounted first-year line. {price} is a formatted amount.</comment>
+  </data>
+  <data name="site_offer_headline" xml:space="preserve">
+    <value>{} месяца Pro бесплатно</value>
+    <comment>Final offer screen: the headline. {months} is a whole number.</comment>
+  </data>
+  <data name="site_offer_sheet_line" xml:space="preserve">
+    <value>Приветственное предложение: скидка {0}% на первый год до {1}</value>
+    <comment>Upgrade sheet: the welcome-offer line while the offer is active. {percent} whole number, {when} a local date and time.</comment>
+  </data>
+  <data name="site_offer_subline" xml:space="preserve">
+    <value>Скидка {}% на первый год</value>
+    <comment>Final offer screen: the sub-line under the headline. {percent} is a whole number.</comment>
+  </data>
+  <data name="site_offer_terms" xml:space="preserve">
+    <value>Отмените до {} — и с вас ничего не спишут.</value>
+    <comment>Final offer screen: the terms line under the buttons. {date} is a local date.</comment>
+  </data>
+  <data name="site_offer_then_per_year" xml:space="preserve">
+    <value>затем {}/год</value>
+    <comment>Welcome-offer card: the regular price after the first year.</comment>
+  </data>
+  <data name="site_offer_timeline_charge" xml:space="preserve">
+    <value>Первое списание: {0} за первый год, затем {1}/год.</value>
+    <comment>Trial timeline: the first-charge row. {price} is the discounted first-year amount, {regular} the regular yearly amount.</comment>
+  </data>
+  <data name="site_offer_timeline_reminder" xml:space="preserve">
+    <value>Мы напомним вам до окончания пробного периода.</value>
+    <comment>Trial timeline: the reminder row.</comment>
+  </data>
+  <data name="site_offer_timeline_today" xml:space="preserve">
+    <value>Бесплатный период начинается с полным доступом к Pro.</value>
+    <comment>Trial timeline: what happens today.</comment>
+  </data>
+  <data name="site_offer_today" xml:space="preserve">
+    <value>Сегодня</value>
+    <comment>Trial timeline: the first row's label.</comment>
+  </data>
   <data name="site_open_app" xml:space="preserve">
     <value>Открыть приложение</value>
     <comment>Account panel: open the in-site web app (/app)</comment>
@@ -3823,6 +3991,66 @@
   <data name="site_operator_client_ui" xml:space="preserve">
     <value>Интерфейс клиента оператора</value>
     <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
+  </data>
+  <data name="site_pay_sheet_charge_line" xml:space="preserve">
+    <value>{} сегодня, затем ежемесячно. Отмена в любое время.</value>
+    <comment>Embedded pay page: the immediate charge line (monthly). {price} amount.</comment>
+  </data>
+  <data name="site_pay_sheet_done" xml:space="preserve">
+    <value>Оплата завершена. Это окно можно закрыть.</value>
+    <comment>Embedded pay page: the completion state.</comment>
+  </data>
+  <data name="site_pay_sheet_error" xml:space="preserve">
+    <value>Не удалось завершить оплату. Проверьте данные и попробуйте снова.</value>
+    <comment>Embedded pay page: a failed confirmation.</comment>
+  </data>
+  <data name="site_pay_sheet_missing" xml:space="preserve">
+    <value>Эту страницу нужно открыть из приложения URnetwork.</value>
+    <comment>Embedded pay page: opened without its parameters.</comment>
+  </data>
+  <data name="site_pay_sheet_pay" xml:space="preserve">
+    <value>Оплатить {}</value>
+    <comment>Embedded pay page: the submit button for an immediate charge.</comment>
+  </data>
+  <data name="site_pay_sheet_title" xml:space="preserve">
+    <value>Получить Pro</value>
+    <comment>Embedded pay page: the title.</comment>
+  </data>
+  <data name="site_pay_sheet_trial_line" xml:space="preserve">
+    <value>Карта сохраняется сегодня, {1} спишется {0}. До этого можно отменить в любой момент.</value>
+    <comment>Embedded pay page: what happens with the card on a trial. {price} amount, {date} local date.</comment>
+  </data>
+  <data name="site_plan_billed_monthly" xml:space="preserve">
+    <value>Оплата ежемесячно · отмена в любое время</value>
+    <comment>Plan picker: the monthly card's sub-line.</comment>
+  </data>
+  <data name="site_plan_billed_yearly" xml:space="preserve">
+    <value>Оплата раз в год</value>
+    <comment>Plan picker: the regional-tier yearly card's sub-line (no per-month equivalent).</comment>
+  </data>
+  <data name="site_plan_monthly_equivalent" xml:space="preserve">
+    <value>≈ {} / месяц, оплата раз в год</value>
+    <comment>Plan picker: the yearly plan's per-month equivalent sub-line (ceiling rounded).</comment>
+  </data>
+  <data name="site_plan_monthly_terms" xml:space="preserve">
+    <value>{}/месяц, оплата ежемесячно. Отмена в любое время.</value>
+    <comment>Under the monthly CTA: the billing terms. {price} is the monthly amount.</comment>
+  </data>
+  <data name="site_plan_per_month" xml:space="preserve">
+    <value>{} / месяц</value>
+    <comment>Plan picker: the monthly price line. {price} is a formatted amount.</comment>
+  </data>
+  <data name="site_plan_per_year" xml:space="preserve">
+    <value>{} / год</value>
+    <comment>Plan picker: the yearly price line. {price} is a formatted amount.</comment>
+  </data>
+  <data name="site_plan_save_percent" xml:space="preserve">
+    <value>Экономия {}%</value>
+    <comment>Plan picker: the saving badge on the yearly card. {percent} is a whole number.</comment>
+  </data>
+  <data name="site_plan_trial_terms" xml:space="preserve">
+    <value>{0} дней бесплатно, затем {1}/год. Отмена в любое время.</value>
+    <comment>Under the yearly CTA: the trial terms. {price} is the yearly amount.</comment>
   </data>
   <data name="site_principal" xml:space="preserve">
     <value>Принципал</value>
@@ -3859,6 +4087,10 @@
   <data name="site_seedphrase_copy_failed" xml:space="preserve">
     <value>Не удалось скопировать сид-фразу. Выделите и скопируйте слова ниже.</value>
     <comment>Instant account creation: the clipboard copy of the seedphrase failed.</comment>
+  </data>
+  <data name="site_signup_product_updates" xml:space="preserve">
+    <value>Периодические новости о продукте</value>
+    <comment>Sign-up pages: the product-updates consent row (default on, one tap off)</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>Имя пользователя — это токен из URL; пароль пустой.</value>
@@ -3971,6 +4203,10 @@
   <data name="site_unexpected_error" xml:space="preserve">
     <value>Произошла непредвиденная ошибка.</value>
     <comment>Account panel: generic unexpected error</comment>
+  </data>
+  <data name="site_usdc_offer_term" xml:space="preserve">
+    <value>{1} месяцев плюс {0} дней Pro</value>
+    <comment>USDC panel: the term the welcome-offer payment buys.</comment>
   </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Войти через Solana</value>
@@ -4501,6 +4737,10 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>Способ входа через кошелек добавлен</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
+  <data name="welcome_offer_eyebrow" xml:space="preserve">
+    <value>Приветственное предложение</value>
+    <comment>Onboarding offer screen: the small uppercase eyebrow above the headline.</comment>
   </data>
   <data name="welcome_to_urnetwork" xml:space="preserve">
     <value>Добро пожаловать в URnetwork</value>
