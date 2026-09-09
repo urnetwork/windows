@@ -319,6 +319,7 @@
     <ClInclude Include="TapSequenceGate.h" />
     <ClInclude Include="SettingsSheets.h" />
     <ClInclude Include="EmojiKeyboard.h" />
+    <ClInclude Include="LeaderboardIndicator.h" />
     <ClInclude Include="WalletPage.h" />
     <ClInclude Include="EarningsSheets.h" />
     <ClInclude Include="AppController.h" />

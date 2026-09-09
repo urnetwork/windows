@@ -6,6 +6,9 @@
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
+#include <winrt/Microsoft.UI.Xaml.Controls.Primitives.h>
+#include <winrt/Microsoft.UI.Xaml.Input.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 #include <winrt/Windows.System.h>
@@ -18,10 +21,12 @@
 #include <cstdlib>
 #include <cwchar>
 #include <iterator>
+#include <limits>
 #include <string_view>
 
 #include "EarningsSheets.h"
 #include "EmojiKeyboard.h"
+#include "LeaderboardIndicator.h"
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
@@ -520,6 +525,7 @@ void WalletPage::OnEarningsTableChanged(SelectorBar const& bar,
   w_.LeaderboardHost().Visibility(leaderboard ? Visibility::Visible : Visibility::Collapsed);
   ApplyLedgerMeta();
   if (leaderboard && pointsBoardShowing_) EnsurePointsBoard();
+  UpdatePointsIndicator();
 }
 
 // ---- loading ---------------------------------------------------------------
@@ -2067,6 +2073,7 @@ Border PointsPaneRow(double padY) {
 namespace {
 WalletPage::PointsRow ToPointsRow(urnet::PointsLeaderboardRow const& row) {
   WalletPage::PointsRow out;
+  out.position = row.position;
   out.networkId = row.network_id.value_or(std::string());
   out.displayName = row.display_name.value_or(std::string());
   out.emojiTag = row.emoji_tag.value_or(std::string());
@@ -2115,6 +2122,25 @@ void WalletPage::InitializePointsBoard() {
     if (!*alive) return;
     if (auto self = weak.get()) self->wallet().OnPointsRetry();
   });
+  // activating a board tab -- the already-active one included -- scrolls its
+  // list to the top (mmm/DESIGNSTYLE.md "Long ranked lists"); a re-tap
+  // changes no selection, so this hangs on the tap and on Enter/Space
+  for (SelectorBarItem const item : {w_.DataBoardItem(), w_.PointsBoardItem()}) {
+    const bool points = item == w_.PointsBoardItem();
+    item.Tapped([weak, alive, points](IInspectable const&,
+                                      winrt::Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&) {
+      if (!*alive) return;
+      if (auto self = weak.get()) self->wallet().ResetBoardList(points);
+    });
+    item.KeyDown([weak, alive, points](IInspectable const&,
+                                       winrt::Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& e) {
+      if (!*alive) return;
+      using winrt::Windows::System::VirtualKey;
+      if (e.Key() != VirtualKey::Enter && e.Key() != VirtualKey::Space) return;
+      if (auto self = weak.get()) self->wallet().ResetBoardList(points);
+    });
+  }
+  BuildPointsIndicator();
 }
 
 void WalletPage::ApplyPointsBoardStrings() {
@@ -2269,6 +2295,7 @@ void WalletPage::ShowPointsBoard(bool points) {
   w_.PointsNetworkHost().Visibility(points ? Visibility::Visible : Visibility::Collapsed);
   ApplyLedgerMeta();
   if (points) EnsurePointsBoard();
+  UpdatePointsIndicator();
 }
 
 void WalletPage::EnsurePointsBoard() {
@@ -2332,9 +2359,15 @@ void WalletPage::ClosePointsBoard(bool deviceAlive) {
   pointsEnd_ = false;
   pointsError_.clear();
   pointsMe_.reset();
+  pointsTotalRanked_ = 0;
+  pointsFirstPosition_ = 1;
+  pointsHasMoreBefore_ = false;
+  pointsFirstVisible_ = 1;
+  pointsSeekPending_ = false;
   RenderPointsRows();
   RenderPointsHeader();
   RenderPointsFooter();
+  UpdatePointsIndicator();
 }
 
 void WalletPage::ReadPointsBoard() {
@@ -2351,6 +2384,8 @@ void WalletPage::ReadPointsBoard() {
     pointsEnd_ = pointsVc_->isEndReached();
     pointsError_ = pointsVc_->getErrorMessage();
     pointsTotalRanked_ = pointsVc_->getTotalRanked();
+    pointsFirstPosition_ = std::max<int64_t>(1, pointsVc_->firstLoadedPosition());
+    pointsHasMoreBefore_ = pointsVc_->hasMoreBefore();
     if (auto me = pointsVc_->getMe()) {
       pointsMe_ = me->Row ? std::optional<PointsRow>(ToPointsRow(*me->Row)) : std::nullopt;
       if (ownFlagsAppliedAt_ >= ownFlagsEditedAt_) {
@@ -2374,12 +2409,24 @@ void WalletPage::ReadPointsBoard() {
   const bool extends = sameContext && pointsRenderedCount_ == pointsRows_.size() &&
                        next.size() > pointsRows_.size() &&
                        std::equal(pointsRows_.begin(), pointsRows_.end(), next.begin());
+  // the page before the window lands above the rows already drawn (the old
+  // rows are the new list's tail): those are kept, the new ones inserted
+  // above them, and the scroller moved by their height so the row in view
+  // stays put
+  const bool prepends = !extends && sameContext && pointsRenderedCount_ == pointsRows_.size() &&
+                        !pointsRows_.empty() && next.size() > pointsRows_.size() &&
+                        std::equal(pointsRows_.begin(), pointsRows_.end(),
+                                   next.end() - static_cast<std::ptrdiff_t>(pointsRows_.size()));
+  const size_t prepended = prepends ? next.size() - pointsRows_.size() : 0;
   const bool rowsChanged = next != pointsRows_ || !sameContext;
   const size_t renderFrom = extends ? pointsRows_.size() : 0;
   if (next != pointsRows_) pointsRows_ = std::move(next);
   if (!pointsLoading_ && (!pointsRows_.empty() || pointsEnd_ || !pointsError_.empty())) {
     pointsHasLoaded_ = true;
   }
+  // a seek's window has landed once the controller is done loading: the
+  // scroller goes to its first row (the rank released on)
+  const bool seekLanded = pointsSeekPending_ && !pointsLoading_ && pointsError_.empty();
 
   // the sort bar follows the controller (a same-sort reselect is a no-op below)
   SelectorBarItem item = w_.PointsSortPointsItem();
@@ -2390,10 +2437,29 @@ void WalletPage::ReadPointsBoard() {
   }
   if (w_.PointsSortBar().SelectedItem() != item) w_.PointsSortBar().SelectedItem(item);
 
-  if (rowsChanged) RenderPointsRows(renderFrom);
+  if (prepends) {
+    PrependPointsRows(prepended);
+  } else if (rowsChanged) {
+    RenderPointsRows(renderFrom);
+  }
   RenderPointsHeader();
   RenderPointsFooter();
   if (pointsBoardShowing_) ApplyLedgerMeta();
+  if (prepends) {
+    // the new rows are above the view: the offset moves by their height once
+    // they are laid out, so the row in view stays where it is
+    auto const scroll = w_.PointsScroll();
+    w_.PointsRows().UpdateLayout();
+    scroll.ChangeView(nullptr,
+                      winrt::Windows::Foundation::IReference<double>{
+                          scroll.VerticalOffset() + static_cast<double>(prepended) * kPointsRowHeight},
+                      nullptr, true);
+  }
+  if (seekLanded) {
+    pointsSeekPending_ = false;
+    ScrollPointsToFirstRow();
+  }
+  RefreshPointsPosition();
 
   // a page that does not fill the pane can never be scrolled to its end, so
   // the next one is asked for once layout has run (the controller refuses a
@@ -2438,6 +2504,29 @@ void WalletPage::RenderPointsRows(size_t fromIndex) {
   pointsRenderedCount_ = pointsRows_.size();
   if (pointsRows_.empty()) return;
 
+  for (size_t i = fromIndex; i < pointsRows_.size(); ++i) {
+    rows.Children().Append(MakePointsRow(pointsRows_[i], ownId));
+  }
+}
+
+// The page before the window: `count` rows now at the head of pointsRows_ go
+// in above the rows already drawn, under the column-name strip (child 0).
+void WalletPage::PrependPointsRows(size_t count) {
+  auto rows = w_.PointsRows();
+  if (rows.Children().Size() == 0 || count > pointsRows_.size()) {
+    RenderPointsRows();
+    return;
+  }
+  const std::string ownId = pointsMe_ ? pointsMe_->networkId : std::string();
+  for (size_t i = 0; i < count; ++i) {
+    rows.Children().InsertAt(static_cast<uint32_t>(1 + i), MakePointsRow(pointsRows_[i], ownId));
+  }
+  pointsRenderedCount_ = pointsRows_.size();
+}
+
+// One ranked row of the table, keyed by its position.
+UIElement WalletPage::MakePointsRow(PointsRow const& r, std::string const& ownId) {
+  const std::vector<double> weights{1, 5, 2, 1, 1};
   const bool byBlocks = pointsSort_ == urnet::PointsLeaderboardSortBlocks;
   const bool byStreak = pointsSort_ == urnet::PointsLeaderboardSortStreak;
   const size_t activeColumn = byBlocks ? 3 : (byStreak ? 4 : 2);
@@ -2446,40 +2535,36 @@ void WalletPage::RenderPointsRows(size_t fromIndex) {
   // own row is what the network looks like to others, only highlighted (the
   // highlight keys on the network id, never the name; the own card carries
   // the name)
-
-  for (size_t i = fromIndex; i < pointsRows_.size(); ++i) {
-    auto const& r = pointsRows_[i];
-    const bool isOwn = !ownId.empty() && r.networkId == ownId;
-    auto row = kit::MakePaneTableRow(weights, kPointsRowHeight, /*textColumns=*/2);
-    // the name sits on its own line above the tag, so a long tag never
-    // squeezes the name to a stub in a narrow window
-    auto identity = kit::MakePaneTableStack(row, 1);
-    row.cells[0].Text(Utf8(byBlocks ? r.rankBlocksText : (byStreak ? r.rankStreakText : r.rankPointsText)));
-    // the emoji tag shows either way; the name only when the network is not anonymous
-    const bool anon = r.anonymous || r.displayName.empty();
-    std::wstring name = anon ? std::wstring{anonymous} : std::wstring{Utf8(r.displayName)};
-    row.cells[1].Text(hstring{name});
-    kit::SetTextOrCollapse(identity.bottom, Utf8(r.emojiTag));
-    row.cells[2].Text(Utf8(r.totalPointsText));
-    row.cells[3].Text(Utf8(r.blocksText));
-    row.cells[4].Text(Utf8(r.streakText));
-    // the sorted figure reads in the text voice; the other two step back
-    for (size_t i = 2; i < row.cells.size(); ++i) {
-      row.cells[i].Foreground(i == activeColumn ? colors::TextBrush() : colors::MutedBrush());
-      if (i == activeColumn) {
-        row.cells[i].FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
-      }
+  const bool isOwn = !ownId.empty() && r.networkId == ownId;
+  auto row = kit::MakePaneTableRow(weights, kPointsRowHeight, /*textColumns=*/2);
+  // the name sits on its own line above the tag, so a long tag never
+  // squeezes the name to a stub in a narrow window
+  auto identity = kit::MakePaneTableStack(row, 1);
+  row.cells[0].Text(Utf8(byBlocks ? r.rankBlocksText : (byStreak ? r.rankStreakText : r.rankPointsText)));
+  // the emoji tag shows either way; the name only when the network is not anonymous
+  const bool anon = r.anonymous || r.displayName.empty();
+  std::wstring name = anon ? std::wstring{anonymous} : std::wstring{Utf8(r.displayName)};
+  row.cells[1].Text(hstring{name});
+  kit::SetTextOrCollapse(identity.bottom, Utf8(r.emojiTag));
+  row.cells[2].Text(Utf8(r.totalPointsText));
+  row.cells[3].Text(Utf8(r.blocksText));
+  row.cells[4].Text(Utf8(r.streakText));
+  // the sorted figure reads in the text voice; the other two step back
+  for (size_t i = 2; i < row.cells.size(); ++i) {
+    row.cells[i].Foreground(i == activeColumn ? colors::TextBrush() : colors::MutedBrush());
+    if (i == activeColumn) {
+      row.cells[i].FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
     }
-    if (anon) row.cells[1].Foreground(colors::MutedBrush());
-    // the account's own row is the point of the table: colour AND the pane's
-    // fill step, because colour alone is never the only signal
-    if (isOwn) {
-      auto own = colors::MakeBrush(colors::kUrGreen);
-      for (auto const& cell : row.cells) cell.Foreground(own);
-      row.root.Background(colors::CardBrush());
-    }
-    rows.Children().Append(row.root);
   }
+  if (anon) row.cells[1].Foreground(colors::MutedBrush());
+  // the account's own row is the point of the table: colour AND the pane's
+  // fill step, because colour alone is never the only signal
+  if (isOwn) {
+    auto own = colors::MakeBrush(colors::kUrGreen);
+    for (auto const& cell : row.cells) cell.Foreground(own);
+    row.root.Background(colors::CardBrush());
+  }
+  return row.root;
 }
 
 // The network's own name for the points board: the me row's, or the jwt's
@@ -2558,6 +2643,392 @@ void WalletPage::RenderPointsFooter() {
   }
 }
 
+// ---- the position indicator ---------------------------------------------------
+// A slider over ranks 1..N at the points scroller's right edge while the board
+// is longer than the pane (mmm/DESIGNSTYLE.md "Long ranked lists: tab reset
+// and a draggable position indicator"). The thumb sits at the first row in
+// view over the total and is as long as the loaded window over the total;
+// dragging it shows the rank and tier beside it and, on release, asks the
+// controller for the window at that rank. A hidden Slider under the thumb is
+// its keyboard and UI Automation face (arrows move and seek; a range value
+// to assistive tech). The math is LeaderboardIndicator.h.
+
+namespace {
+constexpr double kIndicatorWidth = 32.0;  // the 24px thumb with 4px of air each side
+constexpr double kIndicatorPad = 8.0;     // the track stops short of the scroller's ends
+constexpr double kIndicatorTrackWidth = 6.0;
+
+Duration IndicatorMillis(int64_t ms) {
+  return Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+                      std::chrono::milliseconds(ms)),
+                  DurationType::TimeSpan};
+}
+}  // namespace
+
+void WalletPage::BuildPointsIndicator() {
+  namespace shapes = winrt::Microsoft::UI::Xaml::Shapes;
+  namespace automation = winrt::Microsoft::UI::Xaml::Automation;
+  namespace input = winrt::Microsoft::UI::Xaml::Input;
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+
+  // the overlay: a canvas over the scroller's row of the points host, at its right edge
+  pointsIndicator_ = Canvas{};
+  pointsIndicator_.Width(kIndicatorWidth);
+  pointsIndicator_.HorizontalAlignment(HorizontalAlignment::Right);
+  pointsIndicator_.VerticalAlignment(VerticalAlignment::Stretch);
+  pointsIndicator_.Visibility(Visibility::Collapsed);
+  Grid::SetRow(pointsIndicator_, 1);
+  w_.PointsHost().Children().Append(pointsIndicator_);
+  pointsIndicator_.SizeChanged([weak, alive](IInspectable const&, SizeChangedEventArgs const&) {
+    if (!*alive) return;
+    if (auto self = weak.get()) self->wallet().UpdatePointsIndicator();
+  });
+
+  // the faint track
+  pointsTrack_ = shapes::Rectangle{};
+  pointsTrack_.Width(kIndicatorTrackWidth);
+  pointsTrack_.RadiusX(kIndicatorTrackWidth / 2);
+  pointsTrack_.RadiusY(kIndicatorTrackWidth / 2);
+  pointsTrack_.Fill(colors::FaintBrush());
+  Canvas::SetLeft(pointsTrack_, (kIndicatorWidth - kIndicatorTrackWidth) / 2);
+  Canvas::SetTop(pointsTrack_, kIndicatorPad);
+  pointsIndicator_.Children().Append(pointsTrack_);
+
+  // the keyboard and UIA face of the thumb: a real slider over the track, unseen
+  pointsSlider_ = Slider{};
+  pointsSlider_.Orientation(Orientation::Vertical);
+  pointsSlider_.IsDirectionReversed(true);  // rank 1 at the top
+  pointsSlider_.Minimum(1);
+  pointsSlider_.Maximum(1);
+  pointsSlider_.StepFrequency(1);
+  pointsSlider_.Opacity(0);
+  pointsSlider_.IsHitTestVisible(false);
+  pointsSlider_.Width(kIndicatorWidth);
+  automation::AutomationProperties::SetName(pointsSlider_, Loc("leaderboard_position_indicator"));
+  Canvas::SetLeft(pointsSlider_, 0);
+  Canvas::SetTop(pointsSlider_, kIndicatorPad);
+  pointsSlider_.ValueChanged(
+      [weak, alive](IInspectable const&,
+                    winrt::Microsoft::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs const& e) {
+        if (!*alive) return;
+        auto self = weak.get();
+        if (!self) return;
+        auto& page = self->wallet();
+        if (page.applyingPointsSlider_) return;  // the page set it, not the keyboard
+        const int64_t rank = static_cast<int64_t>(std::llround(e.NewValue()));
+        page.ShowPointsDragLabel(rank);
+        page.HidePointsDragLabel(/*fade=*/true);
+        page.SeekPoints(rank);
+      });
+  pointsIndicator_.Children().Append(pointsSlider_);
+
+  // the accent thumb
+  pointsThumb_ = shapes::Rectangle{};
+  pointsThumb_.Width(leaderboard::kThumbWidth);
+  pointsThumb_.Height(leaderboard::kThumbMinHeight);
+  pointsThumb_.RadiusX(6);
+  pointsThumb_.RadiusY(6);
+  pointsThumb_.Fill(colors::AccentBrush());
+  pointsThumb_.Opacity(0.85);
+  // the slider speaks for it
+  automation::AutomationProperties::SetAccessibilityView(
+      pointsThumb_, winrt::Microsoft::UI::Xaml::Automation::Peers::AccessibilityView::Raw);
+  Canvas::SetLeft(pointsThumb_, (kIndicatorWidth - leaderboard::kThumbWidth) / 2);
+  Canvas::SetTop(pointsThumb_, kIndicatorPad);
+  pointsThumb_.PointerPressed([weak, alive](IInspectable const&, input::PointerRoutedEventArgs const& e) {
+    if (!*alive) return;
+    auto self = weak.get();
+    if (!self) return;
+    auto& page = self->wallet();
+    page.OnPointsThumbPressed(e.GetCurrentPoint(page.pointsIndicator_).Position().Y, e);
+  });
+  pointsThumb_.PointerMoved([weak, alive](IInspectable const&, input::PointerRoutedEventArgs const& e) {
+    if (!*alive) return;
+    auto self = weak.get();
+    if (!self) return;
+    auto& page = self->wallet();
+    if (!page.pointsDragging_) return;
+    page.OnPointsThumbMoved(e.GetCurrentPoint(page.pointsIndicator_).Position().Y);
+    e.Handled(true);
+  });
+  auto released = [weak, alive](IInspectable const&, input::PointerRoutedEventArgs const& e) {
+    if (!*alive) return;
+    auto self = weak.get();
+    if (!self) return;
+    auto& page = self->wallet();
+    if (!page.pointsDragging_) return;
+    page.pointsThumb_.ReleasePointerCapture(e.Pointer());
+    page.OnPointsThumbReleased();
+    e.Handled(true);
+  };
+  pointsThumb_.PointerReleased(released);
+  pointsThumb_.PointerCanceled(released);
+  pointsThumb_.PointerCaptureLost(released);
+  // a press on the track brings the thumb under the pointer and picks it up
+  pointsTrack_.PointerPressed([weak, alive](IInspectable const&, input::PointerRoutedEventArgs const& e) {
+    if (!*alive) return;
+    auto self = weak.get();
+    if (!self) return;
+    auto& page = self->wallet();
+    page.OnPointsThumbPressed(e.GetCurrentPoint(page.pointsIndicator_).Position().Y, e);
+  });
+  pointsIndicator_.Children().Append(pointsThumb_);
+
+  // the floating label beside the thumb: the rank, the tier beneath
+  pointsIndicatorLabel_ = Border{};
+  pointsIndicatorLabel_.Background(colors::CardBrush());
+  pointsIndicatorLabel_.BorderBrush(colors::BorderBrush());
+  pointsIndicatorLabel_.BorderThickness(ThicknessHelper::FromUniformLength(1));
+  pointsIndicatorLabel_.CornerRadius(CornerRadiusHelper::FromUniformRadius(8));
+  pointsIndicatorLabel_.Padding(ThicknessHelper::FromLengths(10, 6, 10, 6));
+  pointsIndicatorLabel_.HorizontalAlignment(HorizontalAlignment::Right);
+  pointsIndicatorLabel_.VerticalAlignment(VerticalAlignment::Top);
+  pointsIndicatorLabel_.IsHitTestVisible(false);
+  pointsIndicatorLabel_.Visibility(Visibility::Collapsed);
+  automation::AutomationProperties::SetAccessibilityView(
+      pointsIndicatorLabel_, winrt::Microsoft::UI::Xaml::Automation::Peers::AccessibilityView::Raw);
+  StackPanel lines;
+  pointsIndicatorRank_ = TextBlock{};
+  pointsIndicatorRank_.FontSize(14);
+  pointsIndicatorRank_.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+  pointsIndicatorRank_.Foreground(colors::TextBrush());
+  pointsIndicatorRank_.HorizontalAlignment(HorizontalAlignment::Right);
+  pointsIndicatorTier_ = TextBlock{};
+  pointsIndicatorTier_.FontSize(11);
+  pointsIndicatorTier_.Foreground(colors::MutedBrush());
+  pointsIndicatorTier_.HorizontalAlignment(HorizontalAlignment::Right);
+  lines.Children().Append(pointsIndicatorRank_);
+  lines.Children().Append(pointsIndicatorTier_);
+  pointsIndicatorLabel_.Child(lines);
+  Grid::SetRow(pointsIndicatorLabel_, 1);
+  w_.PointsHost().Children().Append(pointsIndicatorLabel_);
+}
+
+// The first row in view, from the scroller; the thumb follows it.
+void WalletPage::RefreshPointsPosition() {
+  if (!pointsRows_.empty()) {
+    pointsFirstVisible_ = leaderboard::FirstVisiblePosition(
+        w_.PointsScroll().VerticalOffset(), kPointsTableHeaderHeight, kPointsRowHeight,
+        pointsFirstPosition_, static_cast<int64_t>(pointsRows_.size()));
+  } else {
+    pointsFirstVisible_ = pointsFirstPosition_;
+  }
+  UpdatePointsIndicator();
+}
+
+void WalletPage::UpdatePointsIndicator() {
+  if (!pointsIndicator_) return;
+  auto const scroll = w_.PointsScroll();
+  const bool boardShowing = pointsBoardShowing_ &&
+                            w_.LeaderboardHost().Visibility() == Visibility::Visible &&
+                            !pointsRows_.empty();
+  const double trackHeight = pointsIndicator_.ActualHeight() - 2 * kIndicatorPad;
+  const auto thumb = boardShowing
+                         ? leaderboard::ThumbFor(pointsFirstVisible_,
+                                                 static_cast<int64_t>(pointsRows_.size()),
+                                                 pointsTotalRanked_, trackHeight,
+                                                 scroll.ExtentHeight(), scroll.ViewportHeight())
+                         : leaderboard::Thumb{};
+  // hidden while the list is shorter than the pane; the canvas itself stays
+  // in the tree (collapsed) so its height is known when the list grows
+  const bool show = boardShowing && (thumb.visible || pointsIndicator_.ActualHeight() <= 0);
+  pointsIndicator_.Visibility(show ? Visibility::Visible : Visibility::Collapsed);
+  // the indicator is the list's scrollbar while it shows, and the table
+  // steps in from under its strip
+  scroll.VerticalScrollBarVisibility(thumb.visible ? ScrollBarVisibility::Hidden
+                                                   : ScrollBarVisibility::Auto);
+  w_.PointsRows().Margin(ThicknessHelper::FromLengths(0, 0, thumb.visible ? kIndicatorWidth : 0, 0));
+  if (!thumb.visible) {
+    pointsTrack_.Visibility(Visibility::Collapsed);
+    pointsThumb_.Visibility(Visibility::Collapsed);
+    pointsSlider_.Visibility(Visibility::Collapsed);
+    if (pointsDragging_) {
+      pointsDragging_ = false;
+      HidePointsDragLabel(/*fade=*/false);
+    }
+    return;
+  }
+  pointsTrack_.Visibility(Visibility::Visible);
+  pointsThumb_.Visibility(Visibility::Visible);
+  pointsSlider_.Visibility(Visibility::Visible);
+  pointsTrack_.Height(trackHeight);
+  pointsSlider_.Height(trackHeight);
+  pointsThumb_.Height(thumb.height);
+  pointsThumb_.Opacity(pointsDragging_ ? 1.0 : 0.85);
+  Canvas::SetTop(pointsThumb_, kIndicatorPad + (pointsDragging_ ? pointsDragTop_ : thumb.top));
+  // the slider mirrors the rank in view: arrows step by a window, page keys
+  // by a tenth of the list
+  const int64_t rank = pointsDragging_ ? pointsDragRank_ : pointsFirstVisible_;
+  applyingPointsSlider_ = true;
+  pointsSlider_.Maximum(static_cast<double>(std::max<int64_t>(1, pointsTotalRanked_)));
+  pointsSlider_.SmallChange(static_cast<double>(std::max<size_t>(1, pointsRows_.size())));
+  pointsSlider_.LargeChange(static_cast<double>(std::max<int64_t>(
+      static_cast<int64_t>(std::max<size_t>(1, pointsRows_.size())), pointsTotalRanked_ / 10)));
+  pointsSlider_.Value(static_cast<double>(rank));
+  applyingPointsSlider_ = false;
+}
+
+void WalletPage::OnPointsThumbPressed(double y, winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& e) {
+  const double trackHeight = pointsIndicator_.ActualHeight() - 2 * kIndicatorPad;
+  const double thumbHeight = pointsThumb_.Height();
+  if (trackHeight <= 0 || pointsTotalRanked_ <= 0) return;
+  const double thumbTop = Canvas::GetTop(pointsThumb_) - kIndicatorPad;
+  const double pressed = y - kIndicatorPad;
+  // a press on the thumb picks it up where it is; a press on the track
+  // brings the thumb under the pointer
+  const bool onThumb = pressed >= thumbTop && pressed <= thumbTop + thumbHeight;
+  pointsDragTop_ = onThumb ? thumbTop
+                           : std::clamp(pressed - thumbHeight / 2, 0.0, std::max(0.0, trackHeight - thumbHeight));
+  pointsDragGrab_ = pressed - pointsDragTop_;
+  pointsDragging_ = true;
+  pointsThumb_.CapturePointer(e.Pointer());
+  pointsSlider_.Focus(FocusState::Programmatic);
+  e.Handled(true);
+  OnPointsThumbMoved(y);
+}
+
+void WalletPage::OnPointsThumbMoved(double y) {
+  if (!pointsDragging_) return;
+  const double trackHeight = pointsIndicator_.ActualHeight() - 2 * kIndicatorPad;
+  const double thumbHeight = pointsThumb_.Height();
+  pointsDragTop_ = std::clamp(y - kIndicatorPad - pointsDragGrab_, 0.0,
+                              std::max(0.0, trackHeight - thumbHeight));
+  pointsDragRank_ = leaderboard::RankForThumbTop(pointsDragTop_, thumbHeight, trackHeight,
+                                                 pointsTotalRanked_);
+  ShowPointsDragLabel(pointsDragRank_);
+  UpdatePointsIndicator();
+}
+
+void WalletPage::OnPointsThumbReleased() {
+  if (!pointsDragging_) return;
+  pointsDragging_ = false;
+  HidePointsDragLabel(/*fade=*/true);
+  SeekPoints(pointsDragRank_);
+  UpdatePointsIndicator();
+}
+
+// A rank inside the loaded window is a scroll; any other asks the controller
+// for the window at that rank, and the scroller goes to its first row when it
+// lands (ReadPointsBoard).
+void WalletPage::SeekPoints(int64_t rank) {
+  if (pointsRows_.empty() || pointsTotalRanked_ <= 0) return;
+  rank = std::clamp<int64_t>(rank, 1, pointsTotalRanked_);
+  const int64_t last = pointsFirstPosition_ + static_cast<int64_t>(pointsRows_.size()) - 1;
+  if (rank >= pointsFirstPosition_ && rank <= last) {
+    w_.PointsScroll().ChangeView(
+        nullptr,
+        winrt::Windows::Foundation::IReference<double>{
+            kPointsTableHeaderHeight + static_cast<double>(rank - pointsFirstPosition_) * kPointsRowHeight},
+        nullptr, true);
+    return;
+  }
+  if (!pointsVc_) return;
+  pointsSeekPending_ = true;
+  pointsVc_->seekToRank(rank);
+}
+
+void WalletPage::ShowPointsDragLabel(int64_t rank) {
+  if (!pointsIndicatorLabel_) return;
+  if (pointsLabelFade_) {
+    pointsLabelFade_.Stop();
+    pointsLabelFade_ = nullptr;
+  }
+  std::wstring rankText = L"#" + urnw::Widen(leaderboard::GroupedRank(rank));
+  hstring tier;
+  if (auto parts = urnet::pointsLeaderboardScrollLabel(rank, pointsTotalRanked_)) {
+    if (!parts->rank_text.empty()) rankText = urnw::Widen(parts->rank_text);
+    const std::string tierKey = leaderboard::TierLabelKey(parts->tier);
+    if (tierKey == "leaderboard_tier_top") {
+      tier = hstring{urnw::Format("leaderboard_tier_top", parts->tier_percent)};
+    } else if (tierKey == "leaderboard_tier_rest") {
+      tier = Loc("leaderboard_tier_rest");
+    }
+  }
+  pointsIndicatorRank_.Text(hstring{rankText});
+  kit::SetTextOrCollapse(pointsIndicatorTier_, tier);
+  pointsIndicatorLabel_.Opacity(1.0);
+  pointsIndicatorLabel_.Visibility(Visibility::Visible);
+  // beside the thumb's middle
+  pointsIndicatorLabel_.Measure(winrt::Windows::Foundation::Size{
+      std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity()});
+  const double labelHeight = pointsIndicatorLabel_.DesiredSize().Height;
+  const double middle = Canvas::GetTop(pointsThumb_) + pointsThumb_.Height() / 2;
+  pointsIndicatorLabel_.Margin(
+      ThicknessHelper::FromLengths(0, std::max(0.0, middle - labelHeight / 2), kIndicatorWidth + 8, 0));
+}
+
+// The label leaves after a beat: a short hold, then a fade.
+void WalletPage::HidePointsDragLabel(bool fade) {
+  if (!pointsIndicatorLabel_) return;
+  if (pointsLabelFade_) {
+    pointsLabelFade_.Stop();
+    pointsLabelFade_ = nullptr;
+  }
+  if (!fade) {
+    pointsIndicatorLabel_.Visibility(Visibility::Collapsed);
+    return;
+  }
+  namespace anim = winrt::Microsoft::UI::Xaml::Media::Animation;
+  anim::DoubleAnimation a;
+  a.From(1.0);
+  a.To(0.0);
+  a.BeginTime(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+      std::chrono::milliseconds(600)));
+  a.Duration(IndicatorMillis(250));
+  anim::Storyboard::SetTarget(a, pointsIndicatorLabel_);
+  anim::Storyboard::SetTargetProperty(a, L"Opacity");
+  anim::Storyboard sb;
+  sb.Children().Append(a);
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+  sb.Completed([weak, alive](IInspectable const&, IInspectable const&) {
+    if (!*alive) return;
+    auto self = weak.get();
+    if (!self) return;
+    auto& page = self->wallet();
+    if (!page.pointsLabelFade_) return;  // a later show overtook this fade
+    page.pointsIndicatorLabel_.Visibility(Visibility::Collapsed);
+    page.pointsIndicatorLabel_.Opacity(1.0);
+    page.pointsLabelFade_ = nullptr;
+  });
+  pointsLabelFade_ = sb;
+  sb.Begin();
+}
+
+// After a seek: the window's first row to the top of the pane, once the new
+// rows are laid out.
+void WalletPage::ScrollPointsToFirstRow() {
+  if (pointsRows_.empty()) return;
+  w_.PointsRows().UpdateLayout();
+  w_.PointsScroll().ChangeView(nullptr,
+                               winrt::Windows::Foundation::IReference<double>{kPointsTableHeaderHeight},
+                               nullptr, true);
+}
+
+// A board tab activated (the active one included): its list to the top; the
+// points board also reloads from the top when its window moved away from it.
+void WalletPage::ResetBoardList(bool pointsBoard) {
+  const auto reset =
+      leaderboard::TabResetFor(pointsBoard, pointsVc_.has_value(), pointsFirstPosition_);
+  if (reset.scrollToTop) {
+    if (pointsBoard) {
+      w_.PointsScroll().ChangeView(nullptr, winrt::Windows::Foundation::IReference<double>{0.0},
+                                   nullptr, true);
+    } else if (auto children = w_.LeaderboardDataHost().Children(); children.Size() > 0) {
+      if (auto scroll = children.GetAt(0).try_as<ScrollViewer>()) {
+        scroll.ChangeView(nullptr, winrt::Windows::Foundation::IReference<double>{0.0}, nullptr,
+                          true);
+      }
+    }
+  }
+  if (reset.reloadFromTop && pointsVc_) {
+    pointsSeekPending_ = false;
+    pointsVc_->reloadFromTop();
+  }
+  RefreshPointsPosition();
+}
+
 // Switches the sort; the controller clears its rows and reloads.
 void WalletPage::OnPointsSortChanged(std::string const& sort) {
   if (sort == pointsSort_ || !urnet::isPointsLeaderboardSort(sort)) return;
@@ -2570,12 +3041,20 @@ void WalletPage::OnPointsSortChanged(std::string const& sort) {
 
 // Asks for the next page when the last visible row is within reach of the end.
 void WalletPage::OnPointsScroll() {
+  RefreshPointsPosition();
   if (!pointsVc_) return;
   auto const scroll = w_.PointsScroll();
   const int64_t rowCount = static_cast<int64_t>(pointsRows_.size());
   const int64_t last = emoji::LastVisibleRow(scroll.VerticalOffset(), scroll.ViewportHeight(),
                                              kPointsTableHeaderHeight, kPointsRowHeight, rowCount);
-  if (emoji::ShouldLoadMore(last, rowCount, pointsLoading_, pointsEnd_, !pointsError_.empty())) {
+  // near the window's first row with rows above it (after a seek): the page
+  // before; otherwise near its last row: the page after
+  const int64_t firstVisibleRow = pointsFirstVisible_ - pointsFirstPosition_;
+  if (leaderboard::ShouldLoadMoreBefore(firstVisibleRow, pointsLoading_, pointsHasMoreBefore_,
+                                        !pointsError_.empty())) {
+    pointsVc_->loadMoreBefore();
+  } else if (emoji::ShouldLoadMore(last, rowCount, pointsLoading_, pointsEnd_,
+                                   !pointsError_.empty())) {
     pointsVc_->loadMore();
   }
 }

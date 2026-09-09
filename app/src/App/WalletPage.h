@@ -32,6 +32,9 @@
 #include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
+#include <winrt/Microsoft.UI.Xaml.Input.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
+#include <winrt/Microsoft.UI.Xaml.Shapes.h>
 
 #include "EarningsSheets.h"
 
@@ -120,6 +123,7 @@ class WalletPage {
   // SDK preformats. `displayName` is empty when the row is anonymous; the
   // list then shows the localized "Anonymous". `emojiTag` shows either way.
   struct PointsRow {
+    int64_t position = 0;  // the row's 1-based place in the whole ranking (no ties)
     std::string networkId;
     std::string displayName;
     std::string emojiTag;
@@ -336,6 +340,21 @@ class WalletPage {
   void RenderPointsFooter();
   void OnPointsSortChanged(std::string const& sort);
   void OnPointsScroll();
+  // ---- the position indicator and the tab reset (mmm/DESIGNSTYLE.md "Long
+  // ranked lists"; the math in LeaderboardIndicator.h)
+  void BuildPointsIndicator();   // the overlay over the points scroller: track, thumb, label, slider
+  void RefreshPointsPosition();  // the first row in view, from the scroller
+  void UpdatePointsIndicator();  // visibility, geometry, the slider's value
+  void OnPointsThumbPressed(double y, winrt::Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& e);
+  void OnPointsThumbMoved(double y);
+  void OnPointsThumbReleased();
+  void SeekPoints(int64_t rank);  // a rank in the window scrolls there; any other asks the controller
+  void ShowPointsDragLabel(int64_t rank);
+  void HidePointsDragLabel(bool fade);
+  void ScrollPointsToFirstRow();
+  void PrependPointsRows(size_t count);
+  winrt::Microsoft::UI::Xaml::UIElement MakePointsRow(PointsRow const& row, std::string const& ownId);
+  void ResetBoardList(bool pointsBoard);  // a board tab activated (the active one included)
   void OnPointsRetry();
   void OnPointsPublicToggled();
   void SetPointsToggle(bool isPublic);
@@ -361,6 +380,25 @@ class WalletPage {
   bool pointsHasLoaded_ = false;  // the first page landed (rows, an empty end, or an error)
   std::string pointsError_;
   int64_t pointsTotalRanked_ = 0;
+  int64_t pointsFirstPosition_ = 1;   // the loaded window's first position
+  bool pointsHasMoreBefore_ = false;  // rows exist above the window (after a seek)
+  int64_t pointsFirstVisible_ = 1;    // the first row in view's position
+  // the draggable position indicator: a slider over ranks 1..N at the
+  // scroller's right edge, the rank and tier beside the thumb while dragging
+  winrt::Microsoft::UI::Xaml::Controls::Canvas pointsIndicator_{nullptr};
+  winrt::Microsoft::UI::Xaml::Shapes::Rectangle pointsTrack_{nullptr};
+  winrt::Microsoft::UI::Xaml::Shapes::Rectangle pointsThumb_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Slider pointsSlider_{nullptr};  // the keyboard and UIA face of the thumb
+  winrt::Microsoft::UI::Xaml::Controls::Border pointsIndicatorLabel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsIndicatorRank_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock pointsIndicatorTier_{nullptr};
+  winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard pointsLabelFade_{nullptr};
+  bool pointsDragging_ = false;
+  double pointsDragGrab_ = 0;  // where inside the thumb the pointer took it
+  double pointsDragTop_ = 0;   // the thumb's top while dragging
+  int64_t pointsDragRank_ = 0;
+  bool applyingPointsSlider_ = false;  // ECHO GUARD on the slider's value
+  bool pointsSeekPending_ = false;     // a seek's window is on its way: scroll to its first row when it lands
   std::optional<PointsRow> pointsMe_;
   bool pointsPublic_ = false;  // this network's opt-in, from `me`, updated locally on toggle
   std::string emojiTag_;       // this network's tag, from `me`, updated locally on save
