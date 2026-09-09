@@ -14,6 +14,7 @@
 #include <optional>
 
 #include "PageContext.h"  // pages::Adv / pages::Loc
+#include "UrComponents.h"  // kit::MakeSkeletonText / MakeSkeletonDot
 #include "UrColors.h"
 
 using namespace winrt;
@@ -349,6 +350,25 @@ void TransportBar::BuildVisuals(Grid const& host) {
   unused_.Visibility(Visibility::Collapsed);
   body.Children().Append(unused_);
 
+  // DESIGNSTYLE "Placeholders, not pop-in": the legend line as a skeleton of
+  // itself, shown between BeginLoading and the first distribution. The same
+  // inline flow as the legend, its chips built from the chip's own parts (the
+  // dot at kDotSize, the 11px label as a transparent sizer), so its line box
+  // IS a legend line's; three chips is the shape a settled line has.
+  placeholder_ = MakeFlow();
+  for (const wchar_t* sizer : {L"WebRTC 100%", L"QUIC 0%", L"TLS 0%"}) {
+    StackPanel item;
+    item.Orientation(Orientation::Horizontal);
+    item.Spacing(5);
+    item.Children().Append(kit::MakeSkeletonDot(kDotSize));
+    item.Children().Append(kit::MakeSkeletonText(hstring{sizer}, 11));
+    AppendInline(placeholder_, item);
+  }
+  automation::AutomationProperties::SetName(placeholder_,
+                                            TransportText("loading", L"Loading..."));
+  placeholder_.Visibility(Visibility::Collapsed);
+  body.Children().Append(placeholder_);
+
   root_.Content(body);
   host.Children().Append(root_);
 }
@@ -401,7 +421,21 @@ bool TransportBar::TweenInFlight(double now) const {
   return 0 < tweenStart_ && now - tweenStart_ < kTweenSeconds;
 }
 
+void TransportBar::BeginLoading() {
+  loading_ = true;
+  if (placeholder_) placeholder_.Visibility(Visibility::Visible);
+}
+
+void TransportBar::SettleEmpty() {
+  loading_ = false;
+  if (placeholder_) placeholder_.Visibility(Visibility::Collapsed);
+}
+
 void TransportBar::SetDistribution(const TransportDistributionSnapshot& distribution) {
+  // a real reading (the vocabulary of shares exists once the device does) is
+  // what the skeleton was waiting for: the legend / footer it becomes are
+  // rebuilt below, in the same box
+  if (loading_ && !distribution.shares.empty()) SettleEmpty();
   const double now = NowSeconds();
   std::vector<double> target;
   target.reserve(distribution.shares.size());

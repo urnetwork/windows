@@ -8,7 +8,9 @@
 
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
+#include <winrt/Windows.UI.ViewManagement.h>
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
 #include <winrt/Windows.UI.Text.h>
 
@@ -578,6 +580,80 @@ Controls::Border MakePaneTableHeader(std::vector<double> const& weights,
   }
   header.Child(grid);
   return header;
+}
+
+// ---- DESIGNSTYLE "Placeholders, not pop-in" -----------------------------------
+
+namespace {
+
+bool SkeletonAnimationsEnabled() {
+  // "Show animations in Windows" off means the user wants motion gone, not
+  // reduced (ConnectCanvas::AnimationsEnabled's rule)
+  try {
+    return winrt::Windows::UI::ViewManagement::UISettings().AnimationsEnabled();
+  } catch (...) {
+    return true;
+  }
+}
+
+Controls::Border MakeSkeletonFill() {
+  Controls::Border fill;
+  if (auto style = StyleByKey(L"UrSkeletonStyle")) fill.Style(style);
+  fill.IsHitTestVisible(false);
+  return fill;
+}
+
+}  // namespace
+
+FrameworkElement MakeSkeletonText(winrt::hstring const& sizer, double fontSize) {
+  // the sizer is the text the value will show, transparent: the grid takes its
+  // metrics and the fill stretches over them, so the bar can never be a
+  // different height from the label it becomes
+  Controls::Grid box;
+  TextBlock measure;
+  measure.Text(sizer);
+  measure.FontSize(fontSize);
+  measure.Foreground(Media::SolidColorBrush(winrt::Windows::UI::Colors::Transparent()));
+  Automation::AutomationProperties::SetAccessibilityView(
+      measure, Automation::Peers::AccessibilityView::Raw);
+  box.Children().Append(measure);
+  box.Children().Append(MakeSkeletonFill());
+  StartSkeletonShimmer(box);
+  return box;
+}
+
+FrameworkElement MakeSkeletonDot(double size) {
+  Controls::Border dot = MakeSkeletonFill();
+  dot.Width(size);
+  dot.Height(size);
+  dot.CornerRadius(CornerRadiusHelper::FromUniformRadius(size / 2));
+  dot.VerticalAlignment(VerticalAlignment::Center);
+  StartSkeletonShimmer(dot);
+  return dot;
+}
+
+void StartSkeletonShimmer(FrameworkElement const& element) {
+  if (!element || !SkeletonAnimationsEnabled()) return;
+  namespace anim = winrt::Microsoft::UI::Xaml::Media::Animation;
+  // a storyboard can only run once its target is in the tree: begin on Loaded,
+  // stop on Unloaded (the lambda holds the storyboard for the element's life)
+  anim::DoubleAnimation breath;
+  breath.From(1.0);
+  breath.To(0.45);
+  breath.Duration(Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+                               std::chrono::milliseconds(900)),
+                           DurationType::TimeSpan});
+  breath.AutoReverse(true);
+  breath.RepeatBehavior(anim::RepeatBehavior{.Count = 0, .Duration = {},
+                                             .Type = anim::RepeatBehaviorType::Forever});
+  anim::Storyboard::SetTarget(breath, element);
+  anim::Storyboard::SetTargetProperty(breath, L"Opacity");
+  anim::Storyboard storyboard;
+  storyboard.Children().Append(breath);
+  element.Loaded([storyboard](winrt::Windows::Foundation::IInspectable const&,
+                              RoutedEventArgs const&) { storyboard.Begin(); });
+  element.Unloaded([storyboard](winrt::Windows::Foundation::IInspectable const&,
+                                RoutedEventArgs const&) { storyboard.Stop(); });
 }
 
 FrameworkElement MakePaneEmptyLine(winrt::hstring const& text) {

@@ -65,6 +65,16 @@ class TransportBar {
   // Redraw if animating (a boundary tween or the empty fade in flight, or dirty).
   void Tick();
 
+  // DESIGNSTYLE "Placeholders, not pop-in": while the page is waiting for its
+  // first distribution (the service is still bringing the device up) the
+  // legend line is a skeleton of itself, so the row opens at the height it
+  // settles at instead of growing by a line when the footer arrives. Cleared
+  // by the first distribution with shares, or by SettleEmpty when the page
+  // decides nothing is coming (the empty track is the settled reading).
+  void BeginLoading();
+  void SettleEmpty();
+  bool IsLoading() const { return loading_; }
+
  private:
   void BuildVisuals(winrt::Microsoft::UI::Xaml::Controls::Grid const& host);
   void EnsureSegments(size_t count);
@@ -103,6 +113,9 @@ class TransportBar {
   std::vector<std::string> segmentTypes_;  // the transport id each path is colored for
   winrt::Microsoft::UI::Xaml::Controls::RichTextBlock legend_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::RichTextBlock unused_{nullptr};
+  // the legend line's skeleton (BeginLoading / SettleEmpty)
+  winrt::Microsoft::UI::Xaml::Controls::RichTextBlock placeholder_{nullptr};
+  bool loading_ = false;
   // the used / unused transport ids the two rows were last built for, so a tick
   // that only moves percents updates labels rather than rebuilding inlines
   std::vector<std::string> legendKey_;

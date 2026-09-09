@@ -889,6 +889,18 @@
                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             </Style>
 
+            <!-- DESIGNSTYLE "Placeholders, not pop-in": the shared skeleton. A
+                 faint rounded bar in the EXACT box of the content it stands in
+                 for (kit::MakeSkeletonText sizes it from the value's own text,
+                 rendered transparent). The shimmer is a slow opacity breath the
+                 kit begins only while UISettings.AnimationsEnabled. -->
+            <Style x:Key="UrSkeletonStyle" TargetType="Border">
+                <Setter Property="Background" Value="#14FFFFFF" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+            </Style>
+
             <!-- ONE row height per list. A static row... -->
             <Style x:Key="UrPaneRowStyle" TargetType="Border">
                 <Setter Property="MinHeight" Value="{StaticResource UrPaneRowHeight}" />

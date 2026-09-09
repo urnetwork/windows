@@ -1249,6 +1249,7 @@ void ConnectPage::WireDrawerFeeds() {
     queue.TryEnqueue([weak, settings = std::move(settings)] {
       if (auto self = weak.get()) {
         auto& page = self->connect();
+        page.dnsSettled_ = true;  // a push is a reading, present or not
         page.dnsSettings_ = settings;
         page.ApplyDnsCard(settings);
       }
@@ -1389,6 +1390,48 @@ void ConnectPage::ResyncDrawer() {
   ApplyContractsList();
   ApplySessionRows();
   SeedConnectControls();
+  BeginPlaceholders();
+}
+
+// ---- DESIGNSTYLE "Placeholders, not pop-in" -----------------------------------
+
+// How long a loading skeleton may stand before the section settles on its
+// empty reading (DESIGNSTYLE: a placeholder must resolve). The device is up
+// well inside this after a sign-in; past it, the honest reading is the one the
+// feeds gave — the unavailable row, an empty transport track.
+constexpr int64_t kPlaceholderCeilingMillis = 6000;
+
+namespace {
+int64_t SteadyMillis() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
+}  // namespace
+
+// Arm the skeletons for whatever has not been read yet: on every ResyncDrawer
+// (login / re-show) — no shares on a signed-in page means the device is still
+// coming up, and the reading is worth waiting for.
+void ConnectPage::BeginPlaceholders() {
+  placeholdersSinceMillis_ = SteadyMillis();
+  if (!dnsSettings_) {
+    dnsSettled_ = false;
+    ApplyDnsCard(dnsSettings_);
+  }
+  if (transportBar_ && Sdk().CurrentTransportDistribution().shares.empty()) {
+    transportBar_->BeginLoading();
+  }
+}
+
+// The ceiling: whatever is still a skeleton becomes its empty reading, in the
+// same box. Idempotent — a section that settled on real data is untouched.
+void ConnectPage::SettlePlaceholders() {
+  placeholdersSinceMillis_ = 0;
+  if (!dnsSettled_) {
+    dnsSettled_ = true;
+    ApplyDnsCard(dnsSettings_);
+  }
+  if (transportBar_ && transportBar_->IsLoading()) transportBar_->SettleEmpty();
 }
 
 void ConnectPage::SeedConnectControls() {
@@ -2140,13 +2183,43 @@ void ConnectPage::ApplySplitRuleCount() {
 }
 
 void ConnectPage::ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& settings) {
-  w_.DnsRowsPanel().Visibility(settings ? Visibility::Visible : Visibility::Collapsed);
+  if (settings) dnsSettled_ = true;
+  // DESIGNSTYLE "Placeholders, not pop-in": before the first reading the four
+  // rows are up with their labels (the labels are static) and a skeleton where
+  // the On/Off value goes, so the group opens at its settled 4x34 and the
+  // values are replaced in place. Only a reading that comes back empty swaps
+  // to the unavailable row — the error state, in the same group.
+  const bool loading = !settings && !dnsSettled_;
+  w_.DnsRowsPanel().Visibility(settings || loading ? Visibility::Visible : Visibility::Collapsed);
   // the ROW, not the text inside it: see ProvideStatsRow
-  w_.DnsUnavailableRow().Visibility(settings ? Visibility::Collapsed : Visibility::Visible);
+  w_.DnsUnavailableRow().Visibility(settings || loading ? Visibility::Collapsed
+                                                        : Visibility::Visible);
   // the applied settings just changed: re-evaluate the recommendation pill (it
   // reads dnsSettings_, already updated to `settings` by the caller). Runs in
   // the unavailable path too so the pill collapses with the rows.
   ApplyDnsRecommendationPill();
+  {
+    // the value's skeleton (shimmer begun once, on the first loading pass)
+    const hstring loadingText = Loc("loading");
+    auto skeleton = [loading, &loadingText](Microsoft::UI::Xaml::Shapes::Ellipse const& dot,
+                                            TextBlock const& label, TextBlock const& state,
+                                            Border const& bar) {
+      bar.Visibility(loading ? Visibility::Visible : Visibility::Collapsed);
+      if (!loading) return;
+      dot.Fill(urnw::colors::MakeBrush(urnw::colors::WithAlpha(urnw::colors::kTextFaint, 102)));
+      state.Text(L"");
+      winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+          state, hstring{std::wstring{label.Text()} + L", " + std::wstring{loadingText}});
+      if (!winrt::unbox_value_or<bool>(bar.Tag(), false)) {
+        bar.Tag(winrt::box_value(true));
+        kit::StartSkeletonShimmer(bar);
+      }
+    };
+    skeleton(w_.DohDot(), w_.DohLabel(), w_.DohState(), w_.DohSkeleton());
+    skeleton(w_.UdnsDot(), w_.UdnsLabel(), w_.UdnsState(), w_.UdnsSkeleton());
+    skeleton(w_.LdnsDot(), w_.LdnsLabel(), w_.LdnsState(), w_.LdnsSkeleton());
+    skeleton(w_.FallbackDot(), w_.FallbackLabel(), w_.FallbackState(), w_.FallbackSkeleton());
+  }
   if (!settings) return;
 
   // looked up once for the four rows; the lambda runs here, so capturing by
@@ -2231,6 +2304,11 @@ void ConnectPage::OnChartTick() {
       healthReevalAtMillis_ = 0;
       Sdk().RepublishStats();
     }
+  }
+  // the loading skeletons' ceiling is clock-driven for the same reason
+  if (placeholdersSinceMillis_ != 0 &&
+      SteadyMillis() - placeholdersSinceMillis_ > kPlaceholderCeilingMillis) {
+    SettlePlaceholders();
   }
   if (w_.ConnectView().Visibility() != Visibility::Visible && !w_.sheetOpen()) return;
   if (w_.ConnectView().Visibility() == Visibility::Visible) {

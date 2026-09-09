@@ -1371,6 +1371,11 @@
                                             <TextBlock x:Name="DohState" Grid.Column="2"
                                                        Style="{StaticResource UrValueTextStyle}"
                                                        FontSize="12" />
+                                            <!-- DESIGNSTYLE "Placeholders, not pop-in": the value's box while
+                                                 the settings are still loading (ConnectPage::ApplyDnsCard) -->
+                                            <Border x:Name="DohSkeleton" Grid.Column="2" Visibility="Collapsed"
+                                                    Style="{StaticResource UrSkeletonStyle}" Width="22" Height="14"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Center" />
                                         </Grid>
                                     </Border>
                                     <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
@@ -1387,6 +1392,11 @@
                                             <TextBlock x:Name="UdnsState" Grid.Column="2"
                                                        Style="{StaticResource UrValueTextStyle}"
                                                        FontSize="12" />
+                                            <!-- DESIGNSTYLE "Placeholders, not pop-in": the value's box while
+                                                 the settings are still loading (ConnectPage::ApplyDnsCard) -->
+                                            <Border x:Name="UdnsSkeleton" Grid.Column="2" Visibility="Collapsed"
+                                                    Style="{StaticResource UrSkeletonStyle}" Width="22" Height="14"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Center" />
                                         </Grid>
                                     </Border>
                                     <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
@@ -1403,6 +1413,11 @@
                                             <TextBlock x:Name="LdnsState" Grid.Column="2"
                                                        Style="{StaticResource UrValueTextStyle}"
                                                        FontSize="12" />
+                                            <!-- DESIGNSTYLE "Placeholders, not pop-in": the value's box while
+                                                 the settings are still loading (ConnectPage::ApplyDnsCard) -->
+                                            <Border x:Name="LdnsSkeleton" Grid.Column="2" Visibility="Collapsed"
+                                                    Style="{StaticResource UrSkeletonStyle}" Width="22" Height="14"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Center" />
                                         </Grid>
                                     </Border>
                                     <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
@@ -1419,6 +1434,11 @@
                                             <TextBlock x:Name="FallbackState" Grid.Column="2"
                                                        Style="{StaticResource UrValueTextStyle}"
                                                        FontSize="12" />
+                                            <!-- DESIGNSTYLE "Placeholders, not pop-in": the value's box while
+                                                 the settings are still loading (ConnectPage::ApplyDnsCard) -->
+                                            <Border x:Name="FallbackSkeleton" Grid.Column="2" Visibility="Collapsed"
+                                                    Style="{StaticResource UrSkeletonStyle}" Width="22" Height="14"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Center" />
                                         </Grid>
                                     </Border>
                                 </StackPanel>

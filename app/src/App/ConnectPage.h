@@ -314,6 +314,17 @@ class ConnectPage {
   // which the clock alone changes health_. OnChartTick asks SdkHost to
   // republish then — no SDK event is coming; see LiveStats::healthReevalAtMillis.
   int64_t healthReevalAtMillis_ = 0;
+  // DESIGNSTYLE "Placeholders, not pop-in": the sections whose data arrives
+  // after first paint (the dns readings, the transport legend) hold a skeleton
+  // of their settled box until it lands. `dnsSettled_` is "a reading has been
+  // taken" — absent settings after that are the unavailable row, before it
+  // they are still loading. The chart clock closes both after
+  // kPlaceholderCeilingMillis (a service that never answers settles on its
+  // empty states, not a shimmer).
+  bool dnsSettled_ = false;
+  int64_t placeholdersSinceMillis_ = 0;
+  void BeginPlaceholders();
+  void SettlePlaceholders();
   // network name off the stored jwt, for the idle "{name} is ready to connect"
   // copy. Read once per auth change, not per stats push (ParsedJwt re-parses).
   std::string networkName_;

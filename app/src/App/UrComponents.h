@@ -511,4 +511,22 @@ class Snackbar {
   std::shared_ptr<Snackbar*> self_;
 };
 
+// ---- DESIGNSTYLE "Placeholders, not pop-in" -----------------------------------
+//
+// A skeleton stands in for content that arrives after first paint, in the
+// content's OWN box, so a section never opens shorter than it settles. The bar
+// is sized by the value it becomes: `sizer` is the text the real value will
+// show (or a representative width) at the value's font size, rendered
+// transparent under the faint rounded fill (UrSkeletonStyle), so the two share
+// one set of metrics. The shimmer is begun on Loaded, only while
+// UISettings.AnimationsEnabled ("Show animations in Windows").
+winrt::Microsoft::UI::Xaml::FrameworkElement MakeSkeletonText(winrt::hstring const& sizer,
+                                                              double fontSize);
+// The dot form of the same bar (a chip's status dot), `size` square.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakeSkeletonDot(double size);
+// Begin the shared shimmer on an element (idempotent per element; no-op with
+// animations off). The kit builders above call this themselves; a skeleton
+// declared in XAML calls it once.
+void StartSkeletonShimmer(winrt::Microsoft::UI::Xaml::FrameworkElement const& element);
+
 }  // namespace urnw::kit
