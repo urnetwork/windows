@@ -1708,6 +1708,18 @@
     <value>लीडरबोर्ड पिछले 4 भुगतानों का योग है। यह प्रत्येक भुगतान चक्र में अपडेट किया जाता है।</value>
     <comment>Call to action</comment>
   </data>
+  <data name="leaderboard_position_indicator" xml:space="preserve">
+    <value>लीडरबोर्ड में स्थान</value>
+    <comment>Points leaderboard: accessibility name of the draggable position indicator (a slider over ranks 1 to N).</comment>
+  </data>
+  <data name="leaderboard_tier_rest" xml:space="preserve">
+    <value>बाकी सभी</value>
+    <comment>Points leaderboard scroll indicator: the tier line for ranks below the top 50%.</comment>
+  </data>
+  <data name="leaderboard_tier_top" xml:space="preserve">
+    <value>शीर्ष {}%</value>
+    <comment>Points leaderboard scroll indicator: the tier line under the rank while dragging; {percent} is 1, 5, 10, 25 or 50.</comment>
+  </data>
   <data name="learn_more" xml:space="preserve">
     <value>और जानें</value>
     <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>

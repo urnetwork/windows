@@ -1709,6 +1709,18 @@
     <value>Ο πίνακας κατάταξης είναι το άθροισμα των τελευταίων 4 πληρωμών. Ενημερώνεται κάθε κύκλο πληρωμής.</value>
     <comment>Call to action</comment>
   </data>
+  <data name="leaderboard_position_indicator" xml:space="preserve">
+    <value>Θέση στην κατάταξη</value>
+    <comment>Points leaderboard: accessibility name of the draggable position indicator (a slider over ranks 1 to N).</comment>
+  </data>
+  <data name="leaderboard_tier_rest" xml:space="preserve">
+    <value>Όλοι οι υπόλοιποι</value>
+    <comment>Points leaderboard scroll indicator: the tier line for ranks below the top 50%.</comment>
+  </data>
+  <data name="leaderboard_tier_top" xml:space="preserve">
+    <value>Κορυφαίο {}%</value>
+    <comment>Points leaderboard scroll indicator: the tier line under the rank while dragging; {percent} is 1, 5, 10, 25 or 50.</comment>
+  </data>
   <data name="learn_more" xml:space="preserve">
     <value>Μάθετε περισσότερα</value>
     <comment>Generic 'Learn more' link label placed after an explanatory sentence, opening an external page (e.g. the Earnings wallet note linking to the protocol site).</comment>
