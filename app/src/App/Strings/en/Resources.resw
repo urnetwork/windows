@@ -2943,7 +2943,7 @@ right way</value>
     <comment>Manual steps for adding the quick connect tile on Android versions without the system add-tile request (before Android 13).</comment>
   </data>
   <data name="intro_verifiable_encryption" xml:space="preserve">
-    <value>URnetwork gives you verifiable encryption for everyday use.</value>
+    <value>Encryption for everyday use.</value>
     <comment>Tagline under 'Welcome to URnetwork' on the first onboarding page. Replaces 'URnetwork is the most local and most private network on the planet.'</comment>
   </data>
   <data name="intro_widgets_manual" xml:space="preserve">
