@@ -3360,6 +3360,10 @@
     <value>兑换于{date}</value>
     <comment>App balance codes: redeemed date row</comment>
   </data>
+  <data name="site_app_referral_code_optional" xml:space="preserve">
+    <value>推荐码（可选）</value>
+    <comment>Sign-up dialog: label of the optional referral code field</comment>
+  </data>
   <data name="site_app_referral_network" xml:space="preserve">
     <value>推荐网络</value>
     <comment>App settings: referral network section</comment>
