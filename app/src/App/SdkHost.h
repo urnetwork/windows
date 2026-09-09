@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ClientEvents.h"
 #include "ConnectAction.h"
 #include "ConnectionHealth.h"
 #include "PostQuantumIdentity.h"
@@ -1126,6 +1127,21 @@ class SdkHost {
   // Accessors for the UI/view models to drive the SDK directly.
   bool apiReady() { return api_.has_value(); }
   urnet::Api& api() { return *api_; }
+  // The app-wide client event queue (ClientEvents.h): every product event the
+  // onboarding optimization loop reads goes through this one facade. Valid
+  // after Initialize().
+  bool eventsReady() const { return events_ != nullptr; }
+  ClientEventQueue& events() { return *events_; }
+  // The sign-up pages' "Periodic product updates" box, read at submit: the
+  // next network create carries product_updates=false when it is off (absent
+  // = opted in), and signup.optout_changed records the opt-out.
+  void SetProductUpdatesOptOut(bool optOut);
+  // urnetwork://onboarding/<step> deep links (the campaign emails' buttons):
+  // routed to the window, which owns the destinations. Fired on the caller's
+  // thread (AppController marshals to the UI thread).
+  void SetOnboardingLinkHandler(std::function<void(const std::string& url)> handler) {
+    onOnboardingLink_ = std::move(handler);
+  }
   bool hasDevice() { return device_.has_value(); }
   urnet::DeviceRemote& device() { return *device_; }
   // Account page opens billing/upgrade in the browser at this host.
@@ -1579,6 +1595,17 @@ class SdkHost {
   std::optional<urnet::NetworkSpaceManager> spaceManager_;
   std::optional<urnet::NetworkSpace> networkSpace_;
   std::optional<urnet::Api> api_;
+  std::unique_ptr<ClientEventQueue> events_;
+  std::function<void(const std::string& url)> onOnboardingLink_;
+  bool productUpdatesOptOut_ = false;  // the next create's product_updates
+  // the sign-up pages' opt-out onto a create's args (absent = opted in)
+  void ApplySignupPreferences(urnet::NetworkCreateArgs& args) const;
+  // POST /network/auth-client with the device's time zone (IANA) and locale
+  // (BCP 47) on the args: the campaign engine schedules its emails in the
+  // user's local time. Sent as extra json fields until the C ABI's
+  // AuthNetworkClientArgs carries them.
+  void AuthNetworkClientWithLocale(const urnet::AuthNetworkClientArgs& args,
+                                   urnet::AuthNetworkClientCallback callback);
   std::optional<urnet::AsyncLocalState> asyncLocalState_;
   std::optional<urnet::LocalState> localState_;
   std::optional<urnet::DeviceRemote> device_;

@@ -12,10 +12,16 @@
 #include <functional>
 #include <memory>
 
+#include <vector>
+
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 
+#include "PricePresentation.h"
+
 namespace urnw {
+
+struct PlanCardTexts;
 
 // The free trial the yearly plan starts with, in days, as printed on the plan
 // card. The trial itself is the server's Stripe checkout session setting
@@ -34,6 +40,12 @@ class PlanPicker {
   void SetEnabled(bool enabled);
   // The CTA label for a selection: only the yearly plan carries the trial.
   static winrt::hstring CtaLabel(bool yearly);
+  // Reprints both cards from the price tier and, while it is active, the
+  // welcome offer (the yearly card becomes the offer card: first-year price,
+  // then the regular price, the trial line). Called by the host from the
+  // balance store's feed; the picker starts on the standard tier.
+  void SetPrices(const PriceTierView& tier, const OfferView& offer);
+  void SetTexts(const PlanCardTexts& texts);
   // The halo behind the yearly card, for a host that pulses it (onboarding).
   winrt::Microsoft::UI::Xaml::Shapes::Rectangle Halo() const { return state_->halo; }
   // The halo's pulse (opacity 0.6 <-> 1.0 over 2.2 s, forever): one definition,
@@ -58,6 +70,15 @@ class PlanPicker {
     // card is selected, so the selection language survives the gold dress
     winrt::Microsoft::UI::Xaml::Shapes::Rectangle haloSelected{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Border yearlyTint{nullptr};
+    // the card lines SetTexts reprints; the reserved copies size the monthly
+    // card like the yearly one
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock yearlyPrice{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock yearlySecondary{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock yearlyEquivalent{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock yearlyTrial{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock monthlyPrice{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock monthlyLine{nullptr};
+    std::vector<winrt::Microsoft::UI::Xaml::Controls::TextBlock> reserved;
     std::function<void(bool yearly)>* onSelect = nullptr;
   };
   static winrt::Microsoft::UI::Xaml::Controls::Border BuildCard(std::shared_ptr<State> const& state,

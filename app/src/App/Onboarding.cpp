@@ -4,6 +4,7 @@
 #include "Onboarding.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cwctype>
 #include <random>
 
@@ -12,7 +13,9 @@
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 #include <winrt/Windows.UI.ViewManagement.h>
 
+#include "ClientEvents.h"
 #include "Localization.h"
+#include "Log.h"
 #include "PageContext.h"
 #include "ReferralCard.h"
 #include "SdkHost.h"
@@ -177,9 +180,133 @@ std::shared_ptr<Onboarding> Onboarding::Create(Grid host, Actions actions) {
 void Onboarding::Show() {
   if (!built_) Build();
   visible_ = true;
+  standalone_ = false;
+  offerIssued_ = false;
+  introOfferShown_ = false;
+  step_ = 0;  // no page yet: the first ShowStep completes nothing
   balance_ = Balance().Current();
+  // the in-app offer experiment: the holdout gets the four-page flow with the
+  // regular picker and never the issue call
+  offerEnabled_ = OfferPageEnabled(balance_.offerVariant);
+  if (referralDone_) {
+    referralDone_.Content(winrt::box_value(offerEnabled_ ? Loc("next") : Loc("get_connected")));
+  }
+  ApplyPrices();
   host_.Visibility(Visibility::Visible);
   ShowStep(1);
+  if (offerEnabled_) IssueOffer();
+}
+
+void Onboarding::ShowOffer() {
+  if (!built_) Build();
+  visible_ = true;
+  standalone_ = true;
+  offerEnabled_ = true;
+  offerIssued_ = true;  // the link's offer already exists: never re-issued
+  step_ = 0;
+  balance_ = Balance().Current();
+  ApplyPrices();
+  host_.Visibility(Visibility::Visible);
+  ShowStep(kOnboardingStepOffer);
+}
+
+// Skip is not a way around the offer page: from any earlier page it lands
+// there once; only the page's own link finishes the flow (the holdout has no
+// offer page, so Skip finishes at once).
+void Onboarding::Skip() {
+  if (Sdk().eventsReady()) {
+    Sdk().events().OnboardingStepSkipped(OnboardingStepName(step_), step_, StepElapsedMs());
+  }
+  const int target = OnboardingSkipTarget(step_, offerEnabled_);
+  if (target == 0) {
+    if (actions_.finish) actions_.finish();
+  } else {
+    ShowStep(target);
+  }
+}
+
+int64_t Onboarding::StepElapsedMs() const {
+  if (stepShownAt_ == std::chrono::steady_clock::time_point{}) return 0;
+  return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
+                                                               stepShownAt_)
+      .count();
+}
+
+void Onboarding::ApplyPrices() {
+  if (!built_) return;
+  const PriceTierView& tier = balance_.tier;
+  const OfferView& offer = balance_.offer;
+  const bool showOffer = offerEnabled_ && offer.active;
+  // the picker: the offer card while the offer is active, the tier otherwise
+  OfferView pickerOffer = offer;
+  pickerOffer.active = showOffer;
+  plans_.SetPrices(tier, pickerOffer);
+  if (auto root = welcomeOffer_.Root()) {
+    root.Visibility(showOffer ? Visibility::Visible : Visibility::Collapsed);
+    if (showOffer) welcomeOffer_.Update(offer, tier, kFreeTrialDays);
+  }
+  // the final page always prints the offer's numbers (a page the holdout never sees)
+  if (offerEyebrow_) {
+    offerEyebrow_.Text(Upper(hstring{Format("offer_percent_off_first_year", offer.percentOff)}));
+  }
+  if (offerHeadline_) {
+    offerHeadline_.Text(hstring{Format("offer_months_free_headline", offer.monthsFree)});
+  }
+  if (offerPrice_) {
+    offerPrice_.Text(hstring{Format(
+        "offer_first_year_price", Widen(FormatMoney(offer.firstYear, offer.currency)))});
+  }
+  if (offerThen_) {
+    offerThen_.Text(hstring{Format(
+        "offer_then_regular_price", Widen(FormatMoney(offer.regularYear, offer.currency)))});
+  }
+  if (offerTrial_) {
+    offerTrial_.Text(hstring{Format("includes_free_trial_days", kFreeTrialDays)});
+  }
+  offerLines_.Update(offer, tier, kFreeTrialDays);
+  if (offerCta_) {
+    offerCta_.Content(winrt::box_value(
+        hstring{Format("offer_cta_start_trial_months_free", offer.monthsFree)}));
+  }
+  // the intro surface's shown event, once the offer is actually on the page
+  if (showOffer && step_ == kOnboardingStepWelcome && !introOfferShown_ && Sdk().eventsReady()) {
+    introOfferShown_ = true;
+    Sdk().events().OfferScreenShown("intro_step", balance_.offerExperimentId,
+                                    balance_.offerVariant, tier.name, offer.firstYear,
+                                    offer.currency, OfferExpiresInSeconds(offer));
+  }
+}
+
+void Onboarding::IssueOffer() {
+  if (offerIssued_ || !Sdk().IsLoggedIn()) return;
+  offerIssued_ = true;
+  urnet::OnboardingOfferIssueArgs args;
+  args.surface = "intro_step";
+  auto queue = host_.DispatcherQueue();
+  auto weak = weak_from_this();
+  Sdk().api().onboardingOfferIssue(
+      args, [queue, weak](std::optional<urnet::OnboardingOfferIssueResult> result,
+                          std::optional<std::string> err) {
+        if (err) {
+          LogWarn("onboarding: offer issue failed: {}", *err);
+          return;
+        }
+        if (!result || !result->offer) return;
+        const urnet::OnboardingOffer offer = *result->offer;
+        queue.TryEnqueue([weak, offer] {
+          if (auto self = weak.lock()) {
+            // the store publishes; OnBalance brings the offer back here
+            Balance().SetOffer(offer);
+          }
+        });
+      });
+}
+
+void Onboarding::StartCheckout(bool yearly) {
+  if (yearly && offerEnabled_ && balance_.offer.active && Sdk().eventsReady()) {
+    Sdk().events().OfferCtaTapped(PlanName(true), "stripe");
+  }
+  if (actions_.startCheckout) actions_.startCheckout(yearly);
 }
 
 void Onboarding::Hide() {
@@ -195,6 +322,15 @@ void Onboarding::OnBalance(BalanceSnapshot const& snapshot) {
   if (!built_) return;
   ApplyBandwidth();
   ApplyReferral();
+  // the experiment assignment can land after the first paint (the balance
+  // store fetches in the background): take the holdout out of the offer
+  if (offerEnabled_ && !standalone_ && !OfferPageEnabled(balance_.offerVariant)) {
+    offerEnabled_ = false;
+    if (referralDone_) referralDone_.Content(winrt::box_value(Loc("get_connected")));
+    ApplyTopBar();
+  }
+  if (offerEnabled_ && !offerIssued_) IssueOffer();
+  ApplyPrices();
 }
 
 // ---- shell -------------------------------------------------------------------
@@ -263,9 +399,7 @@ void Onboarding::Build() {
   skipButton_ = MakeTextButton(Loc("skip"), colors::MutedBrush());
   skipButton_.VerticalAlignment(VerticalAlignment::Center);
   skipButton_.Click([weak = weak_from_this()](auto const&, auto const&) {
-    if (auto self = weak.lock()) {
-      if (self->actions_.finish) self->actions_.finish();
-    }
+    if (auto self = weak.lock()) self->Skip();
   });
   Grid::SetColumn(skipButton_, 2);
   topBar.Children().Append(skipButton_);
@@ -301,11 +435,22 @@ void Onboarding::Build() {
   bandwidth_ = BuildBandwidth();
   providing_ = BuildProviding();
   referral_ = BuildReferral();
+  offer_ = BuildOffer();
 }
 
 void Onboarding::ShowStep(int step) {
   const int previous = step_;
-  step_ = std::clamp(step, 1, kStepCount);
+  step_ = std::clamp(step, 1, StepCount());
+  // the step events: the page we leave completed (the forward path only;
+  // Skip emits its own event first), the page we land on shown
+  if (Sdk().eventsReady()) {
+    if (0 < previous && previous < step_) {
+      Sdk().events().OnboardingStepCompleted(OnboardingStepName(previous), previous,
+                                             StepElapsedMs());
+    }
+    Sdk().events().OnboardingStepShown(OnboardingStepName(step_), step_, 0);
+  }
+  stepShownAt_ = std::chrono::steady_clock::now();
 
   // the connector: measure where it is leaving from before the page changes
   const bool leavingRoute = previous == 1 && step_ != 1 && visible_;
@@ -318,16 +463,26 @@ void Onboarding::ShowStep(int step) {
 
   StackPanel page{nullptr};
   switch (step_) {
-    case 1: page = welcome_; break;
-    case 2: page = bandwidth_; break;
-    case 3: page = providing_; break;
+    case kOnboardingStepWelcome: page = welcome_; break;
+    case kOnboardingStepBandwidth: page = bandwidth_; break;
+    case kOnboardingStepProvide: page = providing_; break;
+    case kOnboardingStepOffer: page = offer_; break;
     default: page = referral_; break;
   }
   pageHost_.Content(page);
   scroll_.ChangeView(nullptr, winrt::Windows::Foundation::IReference<double>{0.0}, nullptr, true);
   ApplyTopBar();
-  if (step_ == 2) ApplyBandwidth();
-  if (step_ == 4) ApplyReferral();
+  if (step_ == kOnboardingStepBandwidth) ApplyBandwidth();
+  if (step_ == kOnboardingStepReferral) ApplyReferral();
+  if (step_ == kOnboardingStepOffer) {
+    ApplyPrices();
+    if (Sdk().eventsReady()) {
+      const OfferView& offer = balance_.offer;
+      Sdk().events().OfferScreenShown("final_screen", balance_.offerExperimentId,
+                                      balance_.offerVariant, balance_.tier.name, offer.firstYear,
+                                      offer.currency, OfferExpiresInSeconds(offer));
+    }
+  }
 
   if (animations_) {
     page.Opacity(0);
@@ -362,7 +517,10 @@ void Onboarding::ShowStep(int step) {
 }
 
 void Onboarding::ApplyTopBar() {
-  backButton_.Visibility(1 < step_ ? Visibility::Visible : Visibility::Collapsed);
+  backButton_.Visibility(1 < step_ && !standalone_ ? Visibility::Visible : Visibility::Collapsed);
+  // Skip is not offered on the offer page: its own link is the way out
+  skipButton_.Visibility(OnboardingShowsSkip(step_, offerEnabled_) ? Visibility::Visible
+                                                                   : Visibility::Collapsed);
   // the header slot only exists after page 1: page 1 keeps the connector large
   // in its route line
   headerSlot_.Visibility(1 < step_ ? Visibility::Visible : Visibility::Collapsed);
@@ -371,7 +529,7 @@ void Onboarding::ApplyTopBar() {
 
 void Onboarding::ApplyBubbles() {
   bubbles_.Children().Clear();
-  for (int index = 1; index <= kStepCount; ++index) {
+  for (int index = 1; index <= StepCount(); ++index) {
     ShapeRectangle bubble;
     const bool current = index == step_;
     bubble.Width(current ? 22 : 8);
@@ -385,7 +543,7 @@ void Onboarding::ApplyBubbles() {
   }
   winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
       bubbles_, hstring{Format("onboarding_step_of", static_cast<int64_t>(step_),
-                               static_cast<int64_t>(kStepCount))});
+                               static_cast<int64_t>(StepCount()))});
 }
 
 // ---- the connector's flight ----------------------------------------------------
@@ -676,15 +834,25 @@ StackPanel Onboarding::BuildWelcome() {
   plans.Margin(Thickness{0, 52, 0, 0});
   page.Children().Append(plans);
   plans_.onSelect = [weak = weak_from_this()](bool yearly) {
-    if (auto self = weak.lock()) self->ApplyPlanCta(yearly);
+    if (auto self = weak.lock()) {
+      if (yearly && self->offerEnabled_ && self->balance_.offer.active && Sdk().eventsReady()) {
+        Sdk().events().OfferCardTapped(PlanName(true));
+      }
+      self->ApplyPlanCta(yearly);
+    }
   };
+
+  // the welcome offer under the picker while the network's offer is active:
+  // the static deadline, the trial timeline and the terms (OfferLines)
+  auto welcomeOffer = welcomeOffer_.Build(/*compact=*/false);
+  welcomeOffer.Margin(Thickness{0, 20, 0, 0});
+  welcomeOffer.Visibility(Visibility::Collapsed);
+  page.Children().Append(welcomeOffer);
 
   checkoutButton_ = MakePrimaryButton(PlanPicker::CtaLabel(plans_.Yearly()));
   checkoutButton_.Margin(Thickness{0, 16, 0, 0});
   checkoutButton_.Click([weak = weak_from_this()](auto const&, auto const&) {
-    if (auto self = weak.lock()) {
-      if (self->actions_.startCheckout) self->actions_.startCheckout(self->plans_.Yearly());
-    }
+    if (auto self = weak.lock()) self->StartCheckout(self->plans_.Yearly());
   });
   page.Children().Append(checkoutButton_);
 
@@ -877,10 +1045,21 @@ StackPanel Onboarding::BuildReferral() {
   referralCard_.Build(page, animations_);
 
   auto done = MakePrimaryButton(Loc("get_connected"));
+  referralDone_ = done;
   done.Margin(Thickness{0, 24, 0, 0});
+  // the offer page follows (everyone reaches it); the holdout finishes here
   done.Click([weak = weak_from_this()](auto const&, auto const&) {
     if (auto self = weak.lock()) {
-      if (self->actions_.finish) self->actions_.finish();
+      const int next = OnboardingReferralNext(self->offerEnabled_);
+      if (next == 0) {
+        if (Sdk().eventsReady()) {
+          Sdk().events().OnboardingStepCompleted(OnboardingStepName(self->step_), self->step_,
+                                                 self->StepElapsedMs());
+        }
+        if (self->actions_.finish) self->actions_.finish();
+      } else {
+        self->ShowStep(next);
+      }
     }
   });
   page.Children().Append(done);
@@ -888,5 +1067,70 @@ StackPanel Onboarding::BuildReferral() {
 }
 
 void Onboarding::ApplyReferral() { referralCard_.Apply(); }
+
+// ---- page 5: the welcome offer (mmm/onboarding/PLAN.md "in-app offer screen")
+// The same offer the plan page showed, restated: headline, the billed amount
+// as the most prominent number, the static deadline, the trial timeline, one
+// primary CTA, and the always-visible "Continue with the free plan". No
+// countdown, and no second offer when the user declines.
+
+StackPanel Onboarding::BuildOffer() {
+  StackPanel page;
+  page.Spacing(0);
+  offerEyebrow_ = MakeText(hstring{}, 11, colors::MakeBrush(colors::kReferralGold));
+  offerEyebrow_.FontWeight(winrt::Windows::UI::Text::FontWeights::Bold());
+  offerEyebrow_.CharacterSpacing(200);
+  offerEyebrow_.Margin(Thickness{0, 12, 0, 0});
+  page.Children().Append(offerEyebrow_);
+  offerHeadline_ = MakeTitle(hstring{});
+  offerHeadline_.Margin(Thickness{0, 8, 0, 0});
+  page.Children().Append(offerHeadline_);
+
+  // the offer card: the price lines in the gold dress, then the supporting lines
+  Border card;
+  card.CornerRadius(CornerRadius{12, 12, 12, 12});
+  card.BorderThickness(Thickness{1, 1, 1, 1});
+  card.BorderBrush(colors::ProGoldBrush());
+  card.Background(colors::CardBrush());
+  card.Padding(Thickness{20, 20, 20, 20});
+  card.Margin(Thickness{0, 28, 0, 0});
+  StackPanel lines;
+  lines.Spacing(4);
+  offerPrice_ = MakeLead(hstring{}, 22);
+  lines.Children().Append(offerPrice_);
+  offerThen_ = MakeText(hstring{}, 13, colors::MutedBrush(), true);
+  lines.Children().Append(offerThen_);
+  offerTrial_ = MakeText(hstring{}, 13, colors::MakeBrush(colors::kProGoldLight), true);
+  lines.Children().Append(offerTrial_);
+  auto offerLines = offerLines_.Build(/*compact=*/false);
+  offerLines.Margin(Thickness{0, 12, 0, 0});
+  lines.Children().Append(offerLines);
+  card.Child(lines);
+  page.Children().Append(card);
+
+  offerCta_ = MakePrimaryButton(hstring{});
+  offerCta_.Margin(Thickness{0, 32, 0, 0});
+  offerCta_.Click([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->StartCheckout(true);
+  });
+  page.Children().Append(offerCta_);
+
+  auto keepFree = MakeTextButton(Loc("continue_with_free_plan"), colors::MutedBrush());
+  keepFree.HorizontalAlignment(HorizontalAlignment::Center);
+  keepFree.Margin(Thickness{0, 8, 0, 0});
+  // the decline: finishes exactly as Skip used to, and is never re-offered
+  keepFree.Click([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) {
+      if (Sdk().eventsReady()) {
+        Sdk().events().OfferDeclined("continue_free", self->StepElapsedMs());
+        Sdk().events().OnboardingStepCompleted(OnboardingStepName(self->step_), self->step_,
+                                               self->StepElapsedMs());
+      }
+      if (self->actions_.finish) self->actions_.finish();
+    }
+  });
+  page.Children().Append(keepFree);
+  return page;
+}
 
 }  // namespace urnw

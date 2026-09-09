@@ -10,9 +10,15 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.UI.ViewManagement.h>
 
+#include <cstdlib>
+#include <map>
+
 #include "AppController.h"
+#include "ClientEvents.h"
 #include "Log.h"
+#include "OnboardingRouting.h"
 #include "PageContext.h"
+#include "Paths.h"
 #include "StatsFormat.h"
 #include "UrColors.h"
 
@@ -1307,6 +1313,94 @@ void MainWindow::HideOnboarding() {
   if (onboarding_) onboarding_->Hide();
 }
 
+namespace {
+// percent-decoding for the campaign link's query (the same rules as the
+// checkout callbacks': '+' is a space)
+std::string DecodeQueryValue(std::string const& s) {
+  auto hexv = [](char c) -> int {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    return -1;
+  };
+  std::string out;
+  out.reserve(s.size());
+  for (size_t i = 0; i < s.size(); ++i) {
+    if (s[i] == '%' && i + 2 < s.size()) {
+      const int hi = hexv(s[i + 1]), lo = hexv(s[i + 2]);
+      if (hi >= 0 && lo >= 0) {
+        out.push_back(static_cast<char>((hi << 4) | lo));
+        i += 2;
+        continue;
+      }
+    }
+    out.push_back(s[i] == '+' ? ' ' : s[i]);
+  }
+  return out;
+}
+}  // namespace
+
+void MainWindow::HandleOnboardingLink(std::string const& url) {
+  if (!Sdk().IsLoggedIn()) return;
+  std::map<std::string, std::string> query;
+  if (const size_t q = url.find('?'); q != std::string::npos) {
+    size_t i = q + 1;
+    while (i < url.size()) {
+      const size_t amp = url.find('&', i);
+      const std::string pair =
+          url.substr(i, amp == std::string::npos ? std::string::npos : amp - i);
+      if (const size_t eq = pair.find('='); eq != std::string::npos) {
+        query[pair.substr(0, eq)] = DecodeQueryValue(pair.substr(eq + 1));
+      }
+      if (amp == std::string::npos) break;
+      i = amp + 1;
+    }
+  }
+  switch (urnw::ParseOnboardingLink(url)) {
+    case urnw::OnboardingLink::Connect:
+      HomeNav().SelectedItem(ConnectNavItem());
+      break;
+    case urnw::OnboardingLink::Widgets:
+      // no widgets on the desktop: the Account page is the closest destination
+      HomeNav().SelectedItem(AccountNavItem());
+      break;
+    case urnw::OnboardingLink::Offer:
+      if (balance_.offer.active) {
+        if (!onboarding_) ShowOnboarding();  // builds it (and shows page 1)
+        if (onboarding_) onboarding_->ShowOffer();
+      } else {
+        ShowUpgradeSheet();
+      }
+      break;
+    case urnw::OnboardingLink::Feedback: {
+      HomeNav().SelectedItem(SupportNavItem());
+      int rating = 0;
+      if (auto r = query.find("r"); r != query.end()) rating = std::atoi(r->second.c_str());
+      const std::string why = query.count("why") ? query["why"] : std::string();
+      std::string token = query.count("token") ? query["token"] : std::string();
+      if (token.empty() && query.count("t")) token = query["t"];
+      if (settings_) settings_->PrefillFromCampaign(token, rating, why);
+      break;
+    }
+    case urnw::OnboardingLink::None:
+      break;
+  }
+}
+
+void MainWindow::NoteConnected() {
+  // connect.first: once per network. The network id keys the memory, so a
+  // second account on the same machine gets its own first connect.
+  if (!Sdk().eventsReady()) return;
+  auto byJwt = Sdk().ParsedJwt();
+  if (!byJwt) return;
+  const std::string networkId = byJwt->NetworkId ? *byJwt->NetworkId : byJwt->NetworkName;
+  if (networkId.empty()) return;
+  const std::string key = "connect_first_" + networkId;
+  if (urnw::LoadAppPrefs().value(key, false)) return;
+  urnw::SaveAppPref(key.c_str(), true);
+  Sdk().events().ConnectFirst();
+}
+
 // The upgrade sheet opened straight on the checkout for the plan the
 // onboarding page picked (its own products page would only ask again).
 winrt::fire_and_forget MainWindow::ShowUpgradeCheckout(bool yearly) {
@@ -1765,6 +1859,7 @@ void MainWindow::OnStatsChanged(urnw::LiveStats const& stats) {
   // and the counters are zero, and the strip says "No traffic yet" rather than
   // printing two honest-looking zero rates under the word Connected.
   if (statusSamplePinned_) return;
+  if (stats.connected) NoteConnected();
   statusConnected_ = stats.connected;
   statusLocationName_ = stats.locationName;
   statusDownBps_ = stats.downBitsPerSecond;

@@ -16,6 +16,7 @@
 
 #include "SdkHost.h"
 #include "PlanPicker.h"
+#include "OfferCard.h"
 #include "SubscriptionBalance.h"
 
 namespace urnw {
@@ -122,6 +123,22 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void BeginCheckout();
+  // The payment sheet path (mmm/onboarding/PLAN.md: inline Stripe, never an
+  // external browser while a web view exists): Api::stripePaymentSheet{plan}
+  // -> the ur.io embedded pay page https://ur.io/app/pay-sheet?cs=&pk=&plan=
+  // &return= in the WebView2. The page mounts Stripe's Payment Element,
+  // confirms the SetupIntent (yearly: the trial, the welcome offer's coupon
+  // applied server-side) or the PaymentIntent (monthly), and hands control
+  // back by navigating to the return url urnetwork://pay/done or posting
+  // {type: "ur-pay", status} (WebMessageReceived). A pay-sheet failure before
+  // anything rendered continues with the embedded checkout session.
+  void RequestPaymentSheet();
+  winrt::fire_and_forget OpenPaySheet(std::string clientSecret, std::string publishableKey);
+  void HandlePayMessage(std::string const& json);
+  // The balance store's tier/offer: reprint the plan cards and the read-only
+  // offer line (shown while the offer state is active).
+  void ApplyPrices();
+  void EmitPurchase(const char* outcome, std::string const& errorClass = std::string());
   // Create a Stripe session in the given ui mode and route the result: embedded
   // → OpenEmbedded (or retry once as hosted), hosted → LaunchHosted.
   void RequestSession(bool embedded);
@@ -163,6 +180,9 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   PlanPicker plans_;
   // the yearly card's halo pulse, running while the sheet is open (onboarding parity)
   winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard haloStoryboard_{nullptr};
+  OfferLines offerLine_;            // the active welcome offer, read-only
+  bool purchaseEmitted_ = false;    // purchase.completed once per checkout
+  bool paySheetActive_ = false;     // the web view shows the pay page (not Checkout)
 
   Page page_ = Page::Products;
   bool checkingOut_ = false;

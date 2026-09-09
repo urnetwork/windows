@@ -6,6 +6,7 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 
 #include "Localization.h"
+#include "OfferCard.h"
 #include "PageContext.h"
 #include "Strings.h"
 #include "UrColors.h"
@@ -134,21 +135,30 @@ Border PlanPicker::BuildCard(std::shared_ptr<State> const& state, bool yearly) {
   dot.VerticalAlignment(VerticalAlignment::Center);
   row.Children().Append(dot);
 
-  // the Stripe prices, as product literals in the store ($40 a year is a
-  // third off twelve months at $5); the trial line is the yearly plan's only.
-  // The yearly card's three lines set the height; the monthly card lays the
-  // same three lines out invisibly (never read aloud) so both cards are equal
-  // height at any text scale, and centers its one visible line in that space
-  // so it sits level with the dot (android SubscriptionOptions).
-  auto makeLines = [](bool visible) {
+  // The prices come from the server's price tier (SetPrices, fed by the
+  // balance store); the trial line is the yearly plan's only. The yearly
+  // card's lines set the height; the monthly card lays the same lines out
+  // invisibly (never read aloud) so both cards are equal height at any text
+  // scale, and centers its visible lines in that space so they sit level
+  // with the dot (android SubscriptionOptions).
+  auto makeLines = [state](bool visible) {
     StackPanel lines;
     lines.Spacing(2);
-    lines.Children().Append(MakeLead(Loc("plan_yearly_price"), 22));
-    lines.Children().Append(MakeText(Loc("save_33_percent"), 13, colors::MutedBrush()));
-    lines.Children().Append(
-        MakeText(hstring{Format("includes_free_trial_days", kFreeTrialDays)}, 13,
-                 colors::MakeBrush(colors::kProGoldLight)));
-    if (!visible) {
+    auto price = MakeLead(hstring{}, 22);
+    auto secondary = MakeText(hstring{}, 13, colors::MutedBrush());
+    auto equivalent = MakeText(hstring{}, 13, colors::MutedBrush());
+    auto trial = MakeText(hstring{}, 13, colors::MakeBrush(colors::kProGoldLight));
+    lines.Children().Append(price);
+    lines.Children().Append(secondary);
+    lines.Children().Append(equivalent);
+    lines.Children().Append(trial);
+    if (visible) {
+      state->yearlyPrice = price;
+      state->yearlySecondary = secondary;
+      state->yearlyEquivalent = equivalent;
+      state->yearlyTrial = trial;
+    } else {
+      state->reserved = {price, secondary, equivalent, trial};
       lines.Opacity(0);
       lines.IsHitTestVisible(false);
       winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAccessibilityView(
@@ -162,9 +172,14 @@ Border PlanPicker::BuildCard(std::shared_ptr<State> const& state, bool yearly) {
     labels.Children().Append(makeLines(/*visible=*/true));
   } else {
     labels.Children().Append(makeLines(/*visible=*/false));
-    auto title = MakeLead(Loc("plan_monthly_price"), 22);
-    title.VerticalAlignment(VerticalAlignment::Center);
-    labels.Children().Append(title);
+    StackPanel monthlyLines;
+    monthlyLines.Spacing(2);
+    monthlyLines.VerticalAlignment(VerticalAlignment::Center);
+    state->monthlyPrice = MakeLead(hstring{}, 22);
+    monthlyLines.Children().Append(state->monthlyPrice);
+    state->monthlyLine = MakeText(hstring{}, 13, colors::MutedBrush());
+    monthlyLines.Children().Append(state->monthlyLine);
+    labels.Children().Append(monthlyLines);
   }
   Grid::SetColumn(labels, 1);
   row.Children().Append(labels);
@@ -271,7 +286,33 @@ Grid PlanPicker::Build() {
   });
 
   Apply(*state_);
+  SetPrices(PriceTierView{}, OfferView{});
   return plans;
+}
+
+void PlanPicker::SetPrices(const PriceTierView& tier, const OfferView& offer) {
+  SetTexts(ComposePlanCardTexts(tier, offer, kFreeTrialDays));
+}
+
+void PlanPicker::SetTexts(const PlanCardTexts& texts) {
+  auto set = [](TextBlock const& block, hstring const& text) {
+    if (!block) return;
+    block.Text(text);
+    block.Visibility(text.empty() ? Visibility::Collapsed : Visibility::Visible);
+  };
+  set(state_->yearlyPrice, texts.yearlyPrice);
+  set(state_->yearlySecondary, texts.yearlySecondary);
+  set(state_->yearlyEquivalent, texts.yearlyEquivalent);
+  set(state_->yearlyTrial, texts.yearlyTrial);
+  // the invisible copy that sizes the monthly card like the yearly one
+  if (state_->reserved.size() == 4) {
+    set(state_->reserved[0], texts.yearlyPrice);
+    set(state_->reserved[1], texts.yearlySecondary);
+    set(state_->reserved[2], texts.yearlyEquivalent);
+    set(state_->reserved[3], texts.yearlyTrial);
+  }
+  set(state_->monthlyPrice, texts.monthlyPrice);
+  set(state_->monthlyLine, texts.monthlyLine);
 }
 
 void PlanPicker::Select(bool yearly) {

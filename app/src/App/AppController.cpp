@@ -814,6 +814,13 @@ void AppController::HandleDeepLink(const std::string& url) {
   // the callback comes back through the browser, so the app is in the background
   // (and may be hidden to the tray) — bring the window forward for the result
   ShowWindow(nullptr);
+  // the campaign emails' buttons land on the window's destinations
+  if (url.rfind("urnetwork://onboarding/", 0) == 0) {
+    if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>()) {
+      self->HandleOnboardingLink(url);
+    }
+    return;
+  }
   sdk_.HandleDeepLink(url);
 }
 

@@ -62,6 +62,10 @@ class SettingsPage {
                  winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSendFeedback(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // urnetwork://onboarding/feedback?token=&r=&why=: records the click for the
+  // campaign (GET /onboarding/feedback/{token}) and pre-fills the form with
+  // the rating and the reason the email button carried.
+  void PrefillFromCampaign(std::string const& token, int rating, std::string const& reason);
 
   // --preview-ui only (Startup.h): raise the feedback acknowledgement, the
   // severity that SHOULD time out, so both snackbar behaviours are visible.

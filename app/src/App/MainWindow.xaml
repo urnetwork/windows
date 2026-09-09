@@ -400,6 +400,10 @@
                                        VerticalAlignment="Center"
                                        Foreground="{StaticResource UrTextMutedBrush}" />
                         </Grid>
+                        <!-- the marketing opt-out at collection, on by default
+                             (mmm/onboarding/PLAN.md); rides on the create call -->
+                        <CheckBox x:Name="ProductUpdatesCheck" MinWidth="0" IsChecked="True"
+                                  Foreground="{StaticResource UrTextMutedBrush}" />
                         <TextBox x:Name="BonusCodeBox" Style="{StaticResource UrTextInputStyle}"
                                  TextChanged="OnBonusCodeChanged" />
                         <TextBlock x:Name="BonusStatusText" Style="{StaticResource UrSupportingTextStyle}"
@@ -541,6 +545,9 @@
                                        VerticalAlignment="Center"
                                        Foreground="{StaticResource UrTextMutedBrush}" />
                         </Grid>
+                        <!-- the marketing opt-out at collection, on by default -->
+                        <CheckBox x:Name="InstantProductUpdatesCheck" MinWidth="0" IsChecked="True"
+                                  Foreground="{StaticResource UrTextMutedBrush}" />
                         <Button x:Name="InstantCreateButton" IsEnabled="False"
                                 Style="{StaticResource AccentButtonStyle}"
                                 HorizontalAlignment="Stretch" Click="OnCreateInstantSubmit" />

@@ -12,6 +12,7 @@
 #include <winrt/Windows.Storage.Pickers.h>
 
 #include "BalanceSheets.h"  // SetMarkdownLinkText, for the community link rows
+#include "ClientEvents.h"
 #include "Ids.h"
 #include "Localization.h"
 #include "Log.h"
@@ -1299,6 +1300,18 @@ void SettingsPage::ShowPreviewSnackbar() {
 
 // ---- support ---------------------------------------------------------------
 
+void SettingsPage::PrefillFromCampaign(std::string const& token, int rating,
+                                       std::string const& reason) {
+  if (1 <= rating && rating <= 5) w_.FeedbackRating().Value(static_cast<double>(rating));
+  if (!reason.empty()) w_.FeedbackText().Text(winrt::to_hstring(reason));
+  if (token.empty() || !Sdk().IsLoggedIn()) return;
+  Sdk().api().onboardingFeedbackToken(
+      token, rating, reason,
+      [](std::optional<urnet::OnboardingFeedbackTokenResult>, std::optional<std::string> err) {
+        if (err) LogWarn("settings: feedback token failed: {}", *err);
+      });
+}
+
 void SettingsPage::OnSendFeedback(IInspectable const&, RoutedEventArgs const&) {
   // This had NO session guard at all and reported success unconditionally: a
   // 401 rendered as "Thanks for the feedback!" while nothing had been sent.
@@ -1316,13 +1329,15 @@ void SettingsPage::OnSendFeedback(IInspectable const&, RoutedEventArgs const&) {
   }
   const bool attachLogs =
       w_.FeedbackIncludeLogs().IsChecked() && w_.FeedbackIncludeLogs().IsChecked().Value();
+  const int64_t sentRating = args.star_count;  // for feedback.submitted
+  const std::string sentText = text;
 
   w_.SendFeedbackButton().IsEnabled(false);
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().api().sendFeedback(
-      args, [queue, weak, attachLogs](std::optional<urnet::FeedbackSendResult> result,
-                                      std::optional<std::string> err) {
+      args, [queue, weak, attachLogs, sentRating, sentText](
+                std::optional<urnet::FeedbackSendResult> result, std::optional<std::string> err) {
         // FeedbackSendResult carries NO error field - only feedback_id - so a
         // result plus no transport error is the whole success test. Reporting
         // success unconditionally, as this used to, turned a 401 into "Thanks
@@ -1334,7 +1349,7 @@ void SettingsPage::OnSendFeedback(IInspectable const&, RoutedEventArgs const&) {
         // will actually read. A client-minted id correlates with nothing.
         std::string feedbackId;
         if (ok && result->feedback_id) feedbackId = *result->feedback_id;
-        queue.TryEnqueue([weak, ok, error, attachLogs, feedbackId] {
+        queue.TryEnqueue([weak, ok, error, attachLogs, feedbackId, sentRating, sentText] {
           auto self = weak.get();
           if (!self) return;
           auto& page = self->settings();
@@ -1345,6 +1360,7 @@ void SettingsPage::OnSendFeedback(IInspectable const&, RoutedEventArgs const&) {
                 InfoBarSeverity::Error);
             return;
           }
+          if (Sdk().eventsReady()) Sdk().events().FeedbackSubmitted(sentRating, "", sentText);
           page.settingsSnackbar().Show(Loc("thanks_for_the_feedback"),
                                        InfoBarSeverity::Success);
           self->FeedbackText().Text(L"");

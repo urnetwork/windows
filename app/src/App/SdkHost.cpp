@@ -5,6 +5,8 @@
 
 #include "SdkHost.h"
 
+#include <urnetwork_sdk.h>
+
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -488,6 +490,10 @@ bool SdkHost::Initialize() {
     api_ = networkSpace_->getApi();
     asyncLocalState_ = networkSpace_->getAsyncLocalState();
     localState_ = asyncLocalState_->getLocalState();
+    // the SDK's client event queue over this network space: it persists,
+    // batches and sends the product events (ClientEvents.h)
+    events_ = std::make_unique<ClientEventQueue>(networkSpace_->handle(), appVersion_,
+                                                 ClientEventLocale());
     // sign-up network-name availability (bound once; api-scoped)
     networkNameVc_ = urnet::newNetworkNameValidationViewController(*api_);
     networkNameVc_->start();
@@ -674,6 +680,7 @@ void SdkHost::LoginAsGuest(std::function<void(AuthResult)> done,
                            std::optional<std::string> referralCode) {
   SetAuthState(AuthState::Authenticating);
   urnet::NetworkCreateArgs args;
+  ApplySignupPreferences(args);
   args.terms = true;  // the sheet's button is gated on the terms consent
   args.guest_mode = true;
   if (referralCode && !referralCode->empty()) args.referral_code = *referralCode;
@@ -838,6 +845,7 @@ void SdkHost::SubmitCreateNetwork(const CreateNetworkParams& params,
                                   std::optional<urnet::WalletAuthArgs> walletAuth,
                                   std::function<void(AuthResult)> done) {
   urnet::NetworkCreateArgs args;
+  ApplySignupPreferences(args);
   args.user_name = std::string();
   args.network_name = params.networkName;
   args.terms = params.terms;
@@ -1057,6 +1065,7 @@ void SdkHost::CreateInstantAccount(std::function<void(InstantAccount)> done) {
   // NO user_auth, password, auth_jwt or wallet_auth: that combination is what
   // makes the server mint a seedphrase-secured network and return the phrase.
   urnet::NetworkCreateArgs args;
+  ApplySignupPreferences(args);
   args.terms = true;  // the form's button is gated on the terms consent
 
   api_->networkCreate(args, [this, done](std::optional<urnet::NetworkCreateResult> result,
@@ -1209,6 +1218,8 @@ bool SdkHost::ApplyNetworkServer(const std::string& hostName, const std::string&
       api_ = networkSpace_->getApi();
       asyncLocalState_ = networkSpace_->getAsyncLocalState();
       localState_ = asyncLocalState_->getLocalState();
+      events_ = std::make_unique<ClientEventQueue>(networkSpace_->handle(), appVersion_,
+                                                   ClientEventLocale());
       networkNameVc_ = urnet::newNetworkNameValidationViewController(*api_);
       networkNameVc_->start();
       loggedIn = !localState_->getByClientJwt().empty();
@@ -1313,8 +1324,8 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
   args.description = DeviceDescription();
   args.device_spec = DeviceSpec();
 
-  api_->authNetworkClient(args, [this, byJwt, done](std::optional<urnet::AuthNetworkClientResult> result,
-                                                    std::optional<std::string> err) {
+  AuthNetworkClientWithLocale(args, [this, byJwt, done](std::optional<urnet::AuthNetworkClientResult> result,
+                                                        std::optional<std::string> err) {
     if (err || !result) {
       AuthResult r{false, false, err ? *err : "no result"};
       SetAuthState(AuthState::Error, r.error);
@@ -1587,10 +1598,35 @@ void SdkHost::SignWithBittensorWallet(
 }
 
 void SdkHost::HandleDeepLink(const std::string& url) {
+  // the campaign emails' buttons: urnetwork://onboarding/<step>
+  if (url.rfind("urnetwork://onboarding/", 0) == 0) {
+    if (onOnboardingLink_) onOnboardingLink_(url);
+    return;
+  }
   // Every browser round trip answers here: the wallet bridge hosts and the
   // urnetwork://oauth/<provider> return of the api's Google / Apple callbacks
   // (on_sso below).
   wallet_.HandleDeepLink(url);
+}
+
+void SdkHost::SetProductUpdatesOptOut(bool optOut) {
+  productUpdatesOptOut_ = optOut;
+  if (optOut && events_) events_->SignupOptoutChanged(false);
+}
+
+void SdkHost::ApplySignupPreferences(urnet::NetworkCreateArgs& args) const {
+  if (productUpdatesOptOut_) args.product_updates = false;
+}
+
+void SdkHost::AuthNetworkClientWithLocale(const urnet::AuthNetworkClientArgs& args,
+                                          urnet::AuthNetworkClientCallback callback) {
+  nlohmann::json json = args;
+  json["time_zone"] = LocalTimeZoneId();
+  json["locale"] = ClientEventLocale();
+  const std::string body = json.dump();
+  auto* fn = new urnet::AuthNetworkClientCallback(std::move(callback));
+  urnet_api_auth_network_client(api_->handle(), body.c_str(),
+                                &urnet::detail::oneshot_auth_network_client, fn);
 }
 
 // ---- Sign in with Google / Apple (the provider's web flow, the api's callback) ---
@@ -5410,6 +5446,7 @@ void SdkHost::Logout() {
     // session being ended; dropping it here means a later Confirm cannot
     // register a device against a stale jwt.
     pendingInstantJwt_.reset();
+    if (events_) events_->NewSession();  // the next sign-in is a new session
     TeardownSessionLocked();
     // Explicit logout deliberately severs the device identity: clear the
     // service-persisted key material (TunnelController::Logout) so the next

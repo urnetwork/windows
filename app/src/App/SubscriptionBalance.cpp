@@ -199,9 +199,13 @@ void SubscriptionBalanceStore::Fetch() {
   loading_ = true;
   const uint32_t generation = generation_;
   auto queue = queue_;
-  sdk_.api().subscriptionBalance(
-      [this, queue, generation](std::optional<urnet::SubscriptionBalanceResult> result,
-                                std::optional<std::string> err) {
+  // the storefront variant of the balance call: the same balance plus the
+  // price tier, the welcome offer and the experiment assignments. There is no
+  // storefront on the desktop, so the server resolves the tier from billing
+  // or the request's country (an estimate until the card's country is known).
+  sdk_.api().subscriptionBalanceForStorefront(
+      "", [this, queue, generation](std::optional<urnet::SubscriptionBalanceResult> result,
+                                    std::optional<std::string> err) {
         // sdk callback thread: only marshal (the store lives for the process,
         // owned by AppController)
         queue.TryEnqueue([this, generation, result = std::move(result),
@@ -224,6 +228,28 @@ void SubscriptionBalanceStore::Apply(urnet::SubscriptionBalanceResult const& res
                             result.open_transfer_byte_count;
   snapshot_.startBalanceByteCount = result.start_balance_byte_count;
   snapshot_.loaded = true;
+  if (result.price_tier) {
+    snapshot_.tier.name =
+        result.price_tier->name.empty() ? kPriceTierStandard : result.price_tier->name;
+    if (0 < result.price_tier->yearly_usd) snapshot_.tier.yearly = result.price_tier->yearly_usd;
+    if (0 < result.price_tier->monthly_usd) snapshot_.tier.monthly = result.price_tier->monthly_usd;
+    if (!result.price_tier->currency.empty()) snapshot_.tier.currency = result.price_tier->currency;
+  }
+  if (result.onboarding_offer) {
+    ApplyOffer(*result.onboarding_offer);
+  } else {
+    snapshot_.offer.active = false;
+  }
+  snapshot_.offerVariant.clear();
+  snapshot_.offerExperimentId.clear();
+  if (result.experiments) {
+    for (auto const& a : *result.experiments) {
+      if (a.surface == "offer.in_app") {
+        snapshot_.offerVariant = a.variant;
+        snapshot_.offerExperimentId = a.experiment_id;
+      }
+    }
+  }
 
   // The server is the source of truth for Pro, and current_subscription is
   // set exactly when the network is Pro. The jwt's Pro claim is baked in when
@@ -373,6 +399,23 @@ void SubscriptionBalanceStore::EnsureReferralPolling() {
 
 void SubscriptionBalanceStore::StopReferralPolling() {
   if (referralTimer_) referralTimer_.Stop();
+}
+
+void SubscriptionBalanceStore::ApplyOffer(urnet::OnboardingOffer const& offer) {
+  OfferView& view = snapshot_.offer;
+  view.active = offer.state == "active";
+  if (0 < offer.percent_off) view.percentOff = offer.percent_off;
+  if (0 < offer.months_free) view.monthsFree = offer.months_free;
+  if (0 < offer.regular_year_usd) view.regularYear = offer.regular_year_usd;
+  view.firstYear = 0 < offer.first_year_usd ? offer.first_year_usd
+                                            : OfferFirstYear(view.regularYear, view.percentOff);
+  if (!offer.currency.empty()) view.currency = offer.currency;
+  view.expiresAt = offer.expires_at;
+}
+
+void SubscriptionBalanceStore::SetOffer(urnet::OnboardingOffer const& offer) {
+  ApplyOffer(offer);
+  Publish();
 }
 
 void SubscriptionBalanceStore::Publish() {

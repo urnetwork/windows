@@ -10,8 +10,13 @@
 #include <algorithm>
 #include <map>
 
+#include <nlohmann/json.hpp>
+
+#include "ClientEvents.h"
 #include "Localization.h"
+#include "Log.h"
 #include "Paths.h"
+#include "PricePresentation.h"
 #include "StatsFormat.h"
 #include "Strings.h"
 #include "UrColors.h"
@@ -49,6 +54,22 @@ constexpr size_t kBalanceCodeLength = 26;
 constexpr const char* kCheckoutPage = "https://ur.io/checkout";
 constexpr const char* kCheckoutRedirect = "urnetwork://checkout";
 constexpr const char* kCheckoutScheme = "urnetwork://";
+// The ur.io embedded pay page (mmm/ur.io /app/pay-sheet): mounts Stripe's
+// Payment Element for the payment sheet's client secret, confirms the intent,
+// and hands control back by navigating to the return url (success) or posting
+// {type: "ur-pay", status} to the host (WebView2 WebMessageReceived, through
+// window.chrome.webview.postMessage; a page-side bridge forwards a plain
+// window.postMessage too, so both signals land in the sheet).
+constexpr const char* kPaySheetPage = "https://ur.io/app/pay-sheet";
+constexpr const char* kPayReturn = "urnetwork://pay/done";
+constexpr const wchar_t* kPayMessageBridge =
+    L"window.addEventListener('message', function (e) {"
+    L"  var d = e && e.data;"
+    L"  if (typeof d === 'string') { try { d = JSON.parse(d); } catch (err) { return; } }"
+    L"  if (!d || d.type !== 'ur-pay') return;"
+    L"  if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(JSON.stringify(d));"
+    L"});";
+constexpr const char* kStoreStripe = "stripe";
 
 hstring H(std::string const& s) { return winrt::to_hstring(s); }
 
@@ -467,6 +488,15 @@ void UpgradeSheet::Build(XamlRoot const& root) {
     }
   };
 
+  // the network's welcome offer while it is active (read-only: the picker's
+  // yearly card already prints the first-year price; this is the deadline
+  // and the terms). Issued elsewhere — the sheet never issues one.
+  auto offerLine = offerLine_.Build(/*compact=*/true);
+  offerLine.Margin(Thickness{0, 4, 0, 0});
+  offerLine.Visibility(Visibility::Collapsed);
+  productsPanel_.Children().Append(offerLine);
+  ApplyPrices();
+
   checkoutErrorText_ = MakeText(hstring{L""}, 12, colors::DangerBrush(), true);
   // selectable: a failed browser launch appends the checkout url for the user
   // to copy out by hand (LaunchHosted)
@@ -528,7 +558,13 @@ void UpgradeSheet::Build(XamlRoot const& root) {
       checkoutClose, Loc("close"));
   checkoutClose.Click([weak = weak_from_this()](auto const&, auto const&) {
     // back to the products; the abandoned embedded session just expires
-    if (auto self = weak.lock()) self->ShowPage(Page::Products);
+    if (auto self = weak.lock()) {
+      if (self->page_ == Page::Checkout && !self->purchaseEmitted_) {
+        self->EmitPurchase("cancelled");
+        self->purchaseEmitted_ = true;
+      }
+      self->ShowPage(Page::Products);
+    }
   });
   checkoutHeader.Children().Append(checkoutClose);
   checkoutPanel_.Children().Append(checkoutHeader);
@@ -616,16 +652,57 @@ void UpgradeSheet::Build(XamlRoot const& root) {
     // session request cannot open a browser or a webview for it
     if (auto self = weak.lock()) {
       self->closed_ = true;
+      if (self->page_ == Page::Checkout && !self->purchaseEmitted_) {
+        self->EmitPurchase("cancelled");
+        self->purchaseEmitted_ = true;
+      }
       if (self->haloStoryboard_) self->haloStoryboard_.Stop();
       self->TeardownWebView();
     }
   });
 }
 
+void UpgradeSheet::ApplyPrices() {
+  const BalanceSnapshot snapshot = balance_.Current();
+  plans_.SetPrices(snapshot.tier, snapshot.offer);
+  if (auto root = offerLine_.Root()) {
+    root.Visibility(snapshot.offer.active ? Visibility::Visible : Visibility::Collapsed);
+    if (snapshot.offer.active) offerLine_.Update(snapshot.offer, snapshot.tier, kFreeTrialDays);
+  }
+}
+
+void UpgradeSheet::EmitPurchase(const char* outcome, std::string const& errorClass) {
+  if (!sdk_.eventsReady()) return;
+  const bool yearly = plans_.Yearly();
+  const BalanceSnapshot snapshot = balance_.Current();
+  const double price = yearly ? (snapshot.offer.active ? snapshot.offer.firstYear
+                                                       : snapshot.tier.yearly)
+                              : snapshot.tier.monthly;
+  const std::string out(outcome);
+  ClientEventQueue& events = sdk_.events();
+  if (out == "started") {
+    events.PurchaseStarted(kStoreStripe, PlanProduct(yearly), PlanName(yearly), yearly, price,
+                           snapshot.tier.currency);
+  } else if (out == "completed") {
+    events.PurchaseCompleted(kStoreStripe, PlanProduct(yearly), PlanName(yearly), yearly, price,
+                             snapshot.tier.currency);
+  } else if (out == "cancelled") {
+    events.PurchaseCancelled(kStoreStripe, PlanProduct(yearly), PlanName(yearly), yearly, price,
+                             snapshot.tier.currency);
+  } else {
+    events.PurchaseFailed(kStoreStripe, PlanProduct(yearly), PlanName(yearly), yearly, price,
+                          snapshot.tier.currency, errorClass);
+  }
+}
+
 void UpgradeSheet::ShowPage(Page page) {
   // leaving the embedded checkout releases its webview; a closed WebView2
   // cannot be revived, so the next attempt builds a fresh one
   if (page != Page::Checkout) TeardownWebView();
+  if (page == Page::Success && page_ != Page::Success && !purchaseEmitted_) {
+    purchaseEmitted_ = true;
+    EmitPurchase("completed");
+  }
   page_ = page;
   productsPanel_.Visibility(page == Page::Products ? Visibility::Visible
                                                    : Visibility::Collapsed);
@@ -640,6 +717,10 @@ void UpgradeSheet::ShowPage(Page page) {
 }
 
 void UpgradeSheet::ShowCheckoutError(hstring const& message) {
+  if (!purchaseEmitted_) {
+    EmitPurchase("failed", paySheetActive_ ? "payment_sheet" : "checkout");
+    purchaseEmitted_ = true;
+  }
   checkingOut_ = false;
   subscribeRing_.IsActive(false);
   subscribeButton_.IsEnabled(true);
@@ -652,16 +733,191 @@ void UpgradeSheet::BeginCheckout() {
   if (checkingOut_ || !sdk_.IsLoggedIn()) return;
   checkingOut_ = true;
   hostedFallbackTried_ = false;
+  purchaseEmitted_ = false;
+  paySheetActive_ = false;
   subscribeButton_.IsEnabled(false);
   plans_.SetEnabled(false);
   subscribeRing_.IsActive(true);
   checkoutErrorText_.Visibility(Visibility::Collapsed);
+  EmitPurchase("started");
 
-  // Embedded first (the ur.io/checkout bridge in a WebView2, so the card form
-  // never leaves the sheet) when the Evergreen WebView2 runtime is present;
-  // otherwise the hosted session in the system browser. The runtime is an
-  // OPTIONAL dependency: every miss falls back to hosted, never to an error.
-  RequestSession(/*embedded=*/WebView2RuntimeAvailable());
+  // The inline payment sheet first, then the ur.io/checkout bridge — both in
+  // a WebView2, so the card form never leaves the sheet — when the Evergreen
+  // WebView2 runtime is present; otherwise the hosted session in the system
+  // browser. The runtime is an OPTIONAL dependency: every miss falls back,
+  // never to an error.
+  if (WebView2RuntimeAvailable()) {
+    RequestPaymentSheet();
+    return;
+  }
+  RequestSession(/*embedded=*/false);
+}
+
+void UpgradeSheet::RequestPaymentSheet() {
+  urnet::StripePaymentSheetArgs args;
+  args.plan = PlanName(plans_.Yearly());
+  auto queue = dialog_.DispatcherQueue();
+  auto weak = weak_from_this();
+  sdk_.api().stripePaymentSheet(
+      args, [queue, weak](std::optional<urnet::StripePaymentSheetResult> result,
+                          std::optional<std::string> err) {
+        // the intent to confirm: the SetupIntent for the yearly plan (the
+        // trial defers the charge), the PaymentIntent for monthly
+        std::string clientSecret;
+        std::string publishableKey;
+        if (!err && result && !result->error) {
+          if (result->setup_intent_client_secret && !result->setup_intent_client_secret->empty()) {
+            clientSecret = *result->setup_intent_client_secret;
+          } else if (result->payment_intent_client_secret &&
+                     !result->payment_intent_client_secret->empty()) {
+            clientSecret = *result->payment_intent_client_secret;
+          }
+          if (result->publishable_key) publishableKey = *result->publishable_key;
+        }
+        if (err) LogWarn("upgrade: payment sheet failed: {}", *err);
+        queue.TryEnqueue([weak, clientSecret, publishableKey] {
+          auto self = weak.lock();
+          if (!self || self->closed_) return;
+          if (clientSecret.empty() || publishableKey.empty()) {
+            // nothing rendered yet: the embedded checkout session saves the purchase
+            self->RequestSession(/*embedded=*/true);
+            return;
+          }
+          self->OpenPaySheet(clientSecret, publishableKey);
+        });
+      });
+}
+
+winrt::fire_and_forget UpgradeSheet::OpenPaySheet(std::string clientSecret,
+                                                  std::string publishableKey) {
+  namespace wv2 = winrt::Microsoft::Web::WebView2::Core;
+  auto weak = weak_from_this();
+  auto queue = dialog_.DispatcherQueue();
+
+  checkingOut_ = false;
+  subscribeRing_.IsActive(false);
+  subscribeButton_.IsEnabled(true);
+  plans_.SetEnabled(true);
+
+  TeardownWebView();
+  const uint32_t generation = ++webviewGeneration_;
+  checkoutPageLoaded_ = false;
+  paySheetActive_ = true;
+  webview_ = winrt::Microsoft::UI::Xaml::Controls::WebView2();
+  webview_.DefaultBackgroundColor(colors::kBackground);
+
+  webview_.NavigationStarting([weak, queue](auto const&, auto const& args) {
+    const std::string uri = urnw::Narrow(std::wstring_view{args.Uri()});
+    if (!uri.starts_with(kCheckoutScheme)) return;
+    // the pay page handing control back (urnetwork://pay/done) — never a real navigation
+    args.Cancel(true);
+    queue.TryEnqueue([weak, uri] {
+      if (auto self = weak.lock()) self->HandleCheckoutCallback(uri);
+    });
+  });
+  webview_.NavigationCompleted([weak, queue, generation](auto const&, auto const& args) {
+    const bool ok = args.IsSuccess();
+    queue.TryEnqueue([weak, generation, ok] {
+      auto self = weak.lock();
+      if (!self || generation != self->webviewGeneration_) return;
+      if (ok) {
+        self->checkoutPageLoaded_ = true;
+        self->checkoutRing_.IsActive(false);
+      } else if (!self->checkoutPageLoaded_) {
+        // the pay page never rendered: nothing was shown, so nothing was
+        // paid — the embedded checkout page can still save the purchase
+        self->FallBackToHosted();
+      }
+    });
+  });
+  webview_.CoreProcessFailed([weak, queue, generation](auto const&, auto const&) {
+    queue.TryEnqueue([weak, generation] {
+      auto self = weak.lock();
+      if (!self || generation != self->webviewGeneration_) return;
+      if (self->page_ != Page::Checkout) return;
+      if (self->checkoutPageLoaded_) {
+        // died after the form rendered: the card may have been charged —
+        // confirm with the server rather than inviting a second purchase
+        self->waitingBodyText_.Text(Loc("checkout_interrupted_confirming"));
+        self->balance_.StartConfirmationPolling();
+        self->ShowPage(Page::Waiting);
+        return;
+      }
+      self->FallBackToHosted();
+    });
+  });
+  webview_.WebMessageReceived([weak, queue](auto const&, auto const& args) {
+    std::string json;
+    try {
+      json = urnw::Narrow(std::wstring{args.TryGetWebMessageAsString()});
+    } catch (...) {
+      try {
+        json = urnw::Narrow(std::wstring{args.WebMessageAsJson()});
+      } catch (...) {
+        return;
+      }
+    }
+    queue.TryEnqueue([weak, json] {
+      if (auto self = weak.lock()) self->HandlePayMessage(json);
+    });
+  });
+
+  webviewSlot_.Children().InsertAt(0, webview_);
+  checkoutRing_.IsActive(true);
+  ShowPage(Page::Checkout);
+
+  const std::string url = std::string(kPaySheetPage) + "?cs=" + Esc(clientSecret) +
+                          "&pk=" + Esc(publishableKey) +
+                          "&plan=" + Esc(PlanName(plans_.Yearly())) +
+                          "&return=" + Esc(kPayReturn);
+  try {
+    const std::wstring dataDir = (StorageRoot(/*isService=*/false) / "webview2").wstring();
+    auto environment = co_await wv2::CoreWebView2Environment::CreateWithOptionsAsync(
+        hstring{}, hstring{dataDir}, wv2::CoreWebView2EnvironmentOptions());
+    auto self = weak.lock();
+    if (!self || generation != self->webviewGeneration_ || !self->webview_) co_return;
+    co_await self->webview_.EnsureCoreWebView2Async(environment);
+    if (generation != self->webviewGeneration_ || !self->webview_) co_return;
+    auto core = self->webview_.CoreWebView2();
+    core.NewWindowRequested([](auto const&, auto const& args) {
+      // target=_blank links (Stripe's terms/privacy): the system browser
+      args.Handled(true);
+      try {
+        winrt::Windows::System::Launcher::LaunchUriAsync(Uri(args.Uri()));
+      } catch (...) {
+      }
+    });
+    // the page's posted {type:"ur-pay"} message reaches WebMessageReceived
+    // through window.chrome.webview; the bridge forwards a plain postMessage
+    co_await core.AddScriptToExecuteOnDocumentCreatedAsync(hstring{kPayMessageBridge});
+    if (generation != self->webviewGeneration_ || !self->webview_) co_return;
+    core.Navigate(H(url));
+  } catch (...) {
+    auto self = weak.lock();
+    if (!self || generation != self->webviewGeneration_) co_return;
+    self->FallBackToHosted();
+  }
+}
+
+void UpgradeSheet::HandlePayMessage(std::string const& json) {
+  if (page_ != Page::Checkout || !paySheetActive_) return;
+  nlohmann::json message = nlohmann::json::parse(json, nullptr, false);
+  // a string-typed web message arrives json-encoded twice
+  if (message.is_string()) message = nlohmann::json::parse(message.get<std::string>(), nullptr, false);
+  if (!message.is_object() || message.value("type", std::string()) != "ur-pay") return;
+  const std::string status = message.value("status", std::string());
+  if (status == "succeeded" || status == "complete" || status == "processing" || status == "ok") {
+    HandleCheckoutCallback(std::string(kPayReturn));
+    return;
+  }
+  if (status == "cancelled" || status == "canceled") {
+    EmitPurchase("cancelled");
+    purchaseEmitted_ = true;
+    ShowPage(Page::Products);
+    return;
+  }
+  const std::string detail = message.value("message", std::string());
+  HandleCheckoutCallback("urnetwork://pay/error?errorMessage=" + Esc(detail));
 }
 
 void UpgradeSheet::RequestSession(bool embedded) {
@@ -767,6 +1023,7 @@ winrt::fire_and_forget UpgradeSheet::OpenEmbedded(std::string clientSecret) {
   TeardownWebView();
   const uint32_t generation = ++webviewGeneration_;
   checkoutPageLoaded_ = false;
+  paySheetActive_ = false;
   webview_ = winrt::Microsoft::UI::Xaml::Controls::WebView2();
   // brand surface while the (dark) page loads — never a white flash
   webview_.DefaultBackgroundColor(colors::kBackground);
@@ -865,7 +1122,8 @@ winrt::fire_and_forget UpgradeSheet::OpenEmbedded(std::string clientSecret) {
 void UpgradeSheet::HandleCheckoutCallback(std::string const& uri) {
   const auto params = ParseQuery(uri);
   const auto status = params.find("status");
-  if (status != params.end() && status->second == "complete") {
+  const bool payDone = uri.rfind(kPayReturn, 0) == 0;
+  if (payDone || (status != params.end() && status->second == "complete")) {
     // Paid inside the webview. The server only believes the Stripe payment
     // webhook — a client saying "I paid" is not evidence — so bridge the gap
     // with the same confirmation poll as hosted checkout.
@@ -876,6 +1134,12 @@ void UpgradeSheet::HandleCheckoutCallback(std::string const& uri) {
   }
   if (page_ != Page::Checkout) return;  // stale error after close
   const auto message = params.find("errorMessage");
+  if (!purchaseEmitted_) {
+    // before the page flips: leaving Checkout tears the web view down and
+    // forgets which page (pay sheet or checkout) failed
+    EmitPurchase("failed", paySheetActive_ ? "payment_sheet" : "checkout");
+    purchaseEmitted_ = true;
+  }
   ShowPage(Page::Products);
   ShowCheckoutError(message != params.end() && !message->second.empty()
                         ? H(message->second)
@@ -883,22 +1147,24 @@ void UpgradeSheet::HandleCheckoutCallback(std::string const& uri) {
 }
 
 void UpgradeSheet::FallBackToHosted() {
-  // The embedded leg failed BEFORE Stripe's form rendered, so nothing can have
-  // been paid — a fresh hosted session in the browser still saves the
-  // purchase. Once per Join press: a second failure surfaces as an inline
-  // error on the products page instead of looping.
+  // The web view leg failed BEFORE Stripe's form rendered, so nothing can
+  // have been paid — the next path still saves the purchase: the pay page
+  // falls back to the embedded checkout page, that to a fresh hosted session
+  // in the browser. Once per Join press: a further failure surfaces as an
+  // inline error on the products page instead of looping.
   if (page_ != Page::Checkout) return;
+  const bool fromPaySheet = paySheetActive_;
   ShowPage(Page::Products);
-  if (hostedFallbackTried_) {
+  if (!fromPaySheet && hostedFallbackTried_) {
     ShowCheckoutError(Loc("something_went_wrong"));
     return;
   }
-  hostedFallbackTried_ = true;
+  if (!fromPaySheet) hostedFallbackTried_ = true;
   checkingOut_ = true;
   subscribeButton_.IsEnabled(false);
   subscribeRing_.IsActive(true);
   checkoutErrorText_.Visibility(Visibility::Collapsed);
-  RequestSession(/*embedded=*/false);
+  RequestSession(/*embedded=*/fromPaySheet);
 }
 
 void UpgradeSheet::TeardownWebView() {
@@ -906,6 +1172,7 @@ void UpgradeSheet::TeardownWebView() {
   // navigation results, and the load-failure fallback all check the generation
   ++webviewGeneration_;
   checkoutPageLoaded_ = false;
+  paySheetActive_ = false;
   checkoutRing_.IsActive(false);
   if (!webview_) return;
   auto view = webview_;
@@ -926,6 +1193,7 @@ void UpgradeSheet::TeardownWebView() {
 }
 
 void UpgradeSheet::OnBalance(BalanceSnapshot const& snapshot, BalancePollState const& poll) {
+  if (page_ == Page::Products) ApplyPrices();
   if (page_ != Page::Waiting && page_ != Page::TimedOut) return;
   if (snapshot.isPro) {
     // A Pro-confirming snapshot wins from EITHER page: the timeout screen is

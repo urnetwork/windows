@@ -247,6 +247,7 @@ void LoginPage::ApplyStrings() {
   w_.InstantHeading().Text(Loc("create_instant_account"));
   w_.InstantExplanationText().Text(Loc("instant_account_explainer"));
   urnw::SetTermsMarkerText(w_.InstantTermsText(), urnw::Localized("terms_checkbox"), 12);
+  w_.InstantProductUpdatesCheck().Content(LocBox("periodic_product_updates"));
   // after SetTermsMarkerText: it is the inlines that call built which get put
   // back into the content view (see PairTermsLabel)
   urnw::PairTermsLabel(w_.InstantTermsCheck(), w_.InstantTermsText());
@@ -276,6 +277,7 @@ void LoginPage::ApplyStrings() {
   w_.CreatePasswordHint().Text(Loc("password_must_be_at_least_12_characters_long"));
   // tappable terms / privacy links inside the checkbox label
   urnw::SetTermsMarkerText(w_.TermsText(), urnw::Localized("terms_checkbox"), 12);
+  w_.ProductUpdatesCheck().Content(LocBox("periodic_product_updates"));
   urnw::PairTermsLabel(w_.TermsCheck(), w_.TermsText());
   w_.BonusCodeBox().Header(LocBox("bonus_referral_code_label"));
   w_.BonusCodeBox().PlaceholderText(Loc("enter_a_bonus_referral_code"));
@@ -821,6 +823,11 @@ void LoginPage::OnCreateNetwork(IInspectable const&, RoutedEventArgs const&) {
     return;
   }
 
+  // the marketing opt-out rides on the create call (absent = opted in)
+  const bool productUpdates = w_.ProductUpdatesCheck().IsChecked() &&
+                              w_.ProductUpdatesCheck().IsChecked().Value();
+  Sdk().SetProductUpdatesOptOut(!productUpdates);
+
   urnw::CreateNetworkParams params;
   params.networkName = networkName;
   params.terms = w_.TermsCheck().IsChecked() && w_.TermsCheck().IsChecked().Value();
@@ -1249,6 +1256,10 @@ void LoginPage::OnCreateInstantSubmit(IInspectable const&, RoutedEventArgs const
   w_.InstantCreateButton().IsEnabled(false);
   w_.InstantTermsCheck().IsEnabled(false);
   w_.InstantErrorText().Visibility(Visibility::Collapsed);
+  // the marketing opt-out rides on the create call (absent = opted in)
+  const bool productUpdates = w_.InstantProductUpdatesCheck().IsChecked() &&
+                              w_.InstantProductUpdatesCheck().IsChecked().Value();
+  Sdk().SetProductUpdatesOptOut(!productUpdates);
 
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();

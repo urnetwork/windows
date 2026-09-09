@@ -288,6 +288,8 @@
     <ClCompile Include="StatsSheets.cpp" />
     <ClCompile Include="Startup.cpp" />
     <ClCompile Include="SubscriptionBalance.cpp" />
+    <ClCompile Include="ClientEvents.cpp" />
+    <ClCompile Include="OfferCard.cpp" />
     <ClCompile Include="TransferChart.cpp" />
     <ClCompile Include="TransportBar.cpp" />
     <ClCompile Include="UsageBar.cpp" />
@@ -339,6 +341,10 @@
     <ClInclude Include="StatsSheets.h" />
     <ClInclude Include="Startup.h" />
     <ClInclude Include="SubscriptionBalance.h" />
+    <ClInclude Include="ClientEvents.h" />
+    <ClInclude Include="OfferCard.h" />
+    <ClInclude Include="OnboardingRouting.h" />
+    <ClInclude Include="PricePresentation.h" />
     <ClInclude Include="TransferChart.h" />
     <ClInclude Include="TransportBar.h" />
     <ClInclude Include="TransportStatusPresentation.h" />

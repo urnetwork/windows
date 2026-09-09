@@ -26,6 +26,7 @@
 
 #include <winrt/Microsoft.UI.Dispatching.h>
 
+#include "PricePresentation.h"
 #include "SdkHost.h"
 
 namespace urnw {
@@ -39,6 +40,14 @@ struct BalanceSnapshot {
   bool isPro = false;
   bool guest = false;
   bool loaded = false;  // at least one successful fetch this session
+  // The plan response's price tier (standard/regional, from the storefront
+  // country the server resolved), the network's welcome offer and the
+  // in-app offer experiment's assignment (mmm/onboarding/PLAN.md). Defaults
+  // until fetched.
+  PriceTierView tier;
+  OfferView offer;
+  std::string offerVariant;       // offer.in_app variant ("" when unassigned)
+  std::string offerExperimentId;
 };
 
 // Confirmation-poll state, for the upgrade flow UI.
@@ -130,6 +139,9 @@ class SubscriptionBalanceStore {
 
   BalanceSnapshot Current() const { return snapshot_; }
   BalancePollState CurrentPoll() const { return {confirming_, timedOut_}; }
+  // A freshly issued offer (POST /onboarding/offer/issue) lands here so every
+  // plan surface prints it before the next poll. Publishes.
+  void SetOffer(urnet::OnboardingOffer const& offer);
 
   // ---- referrals (the king-frog gold celebrations) --------------------------
   // The network's referral code + total, refreshed on its own 30s poll while
@@ -153,6 +165,7 @@ class SubscriptionBalanceStore {
   void EnsureReferralPolling();
   void StopReferralPolling();
   void Apply(urnet::SubscriptionBalanceResult const& result);
+  void ApplyOffer(urnet::OnboardingOffer const& offer);
   // Pro with a positive balance: nothing left to poll for (macOS
   // isSupporterWithBalance).
   bool IsSupporterWithBalance() const {
