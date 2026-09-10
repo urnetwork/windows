@@ -7,11 +7,18 @@
 #include <cmath>
 #include <random>
 
+#include <winrt/Microsoft.UI.Composition.h>
+#include <winrt/Microsoft.UI.Xaml.Hosting.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Numerics.h>
+#include <winrt/Windows.Graphics.Imaging.h>
+#include <winrt/Windows.Storage.Streams.h>
 #include <winrt/Windows.UI.ViewManagement.h>
 
+#include "Log.h"
 #include "UrColors.h"
 
 using namespace winrt;
@@ -19,6 +26,8 @@ using namespace winrt::Microsoft::UI::Xaml;
 using namespace winrt::Microsoft::UI::Xaml::Controls;
 using namespace winrt::Microsoft::UI::Xaml::Media;
 using winrt::Windows::Foundation::Point;
+using winrt::Windows::Foundation::Numerics::float2;
+namespace comp = winrt::Microsoft::UI::Composition;
 using ShapePolygon = winrt::Microsoft::UI::Xaml::Shapes::Polygon;
 using ShapeRectangle = winrt::Microsoft::UI::Xaml::Shapes::Rectangle;
 
@@ -43,7 +52,7 @@ constexpr double kTrailStepPx = 18;
 constexpr int kFrameMillis = 16;
 
 // The Compose FastOutSlowIn curve (a cubic bezier 0.4,0 / 0.2,1), sampled by
-// Newton iteration on the x axis: the sprites' horizontal ease and the veil
+// Newton iteration on the x axis: the sprites' horizontal ease and the mosaic
 // ramps use it so the port moves exactly like android.
 double FastOutSlowIn(double x) {
   x = std::clamp(x, 0.0, 1.0);
@@ -188,7 +197,7 @@ std::vector<ProFlightSprite> ProFlightBurst(uint64_t seed) {
   return sprites;
 }
 
-double ProFlightVeilStrength(double seconds) {
+double ProFlightMosaicStrength(double seconds) {
   const double outEnd = kProFlightPixelateOutStartSeconds + kProFlightPixelateOutSeconds;
   if (seconds < kProFlightPixelateInSeconds) return FastOutSlowIn(seconds / kProFlightPixelateInSeconds);
   if (seconds > kProFlightPixelateOutStartSeconds) {
@@ -207,10 +216,12 @@ struct ProCelebrationFlight::Live {
   CompositeTransform transforms[kTrailCount + 1]{nullptr, nullptr, nullptr};
 };
 
-ProCelebrationFlight::ProCelebrationFlight(Canvas const& canvas, ShapeRectangle const& veil)
-    : canvas_(canvas), veil_(veil) {}
+ProCelebrationFlight::ProCelebrationFlight(Canvas const& canvas, UIElement const& mosaicHost,
+                                           UIElement const& snapshotRoot)
+    : canvas_(canvas), mosaicHost_(mosaicHost), snapshotRoot_(snapshotRoot) {}
 
 ProCelebrationFlight::~ProCelebrationFlight() {
+  *alive_ = false;
   if (timer_) timer_.Stop();
 }
 
@@ -223,14 +234,99 @@ void ProCelebrationFlight::Launch() {
   if (active_) return;
   active_ = true;
   ++sequence_;
+  Begin(sequence_);
+}
+
+// The launch, in order: freeze the window, then take off. The snapshot is
+// rendered while the canvas and the mosaic host are still collapsed, so
+// nothing of the celebration is in it, and the clock starts once it is taken
+// so the render does not eat into the envelope. Encoding the pixels for the
+// compositor runs afterwards, off the UI thread, and the mosaic is installed
+// once that is done — well inside the first second, in which the cell is
+// still under the minimum anyway. Anything failing along the way (a window
+// too large to render, no memory for the encode) leaves a confetti-only
+// flight, logged.
+winrt::fire_and_forget ProCelebrationFlight::Begin(uint64_t sequence) {
+  using winrt::Microsoft::UI::Xaml::Media::Imaging::RenderTargetBitmap;
+  using winrt::Windows::Graphics::Imaging::BitmapAlphaMode;
+  using winrt::Windows::Graphics::Imaging::BitmapEncoder;
+  using winrt::Windows::Graphics::Imaging::BitmapPixelFormat;
+  using winrt::Windows::Storage::Streams::IBuffer;
+  using winrt::Windows::Storage::Streams::InMemoryRandomAccessStream;
+
+  // Called on the UI (STA) thread; the flight is owned by the window and may
+  // be destroyed while this is in the air, so every resumption first checks
+  // the liveness token, then that this is still the launch it belongs to.
+  winrt::apartment_context ui;
+  std::weak_ptr<bool> alive = alive_;
+  auto gone = [&]() {
+    auto token = alive.lock();
+    return !token || !*token || sequence != sequence_;
+  };
+
+  const float2 rootSize = snapshotRoot_.ActualSize();
+  snapshotWidth_ = rootSize.x;
+  snapshotHeight_ = rootSize.y;
+  IBuffer pixels{nullptr};
+  int32_t pixelWidth = 0;
+  int32_t pixelHeight = 0;
+  try {
+    RenderTargetBitmap bitmap;
+    co_await bitmap.RenderAsync(snapshotRoot_);
+    co_await ui;
+    if (gone()) co_return;
+    pixelWidth = bitmap.PixelWidth();
+    pixelHeight = bitmap.PixelHeight();
+    pixels = co_await bitmap.GetPixelsAsync();
+  } catch (winrt::hresult_error const& e) {
+    LogWarn("procelebration: window snapshot failed: {}", winrt::to_string(e.message()));
+    pixels = nullptr;
+  } catch (...) {
+    LogWarn("procelebration: window snapshot failed");
+    pixels = nullptr;
+  }
+  co_await ui;
+  if (gone()) co_return;
+  TakeOff();
+  if (!pixels || pixelWidth <= 0 || pixelHeight <= 0 || rootSize.x <= 0 || rootSize.y <= 0 ||
+      pixels.Length() < static_cast<uint32_t>(pixelWidth) * static_cast<uint32_t>(pixelHeight) * 4) {
+    co_return;
+  }
+
+  // the compositor takes an encoded image (LoadedImageSurface), so the
+  // BGRA pixels go through the PNG encoder; the window is opaque, so the
+  // alpha (premultiplied, from RenderTargetBitmap) is dropped rather than
+  // converted
+  co_await winrt::resume_background();
+  InMemoryRandomAccessStream stream;
+  bool encoded = false;
+  try {
+    auto encoder = co_await BitmapEncoder::CreateAsync(BitmapEncoder::PngEncoderId(), stream);
+    encoder.SetPixelData(BitmapPixelFormat::Bgra8, BitmapAlphaMode::Ignore,
+                         static_cast<uint32_t>(pixelWidth), static_cast<uint32_t>(pixelHeight),
+                         96.0, 96.0,
+                         winrt::array_view<uint8_t const>(pixels.data(), pixels.data() + pixels.Length()));
+    co_await encoder.FlushAsync();
+    stream.Seek(0);
+    encoded = true;
+  } catch (winrt::hresult_error const& e) {
+    LogWarn("procelebration: snapshot encode failed: {}", winrt::to_string(e.message()));
+  } catch (...) {
+    LogWarn("procelebration: snapshot encode failed");
+  }
+  co_await ui;
+  if (gone() || !active_ || !encoded) co_return;
+  InstallMosaic(stream, static_cast<float>(pixelWidth), static_cast<float>(pixelHeight));
+}
+
+void ProCelebrationFlight::TakeOff() {
   startTicks_ = NowTicks();
   sprites_ = ProFlightBurst(sequence_ * 0x9E3779B97F4A7C15ULL + static_cast<uint64_t>(startTicks_));
   nextSprite_ = 0;
   live_.clear();
   canvas_.Children().Clear();
   canvas_.Visibility(Visibility::Visible);
-  veil_.Opacity(0);
-  veil_.Visibility(Visibility::Visible);
+  mosaicHost_.Visibility(Visibility::Visible);
   if (!timer_) {
     timer_ = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().CreateTimer();
     timer_.Interval(std::chrono::milliseconds(kFrameMillis));
@@ -247,8 +343,97 @@ void ProCelebrationFlight::Finish() {
   live_.clear();
   canvas_.Children().Clear();
   canvas_.Visibility(Visibility::Collapsed);
-  veil_.Opacity(0);
-  veil_.Visibility(Visibility::Collapsed);
+  DropMosaic();
+  mosaicHost_.Visibility(Visibility::Collapsed);
+}
+
+// ---- the mosaic -----------------------------------------------------------
+
+// The two-stage nearest-neighbour chain of the file comment. The sampler is
+// never in the tree: it exists only as the source of the blocks surface,
+// where it draws the full snapshot into (columns x rows) pixels, one source
+// pixel per cell. The mosaic visual, a child visual of the host so it draws
+// under the confetti canvas that follows the host in the XAML, stretches
+// those blocks back over the whole window. Everything is created hidden;
+// UpdateMosaic sizes the chain to the cell of the frame and shows it.
+void ProCelebrationFlight::InstallMosaic(
+    winrt::Windows::Storage::Streams::IRandomAccessStream const& snapshot, float pixelWidth,
+    float pixelHeight) {
+  using winrt::Microsoft::UI::Xaml::Hosting::ElementCompositionPreview;
+  DropMosaic();
+  try {
+    comp::Compositor compositor = ElementCompositionPreview::GetElementVisual(mosaicHost_).Compositor();
+    LoadedImageSurface surface = LoadedImageSurface::StartLoadFromStream(snapshot);
+    comp::CompositionSurfaceBrush full =
+        compositor.CreateSurfaceBrush(surface.as<comp::ICompositionSurface>());
+    full.Stretch(comp::CompositionStretch::Fill);
+    full.BitmapInterpolationMode(comp::CompositionBitmapInterpolationMode::NearestNeighbor);
+    sampler_ = compositor.CreateSpriteVisual();
+    sampler_.Brush(full);
+    sampler_.Size(float2{pixelWidth, pixelHeight});
+    blocks_ = compositor.CreateVisualSurface();
+    blocks_.SourceVisual(sampler_);
+    blocks_.SourceSize(float2{pixelWidth, pixelHeight});
+    comp::CompositionSurfaceBrush blocks =
+        compositor.CreateSurfaceBrush(blocks_.as<comp::ICompositionSurface>());
+    blocks.Stretch(comp::CompositionStretch::Fill);
+    blocks.BitmapInterpolationMode(comp::CompositionBitmapInterpolationMode::NearestNeighbor);
+    mosaic_ = compositor.CreateSpriteVisual();
+    mosaic_.Brush(blocks);
+    mosaic_.RelativeSizeAdjustment(float2{1, 1});
+    mosaic_.IsVisible(false);
+    ElementCompositionPreview::SetElementChildVisual(mosaicHost_, mosaic_);
+    snapshot_ = snapshot;
+    snapshotPixelWidth_ = pixelWidth;
+    snapshotPixelHeight_ = pixelHeight;
+  } catch (winrt::hresult_error const& e) {
+    LogWarn("procelebration: mosaic setup failed: {}", winrt::to_string(e.message()));
+    DropMosaic();
+  } catch (...) {
+    LogWarn("procelebration: mosaic setup failed");
+    DropMosaic();
+  }
+}
+
+void ProCelebrationFlight::UpdateMosaic(double strength) {
+  if (!mosaic_) return;
+  const double cell = kProFlightPixelateMaxCell * strength;
+  if (cell < kProFlightPixelateMinCell) {
+    mosaic_.IsVisible(false);
+    return;
+  }
+  // a resize during the flight would stretch the frozen window into the new
+  // shape: the mosaic is dropped for the rest of the flight instead, and the
+  // confetti carries on over the live window
+  const float2 rootSize = snapshotRoot_.ActualSize();
+  if (std::abs(rootSize.x - snapshotWidth_) > 1 || std::abs(rootSize.y - snapshotHeight_) > 1) {
+    DropMosaic();
+    return;
+  }
+  // the cell in the snapshot's own pixels (the snapshot is at the display
+  // scale, so a DIP cell is that many times larger in it)
+  const double cellPx = cell * snapshotPixelWidth_ / snapshotWidth_;
+  const float columns = static_cast<float>(std::max(1.0, std::floor(snapshotPixelWidth_ / cellPx)));
+  const float rows = static_cast<float>(std::max(1.0, std::floor(snapshotPixelHeight_ / cellPx)));
+  sampler_.Size(float2{columns, rows});
+  blocks_.SourceSize(float2{columns, rows});
+  mosaic_.IsVisible(true);
+}
+
+void ProCelebrationFlight::DropMosaic() {
+  using winrt::Microsoft::UI::Xaml::Hosting::ElementCompositionPreview;
+  if (mosaic_) {
+    mosaic_.IsVisible(false);
+    try {
+      ElementCompositionPreview::SetElementChildVisual(mosaicHost_, comp::Visual{nullptr});
+    } catch (...) {
+    }
+  }
+  if (blocks_) blocks_.SourceVisual(comp::Visual{nullptr});
+  mosaic_ = nullptr;
+  blocks_ = nullptr;
+  sampler_ = nullptr;
+  snapshot_ = nullptr;
 }
 
 void ProCelebrationFlight::Retire(Live& live) {
@@ -266,9 +451,9 @@ void ProCelebrationFlight::Tick() {
     Finish();
     return;
   }
-  // the veil follows the envelope: in over 5 s, hold, out over the 5 s after
-  // the confetti has finished
-  veil_.Opacity(ProFlightVeilStrength(seconds));
+  // the mosaic cell follows the envelope: in over 5 s, hold, out over the
+  // 5 s after the confetti has finished
+  UpdateMosaic(ProFlightMosaicStrength(seconds));
 
   const double width = canvas_.ActualWidth();
   const double height = canvas_.ActualHeight();

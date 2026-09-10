@@ -438,8 +438,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::shared_ptr<urnw::UpgradeSheet> upgradeSheet_;
   std::shared_ptr<urnw::RedeemCodeSheet> redeemSheet_;
 
-  // The Pro celebration (ProCelebration.h): the confetti canvas and the veil
-  // at the bottom of MainWindow.xaml. Plays once at the free -> Pro flip, and
+  // The Pro celebration (ProCelebration.h): the confetti canvas and the
+  // mosaic host at the bottom of MainWindow.xaml. Plays once at the free -> Pro flip, and
   // on a tap of the Account plan label while Pro.
   std::unique_ptr<urnw::ProCelebrationFlight> proCelebration_;
   bool proPlanTapWired_ = false;

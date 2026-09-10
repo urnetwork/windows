@@ -1188,8 +1188,10 @@ void MainWindow::OnBalanceChanged(urnw::BalanceSnapshot const& snapshot,
 // the air or when the system has animations off, so the callers stay simple.
 void MainWindow::LaunchProCelebration() {
   if (!proCelebration_) {
-    proCelebration_ = std::make_unique<urnw::ProCelebrationFlight>(ProCelebrationCanvas(),
-                                                                   ProCelebrationVeil());
+    // the window content is what the mosaic freezes: the whole root grid,
+    // title bar to status strip, which is what the host and canvas cover
+    proCelebration_ = std::make_unique<urnw::ProCelebrationFlight>(
+        ProCelebrationCanvas(), ProCelebrationMosaic(), Content());
   }
   proCelebration_->Launch();
 }
