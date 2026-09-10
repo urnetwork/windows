@@ -261,6 +261,56 @@ func TestReferralsPageIncludesCompleteAutomationType(t *testing.T) {
 	}
 }
 
+func TestWalletPositionIndicatorIncludesCompletePointerPointType(t *testing.T) {
+	source := readAppSource(t, "WalletPage.cpp")
+	projection := strings.Index(source, `#include <winrt/Microsoft.UI.Input.h>`)
+	position := strings.Index(source, ".GetCurrentPoint(")
+	if projection < 0 || position < 0 || projection > position {
+		t.Fatal("WalletPage.cpp calls PointerPoint::Position without first including the complete Microsoft.UI.Input projection")
+	}
+}
+
+func TestOnboardingLinkHandlerIsPublicForAppController(t *testing.T) {
+	header := readAppSource(t, "MainWindow.xaml.h")
+	classStart := strings.Index(header, "struct MainWindow :")
+	if classStart < 0 {
+		t.Fatal("MainWindow declaration is missing")
+	}
+	classBody := header[classStart:]
+	privateStart := strings.Index(classBody, "private:")
+	handler := strings.Index(classBody, "void HandleOnboardingLink(std::string const& url);")
+	if privateStart < 0 || handler < 0 || handler >= privateStart {
+		t.Fatal("MainWindow::HandleOnboardingLink must be public because AppController invokes it")
+	}
+
+	controller := readAppSource(t, "AppController.cpp")
+	if !strings.Contains(controller, "self->HandleOnboardingLink(url);") {
+		t.Fatal("AppController no longer routes onboarding deep links to MainWindow")
+	}
+}
+
+func TestClientEventLocaleUsesTheExportedResourceLanguage(t *testing.T) {
+	header := readAppSource(t, "Localization.h")
+	if !strings.Contains(header, "std::string PrimaryLanguage();") {
+		t.Fatal("Localization.h does not export the resource language needed by client registration")
+	}
+
+	localization := readAppSource(t, "Localization.cpp")
+	internalEnd := strings.Index(localization, "}  // namespace")
+	definition := strings.Index(localization, "std::string PrimaryLanguage()")
+	if internalEnd < 0 || definition < 0 || definition < internalEnd {
+		t.Fatal("PrimaryLanguage has internal linkage and cannot be used by ClientEvents.cpp")
+	}
+
+	events := readAppSource(t, "ClientEvents.cpp")
+	if !strings.Contains(events, "const std::string tag = PrimaryLanguage();") {
+		t.Fatal("client events do not use the app's exported BCP 47 resource language")
+	}
+	if strings.Contains(events, "Narrow(PrimaryLanguage())") {
+		t.Fatal("ClientEventLocale narrows PrimaryLanguage even though it already returns UTF-8")
+	}
+}
+
 func TestReferralReloadIsPublicForMainWindowNavigation(t *testing.T) {
 	header := readAppSource(t, "SettingsPage.h")
 	classStart := strings.Index(header, "class SettingsPage {")

@@ -39,6 +39,8 @@ std::optional<ResourceLoader>& Loader() {
   return loader;
 }
 
+}  // namespace
+
 // The language MRT resolved the resources with, e.g. "pt-BR". Read from MRT's own
 // context so the plural rule always matches the .resw that is actually loaded.
 std::string PrimaryLanguage() {
@@ -71,6 +73,8 @@ std::string PrimaryLanguage() {
   }();
   return lang;
 }
+
+namespace {
 
 // CLDR cardinal categories, for the languages the store ships. Keep in step with
 // CLDR_CATEGORIES in localizations/gen/store.mjs.

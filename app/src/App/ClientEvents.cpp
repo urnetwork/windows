@@ -13,7 +13,7 @@
 namespace urnw {
 
 std::string ClientEventLocale() {
-  const std::string tag = Narrow(PrimaryLanguage());
+  const std::string tag = PrimaryLanguage();
   return tag.empty() ? std::string("en") : tag;
 }
 

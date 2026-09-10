@@ -328,6 +328,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // A batch of newly observed referrals: the first ever shows the full-window
   // gold crowning overlay, later ones the gold toast.
   void OnReferralCelebration(urnw::ReferralCelebration const& celebration);
+  // urnetwork://onboarding/<connect|widgets|offer|feedback> (the campaign
+  // emails' buttons): Connect, Account (the closest page to Widgets), the
+  // offer page on its own (the upgrade sheet when no offer is active), the
+  // feedback form pre-filled from the link's token. UI thread.
+  void HandleOnboardingLink(std::string const& url);
 
  private:
   // ---- referral crowning overlay ----
@@ -338,11 +343,6 @@ struct MainWindow : MainWindowT<MainWindow> {
   void ShowOnboarding();
   void HideOnboarding();
   winrt::fire_and_forget ShowUpgradeCheckout(bool yearly);
-  // urnetwork://onboarding/<connect|widgets|offer|feedback> (the campaign
-  // emails' buttons): Connect, Account (the closest page to Widgets), the
-  // offer page on its own (the upgrade sheet when no offer is active), the
-  // feedback form pre-filled from the link's token. UI thread.
-  void HandleOnboardingLink(std::string const& url);
   // connect.first, once per network (remembered in the app prefs)
   void NoteConnected();
   // every label in the window: the window's own chrome and nav, then each page's

@@ -16,6 +16,11 @@
 
 namespace urnw {
 
+// The BCP 47 language MRT selected for the app's resources (for example,
+// "pt-BR"), falling back to the user's locale and then "en". Product-event
+// registration uses the same language so telemetry and rendered copy agree.
+std::string PrimaryLanguage();
+
 // The localized string for `key`, or `key` itself if it is missing (so a typo is
 // visible rather than silent).
 std::wstring Localized(std::string_view key);
