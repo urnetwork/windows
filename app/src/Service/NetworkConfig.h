@@ -23,9 +23,11 @@
 
 namespace urnw {
 
-// Mirrors sdk.GetDefaultTunnelMtu/connect.DefaultMtu. One full encrypted
-// tunnel packet plus the UR envelope fits one initial H3 QUIC DATAGRAM.
-inline constexpr uint32_t kTunnelMtu = 1100;
+// Mirrors sdk.GetDefaultTunnelMtu/connect.DefaultTunnelMtu: the interface
+// MTU, 1280 because Windows refuses IPv6 on an interface below RFC 8200's
+// minimum. Packets written into the tunnel stay at most connect.DefaultMtu
+// (1100) so one full encrypted packet still fits one H3 QUIC DATAGRAM.
+inline constexpr uint32_t kTunnelMtu = 1280;
 
 struct TunnelNetworkSettings {
   std::string local_address_v4;      // e.g. "169.254.2.1" (DeviceLocal.tunnelLocalAddress)

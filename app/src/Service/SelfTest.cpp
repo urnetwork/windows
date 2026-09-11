@@ -303,7 +303,7 @@ void TestTunnelNetworkSettingsPolicy() {
         "default routes usable and the link-local address in place");
 
   TunnelNetworkSettings settings;
-  Check(settings.mtu == kTunnelMtu && settings.mtu == 1100,
+  Check(settings.mtu == kTunnelMtu && settings.mtu == 1280,
         "the tunnel MTU preserves one-packet H3 DATAGRAM eligibility");
   Check(settings.mtu >= 1280, "the tunnel MTU is at least the IPv6 minimum link MTU");
   Check(!settings.HasIpv6() && settings.prefix_v6 == 64,
