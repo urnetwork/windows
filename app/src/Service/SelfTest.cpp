@@ -304,7 +304,7 @@ void TestTunnelNetworkSettingsPolicy() {
 
   TunnelNetworkSettings settings;
   Check(settings.mtu == kTunnelMtu && settings.mtu == 1280,
-        "the tunnel MTU preserves one-packet H3 DATAGRAM eligibility");
+        "the tunnel MTU is the interface MTU the SDK publishes (connect.DefaultTunnelMtu)");
   Check(settings.mtu >= 1280, "the tunnel MTU is at least the IPv6 minimum link MTU");
   Check(!settings.HasIpv6() && settings.prefix_v6 == 64,
         "the default settings are v4-only, with the SDK's /64 ready for a v6 address");
