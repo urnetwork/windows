@@ -39,6 +39,12 @@ struct ProviderLocationRow {
   double lat = 0;
   double lon = 0;
   int64_t connectedSinceMillis = 0;
+  // the address families the platform proved for this provider (IPV6.md D1):
+  // the SDK's category ("dualstack" / "v4-only" / "v6-only") and its row label
+  // token ("both" / "v4" / "v6"); empty from an SDK that predates the field,
+  // which the view renders as v4 (what such a provider carries)
+  std::string ipFamily;
+  std::string ipFamilyLabel;
 
   bool Plottable() const { return hasCoordinates; }
 
@@ -47,7 +53,8 @@ struct ProviderLocationRow {
            countryCode == other.countryCode && region == other.region && city == other.city &&
            hasLocation == other.hasLocation && hasCoordinates == other.hasCoordinates &&
            lat == other.lat && lon == other.lon &&
-           connectedSinceMillis == other.connectedSinceMillis;
+           connectedSinceMillis == other.connectedSinceMillis &&
+           ipFamily == other.ipFamily && ipFamilyLabel == other.ipFamilyLabel;
   }
   bool operator!=(const ProviderLocationRow& other) const { return !(*this == other); }
 };

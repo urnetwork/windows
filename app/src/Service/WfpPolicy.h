@@ -1,8 +1,11 @@
 // The leak-prevention layer: a user-mode Windows Filtering Platform policy
 // owned by urnetworkd. This closes R6 (DNS leaks to other adapters' resolvers)
-// and is what the kill-switch toggle actually drives. The connected tunnel is
-// deliberately IPv4-only without capturing or blocking host IPv6; the IPv6
-// floor below applies only while the kill switch has no connected tunnel.
+// and is what the kill-switch toggle actually drives. A dual-stack tunnel
+// (WfpConfig::tunnel_ipv6) gets the same shape for both families: a floor, the
+// tun lifted through it, the bypass ranges, and the tunnel's own resolvers. A
+// legacy v4-only tunnel leaves host IPv6 on the physical network while
+// connected; the IPv6 floor then applies only while the kill switch has no
+// connected tunnel.
 //
 // Spec: docs/superpowers/research/2026-08-08-windows-leak-prevention-wfp.md
 //
@@ -145,6 +148,19 @@ struct WfpConfig {
   // The resolvers actually applied to the tun. Only these are permitted on
   // port 53, and only over the tun interface.
   std::vector<std::string> tunnel_resolvers_v4;
+  // The v6 resolvers applied to the tun, the same way. Read in Connected only,
+  // and only when tunnel_ipv6 is set.
+  std::vector<std::string> tunnel_resolvers_v6;
+
+  // The tun carries IPv6 (connect/IPV6.md C2): NetworkConfig installed a v6
+  // address and the ::/0 capture set (net::kTunCaptureV6) on it. Connected then
+  // KEEPS the IPv6 floor and lifts through it exactly what the v4 policy lifts —
+  // the tun, the bypass ranges (net::kLocalBypassV6, the same table the v6
+  // routes are derived from) and the tunnel's v6 resolvers — instead of leaving
+  // host IPv6 on the physical network. False is the legacy v4-only tunnel, for
+  // which Connected still omits the v6 floor. Read in Connected only; Armed and
+  // Connecting are unchanged by it.
+  bool tunnel_ipv6 = false;
 
   // The resolvers the HOST is configured with on its own adapters. READ ONLY IN
   // Connecting: there is no tun yet, so there is no tunnel resolver, and this is
@@ -178,10 +194,12 @@ struct WfpConfig {
   // visible, not so it can be flipped casually.
   bool allow_lan = true;
 
-  // Block IPv6 at the two v6 ALE layers while Armed or Connecting. Connected
-  // deliberately leaves host IPv6 on the physical network: Wintun receives no
-  // IPv6 address, route, or DNS server, and we do not turn that absence into a
-  // blackhole. NOT DisabledComponents and NOT
+  // Block IPv6 at the two v6 ALE layers while Armed or Connecting. A Connected
+  // v4-only tunnel (tunnel_ipv6 false) deliberately leaves host IPv6 on the
+  // physical network: Wintun received no IPv6 address, route, or DNS server,
+  // and we do not turn that absence into a blackhole. A dual-stack tunnel
+  // keeps the floor while connected regardless of this flag, because there the
+  // tun IS the v6 path. NOT DisabledComponents and NOT
   // Set-NetAdapterBinding: Microsoft calls unbinding an unsupported
   // configuration, it is per-adapter so a dock or hotspot leaks anyway, and it
   // is persistent machine state that survives our process dying. Route

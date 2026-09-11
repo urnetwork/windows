@@ -10,7 +10,9 @@
 #include <algorithm>
 #include <chrono>
 
+#include "IpFamilyHistogram.h"  // IpFamilyLabelText: the shared row label
 #include "Localization.h"
+#include "PageContext.h"  // pages::Adv
 #include "Sdk.h"
 #include "Strings.h"  // Widen: the utf-8 sdk ids into the wide localized text
 #include "UrColors.h"
@@ -353,7 +355,38 @@ Grid ProviderLocationsSheet::MakeProviderRow(const ProviderLocationRow& row) {
       row.hasLocation && !place.empty() ? H(place) : Loc("provider_location_unknown"), 13,
       colors::TextBrush(), true);
   placeText.HorizontalAlignment(HorizontalAlignment::Left);
-  text.Children().Append(placeText);
+  // The place, with the provider's address-family tag beside it (IPV6.md D2):
+  // "both" / "v4" / "v6", the same label the drawer's histogram rows carry. A
+  // 2-column grid (place Star, tag Auto) so a long place name wraps under the
+  // tag instead of pushing it off; the tag is a hairline chip in the muted
+  // text color, like the location chooser's chips, top aligned to the first
+  // line of the place.
+  {
+    Grid placeRow;
+    ColumnDefinition placeCol, tagCol;
+    placeCol.Width(GridLength{1, GridUnitType::Star});
+    tagCol.Width(GridLength{0, GridUnitType::Auto});
+    placeRow.ColumnDefinitions().Append(placeCol);
+    placeRow.ColumnDefinitions().Append(tagCol);
+    placeRow.ColumnSpacing(8);
+    Grid::SetColumn(placeText, 0);
+    placeRow.Children().Append(placeText);
+
+    // an SDK that predates the field sends no label; such a provider carries
+    // v4, which is what IpFamilyLabelText renders for an unknown token
+    Border tag;
+    tag.BorderBrush(colors::MutedBrush());
+    tag.BorderThickness(Thickness{1, 1, 1, 1});
+    tag.CornerRadius(CornerRadius{4, 4, 4, 4});
+    tag.Padding(Thickness{5, 1, 5, 1});
+    tag.VerticalAlignment(VerticalAlignment::Top);
+    TextBlock tagText = MakeText(IpFamilyLabelText(row.ipFamilyLabel), 10, colors::MutedBrush());
+    tag.Child(tagText);
+    ToolTipService::SetToolTip(tag, box_value(pages::Adv("ip_families", L"IP families")));
+    Grid::SetColumn(tag, 1);
+    placeRow.Children().Append(tag);
+    text.Children().Append(placeRow);
+  }
 
   TextBlock coordinatesText = MakeText(H(CoordinatesLabel(row)), 12, colors::MutedBrush());
   coordinatesText.FontFamily(FontFamily(L"Consolas"));

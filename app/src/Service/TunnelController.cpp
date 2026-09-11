@@ -181,6 +181,13 @@ bool TunnelController::ApplyWfpLocked(WfpState state) {
                      : 0;
   cfg.tunnel_resolvers_v4 =
       state == WfpState::Connected ? appliedResolvers_ : std::vector<std::string>{};
+  // The v6 half follows what NetworkConfig actually installed, so the firewall
+  // and the route table describe the same tunnel: a v6 floor with the tun and
+  // the v6 resolvers lifted through it only when the tun really carries v6.
+  cfg.tunnel_ipv6 =
+      state == WfpState::Connected && netConfig_ != nullptr && netConfig_->AppliedIpv6();
+  cfg.tunnel_resolvers_v6 =
+      cfg.tunnel_ipv6 ? appliedResolversV6_ : std::vector<std::string>{};
   // CONNECTING ONLY. There is no tunnel resolver yet. The bound SDK normally
   // resolves in-process and matches the exact service-image permit, but a
   // Windows/system fallback lookup before that bind is active leaves through
@@ -943,31 +950,29 @@ bool TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
         "refusing to apply network settings: no wintun adapter (step 1 did not "
         "run)");
 
-  // --- IPv6-only refusal, BEFORE anything is written ------------------------
+  // --- no-uplink refusal, BEFORE anything is written -------------------------
   //
-  // Our tunnel and provider transport currently require IPv4. On an IPv6-only
-  // access network (NAT64/DNS64, or Windows CLAT without a discoverable IPv4
-  // default route) the physical IPv6 path can remain usable, but it cannot make
-  // this tunnel functional. Detect and refuse with a message that names the
-  // cause rather than creating a non-working IPv4 interface.
+  // The tunnel encapsulates both families over whichever uplink the host has:
+  // the platform transports race IPv4 and IPv6 (connect/IPV6.md C6), so an
+  // IPv6-only access network (NAT64/DNS64, or CLAT without a discoverable IPv4
+  // default route) carries the tunnel, v4 traffic included. What cannot work
+  // is NO default route in either family — refuse that with a message that
+  // names the cause rather than creating a non-working interface.
   //
-  // EgressInterfaces::index4 is the signal and it is already computed: step 2/8
-  // logs when it is 0. Here it is load-bearing rather than advisory.
+  // EgressInterfaces is already computed: step 2/8 logs when an index is 0.
+  // Here it is load-bearing rather than advisory.
   {
     const EgressInterfaces egress = egress_ ? egress_->Current()
                                             : NetworkConfig::DiscoverEgress(adapter_->Luid());
-    if (egress.index4 == 0) {
-      if (egress.index6 != 0) {
-        throw std::runtime_error(
-            "this network is IPv6-only (no IPv4 default route, but an IPv6 one "
-            "exists). The tunnel and remote providers currently require an "
-            "IPv4 uplink, so it cannot connect on this network. IPv6 remains "
-            "on the underlying network; refusing instead of creating a "
-            "non-working tunnel.");
-      }
+    if (egress.index4 == 0 && egress.index6 == 0) {
       throw std::runtime_error(
           "no usable network: there is no IPv4 default route and no IPv6 one "
           "either. Nothing to tunnel over.");
+    }
+    if (egress.index4 == 0) {
+      LogWarn("tunnel: [6/8] this network is IPv6-only (no IPv4 default route). "
+              "The tunnel runs over the IPv6 uplink; both families are still "
+              "carried inside it.");
     }
   }
 
@@ -976,8 +981,8 @@ bool TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
   // Ordering is the point. Once step 6 installs routes the host's traffic is
   // being redirected, and if the firewall went up afterwards there would be a
   // window in which the tun is authoritative but other adapters' DNS is still
-  // wide open. Arming here closes it; connected IPv6 intentionally remains on
-  // the underlying network.
+  // wide open. Arming here closes it; for a dual-stack tunnel the v6 floor
+  // stays in force once connected too, with the tun lifted through it.
   //
   // Deliberately NOT the FIRST installation: on a start that begins with the
   // policy Off (kill switch off, or a first connect after a deliberate stop),
@@ -1014,9 +1019,8 @@ bool TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
     }
     LogError("tunnel: [6/8] leak-prevention firewall NOT installed ({}). The "
              "tunnel will still come up, but other adapters' resolvers are NOT "
-             "blocked — R6 is open for this session. Connected IPv6 is "
-             "intentionally outside the IPv4-only tunnel either way. Reported "
-             "to the app as wfp_state=off.",
+             "blocked — R6 is open for this session, and IPv6 outside the tun's "
+             "capture set is not floored. Reported to the app as wfp_state=off.",
              why);
   }
 
@@ -1030,7 +1034,6 @@ bool TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
   // dns from the device: the dns settings' unencrypted local servers when set,
   // otherwise the distinct plain-DNS UpgradeMux mask. always plain :53, never OS-level
   // encrypted DNS: the mux performs the unencrypted-DNS -> DoH upgrade in-tunnel.
-  // the tunnel is ipv4-only, so only the ipv4 resolvers apply
   if (auto dns = device_->tunnelDnsAddressesIpv4(); dns && !dns->empty()) {
     settings.dns_servers_v4 = *dns;
   } else {
@@ -1038,9 +1041,26 @@ bool TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
     // URnetwork-owned UpgradeMux identity.
     settings.dns_servers_v4 = {urnet::getDefaultTunnelDnsAddressIpv4()};
   }
-  LogInfo("tunnel: [6/8] applying network settings addr={}/{} mtu={} dns=[{}]",
-          settings.local_address_v4, settings.prefix_v4, settings.mtu,
-          Join(settings.dns_servers_v4));
+  // The IPv6 half (connect/IPV6.md C2): the SDK's per-device ULA with the
+  // prefix length it publishes, and the v6 resolvers the same way as v4. An
+  // SDK that reports no v6 address yields a v4-only tunnel, exactly as before.
+  settings.local_address_v6 = device_->tunnelLocalAddressIpv6();
+  if (settings.HasIpv6()) {
+    const int64_t prefix6 = urnet::getTunnelLocalPrefixLengthIpv6();
+    settings.prefix_v6 =
+        (0 < prefix6 && prefix6 <= 128) ? static_cast<uint8_t>(prefix6) : 64;
+    if (auto dns6 = device_->tunnelDnsAddressesIpv6(); dns6 && !dns6->empty()) {
+      settings.dns_servers_v6 = *dns6;
+    } else {
+      settings.dns_servers_v6 = {urnet::getDefaultTunnelDnsAddressIpv6()};
+    }
+  }
+  LogInfo("tunnel: [6/8] applying network settings addr={}/{} addr6={}/{} mtu={} "
+          "dns=[{}] dns6=[{}]",
+          settings.local_address_v4, settings.prefix_v4,
+          settings.HasIpv6() ? settings.local_address_v6 : std::string("off"),
+          settings.prefix_v6, settings.mtu, Join(settings.dns_servers_v4),
+          Join(settings.dns_servers_v6));
   netConfig_ = std::make_unique<NetworkConfig>(adapter_->Luid());
   // Mark the machine as "routes installed" BEFORE installing them. The next
   // start reads this to tell an orderly shutdown from a crash; a marker left
@@ -1048,6 +1068,8 @@ bool TunnelController::BringUpTunnelLocked(const proto::StartTunnel& config,
   SetActiveMarker(true);
   if (!netConfig_->Apply(settings)) throw std::runtime_error("network config failed");
   appliedResolvers_ = settings.dns_servers_v4;
+  appliedResolversV6_ = netConfig_->AppliedIpv6() ? settings.dns_servers_v6
+                                                   : std::vector<std::string>{};
   // ROUTES ARE IN, AND THE APP HAS TO BE ABLE TO LEARN IT WITHOUT A TRANSITION.
   // The state does not become Up until steps 7 and 8 have run, and this machine
   // is already captured — so a get_state served in that window must say so, or
@@ -1392,6 +1414,7 @@ void TunnelController::StopLocked(bool finalDisarm) {
 void TunnelController::RevertMachineStateLocked(bool finalDisarm, bool hadRoutes) {
   if (netConfig_) { netConfig_->Revert(); netConfig_.reset(); }
   appliedResolvers_.clear();
+  appliedResolversV6_.clear();
   // THE MACHINE IS BACK, AND THIS IS THE MOMENT THE APP MUST BE ABLE TO SEE IT.
   // Phase 2 (the SDK teardown) may be abandoned on its budget and the Stopped
   // transition that would otherwise publish sits on the far side of it, so
@@ -1801,8 +1824,9 @@ bool TunnelController::SetKillSwitch(bool on) {
       LogError("tunnel: the leak-prevention firewall STILL could not be "
                "installed ({}). The tunnel is left up — the user asked for "
                "protection, not for a disconnect — but it is NOT protected: "
-               "IPv6 and other adapters' resolvers are open, and reported to "
-               "the app as wfp_state=off. It is retried at the next drop.",
+               "off-tunnel IPv6 and other adapters' resolvers are open, and "
+               "reported to the app as wfp_state=off. It is retried at the next "
+               "drop.",
                wfp_.LastError());
       return false;
     }

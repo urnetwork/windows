@@ -1,8 +1,10 @@
 // Applies to the wintun adapter what NEPacketTunnelNetworkSettings applies on
-// macOS: the tunnel local address, MTU, split-default routes, and DNS. The
-// Wintun interface is also prevented from synthesizing an IPv6 link-local
-// address; physical-interface IPv6 is untouched. Also discovers the physical
-// egress interface (best non-tun default route) for the R1 socket self-exclusion.
+// macOS: the tunnel local addresses, MTU, split-default routes, and DNS, for
+// both families (connect/IPV6.md C2). A v4-only configuration (no v6 address)
+// still gets the legacy treatment: the Wintun interface is prevented from
+// synthesizing an IPv6 link-local address and physical-interface IPv6 is
+// untouched. Also discovers the physical egress interface (best non-tun default
+// route) for the R1 socket self-exclusion.
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
@@ -28,9 +30,19 @@ inline constexpr uint32_t kTunnelMtu = 1100;
 struct TunnelNetworkSettings {
   std::string local_address_v4;      // e.g. "169.254.2.1" (DeviceLocal.tunnelLocalAddress)
   uint8_t prefix_v4 = 24;
+  // The tunnel's IPv6 address: a ULA the SDK draws once per device
+  // (DeviceLocal.tunnelLocalAddressIpv6, fd00:7572:6e65::/48), with the prefix
+  // length the SDK publishes (getTunnelLocalPrefixLengthIpv6, 64). EMPTY means a
+  // v4-only tunnel, which is the pre-dual-stack configuration exactly: no v6
+  // address, no v6 route, no v6 resolver, and the interface's own v6 suppressed.
+  std::string local_address_v6;
+  uint8_t prefix_v6 = 64;
   uint32_t mtu = kTunnelMtu;
   std::vector<std::string> dns_servers_v4;  // IPv4 resolvers set on the tun interface
+  std::vector<std::string> dns_servers_v6;  // IPv6 resolvers; only with local_address_v6
   std::string dns_search;                   // optional search domain
+
+  bool HasIpv6() const { return !local_address_v6.empty(); }
 };
 
 // Physical egress selection for R1.
@@ -47,15 +59,23 @@ class NetworkConfig {
   // Revert() undoes what Apply() added.
   bool Apply(const TunnelNetworkSettings& settings);
 
-  // Pure preflight used by Apply and the self-test. Remote providers currently
-  // forward IPv4 only, so no IPv6 address or DNS transport may reach Wintun.
-  static bool IsIpv4OnlyTunnelSettings(const TunnelNetworkSettings& settings);
+  // Pure preflight used by Apply and the self-test. Every address is a literal
+  // of its own family: the v4 address and v4 resolvers always, and — when a v6
+  // address is present — a v6 literal with a 1..128 prefix and v6 resolver
+  // literals. v6 resolvers without a v6 address are rejected: the tun would
+  // have no v6 route to reach them over.
+  static bool IsValidTunnelSettings(const TunnelNetworkSettings& settings);
 
-  // Prepare an AF_INET6 row returned by GetIpInterfaceEntry for the IPv4-only
-  // Wintun policy. The setter rejects LinkLocalAlwaysOff on this adapter, so the
-  // helper uses the supported unchanged sentinel and suppresses IPv6 routing;
-  // Apply removes the generated link-local address explicitly.
-  static void PrepareIpv4OnlyTunnelInterfaceRow(MIB_IPINTERFACE_ROW& row);
+  // Prepare an AF_INET6 row returned by GetIpInterfaceEntry for the tun.
+  // Router discovery and advertising are off either way — nothing sends an RA
+  // on a tun, and the address and routes are installed by Apply. The setter
+  // rejects LinkLocalAlwaysOff on this adapter, so the helper uses the
+  // supported unchanged sentinel. `carriesIpv6` false is the legacy v4-only
+  // policy (default routes disabled; Apply removes the generated link-local
+  // address explicitly); true keeps default routes usable for the dual-stack
+  // tunnel and leaves the link-local address, which the stack needs to run
+  // the interface's own v6 at all.
+  static void PrepareTunnelIpv6InterfaceRow(MIB_IPINTERFACE_ROW& row, bool carriesIpv6);
 
   // Remove the routes/addresses/DNS added by Apply(), restoring prior state.
   void Revert();
@@ -67,6 +87,12 @@ class NetworkConfig {
   // the app as TunnelStatus::dns_applied. Without it a DNS failure was visible
   // only as one warning in the service log while every surface said Connected.
   bool DnsApplied() const { return applied_ && dns_applied_; }
+
+  // True only while a v6 address and the v6 capture routes are installed on
+  // the tun. Read by TunnelController to build the firewall policy: the v6
+  // floor, the tun's v6 permit and the v6 resolver permits follow this flag,
+  // so the firewall and the route table describe the same tunnel.
+  bool AppliedIpv6() const { return applied_ && applied_ipv6_; }
 
   // --- crash safety (the worst failure this service can have) ---------------
   //
@@ -88,12 +114,13 @@ class NetworkConfig {
   // raises no SEH at all, and TerminateProcess runs nothing. The sweep is the
   // one that runs regardless of how the last process died.
 
-  // Delete every route Apply() installs from tunLuid. Allocates nothing, takes
-  // no lock, and calls only into the tcpip stack; safe from an
+  // Delete every route Apply() installs from tunLuid, both families (a v6
+  // route that was never installed is simply not found). Allocates nothing,
+  // takes no lock, and calls only into the tcpip stack; safe from an
   // unhandled-exception filter. Returns how many entries were actually removed.
   static int DeleteTunnelRoutes(NET_LUID tunLuid);
 
-  // Clear the DNS servers and search list set on tunLuid.
+  // Clear the DNS servers and search list set on tunLuid, both families.
   // NOT crash-path safe: SetInterfaceDnsSettings is an RPC to the dnscache
   // service and can block, and blocking inside an exception filter leaves the
   // process wedged rather than dead. Orderly paths only.
@@ -211,6 +238,7 @@ class NetworkConfig {
  private:
   NET_LUID tunLuid_;
   bool applied_ = false;
+  bool applied_ipv6_ = false;
   bool dns_applied_ = false;
   TunnelNetworkSettings settings_;
 };

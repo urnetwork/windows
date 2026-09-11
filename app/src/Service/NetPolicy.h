@@ -1,9 +1,11 @@
 // THE table. One list of IPv4 prefixes that must bypass the tunnel, and one
-// derived list of the prefixes the tun therefore captures. Everything that has
-// an opinion about "is this address local" reads this file:
+// derived list of the prefixes the tun therefore captures — and, since the
+// tunnel went dual-stack (connect/IPV6.md C2), the same pair for IPv6. Everything
+// that has an opinion about "is this address local" reads this file:
 //
-//   * NetworkConfig::Apply installs kTunCaptureV4 as the tun's route set.
-//   * WfpPolicy's LAN permit is built from kLocalBypassV4.
+//   * NetworkConfig::Apply installs kTunCaptureV4 (and kTunCaptureV6) as the
+//     tun's route set.
+//   * WfpPolicy's LAN permits are built from kLocalBypassV4 (and kLocalBypassV6).
 //
 // That coupling is the whole point. The two lists are the SAME decision seen
 // from opposite sides — the route table says "these go out the physical NIC",
@@ -165,6 +167,179 @@ constexpr bool IsLocalBypassV4(uint32_t hostOrderAddr) {
     if ((hostOrderAddr & detail::PrefixMask(b.prefix)) == b.network) return true;
   }
   return false;
+}
+
+// ===========================================================================
+// IPv6 — the same decision, the same derivation (connect/IPV6.md C2).
+// ===========================================================================
+
+// {address as two host-order 64-bit halves, prefix length}. Two halves rather
+// than 16 bytes so the prefix arithmetic below stays constexpr-trivial; Bytes()
+// is the network-order form the route, address and filter APIs take.
+struct V6Prefix {
+  uint64_t hi;
+  uint64_t lo;
+  uint8_t prefix;
+
+  constexpr bool operator==(const V6Prefix& o) const {
+    return hi == o.hi && lo == o.lo && prefix == o.prefix;
+  }
+
+  constexpr std::array<uint8_t, 16> Bytes() const {
+    std::array<uint8_t, 16> out{};
+    for (int i = 0; i < 8; ++i) {
+      out[static_cast<std::size_t>(i)] = static_cast<uint8_t>(hi >> (56 - 8 * i));
+      out[static_cast<std::size_t>(8 + i)] = static_cast<uint8_t>(lo >> (56 - 8 * i));
+    }
+    return out;
+  }
+
+  static constexpr V6Prefix FromBytes(const uint8_t (&b)[16], uint8_t prefix) {
+    uint64_t hi = 0, lo = 0;
+    for (int i = 0; i < 8; ++i) {
+      hi = (hi << 8) | b[i];
+      lo = (lo << 8) | b[8 + i];
+    }
+    return V6Prefix{hi, lo, prefix};
+  }
+};
+
+// ---------------------------------------------------------------------------
+// THE IPv6 TABLE. These bypass the tunnel and are permitted by the firewall
+// while connected, matching Android (excludeRoute), iOS (NEIPv6Settings.
+// excludedRoutes) and Linux for the dual-stack tunnel.
+//
+//   fc00::/7  — unique local. The tun's OWN address is a ULA (the SDK draws it
+//     from fd00:7572:6e65::/48, DeviceLocal.tunnelLocalAddressIpv6), and it is
+//     still reachable while the range bypasses: the address assignment installs
+//     the tun's on-link /64, which wins on longest prefix over anything the
+//     physical adapter has for fc00::/7. Every OTHER ULA — a home router's
+//     fd00:: LAN — stays on the LAN, which is what the v4 RFC1918 bypass does.
+//   fe80::/10 — link-local. Not routable off the link; carving it out keeps
+//     NDP-adjacent link traffic (printers, mDNS peers) on the physical link.
+//   ff00::/8  — multicast. Bypassed here where 224.0.0.0/3 is CAPTURED for v4,
+//     deliberately: v6 depends on link-scope multicast (NDP, MLD, DHCPv6) to
+//     keep the physical link's own v6 up, and none of it is routable off the
+//     link. The mDNS/LLMNR concern that keeps v4 multicast captured does not
+//     move with it — those blocks live in the DNS sublayer, where block beats
+//     permit, and match on PORT, so a multicast permit in Baseline cannot
+//     reopen them (the selftest asserts the blocks are present in every state).
+//
+//   ::1/128 is NOT in this table, and does not need to be: the loopback
+//     interface's own /128 route is the longest possible match and beats every
+//     capture prefix below, and the firewall permits loopback by FLAG (filter
+//     2). Listing it would cost 127 extra capture prefixes (every sibling on
+//     the path from ::/0 down to ::1/128) to express a route the stack already
+//     has. IsLocalBypassV6 still answers "bypass" for it, so a resolver at ::1
+//     is correctly reported as unreachable through the tun.
+//
+// Changing this table changes the machine's routing table; the static_assert
+// below has to move with it, on purpose.
+// ---------------------------------------------------------------------------
+inline constexpr V6Prefix kLocalBypassV6[] = {
+    {0xFC00'0000'0000'0000ull, 0, 7},   // fc00::/7
+    {0xFE80'0000'0000'0000ull, 0, 10},  // fe80::/10
+    {0xFF00'0000'0000'0000ull, 0, 8},   // ff00::/8
+};
+
+namespace detail {
+
+constexpr uint64_t MaskHi6(uint8_t prefix) {
+  if (prefix == 0) return 0;
+  if (prefix >= 64) return ~0ull;
+  return ~0ull << (64 - prefix);
+}
+
+constexpr uint64_t MaskLo6(uint8_t prefix) {
+  if (prefix <= 64) return 0;
+  if (prefix >= 128) return ~0ull;
+  return ~0ull << (128 - prefix);
+}
+
+// Is `inner` entirely inside `outer`?
+constexpr bool Contains(const V6Prefix& outer, const V6Prefix& inner) {
+  if (outer.prefix > inner.prefix) return false;
+  return (inner.hi & MaskHi6(outer.prefix)) == outer.hi &&
+         (inner.lo & MaskLo6(outer.prefix)) == outer.lo;
+}
+
+// ComplementV4 for 128-bit prefixes: the aligned complement of kLocalBypassV6
+// within ::/0, emitted low to high, minimal. Same explicit stack, the halves
+// split at bit `half` in whichever 64-bit word holds it.
+constexpr std::size_t ComplementV6(V6Prefix* out) {
+  V6Prefix stack[260]{};
+  int sp = 0;
+  stack[sp++] = V6Prefix{0, 0, 0};
+  std::size_t n = 0;
+  while (sp > 0) {
+    const V6Prefix cur = stack[--sp];
+    bool covered = false;
+    bool straddles = false;
+    for (const V6Prefix& b : kLocalBypassV6) {
+      if (Contains(b, cur)) {
+        covered = true;
+        break;
+      }
+      if (Contains(cur, b)) straddles = true;
+    }
+    if (covered) continue;
+    if (!straddles) {
+      if (out) out[n] = cur;
+      ++n;
+      continue;
+    }
+    const uint8_t half = static_cast<uint8_t>(cur.prefix + 1);
+    V6Prefix high = cur;
+    high.prefix = half;
+    if (half <= 64) {
+      high.hi = cur.hi + (1ull << (64 - half));
+    } else {
+      high.lo = cur.lo + (1ull << (128 - half));
+    }
+    V6Prefix low = cur;
+    low.prefix = half;
+    // Push high first so the low half pops first and the output stays sorted.
+    stack[sp++] = high;
+    stack[sp++] = low;
+  }
+  return n;
+}
+
+}  // namespace detail
+
+// How many prefixes the tun captures for IPv6. DERIVED, not typed in.
+inline constexpr std::size_t kTunCaptureV6Count = detail::ComplementV6(nullptr);
+
+// The tun's IPv6 route set: all of ::/0 except kLocalBypassV6. Like the v4 set
+// these sort above the physical default route without deleting it.
+inline constexpr std::array<V6Prefix, kTunCaptureV6Count> kTunCaptureV6 = [] {
+  std::array<V6Prefix, kTunCaptureV6Count> a{};
+  detail::ComplementV6(a.data());
+  return a;
+}();
+
+// ::/1, 8000::/2, c000::/3, e000::/4, f000::/5, f800::/6, fe00::/9, fec0::/10.
+// A change here is a change to the machine's routing table; it fails the build
+// rather than surprising anyone reading `route print -6`.
+static_assert(kTunCaptureV6Count == 8,
+              "the IPv6 tun capture set changed size; re-validate the dual-stack "
+              "route table before shipping this");
+
+// Would this IPv6 address be sent out the PHYSICAL adapter while the tunnel is
+// up? The table, plus loopback (see the ::1 note above).
+constexpr bool IsLocalBypassV6(uint64_t hi, uint64_t lo) {
+  if (hi == 0 && lo == 1) return true;  // ::1
+  for (const V6Prefix& b : kLocalBypassV6) {
+    if ((hi & detail::MaskHi6(b.prefix)) == b.hi &&
+        (lo & detail::MaskLo6(b.prefix)) == b.lo)
+      return true;
+  }
+  return false;
+}
+
+constexpr bool IsLocalBypassV6(const uint8_t (&addr)[16]) {
+  const V6Prefix p = V6Prefix::FromBytes(addr, 128);
+  return IsLocalBypassV6(p.hi, p.lo);
 }
 
 }  // namespace urnw::net

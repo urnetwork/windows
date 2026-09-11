@@ -292,6 +292,10 @@
     <ClCompile Include="OfferCard.cpp" />
     <ClCompile Include="TransferChart.cpp" />
     <ClCompile Include="TransportBar.cpp" />
+    <!-- The IP-family grouping is WinRT-free (no pch) so tools/ip-family-tests.cpp
+         runs it on any host; the histogram that draws it uses the pch. -->
+    <ClCompile Include="IpFamilyGroups.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+    <ClCompile Include="IpFamilyHistogram.cpp" />
     <ClCompile Include="UsageBar.cpp" />
     <ClCompile Include="WalletConnect.cpp" />
     <ClCompile Include="ServiceClient.cpp" />
@@ -348,6 +352,8 @@
     <ClInclude Include="PricePresentation.h" />
     <ClInclude Include="TransferChart.h" />
     <ClInclude Include="TransportBar.h" />
+    <ClInclude Include="IpFamilyGroups.h" />
+    <ClInclude Include="IpFamilyHistogram.h" />
     <ClInclude Include="TransportStatusPresentation.h" />
     <ClInclude Include="UsageBar.h" />
     <ClInclude Include="UrColors.h" />
