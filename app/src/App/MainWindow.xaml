@@ -1096,6 +1096,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Border Style="{StaticResource UrPaneHeaderStyle}">
@@ -1126,7 +1127,13 @@
                              footer) whose click opens the transport settings editor. Its
                              own hairline is the row's, so no rule here. -->
                         <Grid Grid.Row="2" x:Name="TransportBarHost" />
-                        <Border Grid.Row="3" Style="{StaticResource UrGroupHeaderStyle}">
+                        <!-- The IP-family histogram (connect/IPV6.md D2): the Added
+                             providers as dots under Both / v4 / v6, directly under the
+                             transport bar with the same inset. Built into this host by
+                             ConnectPage::BuildCharts (urnw::IpFamilyHistogram); its
+                             bottom rule is the group header's, so no rule here. -->
+                        <Grid Grid.Row="3" x:Name="IpFamilyHistogramHost" />
+                        <Border Grid.Row="4" Style="{StaticResource UrGroupHeaderStyle}">
                             <Grid>
                                 <TextBlock x:Name="ConnectionsLabel"
                                            Style="{StaticResource UrGroupHeaderTextStyle}" />
@@ -1137,7 +1144,7 @@
                         <!-- The list FILLS the rest of the pane. Its empty state is a
                              centred line in that same full-height area, never a short
                              card floating in space. -->
-                        <Grid Grid.Row="4">
+                        <Grid Grid.Row="5">
                             <ScrollViewer x:Name="ConnectionsScroll"
                                           HorizontalScrollBarVisibility="Disabled"
                                           VerticalScrollBarVisibility="Auto">

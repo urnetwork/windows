@@ -921,6 +921,16 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   if (canvas_ && !PreviewHeroActive()) {
     canvas_->SetGrid(stats.gridPoints, stats.gridWidth, stats.gridHeight);
   }
+  // The same grid, bucketed by proven address family for the drawer. Unlike
+  // the hero this never freezes on connect: which exits can carry v6 is live
+  // information for as long as the window is. The dot size is the hero's own
+  // rule for this grid shape, so the two surfaces show one set of providers.
+  if (ipFamilyHistogram_ && !PreviewHeroActive()) {
+    const double diameter =
+        canvas_ ? canvas_->PointDiameterFor(stats.gridWidth, stats.gridHeight)
+                : urnw::IpFamilyDotDiameter(0, stats.gridWidth, stats.gridHeight);
+    ipFamilyHistogram_->SetGrid(stats.gridPoints, diameter);
+  }
   ApplyConnectStatus();
   ApplyPeerCount(peers);  // the peers status line below the connect button (req1)
   // the connected country drives the dns-card recommendation pill; only refresh
@@ -1109,11 +1119,21 @@ void ConnectPage::PreviewHeroTick() {
         case 2: p.State = "NotAdded"; break;
         default: p.State = "Added"; break;
       }
+      // a synthetic family too, so the drawer's histogram fills in the preview
+      // in the design's expected proportions (mostly dualstack)
+      switch ((h >> 12) % 6) {
+        case 0: p.IpFamily = "v4-only"; break;
+        case 1: p.IpFamily = "v6-only"; break;
+        default: p.IpFamily = "dualstack"; break;
+      }
       p.Active = true;
       points.push_back(p);
     }
   }
   canvas_->SetGrid(points, kCols, kCols);
+  if (ipFamilyHistogram_) {
+    ipFamilyHistogram_->SetGrid(points, canvas_->PointDiameterFor(kCols, kCols));
+  }
 }
 
 namespace {
@@ -1169,6 +1189,10 @@ void ConnectPage::BuildCharts() {
           self->connect().ShowTransportSettingsSheet(urnw::TransportSettingsKind::Client);
         }
       });
+  // The IP-family histogram (IPV6.md D2), directly under the transport bar in
+  // its own host row: the Added providers as dots under Both / v4 / v6. Fed by
+  // ApplyStats from the same grid push the hero reads, at the hero's dot size.
+  ipFamilyHistogram_ = std::make_unique<urnw::IpFamilyHistogram>(w_.IpFamilyHistogramHost());
 }
 
 void ConnectPage::WireDrawerFeeds() {

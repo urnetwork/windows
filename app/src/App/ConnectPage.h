@@ -24,6 +24,7 @@
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 #include "ConnectCanvas.h"
+#include "IpFamilyHistogram.h"
 #include "LocationSheets.h"
 #include "ProviderLocationsSheet.h"
 #include "SdkHost.h"
@@ -348,6 +349,10 @@ class ConnectPage {
   std::unique_ptr<urnw::TransferChart> localChart_;
   // the transport distribution bar directly under the Remote chart (TRANSPORTSTATS)
   std::unique_ptr<urnw::TransportBar> transportBar_;
+  // the IP-family histogram directly under the transport bar (IPV6.md D2): the
+  // Added providers as dots under Both / v4 / v6, fed from the same grid push
+  // as the hero
+  std::unique_ptr<urnw::IpFamilyHistogram> ipFamilyHistogram_;
   // the client / provider transport policies in force, from SdkHost's change
   // listeners (nullopt = unknown -> the editor opens on the SDK default). Cached
   // here so the sheet opens on the last push, like dnsSettings_.

@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <fwpmu.h>
 
+#include <array>
 #include <cstring>
 
 #include "Log.h"
@@ -148,6 +149,17 @@ WfpCondition CondV6(WfpField field, const uint8_t (&addr)[16], uint8_t prefix) {
   return c;
 }
 
+// A remote-address condition from THE v6 table (NetPolicy.h), so the v6 LAN
+// permit is built from the same prefixes the v6 routes are derived from.
+WfpCondition CondRemoteV6Prefix(const net::V6Prefix& p) {
+  WfpCondition c;
+  c.field = WfpField::RemoteAddrV6;
+  const std::array<uint8_t, 16> bytes = p.Bytes();
+  std::memcpy(c.v6_addr, bytes.data(), 16);
+  c.v6_prefix = p.prefix;
+  return c;
+}
+
 // Link-local unicast, and the link-scope multicast range that carries every
 // NDP/DHCPv6 group we care about (ff02::1, ff02::2, ff02::1:2, and the whole
 // solicited-node block ff02::1:ff00:0/104). Neither can be routed off the link,
@@ -206,12 +218,15 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
   // The ONE state that carries filter 9b. Everything else about Connecting is
   // Armed, byte for byte — which is what makes the superset relation checkable.
   const bool connecting = state == WfpState::Connecting;
-  // Connected mirrors the other clients' IPv4-only tunnel policy: Wintun has
+  // A connected DUAL-STACK tunnel: the tun carries v6, so v6 gets the full v4
+  // shape — the floor, the tun permit, the bypass permit, the resolver permit.
+  // A connected v4-only tunnel mirrors the pre-dual-stack clients: Wintun has
   // no IPv6 configuration, and host IPv6 remains on the underlying network
-  // instead of being captured or blackholed. Armed and Connecting still use a
-  // v6 floor because there is no connected tunnel and the kill switch is the
-  // controlling policy in those states.
-  const bool blockV6 = cfg.block_ipv6_when_disconnected && !connected;
+  // instead of being captured or blackholed. Armed and Connecting use the v6
+  // floor either way because there is no connected tunnel and the kill switch
+  // is the controlling policy in those states.
+  const bool tunnelV6 = connected && cfg.tunnel_ipv6 && cfg.tun_luid != 0;
+  const bool blockV6 = (cfg.block_ipv6_when_disconnected && !connected) || tunnelV6;
 
   // === BASELINE SUBLAYER ===================================================
 
@@ -288,15 +303,27 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
                        {CondLocalInterface(cfg.tun_luid)}));
     }
   }
+  // 3b. THE TUN, v6. Only when the tun actually carries v6: with the v6 floor
+  //     kept while connected (see blockV6) this is what lets the captured v6
+  //     traffic through, the same way filter 3 does for v4.
+  if (tunnelV6) {
+    for (WfpLayer l : {WfpLayer::ConnectV6, WfpLayer::RecvAcceptV6}) {
+      f.push_back(Spec("urnetwork-permit-tun-v6", l, WfpSublayer::Baseline,
+                       false, kWeightExempt,
+                       {CondLocalInterface(cfg.tun_luid)}));
+    }
+  }
 
   // 4. LAN. Built from net::kLocalBypassV4 — THE SAME TABLE the tun's route set
   //    is derived from — so the firewall permits exactly what the routing table
   //    sends out the physical NIC, no more and no less. Writing this list a
   //    second time is the bug NetPolicy.h exists to prevent.
   //
-  //    No special v6 LAN permit is needed. Connected leaves IPv6 to the host's
-  //    existing routes; Armed and Connecting apply the address-family floor,
-  //    with fe80::/10 maintenance covered by NDP and DHCPv6 below.
+  //    The v6 LAN permit (4b) exists only for a connected dual-stack tunnel,
+  //    where net::kLocalBypassV6 is what the v6 routes leave to the physical
+  //    NIC. Armed and Connecting apply the address-family floor as before, with
+  //    fe80::/10 maintenance covered by NDP and DHCPv6 below, and a connected
+  //    v4-only tunnel leaves IPv6 to the host's existing routes.
   if (cfg.allow_lan) {
     std::vector<WfpCondition> lan;
     for (const auto& p : net::kLocalBypassV4)
@@ -305,6 +332,20 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
                      WfpSublayer::Baseline, false, kWeightExempt, lan));
     f.push_back(Spec("urnetwork-permit-lan-in", WfpLayer::RecvAcceptV4,
                      WfpSublayer::Baseline, false, kWeightExempt, lan));
+  }
+  // 4b. The v6 bypass ranges — link-local, ULA, multicast — permitted on the
+  //     physical NIC while the dual-stack tun captures everything else. Same
+  //     coupling as filter 4: the conditions ARE the table the routes come
+  //     from. The mDNS/LLMNR blocks (filter 13) are port-scoped in the DNS
+  //     sublayer, where block beats permit, so permitting ff00::/8 here does
+  //     not reopen them.
+  if (cfg.allow_lan && tunnelV6) {
+    std::vector<WfpCondition> lan6;
+    for (const auto& p : net::kLocalBypassV6) lan6.push_back(CondRemoteV6Prefix(p));
+    f.push_back(Spec("urnetwork-permit-lan-v6-out", WfpLayer::ConnectV6,
+                     WfpSublayer::Baseline, false, kWeightExempt, lan6));
+    f.push_back(Spec("urnetwork-permit-lan-v6-in", WfpLayer::RecvAcceptV6,
+                     WfpSublayer::Baseline, false, kWeightExempt, lan6));
   }
 
   // 5. DHCPv4. Rank-3: without it everything works for hours and then the lease
@@ -426,9 +467,12 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
   f.push_back(Spec("urnetwork-block-all-v4-in", WfpLayer::RecvAcceptV4,
                    WfpSublayer::Baseline, true, kWeightMin));
   if (blockV6) {
-    // The disconnected kill-switch floor catches TCP connect, the first UDP
-    // packet per tuple and raw sockets. Connected intentionally omits it: the
-    // IPv4-only Wintun must not become an IPv6 blackhole.
+    // The v6 floor catches TCP connect, the first UDP packet per tuple and raw
+    // sockets. In the disconnected kill-switch states it is the floor; for a
+    // connected dual-stack tunnel it is what makes the tun the ONLY v6 path
+    // (filters 3b and 4b lift the tun and the bypass ranges through it). A
+    // connected v4-only tunnel intentionally omits it: an IPv4-only Wintun must
+    // not become an IPv6 blackhole.
     f.push_back(Spec("urnetwork-block-all-v6-out", WfpLayer::ConnectV6,
                      WfpSublayer::Baseline, true, kWeightMin));
     f.push_back(Spec("urnetwork-block-all-v6-in", WfpLayer::RecvAcceptV6,
@@ -574,6 +618,27 @@ std::vector<WfpFilterSpec> BuildFilterSet(WfpState state, const WfpConfig& cfg) 
       c.push_back(CondLocalInterface(cfg.tun_luid));
       f.push_back(Spec("urnetwork-permit-dns-tunnel-resolver",
                        WfpLayer::ConnectV4, WfpSublayer::Dns, false,
+                       kWeightMedium, std::move(c)));
+      sharedDnsPath = true;
+    }
+  }
+  // 10b. The tunnel's v6 resolvers, the same shape at the v6 connect layer.
+  //      Only with a dual-stack tun: a v6 resolver on a v4-only tun has no
+  //      route to be reached over, and NetworkConfig refuses that configuration
+  //      before it gets here.
+  if (tunnelV6) {
+    for (const auto& server : cfg.tunnel_resolvers_v6) {
+      IN6_ADDR a{};
+      if (::inet_pton(AF_INET6, server.c_str(), &a) != 1) continue;
+      uint8_t bytes[16];
+      std::memcpy(bytes, &a, 16);
+      std::vector<WfpCondition> c;
+      PushUdpTcp(c);
+      c.push_back(CondRemotePort(kPortDns));
+      c.push_back(CondV6(WfpField::RemoteAddrV6, bytes, 128));
+      c.push_back(CondLocalInterface(cfg.tun_luid));
+      f.push_back(Spec("urnetwork-permit-dns-tunnel-resolver-v6",
+                       WfpLayer::ConnectV6, WfpSublayer::Dns, false,
                        kWeightMedium, std::move(c)));
       sharedDnsPath = true;
     }

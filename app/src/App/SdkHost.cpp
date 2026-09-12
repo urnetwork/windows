@@ -3222,6 +3222,8 @@ void SdkHost::PublishProviderLocations() {
           row.lon = location.RegionLon;
         }
         row.connectedSinceMillis = location.ConnectedSinceMillis;
+        row.ipFamily = location.IpFamily;
+        row.ipFamilyLabel = location.IpFamilyLabel;
         rows.push_back(std::move(row));
       }
     }

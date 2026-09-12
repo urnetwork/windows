@@ -508,8 +508,9 @@ class TunnelController {
   std::function<void()> onStateChanged_;
   // The resolvers actually handed to the tun, kept so the firewall's DNS permit
   // and the interface's DNS settings are built from the same list rather than
-  // recomputed.
+  // recomputed. One list per family; the v6 list is empty for a v4-only tunnel.
   std::vector<std::string> appliedResolvers_;
+  std::vector<std::string> appliedResolversV6_;
 };
 
 }  // namespace urnw

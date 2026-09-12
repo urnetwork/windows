@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <iterator>
@@ -170,8 +172,103 @@ void TestNetPolicyTable() {
         probeDetail);
 }
 
+// The v6 capture set as validated by hand (connect/IPV6.md C2), the same
+// fixture role kHistoricalCaptureSet plays for v4.
+constexpr net::V6Prefix kHistoricalCaptureSetV6[] = {
+    {0x0000'0000'0000'0000ull, 0, 1},   // ::/1
+    {0x8000'0000'0000'0000ull, 0, 2},   // 8000::/2
+    {0xC000'0000'0000'0000ull, 0, 3},   // c000::/3
+    {0xE000'0000'0000'0000ull, 0, 4},   // e000::/4
+    {0xF000'0000'0000'0000ull, 0, 5},   // f000::/5
+    {0xF800'0000'0000'0000ull, 0, 6},   // f800::/6
+    {0xFE00'0000'0000'0000ull, 0, 9},   // fe00::/9
+    {0xFEC0'0000'0000'0000ull, 0, 10},  // fec0::/10
+};
+
+std::string PrefixText6(const net::V6Prefix& p) {
+  const auto b = p.Bytes();
+  return std::format("{:02x}{:02x}:{:02x}{:02x}::/{}", b[0], b[1], b[2], b[3],
+                     p.prefix);
+}
+
+void TestNetPolicyTableV6() {
+  Section("NetPolicy — the IPv6 table, derived the same way (IPV6.md C2)");
+
+  Check(net::kTunCaptureV6Count == 8, "the derived IPv6 capture set has 8 prefixes",
+        std::format("got {}", net::kTunCaptureV6Count));
+
+  bool same = net::kTunCaptureV6Count == std::size(kHistoricalCaptureSetV6);
+  std::string firstDiff;
+  if (same) {
+    for (size_t i = 0; i < net::kTunCaptureV6Count; ++i) {
+      if (!(net::kTunCaptureV6[i] == kHistoricalCaptureSetV6[i])) {
+        same = false;
+        firstDiff = std::format("index {}: derived {} vs validated {}", i,
+                                PrefixText6(net::kTunCaptureV6[i]),
+                                PrefixText6(kHistoricalCaptureSetV6[i]));
+        break;
+      }
+    }
+  }
+  Check(same, "the derived IPv6 set is the hand-validated one, in order", firstDiff);
+
+  // capture ∪ bypass covers ::/0 exactly: the prefixes are all short enough
+  // that the sum of 2^-prefix is exact in a long double
+  long double covered = 0;
+  for (const auto& p : net::kTunCaptureV6) covered += std::ldexp(1.0L, -static_cast<int>(p.prefix));
+  for (const auto& p : net::kLocalBypassV6) covered += std::ldexp(1.0L, -static_cast<int>(p.prefix));
+  Check(covered == 1.0L, "IPv6 capture ∪ bypass covers ::/0 exactly, with no gap "
+                          "and no overlap",
+        std::format("covered fraction {}", static_cast<double>(covered)));
+
+  bool disjoint = true;
+  std::string overlap;
+  for (const auto& c : net::kTunCaptureV6) {
+    for (const auto& b : net::kLocalBypassV6) {
+      if (net::detail::Contains(b, c) || net::detail::Contains(c, b)) {
+        disjoint = false;
+        overlap = std::format("{} intersects {}", PrefixText6(c), PrefixText6(b));
+      }
+    }
+  }
+  Check(disjoint, "no captured IPv6 prefix intersects a bypassed one", overlap);
+
+  struct { uint8_t addr[16]; bool bypass; const char* label; } probes[] = {
+      {{0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, false, "2001:db8::1"},
+      {{0x26, 0x06, 0x47, 0x00, 0x47, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0x11, 0x11}, false,
+       "2606:4700:4700::1111"},
+      {{0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, true, "fe80::1"},
+      {{0xfc, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, true, "fc00::1"},
+      {{0xfd, 0x00, 0x75, 0x72, 0x6e, 0x65, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, true,
+       "fd00:7572:6e65::1 (our own tun ULA — bypassed; its on-link /64 wins)"},
+      {{0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, true, "ff02::1"},
+      {{0xfe, 0xc0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, false,
+       "fec0::1 (just above fe80::/10 — CAPTURED)"},
+      {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, true, "::1 (loopback)"},
+      {{0, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, false,
+       "64:ff9b::1 (NAT64 — CAPTURED)"},
+  };
+  bool probesOk = true;
+  std::string probeDetail;
+  for (const auto& p : probes) {
+    if (net::IsLocalBypassV6(p.addr) != p.bypass) {
+      probesOk = false;
+      probeDetail = p.label;
+    }
+  }
+  Check(probesOk, "IsLocalBypassV6 agrees with the table on 9 probe addresses",
+        probeDetail);
+
+  // the byte form round-trips, because the route and filter APIs take bytes
+  const uint8_t linkLocal[16] = {0xfe, 0x80};
+  const net::V6Prefix fromBytes = net::V6Prefix::FromBytes(linkLocal, 10);
+  Check(fromBytes == net::kLocalBypassV6[1] &&
+            fromBytes.Bytes() == net::kLocalBypassV6[1].Bytes(),
+        "V6Prefix::Bytes / FromBytes round-trip fe80::/10");
+}
+
 void TestTunnelNetworkSettingsPolicy() {
-  Section("NetworkConfig — IPv4-only tunnel interface policy");
+  Section("NetworkConfig — tunnel interface policy, v4-only and dual-stack");
 
   MIB_IPINTERFACE_ROW row{};
   row.SitePrefixLength = 64;
@@ -180,7 +277,7 @@ void TestTunnelNetworkSettingsPolicy() {
   row.AdvertisingEnabled = TRUE;
   row.AdvertiseDefaultRoute = TRUE;
   row.DisableDefaultRoutes = FALSE;
-  NetworkConfig::PrepareIpv4OnlyTunnelInterfaceRow(row);
+  NetworkConfig::PrepareTunnelIpv6InterfaceRow(row, /*carriesIpv6=*/false);
   Check(row.SitePrefixLength == 64,
         "the IPv6 interface row preserves its valid SitePrefixLength (the "
         "zero-only setter rule is IPv4-specific)");
@@ -190,29 +287,75 @@ void TestTunnelNetworkSettingsPolicy() {
   Check(row.RouterDiscoveryBehavior == RouterDiscoveryDisabled &&
             !row.AdvertisingEnabled && !row.AdvertiseDefaultRoute &&
             row.DisableDefaultRoutes,
-        "the Wintun interface row disables IPv6 discovery and default routes");
+        "a v4-only tun's interface row disables IPv6 discovery and default routes");
+
+  MIB_IPINTERFACE_ROW row6{};
+  row6.RouterDiscoveryBehavior = RouterDiscoveryEnabled;
+  row6.AdvertisingEnabled = TRUE;
+  row6.AdvertiseDefaultRoute = TRUE;
+  row6.DisableDefaultRoutes = TRUE;
+  NetworkConfig::PrepareTunnelIpv6InterfaceRow(row6, /*carriesIpv6=*/true);
+  Check(row6.RouterDiscoveryBehavior == RouterDiscoveryDisabled &&
+            !row6.AdvertisingEnabled && !row6.AdvertiseDefaultRoute &&
+            !row6.DisableDefaultRoutes &&
+            row6.LinkLocalAddressBehavior == LinkLocalUnchanged,
+        "a dual-stack tun's interface row keeps discovery off but leaves "
+        "default routes usable and the link-local address in place");
 
   TunnelNetworkSettings settings;
-  Check(settings.mtu == kTunnelMtu && settings.mtu == 1100,
-        "the tunnel MTU preserves one-packet H3 DATAGRAM eligibility");
+  Check(settings.mtu == kTunnelMtu && settings.mtu == 1280,
+        "the tunnel MTU is the interface MTU the SDK publishes (connect.DefaultTunnelMtu)");
+  Check(settings.mtu >= 1280, "the tunnel MTU is at least the IPv6 minimum link MTU");
+  Check(!settings.HasIpv6() && settings.prefix_v6 == 64,
+        "the default settings are v4-only, with the SDK's /64 ready for a v6 address");
   settings.local_address_v4 = "169.254.2.1";
   settings.prefix_v4 = 24;
   settings.dns_servers_v4 = {"65.49.70.65", "9.9.9.9"};
-  Check(NetworkConfig::IsIpv4OnlyTunnelSettings(settings),
-        "an IPv4 address and IPv4 DNS servers are accepted");
+  Check(NetworkConfig::IsValidTunnelSettings(settings),
+        "an IPv4 address and IPv4 DNS servers are accepted (v4-only tunnel)");
 
   settings.local_address_v4 = "fd00::1";
-  Check(!NetworkConfig::IsIpv4OnlyTunnelSettings(settings),
-        "an IPv6 tunnel address is rejected before Wintun is mutated");
+  Check(!NetworkConfig::IsValidTunnelSettings(settings),
+        "an IPv6 literal in the v4 address slot is rejected before Wintun is mutated");
 
   settings.local_address_v4 = "169.254.2.1";
   settings.dns_servers_v4 = {"2001:4860:4860::8888"};
-  Check(!NetworkConfig::IsIpv4OnlyTunnelSettings(settings),
-        "an IPv6 tunnel DNS transport is rejected before Wintun is mutated");
+  Check(!NetworkConfig::IsValidTunnelSettings(settings),
+        "an IPv6 resolver in the v4 list is rejected before Wintun is mutated");
 
   settings.dns_servers_v4 = {"resolver.example"};
-  Check(!NetworkConfig::IsIpv4OnlyTunnelSettings(settings),
-        "a hostname cannot bypass the IPv4-literal tunnel contract");
+  Check(!NetworkConfig::IsValidTunnelSettings(settings),
+        "a hostname cannot bypass the literal tunnel contract");
+
+  settings.dns_servers_v4 = {"65.49.70.65"};
+  settings.dns_servers_v6 = {"2001:db8::65:49:70:65"};
+  Check(!NetworkConfig::IsValidTunnelSettings(settings),
+        "v6 resolvers without a v6 tunnel address are rejected — there is no v6 "
+        "route to reach them over");
+
+  settings.local_address_v6 = "fd00:7572:6e65:1234::1";
+  settings.prefix_v6 = 64;
+  Check(settings.HasIpv6() && NetworkConfig::IsValidTunnelSettings(settings),
+        "the SDK's ULA with a /64 and a v6 resolver make a dual-stack tunnel");
+
+  settings.dns_servers_v6 = {"9.9.9.9"};
+  Check(!NetworkConfig::IsValidTunnelSettings(settings),
+        "an IPv4 resolver in the v6 list is rejected");
+  settings.dns_servers_v6 = {"2001:db8::65:49:70:65"};
+
+  settings.prefix_v6 = 0;
+  Check(!NetworkConfig::IsValidTunnelSettings(settings), "a /0 v6 prefix is rejected");
+  settings.prefix_v6 = 129;
+  Check(!NetworkConfig::IsValidTunnelSettings(settings), "a /129 v6 prefix is rejected");
+  settings.prefix_v6 = 128;
+  Check(NetworkConfig::IsValidTunnelSettings(settings), "a /128 v6 prefix is accepted");
+
+  settings.local_address_v6 = "169.254.2.2";
+  Check(!NetworkConfig::IsValidTunnelSettings(settings),
+        "an IPv4 literal in the v6 address slot is rejected");
+  settings.local_address_v6 = "not-an-address";
+  Check(!NetworkConfig::IsValidTunnelSettings(settings),
+        "a malformed v6 address is rejected");
 }
 
 // --- part 2: the filter set -------------------------------------------------
@@ -223,6 +366,12 @@ WfpConfig SampleConfig(uint64_t luid) {
   WfpConfig cfg;
   cfg.tun_luid = luid;
   cfg.tunnel_resolvers_v4 = {"169.254.2.53"};
+  // The dual-stack tun (IPV6.md C2): a v6 address and the v6 capture routes
+  // are on it, and the SDK's in-tunnel v6 resolver with them. NoTunnelConfig
+  // drops both, since there is no tun in Armed or Connecting; the legacy
+  // v4-only shape is asserted separately below.
+  cfg.tunnel_ipv6 = true;
+  cfg.tunnel_resolvers_v6 = {"2001:db8::65:49:70:65"};
   // What TunnelController reads off the machine's own adapters for every
   // non-Connected state. Ignored while Connected, where the tunnel's resolvers
   // are the path.
@@ -399,26 +548,64 @@ void TestFilterSet() {
             HasName(connecting, "urnetwork-block-all-v6-in"),
         "Armed and Connecting apply the IPv6 kill-switch floor while no tunnel "
         "is connected");
-  Check(!HasName(connected, "urnetwork-block-all-v6-out") &&
-            !HasName(connected, "urnetwork-block-all-v6-in"),
-        "Connected does not capture or blackhole IPv6; it remains on the "
-        "underlying network outside the IPv4-only Wintun interface");
+  Check(HasName(connected, "urnetwork-block-all-v6-out") &&
+            HasName(connected, "urnetwork-block-all-v6-in"),
+        "a connected DUAL-STACK tunnel keeps the IPv6 floor: the tun is the only "
+        "v6 path, exactly as it is the only v4 path");
+
+  // The legacy v4-only tunnel (an SDK reporting no v6 address): Connected
+  // leaves IPv6 on the underlying network, as every release before dual-stack
+  // did, and advertises no v6 tunnel path at all.
+  WfpConfig legacy = cfg;
+  legacy.tunnel_ipv6 = false;
+  legacy.tunnel_resolvers_v6.clear();
+  const Specs connectedLegacy = BuildFilterSet(WfpState::Connected, legacy);
+  Check(!HasName(connectedLegacy, "urnetwork-block-all-v6-out") &&
+            !HasName(connectedLegacy, "urnetwork-block-all-v6-in") &&
+            !HasName(connectedLegacy, "urnetwork-permit-tun-v6") &&
+            !HasName(connectedLegacy, "urnetwork-permit-lan-v6-out") &&
+            !HasName(connectedLegacy, "urnetwork-permit-lan-v6-in") &&
+            !HasName(connectedLegacy, "urnetwork-permit-dns-tunnel-resolver-v6"),
+        "a connected v4-only tunnel does not capture or blackhole IPv6; it "
+        "remains on the underlying network outside the IPv4-only Wintun interface");
+  {
+    // tunnel_ipv6 is the whole gate: v6 resolvers on a v4-only tun emit
+    // nothing (NetworkConfig refuses that configuration upstream anyway)
+    WfpConfig staleV6 = legacy;
+    staleV6.tunnel_resolvers_v6 = {"2001:db8::65:49:70:65"};
+    Check(!HasName(BuildFilterSet(WfpState::Connected, staleV6),
+                   "urnetwork-permit-dns-tunnel-resolver-v6"),
+          "a v6 resolver on a v4-only tun produces no permit — the gate is the "
+          "tunnel's family, not the resolver list");
+  }
 
   // --- the states differ ONLY where they should ----------------------------
   const std::string kHostResolverPermit = "urnetwork-permit-dns-host-resolver";
 
   Check(!HasName(armed, "urnetwork-permit-tun-v4") &&
+            !HasName(armed, "urnetwork-permit-tun-v6") &&
+            !HasName(armed, "urnetwork-permit-lan-v6-out") &&
             !HasName(armed, "urnetwork-permit-dns-tunnel-resolver") &&
+            !HasName(armed, "urnetwork-permit-dns-tunnel-resolver-v6") &&
             !HasName(connecting, "urnetwork-permit-tun-v4") &&
-            !HasName(connecting, "urnetwork-permit-dns-tunnel-resolver"),
-        "neither Armed nor Connecting has a tun permit or a tunnel-resolver DNS "
-        "permit (there is no tun in either)");
+            !HasName(connecting, "urnetwork-permit-tun-v6") &&
+            !HasName(connecting, "urnetwork-permit-lan-v6-out") &&
+            !HasName(connecting, "urnetwork-permit-dns-tunnel-resolver") &&
+            !HasName(connecting, "urnetwork-permit-dns-tunnel-resolver-v6"),
+        "neither Armed nor Connecting has a tun permit, a v6 bypass permit or a "
+        "tunnel-resolver DNS permit (there is no tun in either)");
   Check(CountName(connected, "urnetwork-permit-tun-v4") == 2 &&
-            !HasName(connected, "urnetwork-permit-tun-v6"),
-        "Connected permits only IPv4 on the Wintun LUID; no IPv6 tunnel path "
-        "is advertised");
+            CountName(connected, "urnetwork-permit-tun-v6") == 2,
+        "Connected permits both families on the Wintun LUID at both ALE layers "
+        "(dual-stack tun)");
   Check(CountName(connected, "urnetwork-permit-dns-tunnel-resolver") == 1,
-        "Connected permits exactly one tunnel resolver (one was configured)");
+        "Connected permits exactly one v4 tunnel resolver (one was configured)");
+  Check(CountName(connected, "urnetwork-permit-dns-tunnel-resolver-v6") == 1,
+        "Connected permits exactly one v6 tunnel resolver (one was configured)");
+  Check(HasName(connected, "urnetwork-permit-lan-v6-out") &&
+            HasName(connected, "urnetwork-permit-lan-v6-in"),
+        "Connected permits the v6 bypass ranges the v6 routes leave to the "
+        "physical NIC");
 
   // --- THE UI PROCESS: CONNECTED ONLY --------------------------------------
   //
@@ -539,12 +726,12 @@ void TestFilterSet() {
                                                : *onlyInConnecting.begin()));
   }
 
-  // Everything Armed permits, Connected must also permit. Connected deliberately
-  // removes only the two IPv6 block filters: removing a block widens effective
-  // policy and lets IPv6 remain on the underlying network without advertising it
-  // on the tunnel. Any other name present in Armed but absent from Connected
-  // would be a transition window where the policy is briefly weaker in the
-  // direction that breaks the machine.
+  // Everything Armed permits, Connected must also permit — and with a
+  // dual-stack tun, everything Armed BLOCKS stays blocked too: the IPv6 floor
+  // is kept and the tun is lifted through it. So Connected is a plain superset
+  // of Armed with NO exception. Any name present in Armed but absent from
+  // Connected would be a transition window where the policy is briefly weaker
+  // in the direction that breaks the machine.
   const auto isDisconnectedIpv6Floor = [](const std::string& name) {
     return name == "urnetwork-block-all-v6-out" ||
            name == "urnetwork-block-all-v6-in";
@@ -554,15 +741,14 @@ void TestFilterSet() {
   bool superset = true;
   std::string missing;
   for (const auto& f : armed) {
-    if (!connectedNames.count(f.name) &&
-        !isDisconnectedIpv6Floor(f.name)) {
+    if (!connectedNames.count(f.name)) {
       superset = false;
       missing = f.name;
     }
   }
   Check(superset,
-        "Connected retains every Armed filter except the disconnected IPv6 "
-        "block floor; removing those blocks is a widening, not a leak window",
+        "a connected dual-stack tunnel retains EVERY Armed filter, the IPv6 "
+        "floor included — nothing is widened by connecting",
         missing);
 
   // ...and as a MULTISET, which is the stronger claim the dead-tunnel failsafe
@@ -570,37 +756,59 @@ void TestFilterSet() {
   //
   // With the kill switch ON a failsafe teardown takes Connected -> Armed while
   // the machine is still routed at the tun, on a path the user did not ask for.
-  // The promise made about that path is "nothing is leaking." Adding the two
-  // IPv6 block filters is part of that narrowing: IPv6 may use the underlying
-  // network only during a connected session. A multiset difference pins this
-  // exception to exactly one inbound and one outbound block.
+  // The promise made about that path is "nothing is leaking." With a dual-stack
+  // tun that transition adds no block at all: the v6 floor was already in force
+  // and only the tun-side permits fall away.
   {
     const std::multiset<std::string> a = Names(armed);
     const std::multiset<std::string> c = Names(connected);
     std::multiset<std::string> onlyInArmed;
     std::set_difference(a.begin(), a.end(), c.begin(), c.end(),
                         std::inserter(onlyInArmed, onlyInArmed.end()));
+    Check(onlyInArmed.empty(),
+          "Connected -> Armed adds NOTHING for a dual-stack tunnel; the failsafe "
+          "transition only drops the tun-side permits",
+          std::format("{} filter(s) only in Armed: {}", onlyInArmed.size(),
+                      onlyInArmed.empty() ? std::string("none")
+                                          : *onlyInArmed.begin()));
+    Check(c.size() > a.size(),
+          "…and strictly less: Armed drops the tun permits, the v6 bypass "
+          "permit, the UI app permit and the tunnel-resolver DNS permits that "
+          "Connected carries",
+          std::format("armed={} connected={}", a.size(), c.size()));
+  }
+  // The legacy v4-only tunnel keeps its historical exception: Connected removes
+  // exactly the inbound and outbound IPv6 block floor (a widening that leaves
+  // host IPv6 on the underlying network, not a leak window), and the failsafe
+  // Connected -> Armed transition adds exactly those two back.
+  {
+    const std::multiset<std::string> a = Names(armed);
+    const std::multiset<std::string> c = Names(connectedLegacy);
+    std::multiset<std::string> onlyInArmed;
+    std::set_difference(a.begin(), a.end(), c.begin(), c.end(),
+                        std::inserter(onlyInArmed, onlyInArmed.end()));
     const std::multiset<std::string> expectedOnlyInArmed = {
         "urnetwork-block-all-v6-in", "urnetwork-block-all-v6-out"};
     Check(onlyInArmed == expectedOnlyInArmed,
-          "Connected -> Armed adds exactly the inbound and outbound IPv6 block "
-          "floor; adding those blocks makes the failsafe transition narrower",
+          "for a v4-only tunnel, Connected -> Armed adds exactly the inbound and "
+          "outbound IPv6 block floor and nothing else",
           std::format("expected 2 IPv6 blocks, found {}", onlyInArmed.size()));
-    Check(c.size() > a.size(),
-          "…and strictly less: Armed drops the tun permit, the UI app permit "
-          "and the tunnel-resolver DNS permit that Connected carries",
-          std::format("armed={} connected={}", a.size(), c.size()));
+    bool legacySuperset = true;
+    for (const auto& name : onlyInArmed) {
+      if (!isDisconnectedIpv6Floor(name)) legacySuperset = false;
+    }
+    Check(legacySuperset,
+          "a connected v4-only tunnel retains every Armed filter except that "
+          "floor");
   }
 
   // The Connecting -> Connected edge replaces the host-resolver permit with a
-  // strictly narrower one (the tunnel's own resolvers, over the tun). It also
-  // removes the disconnected IPv6 block floor so physical IPv6 remains outside
-  // the IPv4-only tunnel for the connected session.
+  // strictly narrower one (the tunnel's own resolvers, over the tun). For a
+  // dual-stack tun nothing else changes direction: the IPv6 floor stays.
   bool connectedSupersetOfConnecting = true;
   std::string missingOnConnect;
   for (const auto& f : connecting) {
     if (f.name == kHostResolverPermit) continue;
-    if (isDisconnectedIpv6Floor(f.name)) continue;
     if (!connectedNames.count(f.name)) {
       connectedSupersetOfConnecting = false;
       missingOnConnect = f.name;
@@ -608,7 +816,7 @@ void TestFilterSet() {
   }
   Check(connectedSupersetOfConnecting,
         "Connected retains every Connecting filter except the narrowed DNS "
-        "permit and the deliberately removed disconnected IPv6 block floor",
+        "permit",
         missingOnConnect);
   Check(HasName(connecting, kHostResolverPermit) &&
             !HasName(armed, kHostResolverPermit) &&
@@ -655,6 +863,23 @@ void TestFilterSet() {
   Check(lanMatches,
         "the LAN permit's conditions ARE net::kLocalBypassV4, prefix for "
         "prefix — the firewall and the route table cannot disagree");
+  const WfpFilterSpec* lan6 = Find(connected, "urnetwork-permit-lan-v6-out");
+  bool lan6Matches = lan6 != nullptr &&
+                     lan6->conditions.size() == std::size(net::kLocalBypassV6);
+  if (lan6Matches) {
+    for (size_t i = 0; i < lan6->conditions.size(); ++i) {
+      const auto& c = lan6->conditions[i];
+      const auto bytes = net::kLocalBypassV6[i].Bytes();
+      if (c.field != WfpField::RemoteAddrV6 ||
+          std::memcmp(c.v6_addr, bytes.data(), 16) != 0 ||
+          c.v6_prefix != net::kLocalBypassV6[i].prefix) {
+        lan6Matches = false;
+      }
+    }
+  }
+  Check(lan6Matches,
+        "the v6 bypass permit's conditions ARE net::kLocalBypassV6, prefix for "
+        "prefix — the same coupling for the v6 routes");
 
   // --- weights --------------------------------------------------------------
   bool weightsValid = true;
@@ -759,6 +984,10 @@ void TestFilterSet() {
             tun->conditions[0].number == cfg.tun_luid,
         "the tun permit matches on the interface LUID (indices are recycled; "
         "an index-based permit can end up permitting another adapter)");
+  const WfpFilterSpec* tun6 = Find(connected, "urnetwork-permit-tun-v6");
+  Check(tun6 && HasCondition(*tun6, WfpField::LocalInterface) &&
+            tun6->conditions[0].number == cfg.tun_luid,
+        "the v6 tun permit matches on the same LUID");
 
   // --- config knobs actually do something ----------------------------------
   WfpConfig noV6 = NoTunnelConfig(cfg);
@@ -1149,6 +1378,11 @@ void TestDnsDisclosureShape() {
   Check(tunnelPermit && !IsMachineWideDnsPermit(*tunnelPermit),
         "filter 10 is NOT machine-wide — same port and address shape, but pinned "
         "to the tun's LUID, so it permits nothing off the tunnel");
+  const WfpFilterSpec* tunnelPermit6 =
+      Find(connected, "urnetwork-permit-dns-tunnel-resolver-v6");
+  Check(tunnelPermit6 && !IsMachineWideDnsPermit(*tunnelPermit6),
+        "filter 10b (the v6 tunnel resolver) is pinned to the tun's LUID the "
+        "same way, so it is not machine-wide either");
 
   const WfpFilterSpec* appIdPermit =
       Find(connecting, "urnetwork-permit-service-dns-v4");
@@ -1570,6 +1804,33 @@ void TestSdkResolverAgainstTable() {
                     addr),
         "a resolver inside kLocalBypassV4 is unreachable through the tun, and "
         "with the port-53 block in force that is a total DNS outage, not a leak");
+
+  // The same question of the v6 resolver against the v6 table.
+  std::string addr6;
+  try {
+    addr6 = urnet::getDefaultTunnelDnsAddressIpv6();
+  } catch (const std::exception& e) {
+    std::printf("  note  could not read the SDK's default tunnel v6 resolver: %s\n",
+                e.what());
+    return;
+  }
+  if (addr6.empty()) {
+    std::printf("  note  the SDK reported no default tunnel v6 resolver\n");
+    return;
+  }
+  IN6_ADDR parsed6{};
+  if (::inet_pton(AF_INET6, addr6.c_str(), &parsed6) != 1) {
+    std::printf("  note  default tunnel v6 resolver '%s' is not an IPv6 literal\n",
+                addr6.c_str());
+    return;
+  }
+  uint8_t bytes6[16];
+  std::memcpy(bytes6, &parsed6, 16);
+  Check(!net::IsLocalBypassV6(bytes6),
+        std::format("the SDK's default tunnel v6 resolver {} is CAPTURED by the "
+                    "tun, not bypassed to the physical NIC",
+                    addr6),
+        "a resolver inside kLocalBypassV6 is unreachable through the tun");
 }
 
 // --- the shutdown budget ---------------------------------------------------
@@ -4621,6 +4882,7 @@ int RunSelfTest() {
       "verb's binPath quoting and its exit-code verdicts are right.\n");
 
   TestNetPolicyTable();
+  TestNetPolicyTableV6();
   TestTunnelNetworkSettingsPolicy();
   TestFilterSet();
   TestServiceDnsPath();
