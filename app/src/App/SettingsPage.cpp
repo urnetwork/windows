@@ -211,6 +211,7 @@ void SettingsPage::BuildSections() {
   BuildIdentitySection(device);
   BuildAdvancedSection(device);
   BuildVersionSection(about);
+  BuildLicensesRows(about, general);
   BuildStayInTouchSection(about);
   rows::SetPaneMode(false);
 
@@ -587,6 +588,40 @@ void SettingsPage::BuildVersionSection(Panel const& host) {
   // compile-time constant and needs no round trip.
   ApplyValue(ValueRow(card, Missing("app_version", L"App version")),
              urnw::version::kString);
+}
+
+// LICENSES: the open source software and data attributions the app ships
+// (LicensesPage), opened in Settings' place. The row belongs to About, under
+// the version rows - what the app is, then what it is built from.
+//
+// About is also the first pane to fold (MainWindow::ApplyBreakpoint, < 1400dip),
+// and some of these licenses REQUIRE their attribution to be reachable in the
+// product (GeoLite2's MaxMind notice), so a second copy of the row waits at the
+// foot of General under an About strip of its own. Exactly one of the two is
+// visible at any width: ApplyAboutPaneVisible switches them.
+void SettingsPage::BuildLicensesRows(Panel const& about, Panel const& general) {
+  auto row = [this](Panel const& card) {
+    TextBlock unused{nullptr};
+    auto button = NavRow(card, Loc("licenses"), unused);
+    button.Click([this](auto const&, auto const&) { w_.OpenLicenses(); });
+  };
+  licensesAboutRow_ = StackPanel();
+  about.Children().Append(licensesAboutRow_);
+  row(Card(licensesAboutRow_));
+
+  licensesGeneralRow_ = StackPanel();
+  general.Children().Append(licensesGeneralRow_);
+  Heading(licensesGeneralRow_, Missing("about", L"About"), hstring{});
+  row(Card(licensesGeneralRow_));
+
+  ApplyAboutPaneVisible(aboutPaneVisible_);
+}
+
+void SettingsPage::ApplyAboutPaneVisible(bool visible) {
+  aboutPaneVisible_ = visible;
+  if (!licensesAboutRow_) return;  // the sections are not built yet
+  licensesAboutRow_.Visibility(visible ? Visibility::Visible : Visibility::Collapsed);
+  licensesGeneralRow_.Visibility(visible ? Visibility::Collapsed : Visibility::Visible);
 }
 
 void SettingsPage::BuildDangerSection() {

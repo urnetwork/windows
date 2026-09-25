@@ -1811,6 +1811,26 @@ správným způsobem</value>
     <value>Další informace najdete na stránce protokolu</value>
     <comment>Call to action</comment>
   </data>
+  <data name="licenses" xml:space="preserve">
+    <value>Licence</value>
+    <comment>Settings row and screen title: the open source licenses and data attributions the app includes</comment>
+  </data>
+  <data name="licenses_data_header" xml:space="preserve">
+    <value>Zdroje dat</value>
+    <comment>Licenses screen: section header for the data sources (IP location, blocklists, maps)</comment>
+  </data>
+  <data name="licenses_intro" xml:space="preserve">
+    <value>URnetwork je postaven na níže uvedeném open source softwaru a datech. U každé položky je uvedena její licence a případná povinná upozornění.</value>
+    <comment>Licenses screen: the paragraph above the list</comment>
+  </data>
+  <data name="licenses_project_page" xml:space="preserve">
+    <value>Stránka projektu</value>
+    <comment>Licenses detail: link to the component's project home page</comment>
+  </data>
+  <data name="licenses_software_header" xml:space="preserve">
+    <value>Open source software</value>
+    <comment>Licenses screen: section header for the open source libraries and fonts</comment>
+  </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
     <value>Propojte další způsob přihlášení k vašemu účtu.</value>
     <comment>A description of the add auth sheet.</comment>
@@ -2419,6 +2439,10 @@ Získejte svůj bonus vytvořením sítě!</value>
   <data name="or" xml:space="preserve">
     <value>nebo</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
+  </data>
+  <data name="other" xml:space="preserve">
+    <value>Jiné</value>
+    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>Zapojit se</value>

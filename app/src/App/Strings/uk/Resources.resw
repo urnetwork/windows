@@ -1812,6 +1812,26 @@
     <value>Дізнайтеся більше на сторінці протоколу</value>
     <comment>Call to action</comment>
   </data>
+  <data name="licenses" xml:space="preserve">
+    <value>Ліцензії</value>
+    <comment>Settings row and screen title: the open source licenses and data attributions the app includes</comment>
+  </data>
+  <data name="licenses_data_header" xml:space="preserve">
+    <value>Джерела даних</value>
+    <comment>Licenses screen: section header for the data sources (IP location, blocklists, maps)</comment>
+  </data>
+  <data name="licenses_intro" xml:space="preserve">
+    <value>URnetwork створено з використанням наведеного нижче програмного забезпечення з відкритим кодом і даних. Для кожного запису вказано його ліцензію та обов’язкові повідомлення.</value>
+    <comment>Licenses screen: the paragraph above the list</comment>
+  </data>
+  <data name="licenses_project_page" xml:space="preserve">
+    <value>Сторінка проєкту</value>
+    <comment>Licenses detail: link to the component's project home page</comment>
+  </data>
+  <data name="licenses_software_header" xml:space="preserve">
+    <value>ПЗ з відкритим кодом</value>
+    <comment>Licenses screen: section header for the open source libraries and fonts</comment>
+  </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
     <value>Прив'яжіть інший спосіб входу до вашого облікового запису.</value>
     <comment>A description of the add auth sheet.</comment>
@@ -2421,6 +2441,10 @@
   <data name="or" xml:space="preserve">
     <value>або</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
+  </data>
+  <data name="other" xml:space="preserve">
+    <value>Інше</value>
+    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>Брати участь</value>

@@ -1740,6 +1740,26 @@
     <value>在协议页面了解更多信息</value>
     <comment>Call to action</comment>
   </data>
+  <data name="licenses" xml:space="preserve">
+    <value>许可</value>
+    <comment>Settings row and screen title: the open source licenses and data attributions the app includes</comment>
+  </data>
+  <data name="licenses_data_header" xml:space="preserve">
+    <value>数据来源</value>
+    <comment>Licenses screen: section header for the data sources (IP location, blocklists, maps)</comment>
+  </data>
+  <data name="licenses_intro" xml:space="preserve">
+    <value>URnetwork 使用了以下开源软件和数据。每一项都列出了其许可及所需的声明。</value>
+    <comment>Licenses screen: the paragraph above the list</comment>
+  </data>
+  <data name="licenses_project_page" xml:space="preserve">
+    <value>项目主页</value>
+    <comment>Licenses detail: link to the component's project home page</comment>
+  </data>
+  <data name="licenses_software_header" xml:space="preserve">
+    <value>开源软件</value>
+    <comment>Licenses screen: section header for the open source libraries and fonts</comment>
+  </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
     <value>关联另一种登录帐户的方式。</value>
     <comment>A description of the add auth sheet.</comment>
@@ -2325,6 +2345,10 @@
   <data name="or" xml:space="preserve">
     <value>或</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
+  </data>
+  <data name="other" xml:space="preserve">
+    <value>其他</value>
+    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>参与</value>

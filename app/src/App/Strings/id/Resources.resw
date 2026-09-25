@@ -1740,6 +1740,26 @@ cara yang benar</value>
     <value>Pelajari lebih lanjut di halaman protokol</value>
     <comment>Call to action</comment>
   </data>
+  <data name="licenses" xml:space="preserve">
+    <value>Lisensi</value>
+    <comment>Settings row and screen title: the open source licenses and data attributions the app includes</comment>
+  </data>
+  <data name="licenses_data_header" xml:space="preserve">
+    <value>Atribusi data</value>
+    <comment>Licenses screen: section header for the data sources (IP location, blocklists, maps)</comment>
+  </data>
+  <data name="licenses_intro" xml:space="preserve">
+    <value>URnetwork dibangun dengan perangkat lunak sumber terbuka dan data di bawah ini. Setiap entri menampilkan lisensinya dan pemberitahuan apa pun yang diwajibkan.</value>
+    <comment>Licenses screen: the paragraph above the list</comment>
+  </data>
+  <data name="licenses_project_page" xml:space="preserve">
+    <value>Halaman proyek</value>
+    <comment>Licenses detail: link to the component's project home page</comment>
+  </data>
+  <data name="licenses_software_header" xml:space="preserve">
+    <value>Perangkat lunak sumber terbuka</value>
+    <comment>Licenses screen: section header for the open source libraries and fonts</comment>
+  </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
     <value>Tautkan cara lain untuk masuk ke akun Anda.</value>
     <comment>A description of the add auth sheet.</comment>
@@ -2325,6 +2345,10 @@ Klaim bonus Anda dengan membuat jaringan!</value>
   <data name="or" xml:space="preserve">
     <value>atau</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
+  </data>
+  <data name="other" xml:space="preserve">
+    <value>Lainnya</value>
+    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>Berpartisipasi</value>

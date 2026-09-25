@@ -26,3 +26,14 @@ fi
 
 (cd "$here" && go test "$@" ./tests)
 (cd "$root/build/all/windows" && go test "$@" ./...)
+
+# License drift: the Go modules and vendored libraries (sdk/licenses/extra.yml)
+# the windows app ships must match sdk/license.yml, which the SDK embeds and the
+# app's Settings -> Licenses page shows. It runs here, on the macOS build host,
+# where run.sh runs this script with the sdk sibling checked out beside this
+# repo and the SDK's Go module cache already warm. Not in app/build.ps1: the
+# app build inside the Windows VM uses no Go (only build-sdk.ps1 does), and a
+# drift found there would cost a VM boot, a sync and an SDK build first. -check
+# compares entry identities (origin, name, version, apps), never the license
+# texts, so it needs no network.
+(cd "$here" && go -C "$root/sdk" run ./licenses -check windows)

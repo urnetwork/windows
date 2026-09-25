@@ -17,6 +17,7 @@
 #include "BalanceSheets.h"
 #include "ConnectPage.h"
 #include "DeveloperPage.h"
+#include "LicensesPage.h"
 #include "LocationSheets.h"
 #include "LoginPage.h"
 #include "Onboarding.h"
@@ -60,6 +61,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   urnw::WalletPage& wallet() { return *wallet_; }
   urnw::SettingsPage& settings() { return *settings_; }
   urnw::ReferralsPage& referrals() { return *referrals_; }
+  urnw::LicensesPage& licenses() { return *licenses_; }
   urnw::DeveloperPage& developer() { return *developer_; }
 
   // ---- shared window-level state the pages need ----
@@ -89,6 +91,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   // "‹ Account"; any rail navigation closes it too.
   void OpenReferrals();
   void CloseReferrals();
+  // The Licenses page: shown in place of the Settings panes the same way (no
+  // rail item), opened from Settings' Licenses row and closed from its own
+  // "‹ Settings"; any rail navigation closes it too.
+  void OpenLicenses();
+  void CloseLicenses();
   // last ContractStatus push (ConnectPage::ApplyStats) -> the warning InfoBar
   void SetInsufficientBalance(bool insufficient);
   // ---- the persistent status strip (D4) ----
@@ -447,6 +454,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::unique_ptr<urnw::SettingsPage> settings_;
   std::unique_ptr<urnw::ReferralsPage> referrals_;
   bool referralsOpen_ = false;  // the Refer and earn page is up in Account's place
+  std::unique_ptr<urnw::LicensesPage> licenses_;
   std::unique_ptr<urnw::DeveloperPage> developer_;
 
   // balance / plan state (UI thread only; pushed by the store via AppController)

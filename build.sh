@@ -23,6 +23,11 @@ echo "== sync localizations (store -> app/src/App/Strings/*/Resources.resw)"
     { [ -d node_modules ] || npm ci --no-audit --no-fund; } &&
     npm run gen:windows)
 
+# the same license drift check test.sh runs for the pipeline: fail here, in a
+# second, rather than after the VM build (see test.sh for why it is host-side)
+echo "== license drift (sdk/license.yml vs the windows app's Go modules + extra.yml)"
+(cd "$here" && go -C "$root/sdk" run ./licenses -check windows)
+
 echo "== pipeline windows build (QEMU VM: cgo SDK + MSIs)"
 SRC_HOME="$root" \
 EXTERNAL_WARP_VERSION="${EXTERNAL_WARP_VERSION:-0.0.0-0}" \

@@ -91,6 +91,7 @@ MainWindow::MainWindow() {
   wallet_ = std::make_unique<urnw::WalletPage>(*this);
   settings_ = std::make_unique<urnw::SettingsPage>(*this);
   referrals_ = std::make_unique<urnw::ReferralsPage>(*this);
+  licenses_ = std::make_unique<urnw::LicensesPage>(*this);
   // Last: its ctor binds SdkHost's mode-notice handler and asks for a refresh,
   // so everything it may paint over must already exist.
   developer_ = std::make_unique<urnw::DeveloperPage>(*this);
@@ -348,6 +349,7 @@ void MainWindow::ApplyStrings() {
   wallet_->ApplyStrings();
   settings_->ApplyStrings();
   referrals_->ApplyStrings();
+  licenses_->ApplyStrings();
   developer_->ApplyStrings();
 }
 
@@ -530,6 +532,13 @@ void MainWindow::ApplyBreakpoint() {
   SetStar(SettingsPaneBColumn(), settingsTwo ? 1 : 0);
   SettingsPaneBRule().Visibility(settingsTwo ? Visibility::Visible : Visibility::Collapsed);
   SettingsPaneB().Visibility(settingsTwo ? Visibility::Visible : Visibility::Collapsed);
+  // The Licenses row lives in About, and About folds: below three panes the
+  // row moves to the foot of General, so the attributions some of those
+  // licenses REQUIRE to be shown stay reachable at every width.
+  settings_->ApplyAboutPaneVisible(settingsThree);
+  // The Licenses page, shown in Settings' place, splits list | detail at the
+  // same width Settings keeps two panes.
+  licenses_->ApplyBreakpoint(settingsTwo);
 
   // ---- Support: the form, and the way to reach a human beside it -----------
   // 1080 and an even split. This destination has one form and no data, so the
@@ -1075,6 +1084,9 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   // Refer and earn page that may have been open in Account's place
   referralsOpen_ = false;
   ReferralsView().Visibility(Visibility::Collapsed);
+  // ...and never on the Licenses page that may have been open in Settings'
+  if (LicensesView().Visibility() == Visibility::Visible) licenses_->OnClosed();
+  LicensesView().Visibility(Visibility::Collapsed);
   ConnectView().Visibility(tag == L"connect" ? Visibility::Visible : Visibility::Collapsed);
   NetworkView().Visibility(tag == L"network" ? Visibility::Visible : Visibility::Collapsed);
   AccountView().Visibility(tag == L"account" ? Visibility::Visible : Visibility::Collapsed);
@@ -1189,6 +1201,22 @@ void MainWindow::CloseReferrals() {
   referralsOpen_ = false;
   ReferralsView().Visibility(Visibility::Collapsed);
   AccountView().Visibility(Visibility::Visible);
+}
+
+// ---- the Licenses page (reached from Settings' Licenses row) -----------------
+// No session and no API: the list is embedded in the SDK dll, so this opens the
+// same way signed in, signed out and under --preview-ui.
+
+void MainWindow::OpenLicenses() {
+  SettingsView().Visibility(Visibility::Collapsed);
+  LicensesView().Visibility(Visibility::Visible);
+  licenses_->Load();
+}
+
+void MainWindow::CloseLicenses() {
+  licenses_->OnClosed();
+  LicensesView().Visibility(Visibility::Collapsed);
+  SettingsView().Visibility(Visibility::Visible);
 }
 
 // ---- balance / plan (SubscriptionBalanceStore relay) -----------------------

@@ -1763,6 +1763,26 @@
     <value>प्रोटोकॉल पेज पर और जानें</value>
     <comment>Call to action</comment>
   </data>
+  <data name="licenses" xml:space="preserve">
+    <value>लाइसेंस</value>
+    <comment>Settings row and screen title: the open source licenses and data attributions the app includes</comment>
+  </data>
+  <data name="licenses_data_header" xml:space="preserve">
+    <value>डेटा श्रेय</value>
+    <comment>Licenses screen: section header for the data sources (IP location, blocklists, maps)</comment>
+  </data>
+  <data name="licenses_intro" xml:space="preserve">
+    <value>URnetwork नीचे दिए गए ओपन सोर्स सॉफ़्टवेयर और डेटा से बना है। हर प्रविष्टि अपना लाइसेंस और ज़रूरी सूचना दिखाती है।</value>
+    <comment>Licenses screen: the paragraph above the list</comment>
+  </data>
+  <data name="licenses_project_page" xml:space="preserve">
+    <value>प्रोजेक्ट पेज</value>
+    <comment>Licenses detail: link to the component's project home page</comment>
+  </data>
+  <data name="licenses_software_header" xml:space="preserve">
+    <value>ओपन सोर्स सॉफ़्टवेयर</value>
+    <comment>Licenses screen: section header for the open source libraries and fonts</comment>
+  </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
     <value>अपने खाते में साइन इन करने का एक और तरीका लिंक करें।</value>
     <comment>A description of the add auth sheet.</comment>
@@ -2354,6 +2374,10 @@
   <data name="or" xml:space="preserve">
     <value>या</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
+  </data>
+  <data name="other" xml:space="preserve">
+    <value>अन्य</value>
+    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>भाग लें</value>

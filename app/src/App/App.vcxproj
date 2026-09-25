@@ -256,6 +256,7 @@
     <ClCompile Include="AccountPage.cpp" />
     <ClCompile Include="ReferralCard.cpp" />
     <ClCompile Include="ReferralsPage.cpp" />
+    <ClCompile Include="LicensesPage.cpp" />
     <ClCompile Include="ConnectCanvas.cpp" />
     <ClCompile Include="ConnectPage.cpp" />
     <ClCompile Include="DeveloperPage.cpp" />
@@ -336,6 +337,8 @@
     <ClInclude Include="AccountPage.h" />
     <ClInclude Include="ReferralCard.h" />
     <ClInclude Include="ReferralsPage.h" />
+    <ClInclude Include="LicensesPage.h" />
+    <ClInclude Include="LicensePresentation.h" />
     <ClInclude Include="ConnectPage.h" />
     <ClInclude Include="DeveloperPage.h" />
     <ClInclude Include="LoginPage.h" />

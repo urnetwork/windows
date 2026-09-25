@@ -1157,10 +1157,10 @@ void BlockedLocationsSheet::LoadBlocked() {
   sdk_.api().getNetworkBlockedLocations(
       [queue, weak](std::optional<urnet::GetNetworkBlockedLocationsResult> result,
                     std::optional<std::string> err) {
-        // GetNetworkBlockedLocationsResult has NO error field, so a missing
-        // result or a transport error is the only failure signal there is - and
-        // without this check a 401 arrived as an empty list and rendered as the
-        // reassuring "No blocked locations".
+        // The server never sets GetNetworkBlockedLocationsResult.error, so a
+        // missing result or a transport error is the only failure signal there
+        // is - and without this check a 401 arrived as an empty list and
+        // rendered as the reassuring "No blocked locations".
         const bool failed = !result || err.has_value();
         if (failed) {
           LogWarn("settings: getNetworkBlockedLocations failed: {}",

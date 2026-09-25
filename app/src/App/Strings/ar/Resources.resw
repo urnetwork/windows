@@ -1860,6 +1860,26 @@
     <value>معرفة المزيد في صفحة البروتوكول</value>
     <comment>Call to action</comment>
   </data>
+  <data name="licenses" xml:space="preserve">
+    <value>التراخيص</value>
+    <comment>Settings row and screen title: the open source licenses and data attributions the app includes</comment>
+  </data>
+  <data name="licenses_data_header" xml:space="preserve">
+    <value>إسناد البيانات</value>
+    <comment>Licenses screen: section header for the data sources (IP location, blocklists, maps)</comment>
+  </data>
+  <data name="licenses_intro" xml:space="preserve">
+    <value>تم بناء URnetwork باستخدام البرمجيات مفتوحة المصدر والبيانات أدناه. يعرض كل إدخال ترخيصه وأي إشعار يتطلبه.</value>
+    <comment>Licenses screen: the paragraph above the list</comment>
+  </data>
+  <data name="licenses_project_page" xml:space="preserve">
+    <value>صفحة المشروع</value>
+    <comment>Licenses detail: link to the component's project home page</comment>
+  </data>
+  <data name="licenses_software_header" xml:space="preserve">
+    <value>البرمجيات مفتوحة المصدر</value>
+    <comment>Licenses screen: section header for the open source libraries and fonts</comment>
+  </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
     <value>اربط طريقة أخرى لتسجيل الدخول إلى حسابك.</value>
     <comment>A description of the add auth sheet.</comment>
@@ -2483,6 +2503,10 @@
   <data name="or" xml:space="preserve">
     <value>أو</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
+  </data>
+  <data name="other" xml:space="preserve">
+    <value>آخر</value>
+    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>شارك</value>

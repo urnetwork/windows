@@ -4,6 +4,9 @@ URnetwork for Windows - Third-Party Notices
 This product bundles third-party software. The applicable licenses and required
 notices are reproduced below.
 
+The app also lists every open source component and data source it includes,
+with its full license text and any required notice, under Settings > Licenses.
+
 ===============================================================================
 Wintun - Layer 3 TUN Driver for Windows
 https://www.wintun.net/   https://git.zx2c4.com/wintun/

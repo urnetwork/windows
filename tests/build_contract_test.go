@@ -738,6 +738,72 @@ func TestHostUnitRunnerOwnsPortableWindowsContracts(t *testing.T) {
 	}
 }
 
+// The license drift check (sdk/licenses -check windows) keeps sdk/license.yml,
+// which the Licenses page shows, in step with what the app ships. It belongs to
+// the macOS host runner, where the sdk sibling and its Go module cache are, and
+// never to the Windows app build, which has no Go.
+func TestLicenseDriftCheckRunsOnTheHost(t *testing.T) {
+	root := repositoryRoot(t)
+	const check = `(cd "$here" && go -C "$root/sdk" run ./licenses -check windows)`
+	for _, script := range []string{"test.sh", "build.sh"} {
+		data, err := os.ReadFile(filepath.Join(root, script))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), check) {
+			t.Errorf("windows/%s is missing the license drift check %q", script, check)
+		}
+	}
+	data, err := os.ReadFile(filepath.Join(root, "app", "build.ps1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "./licenses") {
+		t.Error("app/build.ps1 must not run the Go license check; the Windows app build has no Go")
+	}
+}
+
+// Every store key the Licenses surfaces look up must exist in the neutral
+// resources, or Loc() renders the key id itself on screen.
+func TestLicensesStringsExist(t *testing.T) {
+	root := repositoryRoot(t)
+	document := parseXML(t, filepath.Join(root, "app", "src", "App", "Strings", "en", "Resources.resw"))
+	names := map[string]bool{}
+	for _, node := range document.descendants("", "data") {
+		if name, ok := node.attribute("name"); ok {
+			names[name] = true
+		}
+	}
+	keyPattern := regexp.MustCompile(`\bLoc\("([a-z0-9_]+)"\)|section\("([a-z0-9_]+)"`)
+	for _, file := range []string{"LicensesPage.cpp", "SettingsPage.cpp"} {
+		source := readAppSource(t, file)
+		for _, match := range keyPattern.FindAllStringSubmatch(source, -1) {
+			key := match[1] + match[2]
+			if file == "SettingsPage.cpp" && !strings.HasPrefix(key, "licenses") {
+				continue
+			}
+			if !names[key] {
+				t.Errorf("%s looks up %q, which en/Resources.resw does not define", file, key)
+			}
+		}
+	}
+	if !strings.Contains(readAppSource(t, "SettingsPage.cpp"), `Loc("licenses")`) {
+		t.Error("Settings has no Licenses row")
+	}
+}
+
+func TestLicensesPageIncludesCompleteAutomationType(t *testing.T) {
+	source := readAppSource(t, "LicensesPage.cpp")
+	for _, include := range []string{
+		`#include <winrt/Microsoft.UI.Xaml.Automation.h>`,
+		`#include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>`,
+	} {
+		if !strings.Contains(source, include) {
+			t.Errorf("LicensesPage.cpp calls AutomationProperties without %s", include)
+		}
+	}
+}
+
 func TestWindowsScriptsApplyTheSelectedArchitectureEndToEnd(t *testing.T) {
 	root := repositoryRoot(t)
 	read := func(relative string) string {

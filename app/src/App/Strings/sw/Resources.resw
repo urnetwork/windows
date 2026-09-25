@@ -1764,6 +1764,26 @@ kwa njia sahihi</value>
     <value>Jifunze zaidi kwenye ukurasa wa itifaki</value>
     <comment>Call to action</comment>
   </data>
+  <data name="licenses" xml:space="preserve">
+    <value>Leseni</value>
+    <comment>Settings row and screen title: the open source licenses and data attributions the app includes</comment>
+  </data>
+  <data name="licenses_data_header" xml:space="preserve">
+    <value>Vyanzo vya data</value>
+    <comment>Licenses screen: section header for the data sources (IP location, blocklists, maps)</comment>
+  </data>
+  <data name="licenses_intro" xml:space="preserve">
+    <value>URnetwork imejengwa kwa programu huria na data zilizo hapa chini. Kila kipengee kinaonyesha leseni yake na ilani yoyote inayohitajika.</value>
+    <comment>Licenses screen: the paragraph above the list</comment>
+  </data>
+  <data name="licenses_project_page" xml:space="preserve">
+    <value>Ukurasa wa mradi</value>
+    <comment>Licenses detail: link to the component's project home page</comment>
+  </data>
+  <data name="licenses_software_header" xml:space="preserve">
+    <value>Programu huria</value>
+    <comment>Licenses screen: section header for the open source libraries and fonts</comment>
+  </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
     <value>Unganisha njia nyingine ya kuingia kwenye akaunti yako.</value>
     <comment>A description of the add auth sheet.</comment>
@@ -2356,6 +2376,10 @@ kutumia ili kuthibitisha utambulisho wako.</value>
   <data name="or" xml:space="preserve">
     <value>au</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
+  </data>
+  <data name="other" xml:space="preserve">
+    <value>Nyingine</value>
+    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>Shiriki</value>

@@ -2830,6 +2830,85 @@
                     </Grid>
                 </Grid>
 
+                <!-- ==== LICENSES: shown in Settings' place ====================
+                     The open source software and data attributions the app
+                     ships (sdk.GetLicenses("windows")), reached from Settings'
+                     Licenses row and closed by its own "‹ Settings", exactly as
+                     the Refer and earn page stands in for Account. Any rail
+                     navigation closes it too.
+
+                     This one IS a list-pane-plus-detail reading, which Settings
+                     rejected for itself: ~95 entries of one row species, each
+                     opening a full license text, is what that shape is for.
+
+                       col 0  LIST     the intro, Data attributions, Open source
+                                       software
+                       col 2  DETAIL   the selected entry: notice, copyright,
+                                       project page, the full text
+
+                     Below the Settings two-pane width the detail folds; selecting
+                     a row then swaps the list for the detail, whose header grows
+                     a "‹ Licenses" back. LicensesPage owns that switch
+                     (ApplyBreakpoint); every row is built into the two hosts. -->
+                <Grid x:Name="LicensesView" Visibility="Collapsed"
+                      Style="{StaticResource UrPaneStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="LicensesPaneAColumn" Width="400" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="LicensesPaneBColumn" Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ============ PANE A: THE LIST ======================== -->
+                    <Grid Grid.Column="0" x:Name="LicensesPaneA"
+                          AutomationProperties.LandmarkType="Main">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="12"
+                                            VerticalAlignment="Center">
+                                    <Button x:Name="LicensesBackButton" Padding="8,4" />
+                                    <TextBlock x:Name="LicensesPaneTitle" VerticalAlignment="Center"
+                                               Style="{StaticResource UrPaneTitleStyle}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="LicensesListHost" />
+                        </ScrollViewer>
+                    </Grid>
+
+                    <Border x:Name="LicensesPaneBRule" Grid.Column="1"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE B: THE SELECTED ENTRY ============== -->
+                    <Grid Grid.Column="2" x:Name="LicensesPaneB">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="12"
+                                            VerticalAlignment="Center">
+                                    <Button x:Name="LicensesDetailBackButton" Padding="8,4"
+                                            Visibility="Collapsed" />
+                                    <TextBlock x:Name="LicensesDetailTitle" VerticalAlignment="Center"
+                                               Style="{StaticResource UrPaneTitleStyle}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ScrollViewer x:Name="LicensesDetailScroll" Grid.Row="1"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="LicensesDetailHost" />
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+
                 <!-- Developer / reliability (P2). The ~40 controls are still
                      built by urnw::DeveloperPage in code; what lives here is
                      only the SHAPE, because D4 made that shape the same on all

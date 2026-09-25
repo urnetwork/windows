@@ -1740,6 +1740,26 @@
     <value>เรียนรู้เพิ่มเติมที่หน้าข้อมูลโปรโตคอล</value>
     <comment>Call to action</comment>
   </data>
+  <data name="licenses" xml:space="preserve">
+    <value>สัญญาอนุญาต</value>
+    <comment>Settings row and screen title: the open source licenses and data attributions the app includes</comment>
+  </data>
+  <data name="licenses_data_header" xml:space="preserve">
+    <value>แหล่งที่มาของข้อมูล</value>
+    <comment>Licenses screen: section header for the data sources (IP location, blocklists, maps)</comment>
+  </data>
+  <data name="licenses_intro" xml:space="preserve">
+    <value>URnetwork สร้างขึ้นด้วยซอฟต์แวร์โอเพนซอร์สและข้อมูลด้านล่าง แต่ละรายการแสดงสัญญาอนุญาตและประกาศที่จำเป็น</value>
+    <comment>Licenses screen: the paragraph above the list</comment>
+  </data>
+  <data name="licenses_project_page" xml:space="preserve">
+    <value>หน้าโครงการ</value>
+    <comment>Licenses detail: link to the component's project home page</comment>
+  </data>
+  <data name="licenses_software_header" xml:space="preserve">
+    <value>ซอฟต์แวร์โอเพนซอร์ส</value>
+    <comment>Licenses screen: section header for the open source libraries and fonts</comment>
+  </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
     <value>เชื่อมโยงอีกวิธีหนึ่งสำหรับลงชื่อเข้าใช้บัญชีของคุณ</value>
     <comment>A description of the add auth sheet.</comment>
@@ -2325,6 +2345,10 @@
   <data name="or" xml:space="preserve">
     <value>หรือ</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
+  </data>
+  <data name="other" xml:space="preserve">
+    <value>อื่นๆ</value>
+    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>เข้าร่วม</value>

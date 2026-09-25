@@ -5,6 +5,7 @@
 // referral network, auth codes, sign-in methods), device (name, spec),
 // connections (kill switch, blocked locations), post-quantum identity,
 // preferences (product updates), subscription, logs, community links, version,
+// licenses (LicensesPage),
 // and — below sign out — delete account.
 //
 // The sections above the split rules are BUILT IN CODE, into the three empty
@@ -50,6 +51,10 @@ class SettingsPage {
   // would only fight the developer's console run. Pushed by
   // MainWindow::ApplyServiceSetup, the one writer of that snapshot.
   void ApplyServiceSetup(urnw::ServiceSetup::Snapshot const& snap);
+  // MainWindow::ApplyBreakpoint: whether the About pane is on screen. The
+  // Licenses row lives there, and moves to the foot of General while About is
+  // folded (see BuildLicensesRows).
+  void ApplyAboutPaneVisible(bool visible);
 
   // The settings destination's API loads: network user (sign-in methods,
   // network name), device info, referral code + network, account preferences.
@@ -116,6 +121,8 @@ class SettingsPage {
   void BuildStayInTouchSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildSubscriptionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildVersionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  void BuildLicensesRows(winrt::Microsoft::UI::Xaml::Controls::Panel const& about,
+                         winrt::Microsoft::UI::Xaml::Controls::Panel const& general);
   void BuildDangerSection();
 
   // ---- loads ----
@@ -188,6 +195,10 @@ class SettingsPage {
   winrt::Microsoft::UI::Xaml::Controls::Button manageSubscription_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock versionValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button deleteAccountButton_{nullptr};
+  // the Licenses row, twice: About's, and General's while About is folded
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel licensesAboutRow_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel licensesGeneralRow_{nullptr};
+  bool aboutPaneVisible_ = true;
   // >>> ADVANCED MODE GOES HERE (D5). <<< The first host in Settings' Advanced
   // group; see BuildAdvancedSection for the row shape to append.
   winrt::Microsoft::UI::Xaml::Controls::StackPanel advancedModeHost_{nullptr};

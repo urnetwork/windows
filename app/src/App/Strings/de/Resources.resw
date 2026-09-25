@@ -1764,6 +1764,26 @@ richtig auf</value>
     <value>Mehr erfahren auf der Protokollseite</value>
     <comment>Call to action</comment>
   </data>
+  <data name="licenses" xml:space="preserve">
+    <value>Lizenzen</value>
+    <comment>Settings row and screen title: the open source licenses and data attributions the app includes</comment>
+  </data>
+  <data name="licenses_data_header" xml:space="preserve">
+    <value>Datenquellen</value>
+    <comment>Licenses screen: section header for the data sources (IP location, blocklists, maps)</comment>
+  </data>
+  <data name="licenses_intro" xml:space="preserve">
+    <value>URnetwork basiert auf der unten aufgeführten Open-Source-Software und den unten aufgeführten Daten. Jeder Eintrag zeigt seine Lizenz und alle erforderlichen Hinweise.</value>
+    <comment>Licenses screen: the paragraph above the list</comment>
+  </data>
+  <data name="licenses_project_page" xml:space="preserve">
+    <value>Projektseite</value>
+    <comment>Licenses detail: link to the component's project home page</comment>
+  </data>
+  <data name="licenses_software_header" xml:space="preserve">
+    <value>Open-Source-Software</value>
+    <comment>Licenses screen: section header for the open source libraries and fonts</comment>
+  </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
     <value>Verknüpfe eine weitere Möglichkeit, dich bei deinem Konto anzumelden.</value>
     <comment>A description of the add auth sheet.</comment>
@@ -2356,6 +2376,10 @@ gesendet haben, um deine Identität zu überprüfen.</value>
   <data name="or" xml:space="preserve">
     <value>oder</value>
     <comment>Referring to the two options 'Get started' *or* 'Login with Apple'</comment>
+  </data>
+  <data name="other" xml:space="preserve">
+    <value>Andere</value>
+    <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
   <data name="participate" xml:space="preserve">
     <value>Teilnehmen</value>
