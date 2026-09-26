@@ -72,9 +72,17 @@
     <value>{} (подтверждено)</value>
     <comment>The account's email or phone, marked as verified. The argument is the email or phone number.</comment>
   </data>
+  <data name="account_isn_t_ready_for_purchases" xml:space="preserve">
+    <value>Ваш аккаунт пока не готов к покупкам. Перезапустите приложение и попробуйте снова.</value>
+    <comment>Shown when a purchase is refused before contacting the App Store because the networkId is missing or unparseable — the purchase could never be credited to anyone (Shared/ViewModels/AppStoreSubscriptionManager.swift). This used to be a silent no-op.</comment>
+  </data>
   <data name="account_needs_verification" xml:space="preserve">
     <value>Этот аккаунт требует подтверждения. Проверьте свою электронную почту.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
+  </data>
+  <data name="active_extenders" xml:space="preserve">
+    <value>Активные экстендеры</value>
+    <comment>Accessibility label of the row of rings, one per extender carrying a live connection.</comment>
   </data>
   <data name="activity" xml:space="preserve">
     <value>Активность</value>
@@ -114,6 +122,10 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>Добавить способ входа</value>
     <comment>Button text for adding a sign-in method.</comment>
+  </data>
+  <data name="add_tao_for_gas" xml:space="preserve">
+    <value>Пополните TAO для оплаты газа</value>
+    <comment>State when the gas key has no TAO.</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>Вы можете изменить настройку на «Всегда», чтобы быстрее получать бесплатные данные.</value>
@@ -445,6 +457,10 @@
     <value>Версия приложения</value>
     <comment>Settings, about: label of the app version row.</comment>
   </data>
+  <data name="apple" xml:space="preserve">
+    <value>Apple</value>
+    <comment>A method of adding a sign-in method.</comment>
+  </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>Способ входа через Apple добавлен</value>
     <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
@@ -594,9 +610,21 @@
     <value>Код баланса</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
+  <data name="balance_code_already_redeemed_message" xml:space="preserve">
+    <value>Этот код баланса уже активирован. Если вы активировали его ранее, данные уже зачислены на ваш баланс.</value>
+    <comment>Redeem balance code: the server answered that this code was already redeemed. Distinct from invalid -- the user may have redeemed it on an earlier attempt that looked like a failure.</comment>
+  </data>
+  <data name="balance_code_invalid_message" xml:space="preserve">
+    <value>Этот код баланса недействителен. Проверьте код и попробуйте снова.</value>
+    <comment>Redeem balance code: the server answered and rejected the code as unknown/invalid. Distinct from a transport failure, which must never be reported as a bad code.</comment>
+  </data>
   <data name="balance_code_redeemed" xml:space="preserve">
     <value>Код баланса активирован.</value>
     <comment>Confirmation shown after a balance code is redeemed.</comment>
+  </data>
+  <data name="balance_code_transport_error" xml:space="preserve">
+    <value>Не удалось связаться с сервером — проверьте подключение. Если с вас списали оплату, код, возможно, уже применён; проверьте баланс, прежде чем повторять попытку.</value>
+    <comment>Redeem balance code: the request never got a server answer (network failure). Must NOT be worded as 'bad code' -- the redeem may have committed server-side, so tell the user to check their balance before retrying.</comment>
   </data>
   <data name="balance_code_where_to_buy" xml:space="preserve">
     <value>Нет кода? Коды данных можно купить на ur.io — их пришлют вам на почту.</value>
@@ -605,6 +633,10 @@
   <data name="balance_codes_link" xml:space="preserve">
     <value>Коды баланса</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="balance_codes_load_error" xml:space="preserve">
+    <value>Не удалось загрузить ваши коды баланса. Проверьте подключение и попробуйте снова.</value>
+    <comment>Linux redeem-code sheet: shown in place of the redeemed-codes history when getNetworkRedeemedBalanceCodes FAILS (transport error, no response, or a server-side error) — distinct from the empty state's "No balance codes found", which is only for a successful fetch with no codes.</comment>
   </data>
   <data name="balance_codes_title" xml:space="preserve">
     <value>Коды баланса</value>
@@ -622,9 +654,17 @@
     <value>Лучшие совпадения</value>
     <comment>Label for a list or section showing the best matching results.</comment>
   </data>
+  <data name="best_value" xml:space="preserve">
+    <value>Выгоднее всего</value>
+    <comment>Gold pill on the recommended (annual) plan card.</comment>
+  </data>
   <data name="bittensor_sign_in" xml:space="preserve">
     <value>Войти через Bittensor</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="bittensor_wallet" xml:space="preserve">
+    <value>Кошелек Bittensor</value>
+    <comment>Label of the connected wallet block.</comment>
   </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>Блокировать рекламу и трекеры</value>
@@ -696,9 +736,17 @@
     <value>В обход VPN</value>
     <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
   </data>
+  <data name="camera_permission_needed" xml:space="preserve">
+    <value>Для сканирования кода нужен доступ к камере.</value>
+    <comment>Shown when the camera permission was denied on the scan screen.</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>Отмена</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="chain_rpc_unreachable" xml:space="preserve">
+    <value>RPC блокчейна недоступен. Попробуйте снова.</value>
+    <comment>Error when the subnet RPC cannot be reached.</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>Изменить</value>
@@ -740,9 +788,33 @@
     <value>Проверка транзакций Solana</value>
     <comment>Call to action</comment>
   </data>
+  <data name="checking_wallet_address" xml:space="preserve">
+    <value>Проверка адреса…</value>
+    <comment>Progress text while the address is validated.</comment>
+  </data>
+  <data name="checkout_browser_launch_failed" xml:space="preserve">
+    <value>Не удалось открыть браузер. Скопируйте эту ссылку в браузер, чтобы завершить оплату:</value>
+    <comment>Upgrade sheet: the system browser could not be opened for the hosted checkout url. The app appends the url itself on the next line (selectable) so the user can copy it into a browser by hand — never advancing to the waiting page with no payment page open.</comment>
+  </data>
+  <data name="checkout_interrupted_confirming" xml:space="preserve">
+    <value>Окно оплаты неожиданно закрылось. Если платёж прошёл, ваш тариф обновится здесь автоматически — покупать повторно не нужно.</value>
+    <comment>Upgrade sheet waiting page: the embedded checkout webview crashed after the payment form had rendered, so a charge may already have gone through with only the redirect lost. Shown while the confirmation poll asks the server for the payment webhook; must never invite buying again.</comment>
+  </data>
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>Завершите покупку в браузере. Ваш тариф обновится здесь автоматически, как только платеж будет подтвержден.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
+  </data>
+  <data name="choose_file" xml:space="preserve">
+    <value>Выбрать файл</value>
+    <comment>Button on desktop: pick a file that contains a QR code image.</comment>
+  </data>
+  <data name="choose_image_file" xml:space="preserve">
+    <value>Выбрать файл изображения</value>
+    <comment>Button on desktop: pick an image file that contains a QR code.</comment>
+  </data>
+  <data name="choose_photo" xml:space="preserve">
+    <value>Выбрать фото</value>
+    <comment>Button: pick a photo that contains a QR code.</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>Города</value>
@@ -752,6 +824,30 @@
     <value>Получить</value>
     <comment>Call to action</comment>
   </data>
+  <data name="claim_across_epochs" xml:space="preserve">
+    <value>Завершённых эпох: {}</value>
+    <comment>Subtitle of the claim dialog.</comment>
+  </data>
+  <data name="claim_alpha_title" xml:space="preserve">
+    <value>Получить SN25α</value>
+    <comment>Title of the claim dialog.</comment>
+  </data>
+  <data name="claim_amount_button" xml:space="preserve">
+    <value>Получить {}</value>
+    <comment>Claim button with the amount.</comment>
+  </data>
+  <data name="claim_confirmed" xml:space="preserve">
+    <value>Получено</value>
+    <comment>Claim state: confirmed on chain.</comment>
+  </data>
+  <data name="claim_expired" xml:space="preserve">
+    <value>Истекло</value>
+    <comment>Claim state: past the vault's expiry block.</comment>
+  </data>
+  <data name="claim_failed" xml:space="preserve">
+    <value>Ошибка</value>
+    <comment>Claim state: failed.</comment>
+  </data>
   <data name="claim_multiplier" xml:space="preserve">
     <value>Получить множитель</value>
     <comment>Call to action</comment>
@@ -759,6 +855,38 @@
   <data name="claim_network_name_hint" xml:space="preserve">
     <value>Получите собственное имя сети вместо автоматически созданного</value>
     <comment>A description of the benefits of claiming a custom network name.</comment>
+  </data>
+  <data name="claim_sending_linux" xml:space="preserve">
+    <value>Отправка…</value>
+    <comment>Per-epoch status while the claim transaction is being sent.</comment>
+  </data>
+  <data name="claim_sends_from_device" xml:space="preserve">
+    <value>Ваше устройство отправляет запрос на получение в контракт хранилища. Газ оплачивается в TAO с вашего ключа для оплаты газа. Alpha поступает на ваш coldkey.</value>
+    <comment>Explainer under the claim button.</comment>
+  </data>
+  <data name="claim_sent" xml:space="preserve">
+    <value>Отправлено</value>
+    <comment>Claim state: transaction sent.</comment>
+  </data>
+  <data name="claim_to_address_linux" xml:space="preserve">
+    <value>На {}</value>
+    <comment>Destination line on the claim dialog: the coldkey the alpha lands on.</comment>
+  </data>
+  <data name="claim_unavailable_linux" xml:space="preserve">
+    <value>Получение пока недоступно на этом устройстве.</value>
+    <comment>Shown when the device cannot send claims (no gas key on this host).</comment>
+  </data>
+  <data name="claim_your_spot" xml:space="preserve">
+    <value>Займите своё место</value>
+    <comment>Button on the Top 200 tile.</comment>
+  </data>
+  <data name="claims_for_epoch_expired" xml:space="preserve">
+    <value>Срок получения за эпоху {} истёк.</value>
+    <comment>Error when an epoch can no longer be claimed.</comment>
+  </data>
+  <data name="claims_open_after_finalization" xml:space="preserve">
+    <value>Получение открывается через 48 часов после завершения эпохи и остаётся доступным в течение срока действия хранилища.</value>
+    <comment>Explainer in the claim dialog.</comment>
   </data>
   <data name="clear" xml:space="preserve">
     <value>Очистить</value>
@@ -848,6 +976,10 @@
     <value>Подключиться и открыть ссылку</value>
     <comment>Call to action</comment>
   </data>
+  <data name="connect_bittensor_wallet" xml:space="preserve">
+    <value>Подключить кошелек Bittensor</value>
+    <comment>Button to connect a Bittensor coldkey.</comment>
+  </data>
   <data name="connect_options" xml:space="preserve">
     <value>Параметры подключения</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
@@ -855,6 +987,14 @@
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>Подключите кошелек с токеном Saga Genesis или Seeker Pre-Order</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connect_solana_wallet" xml:space="preserve">
+    <value>Подключить кошелек Solana</value>
+    <comment>Overflow menu item next to “Connect Bittensor wallet” on the Earnings screen, and the title of the Solana connect sheet/card: connect a Solana USDC payout wallet (wallet app, or manual address entry). USDC payouts continue until the migration to Bittensor completes.</comment>
+  </data>
+  <data name="connect_solana_wallet_note" xml:space="preserve">
+    <value>Подключите приложение-кошелек Solana или введите адрес USDC в сети Solana вручную.</value>
+    <comment>Note at the top of the Solana connect sheet/card, above the wallet-app button and the manual-entry link.</comment>
   </data>
   <data name="connect_to_location" xml:space="preserve">
     <value>Подключиться к {}</value>
@@ -867,6 +1007,10 @@
   <data name="connect_wallet" xml:space="preserve">
     <value>Подключить кошелек</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="connect_wallet_first" xml:space="preserve">
+    <value>Сначала подключите кошелек Bittensor.</value>
+    <comment>Error when claiming without a wallet.</comment>
   </data>
   <data name="connected" xml:space="preserve">
     <value>Подключено</value>
@@ -972,9 +1116,21 @@
     <value>Скопировать ID клиента</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
   </data>
+  <data name="copy_share_text" xml:space="preserve">
+    <value>Скопировать текст кода</value>
+    <comment>Button on the share screen: copy the text form of the code.</comment>
+  </data>
   <data name="copy_to_clipboard" xml:space="preserve">
     <value>Копировать в буфер обмена</value>
     <comment>Button text to copy the seedphrase to the clipboard.</comment>
+  </data>
+  <data name="couldn_t_load_subscription_options" xml:space="preserve">
+    <value>Не удалось загрузить варианты подписки. Проверьте подключение и повторите попытку.</value>
+    <comment>Shown in the upgrade sheet and intro funnel when the App Store product fetch failed, with a retry action — replaces the eternal spinner (Shared/Views/UpgradeSubscriptionSheet.swift, Shared/Views/Introduction/IntroductionView.swift).</comment>
+  </data>
+  <data name="couldn_t_restore_purchases" xml:space="preserve">
+    <value>Не удалось восстановить покупки. Попробуйте снова.</value>
+    <comment>Restore-purchases outcome: the App Store sync failed (e.g. the user cancelled the credentials prompt or the store was unreachable) and no entitlement was found locally (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>Не удалось открыть кошелек. Установите его и попробуйте снова.</value>
@@ -1116,6 +1272,10 @@
     <value>Выплата за {}</value>
     <comment>Call to action</comment>
   </data>
+  <data name="default_daily_data" xml:space="preserve">
+    <value>По умолчанию вы получаете {} каждый день.</value>
+    <comment>Onboarding data page: the daily free allowance, formatted from the server's balance (pro.yml free.data per data_period).</comment>
+  </data>
   <data name="default_option" xml:space="preserve">
     <value>По умолчанию</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
@@ -1139,6 +1299,638 @@
   <data name="delete_account_type_network_name" xml:space="preserve">
     <value>Введите {} для подтверждения.</value>
     <comment>Delete account dialog: asks the user to type the network name back before the delete button enables. {network} is the account's network name.</comment>
+  </data>
+  <data name="dev_affinity_performance" xml:space="preserve">
+    <value>Привязка с учётом производительности</value>
+    <comment>Developer tools screen (reliability surface): performance-aware affinity control label.</comment>
+  </data>
+  <data name="dev_affinity_performance_detail" xml:space="preserve">
+    <value>Взвешивает новые TLS-гонки по пиковой скорости подтверждённых байтов каждого провайдера относительно его заявленной пропускной способности. При включённой жёсткой привязке провайдеры с низкими замерами уступают гонке. Существующие соединения и явные закрепления остаются без изменений</value>
+    <comment>Developer tools screen: explanatory subtext under the performance-aware affinity control.</comment>
+  </data>
+  <data name="dev_affinity_sticky" xml:space="preserve">
+    <value>Устойчивая привязка сайтов</value>
+    <comment>Developer tools screen (reliability surface): affinity sticky control label.</comment>
+  </data>
+  <data name="dev_affinity_sticky_detail" xml:space="preserve">
+    <value>Новые соединения сайта остаются на выходе, который уже используют его прежние соединения, даже сверх лимита потоков, чтобы загруженный сайт сохранял один исходящий IP. Лимит по-прежнему определяет, какие выходы принимают новые сайты. Если выключено, восстанавливается строгий лимит</value>
+    <comment>Developer tools screen: explanatory subtext under the 'affinity sticky' control.</comment>
+  </data>
+  <data name="dev_behaviour" xml:space="preserve">
+    <value>Поведение</value>
+    <comment>Developer tools screen (reliability surface): behaviour control label.</comment>
+  </data>
+  <data name="dev_blackhole_receive" xml:space="preserve">
+    <value>Дольше сохранять молчащих провайдеров</value>
+    <comment>Developer tools screen (reliability surface): blackhole receive control label.</comment>
+  </data>
+  <data name="dev_blackhole_receive_detail" xml:space="preserve">
+    <value>Как долго провайдер, который ещё подтверждает трафик, может ничего не возвращать, прежде чем его отключат. Если выключено, он сохраняется, пока не перестанет подтверждать</value>
+    <comment>Developer tools screen: explanatory subtext under the 'blackhole receive' control.</comment>
+  </data>
+  <data name="dev_blast_radius" xml:space="preserve">
+    <value>Радиус поражения</value>
+    <comment>Developer tools screen (reliability surface): blast radius control label.</comment>
+  </data>
+  <data name="dev_blast_radius_detail" xml:space="preserve">
+    <value>Потерянные соединения на один сбой провайдера. Чем меньше, тем лучше</value>
+    <comment>Developer tools screen: explanatory subtext under the 'blast radius' control.</comment>
+  </data>
+  <data name="dev_blast_radius_value" xml:space="preserve">
+    <value>{} на сбой</value>
+    <comment>Developer tools screen: formatted value readout for 'blast radius'.</comment>
+  </data>
+  <data name="dev_busy_probe" xml:space="preserve">
+    <value>Проверять зависшие выходы перед отключением</value>
+    <comment>Developer tools screen (reliability surface): busy probe control label.</comment>
+  </data>
+  <data name="dev_busy_probe_budget" xml:space="preserve">
+    <value>Ожидание пробы занятости</value>
+    <comment>Developer tools screen (reliability surface): busy probe budget control label.</comment>
+  </data>
+  <data name="dev_busy_probe_budget_detail" xml:space="preserve">
+    <value>Как долго проба зависания ждёт ответа, прежде чем осудить выход. Если выключено, берётся половина порога зависания</value>
+    <comment>Developer tools screen: explanatory subtext under the 'busy probe budget' control.</comment>
+  </data>
+  <data name="dev_busy_probe_detail" xml:space="preserve">
+    <value>Когда выход зависает, его один раз пингуют, прежде чем осудить. Перегруженный, но живой выход отвечает и сохраняет свои потоки; мёртвый всё равно отключается. Если выключено, выход осуждается по порогу зависания</value>
+    <comment>Developer tools screen: explanatory subtext under the 'busy probe' control.</comment>
+  </data>
+  <data name="dev_busy_probes" xml:space="preserve">
+    <value>Пробы занятости</value>
+    <comment>Developer tools screen (reliability surface): busy probes control label.</comment>
+  </data>
+  <data name="dev_busy_probes_detail" xml:space="preserve">
+    <value>Пинги проверки активности, отправленные зависшим выходам; оправданные ответили и были сохранены — это удаления, которые предотвратила проба</value>
+    <comment>Developer tools screen: explanatory subtext under the 'busy probes' control.</comment>
+  </data>
+  <data name="dev_busy_probes_value" xml:space="preserve">
+    <value>{0} отправлено / {1} оправдано</value>
+    <comment>Developer tools screen: formatted value readout for 'busy probes'.</comment>
+  </data>
+  <data name="dev_choose_logs" xml:space="preserve">
+    <value>Выбрать логи…</value>
+    <comment>Developer tools screen: action for choosing individual log files to export.</comment>
+  </data>
+  <data name="dev_clear_logs" xml:space="preserve">
+    <value>Очистить логи</value>
+    <comment>Developer tools screen: action that deletes the diagnostics log files without touching local state, preferences or rules.</comment>
+  </data>
+  <data name="dev_clearing_logs" xml:space="preserve">
+    <value>Очистка логов…</value>
+    <comment>Developer tools screen: the clear-logs action's label while it runs.</comment>
+  </data>
+  <data name="dev_cluster_affinity" xml:space="preserve">
+    <value>Группировать IP по сайтам</value>
+    <comment>Developer tools screen (reliability surface): cluster affinity control label.</comment>
+  </data>
+  <data name="dev_cluster_affinity_detail" xml:space="preserve">
+    <value>Удерживает сайт на одном выходе, когда его имя хоста не видно</value>
+    <comment>Developer tools screen: explanatory subtext under the 'cluster affinity' control.</comment>
+  </data>
+  <data name="dev_comparative_connect" xml:space="preserve">
+    <value>Рано обрывать мёртвые подключения</value>
+    <comment>Developer tools screen (reliability surface): comparative connect control label.</comment>
+  </data>
+  <data name="dev_comparative_connect_detail" xml:space="preserve">
+    <value>Раньше отключает выход, который ничего не установил, когда два соседних выхода получают данные. Если выключено, выжидается полный порог подключения в 30 с</value>
+    <comment>Developer tools screen: explanatory subtext under the 'comparative connect' control.</comment>
+  </data>
+  <data name="dev_dial_failure_rerace" xml:space="preserve">
+    <value>Повторять отклонённые подключения через другой выход</value>
+    <comment>Developer tools screen (reliability surface): dial failure rerace control label.</comment>
+  </data>
+  <data name="dev_dial_failure_rerace_detail" xml:space="preserve">
+    <value>Когда провайдер не может достучаться до сайта, соединение переносится на другой выход, а не зависает</value>
+    <comment>Developer tools screen: explanatory subtext under the 'dial failure rerace' control.</comment>
+  </data>
+  <data name="dev_dial_failures" xml:space="preserve">
+    <value>Сбои подключения у провайдеров</value>
+    <comment>Developer tools screen (reliability surface): dial failures control label.</comment>
+  </data>
+  <data name="dev_dial_failures_detail" xml:space="preserve">
+    <value>Сколько раз провайдер сообщал, что не смог открыть соединение с целевым сайтом</value>
+    <comment>Developer tools screen: explanatory subtext under the 'dial failures' control.</comment>
+  </data>
+  <data name="dev_drop_exit" xml:space="preserve">
+    <value>Отключить</value>
+    <comment>Developer tools screen (reliability surface): drop exit control label.</comment>
+  </data>
+  <data name="dev_effective_tier" xml:space="preserve">
+    <value>Понижение уровня в реальном времени</value>
+    <comment>Developer tools screen (reliability surface): effective tier control label.</comment>
+  </data>
+  <data name="dev_effective_tier_detail" xml:space="preserve">
+    <value>Неудачные попытки соединения и пережитые вердикты опускают провайдера в рейтинге в течение секунды; для обратного повышения нужны минуты без сбоев и подтверждённое подключение</value>
+    <comment>Developer tools screen: explanatory subtext under the 'effective tier' control.</comment>
+  </data>
+  <data name="dev_evaluation_pool" xml:space="preserve">
+    <value>Кандидатов на слот</value>
+    <comment>Developer tools screen (reliability surface): evaluation pool control label.</comment>
+  </data>
+  <data name="dev_evaluation_pool_detail" xml:space="preserve">
+    <value>Сколько провайдеров расширение окна пингует и ранжирует на каждый нужный слот, оставляя лучших. 1 — оценивать ровно столько, сколько нужно</value>
+    <comment>Developer tools screen: explanatory subtext under the 'evaluation pool' control.</comment>
+  </data>
+  <data name="dev_exit_dial_failures" xml:space="preserve">
+    <value>Неудачных попыток соединения: {}</value>
+    <comment>Developer tools screen (reliability surface): exit dial failures control label.</comment>
+  </data>
+  <data name="dev_exit_flows" xml:space="preserve">
+    <value>Потоков: {}</value>
+    <comment>Developer tools screen (reliability surface): exit flows control label.</comment>
+  </data>
+  <data name="dev_exits" xml:space="preserve">
+    <value>Выходы</value>
+    <comment>Developer tools screen (reliability surface): exits control label.</comment>
+  </data>
+  <data name="dev_export_all_logs" xml:space="preserve">
+    <value>Экспортировать все логи (необработанные)</value>
+    <comment>Developer tools screen: action for exporting all diagnostic logs without redaction.</comment>
+  </data>
+  <data name="dev_export_failed" xml:space="preserve">
+    <value>Не удалось экспортировать: {}</value>
+    <comment>Developer tools screen: error shown when diagnostic log export fails.</comment>
+  </data>
+  <data name="dev_export_not_included" xml:space="preserve">
+    <value>Не включено: {}</value>
+    <comment>Developer tools screen: explanation that a requested diagnostic item was omitted from an export.</comment>
+  </data>
+  <data name="dev_export_redacted_logs" xml:space="preserve">
+    <value>Экспортировать обезличенные логи</value>
+    <comment>Developer tools screen: action for exporting diagnostic logs with sensitive traffic details redacted.</comment>
+  </data>
+  <data name="dev_export_selected" xml:space="preserve">
+    <value>Экспортировать выбранные</value>
+    <comment>Developer tools screen: action for exporting the selected diagnostic log files.</comment>
+  </data>
+  <data name="dev_export_share" xml:space="preserve">
+    <value>Поделиться диагностическим пакетом</value>
+    <comment>Developer tools screen: action for sharing a diagnostic bundle.</comment>
+  </data>
+  <data name="dev_export_summary.one" xml:space="preserve">
+    <value>Экспортирован {0} файл логов ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.few" xml:space="preserve">
+    <value>Экспортировано {0} файла логов ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.many" xml:space="preserve">
+    <value>Экспортировано {0} файлов логов ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.other" xml:space="preserve">
+    <value>Экспортировано {0} файла логов ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_unavailable" xml:space="preserve">
+    <value>Недоступно: {}</value>
+    <comment>Developer tools screen: explanation that a diagnostic export option is unavailable.</comment>
+  </data>
+  <data name="dev_exporting" xml:space="preserve">
+    <value>Экспорт…</value>
+    <comment>Developer tools screen: progress label shown while a diagnostic bundle is being exported.</comment>
+  </data>
+  <data name="dev_flows_opened" xml:space="preserve">
+    <value>Открыто потоков</value>
+    <comment>Developer tools screen (reliability surface): flows opened control label.</comment>
+  </data>
+  <data name="dev_flows_opened_detail" xml:space="preserve">
+    <value>Всего с момента сброса, чтобы можно было сравнивать прогоны разной длительности</value>
+    <comment>Developer tools screen: explanatory subtext under the 'flows opened' control.</comment>
+  </data>
+  <data name="dev_flows_rebound" xml:space="preserve">
+    <value>Перепривязанные потоки QUIC</value>
+    <comment>Developer tools screen (reliability surface): flows rebound control label.</comment>
+  </data>
+  <data name="dev_flows_rebound_detail" xml:space="preserve">
+    <value>Потоки, перенесённые на «тёплый» выход во время удаления; «принято» означает, что сервер принял смену пути без повторного соединения</value>
+    <comment>Developer tools screen: explanatory subtext under the 'flows rebound' control.</comment>
+  </data>
+  <data name="dev_flows_rebound_value" xml:space="preserve">
+    <value>{0} ({1} принято / {2} переподключено)</value>
+    <comment>Developer tools screen: formatted value readout for 'flows rebound'.</comment>
+  </data>
+  <data name="dev_flows_reraced" xml:space="preserve">
+    <value>Перенесено на другой выход</value>
+    <comment>Developer tools screen (reliability surface): flows reraced control label.</comment>
+  </data>
+  <data name="dev_flows_reraced_detail" xml:space="preserve">
+    <value>Сколько из этих сбоев было незаметно перенесено, а не зависло</value>
+    <comment>Developer tools screen: explanatory subtext under the 'flows reraced' control.</comment>
+  </data>
+  <data name="dev_formation_poll" xml:space="preserve">
+    <value>Быстрый опрос первого выхода</value>
+    <comment>Developer tools screen (reliability surface): formation poll control label.</comment>
+  </data>
+  <data name="dev_formation_poll_detail" xml:space="preserve">
+    <value>Как часто подключающийся поток перепроверяет пустое окно, чтобы первый запрос ушёл сразу после появления первого выхода. Если выключено, используется интервал повтора 2 с</value>
+    <comment>Developer tools screen: explanatory subtext under the 'formation poll' control.</comment>
+  </data>
+  <data name="dev_fresh_flow_affinity" xml:space="preserve">
+    <value>Жёсткая привязка новых потоков</value>
+    <comment>Developer tools screen (reliability surface): hard fresh-flow affinity control label.</comment>
+  </data>
+  <data name="dev_fresh_flow_affinity_detail" xml:space="preserve">
+    <value>Назначает каждое новое соединение на выход, который уже использует его IP или домен. По умолчанию выключено: каждое обычное новое соединение попадает в гонку провайдеров. Существующие соединения и явные закрепления всегда остаются без изменений</value>
+    <comment>Developer tools screen: explanatory subtext under the hard fresh-flow affinity control.</comment>
+  </data>
+  <data name="dev_group_follow" xml:space="preserve">
+    <value>Следовать за отстранёнными выходами</value>
+    <comment>Developer tools screen (reliability surface): group follow control label.</comment>
+  </data>
+  <data name="dev_group_follow_detail" xml:space="preserve">
+    <value>Выход на карантине сохраняет новые соединения своих сайтов в начале отстранения, когда вердикт наименее обоснован, чтобы отстранение не разделяло исходящий IP сайта. Новые сайты по-прежнему его избегают. Если выключено, соединения распределяются по другим выходам</value>
+    <comment>Developer tools screen: explanatory subtext under the 'group follow' control.</comment>
+  </data>
+  <data name="dev_group_follow_window" xml:space="preserve">
+    <value>Окно следования</value>
+    <comment>Developer tools screen (reliability surface): group follow window control label.</comment>
+  </data>
+  <data name="dev_group_follow_window_detail" xml:space="preserve">
+    <value>Как долго после начала отстранения новые соединения сайта продолжают следовать за своим выходом — ранние отстранения обычно оказываются ложными тревогами; затянувшееся ведёт к удалению, и выход перестаёт принимать потоки. Если выключено, соединения сразу распределяются</value>
+    <comment>Developer tools screen: explanatory subtext under the 'group follow window' control.</comment>
+  </data>
+  <data name="dev_heartbeat" xml:space="preserve">
+    <value>Пульс состояния</value>
+    <comment>Developer tools screen (reliability surface): heartbeat control label.</comment>
+  </data>
+  <data name="dev_heartbeat_detail" xml:space="preserve">
+    <value>Как часто в лог записывается строка со сводкой текущего состояния для последующего анализа. Если выключено, запись отключается; меньший интервал позволяет заметить переход, больший — сохранить больше буфера</value>
+    <comment>Developer tools screen: explanatory subtext under the 'heartbeat' control.</comment>
+  </data>
+  <data name="dev_load_corroboration" xml:space="preserve">
+    <value>Подтверждение с учётом нагрузки</value>
+    <comment>Developer tools screen (reliability surface): load corroboration control label.</comment>
+  </data>
+  <data name="dev_load_corroboration_detail" xml:space="preserve">
+    <value>Сколько дополнительных молчащих адресатов требуется на каждое такое число потоков, прежде чем загруженный выход можно отстранить по косвенным признакам: выходу с 24 потоками при значении 8 нужно 3 молчащих сайта, а не 2. Если выключено, действует фиксированный минимум</value>
+    <comment>Developer tools screen: explanatory subtext under the 'load corroboration' control.</comment>
+  </data>
+  <data name="dev_log_verbosity" xml:space="preserve">
+    <value>Детализация логов</value>
+    <comment>Developer tools screen: control label for diagnostic log detail.</comment>
+  </data>
+  <data name="dev_log_verbosity_default" xml:space="preserve">
+    <value>По умолчанию</value>
+    <comment>Developer tools screen: default diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_default_detail" xml:space="preserve">
+    <value>Ошибки соединения и пинги контрактов</value>
+    <comment>Developer tools screen: explanation of the default diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_trace" xml:space="preserve">
+    <value>Трассировка</value>
+    <comment>Developer tools screen: trace diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_trace_detail" xml:space="preserve">
+    <value>Внутренние данные транспорта и окна. Очень большие логи</value>
+    <comment>Developer tools screen: explanation of the trace diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_unavailable" xml:space="preserve">
+    <value>Недоступно</value>
+    <comment>Developer tools screen: label used when the diagnostic log detail level cannot be read.</comment>
+  </data>
+  <data name="dev_log_verbosity_unavailable_detail" xml:space="preserve">
+    <value>Пока нет устройства, с которого можно прочитать уровень логирования. Сначала войдите</value>
+    <comment>Developer tools screen: explanation shown when the diagnostic log detail level cannot be read.</comment>
+  </data>
+  <data name="dev_log_verbosity_verbose" xml:space="preserve">
+    <value>Подробный</value>
+    <comment>Developer tools screen: verbose diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_verbose_detail" xml:space="preserve">
+    <value>Учёт контрактов и решения о блокировке для каждого пакета. Включает IP-адреса назначения</value>
+    <comment>Developer tools screen: explanation of the verbose diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_warning" xml:space="preserve">
+    <value>Начиная с уровня «Подробный», логи содержат IP-адреса и порты назначения отправляемого вами трафика. Чтобы поделиться ими, используйте «Экспортировать обезличенные логи»; необработанный пакет не должен покидать это устройство.</value>
+    <comment>Developer tools screen: privacy warning shown when detailed traffic logging is enabled.</comment>
+  </data>
+  <data name="dev_log_verbosity_warning_title" xml:space="preserve">
+    <value>Логи записывают ваш реальный трафик</value>
+    <comment>Developer tools screen: title for the detailed traffic logging privacy warning.</comment>
+  </data>
+  <data name="dev_max_flows_per_exit" xml:space="preserve">
+    <value>Макс. соединений на выход</value>
+    <comment>Developer tools screen (reliability surface): max flows per exit control label.</comment>
+  </data>
+  <data name="dev_max_flows_per_exit_detail" xml:space="preserve">
+    <value>Потеря выхода обрывает все его соединения. Меньшее значение распределяет ущерб; тогда сайт может использовать больше одного IP выхода</value>
+    <comment>Developer tools screen: explanatory subtext under the 'max flows per exit' control.</comment>
+  </data>
+  <data name="dev_measure_none" xml:space="preserve">
+    <value>Сбоев провайдеров пока нет. Заморозьте выход ниже, чтобы вызвать сбой.</value>
+    <comment>Developer tools screen (reliability surface): measure none control label.</comment>
+  </data>
+  <data name="dev_measurements" xml:space="preserve">
+    <value>Измерения</value>
+    <comment>Developer tools screen (reliability surface): measurements control label.</comment>
+  </data>
+  <data name="dev_measurements_detail" xml:space="preserve">
+    <value>Во что обходится сбой провайдера. Сбросьте, запустите тест, посмотрите результат.</value>
+    <comment>Developer tools screen: explanatory subtext under the 'measurements' control.</comment>
+  </data>
+  <data name="dev_migrate_exit" xml:space="preserve">
+    <value>Перенести</value>
+    <comment>Developer tools screen (reliability surface): migrate exit control label.</comment>
+  </data>
+  <data name="dev_min_blackhole_destinations" xml:space="preserve">
+    <value>Подтверждать молчащие выходы</value>
+    <comment>Developer tools screen (reliability surface): min blackhole destinations control label.</comment>
+  </data>
+  <data name="dev_min_blackhole_destinations_detail" xml:space="preserve">
+    <value>Сколько разных адресатов должны молчать, прежде чем выход будет осуждён за отсутствие приёма, чтобы один мёртвый сайт не мог удалить рабочий выход. Если выключено, для осуждения достаточно одного адресата</value>
+    <comment>Developer tools screen: explanatory subtext under the 'min blackhole destinations' control.</comment>
+  </data>
+  <data name="dev_no_exits" xml:space="preserve">
+    <value>Нет выходов. Сначала подключитесь.</value>
+    <comment>Developer tools screen (reliability surface): no exits control label.</comment>
+  </data>
+  <data name="dev_open_tools" xml:space="preserve">
+    <value>Открыть инструменты разработчика</value>
+    <comment>Developer tools screen (reliability surface): open tools control label.</comment>
+  </data>
+  <data name="dev_probe_all" xml:space="preserve">
+    <value>Проверить все выходы сейчас</value>
+    <comment>Developer tools screen (reliability surface): probe all control label.</comment>
+  </data>
+  <data name="dev_probe_providers" xml:space="preserve">
+    <value>Пробы провайдеров</value>
+    <comment>Developer tools screen (reliability surface): probe providers control label.</comment>
+  </data>
+  <data name="dev_probe_providers_detail" xml:space="preserve">
+    <value>Проверяет пригодность выходов, подключаясь через них к реальным сайтам. Ответ подтверждает выход; молчание никогда не засчитывается против него</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probe providers' control.</comment>
+  </data>
+  <data name="dev_probe_sample_hosts" xml:space="preserve">
+    <value>Хостов для проб за проход</value>
+    <comment>Developer tools screen (reliability surface): probe sample hosts control label.</comment>
+  </data>
+  <data name="dev_probe_sample_hosts_detail" xml:space="preserve">
+    <value>Сколько проверочных сайтов один проход квалификации вызывает через выход. 0 — проверять весь встроенный список; меньшее число перебирает его блоками</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probe sample hosts' control.</comment>
+  </data>
+  <data name="dev_probe_timeout" xml:space="preserve">
+    <value>Ожидание пробы</value>
+    <comment>Developer tools screen (reliability surface): probe timeout control label.</comment>
+  </data>
+  <data name="dev_probe_timeout_detail" xml:space="preserve">
+    <value>Как долго проба квалификации ждёт ответа. Если выключено, используются встроенные 4 с. Ограничивает только ожидание подтверждения и никогда не осуждает</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probe timeout' control.</comment>
+  </data>
+  <data name="dev_probes" xml:space="preserve">
+    <value>Пробы</value>
+    <comment>Developer tools screen (reliability surface): probes control label.</comment>
+  </data>
+  <data name="dev_probes_detail" xml:space="preserve">
+    <value>Пробы квалификации за этот сеанс</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probes' control.</comment>
+  </data>
+  <data name="dev_probes_value" xml:space="preserve">
+    <value>{0} отправлено / {1} с ответом</value>
+    <comment>Developer tools screen: formatted value readout for 'probes'.</comment>
+  </data>
+  <data name="dev_quic_rebind" xml:space="preserve">
+    <value>Перепривязывать QUIC при потере выхода</value>
+    <comment>Developer tools screen (reliability surface): quic rebind control label.</comment>
+  </data>
+  <data name="dev_quic_rebind_detail" xml:space="preserve">
+    <value>Перезакрепляет установленные потоки QUIC за живым выходом во время удаления, вместо того чтобы разрывать их</value>
+    <comment>Developer tools screen: explanatory subtext under the 'quic rebind' control.</comment>
+  </data>
+  <data name="dev_recovery" xml:space="preserve">
+    <value>Время восстановления</value>
+    <comment>Developer tools screen (reliability surface): recovery control label.</comment>
+  </data>
+  <data name="dev_recovery_detail" xml:space="preserve">
+    <value>С момента гибели выхода до повторного ответа сайта</value>
+    <comment>Developer tools screen: explanatory subtext under the 'recovery' control.</comment>
+  </data>
+  <data name="dev_recovery_missed" xml:space="preserve">
+    <value>Не восстановились</value>
+    <comment>Developer tools screen (reliability surface): recovery missed control label.</comment>
+  </data>
+  <data name="dev_recovery_missed_detail" xml:space="preserve">
+    <value>Сайты, которые были брошены, а не восстановлены</value>
+    <comment>Developer tools screen: explanatory subtext under the 'recovery missed' control.</comment>
+  </data>
+  <data name="dev_recovery_missed_value" xml:space="preserve">
+    <value>{0} из {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'recovery missed'.</comment>
+  </data>
+  <data name="dev_recovery_value" xml:space="preserve">
+    <value>в среднем {0}, худшее {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'recovery'.</comment>
+  </data>
+  <data name="dev_refresh" xml:space="preserve">
+    <value>Обновить</value>
+    <comment>Developer tools screen (reliability surface): refresh control label.</comment>
+  </data>
+  <data name="dev_removal_budget_count" xml:space="preserve">
+    <value>Лимит шторма удалений</value>
+    <comment>Developer tools screen (reliability surface): removal budget count control label.</comment>
+  </data>
+  <data name="dev_removal_budget_count_detail" xml:space="preserve">
+    <value>Сколько удалений по вердикту разрешено за окно, прежде чем остальные откладываются; всплеск скорее вызван одной локальной причиной, чем множеством сбоев. Если выключено, удаление без ограничений</value>
+    <comment>Developer tools screen: explanatory subtext under the 'removal budget count' control.</comment>
+  </data>
+  <data name="dev_removal_budget_window" xml:space="preserve">
+    <value>Окно шторма удалений</value>
+    <comment>Developer tools screen (reliability surface): removal budget window control label.</comment>
+  </data>
+  <data name="dev_removal_budget_window_detail" xml:space="preserve">
+    <value>Окно, за которое считается лимит удалений. Выключенное значение (как и лимит 0) отключает предохранитель</value>
+    <comment>Developer tools screen: explanatory subtext under the 'removal budget window' control.</comment>
+  </data>
+  <data name="dev_removals_deferred" xml:space="preserve">
+    <value>Отложенные удаления</value>
+    <comment>Developer tools screen (reliability surface): removals deferred control label.</comment>
+  </data>
+  <data name="dev_removals_deferred_detail" xml:space="preserve">
+    <value>Удаления, которые предохранитель от шторма придержал после коррелированного всплеска</value>
+    <comment>Developer tools screen: explanatory subtext under the 'removals deferred' control.</comment>
+  </data>
+  <data name="dev_reset_defaults" xml:space="preserve">
+    <value>Сбросить к заводским значениям</value>
+    <comment>Developer tools screen (reliability surface): reset defaults control label.</comment>
+  </data>
+  <data name="dev_reset_measurements" xml:space="preserve">
+    <value>Сбросить измерения</value>
+    <comment>Developer tools screen (reliability surface): reset measurements control label.</comment>
+  </data>
+  <data name="dev_scheduler_pause_recovery" xml:space="preserve">
+    <value>Окно восстановления после приостановки</value>
+    <comment>Developer tools screen (reliability surface): scheduler pause recovery control label.</comment>
+  </data>
+  <data name="dev_scheduler_pause_recovery_detail" xml:space="preserve">
+    <value>Как долго вердикты удерживаются после обнаруженной приостановки, чтобы транспорты успели перерегистрироваться. Если выключено, используются встроенные 5 с</value>
+    <comment>Developer tools screen: explanatory subtext under the 'scheduler pause recovery' control.</comment>
+  </data>
+  <data name="dev_scheduler_pause_tolerance" xml:space="preserve">
+    <value>Детектор приостановки</value>
+    <comment>Developer tools screen (reliability surface): scheduler pause tolerance control label.</comment>
+  </data>
+  <data name="dev_scheduler_pause_tolerance_detail" xml:space="preserve">
+    <value>Какое превышение таймера считается приостановкой телефона, а не зависанием выхода, чтобы после пробуждения телефон не осудил сразу все выходы. Если выключено, детектор не работает</value>
+    <comment>Developer tools screen: explanatory subtext under the 'scheduler pause tolerance' control.</comment>
+  </data>
+  <data name="dev_scheduler_pauses" xml:space="preserve">
+    <value>Обнаружено приостановок</value>
+    <comment>Developer tools screen (reliability surface): scheduler pauses control label.</comment>
+  </data>
+  <data name="dev_scheduler_pauses_detail" xml:space="preserve">
+    <value>Приостановки хоста, обнаруженные детектором; каждая — это пакет вердиктов, отложенных, а не исполненных на только что проснувшемся телефоне</value>
+    <comment>Developer tools screen: explanatory subtext under the 'scheduler pauses' control.</comment>
+  </data>
+  <data name="dev_section_detection" xml:space="preserve">
+    <value>Обнаружение</value>
+    <comment>Developer tools screen: section heading for the detection controls.</comment>
+  </data>
+  <data name="dev_section_diagnostics" xml:space="preserve">
+    <value>Диагностика</value>
+    <comment>Developer tools screen: section heading for diagnostic log controls.</comment>
+  </data>
+  <data name="dev_section_observability" xml:space="preserve">
+    <value>Наблюдаемость</value>
+    <comment>Developer tools screen: section heading for the observability controls.</comment>
+  </data>
+  <data name="dev_section_placement" xml:space="preserve">
+    <value>Размещение</value>
+    <comment>Developer tools screen: section heading for the placement controls.</comment>
+  </data>
+  <data name="dev_section_probing" xml:space="preserve">
+    <value>Пробы</value>
+    <comment>Developer tools screen: section heading for the probing controls.</comment>
+  </data>
+  <data name="dev_section_recovery" xml:space="preserve">
+    <value>Восстановление</value>
+    <comment>Developer tools screen: section heading for the recovery controls.</comment>
+  </data>
+  <data name="dev_send_stall" xml:space="preserve">
+    <value>Быстро отключать зависшие выходы</value>
+    <comment>Developer tools screen (reliability surface): send stall control label.</comment>
+  </data>
+  <data name="dev_send_stall_detail" xml:space="preserve">
+    <value>Как долго выход может ничего не доставлять, прежде чем его отключат. Если выключено, ожидание 30 с</value>
+    <comment>Developer tools screen: explanatory subtext under the 'send stall' control.</comment>
+  </data>
+  <data name="dev_server_name_bridge" xml:space="preserve">
+    <value>Объединять потоки с поздним именем сервера</value>
+    <comment>Developer tools screen (reliability surface): server name bridge control label.</comment>
+  </data>
+  <data name="dev_server_name_bridge_detail" xml:space="preserve">
+    <value>Переносит последующие соединения на выход, который уже использует первое</value>
+    <comment>Developer tools screen: explanatory subtext under the 'server name bridge' control.</comment>
+  </data>
+  <data name="dev_shuffle_exits" xml:space="preserve">
+    <value>Перемешать все выходы</value>
+    <comment>Developer tools screen (reliability surface): shuffle exits control label.</comment>
+  </data>
+  <data name="dev_simulate_network_change" xml:space="preserve">
+    <value>Имитировать смену сети</value>
+    <comment>Developer tools screen (reliability surface): simulate network change control label.</comment>
+  </data>
+  <data name="dev_soft_verdict" xml:space="preserve">
+    <value>Понижать перед удалением</value>
+    <comment>Developer tools screen (reliability surface): soft verdict control label.</comment>
+  </data>
+  <data name="dev_soft_verdict_detail" xml:space="preserve">
+    <value>Неоднозначные вердикты отстраняют выход, а не разрывают его потоки; для удаления нужны устойчивые признаки или пустой выход</value>
+    <comment>Developer tools screen: explanatory subtext under the 'soft verdict' control.</comment>
+  </data>
+  <data name="dev_stall_exit" xml:space="preserve">
+    <value>Заморозить</value>
+    <comment>Developer tools screen (reliability surface): stall exit control label.</comment>
+  </data>
+  <data name="dev_standing_reserve" xml:space="preserve">
+    <value>Держать запасной выход наготове</value>
+    <comment>Developer tools screen (reliability surface): standing reserve control label.</comment>
+  </data>
+  <data name="dev_standing_reserve_detail" xml:space="preserve">
+    <value>Делает каждое окно на один выход больше целевого размера, чтобы замена уже была подключена. Если выключено, пополнение происходит только после потери</value>
+    <comment>Developer tools screen: explanatory subtext under the 'standing reserve' control.</comment>
+  </data>
+  <data name="dev_tcp_collapse_hold" xml:space="preserve">
+    <value>Отпускать застрявшие повторные передачи</value>
+    <comment>Developer tools screen (reliability surface): tcp collapse hold control label.</comment>
+  </data>
+  <data name="dev_tcp_collapse_hold_detail" xml:space="preserve">
+    <value>Как долго удерживаются повторные передачи, прежде чем одна будет отпущена. Если выключено, ожидание 30 с</value>
+    <comment>Developer tools screen: explanatory subtext under the 'tcp collapse hold' control.</comment>
+  </data>
+  <data name="dev_tcp_idle_timeout" xml:space="preserve">
+    <value>Увеличенный тайм-аут простоя TCP</value>
+    <comment>Developer tools screen (reliability surface): tcp idle timeout control label.</comment>
+  </data>
+  <data name="dev_tcp_idle_timeout_detail" xml:space="preserve">
+    <value>Как долго TCP-соединение может простаивать. Если выключено, используется предел для UDP</value>
+    <comment>Developer tools screen: explanatory subtext under the 'tcp idle timeout' control.</comment>
+  </data>
+  <data name="dev_timing" xml:space="preserve">
+    <value>Тайминги</value>
+    <comment>Developer tools screen (reliability surface): timing control label.</comment>
+  </data>
+  <data name="dev_udp_idle_timeout" xml:space="preserve">
+    <value>Тайм-аут простоя UDP</value>
+    <comment>Developer tools screen (reliability surface): udp idle timeout control label.</comment>
+  </data>
+  <data name="dev_udp_idle_timeout_detail" xml:space="preserve">
+    <value>Как долго поток не-TCP может простаивать, прежде чем его закроют</value>
+    <comment>Developer tools screen: explanatory subtext under the 'udp idle timeout' control.</comment>
+  </data>
+  <data name="dev_udp_teardown" xml:space="preserve">
+    <value>Сообщать о закрытии UDP</value>
+    <comment>Developer tools screen (reliability surface): udp teardown control label.</comment>
+  </data>
+  <data name="dev_udp_teardown_detail" xml:space="preserve">
+    <value>Сообщает DNS и QUIC, что путь пропал, вместо того чтобы молчать</value>
+    <comment>Developer tools screen: explanatory subtext under the 'udp teardown' control.</comment>
+  </data>
+  <data name="dev_uplink_gate" xml:space="preserve">
+    <value>Порог тишины аплинка</value>
+    <comment>Developer tools screen (reliability surface): uplink gate control label.</comment>
+  </data>
+  <data name="dev_uplink_gate_detail" xml:space="preserve">
+    <value>Как долго весь туннель может молчать, прежде чем вердикты о провайдерах будут отложены как недопустимые. 0 — осуждать как раньше</value>
+    <comment>Developer tools screen: explanatory subtext under the 'uplink gate' control.</comment>
+  </data>
+  <data name="dev_verdicts_held" xml:space="preserve">
+    <value>Отложенные вердикты</value>
+    <comment>Developer tools screen (reliability surface): verdicts held control label.</comment>
+  </data>
+  <data name="dev_verdicts_held_detail" xml:space="preserve">
+    <value>Осуждения, отложенные потому, что молчал собственный аплинк телефона, а не провайдер (аплинк / транспорт)</value>
+    <comment>Developer tools screen: explanatory subtext under the 'verdicts held' control.</comment>
+  </data>
+  <data name="dev_verdicts_held_value" xml:space="preserve">
+    <value>{0} / {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'verdicts held'.</comment>
+  </data>
+  <data name="dev_worst_loss" xml:space="preserve">
+    <value>Худший единичный сбой</value>
+    <comment>Developer tools screen (reliability surface): worst loss control label.</comment>
+  </data>
+  <data name="dev_worst_loss_detail" xml:space="preserve">
+    <value>Тот, который пользователь действительно ощущает</value>
+    <comment>Developer tools screen: explanatory subtext under the 'worst loss' control.</comment>
+  </data>
+  <data name="dev_worst_loss_value" xml:space="preserve">
+    <value>Соединений: {}</value>
+    <comment>Developer tools screen: formatted value readout for 'worst loss'.</comment>
+  </data>
+  <data name="developer" xml:space="preserve">
+    <value>Разработчик</value>
+    <comment>Developer tools screen: developer.</comment>
+  </data>
+  <data name="developer_description" xml:space="preserve">
+    <value>Инструменты для диагностики зависаний соединения. Они воздействуют на активное соединение.</value>
+    <comment>Developer tools screen: developer description.</comment>
+  </data>
+  <data name="developer_disconnected" xml:space="preserve">
+    <value>Подключитесь, чтобы использовать эти инструменты.</value>
+    <comment>Developer tools screen: developer disconnected.</comment>
   </data>
   <data name="device" xml:space="preserve">
     <value>Устройство</value>
@@ -1272,6 +2064,62 @@
     <value>Заработок</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="earnings_address_placeholder" xml:space="preserve">
+    <value>Введите адрес Bittensor</value>
+    <comment>Placeholder of the manual Bittensor address field on the Earnings page.</comment>
+  </data>
+  <data name="earnings_change_wallet" xml:space="preserve">
+    <value>Сменить кошелек</value>
+    <comment>Button on the Earnings page that starts connecting a different Bittensor wallet.</comment>
+  </data>
+  <data name="earnings_claim_sending" xml:space="preserve">
+    <value>Отправка…</value>
+    <comment>Progress text while a claim transaction is being sent.</comment>
+  </data>
+  <data name="earnings_claims_need_session" xml:space="preserve">
+    <value>Данные для получения загружаются из блокчейна, когда у приложения есть сеанс. Сначала подключитесь.</value>
+    <comment>Shown in place of the unclaimed figure when the app has no device session to read the chain with.</comment>
+  </data>
+  <data name="earnings_copy_address" xml:space="preserve">
+    <value>Скопировать адрес</value>
+    <comment>Button that copies an address to the clipboard.</comment>
+  </data>
+  <data name="earnings_date_column" xml:space="preserve">
+    <value>Дата</value>
+    <comment>Column header of the per-epoch history table: the date the epoch ended.</comment>
+  </data>
+  <data name="earnings_epoch_column" xml:space="preserve">
+    <value>Эпоха</value>
+    <comment>Column header of the per-epoch history table.</comment>
+  </data>
+  <data name="earnings_gas_balance" xml:space="preserve">
+    <value>Баланс для газа</value>
+    <comment>Label of the gas key's TAO balance in the claim dialog.</comment>
+  </data>
+  <data name="earnings_network_pane_title" xml:space="preserve">
+    <value>Ваша сеть</value>
+    <comment>Title of the Earnings destination's third pane: own rank, multipliers and reliability.</comment>
+  </data>
+  <data name="earnings_points_column" xml:space="preserve">
+    <value>Очки</value>
+    <comment>Column header of the per-epoch history table: points earned in the epoch.</comment>
+  </data>
+  <data name="earnings_share_column" xml:space="preserve">
+    <value>Доля</value>
+    <comment>Column header of the per-epoch history table: the network's share of the block.</comment>
+  </data>
+  <data name="earnings_status_column" xml:space="preserve">
+    <value>Статус</value>
+    <comment>Column header of the per-epoch history table: the claim status of the epoch's alpha.</comment>
+  </data>
+  <data name="earnings_view_transaction" xml:space="preserve">
+    <value>Посмотреть транзакцию</value>
+    <comment>Link that opens a claim transaction in the block explorer.</comment>
+  </data>
+  <data name="earnings_wallet_mismatch" xml:space="preserve">
+    <value>Кошелек, который подписал запрос, не соответствует введённому адресу.</value>
+    <comment>Error when the wallet that signed the connect challenge is not the address the user entered.</comment>
+  </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>Изменить имя устройства</value>
     <comment>device</comment>
@@ -1368,6 +2216,14 @@
     <value>Предложить другой</value>
     <comment>Points leaderboard: the emoji editor's shuffle button, replaces the draft with a new random suggestion.</comment>
   </data>
+  <data name="enabled_under_auto" xml:space="preserve">
+    <value>Включены в режиме «Автоматически»</value>
+    <comment>Section header of the per-transport enable toggles shown when the transport mode is Auto.</comment>
+  </data>
+  <data name="enabled_under_auto_footer" xml:space="preserve">
+    <value>Указаны в порядке предпочтения: сначала H3 и H1, затем whodis, затем whodis pump. Порядок фиксирован. Хотя бы один транспорт всегда остаётся включённым.</value>
+    <comment>Footer of the Auto transports section explaining the fixed preference order.</comment>
+  </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>Вам нравится URnetwork?</value>
     <comment>Call to action</comment>
@@ -1391,6 +2247,10 @@
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>Введите адрес кошелька USDC в сети Solana</value>
   </data>
+  <data name="enter_address_manually" xml:space="preserve">
+    <value>Ввести адрес вручную</value>
+    <comment>Fallback link to paste an ss58 address.</comment>
+  </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>Введите код баланса</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
@@ -1406,6 +2266,34 @@
   <data name="enter_urnetwork" xml:space="preserve">
     <value>Войти в URnetwork</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="epoch_column_epoch_linux" xml:space="preserve">
+    <value>Эпоха</value>
+    <comment>History table column: the epoch number.</comment>
+  </data>
+  <data name="epoch_column_points_linux" xml:space="preserve">
+    <value>Очки</value>
+    <comment>History table column: points earned.</comment>
+  </data>
+  <data name="epoch_column_share_linux" xml:space="preserve">
+    <value>Доля блока</value>
+    <comment>History table column: the network's share of the block.</comment>
+  </data>
+  <data name="epoch_column_status_linux" xml:space="preserve">
+    <value>Статус</value>
+    <comment>History table column: the claim status of the epoch's alpha.</comment>
+  </data>
+  <data name="epoch_history" xml:space="preserve">
+    <value>История</value>
+    <comment>Label of the per-epoch history list.</comment>
+  </data>
+  <data name="epoch_row_title" xml:space="preserve">
+    <value>Эпоха {}</value>
+    <comment>History row title.</comment>
+  </data>
+  <data name="epoch_share_of_block" xml:space="preserve">
+    <value>{} блока</value>
+    <comment>History row: the network's share of the block.</comment>
   </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>Ошибка при изменении имени сети</value>
@@ -1487,6 +2375,90 @@
     <value>Экспорт логов</value>
     <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
   </data>
+  <data name="extender" xml:space="preserve">
+    <value>Экстендер</value>
+    <comment>Title of the Extender row under the provide mode row in settings, and of the read-only row where the provide mode row is repeated.</comment>
+  </data>
+  <data name="extender_activation_failed" xml:space="preserve">
+    <value>Не удалось активировать: {}</value>
+    <comment>Extender status when the last activation failed and no family is active. The argument is the error.</comment>
+  </data>
+  <data name="extender_activation_refused" xml:space="preserve">
+    <value>В активации отказано: {}</value>
+    <comment>Extender status when the operator refused the activation and no family is active. The argument is the operator's reason.</comment>
+  </data>
+  <data name="extender_active" xml:space="preserve">
+    <value>Активен · {}</value>
+    <comment>Extender status when at least one address family is activated. The argument is the family or families, from the IPv4, IPv6 and IPv4 and IPv6 labels.</comment>
+  </data>
+  <data name="extender_default_value" xml:space="preserve">
+    <value>По умолчанию: {}</value>
+    <comment>Placeholder shown in an empty extender settings field, naming the default value that applies.</comment>
+  </data>
+  <data name="extender_dns_name" xml:space="preserve">
+    <value>DNS-имя экстендера</value>
+    <comment>Label of the extender DNS name field. Empty means the network space default.</comment>
+  </data>
+  <data name="extender_hosts" xml:space="preserve">
+    <value>Хосты экстендеров</value>
+    <comment>Label of the manual extender list field: hostnames or IP addresses, one per line.</comment>
+  </data>
+  <data name="extender_hosts_hint" xml:space="preserve">
+    <value>Одно имя хоста или IP-адрес на строку. Они добавляются к найденным экстендерам.</value>
+    <comment>Help text under the manual extender list field.</comment>
+  </data>
+  <data name="extender_listen_failed" xml:space="preserve">
+    <value>Не удалось начать прослушивание: {}</value>
+    <comment>Extender status when no carrier could bind. The argument is the carrier errors.</comment>
+  </data>
+  <data name="extender_not_providing" xml:space="preserve">
+    <value>Не предоставляет</value>
+    <comment>Extender status when the setting is on but this device is not providing. Apple is not listed because its catalog is keyed by the English text, which widget_not_providing already carries.</comment>
+  </data>
+  <data name="extender_revoked" xml:space="preserve">
+    <value>Отозван оператором</value>
+    <comment>Extender status when the operator revoked this device's extender key.</comment>
+  </data>
+  <data name="extender_setting_description" xml:space="preserve">
+    <value>Пока вы предоставляете доступ, это устройство также ретранслирует трафик для людей, чей доступ к сети заблокирован, через TCP и UDP 443 и UDP 4053.</value>
+    <comment>Secondary text under the Extender setting: what turning it on does, and the ports the extender listens on.</comment>
+  </data>
+  <data name="extender_setting_up" xml:space="preserve">
+    <value>Настройка</value>
+    <comment>Extender status while the role is starting and there is no outcome yet: the carriers are binding, or the first activation is in flight.</comment>
+  </data>
+  <data name="extender_settings" xml:space="preserve">
+    <value>Настройки экстендера</value>
+    <comment>Title of the extender settings form under account &gt; Extenders.</comment>
+  </data>
+  <data name="extender_settings_next_connect" xml:space="preserve">
+    <value>Туннель применит новые настройки экстендера при следующем подключении.</value>
+    <comment>Note on iOS after saving extender settings: the packet tunnel extension reads them at its next start.</comment>
+  </data>
+  <data name="extender_settings_saved" xml:space="preserve">
+    <value>Настройки экстендера сохранены</value>
+    <comment>Confirmation after the extender settings are saved.</comment>
+  </data>
+  <data name="extender_start_failed" xml:space="preserve">
+    <value>Не удалось запустить: {}</value>
+    <comment>Extender status when the setting is on and the device is providing, but the role could not start in this network space: no extender directory or no identity. The argument is the reason.</comment>
+  </data>
+  <data name="extender_statistics" xml:space="preserve">
+    <value>Статистика экстендера</value>
+    <comment>Title of the section that shows statistics about the extender, directly above the provider statistics section.</comment>
+  </data>
+  <data name="extenders" xml:space="preserve">
+    <value>Экстендеры</value>
+    <comment>Title of the extenders panel in the connect drawer and of the Extenders section under account.</comment>
+  </data>
+  <data name="extenders_active_of_reserve" xml:space="preserve">
+    <value>{0} из {1}</value>
+    <comment>The extender panel count: extenders carrying a live connection now, of every usable extender the app knows.</comment>
+  </data>
+  <data name="extenders_no_session" xml:space="preserve">
+    <value>Войдите и подключитесь, чтобы управлять экстендерами.</value>
+    <comment>Shown in the account Extenders section when there is no signed-in device to manage extenders with.</comment>
+  </data>
   <data name="failed_to_connect" xml:space="preserve">
     <value>Не удалось подключиться</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
@@ -1543,6 +2515,10 @@
     <value>Ваши друзья тоже экономят — выигрывают все.</value>
     <comment>Call to action</comment>
   </data>
+  <data name="gas_key" xml:space="preserve">
+    <value>Ключ для оплаты газа</value>
+    <comment>Label of the gas key row.</comment>
+  </data>
   <data name="general" xml:space="preserve">
     <value>Общие</value>
     <comment>Call to action</comment>
@@ -1576,6 +2552,10 @@
     <value>Назад</value>
     <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
   </data>
+  <data name="google" xml:space="preserve">
+    <value>Google</value>
+    <comment>A label for Google sign-in.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>Войти через Google</value>
     <comment>Login initial</comment>
@@ -1583,6 +2563,34 @@
   <data name="google_sign_in_method_added" xml:space="preserve">
     <value>Способ входа через Google добавлен</value>
     <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
+  </data>
+  <data name="gossip_connecting" xml:space="preserve">
+    <value>Подключение</value>
+    <comment>Gossip network status: a dial or reconnect is in progress (yellow).</comment>
+  </data>
+  <data name="gossip_events_per_minute.one" xml:space="preserve">
+    <value>{} событие/мин</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_events_per_minute.few" xml:space="preserve">
+    <value>{} события/мин</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_events_per_minute.many" xml:space="preserve">
+    <value>{} событий/мин</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_events_per_minute.other" xml:space="preserve">
+    <value>{} события/мин</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_network" xml:space="preserve">
+    <value>Gossip-сеть</value>
+    <comment>Label of the gossip network status dot in the extender panel.</comment>
+  </data>
+  <data name="gossip_url" xml:space="preserve">
+    <value>URL gossip-сети</value>
+    <comment>Label of the gossip URL field. Empty means the network space default.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>Понятно</value>
@@ -1599,6 +2607,12 @@
   <data name="guest_mode_failed" xml:space="preserve">
     <value>Не удалось запустить гостевой режим</value>
     <comment>Error shown when starting a guest-mode network fails.</comment>
+  </data>
+  <data name="hash_count" xml:space="preserve">
+    <value>#{}</value>
+  </data>
+  <data name="hash_value" xml:space="preserve">
+    <value>#{}</value>
   </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>Скрыть список провайдеров</value>
@@ -1648,6 +2662,38 @@
     <value>Игнорировать оптимизацию батареи</value>
     <comment>Call to action</comment>
   </data>
+  <data name="import_extenders" xml:space="preserve">
+    <value>Импортировать экстендеры</value>
+    <comment>Button and screen title: import extenders from a QR code, a photo, or pasted text.</comment>
+  </data>
+  <data name="import_extenders_confirm_settings" xml:space="preserve">
+    <value>Использовать настройки экстендера из этого кода? Поиск экстендеров будет выполняться через {}.</value>
+    <comment>Confirmation before applying the extender settings from a share code. The argument is the operator host the settings point at.</comment>
+  </data>
+  <data name="import_extenders_foreign_host" xml:space="preserve">
+    <value>Этот код предназначен для {}, а не для этой сети. Чтобы сменить сеть, используйте настройки экстендера.</value>
+    <comment>Error when a share code belongs to another network. The argument is that network's host.</comment>
+  </data>
+  <data name="import_extenders_imported.one" xml:space="preserve">
+    <value>Импортирован {} экстендер</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_imported.few" xml:space="preserve">
+    <value>Импортировано {} экстендера</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_imported.many" xml:space="preserve">
+    <value>Импортировано {} экстендеров</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_imported.other" xml:space="preserve">
+    <value>Импортировано {} экстендера</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_invalid" xml:space="preserve">
+    <value>Это не код экстендеров.</value>
+    <comment>Error when the scanned or pasted text is not an extender share code.</comment>
+  </data>
   <data name="in_guest_mode" xml:space="preserve">
     <value>Вы в гостевом режиме</value>
     <comment>Guest mode overlay</comment>
@@ -1660,6 +2706,10 @@
     <value>Туннель используют только включённые приложения.</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="include_extender_settings" xml:space="preserve">
+    <value>Включить настройки экстендера</value>
+    <comment>Toggle on the share screen: also include the extender DNS name, gossip URL and root keys in the code.</comment>
+  </data>
   <data name="include_in_vpn" xml:space="preserve">
     <value>Включить в VPN</value>
     <comment>App split rules: rule choice routing the app through the VPN.</comment>
@@ -1667,6 +2717,10 @@
   <data name="included" xml:space="preserve">
     <value>Включённые</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="includes_free_trial_days" xml:space="preserve">
+    <value>Включает бесплатный пробный период: {} дн.</value>
+    <comment>Line under the annual plan card. The number of days is the free trial length.</comment>
   </data>
   <data name="instant_account_explainer" xml:space="preserve">
     <value>Не нужны ни почта, ни телефон, ни пароль. Ваш аккаунт защищён сид-фразой.</value>
@@ -1696,6 +2750,54 @@
     <value>Недостаточно средств</value>
     <comment>Circle Wallet Transfer Screen</comment>
   </data>
+  <data name="intro_control_manual_ios" xml:space="preserve">
+    <value>Откройте Пункт управления, коснитесь +, затем «Добавить элемент управления» и выберите URnetwork.</value>
+    <comment>How to add the quick connect control on iOS (no add-control API).</comment>
+  </data>
+  <data name="intro_control_manual_macos" xml:space="preserve">
+    <value>Откройте Пункт управления, выберите «Изменить элементы управления» и добавьте URnetwork.</value>
+    <comment>How to add the quick connect control on macOS.</comment>
+  </data>
+  <data name="intro_quick_connect_details" xml:space="preserve">
+    <value>Включайте и выключайте URnetwork в быстрых настройках и следите за ним с главного экрана.</value>
+    <comment>Detail line of the last onboarding page.</comment>
+  </data>
+  <data name="intro_quick_connect_details_apple" xml:space="preserve">
+    <value>Включайте и выключайте URnetwork в Пункте управления и следите за ним с экрана «Домой».</value>
+    <comment>Detail line of the last onboarding page on iOS/macOS (Control Center instead of Quick Settings).</comment>
+  </data>
+  <data name="intro_quick_connect_title" xml:space="preserve">
+    <value>Подключение одним касанием</value>
+    <comment>Title of the last onboarding page: the quick connect tile and the home screen widgets.</comment>
+  </data>
+  <data name="intro_quick_tile_added" xml:space="preserve">
+    <value>Добавлено в быстрые настройки</value>
+    <comment>Label shown on the last onboarding page once the quick connect tile is in Quick Settings.</comment>
+  </data>
+  <data name="intro_quick_tile_manual" xml:space="preserve">
+    <value>Откройте быстрые настройки, нажмите на значок карандаша и перетащите URnetwork на нужное место.</value>
+    <comment>Manual steps for adding the quick connect tile on Android versions without the system add-tile request (before Android 13).</comment>
+  </data>
+  <data name="intro_verifiable_encryption" xml:space="preserve">
+    <value>Шифрование на каждый день.</value>
+    <comment>Tagline under 'Welcome to URnetwork' on the first onboarding page. Replaces 'URnetwork is the most local and most private network on the planet.'</comment>
+  </data>
+  <data name="intro_widgets_manual" xml:space="preserve">
+    <value>Нажмите и удерживайте главный экран, выберите «Виджеты» и найдите URnetwork.</value>
+    <comment>Manual steps for adding widgets on launchers without the pin dialog.</comment>
+  </data>
+  <data name="intro_widgets_manual_ios" xml:space="preserve">
+    <value>Нажмите и удерживайте экран «Домой», коснитесь +, найдите URnetwork и добавьте виджет.</value>
+    <comment>How to add a Home Screen widget on iOS (no pin-widget API).</comment>
+  </data>
+  <data name="intro_widgets_manual_macos" xml:space="preserve">
+    <value>Откройте галерею виджетов из Центра уведомлений, найдите URnetwork и перетащите виджет на рабочий стол.</value>
+    <comment>How to add a desktop widget on macOS.</comment>
+  </data>
+  <data name="intro_widgets_tap_to_add" xml:space="preserve">
+    <value>Нажмите на виджет, чтобы добавить его на главный экран.</value>
+    <comment>Hint under the widget previews on the last onboarding page: tapping a preview asks the launcher to add that widget.</comment>
+  </data>
   <data name="invalid_balance_code" xml:space="preserve">
     <value>Недействительный код баланса</value>
     <comment>Used in Shared/Views/RedeemBalanceCodeSheet/RedeemBalanceCodeSheet.swift.</comment>
@@ -1707,6 +2809,14 @@
   <data name="invalid_referral_code_please_try_again" xml:space="preserve">
     <value>Недействительный реферальный код. Пожалуйста, попробуйте еще раз.</value>
     <comment>Used in Main/Account/Settings/UpdateReferralNetworkSheet/UpdateReferralNetworkSheetViewModel.swift.</comment>
+  </data>
+  <data name="invalid_solana_address" xml:space="preserve">
+    <value>Это недействительный адрес Solana.</value>
+    <comment>Validation error under the manual address field when the address is not a valid Solana address (parallel to invalid_ss58_address).</comment>
+  </data>
+  <data name="invalid_ss58_address" xml:space="preserve">
+    <value>Это недействительный адрес Bittensor.</value>
+    <comment>Validation error for a coldkey address.</comment>
   </data>
   <data name="ip_address" xml:space="preserve">
     <value>IP-адрес</value>
@@ -1728,9 +2838,69 @@
     <value>{} IP-адресов</value>
     <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
   </data>
+  <data name="ip_families" xml:space="preserve">
+    <value>Версии IP</value>
+    <comment>IP versions: the tooltip of the address-family tag column in the provider locations sheet (windows, linux). It also titled the connect drawer's IP version histogram before that became the Dualstack / IPv4 / IPv6 status row.</comment>
+  </data>
+  <data name="ip_family_both" xml:space="preserve">
+    <value>Обе</value>
+    <comment>Row label of the IP version histogram, and the provider row tag, for a provider that carries both IPv4 and IPv6.</comment>
+  </data>
+  <data name="ip_family_connected_count.one" xml:space="preserve">
+    <value>{} подключён</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connected_count.few" xml:space="preserve">
+    <value>{} подключено</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connected_count.many" xml:space="preserve">
+    <value>{} подключено</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connected_count.other" xml:space="preserve">
+    <value>{} подключено</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.one" xml:space="preserve">
+    <value>{} подключается</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.few" xml:space="preserve">
+    <value>{} подключаются</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.many" xml:space="preserve">
+    <value>{} подключаются</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.other" xml:space="preserve">
+    <value>{} подключаются</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_disconnected" xml:space="preserve">
+    <value>отключено</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer, when no provider of that family (dualstack, IPv4 or IPv6) is connected or connecting. Lowercase, under the family label.</comment>
+  </data>
+  <data name="ip_family_dualstack" xml:space="preserve">
+    <value>Двойной стек</value>
+    <comment>Column label of the IP version status row in the connect drawer, for providers that carry both IPv4 and IPv6. Set in the pixel display face beside the IPv4 and IPv6 labels, so keep it short.</comment>
+  </data>
+  <data name="ip_family_v4" xml:space="preserve">
+    <value>v4</value>
+    <comment>Row label of the IP version histogram, and the provider row tag, for a provider that carries only IPv4.</comment>
+  </data>
+  <data name="ip_family_v6" xml:space="preserve">
+    <value>v6</value>
+    <comment>Row label of the IP version histogram, and the provider row tag, for a provider that carries only IPv6.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
+  </data>
+  <data name="ipv4_and_ipv6" xml:space="preserve">
+    <value>IPv4 и IPv6</value>
+    <comment>Accessibility label for a provider that carries both IPv4 and IPv6 traffic.</comment>
   </data>
   <data name="ipv6" xml:space="preserve">
     <value>IPv6</value>
@@ -1771,6 +2941,14 @@
   <data name="kill_switch" xml:space="preserve">
     <value>Kill switch</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="kill_switch_exception" xml:space="preserve">
+    <value>Исключение для Kill switch</value>
+    <comment>Title for the disclosure explaining traffic that intentionally bypasses the VPN kill switch.</comment>
+  </data>
+  <data name="kill_switch_exception_detail" xml:space="preserve">
+    <value>Пока VPN подключён, IPv6 не маршрутизируется через URnetwork и может использовать вашу локальную сеть, даже если Kill switch включён. Исходящий SMTP через TCP-порт 25 также идёт в обход VPN. Эти исключения могут раскрыть ваш локальный публичный IP этим адресатам. SMTP на портах 465 и 587 остаётся в VPN и обязан устанавливать TLS.</value>
+    <comment>Explains the deliberate IPv6 and SMTP exceptions to the VPN kill switch and the encrypted SMTP behavior.</comment>
   </data>
   <data name="launch" xml:space="preserve">
     <value>Запустить</value>
@@ -2093,6 +3271,10 @@
     <value>Множитель</value>
     <comment>Call to action</comment>
   </data>
+  <data name="n_20" xml:space="preserve">
+    <value>{}/20</value>
+    <comment>A progress bar that shows how many friends you've invited. The first argument is the number of friends you've invited. The second argument is the maximum number of friends you can invite.</comment>
+  </data>
   <data name="n_gib_day" xml:space="preserve">
     <value>+{} GiB/день</value>
     <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
@@ -2298,6 +3480,10 @@
     <value>Нет заблокированных локаций</value>
     <comment>Call to action</comment>
   </data>
+  <data name="no_claims_yet_linux" xml:space="preserve">
+    <value>Пока нечего получать. Alpha начисляется со следующей завершённой эпохи.</value>
+    <comment>Empty state of the unclaimed tile once a wallet is connected.</comment>
+  </data>
   <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
     <value>Не нужны электронная почта, телефон или пароль. Ваш аккаунт защищён сид-фразой.</value>
     <comment>A description of the benefits of creating an Instant Account.</comment>
@@ -2321,6 +3507,14 @@
   <data name="no_open_contracts" xml:space="preserve">
     <value>Нет открытых контрактов</value>
     <comment>A label displayed when there are no open contracts.</comment>
+  </data>
+  <data name="no_points_yet" xml:space="preserve">
+    <value>Эпох пока нет. Очки появятся после вашей первой завершённой эпохи.</value>
+    <comment>Empty state of the points history.</comment>
+  </data>
+  <data name="no_previous_purchases_were_found" xml:space="preserve">
+    <value>Предыдущие покупки не найдены.</value>
+    <comment>Restore-purchases outcome: the sync succeeded and there is genuinely nothing to restore (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>Нам не удалось найти провайдеров.</value>
@@ -2414,6 +3608,10 @@
     <value>Вкл.</value>
     <comment>A label for a DNS setting that is enabled.</comment>
   </data>
+  <data name="onboarding_step_of" xml:space="preserve">
+    <value>Шаг {0} из {1}</value>
+    <comment>Accessibility description of the onboarding step bubbles: the current step and the total.</comment>
+  </data>
   <data name="one_gib_per_day" xml:space="preserve">
     <value>1 GiB/день</value>
     <comment>Call to action</comment>
@@ -2446,6 +3644,10 @@
     <value>Другое</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="paid_in_usdc_on_solana" xml:space="preserve">
+    <value>Оплата в USDC в сети Solana.</value>
+    <comment>The one USDC mention: the Solana subscription payment note.</comment>
+  </data>
   <data name="participate" xml:space="preserve">
     <value>Участвовать</value>
     <comment>Call to action</comment>
@@ -2475,6 +3677,10 @@
     <value>Пароль должен содержать не менее 12 символов</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_share_text" xml:space="preserve">
+    <value>Вставить текст кода</value>
+    <comment>Button and field label: paste the text form of a share code.</comment>
+  </data>
   <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
     <value>Вставьте здесь свою сид-фразу из 24 слов</value>
     <comment>A placeholder text for the seedphrase field.</comment>
@@ -2487,9 +3693,29 @@
     <value>Присоединиться через Stripe</value>
     <comment>Call to action</comment>
   </data>
+  <data name="payment_confirmation_delayed" xml:space="preserve">
+    <value>Подтверждение занимает больше времени, чем ожидалось. Ваш тариф обновится автоматически, как только оплата будет подтверждена, — покупать повторно не нужно.</value>
+    <comment>Shown when the post-payment confirmation poll exhausts its budget (2 minutes) without the server confirming the subscription. The payment evidence is real (store or payment sheet reported success), so say that plainly, and head off a second purchase.</comment>
+  </data>
+  <data name="payment_confirmation_processing" xml:space="preserve">
+    <value>Мы подтверждаем ваш платёж. Ваш тариф обновится автоматически — ничего делать не нужно.</value>
+    <comment>Body of the post-purchase overlay while the server has not yet confirmed the subscription. Replaces the optimistic 'You're premium.' claim until currentSubscription actually confirms.</comment>
+  </data>
+  <data name="payment_not_completed" xml:space="preserve">
+    <value>Не удалось завершить платёж.</value>
+    <comment>Shown in the payment-problem dialog when the Stripe payment sheet reports a failure. The sheet's own error detail is appended by the caller.</comment>
+  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>Проблема с оплатой</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
+  </data>
+  <data name="payment_received" xml:space="preserve">
+    <value>Платёж получен.</value>
+    <comment>Title of the post-purchase screen while the server has not yet confirmed the entitlement (Shared/Views/PurchaseSuccessView.swift). StoreKit took the payment; the confirmation poll is still running — the copy must not claim premium yet.</comment>
+  </data>
+  <data name="payment_received_title" xml:space="preserve">
+    <value>Платёж получен</value>
+    <comment>Title for the post-purchase overlay and the confirmation-timeout dialog. Deliberately claims only what is known -- the payment was received -- not that the plan is active yet.</comment>
   </data>
   <data name="payout_wallet_updated" xml:space="preserve">
     <value>Кошелек для выплат обновлен</value>
@@ -2551,6 +3777,14 @@
     <value>≈ {}/мес · списание раз в год</value>
     <comment>Plan picker: the subordinate line under the yearly price with the per-month equivalent (ceiling-rounded).</comment>
   </data>
+  <data name="plan_price_per_month" xml:space="preserve">
+    <value>{}/месяц</value>
+    <comment>Monthly plan card label: the store-formatted price per month.</comment>
+  </data>
+  <data name="plan_price_per_year" xml:space="preserve">
+    <value>{}/год</value>
+    <comment>Yearly plan card label: the store-formatted price per year.</comment>
+  </data>
   <data name="plan_save_percent" xml:space="preserve">
     <value>Экономия {}%</value>
     <comment>Plan picker: the saving badge on the yearly card; the number is the whole percent saved against twelve monthly payments.</comment>
@@ -2599,6 +3833,10 @@
     <value>Очки</value>
     <comment>Points leaderboard: tab label, stat tile label and sort chip.</comment>
   </data>
+  <data name="points_earned" xml:space="preserve">
+    <value>Заработано очков</value>
+    <comment>Headline label of the earnings screen.</comment>
+  </data>
   <data name="points_leaderboard_description" xml:space="preserve">
     <value>Очки за всё время. Блок — одна завершённая эпоха; серия считает подряд идущие блоки с очками до последнего.</value>
     <comment>Points leaderboard: the explanation under the list header.</comment>
@@ -2610,6 +3848,10 @@
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>Ваша сеть отображается как Анонимно, пока вы не включите это.</value>
     <comment>Points leaderboard: shown under the own-stats card while the name switch is off. The network is listed either way, as Anonymous until the switch is on.</comment>
+  </data>
+  <data name="points_short" xml:space="preserve">
+    <value>{} очк.</value>
+    <comment>Points count with unit for history rows.</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>Постквантовое шифрование</value>
@@ -2626,6 +3868,22 @@
   <data name="post_quantum_identity_explanation" xml:space="preserve">
     <value>Ваш ключ идентификации провайдера хранится локально на этом устройстве. Если ключ какого-либо узла отличается от сохранённого локально, это значит, что оператору сети нельзя доверять.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
+  </data>
+  <data name="private_extender" xml:space="preserve">
+    <value>Частный экстендер</value>
+    <comment>Title of the advanced private extender fields: one extender with a secret that replaces discovery.</comment>
+  </data>
+  <data name="private_extender_hint" xml:space="preserve">
+    <value>Частный экстендер заменяет все найденные экстендеры. Оставьте поле пустым, чтобы использовать автоматический поиск.</value>
+    <comment>Help text under the private extender fields.</comment>
+  </data>
+  <data name="private_extender_ip" xml:space="preserve">
+    <value>IP-адрес</value>
+    <comment>Label of the private extender IP address field.</comment>
+  </data>
+  <data name="private_extender_secret" xml:space="preserve">
+    <value>Секрет</value>
+    <comment>Label of the private extender secret field.</comment>
   </data>
   <data name="private_network" xml:space="preserve">
     <value>Частная сеть</value>
@@ -2659,9 +3917,33 @@
     <value>Предоставлять</value>
     <comment>Label of the switch that turns on providing bandwidth to the network.</comment>
   </data>
+  <data name="provide_intro_bullet_devices" xml:space="preserve">
+    <value>Разрешите своим устройствам делиться интернетом друг с другом</value>
+    <comment>First bullet on the onboarding Contribute bandwidth page.</comment>
+  </data>
+  <data name="provide_intro_bullet_people" xml:space="preserve">
+    <value>Делитесь интернетом с другими людьми ❤️</value>
+    <comment>Second bullet on the onboarding Contribute bandwidth page, with a heart.</comment>
+  </data>
+  <data name="provide_intro_lead" xml:space="preserve">
+    <value>Решать вам, это совершенно необязательно:</value>
+    <comment>Lead line above the two bullets on the onboarding Contribute bandwidth page.</comment>
+  </data>
   <data name="provide_mode" xml:space="preserve">
     <value>Режим предоставления</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="provide_mode_always_description" xml:space="preserve">
+    <value>Предоставляет доступ всем, пока приложение запущено.</value>
+    <comment>One-line explanation of the Always provide mode in the onboarding Contribute bandwidth picker.</comment>
+  </data>
+  <data name="provide_mode_auto_description" xml:space="preserve">
+    <value>Предоставляет доступ всем, пока вы подключены, а в остальное время — только вашим устройствам.</value>
+    <comment>One-line explanation of the Auto provide mode in the onboarding Contribute bandwidth picker: public providing only while connected, same-network peers otherwise.</comment>
+  </data>
+  <data name="provide_mode_network_description" xml:space="preserve">
+    <value>Предоставляет доступ только устройствам вашей сети.</value>
+    <comment>One-line explanation of the Network provide mode in the onboarding Contribute bandwidth picker: the private provider for the network's own devices.</comment>
   </data>
   <data name="provider_connected_duration_hours" xml:space="preserve">
     <value>{0} ч {1} мин</value>
@@ -2722,6 +4004,10 @@
     <value>Статистика провайдера</value>
     <comment>Title of a section that shows statistics about the provider.</comment>
   </data>
+  <data name="provider_transports" xml:space="preserve">
+    <value>Транспорты провайдера</value>
+    <comment>Title of the transport settings editor for the provider transport policy.</comment>
+  </data>
   <data name="providing" xml:space="preserve">
     <value>Предоставление</value>
     <comment>Used in Main/Account/Wallets/WalletsView.swift.</comment>
@@ -2754,6 +4040,18 @@
     <value>Пока не удалось подтвердить вашу покупку. Если вы завершили оплату, ваш тариф обновится автоматически через несколько минут — покупать заново не нужно.</value>
     <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
+  <data name="purchase_could_not_be_verified" xml:space="preserve">
+    <value>Эту покупку не удалось подтвердить в Google Play, поэтому её нельзя применить к вашему аккаунту. Если с вас списали оплату, а тариф не обновился, обратитесь в поддержку.</value>
+    <comment>Error dialog body when the server's verify answer for a Play purchase is terminal `invalid` — the proof will never verify (unknown token, disallowed product, canceled before completing). The purchase is still acknowledged with Play so a real charge is not auto-refunded; this dialog is how the failure reaches the user instead of a silent nothing (android google/PlanViewModel.kt report path).</comment>
+  </data>
+  <data name="purchase_found_confirming_your_plan" xml:space="preserve">
+    <value>Покупка найдена. Подтверждаем ваш тариф — он обновится автоматически.</value>
+    <comment>Restore-purchases outcome: an entitlement for the current network was found; the confirmation poll now bridges the gap until the server credits it (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
+  </data>
+  <data name="qr_code_not_found" xml:space="preserve">
+    <value>На изображении не найден QR-код.</value>
+    <comment>Error when a chosen photo or image file holds no QR code.</comment>
+  </data>
   <data name="quit" xml:space="preserve">
     <value>Выйти</value>
     <comment>Tray menu item that exits the app (tears the tunnel down).</comment>
@@ -2765,6 +4063,10 @@
   <data name="ranked_networks_count" xml:space="preserve">
     <value>Сетей в рейтинге: {}</value>
     <comment>Points leaderboard: how many networks hold a rank. {count} is preformatted with separators.</comment>
+  </data>
+  <data name="reads_per_second" xml:space="preserve">
+    <value>чтений/с</value>
+    <comment>Unit the extender chart labels its rates with, where the provider chart says pkt/s. The compact count is prepended by the app, as it is for pkt/s.</comment>
   </data>
   <data name="ready_to_connect" xml:space="preserve">
     <value>Готово к подключению</value>
@@ -3036,6 +4338,10 @@
     <value>Удалить кошелек</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
   </data>
+  <data name="remove_wallet_holds_payouts" xml:space="preserve">
+    <value>Выплаты в USDC приостанавливаются, пока не будет подключен другой кошелек.</value>
+    <comment>Body of the remove confirmation for the Solana payout wallet (the title is remove_wallet).</comment>
+  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>Отправить ссылку повторно</value>
     <comment>Reset link sent</comment>
@@ -3064,9 +4370,17 @@
     <value>Резолверы</value>
     <comment>A section header for the DNS resolvers.</comment>
   </data>
+  <data name="restore_default_transports" xml:space="preserve">
+    <value>Восстановить транспорты по умолчанию</value>
+    <comment>Button that resets the transport settings draft to the SDK default policy.</comment>
+  </data>
   <data name="restore_most_secure_settings" xml:space="preserve">
     <value>Вернуть самые безопасные настройки</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="restore_purchases" xml:space="preserve">
+    <value>Восстановить покупки</value>
+    <comment>Action label that resyncs App Store purchases (AppStore.sync + entitlement scan). Shown in Settings and in the upgrade flow's failure states (Main/Account/Settings/SettingsForm-iOS.swift, SettingsForm-macOS.swift, Shared/Views/UpgradeSubscriptionSheet.swift, Shared/Views/PurchaseSuccessView.swift, Shared/Views/Introduction/IntroductionView.swift).</comment>
   </data>
   <data name="retry" xml:space="preserve">
     <value>Повторить попытку</value>
@@ -3080,9 +4394,17 @@
     <value>Оценить URnetwork</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="route_internet" xml:space="preserve">
+    <value>Интернет</value>
+    <comment>Right stop label of the onboarding route line the anonymized member travels along.</comment>
+  </data>
   <data name="route_local" xml:space="preserve">
     <value>Разрешить локальный трафик при отключении</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="route_you" xml:space="preserve">
+    <value>Вы</value>
+    <comment>Left stop label of the onboarding route line the anonymized member travels along (you -&gt; URnetwork -&gt; internet).</comment>
   </data>
   <data name="rules" xml:space="preserve">
     <value>Правила</value>
@@ -3091,6 +4413,10 @@
   <data name="save" xml:space="preserve">
     <value>Сохранить</value>
     <comment>Profile</comment>
+  </data>
+  <data name="save_33_percent" xml:space="preserve">
+    <value>Экономия 33%</value>
+    <comment>Line under the yearly plan's price: the saving against paying monthly.</comment>
   </data>
   <data name="save_logs" xml:space="preserve">
     <value>Сохранить логи</value>
@@ -3103,6 +4429,10 @@
   <data name="saved_as" xml:space="preserve">
     <value>Сохранено как {}</value>
     <comment>Split rules: note under the host input when the entry will be stored in a normalised form. {value} is that form, for example 10.0.0.0/8 for a typed 10.0.0.5/8.</comment>
+  </data>
+  <data name="scan_qr_code" xml:space="preserve">
+    <value>Сканировать QR-код</value>
+    <comment>Button: open the camera to scan a QR code.</comment>
   </data>
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>Поиск приложений</value>
@@ -3177,6 +4507,10 @@
     <value>Это {} слов — сид-фраза состоит из 12 или 24 слов</value>
     <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
+  <data name="seeker_points_only" xml:space="preserve">
+    <value>Множитель Seeker применяется только к очкам.</value>
+    <comment>Note on the Seeker verification action.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Токен Seeker проверен!</value>
     <comment>Call to action</comment>
@@ -3217,6 +4551,10 @@
     <value>Отправить ссылку для сброса</value>
     <comment>Used in Authenticate/ResetPassword/ResetPasswordView.swift.</comment>
   </data>
+  <data name="send_tao_to_mirror" xml:space="preserve">
+    <value>Отправьте около {0} TAO на {1}, чтобы покрыть оплату газа.</value>
+    <comment>Instruction to fund the gas key.</comment>
+  </data>
   <data name="send_us_your_feedback_directly_or_join_our" xml:space="preserve">
     <value>Отправьте нам свой отзыв напрямую или [присоединитесь к нашему Discord](https://discord.com/invite/RUNZXMwPRK) для прямой поддержки.</value>
     <comment>Used in Main/Feedback/FeedbackView.swift.</comment>
@@ -3233,9 +4571,53 @@
     <value>Настройки</value>
     <comment>Account Screen</comment>
   </data>
+  <data name="settings_add_quick_tile" xml:space="preserve">
+    <value>Добавить плитку быстрого подключения</value>
+    <comment>Settings row that asks the system to add the Quick Settings tile (Android 13+).</comment>
+  </data>
+  <data name="settings_add_quick_tile_description" xml:space="preserve">
+    <value>Подключайтесь и отключайтесь с панели быстрых настроек и экрана блокировки.</value>
+    <comment>Description under the add-tile settings row.</comment>
+  </data>
+  <data name="settings_add_widgets" xml:space="preserve">
+    <value>Добавить виджеты на главный экран</value>
+    <comment>Settings row that opens the widget picker to pin the app's widgets.</comment>
+  </data>
+  <data name="settings_add_widgets_description" xml:space="preserve">
+    <value>Быстрое подключение, баланс трафика, провайдеры на глобусе и ваши главные контракты.</value>
+    <comment>Description under the add-widgets settings row.</comment>
+  </data>
   <data name="share" xml:space="preserve">
     <value>Поделиться</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="share_extenders" xml:space="preserve">
+    <value>Поделиться экстендерами</value>
+    <comment>Button and screen title: share the known extenders as a QR code.</comment>
+  </data>
+  <data name="share_extenders_count.one" xml:space="preserve">
+    <value>{} экстендер</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_count.few" xml:space="preserve">
+    <value>{} экстендера</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_count.many" xml:space="preserve">
+    <value>{} экстендеров</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_count.other" xml:space="preserve">
+    <value>{} экстендера</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_hint" xml:space="preserve">
+    <value>Отсканируйте этот код в другом приложении URnetwork, чтобы передать эти экстендеры.</value>
+    <comment>Help text on the share screen under the QR code.</comment>
+  </data>
+  <data name="share_extenders_too_large" xml:space="preserve">
+    <value>Код слишком велик для QR-кода. Вместо этого скопируйте текст кода.</value>
+    <comment>Shown on the share screen when the share payload exceeds what a QR code can hold; the text form is still offered.</comment>
   </data>
   <data name="share_logs" xml:space="preserve">
     <value>Поделиться логами</value>
@@ -3245,9 +4627,21 @@
     <value>Поделиться логами</value>
     <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
   </data>
+  <data name="share_text_copied" xml:space="preserve">
+    <value>Текст кода скопирован</value>
+    <comment>Confirmation after the share text of an extender code was copied to the clipboard.</comment>
+  </data>
   <data name="share_urnetwork" xml:space="preserve">
     <value>Поделиться URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
+  </data>
+  <data name="shortcut_connect_long" xml:space="preserve">
+    <value>Подключиться к URnetwork</value>
+    <comment>Long label of the launcher shortcut that connects the VPN.</comment>
+  </data>
+  <data name="shortcut_disconnect_long" xml:space="preserve">
+    <value>Отключиться от URnetwork</value>
+    <comment>Long label of the launcher shortcut that disconnects the VPN.</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>Показать</value>
@@ -3256,6 +4650,10 @@
   <data name="show_icon_when_connected" xml:space="preserve">
     <value>Показывать значок UR при подключении</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="show_kill_switch_exception" xml:space="preserve">
+    <value>Показать исключение для Kill switch</value>
+    <comment>Accessibility label for the kill switch exception information button.</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">
     <value>Показывать название моей сети</value>
@@ -3291,6 +4689,10 @@
   </data>
   <data name="sign_in_methods" xml:space="preserve">
     <value>Способы входа</value>
+  </data>
+  <data name="sign_in_with_apple" xml:space="preserve">
+    <value>Войти через Apple</value>
+    <comment>Login stack: full-width Apple sign-in button on platforms that use the ur.io browser bridge</comment>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>Войти по коду</value>
@@ -3375,6 +4777,10 @@
     <value>Отменено</value>
     <comment>App payout detail: canceled time</comment>
   </data>
+  <data name="site_app_chain_not_configured" xml:space="preserve">
+    <value>Расчёты в подсети пока не настроены. Очки продолжают начисляться; загляните снова после следующего релиза.</value>
+    <comment>App earnings/claim: the SDK reports chain_not_configured (release constants not published)</comment>
+  </data>
   <data name="site_app_change" xml:space="preserve">
     <value>Изменить</value>
     <comment>App connect screen: change location button</comment>
@@ -3386,6 +4792,22 @@
   <data name="site_app_cities" xml:space="preserve">
     <value>Города</value>
     <comment>App connect location picker: cities section</comment>
+  </data>
+  <data name="site_app_claim_no_evm_wallet" xml:space="preserve">
+    <value>Браузерный кошелек не найден. Установите расширение EVM-кошелька, например MetaMask, и подключите ключ, которым оплачивается газ, или получите средства в приложении URnetwork на своём устройстве.</value>
+    <comment>App claim: no injected EVM wallet</comment>
+  </data>
+  <data name="site_app_claim_nothing" xml:space="preserve">
+    <value>Пока нечего получать.</value>
+    <comment>App claim: empty state</comment>
+  </data>
+  <data name="site_app_claim_opens_soon" xml:space="preserve">
+    <value>Скоро откроется</value>
+    <comment>App claim: epoch status when the claim window has not opened</comment>
+  </data>
+  <data name="site_app_claimable" xml:space="preserve">
+    <value>Доступно к получению</value>
+    <comment>App claim: epoch status</comment>
   </data>
   <data name="site_app_clients" xml:space="preserve">
     <value>Клиенты</value>
@@ -3422,6 +4844,10 @@
   <data name="site_app_connections" xml:space="preserve">
     <value>Подключения</value>
     <comment>App settings: connections section</comment>
+  </data>
+  <data name="site_app_continue_anyway" xml:space="preserve">
+    <value>Всё равно продолжить</value>
+    <comment>App earnings: proceed after the new-wallet warning</comment>
   </data>
   <data name="site_app_contracts" xml:space="preserve">
     <value>Контракты</value>
@@ -3523,6 +4949,14 @@
     <value>Сбросить до рекомендуемых</value>
     <comment>App connect DNS: reset to default</comment>
   </data>
+  <data name="site_app_earn_multiplier" xml:space="preserve">
+    <value>Множитель</value>
+    <comment>App earnings: points breakdown row</comment>
+  </data>
+  <data name="site_app_earn_reliability" xml:space="preserve">
+    <value>Надежность</value>
+    <comment>App earnings: points breakdown row</comment>
+  </data>
   <data name="site_app_earnings" xml:space="preserve">
     <value>Заработок сети</value>
     <comment>App account: network earnings card</comment>
@@ -3534,6 +4968,10 @@
   <data name="site_app_enter_referral" xml:space="preserve">
     <value>Введите реферальный код</value>
     <comment>App settings: referral code input placeholder</comment>
+  </data>
+  <data name="site_app_epoch_finalizing" xml:space="preserve">
+    <value>Завершается</value>
+    <comment>App claim: epoch status before finalization</comment>
   </data>
   <data name="site_app_ext_needed" xml:space="preserve">
     <value>Расширение URnetwork недоступно в этом браузере</value>
@@ -3586,6 +5024,10 @@
   <data name="site_app_leaderboard_note" xml:space="preserve">
     <value>Рейтинг — это сумма последних 4 выплат. Он обновляется каждый платёжный цикл.</value>
     <comment>App leaderboard: explainer note</comment>
+  </data>
+  <data name="site_app_leaderboard_rank" xml:space="preserve">
+    <value>Место в рейтинге: #{rank} из {total}</value>
+    <comment>App earnings: the network's leaderboard rank, as in the epoch email</comment>
   </data>
   <data name="site_app_loading" xml:space="preserve">
     <value>Загрузка…</value>
@@ -3651,6 +5093,18 @@
     <value>Трафика пока нет</value>
     <comment>Connect drawer: throughput empty state</comment>
   </data>
+  <data name="site_app_onboarding_ext_body" xml:space="preserve">
+    <value>URnetwork направляет трафик этого браузера через своё расширение. Установите его, и кнопка подключения здесь сразу заработает.</value>
+    <comment>Onboarding: install-the-extension step body</comment>
+  </data>
+  <data name="site_app_onboarding_ext_browsers" xml:space="preserve">
+    <value>Доступно для Chrome, Edge, Brave и Firefox.</value>
+    <comment>Onboarding: install-the-extension step, supported browsers note</comment>
+  </data>
+  <data name="site_app_onboarding_ext_title" xml:space="preserve">
+    <value>Подключите этот браузер</value>
+    <comment>Onboarding: install-the-extension step title</comment>
+  </data>
   <data name="site_app_paid_on" xml:space="preserve">
     <value>Оплачено</value>
     <comment>App payout detail: paid time</comment>
@@ -3670,6 +5124,10 @@
   <data name="site_app_plan" xml:space="preserve">
     <value>Тариф</value>
     <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_points_col" xml:space="preserve">
+    <value>Очки</value>
+    <comment>App earnings: history column header</comment>
   </data>
   <data name="site_app_private_network" xml:space="preserve">
     <value>Частная сеть</value>
@@ -3739,6 +5197,10 @@
     <value>Сохранить</value>
     <comment>App: save button</comment>
   </data>
+  <data name="site_app_sdk_not_ready" xml:space="preserve">
+    <value>Данные для получения недоступны в этой версии веб-приложения. Перезагрузите страницу и попробуйте снова.</value>
+    <comment>App earnings/claim: the loaded wasm SDK predates the subnet exports</comment>
+  </data>
   <data name="site_app_send" xml:space="preserve">
     <value>Отправить</value>
     <comment>App support: send button</comment>
@@ -3754,6 +5216,10 @@
   <data name="site_app_shuffle" xml:space="preserve">
     <value>Перемешать</value>
     <comment>App connect screen: shuffle providers button</comment>
+  </data>
+  <data name="site_app_sign_and_connect" xml:space="preserve">
+    <value>Подписать и подключить</value>
+    <comment>App earnings: manual address entry button (the wallet still signs the challenge)</comment>
   </data>
   <data name="site_app_stay_in_touch" xml:space="preserve">
     <value>Оставайтесь на связи</value>
@@ -3771,6 +5237,82 @@
     <value>Передача</value>
     <comment>Connect drawer: live transfer timeseries section</comment>
   </data>
+  <data name="site_app_top200_add_signature" xml:space="preserve">
+    <value>Добавить устройство</value>
+    <comment>App top200: post a device's binding payload</comment>
+  </data>
+  <data name="site_app_top200_apply_hotkey_sig" xml:space="preserve">
+    <value>Применить подпись hotkey</value>
+    <comment>App top200: re-check every device with the hotkey signature</comment>
+  </data>
+  <data name="site_app_top200_bad_signature" xml:space="preserve">
+    <value>Вставьте данные привязки точно в том виде, в каком их показывает приложение.</value>
+    <comment>App top200: unparseable paste</comment>
+  </data>
+  <data name="site_app_top200_binding_incomplete" xml:space="preserve">
+    <value>Calldata появится, когда будут проверены и подпись устройства, и подпись hotkey.</value>
+    <comment>App top200: binding not complete</comment>
+  </data>
+  <data name="site_app_top200_calldata" xml:space="preserve">
+    <value>Calldata привязки</value>
+    <comment>App top200: calldata label</comment>
+  </data>
+  <data name="site_app_top200_device" xml:space="preserve">
+    <value>Устройство</value>
+    <comment>App top200: device row label</comment>
+  </data>
+  <data name="site_app_top200_device_signature" xml:space="preserve">
+    <value>Подпись устройства</value>
+    <comment>App top200: signature textarea label</comment>
+  </data>
+  <data name="site_app_top200_digest" xml:space="preserve">
+    <value>Дайджест</value>
+    <comment>App top200: binding digest label</comment>
+  </data>
+  <data name="site_app_top200_hotkey" xml:space="preserve">
+    <value>Hotkey</value>
+    <comment>App top200: hotkey input label</comment>
+  </data>
+  <data name="site_app_top200_hotkey_sign_hint" xml:space="preserve">
+    <value>Подпишите каждый дайджест привязки ключом hotkey с помощью собственных инструментов (snclaim bind-head) и вставьте подпись сюда.</value>
+    <comment>App top200: how to produce the hotkey signature</comment>
+  </data>
+  <data name="site_app_top200_hotkey_signature" xml:space="preserve">
+    <value>Подпись hotkey (hex)</value>
+    <comment>App top200: hotkey signature input</comment>
+  </data>
+  <data name="site_app_top200_intro" xml:space="preserve">
+    <value>Ведущие майнеры — это {cutoff} лучших сетей по разнообразию маршрутизируемых исходящих IP. Подсеть нативно оплачивает ведущее место в каждом tempo — прямо на ваш coldkey.</value>
+    <comment>App top200: intro</comment>
+  </data>
+  <data name="site_app_top200_not_eligible" xml:space="preserve">
+    <value>Пока нет права на участие. Ваш балл — {score}, порог вытеснения — {floor}.</value>
+    <comment>App top200: status when not eligible</comment>
+  </data>
+  <data name="site_app_top200_signatures_added" xml:space="preserve">
+    <value>Добавлено устройств: {count}</value>
+    <comment>App top200: progress</comment>
+  </data>
+  <data name="site_app_top200_step_bind" xml:space="preserve">
+    <value>Каждое устройство-провайдер подписывает привязку своего парка в приложении в разделе Аккаунт › Топ-200. Вставляйте сюда данные привязки каждого устройства по одному.</value>
+    <comment>App top200: step 2</comment>
+  </data>
+  <data name="site_app_top200_step_register" xml:space="preserve">
+    <value>Зарегистрируйте hotkey в подсети {netuid} с помощью btcli, затем введите его ниже.</value>
+    <comment>App top200: step 1</comment>
+  </data>
+  <data name="site_app_top200_step_submit" xml:space="preserve">
+    <value>Отправьте привязку из собственного EVM-кошелька. URnetwork никогда не отправляет транзакции за вас.</value>
+    <comment>App top200: step 3</comment>
+  </data>
+  <data name="site_app_top200_submit" xml:space="preserve">
+    <value>Отправить привязку</value>
+    <comment>App top200: send the binding tx from the injected wallet</comment>
+  </data>
+  <data name="site_app_top200_unavailable" xml:space="preserve">
+    <value>Статус ведущего места сейчас недоступен.</value>
+    <comment>App top200: GET /sn/head unavailable</comment>
+  </data>
   <data name="site_app_total_referrals" xml:space="preserve">
     <value>Всего рефералов</value>
     <comment>App account: total referrals label</comment>
@@ -3787,9 +5329,21 @@
     <value>Подтверждено</value>
     <comment>App profile: verified badge</comment>
   </data>
+  <data name="site_app_view_transaction" xml:space="preserve">
+    <value>Посмотреть транзакцию</value>
+    <comment>App claim/top200: explorer link</comment>
+  </data>
   <data name="site_app_wallet" xml:space="preserve">
     <value>Кошелёк</value>
     <comment>App wallets: wallet label</comment>
+  </data>
+  <data name="site_app_wallet_connected" xml:space="preserve">
+    <value>Подключён</value>
+    <comment>App earnings: badge next to the connected Bittensor coldkey</comment>
+  </data>
+  <data name="site_app_wallet_mismatch" xml:space="preserve">
+    <value>Подпишите кошельком, которому принадлежит этот адрес.</value>
+    <comment>App earnings: the bridge signed with a different account than the typed address</comment>
   </data>
   <data name="site_best_available" xml:space="preserve">
     <value>Лучший доступный</value>
@@ -3839,6 +5393,10 @@
     <value>Готово к подключению</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copied" xml:space="preserve">
+    <value>Скопировано</value>
+    <comment>Account panel: a copy button after it copied</comment>
+  </data>
   <data name="site_copy_seedphrase" xml:space="preserve">
     <value>Скопировать сид-фразу</value>
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
@@ -3846,6 +5404,10 @@
   <data name="site_copy_url" xml:space="preserve">
     <value>Копировать URL</value>
     <comment>Account panel: copy a proxy's URL</comment>
+  </data>
+  <data name="site_copy_wg_config" xml:space="preserve">
+    <value>Скопировать конфигурацию</value>
+    <comment>Account panel: copy the WireGuard config text to the clipboard</comment>
   </data>
   <data name="site_create_another" xml:space="preserve">
     <value>Создать ещё</value>
@@ -3927,6 +5489,10 @@
     <value>Неверный код баланса.</value>
     <comment>Account panel: invalid balance code</comment>
   </data>
+  <data name="site_keep_waiting" xml:space="preserve">
+    <value>Продолжить ожидание</value>
+    <comment>Upgrade sheet: give-up state action to resume waiting for the payment</comment>
+  </data>
   <data name="site_landing_continue_web" xml:space="preserve">
     <value>Продолжить в браузере</value>
     <comment>Email landing page: the web fallback link.</comment>
@@ -3974,6 +5540,10 @@
   <data name="site_locations" xml:space="preserve">
     <value>Локации</value>
     <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_login_auth_code_hint" xml:space="preserve">
+    <value>Вставьте код аутентификации, созданный на другом устройстве или с помощью инструментов командной строки.</value>
+    <comment>Login stack: hint above the auth code field when signing in with a code generated elsewhere.</comment>
   </data>
   <data name="site_login_seed_hint" xml:space="preserve">
     <value>Введите сид-фразу из 24 слов, показанную при создании мгновенного аккаунта.</value>
@@ -4083,6 +5653,10 @@
     <value>Интерфейс клиента оператора</value>
     <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
   </data>
+  <data name="site_pay_another_way" xml:space="preserve">
+    <value>Оплатить другим способом</value>
+    <comment>Upgrade sheet: escape from the waiting state back to the payment options</comment>
+  </data>
   <data name="site_pay_sheet_charge_line" xml:space="preserve">
     <value>{} сегодня, затем ежемесячно. Отмена в любое время.</value>
     <comment>Embedded pay page: the immediate charge line (monthly). {price} amount.</comment>
@@ -4110,6 +5684,14 @@
   <data name="site_pay_sheet_trial_line" xml:space="preserve">
     <value>Карта сохраняется сегодня, {1} спишется {0}. До этого можно отменить в любой момент.</value>
     <comment>Embedded pay page: what happens with the card on a trial. {price} amount, {date} local date.</comment>
+  </data>
+  <data name="site_payment_not_seen_body" xml:space="preserve">
+    <value>Мы пока не видим вашего платежа. Если вы завершили его в кошельке, он, возможно, ещё обрабатывается — ваш тариф обновится автоматически в разделе «Аккаунт», как только платёж поступит.</value>
+    <comment>Upgrade sheet: give-up state body — the payment may still be processing and will appear under Account</comment>
+  </data>
+  <data name="site_payment_not_seen_title" xml:space="preserve">
+    <value>Платёж ещё не подтверждён</value>
+    <comment>Upgrade sheet: give-up state title after the payment wait deadline</comment>
   </data>
   <data name="site_plan_billed_monthly" xml:space="preserve">
     <value>Оплата ежемесячно · отмена в любое время</value>
@@ -4159,6 +5741,10 @@
     <value>Тип прокси</value>
     <comment>Account panel: proxy-type picker aria-label</comment>
   </data>
+  <data name="site_redeem_timeout" xml:space="preserve">
+    <value>Время ожидания запроса истекло. Если с вас списали оплату, проверьте баланс — код, возможно, уже применён.</value>
+    <comment>Balance code redeem: timeout is ambiguous — the server may have committed the redeem after the client stopped waiting</comment>
+  </data>
   <data name="site_roles" xml:space="preserve">
     <value>Роли</value>
     <comment>Account panel: client info — roles label</comment>
@@ -4186,6 +5772,14 @@
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>Имя пользователя — это токен из URL; пароль пустой.</value>
     <comment>Account panel: SOCKS credential note</comment>
+  </data>
+  <data name="site_solana_no_wallet_hint" xml:space="preserve">
+    <value>Ничего не произошло? Возможно, нужно установить кошелек Solana — или оплатите другим способом.</value>
+    <comment>Upgrade sheet: waiting state hint — a solana: deep link with no wallet installed silently does nothing</comment>
+  </data>
+  <data name="site_sub_active_body" xml:space="preserve">
+    <value>Ваш тариф Pro активен. В этом аккаунте нет подписки в магазине приложений, которой нужно управлять.</value>
+    <comment>Subscription: body for a Pro account with no store subscription to cancel (e.g. Pro from a balance code or a grant)</comment>
   </data>
   <data name="site_sub_active_until" xml:space="preserve">
     <value>Активна до {date}</value>
@@ -4259,6 +5853,14 @@
     <value>Управление в Google Play</value>
     <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
   </data>
+  <data name="site_sub_multiple_note" xml:space="preserve">
+    <value>С вас списывается оплата за несколько подписок. Каждую нужно отменить там, где она была оформлена.</value>
+    <comment>Subscription: warning shown when a network is billed by more than one store, because cancelling one does not cancel the others</comment>
+  </data>
+  <data name="site_sub_multiple_title" xml:space="preserve">
+    <value>Ваши подписки</value>
+    <comment>Subscription: heading above the list, shown only when more than one store is billing the network</comment>
+  </data>
   <data name="site_sub_other_platform" xml:space="preserve">
     <value>другую платформу</value>
     <comment>Subscription: unknown platform fallback</comment>
@@ -4299,9 +5901,33 @@
     <value>{1} месяцев плюс {0} дней Pro</value>
     <comment>USDC panel: the term the welcome-offer payment buys.</comment>
   </data>
+  <data name="skip" xml:space="preserve">
+    <value>Пропустить</value>
+    <comment>Small muted button at the top of the post-login onboarding flow that leaves the whole flow.</comment>
+  </data>
+  <data name="sn_status_claimable" xml:space="preserve">
+    <value>Доступно к получению</value>
+    <comment>Claim status of an epoch whose alpha can be claimed now.</comment>
+  </data>
+  <data name="sn_status_not_finalized" xml:space="preserve">
+    <value>Не завершена</value>
+    <comment>Claim status of an epoch the vault has not finalized yet.</comment>
+  </data>
+  <data name="sn_status_open" xml:space="preserve">
+    <value>Открыта</value>
+    <comment>Claim status of an epoch that is still open (not yet finalized on chain).</comment>
+  </data>
+  <data name="solana_one_time_payment" xml:space="preserve">
+    <value>Оплата в USDC в сети Solana — это разовый годовой платёж без бесплатного пробного периода.</value>
+    <comment>Note under the Solana payment button on the plan picker: Solana is a one-time yearly payment, the free trial is Stripe only.</comment>
+  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>Войти через Solana</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="solana_wallet" xml:space="preserve">
+    <value>Кошелек Solana</value>
+    <comment>Label of the connected Solana wallet block on the Earnings screen (parallel to bittensor_wallet).</comment>
   </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>Что-то пошло не так.</value>
@@ -4387,6 +6013,10 @@
     <value>Чтобы начать зарабатывать, присоединяйтесь к сети</value>
     <comment>Guest mode overlay</comment>
   </data>
+  <data name="start_free_trial" xml:space="preserve">
+    <value>Начать бесплатный пробный период</value>
+    <comment>Primary button of the plan picker (onboarding and upgrade): starts the paid plan's free trial. Replaces 'Join the movement'.</comment>
+  </data>
   <data name="stay" xml:space="preserve">
     <value>Остаться</value>
     <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
@@ -4434,6 +6064,14 @@
   <data name="strong_anonymization" xml:space="preserve">
     <value>Усиленная анонимизация</value>
     <comment>Connect drawer: strong anonymization toggle — the inverse of allow direct (direct connections expose the real source IP to the provider).</comment>
+  </data>
+  <data name="subscribe" xml:space="preserve">
+    <value>Подписаться</value>
+    <comment>Button on the plan picker for the monthly plan, which has no free trial.</comment>
+  </data>
+  <data name="subscription_purchased_under_different_account" xml:space="preserve">
+    <value>Ваша подписка была оформлена в другом аккаунте. Войдите в этот аккаунт, чтобы пользоваться ею.</value>
+    <comment>The store purchase belongs to a different network than the one logged in — crediting must not go to the wrong account, so tell the user which way out exists. Apple: restore-purchases outcome (Shared/ViewModels/AppStoreSubscriptionManager.swift). Android: terminal `wrong_network` answer from the Play purchase report (google/PlanViewModel.kt); the purchase is still acknowledged so Play does not auto-refund it.</comment>
   </data>
   <data name="successfully_claimed_multiplier" xml:space="preserve">
     <value>Множитель успешно получен!</value>
@@ -4483,6 +6121,10 @@
     <value>Вы хотите отключиться от {} и сменить аккаунт?</value>
     <comment>Call to action</comment>
   </data>
+  <data name="symbol_ellipsis" xml:space="preserve">
+    <value>...</value>
+    <comment>An ellipsis character used to indicate ongoing processing.</comment>
+  </data>
   <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
     <value>Синхронизировать местоположение устройства с провайдером, подключенным дольше всего</value>
     <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
@@ -4494,6 +6136,10 @@
   <data name="system" xml:space="preserve">
     <value>Система</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
+  </data>
+  <data name="tao_amount_linux" xml:space="preserve">
+    <value>{} TAO</value>
+    <comment>A TAO amount with its unit (the gas key balance).</comment>
   </data>
   <data name="tap_to_connect" xml:space="preserve">
     <value>Нажмите для подключения</value>
@@ -4519,6 +6165,10 @@
     <value>Спасибо за отзыв!</value>
     <comment>Confirmation shown after feedback is sent.</comment>
   </data>
+  <data name="the_purchase_could_not_be_completed" xml:space="preserve">
+    <value>Не удалось завершить покупку. Попробуйте снова.</value>
+    <comment>Shown inline in the upgrade flow when a StoreKit purchase attempt throws (Shared/ViewModels/AppStoreSubscriptionManager.swift). Every purchase failure is shown to the user — a payment error they cannot see is one they will hit again. User cancellation is not an error and never shows this.</comment>
+  </data>
   <data name="there_was_an_error_checking_the_network_name" xml:space="preserve">
     <value>Произошла ошибка при проверке имени сети</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkViewModel.swift.</comment>
@@ -4535,6 +6185,10 @@
     <value>⚠️ Вы увидите её только один раз.</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
   </data>
+  <data name="this_purchase_couldn_t_be_verified" xml:space="preserve">
+    <value>Эту покупку не удалось подтвердить в App Store, поэтому её нельзя применить к вашему аккаунту. Если с вас списали оплату, а тариф не обновился, обратитесь в поддержку.</value>
+    <comment>Shown inline in the upgrade flow when the server's verify answer for a purchase's transaction JWS is terminal `invalid` — the proof will never verify. The transaction is still finished so StoreKit stops redelivering it; this message is how the failure reaches the user instead of a silent success (Shared/ViewModels/AppStoreSubscriptionManager.swift). Apple sibling of purchase_could_not_be_verified (android).</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>этом регионе</value>
     <comment>dns settings</comment>
@@ -4549,6 +6203,30 @@
   </data>
   <data name="title_login" xml:space="preserve">
     <value>Вход</value>
+  </data>
+  <data name="top200" xml:space="preserve">
+    <value>Топ-200</value>
+    <comment>Badge text for the head mining spot.</comment>
+  </data>
+  <data name="top200_bound_detail" xml:space="preserve">
+    <value>Эмиссия выплачивается напрямую на ваш coldkey. Привязки обновляются каждую эпоху.</value>
+    <comment>Detail under the bound status.</comment>
+  </data>
+  <data name="top200_bound_status" xml:space="preserve">
+    <value>UID {0} · место #{1}</value>
+    <comment>Status row once bound.</comment>
+  </data>
+  <data name="top200_demotion_warning" xml:space="preserve">
+    <value>Ваш балл близок к порогу вытеснения. Добавьте маршрутизируемые IP, чтобы сохранить место.</value>
+    <comment>Warning when the score nears the floor.</comment>
+  </data>
+  <data name="top200_detail" xml:space="preserve">
+    <value>По разнообразию маршрутизируемых IP ваша сеть занимает примерно #{0} место из {1} ведущих мест. Ведущие майнеры нативно получают SN25α в каждом tempo.</value>
+    <comment>Detail of the Top 200 tile when eligible.</comment>
+  </data>
+  <data name="top200_you_qualify" xml:space="preserve">
+    <value>Вы проходите отбор</value>
+    <comment>Headline of the Top 200 tile when eligible.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>Лучшие совпадения</value>
@@ -4606,6 +6284,62 @@
     <value>Ваш перевод инициирован и будет завершен после обработки транзакции в сети.</value>
     <comment>Transfer Submitted Overlay</comment>
   </data>
+  <data name="transport" xml:space="preserve">
+    <value>Транспорт</value>
+    <comment>Section header of the transport mode selection (Auto or a single transport).</comment>
+  </data>
+  <data name="transport_auto_degraded" xml:space="preserve">
+    <value>Режим «Автоматически» работает с ограничениями: системные ограничения не позволяют запустить некоторые включённые транспорты.</value>
+    <comment>Generic warning banner in the transport settings editor when the Auto policy is degraded for a constraint this app version does not recognize (the SDK may report new constraint kinds; "memory" has its own banner).</comment>
+  </data>
+  <data name="transport_auto_degraded_memory" xml:space="preserve">
+    <value>Режим «Автоматически» работает с ограничениями: лимиты системной памяти не позволяют запустить некоторые включённые транспорты.</value>
+    <comment>Warning banner in the transport settings editor when the Auto policy is degraded because the platform memory budget cannot admit every enabled transport.</comment>
+  </data>
+  <data name="transport_auto_description" xml:space="preserve">
+    <value>Рекомендуется. Использует включённые ниже транспорты.</value>
+    <comment>Subtitle of the Auto transport mode row.</comment>
+  </data>
+  <data name="transport_client_footer" xml:space="preserve">
+    <value>Транспорт, через который это устройство подключается к провайдерам. Режим «Автоматически» перебирает включённые транспорты в порядке предпочтения и держит все исправные транспорты одного уровня подключёнными параллельно.</value>
+    <comment>Footer of the client transport mode section.</comment>
+  </data>
+  <data name="transport_dns_description" xml:space="preserve">
+    <value>Маскируется под DNS-трафик. Для сетей, которые фильтруют прямые подключения.</value>
+    <comment>One line description of the whodis (DNS) transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_dnspump_description" xml:space="preserve">
+    <value>Маскируется под DNS-трафик с постоянной подкачкой ответов. Минимальная пропускная способность, максимальная доступность.</value>
+    <comment>One line description of the whodis pump (DNS pump) transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_h1_description" xml:space="preserve">
+    <value>Напрямую через TLS. Работает в большинстве сетей.</value>
+    <comment>One line description of the H1 transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_h3_description" xml:space="preserve">
+    <value>Напрямую через QUIC. Самый быстрый там, где его не фильтруют.</value>
+    <comment>One line description of the H3 transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_provider_footer" xml:space="preserve">
+    <value>Транспорт, который это устройство использует, предоставляя доступ другим. Режим «Автоматически» перебирает включённые транспорты в порядке предпочтения и держит все исправные транспорты одного уровня подключёнными параллельно.</value>
+    <comment>Footer of the provider transport mode section.</comment>
+  </data>
+  <data name="transport_queued" xml:space="preserve">
+    <value>в очереди</value>
+    <comment>Transport bar label for traffic admitted for sending but not yet attributed to a physical transport.</comment>
+  </data>
+  <data name="transport_unavailable_system_constraints" xml:space="preserve">
+    <value>Недоступно из-за системных ограничений</value>
+    <comment>Accessibility label / tooltip on the warning icon next to a transport that is enabled under Auto but not currently eligible under a system constraint (for example the platform memory budget). A runtime warning, not a settings restriction: the toggle stays editable.</comment>
+  </data>
+  <data name="transport_unused" xml:space="preserve">
+    <value>не используются</value>
+    <comment>Prefix of the transport bar footer listing the enabled transports that carried no traffic in the stats window.</comment>
+  </data>
+  <data name="transports" xml:space="preserve">
+    <value>Транспорты</value>
+    <comment>Title of the transport distribution bar under the client statistics chart and of the transport settings editor.</comment>
+  </data>
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>Доверяют более 100 000 частных сетей</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
@@ -4629,6 +6363,10 @@
   <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
     <value>Соединение прервано.</value>
     <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
+  <data name="unclaimed" xml:space="preserve">
+    <value>Не получено</value>
+    <comment>Label of the unclaimed alpha tile.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>Незашифрованный DNS</value>
@@ -4734,12 +6472,24 @@
     <value>URnetwork VPN запущен</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
+  <data name="usdc_payouts_until_migration" xml:space="preserve">
+    <value>Выплаты в USDC будут поступать на этот кошелек, пока не завершится переход на Bittensor.</value>
+    <comment>Second paragraph of the Solana connect sheet/card, and the body line under a connected Solana wallet.</comment>
+  </data>
   <data name="usdc_solana_network_only" xml:space="preserve">
     <value>Отправляйте USDC только в сети Solana. USDC, отправленные в другой сети, не дойдут.</value>
     <comment>Payment: the chain to send on. Shown wherever a USDC payment is requested, because USDC exists on many chains and a transfer sent on the wrong one is lost.</comment>
   </data>
+  <data name="usdc_waiting" xml:space="preserve">
+    <value>{} USDC ожидают выплаты</value>
+    <comment>The pending USDC payout total waiting to be sent to the Solana payout wallet; shown on the Solana wallet block and, while no Solana wallet is connected, next to the wallet actions. Mirrors the email headline.</comment>
+  </data>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>Адрес кошелька USDC</value>
+  </data>
+  <data name="use_extender_settings" xml:space="preserve">
+    <value>Использовать настройки экстендера</value>
+    <comment>Toggle on the import screen: also apply the extender settings carried by the code.</comment>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>Используется самый стабильный провайдер</value>
@@ -4772,6 +6522,9 @@
   <data name="uses_ur_protocol" xml:space="preserve">
     <value>Использует UR Protocol</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="value_string" xml:space="preserve">
+    <value>{}</value>
   </data>
   <data name="value_with_unit" xml:space="preserve">
     <value>{0} {1}</value>
@@ -4812,6 +6565,10 @@
     <value>Код подтверждения</value>
     <comment>Label for the verification code input field</comment>
   </data>
+  <data name="verify_seeker" xml:space="preserve">
+    <value>Подтвердить Seeker</value>
+    <comment>Standalone Seeker verification action (points multiplier only).</comment>
+  </data>
   <data name="verify_seeker_token_btn" xml:space="preserve">
     <value>Проверить токен Seeker Pre-Order</value>
     <comment>Call to action</comment>
@@ -4844,17 +6601,41 @@
     <value>Кошелек</value>
     <comment>Account Screen</comment>
   </data>
+  <data name="wallet_blocked" xml:space="preserve">
+    <value>Этот кошелек нельзя использовать с URnetwork.</value>
+    <comment>Error when a wallet address is on the operator's ban list; the user cannot continue.</comment>
+  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>Не удалось подключить кошелек.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
+  </data>
+  <data name="wallet_connect_signed_note_linux" xml:space="preserve">
+    <value>Ваш кошелек подписывает сообщение, чтобы подтвердить, что он ваш. В блокчейн ничего не отправляется.</value>
+    <comment>Note under the manual address entry: the wallet only signs a proof of ownership.</comment>
   </data>
   <data name="wallet_connected" xml:space="preserve">
     <value>Кошелек подключен.</value>
     <comment>Confirmation shown after an external wallet is connected to the account.</comment>
   </data>
+  <data name="wallet_connected_to_protocol" xml:space="preserve">
+    <value>Подключено к протоколу UR. Полученные средства поступают сюда. Alpha начисляется со следующей эпохи после подключения.</value>
+    <comment>Line under the connected coldkey.</comment>
+  </data>
+  <data name="wallet_looks_new_warning" xml:space="preserve">
+    <value>У этого адреса пока нет активности в блокчейне Bittensor. Похоже, это новый кошелек. Прежде чем продолжить, убедитесь, что он ваш.</value>
+    <comment>Warning when a wallet address has no activity on the Bittensor chain yet; the user may continue.</comment>
+  </data>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>Этот кошелек пока не привязан к сети. Выберите имя сети, чтобы создать ее.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
+  </data>
+  <data name="wallet_not_retroactive" xml:space="preserve">
+    <value>Подключите кошелек, чтобы получать SN25α со следующей эпохи. Прошлые эпохи задним числом не рассчитываются.</value>
+    <comment>Line on the wallet block before a wallet is connected.</comment>
+  </data>
+  <data name="wallet_options" xml:space="preserve">
+    <value>Параметры кошелька</value>
+    <comment>Accessibility label of the three-dot overflow button next to “Connect Bittensor wallet” and on the connected Bittensor wallet block.</comment>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>Не удалось войти с помощью кошелька</value>
@@ -4863,6 +6644,14 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>Способ входа через кошелек добавлен</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
+  <data name="wallet_signature_mismatch_linux" xml:space="preserve">
+    <value>Кошелек, который подписал запрос, не соответствует введённому адресу.</value>
+    <comment>Error when the bridge signed with a different wallet than the address the user typed.</comment>
+  </data>
+  <data name="we_re_confirming_your_purchase_with_the_app_store" xml:space="preserve">
+    <value>Мы подтверждаем вашу покупку в App Store. Ваш тариф обновится автоматически.</value>
+    <comment>Body of the post-purchase screen while the confirmation poll runs (Shared/Views/PurchaseSuccessView.swift). Processing-shaped, not premium-shaped: the server learns of the purchase by webhook and has not confirmed yet.</comment>
   </data>
   <data name="welcome_offer_eyebrow" xml:space="preserve">
     <value>Приветственное предложение</value>
@@ -4879,6 +6668,158 @@
   <data name="when_you_refer_a_friend" xml:space="preserve">
     <value>Когда вы приглашаете друга:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="widget_client" xml:space="preserve">
+    <value>Клиент</value>
+    <comment>Dashboard widget chart title: this device's own traffic.</comment>
+  </data>
+  <data name="widget_connect_once" xml:space="preserve">
+    <value>Подключитесь хотя бы раз, чтобы видеть здесь свой трафик</value>
+    <comment>Dashboard widget footer before the tunnel has ever written data.</comment>
+  </data>
+  <data name="widget_connect_to_see_contracts" xml:space="preserve">
+    <value>Подключитесь, чтобы увидеть свои контракты</value>
+    <comment>Contracts widget empty state while the tunnel is down.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.one" xml:space="preserve">
+    <value>{0} контракт, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.few" xml:space="preserve">
+    <value>{0} контракта, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.many" xml:space="preserve">
+    <value>{0} контрактов, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.other" xml:space="preserve">
+    <value>{0} контракта, {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contracts_description" xml:space="preserve">
+    <value>Ваши главные клиентские контракты в движении — по мере того как они появляются и исчезают.</value>
+    <comment>Description of the contracts widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_control_description" xml:space="preserve">
+    <value>Подключение и отключение VPN URnetwork.</value>
+    <comment>Description of the quick connect control in the Control Center gallery.</comment>
+  </data>
+  <data name="widget_dashboard_description" xml:space="preserve">
+    <value>Баланс трафика, подключённая локация и трафик, с быстрым подключением.</value>
+    <comment>Description of the dashboard widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_globe_description" xml:space="preserve">
+    <value>Ваши подключённые провайдеры на глобусе.</value>
+    <comment>Description of the provider globe widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_more_providers" xml:space="preserve">
+    <value>ещё {}</value>
+    <comment>Provider globe widget: providers not shown in the list. The argument is a count.</comment>
+  </data>
+  <data name="widget_no_contracts" xml:space="preserve">
+    <value>Нет контрактов</value>
+    <comment>Contracts widget empty state while connected with no open client contracts.</comment>
+  </data>
+  <data name="widget_no_providers" xml:space="preserve">
+    <value>Нет провайдеров</value>
+    <comment>Badge on the small provider globe widget when no providers are connected.</comment>
+  </data>
+  <data name="widget_not_providing" xml:space="preserve">
+    <value>Не предоставляет</value>
+    <comment>Dashboard widget provider chart label when providing is off.</comment>
+  </data>
+  <data name="widget_not_signed_in" xml:space="preserve">
+    <value>Вход не выполнен</value>
+    <comment>Quick connect control / widget value when the app has no tunnel configuration yet (fresh install or logged out).</comment>
+  </data>
+  <data name="widget_open" xml:space="preserve">
+    <value>Открыть</value>
+    <comment>Button on the Home Screen widget that opens the app when the tunnel is not configured yet.</comment>
+  </data>
+  <data name="widget_open_to_set_up" xml:space="preserve">
+    <value>Откройте URnetwork для настройки</value>
+    <comment>Widget subtitle when the app has no tunnel configuration yet.</comment>
+  </data>
+  <data name="widget_peak_rate" xml:space="preserve">
+    <value>Пик {}</value>
+    <comment>Chart label; the argument is a formatted byte rate such as '1.2 MB/s'.</comment>
+  </data>
+  <data name="widget_peer_count.one" xml:space="preserve">
+    <value>{} узел</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.few" xml:space="preserve">
+    <value>{} узла</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.many" xml:space="preserve">
+    <value>{} узлов</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.other" xml:space="preserve">
+    <value>{} узла</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_provider" xml:space="preserve">
+    <value>Провайдер</value>
+    <comment>Dashboard widget chart title: traffic relayed for others while providing.</comment>
+  </data>
+  <data name="widget_provider_count.one" xml:space="preserve">
+    <value>{} провайдер</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.few" xml:space="preserve">
+    <value>{} провайдера</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.many" xml:space="preserve">
+    <value>{} провайдеров</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.other" xml:space="preserve">
+    <value>{} провайдеров</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count_providing.one" xml:space="preserve">
+    <value>{} провайдер · предоставление</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.few" xml:space="preserve">
+    <value>{} провайдера · предоставление</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.many" xml:space="preserve">
+    <value>{} провайдеров · предоставление</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.other" xml:space="preserve">
+    <value>{} провайдеров · предоставление</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_mode_title" xml:space="preserve">
+    <value>Провайдер · {}</value>
+    <comment>Title above the provider traffic chart in the dashboard widget: the chart name with the current provide mode (Auto, Always, Network, Never).</comment>
+  </data>
+  <data name="widget_provider_stats_when_enabled" xml:space="preserve">
+    <value>Статистика провайдера появится, когда провайдер будет включён.</value>
+    <comment>Shown in the dashboard widget in place of the provider traffic chart while providing is off.</comment>
+  </data>
+  <data name="widget_quick_tile_added" xml:space="preserve">
+    <value>Плитка быстрого подключения добавлена</value>
+    <comment>Toast after the system added the Quick Settings tile.</comment>
+  </data>
+  <data name="widget_toggle_intent_title" xml:space="preserve">
+    <value>Переключить VPN URnetwork</value>
+    <comment>Title of the Set-Value intent behind the quick connect control and widget toggle (shown by the system in Shortcuts/debug UI).</comment>
+  </data>
+  <data name="widget_updated_ago" xml:space="preserve">
+    <value>Обновлено {}</value>
+    <comment>Dashboard widget footer; the argument is a localized relative time such as '3 min. ago'.</comment>
+  </data>
+  <data name="widget_updated_just_now" xml:space="preserve">
+    <value>Обновлено только что</value>
+    <comment>Dashboard widget footer in the widget gallery preview.</comment>
   </data>
   <data name="widgets" xml:space="preserve">
     <value>Виджеты</value>
@@ -4920,6 +6861,10 @@
     <value>Вы получаете 3 GiB/день навсегда</value>
     <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
   </data>
+  <data name="you_get_free_data_every_day" xml:space="preserve">
+    <value>Вы получаете бесплатные данные каждый день.</value>
+    <comment>Detail line under the onboarding data page title.</comment>
+  </data>
   <data name="you_have_1_other_device_online" xml:space="preserve">
     <value>У вас 1 другое устройство онлайн</value>
   </data>
@@ -4942,9 +6887,17 @@
     <value>У вас премиум.</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="your_bandwidth" xml:space="preserve">
+    <value>Ваша пропускная способность</value>
+    <comment>Title of the onboarding data page (was 'Boost your bandwidth').</comment>
+  </data>
   <data name="your_email" xml:space="preserve">
     <value>Ваш email</value>
     <comment>Label for the empty text field.</comment>
+  </data>
+  <data name="your_email_com" xml:space="preserve">
+    <value>name@email.com</value>
+    <comment>Placeholder text for the email field.</comment>
   </data>
   <data name="your_friend_gets_30_gib_month_for_life" xml:space="preserve">
     <value>Ваш друг получает 30 ГиБ/месяц навсегда</value>

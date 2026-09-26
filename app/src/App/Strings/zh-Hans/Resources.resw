@@ -72,9 +72,17 @@
     <value>{}（已验证）</value>
     <comment>The account's email or phone, marked as verified. The argument is the email or phone number.</comment>
   </data>
+  <data name="account_isn_t_ready_for_purchases" xml:space="preserve">
+    <value>您的账户暂时无法进行购买。请重启应用后重试。</value>
+    <comment>Shown when a purchase is refused before contacting the App Store because the networkId is missing or unparseable — the purchase could never be credited to anyone (Shared/ViewModels/AppStoreSubscriptionManager.swift). This used to be a silent no-op.</comment>
+  </data>
   <data name="account_needs_verification" xml:space="preserve">
     <value>此账户需要验证。请查收您的电子邮件。</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
+  </data>
+  <data name="active_extenders" xml:space="preserve">
+    <value>活跃的扩展器</value>
+    <comment>Accessibility label of the row of rings, one per extender carrying a live connection.</comment>
   </data>
   <data name="activity" xml:space="preserve">
     <value>活动</value>
@@ -114,6 +122,10 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>添加登录方式</value>
     <comment>Button text for adding a sign-in method.</comment>
+  </data>
+  <data name="add_tao_for_gas" xml:space="preserve">
+    <value>添加 TAO 以支付 Gas 费</value>
+    <comment>State when the gas key has no TAO.</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>您可以将设置调整为“始终”，以更快地填充免费数据</value>
@@ -445,6 +457,10 @@
     <value>应用版本</value>
     <comment>Settings, about: label of the app version row.</comment>
   </data>
+  <data name="apple" xml:space="preserve">
+    <value>Apple</value>
+    <comment>A method of adding a sign-in method.</comment>
+  </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>已添加 Apple 登录方式</value>
     <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
@@ -570,9 +586,21 @@
     <value>余额码</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
+  <data name="balance_code_already_redeemed_message" xml:space="preserve">
+    <value>此余额码已被兑换。如果您之前已兑换过，数据已计入您的余额。</value>
+    <comment>Redeem balance code: the server answered that this code was already redeemed. Distinct from invalid -- the user may have redeemed it on an earlier attempt that looked like a failure.</comment>
+  </data>
+  <data name="balance_code_invalid_message" xml:space="preserve">
+    <value>该余额码无效。请检查后重试。</value>
+    <comment>Redeem balance code: the server answered and rejected the code as unknown/invalid. Distinct from a transport failure, which must never be reported as a bad code.</comment>
+  </data>
   <data name="balance_code_redeemed" xml:space="preserve">
     <value>余额码已兑换。</value>
     <comment>Confirmation shown after a balance code is redeemed.</comment>
+  </data>
+  <data name="balance_code_transport_error" xml:space="preserve">
+    <value>无法连接到服务器，请检查网络连接。如果您已被扣款，该余额码可能已生效；请先查看余额再重试。</value>
+    <comment>Redeem balance code: the request never got a server answer (network failure). Must NOT be worded as 'bad code' -- the redeem may have committed server-side, so tell the user to check their balance before retrying.</comment>
   </data>
   <data name="balance_code_where_to_buy" xml:space="preserve">
     <value>没有余额码？可在 ur.io 购买，购买后会通过电子邮件发送给你。</value>
@@ -581,6 +609,10 @@
   <data name="balance_codes_link" xml:space="preserve">
     <value>余额码</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="balance_codes_load_error" xml:space="preserve">
+    <value>无法加载您的余额码。请检查网络连接后重试。</value>
+    <comment>Linux redeem-code sheet: shown in place of the redeemed-codes history when getNetworkRedeemedBalanceCodes FAILS (transport error, no response, or a server-side error) — distinct from the empty state's "No balance codes found", which is only for a successful fetch with no codes.</comment>
   </data>
   <data name="balance_codes_title" xml:space="preserve">
     <value>余额码</value>
@@ -598,9 +630,17 @@
     <value>最佳匹配</value>
     <comment>Label for a list or section showing the best matching results.</comment>
   </data>
+  <data name="best_value" xml:space="preserve">
+    <value>最超值</value>
+    <comment>Gold pill on the recommended (annual) plan card.</comment>
+  </data>
   <data name="bittensor_sign_in" xml:space="preserve">
     <value>使用 Bittensor 登录</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="bittensor_wallet" xml:space="preserve">
+    <value>Bittensor 钱包</value>
+    <comment>Label of the connected wallet block.</comment>
   </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>拦截广告和跟踪器</value>
@@ -672,9 +712,17 @@
     <value>绕过 VPN</value>
     <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
   </data>
+  <data name="camera_permission_needed" xml:space="preserve">
+    <value>需要相机权限才能扫码。</value>
+    <comment>Shown when the camera permission was denied on the scan screen.</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>取消</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="chain_rpc_unreachable" xml:space="preserve">
+    <value>无法访问链的 RPC。请重试。</value>
+    <comment>Error when the subnet RPC cannot be reached.</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>更改</value>
@@ -716,9 +764,33 @@
     <value>正在检查 Solana 交易</value>
     <comment>Call to action</comment>
   </data>
+  <data name="checking_wallet_address" xml:space="preserve">
+    <value>正在检查地址…</value>
+    <comment>Progress text while the address is validated.</comment>
+  </data>
+  <data name="checkout_browser_launch_failed" xml:space="preserve">
+    <value>无法打开您的浏览器。请将此链接复制到浏览器中以完成结账：</value>
+    <comment>Upgrade sheet: the system browser could not be opened for the hosted checkout url. The app appends the url itself on the next line (selectable) so the user can copy it into a browser by hand — never advancing to the waiting page with no payment page open.</comment>
+  </data>
+  <data name="checkout_interrupted_confirming" xml:space="preserve">
+    <value>结账页面意外关闭。如果您的付款已完成，您的方案会在此处自动更新，无需再次购买。</value>
+    <comment>Upgrade sheet waiting page: the embedded checkout webview crashed after the payment form had rendered, so a charge may already have gone through with only the redirect lost. Shown while the confirmation poll asks the server for the payment webhook; must never invite buying again.</comment>
+  </data>
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>请在浏览器中完成购买。付款确认后，您的计划将在此处自动更新。</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
+  </data>
+  <data name="choose_file" xml:space="preserve">
+    <value>选择文件</value>
+    <comment>Button on desktop: pick a file that contains a QR code image.</comment>
+  </data>
+  <data name="choose_image_file" xml:space="preserve">
+    <value>选择图片文件</value>
+    <comment>Button on desktop: pick an image file that contains a QR code.</comment>
+  </data>
+  <data name="choose_photo" xml:space="preserve">
+    <value>选择照片</value>
+    <comment>Button: pick a photo that contains a QR code.</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>城市</value>
@@ -728,6 +800,30 @@
     <value>领取</value>
     <comment>Call to action</comment>
   </data>
+  <data name="claim_across_epochs" xml:space="preserve">
+    <value>涵盖 {} 个已确认的周期</value>
+    <comment>Subtitle of the claim dialog.</comment>
+  </data>
+  <data name="claim_alpha_title" xml:space="preserve">
+    <value>领取 SN25α</value>
+    <comment>Title of the claim dialog.</comment>
+  </data>
+  <data name="claim_amount_button" xml:space="preserve">
+    <value>领取 {}</value>
+    <comment>Claim button with the amount.</comment>
+  </data>
+  <data name="claim_confirmed" xml:space="preserve">
+    <value>已领取</value>
+    <comment>Claim state: confirmed on chain.</comment>
+  </data>
+  <data name="claim_expired" xml:space="preserve">
+    <value>已过期</value>
+    <comment>Claim state: past the vault's expiry block.</comment>
+  </data>
+  <data name="claim_failed" xml:space="preserve">
+    <value>失败</value>
+    <comment>Claim state: failed.</comment>
+  </data>
   <data name="claim_multiplier" xml:space="preserve">
     <value>领取倍数</value>
     <comment>Call to action</comment>
@@ -735,6 +831,38 @@
   <data name="claim_network_name_hint" xml:space="preserve">
     <value>领取自定义网络名称，替换自动生成的名称</value>
     <comment>A description of the benefits of claiming a custom network name.</comment>
+  </data>
+  <data name="claim_sending_linux" xml:space="preserve">
+    <value>正在发送…</value>
+    <comment>Per-epoch status while the claim transaction is being sent.</comment>
+  </data>
+  <data name="claim_sends_from_device" xml:space="preserve">
+    <value>您的设备会将领取请求发送到金库合约。Gas 费以 TAO 从您的 Gas 密钥中支付。Alpha 将存入您的 coldkey。</value>
+    <comment>Explainer under the claim button.</comment>
+  </data>
+  <data name="claim_sent" xml:space="preserve">
+    <value>已发送</value>
+    <comment>Claim state: transaction sent.</comment>
+  </data>
+  <data name="claim_to_address_linux" xml:space="preserve">
+    <value>发送至 {}</value>
+    <comment>Destination line on the claim dialog: the coldkey the alpha lands on.</comment>
+  </data>
+  <data name="claim_unavailable_linux" xml:space="preserve">
+    <value>此设备暂不支持领取。</value>
+    <comment>Shown when the device cannot send claims (no gas key on this host).</comment>
+  </data>
+  <data name="claim_your_spot" xml:space="preserve">
+    <value>获取您的席位</value>
+    <comment>Button on the Top 200 tile.</comment>
+  </data>
+  <data name="claims_for_epoch_expired" xml:space="preserve">
+    <value>周期 {} 的领取已过期。</value>
+    <comment>Error when an epoch can no longer be claimed.</comment>
+  </data>
+  <data name="claims_open_after_finalization" xml:space="preserve">
+    <value>领取在周期确认 48 小时后开放，并在金库的有效期窗口内保持开放。</value>
+    <comment>Explainer in the claim dialog.</comment>
   </data>
   <data name="clear" xml:space="preserve">
     <value>清除</value>
@@ -824,6 +952,10 @@
     <value>连接并打开链接</value>
     <comment>Call to action</comment>
   </data>
+  <data name="connect_bittensor_wallet" xml:space="preserve">
+    <value>连接 Bittensor 钱包</value>
+    <comment>Button to connect a Bittensor coldkey.</comment>
+  </data>
   <data name="connect_options" xml:space="preserve">
     <value>连接选项</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
@@ -831,6 +963,14 @@
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>连接带有 Saga Genesis 或 Seeker 预售代币的钱包</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connect_solana_wallet" xml:space="preserve">
+    <value>连接 Solana 钱包</value>
+    <comment>Overflow menu item next to “Connect Bittensor wallet” on the Earnings screen, and the title of the Solana connect sheet/card: connect a Solana USDC payout wallet (wallet app, or manual address entry). USDC payouts continue until the migration to Bittensor completes.</comment>
+  </data>
+  <data name="connect_solana_wallet_note" xml:space="preserve">
+    <value>连接 Solana 钱包应用，或手动输入 Solana USDC 地址。</value>
+    <comment>Note at the top of the Solana connect sheet/card, above the wallet-app button and the manual-entry link.</comment>
   </data>
   <data name="connect_to_location" xml:space="preserve">
     <value>连接到 {}</value>
@@ -843,6 +983,10 @@
   <data name="connect_wallet" xml:space="preserve">
     <value>连接钱包</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="connect_wallet_first" xml:space="preserve">
+    <value>请先连接 Bittensor 钱包。</value>
+    <comment>Error when claiming without a wallet.</comment>
   </data>
   <data name="connected" xml:space="preserve">
     <value>已连接</value>
@@ -924,9 +1068,21 @@
     <value>复制客户端 ID</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
   </data>
+  <data name="copy_share_text" xml:space="preserve">
+    <value>复制分享文本</value>
+    <comment>Button on the share screen: copy the text form of the code.</comment>
+  </data>
   <data name="copy_to_clipboard" xml:space="preserve">
     <value>复制到剪贴板</value>
     <comment>Button text to copy the seedphrase to the clipboard.</comment>
+  </data>
+  <data name="couldn_t_load_subscription_options" xml:space="preserve">
+    <value>无法加载订阅选项。请检查网络连接后重试。</value>
+    <comment>Shown in the upgrade sheet and intro funnel when the App Store product fetch failed, with a retry action — replaces the eternal spinner (Shared/Views/UpgradeSubscriptionSheet.swift, Shared/Views/Introduction/IntroductionView.swift).</comment>
+  </data>
+  <data name="couldn_t_restore_purchases" xml:space="preserve">
+    <value>无法恢复购买。请重试。</value>
+    <comment>Restore-purchases outcome: the App Store sync failed (e.g. the user cancelled the credentials prompt or the store was unreachable) and no entitlement was found locally (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>无法打开钱包。请安装后再试。</value>
@@ -1068,6 +1224,10 @@
     <value>{} 支付</value>
     <comment>Call to action</comment>
   </data>
+  <data name="default_daily_data" xml:space="preserve">
+    <value>默认情况下，您每天可获得 {}。</value>
+    <comment>Onboarding data page: the daily free allowance, formatted from the server's balance (pro.yml free.data per data_period).</comment>
+  </data>
   <data name="default_option" xml:space="preserve">
     <value>默认</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
@@ -1091,6 +1251,626 @@
   <data name="delete_account_type_network_name" xml:space="preserve">
     <value>输入 {} 以确认。</value>
     <comment>Delete account dialog: asks the user to type the network name back before the delete button enables. {network} is the account's network name.</comment>
+  </data>
+  <data name="dev_affinity_performance" xml:space="preserve">
+    <value>性能感知亲和性</value>
+    <comment>Developer tools screen (reliability surface): performance-aware affinity control label.</comment>
+  </data>
+  <data name="dev_affinity_performance_detail" xml:space="preserve">
+    <value>按各提供商的峰值已确认字节速率相对其宣称带宽的比例，为新的 TLS 竞速加权。启用强亲和性时，测量值低的提供商会让位于竞速。现有连接和显式固定保持不变</value>
+    <comment>Developer tools screen: explanatory subtext under the performance-aware affinity control.</comment>
+  </data>
+  <data name="dev_affinity_sticky" xml:space="preserve">
+    <value>站点粘性亲和性</value>
+    <comment>Developer tools screen (reliability surface): affinity sticky control label.</comment>
+  </data>
+  <data name="dev_affinity_sticky_detail" xml:space="preserve">
+    <value>站点的新连接会留在其早先连接已使用的出口上，即使超过流上限也是如此，从而让繁忙的站点保持同一个出口 IP。上限仍决定哪些出口可以接收新站点。关闭时恢复严格上限</value>
+    <comment>Developer tools screen: explanatory subtext under the 'affinity sticky' control.</comment>
+  </data>
+  <data name="dev_behaviour" xml:space="preserve">
+    <value>行为</value>
+    <comment>Developer tools screen (reliability surface): behaviour control label.</comment>
+  </data>
+  <data name="dev_blackhole_receive" xml:space="preserve">
+    <value>更长时间保留静默的提供商</value>
+    <comment>Developer tools screen (reliability surface): blackhole receive control label.</comment>
+  </data>
+  <data name="dev_blackhole_receive_detail" xml:space="preserve">
+    <value>仍在确认流量的提供商在被丢弃前可以不返回任何数据的时长。关闭时会保留它们，直到它们停止确认</value>
+    <comment>Developer tools screen: explanatory subtext under the 'blackhole receive' control.</comment>
+  </data>
+  <data name="dev_blast_radius" xml:space="preserve">
+    <value>爆炸半径</value>
+    <comment>Developer tools screen (reliability surface): blast radius control label.</comment>
+  </data>
+  <data name="dev_blast_radius_detail" xml:space="preserve">
+    <value>每次提供商故障丢失的连接数。越低越好</value>
+    <comment>Developer tools screen: explanatory subtext under the 'blast radius' control.</comment>
+  </data>
+  <data name="dev_blast_radius_value" xml:space="preserve">
+    <value>每次故障 {}</value>
+    <comment>Developer tools screen: formatted value readout for 'blast radius'.</comment>
+  </data>
+  <data name="dev_busy_probe" xml:space="preserve">
+    <value>丢弃前探测停滞的出口</value>
+    <comment>Developer tools screen (reliability surface): busy probe control label.</comment>
+  </data>
+  <data name="dev_busy_probe_budget" xml:space="preserve">
+    <value>繁忙探测等待时间</value>
+    <comment>Developer tools screen (reliability surface): busy probe budget control label.</comment>
+  </data>
+  <data name="dev_busy_probe_budget_detail" xml:space="preserve">
+    <value>停滞探测在定罪前等待应答的时长。关闭时取停滞阈值的一半</value>
+    <comment>Developer tools screen: explanatory subtext under the 'busy probe budget' control.</comment>
+  </data>
+  <data name="dev_busy_probe_detail" xml:space="preserve">
+    <value>出口停滞时，先 ping 一次再定罪。拥塞但仍存活的出口会应答并保留其流；已失效的出口仍会被丢弃。关闭时按停滞阈值直接定罪</value>
+    <comment>Developer tools screen: explanatory subtext under the 'busy probe' control.</comment>
+  </data>
+  <data name="dev_busy_probes" xml:space="preserve">
+    <value>繁忙探测</value>
+    <comment>Developer tools screen (reliability surface): busy probes control label.</comment>
+  </data>
+  <data name="dev_busy_probes_detail" xml:space="preserve">
+    <value>向停滞出口发送的存活 ping；判为无罪的出口已应答并被保留，即探测避免的移除</value>
+    <comment>Developer tools screen: explanatory subtext under the 'busy probes' control.</comment>
+  </data>
+  <data name="dev_busy_probes_value" xml:space="preserve">
+    <value>已发送 {0} / 判为无罪 {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'busy probes'.</comment>
+  </data>
+  <data name="dev_choose_logs" xml:space="preserve">
+    <value>选择日志…</value>
+    <comment>Developer tools screen: action for choosing individual log files to export.</comment>
+  </data>
+  <data name="dev_clear_logs" xml:space="preserve">
+    <value>清除日志</value>
+    <comment>Developer tools screen: action that deletes the diagnostics log files without touching local state, preferences or rules.</comment>
+  </data>
+  <data name="dev_clearing_logs" xml:space="preserve">
+    <value>正在清除日志…</value>
+    <comment>Developer tools screen: the clear-logs action's label while it runs.</comment>
+  </data>
+  <data name="dev_cluster_affinity" xml:space="preserve">
+    <value>按站点分组 IP</value>
+    <comment>Developer tools screen (reliability surface): cluster affinity control label.</comment>
+  </data>
+  <data name="dev_cluster_affinity_detail" xml:space="preserve">
+    <value>当站点的主机名不可见时，让其保持在同一出口上</value>
+    <comment>Developer tools screen: explanatory subtext under the 'cluster affinity' control.</comment>
+  </data>
+  <data name="dev_comparative_connect" xml:space="preserve">
+    <value>提前中止无效连接</value>
+    <comment>Developer tools screen (reliability surface): comparative connect control label.</comment>
+  </data>
+  <data name="dev_comparative_connect_detail" xml:space="preserve">
+    <value>当两个同级出口正在接收数据时，更早丢弃尚未建立任何连接的出口。关闭时等待完整的 30 秒连接阈值</value>
+    <comment>Developer tools screen: explanatory subtext under the 'comparative connect' control.</comment>
+  </data>
+  <data name="dev_dial_failure_rerace" xml:space="preserve">
+    <value>在其他出口重试被拒绝的连接</value>
+    <comment>Developer tools screen (reliability surface): dial failure rerace control label.</comment>
+  </data>
+  <data name="dev_dial_failure_rerace_detail" xml:space="preserve">
+    <value>当提供商无法访问某个站点时，将连接转移到其他出口，而不是让其挂起</value>
+    <comment>Developer tools screen: explanatory subtext under the 'dial failure rerace' control.</comment>
+  </data>
+  <data name="dev_dial_failures" xml:space="preserve">
+    <value>提供商连接失败</value>
+    <comment>Developer tools screen (reliability surface): dial failures control label.</comment>
+  </data>
+  <data name="dev_dial_failures_detail" xml:space="preserve">
+    <value>提供商报告无法建立上游连接的次数</value>
+    <comment>Developer tools screen: explanatory subtext under the 'dial failures' control.</comment>
+  </data>
+  <data name="dev_drop_exit" xml:space="preserve">
+    <value>丢弃</value>
+    <comment>Developer tools screen (reliability surface): drop exit control label.</comment>
+  </data>
+  <data name="dev_effective_tier" xml:space="preserve">
+    <value>实时层级降级</value>
+    <comment>Developer tools screen (reliability surface): effective tier control label.</comment>
+  </data>
+  <data name="dev_effective_tier_detail" xml:space="preserve">
+    <value>拨号失败和经受住的判定会在一秒内降低提供商的排名；恢复排名需要若干分钟无故障运行以及一次经验证的连接</value>
+    <comment>Developer tools screen: explanatory subtext under the 'effective tier' control.</comment>
+  </data>
+  <data name="dev_evaluation_pool" xml:space="preserve">
+    <value>每个槽位评估的候选数</value>
+    <comment>Developer tools screen (reliability surface): evaluation pool control label.</comment>
+  </data>
+  <data name="dev_evaluation_pool_detail" xml:space="preserve">
+    <value>窗口扩展时为每个所需槽位 ping 并排名的提供商数量，保留最佳者。1 表示只评估恰好所需的数量</value>
+    <comment>Developer tools screen: explanatory subtext under the 'evaluation pool' control.</comment>
+  </data>
+  <data name="dev_exit_dial_failures" xml:space="preserve">
+    <value>{} 次拨号失败</value>
+    <comment>Developer tools screen (reliability surface): exit dial failures control label.</comment>
+  </data>
+  <data name="dev_exit_flows" xml:space="preserve">
+    <value>{} 个流</value>
+    <comment>Developer tools screen (reliability surface): exit flows control label.</comment>
+  </data>
+  <data name="dev_exits" xml:space="preserve">
+    <value>出口</value>
+    <comment>Developer tools screen (reliability surface): exits control label.</comment>
+  </data>
+  <data name="dev_export_all_logs" xml:space="preserve">
+    <value>导出所有日志（原始）</value>
+    <comment>Developer tools screen: action for exporting all diagnostic logs without redaction.</comment>
+  </data>
+  <data name="dev_export_failed" xml:space="preserve">
+    <value>导出失败：{}</value>
+    <comment>Developer tools screen: error shown when diagnostic log export fails.</comment>
+  </data>
+  <data name="dev_export_not_included" xml:space="preserve">
+    <value>未包含：{}</value>
+    <comment>Developer tools screen: explanation that a requested diagnostic item was omitted from an export.</comment>
+  </data>
+  <data name="dev_export_redacted_logs" xml:space="preserve">
+    <value>导出脱敏日志</value>
+    <comment>Developer tools screen: action for exporting diagnostic logs with sensitive traffic details redacted.</comment>
+  </data>
+  <data name="dev_export_selected" xml:space="preserve">
+    <value>导出所选项</value>
+    <comment>Developer tools screen: action for exporting the selected diagnostic log files.</comment>
+  </data>
+  <data name="dev_export_share" xml:space="preserve">
+    <value>分享诊断包</value>
+    <comment>Developer tools screen: action for sharing a diagnostic bundle.</comment>
+  </data>
+  <data name="dev_export_summary.other" xml:space="preserve">
+    <value>已导出 {0} 个日志文件（{1}）</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_unavailable" xml:space="preserve">
+    <value>不可用：{}</value>
+    <comment>Developer tools screen: explanation that a diagnostic export option is unavailable.</comment>
+  </data>
+  <data name="dev_exporting" xml:space="preserve">
+    <value>正在导出…</value>
+    <comment>Developer tools screen: progress label shown while a diagnostic bundle is being exported.</comment>
+  </data>
+  <data name="dev_flows_opened" xml:space="preserve">
+    <value>已打开的流</value>
+    <comment>Developer tools screen (reliability surface): flows opened control label.</comment>
+  </data>
+  <data name="dev_flows_opened_detail" xml:space="preserve">
+    <value>自重置以来的总数，便于比较不同时长的运行</value>
+    <comment>Developer tools screen: explanatory subtext under the 'flows opened' control.</comment>
+  </data>
+  <data name="dev_flows_rebound" xml:space="preserve">
+    <value>重新绑定的 QUIC 流</value>
+    <comment>Developer tools screen (reliability surface): flows rebound control label.</comment>
+  </data>
+  <data name="dev_flows_rebound_detail" xml:space="preserve">
+    <value>在移除过程中转移到预热出口的流；“已接受”表示服务器在未重新拨号的情况下接受了路径变更</value>
+    <comment>Developer tools screen: explanatory subtext under the 'flows rebound' control.</comment>
+  </data>
+  <data name="dev_flows_rebound_value" xml:space="preserve">
+    <value>{0}（已接受 {1} / 重新拨号 {2}）</value>
+    <comment>Developer tools screen: formatted value readout for 'flows rebound'.</comment>
+  </data>
+  <data name="dev_flows_reraced" xml:space="preserve">
+    <value>已转移到其他出口</value>
+    <comment>Developer tools screen (reliability surface): flows reraced control label.</comment>
+  </data>
+  <data name="dev_flows_reraced_detail" xml:space="preserve">
+    <value>这些故障中有多少被静默转移，而没有挂起</value>
+    <comment>Developer tools screen: explanatory subtext under the 'flows reraced' control.</comment>
+  </data>
+  <data name="dev_formation_poll" xml:space="preserve">
+    <value>快速轮询首个出口</value>
+    <comment>Developer tools screen (reliability surface): formation poll control label.</comment>
+  </data>
+  <data name="dev_formation_poll_detail" xml:space="preserve">
+    <value>正在连接的流重新检查空窗口的频率，使第一个请求在首个出口就绪后立即发出。关闭时按 2 秒的重试节奏等待</value>
+    <comment>Developer tools screen: explanatory subtext under the 'formation poll' control.</comment>
+  </data>
+  <data name="dev_fresh_flow_affinity" xml:space="preserve">
+    <value>新流强亲和性</value>
+    <comment>Developer tools screen (reliability surface): hard fresh-flow affinity control label.</comment>
+  </data>
+  <data name="dev_fresh_flow_affinity_detail" xml:space="preserve">
+    <value>将每个新连接分配给其 IP 或域名已在使用的出口。默认关闭：每个普通的新连接都会进入提供商竞速。现有连接和显式固定始终保持不变</value>
+    <comment>Developer tools screen: explanatory subtext under the hard fresh-flow affinity control.</comment>
+  </data>
+  <data name="dev_group_follow" xml:space="preserve">
+    <value>跟随被隔离的出口</value>
+    <comment>Developer tools screen (reliability surface): group follow control label.</comment>
+  </data>
+  <data name="dev_group_follow_detail" xml:space="preserve">
+    <value>被隔离的出口在隔离初期（此时判定最不可靠）仍会承接其自身站点的新连接，以免隔离导致站点的出口 IP 分散。新站点仍会避开它。关闭时将这些连接分散出去</value>
+    <comment>Developer tools screen: explanatory subtext under the 'group follow' control.</comment>
+  </data>
+  <data name="dev_group_follow_window" xml:space="preserve">
+    <value>跟随窗口</value>
+    <comment>Developer tools screen (reliability surface): group follow window control label.</comment>
+  </data>
+  <data name="dev_group_follow_window_detail" xml:space="preserve">
+    <value>隔离开始后，站点的新连接继续跟随其出口的时长——早期隔离通常是误报；持续的隔离则趋向于移除，并停止接收新流。关闭时立即分散</value>
+    <comment>Developer tools screen: explanatory subtext under the 'group follow window' control.</comment>
+  </data>
+  <data name="dev_heartbeat" xml:space="preserve">
+    <value>状态心跳</value>
+    <comment>Developer tools screen (reliability surface): heartbeat control label.</comment>
+  </data>
+  <data name="dev_heartbeat_detail" xml:space="preserve">
+    <value>将一行实时状态摘要写入日志以供事后排查的频率。关闭时不写入；间隔越短越容易发现状态切换，越长则保留越多缓冲</value>
+    <comment>Developer tools screen: explanatory subtext under the 'heartbeat' control.</comment>
+  </data>
+  <data name="dev_load_corroboration" xml:space="preserve">
+    <value>负载佐证</value>
+    <comment>Developer tools screen (reliability surface): load corroboration control label.</comment>
+  </data>
+  <data name="dev_load_corroboration_detail" xml:space="preserve">
+    <value>在仅凭弱证据隔离繁忙出口之前，每达到此数量的流需额外增加的静默目标数：值为 8 时，有 24 个流的出口需要 3 个静默站点，而不是 2 个。关闭时保持固定的最小值</value>
+    <comment>Developer tools screen: explanatory subtext under the 'load corroboration' control.</comment>
+  </data>
+  <data name="dev_log_verbosity" xml:space="preserve">
+    <value>日志详细程度</value>
+    <comment>Developer tools screen: control label for diagnostic log detail.</comment>
+  </data>
+  <data name="dev_log_verbosity_default" xml:space="preserve">
+    <value>默认</value>
+    <comment>Developer tools screen: default diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_default_detail" xml:space="preserve">
+    <value>连接错误和合约 ping</value>
+    <comment>Developer tools screen: explanation of the default diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_trace" xml:space="preserve">
+    <value>跟踪</value>
+    <comment>Developer tools screen: trace diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_trace_detail" xml:space="preserve">
+    <value>传输方式和窗口的内部细节。日志非常大</value>
+    <comment>Developer tools screen: explanation of the trace diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_unavailable" xml:space="preserve">
+    <value>不可用</value>
+    <comment>Developer tools screen: label used when the diagnostic log detail level cannot be read.</comment>
+  </data>
+  <data name="dev_log_verbosity_unavailable_detail" xml:space="preserve">
+    <value>尚无可读取日志级别的设备。请先登录</value>
+    <comment>Developer tools screen: explanation shown when the diagnostic log detail level cannot be read.</comment>
+  </data>
+  <data name="dev_log_verbosity_verbose" xml:space="preserve">
+    <value>详细</value>
+    <comment>Developer tools screen: verbose diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_verbose_detail" xml:space="preserve">
+    <value>合约计量和逐包阻断决策。包含目标 IP 地址</value>
+    <comment>Developer tools screen: explanation of the verbose diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_warning" xml:space="preserve">
+    <value>在“详细”及以上级别，日志会包含您所发送流量的目标 IP 地址和端口。如需分享，请使用“导出脱敏日志”；原始诊断包不应离开此设备。</value>
+    <comment>Developer tools screen: privacy warning shown when detailed traffic logging is enabled.</comment>
+  </data>
+  <data name="dev_log_verbosity_warning_title" xml:space="preserve">
+    <value>日志正在记录您的真实流量</value>
+    <comment>Developer tools screen: title for the detailed traffic logging privacy warning.</comment>
+  </data>
+  <data name="dev_max_flows_per_exit" xml:space="preserve">
+    <value>每个出口的最大连接数</value>
+    <comment>Developer tools screen (reliability surface): max flows per exit control label.</comment>
+  </data>
+  <data name="dev_max_flows_per_exit_detail" xml:space="preserve">
+    <value>失去一个出口会中断其上的所有连接。数值越低，损失越分散；但站点可能因此使用多个出口 IP</value>
+    <comment>Developer tools screen: explanatory subtext under the 'max flows per exit' control.</comment>
+  </data>
+  <data name="dev_measure_none" xml:space="preserve">
+    <value>暂无提供商故障。在下方让某个出口停滞即可制造一次。</value>
+    <comment>Developer tools screen (reliability surface): measure none control label.</comment>
+  </data>
+  <data name="dev_measurements" xml:space="preserve">
+    <value>测量</value>
+    <comment>Developer tools screen (reliability surface): measurements control label.</comment>
+  </data>
+  <data name="dev_measurements_detail" xml:space="preserve">
+    <value>提供商故障的代价。重置、运行测试、读取结果。</value>
+    <comment>Developer tools screen: explanatory subtext under the 'measurements' control.</comment>
+  </data>
+  <data name="dev_migrate_exit" xml:space="preserve">
+    <value>迁移</value>
+    <comment>Developer tools screen (reliability surface): migrate exit control label.</comment>
+  </data>
+  <data name="dev_min_blackhole_destinations" xml:space="preserve">
+    <value>佐证静默出口</value>
+    <comment>Developer tools screen (reliability surface): min blackhole destinations control label.</comment>
+  </data>
+  <data name="dev_min_blackhole_destinations_detail" xml:space="preserve">
+    <value>在因无接收而将出口定罪之前，必须有多少个不同的目标保持静默，以免单个失效站点导致正常出口被移除。关闭时单个目标即可定罪</value>
+    <comment>Developer tools screen: explanatory subtext under the 'min blackhole destinations' control.</comment>
+  </data>
+  <data name="dev_no_exits" xml:space="preserve">
+    <value>没有出口。请先连接。</value>
+    <comment>Developer tools screen (reliability surface): no exits control label.</comment>
+  </data>
+  <data name="dev_open_tools" xml:space="preserve">
+    <value>打开开发者工具</value>
+    <comment>Developer tools screen (reliability surface): open tools control label.</comment>
+  </data>
+  <data name="dev_probe_all" xml:space="preserve">
+    <value>立即探测所有出口</value>
+    <comment>Developer tools screen (reliability surface): probe all control label.</comment>
+  </data>
+  <data name="dev_probe_providers" xml:space="preserve">
+    <value>探测提供商</value>
+    <comment>Developer tools screen (reliability surface): probe providers control label.</comment>
+  </data>
+  <data name="dev_probe_providers_detail" xml:space="preserve">
+    <value>通过出口拨号访问真实站点来验证出口。收到应答即证明该出口可用；无应答绝不会被计为不利</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probe providers' control.</comment>
+  </data>
+  <data name="dev_probe_sample_hosts" xml:space="preserve">
+    <value>每轮探测的主机数</value>
+    <comment>Developer tools screen (reliability surface): probe sample hosts control label.</comment>
+  </data>
+  <data name="dev_probe_sample_hosts_detail" xml:space="preserve">
+    <value>一轮验证通过某个出口拨号访问的健康检查站点数量。0 表示探测整个内置列表；较小的数值则分块轮流探测</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probe sample hosts' control.</comment>
+  </data>
+  <data name="dev_probe_timeout" xml:space="preserve">
+    <value>探测等待时间</value>
+    <comment>Developer tools screen (reliability surface): probe timeout control label.</comment>
+  </data>
+  <data name="dev_probe_timeout_detail" xml:space="preserve">
+    <value>验证探测等待应答的时长。关闭时使用内置的 4 秒。它只限制等待证明的时间，绝不定罪</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probe timeout' control.</comment>
+  </data>
+  <data name="dev_probes" xml:space="preserve">
+    <value>探测</value>
+    <comment>Developer tools screen (reliability surface): probes control label.</comment>
+  </data>
+  <data name="dev_probes_detail" xml:space="preserve">
+    <value>本次会话的验证探测</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probes' control.</comment>
+  </data>
+  <data name="dev_probes_value" xml:space="preserve">
+    <value>已发送 {0} / 已应答 {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'probes'.</comment>
+  </data>
+  <data name="dev_quic_rebind" xml:space="preserve">
+    <value>出口丢失时重新绑定 QUIC</value>
+    <comment>Developer tools screen (reliability surface): quic rebind control label.</comment>
+  </data>
+  <data name="dev_quic_rebind_detail" xml:space="preserve">
+    <value>在移除过程中将已建立的 QUIC 流重新固定到存活的出口，而不是将其断开</value>
+    <comment>Developer tools screen: explanatory subtext under the 'quic rebind' control.</comment>
+  </data>
+  <data name="dev_recovery" xml:space="preserve">
+    <value>恢复时间</value>
+    <comment>Developer tools screen (reliability surface): recovery control label.</comment>
+  </data>
+  <data name="dev_recovery_detail" xml:space="preserve">
+    <value>从出口失效到该站点再次应答的时间</value>
+    <comment>Developer tools screen: explanatory subtext under the 'recovery' control.</comment>
+  </data>
+  <data name="dev_recovery_missed" xml:space="preserve">
+    <value>未恢复</value>
+    <comment>Developer tools screen (reliability surface): recovery missed control label.</comment>
+  </data>
+  <data name="dev_recovery_missed_detail" xml:space="preserve">
+    <value>被放弃而非恢复的站点</value>
+    <comment>Developer tools screen: explanatory subtext under the 'recovery missed' control.</comment>
+  </data>
+  <data name="dev_recovery_missed_value" xml:space="preserve">
+    <value>{0} / {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'recovery missed'.</comment>
+  </data>
+  <data name="dev_recovery_value" xml:space="preserve">
+    <value>平均 {0}，最差 {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'recovery'.</comment>
+  </data>
+  <data name="dev_refresh" xml:space="preserve">
+    <value>刷新</value>
+    <comment>Developer tools screen (reliability surface): refresh control label.</comment>
+  </data>
+  <data name="dev_removal_budget_count" xml:space="preserve">
+    <value>移除风暴上限</value>
+    <comment>Developer tools screen (reliability surface): removal budget count control label.</comment>
+  </data>
+  <data name="dev_removal_budget_count_detail" xml:space="preserve">
+    <value>每个窗口内允许基于判定执行的移除次数，超出部分将被推迟；突发的大量移除更可能源于单一本地原因，而非许多故障。关闭时不限制移除</value>
+    <comment>Developer tools screen: explanatory subtext under the 'removal budget count' control.</comment>
+  </data>
+  <data name="dev_removal_budget_window" xml:space="preserve">
+    <value>移除风暴窗口</value>
+    <comment>Developer tools screen (reliability surface): removal budget window control label.</comment>
+  </data>
+  <data name="dev_removal_budget_window_detail" xml:space="preserve">
+    <value>计算移除上限所用的窗口。关闭（与上限为 0 相同）会停用熔断器</value>
+    <comment>Developer tools screen: explanatory subtext under the 'removal budget window' control.</comment>
+  </data>
+  <data name="dev_removals_deferred" xml:space="preserve">
+    <value>推迟的移除</value>
+    <comment>Developer tools screen (reliability surface): removals deferred control label.</comment>
+  </data>
+  <data name="dev_removals_deferred_detail" xml:space="preserve">
+    <value>风暴熔断器在关联性突发后暂缓执行的移除</value>
+    <comment>Developer tools screen: explanatory subtext under the 'removals deferred' control.</comment>
+  </data>
+  <data name="dev_reset_defaults" xml:space="preserve">
+    <value>恢复为出厂默认值</value>
+    <comment>Developer tools screen (reliability surface): reset defaults control label.</comment>
+  </data>
+  <data name="dev_reset_measurements" xml:space="preserve">
+    <value>重置测量</value>
+    <comment>Developer tools screen (reliability surface): reset measurements control label.</comment>
+  </data>
+  <data name="dev_scheduler_pause_recovery" xml:space="preserve">
+    <value>挂起后恢复窗口</value>
+    <comment>Developer tools screen (reliability surface): scheduler pause recovery control label.</comment>
+  </data>
+  <data name="dev_scheduler_pause_recovery_detail" xml:space="preserve">
+    <value>检测到挂起后判定保持暂缓的时长，让传输方式有时间重新注册。关闭时使用内置的 5 秒</value>
+    <comment>Developer tools screen: explanatory subtext under the 'scheduler pause recovery' control.</comment>
+  </data>
+  <data name="dev_scheduler_pause_tolerance" xml:space="preserve">
+    <value>挂起检测器</value>
+    <comment>Developer tools screen (reliability surface): scheduler pause tolerance control label.</comment>
+  </data>
+  <data name="dev_scheduler_pause_tolerance_detail" xml:space="preserve">
+    <value>计时器超时多少会被视为手机被挂起，而不是出口停滞，以免手机恢复后一次性将所有出口定罪。关闭时停用</value>
+    <comment>Developer tools screen: explanatory subtext under the 'scheduler pause tolerance' control.</comment>
+  </data>
+  <data name="dev_scheduler_pauses" xml:space="preserve">
+    <value>捕获的挂起</value>
+    <comment>Developer tools screen (reliability surface): scheduler pauses control label.</comment>
+  </data>
+  <data name="dev_scheduler_pauses_detail" xml:space="preserve">
+    <value>检测器捕获的主机挂起次数，每次都意味着在刚恢复的手机上暂缓而非执行一批判定</value>
+    <comment>Developer tools screen: explanatory subtext under the 'scheduler pauses' control.</comment>
+  </data>
+  <data name="dev_section_detection" xml:space="preserve">
+    <value>检测</value>
+    <comment>Developer tools screen: section heading for the detection controls.</comment>
+  </data>
+  <data name="dev_section_diagnostics" xml:space="preserve">
+    <value>诊断</value>
+    <comment>Developer tools screen: section heading for diagnostic log controls.</comment>
+  </data>
+  <data name="dev_section_observability" xml:space="preserve">
+    <value>可观测性</value>
+    <comment>Developer tools screen: section heading for the observability controls.</comment>
+  </data>
+  <data name="dev_section_placement" xml:space="preserve">
+    <value>分配</value>
+    <comment>Developer tools screen: section heading for the placement controls.</comment>
+  </data>
+  <data name="dev_section_probing" xml:space="preserve">
+    <value>探测</value>
+    <comment>Developer tools screen: section heading for the probing controls.</comment>
+  </data>
+  <data name="dev_section_recovery" xml:space="preserve">
+    <value>恢复</value>
+    <comment>Developer tools screen: section heading for the recovery controls.</comment>
+  </data>
+  <data name="dev_send_stall" xml:space="preserve">
+    <value>快速丢弃停滞的出口</value>
+    <comment>Developer tools screen (reliability surface): send stall control label.</comment>
+  </data>
+  <data name="dev_send_stall_detail" xml:space="preserve">
+    <value>出口停止传送多长时间后会被丢弃。关闭时等待 30 秒</value>
+    <comment>Developer tools screen: explanatory subtext under the 'send stall' control.</comment>
+  </data>
+  <data name="dev_server_name_bridge" xml:space="preserve">
+    <value>合并较晚获得名称的流</value>
+    <comment>Developer tools screen (reliability surface): server name bridge control label.</comment>
+  </data>
+  <data name="dev_server_name_bridge_detail" xml:space="preserve">
+    <value>将后续连接转移到第一个连接已使用的出口</value>
+    <comment>Developer tools screen: explanatory subtext under the 'server name bridge' control.</comment>
+  </data>
+  <data name="dev_shuffle_exits" xml:space="preserve">
+    <value>随机打乱所有出口</value>
+    <comment>Developer tools screen (reliability surface): shuffle exits control label.</comment>
+  </data>
+  <data name="dev_simulate_network_change" xml:space="preserve">
+    <value>模拟网络切换</value>
+    <comment>Developer tools screen (reliability surface): simulate network change control label.</comment>
+  </data>
+  <data name="dev_soft_verdict" xml:space="preserve">
+    <value>移除前先降级</value>
+    <comment>Developer tools screen (reliability surface): soft verdict control label.</comment>
+  </data>
+  <data name="dev_soft_verdict_detail" xml:space="preserve">
+    <value>不明确的判定会隔离出口，而不是断开其流；移除需要持续的证据或出口已空</value>
+    <comment>Developer tools screen: explanatory subtext under the 'soft verdict' control.</comment>
+  </data>
+  <data name="dev_stall_exit" xml:space="preserve">
+    <value>使停滞</value>
+    <comment>Developer tools screen (reliability surface): stall exit control label.</comment>
+  </data>
+  <data name="dev_standing_reserve" xml:space="preserve">
+    <value>保持一个备用出口预热</value>
+    <comment>Developer tools screen (reliability surface): standing reserve control label.</comment>
+  </data>
+  <data name="dev_standing_reserve_detail" xml:space="preserve">
+    <value>让每个窗口比目标多一个出口，以便替补已提前连接。关闭时等到出现损失后再补充</value>
+    <comment>Developer tools screen: explanatory subtext under the 'standing reserve' control.</comment>
+  </data>
+  <data name="dev_tcp_collapse_hold" xml:space="preserve">
+    <value>释放卡住的重传</value>
+    <comment>Developer tools screen (reliability surface): tcp collapse hold control label.</comment>
+  </data>
+  <data name="dev_tcp_collapse_hold_detail" xml:space="preserve">
+    <value>重传在释放其中一个之前被保留的时长。关闭时等待 30 秒</value>
+    <comment>Developer tools screen: explanatory subtext under the 'tcp collapse hold' control.</comment>
+  </data>
+  <data name="dev_tcp_idle_timeout" xml:space="preserve">
+    <value>更长的 TCP 空闲超时</value>
+    <comment>Developer tools screen (reliability surface): tcp idle timeout control label.</comment>
+  </data>
+  <data name="dev_tcp_idle_timeout_detail" xml:space="preserve">
+    <value>TCP 连接可以空闲的时长。关闭时使用 UDP 的上限</value>
+    <comment>Developer tools screen: explanatory subtext under the 'tcp idle timeout' control.</comment>
+  </data>
+  <data name="dev_timing" xml:space="preserve">
+    <value>时序</value>
+    <comment>Developer tools screen (reliability surface): timing control label.</comment>
+  </data>
+  <data name="dev_udp_idle_timeout" xml:space="preserve">
+    <value>UDP 空闲超时</value>
+    <comment>Developer tools screen (reliability surface): udp idle timeout control label.</comment>
+  </data>
+  <data name="dev_udp_idle_timeout_detail" xml:space="preserve">
+    <value>非 TCP 流在被回收前可以空闲的时长</value>
+    <comment>Developer tools screen: explanatory subtext under the 'udp idle timeout' control.</comment>
+  </data>
+  <data name="dev_udp_teardown" xml:space="preserve">
+    <value>通知 UDP 拆除</value>
+    <comment>Developer tools screen (reliability surface): udp teardown control label.</comment>
+  </data>
+  <data name="dev_udp_teardown_detail" xml:space="preserve">
+    <value>告知 DNS 和 QUIC 路径已失效，而不是保持静默</value>
+    <comment>Developer tools screen: explanatory subtext under the 'udp teardown' control.</comment>
+  </data>
+  <data name="dev_uplink_gate" xml:space="preserve">
+    <value>上行静默门限</value>
+    <comment>Developer tools screen (reliability surface): uplink gate control label.</comment>
+  </data>
+  <data name="dev_uplink_gate_detail" xml:space="preserve">
+    <value>整个隧道静默多长时间后，针对提供商的判定将被视为不可采信而暂缓。0 表示照旧定罪</value>
+    <comment>Developer tools screen: explanatory subtext under the 'uplink gate' control.</comment>
+  </data>
+  <data name="dev_verdicts_held" xml:space="preserve">
+    <value>暂缓的判定</value>
+    <comment>Developer tools screen (reliability surface): verdicts held control label.</comment>
+  </data>
+  <data name="dev_verdicts_held_detail" xml:space="preserve">
+    <value>因手机自身上行（而非提供商）静默而暂缓的定罪（上行 / 传输方式）</value>
+    <comment>Developer tools screen: explanatory subtext under the 'verdicts held' control.</comment>
+  </data>
+  <data name="dev_verdicts_held_value" xml:space="preserve">
+    <value>{0} / {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'verdicts held'.</comment>
+  </data>
+  <data name="dev_worst_loss" xml:space="preserve">
+    <value>最严重的单次故障</value>
+    <comment>Developer tools screen (reliability surface): worst loss control label.</comment>
+  </data>
+  <data name="dev_worst_loss_detail" xml:space="preserve">
+    <value>用户真正能感受到的那一次</value>
+    <comment>Developer tools screen: explanatory subtext under the 'worst loss' control.</comment>
+  </data>
+  <data name="dev_worst_loss_value" xml:space="preserve">
+    <value>{} 个连接</value>
+    <comment>Developer tools screen: formatted value readout for 'worst loss'.</comment>
+  </data>
+  <data name="developer" xml:space="preserve">
+    <value>开发者</value>
+    <comment>Developer tools screen: developer.</comment>
+  </data>
+  <data name="developer_description" xml:space="preserve">
+    <value>用于诊断连接卡顿的工具。这些工具会作用于当前连接。</value>
+    <comment>Developer tools screen: developer description.</comment>
+  </data>
+  <data name="developer_disconnected" xml:space="preserve">
+    <value>连接后即可使用这些工具。</value>
+    <comment>Developer tools screen: developer disconnected.</comment>
   </data>
   <data name="device" xml:space="preserve">
     <value>设备</value>
@@ -1224,6 +2004,62 @@
     <value>收益</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="earnings_address_placeholder" xml:space="preserve">
+    <value>输入 Bittensor 地址</value>
+    <comment>Placeholder of the manual Bittensor address field on the Earnings page.</comment>
+  </data>
+  <data name="earnings_change_wallet" xml:space="preserve">
+    <value>更换钱包</value>
+    <comment>Button on the Earnings page that starts connecting a different Bittensor wallet.</comment>
+  </data>
+  <data name="earnings_claim_sending" xml:space="preserve">
+    <value>正在发送…</value>
+    <comment>Progress text while a claim transaction is being sent.</comment>
+  </data>
+  <data name="earnings_claims_need_session" xml:space="preserve">
+    <value>应用建立会话后，才会从链上加载领取信息。请先连接。</value>
+    <comment>Shown in place of the unclaimed figure when the app has no device session to read the chain with.</comment>
+  </data>
+  <data name="earnings_copy_address" xml:space="preserve">
+    <value>复制地址</value>
+    <comment>Button that copies an address to the clipboard.</comment>
+  </data>
+  <data name="earnings_date_column" xml:space="preserve">
+    <value>日期</value>
+    <comment>Column header of the per-epoch history table: the date the epoch ended.</comment>
+  </data>
+  <data name="earnings_epoch_column" xml:space="preserve">
+    <value>周期</value>
+    <comment>Column header of the per-epoch history table.</comment>
+  </data>
+  <data name="earnings_gas_balance" xml:space="preserve">
+    <value>Gas 余额</value>
+    <comment>Label of the gas key's TAO balance in the claim dialog.</comment>
+  </data>
+  <data name="earnings_network_pane_title" xml:space="preserve">
+    <value>您的网络</value>
+    <comment>Title of the Earnings destination's third pane: own rank, multipliers and reliability.</comment>
+  </data>
+  <data name="earnings_points_column" xml:space="preserve">
+    <value>积分</value>
+    <comment>Column header of the per-epoch history table: points earned in the epoch.</comment>
+  </data>
+  <data name="earnings_share_column" xml:space="preserve">
+    <value>份额</value>
+    <comment>Column header of the per-epoch history table: the network's share of the block.</comment>
+  </data>
+  <data name="earnings_status_column" xml:space="preserve">
+    <value>状态</value>
+    <comment>Column header of the per-epoch history table: the claim status of the epoch's alpha.</comment>
+  </data>
+  <data name="earnings_view_transaction" xml:space="preserve">
+    <value>查看交易</value>
+    <comment>Link that opens a claim transaction in the block explorer.</comment>
+  </data>
+  <data name="earnings_wallet_mismatch" xml:space="preserve">
+    <value>签名的钱包与您输入的地址不一致。</value>
+    <comment>Error when the wallet that signed the connect challenge is not the address the user entered.</comment>
+  </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>编辑设备名称</value>
     <comment>device</comment>
@@ -1320,6 +2156,14 @@
     <value>换一个</value>
     <comment>Points leaderboard: the emoji editor's shuffle button, replaces the draft with a new random suggestion.</comment>
   </data>
+  <data name="enabled_under_auto" xml:space="preserve">
+    <value>“自动”模式下启用</value>
+    <comment>Section header of the per-transport enable toggles shown when the transport mode is Auto.</comment>
+  </data>
+  <data name="enabled_under_auto_footer" xml:space="preserve">
+    <value>按优先顺序列出：先是 H3 和 H1，然后是 whodis，最后是 whodis pump。顺序固定。至少会有一种传输方式保持启用。</value>
+    <comment>Footer of the Auto transports section explaining the fixed preference order.</comment>
+  </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>喜欢 URnetwork 吗？</value>
     <comment>Call to action</comment>
@@ -1343,6 +2187,10 @@
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>请输入 Solana USDC 钱包地址</value>
   </data>
+  <data name="enter_address_manually" xml:space="preserve">
+    <value>手动输入地址</value>
+    <comment>Fallback link to paste an ss58 address.</comment>
+  </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>输入余额码</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
@@ -1358,6 +2206,34 @@
   <data name="enter_urnetwork" xml:space="preserve">
     <value>进入 URnetwork</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="epoch_column_epoch_linux" xml:space="preserve">
+    <value>周期</value>
+    <comment>History table column: the epoch number.</comment>
+  </data>
+  <data name="epoch_column_points_linux" xml:space="preserve">
+    <value>积分</value>
+    <comment>History table column: points earned.</comment>
+  </data>
+  <data name="epoch_column_share_linux" xml:space="preserve">
+    <value>区块份额</value>
+    <comment>History table column: the network's share of the block.</comment>
+  </data>
+  <data name="epoch_column_status_linux" xml:space="preserve">
+    <value>状态</value>
+    <comment>History table column: the claim status of the epoch's alpha.</comment>
+  </data>
+  <data name="epoch_history" xml:space="preserve">
+    <value>历史记录</value>
+    <comment>Label of the per-epoch history list.</comment>
+  </data>
+  <data name="epoch_row_title" xml:space="preserve">
+    <value>周期 {}</value>
+    <comment>History row title.</comment>
+  </data>
+  <data name="epoch_share_of_block" xml:space="preserve">
+    <value>区块的 {}</value>
+    <comment>History row: the network's share of the block.</comment>
   </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>更改网络名称时出错</value>
@@ -1439,6 +2315,90 @@
     <value>导出日志</value>
     <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
   </data>
+  <data name="extender" xml:space="preserve">
+    <value>扩展器</value>
+    <comment>Title of the Extender row under the provide mode row in settings, and of the read-only row where the provide mode row is repeated.</comment>
+  </data>
+  <data name="extender_activation_failed" xml:space="preserve">
+    <value>激活失败：{}</value>
+    <comment>Extender status when the last activation failed and no family is active. The argument is the error.</comment>
+  </data>
+  <data name="extender_activation_refused" xml:space="preserve">
+    <value>激活被拒绝：{}</value>
+    <comment>Extender status when the operator refused the activation and no family is active. The argument is the operator's reason.</comment>
+  </data>
+  <data name="extender_active" xml:space="preserve">
+    <value>已激活 · {}</value>
+    <comment>Extender status when at least one address family is activated. The argument is the family or families, from the IPv4, IPv6 and IPv4 and IPv6 labels.</comment>
+  </data>
+  <data name="extender_default_value" xml:space="preserve">
+    <value>默认：{}</value>
+    <comment>Placeholder shown in an empty extender settings field, naming the default value that applies.</comment>
+  </data>
+  <data name="extender_dns_name" xml:space="preserve">
+    <value>扩展器 DNS 名称</value>
+    <comment>Label of the extender DNS name field. Empty means the network space default.</comment>
+  </data>
+  <data name="extender_hosts" xml:space="preserve">
+    <value>扩展器主机</value>
+    <comment>Label of the manual extender list field: hostnames or IP addresses, one per line.</comment>
+  </data>
+  <data name="extender_hosts_hint" xml:space="preserve">
+    <value>每行一个主机名或 IP 地址。这些将添加到已发现的扩展器中。</value>
+    <comment>Help text under the manual extender list field.</comment>
+  </data>
+  <data name="extender_listen_failed" xml:space="preserve">
+    <value>无法监听：{}</value>
+    <comment>Extender status when no carrier could bind. The argument is the carrier errors.</comment>
+  </data>
+  <data name="extender_not_providing" xml:space="preserve">
+    <value>未提供</value>
+    <comment>Extender status when the setting is on but this device is not providing. Apple is not listed because its catalog is keyed by the English text, which widget_not_providing already carries.</comment>
+  </data>
+  <data name="extender_revoked" xml:space="preserve">
+    <value>已被运营方撤销</value>
+    <comment>Extender status when the operator revoked this device's extender key.</comment>
+  </data>
+  <data name="extender_setting_description" xml:space="preserve">
+    <value>在您提供期间，此设备还会通过 TCP 和 UDP 443 以及 UDP 4053，为网络访问被封锁的人提供中继。</value>
+    <comment>Secondary text under the Extender setting: what turning it on does, and the ports the extender listens on.</comment>
+  </data>
+  <data name="extender_setting_up" xml:space="preserve">
+    <value>正在设置</value>
+    <comment>Extender status while the role is starting and there is no outcome yet: the carriers are binding, or the first activation is in flight.</comment>
+  </data>
+  <data name="extender_settings" xml:space="preserve">
+    <value>扩展器设置</value>
+    <comment>Title of the extender settings form under account &gt; Extenders.</comment>
+  </data>
+  <data name="extender_settings_next_connect" xml:space="preserve">
+    <value>隧道将在下次连接时使用新的扩展器设置。</value>
+    <comment>Note on iOS after saving extender settings: the packet tunnel extension reads them at its next start.</comment>
+  </data>
+  <data name="extender_settings_saved" xml:space="preserve">
+    <value>扩展器设置已保存</value>
+    <comment>Confirmation after the extender settings are saved.</comment>
+  </data>
+  <data name="extender_start_failed" xml:space="preserve">
+    <value>无法启动：{}</value>
+    <comment>Extender status when the setting is on and the device is providing, but the role could not start in this network space: no extender directory or no identity. The argument is the reason.</comment>
+  </data>
+  <data name="extender_statistics" xml:space="preserve">
+    <value>扩展器统计</value>
+    <comment>Title of the section that shows statistics about the extender, directly above the provider statistics section.</comment>
+  </data>
+  <data name="extenders" xml:space="preserve">
+    <value>扩展器</value>
+    <comment>Title of the extenders panel in the connect drawer and of the Extenders section under account.</comment>
+  </data>
+  <data name="extenders_active_of_reserve" xml:space="preserve">
+    <value>{0} / {1}</value>
+    <comment>The extender panel count: extenders carrying a live connection now, of every usable extender the app knows.</comment>
+  </data>
+  <data name="extenders_no_session" xml:space="preserve">
+    <value>登录并连接后即可管理扩展器。</value>
+    <comment>Shown in the account Extenders section when there is no signed-in device to manage extenders with.</comment>
+  </data>
   <data name="failed_to_connect" xml:space="preserve">
     <value>连接失败</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
@@ -1495,6 +2455,10 @@
     <value>你的朋友也能省钱——人人受益。</value>
     <comment>Call to action</comment>
   </data>
+  <data name="gas_key" xml:space="preserve">
+    <value>Gas 密钥</value>
+    <comment>Label of the gas key row.</comment>
+  </data>
   <data name="general" xml:space="preserve">
     <value>常规</value>
     <comment>Call to action</comment>
@@ -1528,6 +2492,10 @@
     <value>返回</value>
     <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
   </data>
+  <data name="google" xml:space="preserve">
+    <value>Google</value>
+    <comment>A label for Google sign-in.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>使用 Google 登录</value>
     <comment>Login initial</comment>
@@ -1535,6 +2503,22 @@
   <data name="google_sign_in_method_added" xml:space="preserve">
     <value>已添加 Google 登录方式</value>
     <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
+  </data>
+  <data name="gossip_connecting" xml:space="preserve">
+    <value>正在连接</value>
+    <comment>Gossip network status: a dial or reconnect is in progress (yellow).</comment>
+  </data>
+  <data name="gossip_events_per_minute.other" xml:space="preserve">
+    <value>{} 个事件/分钟</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_network" xml:space="preserve">
+    <value>Gossip 网络</value>
+    <comment>Label of the gossip network status dot in the extender panel.</comment>
+  </data>
+  <data name="gossip_url" xml:space="preserve">
+    <value>Gossip URL</value>
+    <comment>Label of the gossip URL field. Empty means the network space default.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>知道了</value>
@@ -1551,6 +2535,12 @@
   <data name="guest_mode_failed" xml:space="preserve">
     <value>访客模式失败</value>
     <comment>Error shown when starting a guest-mode network fails.</comment>
+  </data>
+  <data name="hash_count" xml:space="preserve">
+    <value>#{}</value>
+  </data>
+  <data name="hash_value" xml:space="preserve">
+    <value>#{}</value>
   </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>隐藏供应商列表</value>
@@ -1588,6 +2578,26 @@
     <value>忽略电池优化</value>
     <comment>Call to action</comment>
   </data>
+  <data name="import_extenders" xml:space="preserve">
+    <value>导入扩展器</value>
+    <comment>Button and screen title: import extenders from a QR code, a photo, or pasted text.</comment>
+  </data>
+  <data name="import_extenders_confirm_settings" xml:space="preserve">
+    <value>要使用此代码中的扩展器设置吗？扩展器查找将使用 {}。</value>
+    <comment>Confirmation before applying the extender settings from a share code. The argument is the operator host the settings point at.</comment>
+  </data>
+  <data name="import_extenders_foreign_host" xml:space="preserve">
+    <value>此代码适用于 {}，而不是当前网络。请在扩展器设置中切换网络。</value>
+    <comment>Error when a share code belongs to another network. The argument is that network's host.</comment>
+  </data>
+  <data name="import_extenders_imported.other" xml:space="preserve">
+    <value>已导入 {} 个扩展器</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_invalid" xml:space="preserve">
+    <value>此代码不是扩展器分享码。</value>
+    <comment>Error when the scanned or pasted text is not an extender share code.</comment>
+  </data>
   <data name="in_guest_mode" xml:space="preserve">
     <value>您处于访客模式</value>
     <comment>Guest mode overlay</comment>
@@ -1600,6 +2610,10 @@
     <value>只有已包含的应用会使用隧道。</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="include_extender_settings" xml:space="preserve">
+    <value>包含扩展器设置</value>
+    <comment>Toggle on the share screen: also include the extender DNS name, gossip URL and root keys in the code.</comment>
+  </data>
   <data name="include_in_vpn" xml:space="preserve">
     <value>纳入 VPN</value>
     <comment>App split rules: rule choice routing the app through the VPN.</comment>
@@ -1607,6 +2621,10 @@
   <data name="included" xml:space="preserve">
     <value>已包含</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="includes_free_trial_days" xml:space="preserve">
+    <value>包含 {} 天免费试用</value>
+    <comment>Line under the annual plan card. The number of days is the free trial length.</comment>
   </data>
   <data name="instant_account_explainer" xml:space="preserve">
     <value>无需电子邮件、电话或密码。你的账户由助记词保护。</value>
@@ -1636,6 +2654,54 @@
     <value>资金不足</value>
     <comment>Circle Wallet Transfer Screen</comment>
   </data>
+  <data name="intro_control_manual_ios" xml:space="preserve">
+    <value>打开控制中心，轻点 +，然后轻点“添加控制”，并选择 URnetwork。</value>
+    <comment>How to add the quick connect control on iOS (no add-control API).</comment>
+  </data>
+  <data name="intro_control_manual_macos" xml:space="preserve">
+    <value>打开控制中心，选择“编辑控制”，然后添加 URnetwork。</value>
+    <comment>How to add the quick connect control on macOS.</comment>
+  </data>
+  <data name="intro_quick_connect_details" xml:space="preserve">
+    <value>在快捷设置中开关 URnetwork，并在主屏幕上随时查看其状态。</value>
+    <comment>Detail line of the last onboarding page.</comment>
+  </data>
+  <data name="intro_quick_connect_details_apple" xml:space="preserve">
+    <value>在控制中心开关 URnetwork，并在主屏幕上随时查看其状态。</value>
+    <comment>Detail line of the last onboarding page on iOS/macOS (Control Center instead of Quick Settings).</comment>
+  </data>
+  <data name="intro_quick_connect_title" xml:space="preserve">
+    <value>一键连接</value>
+    <comment>Title of the last onboarding page: the quick connect tile and the home screen widgets.</comment>
+  </data>
+  <data name="intro_quick_tile_added" xml:space="preserve">
+    <value>已添加到快捷设置</value>
+    <comment>Label shown on the last onboarding page once the quick connect tile is in Quick Settings.</comment>
+  </data>
+  <data name="intro_quick_tile_manual" xml:space="preserve">
+    <value>打开快捷设置，点按铅笔图标，然后将 URnetwork 拖到所需位置。</value>
+    <comment>Manual steps for adding the quick connect tile on Android versions without the system add-tile request (before Android 13).</comment>
+  </data>
+  <data name="intro_verifiable_encryption" xml:space="preserve">
+    <value>日常使用的加密保护。</value>
+    <comment>Tagline under 'Welcome to URnetwork' on the first onboarding page. Replaces 'URnetwork is the most local and most private network on the planet.'</comment>
+  </data>
+  <data name="intro_widgets_manual" xml:space="preserve">
+    <value>长按主屏幕，选择“小组件”，然后选择 URnetwork。</value>
+    <comment>Manual steps for adding widgets on launchers without the pin dialog.</comment>
+  </data>
+  <data name="intro_widgets_manual_ios" xml:space="preserve">
+    <value>长按主屏幕，轻点 +，搜索 URnetwork，然后添加小组件。</value>
+    <comment>How to add a Home Screen widget on iOS (no pin-widget API).</comment>
+  </data>
+  <data name="intro_widgets_manual_macos" xml:space="preserve">
+    <value>从通知中心打开小组件库，搜索 URnetwork，然后将小组件拖到桌面。</value>
+    <comment>How to add a desktop widget on macOS.</comment>
+  </data>
+  <data name="intro_widgets_tap_to_add" xml:space="preserve">
+    <value>轻点小组件即可将其添加到主屏幕。</value>
+    <comment>Hint under the widget previews on the last onboarding page: tapping a preview asks the launcher to add that widget.</comment>
+  </data>
   <data name="invalid_balance_code" xml:space="preserve">
     <value>余额码无效</value>
     <comment>Used in Shared/Views/RedeemBalanceCodeSheet/RedeemBalanceCodeSheet.swift.</comment>
@@ -1648,6 +2714,14 @@
     <value>推荐码无效。请再试一次。</value>
     <comment>Used in Main/Account/Settings/UpdateReferralNetworkSheet/UpdateReferralNetworkSheetViewModel.swift.</comment>
   </data>
+  <data name="invalid_solana_address" xml:space="preserve">
+    <value>这不是有效的 Solana 地址。</value>
+    <comment>Validation error under the manual address field when the address is not a valid Solana address (parallel to invalid_ss58_address).</comment>
+  </data>
+  <data name="invalid_ss58_address" xml:space="preserve">
+    <value>这不是有效的 Bittensor 地址。</value>
+    <comment>Validation error for a coldkey address.</comment>
+  </data>
   <data name="ip_address" xml:space="preserve">
     <value>IP 地址</value>
     <comment>dns settings</comment>
@@ -1656,9 +2730,45 @@
     <value>{} 个 IP</value>
     <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
   </data>
+  <data name="ip_families" xml:space="preserve">
+    <value>IP 版本</value>
+    <comment>IP versions: the tooltip of the address-family tag column in the provider locations sheet (windows, linux). It also titled the connect drawer's IP version histogram before that became the Dualstack / IPv4 / IPv6 status row.</comment>
+  </data>
+  <data name="ip_family_both" xml:space="preserve">
+    <value>两者</value>
+    <comment>Row label of the IP version histogram, and the provider row tag, for a provider that carries both IPv4 and IPv6.</comment>
+  </data>
+  <data name="ip_family_connected_count.other" xml:space="preserve">
+    <value>已连接 {} 个</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.other" xml:space="preserve">
+    <value>正在连接 {} 个</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_disconnected" xml:space="preserve">
+    <value>未连接</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer, when no provider of that family (dualstack, IPv4 or IPv6) is connected or connecting. Lowercase, under the family label.</comment>
+  </data>
+  <data name="ip_family_dualstack" xml:space="preserve">
+    <value>双栈</value>
+    <comment>Column label of the IP version status row in the connect drawer, for providers that carry both IPv4 and IPv6. Set in the pixel display face beside the IPv4 and IPv6 labels, so keep it short.</comment>
+  </data>
+  <data name="ip_family_v4" xml:space="preserve">
+    <value>v4</value>
+    <comment>Row label of the IP version histogram, and the provider row tag, for a provider that carries only IPv4.</comment>
+  </data>
+  <data name="ip_family_v6" xml:space="preserve">
+    <value>v6</value>
+    <comment>Row label of the IP version histogram, and the provider row tag, for a provider that carries only IPv6.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
+  </data>
+  <data name="ipv4_and_ipv6" xml:space="preserve">
+    <value>IPv4 和 IPv6</value>
+    <comment>Accessibility label for a provider that carries both IPv4 and IPv6 traffic.</comment>
   </data>
   <data name="ipv6" xml:space="preserve">
     <value>IPv6</value>
@@ -1699,6 +2809,14 @@
   <data name="kill_switch" xml:space="preserve">
     <value>断网保护</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="kill_switch_exception" xml:space="preserve">
+    <value>断网保护例外</value>
+    <comment>Title for the disclosure explaining traffic that intentionally bypasses the VPN kill switch.</comment>
+  </data>
+  <data name="kill_switch_exception_detail" xml:space="preserve">
+    <value>VPN 连接期间，即使开启了断网保护，IPv6 流量也不会经由 URnetwork 路由，可能会使用您的本地网络。通过 TCP 端口 25 的出站 SMTP 也会绕过 VPN。这些例外可能会向相应目标暴露您本地的公网 IP。端口 465 和 587 上的 SMTP 仍在 VPN 内，并且必须建立 TLS。</value>
+    <comment>Explains the deliberate IPv6 and SMTP exceptions to the VPN kill switch and the encrypted SMTP behavior.</comment>
   </data>
   <data name="launch" xml:space="preserve">
     <value>启动</value>
@@ -2021,6 +3139,10 @@
     <value>倍增器</value>
     <comment>Call to action</comment>
   </data>
+  <data name="n_20" xml:space="preserve">
+    <value>{}/20</value>
+    <comment>A progress bar that shows how many friends you've invited. The first argument is the number of friends you've invited. The second argument is the maximum number of friends you can invite.</comment>
+  </data>
   <data name="n_gib_day" xml:space="preserve">
     <value>+{} GiB/天</value>
     <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
@@ -2202,6 +3324,10 @@
     <value>没有被屏蔽的位置</value>
     <comment>Call to action</comment>
   </data>
+  <data name="no_claims_yet_linux" xml:space="preserve">
+    <value>暂无可领取的内容。Alpha 将从下一个已确认的周期开始累积。</value>
+    <comment>Empty state of the unclaimed tile once a wallet is connected.</comment>
+  </data>
   <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
     <value>无需邮箱、电话或密码。你的帐户由助记词保护。</value>
     <comment>A description of the benefits of creating an Instant Account.</comment>
@@ -2225,6 +3351,14 @@
   <data name="no_open_contracts" xml:space="preserve">
     <value>没有进行中的合约</value>
     <comment>A label displayed when there are no open contracts.</comment>
+  </data>
+  <data name="no_points_yet" xml:space="preserve">
+    <value>暂无周期。积分将在您的第一个周期确认后显示。</value>
+    <comment>Empty state of the points history.</comment>
+  </data>
+  <data name="no_previous_purchases_were_found" xml:space="preserve">
+    <value>未找到以前的购买记录。</value>
+    <comment>Restore-purchases outcome: the sync succeeded and there is genuinely nothing to restore (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>我们找不到任何提供商。</value>
@@ -2318,6 +3452,10 @@
     <value>开</value>
     <comment>A label for a DNS setting that is enabled.</comment>
   </data>
+  <data name="onboarding_step_of" xml:space="preserve">
+    <value>第 {0} 步，共 {1} 步</value>
+    <comment>Accessibility description of the onboarding step bubbles: the current step and the total.</comment>
+  </data>
   <data name="one_gib_per_day" xml:space="preserve">
     <value>1 GiB/天</value>
     <comment>Call to action</comment>
@@ -2350,6 +3488,10 @@
     <value>其他</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="paid_in_usdc_on_solana" xml:space="preserve">
+    <value>使用 Solana 上的 USDC 支付。</value>
+    <comment>The one USDC mention: the Solana subscription payment note.</comment>
+  </data>
   <data name="participate" xml:space="preserve">
     <value>参与</value>
     <comment>Call to action</comment>
@@ -2379,6 +3521,10 @@
     <value>密码长度必须至少为 12 个字符</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_share_text" xml:space="preserve">
+    <value>粘贴分享文本</value>
+    <comment>Button and field label: paste the text form of a share code.</comment>
+  </data>
   <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
     <value>在此粘贴你的 24 个单词助记词</value>
     <comment>A placeholder text for the seedphrase field.</comment>
@@ -2391,9 +3537,29 @@
     <value>使用 Stripe 加入</value>
     <comment>Call to action</comment>
   </data>
+  <data name="payment_confirmation_delayed" xml:space="preserve">
+    <value>确认时间比预期要长。确认后，您的方案会自动更新，无需再次购买。</value>
+    <comment>Shown when the post-payment confirmation poll exhausts its budget (2 minutes) without the server confirming the subscription. The payment evidence is real (store or payment sheet reported success), so say that plainly, and head off a second purchase.</comment>
+  </data>
+  <data name="payment_confirmation_processing" xml:space="preserve">
+    <value>我们正在确认您的付款。您的方案会自动更新，您无需进行任何操作。</value>
+    <comment>Body of the post-purchase overlay while the server has not yet confirmed the subscription. Replaces the optimistic 'You're premium.' claim until currentSubscription actually confirms.</comment>
+  </data>
+  <data name="payment_not_completed" xml:space="preserve">
+    <value>无法完成您的付款。</value>
+    <comment>Shown in the payment-problem dialog when the Stripe payment sheet reports a failure. The sheet's own error detail is appended by the caller.</comment>
+  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>付款问题</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
+  </data>
+  <data name="payment_received" xml:space="preserve">
+    <value>已收到付款。</value>
+    <comment>Title of the post-purchase screen while the server has not yet confirmed the entitlement (Shared/Views/PurchaseSuccessView.swift). StoreKit took the payment; the confirmation poll is still running — the copy must not claim premium yet.</comment>
+  </data>
+  <data name="payment_received_title" xml:space="preserve">
+    <value>已收到付款</value>
+    <comment>Title for the post-purchase overlay and the confirmation-timeout dialog. Deliberately claims only what is known -- the payment was received -- not that the plan is active yet.</comment>
   </data>
   <data name="payout_wallet_updated" xml:space="preserve">
     <value>支付钱包已更新</value>
@@ -2455,6 +3621,14 @@
     <value>≈ {}/月 · 每年扣费一次</value>
     <comment>Plan picker: the subordinate line under the yearly price with the per-month equivalent (ceiling-rounded).</comment>
   </data>
+  <data name="plan_price_per_month" xml:space="preserve">
+    <value>{}/月</value>
+    <comment>Monthly plan card label: the store-formatted price per month.</comment>
+  </data>
+  <data name="plan_price_per_year" xml:space="preserve">
+    <value>{}/年</value>
+    <comment>Yearly plan card label: the store-formatted price per year.</comment>
+  </data>
   <data name="plan_save_percent" xml:space="preserve">
     <value>省 {}%</value>
     <comment>Plan picker: the saving badge on the yearly card; the number is the whole percent saved against twelve monthly payments.</comment>
@@ -2491,6 +3665,10 @@
     <value>积分</value>
     <comment>Points leaderboard: tab label, stat tile label and sort chip.</comment>
   </data>
+  <data name="points_earned" xml:space="preserve">
+    <value>已获得积分</value>
+    <comment>Headline label of the earnings screen.</comment>
+  </data>
   <data name="points_leaderboard_description" xml:space="preserve">
     <value>历史累计积分。一个区块是一个已确认的周期；连续统计直到最新区块的连续得分区块数。</value>
     <comment>Points leaderboard: the explanation under the list header.</comment>
@@ -2502,6 +3680,10 @@
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>在你开启此项之前，你的网络显示为匿名。</value>
     <comment>Points leaderboard: shown under the own-stats card while the name switch is off. The network is listed either way, as Anonymous until the switch is on.</comment>
+  </data>
+  <data name="points_short" xml:space="preserve">
+    <value>{} 积分</value>
+    <comment>Points count with unit for history rows.</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>后量子加密</value>
@@ -2518,6 +3700,22 @@
   <data name="post_quantum_identity_explanation" xml:space="preserve">
     <value>你的提供商身份密钥存储在本设备本地。如果某个对等节点的密钥与本地存储的密钥不一致，说明网络运营方不可信。</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
+  </data>
+  <data name="private_extender" xml:space="preserve">
+    <value>私有扩展器</value>
+    <comment>Title of the advanced private extender fields: one extender with a secret that replaces discovery.</comment>
+  </data>
+  <data name="private_extender_hint" xml:space="preserve">
+    <value>私有扩展器会替换所有已发现的扩展器。留空则使用自动发现。</value>
+    <comment>Help text under the private extender fields.</comment>
+  </data>
+  <data name="private_extender_ip" xml:space="preserve">
+    <value>IP 地址</value>
+    <comment>Label of the private extender IP address field.</comment>
+  </data>
+  <data name="private_extender_secret" xml:space="preserve">
+    <value>密钥</value>
+    <comment>Label of the private extender secret field.</comment>
   </data>
   <data name="private_network" xml:space="preserve">
     <value>私有网络</value>
@@ -2551,9 +3749,33 @@
     <value>提供</value>
     <comment>Label of the switch that turns on providing bandwidth to the network.</comment>
   </data>
+  <data name="provide_intro_bullet_devices" xml:space="preserve">
+    <value>允许您的设备彼此共享网络</value>
+    <comment>First bullet on the onboarding Contribute bandwidth page.</comment>
+  </data>
+  <data name="provide_intro_bullet_people" xml:space="preserve">
+    <value>与他人共享您的网络 ❤️</value>
+    <comment>Second bullet on the onboarding Contribute bandwidth page, with a heart.</comment>
+  </data>
+  <data name="provide_intro_lead" xml:space="preserve">
+    <value>由您决定，完全可选：</value>
+    <comment>Lead line above the two bullets on the onboarding Contribute bandwidth page.</comment>
+  </data>
   <data name="provide_mode" xml:space="preserve">
     <value>提供模式</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="provide_mode_always_description" xml:space="preserve">
+    <value>只要应用在运行，就向所有人提供。</value>
+    <comment>One-line explanation of the Always provide mode in the onboarding Contribute bandwidth picker.</comment>
+  </data>
+  <data name="provide_mode_auto_description" xml:space="preserve">
+    <value>连接期间向所有人提供，否则仅向您自己的设备提供。</value>
+    <comment>One-line explanation of the Auto provide mode in the onboarding Contribute bandwidth picker: public providing only while connected, same-network peers otherwise.</comment>
+  </data>
+  <data name="provide_mode_network_description" xml:space="preserve">
+    <value>仅向您自己网络中的设备提供。</value>
+    <comment>One-line explanation of the Network provide mode in the onboarding Contribute bandwidth picker: the private provider for the network's own devices.</comment>
   </data>
   <data name="provider_connected_duration_hours" xml:space="preserve">
     <value>{0}小时{1}分钟</value>
@@ -2602,6 +3824,10 @@
     <value>提供商统计</value>
     <comment>Title of a section that shows statistics about the provider.</comment>
   </data>
+  <data name="provider_transports" xml:space="preserve">
+    <value>提供商传输方式</value>
+    <comment>Title of the transport settings editor for the provider transport policy.</comment>
+  </data>
   <data name="providing" xml:space="preserve">
     <value>提供中</value>
     <comment>Used in Main/Account/Wallets/WalletsView.swift.</comment>
@@ -2622,6 +3848,18 @@
     <value>我们尚未能确认您的购买。如果您已完成结账，您的计划将在几分钟内自动更新——无需再次购买。</value>
     <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
+  <data name="purchase_could_not_be_verified" xml:space="preserve">
+    <value>无法通过 Google Play 验证此次购买，因此无法将其应用到您的账户。如果您已被扣款但方案未更新，请联系支持团队。</value>
+    <comment>Error dialog body when the server's verify answer for a Play purchase is terminal `invalid` — the proof will never verify (unknown token, disallowed product, canceled before completing). The purchase is still acknowledged with Play so a real charge is not auto-refunded; this dialog is how the failure reaches the user instead of a silent nothing (android google/PlanViewModel.kt report path).</comment>
+  </data>
+  <data name="purchase_found_confirming_your_plan" xml:space="preserve">
+    <value>已找到购买记录。正在确认您的方案，方案将自动更新。</value>
+    <comment>Restore-purchases outcome: an entitlement for the current network was found; the confirmation poll now bridges the gap until the server credits it (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
+  </data>
+  <data name="qr_code_not_found" xml:space="preserve">
+    <value>图片中未找到二维码。</value>
+    <comment>Error when a chosen photo or image file holds no QR code.</comment>
+  </data>
   <data name="quit" xml:space="preserve">
     <value>退出</value>
     <comment>Tray menu item that exits the app (tears the tunnel down).</comment>
@@ -2633,6 +3871,10 @@
   <data name="ranked_networks_count" xml:space="preserve">
     <value>{} 个已排名网络</value>
     <comment>Points leaderboard: how many networks hold a rank. {count} is preformatted with separators.</comment>
+  </data>
+  <data name="reads_per_second" xml:space="preserve">
+    <value>次读取/秒</value>
+    <comment>Unit the extender chart labels its rates with, where the provider chart says pkt/s. The compact count is prepended by the app, as it is for pkt/s.</comment>
   </data>
   <data name="ready_to_connect" xml:space="preserve">
     <value>准备连接</value>
@@ -2868,6 +4110,10 @@
     <value>移除钱包</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
   </data>
+  <data name="remove_wallet_holds_payouts" xml:space="preserve">
+    <value>在连接其他钱包之前，USDC 支付将被暂停。</value>
+    <comment>Body of the remove confirmation for the Solana payout wallet (the title is remove_wallet).</comment>
+  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>重新发送链接</value>
     <comment>Reset link sent</comment>
@@ -2896,9 +4142,17 @@
     <value>解析器</value>
     <comment>A section header for the DNS resolvers.</comment>
   </data>
+  <data name="restore_default_transports" xml:space="preserve">
+    <value>恢复默认传输方式</value>
+    <comment>Button that resets the transport settings draft to the SDK default policy.</comment>
+  </data>
   <data name="restore_most_secure_settings" xml:space="preserve">
     <value>恢复最安全设置</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="restore_purchases" xml:space="preserve">
+    <value>恢复购买</value>
+    <comment>Action label that resyncs App Store purchases (AppStore.sync + entitlement scan). Shown in Settings and in the upgrade flow's failure states (Main/Account/Settings/SettingsForm-iOS.swift, SettingsForm-macOS.swift, Shared/Views/UpgradeSubscriptionSheet.swift, Shared/Views/PurchaseSuccessView.swift, Shared/Views/Introduction/IntroductionView.swift).</comment>
   </data>
   <data name="retry" xml:space="preserve">
     <value>重试</value>
@@ -2912,9 +4166,17 @@
     <value>评价 URnetwork</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="route_internet" xml:space="preserve">
+    <value>互联网</value>
+    <comment>Right stop label of the onboarding route line the anonymized member travels along.</comment>
+  </data>
   <data name="route_local" xml:space="preserve">
     <value>断开连接时允许本地流量</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="route_you" xml:space="preserve">
+    <value>您</value>
+    <comment>Left stop label of the onboarding route line the anonymized member travels along (you -&gt; URnetwork -&gt; internet).</comment>
   </data>
   <data name="rules" xml:space="preserve">
     <value>规则</value>
@@ -2923,6 +4185,10 @@
   <data name="save" xml:space="preserve">
     <value>保存</value>
     <comment>Profile</comment>
+  </data>
+  <data name="save_33_percent" xml:space="preserve">
+    <value>省 33%</value>
+    <comment>Line under the yearly plan's price: the saving against paying monthly.</comment>
   </data>
   <data name="save_logs" xml:space="preserve">
     <value>保存日志</value>
@@ -2935,6 +4201,10 @@
   <data name="saved_as" xml:space="preserve">
     <value>已保存为 {}</value>
     <comment>Split rules: note under the host input when the entry will be stored in a normalised form. {value} is that form, for example 10.0.0.0/8 for a typed 10.0.0.5/8.</comment>
+  </data>
+  <data name="scan_qr_code" xml:space="preserve">
+    <value>扫描二维码</value>
+    <comment>Button: open the camera to scan a QR code.</comment>
   </data>
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>搜索应用</value>
@@ -3009,6 +4279,10 @@
     <value>这是 {} 个词 — 助记词应为 12 或 24 个词</value>
     <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
+  <data name="seeker_points_only" xml:space="preserve">
+    <value>Seeker 倍增器仅适用于积分。</value>
+    <comment>Note on the Seeker verification action.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>Seeker 令牌已验证</value>
     <comment>Call to action</comment>
@@ -3049,6 +4323,10 @@
     <value>发送重置链接</value>
     <comment>Used in Authenticate/ResetPassword/ResetPasswordView.swift.</comment>
   </data>
+  <data name="send_tao_to_mirror" xml:space="preserve">
+    <value>向 {1} 发送约 {0} TAO 以支付 Gas 费。</value>
+    <comment>Instruction to fund the gas key.</comment>
+  </data>
   <data name="send_us_your_feedback_directly_or_join_our" xml:space="preserve">
     <value>直接向我们发送反馈，或[加入我们的 Discord](https://discord.com/invite/RUNZXMwPRK) 获取直接支持。</value>
     <comment>Used in Main/Feedback/FeedbackView.swift.</comment>
@@ -3065,9 +4343,41 @@
     <value>设置</value>
     <comment>Account Screen</comment>
   </data>
+  <data name="settings_add_quick_tile" xml:space="preserve">
+    <value>添加快速连接图块</value>
+    <comment>Settings row that asks the system to add the Quick Settings tile (Android 13+).</comment>
+  </data>
+  <data name="settings_add_quick_tile_description" xml:space="preserve">
+    <value>从快捷设置面板和锁定屏幕连接或断开连接。</value>
+    <comment>Description under the add-tile settings row.</comment>
+  </data>
+  <data name="settings_add_widgets" xml:space="preserve">
+    <value>添加主屏幕小组件</value>
+    <comment>Settings row that opens the widget picker to pin the app's widgets.</comment>
+  </data>
+  <data name="settings_add_widgets_description" xml:space="preserve">
+    <value>快速连接、流量余额、地球上的提供商以及您的主要合约。</value>
+    <comment>Description under the add-widgets settings row.</comment>
+  </data>
   <data name="share" xml:space="preserve">
     <value>分享</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="share_extenders" xml:space="preserve">
+    <value>分享扩展器</value>
+    <comment>Button and screen title: share the known extenders as a QR code.</comment>
+  </data>
+  <data name="share_extenders_count.other" xml:space="preserve">
+    <value>{} 个扩展器</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_hint" xml:space="preserve">
+    <value>使用另一个 URnetwork 应用扫描此代码，即可分享这些扩展器。</value>
+    <comment>Help text on the share screen under the QR code.</comment>
+  </data>
+  <data name="share_extenders_too_large" xml:space="preserve">
+    <value>分享码过大，无法生成二维码。请改为复制分享文本。</value>
+    <comment>Shown on the share screen when the share payload exceeds what a QR code can hold; the text form is still offered.</comment>
   </data>
   <data name="share_logs" xml:space="preserve">
     <value>分享日志</value>
@@ -3077,9 +4387,21 @@
     <value>分享日志</value>
     <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
   </data>
+  <data name="share_text_copied" xml:space="preserve">
+    <value>已复制分享文本</value>
+    <comment>Confirmation after the share text of an extender code was copied to the clipboard.</comment>
+  </data>
   <data name="share_urnetwork" xml:space="preserve">
     <value>分享 URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
+  </data>
+  <data name="shortcut_connect_long" xml:space="preserve">
+    <value>连接到 URnetwork</value>
+    <comment>Long label of the launcher shortcut that connects the VPN.</comment>
+  </data>
+  <data name="shortcut_disconnect_long" xml:space="preserve">
+    <value>断开与 URnetwork 的连接</value>
+    <comment>Long label of the launcher shortcut that disconnects the VPN.</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>显示</value>
@@ -3088,6 +4410,10 @@
   <data name="show_icon_when_connected" xml:space="preserve">
     <value>连接时显示 UR 图标</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="show_kill_switch_exception" xml:space="preserve">
+    <value>显示断网保护例外</value>
+    <comment>Accessibility label for the kill switch exception information button.</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">
     <value>显示我的网络名称</value>
@@ -3123,6 +4449,10 @@
   </data>
   <data name="sign_in_methods" xml:space="preserve">
     <value>登录方式</value>
+  </data>
+  <data name="sign_in_with_apple" xml:space="preserve">
+    <value>使用 Apple 登录</value>
+    <comment>Login stack: full-width Apple sign-in button on platforms that use the ur.io browser bridge</comment>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>使用验证码登录</value>
@@ -3207,6 +4537,10 @@
     <value>取消时间</value>
     <comment>App payout detail: canceled time</comment>
   </data>
+  <data name="site_app_chain_not_configured" xml:space="preserve">
+    <value>子网上的结算尚未配置。积分会继续累积；请在下一个版本发布后再来查看。</value>
+    <comment>App earnings/claim: the SDK reports chain_not_configured (release constants not published)</comment>
+  </data>
   <data name="site_app_change" xml:space="preserve">
     <value>更改</value>
     <comment>App connect screen: change location button</comment>
@@ -3218,6 +4552,22 @@
   <data name="site_app_cities" xml:space="preserve">
     <value>城市</value>
     <comment>App connect location picker: cities section</comment>
+  </data>
+  <data name="site_app_claim_no_evm_wallet" xml:space="preserve">
+    <value>未找到浏览器钱包。请安装 MetaMask 等 EVM 钱包扩展并连接用于支付 Gas 费的密钥，或在您设备上的 URnetwork 应用中领取。</value>
+    <comment>App claim: no injected EVM wallet</comment>
+  </data>
+  <data name="site_app_claim_nothing" xml:space="preserve">
+    <value>暂无可领取的内容。</value>
+    <comment>App claim: empty state</comment>
+  </data>
+  <data name="site_app_claim_opens_soon" xml:space="preserve">
+    <value>即将开放</value>
+    <comment>App claim: epoch status when the claim window has not opened</comment>
+  </data>
+  <data name="site_app_claimable" xml:space="preserve">
+    <value>可领取</value>
+    <comment>App claim: epoch status</comment>
   </data>
   <data name="site_app_clients" xml:space="preserve">
     <value>客户端</value>
@@ -3254,6 +4604,10 @@
   <data name="site_app_connections" xml:space="preserve">
     <value>连接</value>
     <comment>App settings: connections section</comment>
+  </data>
+  <data name="site_app_continue_anyway" xml:space="preserve">
+    <value>仍然继续</value>
+    <comment>App earnings: proceed after the new-wallet warning</comment>
   </data>
   <data name="site_app_contracts" xml:space="preserve">
     <value>合约</value>
@@ -3355,6 +4709,14 @@
     <value>重置为推荐设置</value>
     <comment>App connect DNS: reset to default</comment>
   </data>
+  <data name="site_app_earn_multiplier" xml:space="preserve">
+    <value>倍增器</value>
+    <comment>App earnings: points breakdown row</comment>
+  </data>
+  <data name="site_app_earn_reliability" xml:space="preserve">
+    <value>可靠性</value>
+    <comment>App earnings: points breakdown row</comment>
+  </data>
   <data name="site_app_earnings" xml:space="preserve">
     <value>网络收益</value>
     <comment>App account: network earnings card</comment>
@@ -3366,6 +4728,10 @@
   <data name="site_app_enter_referral" xml:space="preserve">
     <value>输入推荐码</value>
     <comment>App settings: referral code input placeholder</comment>
+  </data>
+  <data name="site_app_epoch_finalizing" xml:space="preserve">
+    <value>确认中</value>
+    <comment>App claim: epoch status before finalization</comment>
   </data>
   <data name="site_app_ext_needed" xml:space="preserve">
     <value>此浏览器不支持URnetwork浏览器扩展</value>
@@ -3418,6 +4784,10 @@
   <data name="site_app_leaderboard_note" xml:space="preserve">
     <value>排行榜为最近4次付款的总和，每个付款周期更新一次。</value>
     <comment>App leaderboard: explainer note</comment>
+  </data>
+  <data name="site_app_leaderboard_rank" xml:space="preserve">
+    <value>排行榜第 {rank} 名（共 {total} 名）</value>
+    <comment>App earnings: the network's leaderboard rank, as in the epoch email</comment>
   </data>
   <data name="site_app_loading" xml:space="preserve">
     <value>加载中…</value>
@@ -3483,6 +4853,18 @@
     <value>暂无流量</value>
     <comment>Connect drawer: throughput empty state</comment>
   </data>
+  <data name="site_app_onboarding_ext_body" xml:space="preserve">
+    <value>URnetwork 通过其扩展为此浏览器传输流量。安装后，此处的“连接”按钮即可使用。</value>
+    <comment>Onboarding: install-the-extension step body</comment>
+  </data>
+  <data name="site_app_onboarding_ext_browsers" xml:space="preserve">
+    <value>适用于 Chrome、Edge、Brave 和 Firefox。</value>
+    <comment>Onboarding: install-the-extension step, supported browsers note</comment>
+  </data>
+  <data name="site_app_onboarding_ext_title" xml:space="preserve">
+    <value>连接此浏览器</value>
+    <comment>Onboarding: install-the-extension step title</comment>
+  </data>
   <data name="site_app_paid_on" xml:space="preserve">
     <value>付款时间</value>
     <comment>App payout detail: paid time</comment>
@@ -3502,6 +4884,10 @@
   <data name="site_app_plan" xml:space="preserve">
     <value>计划</value>
     <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_points_col" xml:space="preserve">
+    <value>积分</value>
+    <comment>App earnings: history column header</comment>
   </data>
   <data name="site_app_private_network" xml:space="preserve">
     <value>私有网络</value>
@@ -3571,6 +4957,10 @@
     <value>保存</value>
     <comment>App: save button</comment>
   </data>
+  <data name="site_app_sdk_not_ready" xml:space="preserve">
+    <value>此版本的网页应用无法获取领取数据。请重新加载后重试。</value>
+    <comment>App earnings/claim: the loaded wasm SDK predates the subnet exports</comment>
+  </data>
   <data name="site_app_send" xml:space="preserve">
     <value>发送</value>
     <comment>App support: send button</comment>
@@ -3586,6 +4976,10 @@
   <data name="site_app_shuffle" xml:space="preserve">
     <value>随机切换</value>
     <comment>App connect screen: shuffle providers button</comment>
+  </data>
+  <data name="site_app_sign_and_connect" xml:space="preserve">
+    <value>签名并连接</value>
+    <comment>App earnings: manual address entry button (the wallet still signs the challenge)</comment>
   </data>
   <data name="site_app_stay_in_touch" xml:space="preserve">
     <value>保持联系</value>
@@ -3603,6 +4997,82 @@
     <value>传输</value>
     <comment>Connect drawer: live transfer timeseries section</comment>
   </data>
+  <data name="site_app_top200_add_signature" xml:space="preserve">
+    <value>添加设备</value>
+    <comment>App top200: post a device's binding payload</comment>
+  </data>
+  <data name="site_app_top200_apply_hotkey_sig" xml:space="preserve">
+    <value>应用 hotkey 签名</value>
+    <comment>App top200: re-check every device with the hotkey signature</comment>
+  </data>
+  <data name="site_app_top200_bad_signature" xml:space="preserve">
+    <value>请完全按照应用显示的内容粘贴绑定数据。</value>
+    <comment>App top200: unparseable paste</comment>
+  </data>
+  <data name="site_app_top200_binding_incomplete" xml:space="preserve">
+    <value>设备签名和 hotkey 签名均验证通过后，将显示 calldata。</value>
+    <comment>App top200: binding not complete</comment>
+  </data>
+  <data name="site_app_top200_calldata" xml:space="preserve">
+    <value>绑定 calldata</value>
+    <comment>App top200: calldata label</comment>
+  </data>
+  <data name="site_app_top200_device" xml:space="preserve">
+    <value>设备</value>
+    <comment>App top200: device row label</comment>
+  </data>
+  <data name="site_app_top200_device_signature" xml:space="preserve">
+    <value>设备签名</value>
+    <comment>App top200: signature textarea label</comment>
+  </data>
+  <data name="site_app_top200_digest" xml:space="preserve">
+    <value>摘要</value>
+    <comment>App top200: binding digest label</comment>
+  </data>
+  <data name="site_app_top200_hotkey" xml:space="preserve">
+    <value>Hotkey</value>
+    <comment>App top200: hotkey input label</comment>
+  </data>
+  <data name="site_app_top200_hotkey_sign_hint" xml:space="preserve">
+    <value>请使用您自己的工具（snclaim bind-head）以 hotkey 为每个绑定摘要签名，然后将签名粘贴到此处。</value>
+    <comment>App top200: how to produce the hotkey signature</comment>
+  </data>
+  <data name="site_app_top200_hotkey_signature" xml:space="preserve">
+    <value>Hotkey 签名（hex）</value>
+    <comment>App top200: hotkey signature input</comment>
+  </data>
+  <data name="site_app_top200_intro" xml:space="preserve">
+    <value>头部矿工是按可路由出口 IP 广度排名前 {cutoff} 的网络。头部席位由子网在每个 tempo 原生支付，直接发放到您的 coldkey。</value>
+    <comment>App top200: intro</comment>
+  </data>
+  <data name="site_app_top200_not_eligible" xml:space="preserve">
+    <value>暂不符合条件。您的分数为 {score}，淘汰线为 {floor}。</value>
+    <comment>App top200: status when not eligible</comment>
+  </data>
+  <data name="site_app_top200_signatures_added" xml:space="preserve">
+    <value>已添加 {count} 台设备</value>
+    <comment>App top200: progress</comment>
+  </data>
+  <data name="site_app_top200_step_bind" xml:space="preserve">
+    <value>每台提供商设备都在其应用的“帐户 › 前 200 名”中为设备群绑定签名。请在此处逐台粘贴每台设备的绑定数据。</value>
+    <comment>App top200: step 2</comment>
+  </data>
+  <data name="site_app_top200_step_register" xml:space="preserve">
+    <value>使用 btcli 在子网 {netuid} 上注册一个 hotkey，然后在下方输入。</value>
+    <comment>App top200: step 1</comment>
+  </data>
+  <data name="site_app_top200_step_submit" xml:space="preserve">
+    <value>请从您自己的 EVM 钱包提交绑定。URnetwork 绝不会代您发送交易。</value>
+    <comment>App top200: step 3</comment>
+  </data>
+  <data name="site_app_top200_submit" xml:space="preserve">
+    <value>提交绑定</value>
+    <comment>App top200: send the binding tx from the injected wallet</comment>
+  </data>
+  <data name="site_app_top200_unavailable" xml:space="preserve">
+    <value>目前无法获取头部席位状态。</value>
+    <comment>App top200: GET /sn/head unavailable</comment>
+  </data>
   <data name="site_app_total_referrals" xml:space="preserve">
     <value>推荐总数</value>
     <comment>App account: total referrals label</comment>
@@ -3619,9 +5089,21 @@
     <value>已验证</value>
     <comment>App profile: verified badge</comment>
   </data>
+  <data name="site_app_view_transaction" xml:space="preserve">
+    <value>查看交易</value>
+    <comment>App claim/top200: explorer link</comment>
+  </data>
   <data name="site_app_wallet" xml:space="preserve">
     <value>钱包</value>
     <comment>App wallets: wallet label</comment>
+  </data>
+  <data name="site_app_wallet_connected" xml:space="preserve">
+    <value>已连接</value>
+    <comment>App earnings: badge next to the connected Bittensor coldkey</comment>
+  </data>
+  <data name="site_app_wallet_mismatch" xml:space="preserve">
+    <value>请使用持有此地址的钱包签名。</value>
+    <comment>App earnings: the bridge signed with a different account than the typed address</comment>
   </data>
   <data name="site_best_available" xml:space="preserve">
     <value>最佳可用</value>
@@ -3671,6 +5153,10 @@
     <value>准备连接</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copied" xml:space="preserve">
+    <value>已复制</value>
+    <comment>Account panel: a copy button after it copied</comment>
+  </data>
   <data name="site_copy_seedphrase" xml:space="preserve">
     <value>复制助记词</value>
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
@@ -3678,6 +5164,10 @@
   <data name="site_copy_url" xml:space="preserve">
     <value>复制URL</value>
     <comment>Account panel: copy a proxy's URL</comment>
+  </data>
+  <data name="site_copy_wg_config" xml:space="preserve">
+    <value>复制配置</value>
+    <comment>Account panel: copy the WireGuard config text to the clipboard</comment>
   </data>
   <data name="site_create_another" xml:space="preserve">
     <value>再创建一个</value>
@@ -3759,6 +5249,10 @@
     <value>余额码无效。</value>
     <comment>Account panel: invalid balance code</comment>
   </data>
+  <data name="site_keep_waiting" xml:space="preserve">
+    <value>继续等待</value>
+    <comment>Upgrade sheet: give-up state action to resume waiting for the payment</comment>
+  </data>
   <data name="site_landing_continue_web" xml:space="preserve">
     <value>在网页上继续</value>
     <comment>Email landing page: the web fallback link.</comment>
@@ -3806,6 +5300,10 @@
   <data name="site_locations" xml:space="preserve">
     <value>位置</value>
     <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_login_auth_code_hint" xml:space="preserve">
+    <value>粘贴在其他设备上或通过命令行工具生成的验证码。</value>
+    <comment>Login stack: hint above the auth code field when signing in with a code generated elsewhere.</comment>
   </data>
   <data name="site_login_seed_hint" xml:space="preserve">
     <value>输入创建即时账户时显示的 24 个单词的助记词。</value>
@@ -3915,6 +5413,10 @@
     <value>运营者客户端界面</value>
     <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
   </data>
+  <data name="site_pay_another_way" xml:space="preserve">
+    <value>使用其他方式支付</value>
+    <comment>Upgrade sheet: escape from the waiting state back to the payment options</comment>
+  </data>
   <data name="site_pay_sheet_charge_line" xml:space="preserve">
     <value>今天 {}，之后按月。随时取消。</value>
     <comment>Embedded pay page: the immediate charge line (monthly). {price} amount.</comment>
@@ -3942,6 +5444,14 @@
   <data name="site_pay_sheet_trial_line" xml:space="preserve">
     <value>今天保存您的卡，{0} 扣款 {1}。在此之前可随时取消。</value>
     <comment>Embedded pay page: what happens with the card on a trial. {price} amount, {date} local date.</comment>
+  </data>
+  <data name="site_payment_not_seen_body" xml:space="preserve">
+    <value>我们尚未看到您的付款。如果您已在钱包中完成付款，它可能仍在处理中；付款到账后，您的方案会在“帐户”中自动更新。</value>
+    <comment>Upgrade sheet: give-up state body — the payment may still be processing and will appear under Account</comment>
+  </data>
+  <data name="site_payment_not_seen_title" xml:space="preserve">
+    <value>付款尚未确认</value>
+    <comment>Upgrade sheet: give-up state title after the payment wait deadline</comment>
   </data>
   <data name="site_plan_billed_monthly" xml:space="preserve">
     <value>按月计费 · 随时取消</value>
@@ -3991,6 +5501,10 @@
     <value>代理类型</value>
     <comment>Account panel: proxy-type picker aria-label</comment>
   </data>
+  <data name="site_redeem_timeout" xml:space="preserve">
+    <value>请求超时。如果您已被扣款，请查看余额，该余额码可能已生效。</value>
+    <comment>Balance code redeem: timeout is ambiguous — the server may have committed the redeem after the client stopped waiting</comment>
+  </data>
   <data name="site_roles" xml:space="preserve">
     <value>角色</value>
     <comment>Account panel: client info — roles label</comment>
@@ -4018,6 +5532,14 @@
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>用户名为URL中的令牌；密码为空。</value>
     <comment>Account panel: SOCKS credential note</comment>
+  </data>
+  <data name="site_solana_no_wallet_hint" xml:space="preserve">
+    <value>没有反应？您可能需要安装 Solana 钱包，或使用其他方式支付。</value>
+    <comment>Upgrade sheet: waiting state hint — a solana: deep link with no wallet installed silently does nothing</comment>
+  </data>
+  <data name="site_sub_active_body" xml:space="preserve">
+    <value>您的 Pro 方案已生效。此账户没有需要管理的应用商店订阅。</value>
+    <comment>Subscription: body for a Pro account with no store subscription to cancel (e.g. Pro from a balance code or a grant)</comment>
   </data>
   <data name="site_sub_active_until" xml:space="preserve">
     <value>有效期至 {date}</value>
@@ -4091,6 +5613,14 @@
     <value>在 Google Play 中管理</value>
     <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
   </data>
+  <data name="site_sub_multiple_note" xml:space="preserve">
+    <value>您正在为多个订阅付费。每个订阅都必须在购买的地方取消。</value>
+    <comment>Subscription: warning shown when a network is billed by more than one store, because cancelling one does not cancel the others</comment>
+  </data>
+  <data name="site_sub_multiple_title" xml:space="preserve">
+    <value>您的订阅</value>
+    <comment>Subscription: heading above the list, shown only when more than one store is billing the network</comment>
+  </data>
   <data name="site_sub_other_platform" xml:space="preserve">
     <value>其他平台</value>
     <comment>Subscription: unknown platform fallback</comment>
@@ -4131,9 +5661,33 @@
     <value>{1} 个月加 {0} 天 Pro</value>
     <comment>USDC panel: the term the welcome-offer payment buys.</comment>
   </data>
+  <data name="skip" xml:space="preserve">
+    <value>跳过</value>
+    <comment>Small muted button at the top of the post-login onboarding flow that leaves the whole flow.</comment>
+  </data>
+  <data name="sn_status_claimable" xml:space="preserve">
+    <value>可领取</value>
+    <comment>Claim status of an epoch whose alpha can be claimed now.</comment>
+  </data>
+  <data name="sn_status_not_finalized" xml:space="preserve">
+    <value>未确认</value>
+    <comment>Claim status of an epoch the vault has not finalized yet.</comment>
+  </data>
+  <data name="sn_status_open" xml:space="preserve">
+    <value>进行中</value>
+    <comment>Claim status of an epoch that is still open (not yet finalized on chain).</comment>
+  </data>
+  <data name="solana_one_time_payment" xml:space="preserve">
+    <value>使用 Solana 上的 USDC 支付为一次性年付，不含免费试用。</value>
+    <comment>Note under the Solana payment button on the plan picker: Solana is a one-time yearly payment, the free trial is Stripe only.</comment>
+  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>使用 Solana 登录</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="solana_wallet" xml:space="preserve">
+    <value>Solana 钱包</value>
+    <comment>Label of the connected Solana wallet block on the Earnings screen (parallel to bittensor_wallet).</comment>
   </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>出了些问题。</value>
@@ -4207,6 +5761,10 @@
     <value>要开始赚取收入，请加入网络</value>
     <comment>Guest mode overlay</comment>
   </data>
+  <data name="start_free_trial" xml:space="preserve">
+    <value>开始免费试用</value>
+    <comment>Primary button of the plan picker (onboarding and upgrade): starts the paid plan's free trial. Replaces 'Join the movement'.</comment>
+  </data>
   <data name="stay" xml:space="preserve">
     <value>留下</value>
     <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
@@ -4254,6 +5812,14 @@
   <data name="strong_anonymization" xml:space="preserve">
     <value>强匿名化</value>
     <comment>Connect drawer: strong anonymization toggle — the inverse of allow direct (direct connections expose the real source IP to the provider).</comment>
+  </data>
+  <data name="subscribe" xml:space="preserve">
+    <value>订阅</value>
+    <comment>Button on the plan picker for the monthly plan, which has no free trial.</comment>
+  </data>
+  <data name="subscription_purchased_under_different_account" xml:space="preserve">
+    <value>您的订阅是通过另一个账户购买的。请登录该账户以使用订阅。</value>
+    <comment>The store purchase belongs to a different network than the one logged in — crediting must not go to the wrong account, so tell the user which way out exists. Apple: restore-purchases outcome (Shared/ViewModels/AppStoreSubscriptionManager.swift). Android: terminal `wrong_network` answer from the Play purchase report (google/PlanViewModel.kt); the purchase is still acknowledged so Play does not auto-refund it.</comment>
   </data>
   <data name="successfully_claimed_multiplier" xml:space="preserve">
     <value>已成功领取倍数！</value>
@@ -4303,6 +5869,10 @@
     <value>您要断开与 {} 的连接并切换帐户吗？</value>
     <comment>Call to action</comment>
   </data>
+  <data name="symbol_ellipsis" xml:space="preserve">
+    <value>...</value>
+    <comment>An ellipsis character used to indicate ongoing processing.</comment>
+  </data>
   <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
     <value>将设备位置与连接时间最长的提供商同步</value>
     <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
@@ -4314,6 +5884,10 @@
   <data name="system" xml:space="preserve">
     <value>系统</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
+  </data>
+  <data name="tao_amount_linux" xml:space="preserve">
+    <value>{} TAO</value>
+    <comment>A TAO amount with its unit (the gas key balance).</comment>
   </data>
   <data name="tap_to_connect" xml:space="preserve">
     <value>点击连接</value>
@@ -4339,6 +5913,10 @@
     <value>感谢您的反馈！</value>
     <comment>Confirmation shown after feedback is sent.</comment>
   </data>
+  <data name="the_purchase_could_not_be_completed" xml:space="preserve">
+    <value>无法完成购买。请重试。</value>
+    <comment>Shown inline in the upgrade flow when a StoreKit purchase attempt throws (Shared/ViewModels/AppStoreSubscriptionManager.swift). Every purchase failure is shown to the user — a payment error they cannot see is one they will hit again. User cancellation is not an error and never shows this.</comment>
+  </data>
   <data name="there_was_an_error_checking_the_network_name" xml:space="preserve">
     <value>检查网络名称时出错</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkViewModel.swift.</comment>
@@ -4355,6 +5933,10 @@
     <value>⚠️ 这是你唯一一次看到它的机会。</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
   </data>
+  <data name="this_purchase_couldn_t_be_verified" xml:space="preserve">
+    <value>无法通过 App Store 验证此次购买，因此无法将其应用到您的账户。如果您已被扣款但方案未更新，请联系支持团队。</value>
+    <comment>Shown inline in the upgrade flow when the server's verify answer for a purchase's transaction JWS is terminal `invalid` — the proof will never verify. The transaction is still finished so StoreKit stops redelivering it; this message is how the failure reaches the user instead of a silent success (Shared/ViewModels/AppStoreSubscriptionManager.swift). Apple sibling of purchase_could_not_be_verified (android).</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>此地区</value>
     <comment>dns settings</comment>
@@ -4369,6 +5951,30 @@
   </data>
   <data name="title_login" xml:space="preserve">
     <value>登录</value>
+  </data>
+  <data name="top200" xml:space="preserve">
+    <value>前 200 名</value>
+    <comment>Badge text for the head mining spot.</comment>
+  </data>
+  <data name="top200_bound_detail" xml:space="preserve">
+    <value>释放的奖励将直接支付到您的 coldkey。绑定每个周期续期一次。</value>
+    <comment>Detail under the bound status.</comment>
+  </data>
+  <data name="top200_bound_status" xml:space="preserve">
+    <value>UID {0} · 第 {1} 名</value>
+    <comment>Status row once bound.</comment>
+  </data>
+  <data name="top200_demotion_warning" xml:space="preserve">
+    <value>您的分数接近淘汰线。请添加可路由的 IP 以保住席位。</value>
+    <comment>Warning when the score nears the floor.</comment>
+  </data>
+  <data name="top200_detail" xml:space="preserve">
+    <value>按可路由 IP 广度计算，您的网络在 {1} 个头部席位中约排第 {0} 名。头部矿工在每个 tempo 原生赚取 SN25α。</value>
+    <comment>Detail of the Top 200 tile when eligible.</comment>
+  </data>
+  <data name="top200_you_qualify" xml:space="preserve">
+    <value>您符合条件</value>
+    <comment>Headline of the Top 200 tile when eligible.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>最佳匹配</value>
@@ -4414,6 +6020,62 @@
     <value>您的转账已启动，一旦在链上处理完交易，转账就会完成。</value>
     <comment>Transfer Submitted Overlay</comment>
   </data>
+  <data name="transport" xml:space="preserve">
+    <value>传输方式</value>
+    <comment>Section header of the transport mode selection (Auto or a single transport).</comment>
+  </data>
+  <data name="transport_auto_degraded" xml:space="preserve">
+    <value>“自动”模式已降级，因为系统限制导致部分已启用的传输方式无法运行。</value>
+    <comment>Generic warning banner in the transport settings editor when the Auto policy is degraded for a constraint this app version does not recognize (the SDK may report new constraint kinds; "memory" has its own banner).</comment>
+  </data>
+  <data name="transport_auto_degraded_memory" xml:space="preserve">
+    <value>“自动”模式已降级，因为系统内存限制导致部分已启用的传输方式无法运行。</value>
+    <comment>Warning banner in the transport settings editor when the Auto policy is degraded because the platform memory budget cannot admit every enabled transport.</comment>
+  </data>
+  <data name="transport_auto_description" xml:space="preserve">
+    <value>推荐。使用下方已启用的传输方式。</value>
+    <comment>Subtitle of the Auto transport mode row.</comment>
+  </data>
+  <data name="transport_client_footer" xml:space="preserve">
+    <value>此设备用于连接提供商的传输方式。“自动”模式会按优先顺序尝试已启用的传输方式，并让同一层级中所有正常的传输方式保持并行连接。</value>
+    <comment>Footer of the client transport mode section.</comment>
+  </data>
+  <data name="transport_dns_description" xml:space="preserve">
+    <value>伪装成 DNS 流量。适用于会过滤直接连接的网络。</value>
+    <comment>One line description of the whodis (DNS) transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_dnspump_description" xml:space="preserve">
+    <value>伪装成 DNS 流量，并持续泵送应答。带宽最低，可用性最高。</value>
+    <comment>One line description of the whodis pump (DNS pump) transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_h1_description" xml:space="preserve">
+    <value>通过 TLS 直连。适用于大多数网络。</value>
+    <comment>One line description of the H1 transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_h3_description" xml:space="preserve">
+    <value>通过 QUIC 直连。在未被过滤的网络中速度最快。</value>
+    <comment>One line description of the H3 transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_provider_footer" xml:space="preserve">
+    <value>此设备为他人提供服务时使用的传输方式。“自动”模式会按优先顺序尝试已启用的传输方式，并让同一层级中所有正常的传输方式保持并行连接。</value>
+    <comment>Footer of the provider transport mode section.</comment>
+  </data>
+  <data name="transport_queued" xml:space="preserve">
+    <value>排队中</value>
+    <comment>Transport bar label for traffic admitted for sending but not yet attributed to a physical transport.</comment>
+  </data>
+  <data name="transport_unavailable_system_constraints" xml:space="preserve">
+    <value>因系统限制不可用</value>
+    <comment>Accessibility label / tooltip on the warning icon next to a transport that is enabled under Auto but not currently eligible under a system constraint (for example the platform memory budget). A runtime warning, not a settings restriction: the toggle stays editable.</comment>
+  </data>
+  <data name="transport_unused" xml:space="preserve">
+    <value>未使用</value>
+    <comment>Prefix of the transport bar footer listing the enabled transports that carried no traffic in the stats window.</comment>
+  </data>
+  <data name="transports" xml:space="preserve">
+    <value>传输方式</value>
+    <comment>Title of the transport distribution bar under the client statistics chart and of the transport settings editor.</comment>
+  </data>
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>获得超过100,000个私人网络的信任</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
@@ -4437,6 +6099,10 @@
   <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
     <value>连接已停止。</value>
     <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
+  <data name="unclaimed" xml:space="preserve">
+    <value>未领取</value>
+    <comment>Label of the unclaimed alpha tile.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>未加密 DNS</value>
@@ -4542,12 +6208,24 @@
     <value>URnetwork VPN 已启动</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
+  <data name="usdc_payouts_until_migration" xml:space="preserve">
+    <value>在迁移到 Bittensor 完成之前，USDC 支付将继续发送到此钱包。</value>
+    <comment>Second paragraph of the Solana connect sheet/card, and the body line under a connected Solana wallet.</comment>
+  </data>
   <data name="usdc_solana_network_only" xml:space="preserve">
     <value>请仅在 Solana 网络上发送 USDC。通过其他网络发送的 USDC 将无法到账。</value>
     <comment>Payment: the chain to send on. Shown wherever a USDC payment is requested, because USDC exists on many chains and a transfer sent on the wrong one is lost.</comment>
   </data>
+  <data name="usdc_waiting" xml:space="preserve">
+    <value>{} USDC 待发放</value>
+    <comment>The pending USDC payout total waiting to be sent to the Solana payout wallet; shown on the Solana wallet block and, while no Solana wallet is connected, next to the wallet actions. Mirrors the email headline.</comment>
+  </data>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>USDC 钱包地址</value>
+  </data>
+  <data name="use_extender_settings" xml:space="preserve">
+    <value>使用扩展器设置</value>
+    <comment>Toggle on the import screen: also apply the extender settings carried by the code.</comment>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>使用最稳定的提供商</value>
@@ -4580,6 +6258,9 @@
   <data name="uses_ur_protocol" xml:space="preserve">
     <value>使用 UR Protocol</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="value_string" xml:space="preserve">
+    <value>{}</value>
   </data>
   <data name="value_with_unit" xml:space="preserve">
     <value>{0} {1}</value>
@@ -4620,6 +6301,10 @@
     <value>验证码</value>
     <comment>Label for the verification code input field</comment>
   </data>
+  <data name="verify_seeker" xml:space="preserve">
+    <value>验证 Seeker</value>
+    <comment>Standalone Seeker verification action (points multiplier only).</comment>
+  </data>
   <data name="verify_seeker_token_btn" xml:space="preserve">
     <value>验证 Seeker 预售代币</value>
     <comment>Call to action</comment>
@@ -4652,17 +6337,41 @@
     <value>钱包</value>
     <comment>Account Screen</comment>
   </data>
+  <data name="wallet_blocked" xml:space="preserve">
+    <value>此钱包无法用于 URnetwork。</value>
+    <comment>Error when a wallet address is on the operator's ban list; the user cannot continue.</comment>
+  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>无法连接钱包。</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
+  </data>
+  <data name="wallet_connect_signed_note_linux" xml:space="preserve">
+    <value>您的钱包会签署一条消息以证明其归您所有。不会在链上发送任何内容。</value>
+    <comment>Note under the manual address entry: the wallet only signs a proof of ownership.</comment>
   </data>
   <data name="wallet_connected" xml:space="preserve">
     <value>钱包已连接。</value>
     <comment>Confirmation shown after an external wallet is connected to the account.</comment>
   </data>
+  <data name="wallet_connected_to_protocol" xml:space="preserve">
+    <value>已连接到 UR 协议。领取的收益将存入此处。Alpha 从连接后的下一个周期开始累积。</value>
+    <comment>Line under the connected coldkey.</comment>
+  </data>
+  <data name="wallet_looks_new_warning" xml:space="preserve">
+    <value>此地址在 Bittensor 链上尚无任何活动，看起来是一个新钱包。继续之前，请确认它属于您。</value>
+    <comment>Warning when a wallet address has no activity on the Bittensor chain yet; the user may continue.</comment>
+  </data>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>此钱包尚未关联任何网络。请选择一个网络名称来创建。</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
+  </data>
+  <data name="wallet_not_retroactive" xml:space="preserve">
+    <value>连接钱包，即可从下一个周期开始赚取 SN25α。之前的周期不会追溯结算。</value>
+    <comment>Line on the wallet block before a wallet is connected.</comment>
+  </data>
+  <data name="wallet_options" xml:space="preserve">
+    <value>钱包选项</value>
+    <comment>Accessibility label of the three-dot overflow button next to “Connect Bittensor wallet” and on the connected Bittensor wallet block.</comment>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>钱包登录失败</value>
@@ -4671,6 +6380,14 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>已添加钱包登录方式</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
+  <data name="wallet_signature_mismatch_linux" xml:space="preserve">
+    <value>签名的钱包与您输入的地址不一致。</value>
+    <comment>Error when the bridge signed with a different wallet than the address the user typed.</comment>
+  </data>
+  <data name="we_re_confirming_your_purchase_with_the_app_store" xml:space="preserve">
+    <value>我们正在通过 App Store 确认您的购买。您的方案将自动更新。</value>
+    <comment>Body of the post-purchase screen while the confirmation poll runs (Shared/Views/PurchaseSuccessView.swift). Processing-shaped, not premium-shaped: the server learns of the purchase by webhook and has not confirmed yet.</comment>
   </data>
   <data name="welcome_offer_eyebrow" xml:space="preserve">
     <value>欢迎优惠</value>
@@ -4687,6 +6404,110 @@
   <data name="when_you_refer_a_friend" xml:space="preserve">
     <value>当你推荐朋友时：</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="widget_client" xml:space="preserve">
+    <value>客户端</value>
+    <comment>Dashboard widget chart title: this device's own traffic.</comment>
+  </data>
+  <data name="widget_connect_once" xml:space="preserve">
+    <value>连接一次即可在此查看您的流量</value>
+    <comment>Dashboard widget footer before the tunnel has ever written data.</comment>
+  </data>
+  <data name="widget_connect_to_see_contracts" xml:space="preserve">
+    <value>连接后即可查看您的合约</value>
+    <comment>Contracts widget empty state while the tunnel is down.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.other" xml:space="preserve">
+    <value>{0} 个合约，{1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contracts_description" xml:space="preserve">
+    <value>您的主要客户端合约，随其建立与结束实时流动。</value>
+    <comment>Description of the contracts widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_control_description" xml:space="preserve">
+    <value>连接或断开 URnetwork VPN。</value>
+    <comment>Description of the quick connect control in the Control Center gallery.</comment>
+  </data>
+  <data name="widget_dashboard_description" xml:space="preserve">
+    <value>流量余额、已连接位置和流量，并支持快速连接。</value>
+    <comment>Description of the dashboard widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_globe_description" xml:space="preserve">
+    <value>在地球上显示您已连接的提供商。</value>
+    <comment>Description of the provider globe widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_more_providers" xml:space="preserve">
+    <value>另有 {} 个</value>
+    <comment>Provider globe widget: providers not shown in the list. The argument is a count.</comment>
+  </data>
+  <data name="widget_no_contracts" xml:space="preserve">
+    <value>没有合约</value>
+    <comment>Contracts widget empty state while connected with no open client contracts.</comment>
+  </data>
+  <data name="widget_no_providers" xml:space="preserve">
+    <value>没有提供商</value>
+    <comment>Badge on the small provider globe widget when no providers are connected.</comment>
+  </data>
+  <data name="widget_not_providing" xml:space="preserve">
+    <value>未提供</value>
+    <comment>Dashboard widget provider chart label when providing is off.</comment>
+  </data>
+  <data name="widget_not_signed_in" xml:space="preserve">
+    <value>未登录</value>
+    <comment>Quick connect control / widget value when the app has no tunnel configuration yet (fresh install or logged out).</comment>
+  </data>
+  <data name="widget_open" xml:space="preserve">
+    <value>打开</value>
+    <comment>Button on the Home Screen widget that opens the app when the tunnel is not configured yet.</comment>
+  </data>
+  <data name="widget_open_to_set_up" xml:space="preserve">
+    <value>打开 URnetwork 进行设置</value>
+    <comment>Widget subtitle when the app has no tunnel configuration yet.</comment>
+  </data>
+  <data name="widget_peak_rate" xml:space="preserve">
+    <value>峰值 {}</value>
+    <comment>Chart label; the argument is a formatted byte rate such as '1.2 MB/s'.</comment>
+  </data>
+  <data name="widget_peer_count.other" xml:space="preserve">
+    <value>{} 个对等节点</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_provider" xml:space="preserve">
+    <value>提供商</value>
+    <comment>Dashboard widget chart title: traffic relayed for others while providing.</comment>
+  </data>
+  <data name="widget_provider_count.other" xml:space="preserve">
+    <value>{} 个提供商</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count_providing.other" xml:space="preserve">
+    <value>{} 个提供商 · 提供中</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_mode_title" xml:space="preserve">
+    <value>提供商 · {}</value>
+    <comment>Title above the provider traffic chart in the dashboard widget: the chart name with the current provide mode (Auto, Always, Network, Never).</comment>
+  </data>
+  <data name="widget_provider_stats_when_enabled" xml:space="preserve">
+    <value>启用提供商后，将显示提供商统计信息。</value>
+    <comment>Shown in the dashboard widget in place of the provider traffic chart while providing is off.</comment>
+  </data>
+  <data name="widget_quick_tile_added" xml:space="preserve">
+    <value>已添加快速连接图块</value>
+    <comment>Toast after the system added the Quick Settings tile.</comment>
+  </data>
+  <data name="widget_toggle_intent_title" xml:space="preserve">
+    <value>切换 URnetwork VPN</value>
+    <comment>Title of the Set-Value intent behind the quick connect control and widget toggle (shown by the system in Shortcuts/debug UI).</comment>
+  </data>
+  <data name="widget_updated_ago" xml:space="preserve">
+    <value>更新于 {}</value>
+    <comment>Dashboard widget footer; the argument is a localized relative time such as '3 min. ago'.</comment>
+  </data>
+  <data name="widget_updated_just_now" xml:space="preserve">
+    <value>刚刚更新</value>
+    <comment>Dashboard widget footer in the widget gallery preview.</comment>
   </data>
   <data name="widgets" xml:space="preserve">
     <value>小组件</value>
@@ -4728,6 +6549,10 @@
     <value>你终身获得 3 GiB/天</value>
     <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
   </data>
+  <data name="you_get_free_data_every_day" xml:space="preserve">
+    <value>您每天都能获得免费流量。</value>
+    <comment>Detail line under the onboarding data page title.</comment>
+  </data>
   <data name="you_have_1_other_device_online" xml:space="preserve">
     <value>你还有 1 台其他设备在线</value>
   </data>
@@ -4750,9 +6575,17 @@
     <value>您已是高级会员。</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="your_bandwidth" xml:space="preserve">
+    <value>您的带宽</value>
+    <comment>Title of the onboarding data page (was 'Boost your bandwidth').</comment>
+  </data>
   <data name="your_email" xml:space="preserve">
     <value>你的电子邮件</value>
     <comment>Label for the empty text field.</comment>
+  </data>
+  <data name="your_email_com" xml:space="preserve">
+    <value>name@email.com</value>
+    <comment>Placeholder text for the email field.</comment>
   </data>
   <data name="your_friend_gets_30_gib_month_for_life" xml:space="preserve">
     <value>你的朋友每月获得30 GiB，终身有效</value>

@@ -72,9 +72,17 @@
     <value>{} (تم التحقق)</value>
     <comment>The account's email or phone, marked as verified. The argument is the email or phone number.</comment>
   </data>
+  <data name="account_isn_t_ready_for_purchases" xml:space="preserve">
+    <value>حسابك غير جاهز لعمليات الشراء بعد. يرجى إعادة تشغيل التطبيق والمحاولة مرة أخرى.</value>
+    <comment>Shown when a purchase is refused before contacting the App Store because the networkId is missing or unparseable — the purchase could never be credited to anyone (Shared/ViewModels/AppStoreSubscriptionManager.swift). This used to be a silent no-op.</comment>
+  </data>
   <data name="account_needs_verification" xml:space="preserve">
     <value>يحتاج هذا الحساب إلى التحقق. تحقق من بريدك الإلكتروني.</value>
     <comment>Sign-in error shown when the account exists but has not been verified yet.</comment>
+  </data>
+  <data name="active_extenders" xml:space="preserve">
+    <value>الموسّعات النشطة</value>
+    <comment>Accessibility label of the row of rings, one per extender carrying a live connection.</comment>
   </data>
   <data name="activity" xml:space="preserve">
     <value>النشاط</value>
@@ -114,6 +122,10 @@
   <data name="add_sign_in_method_2" xml:space="preserve">
     <value>إضافة طريقة تسجيل الدخول</value>
     <comment>Button text for adding a sign-in method.</comment>
+  </data>
+  <data name="add_tao_for_gas" xml:space="preserve">
+    <value>أضف TAO لرسوم الغاز</value>
+    <comment>State when the gas key has no TAO.</comment>
   </data>
   <data name="adjust_setting_always_fill_data_faster" xml:space="preserve">
     <value>ضبط الإعداد على "دائمًا" لزيادة البيانات المجانية بشكل أسرع.</value>
@@ -445,6 +457,10 @@
     <value>إصدار التطبيق</value>
     <comment>Settings, about: label of the app version row.</comment>
   </data>
+  <data name="apple" xml:space="preserve">
+    <value>Apple</value>
+    <comment>A method of adding a sign-in method.</comment>
+  </data>
   <data name="apple_sign_in_method_added" xml:space="preserve">
     <value>تمت إضافة طريقة تسجيل الدخول عبر Apple</value>
     <comment>Snackbar message displayed when an Apple sign-in method is added.</comment>
@@ -610,9 +626,21 @@
     <value>رمز الرصيد</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
+  <data name="balance_code_already_redeemed_message" xml:space="preserve">
+    <value>تم استرداد رمز الرصيد هذا بالفعل. إذا كنت قد استرددته سابقًا، فالبيانات موجودة بالفعل في رصيدك.</value>
+    <comment>Redeem balance code: the server answered that this code was already redeemed. Distinct from invalid -- the user may have redeemed it on an earlier attempt that looked like a failure.</comment>
+  </data>
+  <data name="balance_code_invalid_message" xml:space="preserve">
+    <value>رمز الرصيد هذا غير صالح. تحقق من الرمز وحاول مرة أخرى.</value>
+    <comment>Redeem balance code: the server answered and rejected the code as unknown/invalid. Distinct from a transport failure, which must never be reported as a bad code.</comment>
+  </data>
   <data name="balance_code_redeemed" xml:space="preserve">
     <value>تم استخدام رمز الرصيد.</value>
     <comment>Confirmation shown after a balance code is redeemed.</comment>
+  </data>
+  <data name="balance_code_transport_error" xml:space="preserve">
+    <value>تعذّر الوصول إلى الخادم — تحقق من اتصالك. إذا تم تحصيل رسوم منك، فربما تم تطبيق الرمز بالفعل؛ تحقق من رصيدك قبل المحاولة مرة أخرى.</value>
+    <comment>Redeem balance code: the request never got a server answer (network failure). Must NOT be worded as 'bad code' -- the redeem may have committed server-side, so tell the user to check their balance before retrying.</comment>
   </data>
   <data name="balance_code_where_to_buy" xml:space="preserve">
     <value>ليس لديك رمز؟ يمكن شراء رموز البيانات من ur.io وإرسالها إلى بريدك الإلكتروني.</value>
@@ -621,6 +649,10 @@
   <data name="balance_codes_link" xml:space="preserve">
     <value>رموز الرصيد</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
+  </data>
+  <data name="balance_codes_load_error" xml:space="preserve">
+    <value>تعذّر تحميل رموز الرصيد الخاصة بك. تحقق من اتصالك وحاول مرة أخرى.</value>
+    <comment>Linux redeem-code sheet: shown in place of the redeemed-codes history when getNetworkRedeemedBalanceCodes FAILS (transport error, no response, or a server-side error) — distinct from the empty state's "No balance codes found", which is only for a successful fetch with no codes.</comment>
   </data>
   <data name="balance_codes_title" xml:space="preserve">
     <value>رموز الرصيد</value>
@@ -638,9 +670,17 @@
     <value>أفضل النتائج المطابقة</value>
     <comment>Label for a list or section showing the best matching results.</comment>
   </data>
+  <data name="best_value" xml:space="preserve">
+    <value>أفضل قيمة</value>
+    <comment>Gold pill on the recommended (annual) plan card.</comment>
+  </data>
   <data name="bittensor_sign_in" xml:space="preserve">
     <value>تسجيل الدخول باستخدام Bittensor</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="bittensor_wallet" xml:space="preserve">
+    <value>محفظة Bittensor</value>
+    <comment>Label of the connected wallet block.</comment>
   </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>حظر الإعلانات والمتعقبات</value>
@@ -712,9 +752,17 @@
     <value>تجاوز VPN</value>
     <comment>App split rules: rule choice sending the app around the VPN (local route).</comment>
   </data>
+  <data name="camera_permission_needed" xml:space="preserve">
+    <value>يلزم الوصول إلى الكاميرا لمسح الرمز.</value>
+    <comment>Shown when the camera permission was denied on the scan screen.</comment>
+  </data>
   <data name="cancel" xml:space="preserve">
     <value>ألغِ</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="chain_rpc_unreachable" xml:space="preserve">
+    <value>تعذّر الوصول إلى RPC الخاص بالسلسلة. حاول مرة أخرى.</value>
+    <comment>Error when the subnet RPC cannot be reached.</comment>
   </data>
   <data name="change" xml:space="preserve">
     <value>غيّر</value>
@@ -756,9 +804,33 @@
     <value>جارٍ التحقق من معاملات Solana</value>
     <comment>Call to action</comment>
   </data>
+  <data name="checking_wallet_address" xml:space="preserve">
+    <value>جارٍ التحقق من العنوان…</value>
+    <comment>Progress text while the address is validated.</comment>
+  </data>
+  <data name="checkout_browser_launch_failed" xml:space="preserve">
+    <value>تعذّر فتح المتصفح. انسخ هذا الرابط في متصفح لإتمام عملية الدفع:</value>
+    <comment>Upgrade sheet: the system browser could not be opened for the hosted checkout url. The app appends the url itself on the next line (selectable) so the user can copy it into a browser by hand — never advancing to the waiting page with no payment page open.</comment>
+  </data>
+  <data name="checkout_interrupted_confirming" xml:space="preserve">
+    <value>أُغلقت نافذة الدفع بشكل غير متوقع. إذا تمت عملية الدفع، فسيتم تحديث خطتك هنا تلقائيًا — لا داعي للشراء مرة أخرى.</value>
+    <comment>Upgrade sheet waiting page: the embedded checkout webview crashed after the payment form had rendered, so a charge may already have gone through with only the redirect lost. Shown while the confirmation poll asks the server for the payment webhook; must never invite buying again.</comment>
+  </data>
   <data name="checkout_opened_in_browser" xml:space="preserve">
     <value>أكمل عملية الشراء في المتصفح. سيتم تحديث خطتك هنا تلقائيًا بمجرد تأكيد الدفع.</value>
     <comment>Shown after the app hands the user to the Stripe hosted checkout in the system browser. The app polls the server and flips the plan automatically when the payment webhook lands.</comment>
+  </data>
+  <data name="choose_file" xml:space="preserve">
+    <value>اختيار ملف</value>
+    <comment>Button on desktop: pick a file that contains a QR code image.</comment>
+  </data>
+  <data name="choose_image_file" xml:space="preserve">
+    <value>اختيار ملف صورة</value>
+    <comment>Button on desktop: pick an image file that contains a QR code.</comment>
+  </data>
+  <data name="choose_photo" xml:space="preserve">
+    <value>اختيار صورة</value>
+    <comment>Button: pick a photo that contains a QR code.</comment>
   </data>
   <data name="cities" xml:space="preserve">
     <value>المدن</value>
@@ -768,6 +840,30 @@
     <value>مطالبة</value>
     <comment>Call to action</comment>
   </data>
+  <data name="claim_across_epochs" xml:space="preserve">
+    <value>عدد الفترات المكتملة: {}</value>
+    <comment>Subtitle of the claim dialog.</comment>
+  </data>
+  <data name="claim_alpha_title" xml:space="preserve">
+    <value>المطالبة بـ SN25α</value>
+    <comment>Title of the claim dialog.</comment>
+  </data>
+  <data name="claim_amount_button" xml:space="preserve">
+    <value>المطالبة بـ {}</value>
+    <comment>Claim button with the amount.</comment>
+  </data>
+  <data name="claim_confirmed" xml:space="preserve">
+    <value>تمت المطالبة</value>
+    <comment>Claim state: confirmed on chain.</comment>
+  </data>
+  <data name="claim_expired" xml:space="preserve">
+    <value>انتهت الصلاحية</value>
+    <comment>Claim state: past the vault's expiry block.</comment>
+  </data>
+  <data name="claim_failed" xml:space="preserve">
+    <value>فشل</value>
+    <comment>Claim state: failed.</comment>
+  </data>
   <data name="claim_multiplier" xml:space="preserve">
     <value>المطالبة بالمضاعف</value>
     <comment>Call to action</comment>
@@ -775,6 +871,38 @@
   <data name="claim_network_name_hint" xml:space="preserve">
     <value>احصل على اسم شبكة مخصص ليحل محل الاسم الذي تم إنشاؤه تلقائيًا</value>
     <comment>A description of the benefits of claiming a custom network name.</comment>
+  </data>
+  <data name="claim_sending_linux" xml:space="preserve">
+    <value>جارٍ الإرسال…</value>
+    <comment>Per-epoch status while the claim transaction is being sent.</comment>
+  </data>
+  <data name="claim_sends_from_device" xml:space="preserve">
+    <value>يرسل جهازك طلب المطالبة إلى عقد الخزنة. تُدفع رسوم الغاز بعملة TAO من مفتاح الغاز الخاص بك. ويصل Alpha إلى coldkey الخاص بك.</value>
+    <comment>Explainer under the claim button.</comment>
+  </data>
+  <data name="claim_sent" xml:space="preserve">
+    <value>تم الإرسال</value>
+    <comment>Claim state: transaction sent.</comment>
+  </data>
+  <data name="claim_to_address_linux" xml:space="preserve">
+    <value>إلى {}</value>
+    <comment>Destination line on the claim dialog: the coldkey the alpha lands on.</comment>
+  </data>
+  <data name="claim_unavailable_linux" xml:space="preserve">
+    <value>المطالبة غير متاحة على هذا الجهاز بعد.</value>
+    <comment>Shown when the device cannot send claims (no gas key on this host).</comment>
+  </data>
+  <data name="claim_your_spot" xml:space="preserve">
+    <value>احجز مكانك</value>
+    <comment>Button on the Top 200 tile.</comment>
+  </data>
+  <data name="claims_for_epoch_expired" xml:space="preserve">
+    <value>انتهت صلاحية المطالبات للفترة {}.</value>
+    <comment>Error when an epoch can no longer be claimed.</comment>
+  </data>
+  <data name="claims_open_after_finalization" xml:space="preserve">
+    <value>تُفتح المطالبات بعد 48 ساعة من اكتمال الفترة وتظل مفتوحة طوال نافذة انتهاء صلاحية الخزنة.</value>
+    <comment>Explainer in the claim dialog.</comment>
   </data>
   <data name="clear" xml:space="preserve">
     <value>مسح</value>
@@ -864,6 +992,10 @@
     <value>الاتصال وفتح الرابط</value>
     <comment>Call to action</comment>
   </data>
+  <data name="connect_bittensor_wallet" xml:space="preserve">
+    <value>ربط محفظة Bittensor</value>
+    <comment>Button to connect a Bittensor coldkey.</comment>
+  </data>
   <data name="connect_options" xml:space="preserve">
     <value>خيارات الاتصال</value>
     <comment>A label displayed above the options for connecting to a tunnel.</comment>
@@ -871,6 +1003,14 @@
   <data name="connect_seeker_wallet" xml:space="preserve">
     <value>قم بتوصيل محفظة برمز الطلب المسبق لـ Seeker</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="connect_solana_wallet" xml:space="preserve">
+    <value>ربط محفظة Solana</value>
+    <comment>Overflow menu item next to “Connect Bittensor wallet” on the Earnings screen, and the title of the Solana connect sheet/card: connect a Solana USDC payout wallet (wallet app, or manual address entry). USDC payouts continue until the migration to Bittensor completes.</comment>
+  </data>
+  <data name="connect_solana_wallet_note" xml:space="preserve">
+    <value>اربط تطبيق محفظة Solana، أو أدخل عنوان USDC على Solana يدويًا.</value>
+    <comment>Note at the top of the Solana connect sheet/card, above the wallet-app button and the manual-entry link.</comment>
   </data>
   <data name="connect_to_location" xml:space="preserve">
     <value>الاتصال بـ {}</value>
@@ -883,6 +1023,10 @@
   <data name="connect_wallet" xml:space="preserve">
     <value>ربط المحفظة</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/EnterWalletAddress/EnterWalletAddressView.swift.</comment>
+  </data>
+  <data name="connect_wallet_first" xml:space="preserve">
+    <value>اربط محفظة Bittensor أولًا.</value>
+    <comment>Error when claiming without a wallet.</comment>
   </data>
   <data name="connected" xml:space="preserve">
     <value>متصل</value>
@@ -1004,9 +1148,21 @@
     <value>نسخ معرّف العميل</value>
     <comment>A label for a context menu item that copies a client ID to the clipboard.</comment>
   </data>
+  <data name="copy_share_text" xml:space="preserve">
+    <value>نسخ نص المشاركة</value>
+    <comment>Button on the share screen: copy the text form of the code.</comment>
+  </data>
   <data name="copy_to_clipboard" xml:space="preserve">
     <value>انسخ إلى الحافظة</value>
     <comment>Button text to copy the seedphrase to the clipboard.</comment>
+  </data>
+  <data name="couldn_t_load_subscription_options" xml:space="preserve">
+    <value>تعذّر تحميل خيارات الاشتراك. تحقق من اتصالك وأعد المحاولة.</value>
+    <comment>Shown in the upgrade sheet and intro funnel when the App Store product fetch failed, with a retry action — replaces the eternal spinner (Shared/Views/UpgradeSubscriptionSheet.swift, Shared/Views/Introduction/IntroductionView.swift).</comment>
+  </data>
+  <data name="couldn_t_restore_purchases" xml:space="preserve">
+    <value>تعذّرت استعادة المشتريات. يرجى المحاولة مرة أخرى.</value>
+    <comment>Restore-purchases outcome: the App Store sync failed (e.g. the user cancelled the credentials prompt or the store was unreachable) and no entitlement was found locally (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="couldnt_open_wallet" xml:space="preserve">
     <value>تعذّر فتح المحفظة. يرجى تثبيتها والمحاولة مرة أخرى.</value>
@@ -1148,6 +1304,10 @@
     <value>دفعة {}</value>
     <comment>Call to action</comment>
   </data>
+  <data name="default_daily_data" xml:space="preserve">
+    <value>افتراضيًا، تحصل على {} كل يوم.</value>
+    <comment>Onboarding data page: the daily free allowance, formatted from the server's balance (pro.yml free.data per data_period).</comment>
+  </data>
   <data name="default_option" xml:space="preserve">
     <value>افتراضي</value>
     <comment>Generic default choice label, e.g. the app split rule combo state meaning no rule.</comment>
@@ -1171,6 +1331,646 @@
   <data name="delete_account_type_network_name" xml:space="preserve">
     <value>اكتب {} للتأكيد.</value>
     <comment>Delete account dialog: asks the user to type the network name back before the delete button enables. {network} is the account's network name.</comment>
+  </data>
+  <data name="dev_affinity_performance" xml:space="preserve">
+    <value>تقارب مراعٍ للأداء</value>
+    <comment>Developer tools screen (reliability surface): performance-aware affinity control label.</comment>
+  </data>
+  <data name="dev_affinity_performance_detail" xml:space="preserve">
+    <value>يرجّح سباقات TLS الجديدة وفق ذروة معدل البايتات المؤكَّدة لكل مزود نسبةً إلى عرض النطاق المُعلَن لديه. عند تفعيل التقارب الصارم، يفسح المزودون ذوو القياسات المنخفضة المجال للسباق. تبقى الاتصالات الحالية والتثبيتات الصريحة دون تغيير</value>
+    <comment>Developer tools screen: explanatory subtext under the performance-aware affinity control.</comment>
+  </data>
+  <data name="dev_affinity_sticky" xml:space="preserve">
+    <value>تقارب ثابت للمواقع</value>
+    <comment>Developer tools screen (reliability surface): affinity sticky control label.</comment>
+  </data>
+  <data name="dev_affinity_sticky_detail" xml:space="preserve">
+    <value>تبقى الاتصالات الجديدة للموقع على المخرج الذي تستخدمه اتصالاته السابقة، حتى بعد تجاوز حد التدفقات، ليحتفظ الموقع المزدحم بعنوان IP واحد للخروج. يظل الحد يقرر أي المخارج تستقبل مواقع جديدة. عند الإيقاف، يُستعاد الحد الصارم</value>
+    <comment>Developer tools screen: explanatory subtext under the 'affinity sticky' control.</comment>
+  </data>
+  <data name="dev_behaviour" xml:space="preserve">
+    <value>السلوك</value>
+    <comment>Developer tools screen (reliability surface): behaviour control label.</comment>
+  </data>
+  <data name="dev_blackhole_receive" xml:space="preserve">
+    <value>الاحتفاظ بالمزودين الصامتين لفترة أطول</value>
+    <comment>Developer tools screen (reliability surface): blackhole receive control label.</comment>
+  </data>
+  <data name="dev_blackhole_receive_detail" xml:space="preserve">
+    <value>المدة التي يمكن فيها لمزود لا يزال يؤكد حركة البيانات ألّا يُرجع شيئًا قبل إسقاطه. عند الإيقاف، يُحتفظ به حتى يتوقف عن التأكيد</value>
+    <comment>Developer tools screen: explanatory subtext under the 'blackhole receive' control.</comment>
+  </data>
+  <data name="dev_blast_radius" xml:space="preserve">
+    <value>نطاق الضرر</value>
+    <comment>Developer tools screen (reliability surface): blast radius control label.</comment>
+  </data>
+  <data name="dev_blast_radius_detail" xml:space="preserve">
+    <value>الاتصالات المفقودة لكل عطل في المزود. الأقل أفضل</value>
+    <comment>Developer tools screen: explanatory subtext under the 'blast radius' control.</comment>
+  </data>
+  <data name="dev_blast_radius_value" xml:space="preserve">
+    <value>{} لكل عطل</value>
+    <comment>Developer tools screen: formatted value readout for 'blast radius'.</comment>
+  </data>
+  <data name="dev_busy_probe" xml:space="preserve">
+    <value>فحص المخارج المتوقفة قبل إسقاطها</value>
+    <comment>Developer tools screen (reliability surface): busy probe control label.</comment>
+  </data>
+  <data name="dev_busy_probe_budget" xml:space="preserve">
+    <value>مهلة فحص الانشغال</value>
+    <comment>Developer tools screen (reliability surface): busy probe budget control label.</comment>
+  </data>
+  <data name="dev_busy_probe_budget_detail" xml:space="preserve">
+    <value>المدة التي ينتظر فيها فحص التوقف ردًا قبل الإدانة. عند الإيقاف، تُستخدم نصف عتبة التوقف</value>
+    <comment>Developer tools screen: explanatory subtext under the 'busy probe budget' control.</comment>
+  </data>
+  <data name="dev_busy_probe_detail" xml:space="preserve">
+    <value>عندما يتوقف مخرج، يُرسل إليه ping مرة واحدة قبل إدانته. المخرج المزدحم لكنه حي يرد ويحتفظ بتدفقاته؛ أما الميت فيُسقط على أي حال. عند الإيقاف، تتم الإدانة بناءً على عتبة التوقف</value>
+    <comment>Developer tools screen: explanatory subtext under the 'busy probe' control.</comment>
+  </data>
+  <data name="dev_busy_probes" xml:space="preserve">
+    <value>فحوصات الانشغال</value>
+    <comment>Developer tools screen (reliability surface): busy probes control label.</comment>
+  </data>
+  <data name="dev_busy_probes_detail" xml:space="preserve">
+    <value>اختبارات ping للتحقق من النشاط أُرسلت إلى المخارج المتوقفة؛ المخارج المُبرّأة ردّت وأُبقي عليها، أي عمليات الإزالة التي منعها الفحص</value>
+    <comment>Developer tools screen: explanatory subtext under the 'busy probes' control.</comment>
+  </data>
+  <data name="dev_busy_probes_value" xml:space="preserve">
+    <value>{0} مُرسَلة / {1} مُبرّأة</value>
+    <comment>Developer tools screen: formatted value readout for 'busy probes'.</comment>
+  </data>
+  <data name="dev_choose_logs" xml:space="preserve">
+    <value>اختيار السجلات…</value>
+    <comment>Developer tools screen: action for choosing individual log files to export.</comment>
+  </data>
+  <data name="dev_clear_logs" xml:space="preserve">
+    <value>مسح السجلات</value>
+    <comment>Developer tools screen: action that deletes the diagnostics log files without touching local state, preferences or rules.</comment>
+  </data>
+  <data name="dev_clearing_logs" xml:space="preserve">
+    <value>جارٍ مسح السجلات…</value>
+    <comment>Developer tools screen: the clear-logs action's label while it runs.</comment>
+  </data>
+  <data name="dev_cluster_affinity" xml:space="preserve">
+    <value>تجميع عناوين IP حسب الموقع</value>
+    <comment>Developer tools screen (reliability surface): cluster affinity control label.</comment>
+  </data>
+  <data name="dev_cluster_affinity_detail" xml:space="preserve">
+    <value>يُبقي الموقع على مخرج واحد عندما يكون اسم المضيف الخاص به غير مرئي</value>
+    <comment>Developer tools screen: explanatory subtext under the 'cluster affinity' control.</comment>
+  </data>
+  <data name="dev_comparative_connect" xml:space="preserve">
+    <value>قطع الاتصالات الميتة مبكرًا</value>
+    <comment>Developer tools screen (reliability surface): comparative connect control label.</comment>
+  </data>
+  <data name="dev_comparative_connect_detail" xml:space="preserve">
+    <value>يُسقط مبكرًا المخرج الذي لم يُنشئ أي اتصال عندما يستقبل مخرجان شقيقان البيانات. عند الإيقاف، ينتظر عتبة الاتصال الكاملة البالغة 30 ثانية</value>
+    <comment>Developer tools screen: explanatory subtext under the 'comparative connect' control.</comment>
+  </data>
+  <data name="dev_dial_failure_rerace" xml:space="preserve">
+    <value>إعادة محاولة الاتصالات المرفوضة عبر مخرج آخر</value>
+    <comment>Developer tools screen (reliability surface): dial failure rerace control label.</comment>
+  </data>
+  <data name="dev_dial_failure_rerace_detail" xml:space="preserve">
+    <value>عندما يتعذّر على المزود الوصول إلى موقع، يُنقل الاتصال إلى مخرج آخر بدلًا من تركه معلّقًا</value>
+    <comment>Developer tools screen: explanatory subtext under the 'dial failure rerace' control.</comment>
+  </data>
+  <data name="dev_dial_failures" xml:space="preserve">
+    <value>إخفاقات اتصال المزود</value>
+    <comment>Developer tools screen (reliability surface): dial failures control label.</comment>
+  </data>
+  <data name="dev_dial_failures_detail" xml:space="preserve">
+    <value>عدد المرات التي أبلغ فيها المزود بأنه لم يتمكن من فتح الاتصال بالوجهة</value>
+    <comment>Developer tools screen: explanatory subtext under the 'dial failures' control.</comment>
+  </data>
+  <data name="dev_drop_exit" xml:space="preserve">
+    <value>إسقاط</value>
+    <comment>Developer tools screen (reliability surface): drop exit control label.</comment>
+  </data>
+  <data name="dev_effective_tier" xml:space="preserve">
+    <value>خفض الفئة فوريًا</value>
+    <comment>Developer tools screen (reliability surface): effective tier control label.</comment>
+  </data>
+  <data name="dev_effective_tier_detail" xml:space="preserve">
+    <value>تؤدي محاولات الاتصال الفاشلة والأحكام التي نجا منها المزود إلى خفض ترتيبه خلال ثانية؛ ويتطلب رفعه مجددًا دقائق خالية من الأخطاء واتصالًا مُثبتًا</value>
+    <comment>Developer tools screen: explanatory subtext under the 'effective tier' control.</comment>
+  </data>
+  <data name="dev_evaluation_pool" xml:space="preserve">
+    <value>المرشحون المُقيَّمون لكل خانة</value>
+    <comment>Developer tools screen (reliability surface): evaluation pool control label.</comment>
+  </data>
+  <data name="dev_evaluation_pool_detail" xml:space="preserve">
+    <value>عدد المزودين الذين يرسل إليهم توسيع النافذة ping ويرتّبهم لكل خانة يحتاجها، مع الاحتفاظ بالأفضل. القيمة 1 تقيّم العدد المطلوب بالضبط</value>
+    <comment>Developer tools screen: explanatory subtext under the 'evaluation pool' control.</comment>
+  </data>
+  <data name="dev_exit_dial_failures" xml:space="preserve">
+    <value>محاولات اتصال فاشلة: {}</value>
+    <comment>Developer tools screen (reliability surface): exit dial failures control label.</comment>
+  </data>
+  <data name="dev_exit_flows" xml:space="preserve">
+    <value>التدفقات: {}</value>
+    <comment>Developer tools screen (reliability surface): exit flows control label.</comment>
+  </data>
+  <data name="dev_exits" xml:space="preserve">
+    <value>المخارج</value>
+    <comment>Developer tools screen (reliability surface): exits control label.</comment>
+  </data>
+  <data name="dev_export_all_logs" xml:space="preserve">
+    <value>تصدير كل السجلات (خام)</value>
+    <comment>Developer tools screen: action for exporting all diagnostic logs without redaction.</comment>
+  </data>
+  <data name="dev_export_failed" xml:space="preserve">
+    <value>فشل التصدير: {}</value>
+    <comment>Developer tools screen: error shown when diagnostic log export fails.</comment>
+  </data>
+  <data name="dev_export_not_included" xml:space="preserve">
+    <value>غير مُضمَّن: {}</value>
+    <comment>Developer tools screen: explanation that a requested diagnostic item was omitted from an export.</comment>
+  </data>
+  <data name="dev_export_redacted_logs" xml:space="preserve">
+    <value>تصدير السجلات المنقّحة</value>
+    <comment>Developer tools screen: action for exporting diagnostic logs with sensitive traffic details redacted.</comment>
+  </data>
+  <data name="dev_export_selected" xml:space="preserve">
+    <value>تصدير المحدد</value>
+    <comment>Developer tools screen: action for exporting the selected diagnostic log files.</comment>
+  </data>
+  <data name="dev_export_share" xml:space="preserve">
+    <value>مشاركة حزمة التشخيص</value>
+    <comment>Developer tools screen: action for sharing a diagnostic bundle.</comment>
+  </data>
+  <data name="dev_export_summary.zero" xml:space="preserve">
+    <value>تم تصدير {0} ملف سجل ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.one" xml:space="preserve">
+    <value>تم تصدير ملف سجل واحد ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.two" xml:space="preserve">
+    <value>تم تصدير ملفي سجل ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.few" xml:space="preserve">
+    <value>تم تصدير {0} ملفات سجل ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.many" xml:space="preserve">
+    <value>تم تصدير {0} ملف سجل ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_summary.other" xml:space="preserve">
+    <value>تم تصدير {0} ملف سجل ({1})</value>
+    <comment>Developer tools screen: summary of the number and total size of diagnostic log files exported.</comment>
+  </data>
+  <data name="dev_export_unavailable" xml:space="preserve">
+    <value>غير متاح: {}</value>
+    <comment>Developer tools screen: explanation that a diagnostic export option is unavailable.</comment>
+  </data>
+  <data name="dev_exporting" xml:space="preserve">
+    <value>جارٍ التصدير…</value>
+    <comment>Developer tools screen: progress label shown while a diagnostic bundle is being exported.</comment>
+  </data>
+  <data name="dev_flows_opened" xml:space="preserve">
+    <value>التدفقات المفتوحة</value>
+    <comment>Developer tools screen (reliability surface): flows opened control label.</comment>
+  </data>
+  <data name="dev_flows_opened_detail" xml:space="preserve">
+    <value>الإجمالي منذ إعادة التعيين، لتسهيل مقارنة التشغيلات مختلفة المدة</value>
+    <comment>Developer tools screen: explanatory subtext under the 'flows opened' control.</comment>
+  </data>
+  <data name="dev_flows_rebound" xml:space="preserve">
+    <value>تدفقات QUIC المُعاد ربطها</value>
+    <comment>Developer tools screen (reliability surface): flows rebound control label.</comment>
+  </data>
+  <data name="dev_flows_rebound_detail" xml:space="preserve">
+    <value>تدفقات نُقلت إلى مخرج جاهز أثناء عملية إزالة؛ «مقبول» يعني أن الخادم قبل تغيير المسار دون إعادة اتصال</value>
+    <comment>Developer tools screen: explanatory subtext under the 'flows rebound' control.</comment>
+  </data>
+  <data name="dev_flows_rebound_value" xml:space="preserve">
+    <value>{0} ({1} مقبولة / {2} أُعيد الاتصال بها)</value>
+    <comment>Developer tools screen: formatted value readout for 'flows rebound'.</comment>
+  </data>
+  <data name="dev_flows_reraced" xml:space="preserve">
+    <value>نُقلت إلى مخرج آخر</value>
+    <comment>Developer tools screen (reliability surface): flows reraced control label.</comment>
+  </data>
+  <data name="dev_flows_reraced_detail" xml:space="preserve">
+    <value>عدد تلك الإخفاقات التي نُقلت بهدوء بدلًا من أن تبقى معلّقة</value>
+    <comment>Developer tools screen: explanatory subtext under the 'flows reraced' control.</comment>
+  </data>
+  <data name="dev_formation_poll" xml:space="preserve">
+    <value>استطلاع سريع لأول مخرج</value>
+    <comment>Developer tools screen (reliability surface): formation poll control label.</comment>
+  </data>
+  <data name="dev_formation_poll_detail" xml:space="preserve">
+    <value>عدد مرات إعادة فحص التدفق الجاري اتصاله لنافذة فارغة، لكي ينطلق الطلب الأول فور وصول أول مخرج. عند الإيقاف، ينتظر وتيرة إعادة المحاولة البالغة 2 ثانية</value>
+    <comment>Developer tools screen: explanatory subtext under the 'formation poll' control.</comment>
+  </data>
+  <data name="dev_fresh_flow_affinity" xml:space="preserve">
+    <value>تقارب صارم للتدفقات الجديدة</value>
+    <comment>Developer tools screen (reliability surface): hard fresh-flow affinity control label.</comment>
+  </data>
+  <data name="dev_fresh_flow_affinity_detail" xml:space="preserve">
+    <value>يُسند كل اتصال جديد إلى المخرج الذي يستخدمه عنوان IP أو النطاق الخاص به بالفعل. الإيقاف هو الإعداد الافتراضي: كل اتصال جديد عادي يدخل سباق المزودين. تبقى الاتصالات الحالية والتثبيتات الصريحة دون تغيير دائمًا</value>
+    <comment>Developer tools screen: explanatory subtext under the hard fresh-flow affinity control.</comment>
+  </data>
+  <data name="dev_group_follow" xml:space="preserve">
+    <value>متابعة المخارج المحجورة</value>
+    <comment>Developer tools screen (reliability surface): group follow control label.</comment>
+  </data>
+  <data name="dev_group_follow_detail" xml:space="preserve">
+    <value>يحتفظ المخرج المحجور بالاتصالات الجديدة لمواقعه خلال بداية الحجر، حين يكون الحكم في أضعف حالاته، كي لا يؤدي الحجر إلى تقسيم عنوان IP للخروج الخاص بالموقع. تظل المواقع الجديدة تتجنبه. عند الإيقاف، تُوزَّع تلك الاتصالات</value>
+    <comment>Developer tools screen: explanatory subtext under the 'group follow' control.</comment>
+  </data>
+  <data name="dev_group_follow_window" xml:space="preserve">
+    <value>نافذة المتابعة</value>
+    <comment>Developer tools screen (reliability surface): group follow window control label.</comment>
+  </data>
+  <data name="dev_group_follow_window_detail" xml:space="preserve">
+    <value>المدة التي تستمر فيها الاتصالات الجديدة للموقع في متابعة مخرجها بعد بدء الحجر — عادةً ما يكون الحجر المبكر إنذارًا كاذبًا؛ أما الحجر الذي يطول فيتجه نحو الإزالة ويتوقف عن استقبال التدفقات. عند الإيقاف، تُوزَّع فورًا</value>
+    <comment>Developer tools screen: explanatory subtext under the 'group follow window' control.</comment>
+  </data>
+  <data name="dev_heartbeat" xml:space="preserve">
+    <value>نبض الحالة</value>
+    <comment>Developer tools screen (reliability surface): heartbeat control label.</comment>
+  </data>
+  <data name="dev_heartbeat_detail" xml:space="preserve">
+    <value>عدد مرات كتابة سطر يلخّص الحالة الحية في السجل لأغراض التحليل لاحقًا. عند الإيقاف، يتوقف؛ الفترة الأقصر ترصد التحولات، والأطول تحتفظ بمخزن مؤقت أكبر</value>
+    <comment>Developer tools screen: explanatory subtext under the 'heartbeat' control.</comment>
+  </data>
+  <data name="dev_load_corroboration" xml:space="preserve">
+    <value>التحقق حسب الحمل</value>
+    <comment>Developer tools screen (reliability surface): load corroboration control label.</comment>
+  </data>
+  <data name="dev_load_corroboration_detail" xml:space="preserve">
+    <value>عدد الوجهات الصامتة الإضافية المطلوبة لكل هذا العدد من التدفقات قبل أن يمكن حجر مخرج مشغول بناءً على أدلة ضعيفة: المخرج ذو 24 تدفقًا عند القيمة 8 يحتاج إلى 3 مواقع صامتة لا 2. عند الإيقاف، يبقى الحد الأدنى الثابت</value>
+    <comment>Developer tools screen: explanatory subtext under the 'load corroboration' control.</comment>
+  </data>
+  <data name="dev_log_verbosity" xml:space="preserve">
+    <value>مستوى تفاصيل السجل</value>
+    <comment>Developer tools screen: control label for diagnostic log detail.</comment>
+  </data>
+  <data name="dev_log_verbosity_default" xml:space="preserve">
+    <value>افتراضي</value>
+    <comment>Developer tools screen: default diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_default_detail" xml:space="preserve">
+    <value>أخطاء الاتصال واختبارات ping للعقود</value>
+    <comment>Developer tools screen: explanation of the default diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_trace" xml:space="preserve">
+    <value>تتبّع</value>
+    <comment>Developer tools screen: trace diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_trace_detail" xml:space="preserve">
+    <value>التفاصيل الداخلية لبروتوكول النقل والنافذة. سجلات كبيرة جدًا</value>
+    <comment>Developer tools screen: explanation of the trace diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_unavailable" xml:space="preserve">
+    <value>غير متاح</value>
+    <comment>Developer tools screen: label used when the diagnostic log detail level cannot be read.</comment>
+  </data>
+  <data name="dev_log_verbosity_unavailable_detail" xml:space="preserve">
+    <value>لا يوجد جهاز بعد لقراءة مستوى السجل منه. سجّل الدخول أولًا</value>
+    <comment>Developer tools screen: explanation shown when the diagnostic log detail level cannot be read.</comment>
+  </data>
+  <data name="dev_log_verbosity_verbose" xml:space="preserve">
+    <value>مفصّل</value>
+    <comment>Developer tools screen: verbose diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_verbose_detail" xml:space="preserve">
+    <value>محاسبة العقود وقرارات الحجب لكل حزمة. يتضمن عناوين IP للوجهات</value>
+    <comment>Developer tools screen: explanation of the verbose diagnostic log detail level.</comment>
+  </data>
+  <data name="dev_log_verbosity_warning" xml:space="preserve">
+    <value>بدءًا من مستوى «مفصّل» وما فوقه، تحتوي السجلات على عناوين IP والمنافذ الخاصة بوجهات حركة البيانات التي ترسلها. استخدم «تصدير السجلات المنقّحة» لمشاركتها؛ ولا ينبغي أن تغادر الحزمة الخام هذا الجهاز.</value>
+    <comment>Developer tools screen: privacy warning shown when detailed traffic logging is enabled.</comment>
+  </data>
+  <data name="dev_log_verbosity_warning_title" xml:space="preserve">
+    <value>السجلات تسجّل حركة بياناتك الفعلية</value>
+    <comment>Developer tools screen: title for the detailed traffic logging privacy warning.</comment>
+  </data>
+  <data name="dev_max_flows_per_exit" xml:space="preserve">
+    <value>الحد الأقصى للاتصالات لكل مخرج</value>
+    <comment>Developer tools screen (reliability surface): max flows per exit control label.</comment>
+  </data>
+  <data name="dev_max_flows_per_exit_detail" xml:space="preserve">
+    <value>فقدان مخرج يقطع كل الاتصالات عليه. القيمة الأقل توزّع الضرر؛ وقد يستخدم الموقع حينها أكثر من عنوان IP للخروج</value>
+    <comment>Developer tools screen: explanatory subtext under the 'max flows per exit' control.</comment>
+  </data>
+  <data name="dev_measure_none" xml:space="preserve">
+    <value>لا توجد أعطال في المزودين بعد. أوقف مخرجًا أدناه لإحداث عطل.</value>
+    <comment>Developer tools screen (reliability surface): measure none control label.</comment>
+  </data>
+  <data name="dev_measurements" xml:space="preserve">
+    <value>القياسات</value>
+    <comment>Developer tools screen (reliability surface): measurements control label.</comment>
+  </data>
+  <data name="dev_measurements_detail" xml:space="preserve">
+    <value>ما يكلّفه عطل المزود. أعد التعيين، وشغّل اختبارًا، واقرأ النتيجة.</value>
+    <comment>Developer tools screen: explanatory subtext under the 'measurements' control.</comment>
+  </data>
+  <data name="dev_migrate_exit" xml:space="preserve">
+    <value>ترحيل</value>
+    <comment>Developer tools screen (reliability surface): migrate exit control label.</comment>
+  </data>
+  <data name="dev_min_blackhole_destinations" xml:space="preserve">
+    <value>التحقق من المخارج الصامتة</value>
+    <comment>Developer tools screen (reliability surface): min blackhole destinations control label.</comment>
+  </data>
+  <data name="dev_min_blackhole_destinations_detail" xml:space="preserve">
+    <value>عدد الوجهات المختلفة التي يجب أن تكون صامتة قبل إدانة مخرج بعدم الاستقبال، كي لا يتمكن موقع ميت واحد من إزالة مخرج يعمل. عند الإيقاف، تكفي وجهة واحدة للإدانة</value>
+    <comment>Developer tools screen: explanatory subtext under the 'min blackhole destinations' control.</comment>
+  </data>
+  <data name="dev_no_exits" xml:space="preserve">
+    <value>لا توجد مخارج. اتصل أولًا.</value>
+    <comment>Developer tools screen (reliability surface): no exits control label.</comment>
+  </data>
+  <data name="dev_open_tools" xml:space="preserve">
+    <value>فتح أدوات المطوّرين</value>
+    <comment>Developer tools screen (reliability surface): open tools control label.</comment>
+  </data>
+  <data name="dev_probe_all" xml:space="preserve">
+    <value>فحص كل المخارج الآن</value>
+    <comment>Developer tools screen (reliability surface): probe all control label.</comment>
+  </data>
+  <data name="dev_probe_providers" xml:space="preserve">
+    <value>فحص المزودين</value>
+    <comment>Developer tools screen (reliability surface): probe providers control label.</comment>
+  </data>
+  <data name="dev_probe_providers_detail" xml:space="preserve">
+    <value>يؤهّل المخارج عبر الاتصال بمواقع حقيقية من خلالها. الرد يُثبت صلاحية المخرج؛ والصمت لا يُحتسب ضده أبدًا</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probe providers' control.</comment>
+  </data>
+  <data name="dev_probe_sample_hosts" xml:space="preserve">
+    <value>المضيفون المفحوصون في كل جولة</value>
+    <comment>Developer tools screen (reliability surface): probe sample hosts control label.</comment>
+  </data>
+  <data name="dev_probe_sample_hosts_detail" xml:space="preserve">
+    <value>عدد مواقع فحص السلامة التي تتصل بها جولة تأهيل واحدة عبر مخرج. القيمة 0 تفحص القائمة المضمّنة بأكملها؛ والعدد الأصغر يمر عليها على دفعات</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probe sample hosts' control.</comment>
+  </data>
+  <data name="dev_probe_timeout" xml:space="preserve">
+    <value>مهلة الفحص</value>
+    <comment>Developer tools screen (reliability surface): probe timeout control label.</comment>
+  </data>
+  <data name="dev_probe_timeout_detail" xml:space="preserve">
+    <value>المدة التي ينتظر فيها فحص التأهيل ردًا. عند الإيقاف، تُستخدم المهلة المدمجة البالغة 4 ثوانٍ. يحدّ فقط من انتظار الإثبات، ولا يُدين أبدًا</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probe timeout' control.</comment>
+  </data>
+  <data name="dev_probes" xml:space="preserve">
+    <value>الفحوصات</value>
+    <comment>Developer tools screen (reliability surface): probes control label.</comment>
+  </data>
+  <data name="dev_probes_detail" xml:space="preserve">
+    <value>فحوصات التأهيل في هذه الجلسة</value>
+    <comment>Developer tools screen: explanatory subtext under the 'probes' control.</comment>
+  </data>
+  <data name="dev_probes_value" xml:space="preserve">
+    <value>{0} مُرسَلة / {1} تم الرد عليها</value>
+    <comment>Developer tools screen: formatted value readout for 'probes'.</comment>
+  </data>
+  <data name="dev_quic_rebind" xml:space="preserve">
+    <value>إعادة ربط QUIC عند فقدان مخرج</value>
+    <comment>Developer tools screen (reliability surface): quic rebind control label.</comment>
+  </data>
+  <data name="dev_quic_rebind_detail" xml:space="preserve">
+    <value>يعيد تثبيت تدفقات QUIC القائمة على مخرج حي أثناء الإزالة بدلًا من قطعها</value>
+    <comment>Developer tools screen: explanatory subtext under the 'quic rebind' control.</comment>
+  </data>
+  <data name="dev_recovery" xml:space="preserve">
+    <value>وقت الاستعادة</value>
+    <comment>Developer tools screen (reliability surface): recovery control label.</comment>
+  </data>
+  <data name="dev_recovery_detail" xml:space="preserve">
+    <value>من توقف المخرج حتى يستجيب ذلك الموقع مجددًا</value>
+    <comment>Developer tools screen: explanatory subtext under the 'recovery' control.</comment>
+  </data>
+  <data name="dev_recovery_missed" xml:space="preserve">
+    <value>لم تعد أبدًا</value>
+    <comment>Developer tools screen (reliability surface): recovery missed control label.</comment>
+  </data>
+  <data name="dev_recovery_missed_detail" xml:space="preserve">
+    <value>مواقع تم التخلي عنها بدلًا من استعادتها</value>
+    <comment>Developer tools screen: explanatory subtext under the 'recovery missed' control.</comment>
+  </data>
+  <data name="dev_recovery_missed_value" xml:space="preserve">
+    <value>{0} من {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'recovery missed'.</comment>
+  </data>
+  <data name="dev_recovery_value" xml:space="preserve">
+    <value>المتوسط {0}، الأسوأ {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'recovery'.</comment>
+  </data>
+  <data name="dev_refresh" xml:space="preserve">
+    <value>تحديث</value>
+    <comment>Developer tools screen (reliability surface): refresh control label.</comment>
+  </data>
+  <data name="dev_removal_budget_count" xml:space="preserve">
+    <value>حد عاصفة الإزالة</value>
+    <comment>Developer tools screen (reliability surface): removal budget count control label.</comment>
+  </data>
+  <data name="dev_removal_budget_count_detail" xml:space="preserve">
+    <value>عدد عمليات الإزالة بموجب الأحكام المسموح بها في كل نافذة قبل تأجيل الباقي؛ فالموجة المفاجئة غالبًا ما يكون سببها محليًا واحدًا لا أعطالًا كثيرة. عند الإيقاف، تتم الإزالة دون حد</value>
+    <comment>Developer tools screen: explanatory subtext under the 'removal budget count' control.</comment>
+  </data>
+  <data name="dev_removal_budget_window" xml:space="preserve">
+    <value>نافذة عاصفة الإزالة</value>
+    <comment>Developer tools screen (reliability surface): removal budget window control label.</comment>
+  </data>
+  <data name="dev_removal_budget_window_detail" xml:space="preserve">
+    <value>النافذة التي يُحتسب عليها حد الإزالة. الإيقاف (مثل حد يساوي 0) يعطّل القاطع</value>
+    <comment>Developer tools screen: explanatory subtext under the 'removal budget window' control.</comment>
+  </data>
+  <data name="dev_removals_deferred" xml:space="preserve">
+    <value>عمليات الإزالة المؤجلة</value>
+    <comment>Developer tools screen (reliability surface): removals deferred control label.</comment>
+  </data>
+  <data name="dev_removals_deferred_detail" xml:space="preserve">
+    <value>عمليات الإزالة التي أوقفها قاطع العاصفة بعد موجة مترابطة</value>
+    <comment>Developer tools screen: explanatory subtext under the 'removals deferred' control.</comment>
+  </data>
+  <data name="dev_reset_defaults" xml:space="preserve">
+    <value>إعادة التعيين إلى الإعدادات الافتراضية الأصلية</value>
+    <comment>Developer tools screen (reliability surface): reset defaults control label.</comment>
+  </data>
+  <data name="dev_reset_measurements" xml:space="preserve">
+    <value>إعادة تعيين القياسات</value>
+    <comment>Developer tools screen (reliability surface): reset measurements control label.</comment>
+  </data>
+  <data name="dev_scheduler_pause_recovery" xml:space="preserve">
+    <value>نافذة التعافي بعد التعليق</value>
+    <comment>Developer tools screen (reliability surface): scheduler pause recovery control label.</comment>
+  </data>
+  <data name="dev_scheduler_pause_recovery_detail" xml:space="preserve">
+    <value>المدة التي تبقى فيها الأحكام معلّقة بعد رصد تعليق، لإتاحة الوقت لبروتوكولات النقل لإعادة التسجيل. عند الإيقاف، تُستخدم المهلة المدمجة البالغة 5 ثوانٍ</value>
+    <comment>Developer tools screen: explanatory subtext under the 'scheduler pause recovery' control.</comment>
+  </data>
+  <data name="dev_scheduler_pause_tolerance" xml:space="preserve">
+    <value>كاشف التعليق</value>
+    <comment>Developer tools screen (reliability surface): scheduler pause tolerance control label.</comment>
+  </data>
+  <data name="dev_scheduler_pause_tolerance_detail" xml:space="preserve">
+    <value>مقدار تجاوز المؤقت الذي يُعدّ دليلًا على تعليق الهاتف لا على توقف مخرج، كي لا يُدين الهاتف بعد استئنافه كل المخارج دفعة واحدة. عند الإيقاف، يُعطَّل</value>
+    <comment>Developer tools screen: explanatory subtext under the 'scheduler pause tolerance' control.</comment>
+  </data>
+  <data name="dev_scheduler_pauses" xml:space="preserve">
+    <value>حالات التعليق المرصودة</value>
+    <comment>Developer tools screen (reliability surface): scheduler pauses control label.</comment>
+  </data>
+  <data name="dev_scheduler_pauses_detail" xml:space="preserve">
+    <value>حالات تعليق المضيف التي رصدها الكاشف، وكل منها دفعة من الأحكام عُلّقت بدلًا من تنفيذها على هاتف استُؤنف للتو</value>
+    <comment>Developer tools screen: explanatory subtext under the 'scheduler pauses' control.</comment>
+  </data>
+  <data name="dev_section_detection" xml:space="preserve">
+    <value>الكشف</value>
+    <comment>Developer tools screen: section heading for the detection controls.</comment>
+  </data>
+  <data name="dev_section_diagnostics" xml:space="preserve">
+    <value>التشخيص</value>
+    <comment>Developer tools screen: section heading for diagnostic log controls.</comment>
+  </data>
+  <data name="dev_section_observability" xml:space="preserve">
+    <value>قابلية المراقبة</value>
+    <comment>Developer tools screen: section heading for the observability controls.</comment>
+  </data>
+  <data name="dev_section_placement" xml:space="preserve">
+    <value>التوزيع</value>
+    <comment>Developer tools screen: section heading for the placement controls.</comment>
+  </data>
+  <data name="dev_section_probing" xml:space="preserve">
+    <value>الفحص</value>
+    <comment>Developer tools screen: section heading for the probing controls.</comment>
+  </data>
+  <data name="dev_section_recovery" xml:space="preserve">
+    <value>الاستعادة</value>
+    <comment>Developer tools screen: section heading for the recovery controls.</comment>
+  </data>
+  <data name="dev_send_stall" xml:space="preserve">
+    <value>إسقاط المخارج المتوقفة بسرعة</value>
+    <comment>Developer tools screen (reliability surface): send stall control label.</comment>
+  </data>
+  <data name="dev_send_stall_detail" xml:space="preserve">
+    <value>المدة التي يمكن فيها للمخرج التوقف عن التسليم قبل إسقاطه. عند الإيقاف، ينتظر 30 ثانية</value>
+    <comment>Developer tools screen: explanatory subtext under the 'send stall' control.</comment>
+  </data>
+  <data name="dev_server_name_bridge" xml:space="preserve">
+    <value>دمج التدفقات متأخرة التسمية</value>
+    <comment>Developer tools screen (reliability surface): server name bridge control label.</comment>
+  </data>
+  <data name="dev_server_name_bridge_detail" xml:space="preserve">
+    <value>ينقل الاتصالات اللاحقة إلى المخرج الذي يستخدمه الاتصال الأول بالفعل</value>
+    <comment>Developer tools screen: explanatory subtext under the 'server name bridge' control.</comment>
+  </data>
+  <data name="dev_shuffle_exits" xml:space="preserve">
+    <value>خلط كل المخارج عشوائيًا</value>
+    <comment>Developer tools screen (reliability surface): shuffle exits control label.</comment>
+  </data>
+  <data name="dev_simulate_network_change" xml:space="preserve">
+    <value>محاكاة تغيّر الشبكة</value>
+    <comment>Developer tools screen (reliability surface): simulate network change control label.</comment>
+  </data>
+  <data name="dev_soft_verdict" xml:space="preserve">
+    <value>الخفض قبل الإزالة</value>
+    <comment>Developer tools screen (reliability surface): soft verdict control label.</comment>
+  </data>
+  <data name="dev_soft_verdict_detail" xml:space="preserve">
+    <value>الأحكام الملتبسة تحجر المخرج بدلًا من قطع تدفقاته؛ وتتطلب الإزالة أدلة مستمرة أو مخرجًا فارغًا</value>
+    <comment>Developer tools screen: explanatory subtext under the 'soft verdict' control.</comment>
+  </data>
+  <data name="dev_stall_exit" xml:space="preserve">
+    <value>إيقاف</value>
+    <comment>Developer tools screen (reliability surface): stall exit control label.</comment>
+  </data>
+  <data name="dev_standing_reserve" xml:space="preserve">
+    <value>إبقاء مخرج احتياطي جاهزًا</value>
+    <comment>Developer tools screen (reliability surface): standing reserve control label.</comment>
+  </data>
+  <data name="dev_standing_reserve_detail" xml:space="preserve">
+    <value>يجعل حجم كل نافذة أكبر من هدفها بمخرج واحد ليكون البديل متصلًا مسبقًا. عند الإيقاف، ينتظر حدوث فقدان قبل التعويض</value>
+    <comment>Developer tools screen: explanatory subtext under the 'standing reserve' control.</comment>
+  </data>
+  <data name="dev_tcp_collapse_hold" xml:space="preserve">
+    <value>تحرير عمليات إعادة الإرسال العالقة</value>
+    <comment>Developer tools screen (reliability surface): tcp collapse hold control label.</comment>
+  </data>
+  <data name="dev_tcp_collapse_hold_detail" xml:space="preserve">
+    <value>المدة التي تُحتجز فيها عمليات إعادة الإرسال قبل تحرير إحداها. عند الإيقاف، ينتظر 30 ثانية</value>
+    <comment>Developer tools screen: explanatory subtext under the 'tcp collapse hold' control.</comment>
+  </data>
+  <data name="dev_tcp_idle_timeout" xml:space="preserve">
+    <value>مهلة خمول أطول لـ TCP</value>
+    <comment>Developer tools screen (reliability surface): tcp idle timeout control label.</comment>
+  </data>
+  <data name="dev_tcp_idle_timeout_detail" xml:space="preserve">
+    <value>المدة التي يمكن أن يبقى فيها اتصال TCP خاملًا. عند الإيقاف، يُستخدم حد UDP</value>
+    <comment>Developer tools screen: explanatory subtext under the 'tcp idle timeout' control.</comment>
+  </data>
+  <data name="dev_timing" xml:space="preserve">
+    <value>التوقيت</value>
+    <comment>Developer tools screen (reliability surface): timing control label.</comment>
+  </data>
+  <data name="dev_udp_idle_timeout" xml:space="preserve">
+    <value>مهلة خمول UDP</value>
+    <comment>Developer tools screen (reliability surface): udp idle timeout control label.</comment>
+  </data>
+  <data name="dev_udp_idle_timeout_detail" xml:space="preserve">
+    <value>المدة التي يمكن أن يبقى فيها تدفق غير TCP خاملًا قبل إنهائه</value>
+    <comment>Developer tools screen: explanatory subtext under the 'udp idle timeout' control.</comment>
+  </data>
+  <data name="dev_udp_teardown" xml:space="preserve">
+    <value>الإشعار بإنهاء UDP</value>
+    <comment>Developer tools screen (reliability surface): udp teardown control label.</comment>
+  </data>
+  <data name="dev_udp_teardown_detail" xml:space="preserve">
+    <value>يُبلغ DNS و QUIC بأن المسار قد زال بدلًا من الصمت</value>
+    <comment>Developer tools screen: explanatory subtext under the 'udp teardown' control.</comment>
+  </data>
+  <data name="dev_uplink_gate" xml:space="preserve">
+    <value>بوابة صمت الوصلة الصاعدة</value>
+    <comment>Developer tools screen (reliability surface): uplink gate control label.</comment>
+  </data>
+  <data name="dev_uplink_gate_detail" xml:space="preserve">
+    <value>المدة التي يمكن أن يبقى فيها النفق بأكمله صامتًا قبل تعليق الأحكام على المزودين باعتبارها غير مقبولة. القيمة 0 تُدين كما في السابق</value>
+    <comment>Developer tools screen: explanatory subtext under the 'uplink gate' control.</comment>
+  </data>
+  <data name="dev_verdicts_held" xml:space="preserve">
+    <value>الأحكام المعلّقة</value>
+    <comment>Developer tools screen (reliability surface): verdicts held control label.</comment>
+  </data>
+  <data name="dev_verdicts_held_detail" xml:space="preserve">
+    <value>إدانات عُلّقت لأن الوصلة الصاعدة للهاتف نفسه، وليس المزود، كانت صامتة (الوصلة الصاعدة / بروتوكول النقل)</value>
+    <comment>Developer tools screen: explanatory subtext under the 'verdicts held' control.</comment>
+  </data>
+  <data name="dev_verdicts_held_value" xml:space="preserve">
+    <value>{0} / {1}</value>
+    <comment>Developer tools screen: formatted value readout for 'verdicts held'.</comment>
+  </data>
+  <data name="dev_worst_loss" xml:space="preserve">
+    <value>أسوأ عطل منفرد</value>
+    <comment>Developer tools screen (reliability surface): worst loss control label.</comment>
+  </data>
+  <data name="dev_worst_loss_detail" xml:space="preserve">
+    <value>العطل الذي يشعر به المستخدم فعلًا</value>
+    <comment>Developer tools screen: explanatory subtext under the 'worst loss' control.</comment>
+  </data>
+  <data name="dev_worst_loss_value" xml:space="preserve">
+    <value>الاتصالات: {}</value>
+    <comment>Developer tools screen: formatted value readout for 'worst loss'.</comment>
+  </data>
+  <data name="developer" xml:space="preserve">
+    <value>المطوّر</value>
+    <comment>Developer tools screen: developer.</comment>
+  </data>
+  <data name="developer_description" xml:space="preserve">
+    <value>أدوات لتشخيص تجمّد الاتصال. تعمل هذه الأدوات على الاتصال الحالي.</value>
+    <comment>Developer tools screen: developer description.</comment>
+  </data>
+  <data name="developer_disconnected" xml:space="preserve">
+    <value>اتصل لاستخدام هذه الأدوات.</value>
+    <comment>Developer tools screen: developer disconnected.</comment>
   </data>
   <data name="device" xml:space="preserve">
     <value>الجهاز</value>
@@ -1304,6 +2104,62 @@
     <value>الأرباح</value>
     <comment>Wallet Screen</comment>
   </data>
+  <data name="earnings_address_placeholder" xml:space="preserve">
+    <value>أدخل عنوان Bittensor</value>
+    <comment>Placeholder of the manual Bittensor address field on the Earnings page.</comment>
+  </data>
+  <data name="earnings_change_wallet" xml:space="preserve">
+    <value>تغيير المحفظة</value>
+    <comment>Button on the Earnings page that starts connecting a different Bittensor wallet.</comment>
+  </data>
+  <data name="earnings_claim_sending" xml:space="preserve">
+    <value>جارٍ الإرسال…</value>
+    <comment>Progress text while a claim transaction is being sent.</comment>
+  </data>
+  <data name="earnings_claims_need_session" xml:space="preserve">
+    <value>تُحمَّل المطالبات من السلسلة بعد أن يصبح للتطبيق جلسة. اتصل أولًا.</value>
+    <comment>Shown in place of the unclaimed figure when the app has no device session to read the chain with.</comment>
+  </data>
+  <data name="earnings_copy_address" xml:space="preserve">
+    <value>نسخ العنوان</value>
+    <comment>Button that copies an address to the clipboard.</comment>
+  </data>
+  <data name="earnings_date_column" xml:space="preserve">
+    <value>التاريخ</value>
+    <comment>Column header of the per-epoch history table: the date the epoch ended.</comment>
+  </data>
+  <data name="earnings_epoch_column" xml:space="preserve">
+    <value>الفترة</value>
+    <comment>Column header of the per-epoch history table.</comment>
+  </data>
+  <data name="earnings_gas_balance" xml:space="preserve">
+    <value>رصيد الغاز</value>
+    <comment>Label of the gas key's TAO balance in the claim dialog.</comment>
+  </data>
+  <data name="earnings_network_pane_title" xml:space="preserve">
+    <value>شبكتك</value>
+    <comment>Title of the Earnings destination's third pane: own rank, multipliers and reliability.</comment>
+  </data>
+  <data name="earnings_points_column" xml:space="preserve">
+    <value>النقاط</value>
+    <comment>Column header of the per-epoch history table: points earned in the epoch.</comment>
+  </data>
+  <data name="earnings_share_column" xml:space="preserve">
+    <value>الحصة</value>
+    <comment>Column header of the per-epoch history table: the network's share of the block.</comment>
+  </data>
+  <data name="earnings_status_column" xml:space="preserve">
+    <value>الحالة</value>
+    <comment>Column header of the per-epoch history table: the claim status of the epoch's alpha.</comment>
+  </data>
+  <data name="earnings_view_transaction" xml:space="preserve">
+    <value>عرض المعاملة</value>
+    <comment>Link that opens a claim transaction in the block explorer.</comment>
+  </data>
+  <data name="earnings_wallet_mismatch" xml:space="preserve">
+    <value>المحفظة التي وقّعت ليست العنوان الذي أدخلته.</value>
+    <comment>Error when the wallet that signed the connect challenge is not the address the user entered.</comment>
+  </data>
   <data name="edit_device_name" xml:space="preserve">
     <value>تعديل اسم الجهاز</value>
     <comment>device</comment>
@@ -1400,6 +2256,14 @@
     <value>اقتراح آخر</value>
     <comment>Points leaderboard: the emoji editor's shuffle button, replaces the draft with a new random suggestion.</comment>
   </data>
+  <data name="enabled_under_auto" xml:space="preserve">
+    <value>المفعّلة في الوضع «تلقائي»</value>
+    <comment>Section header of the per-transport enable toggles shown when the transport mode is Auto.</comment>
+  </data>
+  <data name="enabled_under_auto_footer" xml:space="preserve">
+    <value>مرتبة حسب الأفضلية: H3 و H1 أولًا، ثم whodis، ثم whodis pump. الترتيب ثابت. يبقى بروتوكول نقل واحد على الأقل مفعّلًا.</value>
+    <comment>Footer of the Auto transports section explaining the fixed preference order.</comment>
+  </data>
   <data name="enjoying_urnetwork" xml:space="preserve">
     <value>هل تستمتع بـ URnetwork؟</value>
     <comment>Call to action</comment>
@@ -1423,6 +2287,10 @@
   <data name="enter_a_solana_usdc_wallet_address" xml:space="preserve">
     <value>أدخل عنوان محفظة USDC على Solana</value>
   </data>
+  <data name="enter_address_manually" xml:space="preserve">
+    <value>إدخال العنوان يدويًا</value>
+    <comment>Fallback link to paste an ss58 address.</comment>
+  </data>
   <data name="enter_balance_code" xml:space="preserve">
     <value>أدخل رمز الرصيد</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
@@ -1438,6 +2306,34 @@
   <data name="enter_urnetwork" xml:space="preserve">
     <value>أدخل URnetwork</value>
     <comment>Used in Authenticate/LoginInitial/GuestModeSheet.swift.</comment>
+  </data>
+  <data name="epoch_column_epoch_linux" xml:space="preserve">
+    <value>الفترة</value>
+    <comment>History table column: the epoch number.</comment>
+  </data>
+  <data name="epoch_column_points_linux" xml:space="preserve">
+    <value>النقاط</value>
+    <comment>History table column: points earned.</comment>
+  </data>
+  <data name="epoch_column_share_linux" xml:space="preserve">
+    <value>الحصة من الكتلة</value>
+    <comment>History table column: the network's share of the block.</comment>
+  </data>
+  <data name="epoch_column_status_linux" xml:space="preserve">
+    <value>الحالة</value>
+    <comment>History table column: the claim status of the epoch's alpha.</comment>
+  </data>
+  <data name="epoch_history" xml:space="preserve">
+    <value>السجل</value>
+    <comment>Label of the per-epoch history list.</comment>
+  </data>
+  <data name="epoch_row_title" xml:space="preserve">
+    <value>الفترة {}</value>
+    <comment>History row title.</comment>
+  </data>
+  <data name="epoch_share_of_block" xml:space="preserve">
+    <value>{} من الكتلة</value>
+    <comment>History row: the network's share of the block.</comment>
   </data>
   <data name="error_changing_network_name" xml:space="preserve">
     <value>خطأ في تغيير اسم الشبكة</value>
@@ -1519,6 +2415,90 @@
     <value>تصدير السجلات</value>
     <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
   </data>
+  <data name="extender" xml:space="preserve">
+    <value>الموسّع</value>
+    <comment>Title of the Extender row under the provide mode row in settings, and of the read-only row where the provide mode row is repeated.</comment>
+  </data>
+  <data name="extender_activation_failed" xml:space="preserve">
+    <value>فشل التفعيل: {}</value>
+    <comment>Extender status when the last activation failed and no family is active. The argument is the error.</comment>
+  </data>
+  <data name="extender_activation_refused" xml:space="preserve">
+    <value>رُفض التفعيل: {}</value>
+    <comment>Extender status when the operator refused the activation and no family is active. The argument is the operator's reason.</comment>
+  </data>
+  <data name="extender_active" xml:space="preserve">
+    <value>نشط · {}</value>
+    <comment>Extender status when at least one address family is activated. The argument is the family or families, from the IPv4, IPv6 and IPv4 and IPv6 labels.</comment>
+  </data>
+  <data name="extender_default_value" xml:space="preserve">
+    <value>الافتراضي: {}</value>
+    <comment>Placeholder shown in an empty extender settings field, naming the default value that applies.</comment>
+  </data>
+  <data name="extender_dns_name" xml:space="preserve">
+    <value>اسم DNS للموسّع</value>
+    <comment>Label of the extender DNS name field. Empty means the network space default.</comment>
+  </data>
+  <data name="extender_hosts" xml:space="preserve">
+    <value>مضيفات الموسّعات</value>
+    <comment>Label of the manual extender list field: hostnames or IP addresses, one per line.</comment>
+  </data>
+  <data name="extender_hosts_hint" xml:space="preserve">
+    <value>اسم مضيف أو عنوان IP واحد في كل سطر. تُضاف هذه إلى الموسّعات المكتشفة.</value>
+    <comment>Help text under the manual extender list field.</comment>
+  </data>
+  <data name="extender_listen_failed" xml:space="preserve">
+    <value>تعذّر الاستماع: {}</value>
+    <comment>Extender status when no carrier could bind. The argument is the carrier errors.</comment>
+  </data>
+  <data name="extender_not_providing" xml:space="preserve">
+    <value>لا يوفّر</value>
+    <comment>Extender status when the setting is on but this device is not providing. Apple is not listed because its catalog is keyed by the English text, which widget_not_providing already carries.</comment>
+  </data>
+  <data name="extender_revoked" xml:space="preserve">
+    <value>ألغاه المشغّل</value>
+    <comment>Extender status when the operator revoked this device's extender key.</comment>
+  </data>
+  <data name="extender_setting_description" xml:space="preserve">
+    <value>أثناء التوفير، يعمل هذا الجهاز أيضًا كمُرحِّل للأشخاص الذين حُجب وصولهم إلى الشبكة، عبر TCP و UDP 443 و UDP 4053.</value>
+    <comment>Secondary text under the Extender setting: what turning it on does, and the ports the extender listens on.</comment>
+  </data>
+  <data name="extender_setting_up" xml:space="preserve">
+    <value>جارٍ الإعداد</value>
+    <comment>Extender status while the role is starting and there is no outcome yet: the carriers are binding, or the first activation is in flight.</comment>
+  </data>
+  <data name="extender_settings" xml:space="preserve">
+    <value>إعدادات الموسّع</value>
+    <comment>Title of the extender settings form under account &gt; Extenders.</comment>
+  </data>
+  <data name="extender_settings_next_connect" xml:space="preserve">
+    <value>يستخدم النفق إعدادات الموسّع الجديدة في المرة التالية التي يتصل فيها.</value>
+    <comment>Note on iOS after saving extender settings: the packet tunnel extension reads them at its next start.</comment>
+  </data>
+  <data name="extender_settings_saved" xml:space="preserve">
+    <value>تم حفظ إعدادات الموسّع</value>
+    <comment>Confirmation after the extender settings are saved.</comment>
+  </data>
+  <data name="extender_start_failed" xml:space="preserve">
+    <value>تعذّر البدء: {}</value>
+    <comment>Extender status when the setting is on and the device is providing, but the role could not start in this network space: no extender directory or no identity. The argument is the reason.</comment>
+  </data>
+  <data name="extender_statistics" xml:space="preserve">
+    <value>إحصاءات الموسّع</value>
+    <comment>Title of the section that shows statistics about the extender, directly above the provider statistics section.</comment>
+  </data>
+  <data name="extenders" xml:space="preserve">
+    <value>الموسّعات</value>
+    <comment>Title of the extenders panel in the connect drawer and of the Extenders section under account.</comment>
+  </data>
+  <data name="extenders_active_of_reserve" xml:space="preserve">
+    <value>{0} من {1}</value>
+    <comment>The extender panel count: extenders carrying a live connection now, of every usable extender the app knows.</comment>
+  </data>
+  <data name="extenders_no_session" xml:space="preserve">
+    <value>سجّل الدخول واتصل لإدارة الموسّعات.</value>
+    <comment>Shown in the account Extenders section when there is no signed-in device to manage extenders with.</comment>
+  </data>
   <data name="failed_to_connect" xml:space="preserve">
     <value>فشل الاتصال</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
@@ -1575,6 +2555,10 @@
     <value>أصدقاؤك يوفرون أيضًا -- الجميع يفوز.</value>
     <comment>Call to action</comment>
   </data>
+  <data name="gas_key" xml:space="preserve">
+    <value>مفتاح الغاز</value>
+    <comment>Label of the gas key row.</comment>
+  </data>
   <data name="general" xml:space="preserve">
     <value>عام</value>
     <comment>Call to action</comment>
@@ -1608,6 +2592,10 @@
     <value>رجوع</value>
     <comment>Confirmation button that leaves the seedphrase screen after the warning.</comment>
   </data>
+  <data name="google" xml:space="preserve">
+    <value>Google</value>
+    <comment>A label for Google sign-in.</comment>
+  </data>
   <data name="google_auth_btn_text" xml:space="preserve">
     <value>تسجيل الدخول باستخدام Google</value>
     <comment>Login initial</comment>
@@ -1615,6 +2603,42 @@
   <data name="google_sign_in_method_added" xml:space="preserve">
     <value>تمت إضافة طريقة تسجيل الدخول عبر Google</value>
     <comment>Snackbar message displayed when a Google sign-in method is successfully added.</comment>
+  </data>
+  <data name="gossip_connecting" xml:space="preserve">
+    <value>جارٍ الاتصال</value>
+    <comment>Gossip network status: a dial or reconnect is in progress (yellow).</comment>
+  </data>
+  <data name="gossip_events_per_minute.zero" xml:space="preserve">
+    <value>{} حدث/دقيقة</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_events_per_minute.one" xml:space="preserve">
+    <value>حدث واحد/دقيقة</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_events_per_minute.two" xml:space="preserve">
+    <value>حدثان/دقيقة</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_events_per_minute.few" xml:space="preserve">
+    <value>{} أحداث/دقيقة</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_events_per_minute.many" xml:space="preserve">
+    <value>{} حدثًا/دقيقة</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_events_per_minute.other" xml:space="preserve">
+    <value>{} حدث/دقيقة</value>
+    <comment>The count of extender records and revocations applied from the gossip network or the feed in the last minute.</comment>
+  </data>
+  <data name="gossip_network" xml:space="preserve">
+    <value>شبكة Gossip</value>
+    <comment>Label of the gossip network status dot in the extender panel.</comment>
+  </data>
+  <data name="gossip_url" xml:space="preserve">
+    <value>عنوان URL لشبكة Gossip</value>
+    <comment>Label of the gossip URL field. Empty means the network space default.</comment>
   </data>
   <data name="got_it" xml:space="preserve">
     <value>فهمت</value>
@@ -1631,6 +2655,12 @@
   <data name="guest_mode_failed" xml:space="preserve">
     <value>فشل وضع الضيف</value>
     <comment>Error shown when starting a guest-mode network fails.</comment>
+  </data>
+  <data name="hash_count" xml:space="preserve">
+    <value>#{}</value>
+  </data>
+  <data name="hash_value" xml:space="preserve">
+    <value>#{}</value>
   </data>
   <data name="hide_provider_list" xml:space="preserve">
     <value>إخفاء قائمة المزودين</value>
@@ -1688,6 +2718,46 @@
     <value>تجاهل تحسينات البطارية</value>
     <comment>Call to action</comment>
   </data>
+  <data name="import_extenders" xml:space="preserve">
+    <value>استيراد الموسّعات</value>
+    <comment>Button and screen title: import extenders from a QR code, a photo, or pasted text.</comment>
+  </data>
+  <data name="import_extenders_confirm_settings" xml:space="preserve">
+    <value>هل تريد استخدام إعدادات الموسّع من هذا الرمز؟ ستستخدم عمليات البحث عن الموسّعات {}.</value>
+    <comment>Confirmation before applying the extender settings from a share code. The argument is the operator host the settings point at.</comment>
+  </data>
+  <data name="import_extenders_foreign_host" xml:space="preserve">
+    <value>هذا الرمز مخصص لـ {} وليس لهذه الشبكة. استخدم إعدادات الموسّع لتبديل الشبكة.</value>
+    <comment>Error when a share code belongs to another network. The argument is that network's host.</comment>
+  </data>
+  <data name="import_extenders_imported.zero" xml:space="preserve">
+    <value>تم استيراد {} موسّع</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_imported.one" xml:space="preserve">
+    <value>تم استيراد موسّع واحد</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_imported.two" xml:space="preserve">
+    <value>تم استيراد موسّعين</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_imported.few" xml:space="preserve">
+    <value>تم استيراد {} موسّعات</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_imported.many" xml:space="preserve">
+    <value>تم استيراد {} موسّعًا</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_imported.other" xml:space="preserve">
+    <value>تم استيراد {} موسّع</value>
+    <comment>Confirmation after an import, with the number of extenders added.</comment>
+  </data>
+  <data name="import_extenders_invalid" xml:space="preserve">
+    <value>هذا الرمز ليس رمز مشاركة موسّعات.</value>
+    <comment>Error when the scanned or pasted text is not an extender share code.</comment>
+  </data>
   <data name="in_guest_mode" xml:space="preserve">
     <value>أنت في وضع الضيف</value>
     <comment>Guest mode overlay</comment>
@@ -1700,6 +2770,10 @@
     <value>التطبيقات المشمولة فقط تستخدم النفق.</value>
     <comment>transfer stats and split rules</comment>
   </data>
+  <data name="include_extender_settings" xml:space="preserve">
+    <value>تضمين إعدادات الموسّع</value>
+    <comment>Toggle on the share screen: also include the extender DNS name, gossip URL and root keys in the code.</comment>
+  </data>
   <data name="include_in_vpn" xml:space="preserve">
     <value>التضمين في VPN</value>
     <comment>App split rules: rule choice routing the app through the VPN.</comment>
@@ -1707,6 +2781,10 @@
   <data name="included" xml:space="preserve">
     <value>مشمول</value>
     <comment>transfer stats and split rules</comment>
+  </data>
+  <data name="includes_free_trial_days" xml:space="preserve">
+    <value>يتضمن تجربة مجانية لمدة {} يومًا</value>
+    <comment>Line under the annual plan card. The number of days is the free trial length.</comment>
   </data>
   <data name="instant_account_explainer" xml:space="preserve">
     <value>لا حاجة إلى بريد إلكتروني أو هاتف أو كلمة مرور. حسابك محمي بعبارة الاسترداد.</value>
@@ -1736,6 +2814,54 @@
     <value>رصيد غير كافٍ</value>
     <comment>Circle Wallet Transfer Screen</comment>
   </data>
+  <data name="intro_control_manual_ios" xml:space="preserve">
+    <value>افتح مركز التحكم، واضغط على +، ثم «إضافة عنصر تحكم»، واختر URnetwork.</value>
+    <comment>How to add the quick connect control on iOS (no add-control API).</comment>
+  </data>
+  <data name="intro_control_manual_macos" xml:space="preserve">
+    <value>افتح مركز التحكم، واختر «تعديل عناصر التحكم»، ثم أضف URnetwork.</value>
+    <comment>How to add the quick connect control on macOS.</comment>
+  </data>
+  <data name="intro_quick_connect_details" xml:space="preserve">
+    <value>شغّل URnetwork وأوقفه من الإعدادات السريعة، وتابعه من شاشتك الرئيسية.</value>
+    <comment>Detail line of the last onboarding page.</comment>
+  </data>
+  <data name="intro_quick_connect_details_apple" xml:space="preserve">
+    <value>شغّل URnetwork وأوقفه من مركز التحكم، وتابعه من شاشتك الرئيسية.</value>
+    <comment>Detail line of the last onboarding page on iOS/macOS (Control Center instead of Quick Settings).</comment>
+  </data>
+  <data name="intro_quick_connect_title" xml:space="preserve">
+    <value>اتصل بلمسة واحدة</value>
+    <comment>Title of the last onboarding page: the quick connect tile and the home screen widgets.</comment>
+  </data>
+  <data name="intro_quick_tile_added" xml:space="preserve">
+    <value>تمت الإضافة إلى الإعدادات السريعة</value>
+    <comment>Label shown on the last onboarding page once the quick connect tile is in Quick Settings.</comment>
+  </data>
+  <data name="intro_quick_tile_manual" xml:space="preserve">
+    <value>افتح الإعدادات السريعة، واضغط على رمز القلم، ثم اسحب URnetwork إلى مكانه.</value>
+    <comment>Manual steps for adding the quick connect tile on Android versions without the system add-tile request (before Android 13).</comment>
+  </data>
+  <data name="intro_verifiable_encryption" xml:space="preserve">
+    <value>تشفير للاستخدام اليومي.</value>
+    <comment>Tagline under 'Welcome to URnetwork' on the first onboarding page. Replaces 'URnetwork is the most local and most private network on the planet.'</comment>
+  </data>
+  <data name="intro_widgets_manual" xml:space="preserve">
+    <value>اضغط مطولًا على شاشتك الرئيسية، واختر «الأدوات»، ثم اختر URnetwork.</value>
+    <comment>Manual steps for adding widgets on launchers without the pin dialog.</comment>
+  </data>
+  <data name="intro_widgets_manual_ios" xml:space="preserve">
+    <value>اضغط مطولًا على الشاشة الرئيسية، ثم اضغط على +، وابحث عن URnetwork، وأضف أداة.</value>
+    <comment>How to add a Home Screen widget on iOS (no pin-widget API).</comment>
+  </data>
+  <data name="intro_widgets_manual_macos" xml:space="preserve">
+    <value>افتح معرض الأدوات من مركز الإشعارات، وابحث عن URnetwork، واسحب أداة إلى سطح المكتب.</value>
+    <comment>How to add a desktop widget on macOS.</comment>
+  </data>
+  <data name="intro_widgets_tap_to_add" xml:space="preserve">
+    <value>اضغط على أداة لإضافتها إلى شاشتك الرئيسية.</value>
+    <comment>Hint under the widget previews on the last onboarding page: tapping a preview asks the launcher to add that widget.</comment>
+  </data>
   <data name="invalid_balance_code" xml:space="preserve">
     <value>رمز الرصيد غير صالح</value>
     <comment>Used in Shared/Views/RedeemBalanceCodeSheet/RedeemBalanceCodeSheet.swift.</comment>
@@ -1747,6 +2873,14 @@
   <data name="invalid_referral_code_please_try_again" xml:space="preserve">
     <value>رمز الإحالة غير صالح. يرجى المحاولة مرة أخرى.</value>
     <comment>Used in Main/Account/Settings/UpdateReferralNetworkSheet/UpdateReferralNetworkSheetViewModel.swift.</comment>
+  </data>
+  <data name="invalid_solana_address" xml:space="preserve">
+    <value>هذا ليس عنوان Solana صالحًا.</value>
+    <comment>Validation error under the manual address field when the address is not a valid Solana address (parallel to invalid_ss58_address).</comment>
+  </data>
+  <data name="invalid_ss58_address" xml:space="preserve">
+    <value>هذا ليس عنوان Bittensor صالحًا.</value>
+    <comment>Validation error for a coldkey address.</comment>
   </data>
   <data name="ip_address" xml:space="preserve">
     <value>عنوان IP</value>
@@ -1776,9 +2910,85 @@
     <value>{} عنوان IP</value>
     <comment>A label showing the number of IP addresses in a block action cluster, rendered as a single pill. The argument is the number of IPs.</comment>
   </data>
+  <data name="ip_families" xml:space="preserve">
+    <value>إصدارات IP</value>
+    <comment>IP versions: the tooltip of the address-family tag column in the provider locations sheet (windows, linux). It also titled the connect drawer's IP version histogram before that became the Dualstack / IPv4 / IPv6 status row.</comment>
+  </data>
+  <data name="ip_family_both" xml:space="preserve">
+    <value>كلاهما</value>
+    <comment>Row label of the IP version histogram, and the provider row tag, for a provider that carries both IPv4 and IPv6.</comment>
+  </data>
+  <data name="ip_family_connected_count.zero" xml:space="preserve">
+    <value>{} متصل</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connected_count.one" xml:space="preserve">
+    <value>متصل واحد</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connected_count.two" xml:space="preserve">
+    <value>متصلان</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connected_count.few" xml:space="preserve">
+    <value>{} متصلين</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connected_count.many" xml:space="preserve">
+    <value>{} متصلًا</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connected_count.other" xml:space="preserve">
+    <value>{} متصل</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are connected. Shown under the family label only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.zero" xml:space="preserve">
+    <value>{} قيد الاتصال</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.one" xml:space="preserve">
+    <value>واحد قيد الاتصال</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.two" xml:space="preserve">
+    <value>اثنان قيد الاتصال</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.few" xml:space="preserve">
+    <value>{} قيد الاتصال</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.many" xml:space="preserve">
+    <value>{} قيد الاتصال</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_connecting_count.other" xml:space="preserve">
+    <value>{} قيد الاتصال</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer: how many providers of that family (dualstack, IPv4 or IPv6) are still connecting. Shown under the connected line only when the count is not zero. Lowercase.</comment>
+  </data>
+  <data name="ip_family_disconnected" xml:space="preserve">
+    <value>غير متصل</value>
+    <comment>Status line of one column of the IP version status row in the connect drawer, when no provider of that family (dualstack, IPv4 or IPv6) is connected or connecting. Lowercase, under the family label.</comment>
+  </data>
+  <data name="ip_family_dualstack" xml:space="preserve">
+    <value>مكدس مزدوج</value>
+    <comment>Column label of the IP version status row in the connect drawer, for providers that carry both IPv4 and IPv6. Set in the pixel display face beside the IPv4 and IPv6 labels, so keep it short.</comment>
+  </data>
+  <data name="ip_family_v4" xml:space="preserve">
+    <value>v4</value>
+    <comment>Row label of the IP version histogram, and the provider row tag, for a provider that carries only IPv4.</comment>
+  </data>
+  <data name="ip_family_v6" xml:space="preserve">
+    <value>v6</value>
+    <comment>Row label of the IP version histogram, and the provider row tag, for a provider that carries only IPv6.</comment>
+  </data>
   <data name="ipv4" xml:space="preserve">
     <value>IPv4</value>
     <comment>Label for a list of IPv4 addresses.</comment>
+  </data>
+  <data name="ipv4_and_ipv6" xml:space="preserve">
+    <value>IPv4 و IPv6</value>
+    <comment>Accessibility label for a provider that carries both IPv4 and IPv6 traffic.</comment>
   </data>
   <data name="ipv6" xml:space="preserve">
     <value>IPv6</value>
@@ -1819,6 +3029,14 @@
   <data name="kill_switch" xml:space="preserve">
     <value>مفتاح القتل</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="kill_switch_exception" xml:space="preserve">
+    <value>استثناء مفتاح القتل</value>
+    <comment>Title for the disclosure explaining traffic that intentionally bypasses the VPN kill switch.</comment>
+  </data>
+  <data name="kill_switch_exception_detail" xml:space="preserve">
+    <value>أثناء اتصال VPN، لا يُوجَّه IPv6 عبر URnetwork وقد يستخدم شبكتك المحلية، حتى عند تشغيل مفتاح القتل. كما يتجاوز SMTP الصادر عبر منفذ TCP رقم 25 شبكة VPN. قد تكشف هذه الاستثناءات عنوان IP العام المحلي لديك لتلك الوجهات. يبقى SMTP على المنفذين 465 و587 داخل VPN ويجب أن يُنشئ اتصال TLS.</value>
+    <comment>Explains the deliberate IPv6 and SMTP exceptions to the VPN kill switch and the encrypted SMTP behavior.</comment>
   </data>
   <data name="launch" xml:space="preserve">
     <value>تشغيل</value>
@@ -2140,6 +3358,10 @@
     <value>المضاعف</value>
     <comment>Call to action</comment>
   </data>
+  <data name="n_20" xml:space="preserve">
+    <value>{}/20</value>
+    <comment>A progress bar that shows how many friends you've invited. The first argument is the number of friends you've invited. The second argument is the maximum number of friends you can invite.</comment>
+  </data>
   <data name="n_gib_day" xml:space="preserve">
     <value>+{} GiB/يوم</value>
     <comment>A label that shows the daily data usage from referrals. The argument is the number of referrals.</comment>
@@ -2360,6 +3582,10 @@
     <value>لا توجد مواقع محجوبة</value>
     <comment>Call to action</comment>
   </data>
+  <data name="no_claims_yet_linux" xml:space="preserve">
+    <value>لا يوجد ما يمكن المطالبة به بعد. يتراكم Alpha بدءًا من الفترة المكتملة التالية.</value>
+    <comment>Empty state of the unclaimed tile once a wallet is connected.</comment>
+  </data>
   <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
     <value>لا حاجة إلى بريد إلكتروني أو هاتف أو كلمة مرور. حسابك محمي بعبارة الاسترداد.</value>
     <comment>A description of the benefits of creating an Instant Account.</comment>
@@ -2383,6 +3609,14 @@
   <data name="no_open_contracts" xml:space="preserve">
     <value>لا توجد عقود مفتوحة</value>
     <comment>A label displayed when there are no open contracts.</comment>
+  </data>
+  <data name="no_points_yet" xml:space="preserve">
+    <value>لا توجد فترات بعد. تظهر النقاط بعد أول فترة مكتملة لك.</value>
+    <comment>Empty state of the points history.</comment>
+  </data>
+  <data name="no_previous_purchases_were_found" xml:space="preserve">
+    <value>لم يتم العثور على مشتريات سابقة.</value>
+    <comment>Restore-purchases outcome: the sync succeeded and there is genuinely nothing to restore (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="no_providers_found" xml:space="preserve">
     <value>لم نعثر على أي مزود.</value>
@@ -2476,6 +3710,10 @@
     <value>تشغيل</value>
     <comment>A label for a DNS setting that is enabled.</comment>
   </data>
+  <data name="onboarding_step_of" xml:space="preserve">
+    <value>الخطوة {0} من {1}</value>
+    <comment>Accessibility description of the onboarding step bubbles: the current step and the total.</comment>
+  </data>
   <data name="one_gib_per_day" xml:space="preserve">
     <value>1 GiB/يوم</value>
     <comment>Call to action</comment>
@@ -2508,6 +3746,10 @@
     <value>آخر</value>
     <comment>Used in Main/Account/Wallets/ConnectWalletSheet/ConnectWalletSheetView.swift.</comment>
   </data>
+  <data name="paid_in_usdc_on_solana" xml:space="preserve">
+    <value>يُدفع بعملة USDC على Solana.</value>
+    <comment>The one USDC mention: the Solana subscription payment note.</comment>
+  </data>
   <data name="participate" xml:space="preserve">
     <value>شارك</value>
     <comment>Call to action</comment>
@@ -2537,6 +3779,10 @@
     <value>يجب أن تتكون كلمة المرور من 12 حرفًا على الأقل</value>
     <comment>Hint for password input length requirements.</comment>
   </data>
+  <data name="paste_share_text" xml:space="preserve">
+    <value>لصق نص المشاركة</value>
+    <comment>Button and field label: paste the text form of a share code.</comment>
+  </data>
   <data name="paste_your_24_word_seedphrase_here" xml:space="preserve">
     <value>الصق هنا عبارة الاسترداد المكوّنة من 24 كلمة</value>
     <comment>A placeholder text for the seedphrase field.</comment>
@@ -2549,9 +3795,29 @@
     <value>انضم باستخدام Stripe</value>
     <comment>Call to action</comment>
   </data>
+  <data name="payment_confirmation_delayed" xml:space="preserve">
+    <value>يستغرق التأكيد وقتًا أطول من المتوقع. سيتم تحديث خطتك تلقائيًا بمجرد تأكيد الدفع — لا داعي للشراء مرة أخرى.</value>
+    <comment>Shown when the post-payment confirmation poll exhausts its budget (2 minutes) without the server confirming the subscription. The payment evidence is real (store or payment sheet reported success), so say that plainly, and head off a second purchase.</comment>
+  </data>
+  <data name="payment_confirmation_processing" xml:space="preserve">
+    <value>نحن نؤكد دفعتك الآن. سيتم تحديث خطتك تلقائيًا — لا تحتاج إلى فعل أي شيء.</value>
+    <comment>Body of the post-purchase overlay while the server has not yet confirmed the subscription. Replaces the optimistic 'You're premium.' claim until currentSubscription actually confirms.</comment>
+  </data>
+  <data name="payment_not_completed" xml:space="preserve">
+    <value>تعذّر إتمام دفعتك.</value>
+    <comment>Shown in the payment-problem dialog when the Stripe payment sheet reports a failure. The sheet's own error detail is appended by the caller.</comment>
+  </data>
   <data name="payment_problem" xml:space="preserve">
     <value>مشكلة في الدفع</value>
     <comment>Billing errors. Every one is shown to the user WITH a remedy: a payment error they cannot see is a payment error they will hit again.</comment>
+  </data>
+  <data name="payment_received" xml:space="preserve">
+    <value>تم استلام الدفعة.</value>
+    <comment>Title of the post-purchase screen while the server has not yet confirmed the entitlement (Shared/Views/PurchaseSuccessView.swift). StoreKit took the payment; the confirmation poll is still running — the copy must not claim premium yet.</comment>
+  </data>
+  <data name="payment_received_title" xml:space="preserve">
+    <value>تم استلام الدفعة</value>
+    <comment>Title for the post-purchase overlay and the confirmation-timeout dialog. Deliberately claims only what is known -- the payment was received -- not that the plan is active yet.</comment>
   </data>
   <data name="payout_wallet_updated" xml:space="preserve">
     <value>تم تحديث محفظة الدفع</value>
@@ -2613,6 +3879,14 @@
     <value>≈ {}/شهر · يُدفع مرة واحدة سنويًا</value>
     <comment>Plan picker: the subordinate line under the yearly price with the per-month equivalent (ceiling-rounded).</comment>
   </data>
+  <data name="plan_price_per_month" xml:space="preserve">
+    <value>{}/شهر</value>
+    <comment>Monthly plan card label: the store-formatted price per month.</comment>
+  </data>
+  <data name="plan_price_per_year" xml:space="preserve">
+    <value>{}/سنة</value>
+    <comment>Yearly plan card label: the store-formatted price per year.</comment>
+  </data>
   <data name="plan_save_percent" xml:space="preserve">
     <value>وفّر {}%</value>
     <comment>Plan picker: the saving badge on the yearly card; the number is the whole percent saved against twelve monthly payments.</comment>
@@ -2669,6 +3943,10 @@
     <value>النقاط</value>
     <comment>Points leaderboard: tab label, stat tile label and sort chip.</comment>
   </data>
+  <data name="points_earned" xml:space="preserve">
+    <value>النقاط المكتسبة</value>
+    <comment>Headline label of the earnings screen.</comment>
+  </data>
   <data name="points_leaderboard_description" xml:space="preserve">
     <value>النقاط منذ البداية. الكتلة هي فترة مكتملة واحدة؛ وتحسب السلسلة الكتل المتتالية ذات النقاط حتى آخر كتلة.</value>
     <comment>Points leaderboard: the explanation under the list header.</comment>
@@ -2680,6 +3958,10 @@
   <data name="points_leaderboard_private_hint" xml:space="preserve">
     <value>تظهر شبكتك باسم «مجهول» حتى تفعّل هذا الخيار.</value>
     <comment>Points leaderboard: shown under the own-stats card while the name switch is off. The network is listed either way, as Anonymous until the switch is on.</comment>
+  </data>
+  <data name="points_short" xml:space="preserve">
+    <value>{} نقطة</value>
+    <comment>Points count with unit for history rows.</comment>
   </data>
   <data name="post_quantum_encryption" xml:space="preserve">
     <value>التشفير ما بعد الكمومي</value>
@@ -2696,6 +3978,22 @@
   <data name="post_quantum_identity_explanation" xml:space="preserve">
     <value>يُخزَّن مفتاح هوية المزوّد الخاص بك محليًا على هذا الجهاز. إذا ظهر مفتاح أي قرين مختلفًا عن مفتاحه المخزَّن محليًا، فهذا يعني أنه لا يمكن الوثوق بمشغّل الشبكة.</value>
     <comment>Account tab: explanation under the post quantum identity panel — what the identity key is and how verifying provider keys detects interception.</comment>
+  </data>
+  <data name="private_extender" xml:space="preserve">
+    <value>موسّع خاص</value>
+    <comment>Title of the advanced private extender fields: one extender with a secret that replaces discovery.</comment>
+  </data>
+  <data name="private_extender_hint" xml:space="preserve">
+    <value>يحلّ الموسّع الخاص محل كل الموسّعات المكتشفة. اتركه فارغًا لاستخدام الاكتشاف التلقائي.</value>
+    <comment>Help text under the private extender fields.</comment>
+  </data>
+  <data name="private_extender_ip" xml:space="preserve">
+    <value>عنوان IP</value>
+    <comment>Label of the private extender IP address field.</comment>
+  </data>
+  <data name="private_extender_secret" xml:space="preserve">
+    <value>السر</value>
+    <comment>Label of the private extender secret field.</comment>
   </data>
   <data name="private_network" xml:space="preserve">
     <value>شبكة خاصة</value>
@@ -2729,9 +4027,33 @@
     <value>توفير</value>
     <comment>Label of the switch that turns on providing bandwidth to the network.</comment>
   </data>
+  <data name="provide_intro_bullet_devices" xml:space="preserve">
+    <value>اسمح لأجهزتك بمشاركة الإنترنت فيما بينها</value>
+    <comment>First bullet on the onboarding Contribute bandwidth page.</comment>
+  </data>
+  <data name="provide_intro_bullet_people" xml:space="preserve">
+    <value>شارك الإنترنت لديك مع أشخاص آخرين ❤️</value>
+    <comment>Second bullet on the onboarding Contribute bandwidth page, with a heart.</comment>
+  </data>
+  <data name="provide_intro_lead" xml:space="preserve">
+    <value>القرار لك، والأمر اختياري تمامًا:</value>
+    <comment>Lead line above the two bullets on the onboarding Contribute bandwidth page.</comment>
+  </data>
   <data name="provide_mode" xml:space="preserve">
     <value>وضع التوفير</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="provide_mode_always_description" xml:space="preserve">
+    <value>يوفّر للجميع طالما أن التطبيق قيد التشغيل.</value>
+    <comment>One-line explanation of the Always provide mode in the onboarding Contribute bandwidth picker.</comment>
+  </data>
+  <data name="provide_mode_auto_description" xml:space="preserve">
+    <value>يوفّر للجميع أثناء اتصالك، وإلا فلأجهزتك فقط.</value>
+    <comment>One-line explanation of the Auto provide mode in the onboarding Contribute bandwidth picker: public providing only while connected, same-network peers otherwise.</comment>
+  </data>
+  <data name="provide_mode_network_description" xml:space="preserve">
+    <value>يوفّر فقط لأجهزة شبكتك الخاصة.</value>
+    <comment>One-line explanation of the Network provide mode in the onboarding Contribute bandwidth picker: the private provider for the network's own devices.</comment>
   </data>
   <data name="provider_connected_duration_hours" xml:space="preserve">
     <value>{0} س {1} د</value>
@@ -2800,6 +4122,10 @@
     <value>إحصائيات المزود</value>
     <comment>Title of a section that shows statistics about the provider.</comment>
   </data>
+  <data name="provider_transports" xml:space="preserve">
+    <value>بروتوكولات النقل للمزود</value>
+    <comment>Title of the transport settings editor for the provider transport policy.</comment>
+  </data>
   <data name="providing" xml:space="preserve">
     <value>جاري التوفير</value>
     <comment>Used in Main/Account/Wallets/WalletsView.swift.</comment>
@@ -2840,6 +4166,18 @@
     <value>لم نتمكن من تأكيد عملية الشراء بعد. إذا أكملت الدفع، فسيتم تحديث خطتك تلقائيًا خلال دقائق قليلة — لا حاجة للشراء مرة أخرى.</value>
     <comment>Shown when the post-checkout confirmation poll gives up (2 minutes) without the server confirming the subscription. The purchase is still likely to land later; the background poll and the next launch pick it up. On apple: the delayed phase of PurchaseSuccessView and the MainView snackbar.</comment>
   </data>
+  <data name="purchase_could_not_be_verified" xml:space="preserve">
+    <value>تعذّر التحقق من عملية الشراء هذه عبر Google Play، لذا لا يمكن تطبيقها على حسابك. إذا تم تحصيل رسوم منك ولم تُحدَّث خطتك، يرجى التواصل مع الدعم.</value>
+    <comment>Error dialog body when the server's verify answer for a Play purchase is terminal `invalid` — the proof will never verify (unknown token, disallowed product, canceled before completing). The purchase is still acknowledged with Play so a real charge is not auto-refunded; this dialog is how the failure reaches the user instead of a silent nothing (android google/PlanViewModel.kt report path).</comment>
+  </data>
+  <data name="purchase_found_confirming_your_plan" xml:space="preserve">
+    <value>تم العثور على عملية الشراء. جارٍ تأكيد خطتك — سيتم تحديثها تلقائيًا.</value>
+    <comment>Restore-purchases outcome: an entitlement for the current network was found; the confirmation poll now bridges the gap until the server credits it (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
+  </data>
+  <data name="qr_code_not_found" xml:space="preserve">
+    <value>لم يتم العثور على رمز QR في الصورة.</value>
+    <comment>Error when a chosen photo or image file holds no QR code.</comment>
+  </data>
   <data name="quit" xml:space="preserve">
     <value>إغلاق</value>
     <comment>Tray menu item that exits the app (tears the tunnel down).</comment>
@@ -2851,6 +4189,10 @@
   <data name="ranked_networks_count" xml:space="preserve">
     <value>{} شبكة مصنفة</value>
     <comment>Points leaderboard: how many networks hold a rank. {count} is preformatted with separators.</comment>
+  </data>
+  <data name="reads_per_second" xml:space="preserve">
+    <value>قراءة/ث</value>
+    <comment>Unit the extender chart labels its rates with, where the provider chart says pkt/s. The compact count is prepended by the app, as it is for pkt/s.</comment>
   </data>
   <data name="ready_to_connect" xml:space="preserve">
     <value>جاهز للاتصال</value>
@@ -3146,6 +4488,10 @@
     <value>إزالة المحفظة</value>
     <comment>Used in Main/Account/AccountNavStackView.swift.</comment>
   </data>
+  <data name="remove_wallet_holds_payouts" xml:space="preserve">
+    <value>تُحتجز مدفوعات USDC حتى يتم ربط محفظة أخرى.</value>
+    <comment>Body of the remove confirmation for the Solana payout wallet (the title is remove_wallet).</comment>
+  </data>
   <data name="resend_reset_link" xml:space="preserve">
     <value>إعادة إرسال الرابط</value>
     <comment>Reset link sent</comment>
@@ -3174,9 +4520,17 @@
     <value>محلّلات DNS</value>
     <comment>A section header for the DNS resolvers.</comment>
   </data>
+  <data name="restore_default_transports" xml:space="preserve">
+    <value>استعادة بروتوكولات النقل الافتراضية</value>
+    <comment>Button that resets the transport settings draft to the SDK default policy.</comment>
+  </data>
   <data name="restore_most_secure_settings" xml:space="preserve">
     <value>استعادة أكثر الإعدادات أمانًا</value>
     <comment>dns settings</comment>
+  </data>
+  <data name="restore_purchases" xml:space="preserve">
+    <value>استعادة المشتريات</value>
+    <comment>Action label that resyncs App Store purchases (AppStore.sync + entitlement scan). Shown in Settings and in the upgrade flow's failure states (Main/Account/Settings/SettingsForm-iOS.swift, SettingsForm-macOS.swift, Shared/Views/UpgradeSubscriptionSheet.swift, Shared/Views/PurchaseSuccessView.swift, Shared/Views/Introduction/IntroductionView.swift).</comment>
   </data>
   <data name="retry" xml:space="preserve">
     <value>إعادة المحاولة</value>
@@ -3190,9 +4544,17 @@
     <value>تقييم URnetwork</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="route_internet" xml:space="preserve">
+    <value>الإنترنت</value>
+    <comment>Right stop label of the onboarding route line the anonymized member travels along.</comment>
+  </data>
   <data name="route_local" xml:space="preserve">
     <value>السماح بحركة المرور المحلية عند قطع الاتصال</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="route_you" xml:space="preserve">
+    <value>أنت</value>
+    <comment>Left stop label of the onboarding route line the anonymized member travels along (you -&gt; URnetwork -&gt; internet).</comment>
   </data>
   <data name="rules" xml:space="preserve">
     <value>القواعد</value>
@@ -3201,6 +4563,10 @@
   <data name="save" xml:space="preserve">
     <value>حفظ</value>
     <comment>Profile</comment>
+  </data>
+  <data name="save_33_percent" xml:space="preserve">
+    <value>وفّر 33%</value>
+    <comment>Line under the yearly plan's price: the saving against paying monthly.</comment>
   </data>
   <data name="save_logs" xml:space="preserve">
     <value>حفظ السجلات</value>
@@ -3213,6 +4579,10 @@
   <data name="saved_as" xml:space="preserve">
     <value>يُحفظ كـ {}</value>
     <comment>Split rules: note under the host input when the entry will be stored in a normalised form. {value} is that form, for example 10.0.0.0/8 for a typed 10.0.0.5/8.</comment>
+  </data>
+  <data name="scan_qr_code" xml:space="preserve">
+    <value>مسح رمز QR</value>
+    <comment>Button: open the camera to scan a QR code.</comment>
   </data>
   <data name="search_apps_placeholder" xml:space="preserve">
     <value>البحث في التطبيقات</value>
@@ -3288,6 +4658,10 @@
     <value>هذه {} كلمة — عبارة الاسترداد تتكون من 12 أو 24 كلمة</value>
     <comment>Login: warning when the pasted seedphrase has {count} words instead of 12 or 24.</comment>
   </data>
+  <data name="seeker_points_only" xml:space="preserve">
+    <value>ينطبق مضاعف Seeker على النقاط فقط.</value>
+    <comment>Note on the Seeker verification action.</comment>
+  </data>
   <data name="seeker_token_verified" xml:space="preserve">
     <value>تم التحقق من رمز Seeker!</value>
     <comment>Call to action</comment>
@@ -3328,6 +4702,10 @@
     <value>إرسال رابط إعادة التعيين</value>
     <comment>Used in Authenticate/ResetPassword/ResetPasswordView.swift.</comment>
   </data>
+  <data name="send_tao_to_mirror" xml:space="preserve">
+    <value>أرسل نحو {0} TAO إلى {1} لتغطية رسوم الغاز.</value>
+    <comment>Instruction to fund the gas key.</comment>
+  </data>
   <data name="send_us_your_feedback_directly_or_join_our" xml:space="preserve">
     <value>أرسل لنا ملاحظاتك مباشرة أو [انضم إلى Discord الخاص بنا](https://discord.com/invite/RUNZXMwPRK) للحصول على دعم مباشر.</value>
     <comment>Used in Main/Feedback/FeedbackView.swift.</comment>
@@ -3344,9 +4722,61 @@
     <value>الإعدادات</value>
     <comment>Account Screen</comment>
   </data>
+  <data name="settings_add_quick_tile" xml:space="preserve">
+    <value>إضافة مربع الاتصال السريع</value>
+    <comment>Settings row that asks the system to add the Quick Settings tile (Android 13+).</comment>
+  </data>
+  <data name="settings_add_quick_tile_description" xml:space="preserve">
+    <value>اتصل واقطع الاتصال من لوحة الإعدادات السريعة وشاشة القفل.</value>
+    <comment>Description under the add-tile settings row.</comment>
+  </data>
+  <data name="settings_add_widgets" xml:space="preserve">
+    <value>إضافة أدوات إلى الشاشة الرئيسية</value>
+    <comment>Settings row that opens the widget picker to pin the app's widgets.</comment>
+  </data>
+  <data name="settings_add_widgets_description" xml:space="preserve">
+    <value>الاتصال السريع، ورصيد البيانات، والمزودون على الكرة الأرضية، وأهم عقودك.</value>
+    <comment>Description under the add-widgets settings row.</comment>
+  </data>
   <data name="share" xml:space="preserve">
     <value>شارك</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="share_extenders" xml:space="preserve">
+    <value>مشاركة الموسّعات</value>
+    <comment>Button and screen title: share the known extenders as a QR code.</comment>
+  </data>
+  <data name="share_extenders_count.zero" xml:space="preserve">
+    <value>{} موسّع</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_count.one" xml:space="preserve">
+    <value>موسّع واحد</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_count.two" xml:space="preserve">
+    <value>موسّعان</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_count.few" xml:space="preserve">
+    <value>{} موسّعات</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_count.many" xml:space="preserve">
+    <value>{} موسّعًا</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_count.other" xml:space="preserve">
+    <value>{} موسّع</value>
+    <comment>How many extenders the share code carries.</comment>
+  </data>
+  <data name="share_extenders_hint" xml:space="preserve">
+    <value>امسح هذا الرمز باستخدام تطبيق URnetwork آخر لمشاركة هذه الموسّعات.</value>
+    <comment>Help text on the share screen under the QR code.</comment>
+  </data>
+  <data name="share_extenders_too_large" xml:space="preserve">
+    <value>رمز المشاركة كبير جدًا بالنسبة لرمز QR. انسخ نص المشاركة بدلًا من ذلك.</value>
+    <comment>Shown on the share screen when the share payload exceeds what a QR code can hold; the text form is still offered.</comment>
   </data>
   <data name="share_logs" xml:space="preserve">
     <value>مشاركة السجلات</value>
@@ -3356,9 +4786,21 @@
     <value>مشاركة السجلات</value>
     <comment>Used in Shared/Views/ExportLogsButton/ExportLogsButton.swift.</comment>
   </data>
+  <data name="share_text_copied" xml:space="preserve">
+    <value>تم نسخ نص المشاركة</value>
+    <comment>Confirmation after the share text of an extender code was copied to the clipboard.</comment>
+  </data>
   <data name="share_urnetwork" xml:space="preserve">
     <value>مشاركة URnetwork</value>
     <comment>Used in Shared/Views/AccountMenu.swift.</comment>
+  </data>
+  <data name="shortcut_connect_long" xml:space="preserve">
+    <value>الاتصال بـ URnetwork</value>
+    <comment>Long label of the launcher shortcut that connects the VPN.</comment>
+  </data>
+  <data name="shortcut_disconnect_long" xml:space="preserve">
+    <value>قطع الاتصال بـ URnetwork</value>
+    <comment>Long label of the launcher shortcut that disconnects the VPN.</comment>
   </data>
   <data name="show" xml:space="preserve">
     <value>إظهار</value>
@@ -3367,6 +4809,10 @@
   <data name="show_icon_when_connected" xml:space="preserve">
     <value>عرض أيقونة UR عند الاتصال</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="show_kill_switch_exception" xml:space="preserve">
+    <value>عرض استثناء مفتاح القتل</value>
+    <comment>Accessibility label for the kill switch exception information button.</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">
     <value>إظهار اسم شبكتي</value>
@@ -3402,6 +4848,10 @@
   </data>
   <data name="sign_in_methods" xml:space="preserve">
     <value>طرق تسجيل الدخول</value>
+  </data>
+  <data name="sign_in_with_apple" xml:space="preserve">
+    <value>تسجيل الدخول باستخدام Apple</value>
+    <comment>Login stack: full-width Apple sign-in button on platforms that use the ur.io browser bridge</comment>
   </data>
   <data name="sign_in_with_code" xml:space="preserve">
     <value>تسجيل الدخول باستخدام رمز</value>
@@ -3486,6 +4936,10 @@
     <value>تاريخ الإلغاء</value>
     <comment>App payout detail: canceled time</comment>
   </data>
+  <data name="site_app_chain_not_configured" xml:space="preserve">
+    <value>لم تتم تهيئة التسوية على الشبكة الفرعية بعد. تستمر النقاط في التراكم؛ عُد للتحقق بعد الإصدار التالي.</value>
+    <comment>App earnings/claim: the SDK reports chain_not_configured (release constants not published)</comment>
+  </data>
   <data name="site_app_change" xml:space="preserve">
     <value>تغيير</value>
     <comment>App connect screen: change location button</comment>
@@ -3497,6 +4951,22 @@
   <data name="site_app_cities" xml:space="preserve">
     <value>المدن</value>
     <comment>App connect location picker: cities section</comment>
+  </data>
+  <data name="site_app_claim_no_evm_wallet" xml:space="preserve">
+    <value>لم يتم العثور على محفظة متصفح. ثبّت إضافة محفظة EVM مثل MetaMask واربط المفتاح الذي يدفع رسوم الغاز، أو طالِب من تطبيق URnetwork على جهازك.</value>
+    <comment>App claim: no injected EVM wallet</comment>
+  </data>
+  <data name="site_app_claim_nothing" xml:space="preserve">
+    <value>لا يوجد ما يمكن المطالبة به بعد.</value>
+    <comment>App claim: empty state</comment>
+  </data>
+  <data name="site_app_claim_opens_soon" xml:space="preserve">
+    <value>يُفتح قريبًا</value>
+    <comment>App claim: epoch status when the claim window has not opened</comment>
+  </data>
+  <data name="site_app_claimable" xml:space="preserve">
+    <value>قابل للمطالبة</value>
+    <comment>App claim: epoch status</comment>
   </data>
   <data name="site_app_clients" xml:space="preserve">
     <value>العملاء</value>
@@ -3533,6 +5003,10 @@
   <data name="site_app_connections" xml:space="preserve">
     <value>الاتصالات</value>
     <comment>App settings: connections section</comment>
+  </data>
+  <data name="site_app_continue_anyway" xml:space="preserve">
+    <value>المتابعة على أي حال</value>
+    <comment>App earnings: proceed after the new-wallet warning</comment>
   </data>
   <data name="site_app_contracts" xml:space="preserve">
     <value>العقود</value>
@@ -3634,6 +5108,14 @@
     <value>إعادة التعيين إلى الموصى به</value>
     <comment>App connect DNS: reset to default</comment>
   </data>
+  <data name="site_app_earn_multiplier" xml:space="preserve">
+    <value>المضاعف</value>
+    <comment>App earnings: points breakdown row</comment>
+  </data>
+  <data name="site_app_earn_reliability" xml:space="preserve">
+    <value>الموثوقية</value>
+    <comment>App earnings: points breakdown row</comment>
+  </data>
   <data name="site_app_earnings" xml:space="preserve">
     <value>أرباح الشبكة</value>
     <comment>App account: network earnings card</comment>
@@ -3645,6 +5127,10 @@
   <data name="site_app_enter_referral" xml:space="preserve">
     <value>أدخل رمز الإحالة</value>
     <comment>App settings: referral code input placeholder</comment>
+  </data>
+  <data name="site_app_epoch_finalizing" xml:space="preserve">
+    <value>قيد الإكمال</value>
+    <comment>App claim: epoch status before finalization</comment>
   </data>
   <data name="site_app_ext_needed" xml:space="preserve">
     <value>إضافة متصفح URnetwork غير متوفرة في هذا المتصفح</value>
@@ -3697,6 +5183,10 @@
   <data name="site_app_leaderboard_note" xml:space="preserve">
     <value>لوحة المتصدرين هي مجموع آخر 4 دفعات. ويتم تحديثها في كل دورة دفع.</value>
     <comment>App leaderboard: explainer note</comment>
+  </data>
+  <data name="site_app_leaderboard_rank" xml:space="preserve">
+    <value>المرتبة #{rank} من {total} في لوحة المتصدرين</value>
+    <comment>App earnings: the network's leaderboard rank, as in the epoch email</comment>
   </data>
   <data name="site_app_loading" xml:space="preserve">
     <value>جارٍ التحميل…</value>
@@ -3762,6 +5252,18 @@
     <value>لا توجد حركة مرور بعد</value>
     <comment>Connect drawer: throughput empty state</comment>
   </data>
+  <data name="site_app_onboarding_ext_body" xml:space="preserve">
+    <value>يوجّه URnetwork هذا المتصفح عبر إضافته. ثبّتها، وسيصبح زر الاتصال هنا جاهزًا للاستخدام.</value>
+    <comment>Onboarding: install-the-extension step body</comment>
+  </data>
+  <data name="site_app_onboarding_ext_browsers" xml:space="preserve">
+    <value>متاحة لـ Chrome و Edge و Brave و Firefox.</value>
+    <comment>Onboarding: install-the-extension step, supported browsers note</comment>
+  </data>
+  <data name="site_app_onboarding_ext_title" xml:space="preserve">
+    <value>ربط هذا المتصفح</value>
+    <comment>Onboarding: install-the-extension step title</comment>
+  </data>
   <data name="site_app_paid_on" xml:space="preserve">
     <value>تاريخ الدفع</value>
     <comment>App payout detail: paid time</comment>
@@ -3781,6 +5283,10 @@
   <data name="site_app_plan" xml:space="preserve">
     <value>خطة</value>
     <comment>Connect drawer: plan section label</comment>
+  </data>
+  <data name="site_app_points_col" xml:space="preserve">
+    <value>النقاط</value>
+    <comment>App earnings: history column header</comment>
   </data>
   <data name="site_app_private_network" xml:space="preserve">
     <value>شبكة خاصة</value>
@@ -3850,6 +5356,10 @@
     <value>حفظ</value>
     <comment>App: save button</comment>
   </data>
+  <data name="site_app_sdk_not_ready" xml:space="preserve">
+    <value>بيانات المطالبة غير متاحة في هذا الإصدار من تطبيق الويب. أعد التحميل وحاول مرة أخرى.</value>
+    <comment>App earnings/claim: the loaded wasm SDK predates the subnet exports</comment>
+  </data>
   <data name="site_app_send" xml:space="preserve">
     <value>إرسال</value>
     <comment>App support: send button</comment>
@@ -3865,6 +5375,10 @@
   <data name="site_app_shuffle" xml:space="preserve">
     <value>خلط</value>
     <comment>App connect screen: shuffle providers button</comment>
+  </data>
+  <data name="site_app_sign_and_connect" xml:space="preserve">
+    <value>التوقيع والربط</value>
+    <comment>App earnings: manual address entry button (the wallet still signs the challenge)</comment>
   </data>
   <data name="site_app_stay_in_touch" xml:space="preserve">
     <value>ابقَ على تواصل</value>
@@ -3882,6 +5396,82 @@
     <value>النقل</value>
     <comment>Connect drawer: live transfer timeseries section</comment>
   </data>
+  <data name="site_app_top200_add_signature" xml:space="preserve">
+    <value>إضافة جهاز</value>
+    <comment>App top200: post a device's binding payload</comment>
+  </data>
+  <data name="site_app_top200_apply_hotkey_sig" xml:space="preserve">
+    <value>تطبيق توقيع hotkey</value>
+    <comment>App top200: re-check every device with the hotkey signature</comment>
+  </data>
+  <data name="site_app_top200_bad_signature" xml:space="preserve">
+    <value>الصق بيانات الربط تمامًا كما يعرضها التطبيق.</value>
+    <comment>App top200: unparseable paste</comment>
+  </data>
+  <data name="site_app_top200_binding_incomplete" xml:space="preserve">
+    <value>تظهر بيانات calldata بعد التحقق من توقيع الجهاز وتوقيع hotkey كليهما.</value>
+    <comment>App top200: binding not complete</comment>
+  </data>
+  <data name="site_app_top200_calldata" xml:space="preserve">
+    <value>بيانات calldata للربط</value>
+    <comment>App top200: calldata label</comment>
+  </data>
+  <data name="site_app_top200_device" xml:space="preserve">
+    <value>الجهاز</value>
+    <comment>App top200: device row label</comment>
+  </data>
+  <data name="site_app_top200_device_signature" xml:space="preserve">
+    <value>توقيع الجهاز</value>
+    <comment>App top200: signature textarea label</comment>
+  </data>
+  <data name="site_app_top200_digest" xml:space="preserve">
+    <value>الملخص</value>
+    <comment>App top200: binding digest label</comment>
+  </data>
+  <data name="site_app_top200_hotkey" xml:space="preserve">
+    <value>Hotkey</value>
+    <comment>App top200: hotkey input label</comment>
+  </data>
+  <data name="site_app_top200_hotkey_sign_hint" xml:space="preserve">
+    <value>وقّع كل ملخص ربط باستخدام hotkey عبر أدواتك الخاصة (snclaim bind-head) والصق التوقيع هنا.</value>
+    <comment>App top200: how to produce the hotkey signature</comment>
+  </data>
+  <data name="site_app_top200_hotkey_signature" xml:space="preserve">
+    <value>توقيع hotkey (hex)</value>
+    <comment>App top200: hotkey signature input</comment>
+  </data>
+  <data name="site_app_top200_intro" xml:space="preserve">
+    <value>كبار المعدِّنين هم أفضل {cutoff} شبكة من حيث تنوّع عناوين IP الخروج القابلة للتوجيه. تدفع الشبكة الفرعية مقابل المقعد الرئيسي بشكل أصلي في كل tempo، مباشرةً إلى coldkey الخاص بك.</value>
+    <comment>App top200: intro</comment>
+  </data>
+  <data name="site_app_top200_not_eligible" xml:space="preserve">
+    <value>غير مؤهل بعد. نتيجتك {score} وحد الإقصاء {floor}.</value>
+    <comment>App top200: status when not eligible</comment>
+  </data>
+  <data name="site_app_top200_signatures_added" xml:space="preserve">
+    <value>الأجهزة المضافة: {count}</value>
+    <comment>App top200: progress</comment>
+  </data>
+  <data name="site_app_top200_step_bind" xml:space="preserve">
+    <value>يوقّع كل جهاز مزود على ربط أسطوله من تطبيقه ضمن الحساب › أفضل 200. الصق هنا بيانات الربط لكل جهاز، جهازًا تلو الآخر.</value>
+    <comment>App top200: step 2</comment>
+  </data>
+  <data name="site_app_top200_step_register" xml:space="preserve">
+    <value>سجّل hotkey على الشبكة الفرعية {netuid} باستخدام btcli، ثم أدخله أدناه.</value>
+    <comment>App top200: step 1</comment>
+  </data>
+  <data name="site_app_top200_step_submit" xml:space="preserve">
+    <value>أرسل الربط من محفظة EVM الخاصة بك. لا يرسل URnetwork أي معاملات نيابةً عنك أبدًا.</value>
+    <comment>App top200: step 3</comment>
+  </data>
+  <data name="site_app_top200_submit" xml:space="preserve">
+    <value>إرسال الربط</value>
+    <comment>App top200: send the binding tx from the injected wallet</comment>
+  </data>
+  <data name="site_app_top200_unavailable" xml:space="preserve">
+    <value>حالة المقعد الرئيسي غير متاحة الآن.</value>
+    <comment>App top200: GET /sn/head unavailable</comment>
+  </data>
   <data name="site_app_total_referrals" xml:space="preserve">
     <value>إجمالي الإحالات</value>
     <comment>App account: total referrals label</comment>
@@ -3898,9 +5488,21 @@
     <value>تم التحقق</value>
     <comment>App profile: verified badge</comment>
   </data>
+  <data name="site_app_view_transaction" xml:space="preserve">
+    <value>عرض المعاملة</value>
+    <comment>App claim/top200: explorer link</comment>
+  </data>
   <data name="site_app_wallet" xml:space="preserve">
     <value>محفظة</value>
     <comment>App wallets: wallet label</comment>
+  </data>
+  <data name="site_app_wallet_connected" xml:space="preserve">
+    <value>متصلة</value>
+    <comment>App earnings: badge next to the connected Bittensor coldkey</comment>
+  </data>
+  <data name="site_app_wallet_mismatch" xml:space="preserve">
+    <value>وقّع باستخدام المحفظة التي تملك هذا العنوان.</value>
+    <comment>App earnings: the bridge signed with a different account than the typed address</comment>
   </data>
   <data name="site_best_available" xml:space="preserve">
     <value>الأفضل المتاح</value>
@@ -3950,6 +5552,10 @@
     <value>جاهز للاتصال</value>
     <comment>Connect: disconnected status line</comment>
   </data>
+  <data name="site_copied" xml:space="preserve">
+    <value>تم النسخ</value>
+    <comment>Account panel: a copy button after it copied</comment>
+  </data>
   <data name="site_copy_seedphrase" xml:space="preserve">
     <value>نسخ عبارة الاسترداد</value>
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
@@ -3957,6 +5563,10 @@
   <data name="site_copy_url" xml:space="preserve">
     <value>نسخ الرابط</value>
     <comment>Account panel: copy a proxy's URL</comment>
+  </data>
+  <data name="site_copy_wg_config" xml:space="preserve">
+    <value>نسخ الإعدادات</value>
+    <comment>Account panel: copy the WireGuard config text to the clipboard</comment>
   </data>
   <data name="site_create_another" xml:space="preserve">
     <value>إنشاء آخر</value>
@@ -4038,6 +5648,10 @@
     <value>رمز رصيد غير صالح.</value>
     <comment>Account panel: invalid balance code</comment>
   </data>
+  <data name="site_keep_waiting" xml:space="preserve">
+    <value>مواصلة الانتظار</value>
+    <comment>Upgrade sheet: give-up state action to resume waiting for the payment</comment>
+  </data>
   <data name="site_landing_continue_web" xml:space="preserve">
     <value>المتابعة على الويب</value>
     <comment>Email landing page: the web fallback link.</comment>
@@ -4085,6 +5699,10 @@
   <data name="site_locations" xml:space="preserve">
     <value>المواقع</value>
     <comment>Account panel: location chooser list aria-label</comment>
+  </data>
+  <data name="site_login_auth_code_hint" xml:space="preserve">
+    <value>الصق رمز مصادقة تم إنشاؤه من جهاز آخر أو من أدوات سطر الأوامر.</value>
+    <comment>Login stack: hint above the auth code field when signing in with a code generated elsewhere.</comment>
   </data>
   <data name="site_login_seed_hint" xml:space="preserve">
     <value>أدخل عبارة الاسترداد المكونة من 24 كلمة التي ظهرت عند إنشاء الحساب الفوري.</value>
@@ -4194,6 +5812,10 @@
     <value>واجهة عميل المشغّل</value>
     <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
   </data>
+  <data name="site_pay_another_way" xml:space="preserve">
+    <value>الدفع بطريقة أخرى</value>
+    <comment>Upgrade sheet: escape from the waiting state back to the payment options</comment>
+  </data>
   <data name="site_pay_sheet_charge_line" xml:space="preserve">
     <value>{} اليوم، ثم شهريًا. إلغاء في أي وقت.</value>
     <comment>Embedded pay page: the immediate charge line (monthly). {price} amount.</comment>
@@ -4221,6 +5843,14 @@
   <data name="site_pay_sheet_trial_line" xml:space="preserve">
     <value>سيتم حفظ بطاقتك اليوم وتحصيل {1} في {0}. يمكنك الإلغاء في أي وقت قبل ذلك.</value>
     <comment>Embedded pay page: what happens with the card on a trial. {price} amount, {date} local date.</comment>
+  </data>
+  <data name="site_payment_not_seen_body" xml:space="preserve">
+    <value>لم نرَ دفعتك بعد. إذا كنت قد أكملتها في محفظتك، فربما لا تزال قيد المعالجة — سيتم تحديث خطتك تلقائيًا ضمن «الحساب» بمجرد وصولها.</value>
+    <comment>Upgrade sheet: give-up state body — the payment may still be processing and will appear under Account</comment>
+  </data>
+  <data name="site_payment_not_seen_title" xml:space="preserve">
+    <value>لم يتم تأكيد الدفع بعد</value>
+    <comment>Upgrade sheet: give-up state title after the payment wait deadline</comment>
   </data>
   <data name="site_plan_billed_monthly" xml:space="preserve">
     <value>تُدفع شهريًا · إلغاء في أي وقت</value>
@@ -4270,6 +5900,10 @@
     <value>نوع الوكيل</value>
     <comment>Account panel: proxy-type picker aria-label</comment>
   </data>
+  <data name="site_redeem_timeout" xml:space="preserve">
+    <value>انتهت مهلة الطلب. إذا تم تحصيل رسوم منك، فتحقق من رصيدك — ربما تم تطبيق الرمز بالفعل.</value>
+    <comment>Balance code redeem: timeout is ambiguous — the server may have committed the redeem after the client stopped waiting</comment>
+  </data>
   <data name="site_roles" xml:space="preserve">
     <value>الأدوار</value>
     <comment>Account panel: client info — roles label</comment>
@@ -4297,6 +5931,14 @@
   <data name="site_socks_cred_note" xml:space="preserve">
     <value>اسم المستخدم هو الرمز الموجود في الرابط؛ وكلمة المرور فارغة.</value>
     <comment>Account panel: SOCKS credential note</comment>
+  </data>
+  <data name="site_solana_no_wallet_hint" xml:space="preserve">
+    <value>لم يحدث شيء؟ قد تحتاج إلى تثبيت محفظة Solana — أو ادفع بطريقة أخرى.</value>
+    <comment>Upgrade sheet: waiting state hint — a solana: deep link with no wallet installed silently does nothing</comment>
+  </data>
+  <data name="site_sub_active_body" xml:space="preserve">
+    <value>خطة Pro الخاصة بك نشطة. لا يوجد اشتراك متجر لإدارته في هذا الحساب.</value>
+    <comment>Subscription: body for a Pro account with no store subscription to cancel (e.g. Pro from a balance code or a grant)</comment>
   </data>
   <data name="site_sub_active_until" xml:space="preserve">
     <value>نشط حتى {date}</value>
@@ -4370,6 +6012,14 @@
     <value>الإدارة في Google Play</value>
     <comment>Subscription: manage-on-platform button, Google. A full sentence rather than interpolating the store name, because the article and case around it differ per language.</comment>
   </data>
+  <data name="site_sub_multiple_note" xml:space="preserve">
+    <value>يتم تحصيل رسوم منك مقابل أكثر من اشتراك. يجب إلغاء كل اشتراك من المكان الذي تم شراؤه منه.</value>
+    <comment>Subscription: warning shown when a network is billed by more than one store, because cancelling one does not cancel the others</comment>
+  </data>
+  <data name="site_sub_multiple_title" xml:space="preserve">
+    <value>اشتراكاتك</value>
+    <comment>Subscription: heading above the list, shown only when more than one store is billing the network</comment>
+  </data>
   <data name="site_sub_other_platform" xml:space="preserve">
     <value>منصة أخرى</value>
     <comment>Subscription: unknown platform fallback</comment>
@@ -4410,9 +6060,33 @@
     <value>{1} شهرًا بالإضافة إلى {0} يومًا من Pro</value>
     <comment>USDC panel: the term the welcome-offer payment buys.</comment>
   </data>
+  <data name="skip" xml:space="preserve">
+    <value>تخطي</value>
+    <comment>Small muted button at the top of the post-login onboarding flow that leaves the whole flow.</comment>
+  </data>
+  <data name="sn_status_claimable" xml:space="preserve">
+    <value>قابل للمطالبة</value>
+    <comment>Claim status of an epoch whose alpha can be claimed now.</comment>
+  </data>
+  <data name="sn_status_not_finalized" xml:space="preserve">
+    <value>غير مكتملة</value>
+    <comment>Claim status of an epoch the vault has not finalized yet.</comment>
+  </data>
+  <data name="sn_status_open" xml:space="preserve">
+    <value>مفتوحة</value>
+    <comment>Claim status of an epoch that is still open (not yet finalized on chain).</comment>
+  </data>
+  <data name="solana_one_time_payment" xml:space="preserve">
+    <value>الدفع بـ USDC على Solana دفعة سنوية لمرة واحدة، دون تجربة مجانية.</value>
+    <comment>Note under the Solana payment button on the plan picker: Solana is a one-time yearly payment, the free trial is Stripe only.</comment>
+  </data>
   <data name="solana_sign_in" xml:space="preserve">
     <value>تسجيل الدخول باستخدام Solana</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="solana_wallet" xml:space="preserve">
+    <value>محفظة Solana</value>
+    <comment>Label of the connected Solana wallet block on the Earnings screen (parallel to bittensor_wallet).</comment>
   </data>
   <data name="something_went_wrong" xml:space="preserve">
     <value>حدث خطأ ما.</value>
@@ -4506,6 +6180,10 @@
     <value>للبدء في الربح، انضم إلى الشبكة</value>
     <comment>Guest mode overlay</comment>
   </data>
+  <data name="start_free_trial" xml:space="preserve">
+    <value>بدء التجربة المجانية</value>
+    <comment>Primary button of the plan picker (onboarding and upgrade): starts the paid plan's free trial. Replaces 'Join the movement'.</comment>
+  </data>
   <data name="stay" xml:space="preserve">
     <value>البقاء</value>
     <comment>Confirmation button that keeps the user on the seedphrase screen after the warning.</comment>
@@ -4553,6 +6231,14 @@
   <data name="strong_anonymization" xml:space="preserve">
     <value>إخفاء الهوية القوي</value>
     <comment>Connect drawer: strong anonymization toggle — the inverse of allow direct (direct connections expose the real source IP to the provider).</comment>
+  </data>
+  <data name="subscribe" xml:space="preserve">
+    <value>اشتراك</value>
+    <comment>Button on the plan picker for the monthly plan, which has no free trial.</comment>
+  </data>
+  <data name="subscription_purchased_under_different_account" xml:space="preserve">
+    <value>تم شراء اشتراكك باستخدام حساب مختلف. سجّل الدخول إلى ذلك الحساب لاستخدامه.</value>
+    <comment>The store purchase belongs to a different network than the one logged in — crediting must not go to the wrong account, so tell the user which way out exists. Apple: restore-purchases outcome (Shared/ViewModels/AppStoreSubscriptionManager.swift). Android: terminal `wrong_network` answer from the Play purchase report (google/PlanViewModel.kt); the purchase is still acknowledged so Play does not auto-refund it.</comment>
   </data>
   <data name="successfully_claimed_multiplier" xml:space="preserve">
     <value>تمت المطالبة بالمضاعف بنجاح!</value>
@@ -4602,6 +6288,10 @@
     <value>هل تريد قطع الاتصال من {} والتبديل بين الحسابات؟</value>
     <comment>Call to action</comment>
   </data>
+  <data name="symbol_ellipsis" xml:space="preserve">
+    <value>...</value>
+    <comment>An ellipsis character used to indicate ongoing processing.</comment>
+  </data>
   <data name="sync_device_location_with_oldest_provider" xml:space="preserve">
     <value>مزامنة موقع الجهاز مع أقدم مزود خدمة متصل</value>
     <comment>Toggle that makes the device report the location of the longest-connected provider (Android mock location) instead of the real location.</comment>
@@ -4613,6 +6303,10 @@
   <data name="system" xml:space="preserve">
     <value>النظام</value>
     <comment>Used in Main/Account/Settings/SettingsForm-macOS.swift.</comment>
+  </data>
+  <data name="tao_amount_linux" xml:space="preserve">
+    <value>{} TAO</value>
+    <comment>A TAO amount with its unit (the gas key balance).</comment>
   </data>
   <data name="tap_to_connect" xml:space="preserve">
     <value>انقر للاتصال</value>
@@ -4638,6 +6332,10 @@
     <value>شكرًا على ملاحظاتك!</value>
     <comment>Confirmation shown after feedback is sent.</comment>
   </data>
+  <data name="the_purchase_could_not_be_completed" xml:space="preserve">
+    <value>تعذّر إتمام عملية الشراء. يرجى المحاولة مرة أخرى.</value>
+    <comment>Shown inline in the upgrade flow when a StoreKit purchase attempt throws (Shared/ViewModels/AppStoreSubscriptionManager.swift). Every purchase failure is shown to the user — a payment error they cannot see is one they will hit again. User cancellation is not an error and never shows this.</comment>
+  </data>
   <data name="there_was_an_error_checking_the_network_name" xml:space="preserve">
     <value>حدث خطأ أثناء التحقق من اسم الشبكة</value>
     <comment>Used in Authenticate/CreateNetwork/CreateNetworkViewModel.swift.</comment>
@@ -4654,6 +6352,10 @@
     <value>⚠️ هذه هي المرة الوحيدة التي ستراها فيها.</value>
     <comment>A warning message displayed in the seedphrase display view.</comment>
   </data>
+  <data name="this_purchase_couldn_t_be_verified" xml:space="preserve">
+    <value>تعذّر التحقق من عملية الشراء هذه عبر App Store، لذا لا يمكن تطبيقها على حسابك. إذا تم تحصيل رسوم منك ولم تُحدَّث خطتك، يرجى التواصل مع الدعم.</value>
+    <comment>Shown inline in the upgrade flow when the server's verify answer for a purchase's transaction JWS is terminal `invalid` — the proof will never verify. The transaction is still finished so StoreKit stops redelivering it; this message is how the failure reaches the user instead of a silent success (Shared/ViewModels/AppStoreSubscriptionManager.swift). Apple sibling of purchase_could_not_be_verified (android).</comment>
+  </data>
   <data name="this_region" xml:space="preserve">
     <value>هذه المنطقة</value>
     <comment>dns settings</comment>
@@ -4668,6 +6370,30 @@
   </data>
   <data name="title_login" xml:space="preserve">
     <value>تسجيل الدخول</value>
+  </data>
+  <data name="top200" xml:space="preserve">
+    <value>أفضل 200</value>
+    <comment>Badge text for the head mining spot.</comment>
+  </data>
+  <data name="top200_bound_detail" xml:space="preserve">
+    <value>تُدفع مكافآت الإصدار مباشرةً إلى coldkey الخاص بك. تتجدد عمليات الربط في كل فترة.</value>
+    <comment>Detail under the bound status.</comment>
+  </data>
+  <data name="top200_bound_status" xml:space="preserve">
+    <value>UID {0} · المرتبة #{1}</value>
+    <comment>Status row once bound.</comment>
+  </data>
+  <data name="top200_demotion_warning" xml:space="preserve">
+    <value>نتيجتك قريبة من حد الإقصاء. أضف عناوين IP قابلة للتوجيه للاحتفاظ بالمقعد.</value>
+    <comment>Warning when the score nears the floor.</comment>
+  </data>
+  <data name="top200_detail" xml:space="preserve">
+    <value>يحتل تنوّع عناوين IP القابلة للتوجيه في شبكتك المرتبة #{0} تقريبًا من بين {1} من المقاعد الرئيسية. يكسب كبار المعدِّنين SN25α بشكل أصلي في كل tempo.</value>
+    <comment>Detail of the Top 200 tile when eligible.</comment>
+  </data>
+  <data name="top200_you_qualify" xml:space="preserve">
+    <value>أنت مؤهل</value>
+    <comment>Headline of the Top 200 tile when eligible.</comment>
   </data>
   <data name="top_matches" xml:space="preserve">
     <value>أفضل التطابقات</value>
@@ -4733,6 +6459,62 @@
     <value>تمت تهيئة عملية التحويل الخاصة بك وسيتم الانتهاء منها بمجرد معالجة المعاملة على السلسلة.</value>
     <comment>Transfer Submitted Overlay</comment>
   </data>
+  <data name="transport" xml:space="preserve">
+    <value>بروتوكول النقل</value>
+    <comment>Section header of the transport mode selection (Auto or a single transport).</comment>
+  </data>
+  <data name="transport_auto_degraded" xml:space="preserve">
+    <value>الوضع «تلقائي» متدهور لأن قيود النظام تمنع تشغيل بعض بروتوكولات النقل المفعّلة.</value>
+    <comment>Generic warning banner in the transport settings editor when the Auto policy is degraded for a constraint this app version does not recognize (the SDK may report new constraint kinds; "memory" has its own banner).</comment>
+  </data>
+  <data name="transport_auto_degraded_memory" xml:space="preserve">
+    <value>الوضع «تلقائي» متدهور لأن حدود ذاكرة النظام تمنع تشغيل بعض بروتوكولات النقل المفعّلة.</value>
+    <comment>Warning banner in the transport settings editor when the Auto policy is degraded because the platform memory budget cannot admit every enabled transport.</comment>
+  </data>
+  <data name="transport_auto_description" xml:space="preserve">
+    <value>موصى به. يستخدم بروتوكولات النقل المفعّلة أدناه.</value>
+    <comment>Subtitle of the Auto transport mode row.</comment>
+  </data>
+  <data name="transport_client_footer" xml:space="preserve">
+    <value>بروتوكول النقل الذي يستخدمه هذا الجهاز للوصول إلى المزودين. يجرّب الوضع «تلقائي» بروتوكولات النقل المفعّلة حسب ترتيب الأفضلية، ويُبقي كل بروتوكولات النقل السليمة من الفئة نفسها متصلة بالتوازي.</value>
+    <comment>Footer of the client transport mode section.</comment>
+  </data>
+  <data name="transport_dns_description" xml:space="preserve">
+    <value>متخفٍّ في هيئة حركة DNS. للشبكات التي تُرشّح الاتصالات المباشرة.</value>
+    <comment>One line description of the whodis (DNS) transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_dnspump_description" xml:space="preserve">
+    <value>متخفٍّ في هيئة حركة DNS مع ضخ ثابت للردود. أدنى عرض نطاق، وأعلى توافر.</value>
+    <comment>One line description of the whodis pump (DNS pump) transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_h1_description" xml:space="preserve">
+    <value>مباشر عبر TLS. يعمل على معظم الشبكات.</value>
+    <comment>One line description of the H1 transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_h3_description" xml:space="preserve">
+    <value>مباشر عبر QUIC. الأسرع حيث لا يتم ترشيحه.</value>
+    <comment>One line description of the H3 transport in the transport settings editor.</comment>
+  </data>
+  <data name="transport_provider_footer" xml:space="preserve">
+    <value>بروتوكول النقل الذي يستخدمه هذا الجهاز أثناء التوفير للآخرين. يجرّب الوضع «تلقائي» بروتوكولات النقل المفعّلة حسب ترتيب الأفضلية، ويُبقي كل بروتوكولات النقل السليمة من الفئة نفسها متصلة بالتوازي.</value>
+    <comment>Footer of the provider transport mode section.</comment>
+  </data>
+  <data name="transport_queued" xml:space="preserve">
+    <value>في قائمة الانتظار</value>
+    <comment>Transport bar label for traffic admitted for sending but not yet attributed to a physical transport.</comment>
+  </data>
+  <data name="transport_unavailable_system_constraints" xml:space="preserve">
+    <value>غير متاح بسبب قيود النظام</value>
+    <comment>Accessibility label / tooltip on the warning icon next to a transport that is enabled under Auto but not currently eligible under a system constraint (for example the platform memory budget). A runtime warning, not a settings restriction: the toggle stays editable.</comment>
+  </data>
+  <data name="transport_unused" xml:space="preserve">
+    <value>غير مستخدمة</value>
+    <comment>Prefix of the transport bar footer listing the enabled transports that carried no traffic in the stats window.</comment>
+  </data>
+  <data name="transports" xml:space="preserve">
+    <value>بروتوكولات النقل</value>
+    <comment>Title of the transport distribution bar under the client statistics chart and of the transport settings editor.</comment>
+  </data>
   <data name="trusted_by_over_100_000_private_networks" xml:space="preserve">
     <value>موثوق به من قبل أكثر من 100,000 شبكة خاصة</value>
     <comment>Used in Shared/Views/Introduction/IntroductionView.swift.</comment>
@@ -4756,6 +6538,10 @@
   <data name="tunnel_stopped_unexpectedly" xml:space="preserve">
     <value>توقف الاتصال.</value>
     <comment>Connect: notice that the connection stopped on its own.</comment>
+  </data>
+  <data name="unclaimed" xml:space="preserve">
+    <value>غير مُطالَب به</value>
+    <comment>Label of the unclaimed alpha tile.</comment>
   </data>
   <data name="unencrypted_dns" xml:space="preserve">
     <value>DNS غير مشفر</value>
@@ -4861,12 +6647,24 @@
     <value>تم تشغيل URnetwork VPN</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>
   </data>
+  <data name="usdc_payouts_until_migration" xml:space="preserve">
+    <value>تستمر مدفوعات USDC إلى هذه المحفظة حتى اكتمال الانتقال إلى Bittensor.</value>
+    <comment>Second paragraph of the Solana connect sheet/card, and the body line under a connected Solana wallet.</comment>
+  </data>
   <data name="usdc_solana_network_only" xml:space="preserve">
     <value>أرسل USDC على شبكة Solana فقط. لن تصل عملات USDC المُرسَلة عبر أي شبكة أخرى.</value>
     <comment>Payment: the chain to send on. Shown wherever a USDC payment is requested, because USDC exists on many chains and a transfer sent on the wrong one is lost.</comment>
   </data>
+  <data name="usdc_waiting" xml:space="preserve">
+    <value>{} USDC بانتظار الإرسال</value>
+    <comment>The pending USDC payout total waiting to be sent to the Solana payout wallet; shown on the Solana wallet block and, while no Solana wallet is connected, next to the wallet actions. Mirrors the email headline.</comment>
+  </data>
   <data name="usdc_wallet_address" xml:space="preserve">
     <value>عنوان محفظة USDC</value>
+  </data>
+  <data name="use_extender_settings" xml:space="preserve">
+    <value>استخدام إعدادات الموسّع</value>
+    <comment>Toggle on the import screen: also apply the extender settings carried by the code.</comment>
   </data>
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>استخدام مزود الخدمة الأكثر استقرارًا</value>
@@ -4899,6 +6697,9 @@
   <data name="uses_ur_protocol" xml:space="preserve">
     <value>يستخدم UR Protocol</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="value_string" xml:space="preserve">
+    <value>{}</value>
   </data>
   <data name="value_with_unit" xml:space="preserve">
     <value>{0} {1}</value>
@@ -4939,6 +6740,10 @@
     <value>رمز التحقق</value>
     <comment>Label for the verification code input field</comment>
   </data>
+  <data name="verify_seeker" xml:space="preserve">
+    <value>التحقق من Seeker</value>
+    <comment>Standalone Seeker verification action (points multiplier only).</comment>
+  </data>
   <data name="verify_seeker_token_btn" xml:space="preserve">
     <value>تحقق من رمز Seeker للطلب المسبق</value>
     <comment>Call to action</comment>
@@ -4971,17 +6776,41 @@
     <value>المحفظة</value>
     <comment>Account Screen</comment>
   </data>
+  <data name="wallet_blocked" xml:space="preserve">
+    <value>لا يمكن استخدام هذه المحفظة مع URnetwork.</value>
+    <comment>Error when a wallet address is on the operator's ban list; the user cannot continue.</comment>
+  </data>
   <data name="wallet_connect_failed" xml:space="preserve">
     <value>تعذر ربط المحفظة.</value>
     <comment>Error shown when connecting an external wallet to the account fails.</comment>
+  </data>
+  <data name="wallet_connect_signed_note_linux" xml:space="preserve">
+    <value>توقّع محفظتك رسالة لإثبات أنها ملكك. لا يُرسل أي شيء على السلسلة.</value>
+    <comment>Note under the manual address entry: the wallet only signs a proof of ownership.</comment>
   </data>
   <data name="wallet_connected" xml:space="preserve">
     <value>تم ربط المحفظة.</value>
     <comment>Confirmation shown after an external wallet is connected to the account.</comment>
   </data>
+  <data name="wallet_connected_to_protocol" xml:space="preserve">
+    <value>متصل ببروتوكول UR. يصل ما تطالب به إلى هنا. يتراكم Alpha بدءًا من الفترة التالية بعد الاتصال.</value>
+    <comment>Line under the connected coldkey.</comment>
+  </data>
+  <data name="wallet_looks_new_warning" xml:space="preserve">
+    <value>لا يوجد أي نشاط لهذا العنوان على سلسلة Bittensor بعد. يبدو أنها محفظة جديدة. تأكد من أنها ملكك قبل المتابعة.</value>
+    <comment>Warning when a wallet address has no activity on the Bittensor chain yet; the user may continue.</comment>
+  </data>
   <data name="wallet_needs_network" xml:space="preserve">
     <value>هذه المحفظة غير مرتبطة بشبكة بعد. اختر اسمًا للشبكة لإنشاء واحدة.</value>
     <comment>Shown on the create-network step after a wallet sign-in when the wallet isn't linked to any network yet. The user picks a network name and accepts the terms to create one; the wallet signature carries over.</comment>
+  </data>
+  <data name="wallet_not_retroactive" xml:space="preserve">
+    <value>اربط محفظة لتكسب SN25α بدءًا من الفترة التالية. لا تتم تسوية الفترات السابقة بأثر رجعي.</value>
+    <comment>Line on the wallet block before a wallet is connected.</comment>
+  </data>
+  <data name="wallet_options" xml:space="preserve">
+    <value>خيارات المحفظة</value>
+    <comment>Accessibility label of the three-dot overflow button next to “Connect Bittensor wallet” and on the connected Bittensor wallet block.</comment>
   </data>
   <data name="wallet_sign_in_failed" xml:space="preserve">
     <value>فشل تسجيل الدخول بالمحفظة</value>
@@ -4990,6 +6819,14 @@
   <data name="wallet_sign_in_method_added" xml:space="preserve">
     <value>تمت إضافة طريقة تسجيل الدخول عبر المحفظة</value>
     <comment>Snackbar message displayed when a wallet sign-in method is successfully added.</comment>
+  </data>
+  <data name="wallet_signature_mismatch_linux" xml:space="preserve">
+    <value>المحفظة التي وقّعت ليست العنوان الذي أدخلته.</value>
+    <comment>Error when the bridge signed with a different wallet than the address the user typed.</comment>
+  </data>
+  <data name="we_re_confirming_your_purchase_with_the_app_store" xml:space="preserve">
+    <value>نحن نؤكد عملية الشراء مع App Store. سيتم تحديث خطتك تلقائيًا.</value>
+    <comment>Body of the post-purchase screen while the confirmation poll runs (Shared/Views/PurchaseSuccessView.swift). Processing-shaped, not premium-shaped: the server learns of the purchase by webhook and has not confirmed yet.</comment>
   </data>
   <data name="welcome_offer_eyebrow" xml:space="preserve">
     <value>عرض الترحيب</value>
@@ -5006,6 +6843,190 @@
   <data name="when_you_refer_a_friend" xml:space="preserve">
     <value>عندما تقوم بإحالة صديق:</value>
     <comment>Call to action</comment>
+  </data>
+  <data name="widget_client" xml:space="preserve">
+    <value>العميل</value>
+    <comment>Dashboard widget chart title: this device's own traffic.</comment>
+  </data>
+  <data name="widget_connect_once" xml:space="preserve">
+    <value>اتصل مرة واحدة لترى حركة بياناتك هنا</value>
+    <comment>Dashboard widget footer before the tunnel has ever written data.</comment>
+  </data>
+  <data name="widget_connect_to_see_contracts" xml:space="preserve">
+    <value>اتصل لعرض عقودك</value>
+    <comment>Contracts widget empty state while the tunnel is down.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.zero" xml:space="preserve">
+    <value>{0} عقد، {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.one" xml:space="preserve">
+    <value>عقد واحد، {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.two" xml:space="preserve">
+    <value>عقدان، {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.few" xml:space="preserve">
+    <value>{0} عقود، {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.many" xml:space="preserve">
+    <value>{0} عقدًا، {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contract_stack_accessibility.other" xml:space="preserve">
+    <value>{0} عقد، {1}</value>
+    <comment>Accessibility label for one contract stack in the contracts widget. The arguments are the number of contracts and the bytes moved.</comment>
+  </data>
+  <data name="widget_contracts_description" xml:space="preserve">
+    <value>أهم عقود العميل لديك، تتدفق مع ظهورها واختفائها.</value>
+    <comment>Description of the contracts widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_control_description" xml:space="preserve">
+    <value>الاتصال بشبكة URnetwork VPN أو قطع الاتصال بها.</value>
+    <comment>Description of the quick connect control in the Control Center gallery.</comment>
+  </data>
+  <data name="widget_dashboard_description" xml:space="preserve">
+    <value>رصيد البيانات والموقع المتصل وحركة البيانات، مع الاتصال السريع.</value>
+    <comment>Description of the dashboard widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_globe_description" xml:space="preserve">
+    <value>المزودون المتصلون بك على الكرة الأرضية.</value>
+    <comment>Description of the provider globe widget in the widget gallery.</comment>
+  </data>
+  <data name="widget_more_providers" xml:space="preserve">
+    <value>+{} أخرى</value>
+    <comment>Provider globe widget: providers not shown in the list. The argument is a count.</comment>
+  </data>
+  <data name="widget_no_contracts" xml:space="preserve">
+    <value>لا توجد عقود</value>
+    <comment>Contracts widget empty state while connected with no open client contracts.</comment>
+  </data>
+  <data name="widget_no_providers" xml:space="preserve">
+    <value>لا يوجد مزودون</value>
+    <comment>Badge on the small provider globe widget when no providers are connected.</comment>
+  </data>
+  <data name="widget_not_providing" xml:space="preserve">
+    <value>لا يوفّر</value>
+    <comment>Dashboard widget provider chart label when providing is off.</comment>
+  </data>
+  <data name="widget_not_signed_in" xml:space="preserve">
+    <value>لم يتم تسجيل الدخول</value>
+    <comment>Quick connect control / widget value when the app has no tunnel configuration yet (fresh install or logged out).</comment>
+  </data>
+  <data name="widget_open" xml:space="preserve">
+    <value>فتح</value>
+    <comment>Button on the Home Screen widget that opens the app when the tunnel is not configured yet.</comment>
+  </data>
+  <data name="widget_open_to_set_up" xml:space="preserve">
+    <value>افتح URnetwork للإعداد</value>
+    <comment>Widget subtitle when the app has no tunnel configuration yet.</comment>
+  </data>
+  <data name="widget_peak_rate" xml:space="preserve">
+    <value>الذروة {}</value>
+    <comment>Chart label; the argument is a formatted byte rate such as '1.2 MB/s'.</comment>
+  </data>
+  <data name="widget_peer_count.zero" xml:space="preserve">
+    <value>{} قرين</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.one" xml:space="preserve">
+    <value>قرين واحد</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.two" xml:space="preserve">
+    <value>قرينان</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.few" xml:space="preserve">
+    <value>{} أقران</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.many" xml:space="preserve">
+    <value>{} قرينًا</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_peer_count.other" xml:space="preserve">
+    <value>{} قرين</value>
+    <comment>Contracts widget header: number of peers with open contracts.</comment>
+  </data>
+  <data name="widget_provider" xml:space="preserve">
+    <value>المزود</value>
+    <comment>Dashboard widget chart title: traffic relayed for others while providing.</comment>
+  </data>
+  <data name="widget_provider_count.zero" xml:space="preserve">
+    <value>{} مزود</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.one" xml:space="preserve">
+    <value>مزود واحد</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.two" xml:space="preserve">
+    <value>مزودان</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.few" xml:space="preserve">
+    <value>{} مزودين</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.many" xml:space="preserve">
+    <value>{} مزودًا</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count.other" xml:space="preserve">
+    <value>{} مزود</value>
+    <comment>Widget subtitle: number of connected providers.</comment>
+  </data>
+  <data name="widget_provider_count_providing.zero" xml:space="preserve">
+    <value>{} مزود · جارٍ التوفير</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.one" xml:space="preserve">
+    <value>مزود واحد · جارٍ التوفير</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.two" xml:space="preserve">
+    <value>مزودان · جارٍ التوفير</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.few" xml:space="preserve">
+    <value>{} مزودين · جارٍ التوفير</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.many" xml:space="preserve">
+    <value>{} مزودًا · جارٍ التوفير</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_count_providing.other" xml:space="preserve">
+    <value>{} مزود · جارٍ التوفير</value>
+    <comment>Widget subtitle: number of connected providers while this device is also providing.</comment>
+  </data>
+  <data name="widget_provider_mode_title" xml:space="preserve">
+    <value>المزود · {}</value>
+    <comment>Title above the provider traffic chart in the dashboard widget: the chart name with the current provide mode (Auto, Always, Network, Never).</comment>
+  </data>
+  <data name="widget_provider_stats_when_enabled" xml:space="preserve">
+    <value>ستظهر إحصاءات المزود عند تفعيل المزود.</value>
+    <comment>Shown in the dashboard widget in place of the provider traffic chart while providing is off.</comment>
+  </data>
+  <data name="widget_quick_tile_added" xml:space="preserve">
+    <value>تمت إضافة مربع الاتصال السريع</value>
+    <comment>Toast after the system added the Quick Settings tile.</comment>
+  </data>
+  <data name="widget_toggle_intent_title" xml:space="preserve">
+    <value>تبديل URnetwork VPN</value>
+    <comment>Title of the Set-Value intent behind the quick connect control and widget toggle (shown by the system in Shortcuts/debug UI).</comment>
+  </data>
+  <data name="widget_updated_ago" xml:space="preserve">
+    <value>آخر تحديث {}</value>
+    <comment>Dashboard widget footer; the argument is a localized relative time such as '3 min. ago'.</comment>
+  </data>
+  <data name="widget_updated_just_now" xml:space="preserve">
+    <value>تم التحديث للتو</value>
+    <comment>Dashboard widget footer in the widget gallery preview.</comment>
   </data>
   <data name="widgets" xml:space="preserve">
     <value>الأدوات</value>
@@ -5047,6 +7068,10 @@
     <value>تحصل على 3 GiB/يوم مدى الحياة</value>
     <comment>Text displayed in a scrollable view within a VStack in the body of a view that is displayed when the user is viewing their referral code.</comment>
   </data>
+  <data name="you_get_free_data_every_day" xml:space="preserve">
+    <value>تحصل على بيانات مجانية كل يوم.</value>
+    <comment>Detail line under the onboarding data page title.</comment>
+  </data>
   <data name="you_have_1_other_device_online" xml:space="preserve">
     <value>لديك جهاز آخر متصل</value>
   </data>
@@ -5069,9 +7094,17 @@
     <value>أنت مشترك مميز.</value>
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
+  <data name="your_bandwidth" xml:space="preserve">
+    <value>عرض النطاق الترددي لديك</value>
+    <comment>Title of the onboarding data page (was 'Boost your bandwidth').</comment>
+  </data>
   <data name="your_email" xml:space="preserve">
     <value>بريدك الإلكتروني</value>
     <comment>Label for the empty text field.</comment>
+  </data>
+  <data name="your_email_com" xml:space="preserve">
+    <value>name@email.com</value>
+    <comment>Placeholder text for the email field.</comment>
   </data>
   <data name="your_friend_gets_30_gib_month_for_life" xml:space="preserve">
     <value>يحصل صديقك على 30 غيغابايت/شهر مدى الحياة</value>
