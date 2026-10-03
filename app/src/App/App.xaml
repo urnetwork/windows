@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <!-- URnetwork app resources. The app runs the brand dark theme (macOS parity):
      #101010 background, #1C1C1C cards, pale yellow accent for primary actions,
      brand blue for switch on-states. The Ur* brushes mirror UrColors.h - keep
@@ -153,6 +153,61 @@
                             <SolidColorBrush x:Key="NavigationViewItemForegroundPressed" Color="#F8F8F8" />
                             <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="#F8F8F8" />
                             <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPressed" Color="#F8F8F8" />
+
+                            <!-- InfoBar severities (kit::Snackbar: the support
+                                 acknowledgement and the wallet errors). WinUI's
+                                 stock severity backgrounds are the SystemFillColor
+                                 *BackgroundBrush family, which renders on this
+                                 dark palette as muddy olive (success), brown
+                                 (warning) and maroon (error) washes that read as
+                                 dirt, not status. Neutralise the bar to the card
+                                 fill (#1C1C1C) and let the ICON carry the
+                                 severity in the app's own tokens: success urGreen
+                                 (its protected reading), error urCoral (danger
+                                 family), warning kUrAmber. SeverityIconBackground
+                                 is the coloured circle glyph; the severity glyph
+                                 over it keeps the stock TextFillColorInverse
+                                 foreground, which is dark and reads on all three.
+                                 Key names verified against the WinUI 2.2
+                                 generic.xaml InfoBar template (the
+                                 Microsoft.WindowsAppSDK.WinUI package). -->
+                            <SolidColorBrush x:Key="InfoBarSuccessSeverityBackgroundBrush" Color="#1C1C1C" />
+                            <SolidColorBrush x:Key="InfoBarSuccessSeverityIconBackground" Color="#87FB67" />
+                            <SolidColorBrush x:Key="InfoBarErrorSeverityBackgroundBrush" Color="#1C1C1C" />
+                            <SolidColorBrush x:Key="InfoBarErrorSeverityIconBackground" Color="#FF6C58" />
+                            <SolidColorBrush x:Key="InfoBarWarningSeverityBackgroundBrush" Color="#1C1C1C" />
+                            <SolidColorBrush x:Key="InfoBarWarningSeverityIconBackground" Color="#F5C242" />
+
+                            <!-- SelectorBar selection, two channels in one hue. The
+                                 stock selected state is ONE channel: a 3px underline
+                                 (PART_SelectionVisual, styled by SelectorBarItemPill)
+                                 filled from SelectorBarItemPillFill, which defaults to
+                                 AccentFillColorDefaultBrush - the SYSTEM accent,
+                                 #4CC2FF in dark, off-palette (the same key that
+                                 painted the Get started button). The underline stays
+                                 but moves to the brand action blue #638BFC - the one
+                                 action colour here (URButton PRIMARY, the toggle
+                                 on-state, the focused field underline) - and the
+                                 selected item gains a 15% wash of the same blue, so
+                                 the active segment of the verdict filter and the
+                                 ledger tabs reads at a glance: shape + fill, the
+                                 two-channel selection rule kit::SetPaneListRowSelected
+                                 documents for pane rows. WinUI 2.2 template facts
+                                 (generic.xaml): the SelectedNormal state sets
+                                 PART_ContainerRoot's Background from
+                                 SelectorBarItemBackgroundSelected and the root carries
+                                 ControlCornerRadius, so the wash is a 4px pill;
+                                 SelectedPointerOver and SelectedPressed touch only the
+                                 text, so the wash survives hover and press. Colour
+                                 keys only - the template, its keyboard navigation and
+                                 its automation peers stay stock, so the 44px row
+                                 metrics and the UIA tree are unchanged. The wash
+                                 literal must stay byte-identical to
+                                 UrBlueMediumSubtleBrush in the palette block: theme
+                                 dictionaries are parsed before that block, so the
+                                 brush cannot be referenced from here. -->
+                            <SolidColorBrush x:Key="SelectorBarItemPillFill" Color="#638BFC" />
+                            <SolidColorBrush x:Key="SelectorBarItemBackgroundSelected" Color="#26638BFC" />
                         </ResourceDictionary>
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
@@ -291,6 +346,14 @@
             <!-- coral at 15% alpha: the unapplied-dns-recommendation pill background
                  (iOS Color.urCoral.opacity(0.15)) -->
             <SolidColorBrush x:Key="UrCoralSubtleBrush" Color="#26FF6C58" />
+            <!-- action blue at 15% alpha: the SelectorBar's selected-item wash (the
+                 segmented control's second selection channel, beside its underline).
+                 Same 0x26 step as UrCoralSubtleBrush above - one alpha for every
+                 subtle fill. Spent by the SelectorBarItemBackgroundSelected theme
+                 override in the merged dictionary above, which repeats the value as
+                 a literal because theme dictionaries parse before this block: keep
+                 the two byte-identical. -->
+            <SolidColorBrush x:Key="UrBlueMediumSubtleBrush" Color="#26638BFC" />
 
             <!-- ================= URButton (android ui/components/URButton.kt) =========
                  One template, two styles, so the login screen's buttons are the same
@@ -861,9 +924,16 @@
             </Style>
 
             <!-- the count / live figure that rides at the right of a pane or
-                 group header -->
+                 group header. The DISPLAY face, not the body face: the brand
+                 hands figures to ABC Gravity (titles, the hero, and the stat-tile
+                 numbers of UrStatValueStyle - this is that same condensed cut)
+                 and prose to PP Neue Montreal, and a header meta is a figure
+                 ("30 hosts", the live down/up rates), not prose. The condensed
+                 cut keeps a right-aligned count NARROW, so the meta cannot
+                 crowd the title it shares the strip with; size, colour and
+                 weight-reading are otherwise exactly what they were. -->
             <Style x:Key="UrPaneMetaStyle" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
+                <Setter Property="FontFamily" Value="{StaticResource UrHeadingCondensedFontFamily}" />
                 <Setter Property="FontSize" Value="11" />
                 <Setter Property="Foreground" Value="{StaticResource UrTextMutedBrush}" />
                 <Setter Property="VerticalAlignment" Value="Center" />
@@ -1121,6 +1191,19 @@
                 <Setter Property="FontFamily" Value="{StaticResource UrBodyFontFamily}" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+
+            <!-- EARNINGS / PREMIUM primary action. Same control as
+                 UrPaneActionPrimaryStyle (40px, 12px inset, 4px radius, 14sp
+                 SemiBold, #101010 label) but the fill is the pale lime kAccent:
+                 lime is reserved for earnings / contribution / premium, blue
+                 stays the action colour. The label is already
+                 UrInverseTextBrush, which is ~17:1 on #EFF7BB (vs 5.9:1 on the
+                 blue) - no foreground change. The UrButtonBaseStyle template's
+                 hover/press state layer is a wash of the FOREGROUND colour, so
+                 the dark wash works on lime unchanged. -->
+            <Style x:Key="UrPaneActionEarningsStyle" TargetType="Button" BasedOn="{StaticResource UrPaneActionPrimaryStyle}">
+                <Setter Property="Background" Value="{StaticResource UrAccentBrush}" />
             </Style>
 
             <!-- The same control, de-emphasised: same geometry, same position,

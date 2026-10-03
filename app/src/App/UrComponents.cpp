@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <string>
+#include <string_view>
 
 #include <winrt/Microsoft.UI.Xaml.Automation.Peers.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
@@ -51,6 +52,65 @@ void ClipToBounds(Grid const& host) {
       apply(element, args.NewSize());
     }
   });
+}
+
+std::string SanitizeExternalDisplayText(std::string_view text) {
+  std::string out;
+  out.reserve(text.size());
+  bool haveBase = false;  // a kept character the next mark may attach to
+  bool markKept = false;  // the current base already carries its one mark
+  size_t i = 0;
+  while (i < text.size()) {
+    // One UTF-8 codepoint. Ill-formed bytes pass through untouched: this is a
+    // display filter, not a validator, and mangling bytes it cannot read is
+    // worse than showing them.
+    const auto lead = static_cast<unsigned char>(text[i]);
+    char32_t cp = lead;
+    size_t len = 1;
+    if (0xC0 <= lead && lead < 0xE0) {
+      cp = lead & 0x1F;
+      len = 2;
+    } else if (0xE0 <= lead && lead < 0xF0) {
+      cp = lead & 0x0F;
+      len = 3;
+    } else if (0xF0 <= lead && lead < 0xF8) {
+      cp = lead & 0x07;
+      len = 4;
+    }
+    bool valid = i + len <= text.size();
+    for (size_t k = 1; valid && k < len; ++k) {
+      const auto cont = static_cast<unsigned char>(text[i + k]);
+      valid = (cont & 0xC0) == 0x80;
+      cp = (cp << 6) | (cont & 0x3F);
+    }
+    if (!valid) {
+      out.push_back(text[i]);
+      ++i;
+      continue;
+    }
+    // Unicode Mn/Me approximated by range, to stay dependency-free: the
+    // combining diacriticals block plus its three extended blocks. At most one
+    // kept mark per base character - the second mark of a stack is where the
+    // overlap starts.
+    const bool isMark = (0x0300 <= cp && cp <= 0x036F) || (0x1AB0 <= cp && cp <= 0x1AFF) ||
+                        (0x1DC0 <= cp && cp <= 0x1DFF) || (0x20D0 <= cp && cp <= 0x20FF);
+    // Zero-width and bidi/format characters: invisible ink, and the bidi
+    // controls reorder the text around them.
+    const bool isFormat = (0x200B <= cp && cp <= 0x200F) || (0x202A <= cp && cp <= 0x202E) ||
+                          (0x2060 <= cp && cp <= 0x206F) || cp == 0xFEFF;
+    if (isMark) {
+      if (haveBase && !markKept) {
+        markKept = true;
+        out.append(text, i, len);
+      }
+    } else if (!isFormat) {
+      out.append(text, i, len);
+      haveBase = true;
+      markKept = false;
+    }
+    i += len;
+  }
+  return out;
 }
 
 Controls::Border MakeDivider() {

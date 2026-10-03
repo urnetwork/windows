@@ -10,11 +10,12 @@ Both architectures build in CI on every push and pull request — see
 
 ## Download
 
-Release MSIs (`URnetwork-<version>-x64.msi`, `URnetwork-<version>-arm64.msi`)
-are attached to the stable releases at
-https://github.com/urnetwork/windows/releases. The in-app updater polls the
-same releases (`app/src/App/Config.h`). Nightly builds live at
-https://github.com/urnetwork/build/releases and are not offered by the updater.
+Beta builds of this branch are published as prereleases (portable zips plus
+`URnetwork-<version>-x64.msi`) at
+https://github.com/Ryanmello07/urnetwork-windows/releases — the fork IS the
+beta channel. The in-app updater polls the same releases
+(`app/src/App/Config.h`). The attached MSI is unsigned and untested; the
+portable zip is the supported artifact.
 
 ## Architecture
 
@@ -123,8 +124,8 @@ handle:
   tunnel, and a developer/reliability screen behind an app-wide Advanced Mode
   toggle.
 - **Updater** — `UpdateChecker`, because the Store does not push EXE/MSI
-  updates (see `app/STORE.md`). It installs the verified official MSI from the
-  stable urnetwork/windows releases.
+  updates (see `app/STORE.md`). It installs the verified MSI from the beta
+  fork's prereleases (the fork is the beta channel).
 
 ## Docs
 

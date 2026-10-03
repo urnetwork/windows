@@ -21,6 +21,7 @@
 #include "Log.h"
 #include "PageContext.h"
 #include "Sdk.h"
+#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "Strings.h"
 #include "UrColors.h"
 #include "UrComponents.h"
@@ -291,7 +292,7 @@ void ClaimAlphaSheet::Build(XamlRoot const& root) {
 
   StackPanel content;
   content.Spacing(6);
-  content.MinWidth(460);
+  content.MinWidth(sheetfit::Width(root, 460));
 
   // the figure: what is claimable now, over how many epochs
   totalValue_ = MakeValue(hstring{FormatAlphaRao(TotalClaimableRao())}, 36);
@@ -386,7 +387,7 @@ void ClaimAlphaSheet::Build(XamlRoot const& root) {
   ScrollViewer scroll;
   scroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
   scroll.HorizontalScrollBarVisibility(ScrollBarVisibility::Disabled);
-  scroll.MaxHeight(560);
+  scroll.MaxHeight(sheetfit::Height(root, 560));
   scroll.Content(content);
   dialog_.Content(scroll);
 
@@ -656,7 +657,7 @@ void EmojiTagSheet::Build(XamlRoot const& root) {
 
   StackPanel content;
   content.Spacing(8);
-  content.MinWidth(400);
+  content.MinWidth(sheetfit::Width(root, 400));
 
   content.Children().Append(MakeText(hstring{urnw::Format("emoji_tag_hint", urnet::EmojiTagMaxCount)},
                                      12, colors::MutedBrush(), true));

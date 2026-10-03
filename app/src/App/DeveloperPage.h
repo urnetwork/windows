@@ -68,7 +68,8 @@ class DeveloperPage {
 
   // Builds the whole surface. It is code-built rather than markup because
   // MainWindow.xaml is shared by every parallel phase and this screen is ~40
-  // controls; the XAML side is one empty ScrollViewer host and one nav item.
+  // controls; the XAML side is the two-pane shell (four named hosts in its two
+  // pane scrollers) and one nav item.
   void ApplyStrings();
 
   // The nav destination was selected / deselected.
@@ -272,8 +273,8 @@ class DeveloperPage {
   // ---- the built tree ----
   // No root_ any more: this page used to build its own 1000-wide left-aligned
   // column and hand it to DeveloperView as Content. The width and the placement
-  // now come from the four named hosts in MainWindow.xaml, which carry the same
-  // shape the other six destinations use (D4).
+  // now come from the pane shell in MainWindow.xaml - the four named hosts sit
+  // in its two pane scrollers, the same shape the other six destinations use.
   TextBlock connectHint_{nullptr};
   TextBlock lastAction_{nullptr};
   // The update check's report line (see ApplyUpdateCheck). Its button needs no

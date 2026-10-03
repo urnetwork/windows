@@ -1,4 +1,4 @@
-﻿// The Settings destination and the Support destination (the feedback form),
+// The Settings destination and the Support destination (the feedback form),
 // which iOS carries inside the same settings surface.
 //
 // Settings is macOS SettingsForm parity: account (client id, referral code,
@@ -26,6 +26,7 @@
 #include "ServiceSetup.h"
 #include "SettingsSheets.h"
 #include "StatsSheets.h"
+#include "UpdateChecker.h"
 #include "UrComponents.h"
 
 namespace winrt::URnetwork::implementation {
@@ -44,6 +45,15 @@ class SettingsPage {
   // MainWindow::ApplyAdvancedMode, which is the one apply path — the toggle
   // itself only writes, it never applies.
   void ApplyAdvancedMode(bool on);
+
+  // Pane B's fold state, pushed by MainWindow::ApplyBreakpoint (its
+  // settingsTwo gate, inverted - the window computes the one gate, this page
+  // renders it, the same push shape as ApplyAdvancedMode above). While pane B
+  // is folded its Advanced-mode toggle and version/update rows would fold with
+  // it, so their second copies at the end of pane A show instead
+  // (BuildAdvancedFoldSection / BuildVersionFoldSection): the fold rule bars a
+  // foldable pane from owning content with no second door.
+  void ApplyPaneBFolded(bool folded);
   // The service manager's snapshot changed (beta spec §3): show the uninstall
   // row only while a service is actually registered. Hidden — not disabled —
   // for NotInstalled / ConsoleMode / Unknown, because an affordance for
@@ -55,6 +65,15 @@ class SettingsPage {
   // Licenses row lives there, and moves to the foot of General while About is
   // folded (see BuildLicensesRows).
   void ApplyAboutPaneVisible(bool visible);
+
+  // The update checker's snapshot changed (beta spec §5): the "Update" value
+  // row in the Device pane's version section reads the running build plus the
+  // last check's outcome from it. Pushed by MainWindow's fan-out (already on
+  // the UI thread) whenever the checker publishes, and replayed at the end of
+  // BuildVersionSection — the bind-then-replay contract UpdateChecker.h spells
+  // out, because these sections build on the first ApplyStrings, which can be
+  // minutes after the launch check already ran.
+  void ApplyUpdateCheck(urnw::UpdateChecker::Snapshot const& snap);
 
   // The settings destination's API loads: network user (sign-in methods,
   // network name), device info, referral code + network, account preferences.
@@ -119,11 +138,22 @@ class SettingsPage {
   void BuildConnectionsSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildIdentitySection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildStayInTouchSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  // Support's pane B: the mailto sentence and the protocol row. Built twice -
+  // into the pane and into the narrow-width inline host, which is the one the
+  // group header is for (the pane has its own 40px header strip).
+  void BuildSupportContactSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host,
+                                  bool withGroupHeader);
   void BuildSubscriptionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildVersionSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
   void BuildLicensesRows(winrt::Microsoft::UI::Xaml::Controls::Panel const& about,
                          winrt::Microsoft::UI::Xaml::Controls::Panel const& general);
   void BuildDangerSection();
+  // The fold-gated SECOND copies (the fold rule; ApplyPaneBFolded above):
+  // pane B's Advanced-mode toggle and version/update rows, built again at the
+  // end of pane A and shown exactly while pane B is folded - the
+  // BuildSupportContactSection build-twice pattern, one page over.
+  void BuildAdvancedFoldSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
+  void BuildVersionFoldSection(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
 
   // ---- loads ----
   void LoadDeviceInfo();
@@ -192,6 +222,10 @@ class SettingsPage {
   // its neighbours: nothing ever writes IsOn back — the pref has one writer
   // (this toggle) and one reader path (the checker), so there is no echo.
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch autoUpdateCheck_{nullptr};
+  // The "Update" value row in the Device pane's version section (beta spec §5):
+  // the running build plus the last check's outcome. ApplyUpdateCheck is the
+  // one writer — the checker is the one source of that state.
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock updateStateValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button manageSubscription_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock versionValue_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button deleteAccountButton_{nullptr};
@@ -202,6 +236,25 @@ class SettingsPage {
   // >>> ADVANCED MODE GOES HERE (D5). <<< The first host in Settings' Advanced
   // group; see BuildAdvancedSection for the row shape to append.
   winrt::Microsoft::UI::Xaml::Controls::StackPanel advancedModeHost_{nullptr};
+
+  // ---- the fold-gated second copies (BuildSections appends them to pane A) --
+  // Separate INSTANCES, not shared elements: a XAML element has one parent, so
+  // the build-twice pattern is two rows and every writer writes both (the
+  // toggle through ApplyAdvancedMode's one apply path, the version rows
+  // through BuildSections and ApplyUpdateCheck).
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel paneBFoldHost_{nullptr};
+  // The version rows' fold host gates on the ABOUT pane, not pane B - post-
+  // merge the primary rows live in About, so ApplyAboutPaneVisible shows this
+  // copy exactly while the pane is folded (the Licenses row's fold copy beside
+  // it carries the About strip heading for both).
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel versionFoldHost_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch advancedModeFold_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock versionValueFold_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock updateStateValueFold_{nullptr};
+  // The last fold state ApplyPaneBFolded pushed, read at build time so a gate
+  // that landed before the sections existed is replayed (the bind-then-replay
+  // contract every other pushed value here follows).
+  bool paneBFolded_ = false;
 
   // ---- loaded state ----
   std::string clientId_;

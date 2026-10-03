@@ -1,9 +1,11 @@
-// The in-app update checker (beta-distribution spec §5): finds newer official
+// The in-app update checker (beta-distribution spec §5): finds newer beta
 // releases and installs one with a verified download.
 //
-// The feed is the urnetwork/windows GitHub releases (Config.h kUpdateRepo):
-// the stable releases published to the app's own repo, each carrying one MSI
-// per architecture (urnetwork/build holds the nightlies and is not polled).
+// The feed is the beta fork's GitHub releases (Config.h kUpdateRepo — the
+// fork IS the beta channel): every green build of the beta branch publishes a
+// prerelease carrying the per-arch MSIs, and Common/ReleaseSelection.h accepts
+// exactly those beta-marked prereleases while drafts and other prereleases
+// stay skipped.
 // Poll the release list (on launch after ~30s, then every 6 hours, and on the
 // two manual triggers), pick the release with Common/ReleaseSelection.h, and when
 // it outranks the build's own stamped code, offer ONE click that

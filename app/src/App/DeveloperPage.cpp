@@ -149,18 +149,24 @@ Grid MakeSettingRow(hstring const& label, hstring const& detail,
   return row;
 }
 
-// The two kit button roles that fit a dense diagnostic surface: the brand
-// accent for the one primary affordance, and UrCardRowButtonStyle (compact,
-// card-coloured, real hover/focus states) with accent text for everything else
-// — which is what iOS's borderless accent `actionRow` looks like. The 48px /
-// 24pt UrPrimary/UrSecondary pills are the sign-in CTA role and would swamp a
-// table row.
-Button MakeActionButton(hstring const& text, bool primary = false) {
+// The one kit button role that fits a dense diagnostic surface:
+// UrCardRowButtonStyle (compact, card-coloured, real hover/focus states) with
+// accent text for every action — which is what iOS's borderless accent
+// `actionRow` looks like.
+//
+// There is deliberately no primary variant. This builder had one, wearing
+// AccentButtonStyle, whose fill is the pale lime #EFF7BB — and lime is
+// reserved for earnings / premium / brand, with blue as the action colour
+// everywhere else (the semantic discipline App.xaml's
+// UrPaneActionPrimaryStyle note spells out: "the connect action wearing
+// #EFF7BB spent the earnings colour on a VPN control"). A diagnostic screen
+// has no earnings on it, so the one lime slab came off and every action here
+// wears the secondary role. The 48px / 24pt UrPrimary/UrSecondary pills are
+// the sign-in CTA role and would swamp a table row.
+Button MakeActionButton(hstring const& text) {
   Button b;
   b.Content(winrt::box_value(text));
-  if (primary) {
-    if (auto style = LookupStyle(L"AccentButtonStyle")) b.Style(*style);
-  } else if (auto style = LookupStyle(L"UrCardRowButtonStyle")) {
+  if (auto style = LookupStyle(L"UrCardRowButtonStyle")) {
     b.Style(*style);
     b.Foreground(colors::MakeBrush(colors::kAccent));
   }
@@ -328,6 +334,17 @@ void DeveloperPage::BridgeLoop() {
 
 void DeveloperPage::ApplyStrings() {
   w_.DeveloperNavItem().Content(winrt::box_value(Dev("dev_developer", L"Developer")));
+  // The two pane headers, and a landmark name each so a screen reader can tell
+  // the session half from what it has been told to do - the idiom SettingsPage
+  // paints its pane titles with. dev_developer already names this destination,
+  // so pane A reuses it; pane B gets a dev_ id like the rest of this surface
+  // (the strings note above is why no store key covers either).
+  w_.DeveloperPaneATitle().Text(Dev("dev_developer", L"Developer"));
+  w_.DeveloperPaneBTitle().Text(Dev("dev_reliability_overrides", L"Reliability overrides"));
+  Automation::AutomationProperties::SetName(w_.DeveloperPaneA(),
+                                            Dev("dev_developer", L"Developer"));
+  Automation::AutomationProperties::SetName(
+      w_.DeveloperPaneB(), Dev("dev_reliability_overrides", L"Reliability overrides"));
   // The rest of the surface is code-built and carries its own strings; it is
   // built lazily on first selection so a user who never opens this destination
   // pays nothing for its ~40 controls.
@@ -778,13 +795,14 @@ void DeveloperPage::EnsureBuilt() {
 }
 
 void DeveloperPage::Build() {
-  // The four hosts D4 put in the markup. This page used to build its own
-  // 1000-wide left-aligned column and hand it to DeveloperView as Content; the
-  // width and the placement now come from the same shape the other six
-  // destinations use, so this unit only decides WHICH host each card belongs
-  // to. That decision is Portmaster's: the tables at the top, full width; what
-  // the session has measured and what it has been told to do in two columns
-  // under them.
+  // The four hosts in the markup's pane shell: pane A takes the intro, the
+  // measurements and the three wide tables, pane B the five override sections.
+  // This page used to build its own 1000-wide left-aligned column and hand it
+  // to DeveloperView as Content; the width and the placement now come from the
+  // same pane shape the other six destinations use, so this unit only decides
+  // WHICH host each card belongs to. That decision is still Portmaster's: what
+  // the session has measured on the left, what it has been told to do on the
+  // right - change a threshold on the right, watch a count move on the left.
   auto top = w_.DeveloperTopStack();
   auto tables = w_.DeveloperTablesStack();
   auto measured = w_.DeveloperMainStack();
@@ -815,7 +833,7 @@ void DeveloperPage::Build() {
     actions.Orientation(Orientation::Horizontal);
     actions.Spacing(8);
     {
-      Button refresh = MakeActionButton(Dev("dev_refresh", L"Refresh"), true);
+      Button refresh = MakeActionButton(Dev("dev_refresh", L"Refresh"));
       refresh.Click([weak = w_.get_weak()](auto const&, auto const&) {
         if (auto self = weak.get()) self->developer().Poll();
       });

@@ -36,7 +36,7 @@ constexpr auto kLaunchDelay = std::chrono::seconds(30);
 constexpr auto kCheckInterval = std::chrono::hours(6);
 
 // Response caps. The release LIST is JSON that should be a few hundred KB
-// (a stable release may carry every platform's assets); the MSI is ~100 MB
+// (a release may carry every platform's assets); the MSI is ~100 MB
 // self-contained today. A cap is not a guess about the future, it
 // is the refusal to stream an unbounded body into a file because a server
 // said so.

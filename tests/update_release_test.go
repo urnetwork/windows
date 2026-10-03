@@ -12,8 +12,9 @@ import (
 
 // Compile and execute the update checker's pure release decision and feed
 // (Common/ReleaseSelection.h, App/Config.h) against the tag and MSI names the
-// stable urnetwork/windows releases carry. mutateConfig, when set, rewrites
-// Config.h in an isolated include dir for a negative control.
+// beta fork's releases carry (beta-build.yml publishes them as prereleases).
+// mutateConfig, when set, rewrites Config.h in an isolated include dir for a
+// negative control.
 func updateReleaseTestProgram(t *testing.T, mutateConfig func(string) string) string {
 	t.Helper()
 	compiler, err := exec.LookPath("c++")
@@ -57,22 +58,22 @@ func TestUpdateReleaseSelection(t *testing.T) {
 	}
 }
 
-// The update feed must be the stable urnetwork/windows releases: pointing it
-// back at the nightly build repo or a personal fork has to fail the suite, not
-// just a review.
+// The update feed must be the beta fork's releases — the fork IS the beta
+// channel: pointing it at the stable upstream repo or the nightly build repo
+// has to fail the suite, not just a review.
 func TestUpdateReleaseRejectsOtherFeeds(t *testing.T) {
 	for _, tc := range []struct {
 		name, repo, detected string
 	}{
-		{"nightly build repo", "urnetwork/build", "nightly builds, not the stable feed"},
-		{"personal fork", "Ryanmello07/urnetwork-windows", "official urnetwork repo"},
+		{"stable upstream repo", "urnetwork/windows", "STABLE feed"},
+		{"nightly build repo", "urnetwork/build", "nightly builds"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			program := updateReleaseTestProgram(t, func(source string) string {
-				return strings.Replace(source, `L"urnetwork/windows"`, `L"`+tc.repo+`"`, 1)
+				return strings.Replace(source, `L"Ryanmello07/urnetwork-windows"`, `L"`+tc.repo+`"`, 1)
 			})
 			output, err := exec.Command(program).CombinedOutput()
-			if err == nil || !strings.Contains(string(output), "stable urnetwork/windows") ||
+			if err == nil || !strings.Contains(string(output), "beta fork") ||
 				!strings.Contains(string(output), tc.detected) {
 				t.Fatalf("%s negative control was not detected: %v\n%s", tc.name, err, output)
 			}

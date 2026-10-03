@@ -145,6 +145,8 @@ class ClientContractsSheet : public std::enable_shared_from_this<ClientContracts
 // ---- Split rules -----------------------------------------------------------
 // Live routing decisions with the split rules pinned on top; tapping a row
 // opens the in-dialog rule editor (checklist of host values routed locally).
+// The feed can run long, so a search row filters the activity rows by host/ip
+// substring as you type (rules stay unfiltered: they are few and pinned).
 class SplitRulesSheet : public std::enable_shared_from_this<SplitRulesSheet> {
  public:
   static std::shared_ptr<SplitRulesSheet> Create(
@@ -175,6 +177,10 @@ class SplitRulesSheet : public std::enable_shared_from_this<SplitRulesSheet> {
   winrt::Microsoft::UI::Xaml::Controls::StackPanel rulesList_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel activityList_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock countsText_{nullptr};
+  // search row over the activity feed; TextChanged re-renders the rows through
+  // the substring filter (RenderActivity reads the box, so SDK pushes keep the
+  // filter applied too)
+  winrt::Microsoft::UI::Xaml::Controls::TextBox activitySearchBox_{nullptr};
   // editor page
   winrt::Microsoft::UI::Xaml::Controls::StackPanel editorPage_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel checklist_{nullptr};
@@ -197,12 +203,15 @@ class SplitRulesSheet : public std::enable_shared_from_this<SplitRulesSheet> {
 };
 
 // ---- Per-app split tunnel (Android parity) ---------------------------------
-// Installed apps with the ruled apps pinned on top showing their Included /
-// Local state chip (the same Local chip the split rules sheet uses -- app
-// splits and split rules share the same local language). Each row's combo
-// routes the app through the tunnel, bypasses it, or clears the rule via
-// SdkHost::SetAppRule / RemoveAppRule, which persists a BlockActionOverride and
-// re-drives the split-tunnel driver from getLocalOverrideAppIds.
+// Installed apps with the ruled apps pinned on top in a "Configured" group,
+// each row showing its include/exclude state chip (the same Local chip the
+// split rules sheet uses -- app splits and split rules share the same local
+// language; palette rule: urGreen = included/protected, amber = excluded/
+// local-bypass). A search row filters the list by name/path substring as you
+// type. Each row's combo routes the app through the tunnel, bypasses it, or
+// clears the rule via SdkHost::SetAppRule / RemoveAppRule, which persists a
+// BlockActionOverride and re-drives the split-tunnel driver from
+// getLocalOverrideAppIds.
 class AppRulesSheet : public std::enable_shared_from_this<AppRulesSheet> {
  public:
   static std::shared_ptr<AppRulesSheet> Create(
@@ -214,10 +223,14 @@ class AppRulesSheet : public std::enable_shared_from_this<AppRulesSheet> {
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void RenderList();
   void RefreshRuleState();
+  // one row (labels + state chip slot + rule combo); built once per app path
+  // and cached, so search re-renders keep the row's combo state
+  winrt::Microsoft::UI::Xaml::Controls::Grid BuildRow(const InstalledApp& app, int sel);
 
   SdkHost& sdk_;
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel appsList_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBox searchBox_{nullptr};
   // summary card: the active app-split behavior (include / exclude / none)
   winrt::Microsoft::UI::Xaml::Controls::Border statusDot_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock statusText_{nullptr};
@@ -227,6 +240,17 @@ class AppRulesSheet : public std::enable_shared_from_this<AppRulesSheet> {
   std::vector<std::pair<std::string, winrt::Microsoft::UI::Xaml::Controls::Border>>
       chipSlots_;
   std::vector<InstalledApp> installed_;
+  // built rows keyed by lowercased exe path; RenderList reconciles which of
+  // them are on screen (the ClientContractsSheet move-in-place idiom) so the
+  // search filter animates inserts/removals instead of rebuilding every row
+  std::unordered_map<std::string, winrt::Microsoft::UI::Xaml::Controls::Grid> rowUis_;
+  // group headers + the two empty-state lines, appended/removed as the filter
+  // fills/empties their group -- a header over nothing reads as a bug, and a
+  // search that matches nothing must still say so (never a blank dialog)
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock configuredHeader_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock appsHeader_{nullptr};
+  winrt::Microsoft::UI::Xaml::FrameworkElement searchEmptyLine_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock noAppsLine_{nullptr};
 };
 
 // ---- Custom DNS editor -----------------------------------------------------

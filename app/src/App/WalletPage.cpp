@@ -655,6 +655,13 @@ void WalletPage::OnEarningsTableChanged(SelectorBar const& bar,
   w_.LeaderboardHost().Visibility(leaderboard ? Visibility::Visible : Visibility::Collapsed);
   ApplyLedgerMeta();
   if (leaderboard && pointsBoardShowing_) EnsurePointsBoard();
+  // First show fetches the board (see leaderboardLoaded_): nothing else loads
+  // it on this destination, and the fetch only runs when signed in - signed-out
+  // keeps the guard clear so the post-login show still loads.
+  if (leaderboard && !leaderboardLoaded_ && Sdk().IsLoggedIn()) {
+    leaderboardLoaded_ = true;
+    LoadLeaderboard();
+  }
   UpdatePointsIndicator();
 }
 
@@ -673,6 +680,61 @@ void WalletPage::LoadWallet() {
 }
 
 void WalletPage::RefreshAfterWalletChange() { LoadWallet(); }
+
+void WalletPage::ResetForSignOut() {
+  // Identity first: every one of these describes the account that just left.
+  // ownNetworkId_ is the dangerous one - it is what marks the own row on both
+  // boards, and the next LoadWallet re-derives it from the new jwt.
+  ownNetworkId_.clear();
+  // ...and leaderboardLoaded_ is why this method exists at all: nothing else
+  // loads the board on this destination, so a guard left set would keep the
+  // previous account's table and own rank on screen past the next sign-in.
+  leaderboardLoaded_ = false;
+
+  // The points board's own-account facts are read straight into the header
+  // (RenderPointsHeader), so they clear ahead of the board's own reset; the
+  // edit markers go with them or the old session's local edit would outrank
+  // the next account's first `me`.
+  pointsPublic_ = false;
+  emojiTag_.clear();
+  ownFlagsClock_ = 0;
+  ownFlagsEditedAt_ = 0;
+  ownFlagsAppliedAt_ = 0;
+  // The controller was opened on this session's device; ClosePointsBoard
+  // closes it there, drops every row, page and `me` it holds, and re-renders
+  // the board empty.
+  ClosePointsBoard(/*deviceAlive=*/true);
+
+  // Then the visible state, back to the seed ApplyStrings starts from
+  // ("Loading..." with a dash figure): the state the fetch has not left yet,
+  // which the next sign-in's loads replace panel by panel.
+  const hstring loading = Loc("loading");
+  const hstring dash{L"-"};
+
+  leaderboardRank_ = 0;
+  leaderboardCount_ = 0;
+  rankingPublic_ = false;
+  SetRankingToggle(false);  // the echo-guarded write, not the handler
+  w_.LeaderboardRows().Children().Clear();
+  w_.LeaderboardStatusText().Text(loading);
+  w_.LeaderboardStatusText().Visibility(Visibility::Visible);
+  SetStatValue(w_.LeaderboardRankValue(), dash, false);
+  SetStatValue(w_.LeaderboardNetProvidedValue(), dash, false);
+
+  accountPoints_ = {};
+  w_.AccountPointsPanel().Children().Clear();
+  w_.AccountPointsStatusText().Text(loading);
+  w_.AccountPointsStatusText().Visibility(Visibility::Visible);
+  SetStatValue(w_.PointsHeadlineValue(), dash, false);
+
+  epochs_.clear();
+  epochsState_ = Fetch::Loading;
+  w_.HistoryStatusText().Text(loading);
+  w_.HistoryStatusText().Visibility(Visibility::Visible);
+  RebuildHistory();  // clears the rows; Loading draws nothing over the status line
+  w_.PointsStatusText().Text(loading);
+  w_.PointsStatusText().Visibility(Visibility::Visible);
+}
 
 void WalletPage::LoadPoints() {
   auto queue = w_.DispatcherQueue();
@@ -1000,6 +1062,10 @@ void WalletPage::ApplyPoints(std::vector<urnet::AccountPoint> const& points, Fet
   }
   w_.AccountPointsStatusText().Visibility(Visibility::Collapsed);
   SetStatValue(w_.PointsHeadlineValue(), hstring{FormatPointsValue(accountPoints_.net)}, true);
+  // Lime is the earnings accent, and this is the page's headline figure. It
+  // must be set here, not in markup: SetStatValue rewrites Foreground on every
+  // call, and the leaderboard tiles share that helper and stay off-white.
+  w_.PointsHeadlineValue().Foreground(colors::AccentBrush());
   RebuildPointsRows();
 }
 
@@ -1872,8 +1938,12 @@ void WalletPage::RebuildHistory() {
         row.cells[5].Text(ClaimStatusText(claim->status));
         // Lime is the earnings accent: alpha that can be claimed now, or was.
         if (claim->status == "claimable" || claim->status == "claimed") {
-          row.cells[4].Foreground(colors::MakeBrush(colors::kUrGreen));
+          row.cells[4].Foreground(colors::AccentBrush());
         }
+        // ...and the STATUS word for the one actionable state joins it:
+        // "claimable" is the cell that asks for the click. Claimed, expired
+        // and the muted states keep their readings.
+        if (claim->status == "claimable") row.cells[5].Foreground(colors::AccentBrush());
         if (claim->status == "expired") row.cells[5].Foreground(colors::DangerBrush());
       } else {
         // before the wallet, or not finalized: points only
@@ -1924,7 +1994,9 @@ void WalletPage::ApplyClaims(std::vector<EpochClaim> const& claims, int64_t tota
   }
   w_.ClaimsStatusText().Visibility(Visibility::Collapsed);
   SetStatValue(w_.UnclaimedValue(), hstring{FormatAlphaRao(totalClaimableRao_)}, true);
-  if (totalClaimableRao_ > 0) w_.UnclaimedValue().Foreground(colors::MakeBrush(colors::kUrGreen));
+  // Lime is the earnings accent: the claimable figure is this page's reason
+  // to exist. Behaviour identical (coloured only when claimable > 0).
+  if (totalClaimableRao_ > 0) w_.UnclaimedValue().Foreground(colors::AccentBrush());
   w_.UnclaimedNote().Text(
       claimable > 0
           ? hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(claimable))}

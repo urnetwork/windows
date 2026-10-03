@@ -25,6 +25,7 @@
 #include "ConnectorGlyph.h"
 #include "Localization.h"
 #include "Log.h"
+#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "SettingsSheets.h"  // the row kit: MakeSheet / Supporting / Lookup / clipboard
 #include "Strings.h"
 #include "UrColors.h"
@@ -248,7 +249,7 @@ void ExtenderShareSheet::Build(XamlRoot const& root) {
   ScrollViewer scroll;
   scroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
   scroll.HorizontalScrollBarVisibility(ScrollBarVisibility::Disabled);
-  scroll.MaxHeight(620);
+  scroll.MaxHeight(sheetfit::Height(root, 620));
   scroll.Content(content);
   dialog_.Content(scroll);
 

@@ -233,6 +233,9 @@ class ConnectCanvas {
 
   // disconnected: the electric-blue core, its two rings, and the pulse behind it
   winrt::Microsoft::UI::Xaml::Controls::Grid idleLayer_{nullptr};
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse orbit1_{nullptr};    // 128pt ring, white@8%
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse orbit2_{nullptr};    // 192pt ring, white@8%
+  winrt::Microsoft::UI::Xaml::Shapes::Ellipse coreHalo_{nullptr};  // 64pt halo, blue@35%
   winrt::Microsoft::UI::Xaml::Shapes::Ellipse pulse_{nullptr};
   winrt::Microsoft::UI::Xaml::Media::ScaleTransform pulseScale_{nullptr};
   winrt::Microsoft::UI::Xaml::Shapes::Ellipse coreRing_{nullptr};  // 52pt, blue, 4pt
@@ -243,6 +246,11 @@ class ConnectCanvas {
 
   // android's connect_mask: the square minus the globe, opaque, drawn last
   winrt::Microsoft::UI::Xaml::Shapes::Path mask_{nullptr};
+  // the globe rim: a 1px hairline ON the silhouette boundary, drawn AFTER the
+  // mask so the mask cannot eat its outer half. It is what makes the resting
+  // globe read as a globe instead of a blob (and gives the connected blob
+  // cluster a clean coin edge). White@12% = the app's hairline token.
+  winrt::Microsoft::UI::Xaml::Shapes::Path globeOutline_{nullptr};
   // outside the mask, so the ring is not eaten by it
   winrt::Microsoft::UI::Xaml::Shapes::Path focusRing_{nullptr};
 

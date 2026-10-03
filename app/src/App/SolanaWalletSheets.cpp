@@ -15,6 +15,7 @@
 #include "Localization.h"
 #include "Log.h"
 #include "PageContext.h"
+#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "SettingsSheets.h"  // rows::Lookup
 #include "Strings.h"
 #include "UrColors.h"
@@ -124,7 +125,7 @@ void ConnectSolanaWalletSheet::Build(XamlRoot const& root) {
 
   StackPanel content;
   content.Spacing(10);
-  content.MinWidth(420);
+  content.MinWidth(sheetfit::Width(root, 420));
 
   // what this is, and for how long
   content.Children().Append(

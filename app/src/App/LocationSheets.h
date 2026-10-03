@@ -18,6 +18,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.UI.h>
@@ -148,18 +149,73 @@ class NetworkPage {
   void Render();          // the list pane
   void RenderDetail();
 
+  // One element of the list pane as it stands on screen, keyed so an SDK push
+  // or a search keystroke RECONCILES instead of rebuilding
+  // (ConnectPage::ConnectionRowEntry parity): group headers key by group id,
+  // rows by the stable location/client id, and only the rows the diff touches
+  // are inserted, moved, rewritten or removed - the steady-state push pays for
+  // no layout but its own changes, and the scroller's offset survives.
+  enum class LocationRowKind { Group, Row, EmptyLine };
+  // The list's desired state for one Render pass: a group header, a row, or
+  // the inline empty line, in exactly the order the pane shows them. The
+  // reconcile diffs this against rowEntries_.
+  struct LocationListSpec {
+    LocationRowKind kind = LocationRowKind::Row;
+    std::string key;
+    winrt::hstring title;  // group caption, row name, or the empty line's text
+    winrt::hstring meta;   // group count or row figure
+    winrt::Windows::UI::Color dotColor{0, 0, 0, 0};
+    bool selected = false;
+    bool unstable = false;
+    bool strongPrivacy = false;
+    bool providing = false;
+  };
+  struct LocationRowEntry {
+    std::string key;
+    LocationRowKind kind = LocationRowKind::Row;
+    winrt::Microsoft::UI::Xaml::UIElement root{nullptr};
+    // LocationRowKind::Group (kit::MakePaneGroupHeader)
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock headerTitle{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock headerMeta{nullptr};
+    // LocationRowKind::Row (MakeRow)
+    winrt::Microsoft::UI::Xaml::Controls::Button button{nullptr};
+    winrt::Microsoft::UI::Xaml::Shapes::Ellipse dot{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock title{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::StackPanel glyphs{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock meta{nullptr};
+    // LocationRowKind::EmptyLine (kit::MakePaneEmptyLine): the text it was
+    // built with, so a feed-state change swaps the one line instead of
+    // rebuilding the list.
+    winrt::hstring lineText;
+    // The spec this entry currently shows: a push that changes nothing about
+    // an element leaves it untouched, and untouched costs no layout.
+    LocationListSpec applied;
+  };
+  LocationRowEntry BuildListEntry(LocationListSpec const& spec);
+  void UpdateListEntry(LocationRowEntry& entry, LocationListSpec const& spec);
+  // The row click, by key rather than a captured copy: a row rewritten in
+  // place since it was built must still connect to the location it SHOWS.
+  void ConnectFromListKey(std::string const& key);
+
   // One row species for the whole pane: a fixed-height UrPaneRowButtonStyle
   // button, a colour dot, a trimmed title, the trailing state glyphs, and a
   // right-aligned figure. Peers, best-available and locations are all this.
-  winrt::Microsoft::UI::Xaml::Controls::Button MakeRow(
-      winrt::hstring const& title, winrt::hstring const& meta,
-      winrt::Windows::UI::Color dotColor, bool selected, bool unstable, bool strongPrivacy,
-      bool providing);
-  void AppendGroup(winrt::hstring const& title, int64_t count);
-  void AppendLocationSection(winrt::hstring const& title,
-                             std::optional<urnet::ConnectLocationList> const& items,
-                             std::optional<urnet::ConnectLocation> const& selected,
-                             int64_t& runningTotal);
+  // Returns the button plus every piece a push can change, so the list
+  // reconcile rewrites a standing row in place (UpdateListEntry); the detail
+  // pane's callers use .button and ignore the rest.
+  LocationRowEntry MakeRow(winrt::hstring const& title, winrt::hstring const& meta,
+                           winrt::Windows::UI::Color dotColor, bool selected, bool unstable,
+                           bool strongPrivacy, bool providing);
+  // The spec emitters: what AppendGroup / AppendLocationSection were, except
+  // they now describe the section instead of appending it, so Render can diff
+  // before it mutates.
+  void AppendGroupSpec(std::vector<LocationListSpec>& specs, std::string const& key,
+                       winrt::hstring const& title, int64_t count);
+  void AppendLocationSpecs(std::vector<LocationListSpec>& specs, std::string const& headerKey,
+                           winrt::hstring const& title,
+                           std::optional<urnet::ConnectLocationList> const& items,
+                           std::optional<urnet::ConnectLocation> const& selected,
+                           int64_t& runningTotal);
 
   winrt::URnetwork::implementation::MainWindow& w_;
 
@@ -179,6 +235,18 @@ class NetworkPage {
   std::string locationsState_;
   std::optional<urnet::NetworkPeerList> peers_;
   std::string query_;
+
+  // The reconcile's memory of what is on screen (see LocationRowEntry). The
+  // invariant Render maintains: rowEntries_[i].root == NetworkListHost's i-th
+  // child, so an entries index IS a Children() index.
+  std::vector<LocationRowEntry> rowEntries_;
+  // Structural cases only - the first render, and a locale change out of
+  // ApplyStrings - clear and rebuild instead of reconciling. The steady state
+  // never sets this, so it never pays the full rebuild's re-measure.
+  bool listDirty_ = true;
+  // query_ as of the last Render. A change is a new result set, and a new
+  // result set reads from the top rather than holding the old list's offset.
+  std::string renderedQuery_;
 };
 
 }  // namespace urnw

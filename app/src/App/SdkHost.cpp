@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MPL-2.0
 // the project compiles with /Yu"pch.h" (App.vcxproj), so every translation unit
 // must include it first
 #include "pch.h"
@@ -3435,10 +3435,12 @@ void SdkHost::PublishBlockStats() {
 void SdkHost::PublishSplitRules() {
   if (!device_) return;
   std::vector<SplitRule> rules;
+  std::vector<HostRule> hostRules;
   static std::atomic<bool> logged{false};
   if (auto list = ReadSdkList(logged, "getBlockActionOverrides (split rules)",
                            [&] { return device_->getBlockActionOverrides(); })) {
     rules.reserve(list->size());
+    hostRules.reserve(list->size());
     for (const auto& over : *list) {
       if (!over.OverrideId) continue;
       SplitRule rule;
@@ -3446,6 +3448,19 @@ void SdkHost::PublishSplitRules() {
       if (over.Hosts) rule.hosts = *over.Hosts;
       rule.routeLocal = over.RouteOverride && over.RouteOverride->Local;
       rules.push_back(std::move(rule));
+      // the full-fidelity twin for the inspector's quick actions. App-keyed
+      // overrides carry no hosts, so they can never match a connection and
+      // are noise here (CurrentAppRules is their surface).
+      if (over.Hosts && !over.Hosts->empty()) {
+        HostRule hostRule;
+        hostRule.overrideId = *over.OverrideId;
+        hostRule.hosts = *over.Hosts;
+        hostRule.hasBlockOverride = over.BlockOverride.has_value();
+        hostRule.block = over.BlockOverride && over.BlockOverride->Block;
+        hostRule.hasRouteOverride = over.RouteOverride.has_value();
+        hostRule.routeLocal = over.RouteOverride && over.RouteOverride->Local;
+        hostRules.push_back(std::move(hostRule));
+      }
     }
   }
   bool changed = false;
@@ -3453,6 +3468,10 @@ void SdkHost::PublishSplitRules() {
     std::scoped_lock lock(drawerMutex_);
     changed = rules != lastSplitRules_;
     if (changed) lastSplitRules_ = rules;
+    // NOT gated on `changed`: the SplitRule projection drops the kind/value
+    // fields, so a value flip (block <-> allow) is invisible to it but is the
+    // quick actions' whole state.
+    if (hostRules != lastHostRules_) lastHostRules_ = hostRules;
   }
   if (changed && onSplitRules_) onSplitRules_(std::move(rules));
 }
@@ -3705,6 +3724,11 @@ void SdkHost::CurrentBlockCounts(int64_t& allowed, int64_t& blocked) {
 std::vector<SplitRule> SdkHost::CurrentSplitRules() {
   std::scoped_lock lock(drawerMutex_);
   return lastSplitRules_;
+}
+
+std::vector<HostRule> SdkHost::CurrentHostRules() {
+  std::scoped_lock lock(drawerMutex_);
+  return lastHostRules_;
 }
 
 std::optional<urnet::DnsResolverSettings> SdkHost::CurrentDnsSettings() {
@@ -4112,9 +4136,10 @@ void SdkHost::ApplyTransportSettings(TransportSettingsKind kind,
   if (onTransportSettings_) onTransportSettings_(kind, CurrentTransportSettings(kind));
 }
 
-void SdkHost::CreateSplitRule(const std::vector<std::string>& hosts) {
+std::string SdkHost::CreateSplitRule(const std::vector<std::string>& hosts) {
   std::scoped_lock lock(mutex_);
-  if (!device_ || hosts.empty()) return;
+  if (!device_ || hosts.empty()) return {};
+  std::string overrideId;
   try {
     urnet::BlockActionOverride over;
     over.OverrideId = urnet::newId();
@@ -4123,10 +4148,61 @@ void SdkHost::CreateSplitRule(const std::vector<std::string>& hosts) {
     route.Local = true;
     over.RouteOverride = route;
     device_->addBlockActionOverride(over);
+    overrideId = *over.OverrideId;
   } catch (const std::exception& e) {
     LogWarn("sdkhost: create split rule failed: {}", e.what());
   }
   PublishSplitRules();
+  return overrideId;
+}
+
+std::string SdkHost::CreateTunnelRule(const std::vector<std::string>& hosts) {
+  std::scoped_lock lock(mutex_);
+  if (!device_ || hosts.empty()) return {};
+  std::string overrideId;
+  try {
+    // CreateSplitRule's mirror: Local=false keeps the hosts INSIDE the tunnel.
+    // Pin=false, because a pin is exit placement, not membership (see the
+    // header) - a pinned "rule" would not answer "why is this not tunnelled".
+    urnet::BlockActionOverride over;
+    over.OverrideId = urnet::newId();
+    over.Hosts = hosts;
+    urnet::RouteOverride route;
+    route.Local = false;
+    route.Pin = false;
+    over.RouteOverride = route;
+    device_->addBlockActionOverride(over);
+    overrideId = *over.OverrideId;
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: create tunnel rule failed: {}", e.what());
+  }
+  PublishSplitRules();
+  return overrideId;
+}
+
+std::string SdkHost::CreateBlockRule(const std::vector<std::string>& hosts, bool block) {
+  std::scoped_lock lock(mutex_);
+  if (!device_ || hosts.empty()) return {};
+  std::string overrideId;
+  try {
+    urnet::BlockActionOverride over;
+    over.OverrideId = urnet::newId();
+    over.Hosts = hosts;
+    urnet::BlockOverride blockOverride;
+    blockOverride.Block = block;
+    over.BlockOverride = blockOverride;
+    device_->addBlockActionOverride(over);
+    overrideId = *over.OverrideId;
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: create block rule failed: {}", e.what());
+  }
+  PublishSplitRules();
+  return overrideId;
+}
+
+void SdkHost::RemoveBlockRule(const std::string& overrideId) {
+  // by id, kind-agnostic: see the header declaration
+  RemoveSplitRule(overrideId);
 }
 
 void SdkHost::UpdateSplitRule(const std::string& overrideId,

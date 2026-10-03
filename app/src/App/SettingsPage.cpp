@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MPL-2.0
 #include "pch.h"
 
 #include "SettingsPage.h"
@@ -121,35 +121,32 @@ SettingsPage::SettingsPage(winrt::URnetwork::implementation::MainWindow& window)
 void SettingsPage::ApplyStrings() {
   BuildSections();  // idempotent
 
-  // support
-  w_.FeedbackHeading().Text(Loc("feedback"));
-  // Why the screen exists. Already in the store, used nowhere until now: the
-  // panel opened on five bare controls and no sentence.
+  // support: two pane headers, and a landmark name each so a screen reader
+  // can tell the form from the way to reach a human
+  w_.SupportPaneATitle().Text(Loc("feedback"));
+  w_.SupportPaneBTitle().Text(Loc("support"));
+  // Why the screen exists, in one sentence. Already in the store, used nowhere
+  // until this destination: the panel opened on five bare controls and no
+  // sentence.
   w_.SupportIntroText().Text(Loc("site_app_support_intro"));
   w_.FeedbackRating().Caption(Loc("how_are_we_doing"));
   w_.FeedbackText().Header(LocBox("anything_else"));
   // The box shipped with no content whatsoever - an unlabelled tick offering to
   // upload the user's logs. The string existed the whole time.
   w_.FeedbackIncludeLogs().Content(LocBox("feedback_include_logs"));
-  // Send is now glyph + label, and a Button whose Content is a Panel gets NO
-  // automatic automation name, so it needs an explicit one or the only way to
-  // submit this form is nameless to a screen reader.
-  w_.SendFeedbackText().Text(Loc("send"));
-  // The contact card beside the form (D4). The feedback form is one-way; this
-  // is the other way, and both strings already shipped with no call site.
-  // SetMarkdownLinkText keeps the whole sentence and turns support@ur.io and
-  // the Discord invite into real Hyperlinks, which is what puts them in the
-  // tab order.
-  w_.SupportContactHeading().Text(Loc("support"));
-  urnw::SetMarkdownLinkText(
-      w_.SupportContactText(),
-      Localized("if_the_problem_persists_contact_us_at_support_ur"), 14);
-  w_.SupportProtocolLink().Content(LocBox("learn_more_protocol_page"));
+  // The primary action's label. A plain-string Content would name the button
+  // for free; the explicit SetName stays so the one way to submit this form is
+  // never nameless to a screen reader.
+  w_.SendFeedbackButton().Content(LocBox("send"));
   winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
       w_.SendFeedbackButton(), Loc("send"));
+  Automation::AutomationProperties::SetName(w_.SupportPaneA(), Loc("feedback"));
+  Automation::AutomationProperties::SetName(w_.SupportPaneB(), Loc("support"));
 
   // settings: three pane headers, and a landmark name each so a screen reader
-  // can tell the three regions apart
+  // can tell the three regions apart. About folds first (1400dip of window);
+  // its rows keep a second door at the foot of General (the fold hosts in
+  // BuildSections), which is what the first About pane lacked.
   w_.SettingsPaneATitle().Text(Loc("general"));
   w_.SettingsPaneBTitle().Text(Loc("device"));
   w_.SettingsPaneCTitle().Text(Missing("about", L"About"));
@@ -201,6 +198,18 @@ void SettingsPage::BuildSections() {
   // Each pane is one constrained column of rows, which is how the Windows
   // single-column settings guidance and the full-bleed pane model reconcile:
   // three columns of ~660dip in the 2062dip window this app is judged in.
+  //
+  // About folds first (1400dip of window) and Device below 900
+  // (MainWindow::ApplyBreakpoint's settingsThree/settingsTwo gates), and the
+  // fold rule bars a foldable pane from owning content with no second door:
+  // About owns the version/update rows, Device the Advanced-mode toggle (with
+  // Advanced OFF at a narrow window there was no way to turn it on). So those
+  // rows build twice, the BuildSupportContactSection pattern one destination
+  // over: once into their own pane above, once into the fold hosts at the foot
+  // of General, and the gates show exactly one copy of each -
+  // ApplyAboutPaneVisible for the version copy (which joins the Licenses row's
+  // fold copy under its About strip, so the folded foot of General reads as
+  // one About block), ApplyPaneBFolded for the Advanced toggle.
   rows::SetPaneMode(true);
   auto general = w_.SettingsSections();
   auto device = w_.SettingsSectionsRight();
@@ -213,6 +222,26 @@ void SettingsPage::BuildSections() {
   BuildVersionSection(about);
   BuildLicensesRows(about, general);
   BuildStayInTouchSection(about);
+  versionFoldHost_ = StackPanel();
+  versionFoldHost_.Visibility(aboutPaneVisible_ ? Visibility::Collapsed
+                                                : Visibility::Visible);
+  general.Children().Append(versionFoldHost_);
+  BuildVersionFoldSection(versionFoldHost_);
+  paneBFoldHost_ = StackPanel();
+  paneBFoldHost_.Visibility(paneBFolded_ ? Visibility::Visible : Visibility::Collapsed);
+  general.Children().Append(paneBFoldHost_);
+  BuildAdvancedFoldSection(paneBFoldHost_);
+  rows::SetPaneMode(false);
+
+  // ---- Support: the way to reach a human, in BOTH its homes ----------------
+  // The same section is built twice: into pane B for the two-pane widths, and
+  // into SupportContactInline (under the Send button) for the folded one. The
+  // breakpoint shows exactly one of the hosts, so only one copy is ever on
+  // screen; the inline copy carries the group header because there is no pane
+  // header strip naming it there.
+  rows::SetPaneMode(true);
+  BuildSupportContactSection(w_.SupportContactHost(), false);
+  BuildSupportContactSection(w_.SupportContactInline(), true);
   rows::SetPaneMode(false);
 
   // Everything that can be read without a round trip, so the page is not blank
@@ -223,6 +252,8 @@ void SettingsPage::BuildSections() {
   // identifies the build here.
   const std::string sdkVersion = urnet::version();
   ApplyValue(versionValue_, sdkVersion.empty() ? Sdk().appVersion() : sdkVersion);
+  // ...and the fold-gated copy (BuildVersionFoldSection): one value, both rows.
+  ApplyValue(versionValueFold_, sdkVersion.empty() ? Sdk().appVersion() : sdkVersion);
 }
 
 // HOW THE ACCOUNT SIGNS IN. Built onto Account's pane B (spec override #2):
@@ -345,7 +376,64 @@ void SettingsPage::ApplyAdvancedMode(bool on) {
   if (advancedMode_.IsOn() == on) return;
   applyingAdvancedMode_ = true;
   advancedMode_.IsOn(on);
+  // ...and the fold-gated copy (BuildAdvancedFoldSection) under the SAME echo
+  // guard: the one apply path writes both instances, so the two toggles can
+  // never read differently.
+  if (advancedModeFold_) advancedModeFold_.IsOn(on);
   applyingAdvancedMode_ = false;
+}
+
+void SettingsPage::ApplyPaneBFolded(bool folded) {
+  paneBFolded_ = folded;
+  if (!paneBFoldHost_) return;  // not built yet; BuildSections replays the state
+  paneBFoldHost_.Visibility(folded ? Visibility::Visible : Visibility::Collapsed);
+}
+
+// The Advanced-mode toggle's SECOND door (BuildAdvancedSection is the primary;
+// its comment carries the one-apply-path rule, which this copy follows
+// verbatim: the toggle only writes through SdkHost, and MainWindow's apply
+// path writes BOTH toggles back under the one echo guard). Export logs stays
+// pane-B-only - a fold hides a convenience, not a capability, and the fold
+// rule's doors are for what has no other way in.
+void SettingsPage::BuildAdvancedFoldSection(Panel const& host) {
+  Heading(host, Missing("advanced", L"Advanced"), hstring{});
+  auto card = Card(host);
+  advancedModeFold_ = ToggleRow(
+      card, Adv("adv_advanced_mode", L"Advanced mode"),
+      Adv("adv_advanced_mode_note",
+          L"Show raw values, identifiers, the connection inspector and the "
+          L"reliability tuning surface across the app."));
+  advancedModeFold_.IsOn(Sdk().CurrentAdvancedMode());
+  advancedModeFold_.Toggled([this](auto const&, auto const&) {
+    if (applyingAdvancedMode_) return;  // the apply path wrote it; do not echo back
+    w_.SetAdvancedMode(advancedModeFold_.IsOn());
+  });
+}
+
+// The version/update rows' SECOND door (BuildVersionSection is the primary,
+// and its comment carries the why and the replay contract). The About-pane
+// copy needs no group header - its pane header strip names it - and this fold
+// copy needs none either: it renders directly under the Licenses row's fold
+// copy, whose About strip (BuildLicensesRows) heads the foot of General
+// whenever the pane is folded, so the two read as one About block.
+void SettingsPage::BuildVersionFoldSection(Panel const& host) {
+  auto card = Card(host);
+  versionValueFold_ = ValueRow(card, Loc("version_info"));
+  // the build's own stamp (Common/Version.h), verbatim - see the primary
+  ApplyValue(ValueRow(card, Missing("app_version", L"App version")),
+             urnw::version::kString);
+  updateStateValueFold_ = ValueRow(card, Loc("update"));
+  auto checkNow = ButtonRow(
+      card, Loc("dev_check_updates"),
+      Adv("upd_manual_note",
+          L"Runs the release check now; the outcome lands on the row above."),
+      Adv("upd_check_now", L"Check now"));
+  checkNow.Click([](auto const&, auto const&) { urnw::pages::Updates().CheckNow(); });
+  // Replay the standing state into the row just built: the primary's copy of
+  // this call ran while this row did not exist (the fold section builds after
+  // pane B's), and ApplyUpdateCheck writes BOTH instances - so this is also
+  // what keeps the two rows on one outcome.
+  ApplyUpdateCheck(urnw::pages::Updates().Current());
 }
 
 void SettingsPage::BuildAdvancedSection(Panel const& host) {
@@ -566,6 +654,43 @@ void SettingsPage::BuildStayInTouchSection(Panel const& host) {
   card.Children().Append(protocolRow);
 }
 
+// REACHING A HUMAN. The feedback form is one-way; this is the other way, and
+// support@ur.io and the Discord invite were already in the store
+// (if_the_problem_persists_contact_us_at_support_ur) with no call site
+// anywhere in the client. Built TWICE (BuildSections): into Support's pane B
+// without a group header - the 40px pane header strip above already carries
+// the word, and repeating it read as a stutter on Settings' device pane - and
+// into the inline narrow-width host WITH one, because there is no pane header
+// naming the section there.
+void SettingsPage::BuildSupportContactSection(Panel const& host, bool withGroupHeader) {
+  if (withGroupHeader) {
+    host.Children().Append(kit::MakePaneGroupHeader(Loc("support")).root);
+  }
+
+  // The contact prose, exactly as BuildStayInTouchSection's linkRow: the
+  // store's own markdown string rendered with the links inline
+  // (SetMarkdownLinkText), so the whole shipped sentence survives and both
+  // links are real Hyperlinks in the tab order, in a hairline-bottom row at
+  // the pane's 12px inset.
+  TextBlock text;
+  SetMarkdownLinkText(text, Localized("if_the_problem_persists_contact_us_at_support_ur"), 13);
+  text.TextWrapping(TextWrapping::Wrap);
+  Border box;
+  box.Padding(ThicknessHelper::FromLengths(12, 10, 12, 10));
+  box.BorderBrush(colors::BorderBrush());
+  box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+  box.Child(text);
+  host.Children().Append(box);
+
+  // The protocol link as a whole-row chevron button: in pane mode NavRow
+  // emits the 44px chevron row, which is what a tappable row is everywhere
+  // else in the shell. The URL is the one the card model's HyperlinkButton
+  // already navigated to.
+  TextBlock unused{nullptr};
+  auto row = rows::NavRow(host, Loc("learn_more_protocol_page"), unused);
+  row.Click([](auto const&, auto const&) { OpenUrl(L"https://ur.xyz"); });
+}
+
 void SettingsPage::BuildSubscriptionSection(Panel const& host) {
   auto card = Card(host);
   // Opens the Stripe customer portal in the browser; there is nothing to show
@@ -588,6 +713,72 @@ void SettingsPage::BuildVersionSection(Panel const& host) {
   // compile-time constant and needs no round trip.
   ApplyValue(ValueRow(card, Missing("app_version", L"App version")),
              urnw::version::kString);
+
+  // THE UPDATE STATE, next to the version it describes (beta spec §5). The
+  // auto-check toggle lives on the General pane; what this pane had no surface
+  // for is what that toggle produces — whether THIS build is current. Home's
+  // banner only appears when there is something to install, so "am I up to
+  // date?" had no answer anywhere in Settings. The value row always leads
+  // with the running build (version::kString, the same stamp the row above
+  // shows) and appends the last check's outcome; ApplyUpdateCheck is the one
+  // writer. The action row's click is the developer screen's own trigger —
+  // CheckNow coalesces with a queued or running check, so the button needs no
+  // gating. State words go through upd_ ids like the toggle's: the store
+  // carries none of the updater's wording (PageContext.h documents the
+  // prefix); "Update" and "Check for updates" ARE store keys and come through
+  // Loc.
+  updateStateValue_ = ValueRow(card, Loc("update"));
+  auto checkNow = ButtonRow(
+      card, Loc("dev_check_updates"),
+      Adv("upd_manual_note",
+          L"Runs the release check now; the outcome lands on the row above."),
+      Adv("upd_check_now", L"Check now"));
+  checkNow.Click([](auto const&, auto const&) { urnw::pages::Updates().CheckNow(); });
+  // Replay the standing state into the row just built: these sections build on
+  // the first ApplyStrings, and the outcome of the launch check (or a manual
+  // check fired before this destination was ever opened) must not be lost to
+  // having arrived early. Same bind-then-replay shape as the window's.
+  ApplyUpdateCheck(urnw::pages::Updates().Current());
+}
+
+// ---- the update checker (beta spec §5) --------------------------------------
+
+void SettingsPage::ApplyUpdateCheck(UpdateChecker::Snapshot const& snap) {
+  using Outcome = UpdateChecker::CheckOutcome;
+  if (!updateStateValue_) return;  // the section is not built yet
+  // The value ALWAYS leads with the running build — the row is where the build
+  // identifies itself — and appends the last check's outcome. Version strings
+  // are DATA (release grammar), so composing them around the Adv() state
+  // words hides no literal from the store. The state words stay short:
+  // ValueRow ellipsizes its value at 260px (SettingsSheets.cpp), and the
+  // developer screen's report line carries the long-form version of the same
+  // outcome, newest-release tag included.
+  std::wstring text = urnw::Widen(urnw::version::kString);
+  switch (snap.lastCheck) {
+    case Outcome::NeverRan:
+      text += L" — " + AdvW("upd_state_not_checked", L"not checked yet");
+      break;
+    case Outcome::InFlight:
+      text += L" — " + AdvW("upd_state_checking", L"checking…");
+      break;
+    case Outcome::NoUpdate:
+      text += L" — " + AdvW("upd_state_current", L"up to date");
+      break;
+    case Outcome::UpdateFound:
+      text += L" — " + AdvW("upd_state_available", L"update available:") + L" v" +
+              snap.newestVersion;
+      break;
+    case Outcome::DevBuild:
+      text += L" — " + AdvW("upd_state_dev_build", L"dev build, never self-updates");
+      break;
+    default:  // Failed
+      text += L" — " + AdvW("upd_state_failed", L"check failed");
+      break;
+  }
+  updateStateValue_.Text(hstring{text});
+  // ...and the fold-gated copy (BuildVersionFoldSection): one snapshot, both
+  // rows, so the two can never disagree about the last check's outcome.
+  if (updateStateValueFold_) updateStateValueFold_.Text(hstring{text});
 }
 
 // LICENSES: the open source software and data attributions the app ships
@@ -619,6 +810,11 @@ void SettingsPage::BuildLicensesRows(Panel const& about, Panel const& general) {
 
 void SettingsPage::ApplyAboutPaneVisible(bool visible) {
   aboutPaneVisible_ = visible;
+  // The version rows' fold copy shares this gate: About visible means the
+  // primary rows are on screen, About folded means the copy takes over.
+  if (versionFoldHost_) {
+    versionFoldHost_.Visibility(visible ? Visibility::Collapsed : Visibility::Visible);
+  }
   if (!licensesAboutRow_) return;  // the sections are not built yet
   licensesAboutRow_.Visibility(visible ? Visibility::Visible : Visibility::Collapsed);
   licensesGeneralRow_.Visibility(visible ? Visibility::Collapsed : Visibility::Visible);

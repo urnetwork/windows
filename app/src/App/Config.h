@@ -36,13 +36,14 @@ inline constexpr const char* kWalletConnectProjectId = "";
 #endif
 
 // The GitHub repo the update checker polls for releases (beta-distribution
-// spec §5). Official urnetwork repos only, never a personal fork — and the
-// STABLE feed, not the nightly one: urnetwork/build holds the nightly builds
-// the release pipeline (build/all/run.sh) mints; stable releases are published
-// by hand to each app's own repo, so Windows polls the urnetwork/windows
-// releases, where a stable release v<version> carries the per-arch MSIs
-// (Common/ReleaseSelection.h matches its tag and asset names). Wide because it
-// is spliced into WinHTTP request strings, which are UTF-16 end to end.
-inline constexpr const wchar_t* kUpdateRepo = L"urnetwork/windows";
+// spec §5): the beta fork today — the fork IS the beta channel, publishing
+// every green build of this branch as a prerelease tagged
+// v<YYYY.M.D>-<code>-beta with the per-arch MSIs attached
+// (.github/workflows/beta-build.yml; Common/ReleaseSelection.h matches its tag
+// and asset names and accepts exactly those beta-marked prereleases) — and the
+// whole upstream handoff is this one line: repoint it at urnetwork/windows
+// when the fork graduates. Wide because it is spliced into WinHTTP request
+// strings, which are UTF-16 end to end.
+inline constexpr const wchar_t* kUpdateRepo = L"Ryanmello07/urnetwork-windows";
 
 }  // namespace urnw::config

@@ -90,4 +90,17 @@ inline constexpr std::uint64_t ParseReleaseCode(std::string_view tag) noexcept {
   return code.value;
 }
 
+// True when the tag carries the beta channel's marker — the literal -beta
+// suffix the grammar above accepts as the only trailer. The beta feed is
+// published as GitHub PRERELEASES, so the update checker's channel-aware skip
+// (Common/ReleaseSelection.h) keys on this to tell the channel's own
+// prereleases from the ones it must still ignore. Deliberately only a suffix
+// test: whether the REST of the tag parses is ParseReleaseCode's job, and the
+// caller asks both.
+inline constexpr bool IsBetaTag(std::string_view tag) noexcept {
+  constexpr std::string_view kMarker = "-beta";
+  return tag.size() >= kMarker.size() &&
+         tag.substr(tag.size() - kMarker.size()) == kMarker;
+}
+
 }  // namespace urnw::version

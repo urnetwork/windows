@@ -1,20 +1,21 @@
 // Which published release the update checker offers, decided pure.
 //
-// The official Windows releases are the urnetwork/windows GitHub releases
-// (Config.h kUpdateRepo): the stable builds published by hand from the nightly
-// urnetwork/build output, keeping the names build/all/run.sh mints — tag
-// `v<YYYY.M.D>-<code>`, one MSI per architecture attached as
-// `URnetwork-<YYYY.M.D>-<code>-<x64|arm64>.msi` (require_windows_artifacts +
-// the github_release_upload loop). Drafts and prereleases are skipped outright
-// rather than merely failing the asset match: a prerelease that outranks the
-// stable release by code (the nightly repo's android-only F-Droid variants at
-// code+2 / code+3 are the model) must not make the developer line name it as
-// "the newest release".
+// The feed is the beta fork's GitHub releases (Config.h kUpdateRepo — the fork
+// IS the beta channel): every green build of the beta branch publishes a
+// PRERELEASE tagged `v<YYYY.M.D>-<code>-beta`, one MSI per architecture
+// attached as `URnetwork-<YYYY.M.D>-<code>-beta-<x64|arm64>.msi`
+// (.github/workflows/beta-build.yml). The prerelease skip is therefore
+// channel-aware rather than blanket: drafts are always skipped, and a
+// prerelease is skipped UNLESS its tag carries the beta marker
+// (version::IsBetaTag) — a prerelease that outranks the offered release by
+// code without being this channel's own (the nightly repo's android-only
+// F-Droid variants at code+2 / code+3 are the model) must not make the
+// developer line name it as "the newest release".
 //
 // The checker turns the releases JSON into these plain structs and asks
 // SelectRelease; the decision itself (tag grammar, asset name, digest) touches
 // no Windows headers, so tools/update-release-tests.cpp runs it on any host
-// against the names the release pipeline actually publishes.
+// against the names the beta pipeline actually publishes.
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
@@ -43,8 +44,9 @@ struct Release {
 };
 
 struct Selection {
-  // The newest non-draft, non-prerelease tag that parses, offerable or not —
-  // the developer screen names it either way.
+  // The newest non-draft tag that parses — this channel's beta prereleases
+  // included, other prereleases excluded — offerable or not; the developer
+  // screen names it either way.
   std::uint64_t newestCode = 0;
   std::string newestVersion;  // v-less
 
@@ -81,7 +83,13 @@ inline Selection SelectRelease(std::vector<Release> const& releases,
                                std::string_view arch) {
   Selection s;
   for (auto const& rel : releases) {
-    if (rel.draft || rel.prerelease) continue;
+    // Drafts are never offered. Prereleases usually aren't either — but this
+    // feed IS the beta channel and its releases are prereleases, so the skip
+    // keeps only the ones not ours: a prerelease whose tag lacks the beta
+    // marker is somebody else's channel and is skipped outright, exactly as
+    // before; a beta-marked one falls through to the same grammar, asset and
+    // digest gates a stable release would face.
+    if (rel.draft || (rel.prerelease && !version::IsBetaTag(rel.tag))) continue;
     const std::uint64_t code = version::ParseReleaseCode(rel.tag);
     if (code == 0) continue;
     std::string ver = rel.tag;

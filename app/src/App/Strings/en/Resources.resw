@@ -1292,7 +1292,7 @@ right way</value>
     <comment>Shown on the linux home screen when the privileged urnetworkd system service cannot be reached over its control socket (not installed, not running, or the user lacks access). Distinct from daemon_too_old by contract.</comment>
   </data>
   <data name="daily_data_balance_label" xml:space="preserve">
-    <value>Daily Data Balance:</value>
+    <value>Daily Data Balance</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
   <data name="danger" xml:space="preserve">
@@ -6640,11 +6640,11 @@ as it should be.</value>
     <comment>Settings: button that uninstalls the VPN service.</comment>
   </data>
   <data name="svc_uninstall_confirm" xml:space="preserve">
-    <value>This stops the URnetwork service and removes its systemd unit. The app can't connect until it is set up again. You will be asked for administrator permission.</value>
+    <value>This stops the URnetwork service and removes the URnetwork Windows service. The app can't connect until it is set up again. You will be asked for administrator permission.</value>
     <comment>Settings: confirmation text before uninstalling the VPN service.</comment>
   </data>
   <data name="svc_uninstall_note" xml:space="preserve">
-    <value>Remove the systemd service URnetwork uses to carry traffic.</value>
+    <value>Remove the Windows service URnetwork uses to carry traffic.</value>
     <comment>Settings: explanation under the uninstall service button.</comment>
   </data>
   <data name="switch_account" xml:space="preserve">
