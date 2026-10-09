@@ -17,6 +17,7 @@
 #include "PageContext.h"
 #include "ReferralShare.h"
 #include "Log.h"
+#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "Strings.h"
 #include "UrColors.h"
 #include "UrComponents.h"
@@ -86,7 +87,7 @@ void SeedphraseDisplaySheet::Build(XamlRoot const& root) {
   dialog_.DefaultButton(ContentDialogButton::Primary);
 
   StackPanel content;
-  content.MinWidth(400);
+  content.MinWidth(sheetfit::Width(root, 400));
   content.Spacing(10);
 
   TextBlock title;
@@ -366,7 +367,7 @@ void NetworkServerSheet::Build(XamlRoot const& root) {
   dialog_.CloseButtonText(Loc("close"));
 
   StackPanel content;
-  content.MinWidth(420);
+  content.MinWidth(sheetfit::Width(root, 420));
   content.Spacing(12);
 
   TextBlock description;

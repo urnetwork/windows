@@ -248,11 +248,17 @@ int main(int argc, char** argv) {
           "MakePeerRow does not connect to PeerConnectLocation(peerCopy)");
   }
   {
+    // The list rows hold a key, not a location: a click resolves the key against
+    // the cached feeds (NetworkPage::ConnectFromListKey), so a row rewritten in
+    // place connects to what it shows now, and the peer it finds is the live
+    // entry rather than a copy captured when the row was built.
     Case("the Network page's peer rows connect through PeerConnectLocation");
-    const std::string body = DefinitionBody(ReadFile(sheetsPath), "void NetworkPage::Render(");
-    Check(body.find("Sdk().ConnectFromRow(PeerConnectLocation<urnet::ConnectLocation>(copy));") !=
+    const std::string body =
+        DefinitionBody(ReadFile(sheetsPath), "void NetworkPage::ConnectFromListKey(");
+    Check(body.find("Sdk().ConnectFromRow(PeerConnectLocation<urnet::ConnectLocation>(peer));") !=
               std::string::npos,
-          "NetworkPage::Render does not connect its peer rows to PeerConnectLocation(copy)");
+          "NetworkPage::ConnectFromListKey does not connect its peer rows to "
+          "PeerConnectLocation(peer)");
   }
   {
     Case("no peer row builds its location by hand");

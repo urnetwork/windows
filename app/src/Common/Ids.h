@@ -81,4 +81,16 @@ inline constexpr char kNetworkSpaceHostName[] = "bringyour.com";
 inline constexpr char kLegacyNetworkSpaceHostName[] = "ur.network";
 inline constexpr char kNetworkSpaceEnvName[] = "main";
 
+// The SSO callback origin for the Google / Apple browser flows is ALWAYS the
+// operator's api, never the pointed-at space's: bringyour manages the provider
+// registrations and the exchange secret centrally, and the identity token the
+// callback hands back is verified by signature + audience at /auth/login on
+// whatever space the client is pointed at. The mobile shape: play services
+// hands the token to the active api directly, and no beta or self-hosted space
+// ever needs provider config of its own. (Upstream keys the callback off the
+// active space's api instead - BrowserSso.swift takes deviceManager's
+// activeApiUrl - which strands every non-default space at the provider's
+// registration page.)
+inline constexpr char kOperatorApiUrl[] = "https://api.bringyour.com";
+
 }  // namespace urnw::ids

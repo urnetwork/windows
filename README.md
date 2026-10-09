@@ -12,6 +12,13 @@ https://github.com/urnetwork/windows/releases. The in-app updater polls the
 same releases (`app/src/Common/ReleaseSelection.h`, `kOfficialFeed`). Nightly builds live at
 https://github.com/urnetwork/build/releases and are not offered by the updater.
 
+Beta builds of this branch are published as prereleases (portable zips plus
+`URnetwork-<version>-x64.msi`) at
+https://github.com/Ryanmello07/urnetwork-windows/releases for testers, and are
+installed by hand: the in-app updater follows the official feed above, not the
+beta prereleases. The attached MSI is unsigned and untested; the portable zip is
+the supported artifact.
+
 ## Architecture
 
 ```

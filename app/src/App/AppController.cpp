@@ -58,6 +58,59 @@ std::wstring DeepLinkFromCommandLine(std::wstring_view commandLine) {
   return std::wstring(commandLine.substr(start, end - start));
 }
 
+// Exactly the "auth" host - "urnetwork://auth", "urnetwork://auth?..." - so
+// "urnetwork://authenticator/..." cannot match.
+bool IsAuthDeepLink(const std::string& url) {
+  constexpr char kPrefix[] = "urnetwork://auth";
+  constexpr size_t kLen = sizeof(kPrefix) - 1;
+  if (url.rfind(kPrefix, 0) != 0) return false;  // the onboarding check's idiom
+  if (url.size() == kLen) return true;
+  const char next = url[kLen];
+  return next == '?' || next == '/' || next == '#';
+}
+
+// One percent-decoded query parameter of a urnetwork:// uri, "" when absent.
+// WalletConnect.cpp has the full parser (ParseQuery/Unesc) but keeps it in its
+// own anonymous namespace; exporting it for a single parameter is worse than
+// these twenty lines.
+std::string DeepLinkQueryParam(const std::string& url, std::string_view name) {
+  auto hexv = [](char c) -> int {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    return -1;
+  };
+  const size_t q = url.find('?');
+  if (q == std::string::npos) return {};
+  size_t i = q + 1;
+  while (i < url.size()) {
+    const size_t amp = url.find('&', i);
+    const std::string pair =
+        url.substr(i, amp == std::string::npos ? std::string::npos : amp - i);
+    const size_t eq = pair.find('=');
+    if (eq != std::string::npos && pair.compare(0, eq, name) == 0) {
+      const std::string value = pair.substr(eq + 1);
+      std::string out;
+      out.reserve(value.size());
+      for (size_t k = 0; k < value.size(); ++k) {
+        if (value[k] == '%' && k + 2 < value.size()) {
+          const int hi = hexv(value[k + 1]), lo = hexv(value[k + 2]);
+          if (hi >= 0 && lo >= 0) {
+            out.push_back(static_cast<char>((hi << 4) | lo));
+            k += 2;
+            continue;
+          }
+        }
+        out.push_back(value[k] == '+' ? ' ' : value[k]);
+      }
+      return out;
+    }
+    if (amp == std::string::npos) break;
+    i = amp + 1;
+  }
+  return {};
+}
+
 }  // namespace
 
 AppController& App() { return *g_app; }
@@ -344,6 +397,7 @@ void AppController::OnAuthState(AuthState state, const std::string& error) {
   const bool wasLoggedIn = (authState_ == AuthState::LoggedIn);
   authState_ = state;
   authError_ = error;
+  authErrorUndelivered_ = !error.empty();
   UpdateTray();
   // balance store lifecycle follows the session. A repeated LoggedIn push is a
   // device re-registration (guest upgrade): restart the store so the plan
@@ -366,8 +420,10 @@ void AppController::OnAuthState(AuthState state, const std::string& error) {
   // the tray always reflects state; only push into the window when it is
   // actually visible (resynced on show) so a hidden window doesn't churn.
   if (windowVisible_ && window_) {
-    if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+    if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>()) {
       self->OnAuthStateChanged(state, error);
+      authErrorUndelivered_ = false;  // a presented window has it now
+    }
   }
   if (state == AuthState::LoggedIn) {
     tray_.ShowBalloon(Localized("app_name"), Localized("signed_in"));
@@ -861,6 +917,14 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
   windowShown_ = true;
   SyncWindowMinimized();
   window_.Activate();
+  // Activate() is ShowWindow + SetActiveWindow: it never asks for the foreground,
+  // so it leaves the window BEHIND the browser a sign-in just came back from,
+  // painting a result no one can see (measured). RaiseToFront asks -
+  // SetForegroundWindow, which the SDK's redirect has made permissible for a
+  // browser click or any launch that held a right - and falls back to lifting
+  // the window without focus when Windows refuses. A tray click owns the
+  // foreground already and returns on its first line.
+  shell::RaiseToFront(windowHwnd_);
   ReconcileWindowPresentation();
 }
 
@@ -950,7 +1014,12 @@ void AppController::ReconcileWindowPresentation() {
     // Re-apply the current state after the hidden/inactive interval. The stats
     // snapshot goes through OnStats (#27), not straight to the window, so the
     // tray's health reading refreshes at the same instant the window's does.
-    self->OnAuthStateChanged(authState_, authError_);
+    // The standing ERROR is replayed only while no presented window has seen it
+    // (authErrorUndelivered_): a failure that landed while the window was hidden
+    // is delivered once on the next show, never again after that.
+    self->OnAuthStateChanged(authState_,
+                             authErrorUndelivered_ ? authError_ : std::string());
+    authErrorUndelivered_ = false;
     if (lastTunnelStatus_) self->OnTunnelStateChanged(*lastTunnelStatus_);
     OnStats(sdk_.CurrentStats());
     self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
@@ -986,6 +1055,27 @@ void AppController::HandleDeepLink(const std::string& url) {
   if (url.rfind("urnetwork://onboarding/", 0) == 0) {
     if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>()) {
       self->HandleOnboardingLink(url);
+    }
+    return;
+  }
+  // urnetwork://auth?code=<one-time auth code>: the browser sign-in bridge's
+  // handoff (LoginPage::OnSignInWithBrowser; the site builds such urls for its
+  // own app linking - urnetwork/mmm react/src/auth/urlAuthCode.js). A link
+  // must never clobber a session: signed in, it is logged and ignored.
+  if (IsAuthDeepLink(url)) {
+    if (authState_ == AuthState::LoggedIn || sdk_.IsLoggedIn()) {
+      LogWarn("app: auth deep link ignored - a session is signed in");
+      return;
+    }
+    // the code is a credential: its value is never logged
+    const std::string code = DeepLinkQueryParam(url, "code");
+    if (code.empty()) {
+      LogWarn("app: auth deep link carried no code");
+      return;
+    }
+    LogInfo("app: auth deep link routes to the code login");
+    if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>()) {
+      self->login().SignInWithAuthCode(code);
     }
     return;
   }

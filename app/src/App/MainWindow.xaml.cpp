@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MPL-2.0
 #include "pch.h"
 
 #include "MainWindow.xaml.h"
@@ -35,23 +35,13 @@ using namespace urnw::pages;
 namespace winrt::URnetwork::implementation {
 namespace {
 
-// Where one pane sits: which cell of its page's pane grid, how many rows it may
-// span, and what gap it keeps. Every destination's wide reading is two of these
-// - one for the flyout, one for the desktop - and nothing else.
-struct PanePlacement {
-  int row = 0;
-  int column = 0;
-  int rowSpan = 1;
-  Thickness margin{};
-};
-
-void Place(FrameworkElement const& pane, PanePlacement const& at) {
-  if (!pane) return;
-  Grid::SetRow(pane, at.row);
-  Grid::SetColumn(pane, at.column);
-  Grid::SetRowSpan(pane, at.rowSpan);
-  pane.Margin(at.margin);
-}
+// (PanePlacement / Place lived here. They re-gridded Developer's side stack at
+// each breakpoint - beside the main column when wide, under it when narrow -
+// because the card layout needed a module in two different cells at two widths.
+// The pane shell has no such move: pane B is declared where it lives and the
+// breakpoint only decides how many panes are visible, which is SetWidth +
+// Visibility like every other destination. Deleted with the layout that
+// needed them.)
 
 // A column's width, as a fixed number of DIPs. Zero collapses it, which is how
 // a side column stops existing at flyout widths.
@@ -67,12 +57,112 @@ void SetStar(Controls::ColumnDefinition const& column, double weight) {
   if (column) column.Width(GridLengthHelper::FromValueAndType(weight, GridUnitType::Star));
 }
 
+// Home's third-pane gate, in NAV CONTENT dips: pane A (330, ConnectPaneAColumn
+// in markup) + the 1px UrPaneVRuleStyle + the activity star pane's floor (330 -
+// a rail's width of its own; below it the connections "table" is the 76dip
+// column the 1008dip inversion produced) + the 1px rule + pane C (380,
+// ConnectPaneCColumn). Pane C opens only when all five fit at once. Read on
+// the nav content width, never the window width - the head of ApplyBreakpoint
+// carries why the window width cannot be trusted across the nav's 1008epx dock.
+constexpr double kConnectThreePaneContentDip = 330 + 1 + 330 + 1 + 380;
+
+// The status strip's floor, in WINDOW dips (the strip is a root-grid row below
+// the nav, so its room is the window's, not the nav content's): below it the
+// traffic field and its separator hide. Measured, not picked. With captions
+// off (they drop at `wide`, far above any width this gate can bind at) the
+// four fields want ~520: state (8px dot + 6px gap + the state word, ~85),
+// network (~120 for a real network name), provider (~110), traffic
+// ("↓ 1.24 Mbps   ↑ 340.91 Kbps" at 12sp, ~155), three 29px separators (1px
+// rule in 14px side margins) and the strip's 16px side pads - D4's own "fit
+// from ~520dip" (the caption note in ApplyBreakpoint), confirmed from the
+// other end when the rightmost field was verified cut in half, live, at a
+// 400dip window. Dropping the traffic pair leaves ~395 for the three remaining
+// fields, which the 400dip minimum window (WindowShell kMinWidthDips) just
+// fits - and the reading keeps its page-side doors meanwhile: the activity
+// pane's header throughput figure (from the 640dip two-pane gate up) and the
+// statistics pane's Remote/Local session rows. The field returns the moment
+// the window gives all four room again.
+constexpr double kStatusStripTrafficFloorDip = 520;
+
 // (Reparent / SameElement lived here. They moved Home's panes between three
 // StackPanel hosts at each breakpoint, because the card layout needed a module
 // to stack under the hero at one width and sit beside it at another. R3's pane
 // shell has no such move: the three panes are declared where they live and the
 // breakpoint only decides how many are visible. Deleted with the layout that
 // needed them.)
+
+// The fold doors' one mechanism, and the reason the fold-doors design note
+// (docs/superpowers/2026-09-29-fold-doors-design.md) can move rows at all: a
+// named element keeps every member-field reference and handler when it changes
+// parents, so the fold REPARENTS the pane's existing rows - the duplication-free
+// move, since no builder in scope is build-twice-safe.
+//
+// The helpers are the pre-R3 Reparent's pattern, not Parent()'s: Parent() has
+// lied in this window before (its comment trail - null before Loaded, a stale
+// answer mid-layout), and Append on an element XAML still counts as parented
+// is the "already the child of another element" crash. So current location is
+// SEARCHED, by identity, and identity is the IUnknown view: two accessors of
+// one element can hand out different interface pointers, and only the IUnknown
+// comparison sees through that. A fold element's whole world is two panels -
+// its recorded home and its fold host - so those are the panels searched.
+bool FoldSame(winrt::Windows::Foundation::IInspectable const& a,
+              winrt::Windows::Foundation::IInspectable const& b) {
+  if (!a || !b) return false;
+  return a.as<winrt::Windows::Foundation::IUnknown>() ==
+         b.as<winrt::Windows::Foundation::IUnknown>();
+}
+
+uint32_t FoldIndexOf(Panel const& panel, UIElement const& child) {
+  if (!panel || !child) return static_cast<uint32_t>(-1);
+  auto children = panel.Children();
+  for (uint32_t i = 0; i < children.Size(); ++i) {
+    if (FoldSame(children.GetAt(i), child)) return i;
+  }
+  return static_cast<uint32_t>(-1);
+}
+
+// Out of a Panel's Children, or out of a ContentControl's Content - the two
+// shapes this app parks rows in (the extender host is pane D's scroller
+// Content directly). No-ops when the element is not there.
+void FoldOutOf(DependencyObject const& parent, UIElement const& child) {
+  if (auto panel = parent.try_as<Panel>()) {
+    if (uint32_t i = FoldIndexOf(panel, child); i != static_cast<uint32_t>(-1)) {
+      panel.Children().RemoveAt(i);
+    }
+  } else if (auto content = parent.try_as<ContentControl>()) {
+    if (FoldSame(content.Content(), child)) content.Content(nullptr);
+  }
+}
+
+// Into the fold host. The already-there early-out is what makes re-runs free:
+// ApplyBreakpoint re-applies every gate on any crossing, and an unconditional
+// remove+append would reorder rows already folded.
+void FoldIn(FrameworkElement const& child, Panel const& host,
+            DependencyObject const& homeParent) {
+  if (!child || !host) return;
+  if (FoldIndexOf(host, child) != static_cast<uint32_t>(-1)) return;
+  FoldOutOf(homeParent, child);
+  FoldOutOf(host, child);  // host==homeParent on a re-run with drift: never a duplicate
+  host.Children().Append(child);
+}
+
+// Back where the row was recorded (RecordFoldHomes). Restores within one panel
+// run in ASCENDING recorded-index order: a row's recorded index counts exactly
+// the children that precede it at rest, and all of those are already home when
+// its turn comes, so InsertAt(index) is exact.
+void FoldBack(FrameworkElement const& child, Panel const& host,
+              DependencyObject const& homeParent, uint32_t homeIndex) {
+  if (!child) return;
+  FoldOutOf(host, child);
+  if (auto panel = homeParent.try_as<Panel>()) {
+    if (FoldIndexOf(panel, child) != static_cast<uint32_t>(-1)) return;
+    const uint32_t size = panel.Children().Size();
+    panel.Children().InsertAt(homeIndex < size ? homeIndex : size, child);
+  } else if (auto content = homeParent.try_as<ContentControl>()) {
+    if (FoldSame(content.Content(), child)) return;
+    content.Content(child);
+  }
+}
 
 }  // namespace
 
@@ -101,14 +191,25 @@ MainWindow::MainWindow() {
   // so everything it may paint over must already exist.
   developer_ = std::make_unique<urnw::DeveloperPage>(*this);
 
-  // The responsive switch. SizeChanged on the window's own content root fires
-  // on the first layout pass, so this also seeds the initial state; the handler
-  // is cheap on the resizes that do not cross the breakpoint.
+  // The responsive switch. TWO SizeChanged hooks, one handler, because
+  // ApplyBreakpoint measures the nav CONTENT width (see its head):
+  //   * the window's own content root fires on every window resize - and on
+  //     the first layout pass, which is what seeds the initial state;
+  //   * HomeContentRoot, the element actually measured, fires when the nav
+  //     re-docks WITHOUT the window changing (PaneDisplayMode=Auto swaps its
+  //     docked pane between the 48 compact rail and the 220 expanded pane
+  //     across its own thresholds) and when the login/home root swap takes
+  //     the content host between collapsed and full width. A window hook
+  //     alone would leave the layout one state stale across both.
+  // The handler is cheap on the events that do not cross a gate.
   if (auto root = Content().try_as<FrameworkElement>()) {
     root.SizeChanged([weak = get_weak()](auto const&, auto const&) {
       if (auto self = weak.get()) self->ApplyBreakpoint();
     });
   }
+  HomeContentRoot().SizeChanged([weak = get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->ApplyBreakpoint();
+  });
 
   // R4: the Network destination's copy of the locations/peers feeds. A SECOND
   // subscriber, not a replacement - ConnectPage still owns the handlers that
@@ -156,10 +257,42 @@ MainWindow::MainWindow() {
   accountUsageBar_ = std::make_unique<urnw::UsageBar>(AccountUsageBarHost(),
                                                       AccountUsageLegend());
 
+  // Banner action buttons (balance warning, service setup, app update): the
+  // stock ButtonBackground* theme brushes are translucent greys
+  // (ControlFillColor*), which over a severity fill read as washed-out
+  // grey-on-amber mud. Give them a solid reading instead - the page-
+  // background fill with off-white text and the pane hairline, per state -
+  // through each button's OWN theme resources. The default Button template
+  // resolves ButtonBackground* against the element's Resources first, which
+  // is the same mechanism ConnectHero uses in MainWindow.xaml; the shared
+  // primary/secondary styles are untouched.
+  const auto solidBannerAction = [](Button const& b) {
+    namespace media = winrt::Microsoft::UI::Xaml::Media;
+    auto res = b.Resources();
+    const auto put = [&res](winrt::hstring const& key,
+                            winrt::Windows::UI::Color const& color) {
+      res.Insert(winrt::box_value(key), media::SolidColorBrush(color));
+    };
+    using namespace urnw::colors;
+    put(L"ButtonBackground", kBackground);
+    put(L"ButtonBackgroundPointerOver", kCardHover);
+    put(L"ButtonBackgroundPressed", kBackground);
+    put(L"ButtonBackgroundDisabled", WithAlpha(kBackground, 0x66));
+    put(L"ButtonForeground", kText);
+    put(L"ButtonForegroundPointerOver", kText);
+    put(L"ButtonForegroundPressed", kText);
+    put(L"ButtonForegroundDisabled", WithAlpha(kText, 0x66));
+    put(L"ButtonBorderBrush", kBorder);
+    put(L"ButtonBorderBrushPointerOver", kBorder);
+    put(L"ButtonBorderBrushPressed", kBorder);
+    put(L"ButtonBorderBrushDisabled", kBorder);
+  };
+
   // the insufficient-balance warning's action opens the upgrade flow (a guest
   // first creates a full account, like the plan card's affordance)
   {
     Button getPro;
+    solidBannerAction(getPro);
     getPro.Content(LocBox("get_pro"));  // the same label as every other app
     // found by the insufficient-balance acceptance driver beside the banner's id
     Automation::AutomationProperties::SetAutomationId(getPro,
@@ -209,6 +342,7 @@ MainWindow::MainWindow() {
   // ConnectPage::ApplyServiceSetup, the same way the balance bar's title is.
   {
     Button setup;
+    solidBannerAction(setup);
     setup.Click([weak = get_weak()](auto const&, auto const&) {
       if (auto self = weak.get()) self->BeginServiceSetupAction();
     });
@@ -222,6 +356,7 @@ MainWindow::MainWindow() {
   // now with no replay would leave the banner blank until the 6-hour tick.
   {
     Button update;
+    solidBannerAction(update);
     update.Click([weak = get_weak()](auto const&, auto const&) {
       if (auto self = weak.get()) self->OnUpdateBannerAction();
     });
@@ -259,13 +394,20 @@ MainWindow::MainWindow() {
   // The banner heals itself: coming back to the window (from the UAC prompt,
   // from an elevated terminal where the service was just installed by hand,
   // from anywhere) re-reads the SCM instead of trusting a stale classification.
+  // The same re-activation reading heals the sign-in panel: an SSO / wallet
+  // browser flow that never answered (the user closed the browser) left its
+  // buttons disabled forever, so the login page re-enables them here - the
+  // armed attempt is left alone, a late completion still lands.
   Activated([weak = get_weak()](auto const&,
                                 Microsoft::UI::Xaml::WindowActivatedEventArgs const& args) {
     if (args.WindowActivationState() ==
         Microsoft::UI::Xaml::WindowActivationState::Deactivated) {
       return;
     }
-    if (auto self = weak.get()) self->RefreshServiceSetup();
+    if (auto self = weak.get()) {
+      self->RefreshServiceSetup();
+      self->login_->OnWindowReactivated();
+    }
   });
   RefreshServiceSetup();  // the first reading; the ctor must not block on SCM
 
@@ -457,13 +599,69 @@ void MainWindow::ApplyBreakpoint() {
   // compared against physical pixels would fire in the wrong place on every
   // machine with a different scale.
   const double width = root.ActualWidth();
-  if (width <= 0) return;
-  const bool wide = urnw::kit::kWideBreakpointDip <= width;
-  const bool ultra = urnw::kit::kUltraWideDip <= width;
-  if (breakpointApplied_ && wide == wideLayout_ && ultra == ultraLayout_) return;
+  // ...and the width that decides how many PANES fit is the nav CONTENT's, not
+  // the window's. HomeNav is PaneDisplayMode=Auto (MainWindow.xaml): it docks
+  // its OpenPaneLength (220) at the 1008epx expanded threshold and the 48
+  // compact rail at 641, so a window GROWING across 1008 shrinks its content
+  // by 172dip. A pane gate read on the window opened pane C with the same
+  // pixel the nav took - at 1008 the activity star pane dropped from ~245dip
+  // to ~76dip precisely as the window grew (the documented inversion).
+  // HomeContentRoot is the nav's content host, so its width is the window
+  // minus whatever the nav currently docks, in every nav mode, and a gate
+  // read on it can never open a pane with the nav's pixel.
+  const double content = HomeContentRoot().ActualWidth();
+  // Zero is the login root (HomeNav collapsed): there is no pane layout to
+  // decide. Home's first show re-fires through HomeContentRoot's own
+  // SizeChanged hook (see the ctor).
+  if (content <= 0) return;
+  // Three destinations keep reading the WINDOW below (Earnings, Account,
+  // Settings): their gates sit far past the 1008 dock (900/1500/1900), so the
+  // nav's re-dock only narrows their panes and never folds one - no inversion
+  // to fix, and their fold behavior stays byte-identical to what it was.
+  const bool wide = urnw::kit::kWideBreakpointDip <= content;
+  const bool ultra = urnw::kit::kUltraWideDip <= content;
+  // Home's third pane has its own gate (kConnectThreePaneContentDip), wider
+  // than `wide`, so the early-out has to test it as a third applied state:
+  // a drag across it with `wide` and `ultra` both unchanged must still re-run.
+  const bool connectThree = kConnectThreePaneContentDip <= content;
+  const bool twoPanes = 640.0 <= width;
+  const bool stripTraffic = kStatusStripTrafficFloorDip <= width;
+  const bool earningsThree = 1500.0 <= width;
+  const bool earningsTwo = 900.0 <= width;
+  const bool accountFour = 1900.0 <= width;
+  const bool accountThree = 1500.0 <= width;
+  const bool accountTwo = 900.0 <= width;
+  const bool settingsThree = 1400.0 <= width;
+  const bool settingsTwo = 900.0 <= width;
+  // EVERY gate is computed above the early-out and EVERY gate is one of the
+  // applied states it compares, because a gate the early-out does not compare
+  // is a gate a resize can cross without re-running the layout - the panes
+  // keep whatever an older size decided. That shipped: only the three content
+  // gates were tracked, so a drag that crossed only 640, 900, 1500 or 1900
+  // returned early - Earnings shrunk 1300 -> 640 with both panes crushed side
+  // by side, and Home kept two crushed panes at 512dip with its 640 fold never
+  // applied. Each gate is one cheap compare (SizeChanged fires on every pixel
+  // of a drag); the stale panes were the expensive part.
+  if (breakpointApplied_ && wide == wideLayout_ && ultra == ultraLayout_ &&
+      connectThree == connectThreeLayout_ && twoPanes == twoPanesLayout_ &&
+      stripTraffic == stripTrafficLayout_ &&
+      earningsThree == earningsThreeLayout_ && earningsTwo == earningsTwoLayout_ &&
+      accountFour == accountFourLayout_ && accountThree == accountThreeLayout_ &&
+      accountTwo == accountTwoLayout_ && settingsThree == settingsThreeLayout_ &&
+      settingsTwo == settingsTwoLayout_) return;
   breakpointApplied_ = true;
   wideLayout_ = wide;
   ultraLayout_ = ultra;
+  connectThreeLayout_ = connectThree;
+  twoPanesLayout_ = twoPanes;
+  stripTrafficLayout_ = stripTraffic;
+  earningsThreeLayout_ = earningsThree;
+  earningsTwoLayout_ = earningsTwo;
+  accountFourLayout_ = accountFour;
+  accountThreeLayout_ = accountThree;
+  accountTwoLayout_ = accountTwo;
+  settingsThreeLayout_ = settingsThree;
+  settingsTwoLayout_ = settingsTwo;
 
   // ---- Home: HOW MANY PANES FIT ---------------------------------------------
   //
@@ -473,20 +671,39 @@ void MainWindow::ApplyBreakpoint() {
   // window. All that is left to decide is how many of them there is room FOR,
   // which is a width question and nothing else.
   //
-  //   >= 1000dip   three panes   connect(330) | activity(*) | statistics(380)
-  //   <  1000dip   two panes     connect(330) | activity(*)
+  //   >= 1042dip   three panes   connect(330) | activity(*) | statistics(380)
+  //   <  1042dip   two panes     connect(330) | activity(*)
+  //
+  // 1042 ON THE CONTENT, and wider than the app-wide 1000: pane C opens only
+  // when the activity star pane keeps a rail's width of its own - 330 (A) + 1
+  // + 330 (activity's floor) + 1 + 380 (C), the arithmetic
+  // kConnectThreePaneContentDip carries. The old gate was the app-wide
+  // breakpoint read on the WINDOW: with the expanded nav docked that is a
+  // 780dip content, pane C opened into it, and the activity "table" read
+  // ~76dip - opened by the same pixel that grew the window.
   //
   // The statistics pane is the one that folds because it is the inspector: its
   // charts, session figures, contracts, split rules and DNS are all reachable
-  // from the sheets its group headers open, so nothing becomes unreachable at
-  // flyout width - it just stops being on screen at the same time.
+  // from the sheets its group headers open, so it just stops being on screen at
+  // the same time. But those group headers fold WITH the pane (and the Advanced
+  // inspector's Reason-row link, the transport bar and the provider-locations
+  // line fold with theirs), which is exactly the "content with no second door"
+  // the fold rule bars - so the sheets' doors are built twice, Support-contact
+  // style: once in pane C and once in ConnectPage's fold-gated section at the
+  // foot of pane A, shown exactly while pane C is folded (ApplyPaneCFolded,
+  // pushed just below). The transport settings door rides with them because it
+  // covers the 640dip fold too: the transport bar lives in pane B.
   //
-  // Below ~640dip the connect pane would leave the activity pane too narrow to
-  // be a table, so it takes the whole window and activity folds too.
-  const bool twoPanes = 640.0 <= width;
-  SetWidth(ConnectPaneCColumn(), wide ? 380 : 0);
-  ConnectPaneCRule().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
-  ConnectPaneC().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+  // Below ~640dip OF WINDOW the connect pane would leave the activity pane too
+  // narrow to be a table, so it takes the whole window and activity folds too.
+  // This gate stays on the window on purpose: it is the flyout question, and
+  // it cannot invert - the compact rail docking at 641 narrows the activity
+  // pane by 48 but never folds it, and the expanded dock at 1008 happens
+  // 368dip past the gate. The gate itself is computed above the early-out,
+  // with the rest - see the comment there.
+  SetWidth(ConnectPaneCColumn(), connectThree ? 380 : 0);
+  ConnectPaneCRule().Visibility(connectThree ? Visibility::Visible : Visibility::Collapsed);
+  ConnectPaneC().Visibility(connectThree ? Visibility::Visible : Visibility::Collapsed);
   // the connect pane is a fixed rail beside a table, EXCEPT when it is the only
   // pane left, where it takes the star and the activity pane closes
   if (twoPanes) {
@@ -500,6 +717,11 @@ void MainWindow::ApplyBreakpoint() {
     ConnectPaneB().Visibility(Visibility::Collapsed);
     ConnectPaneBRule().Visibility(Visibility::Collapsed);
   }
+  // The fold rule's second doors: the page mirrors the gate this function just
+  // applied (the same push shape as ApplyAdvancedMode - the window computes the
+  // one gate, the page renders it) and shows pane A's fold-gated section exactly
+  // while pane C is folded. See the note above the gate arithmetic.
+  connect_->ApplyPaneCFolded(!connectThree);
 
   // ---- Network: the list, and what one row IS ------------------------------
   // The inverse of Home's rail: here the LIST takes the star and the detail is
@@ -511,6 +733,12 @@ void MainWindow::ApplyBreakpoint() {
   // Below the breakpoint the detail folds and the list takes the window. Nothing
   // becomes unreachable: selecting a row still connects, which is the only thing
   // the detail pane's content is about.
+  //
+  // This gate had Home's 1008 inversion in the same shape: read on the window,
+  // the nav's expanded dock and the detail pane's opening landed on the same
+  // pixel, and the list dropped 959 -> 387dip as the window GREW. Read on the
+  // content the two can no longer coincide, and at the gate the list keeps
+  // 1000 - 400 - 1 = 599dip.
   SetWidth(NetworkPaneBColumn(), wide ? 400 : 0);
   NetworkPaneBRule().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
   NetworkPaneB().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
@@ -527,14 +755,20 @@ void MainWindow::ApplyBreakpoint() {
   // The points rail folds first and the LEDGER is what survives to the smallest
   // width, because a payouts table is the thing a user opens this destination
   // to read; points and reliability explain a number they can already see.
-  const bool earningsThree = 1500.0 <= width;
-  const bool earningsTwo = 900.0 <= width;
+  // The gates are computed above the early-out, with the rest.
   SetWidth(WalletPaneCColumn(), earningsThree ? 380 : 0);
   WalletPaneCRule().Visibility(earningsThree ? Visibility::Visible : Visibility::Collapsed);
   WalletPaneC().Visibility(earningsThree ? Visibility::Visible : Visibility::Collapsed);
   SetWidth(WalletPaneAColumn(), earningsTwo ? 360 : 0);
   WalletPaneBRule().Visibility(earningsTwo ? Visibility::Visible : Visibility::Collapsed);
   WalletPaneA().Visibility(earningsTwo ? Visibility::Visible : Visibility::Collapsed);
+  // The fold rule's doors, in the same applied-state pass as the gates (the
+  // fold-doors design note's placement rule: moved on SizeChanged, the rows
+  // could be stranded by the early-out above). The overflow is pane A's command
+  // door exactly while the rail is folded; the fold hosts hold pane C's rows.
+  EarningsActionsButton().Visibility(earningsTwo ? Visibility::Collapsed
+                                                 : Visibility::Visible);
+  ApplyWalletFold(earningsThree, earningsTwo);
 
   // ---- Account: plan, identity, codes ---------------------------------------
   // Home's shape, applied to an account: a fixed rail of figures, a wide middle
@@ -563,9 +797,7 @@ void MainWindow::ApplyBreakpoint() {
   // decides between it and a pane that is entirely controls - the extender dns
   // name, the gossip url, the manual host list, share and import. So codes need
   // a fourth column's worth of room; extenders keep the third.
-  const bool accountFour = 1900.0 <= width;
-  const bool accountThree = 1500.0 <= width;
-  const bool accountTwo = 900.0 <= width;
+  // The gates are computed above the early-out, with the rest.
   SetWidth(AccountPaneCColumn(), accountFour ? 380 : 0);
   AccountPaneCRule().Visibility(accountFour ? Visibility::Visible : Visibility::Collapsed);
   AccountPaneC().Visibility(accountFour ? Visibility::Visible : Visibility::Collapsed);
@@ -575,6 +807,10 @@ void MainWindow::ApplyBreakpoint() {
   SetWidth(AccountPaneAColumn(), accountTwo ? 360 : 0);
   AccountPaneBRule().Visibility(accountTwo ? Visibility::Visible : Visibility::Collapsed);
   AccountPaneA().Visibility(accountTwo ? Visibility::Visible : Visibility::Collapsed);
+  // The fold rule's doors, in the same applied-state pass as the gates: the
+  // plan pane's action rows and the whole extender section are reparented into
+  // pane B's fold hosts (pane B survives to the smallest width).
+  ApplyAccountFold(accountThree, accountTwo);
 
   // (Leaderboard's branch is gone with its destination: it is a tab inside
   // Earnings' ledger pane now, and shares that pane's widths.)
@@ -582,59 +818,86 @@ void MainWindow::ApplyBreakpoint() {
   // ---- Settings: three constrained columns ---------------------------------
   // Windows guidance says settings is a single column of rows at a constrained
   // width; the pane model says full bleed with no cap. Three equal star columns
-  // satisfy both: at the 2062dip window this app is judged in each pane is
-  // ~660dip, which IS the constrained settings measure, and the three together
-  // reach both edges with no centring grid.
+  // split the difference.
   //
   //   >= 1400dip   three panes   general | device | about
-  //   >=  900dip   two panes     general | device      (About folds; version and
-  //                                                     the community links are
-  //                                                     the least operational)
+  //   >=  900dip   two panes     general | device
   //   <   900dip   one pane      general
-  const bool settingsThree = 1400.0 <= width;
-  const bool settingsTwo = 900.0 <= width;
+  //
+  // About folds first, and the fold rule bars a foldable pane from owning
+  // content with no second door - the version rows were exactly such content,
+  // and About was once deleted over it. The rule now has its answer in
+  // SettingsPage: the version rows and the Licenses row build fold copies at
+  // the foot of General, and below 900 the Device pane's Advanced-mode toggle
+  // does the same. The two gates below are computed above the early-out, with
+  // the rest - settingsThree in particular must stay a tracked applied state,
+  // or the About pane's fold is the next stale-layout bug.
   SetStar(SettingsPaneCColumn(), settingsThree ? 1 : 0);
   SettingsPaneCRule().Visibility(settingsThree ? Visibility::Visible : Visibility::Collapsed);
   SettingsPaneC().Visibility(settingsThree ? Visibility::Visible : Visibility::Collapsed);
   SetStar(SettingsPaneBColumn(), settingsTwo ? 1 : 0);
   SettingsPaneBRule().Visibility(settingsTwo ? Visibility::Visible : Visibility::Collapsed);
   SettingsPaneB().Visibility(settingsTwo ? Visibility::Visible : Visibility::Collapsed);
-  // The Licenses row lives in About, and About folds: below three panes the
-  // row moves to the foot of General, so the attributions some of those
-  // licenses REQUIRE to be shown stay reachable at every width.
+  // The page mirrors the gates just applied (the same push shape as Home's
+  // ApplyPaneCFolded above): pane A's fold-gated copies show exactly while the
+  // pane each copies is folded - the Advanced toggle with pane B, the version
+  // rows and the Licenses row with About.
+  settings_->ApplyPaneBFolded(!settingsTwo);
   settings_->ApplyAboutPaneVisible(settingsThree);
   // The Licenses page, shown in Settings' place, splits list | detail at the
   // same width Settings keeps two panes.
   licenses_->ApplyBreakpoint(settingsTwo);
 
   // ---- Support: the form, and the way to reach a human beside it -----------
-  // 1080 and an even split. This destination has one form and no data, so the
-  // cap is the narrowest of the wide readings: a feedback box 540dip across is
-  // already generous, and stretching it further would be the "one column in a
-  // 2000px window" complaint in a different shape.
-  SupportCapColumn().MaxWidth(wide ? 1080 : 560);
-  if (wide) {
-    SetStar(SupportSideColumn(), 1);
-  } else {
-    SetWidth(SupportSideColumn(), 0);
-  }
-  Place(SupportSideStack(), wide ? PanePlacement{0, 1, 1, Thickness{20, 0, 0, 24}}
-                                 : PanePlacement{1, 0, 1, Thickness{0, 16, 0, 24}});
+  //
+  //   >= 1000dip   two panes   feedback(*) | support(360)
+  //   <  1000dip   one pane    feedback(*)
+  //
+  // (1000dip OF NAV CONTENT, like Network above - the fold read on the window
+  // had the same 1008 inversion, and at the gate the form keeps 1000 - 360 - 1
+  // = 639dip.)
+  //
+  // Pane B is the fixed column for the same reason Network's detail pane is:
+  // it is a sentence and a link row, and prose gains nothing past a few
+  // hundred dips, while the form it sits beside is the thing that should take
+  // whatever width the window has.
+  //
+  // The fold is NOT reachability-losing: pane B's contents are built twice
+  // (SettingsPage::BuildSupportContactSection), once into the pane and once
+  // into SupportContactInline under the Send button, and below the breakpoint
+  // the inline copy shows instead. On a destination named Support the mailto
+  // is the one link with no second door anywhere else in the app, so it is
+  // the one pane whose content may not fold away.
+  SetWidth(SupportPaneBColumn(), wide ? 360 : 0);
+  SupportPaneBRule().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+  SupportPaneB().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+  SupportContactInline().Visibility(wide ? Visibility::Collapsed : Visibility::Visible);
 
-  // ---- Developer: the tables full width, the rest in two columns -----------
-  // Portmaster's reading. Exits carries seven columns and Destinations three,
-  // and both were living inside a 1000dip left-aligned column; they now take
-  // the whole composition. What the session HAS MEASURED and what it has been
-  // TOLD TO DO go side by side under them, which is the pairing you actually
-  // read them in - change a threshold on the right, watch a count on the left.
-  DeveloperCapColumn().MaxWidth(wide ? 1800 : 1000);
-  if (wide) {
-    SetStar(DeveloperSideColumn(), 1);
-  } else {
-    SetWidth(DeveloperSideColumn(), 0);
-  }
-  Place(DeveloperSideStack(), wide ? PanePlacement{2, 1, 1, Thickness{20, 16, 0, 24}}
-                                   : PanePlacement{3, 0, 1, Thickness{0, 16, 0, 24}});
+  // ---- Developer: the session beside what it has been told to do ------------
+  //
+  //   >= 1000dip   two panes   session(*) | overrides(400)
+  //   <  1000dip   one pane    session(*)
+  //
+  // (1000dip OF NAV CONTENT, like Network and Support above - a fold read on
+  // the window has the same 1008 inversion, and at the gate pane A keeps
+  // 1000 - 400 - 1 = 599dip.)
+  //
+  // Pane B is the fixed column because its override rows carry the widest
+  // trailing in the app - a 72px effective readout beside a 120px NumberBox -
+  // so it takes Network's 400 rather than Support's 360, and the session half
+  // (the tables) is the thing that should take whatever width is left.
+  //
+  // The fold closes the overrides with no second door. The fold rule's usual
+  // answer (Support's inline copy) would build the 34-row settings surface
+  // twice, and its rows' indexed toggle/number wiring (DeveloperPage's
+  // boolRows_/numRows_) is single-instance. Settings' pane B folds the same
+  // way with the community links in it (its version rows and the Advanced
+  // toggle kept second doors in pane A when the fold rule came for them):
+  // below the gate the destination narrows to what the session shows, which
+  // is the half a freeze diagnosis is actually run from.
+  SetWidth(DeveloperPaneBColumn(), wide ? 400 : 0);
+  DeveloperPaneBRule().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
+  DeveloperPaneB().Visibility(wide ? Visibility::Visible : Visibility::Collapsed);
 
   // ---- the status strip ----------------------------------------------------
   // Captions off below the breakpoint. The app's minimum window is 400dip
@@ -652,6 +915,14 @@ void MainWindow::ApplyBreakpoint() {
   // shortened; the same values are on the Developer destination, which is
   // revealed in this mode anyway. ApplyStatusStrip owns that (it is also the
   // signed-out gate) and is called from here so a resize applies it.
+  //
+  // The strip FLOOR is the same rule one field earlier: below
+  // kStatusStripTrafficFloorDip even the four caption-less fields no longer
+  // fit, and the traffic field was the one cut in half (verified live at a
+  // 400dip window). ApplyStatusStrip drops it and its separator there too,
+  // through statusTrafficParts_, the same handle-and-gate shape as the
+  // advanced four. The floor constant carries the measured arithmetic, and
+  // where the reading lives while it is off the strip.
   for (auto const* field : {&statusNetwork_, &statusProvider_, &statusTraffic_,
                             &statusMode_, &statusRoutes_, &statusRpcPort_,
                             &statusRaw_}) {
@@ -661,9 +932,113 @@ void MainWindow::ApplyBreakpoint() {
   }
   ApplyStatusStrip();
 
-  urnw::LogInfo("layout: {} at {:.0f}dip",
-                ultra ? "ultra (Home in three columns)" : wide ? "wide" : "narrow",
-                width);
+  // Both widths go in the log: the gates read the content, and the next
+  // inversion-shaped bug will need the window beside it to see the nav's dock.
+  urnw::LogInfo("layout: {} at {:.0f}dip of nav content (window {:.0f}dip){}",
+                ultra ? "ultra" : wide ? "wide" : "narrow", content, width,
+                connectThree ? ", Home in three panes" : "");
+}
+
+// ---- the fold doors (docs/superpowers/2026-09-29-fold-doors-design.md) -------
+
+// Where every reparented row lives at rest, captured on the first breakpoint
+// application. STRUCTURAL, not Parent()'s: measured live, Parent() answers
+// NULL for every account element at ctor time (the account view is not yet
+// attached when the first ApplyBreakpoint runs, and the wallet view is) - the
+// pre-R3 Reparent's comment trail warned about exactly this. The homes are the
+// named pane containers; the index within each comes from the identity search,
+// which is what FoldBack's ascending-order restore relies on.
+void MainWindow::RecordFoldHomes() {
+  if (foldHomesRecorded_) return;
+  foldHomesRecorded_ = true;
+  auto record = [](FrameworkElement const& element, Panel const& panel, FoldHome& home) {
+    home.parent = panel;
+    if (uint32_t i = FoldIndexOf(panel, element); i != static_cast<uint32_t>(-1)) {
+      home.index = i;
+    }
+  };
+  record(PointsNetworkHost(), WalletPaneCStack(), pointsNetworkHome_);
+  record(DataRankingHost(), WalletPaneCStack(), dataRankingHome_);
+  record(WalletProviderTransportBarRow(), WalletPaneCStack(), walletTransportHome_);
+  record(WalletPaneCFold(), WalletPaneAStack(), walletPaneCFoldHome_);
+  record(AccountUpgradeButton(), AccountPaneAStack(), accountUpgradeHome_);
+  record(RedeemRowButton(), AccountPaneAStack(), redeemRowHome_);
+  record(AccountPlanExtraHost(), AccountPaneAStack(), accountPlanExtraHome_);
+  // the extender host is pane D's scroller Content directly (a ContentControl
+  // home; the index is unused on that shape)
+  accountExtenderHome_.parent = AccountPaneDScroll();
+}
+
+// EARNINGS. Below 1500 pane C folds, and its state-writing rows have no second
+// door: the points network block and the own-rank + public-toggle block (both
+// direct API writes with echo guards, not sheet doors) and the provider
+// transport row (its sheet's only door). They are
+// REPARENTED into WalletPaneCFold at the foot of pane A's scroll - and below
+// 900 pane A folds too, so the host itself moves into the ledger pane's foot
+// strip (the note's option i: the rows ride with the host, wiring untouched).
+// The visibility writers (ShowPointsBoard, ApplyStatsSections) hold element
+// references, so they keep working across the move.
+void MainWindow::ApplyWalletFold(bool earningsThree, bool earningsTwo) {
+  RecordFoldHomes();
+  auto fold = WalletPaneCFold();
+  if (earningsThree) {
+    // ascending recorded-index order within pane C's stack - see FoldBack
+    FoldBack(PointsNetworkHost(), fold, pointsNetworkHome_.parent, pointsNetworkHome_.index);
+    FoldBack(DataRankingHost(), fold, dataRankingHome_.parent, dataRankingHome_.index);
+    FoldBack(WalletProviderTransportBarRow(), fold, walletTransportHome_.parent,
+             walletTransportHome_.index);
+    fold.Visibility(Visibility::Collapsed);
+  } else {
+    FoldIn(PointsNetworkHost(), fold, pointsNetworkHome_.parent);
+    FoldIn(DataRankingHost(), fold, dataRankingHome_.parent);
+    FoldIn(WalletProviderTransportBarRow(), fold, walletTransportHome_.parent);
+    fold.Visibility(Visibility::Visible);
+  }
+  if (earningsTwo) {
+    FoldBack(fold, WalletPaneBFootHost(), walletPaneCFoldHome_.parent,
+             walletPaneCFoldHome_.index);
+    WalletPaneBFoot().Visibility(Visibility::Collapsed);
+  } else {
+    FoldIn(fold, WalletPaneBFootHost(), walletPaneCFoldHome_.parent);
+    WalletPaneBFoot().Visibility(Visibility::Visible);
+  }
+}
+
+// ACCOUNT. Below 900 the plan pane folds: its figures are readings with second
+// doors (the status strip and the tray), but its three action rows - upgrade,
+// redeem, manage subscription - are the pane's only commands, so they are
+// REPARENTED into AccountPlanFoldHost. Below 1500 the extender pane folds, and
+// its share/import sheets' only door plus the dns/gossip/hosts fields live in
+// one named host, so the WHOLE AccountExtenderHost moves into
+// AccountExtenderFoldHost (pane B survives to the smallest width, so nothing
+// further is needed below 900). The extender's build-once guard, save handlers
+// and re-localization registry all hold element references, not tree paths.
+void MainWindow::ApplyAccountFold(bool accountThree, bool accountTwo) {
+  RecordFoldHomes();
+  auto planFold = AccountPlanFoldHost();
+  if (accountTwo) {
+    // ascending recorded-index order within pane A's stack - see FoldBack
+    FoldBack(AccountUpgradeButton(), planFold, accountUpgradeHome_.parent,
+             accountUpgradeHome_.index);
+    FoldBack(RedeemRowButton(), planFold, redeemRowHome_.parent, redeemRowHome_.index);
+    FoldBack(AccountPlanExtraHost(), planFold, accountPlanExtraHome_.parent,
+             accountPlanExtraHome_.index);
+    planFold.Visibility(Visibility::Collapsed);
+  } else {
+    FoldIn(AccountUpgradeButton(), planFold, accountUpgradeHome_.parent);
+    FoldIn(RedeemRowButton(), planFold, redeemRowHome_.parent);
+    FoldIn(AccountPlanExtraHost(), planFold, accountPlanExtraHome_.parent);
+    planFold.Visibility(Visibility::Visible);
+  }
+  auto extenderFold = AccountExtenderFoldHost();
+  if (accountThree) {
+    FoldBack(AccountExtenderHost(), extenderFold, accountExtenderHome_.parent,
+             accountExtenderHome_.index);
+    extenderFold.Visibility(Visibility::Collapsed);
+  } else {
+    FoldIn(AccountExtenderHost(), extenderFold, accountExtenderHome_.parent);
+    extenderFold.Visibility(Visibility::Visible);
+  }
 }
 
 // ---- the persistent status strip (D4) --------------------------------------
@@ -690,6 +1065,7 @@ void MainWindow::BuildStatusStrip() {
   fields.Children().Clear();
   statusSessionParts_.clear();
   statusAdvancedParts_.clear();
+  statusTrafficParts_.clear();
 
   // The strip as a whole is a landmark: one accessible name over the row, so a
   // screen reader announces "URnetwork Status" and then the fields, instead of
@@ -715,6 +1091,12 @@ void MainWindow::BuildStatusStrip() {
   section(statusNetwork_, "network");
   section(statusProvider_, "selected_provider");
   section(statusTraffic_, "data");
+  // ...and the traffic pair on its own list too, so the strip floor
+  // (kStatusStripTrafficFloorDip) can drop exactly those the way the breakpoint
+  // drops the advanced four. The last two parts the lambda appended are that
+  // pair; they stay in statusSessionParts_ as well (a sign-out hides them with
+  // the rest), this is the narrower handle for the width rule.
+  statusTrafficParts_.assign(statusSessionParts_.end() - 2, statusSessionParts_.end());
 
   // ---- ADVANCED DENSITY (D5) ----------------------------------------------
   // The promise this strip was built to keep: four more facts cost four more
@@ -753,11 +1135,43 @@ void MainWindow::BuildStatusStrip() {
     advSection(statusRoutes_, Adv("adv_routes", L"Routes"));
     advSection(statusRpcPort_, Adv("adv_rpc", L"RPC"));
     advSection(statusRaw_, Adv("adv_raw_status", L"Raw status"));
+
+    // ---- the mode tag ------------------------------------------------------
+    // A standing "Advanced" tag closing the strip while the mode is on: the
+    // mode changes what half the surfaces in the app mean, so the chrome
+    // should say which reading it is in. Caption-less, like the state field -
+    // the word IS the fact - and in the action blue (kToggleAccent #638BFC),
+    // NOT the lime kAccent: lime is the earnings/premium colour and a mode
+    // tag is chrome, and blue is what chrome actions already wear here (the
+    // primary button, the toggle on-state, the focused field).
+    //
+    // In BOTH part lists, for the same two reasons as the four above:
+    // statusSessionParts_ so a sign-out hides it (a session-less strip
+    // describes no session and no mode), statusAdvancedParts_ so the
+    // breakpoint drops it with the four below the wide gate - the marker
+    // goes before the strip overflows, and the mode is still named on the
+    // Settings toggle that owns it. "advanced" is a shipped store key, so
+    // the word itself comes through Loc rather than an Adv() fallback.
+    {
+      auto rule = urnw::kit::MakeStatusSeparator();
+      fields.Children().Append(rule);
+      statusAdvancedPill_ = urnw::kit::MakeStatusField(
+          hstring{}, /*withDot=*/false, Adv("adv_advanced_mode", L"Advanced mode"));
+      urnw::kit::SetStatusFieldValue(statusAdvancedPill_, Loc("advanced"));
+      statusAdvancedPill_.value.Foreground(
+          urnw::colors::MakeBrush(urnw::colors::kToggleAccent));
+      fields.Children().Append(statusAdvancedPill_.root);
+      statusSessionParts_.push_back(rule);
+      statusSessionParts_.push_back(statusAdvancedPill_.root);
+      statusAdvancedParts_.push_back(rule);
+      statusAdvancedParts_.push_back(statusAdvancedPill_.root);
+    }
   } else {
     statusMode_ = {};
     statusRoutes_ = {};
     statusRpcPort_ = {};
     statusRaw_ = {};
+    statusAdvancedPill_ = {};
   }
 
   ApplyStatusStrip();
@@ -821,6 +1235,15 @@ void MainWindow::ApplyStatusStrip() {
   // worse than one that admits it has no room.
   for (auto const& part : statusAdvancedParts_) {
     part.Visibility(wideLayout_ ? Visibility::Visible : Visibility::Collapsed);
+  }
+  // ...and the traffic pair below the strip floor (kStatusStripTrafficFloorDip;
+  // the constant's comment carries the measured arithmetic). Three fields fit
+  // the 400dip minimum window where four were verified cut in half, and the
+  // reading keeps its page-side doors: the activity pane's header throughput
+  // figure (from the 640dip two-pane gate up) and the statistics pane's
+  // Remote/Local session rows.
+  for (auto const& part : statusTrafficParts_) {
+    part.Visibility(stripTrafficLayout_ ? Visibility::Visible : Visibility::Collapsed);
   }
 
   urnw::kit::SetStatusFieldValue(statusNetwork_,
@@ -913,6 +1336,11 @@ void MainWindow::ApplyStatusStrip() {
 // ApplyAdvancedMode() the way it already has an ApplyStrings().
 
 void MainWindow::ApplyAdvancedMode(bool on) {
+  // Remembered for the fade below: the fade plays only on an actual FLIP. A
+  // replay of the standing value (the ctor's bind-then-replay) re-reads every
+  // surface exactly as a flip does, but fading surfaces that were never shown
+  // in the other mode would be motion for its own sake.
+  const bool wasAdvanced = advancedMode_;
   advancedMode_ = on;
 
   // THE DEVELOPER DESTINATION FOLDS. A Normal user whose VPN "just works" has no
@@ -951,14 +1379,59 @@ void MainWindow::ApplyAdvancedMode(bool on) {
   // The strip gains or loses four fields. Rebuilt rather than toggled, because
   // the separators belong to the fields and hiding a field without its rule
   // leaves a hairline against nothing.
-  BuildStatusStrip();
+  //
+  // On the way OFF, what is on screen fades out FIRST and the rebuild + the
+  // connect page's re-read are deferred to the fade's Completed: a surface
+  // already removed cannot fade (the FadeDestinationOut lesson, one function
+  // down). CompleteAdvancedModeOff runs the deferred half and guards the flip
+  // back ON inside the 120ms. With animations off - or nothing actually on
+  // screen to fade (a narrow window drops the strip's advanced fields, and a
+  // hidden Connect destination hides the inspector) - the swap stays instant,
+  // the same rule the destination crossfade keeps.
+  std::vector<UIElement> leaving;
+  if (!on && wasAdvanced &&
+      winrt::Windows::UI::ViewManagement::UISettings().AnimationsEnabled()) {
+    if (ConnectView().Visibility() == Visibility::Visible &&
+        ConnectPaneC().Visibility() == Visibility::Visible &&
+        InspectorGroup().Visibility() == Visibility::Visible) {
+      leaving.push_back(InspectorGroup());
+    }
+    for (auto const& part : statusAdvancedParts_) {
+      if (part.Visibility() == Visibility::Visible) leaving.push_back(part);
+    }
+  }
+  if (!leaving.empty()) {
+    FadeAdvancedSurfaces(leaving, false);
+  } else {
+    BuildStatusStrip();
+    connect_->ApplyAdvancedMode(on);
+  }
 
   // The pages. Each re-reads its own surfaces; none of them polls this.
-  connect_->ApplyAdvancedMode(on);
+  // (connect_ ran just above: it owns the inspector, whose collapse is what
+  // the fade-out defers.)
   developer_->ApplyAdvancedMode(on);
   // Settings owns the toggle, so it has to be told as well — otherwise a mode
   // restored from disk leaves the very control that sets it reading Off.
   settings_->ApplyAdvancedMode(on);
+
+  // ...and on the way ON the surfaces the applies just revealed fade IN, one
+  // board over the group. Collected AFTER the applies, because what appeared
+  // is the applies' output (the strip's advanced fields stay collapsed below
+  // the wide gate; the inspector follows pane C and the Connect destination).
+  if (on && !wasAdvanced) {
+    std::vector<UIElement> appearing;
+    if (ConnectView().Visibility() == Visibility::Visible &&
+        ConnectPaneC().Visibility() == Visibility::Visible &&
+        InspectorGroup().Visibility() == Visibility::Visible) {
+      appearing.push_back(InspectorGroup());
+    }
+    for (auto const& part : statusAdvancedParts_) {
+      if (part.Visibility() == Visibility::Visible) appearing.push_back(part);
+    }
+    FadeAdvancedSurfaces(appearing, true);
+  }
+
   // R4 HOOK — Account / Wallet.
   // Those two pages are owned by the concurrent R4 branch, so their
   // ApplyAdvancedMode() is theirs to add and this is where the calls go:
@@ -970,6 +1443,81 @@ void MainWindow::ApplyAdvancedMode(bool on) {
   // carries "Advanced Mode will add id / raw columns here" on the payouts table
   // and the leaderboard rank card, and on the transfer table's id columns.
   // Adding the two calls is the whole integration; nothing else here changes.
+}
+
+// The Advanced-Mode flip's entrance and exit, pointed at a GROUP of surfaces.
+// The inspector group and the strip's advanced fields appear and disappear
+// together when the mode flips, and a hard cut on a toggle the user just
+// flipped read as a glitch next to the destination crossfade. The shape is the
+// crossfade's (FadeDestinationIn / FadeDestinationOut, above): opacity only,
+// which is independently animatable and so costs the compositor rather than
+// the UI thread (the standing rule, ConnectCanvas.h); 180ms 0 -> 1 in, 120ms
+// 1 -> 0 out, both behind a CubicEase EaseOut; gated on
+// UISettings::AnimationsEnabled(); ONE bounded pass - nothing repeats, nothing
+// idles. ONE storyboard for the whole group rather than one per surface, so
+// every surface starts and settles on the same frame.
+//
+// A fade-out's surfaces are still parented and visible when this runs - that
+// is the whole reason ApplyAdvancedMode defers its strip rebuild and the
+// connect page's re-read to the board's Completed (CompleteAdvancedModeOff);
+// removing them at the moment of the flip was the blink-to-black
+// FadeDestinationOut documents.
+void MainWindow::FadeAdvancedSurfaces(
+    std::vector<winrt::Microsoft::UI::Xaml::UIElement> const& surfaces, bool fadeIn) {
+  if (surfaces.empty()) return;
+  if (!winrt::Windows::UI::ViewManagement::UISettings().AnimationsEnabled()) return;
+  namespace anim = winrt::Microsoft::UI::Xaml::Media::Animation;
+  anim::CubicEase ease;
+  ease.EasingMode(anim::EasingMode::EaseOut);
+  anim::Storyboard board;
+  for (auto const& surface : surfaces) {
+    // begun synchronously below, so the first presented frame shows the
+    // from-pose (the AnimateDrawerIn shape)
+    if (fadeIn) surface.Opacity(0);
+    anim::DoubleAnimation fade;
+    fade.From(fadeIn ? 0.0 : 1.0);
+    fade.To(fadeIn ? 1.0 : 0.0);
+    fade.Duration(Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+                               std::chrono::milliseconds(fadeIn ? 180 : 120)),
+                           DurationType::TimeSpan});
+    fade.EasingFunction(ease);
+    anim::Storyboard::SetTarget(fade, surface);
+    anim::Storyboard::SetTargetProperty(fade, L"Opacity");
+    board.Children().Append(fade);
+  }
+  if (!fadeIn) {
+    // Weak refs only, the FadeDestinationOut lifetime rule: a started board is
+    // held by the framework until it completes, so Completed still runs - and
+    // the handler must NOT capture the board itself (board -> handler -> board
+    // would keep both alive forever).
+    std::vector<winrt::weak_ref<winrt::Microsoft::UI::Xaml::UIElement>> weakSurfaces;
+    weakSurfaces.reserve(surfaces.size());
+    for (auto const& surface : surfaces) weakSurfaces.push_back(winrt::make_weak(surface));
+    board.Completed([weakSelf = get_weak(), weakSurfaces = std::move(weakSurfaces)](
+                        winrt::Windows::Foundation::IInspectable const&,
+                        winrt::Windows::Foundation::IInspectable const&) {
+      if (auto const self = weakSelf.get()) self->CompleteAdvancedModeOff();
+      // Clean slate, the FadeDestinationOut rule: a HoldEnd fill would
+      // otherwise leave the exit's 0 as the presented opacity of a surface
+      // that shows again - the inspector is the SAME element the next time
+      // the mode comes on.
+      for (auto const& weak : weakSurfaces) {
+        if (auto const surface = weak.get()) surface.Opacity(1.0);
+      }
+    });
+  }
+  board.Begin();
+}
+
+void MainWindow::CompleteAdvancedModeOff() {
+  // The mode flipped back ON inside the 120ms exit: that flip already rebuilt
+  // the strip and re-read the connect page, so writing the OFF reading over it
+  // now would be the stale write this guard exists for. (ConnectPage's own
+  // ApplyAdvancedMode early-outs on an unchanged mode, so in that case the
+  // page never rendered Normal at all.)
+  if (advancedMode_) return;
+  BuildStatusStrip();
+  connect_->ApplyAdvancedMode(false);
 }
 
 void MainWindow::SetAdvancedMode(bool on) {
@@ -1116,6 +1664,88 @@ void MainWindow::EnterPreviewUi(std::string const& destination) {
 
 // ---- navigation ----------------------------------------------------------
 
+void MainWindow::FadeDestinationIn(winrt::Microsoft::UI::Xaml::FrameworkElement const& view) {
+  if (!view) return;
+  if (!winrt::Windows::UI::ViewManagement::UISettings().AnimationsEnabled()) return;
+  // The exact AnimateDrawerIn shape (ConnectPage.cpp): 180ms opacity 0 -> 1
+  // behind a CubicEase EaseOut, begun synchronously so the first presented
+  // frame shows the from-pose. Opacity is independently animatable, so this
+  // costs the compositor, not the UI thread - the standing rule for every
+  // repeating or high-frequency animation in this app (ConnectCanvas.h).
+  namespace anim = winrt::Microsoft::UI::Xaml::Media::Animation;
+  view.Opacity(0);
+  anim::CubicEase ease;
+  ease.EasingMode(anim::EasingMode::EaseOut);
+  anim::Storyboard storyboard;
+  anim::DoubleAnimation fade;
+  fade.From(0.0);
+  fade.To(1.0);
+  fade.Duration(Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+                             std::chrono::milliseconds(180)),
+                         DurationType::TimeSpan});
+  fade.EasingFunction(ease);
+  anim::Storyboard::SetTarget(fade, view);
+  anim::Storyboard::SetTargetProperty(fade, L"Opacity");
+  storyboard.Children().Append(fade);
+  storyboard.Begin();
+}
+
+void MainWindow::FadeDestinationOut(winrt::Microsoft::UI::Xaml::FrameworkElement const& view,
+                                    winrt::hstring const& viewTag) {
+  if (!view) return;
+  if (!winrt::Windows::UI::ViewManagement::UISettings().AnimationsEnabled()) return;
+  // The exit half of the destination crossfade: 120ms opacity 1 -> 0, faster
+  // than the 180ms entrance (FadeDestinationIn) so the swap reads as one
+  // motion. The view stays Visible until the board's Completed handler
+  // collapses it - collapsing it at the moment of the swap was the
+  // blink-to-black this replaces. Opacity is independently animatable, so
+  // this costs the compositor, not the UI thread (the standing rule,
+  // ConnectCanvas.h). Same lifetime discipline as AnimateDrawerIn and
+  // FadeDestinationIn: a local board begun synchronously - a started board is
+  // held by the framework until it completes, so Completed still runs. The
+  // handler captures only weak refs (and must NOT capture the board itself:
+  // board -> handler -> board would keep both alive forever).
+  namespace anim = winrt::Microsoft::UI::Xaml::Media::Animation;
+  anim::CubicEase ease;
+  ease.EasingMode(anim::EasingMode::EaseOut);
+  anim::Storyboard storyboard;
+  anim::DoubleAnimation fade;
+  fade.From(1.0);
+  fade.To(0.0);
+  fade.Duration(Duration{std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+                             std::chrono::milliseconds(120)),
+                         DurationType::TimeSpan});
+  fade.EasingFunction(ease);
+  anim::Storyboard::SetTarget(fade, view);
+  anim::Storyboard::SetTargetProperty(fade, L"Opacity");
+  storyboard.Children().Append(fade);
+  // A leaving view must not take input while it is still on screen.
+  view.IsHitTestVisible(false);
+  const auto weakView = winrt::make_weak(view);
+  const auto weakSelf = get_weak();
+  storyboard.Completed([weakView, weakSelf, viewTag](
+                           winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Windows::Foundation::IInspectable const&) {
+    const auto v = weakView.get();
+    if (!v) return;
+    v.IsHitTestVisible(true);
+    // The user navigated BACK to this view inside the 120ms exit window: it
+    // is the current destination again, so it stays shown (its entrance is
+    // either AnimateDrawerIn, FadeDestinationIn, or no board at all - the
+    // Opacity(1) below covers the no-board case; a running entrance board
+    // wins over the local value either way).
+    if (const auto self = weakSelf.get(); self && self->currentTag_ == viewTag) {
+      v.Opacity(1.0);
+      return;
+    }
+    v.Visibility(Visibility::Collapsed);
+    // Clean slate for the next time this view shows: a HoldEnd fill would
+    // otherwise leave the last animated value (0) as its presented opacity.
+    v.Opacity(1.0);
+  });
+  storyboard.Begin();
+}
+
 void MainWindow::OnNavSelectionChanged(NavigationView const&,
                                        NavigationViewSelectionChangedEventArgs const& args) {
   auto item = args.SelectedItem().try_as<NavigationViewItem>();
@@ -1135,18 +1765,24 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   // area. (AlwaysShowHeader is not the lever: it hides the header only in the
   // minimal pane mode. A null Header collapses the presenter at every width.)
   //
-  // R4 extends that from Home to every destination REBUILT in the pane shell.
-  // A 60px display-face title above a pane layout is the one thing that stops
-  // the panes reaching the ceiling, and it looked exactly as wrong on Network
-  // as it had on Home - measured side by side against the approved Connect
-  // capture. Support and Developer keep their header because they are still
-  // card-model pages with a page margin, and a card page with no title reads as
-  // content that started halfway down.
+  // R4 extends that from Home to every destination REBUILT in the pane shell,
+  // which is now all of them (Developer was the last card-model page). A 60px
+  // display-face title above a pane layout is the one thing that stops the
+  // panes reaching the ceiling, and it looked exactly as wrong on Network as
+  // it had on Home - measured side by side against the approved Connect
+  // capture.
+  // (The leaderboard tag is gone with its destination: the leaderboard is a
+  // tab inside Earnings' ledger pane now, not its own nav item - MainWindow.xaml
+  // carries no NavigationViewItem with that tag, so the wallet arm below is the
+  // only earnings reading this list needs.)
   const bool paneShell = tag == L"connect" || tag == L"network" || tag == L"wallet" ||
-                         tag == L"leaderboard" || tag == L"account" || tag == L"settings";
+                         tag == L"account" || tag == L"settings" ||
+                         tag == L"support" || tag == L"developer";
   HomeNav().Header(paneShell ? IInspectable{nullptr} : item.Content());
 
   const bool wasConnectVisible = ConnectView().Visibility() == Visibility::Visible;
+  const hstring previousTag = currentTag_;
+  currentTag_ = tag;
   // a rail navigation always lands on the destination itself, never on the
   // Refer and earn page that may have been open in Account's place
   referralsOpen_ = false;
@@ -1154,6 +1790,24 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   // ...and never on the Licenses page that may have been open in Settings'
   if (LicensesView().Visibility() == Visibility::Visible) licenses_->OnClosed();
   LicensesView().Visibility(Visibility::Collapsed);
+  // The outgoing view, for the crossfade: it must stay Visible (overlapping
+  // the incoming view inside HomeContentRoot) until its 120ms exit board's
+  // Completed handler collapses it. Without that deferral the swap reads as a
+  // blink to the background - the outgoing vanishes on this frame while the
+  // incoming is still at opacity 0. AnimationsEnabled() off keeps the old
+  // instant swap (FadeDestinationOut is itself a no-op then, but skipping the
+  // deferral is what keeps the swap instant rather than 120ms late).
+  FrameworkElement outgoing{nullptr};
+  if (previousTag == L"connect") outgoing = ConnectView();
+  else if (previousTag == L"network") outgoing = NetworkView();
+  else if (previousTag == L"account") outgoing = AccountView();
+  else if (previousTag == L"wallet") outgoing = WalletView();
+  else if (previousTag == L"support") outgoing = SupportView();
+  else if (previousTag == L"settings") outgoing = SettingsView();
+  else if (previousTag == L"developer") outgoing = DeveloperView();
+  const bool crossfade =
+      outgoing && previousTag != tag && outgoing.Visibility() == Visibility::Visible &&
+      winrt::Windows::UI::ViewManagement::UISettings().AnimationsEnabled();
   ConnectView().Visibility(tag == L"connect" ? Visibility::Visible : Visibility::Collapsed);
   NetworkView().Visibility(tag == L"network" ? Visibility::Visible : Visibility::Collapsed);
   AccountView().Visibility(tag == L"account" ? Visibility::Visible : Visibility::Collapsed);
@@ -1162,6 +1816,10 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   SettingsView().Visibility(tag == L"settings" ? Visibility::Visible : Visibility::Collapsed);
   DeveloperView().Visibility(tag == L"developer" ? Visibility::Visible
                                                  : Visibility::Collapsed);
+  if (crossfade) {
+    outgoing.Visibility(Visibility::Visible);
+    FadeDestinationOut(outgoing, previousTag);
+  }
   // The developer screen's 5s poll is four synchronous rpcs into the service:
   // it runs only while this destination is selected AND the window is
   // presenting (SetPresentationActive supplies the other half).
@@ -1177,7 +1835,24 @@ void MainWindow::OnNavSelectionChanged(NavigationView const&,
   // destination shows. A cache read with no request, so it runs in preview too.
   if (tag == L"wallet") wallet_->ResyncProviderStats();
 
-  if (tag == L"connect" && !wasConnectVisible) connect_->AnimateDrawerIn();
+  if (tag == L"connect" && !wasConnectVisible) {
+    connect_->AnimateDrawerIn();
+  } else if (previousTag != tag) {
+    // The destination swap entrance: every non-Connect destination gets the
+    // same 180ms opacity fade the Connect drawer's AnimateDrawerIn uses
+    // (Connect itself gets its when it first shows, above - two boards on one
+    // property would collide, so this is the else-branch). A destination that
+    // re-selects itself (SameItem) plays nothing.
+    FrameworkElement incoming{nullptr};
+    if (tag == L"connect") incoming = ConnectView();
+    else if (tag == L"network") incoming = NetworkView();
+    else if (tag == L"account") incoming = AccountView();
+    else if (tag == L"wallet") incoming = WalletView();
+    else if (tag == L"support") incoming = SupportView();
+    else if (tag == L"settings") incoming = SettingsView();
+    else if (tag == L"developer") incoming = DeveloperView();
+    FadeDestinationIn(incoming);
+  }
 
   // --preview-ui has no session. apiReady() is NOT the guard for that: it is
   // api_.has_value(), set at SDK INIT, not at login — so without this the
@@ -1243,8 +1918,12 @@ void MainWindow::LoadCurrentDestination() {
     if (referralsOpen_) referrals_->Load();  // the page is up in Account's place
   } else if (tag == L"wallet") {
     wallet_->LoadWallet();
-  } else if (tag == L"leaderboard") {
-    wallet_->LoadLeaderboard();
+    // (The leaderboard tag is gone with its destination, so this branch could
+    // never run: no NavigationViewItem carries it since Wallet + Leaderboard
+    // merged into Earnings, where the leaderboard is a tab on the ledger pane.
+    // WalletPage still owns LoadLeaderboard for its own callers - the tab's
+    // first show loads it, and the ranking toggle re-reads the board when our
+    // row masks or unmasks.)
   } else if (tag == L"settings") {
     settings_->LoadSettings();
   }
@@ -1630,6 +2309,11 @@ void MainWindow::ApplyBalance() {
   }
   const hstring daily = H(urnw::FormatByteCountCompact(balance_.startBalanceByteCount));
   AccountDailyValue().Text(daily);
+  // The bar shows the shape of the balance; these rows carry the three figures
+  // the legend dots only colour. Same snapshot fields, same compact format.
+  AccountUsedValue().Text(H(urnw::FormatByteCountCompact(balance_.usedByteCount)));
+  AccountPendingValue().Text(H(urnw::FormatByteCountCompact(balance_.pendingByteCount)));
+  AccountAvailableValue().Text(H(urnw::FormatByteCountCompact(balance_.availableByteCount)));
 
   // referral rows: "Total Referrals: N" and "+N*3 GiB/Day" (the server grants
   // 3 GiB per referral per 24h -- pro.yml referral; this row said GiB/Month)
@@ -1651,6 +2335,10 @@ void MainWindow::ApplyBalance() {
   AccountReferralRetry().Visibility(totalsView == urnw::ReferralTotalsView::Unavailable
                                         ? Visibility::Visible
                                         : Visibility::Collapsed);
+  // the program's rule under its numbers, from the same terms the bonus figure
+  // above is computed with (pro.yml via ReferralTerms, not a hardcoded 3)
+  AccountReferralDetail().Text(hstring{urnw::Format(
+      "referral_panel_detail", Balance().ReferralTerms().bonusGibPerDay)});
 
   UpdateBalanceWarning();
   // the open upgrade sheet watches for the plan flip / poll timeout
@@ -1802,6 +2490,7 @@ void MainWindow::ApplyUpdateChecker() {
   // principle before the pages exist.
   if (connect_) connect_->ApplyUpdateChecker(updateSnapshot_);
   if (developer_) developer_->ApplyUpdateCheck(updateSnapshot_);
+  if (settings_) settings_->ApplyUpdateCheck(updateSnapshot_);
 }
 
 void MainWindow::OnUpdateBannerAction() {
@@ -2015,8 +2704,9 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
   LoginRoot().Visibility(showHome ? Visibility::Collapsed : Visibility::Visible);
   HomeNav().Visibility(showHome ? Visibility::Visible : Visibility::Collapsed);
   if (!error.empty()) {
-    // surface the error on the sign-in step the user is looking at
-    login_->ShowErrorOnCurrentStep(H(error));
+    // surface the error on the sign-in step the user is looking at (raw: the
+    // page maps the machine tokens it knows to their friendly copy)
+    login_->ShowErrorOnCurrentStep(error);
   }
   // The network name behind the idle "{name} is ready to connect" copy. Read
   // from the stored jwt once per auth change (ParsedJwt re-parses on every
@@ -2028,7 +2718,12 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
   identityPro_ = false;
   if (loggedIn) {
     if (auto jwt = Sdk().ParsedJwt()) {
-      identityNetworkName_ = jwt->NetworkName;
+      // The jwt's name is an external string (measured live: mark-stack zalgo
+      // the chrome font cannot shape), so it is filtered HERE, at the one
+      // read - ApplyNetworkIdentity feeds SetNetworkIdentity, the status strip
+      // and the avatar menu from these members, so every surface gets the
+      // filtered text.
+      identityNetworkName_ = urnw::kit::SanitizeExternalDisplayText(jwt->NetworkName);
       identityJwtGuest_ = jwt->GuestMode;
       identityPro_ = jwt->Pro;
     }
@@ -2058,6 +2753,7 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
     settings_->ResetForSignOut();
     account_->ResetForSignOut();
     referrals_->ResetForSignOut();
+    wallet_->ResetForSignOut();
     if (referralsOpen_) CloseReferrals();
   }
 }
@@ -2156,7 +2852,10 @@ void MainWindow::OnStatsChanged(urnw::LiveStats const& stats) {
   if (statusSamplePinned_) return;
   if (stats.connected) NoteConnected();
   statusConnected_ = stats.connected;
-  statusLocationName_ = stats.locationName;
+  // the provider name is an external string, like the jwt's network name
+  // above: filtered where it enters the strip (ConnectPage filters its own
+  // copy out of the same stats push)
+  statusLocationName_ = urnw::kit::SanitizeExternalDisplayText(stats.locationName);
   statusDownBps_ = stats.downBitsPerSecond;
   statusUpBps_ = stats.upBitsPerSecond;
   // D5: the pre-clamp reading, for the strip's advanced Raw field. rpcOnly is
@@ -2253,6 +2952,9 @@ void MainWindow::OnCreateInstantSubmit(IInspectable const& s, RoutedEventArgs co
 }
 void MainWindow::OnChangeNetworkServer(IInspectable const& s, RoutedEventArgs const& e) {
   login_->OnChangeNetworkServer(s, e);
+}
+void MainWindow::OnSignInWithBrowser(IInspectable const& s, RoutedEventArgs const& e) {
+  login_->OnSignInWithBrowser(s, e);
 }
 void MainWindow::OnAccountMenu(IInspectable const& s, RoutedEventArgs const& e) {
   login_->OnAccountMenu(s, e);
@@ -2375,6 +3077,15 @@ void MainWindow::OnEarningsTableChanged(SelectorBar const& s,
 
 void MainWindow::OnLeaderboardPublicToggled(IInspectable const& s, RoutedEventArgs const& e) {
   wallet_->OnLeaderboardPublicToggled(s, e);
+}
+
+// The "Earnings actions" overflow in the ledger pane's header, shown exactly
+// while pane A is folded: pane A's actions are all doors to sheets or menus, so
+// the fold-doors note duplicates the DOOR (one menu calling the same member
+// handlers), never the single-instance surface. The page builds the menu
+// because the items' states (claim enabled, connect vs change) are its members.
+void MainWindow::OnEarningsActions(IInspectable const& s, RoutedEventArgs const&) {
+  if (auto anchor = s.try_as<FrameworkElement>()) wallet_->ShowEarningsActionsMenu(anchor);
 }
 
 void MainWindow::OnManageAppSplitTunnel(IInspectable const& s, RoutedEventArgs const& e) {

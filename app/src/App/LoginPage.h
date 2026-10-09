@@ -56,6 +56,14 @@ class LoginPage {
   // nobody can see is pure wakeups (iOS gates the same timer on
   // presentationActive).
   void SetPresentationActive(bool active);
+  // Coming back to the window ends a browser sign-in flow from the user's
+  // side, but the SSO / wallet flows answer ONLY through the deep-link
+  // callback and a closed browser sends nothing - without this the affordances
+  // they disabled stayed grey until the app restarted. The SDK attempt is NOT
+  // cancelled here: a late completion still lands (SdkHost's on_sso matches
+  // the attempt), and a fresh click supersedes it through the SDK's answer
+  // semantics, so there is nothing to undo.
+  void OnWindowReactivated();
   // --preview-ui=seedphrase (Startup.h). Raise the seedphrase display sheet on
   // the BIP-39 test vector so its word grid, its refusal to be dismissed and
   // its copy button can be looked at without creating a real account — the
@@ -71,8 +79,12 @@ class LoginPage {
   // relay, which already parses the jwt.
   void ApplyAccountIdentity(std::string const& networkName, bool guest, bool pro,
                             bool signedIn);
-  // surfaces an auth error on whichever step the user is looking at
-  void ShowErrorOnCurrentStep(winrt::hstring const& message);
+  // Surfaces an auth error on whichever step the user is looking at. Takes the
+  // RAW string the auth relay carries: the machine tokens it can contain are
+  // mapped to their friendly copy here (MapAuthErrorForDisplay), because the
+  // relay also replays an error that landed while the window was away, and an
+  // unmapped replay used to replace the mapped sentence with the raw token.
+  void ShowErrorOnCurrentStep(std::string const& error);
 
   // True once, right after this sign-in created a network (sign-up, its
   // verification step, or an instant account): the window shows the
@@ -86,6 +98,13 @@ class LoginPage {
   // `onClosed(done)` runs once the sheet has closed (done: the sign-in was
   // added and verified), so a purchase entry can continue to its checkout.
   winrt::fire_and_forget OpenGuestConversion(std::function<void(bool done)> onClosed = {});
+
+  // Sign in with a one-time auth code, exactly as if it had been typed into
+  // the auth-code sheet and Sign in pressed. Shared by that sheet (OnUseCode),
+  // the browser sign-in bridge sheet and the urnetwork://auth?code= deep link
+  // (AppController::HandleDeepLink, which has already refused the link when a
+  // session exists). The code is a credential and is never logged.
+  void SignInWithAuthCode(std::string code);
 
   // ---- XAML event handlers (forwarded from MainWindow) ----
   void OnGetStarted(winrt::Windows::Foundation::IInspectable const&,
@@ -150,6 +169,10 @@ class LoginPage {
   winrt::fire_and_forget OnChangeNetworkServer(
       winrt::Windows::Foundation::IInspectable const&,
       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the bottom-left "Sign in with browser" affordance: the bridge sheet
+  winrt::fire_and_forget OnSignInWithBrowser(
+      winrt::Windows::Foundation::IInspectable const&,
+      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // the title-bar avatar
   void OnAccountMenu(winrt::Windows::Foundation::IInspectable const&,
                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -190,6 +213,11 @@ class LoginPage {
   void SubmitVerifyCode();
   void SetWalletSignInEnabled(bool enabled);
   void ApplyWalletSignInResult(urnw::AuthResult const& result);
+  // The one place bridge error tokens become display copy. Google's web flow
+  // answers error=not_configured while the production api vault lacks
+  // sign_in_oauth; the raw token reads as a broken app on the login screen.
+  // Every other error passes through as-is.
+  winrt::hstring MapAuthErrorForDisplay(std::string const& error);
   // Google or Apple: open the provider's sign-in page and wait for the api's
   // urnetwork://oauth/<provider> answer; `provider` is "google" or "apple".
   void StartSsoSignIn(const char* provider);
@@ -226,6 +254,12 @@ class LoginPage {
   bool newNetworkPending_ = false;  // see ConsumeNewNetwork
   bool verifyIsNewNetwork_ = false;  // the verify step follows a sign-up
   bool sendingReset_ = false;
+  // Every SetWalletSignInEnabled(false) call arms this: those attempts (the
+  // SSO / wallet browser round trips, the auth code) re-enable the affordances
+  // only from their SDK callback, and a browser the user closed never delivers
+  // one. OnWindowReactivated is the re-enable of last resort for exactly this
+  // state, so no other path may set it.
+  bool walletSignInInFlight_ = false;
   // create-network name availability (debounced; the generation drops stale checks)
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer nameCheckTimer_{nullptr};
   // re-runs a check that errored (see NetworkNameCheck.h)

@@ -76,6 +76,7 @@ var catalogLookupFunctionKinds = map[string]catalogLookupKind{
 	"MakePicker":    catalogLookupPlain,
 	"ErrorKey":      catalogLookupPlain,
 	"metric":        catalogLookupPlain,
+	"door":          catalogLookupPlain, // the Connect page's fold doors (ConnectPage.cpp)
 	"boolRow":       catalogLookupPlain,
 	"numRow":        catalogLookupPlain,
 	"millisRow":     catalogLookupPlain,

@@ -18,10 +18,12 @@ namespace urnw {
 
 // The provide indicator (apple/android parity), from the LIVE effective provide
 // mode: solid dot = Network tier (also Auto while idle), dot + outer ring =
-// Public tier (amber while paused — pause stops public only), coral = not
-// providing. ProvideMode is a bit set (0 none, 1 network, 2 friends-and-family,
-// 3 public) — per-case only. One rule shared by the Connect page's provide
-// group and the Earnings page's provide-mode row, so they never disagree.
+// Public tier (amber while paused — pause stops public only), neutral muted =
+// not providing. "Never" is a setting the user chose, not an error state, so
+// it no longer spends coral (red is reserved for danger). ProvideMode is a bit
+// set (0 none, 1 network, 2 friends-and-family, 3 public) — per-case only. One
+// rule shared by the Connect page's provide group and the Earnings page's
+// provide-mode row, so they never disagree.
 struct ProvideModeVisual {
   winrt::Windows::UI::Color color;
   bool ring;
@@ -35,7 +37,7 @@ inline ProvideModeVisual ProvideModeVisualFor(int64_t provideMode, bool paused) 
     case 2:  // friends-and-family
       return {urnw::colors::kUrGreen, false};
     default:
-      return {urnw::colors::kUrCoral, false};
+      return {urnw::colors::kTextMuted, false};
   }
 }
 

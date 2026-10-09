@@ -103,6 +103,13 @@ class WalletPage {
   void LoadWallet();
   void LoadLeaderboard();
 
+  // Drop everything the leaderboard, the points figure and the history were
+  // saying about the account that just signed out, and re-arm the board's
+  // first-show fetch. leaderboardLoaded_ is the dangerous one: it is the only
+  // load trigger the Leaderboard tab has on this destination, so a guard left
+  // set shows the next sign-in the PREVIOUS account's table and own rank.
+  void ResetForSignOut();
+
   // --preview-ui: settle every panel on its empty state (or, with
   // URNETWORK_PREVIEW_SAMPLE=1, on obviously synthetic rows) instead of
   // "Loading..." forever.
@@ -138,6 +145,12 @@ class WalletPage {
       winrt::Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
   void OnLeaderboardPublicToggled(winrt::Windows::Foundation::IInspectable const&,
                                   winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // The ledger header's "Earnings actions" overflow, shown while pane A is
+  // folded (the fold-doors design note's COMMAND-DOOR DUPLICATION): one menu
+  // whose items call the SAME member handlers the rail's buttons call - claim,
+  // wallet connect/change, the Solana menu and upgrade - so the door survives
+  // the fold without any element being built twice.
+  void ShowEarningsActionsMenu(winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor);
 
   void RefreshAfterWalletChange();
 
@@ -537,6 +550,15 @@ class WalletPage {
   std::optional<urnet::Sub> pointsSub_;
   uint64_t pointsVcDevice_ = 0;  // the device handle the controller was opened on
   bool pointsBoardShowing_ = false;
+  // The Leaderboard tab's first-show fetch guard: nothing else calls
+  // LoadLeaderboard on the wallet load path (MainWindow loads only LoadWallet),
+  // so without it the tab sits on "Loading..." until the ranking toggle is
+  // flipped. Tab flips must not re-fetch - the board is slower-moving than the
+  // ledger - so the load runs once and the ranking toggle's own re-read keeps
+  // its explicit call. ResetForSignOut re-arms it: the guard is per-ACCOUNT,
+  // not per-run - left set, the next sign-in on this app run would keep the
+  // previous account's table and own rank with no fetch ever replacing them.
+  bool leaderboardLoaded_ = false;
   std::vector<PointsRow> pointsRows_;
   std::string pointsSort_ = urnet::PointsLeaderboardSortPoints;
   std::string pointsRenderedSort_;

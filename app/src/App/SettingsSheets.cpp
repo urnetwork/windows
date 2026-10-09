@@ -18,6 +18,7 @@
 #include "Localization.h"
 #include "Log.h"
 #include "PageContext.h"
+#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "SubscriptionBalance.h"
 #include "Strings.h"
 #include "UrColors.h"
@@ -437,10 +438,10 @@ void CopyToClipboard(std::string const& text) {
 // The royal-welcome panel: the crowned frog in gold plus confirmation copy
 // (the referral king-frog moment, matching the ur.io referral panel and the
 // android/apple sheets).
-StackPanel MakeRoyalWelcomePanel() {
+StackPanel MakeRoyalWelcomePanel(double minWidth) {
   StackPanel panel;
   panel.Spacing(12);
-  panel.MinWidth(400);
+  panel.MinWidth(minWidth);
 
   Image frog;
   winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap{
@@ -1490,7 +1491,7 @@ void ReferralNetworkSheet::Build(XamlRoot const& root) {
   dialog_.IsPrimaryButtonEnabled(false);
 
   StackPanel content;
-  content.MinWidth(400);
+  content.MinWidth(sheetfit::Width(root, 400));
   content.Spacing(12);
 
   // What it is now, before offering to change it.
@@ -1646,7 +1647,9 @@ void ReferralNetworkSheet::ShowRoyalWelcome() {
   dialog_.Title(winrt::box_value(hstring{}));
   dialog_.PrimaryButtonText(hstring{});
   dialog_.IsPrimaryButtonEnabled(false);
-  dialog_.Content(MakeRoyalWelcomePanel());
+  // the welcome swaps into the same dialog, so it obeys the sheet's clamped
+  // width too -- read off the live root (sheetfit), not re-fixed at 400
+  dialog_.Content(MakeRoyalWelcomePanel(sheetfit::Width(dialog_.XamlRoot(), 400)));
 
   royalTimer_ = dialog_.DispatcherQueue().CreateTimer();
   royalTimer_.Interval(std::chrono::milliseconds(2000));
@@ -1743,7 +1746,7 @@ void BlockedLocationsSheet::Build(XamlRoot const& root) {
   dialog_ = MakeSheet(root, Loc("blocked_locations"));
 
   StackPanel content;
-  content.MinWidth(420);
+  content.MinWidth(sheetfit::Width(root, 420));
   content.Spacing(12);
 
   // What is blocked now.
@@ -1773,7 +1776,7 @@ void BlockedLocationsSheet::Build(XamlRoot const& root) {
   content.Children().Append(search_);
 
   ScrollViewer scroll;
-  scroll.MaxHeight(240);
+  scroll.MaxHeight(sheetfit::Height(root, 240));
   scroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
   countryPanel_ = StackPanel();
   countryPanel_.Spacing(2);
@@ -2053,7 +2056,7 @@ void PostQuantumIdentitySheet::Build(XamlRoot const& root) {
   dialog_ = MakeSheet(root, Loc("post_quantum_identity"));
 
   StackPanel content;
-  content.MinWidth(420);
+  content.MinWidth(sheetfit::Width(root, 420));
   content.Spacing(12);
 
   identicon_ = Image();
@@ -2097,7 +2100,7 @@ void PostQuantumIdentitySheet::Build(XamlRoot const& root) {
   content.Children().Append(providersLabel);
 
   ScrollViewer scroll;
-  scroll.MaxHeight(200);
+  scroll.MaxHeight(sheetfit::Height(root, 200));
   scroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
   providerPanel_ = StackPanel();
   providerPanel_.Spacing(6);
@@ -2311,7 +2314,7 @@ void DeleteAccountSheet::Build(XamlRoot const& root) {
   dialog_.IsPrimaryButtonEnabled(false);
 
   StackPanel content;
-  content.MinWidth(400);
+  content.MinWidth(sheetfit::Width(root, 400));
   content.Spacing(12);
 
   TextBlock warning;

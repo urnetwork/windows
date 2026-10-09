@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <!-- URnetwork main window. Sign-in flow (initial → password / create / verify /
      reset — macOS Authenticate/** parity), then a NavigationView home with the
      macOS sections: Connect, Account, Wallet, Leaderboard, Support, Settings.
@@ -297,27 +297,39 @@
                                Style="{StaticResource UrInlineErrorTextStyle}"
                                Visibility="Collapsed" />
 
-                    <!-- "Change Network API" (iOS NetworkServerSheet) - the very
-                         last thing on the screen, bottom LEFT, small and muted,
-                         and reading as PLAIN TEXT rather than another pill: it
-                         is a developer/fork affordance, not a sign-in option,
-                         and a sixth white pill would read as one. Left edge
-                         lines up with the "Email or phone number" label above.
+                    <!-- The bottom-left pair of quiet text links, the last things
+                         on the screen: "Sign in with browser" opens the browser
+                         sign-in bridge (OnSignInWithBrowser) and "Change Network
+                         API" the server sheet (iOS NetworkServerSheet). Both are
+                         small, muted and read as PLAIN TEXT rather than another
+                         pill - a sixth white pill would read as a sign-in
+                         option, which the developer/fork affordance is not. The
+                         row's left edge lines up with the "Email or phone
+                         number" label above.
 
-                         A HyperlinkButton, NOT a TextBlock with a Tapped
-                         handler. It looks the same either way, but a TextBlock
-                         is not focusable, never reaches the tab order and is
-                         announced as static text - the UIA tree showed this
-                         affordance as plain "Text" with no invoke pattern, i.e.
-                         unreachable without a mouse. The styling below (no
-                         padding, muted foreground, body face) is what makes a
-                         real control render as quiet text. -->
-                    <HyperlinkButton x:Name="NetworkServerLink" HorizontalAlignment="Left"
-                                     FontSize="12" Margin="0,8,0,0" Padding="0"
-                                     Background="Transparent" BorderThickness="0"
-                                     FontFamily="{StaticResource UrBodyFontFamily}"
-                                     Foreground="{StaticResource UrTextMutedBrush}"
-                                     Click="OnChangeNetworkServer" />
+                         HyperlinkButtons, NOT TextBlocks with Tapped handlers.
+                         They look the same either way, but a TextBlock is not
+                         focusable, never reaches the tab order and is announced
+                         as static text - the UIA tree showed this affordance as
+                         plain "Text" with no invoke pattern, i.e. unreachable
+                         without a mouse. The styling below (no padding, muted
+                         foreground, body face) is what makes a real control
+                         render as quiet text. -->
+                    <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,0"
+                                HorizontalAlignment="Left">
+                        <HyperlinkButton x:Name="BrowserSignInLink"
+                                         FontSize="12" Padding="0"
+                                         Background="Transparent" BorderThickness="0"
+                                         FontFamily="{StaticResource UrBodyFontFamily}"
+                                         Foreground="{StaticResource UrTextMutedBrush}"
+                                         Click="OnSignInWithBrowser" />
+                        <HyperlinkButton x:Name="NetworkServerLink"
+                                         FontSize="12" Padding="0"
+                                         Background="Transparent" BorderThickness="0"
+                                         FontFamily="{StaticResource UrBodyFontFamily}"
+                                         Foreground="{StaticResource UrTextMutedBrush}"
+                                         Click="OnChangeNetworkServer" />
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Password: an existing account signs in -->
@@ -610,12 +622,28 @@
              PaneDisplayMode="Auto" restores the native NavigationView adaptivity
              the old build deliberately pinned OFF (LeftCompact at every width):
                * >=1008 epx  expanded pane, icon + LABEL   (OpenPaneLength 220)
-               *  641-1007   compact icon rail
-               * <=640       overlay pane behind the toggle
-             The pinned thresholds and LeftCompact are gone: an icon-only rail in
+               * below that  compact icon rail, AT EVERY NARROWER WIDTH
+             The old always-on LeftCompact pin is gone: an icon-only rail in
              a 2000px window was the single biggest 'feels like mobile' signal,
              and the page-shift on expand the old note feared is exactly the
              adaptive behaviour the spec now wants.
+
+             CompactModeThresholdWidth="1" retires Auto's lower mode, LeftMinimal
+             (stock: <=640 hides the pane behind the toggle button alone). That
+             toggle is the shell's ONLY affordance in minimal mode, and in this
+             window it does not render: UIA sees it at the right rect with
+             IsOffscreen=false, but no pixels paint - so below 641epx (the
+             compact DEFAULT is 480, the floor 400) there was no way to switch
+             destination at all. The difference from compact/expanded, where the
+             same button renders and works, is the mode itself; the shell's own
+             48epx AppTitleBar row above the nav is the suspect WASDK 2.2 gives
+             no markup lever for, and Microsoft's guidance for LeftMinimal under
+             a custom title bar is to host a toggle there and drive IsPaneOpen
+             from code. The compact rail is what already renders and works at
+             641-1007, so the window keeps it down to its 400epx floor; the
+             rail's toggle still opens the labelled overlay, so no destination
+             is ever more than one click away, and >=641epx is byte-identical
+             to the stock thresholds.
 
              Five primary destinations, three footer. Wallet + Leaderboard merged
              into Earnings (leaderboard is a tab on that destination, not its own
@@ -636,6 +664,7 @@
                              AlwaysShowHeader="False"
                              FontFamily="{StaticResource UrBodyFontFamily}"
                              IsBackButtonVisible="Collapsed" PaneDisplayMode="Auto"
+                             CompactModeThresholdWidth="1"
                              OpenPaneLength="220" IsPaneToggleButtonVisible="True"
                              IsSettingsVisible="False"
                              SelectionChanged="OnNavSelectionChanged">
@@ -776,9 +805,14 @@
                                            Style="{StaticResource UrPaneMetaStyle}" />
                             </Grid>
                         </Border>
-                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                        <ScrollViewer Grid.Row="1" x:Name="PaneAScroll"
+                                      HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
-                            <StackPanel>
+                            <!-- the 28px bottom pad is PaneAScrollFade's height (see
+                                 the fade below): at the bottom edge the fade zone
+                                 holds only this pad, so the last peer row always sits
+                                 ABOVE the fade. The two numbers must match. -->
+                            <StackPanel Padding="0,0,0,28">
                                 <!-- STATUS LEADS. Protection state first, at the top of
                                      the pane, above the ornament. -->
                                 <Border Style="{StaticResource UrPaneRowStyle}"
@@ -1134,6 +1168,38 @@
                                 <StackPanel x:Name="PeersHost" />
                             </StackPanel>
                         </ScrollViewer>
+                        <!-- Bottom edge fade for the pane's list (the peers feed is
+                             what this scroller ends in): it says "there is more
+                             below", which a plain StackPanel in a ScrollViewer
+                             cannot. Pure geometry, no code: docked to the pane
+                             bottom in the scroller's OWN grid cell, it fades to the
+                             pane surface #101010 (UrPaneStyle / UrBackgroundBrush;
+                             literal stops, the same idiom as the referral card's
+                             gold fade), and the content's 28px bottom pad means the
+                             fade zone holds only padding once the last row arrives -
+                             so the fade dissolves exactly as the list runs out,
+                             without observing VerticalOffset (a scroll handler would
+                             have to live on MainWindow or ConnectPage, which this
+                             chrome does not own). The binding hides it outright when
+                             everything fits: with an Auto vertical scrollbar,
+                             ComputedVerticalScrollBarVisibility is Visible exactly
+                             while the content overflows. It tracks that scrollbar
+                             setting - if it ever stops being Auto, re-derive the
+                             gate. PEERS ONLY, deliberately: the Activity connections
+                             list rebuilds its rows live and row churn sliding under
+                             a fade reads as flicker, while the peers feed is one
+                             slow push. Pointer-transparent and animation-free: a
+                             static gradient strip, nothing per frame. -->
+                        <Border x:Name="PaneAScrollFade" Grid.Row="1" Height="28"
+                                VerticalAlignment="Bottom" IsHitTestVisible="False"
+                                Visibility="{Binding ElementName=PaneAScroll, Path=ComputedVerticalScrollBarVisibility}">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Offset="0" Color="#00101010" />
+                                    <GradientStop Offset="1" Color="#101010" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
                     </Grid>
 
                     <Border x:Name="ConnectPaneBRule" Grid.Column="1"
@@ -1142,9 +1208,6 @@
                     <!-- ============ PANE B: ACTIVITY ============ -->
                     <Grid Grid.Column="2" x:Name="ConnectPaneB">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -1165,60 +1228,188 @@
                                            Style="{StaticResource UrPaneMetaStyle}" />
                             </Grid>
                         </Border>
-                        <!-- the chart runs the FULL WIDTH of the pane, edge to edge -->
-                        <Border Grid.Row="1" BorderBrush="{StaticResource UrBorderBrush}"
-                                BorderThickness="0,0,0,1" Padding="12,0">
-                            <Grid x:Name="RemoteChartHost" Height="150" />
-                        </Border>
-                        <!-- The transport distribution bar (TRANSPORTSTATS): the window's
-                             remote traffic by transport, directly under the Remote plot and
-                             the same 12px inset, so it lines up with it. Built into this host
-                             by ConnectPage::BuildCharts (urnw::TransportBar) as ONE pane-row
-                             Button (title "Transports", the bar, the legend, the unused
-                             footer) whose click opens the transport settings editor. Its
-                             own hairline is the row's, so no rule here. -->
-                        <Grid Grid.Row="2" x:Name="TransportBarHost" />
-                        <!-- The IP-family status row (connect/IPV6.md D2): the
-                             Dualstack / IPv4 / IPv6 columns with their connected and
-                             connecting counts, directly under the transport bar with
-                             the same inset. Built into this host by
-                             ConnectPage::BuildCharts (urnw::IpFamilyStatusRow); its
-                             bottom rule is the group header's, so no rule here. -->
-                        <Grid Grid.Row="3" x:Name="IpFamilyStatusRowHost" />
-                        <!-- The extender panel (connect/EXTENDER.md K4): the
-                             extenders carrying live connections as rings, the
-                             "N of M" count, and the gossip network's status dot.
-                             Built into this host by ConnectPage::BuildCharts
-                             (urnw::ExtenderPanel). It is NOT tappable - K4 says
-                             there is no details panel - so it is a plain row, not
-                             a pane-row Button like the transport bar above. Its
-                             bottom rule is the group header's, so no rule here. -->
-                        <Grid Grid.Row="4" x:Name="ExtenderPanelHost" />
-                        <Border Grid.Row="5" Style="{StaticResource UrGroupHeaderStyle}">
-                            <Grid>
-                                <TextBlock x:Name="ConnectionsLabel"
-                                           Style="{StaticResource UrGroupHeaderTextStyle}" />
-                                <TextBlock x:Name="ConnectionsCount" HorizontalAlignment="Right"
-                                           Style="{StaticResource UrPaneMetaStyle}" />
+                        <!-- The connections verdict filter: a SelectorBar, the app's
+                             segmented idiom (same control, same row metrics as the
+                             ConnectionModeBar row in pane A), because the list is one
+                             feed read four ways - All / Blocked / Tunnelled / Bypassed,
+                             the same three-way verdict the rows themselves print. The
+                             bar gets the row to itself: at the three-pane gate the
+                             activity pane is 368dip and the four items already read
+                             ~290, so sharing the row with the group-by switch clipped
+                             the last item (measured at 1625px). No markup handlers:
+                             XAML event handlers live on MainWindow, which this page
+                             does not own, so the bar is wired from
+                             ConnectPage::Initialize like the status-dot taps. -->
+                        <Border Grid.Row="1" Style="{StaticResource UrPaneRowStyle}"
+                                MinHeight="44" Padding="8,4">
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <muxc:SelectorBar x:Name="ConnectionsVerdictBar"
+                                                  VerticalAlignment="Center">
+                                    <muxc:SelectorBarItem x:Name="VerdictAllItem" />
+                                    <muxc:SelectorBarItem x:Name="VerdictBlockedItem" />
+                                    <muxc:SelectorBarItem x:Name="VerdictTunnelledItem" />
+                                    <muxc:SelectorBarItem x:Name="VerdictBypassedItem" />
+                                </muxc:SelectorBar>
+                                <!-- One-click reset for the whole filter strip (verdict,
+                                     search text and the group fold), shown only while any
+                                     of the three is off its default. A text button, not an
+                                     icon: "Clear" is a word the store already ships, and an
+                                     unlabelled glyph would need an automation name to say
+                                     the same thing. The row has the room - the group-by
+                                     switch moved to the search row below. Wired from
+                                     ConnectPage::Initialize like the bar itself; collapsed
+                                     here costs no width, so the bar's rest layout is
+                                     exactly what it was. -->
+                                <Button x:Name="ConnectionsClearFilters" Grid.Column="1"
+                                        Visibility="Collapsed"
+                                        Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                        Height="26" MinHeight="0" Margin="0"
+                                        Padding="10,0" FontSize="12" />
                             </Grid>
                         </Border>
-                        <!-- The list FILLS the rest of the pane. Its empty state is a
-                             centred line in that same full-height area, never a short
-                             card floating in space. -->
-                        <Grid Grid.Row="6">
-                            <ScrollViewer x:Name="ConnectionsScroll"
-                                          HorizontalScrollBarVisibility="Disabled"
-                                          VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="ConnectionsHost" />
-                            </ScrollViewer>
-                            <StackPanel x:Name="SessionEmptyCard" Spacing="8"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                        IsHitTestVisible="False">
-                                <FontIcon Glyph="&#xE9D2;" Style="{StaticResource UrEmptyGlyphStyle}" />
-                                <TextBlock x:Name="SessionEmptyText" TextAlignment="Center"
-                                           Style="{StaticResource UrSupportingTextStyle}" />
+                        <!-- the connections search row, built by ConnectPage
+                             (kit::MakePaneSearchRow, the NetworkSearchHost idiom) so the
+                             field and its host/IP substring filter live in one place.
+                             The group-by-host switch rides at the row's right, the
+                             app's one on/off idiom with an 11px caption: it folds the
+                             same filtered feed into one row per display host. The row
+                             shares because the search field is the one control here
+                             that shrinks gracefully - the star column takes the
+                             squeeze, the switch keeps its shape. -->
+                        <Grid Grid.Row="2" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid x:Name="ConnectionsSearchHost" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                        Spacing="8" VerticalAlignment="Center">
+                                <TextBlock x:Name="ConnectionsGroupLabel"
+                                           Style="{StaticResource UrPaneMetaStyle}" />
+                                <ToggleSwitch x:Name="ConnectionsGroupToggle" Width="44"
+                                              Style="{StaticResource UrSwitchToggleStyle}"
+                                              AutomationProperties.LabeledBy="{Binding ElementName=ConnectionsGroupLabel}" />
                             </StackPanel>
                         </Grid>
+                        <!-- Everything under the filters is ONE body whose height
+                             ConnectPage::ApplyActivityBodyHeight pins at the viewport,
+                             floored at kActivityBodyMinHeight: while the window is
+                             tall enough the body IS the viewport and the layout is
+                             pixel-identical to the fixed rows it replaces, and below
+                             the floor this scroller engages instead of the fixed
+                             blocks above (40px pane header + the chart, which flexes
+                             120..240 with the same viewport + transport bar +
+                             ip-family row + extender panel + 28px group header +
+                             3px ratio bar)
+                             compressing the star-sized connections list to zero with
+                             no way to reach it - which is exactly what the 400x480dip
+                             minimum window did. The rule: fixed chrome never starves
+                             the pane's list; the pane scrolls as a unit first. -->
+                        <ScrollViewer Grid.Row="3" x:Name="ActivityBodyScroll"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <Grid x:Name="ActivityBody">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <!-- the chart runs the FULL WIDTH of the pane, edge to edge.
+                                     The 150 is the pre-layout seed (today's fixed height);
+                                     ConnectPage::ApplyActivityBodyHeight re-derives the
+                                     host's height from the scroller's viewport on every
+                                     resize - the chart flexes between 120 (height scarce:
+                                     what it yields keeps the list's rows readable at the
+                                     520 floor) and 240 (a tall window uses it), so the
+                                     default layout keeps the 150 it had. The chart
+                                     re-renders and re-stamps its clip per SizeChanged
+                                     (kit::ClipToBounds), the same path a window resize
+                                     already took. -->
+                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,0">
+                                    <Grid x:Name="RemoteChartHost" Height="150" />
+                                </Border>
+                                <!-- The transport distribution bar (TRANSPORTSTATS): the window's
+                                     remote traffic by transport, directly under the Remote plot and
+                                     the same 12px inset, so it lines up with it. Built into this host
+                                     by ConnectPage::BuildCharts (urnw::TransportBar) as ONE pane-row
+                                     Button (title "Transports", the bar, the legend, the unused
+                                     footer) whose click opens the transport settings editor. Its
+                                     own hairline is the row's, so no rule here. -->
+                                <Grid Grid.Row="1" x:Name="TransportBarHost" />
+                                <!-- The IP-family status row (connect/IPV6.md D2): the
+                                     Dualstack / IPv4 / IPv6 columns with their connected and
+                                     connecting counts, directly under the transport bar with
+                                     the same inset. Built into this host by
+                                     ConnectPage::BuildCharts (urnw::IpFamilyStatusRow); its
+                                     bottom rule is the group header's, so no rule here. -->
+                                <Grid Grid.Row="2" x:Name="IpFamilyStatusRowHost" />
+                                <!-- The extender panel (connect/EXTENDER.md K4): the
+                                     extenders carrying live connections as rings, the
+                                     "N of M" count, and the gossip network's status dot.
+                                     Built into this host by ConnectPage::BuildCharts
+                                     (urnw::ExtenderPanel). It is NOT tappable - K4 says
+                                     there is no details panel - so it is a plain row, not
+                                     a pane-row Button like the transport bar above. Its
+                                     bottom rule is the group header's, so no rule here. -->
+                                <Grid Grid.Row="3" x:Name="ExtenderPanelHost" />
+                                <Border Grid.Row="4" Style="{StaticResource UrGroupHeaderStyle}">
+                                    <Grid>
+                                        <TextBlock x:Name="ConnectionsLabel"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                        <TextBlock x:Name="ConnectionsCount" HorizontalAlignment="Right"
+                                                   Style="{StaticResource UrPaneMetaStyle}" />
+                                    </Grid>
+                                </Border>
+                                <!-- The verdict ratio bar: a 3px full-bleed strip directly
+                                     under the group header, one segment per verdict the
+                                     rows print - green tunnelled, coral blocked, amber
+                                     bypassed (the row dots' reading). Segment fills are
+                                     set ONCE from code (colors:: is the one palette
+                                     source; markup ships no UrAmberBrush) and the star
+                                     weights move only on feed pushes
+                                     (ConnectPage::ApplyVerdictRatioBar), so the strip
+                                     costs nothing per frame. Collapsed while there is
+                                     nothing to proportion - an empty track would read as
+                                     chrome, not data. -->
+                                <Grid Grid.Row="5" x:Name="ConnectionsVerdictRatio"
+                                      Height="3" Visibility="Collapsed">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border />
+                                    <Border Grid.Column="1" />
+                                    <Border Grid.Column="2" />
+                                </Grid>
+                                <!-- The list FILLS the rest of the pane. Its empty state is a
+                                     centred line in that same full-height area, never a short
+                                     card floating in space. -->
+                                <Grid Grid.Row="6">
+                                    <ScrollViewer x:Name="ConnectionsScroll"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <StackPanel x:Name="ConnectionsHost" />
+                                    </ScrollViewer>
+                                    <StackPanel x:Name="SessionEmptyCard" Spacing="8"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                IsHitTestVisible="False">
+                                        <FontIcon Glyph="&#xE9D2;" Style="{StaticResource UrEmptyGlyphStyle}" />
+                                        <TextBlock x:Name="SessionEmptyText" TextAlignment="Center"
+                                                   Style="{StaticResource UrSupportingTextStyle}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+                        </ScrollViewer>
                     </Grid>
 
                     <Border x:Name="ConnectPaneCRule" Grid.Column="3"
@@ -1238,7 +1429,35 @@
                         </Border>
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
-                            <StackPanel>
+                            <!-- A Grid, not a StackPanel, for exactly one reason: the two
+                                 chart rows are STAR rows (MinHeight 132 = today's fixed
+                                 height, MaxHeight 220), so a window taller than the
+                                 content shares the leftover between the charts instead of
+                                 leaving it blank. Star rows need a bounded height to
+                                 share, which a scroller never offers on its own, so
+                                 ConnectPage::ApplyPaneCBodyHeight pins this grid's
+                                 MinHeight to the viewport - content shorter than the pane
+                                 gets the flex, content taller overrides the pin and
+                                 scrolls, which is what the StackPanel did at every height.
+                                 Everything else stays an Auto row, so the short-window
+                                 layout is pixel-identical to the StackPanel's. -->
+                            <Grid x:Name="PaneCBody">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" MinHeight="132" MaxHeight="220" />
+                                    <RowDefinition Height="*" MinHeight="132" MaxHeight="220" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
                                 <!-- ==== THE CONNECTION INSPECTOR (D5) ==================
                                      The Portmaster ask, and the reason the spec called
                                      this column "detail/inspector for the selection"
@@ -1259,7 +1478,7 @@
                                      screen reader than no landmark at all). Every row
                                      inside is built by ConnectPage::ApplyInspector on
                                      the same key/value rhythm as the session figures. -->
-                                <StackPanel x:Name="InspectorGroup" Visibility="Collapsed"
+                                <StackPanel x:Name="InspectorGroup" Grid.Row="0" Visibility="Collapsed"
                                             AutomationProperties.LandmarkType="Custom">
                                     <Border Style="{StaticResource UrGroupHeaderStyle}">
                                         <Grid ColumnSpacing="8">
@@ -1302,26 +1521,75 @@
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
+                                    <!-- the per-connection quick actions: Portmaster's
+                                         observe -> decide -> rule loop, inside the
+                                         advanced-gated inspector, so advanced-only by
+                                         construction. Labels and on/off state are
+                                         rendered by ApplyInspector from the LIVE
+                                         overrides list (a block action snapshots the
+                                         decision as made and never changes when a rule
+                                         lands afterwards); the row is collapsed while
+                                         there is no selection. Click handlers are wired
+                                         in ConnectPage::Initialize - XAML Click
+                                         handlers belong to MainWindow, which this page
+                                         does not own. The buttons are
+                                         UrPaneActionSecondaryStyle made compact; the
+                                         on-state is painted in code with the action
+                                         blue, the same fill the style's primary
+                                         sibling wears. -->
+                                    <Border x:Name="InspectorActionsRow" Visibility="Collapsed"
+                                            Style="{StaticResource UrPaneRowStyle}"
+                                            MinHeight="0" Padding="12,8">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button x:Name="InspectorBlockButton"
+                                                    Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                                    Height="26" MinHeight="0" Margin="0"
+                                                    Padding="10,0" FontSize="12" />
+                                            <Button x:Name="InspectorRouteButton"
+                                                    Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                                    Height="26" MinHeight="0" Margin="0"
+                                                    Padding="10,0" FontSize="12" />
+                                            <Button x:Name="InspectorCopyButton"
+                                                    Style="{StaticResource UrPaneActionSecondaryStyle}"
+                                                    Height="26" MinHeight="0" Margin="0"
+                                                    Padding="10,0" FontSize="12" />
+                                        </StackPanel>
+                                    </Border>
                                     <!-- and the fields, from ConnectPage::ApplyInspector -->
                                     <StackPanel x:Name="InspectorRowsHost" />
+                                    <!-- the quick actions' confirmation with Undo
+                                         (kit::Snackbar): bounded (auto-dismissing),
+                                         one at a time (the single bar). Inside the
+                                         group rather than window-level because it is
+                                         the inspector's own acknowledgement. -->
+                                    <muxc:InfoBar x:Name="InspectorSnackbar"
+                                                  Style="{StaticResource UrSnackbarStyle}"
+                                                  IsOpen="False" Margin="12,6,12,12" />
                                 </StackPanel>
 
-                                <!-- two charts, the SAME height, full width of the pane -->
-                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                <!-- two charts, the SAME height, full width of the pane.
+                                     Their rows carry the flex (star, 132..220 - the grid
+                                     comment above has the rule); the hosts keep only the
+                                     132 MinHeight so the scroller's unbounded measure
+                                     still desires today's fixed height and the scrolling
+                                     layout is pixel-identical to what it was. -->
+                                <Border Grid.Row="1"
+                                        BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,0">
-                                    <Grid x:Name="BlockedChartHost" Height="132" />
+                                    <Grid x:Name="BlockedChartHost" MinHeight="132" />
                                 </Border>
-                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                <Border Grid.Row="2"
+                                        BorderBrush="{StaticResource UrBorderBrush}"
                                         BorderThickness="0,0,0,1" Padding="12,0">
-                                    <Grid x:Name="LocalChartHost" Height="132" />
+                                    <Grid x:Name="LocalChartHost" MinHeight="132" />
                                 </Border>
 
                                 <!-- session figures ............................... -->
-                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                <Border Grid.Row="3" Style="{StaticResource UrGroupHeaderStyle}">
                                     <TextBlock x:Name="DataUsageLabel"
                                                Style="{StaticResource UrGroupHeaderTextStyle}" />
                                 </Border>
-                                <StackPanel x:Name="LiveStatsGroup" Visibility="Collapsed">
+                                <StackPanel x:Name="LiveStatsGroup" Grid.Row="4" Visibility="Collapsed">
                                     <!-- the connected providers and where they are: this row
                                          opens the globe sheet (android ProviderLocationsScreen
                                          parity). A Button on the pane-row style rather than a
@@ -1346,10 +1614,10 @@
                                 </StackPanel>
                                 <!-- the key/value rows are built into this host by
                                      ConnectPage::ApplySessionRows, on one grid rhythm -->
-                                <StackPanel x:Name="SessionRowsHost" />
+                                <StackPanel x:Name="SessionRowsHost" Grid.Row="5" />
 
                                 <!-- contracts ..................................... -->
-                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                <Border Grid.Row="6" Style="{StaticResource UrGroupHeaderStyle}">
                                     <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -1367,10 +1635,10 @@
                                         </Button>
                                     </Grid>
                                 </Border>
-                                <StackPanel x:Name="ContractsHost" />
+                                <StackPanel x:Name="ContractsHost" Grid.Row="7" />
 
                                 <!-- split rules ................................... -->
-                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                <Border Grid.Row="8" Style="{StaticResource UrGroupHeaderStyle}">
                                     <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -1389,10 +1657,10 @@
                                         </Button>
                                     </Grid>
                                 </Border>
-                                <StackPanel x:Name="SplitRulesHost" />
+                                <StackPanel x:Name="SplitRulesHost" Grid.Row="9" />
 
                                 <!-- custom dns .................................... -->
-                                <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                <Border Grid.Row="10" Style="{StaticResource UrGroupHeaderStyle}">
                                     <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -1410,7 +1678,7 @@
                                 </Border>
                                 <!-- unapplied-recommendation pill (iOS DnsRecommendationPill
                                      parity), as a row rather than a floating chip -->
-                                <Border x:Name="DnsRecPill" Visibility="Collapsed"
+                                <Border x:Name="DnsRecPill" Grid.Row="11" Visibility="Collapsed"
                                         Style="{StaticResource UrPaneRowStyle}" MinHeight="34"
                                         Background="{StaticResource UrCoralSubtleBrush}">
                                     <StackPanel Orientation="Horizontal" Spacing="6"
@@ -1424,7 +1692,7 @@
                                                    Foreground="{StaticResource UrTextBrush}" />
                                     </StackPanel>
                                 </Border>
-                                <StackPanel x:Name="DnsRowsPanel">
+                                <StackPanel x:Name="DnsRowsPanel" Grid.Row="12">
                                     <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
                                         <Grid ColumnSpacing="8">
                                             <Grid.ColumnDefinitions>
@@ -1510,13 +1778,13 @@
                                         </Grid>
                                     </Border>
                                 </StackPanel>
-                                <Border x:Name="DnsUnavailableRow" Visibility="Collapsed"
+                                <Border x:Name="DnsUnavailableRow" Grid.Row="13" Visibility="Collapsed"
                                         Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
                                     <TextBlock x:Name="DnsUnavailableText"
                                                Style="{StaticResource UrKeyTextStyle}"
                                                Foreground="{StaticResource UrTextFaintBrush}" />
                                 </Border>
-                            </StackPanel>
+                            </Grid>
                         </ScrollViewer>
                     </Grid>
                 </Grid>
@@ -1576,9 +1844,12 @@
                         <Grid Grid.Row="1" x:Name="NetworkSearchHost" />
                         <!-- The list FILLS the rest of the pane, and its empty
                              state is a centred line in that same full-height
-                             area - never a short card at the top of it. -->
+                             area - never a short card at the top of it. The
+                             scroller is named so NetworkPage's reconcile can
+                             hold its offset across an incremental update. -->
                         <Grid Grid.Row="2">
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                            <ScrollViewer x:Name="NetworkListScroll"
+                                          HorizontalScrollBarVisibility="Disabled"
                                           VerticalScrollBarVisibility="Auto">
                                 <StackPanel x:Name="NetworkListHost" />
                             </ScrollViewer>
@@ -1674,7 +1945,7 @@
                         </Border>
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
-                            <StackPanel>
+                            <StackPanel x:Name="AccountPaneAStack">
                                 <!-- WHAT THE PLAN IS. It leads the pane, the way
                                      the protection state leads Home's. -->
                                 <Border Style="{StaticResource UrPaneRowStyle}"
@@ -1695,7 +1966,7 @@
                                 </Border>
                                 <!-- the pane's primary command: a full-bleed bar -->
                                 <Button x:Name="AccountUpgradeButton"
-                                        Style="{StaticResource UrPaneActionPrimaryStyle}"
+                                        Style="{StaticResource UrPaneActionEarningsStyle}"
                                         Click="OnOpenUpgrade" />
 
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
@@ -1730,6 +2001,48 @@
                                                    Style="{StaticResource UrValueTextStyle}" />
                                     </Grid>
                                 </Border>
+                                <!-- the usage bar's three figures, as rows: the bar
+                                     shows the SHAPE, these carry the numbers the
+                                     legend dots only colour. Neutral text on
+                                     purpose - palette spend stays with the legend
+                                     dots, which own the colour meaning. Labels are
+                                     the same shipped keys the legend uses. -->
+                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="AccountUsedLabel"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                        <TextBlock x:Name="AccountUsedValue" Grid.Column="1"
+                                                   Style="{StaticResource UrValueTextStyle}" />
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="AccountPendingLabel"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                        <TextBlock x:Name="AccountPendingValue" Grid.Column="1"
+                                                   Style="{StaticResource UrValueTextStyle}" />
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="AccountAvailableLabel"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                        <TextBlock x:Name="AccountAvailableValue" Grid.Column="1"
+                                                   Style="{StaticResource UrValueTextStyle}" />
+                                    </Grid>
+                                </Border>
                                 <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
                                     <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions>
@@ -1746,6 +2059,35 @@
                                                     Visibility="Collapsed"
                                                     Click="OnRetryReferralTotals" />
                                         </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <!-- what the referral bonus MEANS, in the program's
+                                     own terms (the shipped formatted key the
+                                     referral card already uses; the count row above
+                                     carries the numbers, this carries the rule). -->
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,10">
+                                    <TextBlock x:Name="AccountReferralDetail"
+                                               Style="{StaticResource UrSupportingTextStyle}" />
+                                </Border>
+                                <!-- the redeemed-code COUNT, one glance at pane C's
+                                     contents from pane A. Informational only: the
+                                     Redeem row below stays the action. The whole
+                                     row collapses (AccountPage::RenderBalanceCodes)
+                                     when there is no count to report - NoSession,
+                                     Loading and Failed draw no empty row. -->
+                                <Border x:Name="AccountBalanceCodesRow"
+                                        Style="{StaticResource UrPaneRowStyle}" MinHeight="34"
+                                        Visibility="Collapsed">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="AccountBalanceCodesLabel"
+                                                   Style="{StaticResource UrKeyTextStyle}" />
+                                        <TextBlock x:Name="AccountBalanceCodesValue" Grid.Column="1"
+                                                   Style="{StaticResource UrValueTextStyle}" />
                                     </Grid>
                                 </Border>
                                 <Button x:Name="RedeemRowButton" MinHeight="40"
@@ -1857,6 +2199,35 @@
                                 </Border>
                                 <StackPanel x:Name="AccountReferralsNavHost" />
 
+                                <!-- THE FOLD DOORS for panes A and D (the fold-doors
+                                     design note): below 900dip the plan pane's three
+                                     action rows (upgrade, redeem, manage subscription)
+                                     are REPARENTED into AccountPlanFoldHost - they are
+                                     the plan pane's only commands, and a fold may not
+                                     own content with no second door; below 1500dip the
+                                     WHOLE extender section moves into
+                                     AccountExtenderFoldHost (one named host, every
+                                     field/handler a member reference that survives the
+                                     move). Both sit above the danger section, which
+                                     stays last on the page at every width; pane B is
+                                     the pane that survives to the smallest width, so
+                                     nothing further is needed below 900. ApplyBreakpoint
+                                     moves the rows and flips the hosts in the same
+                                     applied-state pass as the accountTwo/accountThree
+                                     gates. -->
+                                <StackPanel x:Name="AccountPlanFoldHost" Visibility="Collapsed">
+                                    <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                        <TextBlock x:Name="AccountPlanFoldTitle"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel x:Name="AccountExtenderFoldHost" Visibility="Collapsed">
+                                    <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                        <TextBlock x:Name="AccountExtenderFoldTitle"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                    </Border>
+                                </StackPanel>
+
                                 <!-- the irreversible end, last on the page at
                                      every width -->
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
@@ -1892,7 +2263,8 @@
                                            Style="{StaticResource UrPaneMetaStyle}" />
                             </Grid>
                         </Border>
-                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                        <ScrollViewer Grid.Row="1" x:Name="AccountPaneDScroll"
+                                      HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="AccountExtenderHost" />
                         </ScrollViewer>
@@ -1921,10 +2293,11 @@
                                 <StackPanel x:Name="BalanceCodesPanel" />
                             </ScrollViewer>
                             <!-- one centred line in a FULL-HEIGHT pane, never a
-                                 short card at the top of one -->
+                                 short card at the top of one. 320, the kit empty
+                                 line's measure (kit::MakePaneEmptyLine). -->
                             <TextBlock x:Name="BalanceCodesEmptyText"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       TextAlignment="Center" TextWrapping="Wrap" MaxWidth="300"
+                                       TextAlignment="Center" TextWrapping="Wrap" MaxWidth="320"
                                        Margin="16" IsHitTestVisible="False"
                                        Style="{StaticResource UrSupportingTextStyle}" />
                         </Grid>
@@ -2016,7 +2389,7 @@
                         </Border>
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
-                            <StackPanel>
+                            <StackPanel x:Name="WalletPaneAStack">
                                 <!-- THE FIGURE: net points, in the display face,
                                      with its caption and the fetch state beside
                                      it. The breakdown rows follow on the pane's
@@ -2254,7 +2627,7 @@
                                                        Style="{StaticResource UrRowNoteStyle}"
                                                        TextTrimming="None" />
                                             <Button x:Name="ClaimButton"
-                                                    Style="{StaticResource UrPaneActionPrimaryStyle}"
+                                                    Style="{StaticResource UrPaneActionEarningsStyle}"
                                                     HorizontalAlignment="Stretch"
                                                     IsEnabled="False"
                                                     Click="OnClaimAlpha" />
@@ -2272,9 +2645,13 @@
                                             BorderBrush="{StaticResource UrReferralGoldBrush}"
                                             BorderThickness="0,0,0,1" Padding="12,10">
                                         <StackPanel Spacing="6">
+                                            <!-- "You qualify" is an earnings WIN,
+                                                 so it spends the earnings lime;
+                                                 the eviction-floor warning below
+                                                 keeps the amber-family reading. -->
                                             <TextBlock x:Name="Top200Status"
                                                        Style="{StaticResource UrKeyTextStyle}"
-                                                       Foreground="{StaticResource UrReferralGoldLightBrush}"
+                                                       Foreground="{StaticResource UrAccentBrush}"
                                                        TextWrapping="Wrap" TextTrimming="None" />
                                             <TextBlock x:Name="Top200Detail" TextWrapping="Wrap"
                                                        Style="{StaticResource UrRowNoteStyle}"
@@ -2293,10 +2670,35 @@
 
                                 <!-- the checkout stays where it was: a signed-in
                                      free account can upgrade from here; the
-                                     window owns its visibility -->
+                                     window owns its visibility. Demoted to the
+                                     outlined secondary: TWO stacked lime slabs
+                                     (Claim above, this below) overspend the
+                                     earnings accent - the lime fill on this page
+                                     belongs to Claim alone. (Account's upgrade
+                                     button keeps its lime: it is alone in its
+                                     pane there.) -->
                                 <Button x:Name="UpgradeButton"
-                                        Style="{StaticResource UrPaneActionPrimaryStyle}"
+                                        Style="{StaticResource UrPaneActionSecondaryStyle}"
                                         Click="OnOpenUpgrade" />
+                                <!-- THE FOLD DOOR for pane C (the fold-doors design
+                                     note): below the 1500dip earningsThree gate pane C
+                                     folds, and its state-writing rows - the points
+                                     network block, the own-rank + public toggle and
+                                     the provider transport row - have
+                                     no second door, so they are REPARENTED here (never
+                                     rebuilt: each is single-instance wiring). The host
+                                     sits at the foot of pane A's scroll, before the
+                                     InfoBar; ApplyBreakpoint moves the rows and flips
+                                     this host in the same applied-state pass as the
+                                     gate. Below 900dip pane A folds too, and the host
+                                     itself moves to the ledger pane's foot strip
+                                     (WalletPaneBFoot) - the rows ride with it. -->
+                                <StackPanel x:Name="WalletPaneCFold" Visibility="Collapsed">
+                                    <Border Style="{StaticResource UrGroupHeaderStyle}">
+                                        <TextBlock x:Name="WalletPaneCFoldTitle"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                    </Border>
+                                </StackPanel>
                                 <muxc:InfoBar x:Name="WalletInfo"
                                               Style="{StaticResource UrSnackbarStyle}"
                                               Margin="12,8" IsOpen="False" />
@@ -2313,12 +2715,14 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Border Style="{StaticResource UrPaneHeaderStyle}" Padding="12,0">
                             <Grid ColumnSpacing="12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <!-- the pane's own switch, in its own header
                                      strip: two tables, one at a time -->
@@ -2331,6 +2735,21 @@
                                 <TextBlock x:Name="WalletPaneBMeta" Grid.Column="1"
                                            HorizontalAlignment="Right"
                                            Style="{StaticResource UrPaneMetaStyle}" />
+                                <!-- THE COMMAND DOOR for pane A (the fold-doors design
+                                     note's COMMAND-DOOR DUPLICATION): below 900dip the
+                                     wallet rail folds, and its actions are all doors to
+                                     sheets or menus, so the door is duplicated - one
+                                     "Earnings actions" overflow whose items call the
+                                     SAME member handlers - rather than the surface.
+                                     Shown exactly while pane A is folded. -->
+                                <Button x:Name="EarningsActionsButton" Grid.Column="2"
+                                        Style="{StaticResource UrPaneActionButtonStyle}"
+                                        MinWidth="44" Height="32"
+                                        Visibility="Collapsed"
+                                        Click="OnEarningsActions">
+                                    <FontIcon FontFamily="{StaticResource UrIconFontFamily}"
+                                              Glyph="&#xE712;" FontSize="16" />
+                                </Button>
                             </Grid>
                         </Border>
                         <Grid Grid.Row="1">
@@ -2346,6 +2765,7 @@
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                            TextAlignment="Center" TextWrapping="Wrap"
                                            MaxWidth="320" Margin="16" IsHitTestVisible="False"
+                                           Foreground="{StaticResource UrTextFaintBrush}"
                                            Style="{StaticResource UrSupportingTextStyle}" />
                             </Grid>
                             <!-- LEADERBOARD. The same pane, the same floor. Two boards
@@ -2371,6 +2791,7 @@
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                TextAlignment="Center" TextWrapping="Wrap"
                                                MaxWidth="320" Margin="16" IsHitTestVisible="False"
+                                               Foreground="{StaticResource UrTextFaintBrush}"
                                                Style="{StaticResource UrSupportingTextStyle}" />
                                 </Grid>
                                 <!-- the points board: sort chips, the ranked rows (paged
@@ -2412,10 +2833,27 @@
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                TextAlignment="Center" TextWrapping="Wrap"
                                                MaxWidth="320" Margin="16" IsHitTestVisible="False"
+                                               Foreground="{StaticResource UrTextFaintBrush}"
                                                Style="{StaticResource UrSupportingTextStyle}" />
                                 </Grid>
                             </Grid>
                         </Grid>
+                        <!-- THE LEDGER'S FOOT STRIP (the fold-doors design note's
+                             option i): below 900dip the wallet rail folds, so the
+                             WalletPaneCFold host - holding pane C's reparented rows -
+                             moves into this strip. Minimal by rule (the note's
+                             "44px-minimal"): the scroll caps at three 44px rows so
+                             the table keeps the floor, and the strip collapses to
+                             nothing the moment the rail has room again. -->
+                        <Border x:Name="WalletPaneBFoot" Grid.Row="2" Visibility="Collapsed"
+                                BorderBrush="{StaticResource UrBorderBrush}"
+                                BorderThickness="0,1,0,0">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto"
+                                          MaxHeight="132">
+                                <StackPanel x:Name="WalletPaneBFootHost" />
+                            </ScrollViewer>
+                        </Border>
                     </Grid>
 
                     <Border x:Name="WalletPaneCRule" Grid.Column="3"
@@ -2435,7 +2873,7 @@
                         </Border>
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
-                            <StackPanel>
+                            <StackPanel x:Name="WalletPaneCStack">
                                 <!-- the points board's network block: this network's
                                      emoji tag and name, its points / blocks / streak
                                      with their ranks, the opt-in switch. Built in code
@@ -2445,11 +2883,21 @@
                                 <!-- own ranking: the one thing you came to the
                                      leaderboard for, beside the table rather
                                      than above it. The data board's block; hidden
-                                     while the Points board shows. -->
+                                     while the Points board shows. The rank itself
+                                     rides in the group header as the right-aligned
+                                     META ("CURRENT RANKING … #42") so the Net
+                                     Provided row below stays a clean label/value
+                                     pair instead of two figures merging on one
+                                     baseline. -->
                                 <StackPanel x:Name="DataRankingHost">
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">
-                                    <TextBlock x:Name="LeaderboardRankLabel"
-                                               Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                    <Grid>
+                                        <TextBlock x:Name="LeaderboardRankLabel"
+                                                   Style="{StaticResource UrGroupHeaderTextStyle}" />
+                                        <TextBlock x:Name="LeaderboardRankValue"
+                                                   Style="{StaticResource UrPaneMetaStyle}"
+                                                   HorizontalAlignment="Right" />
+                                    </Grid>
                                 </Border>
                                 <Border Style="{StaticResource UrPaneRowStyle}"
                                         MinHeight="0" Padding="12,12">
@@ -2460,16 +2908,12 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock x:Name="LeaderboardNetProvidedLabel"
                                                    Style="{StaticResource UrKeyTextStyle}"
-                                                   VerticalAlignment="Bottom" />
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                                    Spacing="12" VerticalAlignment="Center">
-                                            <TextBlock x:Name="LeaderboardNetProvidedValue"
-                                                       FontFamily="{StaticResource UrBodyFontFamily}"
-                                                       FontSize="18" FontWeight="SemiBold" />
-                                            <TextBlock x:Name="LeaderboardRankValue"
-                                                       FontFamily="{StaticResource UrBodyFontFamily}"
-                                                       FontSize="22" FontWeight="SemiBold" />
-                                        </StackPanel>
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock x:Name="LeaderboardNetProvidedValue"
+                                                   Grid.Column="1"
+                                                   FontFamily="{StaticResource UrBodyFontFamily}"
+                                                   FontSize="18" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" />
                                     </Grid>
                                 </Border>
                                 <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="44">
@@ -2745,130 +3189,177 @@
                     </Grid>
                 </Grid>
 
-                <!-- Support. Measured before this change: 0% card surface and
-                     83% blank rows - the stars, the box and Send floated
-                     directly on the page background with nothing holding them
-                     together, which is the owner's "just buttons on a black
-                     screen" in its purest form. It is now one card with a
-                     glyphed header, an intro line and rules between the three
-                     steps (rate, write, send), which is the shape Settings
-                     already uses and the shape that reads best in the app. -->
-                <ScrollViewer Margin="24" x:Name="SupportView" Visibility="Collapsed">
-                  <!-- Three columns, weighted 1 : 1000 : 1, with the cap on the
-                       middle one. The middle star is greedy enough to always
-                       reach its MaxWidth when the window has the room, and the
-                       two hairline stars split whatever is left - so the column
-                       is CENTRED at wide widths and simply fills the viewport
-                       at narrow ones, with no breakpoint and no branch.
+                <!-- ==== SUPPORT: THE PANE SHELL =============================
+                     The last card-model form page. Measured before this
+                     change: 0% card surface and 83% blank rows - the stars,
+                     the box and Send floated directly on the page background
+                     with nothing holding them together, the owner's "just
+                     buttons on a black screen" in its purest form. It now
+                     reads the way every other destination reads:
 
-                       Why not MaxWidth on the panel: that is the arrange-split
-                       bug (the offset comes out of the child's DESIRED width
-                       while it is laid out at the cap). Why not the single
-                       capped column P4 used: it pins the content to x=0, which
-                       is right at 1100 and lopsided when maximized - measured
-                       2578px wide with 600px of content and ~1900px of void on
-                       one side. -->
-                  <!-- The same shape ConnectView carries. Support has ONE
-                       form and no data, so at desktop widths the right half was
-                       simply black - measured at 8% non-background pixels
-                       maximized, the emptiest surface in the app. It now
-                       carries the OTHER half of what this destination is for:
-                       the form sends feedback to us, and the card beside it is
-                       how you reach a human. Both strings already ship and were
-                       used nowhere. -->
-                  <Grid x:Name="SupportLayout">
+                       pane A  FEEDBACK   the form: intro, rate, write, logs,
+                                          send, its acknowledgement
+                       pane B  SUPPORT    the way to reach a human (the mailto
+                                          sentence and the protocol link)
+
+                     The form sends feedback TO us; pane B is the other
+                     direction, and on a destination named Support the mailto
+                     is the one link with no second door - which is why it
+                     folds INLINE (SupportContactInline, below Send) rather
+                     than out of reach. -->
+                <Grid x:Name="SupportView" Visibility="Collapsed"
+                      Style="{StaticResource UrPaneStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition x:Name="SupportCapColumn"
-                                          Width="1000*" MaxWidth="560" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="SupportPaneAColumn" Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="SupportPaneBColumn" Width="360" />
                     </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="1">
-                      <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition x:Name="SupportSideColumn" Width="0" />
-                      </Grid.ColumnDefinitions>
-                      <Grid.RowDefinitions>
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                      </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Grid.Column="0"
-                                x:Name="SupportMainStack" Spacing="12"
-                                VerticalAlignment="Top">
-                        <!-- section header: glyph + name, the pattern every
-                             destination now uses above its first card -->
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE9CE;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="FeedbackHeading" Style="{StaticResource UrPanelHeadingStyle}" />
-                        </StackPanel>
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
+                    <!-- ============ PANE A: FEEDBACK ======================= -->
+                    <Grid Grid.Column="0" x:Name="SupportPaneA"
+                          AutomationProperties.LandmarkType="Main">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="SupportPaneATitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
                                 <!-- why this screen exists, in one sentence.
-                                     site_app_support_intro already ships and was
-                                     used nowhere. -->
-                                <TextBlock x:Name="SupportIntroText"
-                                           Style="{StaticResource UrSupportingTextStyle}" />
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <muxc:RatingControl x:Name="FeedbackRating" />
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <TextBox x:Name="FeedbackText" AcceptsReturn="True" TextWrapping="Wrap"
-                                         Style="{StaticResource UrTextInputStyle}"
-                                         MinHeight="96" />
-                                <!-- apple FeedbackView: logs go to the server ONLY from
-                                     here, only when this is ticked, and only with the
-                                     server-issued feedback id (SettingsPage).
-                                     This box shipped with NO CONTENT AT ALL - an
-                                     unlabelled checkbox offering to upload the
-                                     user's logs, announced by a screen reader as
-                                     "checkbox" and nothing else. The string
-                                     (feedback_include_logs) was already in the
-                                     store. -->
-                                <CheckBox x:Name="FeedbackIncludeLogs" />
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <Button x:Name="SendFeedbackButton" Click="OnSendFeedback"
-                                        HorizontalAlignment="Right">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon Glyph="&#xE724;" Style="{StaticResource UrRowIconStyle}"
-                                                  FontSize="14" />
-                                        <TextBlock x:Name="SendFeedbackText" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
+                                     site_app_support_intro already ships. -->
+                                <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                        BorderThickness="0,0,0,1" Padding="12,10">
+                                    <TextBlock x:Name="SupportIntroText"
+                                               Style="{StaticResource UrSupportingTextStyle}" />
+                                </Border>
+                                <Border Style="{StaticResource UrPaneRowStyle}">
+                                    <!-- left-aligned to the row's 12px inset like
+                                         every other control in the form: the stock
+                                         RatingControl centers itself in a stretched
+                                         row, which broke the form's left edge -->
+                                    <muxc:RatingControl x:Name="FeedbackRating"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center" />
+                                </Border>
+                                <!-- the one free-text control on the page: the row
+                                     frame (it owns the hairline) but at the box's
+                                     own height, not the 36px row height. At the
+                                     1400px+ widths the field's bare underline read
+                                     as an ornament, so the field gets a CONTROL
+                                     BOUNDARY - 1px UrBorderBrush, 4px radius, no
+                                     fill, not a card - and the Send bar below
+                                     stays the pane's full-bleed primary action.
+                                     The TextBox's own underline is zeroed through
+                                     its local theme resources: the stock template's
+                                     Focused state re-asserts
+                                     TextControlBorderThemeThicknessFocused, which
+                                     resolves against the element's own Resources
+                                     first. The measure is the form-control
+                                     exception (~640, pane stays full-bleed): a
+                                     single star column capped at 640 gives
+                                     min(row, 640) at the LEFT edge - a stretched
+                                     element with MaxWidth centers itself, and a
+                                     left-aligned one sizes to content. -->
+                                <Border Style="{StaticResource UrPaneRowStyle}"
+                                        MinHeight="0" Padding="12,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <!-- 616 + this row's 12px padding each
+                                                 side = the Send bar's 640 envelope
+                                                 (its style margin eats 24 of the
+                                                 640), so the three form controls
+                                                 share one right edge. -->
+                                            <ColumnDefinition Width="*" MaxWidth="616" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border BorderBrush="{StaticResource UrBorderBrush}"
+                                                BorderThickness="1" CornerRadius="4" Padding="8">
+                                            <TextBox x:Name="FeedbackText" AcceptsReturn="True" TextWrapping="Wrap"
+                                                     Style="{StaticResource UrTextInputStyle}"
+                                                     BorderThickness="0" MinHeight="96">
+                                                <TextBox.Resources>
+                                                    <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
+                                                </TextBox.Resources>
+                                            </TextBox>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                                <!-- apple FeedbackView: logs go to the server ONLY
+                                     from here, only when this is ticked, and only
+                                     with the server-issued feedback id
+                                     (SettingsPage). -->
+                                <Border Style="{StaticResource UrPaneRowStyle}">
+                                    <CheckBox x:Name="FeedbackIncludeLogs"
+                                              MaxWidth="640" HorizontalAlignment="Left"
+                                              VerticalAlignment="Center" />
+                                </Border>
+                                <!-- bare like the Connect pane's primary action:
+                                     UrPaneActionPrimaryStyle already carries the
+                                     12px inset. The measure is the field's form-
+                                     control exception: a star column capped at
+                                     640 keeps it a BAR of min(pane, 640) at the
+                                     left edge (MaxWidth on a stretched button
+                                     would center it; Left would size it to its
+                                     label). Content
+                                     is set in code
+                                     (Loc("send")); a plain-string Content gets
+                                     its automation name for free, but the
+                                     explicit SetName stays. -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" MaxWidth="640" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="SendFeedbackButton"
+                                            Style="{StaticResource UrPaneActionPrimaryStyle}"
+                                            Click="OnSendFeedback" />
+                                </Grid>
+                                <!-- KEEP this x:Name: SettingsPage's ctor builds
+                                     its Snackbar on it ("thanks for the
+                                     feedback" and the send-failure errors). The
+                                     same capped-column measure as the Send bar. -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" MaxWidth="640" />
+                                    </Grid.ColumnDefinitions>
+                                    <muxc:InfoBar x:Name="SupportInfo"
+                                                  Style="{StaticResource UrSnackbarStyle}"
+                                                  Margin="12,8" IsOpen="False" />
+                                </Grid>
+                                <!-- the narrow-width contact host: pane B's whole
+                                     contents, built here by
+                                     SettingsPage::BuildSupportContactSection
+                                     when the window is too narrow for the pane -->
+                                <StackPanel x:Name="SupportContactInline" Visibility="Collapsed" />
                             </StackPanel>
-                        </Border>
-                        <muxc:InfoBar x:Name="SupportInfo" Style="{StaticResource UrSnackbarStyle}" IsOpen="False" />
-                    </StackPanel>
-
-                    <!-- REACHING A HUMAN. The feedback form is one-way; this is
-                         the other way, and support@ur.io and the Discord invite
-                         were already in the store
-                         (if_the_problem_persists_contact_us_at_support_ur) with
-                         no call site anywhere in the client. Rendered with its
-                         links inline by urnw::SetMarkdownLinkText, so the whole
-                         shipped sentence survives and both links are real
-                         Hyperlinks in the tab order. -->
-                    <StackPanel Grid.Row="1" Grid.Column="0"
-                                x:Name="SupportSideStack" Spacing="12"
-                                VerticalAlignment="Top" Margin="0,16,0,0">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE939;" Style="{StaticResource UrRowIconStyle}" />
-                            <TextBlock x:Name="SupportContactHeading"
-                                       Style="{StaticResource UrPanelHeadingStyle}" />
-                        </StackPanel>
-                        <Border Style="{StaticResource UrCardStyle}">
-                            <StackPanel Spacing="12">
-                                <TextBlock x:Name="SupportContactText" TextWrapping="Wrap" />
-                                <Border Style="{StaticResource UrDividerStyle}" />
-                                <HyperlinkButton x:Name="SupportProtocolLink"
-                                                 NavigateUri="https://ur.xyz"
-                                                 FontSize="12" Padding="0"
-                                                 HorizontalAlignment="Left" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
+                        </ScrollViewer>
                     </Grid>
-                  </Grid>
-                </ScrollViewer>
+
+                    <Border x:Name="SupportPaneBRule" Grid.Column="1"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE B: REACH A HUMAN =================== -->
+                    <Grid Grid.Column="2" x:Name="SupportPaneB">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="SupportPaneBTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="SupportContactHost" />
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
 
                 <!-- ==== SETTINGS: THE PANE SHELL (R4) ======================
                      Slimmed to PREFERENCES. Account, subscription, login
@@ -2881,19 +3372,29 @@
                      max-width cap. Those are reconciled by making each pane a
                      constrained column: THREE equal star columns, so at the
                      2062dip window this app is judged in each one is ~660dip -
-                     which is the settings measure the guidance is asking for -
-                     and together they cover the window edge to edge with no
-                     centring grid and no gutter.
+                     the guidance's own measure.
 
                        col 0  GENERAL   preferences, then VPN and privacy
                        col 2  DEVICE    this machine, then Advanced
-                       col 4  ABOUT     version, community, the protocol
+                       col 4  ABOUT     what the app is: version, licenses,
+                                       community links
+
+                     About is the first pane to fold (below 1400dip of window),
+                     and the fold rule bars a foldable pane from owning content
+                     with no second door - the version rows were exactly such
+                     content, and About was once deleted over it. This time the
+                     rule is answered: below the gate the version rows and the
+                     Licenses row show fold copies at the foot of General
+                     (SettingsPage's fold hosts), and below 900dip the Device
+                     pane's Advanced-mode toggle does the same.
 
                      A list-pane-plus-detail reading was the other legitimate
                      option. It was rejected because there are ~14 preference
                      rows in the whole product: a navigation column for five
                      sections of three rows spends a third of the window on a
                      table of contents for a page that fits on one screen.
+                     (Licenses, ~95 rows of one species, IS that reading - it
+                     gets the list-plus-detail page below instead.)
 
                      Every row here is built by SettingsPage into the three
                      hosts below, through the row kit in pane mode. -->
@@ -3054,51 +3555,85 @@
                      seven destinations and it belongs where the other six are.
                      The page appends its cards into the four named hosts.
 
-                     Portmaster's reading: the wide tables at the top, then
-                     key-value material in columns under them. Exits has seven
-                     columns and Destinations three; both take the full width of
-                     the composition at every size, and both will grow id / raw
-                     columns under Advanced Mode. -->
-                <ScrollViewer Margin="24" x:Name="DeveloperView" Visibility="Collapsed"
-                              HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto">
-                  <Grid x:Name="DeveloperLayout">
+                       col 0  SESSION     the intro and its actions, what the
+                                         session has measured, then the wide
+                                         tables (Exits has seven columns,
+                                         Destinations three, the probe suite
+                                         seven)
+                       col 2  OVERRIDES   the five reliability override
+                                         sections - what the session has been
+                                         TOLD TO DO
+
+                     The pairing is the reading direction: change a threshold
+                     on the right, watch a count move on the left. The tables
+                     keep the pane's full width at every size; below the fold
+                     what overflows clips silently, the same answer every pane
+                     gives.
+
+                     The cards INSIDE the panes are the page's unchanged
+                     section builders - this port moves the shell, not the
+                     sections - so each scroller keeps the 16px gap a
+                     UrCardStyle needs to read as a card rather than fusing
+                     edge to edge. -->
+                <Grid x:Name="DeveloperView" Visibility="Collapsed"
+                      Style="{StaticResource UrPaneStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition x:Name="DeveloperCapColumn"
-                                          Width="1000*" MaxWidth="1000" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="DeveloperPaneAColumn" Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="DeveloperPaneBColumn" Width="400" />
                     </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="1">
-                      <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition x:Name="DeveloperSideColumn" Width="0" />
-                      </Grid.ColumnDefinitions>
-                      <Grid.RowDefinitions>
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="Auto" />
-                      </Grid.RowDefinitions>
-                      <!-- what these tools are, and the two actions that need
-                           no session -->
-                      <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
-                                  x:Name="DeveloperTopStack" Spacing="16" />
-                      <!-- the two tables, full width -->
-                      <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                  x:Name="DeveloperTablesStack" Spacing="16"
-                                  Margin="0,16,0,0" />
-                      <!-- what the session has measured -->
-                      <StackPanel Grid.Row="2" Grid.Column="0"
-                                  x:Name="DeveloperMainStack" Spacing="16"
-                                  VerticalAlignment="Top" Margin="0,16,0,24" />
-                      <!-- the five override sections -->
-                      <StackPanel Grid.Row="3" Grid.Column="0"
-                                  x:Name="DeveloperSideStack" Spacing="16"
-                                  VerticalAlignment="Top" Margin="0,16,0,24" />
+
+                    <!-- ============ PANE A: THE SESSION ===================== -->
+                    <Grid Grid.Column="0" x:Name="DeveloperPaneA"
+                          AutomationProperties.LandmarkType="Main">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="DeveloperPaneATitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="16" Spacing="16">
+                                <!-- what these tools are, and the two actions
+                                     that need no session -->
+                                <StackPanel x:Name="DeveloperTopStack" Spacing="16" />
+                                <!-- what the session has measured -->
+                                <StackPanel x:Name="DeveloperMainStack" Spacing="16" />
+                                <!-- the tables and the probe suite, the pane's
+                                     full width -->
+                                <StackPanel x:Name="DeveloperTablesStack" Spacing="16" />
+                            </StackPanel>
+                        </ScrollViewer>
                     </Grid>
-                  </Grid>
-                </ScrollViewer>
+
+                    <Border x:Name="DeveloperPaneBRule" Grid.Column="1"
+                            Style="{StaticResource UrPaneVRuleStyle}" />
+
+                    <!-- ============ PANE B: THE OVERRIDES =================== -->
+                    <Grid Grid.Column="2" x:Name="DeveloperPaneB">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource UrPaneHeaderStyle}">
+                            <Grid>
+                                <TextBlock x:Name="DeveloperPaneBTitle"
+                                           Style="{StaticResource UrPaneTitleStyle}" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <!-- the five override sections -->
+                            <StackPanel x:Name="DeveloperSideStack" Spacing="16"
+                                        Margin="16" />
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
             </Grid>
         </muxc:NavigationView>
 

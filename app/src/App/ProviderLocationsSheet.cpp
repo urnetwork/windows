@@ -14,6 +14,7 @@
 #include "Localization.h"
 #include "PageContext.h"  // pages::Adv
 #include "Sdk.h"
+#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "Strings.h"  // Widen: the utf-8 sdk ids into the wide localized text
 #include "UrColors.h"
 
@@ -152,11 +153,15 @@ void ProviderLocationsSheet::Build(XamlRoot const& root) {
 
   StackPanel content;
   content.Spacing(12);
-  content.MinWidth(440);
+  content.MinWidth(sheetfit::Width(root, 440));
 
-  // fixed globe above the scrolling list (android parity: only the list scrolls)
+  // fixed globe above the scrolling list (android parity: only the list
+  // scrolls). The pair shares one window-height budget (sheetfit): the globe
+  // takes its fixed share first and the list's cap takes what is left, so a
+  // short window shrinks the list and never the globe.
+  const double globeHeight = sheetfit::Height(root, kGlobeHeight);
   Grid globeHost;
-  globeHost.Height(kGlobeHeight);
+  globeHost.Height(globeHeight);
   globeHost.HorizontalAlignment(HorizontalAlignment::Stretch);
   content.Children().Append(globeHost);
   globe_ = std::make_unique<ProviderGlobe>(globeHost);
@@ -175,7 +180,9 @@ void ProviderLocationsSheet::Build(XamlRoot const& root) {
   list_.Spacing(4);
   ScrollViewer scroll;
   scroll.Content(list_);
-  scroll.MaxHeight(kListMaxHeight);
+  // the budget minus the globe and the one content spacing between them (12)
+  scroll.MaxHeight((std::max)(
+      0.0, sheetfit::Height(root, kGlobeHeight + 12 + kListMaxHeight) - globeHeight - 12));
   content.Children().Append(scroll);
 
   copiedNote_ = MakeText(L"", 11, colors::MutedBrush());

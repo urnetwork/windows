@@ -69,6 +69,20 @@ std::filesystem::path ExePath() {
   return std::filesystem::path(std::wstring(path, n));
 }
 
+// " (modified 2026-10-09 04:11:20 UTC)": the exe's own write time, which says
+// WHICH build is running. The "build" line is __DATE__/__TIME__ of this one
+// translation unit, which an incremental build does not recompile, so it reads
+// the same stale stamp for every build (it said Oct 8 18:13:01 all day). Empty
+// when the file cannot be read - a diagnostic must not fail while diagnosing.
+std::wstring WriteTime(const std::filesystem::path& file) {
+  WIN32_FILE_ATTRIBUTE_DATA data{};
+  if (!::GetFileAttributesExW(file.c_str(), GetFileExInfoStandard, &data)) return {};
+  SYSTEMTIME utc{};
+  if (!::FileTimeToSystemTime(&data.ftLastWriteTime, &utc)) return {};
+  return std::format(L" (modified {:04}-{:02}-{:02} {:02}:{:02}:{:02} UTC)", utc.wYear,
+                     utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond);
+}
+
 // "present (12345 bytes)" / "MISSING". Never throws: file_size takes the
 // error_code overload, because a diagnostic that dies while diagnosing is worse
 // than no diagnostic.
@@ -198,7 +212,7 @@ std::vector<std::wstring> CollectDiagnostics() {
                               Widen(__DATE__), Widen(__TIME__)));
   lines.push_back(std::format(L"  windows          : {}", OsVersion()));
   lines.push_back(std::format(L"  process          : pid {}", ::GetCurrentProcessId()));
-  lines.push_back(std::format(L"  executable       : {}", exe.wstring()));
+  lines.push_back(std::format(L"  executable       : {}{}", exe.wstring(), WriteTime(exe)));
   lines.push_back(std::format(L"  command line     : {}", ::GetCommandLineW()));
   std::wstring logLine = log.empty() ? std::wstring(L"(none — debugger only)") : log.wstring();
   if (g_logOpened && !*g_logOpened)

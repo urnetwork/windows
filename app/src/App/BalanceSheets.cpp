@@ -24,6 +24,7 @@
 #include "Log.h"
 #include "Paths.h"
 #include "PricePresentation.h"
+#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "StatsFormat.h"
 #include "Strings.h"
 #include "UrColors.h"
@@ -271,7 +272,7 @@ void RedeemCodeSheet::Build(XamlRoot const& root) {
   dialog_.DefaultButton(ContentDialogButton::Primary);
 
   Grid content;
-  content.MinWidth(400);
+  content.MinWidth(sheetfit::Width(root, 400));
 
   // form: code entry + inline error + where-to-get-codes note
   formPanel_ = StackPanel();
@@ -541,7 +542,7 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   dialog_ = MakeDialog(root, hstring{L""});
 
   Grid content;
-  content.MinWidth(440);
+  content.MinWidth(sheetfit::Width(root, 440));
 
   // ---- products page (macOS UpgradeSubscriptionSheet) ----
   productsPanel_ = StackPanel();
@@ -691,8 +692,11 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   checkoutPanel_.Children().Append(checkoutHeader);
   // the webview (inserted per attempt) sits under a loading ring in this slot
   webviewSlot_ = Grid();
-  webviewSlot_.MinWidth(440);
-  webviewSlot_.Height(480);
+  // sized from the window at open, not fixed: a 440x480 slot inside a 400x480
+  // window pushes the sheet -- and the checkout page's own controls -- past the
+  // glass (sheetfit; the extra height reserve is this page's header row)
+  webviewSlot_.MinWidth(sheetfit::Width(root, 440));
+  webviewSlot_.Height(sheetfit::Height(root, 480, 120));
   webviewSlot_.Background(colors::BackgroundBrush());
   checkoutRing_ = ProgressRing();
   checkoutRing_.Width(36);
@@ -764,7 +768,7 @@ void UpgradeSheet::Build(XamlRoot const& root) {
 
   ScrollViewer scroll;
   scroll.Content(content);
-  scroll.MaxHeight(560);
+  scroll.MaxHeight(sheetfit::Height(root, 560));
   dialog_.Content(scroll);
 
   dialog_.Closed([weak = weak_from_this()](auto const&, auto const&) {

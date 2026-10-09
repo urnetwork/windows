@@ -14,6 +14,7 @@
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
+#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "Strings.h"  // Narrow: the utf-16 search box into the sdk's utf-8 filter
 #include "UrColors.h"
 #include "UrComponents.h"
@@ -75,6 +76,18 @@ TextBlock SectionHeader(hstring const& text) {
   auto tb = MakeText(text, 12, MutedBrush());
   tb.Margin(Thickness{0, 8, 0, 0});
   return tb;
+}
+
+// Prose on the pane's rhythm: the row inset and hairline, wrapping allowed
+// (the same construction as AccountPage's AddNoteRow, for the detail pane's
+// standing notes).
+void AddDetailNote(Panel const& host, hstring const& text) {
+  Border box;
+  box.Padding(ThicknessHelper::FromLengths(12, 8, 12, 8));
+  box.BorderBrush(colors::BorderBrush());
+  box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+  box.Child(MakeText(text, 12, MutedBrush(), /*wrap=*/true));
+  host.Children().Append(box);
 }
 
 // "AABBCC" / "#AABBCC" / "AARRGGBB" -> Color (fallback muted gray)
@@ -188,7 +201,7 @@ void LocationChooserSheet::Build(XamlRoot const& root) {
 
   StackPanel content;
   content.Spacing(12);
-  content.MinWidth(440);
+  content.MinWidth(sheetfit::Width(root, 440));
 
   // fixed search box above the scrolling sections (mobile parity). The SDK
   // debounces stale responses and re-emits FilteredLocations -> onLocations_ ->
@@ -208,7 +221,7 @@ void LocationChooserSheet::Build(XamlRoot const& root) {
   sections_.Spacing(12);
   ScrollViewer scroll;
   scroll.Content(sections_);
-  scroll.MaxHeight(460);
+  scroll.MaxHeight(sheetfit::Height(root, 460));
   content.Children().Append(scroll);
 
   dialog_.Content(content);
@@ -425,6 +438,37 @@ int64_t CountOf(std::optional<urnet::ConnectLocationList> const& list) {
   return list ? static_cast<int64_t>(list->size()) : 0;
 }
 
+// The reconcile keys. Rows key by the STABLE id - the same id precedence
+// LocationColor uses for its dot - prefixed by kind so a location id, a client
+// id, a group id and a peer can never collide with each other, with the "h:"
+// group headers, or with the "best" row and the "empty" line. The SDK's
+// buckets are mutually exclusive inside one push (a match-distance-0 hit is
+// sorted into BestMatches INSTEAD of its type bucket), so the bare stable id
+// is unique across the whole list.
+std::string LocationRowKey(const urnet::ConnectLocation& location) {
+  if (location.connect_location_id) {
+    const auto& id = *location.connect_location_id;
+    if (id.location_id && !id.location_id->empty()) return "l:" + *id.location_id;
+    if (id.client_id && !id.client_id->empty()) return "c:" + *id.client_id;
+    if (id.location_group_id && !id.location_group_id->empty()) {
+      return "g:" + *id.location_group_id;
+    }
+  }
+  // No id at all: the name is the only stable thing left to key on.
+  return "n:" + location.name.value_or(std::string());
+}
+
+std::string PeerRowKey(const urnet::NetworkPeer& peer) {
+  if (peer.ClientId && !peer.ClientId->empty()) return "p:" + *peer.ClientId;
+  return "p:" + PeerDisplayName(peer);
+}
+
+// Windows::UI::Color is a plain struct with no operator==; the skip-unchanged
+// test in Render's reconcile needs field equality.
+bool SameColor(winrt::Windows::UI::Color a, winrt::Windows::UI::Color b) {
+  return a.A == b.A && a.R == b.R && a.G == b.G && a.B == b.B;
+}
+
 // The SDK's own state strings (sdk/locations_view_controller.go). Compared by
 // value rather than parsed: they are the wire, and an unrecognised one falls
 // through to "loading", which is the honest answer for "the feed is open and it
@@ -472,6 +516,10 @@ void NetworkPage::ApplyStrings() {
     search_.PlaceholderText(Loc("search_providers_input_placeholder"));
     Automation::AutomationProperties::SetName(search_, Loc("search_providers_input_label"));
   }
+  // A (re)stringing re-letters every caption on the standing rows: that is a
+  // structural case the reconcile must not patch over, so the next Render
+  // rebuilds once (see listDirty_).
+  listDirty_ = true;
   Render();
 }
 
@@ -562,9 +610,10 @@ void NetworkPage::OnPeers(std::optional<urnet::NetworkPeerList> peers) {
   Render();
 }
 
-Button NetworkPage::MakeRow(hstring const& title, hstring const& meta,
-                            winrt::Windows::UI::Color dotColor, bool selected, bool unstable,
-                            bool strongPrivacy, bool providing) {
+NetworkPage::LocationRowEntry NetworkPage::MakeRow(
+    hstring const& title, hstring const& meta, winrt::Windows::UI::Color dotColor, bool selected,
+    bool unstable, bool strongPrivacy, bool providing) {
+  LocationRowEntry entry;
   Button row;
   if (auto app = Application::Current()) {
     auto key = winrt::box_value(hstring{L"UrPaneRowButtonStyle"});
@@ -587,145 +636,266 @@ Button NetworkPage::MakeRow(hstring const& title, hstring const& meta,
     grid.ColumnDefinitions().Append(column);
   }
 
-  auto dot = MakeDot(dotColor, 8);
+  entry.dot = MakeDot(dotColor, 8);
   Automation::AutomationProperties::SetAccessibilityView(
-      dot, Automation::Peers::AccessibilityView::Raw);
-  grid.Children().Append(dot);
+      entry.dot, Automation::Peers::AccessibilityView::Raw);
+  grid.Children().Append(entry.dot);
 
-  auto name = MakeName(title);
-  name.FontSize(13);
-  name.VerticalAlignment(VerticalAlignment::Center);
+  entry.title = MakeName(title);
+  entry.title.FontSize(13);
+  entry.title.VerticalAlignment(VerticalAlignment::Center);
   Automation::AutomationProperties::SetAccessibilityView(
-      name, Automation::Peers::AccessibilityView::Raw);
-  Grid::SetColumn(name, 1);
-  grid.Children().Append(name);
+      entry.title, Automation::Peers::AccessibilityView::Raw);
+  Grid::SetColumn(entry.title, 1);
+  grid.Children().Append(entry.title);
 
-  StackPanel glyphs;
-  glyphs.Orientation(Orientation::Horizontal);
-  glyphs.Spacing(6);
-  glyphs.VerticalAlignment(VerticalAlignment::Center);
-  if (providing) glyphs.Children().Append(MakeGlyph(kProvidingGlyph, colors::kUrGreen));
-  if (unstable) glyphs.Children().Append(MakeGlyph(kWarningGlyph, kUnstable));
-  if (strongPrivacy) glyphs.Children().Append(MakeGlyph(kPrivacyGlyph, colors::kUrGreen));
-  if (selected) glyphs.Children().Append(MakeGlyph(kCheckGlyph, colors::kToggleAccent));
+  entry.glyphs = StackPanel();
+  entry.glyphs.Orientation(Orientation::Horizontal);
+  entry.glyphs.Spacing(6);
+  entry.glyphs.VerticalAlignment(VerticalAlignment::Center);
   Automation::AutomationProperties::SetAccessibilityView(
-      glyphs, Automation::Peers::AccessibilityView::Raw);
-  Grid::SetColumn(glyphs, 2);
-  grid.Children().Append(glyphs);
+      entry.glyphs, Automation::Peers::AccessibilityView::Raw);
+  Grid::SetColumn(entry.glyphs, 2);
+  grid.Children().Append(entry.glyphs);
 
-  auto figure = MakeText(meta, 12, MutedBrush());
-  figure.VerticalAlignment(VerticalAlignment::Center);
-  figure.TextWrapping(TextWrapping::NoWrap);
+  entry.meta = MakeText(meta, 12, MutedBrush());
+  entry.meta.VerticalAlignment(VerticalAlignment::Center);
+  entry.meta.TextWrapping(TextWrapping::NoWrap);
   Automation::AutomationProperties::SetAccessibilityView(
-      figure, Automation::Peers::AccessibilityView::Raw);
-  Grid::SetColumn(figure, 3);
-  grid.Children().Append(figure);
+      entry.meta, Automation::Peers::AccessibilityView::Raw);
+  Grid::SetColumn(entry.meta, 3);
+  grid.Children().Append(entry.meta);
+
+  row.Content(grid);
+  entry.root = row;
+  entry.button = row;
+
+  // The fill runs the SAME code path a reconcile pass rewrites the row with,
+  // so a built row and an updated row are byte-identical.
+  LocationListSpec spec;
+  spec.title = title;
+  spec.meta = meta;
+  spec.dotColor = dotColor;
+  spec.selected = selected;
+  spec.unstable = unstable;
+  spec.strongPrivacy = strongPrivacy;
+  spec.providing = providing;
+  UpdateListEntry(entry, spec);
+  return entry;
+}
+
+// The in-place rewrite: everything a push can change about a row or a header
+// that is already on screen - the caption, the count, the dot's colour, the
+// state glyphs, the figure, the accessible name - without touching the
+// element's identity, focus, or the scroller's offset. The EmptyLine kind is
+// NOT rewritten here: its text lives inside the kit element, so Render's walk
+// swaps that single element instead (the swap needs the host).
+void NetworkPage::UpdateListEntry(LocationRowEntry& entry, LocationListSpec const& spec) {
+  if (entry.kind == LocationRowKind::Group) {
+    entry.headerTitle.Text(spec.title);
+    entry.headerMeta.Text(spec.meta);
+    return;
+  }
+  if (entry.kind != LocationRowKind::Row) return;
+  entry.dot.Fill(SolidColorBrush(spec.dotColor));
+  entry.title.Text(spec.title);
+  // The state glyphs, in the row's one fixed order, rebuilt inside the
+  // standing row: glyph membership is the rewrite's only shape change.
+  entry.glyphs.Children().Clear();
+  if (spec.providing) entry.glyphs.Children().Append(MakeGlyph(kProvidingGlyph, colors::kUrGreen));
+  if (spec.unstable) entry.glyphs.Children().Append(MakeGlyph(kWarningGlyph, kUnstable));
+  if (spec.strongPrivacy) {
+    entry.glyphs.Children().Append(MakeGlyph(kPrivacyGlyph, colors::kUrGreen));
+  }
+  if (spec.selected) entry.glyphs.Children().Append(MakeGlyph(kCheckGlyph, colors::kToggleAccent));
+  entry.meta.Text(spec.meta);
 
   // A Button whose Content is a Panel gets NO automatic name. Everything inside
   // is Raw, so this is the row's ONLY accessible node - it has to carry the
   // whole row, including the state the trailing glyphs draw in colour.
-  std::wstring announced{title};
-  if (!meta.empty()) announced += L", " + std::wstring{meta};
-  if (unstable) announced += L", " + std::wstring{Loc("unstable_providers_warning")};
-  if (strongPrivacy) announced += L", " + std::wstring{Loc("strong_anonymization")};
-  if (providing) announced += L", " + std::wstring{Loc("network_peers")};
-  Automation::AutomationProperties::SetName(row, hstring{announced});
-  if (selected) {
-    Automation::AutomationProperties::SetFullDescription(row, Loc("selected_provider"));
+  std::wstring announced{spec.title};
+  if (!spec.meta.empty()) announced += L", " + std::wstring{spec.meta};
+  if (spec.unstable) announced += L", " + std::wstring{Loc("unstable_providers_warning")};
+  if (spec.strongPrivacy) announced += L", " + std::wstring{Loc("strong_anonymization")};
+  if (spec.providing) announced += L", " + std::wstring{Loc("network_peers")};
+  Automation::AutomationProperties::SetName(entry.button, hstring{announced});
+  if (spec.selected) {
+    Automation::AutomationProperties::SetFullDescription(entry.button, Loc("selected_provider"));
+  } else {
+    // An update can UNselect a standing row; a fresh row simply never set it.
+    entry.button.ClearValue(Automation::AutomationProperties::FullDescriptionProperty());
   }
-
-  row.Content(grid);
-  return row;
 }
 
-void NetworkPage::AppendGroup(hstring const& title, int64_t count) {
-  auto header = kit::MakePaneGroupHeader(
-      title, count <= 0 ? hstring{} : hstring{std::to_wstring(count)});
-  w_.NetworkListHost().Children().Append(header.root);
+// One element of the list, built ONCE per key (BuildConnectionRow parity). The
+// row attaches its click here, by key: the key is captured by value so the
+// handler never reaches back into rowEntries_, which the reconcile reseats.
+NetworkPage::LocationRowEntry NetworkPage::BuildListEntry(LocationListSpec const& spec) {
+  LocationRowEntry entry;
+  switch (spec.kind) {
+    case LocationRowKind::Group: {
+      auto header = kit::MakePaneGroupHeader(spec.title, spec.meta);
+      entry.root = header.root;
+      entry.headerTitle = header.title;
+      entry.headerMeta = header.meta;
+      break;
+    }
+    case LocationRowKind::EmptyLine:
+      entry.root = kit::MakePaneEmptyLine(spec.title);
+      entry.lineText = spec.title;
+      break;
+    case LocationRowKind::Row: {
+      entry = MakeRow(spec.title, spec.meta, spec.dotColor, spec.selected, spec.unstable,
+                      spec.strongPrivacy, spec.providing);
+      const std::string key = spec.key;
+      entry.button.Click([this, key](IInspectable const&, auto const&) {
+        ConnectFromListKey(key);
+      });
+      break;
+    }
+  }
+  entry.kind = spec.kind;
+  entry.key = spec.key;
+  entry.applied = spec;
+  return entry;
 }
 
-void NetworkPage::AppendLocationSection(hstring const& title,
-                                        std::optional<urnet::ConnectLocationList> const& items,
-                                        std::optional<urnet::ConnectLocation> const& selected,
-                                        int64_t& runningTotal) {
+// The list row's connect, resolved at click time from the CACHED feeds: a row
+// rewritten in place since it was built connects to what it shows NOW, not to
+// a copy captured when it was built. Same action as the sheet's row - select
+// AND connect; deliberately not a new "highlight" concept, one model, one
+// meaning, so the detail pane genuinely shows the SELECTED provider.
+// Coalesced (ConnectFromRow): a scroll-and-click hunt through this list fires
+// one connect, not one per row visited.
+void NetworkPage::ConnectFromListKey(std::string const& key) {
+  if (key == "best") {
+    Sdk().ConnectBestAvailableFromRow();  // coalesced, like every row click
+    Render();
+    return;
+  }
+  if (peers_) {
+    for (auto const& peer : *peers_) {
+      if (PeerRowKey(peer) != key) continue;
+      // one of the user's own devices, reached as a network peer (PeerLocation.h);
+      // coalesced, like every row click
+      Sdk().ConnectFromRow(PeerConnectLocation<urnet::ConnectLocation>(peer));
+      Render();
+      return;
+    }
+  }
+  if (locations_) {
+    for (auto const* bucket : {&locations_->BestMatches, &locations_->Countries,
+                               &locations_->Regions, &locations_->Cities,
+                               &locations_->Devices}) {
+      if (!*bucket) continue;
+      for (auto const& location : **bucket) {
+        if (LocationRowKey(location) != key) continue;
+        Sdk().ConnectFromRow(location);  // coalesced, like every row click
+        Render();
+        return;
+      }
+    }
+  }
+}
+
+void NetworkPage::AppendGroupSpec(std::vector<LocationListSpec>& specs, std::string const& key,
+                                  hstring const& title, int64_t count) {
+  LocationListSpec spec;
+  spec.kind = LocationRowKind::Group;
+  spec.key = key;
+  spec.title = title;
+  spec.meta = count <= 0 ? hstring{} : hstring{std::to_wstring(count)};
+  specs.push_back(std::move(spec));
+}
+
+void NetworkPage::AppendLocationSpecs(std::vector<LocationListSpec>& specs,
+                                      std::string const& headerKey, hstring const& title,
+                                      std::optional<urnet::ConnectLocationList> const& items,
+                                      std::optional<urnet::ConnectLocation> const& selected,
+                                      int64_t& runningTotal) {
   if (!NonEmpty(items)) return;
-  AppendGroup(title, static_cast<int64_t>(items->size()));
+  AppendGroupSpec(specs, headerKey, title, static_cast<int64_t>(items->size()));
   runningTotal += static_cast<int64_t>(items->size());
   for (auto const& location : *items) {
     const int providers = location.provider_count.value_or(0);
-    auto row = MakeRow(H(location.name.value_or(std::string())),
-                       0 < providers
-                           ? hstring{Plural("provider_count", static_cast<int64_t>(providers))}
-                           : hstring{},
-                       LocationColor(location), IsLocationSelected(selected, location),
-                       !location.stable, location.strong_privacy, /*providing=*/false);
-    const urnet::ConnectLocation copy = location;
-    // Same action as the sheet's row: select AND connect. Deliberately not a
-    // new "highlight" concept - one model, one meaning, and the detail pane
-    // then genuinely shows the SELECTED provider rather than a hover state.
-    // Coalesced (ConnectFromRow): a scroll-and-click hunt through this list
-    // fires one connect, not one per row visited.
-    row.Click([this, copy](IInspectable const&, auto const&) {
-      Sdk().ConnectFromRow(copy);
-      Render();
-    });
-    w_.NetworkListHost().Children().Append(row);
+    LocationListSpec spec;
+    spec.key = LocationRowKey(location);
+    spec.title = H(location.name.value_or(std::string()));
+    spec.meta = 0 < providers
+                    ? hstring{Plural("provider_count", static_cast<int64_t>(providers))}
+                    : hstring{};
+    spec.dotColor = LocationColor(location);
+    spec.selected = IsLocationSelected(selected, location);
+    spec.unstable = !location.stable;
+    spec.strongPrivacy = location.strong_privacy;
+    specs.push_back(std::move(spec));
   }
 }
 
+// The pane's list of providers. INCREMENTAL, for the same reason
+// ConnectPage::ApplyConnectionsList is: the SDK pushes on every location and
+// peer change and the search re-buckets on every keystroke, and a
+// Clear()+rebuild re-measures the whole (unvirtualized, MinHeight-rowed) tree
+// AND resets the scroller to the top - the worst single measure cost in the
+// app. Instead each render computes the desired list (LocationListSpec), keys
+// it, and diffs it against what is standing (rowEntries_): rows that left are
+// removed, rows that moved are reseated, rows that changed are rewritten in
+// place, new rows insert at their order position - and the scroll offset is
+// read before the mutations and restored after.
 void NetworkPage::Render() {
   if (!w_.NetworkListHost()) return;
   auto host = w_.NetworkListHost();
-  host.Children().Clear();
+  auto scroll = w_.NetworkListScroll();
 
   const auto selected = Sdk().SelectedLocation();
   const bool searching = !query_.empty();
+
+  // ---- the desired list, in the pane's own order ----------------------------
+  std::vector<LocationListSpec> specs;
   int64_t total = 0;
 
   // 1. network peers, pinned first (mobile parity, and the chooser's order)
   const int64_t peerCount = peers_ ? static_cast<int64_t>(peers_->size()) : 0;
   if (0 < peerCount) {
-    AppendGroup(Loc("network_peers"), peerCount);
+    AppendGroupSpec(specs, "h:peers", Loc("network_peers"), peerCount);
     total += peerCount;
     for (auto const& peer : *peers_) {
-      auto row = MakeRow(H(PeerDisplayName(peer)), H(peer.DeviceSpec),
-                         ColorFromHex(urnet::getColorHex(peer.ClientId.value_or(std::string()))),
-                         IsPeerSelected(selected, peer), /*unstable=*/false,
-                         /*strongPrivacy=*/false, /*providing=*/true);
-      const urnet::NetworkPeer copy = peer;
-      row.Click([this, copy](IInspectable const&, auto const&) {
-        // one of the user's own devices, reached as a network peer (PeerLocation.h);
-        // coalesced, like every row click
-        Sdk().ConnectFromRow(PeerConnectLocation<urnet::ConnectLocation>(copy));
-        Render();
-      });
-      host.Children().Append(row);
+      LocationListSpec spec;
+      spec.key = PeerRowKey(peer);
+      spec.title = H(PeerDisplayName(peer));
+      spec.meta = H(peer.DeviceSpec);
+      spec.dotColor = ColorFromHex(urnet::getColorHex(peer.ClientId.value_or(std::string())));
+      spec.selected = IsPeerSelected(selected, peer);
+      spec.providing = true;
+      specs.push_back(std::move(spec));
     }
   }
 
   // 2. searching -> the SDK's best matches; idle -> the single best-available row
   if (searching) {
-    if (locations_) AppendLocationSection(Loc("top_matches"), locations_->BestMatches, selected, total);
+    if (locations_) {
+      AppendLocationSpecs(specs, "h:top", Loc("top_matches"), locations_->BestMatches, selected,
+                          total);
+    }
   } else {
-    AppendGroup(Loc("promoted_locations"), 0);
-    auto row = MakeRow(Loc("best_available_provider"), hstring{}, colors::kUrCoral,
-                       IsBestAvailableSelected(selected), /*unstable=*/false,
-                       /*strongPrivacy=*/false, /*providing=*/false);
-    row.Click([this](IInspectable const&, auto const&) {
-      Sdk().ConnectBestAvailableFromRow();  // coalesced, like every row click
-      Render();
-    });
-    host.Children().Append(row);
+    AppendGroupSpec(specs, "h:promoted", Loc("promoted_locations"), 0);
+    LocationListSpec spec;
+    spec.key = "best";
+    spec.title = Loc("best_available_provider");
+    spec.dotColor = colors::kUrCoral;
+    spec.selected = IsBestAvailableSelected(selected);
+    specs.push_back(std::move(spec));
     total += 1;
   }
 
   // 3. the SDK's own buckets, in the SDK's own order
   int64_t bucketRows = 0;
   if (locations_) {
-    AppendLocationSection(Loc("countries"), locations_->Countries, selected, total);
-    AppendLocationSection(Loc("regions"), locations_->Regions, selected, total);
-    AppendLocationSection(Loc("cities"), locations_->Cities, selected, total);
-    AppendLocationSection(Loc("devices"), locations_->Devices, selected, total);
+    AppendLocationSpecs(specs, "h:countries", Loc("countries"), locations_->Countries, selected,
+                        total);
+    AppendLocationSpecs(specs, "h:regions", Loc("regions"), locations_->Regions, selected, total);
+    AppendLocationSpecs(specs, "h:cities", Loc("cities"), locations_->Cities, selected, total);
+    AppendLocationSpecs(specs, "h:devices", Loc("devices"), locations_->Devices, selected, total);
     bucketRows = CountOf(locations_->Countries) + CountOf(locations_->Regions) +
                  CountOf(locations_->Cities) + CountOf(locations_->Devices);
     if (searching) bucketRows += CountOf(locations_->BestMatches);
@@ -757,7 +927,104 @@ void NetworkPage::Render() {
         line = searching ? Loc("no_locations_found") : Loc("no_providers_found");
         break;
     }
-    host.Children().Append(kit::MakePaneEmptyLine(line));
+    LocationListSpec spec;
+    spec.kind = LocationRowKind::EmptyLine;
+    spec.key = "empty";
+    spec.title = line;
+    specs.push_back(std::move(spec));
+  }
+
+  // ---- reconcile ------------------------------------------------------------
+  // A full rebuild is for the structural cases only (listDirty_: the first
+  // render, a locale change out of ApplyStrings); the steady-state path never
+  // pays for it. A query change is a new result set and reads from the top
+  // instead of holding the old list's offset (ConnectPage's resetScroll rule).
+  const bool resetScroll = listDirty_ || renderedQuery_ != query_;
+  if (listDirty_) {
+    host.Children().Clear();
+    rowEntries_.clear();
+    listDirty_ = false;
+  }
+
+  // Read the offset BEFORE the mutations; it is restored after them.
+  const double offset = resetScroll ? 0.0 : scroll.VerticalOffset();
+
+  // Rows that left the set - bucketed away, filtered out, or gone from the
+  // feed - walk back to front so the Children() indices stay valid as they
+  // come out.
+  for (size_t i = rowEntries_.size(); 0 < i--;) {
+    bool stays = false;
+    for (auto const& spec : specs) {
+      if (spec.key == rowEntries_[i].key) {
+        stays = true;
+        break;
+      }
+    }
+    if (stays) continue;
+    host.Children().RemoveAt(static_cast<uint32_t>(i));
+    rowEntries_.erase(rowEntries_.begin() + static_cast<ptrdiff_t>(i));
+  }
+
+  // The desired order: update in place where the element already stands,
+  // reseat it if the push moved it, build and insert it if it is new. The
+  // entries index IS the Children() index - every mutation mirrors into both.
+  for (size_t i = 0; i < specs.size(); ++i) {
+    auto const& spec = specs[i];
+    size_t at = rowEntries_.size();
+    for (size_t k = i; k < rowEntries_.size(); ++k) {
+      if (rowEntries_[k].key == spec.key) {
+        at = k;
+        break;
+      }
+    }
+    if (at < rowEntries_.size()) {
+      auto& entry = rowEntries_[at];
+      if (entry.kind == LocationRowKind::EmptyLine) {
+        if (entry.lineText != spec.title) {
+          // The feed state changed under the one keyed empty line: swap the
+          // single element in place.
+          auto fresh = kit::MakePaneEmptyLine(spec.title);
+          host.Children().SetAt(static_cast<uint32_t>(at), fresh);
+          entry.root = fresh;
+          entry.lineText = spec.title;
+          entry.applied = spec;
+        }
+      } else if (entry.applied.title == spec.title && entry.applied.meta == spec.meta &&
+                 SameColor(entry.applied.dotColor, spec.dotColor) &&
+                 entry.applied.selected == spec.selected &&
+                 entry.applied.unstable == spec.unstable &&
+                 entry.applied.strongPrivacy == spec.strongPrivacy &&
+                 entry.applied.providing == spec.providing) {
+        // Already showing exactly this spec: leave the element untouched, so a
+        // push that changes nothing about it costs no layout at all.
+      } else {
+        UpdateListEntry(entry, spec);
+        entry.applied = spec;
+      }
+      if (at != i) {
+        LocationRowEntry moved = std::move(rowEntries_[at]);
+        rowEntries_.erase(rowEntries_.begin() + static_cast<ptrdiff_t>(at));
+        host.Children().RemoveAt(static_cast<uint32_t>(at));
+        host.Children().InsertAt(static_cast<uint32_t>(i), moved.root);
+        rowEntries_.insert(rowEntries_.begin() + static_cast<ptrdiff_t>(i), std::move(moved));
+      }
+    } else {
+      LocationRowEntry entry = BuildListEntry(spec);
+      host.Children().InsertAt(static_cast<uint32_t>(i), entry.root);
+      rowEntries_.insert(rowEntries_.begin() + static_cast<ptrdiff_t>(i), std::move(entry));
+    }
+  }
+  renderedQuery_ = query_;
+
+  // Restore what a rebuild would have lost. ChangeView applies against the new
+  // extent once layout settles; the animation is disabled because this is a
+  // correction, not a transition.
+  if (resetScroll) {
+    scroll.ChangeView(nullptr, winrt::Windows::Foundation::IReference<double>{0.0}, nullptr,
+                      true);
+  } else if (0 < offset) {
+    scroll.ChangeView(nullptr, winrt::Windows::Foundation::IReference<double>{offset}, nullptr,
+                      true);
   }
 
   // The empty state is a centred line inside the FULL-HEIGHT list area (the
@@ -816,6 +1083,46 @@ void NetworkPage::RenderDetail() {
     host.Children().Append(
         kit::MakePaneKeyValueRow(Loc("name_label"), Loc("best_available_provider")).root);
     w_.NetworkPaneBMeta().Text(Loc("best_available_provider"));
+
+    // What best-available MEANS, and how to override it. The two ids are
+    // genuinely missing from the store - Adv() fallback, reported for
+    // urnetwork/localizations. Deliberately NO "currently connected: X" line:
+    // the SDK does not expose the resolved location under best-available, so
+    // printing one would be fabrication.
+    AddDetailNote(host, pages::Adv("adv_best_available_note",
+                            L"URnetwork picks the fastest healthy providers for you, with no "
+                            L"location constraint, and re-picks as the network changes."));
+    AddDetailNote(host, pages::Adv("adv_pick_location_note",
+                            L"Pick a country, region, city or device in the list to connect "
+                            L"there instead."));
+
+    // Quick-pick: the top countries as the SAME rows the list uses - one
+    // builder (MakeRow), the LocationColor dot, the provider_count plural meta,
+    // and the coalesced connect on click - so picking here behaves
+    // byte-identically to clicking the row in the list (AppendLocationSpecs).
+    if (locations_ && NonEmpty(locations_->Countries)) {
+      const int64_t total = static_cast<int64_t>(locations_->Countries->size());
+      const int64_t shown = total < 5 ? total : 5;
+      host.Children().Append(
+          kit::MakePaneGroupHeader(Loc("countries"), hstring{std::to_wstring(shown)}).root);
+      for (int64_t i = 0; i < shown; ++i) {
+        auto const& location = (*locations_->Countries)[static_cast<size_t>(i)];
+        const int providers = location.provider_count.value_or(0);
+        auto row = MakeRow(H(location.name.value_or(std::string())),
+                           0 < providers
+                               ? hstring{Plural("provider_count",
+                                                static_cast<int64_t>(providers))}
+                               : hstring{},
+                           LocationColor(location), /*selected=*/false, !location.stable,
+                           location.strong_privacy, /*providing=*/false);
+        const urnet::ConnectLocation copy = location;
+        row.button.Click([this, copy](IInspectable const&, auto const&) {
+          Sdk().ConnectFromRow(copy);
+          Render();
+        });
+        host.Children().Append(row.root);
+      }
+    }
   } else {
     const auto& location = *selected;
     const hstring name = H(location.name.value_or(std::string()));
@@ -846,7 +1153,9 @@ void NetworkPage::RenderDetail() {
     if (!location.stable) {
       // Amber, and a sentence, rather than a "Stable: No" row: the store has no
       // "Stable" label and this is the shipped string for the condition.
-      auto warning = kit::MakePaneRow(34);
+      // 36 like the key-value rows around it - the pane row-height rule
+      // (36/40/44) has no 34.
+      auto warning = kit::MakePaneRow(36);
       auto text = MakeText(Loc("unstable_providers_warning"), 12,
                            SolidColorBrush(kUnstable));
       text.VerticalAlignment(VerticalAlignment::Center);
@@ -859,11 +1168,11 @@ void NetworkPage::RenderDetail() {
   if (!best) {
     auto reset = MakeRow(Loc("best_available_provider"), hstring{}, colors::kUrCoral,
                          /*selected=*/false, false, false, false);
-    reset.Click([this](IInspectable const&, auto const&) {
+    reset.button.Click([this](IInspectable const&, auto const&) {
       Sdk().ConnectBestAvailableFromRow();  // coalesced, like every row click
       Render();
     });
-    host.Children().Append(reset);
+    host.Children().Append(reset.root);
   }
 
   // ---- the buckets behind the list ----------------------------------------

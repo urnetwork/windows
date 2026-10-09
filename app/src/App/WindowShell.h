@@ -51,4 +51,26 @@ bool ApplyNativeShell(winrt::Microsoft::UI::Xaml::Window const& window, HWND hwn
 // of a drag. Returns whether a complete placement was written.
 bool SaveWindowPlacement(HWND hwnd);
 
+// Put the window in front of whatever covers it, for a show the USER caused
+// somewhere else: the browser's "Open URnetwork?" after a sign-in, an email
+// link. Window::Activate() does NOT do this: it is ShowWindow + UpdateWindow +
+// SetActiveWindow and never asks for the foreground, so it cannot lift a visible
+// window another process covers, whatever rights this process holds. The
+// window, and the sign-in result or error it had just painted, stayed behind the
+// browser (measured live: a matched error callback laid its message out inside
+// a window the browser covered for 8 s, which reads as "the app did nothing").
+// macOS gets this from NSApp.activate(ignoringOtherApps:) and Android from the
+// OS; on Windows it is ours to ask for.
+//
+// Order: SetForegroundWindow first. The Windows App SDK's redirect already hands
+// the running instance the foreground right (AppInstance::QueueRequest ->
+// AllowSetForegroundWindow), so this succeeds after a browser click or any
+// launch that held a right. When Windows refuses it (a launch with none to pass
+// on: a scheduled task, a service), z-order is NOT locked, so a topmost toggle
+// lifts the window above every normal window WITHOUT stealing focus. Returns true
+// only when the window became the foreground window; false still leaves it on
+// top. "In front" is not "unobscured": another process's always-on-top window or
+// a different virtual desktop can still cover it, and nothing raises it again.
+bool RaiseToFront(HWND hwnd);
+
 }  // namespace urnw::shell

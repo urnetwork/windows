@@ -13,10 +13,12 @@
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
+#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "SubscriptionBalance.h"
 #include "Strings.h"
 #include "UrColors.h"
 #include "UrComponents.h"
+#include "WalletBridgeRoute.h"
 #include "WalletConnect.h"
 
 using namespace winrt;
@@ -62,6 +64,22 @@ size_t CountWords(std::string const& value) {
     inWord = !space;
   }
   return count;
+}
+
+// The SSO / wallet browser round trips share the bridge's ONE callback pair, so a
+// fresh click SUPERSEDES the attempt before it, and the SDK ANSWERS the
+// superseded attempt with a "superseded by ..." reason (SdkHost::
+// CancelPendingWalletFlows). That answer is bookkeeping, not a failure: applying
+// it would un-grey the affordances the fresh click just disabled and put the
+// reason string on screen as a login error. It is matched on the reason itself
+// (bridge::IsSuperseded, the seam WalletPage already uses) rather than on a
+// counter of clicks, so a genuine late result - signed in, needs a network, a
+// real error - is never dropped along with it.
+bool SupersededAnswer(urnw::AuthResult const& result) {
+  const bool superseded = !result.ok && bridge::IsSuperseded(result.error);
+  // the reason is one of SdkHost's fixed "superseded by ..." literals, never user data
+  if (superseded) LogInfo("login: dropped a superseded sign-in answer ({})", result.error);
+  return superseded;
 }
 }  // namespace
 
@@ -252,7 +270,10 @@ void LoginPage::ApplyStrings() {
   w_.EmailLabel().Text(Loc("user_auth_label"));
   w_.EmailBox().PlaceholderText(Loc("user_auth_input_placeholder"));
   w_.GetStartedButton().Content(LocBox("get_started"));
-  // bottom-left, quiet text: point the client at another network API
+  // bottom-left, quiet text: sign in through the browser bridge
+  // (OnSignInWithBrowser), or point the client at another network API
+  w_.BrowserSignInLink().Content(
+      winrt::box_value(Adv("adv_sign_in_browser", L"Sign in with browser")));
   w_.NetworkServerLink().Content(LocBox("change_network_api"));
   // MainWindow calls ApplyStrings BEFORE Initialize, so on the first pass there
   // is no carousel yet; Initialize paints it once it exists.
@@ -365,8 +386,8 @@ void LoginPage::ClearSeedphraseField() {
   if (w_.SeedphraseBox()) w_.SeedphraseBox().Text(L"");
 }
 
-void LoginPage::ShowErrorOnCurrentStep(hstring const& message) {
-  ShowLoginErrorFor(loginStep_, message);
+void LoginPage::ShowErrorOnCurrentStep(std::string const& error) {
+  ShowLoginErrorFor(loginStep_, MapAuthErrorForDisplay(error));
 }
 
 bool LoginPage::ConsumeNewNetwork() {
@@ -442,6 +463,35 @@ void LoginPage::SetInitialLoginError(hstring const& message) {
   }
   w_.LoginErrorText().Text(message);
   w_.LoginErrorText().Visibility(Visibility::Visible);
+  // the fact, never the text: an error can carry server words
+  LogInfo("login: sign-in error line shown on the initial step");
+  // The line sits under Get started — below the fold at compact heights, and a
+  // sign-in error the user cannot see reads as "nothing happened" (measured: a
+  // failed browser sso return at 500x600 showed no trace of why). Deferred to
+  // the next tick (ProviderLocationsSheet's selection scroll is the same
+  // shape) AND forced through a layout first: the line was made visible THIS
+  // tick, so its bounds do not exist until the pending layout runs — a bare
+  // StartBringIntoView, synchronous or enqueued ahead of that pass, has
+  // nothing to measure and does nothing (measured: UIA reported the set line
+  // off-screen with no rect at exactly this size).
+  if (auto queue = w_.DispatcherQueue()) {
+    // Weak, like every sibling tick in this file: a late completion on a queue
+    // that is draining at quit must find nothing and do nothing (the tray-quit
+    // crash was exactly that), and an exception that reaches XAML ends the
+    // process - a failed scroll must never become one.
+    queue.TryEnqueue([weak = w_.get_weak()] {
+      auto self = weak.get();
+      if (!self) return;
+      try {
+        auto line = self->LoginErrorText();
+        line.UpdateLayout();
+        line.StartBringIntoView();
+      } catch (winrt::hresult_error const& e) {
+        LogWarn("login: could not scroll the error line into view: {}",
+                urnw::Narrow(std::wstring{e.message()}));
+      }
+    });
+  }
 }
 
 void LoginPage::ShowLoginErrorFor(LoginStep step, hstring const& message) {
@@ -1070,23 +1120,124 @@ winrt::fire_and_forget LoginPage::OnUseCode(IInspectable const&, RoutedEventArgs
   w_.SetSheetOpen(false);
   if (result != ContentDialogResult::Primary) co_return;
 
-  const std::string code = TrimWhitespace(urnw::Narrow(field.Text().c_str()));
-  if (code.empty()) co_return;
+  SignInWithAuthCode(urnw::Narrow(field.Text().c_str()));
+}
+
+// The submit half of the auth-code sheet, shared with the browser sign-in
+// bridge sheet and the urnetwork://auth?code= deep link: every path that holds
+// a one-time code ends here. The SDK applies the auth state on success and the
+// auth-state relay swaps the panel for the home view; a failure surfaces on
+// the initial step, so make sure that is the step on screen (a no-op for the
+// sheets, which only open from it).
+void LoginPage::SignInWithAuthCode(std::string code) {
+  code = TrimWhitespace(code);
+  if (code.empty()) return;
+  ResetToInitialStep();
 
   SetWalletSignInEnabled(false);
-  auto queue = self->DispatcherQueue();
-  auto weak = self->get_weak();
+  walletSignInInFlight_ = true;
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
   Sdk().LoginWithCode(code, [queue, weak](urnw::AuthResult r) {
     queue.TryEnqueue([weak, r] {
       auto self = weak.get();
       if (!self) return;
       auto& page = self->login();
+      page.walletSignInInFlight_ = false;
       page.SetWalletSignInEnabled(true);
       if (!r.ok && !r.error.empty()) {
         page.ShowLoginErrorFor(LoginStep::Initial, H(r.error));
       }
     });
   });
+}
+
+// ---- sign in with browser (the bridge sheet) -------------------------------
+// Google through the system browser is blocked upstream for now: the production
+// api vault lacks sign_in_oauth, so its callback answers error=not_configured.
+// Apple is NOT blocked - its callback needs no vault config and the Services ID
+// does carry the api's callback url (a real Apple sign-in completed end to end
+// on 2026-10-09). A provider token can never be forwarded to a local page: the
+// providers pin their redirect uris to ur.io, and /auth/login pins the accepted
+// token audiences to URnetwork's own client ids. So for Google what works TODAY
+// is the api's one-time auth codes (/auth/code-login): sign in at ur.io in the
+// real browser, where password managers and existing Google / Apple sessions
+// live, then hand the app a code from any signed-in surface (Account -> Create
+// auth code).
+winrt::fire_and_forget LoginPage::OnSignInWithBrowser(IInspectable const&,
+                                                      RoutedEventArgs const&) {
+  if (w_.sheetOpen()) co_return;  // only one ContentDialog can show at a time
+  auto self = w_.get_strong();    // keeps the window — and so this page — alive
+  SetInitialLoginError(hstring());
+
+  StackPanel content;
+  content.MinWidth(sheetfit::Width(self->Content().XamlRoot(), 400));
+  content.Spacing(12);
+
+  // wrapped, muted, small - NetworkServerSheet's description is the reference
+  TextBlock body;
+  body.Text(Adv("adv_browser_sign_in_body",
+                L"Sign in at ur.io in your browser — your password manager and existing "
+                L"Google or Apple sessions work there. Then paste a one-time auth code "
+                L"from any signed-in device (Account → Create auth code)."));
+  body.FontSize(12);
+  body.TextWrapping(TextWrapping::Wrap);
+  body.Foreground(colors::MutedBrush());
+  content.Children().Append(body);
+
+  TextBox field;
+  field.PlaceholderText(Loc("auth_code"));
+  if (auto style = Application::Current()
+                       .Resources()
+                       .TryLookup(winrt::box_value(L"UrTextInputStyle"))
+                       .try_as<Style>()) {
+    field.Style(style);
+  }
+  content.Children().Append(field);
+
+  ContentDialog dialog;
+  dialog.XamlRoot(self->Content().XamlRoot());
+  dialog.Title(winrt::box_value(Adv("adv_browser_sign_in_title", L"Browser sign-in")));
+  dialog.Content(content);
+  dialog.PrimaryButtonText(Adv("adv_open_ur_io", L"Open ur.io"));
+  // NOT auth_code_login_button_text ("Log in with Auth Code"): three command
+  // bar buttons split the bar evenly and a 21-character middle one clips
+  // (the trap NetworkServerSheet's comment records). "Sign in" fits anywhere.
+  dialog.SecondaryButtonText(Loc("sign_in"));
+  dialog.CloseButtonText(Loc("cancel"));
+  // Enter in the code field submits the code rather than relaunching the browser
+  dialog.DefaultButton(ContentDialogButton::Secondary);
+
+  // "Open ur.io" launches the system browser but must NOT dismiss the sheet:
+  // the code the browser session produces is pasted into the field that has
+  // to still be open (the idiom every sheet here uses).
+  dialog.PrimaryButtonClick([](auto const&, ContentDialogButtonClickEventArgs const& args) {
+    args.Cancel(true);
+    try {
+      winrt::Windows::System::Launcher::LaunchUriAsync(
+          winrt::Windows::Foundation::Uri(L"https://ur.io"));
+    } catch (winrt::hresult_error const& e) {
+      urnw::LogError("browser sign-in: open ur.io: {} (0x{:08x})",
+                     urnw::Narrow(std::wstring{e.message()}),
+                     static_cast<uint32_t>(e.code()));
+    }
+  });
+
+  w_.SetSheetOpen(true);
+  ContentDialogResult result{ContentDialogResult::None};
+  try {
+    result = co_await dialog.ShowAsync();
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("browser sign-in sheet: {} (0x{:08x})",
+                   urnw::Narrow(std::wstring{e.message()}),
+                   static_cast<uint32_t>(e.code()));
+  } catch (std::exception const& e) {
+    urnw::LogError("browser sign-in sheet: {}", e.what());
+  }
+  w_.SetSheetOpen(false);
+  if (result != ContentDialogResult::Secondary) co_return;
+
+  SignInWithAuthCode(urnw::Narrow(field.Text().c_str()));
 }
 
 // ---- wallet sign in ------------------------------------------------------
@@ -1105,11 +1256,18 @@ void LoginPage::OnSignInWithBittensor(IInspectable const&, RoutedEventArgs const
   ChooseBittensorWallet(w_.get_strong(), [weak](std::string walletId) {
     auto self = weak.get();
     if (!self || walletId.empty()) return;
-    self->login().SetWalletSignInEnabled(false);
+    auto& page = self->login();
+    // armed only once a wallet was CHOSEN: a cancelled chooser starts nothing, so
+    // it must not leave the pills greyed waiting for a return that cannot come
+    page.SetWalletSignInEnabled(false);
+    page.walletSignInInFlight_ = true;
     auto queue = self->DispatcherQueue();
     Sdk().SignInWithBittensor(walletId, [queue, weak](urnw::AuthResult r) {
       queue.TryEnqueue([weak, r] {
-        if (auto self = weak.get()) self->login().ApplyWalletSignInResult(r);
+        auto self = weak.get();
+        // a newer click superseded this attempt: the newer flow owns the page
+        if (!self || SupersededAnswer(r)) return;
+        self->login().ApplyWalletSignInResult(r);
       });
     });
   });
@@ -1151,11 +1309,15 @@ winrt::fire_and_forget LoginPage::OnSignInWithSolana(IInspectable const&,
                             ? urnw::WalletConnect::Provider::Solflare
                             : urnw::WalletConnect::Provider::Phantom;
   SetWalletSignInEnabled(false);
+  walletSignInInFlight_ = true;
   auto queue = self->DispatcherQueue();
   auto weak = self->get_weak();
   Sdk().SignInWithSolana(provider, [queue, weak](urnw::AuthResult r) {
     queue.TryEnqueue([weak, r] {
-      if (auto self = weak.get()) self->login().ApplyWalletSignInResult(r);
+      auto self = weak.get();
+      // as above: a superseded attempt's answer must not touch the page
+      if (!self || SupersededAnswer(r)) return;
+      self->login().ApplyWalletSignInResult(r);
     });
   });
 }
@@ -1170,6 +1332,7 @@ void LoginPage::SetWalletSignInEnabled(bool enabled) {
   w_.AppleSignInButton().IsEnabled(enabled);
   w_.SeedphraseSignInButton().IsEnabled(enabled);
   w_.InstantAccountButton().IsEnabled(enabled);
+  w_.BrowserSignInLink().IsEnabled(enabled);
   // NOT a flat `IsEnabled(enabled)`: Get started also depends on the field
   // having something in it, and writing true here re-enabled it over an empty
   // box every time another sign-in method finished.
@@ -1181,6 +1344,7 @@ void LoginPage::SetWalletSignInEnabled(bool enabled) {
 }
 
 void LoginPage::ApplyWalletSignInResult(urnw::AuthResult const& result) {
+  walletSignInInFlight_ = false;
   SetWalletSignInEnabled(true);
   // the wallet authenticated but has no network yet: finish sign-up with a
   // network name + terms; the retained wallet auth is the credential
@@ -1196,7 +1360,39 @@ void LoginPage::ApplyWalletSignInResult(urnw::AuthResult const& result) {
   // on success ApplyAuthState swaps the panel for the home view; only an error
   // needs to be surfaced here
   if (result.ok || result.error.empty()) return;
-  ShowLoginErrorFor(LoginStep::Initial, H(result.error));
+  ShowLoginErrorFor(LoginStep::Initial, MapAuthErrorForDisplay(result.error));
+}
+
+// The same bridge error reaches the screen through TWO channels: this flow's
+// own callback (ApplyWalletSignInResult) and the auth-state relay
+// (ApplyAuthState -> ShowErrorOnCurrentStep), which also delivers an error that
+// landed while the window was away (AppController::ReconcileWindowPresentation
+// replays it once, until a presented window has shown it). Both go through here
+// so the two can never disagree — before they shared the mapping, the raw token
+// flashed on the failure itself and the next replay replaced the mapped
+// sentence with it for good.
+hstring LoginPage::MapAuthErrorForDisplay(std::string const& error) {
+  if (error == "not_configured") {
+    return Adv("adv_sso_not_configured",
+               L"Provider sign-in isn't available on this network yet — use "
+               L"email or browser sign-in");
+  }
+  return H(error);
+}
+
+// The SSO / wallet browser flows re-enable the affordances only from their
+// deep-link callback, and a browser the user closed sends nothing - until the
+// app restarted, the buttons then stayed grey. Coming back to the window is
+// the flow being over from the user's side: re-enable the affordances, but
+// leave the SDK attempt ARMED. A late completion still lands (on_sso matches
+// the attempt's state and nonce) and a fresh click supersedes the attempt
+// through the SDK's answer semantics; there is no reliable "browser closed"
+// signal, so canceling here would only risk killing a flow still legitimately
+// open in another tab.
+void LoginPage::OnWindowReactivated() {
+  if (!walletSignInInFlight_) return;
+  walletSignInInFlight_ = false;
+  SetWalletSignInEnabled(true);
 }
 
 // ---- Sign in with Google / Apple (the provider's web flow) ------------------
@@ -1211,13 +1407,18 @@ void LoginPage::ApplyWalletSignInResult(urnw::AuthResult const& result) {
 void LoginPage::StartSsoSignIn(const char* provider) {
   SetInitialLoginError(hstring());
   SetWalletSignInEnabled(false);
+  walletSignInInFlight_ = true;
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().SignInWithSso(provider, [queue, weak](urnw::AuthResult r) {
     queue.TryEnqueue([weak, r] {
       // ApplyWalletSignInResult already handles "authenticated but no network
-      // yet" for both credentials and re-enables the buttons.
-      if (auto self = weak.get()) self->login().ApplyWalletSignInResult(r);
+      // yet" for both credentials and re-enables the buttons. A stale answer
+      // (a click superseded this attempt while its browser tab was open) is
+      // dropped instead - see SupersededAnswer.
+      auto self = weak.get();
+      if (!self || SupersededAnswer(r)) return;
+      self->login().ApplyWalletSignInResult(r);
     });
   });
 }

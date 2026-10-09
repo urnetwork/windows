@@ -290,6 +290,28 @@ void ConnectCanvas::BuildVisuals(Grid const& host) {
   idleLayer_.IsHitTestVisible(false);
   globe_.Children().Append(idleLayer_);
 
+  // Static orbital structure + halo, all hairlines, all hit-test-invisible,
+  // all behind the core stack. The orbits speak the pulse's sonar language
+  // while it rests (bounded-burst discipline is unchanged: these are STATIC,
+  // they add zero animation); the halo keeps the brand blue readable at
+  // tray-app glance distance without recoloring iOS's 48/50/52 core stack.
+  // They live in idleLayer_, so Fade(idleLayer_, ...) shows them only in
+  // Disconnected and hides them in every other state, for free.
+  orbit1_ = MakeEllipse();
+  orbit1_.Fill(nullptr);
+  orbit1_.Stroke(colors::MakeBrush(winrt::Windows::UI::Color{0x14, 0xFF, 0xFF, 0xFF}));  // white@8%
+  idleLayer_.Children().Append(orbit1_);
+
+  orbit2_ = MakeEllipse();
+  orbit2_.Fill(nullptr);
+  orbit2_.Stroke(colors::MakeBrush(winrt::Windows::UI::Color{0x14, 0xFF, 0xFF, 0xFF}));  // white@8%
+  idleLayer_.Children().Append(orbit2_);
+
+  coreHalo_ = MakeEllipse();
+  coreHalo_.Fill(nullptr);
+  coreHalo_.Stroke(colors::MakeBrush(colors::WithAlpha(colors::kUrElectricBlue, 0x59)));  // ~35%
+  idleLayer_.Children().Append(coreHalo_);
+
   pulse_ = MakeEllipse();
   pulse_.Fill(colors::MakeBrush(colors::kUrElectricBlue));
   pulseScale_ = ScaleTransform();
@@ -333,6 +355,16 @@ void ConnectCanvas::BuildVisuals(Grid const& host) {
   mask_ = ParsePath(std::wstring(kInverseGlobeRect) + kGlobePath);
   mask_.Fill(colors::BackgroundBrush());
   globe_.Children().Append(mask_);
+
+  // ---- the rim, AFTER the mask ---------------------------------------------
+  // A stroke on globeFill_ would lose its outer half to the mask; drawn after
+  // it, the hairline sits exactly on the silhouette boundary in every state.
+  globeOutline_ = ParsePath(kGlobePath);
+  globeOutline_.Fill(nullptr);
+  globeOutline_.Stroke(colors::BorderBrush());
+  globeOutline_.StrokeThickness(1);  // 1 physical px, unscaled (focusRing_'s rule)
+  globeOutline_.IsHitTestVisible(false);
+  globe_.Children().Append(globeOutline_);
 
   // ---- keyboard focus, OUTSIDE the mask ------------------------------------
   focusRing_ = ParsePath(kGlobePath);
@@ -422,6 +454,7 @@ void ConnectCanvas::Layout() {
   SizeSquare(globeFill_, side_);
   SizeSquare(connectorBg_, side_);
   SizeSquare(mask_, side_);
+  SizeSquare(globeOutline_, side_);
 
   equator_.Height(kEquatorH * s);
   equator_.Margin(Thickness{0, kEquatorY * s, 0, 0});
@@ -439,6 +472,12 @@ void ConnectCanvas::Layout() {
   }
 
   SizeSquare(pulse_, kPulseD * s);
+  SizeSquare(orbit1_, 128 * s);
+  orbit1_.StrokeThickness(1);
+  SizeSquare(orbit2_, 192 * s);
+  orbit2_.StrokeThickness(1);
+  SizeSquare(coreHalo_, 64 * s);
+  coreHalo_.StrokeThickness(1);
   SizeSquare(coreRing_, kCoreRingD * s);
   coreRing_.StrokeThickness(4 * s);
   SizeSquare(coreGap_, kCoreGapD * s);

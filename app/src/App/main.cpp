@@ -203,6 +203,28 @@ urnw::instance::RedirectAttempt Launcher::Redirect() {
   watch_.emplace(holder_.ProcessId());
   if (watch_->Gone()) return {.result = RedirectResult::HolderGone, .holderExiting = true};
 
+  // THE FOREGROUND RIGHT. This process was just launched by whatever the user
+  // clicked - the browser's "Open URnetwork?" after a sign-in, an email link -
+  // so for a moment it may hold the right to take the foreground, which the
+  // running instance needs to raise its window (shell::RaiseToFront). It has no
+  // window to use it on and is about to exit. The Windows App SDK's
+  // RedirectActivationToAsync already passes the right on (AppInstance::
+  // QueueRequest calls AllowSetForegroundWindow), so this explicit grant is
+  // belt-and-braces against that changing - and its log line is the only record
+  // of whether THIS launch held a right at all. "No foreground right" means a
+  // launcher with no foreground ancestry (a scheduled task, a service): there
+  // only RaiseToFront's z-order fallback can put the window in front.
+  try {
+    if (::AllowSetForegroundWindow(holder_.ProcessId())) {
+      urnw::LogInfo("startup: handed the foreground right to the running instance");
+    } else {
+      urnw::LogWarn("startup: no foreground right to hand to the running instance "
+                    "(error {})", ::GetLastError());
+    }
+  } catch (...) {
+    // never let this stand between the user's launch and the redirect below
+  }
+
   // The worker can outlive a wait that ended first, so everything it touches is
   // owned by shared state rather than by this stack frame.
   struct Pending {

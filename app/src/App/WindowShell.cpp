@@ -4,7 +4,10 @@
 #include "WindowShell.h"
 
 #include <algorithm>
+#include <cwchar>
+#include <format>
 #include <optional>
+#include <string>
 
 #include <winrt/Microsoft.UI.Interop.h>
 #include <winrt/Microsoft.UI.Windowing.h>
@@ -291,6 +294,71 @@ bool SaveWindowPlacement(HWND hwnd) {
   LogInfo("shell: saved placement {}x{} at ({},{}) at {} dpi", width, height,
           static_cast<int32_t>(rc.left), static_cast<int32_t>(rc.top), dpi);
   return true;
+}
+
+namespace {
+
+// "comet.exe (pid 1234)": who owns the foreground right now. It goes into the one
+// log line that says Windows refused to raise the window, because that line is
+// otherwise unable to say whom the lock was protecting. Win32 only, never throws;
+// a process that cannot be opened (another user, protected) reads as "?".
+std::string ForegroundOwner() {
+  const HWND foreground = ::GetForegroundWindow();
+  if (!foreground) return "no window";
+  DWORD pid = 0;
+  ::GetWindowThreadProcessId(foreground, &pid);
+  if (pid == 0) return "unknown";
+  std::string exe = "?";
+  if (HANDLE process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid)) {
+    wchar_t path[MAX_PATH]{};
+    DWORD size = MAX_PATH;
+    if (::QueryFullProcessImageNameW(process, 0, path, &size) && size > 0) {
+      const wchar_t* base = std::wcsrchr(path, L'\\');
+      exe = urnw::Narrow(std::wstring{base ? base + 1 : path});
+    }
+    ::CloseHandle(process);
+  }
+  return std::format("{} (pid {})", exe, pid);
+}
+
+}  // namespace
+
+bool RaiseToFront(HWND hwnd) {
+  if (!hwnd || !::IsWindow(hwnd)) return false;
+  // Nothing below raises a minimized window; ShowWindowImpl restores it first,
+  // and this keeps the helper honest when it is called on its own.
+  if (::IsIconic(hwnd)) ::ShowWindow(hwnd, SW_RESTORE);
+
+  // Window::Activate() never asks for the foreground (it is ShowWindow +
+  // UpdateWindow + SetActiveWindow), so THIS is the call that raises the window.
+  // It succeeds after a launch that held the foreground right - and the Windows
+  // App SDK's redirect passes that right on to the running instance
+  // (AppInstance::QueueRequest -> AllowSetForegroundWindow).
+  ::SetForegroundWindow(hwnd);
+  if (::GetForegroundWindow() == hwnd) {
+    LogInfo("shell: the window is the foreground window");
+    return true;
+  }
+
+  // Windows refused it: the launch held no right to pass on (a scheduled task, a
+  // service; measured: AllowSetForegroundWindow fails with error 5 there).
+  // z-order is not locked: lifting a window to TOPMOST and dropping it straight
+  // back leaves it above every normal window, unfocused, which is all this
+  // needs - the result it carries is on screen. A window the user already pinned
+  // topmost (PowerToys Always on Top) is above them already and must not be
+  // un-pinned by this.
+  const std::string owner = ForegroundOwner();
+  if ((::GetWindowLongPtrW(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0) {
+    constexpr UINT kKeepSizeAndFocus = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
+    ::SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, kKeepSizeAndFocus);
+    ::SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, kKeepSizeAndFocus);
+    LogInfo("shell: the foreground lock refused the window (foreground: {}); lifted "
+            "it above the other windows without taking focus", owner);
+  } else {
+    LogInfo("shell: the foreground lock refused the window (foreground: {}); it is "
+            "pinned topmost already, left alone", owner);
+  }
+  return false;
 }
 
 }  // namespace urnw::shell

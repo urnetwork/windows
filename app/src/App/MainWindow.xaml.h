@@ -249,6 +249,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the bottom-left "Change Network API" text affordance
   void OnChangeNetworkServer(winrt::Windows::Foundation::IInspectable const&,
                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the bottom-left "Sign in with browser" text affordance: the bridge sheet
+  void OnSignInWithBrowser(winrt::Windows::Foundation::IInspectable const&,
+                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // the title-bar avatar's menu (identity, create account, share, sign out)
   void OnAccountMenu(winrt::Windows::Foundation::IInspectable const&,
                      winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -259,6 +262,18 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnNavSelectionChanged(
       winrt::Microsoft::UI::Xaml::Controls::NavigationView const&,
       winrt::Microsoft::UI::Xaml::Controls::NavigationViewSelectionChangedEventArgs const&);
+  // The destination-swap entrance: the same 180ms opacity fade ConnectPage's
+  // AnimateDrawerIn uses for the drawer, applied to the incoming destination's
+  // view. No-op when AnimationsEnabled() is false.
+  void FadeDestinationIn(winrt::Microsoft::UI::Xaml::FrameworkElement const& view);
+  // The exit half of the swap: the outgoing view fades 1 -> 0 over 120ms
+  // (exit faster than entrance) and is collapsed only in the storyboard's
+  // Completed handler - it stays Visible until then so the swap reads as a
+  // crossfade instead of a blink to the background. viewTag is the view's nav
+  // tag, so Completed can refuse to collapse a view the user navigated BACK
+  // to before the exit finished. No-op when AnimationsEnabled() is false.
+  void FadeDestinationOut(winrt::Microsoft::UI::Xaml::FrameworkElement const& view,
+                          winrt::hstring const& viewTag);
   void OnManageAppSplitTunnel(winrt::Windows::Foundation::IInspectable const&,
                               winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSignOut(winrt::Windows::Foundation::IInspectable const&,
@@ -325,6 +340,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   // leaderboard: the public/private switch.
   void OnLeaderboardPublicToggled(winrt::Windows::Foundation::IInspectable const&,
                                   winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // The ledger header's "Earnings actions" overflow: pane A's command door while
+  // the rail is folded (the fold-doors design note's COMMAND-DOOR DUPLICATION).
+  void OnEarningsActions(winrt::Windows::Foundation::IInspectable const&,
+                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
 
   // Connect drawer handlers (forwarded to ConnectPage)
   void OnConnectionModeChanged(
@@ -419,6 +438,18 @@ struct MainWindow : MainWindowT<MainWindow> {
   // later (egress interface, rpc port, session mode, the raw pre-clamp
   // connection status) cost one more call each and no layout change.
   void BuildStatusStrip();
+  // The Advanced-Mode flip's entrance and exit, pointed at a GROUP of surfaces
+  // (the inspector group + the strip's advanced fields): the destination
+  // crossfade's two halves (FadeDestinationIn / FadeDestinationOut) applied to
+  // everything the flip reveals or hides at once, on ONE storyboard so the
+  // group settles on the same frame. No-op when AnimationsEnabled() is false.
+  void FadeAdvancedSurfaces(
+      std::vector<winrt::Microsoft::UI::Xaml::UIElement> const& surfaces, bool fadeIn);
+  // The fade-out's deferred half of a mode-OFF flip: the strip rebuild and the
+  // connect page's Normal re-read run only once the exit completes (a surface
+  // already removed cannot fade). Guarded on the mode STILL being off - a flip
+  // back on inside the 120ms already rebuilt both.
+  void CompleteAdvancedModeOff();
   // Writes the state field unconditionally. The three callers each decide
   // whether they are ALLOWED to write it (ApplyStatusStripConnection refuses a
   // signed-out push; the preview sample refuses nothing); this just renders.
@@ -489,6 +520,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   bool referralsOpen_ = false;  // the Refer and earn page is up in Account's place
   std::unique_ptr<urnw::LicensesPage> licenses_;
   std::unique_ptr<urnw::DeveloperPage> developer_;
+  // The last nav tag OnNavSelectionChanged applied; the destination-swap fade
+  // plays only when this actually changes (a SameItem re-selection plays none).
+  winrt::hstring currentTag_{L""};
 
   // balance / plan state (UI thread only; pushed by the store via AppController)
   urnw::BalanceSnapshot balance_;
@@ -537,6 +571,11 @@ struct MainWindow : MainWindowT<MainWindow> {
   urnw::kit::StatusField statusRoutes_;    // are routes+DNS actually installed
   urnw::kit::StatusField statusRpcPort_;   // the service rpc endpoint
   urnw::kit::StatusField statusRaw_;       // the PRE-CLAMP connection status
+  // The standing "Advanced" tag at the end of the strip while the mode is on,
+  // in the action blue (kToggleAccent #638BFC) - NOT the lime kAccent, which is
+  // the earnings/premium colour. In statusAdvancedParts_, so the breakpoint
+  // drops it with the four above before the strip can overflow.
+  urnw::kit::StatusField statusAdvancedPill_;
   // The last TunnelStatus, for the three advanced fields that read it. Cached
   // because the strip is rebuilt on a mode change, which is not a tunnel event:
   // without this a rebuild would show three blanks until the service next
@@ -575,6 +614,12 @@ struct MainWindow : MainWindowT<MainWindow> {
   // (they are session facts, so signing out must hide them too); this is the
   // narrower handle for the width rule.
   std::vector<winrt::Microsoft::UI::Xaml::UIElement> statusAdvancedParts_;
+  // The strip floor's handle (kStatusStripTrafficFloorDip): the traffic field
+  // and its separator, tracked separately exactly like the advanced four above
+  // - and likewise ALSO in statusSessionParts_, so a sign-out still hides them.
+  // The field that silently clips at a narrow window is always the rightmost
+  // one, and a status line must never silently clip.
+  std::vector<winrt::Microsoft::UI::Xaml::UIElement> statusTrafficParts_;
   std::string statusNetworkName_;
   bool statusGuest_ = false;
   // the identity ApplyAuthState read from the jwt, for ApplyNetworkIdentity
@@ -599,11 +644,65 @@ struct MainWindow : MainWindowT<MainWindow> {
   bool advancedMode_ = false;
 
   bool wideLayout_ = false;
-  // Home's second breakpoint (kUltraWideDip): the third column. Tracked
-  // separately so a drag across 1800 re-runs the layout even though `wide` did
-  // not change - the early-out has to test every state it applies, not one.
+  // The second breakpoint (kUltraWideDip). It gates nothing of its own - the
+  // log line names it - but it is an APPLIED state, so the early-out still has
+  // to test it or a drag across 1800 would leave the log one state stale.
   bool ultraLayout_ = false;
+  // Home's third-pane gate (kConnectThreePaneContentDip), which is NOT `wide`
+  // any more: it is wider, so a drag across it with `wide` and `ultra` both
+  // unchanged must still re-run the layout. Same early-out rule as ultraLayout_.
+  bool connectThreeLayout_ = false;
+  // The rest of ApplyBreakpoint's gates, one stored state each under the same
+  // early-out rule as ultraLayout_: Home's 640 fold and the window-read
+  // 900/1500/1900 gates of Earnings, Account and Settings. They went untracked
+  // and the gap was visible live: a drag that crossed only one of them left
+  // that destination's panes in whatever layout an older size had decided.
+  bool twoPanesLayout_ = false;
+  bool earningsThreeLayout_ = false;
+  bool earningsTwoLayout_ = false;
+  bool accountFourLayout_ = false;
+  bool accountThreeLayout_ = false;
+  bool accountTwoLayout_ = false;
+  // Settings' About-pane gate (1400dip of window) came in with the upstream
+  // merge; it joins the same tracked set rather than reintroducing the gap.
+  bool settingsThreeLayout_ = false;
+  bool settingsTwoLayout_ = false;
+  // The status strip's floor gate (kStatusStripTrafficFloorDip), one applied
+  // state under the same early-out rule as the rest: a drag that crosses only
+  // the floor must still re-run the layout, or the traffic field keeps
+  // whichever visibility an older size decided.
+  bool stripTrafficLayout_ = false;
   bool breakpointApplied_ = false;
+
+  // ---- the fold doors (docs/superpowers/2026-09-29-fold-doors-design.md) ----
+  // A foldable pane must not own content with no second door, and no builder in
+  // scope is build-twice-safe (every one keeps handler/render state in members),
+  // so the fold REPARENTS the pane's existing rows into a fold host in the pane
+  // that survives the gate - a named element keeps every member-field reference
+  // and handler across the move. FoldHome is where one such element sits while
+  // its pane is open: the parent (a Panel - index into its Children - or, for
+  // the extender host, the ScrollViewer whose Content it is) recorded before the
+  // first fold, so a widening restore puts every row back EXACTLY, not near.
+  struct FoldHome {
+    winrt::Microsoft::UI::Xaml::DependencyObject parent{nullptr};
+    uint32_t index = 0;
+  };
+  bool foldHomesRecorded_ = false;
+  FoldHome pointsNetworkHome_;
+  FoldHome dataRankingHome_;
+  FoldHome walletTransportHome_;
+  FoldHome walletPaneCFoldHome_;
+  FoldHome accountUpgradeHome_;
+  FoldHome redeemRowHome_;
+  FoldHome accountPlanExtraHome_;
+  FoldHome accountExtenderHome_;
+  void RecordFoldHomes();
+  // The earnings fold: pane C's rows <-> WalletPaneCFold (earningsThree), and the
+  // host itself <-> the ledger's foot strip (earningsTwo, the note's option i).
+  void ApplyWalletFold(bool earningsThree, bool earningsTwo);
+  // The account folds: the plan pane's action rows (accountTwo) and the whole
+  // extender section (accountThree) <-> their fold hosts in pane B.
+  void ApplyAccountFold(bool accountThree, bool accountTwo);
 };
 
 }  // namespace winrt::URnetwork::implementation

@@ -8,6 +8,7 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>  // PeerDot Ellipse.Fill
+#include <winrt/Windows.ApplicationModel.DataTransfer.h>  // copy-details DataPackage
 
 #include <algorithm>
 #include <array>
@@ -108,6 +109,75 @@ void ConnectPage::Initialize() {
   BuildHero();
   WireDrawerFeeds();
 
+  // The connections verdict filter. Wired here rather than in markup for the
+  // same reason the status-dot taps are: XAML event handlers live on
+  // MainWindow, which this page does not own. The selection is seeded BEFORE
+  // the handler attaches so the seed itself cannot echo into the handler.
+  w_.ConnectionsVerdictBar().SelectedItem(w_.VerdictAllItem());
+  w_.ConnectionsVerdictBar().SelectionChanged([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnConnectionsVerdictChanged();
+  });
+  // The group-by-host toggle rides the same filter row and is wired here for
+  // the same reason: XAML event handlers live on MainWindow, which this page
+  // does not own.
+  w_.ConnectionsGroupToggle().Toggled([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnConnectionsGroupToggled();
+  });
+  // The clear-filters button at the verdict row's right end - same wiring
+  // reason as the bar and the toggle above.
+  w_.ConnectionsClearFilters().Click([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnConnectionsClearFilters();
+  });
+  // The verdict ratio bar's segments wear the SAME three verdict colours the
+  // row dots print (UpdateConnectionRow), painted once here: green tunnelled,
+  // coral blocked, amber bypassed. colors:: is the source for all three -
+  // markup ships UrGreenBrush/UrCoralBrush but no UrAmberBrush, and three code
+  // fills keep the bar and the dots on one palette statement. After this the
+  // bar's only per-push work is ApplyVerdictRatioBar's star weights.
+  auto ratioSegment = [this](uint32_t i) {
+    return w_.ConnectionsVerdictRatio().Children().GetAt(i).as<Controls::Border>();
+  };
+  ratioSegment(0).Background(urnw::colors::MakeBrush(urnw::colors::kUrGreen));
+  ratioSegment(1).Background(urnw::colors::MakeBrush(urnw::colors::kUrCoral));
+  ratioSegment(2).Background(urnw::colors::MakeBrush(urnw::colors::kUrAmber));
+  // the small-height scroll escape for pane B: keep the body under the filter
+  // rows viewport-sized, with the floor that engages the outer scroller only
+  // when height is scarce (ApplyActivityBodyHeight has the rule)
+  w_.ActivityBodyScroll().SizeChanged([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().ApplyActivityBodyHeight();
+  });
+  // pane C's chart flex: the body grid's star rows can only share LEFTOVER
+  // height, which a scroller never offers (it measures content unbounded), so
+  // the body is pinned to the viewport on every pane resize - content shorter
+  // than the pane gets the flex, content taller overrides the pin and scrolls
+  // (ApplyPaneCBodyHeight has the rule)
+  w_.ConnectPaneC().SizeChanged([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().ApplyPaneCBodyHeight();
+  });
+
+  // The inspector's quick actions (D5). Wired here rather than in markup for
+  // the same reason as the verdict bar above: XAML Click handlers live on
+  // MainWindow, which this page does not own.
+  w_.InspectorBlockButton().Click([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnInspectorBlockToggle();
+  });
+  w_.InspectorRouteButton().Click([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnInspectorRouteToggle();
+  });
+  w_.InspectorCopyButton().Click([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnInspectorCopyDetails();
+  });
+  // the rule confirmation and its Undo action. The button is built once and
+  // swapped onto the InfoBar per Show - a creation arms it, a removal shows
+  // the bare acknowledgement.
+  inspectorSnackbar_ =
+      std::make_unique<urnw::kit::Snackbar>(w_.InspectorSnackbar(), w_.DispatcherQueue());
+  inspectorUndoButton_ = Controls::Button();
+  inspectorUndoButton_.Content(winrt::box_value(Adv("adv_undo", L"Undo")));
+  inspectorUndoButton_.Click([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnInspectorUndo();
+  });
+
   // the easter egg: five taps on the status dot while connected, each within
   // two seconds of the previous, play the Pro celebration; silent otherwise
   w_.StatusDot().Tapped([weak = w_.get_weak()](auto const&, auto const&) {
@@ -145,6 +215,7 @@ void ConnectPage::SetPresentationActive(bool active) {
 }
 
 void ConnectPage::ApplyStrings() {
+  BuildFoldDoors();  // idempotent: the fold rule's pane A sheet doors
   // status line, dot and button label all come from ApplyConnectStatus, which
   // is the single writer of the three (seeded here: idle, blue dot, "Connect")
   ApplyConnectStatus();
@@ -179,6 +250,32 @@ void ConnectPage::ApplyStrings() {
   w_.ProvideAlwaysItem().Text(Loc("always"));
   w_.ProvideNetworkItem().Text(Loc("network"));
   w_.ProvideNeverItem().Text(Loc("never"));
+  // The connections filter row. The verdict choices reuse the store's own
+  // verdict words where they exist ("blocked" ships; the store has no short
+  // "All"/"Tunnelled"/"Bypassed" - those are Adv ids, reported like every
+  // other). The search field is built once and re-strung on every pass, the
+  // NetworkPage::ApplyStrings pattern.
+  BuildConnectionsFilter();
+  w_.VerdictAllItem().Text(Adv("adv_filter_all", L"All"));
+  w_.VerdictBlockedItem().Text(Loc("blocked"));
+  w_.VerdictTunnelledItem().Text(Adv("adv_filter_tunnelled", L"Tunnelled"));
+  w_.VerdictBypassedItem().Text(Adv("adv_filter_bypassed", L"Bypassed"));
+  // The clear-filters reset. "clear" is the shipped key (the store's own
+  // comment: "a button that clears a field or setting"), so no Adv id - the
+  // one-string-fits rule is exactly what the key exists for. Text content
+  // gives the button its automation name for free.
+  w_.ConnectionsClearFilters().Content(LocBox("clear"));
+  // The group-by-host switch's caption. The switch itself is labelled BY this
+  // TextBlock (markup's AutomationProperties.LabeledBy), so there is no second
+  // name to string.
+  w_.ConnectionsGroupLabel().Text(Adv("adv_group_by_host", L"Group by host"));
+  if (connectionsSearch_) {
+    connectionsSearch_.PlaceholderText(Adv("adv_search_connections", L"Search hosts or IPs"));
+    // a TextBox's placeholder is NOT its accessible name (MakePaneSearchRow
+    // sets both, so a re-string sets both)
+    pane_automation::AutomationProperties::SetName(
+        connectionsSearch_, Adv("adv_search_connections", L"Search hosts or IPs"));
+  }
   // the provider extender row (N7): its title, the switch's name, the
   // description under it, and the state line again in the new language
   w_.ExtenderLabel().Text(Loc("extender"));
@@ -225,6 +322,15 @@ void ConnectPage::ApplyStrings() {
   automation::AutomationProperties::SetName(w_.ClientStatsCard(), Loc("client_contracts"));
   automation::AutomationProperties::SetName(w_.LocalStatsCard(), Loc("split_rules"));
   automation::AutomationProperties::SetName(w_.DnsCard(), Loc("custom_dns"));
+  // The fold-gated sheet doors (BuildFoldDoors built them on the first pass):
+  // re-strung here with every other label, and the automation name IS the
+  // row's title, so the two are written together.
+  for (auto const& d : foldDoors_) {
+    const hstring doorText = Loc(d.key);
+    d.title.Text(doorText);
+    automation::AutomationProperties::SetName(d.root, doorText);
+  }
+  if (foldDoorHeader_.title) foldDoorHeader_.title.Text(Loc("client_statistics"));
   ApplyLocationRowName();
   w_.DohLabel().Text(Loc("dns_over_https"));
   w_.UdnsLabel().Text(Loc("unencrypted_dns"));
@@ -241,6 +347,10 @@ void ConnectPage::ApplyStrings() {
   // also runs before BuildCharts has made them.
   if (ipFamilyStatusRow_) ipFamilyStatusRow_->ApplyStrings();
   if (extenderPanel_) extenderPanel_->ApplyStrings();
+  // The snackbar's Undo is built once in Initialize, so its label is re-strung
+  // here like every other fixed label; the action-row buttons' labels
+  // re-render from ApplyInspector with the rest of the inspector.
+  if (inspectorUndoButton_) inspectorUndoButton_.Content(winrt::box_value(Adv("adv_undo", L"Undo")));
   // The plan + usage card that used to sit in this rail is gone from Home
   // (spec §5); its strings now belong only to Account, which paints them from
   // MainWindow::ApplyBalance.
@@ -464,8 +574,22 @@ void ConnectPage::ApplyServiceSetup(urnw::ServiceSetup::Snapshot const& snap) {
       // appending them to the store line is composition, not a hidden literal.
       if (!snap.observation.installedVersion.empty() &&
           !snap.observation.siblingVersion.empty()) {
-        message += L" (" + snap.observation.installedVersion + L" → " +
-                   snap.observation.siblingVersion + L")";
+        // LAYOUT, not content: XAML line-breaking treats an ASCII hyphen as a
+        // break opportunity, and the banner's message column is narrow, so
+        // "(0.0.0-dev → …)" used to wrap MID-token and orphan "dev)" onto its
+        // own line. Non-breaking hyphens (U+2011) inside each version keep a
+        // version on one line; the spaces around them stay REGULAR so the
+        // parenthetical still wraps BETWEEN tokens. (Making the spaces
+        // non-breaking too fused "app. (…)" into one 48-char word, and the
+        // InfoBar message's WrapWholeWords CLIPS an overlong word at the
+        // column edge instead of wrapping it - the tail vanished.) The
+        // snapshot strings themselves are untouched.
+        const auto nonBreaking = [](std::wstring version) {
+          std::replace(version.begin(), version.end(), L'-', L'\u2011');
+          return version;
+        };
+        message += L" (" + nonBreaking(snap.observation.installedVersion) +
+                   L" → " + nonBreaking(snap.observation.siblingVersion) + L")";
       }
       break;
   }
@@ -1078,7 +1202,9 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // Selected provider row. When the selected location is a connected network
   // peer, show its device name instead of the raw client id (req4): resolve it
   // from the live peer list by client id, like the linux drawer does.
-  std::string locationName = stats.locationName;
+  // The provider name is an external string: filtered where it enters the
+  // page, so the row AND the automation name built from it stay shapeable.
+  std::string locationName = urnw::kit::SanitizeExternalDisplayText(stats.locationName);
   const auto peers = Sdk().ConnectedProvidePeers();
   if (auto selected = Sdk().SelectedLocation();
       peers && selected && selected->connect_location_id &&
@@ -1087,7 +1213,8 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
     const auto& clientId = *selected->connect_location_id->client_id;
     for (const auto& peer : *peers) {
       if (peer.ClientId && *peer.ClientId == clientId) {
-        locationName = urnw::PeerDisplayName(peer);
+        // a peer's device name is off the wire too: same filter, same reason
+        locationName = urnw::kit::SanitizeExternalDisplayText(urnw::PeerDisplayName(peer));
         break;
       }
     }
@@ -1164,6 +1291,13 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   w_.LiveStatsGroup().Visibility(stats.connected || providersConnecting
                                      ? Visibility::Visible
                                      : Visibility::Collapsed);
+  // The fold-gated globe door follows pane C's ProviderCountLine rule exactly
+  // (it sits inside LiveStatsGroup): hidden while there is no session to draw.
+  if (foldDoorGlobeRow_) {
+    foldDoorGlobeRow_.Visibility(stats.connected || providersConnecting
+                                     ? Visibility::Visible
+                                     : Visibility::Collapsed);
+  }
   // R3: the statistics pane draws the session as key/value rows, so it needs the
   // figures rather than only the prose lines above.
   downBitsPerSecond_ = stats.downBitsPerSecond;
@@ -1406,6 +1540,73 @@ void ConnectPage::BuildCharts() {
   extenderPanel_ = std::make_unique<urnw::ExtenderPanel>(w_.ExtenderPanelHost());
 }
 
+// ---- the fold-gated sheet doors (the fold rule) -----------------------------
+// Pane C folds below 1042dip of nav content (MainWindow::ApplyBreakpoint's
+// connectThree gate), and pane C owns the only doors to five sheets: split
+// rules (its group-header action AND the Advanced inspector's Reason-row link),
+// the DNS editor, client contracts, the provider-locations globe - and the
+// transport settings editor, whose bar rides pane B, gone below 640dip of
+// window. The fold rule bars a foldable pane from owning content with no
+// second door, so the doors are built TWICE, the Support-contact pattern:
+// once in pane C and once here, and ApplyPaneCFolded shows exactly one set.
+void ConnectPage::BuildFoldDoors() {
+  if (foldDoorsBuilt_) return;
+  foldDoorsBuilt_ = true;
+  // Pane A's scroller content has no x:Name (a new one is a stale-object
+  // startup crash without a full .obj wipe), so the host is reached, not named:
+  // markup's PaneAScroll ScrollViewer has exactly one child, the pane's
+  // StackPanel. The section inserts ahead of the peers GROUP HEADER - the child
+  // right before PeersHost - so it closes the pane's fixed controls rather than
+  // appending under the pane's one list; if that shape ever changes the
+  // fallback appends and the section lands at the foot, still correct.
+  auto panel = w_.PaneAScroll().Content().try_as<Controls::StackPanel>();
+  if (!panel) return;
+  foldDoorHost_ = Controls::StackPanel();
+  foldDoorHost_.Visibility(paneCFolded_ ? Visibility::Visible : Visibility::Collapsed);
+  uint32_t peersIndex = 0;
+  if (panel.Children().IndexOf(w_.PeersHost(), peersIndex) && 0 < peersIndex) {
+    panel.Children().InsertAt(peersIndex - 1, foldDoorHost_);
+  } else {
+    panel.Children().Append(foldDoorHost_);
+  }
+
+  // The section IS the folded statistics pane's doors, so it wears that pane's
+  // title. Every label below is a shipped store key - no Adv() fallbacks.
+  foldDoorHeader_ = urnw::kit::MakePaneGroupHeader(Loc("client_statistics"));
+  foldDoorHost_.Children().Append(foldDoorHeader_.root);
+  auto door = [this](std::string_view key, auto const& open) {
+    auto row = urnw::kit::MakePaneTwoLineRowButton(Loc(key));
+    row.root.Click([weak = w_.get_weak(), open](auto const&, auto const&) {
+      if (auto self = weak.get()) open(self->connect());
+    });
+    foldDoors_.push_back({key, row.root, row.title});
+    foldDoorHost_.Children().Append(row.root);
+    return row;
+  };
+  door("client_contracts", [](ConnectPage& page) { page.ShowClientContractsSheet(); });
+  door("split_rules", [](ConnectPage& page) { page.ShowSplitRulesSheet(); });
+  door("custom_dns", [](ConnectPage& page) { page.ShowDnsSheet(); });
+  door("transports", [](ConnectPage& page) {
+    page.ShowTransportSettingsSheet(urnw::TransportSettingsKind::Client);
+  });
+  // The globe door goes through OnProviderCountClick so the two rows can never
+  // disagree about when the sheet opens (the guard is the handler's; the args
+  // are unused). Its VISIBILITY follows the session like pane C's own row -
+  // ApplyStats writes it next to LiveStatsGroup, and it starts hidden the way
+  // LiveStatsGroup starts collapsed: before the first push there is no session
+  // to draw either.
+  foldDoorGlobeRow_ = door("provider_locations_title", [](ConnectPage& page) {
+                           page.OnProviderCountClick(nullptr, nullptr);
+                         }).root;
+  foldDoorGlobeRow_.Visibility(Visibility::Collapsed);
+}
+
+void ConnectPage::ApplyPaneCFolded(bool folded) {
+  paneCFolded_ = folded;
+  if (!foldDoorHost_) return;  // not built yet; BuildFoldDoors replays the state
+  foldDoorHost_.Visibility(folded ? Visibility::Visible : Visibility::Collapsed);
+}
+
 void ConnectPage::WireDrawerFeeds() {
   // SdkHost handlers fire on SDK callback threads. Capture the (agile)
   // DispatcherQueue here on the UI thread and hop through it, resolving the
@@ -1460,6 +1661,10 @@ void ConnectPage::WireDrawerFeeds() {
         page.allowedCount_ = allowed;
         page.blockedCount_ = blocked;
         page.ApplySessionRows();
+        // The stats pair is two of the ratio bar's three inputs (the local
+        // third rides the block-actions push into ApplyConnectionsList), so
+        // this handler rebuilds the bar the way it rebuilds the header count.
+        page.ApplyVerdictRatioBar();
         if (page.splitRulesSheet_) {
           page.splitRulesSheet_->Update(page.splitRules_, page.blockActions_, allowed,
                                         blocked);
@@ -1473,6 +1678,10 @@ void ConnectPage::WireDrawerFeeds() {
         auto& page = self->connect();
         page.splitRules_ = rules;
         page.ApplySplitRuleCount();
+        // The quick actions read the SAME publish (through CurrentHostRules),
+        // so a rule written from any surface - the sheet, not only the
+        // inspector's own buttons - re-renders the on/off state here.
+        page.ApplyInspector();
         if (page.splitRulesSheet_) {
           page.splitRulesSheet_->Update(page.splitRules_, page.blockActions_,
                                         page.allowedCount_, page.blockedCount_);
@@ -1883,80 +2092,630 @@ std::string BlockActionTitle(urnw::BlockActionItem const& action) {
 std::string ShortId(std::string const& id) {
   return id.size() <= 12 ? id : id.substr(0, 12) + "…";
 }
+
+// A connection row's meta line: when the routing decision was made, then the
+// volume totals the line has always carried. The age re-renders on the 1s
+// clock (RefreshConnectionRowTimes) from the row's cached fields, so it stays
+// honest without a feed push. timeMillis is unix-ms; 0 means the feed predates
+// the field, and the prefix is simply absent rather than a 56-year age.
+std::string BlockActionMeta(int64_t timeMillis, int64_t byteCount, int64_t packetCount,
+                            int64_t nowMillis) {
+  std::string meta;
+  if (0 < timeMillis) {
+    meta = urnw::RelativeTime(timeMillis, nowMillis);
+    meta += "   ";
+  }
+  meta += urnw::FormatByteCountCompact(byteCount) + "   " +
+          urnw::FormatCountCompact(packetCount) + " pkt";
+  return meta;
+}
+
+// The fold count as words, for a group row's meta and its accessible name:
+// "1 connection" / "N connections", from the store's plural key (the count is
+// part of the string, so a language that spells it out can).
+std::string GroupConnectionsWord(int64_t connections) {
+  return Narrow(urnw::Plural("adv_connection_count", connections));
+}
+
+// A GROUP row's meta line: the fold count first - it is what makes the row a
+// group - then the same age / bytes / packets figures every connection row
+// prints, summed over the group with the LATEST decision's age. The age
+// re-renders on the 1s clock like any other row's.
+std::string GroupConnectionsMeta(int64_t connections, int64_t timeMillis,
+                                 int64_t byteCount, int64_t packetCount,
+                                 int64_t nowMillis) {
+  std::string meta = GroupConnectionsWord(connections);
+  meta += "   ";
+  if (0 < timeMillis) {
+    meta += urnw::RelativeTime(timeMillis, nowMillis);
+    meta += "   ";
+  }
+  meta += urnw::FormatByteCountCompact(byteCount) + "   " +
+          urnw::FormatCountCompact(packetCount) + " pkt";
+  return meta;
+}
 }  // namespace
+
+// The verdict filter's membership test. "Tunnelled" and "Bypassed" split the
+// old two-way "allowed": both pass traffic, but only one of them protects it -
+// the same three-way reading the row dots and the inspector already print.
+bool ConnectPage::VerdictPassesFilter(ConnectionVerdictFilter filter,
+                                      urnw::BlockActionItem const& action) {
+  switch (filter) {
+    case ConnectionVerdictFilter::Blocked:
+      return action.block;
+    case ConnectionVerdictFilter::Tunnelled:
+      return !action.block && !action.local;
+    case ConnectionVerdictFilter::Bypassed:
+      return !action.block && action.local;
+    default:
+      return true;
+  }
+}
+
+// Case-insensitive substring over every identity field the row or the
+// inspector can print. The query arrives lowercased and trimmed; the search
+// field's TextChanged is its only writer.
+bool ConnectPage::ConnectionQueryPasses(std::string const& query,
+                                        urnw::BlockActionItem const& action) {
+  if (query.empty()) return true;
+  auto anyMatch = [&query](std::vector<std::string> const& values) {
+    for (auto const& value : values) {
+      if (ToLower(value).find(query) != std::string::npos) return true;
+    }
+    return false;
+  };
+  return anyMatch(action.hosts) || anyMatch(action.ips) ||
+         anyMatch(action.matchedHosts) || anyMatch(action.matchedIps);
+}
+
+// The activity row, built ONCE per reconcile key. NORMAL: a static row, not
+// focusable, not selectable - a Normal user is being told what their VPN is
+// doing, not handed 200 tab stops on the way to the Connect button. ADVANCED:
+// the same row, selectable - clickable, in the tab order, and invokable with
+// Enter or Space because it is a real Button rather than a Border with a
+// pointer handler bolted on. A GROUP row (group-by-host) is the same row over
+// a host's aggregate; its click is the drill-in, not a selection.
+ConnectPage::ConnectionRowEntry ConnectPage::BuildConnectionRow(
+    ConnectionViewItem const& item) {
+  ConnectionRowEntry entry;
+  entry.group = item.group != nullptr;
+  entry.id = entry.group ? item.group->host : item.action->id;
+  entry.selectable = advancedMode_;
+  if (!advancedMode_) {
+    auto row = urnw::kit::MakePaneListRow(36);
+    entry.root = row.root;
+    entry.dot = row.dot;
+    entry.title = row.title;
+    entry.meta = row.meta;
+  } else {
+    auto row = urnw::kit::MakePaneListRowButton(36);
+    entry.button = row;
+    entry.root = row.root;
+    entry.dot = row.dot;
+    entry.title = row.title;
+    entry.meta = row.meta;
+    // By KEY, never by index - see SelectConnection. The key is captured by
+    // value so the handler does not reach back into a vector that has been
+    // rebuilt. A group row's click drills into the host; a decision row's
+    // click selects the connection for the inspector.
+    const std::string key = entry.id;
+    const bool group = entry.group;
+    if (group) {
+      row.root.Click([weak = w_.get_weak(), key](auto const&, auto const&) {
+        if (auto self = weak.get()) self->connect().DrillIntoConnectionGroup(key);
+      });
+    } else {
+      row.root.Click([weak = w_.get_weak(), key](auto const&, auto const&) {
+        if (auto self = weak.get()) self->connect().SelectConnection(key);
+      });
+    }
+    // Right-tap (or the keyboard's menu key): the row's rule toggles and
+    // copy-details. Advanced Mode only - Normal's static rows get no menu, the
+    // same division the click has.
+    const Controls::Button anchor = row.root;
+    row.root.ContextRequested(
+        [weak = w_.get_weak(), key, group, anchor](
+            auto const&,
+            winrt::Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args) {
+          args.Handled(true);
+          if (auto self = weak.get()) {
+            self->connect().ShowConnectionRowMenu(anchor, key, group);
+          }
+        });
+  }
+  UpdateConnectionRow(entry, item);
+  return entry;
+}
+
+// The in-place rewrite: everything a push can change about a row that is
+// already on screen - the counters (and with them the meta line), the title,
+// the verdict's colour and word - without touching the row's identity, focus
+// or the scroller's offset. A group row rewrites from the aggregate: the
+// verdict by precedence (blocked if any blocked, else bypassed if any local,
+// else tunnelled), the counters summed, the age from the latest decision.
+void ConnectPage::UpdateConnectionRow(ConnectionRowEntry& entry,
+                                      ConnectionViewItem const& item) {
+  const bool group = item.group != nullptr;
+  entry.timeMillis = group ? item.group->latestMillis : item.action->timeMillis;
+  entry.byteCount = group ? item.group->byteCount : item.action->byteCount;
+  entry.packetCount = group ? item.group->packetCount : item.action->packetCount;
+  entry.groupConnections = group ? item.group->connections : 0;
+  const std::string title = group ? item.group->host : BlockActionTitle(*item.action);
+  const bool blocked = group ? item.group->anyBlocked : item.action->block;
+  const bool local = group ? !item.group->anyBlocked && item.group->anyLocal
+                           : item.action->local;
+  const hstring titleText = title.empty() ? Loc("unknown") : H(title);
+  const auto verdictColor = blocked   ? urnw::colors::kUrCoral
+                            : local   ? urnw::colors::kUrAmber
+                                      : urnw::colors::kUrGreen;
+  // The verdict in WORDS, for the row's accessible name. The dot is Raw, so
+  // the name is the only place the colour's meaning exists for a screen
+  // reader - and `local` is a THIRD verdict the old two-way name folded into
+  // "allowed": traffic sent around the tunnel is allowed and unprotected, and
+  // those are not the same thing to anyone reading this list.
+  const hstring verdict = blocked ? Loc("blocked")
+                          : local ? Loc("local")
+                                  : Loc("allowed");
+  const int64_t nowMillis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::system_clock::now().time_since_epoch())
+                                .count();
+  entry.dot.Fill(urnw::colors::MakeBrush(verdictColor));
+  entry.title.Text(titleText);
+  entry.meta.Text(
+      H(group ? GroupConnectionsMeta(entry.groupConnections, entry.timeMillis,
+                                     entry.byteCount, entry.packetCount, nowMillis)
+              : BlockActionMeta(entry.timeMillis, entry.byteCount,
+                                entry.packetCount, nowMillis)));
+  // A group row's name carries the fold count too: "host, N connections,
+  // verdict" - the aggregate fact the sighted row shows and the bare title
+  // would not say.
+  std::wstring name{titleText};
+  if (group) name += L", " + urnw::Widen(GroupConnectionsWord(entry.groupConnections));
+  name += L", " + std::wstring{verdict};
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      entry.root, hstring{name});
+}
 
 // The activity pane's table: every routing decision the device has made, newest
 // first. Coral = blocked, green = allowed through the tunnel, amber = sent
 // around it (a split rule matched). This is the pane's reason to exist and the
 // list that has to FILL it.
-void ConnectPage::ApplyConnectionsList() {
+//
+// INCREMENTAL, because the feed pushes several times a second and a
+// Clear()+rebuild on every push reset the scroller to the top, which made the
+// list unreadable while it moved: rows are keyed by BlockActionItem::id (or, in
+// group-by-host mode, by display host - see ConnectionRowEntry's kind), new
+// decisions insert at the top, living rows are rewritten in place, rows past
+// the cap or filtered out are removed, and the offset is restored afterwards.
+// The verdict filter, the host/IP search and the group fold re-evaluate
+// membership through this same pass, so a filter change is a diff, not a
+// rebuild.
+void ConnectPage::ApplyConnectionsList(bool resetScroll) {
   auto host = w_.ConnectionsHost();
-  host.Children().Clear();
+  auto scroll = w_.ConnectionsScroll();
+
+  // The Advanced-Mode flip changes the row TYPE (static Border <-> selectable
+  // Button), which an incremental pass cannot morph: it is the ONE path that
+  // still clears, and it is a user gesture, never a push. (The group flip only
+  // changes the row's KEY - the reconcile replaces the rows below.)
+  if (connectionRowsSelectable_ != advancedMode_ && !connectionRowEntries_.empty()) {
+    host.Children().Clear();
+    connectionRowEntries_.clear();
+  }
+  connectionRowsSelectable_ = advancedMode_;
+
+  // The visible slice: verdict filter and host/IP substring over the CACHED
+  // feed (no Sdk() read, so the filter and the push path cannot disagree),
+  // under the cap the full rebuild had. A cap, not a scroll budget: the SDK's
+  // action feed is unbounded and every row is a live XAML subtree - 200 rows
+  // is ~7000px of pane, well past any window. Group mode folds the SAME
+  // filtered feed first and the cap counts groups.
+  constexpr size_t kMaxRows = 200;
+  int64_t filteredCount = 0;
+  std::vector<ConnectionGroup> groups;
+  std::vector<ConnectionViewItem> visible;
+  if (connectionsGrouped_) {
+    groups = FoldConnectionGroups();
+    for (auto const& group : groups) filteredCount += group.connections;
+    visible.reserve(std::min(groups.size(), kMaxRows));
+    for (auto const& group : groups) {
+      if (visible.size() >= kMaxRows) break;
+      visible.push_back(ConnectionViewItem{nullptr, &group});
+    }
+  } else {
+    visible.reserve(std::min(blockActions_.size(), kMaxRows));
+    for (auto const& action : blockActions_) {
+      if (!VerdictPassesFilter(verdictFilter_, action) ||
+          !ConnectionQueryPasses(connectionsQuery_, action)) {
+        continue;
+      }
+      ++filteredCount;
+      if (visible.size() < kMaxRows) {
+        visible.push_back(ConnectionViewItem{&action, nullptr});
+      }
+    }
+  }
+
+  // Read the offset BEFORE the mutations; it is restored after them. A filter
+  // change is a new result set and reads from the top instead.
+  const double offset = resetScroll ? 0.0 : scroll.VerticalOffset();
+
+  // The reconcile key + kind check: the decision id for a flat row, the host
+  // for a group row. The kind has to match too - the id namespace and the
+  // hostname namespace share the entry's one string, so a group flip must
+  // REPLACE a row, never rewrite a decision row into a group that happens to
+  // spell the same.
+  auto matches = [](ConnectionViewItem const& item, ConnectionRowEntry const& entry) {
+    const bool group = item.group != nullptr;
+    if (group != entry.group) return false;
+    return (group ? item.group->host : item.action->id) == entry.id;
+  };
+
+  // Rows that left the visible set - aged out of the feed, trimmed past the
+  // cap, or filtered out - walk back to front so the Children() indices stay
+  // valid as they come out.
+  for (size_t i = connectionRowEntries_.size(); 0 < i--;) {
+    bool stays = false;
+    for (auto const& item : visible) {
+      if (matches(item, connectionRowEntries_[i])) {
+        stays = true;
+        break;
+      }
+    }
+    if (stays) continue;
+    host.Children().RemoveAt(static_cast<uint32_t>(i));
+    connectionRowEntries_.erase(connectionRowEntries_.begin() +
+                                static_cast<ptrdiff_t>(i));
+  }
+
+  // The visible order, top = newest: update in place where the row already
+  // stands, reseat it if the feed moved it, insert it if it is new.
+  for (size_t i = 0; i < visible.size(); ++i) {
+    auto const& item = visible[i];
+    size_t at = connectionRowEntries_.size();
+    for (size_t k = i; k < connectionRowEntries_.size(); ++k) {
+      if (matches(item, connectionRowEntries_[k])) {
+        at = k;
+        break;
+      }
+    }
+    if (at < connectionRowEntries_.size()) {
+      UpdateConnectionRow(connectionRowEntries_[at], item);
+      if (at != i) {
+        ConnectionRowEntry entry = std::move(connectionRowEntries_[at]);
+        connectionRowEntries_.erase(connectionRowEntries_.begin() +
+                                    static_cast<ptrdiff_t>(at));
+        host.Children().RemoveAt(static_cast<uint32_t>(at));
+        host.Children().InsertAt(static_cast<uint32_t>(i), entry.root);
+        connectionRowEntries_.insert(connectionRowEntries_.begin() +
+                                         static_cast<ptrdiff_t>(i),
+                                     std::move(entry));
+      }
+    } else {
+      ConnectionRowEntry entry = BuildConnectionRow(item);
+      host.Children().InsertAt(static_cast<uint32_t>(i), entry.root);
+      connectionRowEntries_.insert(connectionRowEntries_.begin() +
+                                       static_cast<ptrdiff_t>(i),
+                                   std::move(entry));
+    }
+  }
+
+  // The selectable rows, re-collected so the selection path keeps repainting
+  // instead of rebuilding (see ApplyConnectionSelectionVisuals).
   connectionRows_.clear();
   connectionRowIds_.clear();
-  // A cap, not a scroll budget: the SDK's action feed is unbounded and every row
-  // is a live XAML subtree. 200 rows is ~7000px of pane, well past any window.
-  constexpr size_t kMaxRows = 200;
-  const size_t count = std::min(blockActions_.size(), kMaxRows);
-  for (size_t i = 0; i < count; ++i) {
-    auto const& action = blockActions_[i];
-    const std::string title = BlockActionTitle(action);
-    const hstring titleText = title.empty() ? Loc("unknown") : H(title);
-    const auto verdictColor = action.block   ? urnw::colors::kUrCoral
-                              : action.local ? urnw::colors::kUrAmber
-                                             : urnw::colors::kUrGreen;
-    // The verdict in WORDS, for the row's accessible name. The dot is Raw, so
-    // the name is the only place the colour's meaning exists for a screen
-    // reader — and `local` is a THIRD verdict the old two-way name folded into
-    // "allowed": traffic sent around the tunnel is allowed and unprotected, and
-    // those are not the same thing to anyone reading this list.
-    const hstring verdict = action.block  ? Loc("blocked")
-                            : action.local ? Loc("local")
-                                           : Loc("allowed");
-    const hstring meta = H(urnw::FormatByteCountCompact(action.byteCount) + "   " +
-                           urnw::FormatCountCompact(action.packetCount) + " pkt");
-
-    if (!advancedMode_) {
-      // NORMAL. Exactly what shipped: a static row, not focusable, not
-      // selectable. A Normal user is being told what their VPN is doing, not
-      // handed 200 tab stops on the way to the Connect button.
-      auto row = urnw::kit::MakePaneListRow(36);
-      row.dot.Fill(urnw::colors::MakeBrush(verdictColor));
-      row.title.Text(titleText);
-      row.meta.Text(meta);
-      winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
-          row.root, hstring{std::wstring{titleText} + L", " + std::wstring{verdict}});
-      host.Children().Append(row.root);
-      continue;
-    }
-
-    // ADVANCED. The same row, selectable: clickable, in the tab order, and
-    // invokable with Enter or Space because it is a real Button rather than a
-    // Border with a pointer handler bolted on.
-    auto row = urnw::kit::MakePaneListRowButton(36);
-    row.dot.Fill(urnw::colors::MakeBrush(verdictColor));
-    row.title.Text(titleText);
-    row.meta.Text(meta);
-    winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
-        row.root, hstring{std::wstring{titleText} + L", " + std::wstring{verdict}});
-    // By ID, never by index — see SelectConnection. The id is captured by value
-    // so the handler does not reach back into a vector that has been rebuilt.
-    const std::string id = action.id;
-    row.root.Click([weak = w_.get_weak(), id](auto const&, auto const&) {
-      if (auto self = weak.get()) self->connect().SelectConnection(id);
-    });
-    host.Children().Append(row.root);
-    connectionRows_.push_back(row);
-    connectionRowIds_.push_back(id);
+  for (auto const& entry : connectionRowEntries_) {
+    if (!entry.selectable) continue;
+    connectionRows_.push_back(entry.button);
+    connectionRowIds_.push_back(entry.id);
   }
-  w_.ConnectionsCount().Text(
-      hstring{urnw::Plural("host_count", static_cast<int64_t>(blockActions_.size()))});
+
+  // Restore what a rebuild would have lost. ChangeView applies against the new
+  // extent once layout settles; the animation is disabled because this is a
+  // correction, not a transition.
+  if (resetScroll) {
+    scroll.ChangeView(nullptr, winrt::Windows::Foundation::IReference<double>{0.0}, nullptr,
+                      true);
+  } else if (0 < offset) {
+    scroll.ChangeView(nullptr, winrt::Windows::Foundation::IReference<double>{offset},
+                      nullptr, true);
+  }
+
+  // The group-header count: "N hosts" with no filter, "N hosts of M" while a
+  // filter is holding rows back - of_total is the shipped "of {}" key, so the
+  // pair stays plural-correct in every language the store covers. Group mode
+  // always reads "N hosts of M": the fold over the filtered feed it folded -
+  // "8 hosts of 30".
+  const bool filterActive =
+      verdictFilter_ != ConnectionVerdictFilter::All || !connectionsQuery_.empty();
+  std::wstring count =
+      urnw::Plural("host_count",
+                   connectionsGrouped_ ? static_cast<int64_t>(groups.size())
+                   : filterActive      ? filteredCount
+                                       : static_cast<int64_t>(blockActions_.size()));
+  if (connectionsGrouped_ || filterActive) {
+    count += L" ";
+    count += urnw::Format("of_total", connectionsGrouped_
+                                          ? filteredCount
+                                          : static_cast<int64_t>(blockActions_.size()));
+  }
+  w_.ConnectionsCount().Text(hstring{count});
+  // The clear-filters affordance rides on ANY of the three controls being off
+  // its default. The group fold counts here though the header count above
+  // deliberately does not treat it as a filter: it changes what the list
+  // shows, which is exactly what the one-click reset is for. Every path that
+  // can change any of the three lands in this pass, so this is the one place
+  // the button's visibility is written.
+  w_.ConnectionsClearFilters().Visibility(
+      filterActive || connectionsGrouped_ ? Visibility::Visible
+                                          : Visibility::Collapsed);
+  // The verdict ratio bar under the header, rebuilt on the same pass that
+  // rebuilds the count (and from the block-stats handler for its session
+  // inputs): three star weights, never a rebuild.
+  ApplyVerdictRatioBar();
+
   ApplySessionCardsVisibility(statsConnected_);
-  // The list was just rebuilt underneath the selection. If what was selected is
-  // no longer in the feed, the inspector must say so rather than keep printing a
+  // A filter that matches nothing in a session that HAS rows must not read as
+  // an empty session: the blank list under the active filter controls says
+  // exactly what happened, which the session-empty line would contradict.
+  if (filterActive && filteredCount == 0 && !blockActions_.empty() && statsConnected_) {
+    w_.ConnectionsScroll().Visibility(Visibility::Visible);
+    w_.SessionEmptyCard().Visibility(Visibility::Collapsed);
+  }
+  // The selection survived the reconcile by id. If what was selected is no
+  // longer in the feed, the inspector must say so rather than keep printing a
   // connection that has aged out.
   ApplyConnectionSelectionVisuals();
   ApplyInspector();
+}
+
+// Group-by-host's fold: the FILTERED feed (the same verdict + query membership
+// the flat list renders) collapsed by display host - BlockActionTitle's rule,
+// so a group is named exactly the way its members' rows would be. The feed is
+// newest-first, so the first sight of a host is its latest decision; the
+// explicit sort afterwards states the row order (latest first) rather than
+// trusting that property through ties and zeroed times.
+std::vector<ConnectPage::ConnectionGroup> ConnectPage::FoldConnectionGroups() const {
+  std::vector<ConnectionGroup> groups;
+  for (auto const& action : blockActions_) {
+    if (!VerdictPassesFilter(verdictFilter_, action) ||
+        !ConnectionQueryPasses(connectionsQuery_, action)) {
+      continue;
+    }
+    const std::string host = BlockActionTitle(action);
+    ConnectionGroup* group = nullptr;
+    for (auto& candidate : groups) {
+      if (candidate.host == host) {
+        group = &candidate;
+        break;
+      }
+    }
+    if (!group) {
+      groups.push_back(ConnectionGroup{});
+      group = &groups.back();
+      group->host = host;
+      group->latest = &action;  // newest-first feed: first seen is the latest
+    }
+    ++group->connections;
+    group->byteCount += action.byteCount;
+    group->packetCount += action.packetCount;
+    group->latestMillis = std::max(group->latestMillis, action.timeMillis);
+    group->anyBlocked = group->anyBlocked || action.block;
+    group->anyLocal = group->anyLocal || action.local;
+  }
+  std::stable_sort(groups.begin(), groups.end(),
+                   [](ConnectionGroup const& a, ConnectionGroup const& b) {
+                     return a.latestMillis > b.latestMillis;
+                   });
+  return groups;
+}
+
+// NetworkPage::Build parity: the search field and its filter live in one
+// place, built once into the markup's host. The locations search is owned by
+// the SDK; the connections feed's reading is NOT - this filter is view-side
+// over the cached feed, so TextChanged just re-runs the incremental pass.
+void ConnectPage::BuildConnectionsFilter() {
+  if (connectionsFilterBuilt_) return;
+  connectionsFilterBuilt_ = true;
+  auto row =
+      urnw::kit::MakePaneSearchRow(Adv("adv_search_connections", L"Search hosts or IPs"));
+  connectionsSearch_ = row.box;
+  connectionsSearch_.TextChanged([weak = w_.get_weak()](IInspectable const&, auto const&) {
+    if (auto self = weak.get()) {
+      auto& page = self->connect();
+      page.connectionsQuery_ =
+          ToLower(TrimWhitespace(Narrow(page.connectionsSearch_.Text())));
+      page.ApplyConnectionsList(true);
+    }
+  });
+  w_.ConnectionsSearchHost().Children().Append(row.root);
+}
+
+// The verdict filter, read off the bar the way SelectedMode reads the
+// connection mode (same non-const accessor note). A changed filter is a new
+// result set: re-evaluate membership through the ordinary incremental pass
+// and read it from the top.
+void ConnectPage::OnConnectionsVerdictChanged() {
+  if (updatingControls_) return;
+  auto selected = w_.ConnectionsVerdictBar().SelectedItem();
+  ConnectionVerdictFilter filter = ConnectionVerdictFilter::All;
+  if (selected == w_.VerdictBlockedItem()) {
+    filter = ConnectionVerdictFilter::Blocked;
+  } else if (selected == w_.VerdictTunnelledItem()) {
+    filter = ConnectionVerdictFilter::Tunnelled;
+  } else if (selected == w_.VerdictBypassedItem()) {
+    filter = ConnectionVerdictFilter::Bypassed;
+  }
+  if (filter == verdictFilter_) return;
+  verdictFilter_ = filter;
+  ApplyConnectionsList(true);
+}
+
+// The group-by-host switch, read off the control the way the verdict bar is. A
+// changed fold is a new result set, like a changed verdict: re-evaluate
+// through the ordinary incremental pass and read it from the top.
+void ConnectPage::OnConnectionsGroupToggled() {
+  if (updatingControls_) return;
+  const bool grouped = w_.ConnectionsGroupToggle().IsOn();
+  if (grouped == connectionsGrouped_) return;
+  connectionsGrouped_ = grouped;
+  ApplyConnectionsList(true);
+}
+
+// The one-click reset. The state fields move first, the controls follow behind
+// updatingControls_ so the programmatic writes cannot echo back through their
+// own handlers, and the pass runs ONCE at the end: clearing the search text
+// fires its TextChanged (the same path the user's own typing takes), and when
+// the box was already empty no TextChanged is coming, so the pass runs here
+// instead - the DrillIntoConnectionGroup pattern.
+void ConnectPage::OnConnectionsClearFilters() {
+  verdictFilter_ = ConnectionVerdictFilter::All;
+  connectionsGrouped_ = false;
+  updatingControls_ = true;
+  w_.ConnectionsVerdictBar().SelectedItem(w_.VerdictAllItem());
+  w_.ConnectionsGroupToggle().IsOn(false);
+  updatingControls_ = false;
+  if (connectionsSearch_ && !connectionsSearch_.Text().empty()) {
+    connectionsSearch_.Text(L"");
+  } else {
+    connectionsQuery_.clear();
+    ApplyConnectionsList(true);
+  }
+}
+
+// The verdict ratio bar under the connections group header: the session's
+// allowed (green) / blocked (coral) split, plus the bypassed-local third
+// (amber). The BlockStats pair is SESSION-scoped; the local count is read off
+// the cached blockActions_ window, so the amber share is WINDOW-scoped (the
+// SDK has no session-scoped bypass counter) - the two scopes sit on one bar
+// because the window is the only place a bypass reading exists at all.
+//
+// The work per call is deliberately trivial: one pass over the cached window
+// for the local count, then three star-weight writes on the columns that
+// already exist. No element is built here - the strip updates only on feed
+// pushes (the block-actions pass and the block-stats handler), so a live
+// session pays nothing per frame.
+void ConnectPage::ApplyVerdictRatioBar() {
+  auto bar = w_.ConnectionsVerdictRatio();
+  int64_t localCount = 0;
+  for (auto const& action : blockActions_) {
+    if (!action.block && action.local) ++localCount;
+  }
+  const int64_t total = allowedCount_ + blockedCount_ + localCount;
+  if (total <= 0) {
+    // Nothing to proportion: the strip collapses rather than drawing an
+    // empty track, which would read as chrome instead of data.
+    bar.Visibility(Visibility::Collapsed);
+    return;
+  }
+  bar.Visibility(Visibility::Visible);
+  const double weights[3] = {static_cast<double>(allowedCount_),
+                             static_cast<double>(blockedCount_),
+                             static_cast<double>(localCount)};
+  for (uint32_t i = 0; i < 3; ++i) {
+    bar.ColumnDefinitions().GetAt(i).Width(GridLength{weights[i], GridUnitType::Star});
+  }
+}
+
+// The drill-in. The search box takes the host (its TextChanged folds the text
+// into connectionsQuery_ and re-runs the pass - the same path the user's own
+// typing takes), and the switch goes off behind updatingControls_ so the
+// programmatic flip does not echo back through its handler. When the box
+// already held exactly this host no TextChanged is coming, so the pass runs
+// here instead: the fold flip alone still re-renders.
+void ConnectPage::DrillIntoConnectionGroup(std::string const& host) {
+  if (host.empty()) return;  // an unnamed group has nothing to search for
+  if (connectionsGrouped_) {
+    connectionsGrouped_ = false;
+    updatingControls_ = true;
+    w_.ConnectionsGroupToggle().IsOn(false);
+    updatingControls_ = false;
+  }
+  if (connectionsSearch_) {
+    if (Narrow(connectionsSearch_.Text()) == host) {
+      ApplyConnectionsList(true);
+    } else {
+      connectionsSearch_.Text(H(host));
+    }
+  } else {
+    connectionsQuery_ = ToLower(TrimWhitespace(host));
+    ApplyConnectionsList(true);
+  }
+}
+
+// The 1s reading of the meta line's age prefix. Every row keeps the counters
+// its meta was built from, so this is one string re-render per row with no
+// feed read and no rebuild - and a row whose age text has not changed is not
+// touched, so a quiet minute costs no layout.
+void ConnectPage::RefreshConnectionRowTimes() {
+  if (connectionRowEntries_.empty()) return;
+  const int64_t nowMillis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::system_clock::now().time_since_epoch())
+                                .count();
+  for (auto& entry : connectionRowEntries_) {
+    if (entry.timeMillis <= 0) continue;
+    // a group row re-renders its own meta shape (fold count + the trio)
+    const hstring meta =
+        H(entry.group ? GroupConnectionsMeta(entry.groupConnections, entry.timeMillis,
+                                             entry.byteCount, entry.packetCount, nowMillis)
+                      : BlockActionMeta(entry.timeMillis, entry.byteCount,
+                                        entry.packetCount, nowMillis));
+    if (entry.meta.Text() != meta) entry.meta.Text(meta);
+  }
+}
+
+// The pane-B body floor: the Remote chart at its 120 floor + the transport bar
+// + the ip-family row + the extender panel + the 28px group header + the 3px
+// ratio bar + a usable sliver of the list. Below it the fixed blocks would
+// leave the star-sized list under ~3 rows, so the body stops shrinking and the
+// pane's own scroller takes over (the markup comment on ActivityBodyScroll
+// states the rule). The floor's list guarantee survived the chart flex because
+// the chart yields its flex FIRST: at the floor the chart sits at 120, not its
+// old fixed 150, so the list's sliver here is 27px LARGER than the fixed-150
+// layout's was (the chart's 30 less the ratio bar's 3).
+constexpr double kActivityBodyMinHeight = 520;
+// The Remote chart's flex bounds. The floor is what the chart may shrink to
+// when height is scarce (pane-model rule: fixed chrome never starves the
+// pane's list - the chart is the one fixed block here that can give); the cap
+// keeps a tall window's chart a chart rather than a second list.
+constexpr double kRemoteChartMinHeight = 120;
+constexpr double kRemoteChartMaxHeight = 240;
+
+void ConnectPage::ApplyActivityBodyHeight() {
+  // Pin the body at the viewport while the window is tall enough - the body IS
+  // the viewport there, so the layout is pixel-identical to the fixed rows it
+  // replaced - and at the floor below it, which is the one thing a star row
+  // cannot express: "shrink with the pane, but no further than this".
+  const double viewport = w_.ActivityBodyScroll().ViewportHeight();
+  w_.ActivityBody().Height(std::max(viewport, kActivityBodyMinHeight));
+  // The Remote chart's share of that math, derived from the SAME viewport so
+  // the chart and the body can never disagree: today's 150 at the floor (the
+  // default layout is unchanged), a THIRD of each viewport pixel past it - the
+  // list keeps the other two thirds, because the list is the pane's reason to
+  // exist - floored at 120 when height is scarce and capped at 240. The chart
+  // re-renders and re-stamps its clip on the SizeChanged this causes, the same
+  // path any resize already took.
+  const double chartFlex = 150.0 + (viewport - kActivityBodyMinHeight) / 3.0;
+  w_.RemoteChartHost().Height(
+      std::clamp(chartFlex, kRemoteChartMinHeight, kRemoteChartMaxHeight));
+}
+
+// The pane header's fixed height (UrPaneHeaderHeight in App.xaml; keep in
+// step). The pane's rows are Auto-header + star-scroller, so the scroller's
+// viewport is exactly the pane's height minus this.
+constexpr double kPaneHeaderHeight = 40;
+
+void ConnectPage::ApplyPaneCBodyHeight() {
+  // Pin the body grid's MinHeight to the viewport. MINHeight, not Height:
+  // content taller than the pane overrides the pin and scrolls exactly as the
+  // StackPanel did, while content shorter than the pane gets a bounded grid
+  // whose star chart rows can share the leftover (132 floor, 220 cap - the
+  // markup comment on PaneCBody has the rule). Without the pin the scroller's
+  // unbounded measure would leave the star rows at their floor forever.
+  const double viewport = w_.ConnectPaneC().ActualHeight() - kPaneHeaderHeight;
+  if (viewport <= 0) return;  // not laid out yet; the first SizeChanged re-runs
+  w_.PaneCBody().MinHeight(viewport);
 }
 
 // The session, as key/value rows on the statistics pane's grid. These were four
@@ -2118,6 +2877,18 @@ std::optional<ConnectPage::ExitRouting> ConnectPage::RoutingForAddresses(
   return std::nullopt;
 }
 
+// The selection in the CURRENT feed, or nullptr. The action may have aged out
+// of the SDK's window since it was picked, and if it has, saying so is the
+// honest reading - the alternative is a detail pane frozen on a connection
+// that no longer exists, which is indistinguishable from a hung inspector.
+const urnw::BlockActionItem* ConnectPage::SelectedConnectionAction() const {
+  if (selectedConnectionId_.empty()) return nullptr;
+  for (auto const& candidate : blockActions_) {
+    if (candidate.id == selectedConnectionId_) return &candidate;
+  }
+  return nullptr;
+}
+
 void ConnectPage::ApplyInspector() {
   // Normal mode: the group is not merely empty, it is gone. The third pane is
   // the statistics pane it has always been, with no vestigial header.
@@ -2136,19 +2907,7 @@ void ConnectPage::ApplyInspector() {
   auto host = w_.InspectorRowsHost();
   host.Children().Clear();
 
-  // Find the selection in the CURRENT feed. It may have aged out of the SDK's
-  // window since it was picked, and if it has, saying so is the honest reading —
-  // the alternative is a detail pane frozen on a connection that no longer
-  // exists, which is indistinguishable from a hung inspector.
-  const urnw::BlockActionItem* action = nullptr;
-  if (!selectedConnectionId_.empty()) {
-    for (auto const& candidate : blockActions_) {
-      if (candidate.id == selectedConnectionId_) {
-        action = &candidate;
-        break;
-      }
-    }
-  }
+  const urnw::BlockActionItem* action = SelectedConnectionAction();
 
   w_.InspectorClearButton().Visibility(action ? Visibility::Visible
                                               : Visibility::Collapsed);
@@ -2166,6 +2925,11 @@ void ConnectPage::ApplyInspector() {
     w_.InspectorDot().Fill(urnw::colors::MakeBrush(urnw::colors::kTextFaint));
     w_.InspectorVerdict().Text(
         Adv("adv_select_a_row", L"Select a row in Activity to inspect it"));
+    // No selection, no actions: the row goes WITH the empty reading, and a
+    // disabled row left behind would offer rules on a connection that is gone.
+    w_.InspectorActionsRow().Visibility(Visibility::Collapsed);
+    blockQuickAction_ = {};
+    routeQuickAction_ = {};
     return;
   }
 
@@ -2186,6 +2950,33 @@ void ConnectPage::ApplyInspector() {
       : action->local
           ? Adv("adv_verdict_local", L"Bypassed the tunnel — not protected")
           : Adv("adv_verdict_tunnelled", L"Tunnelled through URnetwork"));
+
+  // ---- the quick actions (observe -> decide -> rule) ----------------------
+  // Derived on EVERY render, from the live overrides list: the click handlers
+  // consume the stored state, so the state and the buttons can never disagree.
+  blockQuickAction_ = QuickActionFor(*action, true);
+  routeQuickAction_ = QuickActionFor(*action, false);
+  w_.InspectorActionsRow().Visibility(Visibility::Visible);
+  // The label names what the click leaves behind: "Allow this host" over a
+  // blocking rule (or a blocked verdict when no rule is in force), "Block
+  // this host" over an allowing one - and the bypass/tunnel pair the same
+  // way. The ACTIVE rule's polarity answers, never the action's verdict: the
+  // verdict is a stale snapshot once a rule has landed after the decision,
+  // and a label read from it would name the click backwards exactly while
+  // the undo snackbar is up. The fill says create vs remove
+  // (ApplyQuickActionButton).
+  ApplyQuickActionButton(
+      w_.InspectorBlockButton(), blockQuickAction_,
+      (blockQuickAction_.active ? blockQuickAction_.polarity : action->block)
+          ? Adv("adv_allow_host", L"Allow this host")
+          : Adv("adv_block_host", L"Block this host"));
+  ApplyQuickActionButton(
+      w_.InspectorRouteButton(), routeQuickAction_,
+      (routeQuickAction_.active ? routeQuickAction_.polarity : action->local)
+          ? Adv("adv_always_tunnel", L"Always tunnel")
+          : Adv("adv_bypass_tunnel", L"Bypass the tunnel"));
+  w_.InspectorCopyButton().Content(
+      winrt::box_value(Adv("adv_copy_details", L"Copy details")));
 
   auto add = [&host](winrt::hstring const& key, winrt::hstring const& value) {
     host.Children().Append(urnw::kit::MakePaneKeyValueRow(key, value).root);
@@ -2223,10 +3014,54 @@ void ConnectPage::ApplyInspector() {
   if (action->overrideId.empty()) {
     add(Adv("adv_reason", L"Reason"), Adv("adv_reason_default", L"Default policy"));
   } else {
-    add(Adv("adv_reason", L"Reason"),
+    const winrt::hstring reason =
         action->hasBlockOverride  ? Adv("adv_reason_block", L"Block override")
         : action->hasRouteOverride ? Adv("adv_reason_route", L"Route override")
-                                   : Adv("adv_reason_override", L"Override"));
+                                   : Adv("adv_reason_override", L"Override");
+    // The reason names a rule, and the rule lives on the split-rules surface -
+    // so "why did this happen" is one click away: the value is a button that
+    // opens that surface (the trailing caret says so, the way
+    // ProviderCountLine's does) rather than a fact the user hunts down.
+    auto reasonRow = urnw::kit::MakePaneKeyValueRow(Adv("adv_reason", L"Reason"), reason);
+    auto reasonGrid = reasonRow.root.Child().as<Controls::Grid>();
+    uint32_t reasonValueIndex = 0;
+    if (reasonGrid.Children().IndexOf(reasonRow.value, reasonValueIndex)) {
+      reasonGrid.Children().RemoveAt(reasonValueIndex);
+      Controls::Button link;
+      link.Padding(ThicknessHelper::FromLengths(0, 0, 0, 0));
+      link.Background(urnw::colors::MakeBrush(winrt::Windows::UI::Color{0, 0, 0, 0}));
+      link.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 0));
+      link.HorizontalContentAlignment(HorizontalAlignment::Right);
+      Controls::StackPanel linkContent;
+      linkContent.Orientation(Controls::Orientation::Horizontal);
+      linkContent.Spacing(4);
+      Controls::TextBlock linkText;
+      linkText.Text(reason);
+      linkText.FontSize(13);
+      linkText.Foreground(urnw::colors::TextBrush());
+      linkText.VerticalAlignment(VerticalAlignment::Center);
+      linkContent.Children().Append(linkText);
+      Controls::FontIcon caret;
+      caret.Glyph(L"\uE76C");
+      caret.FontSize(12);
+      caret.Foreground(urnw::colors::FaintBrush());
+      caret.VerticalAlignment(VerticalAlignment::Center);
+      linkContent.Children().Append(caret);
+      link.Content(linkContent);
+      // A Button whose Content is a Panel gets NO automatic name (the kit's
+      // PaneListRowButton note): name it with the fact and where it goes, or
+      // a screen reader hears "button" and nothing else.
+      winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+          link, winrt::hstring{std::wstring{Adv("adv_reason", L"Reason")} + L", " +
+                               std::wstring{reason} + L", " +
+                               AdvW("adv_open_split_rules", L"open split rules")});
+      link.Click([weak = w_.get_weak()](auto const&, auto const&) {
+        if (auto self = weak.get()) self->connect().ShowSplitRulesSheet();
+      });
+      Controls::Grid::SetColumn(link, 1);
+      reasonGrid.Children().Append(link);
+    }
+    host.Children().Append(reasonRow.root);
     addText(Adv("adv_override_id", L"Override"), action->overrideId);
   }
 
@@ -2307,6 +3142,310 @@ void ConnectPage::ApplyInspector() {
     row.value.IsTextSelectionEnabled(true);
     host.Children().Append(row.root);
   }
+}
+
+// The quick action's whole state, derived from the LIVE overrides list. The
+// action itself cannot answer "is a rule in force NOW": it snapshots the
+// decision as made and does not change when a rule is added afterwards, which
+// is exactly when the user reaches for these buttons.
+ConnectPage::InspectorQuickAction ConnectPage::QuickActionFor(
+    urnw::BlockActionItem const& action, bool blockKind) const {
+  InspectorQuickAction out;
+  // The host values a click would rule on: the matched names first, then the
+  // bare hosts, then the addresses - the same values, in the same order, the
+  // split-rule editor offers for this same action (OpenEditorForAction).
+  out.hosts = action.matchedHosts;
+  out.hosts.insert(out.hosts.end(), action.hosts.begin(), action.hosts.end());
+  out.hosts.insert(out.hosts.end(), action.matchedIps.begin(), action.matchedIps.end());
+  out.hosts.insert(out.hosts.end(), action.ips.begin(), action.ips.end());
+  out.enabled = !out.hosts.empty();
+
+  for (auto const& rule : Sdk().CurrentHostRules()) {
+    if (blockKind ? !rule.hasBlockOverride : !rule.hasRouteOverride) continue;
+    const bool covers = std::any_of(rule.hosts.begin(), rule.hosts.end(),
+                                    [&out](std::string const& host) {
+                                      return std::find(out.hosts.begin(), out.hosts.end(),
+                                                       host) != out.hosts.end();
+                                    });
+    // The flattened action carries ONE override id and the block decision wins
+    // the slot, so the id is safe to remove for the route kind only when no
+    // block override shared the decision (device_local
+    // blockActionFromConnectWithLock). The id match also catches the SDK's
+    // suffix matching: an override for the parent names this connection
+    // without spelling any of its exact hosts.
+    const bool idNamesKind = blockKind ? action.hasBlockOverride
+                                       : (action.hasRouteOverride && !action.hasBlockOverride);
+    const bool decided = idNamesKind && rule.overrideId == action.overrideId;
+    if (!covers && !decided) continue;
+    out.active = true;
+    out.overrideId = rule.overrideId;
+    out.polarity = blockKind ? rule.block : rule.routeLocal;
+    out.enabled = true;
+    return out;
+  }
+  return out;
+}
+
+// Filled action-blue when a rule is in force (the click removes it), the
+// style's own outlined rest when the click creates one - the toggle on-state
+// the switches already paint, on the button whose label names the outcome.
+// The label changes word with the verdict, so the fill is a second channel,
+// never the only one.
+void ConnectPage::ApplyQuickActionButton(Button const& button,
+                                         InspectorQuickAction const& state,
+                                         winrt::hstring const& label) {
+  button.Content(winrt::box_value(label));
+  button.IsEnabled(state.enabled);
+  if (state.active) {
+    button.Background(urnw::colors::MakeBrush(urnw::colors::kToggleAccent));
+    button.Foreground(urnw::colors::MakeBrush(urnw::colors::kInverseText));
+    button.BorderBrush(urnw::colors::MakeBrush(urnw::colors::kToggleAccent));
+  } else {
+    // CLEAR the on-state's local values so the style's rest shows through -
+    // re-applying "transparent" by hand would be a second definition of the
+    // style's own colors.
+    button.ClearValue(Controls::Control::BackgroundProperty());
+    button.ClearValue(Controls::Control::ForegroundProperty());
+    button.ClearValue(Controls::Control::BorderBrushProperty());
+  }
+  // The on/off state is sighted-only otherwise; the name carries it, the same
+  // treatment ApplyConnectionSelectionVisuals gives the selected row.
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+      button,
+      state.active
+          ? winrt::hstring{std::wstring{label} + L", " +
+                           AdvW("adv_rule_active", L"rule active, click to remove")}
+          : label);
+}
+
+void ConnectPage::OnInspectorBlockToggle() {
+  RunBlockQuickAction(blockQuickAction_, SelectedConnectionAction());
+}
+
+void ConnectPage::RunBlockQuickAction(InspectorQuickAction const& state,
+                                      urnw::BlockActionItem const* action) {
+  if (!state.enabled) return;
+  if (state.active) {
+    // the toggle's off half: remove the rule in force, by id
+    Sdk().RemoveBlockRule(state.overrideId);
+    ShowInspectorRuleSnackbar(Adv("adv_rule_removed", L"Rule removed"), {});
+  } else {
+    if (!action) return;
+    // the inverse of the verdict: a tunnelled host gets a blocking rule; a
+    // host the default policy blocked gets an allowing one (the countermand)
+    const bool block = !action->block;
+    const std::string overrideId = Sdk().CreateBlockRule(state.hosts, block);
+    if (overrideId.empty()) return;
+    ShowInspectorRuleSnackbar(
+        block ? Adv("adv_host_blocked", L"This host will be blocked")
+              : Adv("adv_host_allowed", L"This host will be allowed"),
+        overrideId);
+  }
+  // Re-derive now: CreateBlockRule/RemoveBlockRule republish the overrides
+  // synchronously (the handler push lands after this click returns), so the
+  // buttons flip with the click rather than a beat later.
+  ApplyInspector();
+}
+
+void ConnectPage::OnInspectorRouteToggle() {
+  RunRouteQuickAction(routeQuickAction_, SelectedConnectionAction());
+}
+
+void ConnectPage::RunRouteQuickAction(InspectorQuickAction const& state,
+                                      urnw::BlockActionItem const* action) {
+  if (!state.enabled) return;
+  if (state.active) {
+    Sdk().RemoveSplitRule(state.overrideId);
+    ShowInspectorRuleSnackbar(Adv("adv_rule_removed", L"Rule removed"), {});
+  } else {
+    if (!action) return;
+    // the inverse of the verdict, as with the block pair: bypassed gets a
+    // tunnel rule (Local=false), tunnelled gets a bypass rule (Local=true)
+    const std::string overrideId = action->local
+                                       ? Sdk().CreateTunnelRule(state.hosts)
+                                       : Sdk().CreateSplitRule(state.hosts);
+    if (overrideId.empty()) return;
+    ShowInspectorRuleSnackbar(
+        action->local ? Adv("adv_host_tunnelled", L"This host will use the tunnel")
+                      : Adv("adv_host_bypassed", L"This host will bypass the tunnel"),
+        overrideId);
+  }
+  ApplyInspector();
+}
+
+void ConnectPage::OnInspectorCopyDetails() {
+  const urnw::BlockActionItem* action = SelectedConnectionAction();
+  if (!action) return;
+  CopyConnectionDetails(*action);
+}
+
+void ConnectPage::CopyConnectionDetails(urnw::BlockActionItem const& action) {
+  auto join = [](std::vector<std::string> const& parts) {
+    std::string out;
+    for (auto const& part : parts) {
+      if (!out.empty()) out += ", ";
+      out += part;
+    }
+    return out;
+  };
+  // The inspector's own fields, in the inspector's own words and order: host,
+  // addresses, verdict, reason, totals, last decision. A copy that invents a
+  // second phrasing of the same facts is a second place to be wrong.
+  std::wstring text;
+  auto line = [&text](winrt::hstring const& key, winrt::hstring const& value) {
+    if (!text.empty()) text += L"\r\n";
+    text += std::wstring{key} + L": " + std::wstring{value};
+  };
+  const std::string hostsJoined = join(action.hosts);
+  const std::string ipsJoined = join(action.ips);
+  line(Adv("adv_host", L"Host"),
+       hostsJoined.empty() ? Adv("adv_none", L"none") : H(hostsJoined));
+  line(Adv("adv_addresses", L"Addresses"),
+       ipsJoined.empty() ? Adv("adv_none", L"none") : H(ipsJoined));
+  line(Adv("adv_verdict", L"Verdict"),
+       action.block ? Adv("adv_verdict_blocked", L"Blocked — no packets sent")
+       : action.local
+           ? Adv("adv_verdict_local", L"Bypassed the tunnel — not protected")
+           : Adv("adv_verdict_tunnelled", L"Tunnelled through URnetwork"));
+  if (action.overrideId.empty()) {
+    line(Adv("adv_reason", L"Reason"), Adv("adv_reason_default", L"Default policy"));
+  } else {
+    line(Adv("adv_reason", L"Reason"),
+         action.hasBlockOverride  ? Adv("adv_reason_block", L"Block override")
+         : action.hasRouteOverride ? Adv("adv_reason_route", L"Route override")
+                                    : Adv("adv_reason_override", L"Override"));
+    line(Adv("adv_override_id", L"Override"), H(action.overrideId));
+  }
+  line(Adv("adv_packets_total", L"Packets (total)"),
+       H(urnw::FormatCountCompact(action.packetCount)));
+  line(Adv("adv_bytes_total", L"Bytes (total)"),
+       H(urnw::FormatByteCountCompact(action.byteCount)));
+  if (0 < action.timeMillis) {
+    const int64_t nowMillis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                  std::chrono::system_clock::now().time_since_epoch())
+                                  .count();
+    line(Adv("adv_last_decision", L"Last decision"),
+         H(urnw::RelativeTime(action.timeMillis, nowMillis)));
+  }
+  winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
+  package.SetText(winrt::hstring{text});
+  winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
+  ShowInspectorRuleSnackbar(Adv("adv_details_copied", L"Connection details copied"), {});
+}
+
+// The row menu is built at OPEN, never cached: the quick-action state reads
+// the live overrides list, and a menu that remembered a rule state from when
+// its row was built would offer to remove rules that no longer exist. The
+// state and the target are then captured INTO the items, so a click does
+// exactly what the open menu showed - the same stored-state rule the
+// inspector's buttons follow.
+void ConnectPage::ShowConnectionRowMenu(
+    winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor,
+    std::string const& key, bool group) {
+  // Resolve the target NOW, and own it: the feed is live, and neither the menu
+  // nor its clicks may point into vectors the next push replaces. A group
+  // row's target is a synthesized action over the group's HOST (the menu rules
+  // on the host, the way the row aggregates it), folded back out of the same
+  // filtered feed the list rendered so menu and row cannot disagree.
+  urnw::BlockActionItem target;
+  if (!group) {
+    const urnw::BlockActionItem* action = nullptr;
+    for (auto const& candidate : blockActions_) {
+      if (candidate.id == key) {
+        action = &candidate;
+        break;
+      }
+    }
+    if (!action) return;  // aged out of the feed: nothing honest to offer
+    target = *action;
+  } else {
+    bool found = false;
+    for (auto const& fold : FoldConnectionGroups()) {
+      if (fold.host != key) continue;
+      found = true;
+      target.id = fold.host;
+      target.hosts = {fold.host};
+      target.block = fold.anyBlocked;
+      target.local = !fold.anyBlocked && fold.anyLocal;
+      target.timeMillis = fold.latestMillis;
+      target.byteCount = fold.byteCount;
+      target.packetCount = fold.packetCount;
+      if (fold.latest) {
+        target.overrideId = fold.latest->overrideId;
+        target.hasBlockOverride = fold.latest->hasBlockOverride;
+        target.hasRouteOverride = fold.latest->hasRouteOverride;
+      }
+      break;
+    }
+    if (!found) return;
+  }
+
+  const InspectorQuickAction blockState = QuickActionFor(target, true);
+  const InspectorQuickAction routeState = QuickActionFor(target, false);
+
+  MenuFlyout flyout;
+  MenuFlyoutItem blockItem;
+  // The label names what the click leaves behind - the active rule's polarity,
+  // else the verdict - the exact reading the inspector's buttons print
+  // (ApplyInspector), so the menu and the buttons never name the same click
+  // two ways.
+  blockItem.Text((blockState.active ? blockState.polarity : target.block)
+                     ? Adv("adv_allow_host", L"Allow this host")
+                     : Adv("adv_block_host", L"Block this host"));
+  blockItem.IsEnabled(blockState.enabled);
+  blockItem.Click([weak = w_.get_weak(), blockState, target](auto const&, auto const&) {
+    if (auto self = weak.get()) {
+      self->connect().RunBlockQuickAction(blockState, &target);
+    }
+  });
+  flyout.Items().Append(blockItem);
+  MenuFlyoutItem routeItem;
+  routeItem.Text((routeState.active ? routeState.polarity : target.local)
+                     ? Adv("adv_always_tunnel", L"Always tunnel")
+                     : Adv("adv_bypass_tunnel", L"Bypass the tunnel"));
+  routeItem.IsEnabled(routeState.enabled);
+  routeItem.Click([weak = w_.get_weak(), routeState, target](auto const&, auto const&) {
+    if (auto self = weak.get()) {
+      self->connect().RunRouteQuickAction(routeState, &target);
+    }
+  });
+  flyout.Items().Append(routeItem);
+  flyout.Items().Append(MenuFlyoutSeparator());
+  MenuFlyoutItem copyItem;
+  copyItem.Text(Adv("adv_copy_details", L"Copy details"));
+  copyItem.Click([weak = w_.get_weak(), target](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().CopyConnectionDetails(target);
+  });
+  flyout.Items().Append(copyItem);
+  flyout.ShowAt(anchor);
+}
+
+void ConnectPage::OnInspectorUndo() {
+  if (inspectorUndoOverrideId_.empty()) return;
+  const std::string overrideId = inspectorUndoOverrideId_;
+  inspectorUndoOverrideId_.clear();
+  if (inspectorSnackbar_) inspectorSnackbar_->Hide();
+  // Kind-agnostic by construction: split, tunnel and block rules share the one
+  // overrides store, and removal from it is by id (SdkHost::RemoveBlockRule).
+  Sdk().RemoveBlockRule(overrideId);
+  ApplyInspector();
+}
+
+void ConnectPage::ShowInspectorRuleSnackbar(winrt::hstring const& message,
+                                            std::string undoOverrideId) {
+  inspectorUndoOverrideId_ = std::move(undoOverrideId);
+  if (!inspectorSnackbar_) return;
+  // The action slot exists only while there is something to undo: a creation
+  // arms Undo (which deletes the just-created override by id), a removal is
+  // the plain acknowledgement. One bar, so one message at a time - a second
+  // Show restarts the auto-dismiss window (kit::Snackbar), and Success is one
+  // of the severities that dismiss themselves.
+  if (inspectorUndoOverrideId_.empty()) {
+    w_.InspectorSnackbar().ActionButton(nullptr);
+  } else {
+    w_.InspectorSnackbar().ActionButton(inspectorUndoButton_);
+  }
+  inspectorSnackbar_->Show(message, InfoBarSeverity::Success);
 }
 
 // ReadReliability() is several SYNCHRONOUS rpcs into the service. It must never
@@ -2666,6 +3805,9 @@ void ConnectPage::OnChartTick() {
   if (PreviewSampleActive() && chartTickCount_ % 20 == 0) PreviewSampleCharts();
   if (++chartTickCount_ % 10 == 0) {  // ~1s cadence
     if (splitRulesSheet_) splitRulesSheet_->RefreshTimes();  // "Ns ago" labels
+    // the activity rows' age prefix rides the same 1s cadence as the sheet's;
+    // gated on the pane being on screen, like every other repaint here
+    if (w_.ConnectView().Visibility() == Visibility::Visible) RefreshConnectionRowTimes();
     // D5: the inspector's exit-routing tables, every 5s. THREE gates, and all
     // three earn their place — the mode is on (nothing else reads these), the
     // window is presenting (this function already returned otherwise), and the
@@ -2786,7 +3928,11 @@ void ConnectPage::ApplyPreviewSample() {
     const uint32_t h = hash(i + 7);
     urnw::BlockActionItem action;
     action.id = "preview-" + std::to_string(i);
-    action.hosts = {kHosts[i]};
+    // Every fourth row repeats an earlier host: group-by-host needs repeated
+    // hosts in the sample, or the preview demonstrates 30 one-member groups,
+    // which is the mode showing nothing. Deterministic, like everything here.
+    const char* host = (i % 4 == 3) ? kHosts[(i / 4) % 8] : kHosts[i];
+    action.hosts = {host};
     action.block = (h >> 5) % 5 == 0;
     action.local = !action.block && (h >> 9) % 7 == 0;
     action.byteCount = static_cast<int64_t>((h >> 11) % 900000) + 512;
@@ -2804,7 +3950,7 @@ void ConnectPage::ApplyPreviewSample() {
       action.overrideId = "preview-override-" + std::to_string(i);
       action.hasBlockOverride = action.block;
       action.hasRouteOverride = action.local;
-      action.matchedHosts = {kHosts[i]};
+      action.matchedHosts = {host};
     }
     blockActions_.push_back(action);
   }
@@ -2907,6 +4053,14 @@ void ConnectPage::ApplyPreviewSample() {
   w_.ProvideModeRing().Visibility(Visibility::Visible);
   w_.ProvideStatsText().Text(hstring{urnw::Plural("providing_client_count", 3)});
   w_.ProvideStatsRow().Visibility(Visibility::Visible);
+  // The mode bar itself is seeded from the SDK's stored mode (SeedConnectControls,
+  // run by ResyncDrawer just before this), and with no session that lands on
+  // Never - "Never" beside discoverable + 3 clients is a contradiction. The
+  // sample PROVIDES, so pin Auto with it, behind the guard so the selection
+  // change does not push a setting into the session-less SDK.
+  updatingControls_ = true;
+  w_.ProvideModeBar().SelectedItem(w_.ProvideAutoItem());
+  updatingControls_ = false;
   // the DNS rows, from the SDK's own defaults. A pure local lookup - it reads a
   // table compiled into the SDK and makes no request.
   if (auto defaults = urnet::getDefaultDnsResolverSettings()) {

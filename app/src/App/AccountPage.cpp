@@ -207,6 +207,9 @@ void AccountPage::ApplyStrings() {
   w_.AccountPaneBTitle().Text(Loc("account"));
   w_.AccountPaneCTitle().Text(Loc("balance_codes_title"));
   w_.AccountPaneDTitle().Text(Loc("extenders"));
+  // the fold hosts' headers repeat their panes' title keys: same content, one name
+  w_.AccountPlanFoldTitle().Text(Loc("plan"));
+  w_.AccountExtenderFoldTitle().Text(Loc("extenders"));
   // Landmark names, so a screen reader can tell three regions apart.
   Automation::AutomationProperties::SetName(w_.AccountPaneA(), Loc("plan"));
   Automation::AutomationProperties::SetName(w_.AccountPaneB(), Loc("account"));
@@ -221,6 +224,12 @@ void AccountPage::ApplyStrings() {
   w_.AccountUpgradeButton().Content(LocBox("upgrade"));
   w_.AccountUsageGroupLabel().Text(Loc("data_usage"));
   w_.AccountDailyLabel().Text(Loc("daily_data_balance_label"));
+  // the usage bar's three figures, labelled with the legend's own keys
+  w_.AccountUsedLabel().Text(Loc("used_data_key"));
+  w_.AccountPendingLabel().Text(Loc("pending_data_key"));
+  w_.AccountAvailableLabel().Text(Loc("available_data_key"));
+  // the pane C count's label is pane C's title key - one name for one thing
+  w_.AccountBalanceCodesLabel().Text(Loc("balance_codes_title"));
   Automation::AutomationProperties::SetName(w_.AccountDataInfoButton(), Loc("data_info_title"));
   ToolTipService::SetToolTip(w_.AccountDataInfoButton(), winrt::box_value(Loc("data_info_title")));
   w_.RedeemRowText().Text(Loc("redeem_balance_code"));
@@ -405,6 +414,16 @@ void AccountPage::RenderBalanceCodes(urnet::RedeemedBalanceCodeList const& codes
 
   kit::SetTextOrCollapse(w_.AccountPaneCMeta(),
                          loaded ? hstring{std::to_wstring(codes.size())} : hstring{});
+  // Pane A's Balance Codes count row: a real count shows for every answered
+  // fetch (Loaded AND Empty - zero is an answer); NoSession / Loading / Failed
+  // collapse the whole row rather than drawing a label over nothing. The value
+  // goes through SetTextOrCollapse so "no count" is one empty string, and the
+  // row mirrors it - the rule that helper was written for (UrComponents.h:98).
+  const bool answered = state == FieldState::Loaded || state == FieldState::Empty;
+  const hstring count = answered ? hstring{std::to_wstring(codes.size())} : hstring{};
+  kit::SetTextOrCollapse(w_.AccountBalanceCodesValue(), count);
+  w_.AccountBalanceCodesRow().Visibility(count.empty() ? Visibility::Collapsed
+                                                       : Visibility::Visible);
   if (!loaded) return;
 
   const std::vector<double> weights{1.4, 1.0, 1.2};
