@@ -67,6 +67,9 @@ struct Error {
   std::string message;
   bool retryable = false;
   bool signInRequired = false;
+  // with signInRequired: the server confirmed another device signed this
+  // session out; never for a generic rejection or a sign-out made here
+  bool sessionRevoked = false;
   bool unsupported = false;
 
   bool operator==(const Error&) const = default;
@@ -113,6 +116,7 @@ std::optional<Error> ErrorFrom(const SdkError& error) {
   out.message = error.getMessage();
   out.retryable = error.getRetryable();
   out.signInRequired = error.getSignInRequired();
+  out.sessionRevoked = error.getSessionRevoked();
   out.unsupported = error.getUnsupported();
   return out;
 }
@@ -323,7 +327,7 @@ struct Text {
 enum class ActionState {
   Idle,     // "Sign out" is offered
   Pending,  // Loading or Pending: progress and "Signing out…", the control disabled
-  Failed,   // "Couldn't sign out this session. Try again.", and Sign out offered again
+  Failed,   // the failure's words (ActionFailedKey), and the control offered again
 };
 
 constexpr ActionState ActionStateFor(const std::optional<Action>& action) {
@@ -331,6 +335,13 @@ constexpr ActionState ActionStateFor(const std::optional<Action>& action) {
   if (action->loading || action->pending) return ActionState::Pending;
   if (action->error) return ActionState::Failed;
   return ActionState::Idle;
+}
+
+// The store key of a failed sign-out's words (§5): a row's under its lines,
+// the bulk one's under "Sign out all other sessions". Either control stays
+// enabled, and its retry goes through the controller again.
+constexpr const char* ActionFailedKey(bool bulk) {
+  return bulk ? "sessions_sign_out_others_failed" : "sessions_action_failed";
 }
 
 // One session's row (§3).
@@ -360,13 +371,17 @@ enum class Body {
   Progress,        // never loaded, and the load has not failed (or is being retried)
   LoadFailed,      // the first load failed: "Couldn't load sessions." and Try again
   Unsupported,     // the server has no sessions yet: "Sessions aren't available yet."
-  SignInRequired,  // the generic sign-in wording; the app's sign-in flow follows
+  SignInRequired,  // "Sign in again to manage sessions." (SignInRequiredKey); the
+                   // app's sign-in flow follows
   Empty,           // loaded, and there are none: "No active sessions"
   Rows,
 };
 
 struct View {
   Body body = Body::Progress;
+  // with SignInRequired: the controller reported the trusted cause, another
+  // device signed this session out, which the body says instead
+  bool signedOutRemotely = false;
   // the header's refresh indicator: a refresh is running over the rows
   bool refreshing = false;
   // a refresh failed over a loaded list: the rows stay, with the notice
@@ -453,6 +468,7 @@ inline View ViewFor(const Snapshot& snapshot, const Text& text) {
   }
   if (snapshot.error && snapshot.error->signInRequired) {
     view.body = Body::SignInRequired;
+    view.signedOutRemotely = snapshot.error->sessionRevoked;
     return view;
   }
   if (!snapshot.loaded) {
@@ -535,11 +551,13 @@ class OpenFence {
 
 // ---- sign-in required (§5) --------------------------------------------------
 
-// The generic sign-in wording. "This session was signed out from another
-// device." only for a trustworthy session-revoked cause, which the controller
-// does not report today (ClientSessionError carries none).
-constexpr const char* SignInRequiredKey(bool sessionRevokedCause) {
-  return sessionRevokedCause ? "sessions_signed_out_remotely" : "please_login_to_urnetwork";
+// The store key of the sign-in-required body: the generic wording, which
+// names no cause, or "This session was signed out from another device." only
+// for the trusted cause the controller reports (View::signedOutRemotely). The
+// app-wide sign-out that follows says the same on the sign-in page
+// (AuthLogoutNotice.h); these are the page's words while it is still up.
+constexpr const char* SignInRequiredKey(bool signedOutRemotely) {
+  return signedOutRemotely ? "sessions_signed_out_remotely" : "sessions_sign_in_required";
 }
 
 }  // namespace urnw::sessions

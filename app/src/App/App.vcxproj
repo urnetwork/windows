@@ -378,6 +378,10 @@
     <ClInclude Include="SessionsPresentation.h" />
     <ClInclude Include="SessionGlyphs.h" />
     <ClInclude Include="RelativeTimeSpan.h" />
+    <!-- header-only and WinRT-free: tools/sessions-tests.cpp runs them,
+         AuthLogoutCause.h over a fake of the c abi it calls -->
+    <ClInclude Include="AuthLogoutNotice.h" />
+    <ClInclude Include="AuthLogoutCause.h" />
     <ClInclude Include="LicensesPage.h" />
     <ClInclude Include="LicensePresentation.h" />
     <ClInclude Include="ConnectPage.h" />

@@ -47,7 +47,15 @@ class LoginPage {
   void ApplyStrings();
 
   // ---- window-level calls ----
+  // the flow starts over: a sign-out, a network-server switch. The signed-out
+  // notice below goes with it.
   void ResetToInitialStep();
+  // Why the app signed out, when the server said another device signed this
+  // session out (AuthLogoutNotice.h): the initial step's notice, open until
+  // its close button, the flow starting over or a sign-in. The window shows
+  // it once, when it takes the notice from AppController.
+  void ShowSignedOutNotice(winrt::hstring const& message);
+  void HideSignedOutNotice();
   // Raise SdkHost's "nothing is connected, and here is why" on the window-level
   // snackbar. The sentence comes from SdkHost, already composed.
   void ShowModeNotice(winrt::hstring const& message, bool failed);

@@ -15,6 +15,7 @@
 #include <winrt/Microsoft.Windows.AppLifecycle.h>
 
 #include "AppLifetime.h"
+#include "AuthLogoutNotice.h"
 #include "BalanceGate.h"
 #include "InstanceHandover.h"
 #include "SdkHost.h"
@@ -70,6 +71,11 @@ class AppController {
   // any more (BalanceGate.h, BalanceRecovery). UI thread.
   void ClearBalanceRecovery();
 
+  // What the sign-in page says about the sign-out the server made, once
+  // (AuthLogoutNotice.h): the window takes it whenever it shows that page,
+  // so a window opened after the sign-out still says it. UI thread.
+  authlogout::Notice TakeSignedOutNotice() { return signedOutNotice_.Take(); }
+
  private:
   void ShowWindowImpl(const POINT* anchor);
   // AppWindow.Changed relay: notices a move or resize the user made.
@@ -80,6 +86,11 @@ class AppController {
   // (minimize and restore both raise it) and before the reconcile on show.
   void SyncWindowMinimized();
   void OnAuthState(AuthState state, const std::string& error);
+  // The server rejected the stored sign-in (SdkHost's auth-invalid handler,
+  // marshalled here with the cause its listener read): the app signs out,
+  // once for the Api's and the device's reports of one rejection, and none
+  // for a report behind a sign-out already done (AuthLogoutNotice.h).
+  void OnAuthInvalid(const std::string& cause);
   void OnTunnelState(const proto::TunnelStatus& status);
   void OnStats(const LiveStats& stats);
   // The reaction to a stats or balance push in the insufficient-balance gate
@@ -158,6 +169,8 @@ class AppController {
 
   AuthState authState_ = AuthState::LoggedOut;
   std::string authError_;
+  // the one sign-out a rejection takes, and the sign-in page's notice for it
+  authlogout::SignedOutNotice signedOutNotice_;
   bool connected_ = false;
   // #27: the last aggregate connection health a stats push carried, so the
   // tray can say Evaluating/Degraded instead of a false Connected. nullopt is

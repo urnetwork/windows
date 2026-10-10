@@ -7,10 +7,14 @@
 // the omitted legacy kinds, the country circle's colour and its empty-code
 // fallback, the 8-character id, relative times across seconds, minutes,
 // hours, days and the 7-day date cut-over, the pending, failed and bulk
-// states, the confirmations, the error states and the fence that drops an old
-// controller's snapshots. The WinUI half (App/SessionsPage.cpp) cannot be
-// built off Windows; this is every decision it makes before it touches a XAML
-// object, run on the same headers the app compiles.
+// states and their words, the confirmations, the error states (sign-in
+// required and the trusted remote sign-out among them) and the fence that
+// drops an old controller's snapshots. And the app-wide half of §5
+// (App/AuthLogoutNotice.h): the logout cause the sdk reports mapped to the
+// sign-in page's notice, shown once, for one sign-out per rejection, never
+// for the app's own sign-out. The WinUI half (App/SessionsPage.cpp, the
+// sign-in page) cannot be built off Windows; this is every decision it makes
+// before it touches a XAML object, run on the same headers the app compiles.
 //
 //   c++ -std=c++20 -I ../src/App sessions-tests.cpp -o /tmp/sessions-tests && /tmp/sessions-tests
 //
@@ -18,8 +22,10 @@
 // header's own classes (urnet::ClientSessionSnapshot and its family), over a
 // fake of the C ABI functions they call: the real wrapper's handles, strings
 // and lists are what SnapshotFrom reads, and every handle it takes is released
-// once. The header needs nlohmann/json; both are system includes because the
-// generated code does not build with -Wextra -Werror:
+// once. So do the logout listeners' reads of the cause (App/AuthLogoutCause.h)
+// and the wrapper's own getters, against the header's constant. The header
+// needs nlohmann/json; both are system includes because the generated code
+// does not build with -Wextra -Werror:
 //
 //   c++ -std=c++20 -Wall -Wextra -Werror -DURNW_SESSIONS_TESTS_SDK -I ../src/App -isystem <dir of urnetwork_sdk.hpp> -isystem <dir of nlohmann/> sessions-tests.cpp -o ...
 //
@@ -35,13 +41,16 @@
 #include <string_view>
 #include <vector>
 
+#include "AuthLogoutNotice.h"
 #include "RelativeTimeSpan.h"
 #include "SessionsPresentation.h"
 
 #if defined(URNW_SESSIONS_TESTS_SDK)
 #include "urnetwork_sdk.hpp"
+#include "AuthLogoutCause.h"
 #endif
 
+namespace al = urnw::authlogout;
 namespace rt = urnw::relativetime;
 namespace ss = urnw::sessions;
 
@@ -112,8 +121,10 @@ const std::map<std::string, std::string, std::less<>> kEnglish = {
     {"sessions_confirm_others_body",
      "Every other session in this list will be signed out. This session stays signed in. Anyone "
      "who knows your sign-in details can still sign in again."},
+    {"sessions_action_failed", "Couldn't sign out this session. Try again."},
+    {"sessions_sign_out_others_failed", "Couldn't sign out the other sessions. Try again."},
+    {"sessions_sign_in_required", "Sign in again to manage sessions."},
     {"sessions_signed_out_remotely", "This session was signed out from another device."},
-    {"please_login_to_urnetwork", "Please login to URnetwork"},
 };
 
 std::string English(std::string_view key) {
@@ -206,11 +217,13 @@ ss::Snapshot Loaded(std::vector<ss::Session> sessions) {
   return snapshot;
 }
 
-ss::Error MakeError(bool retryable, bool signInRequired, bool unsupported) {
+ss::Error MakeError(bool retryable, bool signInRequired, bool unsupported,
+                    bool sessionRevoked = false) {
   ss::Error error;
   error.message = "Session request could not be completed.";
   error.retryable = retryable;
   error.signInRequired = signInRequired;
+  error.sessionRevoked = sessionRevoked;
   error.unsupported = unsupported;
   return error;
 }
@@ -237,6 +250,7 @@ struct FakeError {
   std::string getMessage() const { return value.message; }
   bool getRetryable() const { return value.retryable; }
   bool getSignInRequired() const { return value.signInRequired; }
+  bool getSessionRevoked() const { return value.sessionRevoked; }
   bool getUnsupported() const { return value.unsupported; }
 };
 
@@ -319,11 +333,17 @@ struct FakeSnapshot {
 // must release, nil is 0, and strings are malloc'd for urnet_free_string.
 namespace abi {
 
-enum class Kind { Snapshot, SessionList, Session, LastUsed, ActionList, Action, Error };
+enum class Kind { Snapshot, SessionList, Session, LastUsed, ActionList, Action, Error, Api, Device };
 
 struct Object {
   Kind kind;
   const void* value;
+};
+
+// An Api or a Device as its logout cause reads: what GetAuthLogoutCause
+// returns, or nil.
+struct FakeLogout {
+  std::optional<std::string> cause;
 };
 
 const FakeSnapshot* gSnapshot = nullptr;
@@ -332,6 +352,9 @@ uint64_t gNext = 1000;
 int64_t gIssued = 0;
 int64_t gReleased = 0;
 int64_t gUnknownReleases = 0;
+// strings handed out, and freed through urnet_free_string
+int64_t gStringsIssued = 0;
+int64_t gStringsFreed = 0;
 
 uint64_t Issue(Kind kind, const void* value) {
   const uint64_t handle = gNext++;
@@ -350,6 +373,7 @@ const T* Get(uint64_t handle, Kind kind) {
 char* Copy(const std::string& value) {
   char* out = static_cast<char*>(std::malloc(value.size() + 1));
   std::memcpy(out, value.c_str(), value.size() + 1);
+  ++gStringsIssued;
   return out;
 }
 
@@ -361,7 +385,20 @@ char* Copy(const std::string& value) {
 #if defined(URNW_SESSIONS_TESTS_SDK)
 extern "C" {
 
-void urnet_free_string(char* s) { std::free(s); }
+void urnet_free_string(char* s) {
+  if (s != nullptr) ++abi::gStringsFreed;
+  std::free(s);
+}
+
+// an AuthLogout's cause, on the Api and on a Device
+char* urnet_api_get_auth_logout_cause(uint64_t self) {
+  const auto* l = abi::Get<abi::FakeLogout>(self, abi::Kind::Api);
+  return l && l->cause ? abi::Copy(*l->cause) : nullptr;
+}
+char* urnet_device_get_auth_logout_cause(uint64_t self) {
+  const auto* l = abi::Get<abi::FakeLogout>(self, abi::Kind::Device);
+  return l && l->cause ? abi::Copy(*l->cause) : nullptr;
+}
 
 bool urnet_release(uint64_t handle) {
   if (abi::gLive.erase(handle) == 0) {
@@ -511,6 +548,10 @@ bool urnet_client_session_error_get_sign_in_required(uint64_t self) {
   const auto* e = abi::Get<FakeError>(self, abi::Kind::Error);
   return e && e->value.signInRequired;
 }
+bool urnet_client_session_error_get_session_revoked(uint64_t self) {
+  const auto* e = abi::Get<FakeError>(self, abi::Kind::Error);
+  return e && e->value.sessionRevoked;
+}
 bool urnet_client_session_error_get_unsupported(uint64_t self) {
   const auto* e = abi::Get<FakeError>(self, abi::Kind::Error);
   return e && e->value.unsupported;
@@ -578,7 +619,7 @@ ss::Snapshot RichSnapshot() {
   snapshot.bulkAction = MakeAction("", false, true);
   snapshot.actions = {MakeAction(kOtherId, true, false),
                       MakeAction(kThirdId, false, false, MakeError(true, false, false))};
-  snapshot.error = MakeError(true, false, false);
+  snapshot.error = MakeError(false, true, false, /*sessionRevoked=*/true);
   return snapshot;
 }
 
@@ -833,13 +874,33 @@ void TestStates() {
   unsupportedFlagOnly.supported = false;
   Check(body(unsupportedFlagOnly) == ss::Body::Unsupported, "Supported == false alone");
 
+  // sign-in required (§5): the screen's own words, which name no cause, and
+  // the remote sign-out's only with the controller's trusted cause
   ss::Snapshot signIn = Loaded({MakeSession(kCurrentId, true, "google", 1, std::nullopt)});
   signIn.error = MakeError(false, true, false);
-  Check(body(signIn) == ss::Body::SignInRequired, "sign-in required wins over a loaded list");
-  CheckText("Please login to URnetwork", English(ss::SignInRequiredKey(false)),
-            "the generic sign-in wording");
+  const ss::View signInView = ss::ViewFor(signIn, text);
+  Check(signInView.body == ss::Body::SignInRequired, "sign-in required wins over a loaded list");
+  Check(!signInView.signedOutRemotely, "a rejection without the trusted cause names none");
+  CheckText("Sign in again to manage sessions.",
+            English(ss::SignInRequiredKey(signInView.signedOutRemotely)),
+            "sign-in required shows the sessions screen's sign-in words");
+  ss::Snapshot signInFirst;
+  signInFirst.error = MakeError(false, true, false);
+  Check(body(signInFirst) == ss::Body::SignInRequired,
+        "sign-in required before anything loaded is not a failed load");
+  ss::Snapshot revoked = signIn;
+  revoked.error = MakeError(false, true, false, /*sessionRevoked=*/true);
+  const ss::View revokedView = ss::ViewFor(revoked, text);
+  Check(revokedView.body == ss::Body::SignInRequired && revokedView.signedOutRemotely,
+        "the controller's trusted cause: signed out from another device");
   CheckText("This session was signed out from another device.",
-            English(ss::SignInRequiredKey(true)), "only with a trustworthy revoked cause");
+            English(ss::SignInRequiredKey(revokedView.signedOutRemotely)),
+            "the remote sign-out's words, only with the trusted cause");
+  ss::Snapshot causeAlone = signIn;
+  causeAlone.error = MakeError(true, false, false, /*sessionRevoked=*/true);
+  const ss::View causeAloneView = ss::ViewFor(causeAlone, text);
+  Check(causeAloneView.body == ss::Body::Rows && !causeAloneView.signedOutRemotely,
+        "the cause without sign-in required changes nothing");
 
   ss::Snapshot empty = Loaded({});
   const ss::View emptyView = ss::ViewFor(empty, text);
@@ -908,7 +969,20 @@ void TestActions() {
   bulk.bulkAction = MakeAction("", false, true);
   Check(ss::ViewFor(bulk, text).bulk == ss::ActionState::Pending, "bulk pending");
   bulk.bulkAction = MakeAction("", false, false, MakeError(false, false, false));
-  Check(ss::ViewFor(bulk, text).bulk == ss::ActionState::Failed, "bulk failed");
+  const ss::View bulkFailed = ss::ViewFor(bulk, text);
+  Check(bulkFailed.bulk == ss::ActionState::Failed, "bulk failed");
+  Check(bulkFailed.bulkShown, "a failed bulk sign-out keeps its button");
+  // under the button: the bulk failure's own words, not a row's or a generic
+  // error; the button is not pending, so it is enabled for a retry
+  CheckText("Couldn't sign out the other sessions. Try again.",
+            English(ss::ActionFailedKey(/*bulk=*/true)),
+            "a failed bulk sign-out says so under its button");
+  CheckText("Couldn't sign out this session. Try again.",
+            English(ss::ActionFailedKey(/*bulk=*/false)), "a row's failure keeps its words");
+  bulk.bulkAction = MakeAction("", false, false, MakeError(true, false, false));
+  Check(ss::ViewFor(bulk, text).bulk == ss::ActionState::Failed,
+        "a failed bulk sign-out the controller no longer retries is offered again, whatever its "
+        "error's flags");
   bulk.bulkAction = MakeAction("", false, false);
   Check(ss::ViewFor(bulk, text).bulk == ss::ActionState::Idle, "bulk done");
   Check(ss::ActionStateFor(std::nullopt) == ss::ActionState::Idle, "no bulk action yet");
@@ -950,6 +1024,141 @@ void TestFence() {
   Check(!fence.Admits(second) && fence.Admits(third), "reopening without a close fences too");
 }
 
+// The app-wide sign-out a rejection takes, and the sign-in page's notice for
+// it (AuthLogoutNotice.h), as AppController drives them: each report of a
+// rejection arrives on the UI thread with the cause its listener read, and a
+// report that signs the app out runs SdkHost::Logout there at once, which
+// signs the app out before anything else runs.
+struct FakeApp {
+  al::SignedOutNotice notice;
+  bool signedIn = true;
+  int signOuts = 0;
+
+  // AppController::OnAuthInvalid
+  void Report(std::string_view cause) {
+    if (!notice.Rejected(signedIn, cause)) return;
+    ++signOuts;
+    signedIn = false;
+  }
+  // the user's own Sign out (Settings, the account menu): SdkHost::Logout,
+  // with no rejection behind it
+  void SignOut() {
+    ++signOuts;
+    signedIn = false;
+  }
+  // AppController::OnAuthState(LoggedIn)
+  void SignIn() {
+    signedIn = true;
+    notice.Clear();
+  }
+};
+
+void TestSignedOutNotice() {
+  // the cause the sdk reports with an AuthLogout: only the trusted
+  // session-revoked cause, spelled exactly, is explained
+  Check(al::NoticeFor("session_revoked") == al::Notice::SignedOutRemotely,
+        "session_revoked: signed out from another device");
+  for (const char* cause : {"", "Session_Revoked", "SESSION_REVOKED", "session_revoked ",
+                            " session_revoked", "session_revoked\n", "session-revoked", "revoked",
+                            "client_removed", "sign_in_required"}) {
+    Check(al::NoticeFor(cause) == al::Notice::None,
+          std::string("the cause \"") + cause + "\" shows nothing new");
+  }
+  CheckText("This session was signed out from another device.",
+            English(al::NoticeKey(al::Notice::SignedOutRemotely)), "the sign-in page's notice");
+  CheckText("", al::NoticeKey(al::Notice::None), "nothing new has no words");
+  CheckText(ss::SignInRequiredKey(/*signedOutRemotely=*/true),
+            al::NoticeKey(al::Notice::SignedOutRemotely),
+            "the sign-in page says what a sessions screen still up says");
+
+  // Another device signed this session out while a session was up: the Api's
+  // listener reports the rejection, then the device's, built on that Api,
+  // reports it again (a 401 that came back over the rpc as well).
+  {
+    FakeApp app;
+    app.Report("session_revoked");
+    app.Report("session_revoked");
+    CheckEq(1, app.signOuts, "the Api's and the device's reports of one rejection sign out once");
+    Check(app.notice.Take() == al::Notice::SignedOutRemotely,
+          "the sign-in page says this session was signed out from another device");
+    Check(app.notice.Take() == al::Notice::None,
+          "once: the sign-in page shown again says nothing new");
+  }
+  // the device's report first, should the order ever change
+  {
+    FakeApp app;
+    app.Report("session_revoked");
+    app.Report("");
+    CheckEq(1, app.signOuts, "the second report signs nothing out, whichever comes first");
+    Check(app.notice.Take() == al::Notice::SignedOutRemotely,
+          "and a later report does not take the notice away");
+  }
+  // signed in with no session up: the Api's listener alone
+  {
+    FakeApp app;
+    app.Report("session_revoked");
+    CheckEq(1, app.signOuts, "the Api's report alone signs out");
+    Check(app.notice.Take() == al::Notice::SignedOutRemotely, "and says why");
+  }
+  // any other rejection: the generic sign-out, as before
+  {
+    FakeApp app;
+    app.Report("");
+    app.Report("");
+    CheckEq(1, app.signOuts, "a generic rejection signs out once");
+    Check(app.notice.Take() == al::Notice::None, "a generic rejection says nothing new");
+  }
+  // this session signed out from the Sessions screen: the sdk reports ""
+  {
+    FakeApp app;
+    app.Report("");
+    CheckEq(1, app.signOuts, "signing this session out from the list signs the app out");
+    Check(app.notice.Take() == al::Notice::None,
+          "signing this session out here is not another device's sign-out");
+  }
+  // the app's own Sign out, and a revocation that raced it
+  {
+    FakeApp app;
+    app.SignOut();
+    Check(app.notice.Take() == al::Notice::None, "the user's own sign-out says nothing");
+    app.Report("session_revoked");
+    CheckEq(1, app.signOuts, "a report behind the user's sign-out signs nothing out again");
+    Check(app.notice.Take() == al::Notice::None,
+          "and leaves no notice for the user's own sign-out");
+  }
+  // a notice the page never showed, then a sign-in while the window was
+  // hidden (a deep link's auth code): the next sign-out does not explain the
+  // old one
+  {
+    FakeApp app;
+    app.Report("session_revoked");
+    app.SignIn();
+    Check(app.notice.Take() == al::Notice::None, "a sign-in forgets an unshown notice");
+    app.SignOut();
+    Check(app.notice.Take() == al::Notice::None,
+          "the user's sign-out after it does not show the old notice");
+  }
+  // every remote sign-out of a later sign-in is explained again, once
+  {
+    FakeApp app;
+    app.Report("session_revoked");
+    Check(app.notice.Take() == al::Notice::SignedOutRemotely, "the first sign-out's notice");
+    app.SignIn();
+    app.Report("session_revoked");
+    CheckEq(2, app.signOuts, "the second sign-in's rejection signs out");
+    Check(app.notice.Take() == al::Notice::SignedOutRemotely, "and is explained too");
+    Check(app.notice.Take() == al::Notice::None, "once");
+  }
+  // nothing signed in: a report changes nothing
+  {
+    FakeApp app;
+    app.signedIn = false;
+    app.Report("session_revoked");
+    CheckEq(0, app.signOuts, "a signed-out app is not signed out again");
+    Check(app.notice.Take() == al::Notice::None, "and says nothing");
+  }
+}
+
 void TestReader() {
   // fakes of the generated classes, every field
   const ss::Snapshot rich = RichSnapshot();
@@ -959,6 +1168,8 @@ void TestReader() {
   Check(read.bulkAction && read.bulkAction->pending, "the bulk action");
   Check(read.actions.size() == 2 && read.actions[1].error && read.actions[1].error->retryable,
         "an action's error");
+  Check(read.error && read.error->signInRequired && read.error->sessionRevoked,
+        "the error's trusted session-revoked cause is read");
 
   // nil lists and objects
   FakeSnapshot nils;
@@ -1006,6 +1217,62 @@ void TestSdkReader() {
   // the sdk's own spellings of the strings the page compares against
   Check(std::string_view(ss::DeviceLabelKey("windows")) == "sessions_device_windows",
         "the device type windows reports");
+  CheckEq(abi::gStringsIssued, abi::gStringsFreed, "every string the snapshot reader took is freed");
+}
+
+// The logout listeners' read of the cause (AuthLogoutCause.h), by the handle
+// each listener was added on, through the c abi the generated header
+// declares; the wrapper's own getters read the same; and the header's
+// constant is the cause the notice is shown for.
+void TestSdkLogoutCause() {
+  CheckText(std::string(al::kCauseSessionRevoked), URNET_AUTH_LOGOUT_CAUSE_SESSION_REVOKED,
+            "the c abi's session-revoked cause");
+  CheckText(std::string(al::kCauseSessionRevoked), urnet::AuthLogoutCauseSessionRevoked,
+            "the wrapper's session-revoked cause");
+
+  abi::FakeLogout revoked{std::string(URNET_AUTH_LOGOUT_CAUSE_SESSION_REVOKED)};
+  abi::FakeLogout generic{std::string()};
+  abi::FakeLogout nil{std::nullopt};
+  const uint64_t api = abi::Issue(abi::Kind::Api, &revoked);
+  const uint64_t device = abi::Issue(abi::Kind::Device, &revoked);
+  const int64_t stringsBefore = abi::gStringsIssued;
+  const int64_t freedBefore = abi::gStringsFreed;
+
+  // what each listener reads before it marshals, and the notice it leads to
+  CheckText("session_revoked", al::ApiCause(api), "the Api's listener reads the Api's cause");
+  CheckText("session_revoked", al::DeviceCause(device),
+            "the device's listener reads the device's cause");
+  Check(al::NoticeFor(al::ApiCause(api)) == al::Notice::SignedOutRemotely &&
+            al::NoticeFor(al::DeviceCause(device)) == al::Notice::SignedOutRemotely,
+        "either listener's read of a revoked session leads to the notice");
+  CheckEq(4, abi::gStringsIssued - stringsBefore, "each read takes the sdk's string");
+  CheckEq(abi::gStringsIssued - stringsBefore, abi::gStringsFreed - freedBefore,
+          "and frees every one of them");
+  CheckText("", al::ApiCause(0), "a nil Api reads no cause");
+  Check(al::DeviceCause(api).empty() && al::ApiCause(device).empty(),
+        "a handle of another kind reads no cause");
+  // a listener still in flight while its session is torn down
+  const uint64_t released = abi::Issue(abi::Kind::Device, &revoked);
+  urnet_release(released);
+  CheckText("", al::DeviceCause(released), "a device handle released since reads no cause");
+
+  const uint64_t genericApi = abi::Issue(abi::Kind::Api, &generic);
+  const uint64_t nilDevice = abi::Issue(abi::Kind::Device, &nil);
+  CheckText("", al::ApiCause(genericApi), "a generic rejection's cause is empty");
+  Check(al::NoticeFor(al::ApiCause(genericApi)) == al::Notice::None,
+        "and leads to no notice");
+  CheckText("", al::DeviceCause(nilDevice), "a nil string reads as no cause");
+
+  // the generated wrapper's own getters make the same calls
+  {
+    const urnet::Api wrapped(abi::Issue(abi::Kind::Api, &revoked));
+    CheckText("session_revoked", wrapped.getAuthLogoutCause(), "Api::getAuthLogoutCause");
+    const urnet::Device wrappedDevice(abi::Issue(abi::Kind::Device, &generic));
+    CheckText("", wrappedDevice.getAuthLogoutCause(), "Device::getAuthLogoutCause");
+  }
+  CheckEq(abi::gStringsIssued, abi::gStringsFreed, "every cause string is freed");
+  for (const uint64_t handle : {api, device, genericApi, nilDevice}) urnet_release(handle);
+  CheckEq(0, static_cast<int64_t>(abi::gLive.size()), "every handle is released");
 }
 #endif
 
@@ -1019,9 +1286,11 @@ int main() {
   TestStates();
   TestActions();
   TestFence();
+  TestSignedOutNotice();
   TestReader();
 #if defined(URNW_SESSIONS_TESTS_SDK)
   TestSdkReader();
+  TestSdkLogoutCause();
 #endif
   if (gFailures != 0) {
     std::cout << gFailures << " of " << gCases << " sessions checks failed\n";

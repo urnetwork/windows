@@ -2125,6 +2125,17 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
     sessions_->ResetForSignOut();
     if (sessionsOpen_) CloseSessions();
   }
+  // The sign-in page, after a sign-out the server made, says why once: the
+  // notice AppController kept for it (AuthLogoutNotice.h), taken whenever the
+  // page shows, after the reset above, so a window shown or opened later
+  // still says it. Signed in, the page's notice goes.
+  if (showHome) {
+    login_->HideSignedOutNotice();
+  } else if (const char* notice =
+                 urnw::authlogout::NoticeKey(urnw::App().TakeSignedOutNotice());
+             *notice) {
+    login_->ShowSignedOutNotice(Loc(notice));
+  }
 }
 
 // The identity ApplyAuthState read, onto Connect, the status strip and the

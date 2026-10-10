@@ -496,10 +496,14 @@ class SdkHost {
  public:
   using AuthStateHandler = std::function<void(AuthState, const std::string& error)>;
   // Fired when the sdk finds the stored auth is no longer valid on the server
-  // (e.g. the client was removed): the sdk has already cleared its local auth
-  // state. Runs on an sdk callback thread and must only marshal -- the ui
-  // marshals onto its thread and calls Logout().
-  using AuthInvalidHandler = std::function<void()>;
+  // (e.g. the client was removed, or another device signed this session out):
+  // the sdk has already cleared its local auth state. `cause` is the sdk's
+  // reason, read in its listener (AuthLogoutCause.h): "session_revoked"
+  // (urnet::AuthLogoutCauseSessionRevoked) or "". The Api's listener and,
+  // with a session up, the device's report one rejection each. Runs on an sdk
+  // callback thread and must only marshal -- the ui marshals onto its thread
+  // and calls Logout() once for them (AuthLogoutNotice.h).
+  using AuthInvalidHandler = std::function<void(std::string cause)>;
   using JwtRefreshedHandler = std::function<void()>;
   using TunnelStateHandler = std::function<void(const proto::TunnelStatus&)>;
   using StatsHandler = std::function<void(const LiveStats&)>;
@@ -2043,9 +2047,9 @@ class SdkHost {
   // The Api Initialize created or ApplyNetworkServer replaced: the client info
   // its requests and connect auths carry, "windows" and this build's version
   // (server session/REVOKE-UI-FINAL.md §1.13, the last use the Sessions page
-  // lists), and its confirmed rejection of the account's credential routed to
-  // the sign-out the device's rejection takes (onAuthInvalid_). Caller holds
-  // mutex_.
+  // lists), and its confirmed rejection of the account's credential routed,
+  // with the rejection's cause, to the sign-out the device's rejection takes
+  // (onAuthInvalid_). Caller holds mutex_.
   void BindApiLocked();
   void SetupWalletCallbacks();
   void RequestWalletChallenge(

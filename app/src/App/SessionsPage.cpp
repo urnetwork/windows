@@ -277,9 +277,9 @@ void SessionsPage::ApplySnapshot(uint64_t generation, sessions::Snapshot snapsho
   if (!fence_.Admits(generation)) return;
   if (snapshot.error && snapshot.error != snapshot_.error) {
     // once per new error; the page shows the flags' words, never this message
-    LogWarn("sessions: {} (retryable={} sign_in_required={} unsupported={})",
+    LogWarn("sessions: {} (retryable={} sign_in_required={} session_revoked={} unsupported={})",
             snapshot.error->message, snapshot.error->retryable, snapshot.error->signInRequired,
-            snapshot.error->unsupported);
+            snapshot.error->sessionRevoked, snapshot.error->unsupported);
   }
   snapshot_ = std::move(snapshot);
   Render(/*force=*/false);
@@ -291,13 +291,15 @@ void SessionsPage::Render(bool force) {
   if (!built_ || !open_) return;
   auto host = w_.SessionsHost();
   if (!controller_) {
-    // signed out or --preview-ui: nothing to list, and the page says why
+    // signed out or --preview-ui: nothing to list, and the page says why in
+    // the sign-in-required body's generic words (§5)
     rendered_.reset();
     rowControls_.clear();
     bulkButton_ = nullptr;
     tryAgainButton_ = nullptr;
     host.Children().Clear();
-    AppendProse(host, Loc("please_login_to_urnetwork"), colors::FaintBrush());
+    AppendProse(host, Loc(sessions::SignInRequiredKey(/*signedOutRemotely=*/false)),
+                colors::FaintBrush());
     w_.SessionsRefreshRing().IsActive(false);
     w_.SessionsRefreshRing().Visibility(Visibility::Collapsed);
     return;
@@ -350,10 +352,11 @@ void SessionsPage::RenderBody(sessions::View const& view) {
       AppendProse(host, Loc("sessions_unsupported"), colors::MutedBrush());
       break;
     case sessions::Body::SignInRequired:
-      // The generic wording: ClientSessionError carries no revoked cause. The
-      // credential's rejection reaches SdkHost's Api logout listener, which
-      // runs the app's sign-out (§5).
-      AppendProse(host, Loc(sessions::SignInRequiredKey(/*sessionRevokedCause=*/false)),
+      // The generic wording, or the remote sign-out's when the controller
+      // reports that trusted cause. The credential's rejection reaches
+      // SdkHost's logout listeners, which run the app's sign-out (§5), and the
+      // sign-in page says the same (AuthLogoutNotice.h).
+      AppendProse(host, Loc(sessions::SignInRequiredKey(view.signedOutRemotely)),
                   colors::MutedBrush());
       break;
     case sessions::Body::Empty:
@@ -452,7 +455,7 @@ void SessionsPage::AppendRow(Panel const& host, sessions::Row const& row) {
   // the row's own action error (§5); Sign out is offered again
   if (row.action == sessions::ActionState::Failed) {
     TextBlock failed;
-    failed.Text(Loc("sessions_action_failed"));
+    failed.Text(Loc(sessions::ActionFailedKey(/*bulk=*/false)));
     failed.FontSize(11);
     failed.TextWrapping(TextWrapping::Wrap);
     failed.Foreground(colors::DangerBrush());
@@ -521,13 +524,15 @@ void SessionsPage::AppendBulk(Panel const& host, sessions::View const& view) {
   } else {
     bulkButton_.Content(winrt::box_value(Loc("sessions_sign_out_all_others")));
   }
+  // enabled once it failed too: a retry confirms again and goes through the
+  // controller, which reuses its operation
   bulkButton_.IsEnabled(!pending);
   Automation::AutomationProperties::SetName(bulkButton_, Loc("sessions_sign_out_all_others"));
   bulkButton_.Click([this](auto const&, auto const&) { ConfirmSignOutOthers(); });
   host.Children().Append(bulkButton_);
-  // the store has no bulk failure line of its own; this one says it failed
+  // under the button: "Couldn't sign out the other sessions. Try again."
   if (view.bulk == sessions::ActionState::Failed) {
-    AppendProse(host, Loc("something_went_wrong"), colors::DangerBrush());
+    AppendProse(host, Loc(sessions::ActionFailedKey(/*bulk=*/true)), colors::DangerBrush());
   }
 }
 
