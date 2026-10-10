@@ -106,6 +106,14 @@ const update::Feed& ChannelFeed() {
 constexpr wchar_t kAdminOnlyFolderSddl[] = L"O:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)";
 constexpr wchar_t kAdminOnlyFileSddl[] = L"O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FRFX;;;BU)";
 
+// What the helper's lock file carries: owned by Administrators, a protected
+// DACL, and full control for SYSTEM and Administrators and nothing for anyone
+// else. Tighter than the folders and files above, which let Users read: a
+// process without administrator rights can neither open the lock for its data,
+// to hold it, nor create it first, because updates\ grants it no right to add
+// a file.
+constexpr wchar_t kLockFileSddl[] = L"O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)";
+
 class Security {
  public:
   explicit Security(const wchar_t* sddl) {
@@ -136,6 +144,15 @@ class Handle {
   ~Handle() { Close(); }
   Handle(const Handle&) = delete;
   Handle& operator=(const Handle&) = delete;
+  Handle(Handle&& other) noexcept : handle_(other.handle_) { other.handle_ = INVALID_HANDLE_VALUE; }
+  Handle& operator=(Handle&& other) noexcept {
+    if (this != &other) {
+      Close();
+      handle_ = other.handle_;
+      other.handle_ = INVALID_HANDLE_VALUE;
+    }
+    return *this;
+  }
   HANDLE get() const { return handle_; }
   bool valid() const { return handle_ && handle_ != INVALID_HANDLE_VALUE; }
   void Close() {
@@ -256,6 +273,91 @@ bool PrepareFolder(const fs::path& folder, Security& security, std::string& erro
     return false;
   }
   return true;
+}
+
+// Takes the machine-wide lock that lets one helper run at a time:
+// updates\helper.lock, opened for its data and shared with nobody, and kept
+// open (through `lock`) for the life of the process. A process without
+// administrator rights cannot open that file for its data, because the DACL
+// grants no one but SYSTEM and Administrators anything, and cannot create it
+// first, because updates\ grants it no right to add a file; so it can neither
+// hold the lock nor hold the name to block it.
+//
+// #7 took a named mutex here, Global\URnetworkUpdateHelper, whose comment
+// assumed that only an administrator can name an object in the global
+// namespace. That is not so of a mutex: any process can create that name first
+// and hold it, and every update on the machine then ends in Busy for as long
+// as that process runs.
+//
+// updates\ is prepared first (admin-only, a plain directory), so the lock file
+// is somewhere only an administrator can write, and so a run refused past here
+// leaves an admin-only updates\ behind. A sharing violation is Busy; anything
+// else, or a thing there that is not a plain file, is Staging. Returns an empty
+// optional once the lock is held.
+std::optional<Refusal> TakeHelperLock(const fs::path& updates, Security& folderSecurity,
+                                      Handle& lock, HelperLog& log) {
+  std::string error;
+  if (!PrepareFolder(updates, folderSecurity, error)) {
+    log.Line("refused: {}", error);
+    return Refusal::Staging;
+  }
+  Security lockSecurity(kLockFileSddl);
+  if (!lockSecurity.valid()) {
+    log.Line("refused: the lock's security descriptor could not be built: {}", ::GetLastError());
+    return Refusal::Staging;
+  }
+  const fs::path lockPath = updates / L"helper.lock";
+  // The extra rights beyond read data are for giving a lock file that was
+  // already there its security again below; the share mode is still nothing,
+  // so the lock is exclusive all the same.
+  const HANDLE raw = ::CreateFileW(
+      lockPath.c_str(),
+      FILE_READ_DATA | READ_CONTROL | WRITE_DAC | WRITE_OWNER | FILE_READ_ATTRIBUTES, 0,
+      lockSecurity.attributes(), OPEN_ALWAYS, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+  const DWORD opened = ::GetLastError();
+  lock = Handle(raw);
+  if (!lock.valid()) {
+    if (opened == ERROR_SHARING_VIOLATION) {
+      log.Line("refused: another update helper is running");
+      return Refusal::Busy;
+    }
+    log.Line("refused: {} could not be opened: {}", Utf8(lockPath.native()), opened);
+    return Refusal::Staging;
+  }
+  BY_HANDLE_FILE_INFORMATION info{};
+  if (!::GetFileInformationByHandle(lock.get(), &info) ||
+      (info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) {
+    log.Line("refused: {} is not a plain file (attributes 0x{:x})", Utf8(lockPath.native()),
+             info.dwFileAttributes);
+    lock.Close();
+    return Refusal::Staging;
+  }
+  // A lock file that was already there keeps whatever security it had, so give
+  // it the admin-only one again, as PrepareFolder does for a folder.
+  if (opened == ERROR_ALREADY_EXISTS) {
+    PSID owner = nullptr;
+    BOOL ownerDefaulted = FALSE;
+    BOOL present = FALSE;
+    PACL dacl = nullptr;
+    BOOL daclDefaulted = FALSE;
+    if (!::GetSecurityDescriptorOwner(lockSecurity.descriptor(), &owner, &ownerDefaulted) ||
+        !::GetSecurityDescriptorDacl(lockSecurity.descriptor(), &present, &dacl, &daclDefaulted) ||
+        !owner || !present || !dacl) {
+      log.Line("refused: the lock's security descriptor has no owner or DACL");
+      lock.Close();
+      return Refusal::Staging;
+    }
+    const DWORD reapplied = ::SetSecurityInfo(
+        lock.get(), SE_FILE_OBJECT,
+        OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+        owner, nullptr, dacl, nullptr);
+    if (reapplied != ERROR_SUCCESS) {
+      log.Line("refused: {}'s security could not be set: {}", Utf8(lockPath.native()), reapplied);
+      lock.Close();
+      return Refusal::Staging;
+    }
+  }
+  return std::nullopt;
 }
 
 // Whether the folders, the package and the log msiexec uses are as only an
@@ -415,6 +517,24 @@ int ApplyUpdate(std::wstring_view tagArgument) {
     log.Line("refused: a dev build (code 0) never updates itself");
     return static_cast<int>(Refusal::DevBuild);
   }
+  // One helper at a time, machine-wide, on a lock no process without
+  // administrator rights can take or hold (TakeHelperLock). PrepareFolder of
+  // updates\ moves up with the lock, before the feed and the tag, so Busy is
+  // reported before a bad tag, and a run refused past here leaves an admin-only
+  // updates\ with its lock file.
+  const fs::path installFolder = executable.parent_path();
+  const fs::path updates = installFolder / L"updates";
+  Security folderSecurity(kAdminOnlyFolderSddl);
+  Security fileSecurity(kAdminOnlyFileSddl);
+  if (!folderSecurity.valid() || !fileSecurity.valid()) {
+    log.Line("refused: the admin-only security descriptors could not be built: {}", ::GetLastError());
+    return static_cast<int>(Refusal::Staging);
+  }
+  Handle helperLock;
+  if (const std::optional<Refusal> refusal = TakeHelperLock(updates, folderSecurity, helperLock, log)) {
+    return static_cast<int>(*refusal);
+  }
+
   const update::Feed& feed = ChannelFeed();
   const std::string tag = AsciiTag(tagArgument);
   if (!update::IsTagArgument(feed, tag)) {
@@ -423,28 +543,9 @@ int ApplyUpdate(std::wstring_view tagArgument) {
   }
   const std::uint64_t code = update::ParseFeedTag(feed, tag)->code;
 
-  // One helper at a time, machine-wide. Only an administrator can create an
-  // object in the global namespace, so no one else can hold this name to
-  // block updates.
-  Handle helperLock(::CreateMutexW(nullptr, FALSE, L"Global\\URnetworkUpdateHelper"));
-  const DWORD locked = helperLock.valid() ? ::WaitForSingleObject(helperLock.get(), 0) : WAIT_FAILED;
-  if (locked != WAIT_OBJECT_0 && locked != WAIT_ABANDONED) {
-    log.Line("refused: another update helper is running");
-    return static_cast<int>(Refusal::Busy);
-  }
-
-  const fs::path installFolder = executable.parent_path();
-  const fs::path updates = installFolder / L"updates";
   const fs::path tagFolder = updates / WidenAscii(tag);
-  Security folderSecurity(kAdminOnlyFolderSddl);
-  Security fileSecurity(kAdminOnlyFileSddl);
   std::string error;
-  if (!folderSecurity.valid() || !fileSecurity.valid()) {
-    log.Line("refused: the admin-only security descriptors could not be built: {}", ::GetLastError());
-    return static_cast<int>(Refusal::Staging);
-  }
-  if (!PrepareFolder(updates, folderSecurity, error) ||
-      !PrepareFolder(tagFolder, folderSecurity, error)) {
+  if (!PrepareFolder(tagFolder, folderSecurity, error)) {
     log.Line("refused: {}", error);
     return static_cast<int>(Refusal::Staging);
   }

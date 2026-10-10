@@ -200,14 +200,16 @@ func checkApplyUpdate(apply string) []string {
 		regexp.QuoteMeta("!install::AdminOnlyLocation(executable, why)"),
 		regexp.QuoteMeta("return static_cast<int>(Refusal::NotInstalled);"),
 		regexp.QuoteMeta("if (version::kCode == 0) {"),
-		regexp.QuoteMeta("const update::Feed& feed = ChannelFeed();"),
-		regexp.QuoteMeta("if (!update::IsTagArgument(feed, tag)) {"),
-		regexp.QuoteMeta(`::CreateMutexW(nullptr, FALSE, L"Global\\URnetworkUpdateHelper")`),
+		// the lock comes before the feed and the tag, so Busy is reported
+		// before a bad tag; PrepareFolder of updates\ moves up into it
 		regexp.QuoteMeta(`const fs::path updates = installFolder / L"updates";`),
 		regexp.QuoteMeta("Security folderSecurity(kAdminOnlyFolderSddl);"),
 		regexp.QuoteMeta("Security fileSecurity(kAdminOnlyFileSddl);"),
-		regexp.QuoteMeta("if (!PrepareFolder(updates, folderSecurity, error) ||"),
-		regexp.QuoteMeta("!PrepareFolder(tagFolder, folderSecurity, error)) {"),
+		regexp.QuoteMeta("TakeHelperLock(updates, folderSecurity, helperLock, log)"),
+		regexp.QuoteMeta("const update::Feed& feed = ChannelFeed();"),
+		regexp.QuoteMeta("if (!update::IsTagArgument(feed, tag)) {"),
+		regexp.QuoteMeta(`const fs::path tagFolder = updates / WidenAscii(tag);`),
+		regexp.QuoteMeta("if (!PrepareFolder(tagFolder, folderSecurity, error)) {"),
 		regexp.QuoteMeta(`log.Open(tagFolder / L"update-helper.log", fileSecurity.attributes());`),
 		regexp.QuoteMeta("if (WriteResult(updates, result, fileSecurity, writeError)) {"),
 		regexp.QuoteMeta("const std::wstring listUrl = WidenAscii(update::ReleaseListUrl(feed));"),
@@ -255,14 +257,50 @@ func checkApplyUpdate(apply string) []string {
 		regexp.QuoteMeta("StartThroughShell(executable, shellError)"),
 		regexp.QuoteMeta("return ended;"))
 	// what everything under updates\ is created with: owned by Administrators,
-	// SYSTEM and Administrators full, Users read and execute, nothing inherited
+	// SYSTEM and Administrators full, Users read and execute, nothing inherited;
+	// the lock file is tighter still, with nothing for Users at all, so no
+	// process without administrator rights can open it, and so hold it
 	for _, want := range []string{
 		`constexpr wchar_t kAdminOnlyFolderSddl[] = L"O:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)";`,
 		`constexpr wchar_t kAdminOnlyFileSddl[] = L"O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FRFX;;;BU)";`,
+		`constexpr wchar_t kLockFileSddl[] = L"O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)";`,
 	} {
 		if !strings.Contains(apply, want) {
 			problems = append(problems, "ApplyUpdate.cpp does not create what it writes under updates\\ with "+want)
 		}
+	}
+	// The lock: updates\ prepared first, then helper.lock opened for its data,
+	// shared with nobody (the 0 share mode), without following a link, created
+	// admin-only; a sharing violation is Busy; a thing there that is not a plain
+	// file is refused; a lock already there is given its security again.
+	lockFn := applyDefinition(apply, "std::optional<Refusal> TakeHelperLock(const fs::path& updates, Security& folderSecurity,")
+	problems = append(problems, applyOrderProblems("TakeHelperLock", lockFn,
+		regexp.QuoteMeta("if (!PrepareFolder(updates, folderSecurity, error)) {"),
+		regexp.QuoteMeta(`const fs::path lockPath = updates / L"helper.lock";`),
+		regexp.QuoteMeta("FILE_READ_DATA | READ_CONTROL | WRITE_DAC | WRITE_OWNER | FILE_READ_ATTRIBUTES, 0,"),
+		regexp.QuoteMeta("lockSecurity.attributes(), OPEN_ALWAYS, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);"),
+		regexp.QuoteMeta("if (opened == ERROR_SHARING_VIOLATION) {"),
+		regexp.QuoteMeta("return Refusal::Busy;"),
+		regexp.QuoteMeta("(info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) {"),
+		regexp.QuoteMeta("::SetSecurityInfo("),
+		regexp.QuoteMeta("return std::nullopt;"))...)
+	// The lock is kept until the helper exits. TakeHelperLock closes the handle
+	// only where it then refuses, and ApplyUpdate declares the handle in its own
+	// scope and names it nowhere else but to take the lock: closed, moved or
+	// assigned anywhere else, the lock would be let go while the installer may
+	// still be running.
+	closes := strings.Count(lockFn, "lock.Close();")
+	refusing := len(regexp.MustCompile(`lock\.Close\(\);\s+return Refusal::\w+;`).FindAllString(lockFn, -1))
+	if closes != refusing {
+		problems = append(problems, fmt.Sprintf("TakeHelperLock closes the lock's handle %d times and refuses after %d of them: "+
+			"the lock is to be held until the helper exits", closes, refusing))
+	}
+	if !strings.Contains(body, "\n  Handle helperLock;\n") {
+		problems = append(problems, "ApplyUpdate does not declare helperLock in its own scope: the lock is to be held until the helper exits")
+	}
+	if named := strings.Count(body, "helperLock"); named != 2 {
+		problems = append(problems, fmt.Sprintf("ApplyUpdate names helperLock %d times, want twice, where it declares it and where it takes "+
+			"the lock: the lock is to be held until the helper exits", named))
 	}
 	prepare := applyDefinition(apply, "bool PrepareFolder(const fs::path& folder, Security& security, std::string& error) {")
 	problems = append(problems, applyOrderProblems("PrepareFolder", prepare,
@@ -299,6 +337,48 @@ func TestUpdateApplyHelperChecksInOrder(t *testing.T) {
 	sources := updaterSources(t)
 	reportProblems(t, checkApplyUpdate(sources["ApplyUpdate.cpp"]))
 	reportProblems(t, checkAdminOnlyPath(sources["InstallLocationWin32.cpp"]))
+}
+
+// Every file the helper is built from, by name, with comments blanked: all
+// that lies in app/src/Updater, and the one source of Common its project
+// compiles (updaterSources).
+func helperFiles(t *testing.T) map[string]string {
+	t.Helper()
+	files := updaterSources(t)
+	entries, err := os.ReadDir(filepath.Join(repositoryRoot(t), "app", "src", "Updater"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.Type().IsRegular() {
+			files[entry.Name()] = stripComments(readUpdaterSource(t, entry.Name()))
+		}
+	}
+	// these two come from the listing alone: without them it saw nothing
+	for _, want := range []string{"ApplyUpdate.h", "Updater.vcxproj"} {
+		if _, ok := files[want]; !ok {
+			t.Fatalf("the helper's files miss %s: the listing did not see app/src/Updater", want)
+		}
+	}
+	return files
+}
+
+// The helper names no mutex, in any of its files. A named mutex is a lock any
+// process on the machine can create first and hold, and for as long as it
+// does, every helper ends in Busy.
+func checkHelperHasNoMutex(files map[string]string) []string {
+	var problems []string
+	for name, text := range files {
+		if strings.Contains(text, "CreateMutex") {
+			problems = append(problems, "the helper's "+name+" names CreateMutex: the helper's lock is a file in updates\\, "+
+				"not a mutex any process can create and hold")
+		}
+	}
+	return problems
+}
+
+func TestUpdateApplyHelperHasNoMutex(t *testing.T) {
+	reportProblems(t, checkHelperHasNoMutex(helperFiles(t)))
 }
 
 // After an install that failed, the helper starts its relaunch through the
@@ -580,6 +660,15 @@ func TestUpdateApplyWiringRejectsWeakerHelpers(t *testing.T) {
 	apply := func(old, replacement string) []string {
 		return checkApplyUpdate(replace(sources["ApplyUpdate.cpp"], old, replacement))
 	}
+	helper := helperFiles(t)
+	mutexIn := func(name, old, replacement string) []string {
+		changed := map[string]string{}
+		for key, value := range helper {
+			changed[key] = value
+		}
+		changed[name] = replace(helper[name], old, replacement)
+		return checkHelperHasNoMutex(changed)
+	}
 	for _, tc := range []struct {
 		name  string
 		check func() []string
@@ -617,13 +706,55 @@ func TestUpdateApplyWiringRejectsWeakerHelpers(t *testing.T) {
 			return apply("fileSecurity.attributes(), CREATE_NEW,\n", "nullptr, CREATE_NEW,\n")
 		}},
 		{"what the helper writes owned by whoever creates it", func() []string {
-			return apply(`L"O:BAD:P(A;;FA;;;SY)`, `L"D:P(A;;FA;;;SY)`)
+			// anchored on the whole file SDDL: the lock file's SDDL now shares
+			// the O:BAD:P(A;;FA;;;SY) prefix, so this drops the owner from
+			// kAdminOnlyFileSddl in particular
+			return apply(`L"O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FRFX;;;BU)";`, `L"D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FRFX;;;BU)";`)
 		}},
 		{"a folder inheriting what is above it", func() []string {
 			return apply(`L"O:BAD:P(A;OICI;FA;;;SY)`, `L"O:BAD:(A;OICI;FA;;;SY)`)
 		}},
 		{"an existing folder's security kept", func() []string {
 			return apply("const DWORD set = ::SetSecurityInfo(", "const DWORD set = ERROR_SUCCESS; (void)(")
+		}},
+		// The lock, each control restoring one rejected design.
+		{"the lock taken as a global mutex again", func() []string {
+			return mutexIn("ApplyUpdate.cpp", "const HANDLE raw = ::CreateFileW(",
+				`const HANDLE raw = ::CreateMutexW(nullptr, FALSE, L"Global\\URnetworkUpdateHelper"); const HANDLE unused = ::CreateFileW(`)
+		}},
+		{"a global mutex taken in another file of the helper", func() []string {
+			return mutexIn("main.cpp", "    DropAppOverrides();\n",
+				"    DropAppOverrides();\n    ::CreateMutexW(nullptr, FALSE, L\"Global\\\\URnetworkUpdateHelper\");\n")
+		}},
+		{"the lock file shared for read", func() []string {
+			return apply("FILE_READ_DATA | READ_CONTROL | WRITE_DAC | WRITE_OWNER | FILE_READ_ATTRIBUTES, 0,",
+				"FILE_READ_DATA | READ_CONTROL | WRITE_DAC | WRITE_OWNER | FILE_READ_ATTRIBUTES, FILE_SHARE_READ,")
+		}},
+		{"the lock file lets Users open it for data", func() []string {
+			return apply(`constexpr wchar_t kLockFileSddl[] = L"O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)";`,
+				`constexpr wchar_t kLockFileSddl[] = L"O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)";`)
+		}},
+		{"the lock taken before the folder is prepared", func() []string {
+			// the same text, moved below the lock: only its place changes
+			prepared := "  std::string error;\n  if (!PrepareFolder(updates, folderSecurity, error)) {\n    log.Line(\"refused: {}\", error);\n    return Refusal::Staging;\n  }\n"
+			moved := replace(sources["ApplyUpdate.cpp"], prepared+"  Security lockSecurity(kLockFileSddl);",
+				"  Security lockSecurity(kLockFileSddl);")
+			return checkApplyUpdate(replace(moved, "  return std::nullopt;\n}", prepared+"  return std::nullopt;\n}"))
+		}},
+		{"a link to the lock file followed", func() []string {
+			return apply("lockSecurity.attributes(), OPEN_ALWAYS, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);",
+				"lockSecurity.attributes(), OPEN_ALWAYS, 0, nullptr);")
+		}},
+		{"the lock let go as soon as it is taken", func() []string {
+			return apply("  return std::nullopt;\n}", "  lock.Close();\n  return std::nullopt;\n}")
+		}},
+		{"the lock let go while the installer runs", func() []string {
+			return apply("  ::WaitForSingleObject(installer.get(), INFINITE);\n",
+				"  helperLock.Close();\n  ::WaitForSingleObject(installer.get(), INFINITE);\n")
+		}},
+		{"the lock's handle ending before the helper does", func() []string {
+			return apply("  Handle helperLock;\n  if (const std::optional<Refusal> refusal = TakeHelperLock(updates, folderSecurity, helperLock, log)) {\n    return static_cast<int>(*refusal);\n  }\n",
+				"  {\n    Handle helperLock;\n    if (const std::optional<Refusal> refusal = TakeHelperLock(updates, folderSecurity, helperLock, log)) {\n      return static_cast<int>(*refusal);\n    }\n  }\n")
 		}},
 		{"the rights not checked before msiexec", func() []string {
 			return apply("!CheckAdminOnly({updates, tagFolder, package, installLog}, error)", "false")
