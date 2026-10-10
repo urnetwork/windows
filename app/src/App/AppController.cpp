@@ -196,10 +196,12 @@ void AppController::Start() {
   sdk_.SetAuthStateHandler([this](AuthState s, const std::string& e) {
     OnUi([this, s, e] { OnAuthState(s, e); });
   });
-  // The server rejected the stored auth (e.g. the client was removed): log out
-  // and return to the login panel. Logout() fires the auth-state handler.
-  sdk_.SetAuthInvalidHandler([this] {
-    OnUi([this] { sdk_.Logout(); });
+  // The server rejected the stored auth (e.g. the client was removed, or
+  // another device signed this session out): log out and return to the login
+  // panel, which says why when the server said so. Logout() fires the
+  // auth-state handler.
+  sdk_.SetAuthInvalidHandler([this](std::string cause) {
+    OnUi([this, cause] { OnAuthInvalid(cause); });
   });
   sdk_.SetJwtRefreshedHandler([this] {
     OnUi([this] { balance_.OnJwtRefreshed(); });
@@ -340,6 +342,16 @@ void AppController::Shutdown(lifetime::Ending ending) {
   if (auto app = Application::Current()) app.Exit();
 }
 
+void AppController::OnAuthInvalid(const std::string& cause) {
+  // With a session up the Api's listener and the device's both report the
+  // rejection, and a sign-out the user made may have run before either: only
+  // the first report to find the app signed in signs it out, and leaves the
+  // sign-in page its notice.
+  if (!signedOutNotice_.Rejected(sdk_.IsLoggedIn(), cause)) return;
+  LogInfo("app: the server ended this sign-in (cause \"{}\"); signing out", cause);
+  sdk_.Logout();
+}
+
 void AppController::OnAuthState(AuthState state, const std::string& error) {
   const bool wasLoggedIn = (authState_ == AuthState::LoggedIn);
   authState_ = state;
@@ -350,6 +362,8 @@ void AppController::OnAuthState(AuthState state, const std::string& error) {
   // reseeds from the new jwt's claims (Guest -> Free).
   if (state == AuthState::LoggedIn) {
     balance_.Start();
+    // signed in again: an earlier sign-out's notice is not shown
+    signedOutNotice_.Clear();
   } else if (state == AuthState::LoggedOut && wasLoggedIn) {
     balance_.Stop();
   }

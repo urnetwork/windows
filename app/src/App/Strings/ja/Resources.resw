@@ -6045,6 +6045,10 @@
     <value>更新できませんでした。前回の一覧を表示しています。</value>
     <comment>Sessions screen (Account &gt; Sessions): non-blocking notice when a refresh failed. The screen keeps showing the list it had.</comment>
   </data>
+  <data name="sessions_sign_in_required" xml:space="preserve">
+    <value>セッションを管理するには、もう一度サインインしてください。</value>
+    <comment>Sessions screen (Account &gt; Sessions): the screen's state when the account's sign-in was rejected and the user must sign in again. Generic: it names no cause. sessions_signed_out_remotely is the line for when the app knows another device signed this session out.</comment>
+  </data>
   <data name="sessions_sign_out_accessibility" xml:space="preserve">
     <value>{}からサインアウト</value>
     <comment>Sessions screen (Account &gt; Sessions): the screen-reader action on a row that signs its session out (the row's visible control is the sign_out key). {device} is the row's device label, e.g. "Android" or "Unknown device".</comment>
@@ -6052,6 +6056,10 @@
   <data name="sessions_sign_out_all_others" xml:space="preserve">
     <value>他のすべてのセッションからサインアウト</value>
     <comment>Sessions screen (Account &gt; Sessions): the button at the bottom of the list that signs out every session except this one. Shown only when the list has this app's session and at least one other.</comment>
+  </data>
+  <data name="sessions_sign_out_others_failed" xml:space="preserve">
+    <value>他のセッションからサインアウトできませんでした。もう一度お試しください。</value>
+    <comment>Sessions screen (Account &gt; Sessions): shown under the Sign out all other sessions button when signing the other sessions out failed.</comment>
   </data>
   <data name="sessions_signed_in" xml:space="preserve">
     <value>{}にサインイン</value>

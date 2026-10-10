@@ -25,6 +25,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "AuthLogoutCause.h"
 #include "BalanceGate.h"
 #include "Config.h"
 #include "BittensorWalletFlow.h"
@@ -549,11 +550,15 @@ void SdkHost::BindApiLocked() {
   // after a sign-out of this session from the Sessions page, and tells this
   // Api's logout listeners. The app then signs out the way it does when the
   // device's credential is rejected; without this it stayed signed in on a
-  // credential the sdk no longer had. A sign-out already done ignores it. On
-  // an sdk thread: the handler marshals (AppController).
+  // credential the sdk no longer had. A sign-out already done ignores it. The
+  // rejection's cause is read here, by the Api's handle, before the hop
+  // (AuthLogoutCause.h). On an sdk thread: the handler marshals, and signs
+  // out once for this report and the device's of the same rejection
+  // (AppController, AuthLogoutNotice.h).
   apiLogoutSub_.reset();
-  apiLogoutSub_.emplace(api_->addAuthLogoutListener([this] {
-    if (loggedIn_.load(std::memory_order_acquire) && onAuthInvalid_) onAuthInvalid_();
+  apiLogoutSub_.emplace(api_->addAuthLogoutListener([this, api = api_->handle()] {
+    if (!loggedIn_.load(std::memory_order_acquire) || !onAuthInvalid_) return;
+    onAuthInvalid_(authlogout::ApiCause(api));
   }));
 }
 
@@ -3223,8 +3228,13 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
 
     // These session listeners are functional rather than presentational: auth
     // invalidation and tray connection state must keep working while hidden.
-    subs_.push_back(device_->addAuthLogoutListener([this] {
-      if (onAuthInvalid_) onAuthInvalid_();
+    // The device is built on this space's Api, so its logout reports the
+    // rejection the Api's listener reports (BindApiLocked), after it, a 401
+    // that came back over the rpc included. It reads the device's cause by the
+    // device's handle before the hop (AuthLogoutCause.h), and the app signs
+    // out once for the two reports (AppController, AuthLogoutNotice.h).
+    subs_.push_back(device_->addAuthLogoutListener([this, device = device_->handle()] {
+      if (onAuthInvalid_) onAuthInvalid_(authlogout::DeviceCause(device));
     }));
     subs_.push_back(device_->addJwtRefreshListener([this](std::string) {
       if (onJwtRefreshed_) onJwtRefreshed_();

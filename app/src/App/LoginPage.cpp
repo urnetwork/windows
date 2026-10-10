@@ -126,6 +126,12 @@ void LoginPage::Initialize() {
   // window-level acknowledgements (the account menu's referral copy)
   snackbar_ = std::make_unique<urnw::kit::Snackbar>(w_.AccountSnackbar(), queue);
 
+  // The signed-out notice's own close button takes its slot too, so the
+  // column ApplyLoginLayout measures keeps no gap for a closed bar.
+  w_.LoginNotice().Closed([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->LoginNotice().Visibility(Visibility::Collapsed);
+  });
+
   // the hero carousel; ApplyStrings has already run, so paint its first slide
   carousel_ = std::make_unique<urnw::LoginCarousel>(w_.LoginCarouselHost(), queue);
   carousel_->ApplyStrings();
@@ -354,7 +360,28 @@ void LoginPage::ResetToInitialStep() {
   // must not leave a seedphrase behind in the field for the next person at
   // this machine, or for anything reading the UIA tree.
   ClearSeedphraseField();
+  // nor an earlier sign-out's notice: the window shows this sign-out's after
+  // the reset, and a server switch has none
+  HideSignedOutNotice();
   ShowLoginStep(LoginStep::Initial);
+}
+
+// An InfoBar at the top of the initial step, in the page's Informational
+// notice style. Collapsed while closed (MainWindow.xaml), so the hero keeps
+// the height ApplyLoginLayout gives it; opening it makes the column taller,
+// and the panel's SizeChanged takes that from the hero.
+void LoginPage::ShowSignedOutNotice(hstring const& message) {
+  auto notice = w_.LoginNotice();
+  notice.Severity(InfoBarSeverity::Informational);
+  notice.Message(message);
+  notice.Visibility(Visibility::Visible);
+  notice.IsOpen(true);
+}
+
+void LoginPage::HideSignedOutNotice() {
+  auto notice = w_.LoginNotice();
+  notice.IsOpen(false);
+  notice.Visibility(Visibility::Collapsed);
 }
 
 // The one place the credential field is emptied, so every caller gets the same

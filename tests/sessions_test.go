@@ -40,6 +40,13 @@ func buildSessionsTests(t *testing.T, extra ...string) string {
 	return program
 }
 
+// The code of a source without its comments and whitespace, so a statement
+// reads the same however it is wrapped and whatever its argument comments say
+// (/*bulk=*/true).
+func sessionsCode(source string) string {
+	return strings.Join(strings.Fields(stripComments(source)), "")
+}
+
 func runSessionsTests(t *testing.T, program string) {
 	t.Helper()
 	if output, err := exec.Command(program).CombinedOutput(); err != nil {
@@ -63,17 +70,21 @@ func TestSessionsPresentation(t *testing.T) {
 
 // The same spec with the snapshot read through the generated header's
 // urnet::ClientSessionSnapshot family, over a fake of the C ABI functions
-// those classes call: every field arrives, nil handles read as nothing, and
-// every handle the reader takes is released once. The header is git-ignored
+// those classes call: every field arrives, the trusted session-revoked cause
+// among them, nil handles read as nothing, and every handle the reader takes
+// is released once. The logout listeners' reads of the cause
+// (AuthLogoutCause.h) run over the same fake: each listener reads its own
+// object's cause by its handle and frees the sdk's string, and the header's
+// constant is the cause the notice is for. The header is git-ignored
 // (fetch-deps unpacks it into app/third_party/urnetwork-sdk/<arch>;
 // URNETWORK_SDK_INCLUDE names another directory) and needs nlohmann/json, so a
 // host without them skips this, and so does a header from before the session
-// controller.
+// controller or the logout cause.
 func TestSessionsPresentationAgainstSdkHeader(t *testing.T) {
 	root := repositoryRoot(t)
 	sdkDir := sessionsSdkHeaderDir(t, root)
 	if sdkDir == "" {
-		t.Skip("no urnetwork_sdk.hpp with the session view controller (set URNETWORK_SDK_INCLUDE)")
+		t.Skip("no urnetwork_sdk.hpp with the session view controller and the logout cause (set URNETWORK_SDK_INCLUDE)")
 	}
 	jsonDir, found := jsonIncludeDir(root)
 	if !found {
@@ -86,9 +97,18 @@ func TestSessionsPresentationAgainstSdkHeader(t *testing.T) {
 	}
 	t.Logf("against %s", filepath.Join(sdkDir, "urnetwork_sdk.hpp"))
 	runSessionsTests(t, buildSessionsTests(t, extra...))
+
+	// a listener that reads another object's cause, or keeps the sdk's string
+	requireSessionsFailureWith(t, extra, "AuthLogoutCause.h", func(source string) string {
+		return strings.Replace(source, "urnet_api_get_auth_logout_cause(api)", "urnet_device_get_auth_logout_cause(api)", 1)
+	}, "the Api's listener reads the Api's cause")
+	requireSessionsFailureWith(t, extra, "AuthLogoutCause.h", func(source string) string {
+		return strings.Replace(source, "  urnet_free_string(cause);\n", "", 1)
+	}, "and frees every one of them")
 }
 
-// The directory of a urnetwork_sdk.hpp that has the session view controller, or "".
+// The directory of a urnetwork_sdk.hpp that has the session view controller
+// and the logout cause, or "".
 func sessionsSdkHeaderDir(t *testing.T, root string) string {
 	t.Helper()
 	explicit := os.Getenv("URNETWORK_SDK_INCLUDE")
@@ -114,6 +134,13 @@ func sessionsSdkHeaderDir(t *testing.T, root string) string {
 			t.Logf("%s: urnetwork_sdk.hpp predates the session view controller", dir)
 			continue
 		}
+		if !strings.Contains(string(header), "AuthLogoutCauseSessionRevoked") {
+			if dir == explicit {
+				t.Fatalf("URNETWORK_SDK_INCLUDE=%s: urnetwork_sdk.hpp has no logout cause", explicit)
+			}
+			t.Logf("%s: urnetwork_sdk.hpp predates the logout cause", dir)
+			continue
+		}
 		return dir
 	}
 	return ""
@@ -122,6 +149,13 @@ func sessionsSdkHeaderDir(t *testing.T, root string) string {
 // Run the spec against a rewritten copy of one of its headers and require
 // that it fails, naming want. The rest of the includes still come from the app.
 func requireSessionsFailure(t *testing.T, header string, mutate func(string) string, want string) {
+	t.Helper()
+	requireSessionsFailureWith(t, nil, header, mutate, want)
+}
+
+// requireSessionsFailure, with the spec built with extra arguments ahead of
+// the rewritten header's directory (the sdk header build's).
+func requireSessionsFailureWith(t *testing.T, extra []string, header string, mutate func(string) string, want string) {
 	t.Helper()
 	root := repositoryRoot(t)
 	source, err := os.ReadFile(filepath.Join(root, "app", "src", "App", header))
@@ -137,7 +171,7 @@ func requireSessionsFailure(t *testing.T, header string, mutate func(string) str
 		t.Fatal(err)
 	}
 	// -iquote: searched for the spec's quoted include ahead of the app's -I
-	program := buildSessionsTests(t, "-iquote", dir)
+	program := buildSessionsTests(t, append(append([]string{}, extra...), "-iquote", dir)...)
 	output, err := exec.Command(program).CombinedOutput()
 	if err == nil || !strings.Contains(string(output), want) {
 		t.Fatalf("negative control on %s was not detected (want %q): %v\n%s", header, want, err, output)
@@ -148,8 +182,52 @@ func requireSessionsFailure(t *testing.T, header string, mutate func(string) str
 // that stops at hours (what RelativeTime did before days) or turns into a date
 // a day late, a last use read as milliseconds, a legacy kind given a method, a
 // bulk sign-out offered without a current session, an empty country coloured
-// as a real one, and a pending revoke that offers Sign out again.
+// as a real one, and a pending revoke that offers Sign out again. And each
+// way the three messages could go wrong: a failed bulk sign-out worded as the
+// generic error or as a row's, sign-in required in the app's generic login
+// words, the controller's trusted remote sign-out unread or ignored, a notice
+// for a cause that is not the trusted one or in the wrong words, a second
+// sign-out for the device's report of the same rejection, a notice shown
+// again, and an unshown notice outliving a sign-in.
 func TestSessionsPresentationRejectsBrokenReadings(t *testing.T) {
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source,
+			`return bulk ? "sessions_sign_out_others_failed" : "sessions_action_failed";`,
+			`return bulk ? "something_went_wrong" : "sessions_action_failed";`, 1)
+	}, "a failed bulk sign-out says so under its button")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source,
+			`return bulk ? "sessions_sign_out_others_failed" : "sessions_action_failed";`,
+			`return bulk ? "sessions_action_failed" : "sessions_action_failed";`, 1)
+	}, "a failed bulk sign-out says so under its button")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source,
+			`return signedOutRemotely ? "sessions_signed_out_remotely" : "sessions_sign_in_required";`,
+			`return signedOutRemotely ? "sessions_signed_out_remotely" : "please_login_to_urnetwork";`, 1)
+	}, "sign-in required shows the sessions screen's sign-in words")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, "    view.signedOutRemotely = snapshot.error->sessionRevoked;\n", "", 1)
+	}, "the controller's trusted cause: signed out from another device")
+	requireSessionsFailure(t, "SessionsPresentation.h", func(source string) string {
+		return strings.Replace(source, "  out.sessionRevoked = error.getSessionRevoked();\n", "", 1)
+	}, "the error's trusted session-revoked cause is read")
+	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
+		return strings.Replace(source, "return cause == kCauseSessionRevoked ? Notice::SignedOutRemotely",
+			"return !cause.empty() ? Notice::SignedOutRemotely", 1)
+	}, `the cause "Session_Revoked" shows nothing new`)
+	// every report signs out, as each listener's did before
+	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
+		return strings.Replace(source, "    if (!signedIn) return false;\n", "    (void)signedIn;\n", 1)
+	}, "the Api's and the device's reports of one rejection sign out once")
+	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
+		return strings.Replace(source, "return std::exchange(pending_, Notice::None);", "return pending_;", 1)
+	}, "once: the sign-in page shown again says nothing new")
+	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
+		return strings.Replace(source, "void Clear() { pending_ = Notice::None; }", "void Clear() {}", 1)
+	}, "a sign-in forgets an unshown notice")
+	requireSessionsFailure(t, "AuthLogoutNotice.h", func(source string) string {
+		return strings.Replace(source, `"sessions_signed_out_remotely" : ""`, `"sessions_sign_in_required" : ""`, 1)
+	}, "the sign-in page's notice")
 	requireSessionsFailure(t, "RelativeTimeSpan.h", func(source string) string {
 		return strings.Replace(source,
 			"  if (seconds < kDateDays * kDay) return {Unit::Days, seconds / kDay};\n", "", 1)
@@ -214,13 +292,19 @@ func TestSessionsStringsExist(t *testing.T) {
 	root := repositoryRoot(t)
 	keyPattern := regexp.MustCompile(`"((?:sessions|days_ago|hours_ago|minutes_ago|seconds_ago)[a-z0-9_]*)"`)
 	keys := map[string]bool{}
-	for _, name := range []string{"SessionsPresentation.h", "SessionsPage.cpp", "RelativeTimeSpan.h", "AccountPage.cpp"} {
+	for _, name := range []string{"SessionsPresentation.h", "SessionsPage.cpp", "RelativeTimeSpan.h", "AccountPage.cpp", "AuthLogoutNotice.h"} {
 		for _, match := range keyPattern.FindAllStringSubmatch(stripComments(readAppSource(t, name)), -1) {
 			keys[match[1]] = true
 		}
 	}
-	if len(keys) < 48 {
+	if len(keys) < 50 {
 		t.Errorf("found only %d sessions keys in the sources; update this contract", len(keys))
+	}
+	// the three messages' own keys
+	for _, key := range []string{"sessions_sign_out_others_failed", "sessions_sign_in_required", "sessions_signed_out_remotely"} {
+		if !keys[key] {
+			t.Errorf("the sessions sources no longer read %s", key)
+		}
 	}
 	for key := range keys {
 		for _, locale := range []string{"en", "de", "ja", "ar", "zh-Hans"} {
@@ -231,10 +315,19 @@ func TestSessionsStringsExist(t *testing.T) {
 	}
 	// the reused keys the page reads by name
 	page := stripComments(readAppSource(t, "SessionsPage.cpp"))
-	for _, key := range []string{"refresh", "try_again", "sign_out", "cancel", "copied", "loading",
-		"account", "please_login_to_urnetwork", "something_went_wrong"} {
+	for _, key := range []string{"refresh", "try_again", "sign_out", "cancel", "copied", "loading", "account"} {
 		if !strings.Contains(page, `Loc("`+key+`")`) {
 			t.Errorf("SessionsPage.cpp no longer reads %s", key)
+		}
+	}
+	// and none of the stand-ins the screen's own words replaced: the generic
+	// error under a failed bulk sign-out, the app's login prompt for sign-in
+	// required
+	for _, key := range []string{"something_went_wrong", "please_login_to_urnetwork"} {
+		for _, name := range []string{"SessionsPage.cpp", "SessionsPresentation.h"} {
+			if strings.Contains(stripComments(readAppSource(t, name)), `"`+key+`"`) {
+				t.Errorf("%s still shows %s, which the sessions screen's own words replace", name, key)
+			}
 		}
 	}
 }
@@ -341,7 +434,6 @@ func TestSessionsPageControllerLifecycle(t *testing.T) {
 		"ConfirmSignOut(sessionId);",
 		`Loc("sessions_copy_id")`,
 		"CopyId(sessionId);",
-		`Loc("sessions_action_failed")`,
 		"row.line1Spoken", "row.line2Spoken", "row.line3Spoken",
 		"Automation::AutomationProperties::SetFullDescription(copy, H(row.idText));")
 	requireAll("SessionsPage::CopyId", body("void SessionsPage::CopyId(std::string const& sessionId) {"),
@@ -349,16 +441,39 @@ func TestSessionsPageControllerLifecycle(t *testing.T) {
 	requireAll("MakeCountryCircle", body("Grid MakeCountryCircle(sessions::Row const& row) {"),
 		"sessions::CircleColorFor(", "urnet::getColorHex(code)", "shapes::Ellipse dot;",
 		"kit::MakeRowPathIcon(sessions::GlyphPath(row.glyph)", "255, 255, 255, 255")
-	requireAll("SessionsPage::AppendBulk", body("void SessionsPage::AppendBulk(Panel const& host, sessions::View const& view) {"),
-		"if (!view.bulkShown) return;", `Loc("sessions_sign_out_all_others")`, "ConfirmSignOutOthers();",
-		"bulkButton_.IsEnabled(!pending);")
+	// a row's failure keeps its words (§5)
+	requireOrder("SessionsPage::AppendRow", sessionsCode(row),
+		"if(row.action==sessions::ActionState::Failed){",
+		"failed.Text(Loc(sessions::ActionFailedKey(false)));")
+	// a failed bulk sign-out: its own words under the button, which stays
+	// enabled (only a pending one is not), so a retry confirms again and goes
+	// through the controller
+	bulk := body("void SessionsPage::AppendBulk(Panel const& host, sessions::View const& view) {")
+	requireAll("SessionsPage::AppendBulk", bulk,
+		"if (!view.bulkShown) return;", `Loc("sessions_sign_out_all_others")`, "ConfirmSignOutOthers();")
+	requireOrder("SessionsPage::AppendBulk", sessionsCode(bulk),
+		"constboolpending=view.bulk==sessions::ActionState::Pending;",
+		"bulkButton_.IsEnabled(!pending);",
+		"host.Children().Append(bulkButton_);",
+		"if(view.bulk==sessions::ActionState::Failed){",
+		"AppendProse(host,Loc(sessions::ActionFailedKey(true)),colors::DangerBrush());")
 	render := body("void SessionsPage::RenderBody(sessions::View const& view) {")
 	requireAll("SessionsPage::RenderBody", render,
 		`Loc("sessions_load_failed")`, `Loc("try_again")`, `Loc("sessions_unsupported")`,
-		"sessions::SignInRequiredKey(", `Loc("sessions_empty")`, `Loc("sessions_refresh_failed")`,
+		`Loc("sessions_empty")`, `Loc("sessions_refresh_failed")`,
 		`Loc("sessions_last_used_help")`, `Loc("sessions_legacy_note")`, "RestoreFocus(focused);")
+	// sign-in required: the screen's own words, or the remote sign-out's for
+	// the controller's trusted cause; and with no controller, the same words
+	requireOrder("SessionsPage::RenderBody", sessionsCode(render),
+		"casesessions::Body::SignInRequired:",
+		"AppendProse(host,Loc(sessions::SignInRequiredKey(view.signedOutRemotely)),colors::MutedBrush());",
+		"break;")
 	requireAll("SessionsPage::Render", body("void SessionsPage::Render(bool force) {"),
-		"w_.SessionsRefreshRing().IsActive(view.refreshing);", `Loc("please_login_to_urnetwork")`)
+		"w_.SessionsRefreshRing().IsActive(view.refreshing);")
+	requireOrder("SessionsPage::Render", sessionsCode(body("void SessionsPage::Render(bool force) {")),
+		"if(!controller_){",
+		"AppendProse(host,Loc(sessions::SignInRequiredKey(false)),colors::FaintBrush());",
+		"return;")
 
 	// the window: open from the Account row, closed by its back button, by any
 	// rail navigation and by a sign-out, polled with the presentation
@@ -469,7 +584,8 @@ func TestSessionsClientInfoAndAppVersion(t *testing.T) {
 		"api_->setClientInfo(urnet::newClientInfo(kClientDeviceType, appVersion_));",
 		"apiLogoutSub_.reset();",
 		"apiLogoutSub_.emplace(api_->addAuthLogoutListener(",
-		"if (loggedIn_.load(std::memory_order_acquire) && onAuthInvalid_) onAuthInvalid_();",
+		"if (!loggedIn_.load(std::memory_order_acquire) || !onAuthInvalid_) return;",
+		"onAuthInvalid_(authlogout::ApiCause(api));",
 	} {
 		if !strings.Contains(bind, want) {
 			t.Errorf("SdkHost::BindApiLocked: missing %s", want)
@@ -696,5 +812,163 @@ func TestSessionsIconsLicenseNotice(t *testing.T) {
 	glyphs := readAppSource(t, "SessionGlyphs.h")
 	if count := strings.Count(glyphs, "inline constexpr const wchar_t* k"); count != 9 {
 		t.Errorf("SessionGlyphs.h carries %d paths; the notice names nine", count)
+	}
+}
+
+// Require that source holds each of ordered, in that order.
+func requireSessionsOrder(t *testing.T, name, source string, ordered ...string) {
+	t.Helper()
+	from := 0
+	for _, want := range ordered {
+		at := strings.Index(source[from:], want)
+		if at < 0 {
+			t.Errorf("%s: %s is missing or out of order", name, want)
+			return
+		}
+		from += at + len(want)
+	}
+}
+
+// "This session was signed out from another device." (server
+// session/REVOKE-UI-FINAL.md §5), the app-wide half, which needs Windows to
+// build and is read here from the sources; its decisions are the spec's
+// (AuthLogoutNotice.h, TestSessionsPresentation). Each logout listener reads
+// its rejection's cause inside the listener, by the handle it was added on,
+// before it marshals; the Api's report and the device's (built on that Api,
+// so a 401 that came back over the rpc reaches both) arrive at one UI-thread
+// decision, which signs out once and keeps the notice; nothing else asks it,
+// so the app's own Sign out leaves none; a sign-in forgets it; and the
+// sign-in page shows it once, in its own notice, whenever the page shows.
+func TestSignedOutRemotelyReachesTheSignInPage(t *testing.T) {
+	// the handler carries the cause
+	if !strings.Contains(stripComments(readAppSource(t, "SdkHost.h")),
+		"using AuthInvalidHandler = std::function<void(std::string cause)>;") {
+		t.Error("SdkHost.h: the auth-invalid handler must carry the logout's cause")
+	}
+
+	// both listeners read their own object's cause, synchronously, as the
+	// argument of the one call that marshals; they read nothing of SdkHost
+	host := stripComments(readAppSource(t, "SdkHost.cpp"))
+	requireSessionsOrder(t, "SdkHost::BindApiLocked",
+		sessionsCode(definitionBody(t, "SdkHost.cpp", host, "void SdkHost::BindApiLocked() {")),
+		"apiLogoutSub_.reset();",
+		"apiLogoutSub_.emplace(api_->addAuthLogoutListener([this,api=api_->handle()]{"+
+			"if(!loggedIn_.load(std::memory_order_acquire)||!onAuthInvalid_)return;"+
+			"onAuthInvalid_(authlogout::ApiCause(api));}));")
+	requireSessionsOrder(t, "SdkHost::BootstrapSession",
+		sessionsCode(definitionBody(t, "SdkHost.cpp", host, "bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {")),
+		"device_=urnet::newDeviceRemoteWithDefaults(*networkSpace_,clientJwt,instanceId);",
+		"subs_.push_back(device_->addAuthLogoutListener([this,device=device_->handle()]{"+
+			"if(onAuthInvalid_)onAuthInvalid_(authlogout::DeviceCause(device));}));")
+	if count := strings.Count(host, "onAuthInvalid_("); count != 2 {
+		t.Errorf("SdkHost.cpp reports a rejection from %d places; only the Api's and the device's logout listeners may, each with the cause it read", count)
+	}
+	// by handle, through the c abi, the sdk's string freed
+	cause := sessionsCode(readAppSource(t, "AuthLogoutCause.h"))
+	for _, want := range []string{
+		"inlinestd::stringTakeCause(char*cause){if(cause==nullptr)return{};std::stringvalue(cause);urnet_free_string(cause);returnvalue;}",
+		"inlinestd::stringApiCause(uint64_tapi){returnTakeCause(urnet_api_get_auth_logout_cause(api));}",
+		"inlinestd::stringDeviceCause(uint64_tdevice){returnTakeCause(urnet_device_get_auth_logout_cause(device));}",
+	} {
+		if !strings.Contains(cause, want) {
+			t.Errorf("AuthLogoutCause.h: missing %s", want)
+		}
+	}
+
+	// one decision on the UI thread: a report signs out only a signed-in app,
+	// so the second report of one rejection, or one behind the user's own
+	// sign-out, changes nothing
+	controller := stripComments(readAppSource(t, "AppController.cpp"))
+	requireSessionsOrder(t, "AppController::Start",
+		sessionsCode(handlerSource(t, "AppController.cpp", controller, "sdk_.SetAuthInvalidHandler(")),
+		"sdk_.SetAuthInvalidHandler([this](std::stringcause){OnUi([this,cause]{OnAuthInvalid(cause);});")
+	requireSessionsOrder(t, "AppController::OnAuthInvalid",
+		sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::OnAuthInvalid(const std::string& cause) {")),
+		"if(!signedOutNotice_.Rejected(sdk_.IsLoggedIn(),cause))return;",
+		"sdk_.Logout();")
+	requireSessionsOrder(t, "AppController::OnAuthState",
+		sessionsCode(definitionBody(t, "AppController.cpp", controller, "void AppController::OnAuthState(AuthState state, const std::string& error) {")),
+		"if(state==AuthState::LoggedIn){balance_.Start();signedOutNotice_.Clear();}")
+	header := sessionsCode(readAppSource(t, "AppController.h"))
+	for _, want := range []string{
+		"authlogout::NoticeTakeSignedOutNotice(){returnsignedOutNotice_.Take();}",
+		"authlogout::SignedOutNoticesignedOutNotice_;",
+	} {
+		if !strings.Contains(header, want) {
+			t.Errorf("AppController.h: missing %s", want)
+		}
+	}
+	// nothing else reports a rejection or takes the notice: the user's own
+	// sign-outs (Settings, the account menu, delete account) call Logout alone
+	reports, takes, decisions := 0, 0, 0
+	for name, source := range appSourceFiles(t, ".cpp", ".h") {
+		code := stripComments(source)
+		decisions += strings.Count(code, "signedOutNotice_.Rejected(")
+		reports += strings.Count(code, "OnAuthInvalid(cause)")
+		if strings.Contains(code, "TakeSignedOutNotice()") && name != "AppController.h" && name != "MainWindow.xaml.cpp" {
+			t.Errorf("%s takes the signed-out notice; only the window's sign-in page does", name)
+		}
+		takes += strings.Count(code, "App().TakeSignedOutNotice()")
+	}
+	if decisions != 1 || reports != 1 || takes != 1 {
+		t.Errorf("the signed-out notice is decided %d times, reported to %d times and taken %d times; once each (OnAuthInvalid, the auth-invalid handler, MainWindow::ApplyAuthState)",
+			decisions, reports, takes)
+	}
+
+	// the sign-in page: after the sign-out's reset the window takes the
+	// notice and shows it; signed in, the notice goes
+	window := stripComments(readAppSource(t, "MainWindow.xaml.cpp"))
+	requireSessionsOrder(t, "MainWindow::ApplyAuthState",
+		sessionsCode(definitionBody(t, "MainWindow.xaml.cpp", window, "void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error) {")),
+		"constboolshowHome=loggedIn||previewUi_;",
+		"if(!loggedIn&&wasVisible){",
+		"login_->ResetToInitialStep();",
+		"if(showHome){login_->HideSignedOutNotice();}",
+		"elseif(constchar*notice=urnw::authlogout::NoticeKey(urnw::App().TakeSignedOutNotice());*notice){"+
+			"login_->ShowSignedOutNotice(Loc(notice));}")
+	login := stripComments(readAppSource(t, "LoginPage.cpp"))
+	loginBody := func(signature string) string {
+		return sessionsCode(definitionBody(t, "LoginPage.cpp", login, signature))
+	}
+	requireSessionsOrder(t, "LoginPage::ShowSignedOutNotice", loginBody("void LoginPage::ShowSignedOutNotice(hstring const& message) {"),
+		"autonotice=w_.LoginNotice();", "notice.Severity(InfoBarSeverity::Informational);", "notice.Message(message);",
+		"notice.Visibility(Visibility::Visible);", "notice.IsOpen(true);")
+	requireSessionsOrder(t, "LoginPage::HideSignedOutNotice", loginBody("void LoginPage::HideSignedOutNotice() {"),
+		"autonotice=w_.LoginNotice();", "notice.IsOpen(false);", "notice.Visibility(Visibility::Collapsed);")
+	requireSessionsOrder(t, "LoginPage::ResetToInitialStep", loginBody("void LoginPage::ResetToInitialStep() {"),
+		"HideSignedOutNotice();", "ShowLoginStep(LoginStep::Initial);")
+	requireSessionsOrder(t, "LoginPage::Initialize", loginBody("void LoginPage::Initialize() {"),
+		"w_.LoginNotice().Closed(", "self->LoginNotice().Visibility(Visibility::Collapsed);")
+	loginHeader := sessionsCode(readAppSource(t, "LoginPage.h"))
+	for _, want := range []string{"voidShowSignedOutNotice(winrt::hstringconst&message);", "voidHideSignedOutNotice();"} {
+		if !strings.Contains(loginHeader, want) {
+			t.Errorf("LoginPage.h: missing %s", want)
+		}
+	}
+
+	// the notice is the initial step's first row, an Informational InfoBar the
+	// user can close, collapsed until it says something
+	markup := readAppSource(t, "MainWindow.xaml")
+	panel := strings.Index(markup, `<StackPanel x:Name="LoginPanel"`)
+	notice := strings.Index(markup, `<muxc:InfoBar x:Name="LoginNotice"`)
+	carousel := strings.Index(markup, `x:Name="LoginCarouselHost"`)
+	if panel < 0 || notice < 0 || carousel < 0 || !(panel < notice && notice < carousel) {
+		t.Fatal("MainWindow.xaml: the LoginNotice InfoBar must open the initial step's LoginPanel, ahead of the carousel")
+	}
+	element := markup[notice : notice+strings.Index(markup[notice:], "/>")]
+	for _, want := range []string{`Severity="Informational"`, `IsOpen="False"`, `IsClosable="True"`, `Visibility="Collapsed"`} {
+		if !strings.Contains(element, want) {
+			t.Errorf("MainWindow.xaml: LoginNotice is missing %s", want)
+		}
+	}
+	if strings.Contains(markup[panel:notice], "<muxc:") || strings.Contains(markup[panel:notice], "<Grid") {
+		t.Error("MainWindow.xaml: nothing may sit above the LoginNotice in the LoginPanel")
+	}
+
+	project := readAppSource(t, "App.vcxproj")
+	for _, item := range []string{`<ClInclude Include="AuthLogoutNotice.h" />`, `<ClInclude Include="AuthLogoutCause.h" />`} {
+		if !strings.Contains(project, item) {
+			t.Errorf("App.vcxproj does not list %s", item)
+		}
 	}
 }

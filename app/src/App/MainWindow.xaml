@@ -115,6 +115,18 @@
                             MaxWidth="512" HorizontalAlignment="Stretch"
                             VerticalAlignment="Center">
 
+                    <!-- Why the app signed out, when the server said another
+                         device signed this session out (server
+                         session/REVOKE-UI-FINAL.md §5): "This session was
+                         signed out from another device." The page's notice,
+                         first in the column, written by
+                         LoginPage::ShowSignedOutNotice once per such sign-out.
+                         Collapsed, not only closed, while it says nothing, so
+                         ApplyLoginLayout keeps no gap for it. -->
+                    <muxc:InfoBar x:Name="LoginNotice" Severity="Informational"
+                                  IsOpen="False" IsClosable="True"
+                                  Visibility="Collapsed" />
+
                     <!-- The carousel (iOS LoginCarousel). Three brand images
                          crossfading inside the ur globe silhouette, with the
                          headline that belongs to each sliding through. This is

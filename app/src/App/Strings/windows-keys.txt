@@ -867,8 +867,10 @@ sessions_last_used_help
 sessions_legacy_note
 sessions_load_failed
 sessions_refresh_failed
+sessions_sign_in_required
 sessions_sign_out_accessibility
 sessions_sign_out_all_others
+sessions_sign_out_others_failed
 sessions_signed_in
 sessions_signed_out_remotely
 sessions_signing_out
