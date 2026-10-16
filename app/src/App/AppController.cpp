@@ -230,6 +230,16 @@ void AppController::Start() {
   // A start waiting on its balance shows as connecting (StartConnectWait.h).
   // Through the queue, so a refused start's way back renders before the
   // upgrade path it opens (ShowUpgradeForBlockedConnect queues after it).
+  // A sign-out's tail runs off this thread (SdkHost::Logout): the window shows
+  // it running, and the tray offers no action meanwhile.
+  sdk_.SetSignOutProgressHandler([this](bool signingOut) {
+    OnUi([this, signingOut] {
+      UpdateTray();
+      if (!windowVisible_ || !window_) return;  // resynced on show
+      if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+        self->SetSigningOut(signingOut);
+    });
+  });
   sdk_.SetStartWaitHandler([this](StartWaitChange change) {
     OnUi([this, change] {
       if (!windowVisible_ || !window_) return;  // resynced on show
@@ -419,6 +429,12 @@ void AppController::Shutdown(lifetime::Ending ending) {
   try {
     if (plan.stopService) sdk_.Quit();
     else sdk_.SettleCommandsForExit(std::chrono::steady_clock::now() + exitdrain::kCommandsCap);
+    // A sign-out's tail ends before the exit too, or the next launch is still
+    // signed in: Quit waits for it among its joins, every other ending here, for
+    // at most the commands' cap again, within the quit's own bound.
+    if (!plan.stopService) {
+      sdk_.SettleSignOutForExit(std::chrono::steady_clock::now() + exitdrain::kCommandsCap);
+    }
   } catch (const std::exception& e) {
     LogError("app: stopping the service on quit failed: {}", e.what());
   }
@@ -714,7 +730,8 @@ health::State AppController::TrayHealth() const {
 
 tray::Facts AppController::CurrentTrayFacts() const {
   tray::Facts facts;
-  facts.signedIn = authState_ == AuthState::LoggedIn;
+  // a sign-out's tail still running: signed out from its click, no action
+  facts.signedIn = authState_ == AuthState::LoggedIn && sdk_.IsLoggedIn();
   facts.statusKnown = lastTunnelStatus_.has_value();
   if (lastTunnelStatus_) {
     facts.tunnel = tray::TunnelOf(lastTunnelStatus_->state);
@@ -1087,6 +1104,8 @@ void AppController::ReconcileWindowPresentation() {
     sdk_.RepublishStats();
     self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
     // a start that began waiting on its balance while the window was hidden
+    // a sign-out that began while the window was hidden
+    self->SetSigningOut(sdk_.SigningOut());
     self->OnStartWaitChanged(sdk_.StartConnectWaiting() ? StartWaitChange::Waiting
                                                         : StartWaitChange::Ended);
     if (authState_ == AuthState::LoggedIn) balance_.Refresh();

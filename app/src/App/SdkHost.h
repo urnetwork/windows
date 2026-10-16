@@ -43,6 +43,7 @@
 #include "ServiceRecoveryPolicy.h"
 #include "SignOut.h"
 #include "SignOutConnectFence.h"
+#include "SignOutRun.h"
 #include "StartConnectWait.h"
 #include "VerifySendNotice.h"
 #include "Version.h"
@@ -981,9 +982,24 @@ class SdkHost {
   // retries it, every later pass delivers it first, and nothing is started
   // until it has been delivered. The sign-out completes in the app either way.
   // The kill switch is treated as Quit treats it: stop_tunnel lifts any
-  // firewall policy, the armed floor included. UI thread; it blocks on the
-  // lock and the pipe calls, as the stop_tunnel it replaces did.
+  // firewall policy, the armed floor included.
+  //
+  // UI thread, and it returns at once: 0 to 2 are the click's, and 3 and 4,
+  // which wait on mutex_ behind a pass in flight and on the pipe, run on a
+  // thread of their own (SignOutTail, SignOutRun.h), ending with LoggedOut.
+  // The window shows the sign-out running meanwhile (SetSignOutProgressHandler).
+  // A click while one runs joins it. A sign-in whose registration would
+  // install its credential while the tail runs waits and runs after it, and
+  // one that began before the click installs nothing, so the tail never signs
+  // out an account that signed in after it began.
   void Logout();
+  // Told true as a sign-out begins and false once its tail has ended, after
+  // LoggedOut; on the clicking thread or the tail's, and it only marshals.
+  void SetSignOutProgressHandler(std::function<void(bool signingOut)> handler) {
+    onSignOutProgress_ = std::move(handler);
+  }
+  // A sign-out's tail is still running. Any thread.
+  bool SigningOut() const { return signOutRun_.Running(); }
 
   // The tray's Quit and the end of the Windows session, the service half
   // (owner decision 2026-10-05, AppLifetime.h): the service ends with no
@@ -1024,10 +1040,17 @@ class SdkHost {
   // pendingMutex_ alone, never on mutex_: the UI thread for a close request,
   // Quit's own thread for a quit.
   bool SettleCommandsForExit(std::chrono::steady_clock::time_point deadline);
+  // Every ending's wait for a sign-out's tail, which an exit would otherwise
+  // cut short after the click signed the app out but before the local state
+  // was: true once none runs, false at `deadline`. Takes no lock of the tail's.
+  bool SettleSignOutForExit(std::chrono::steady_clock::time_point deadline) {
+    return signOutRun_.WaitIdleUntil(deadline);
+  }
   // Whether nothing runs inside this object any more: the session worker is
-  // idle and Quit, if it ran, finished. Destroyed otherwise, a pass still
-  // inside an rpc would wake into freed members, so AppController leaves it
-  // to the process exit (exitdrain::HostDestroyableAtExit). UI thread.
+  // idle, no sign-out's tail runs, and Quit, if it ran, finished. Destroyed
+  // otherwise, a pass or a tail still inside an rpc would wake into freed
+  // members, so AppController leaves it to the process exit
+  // (exitdrain::HostDestroyableAtExit). UI thread.
   bool ExitSettled();
 
   // ---- connect ------------------------------------------------------------
@@ -2811,6 +2834,19 @@ class SdkHost {
   // RequestDrawerSeed's reads, stopped with statsPublisher_ for the same reason.
   DrawerSeedHandler onDrawerSeed_;
   CoalescedWorker drawerSeedReader_{[this] { ReadDrawerSeedOnWorker(); }};
+  // ---- the sign-out's tail (Logout, SignOutRun.h) ----
+  // A registration waiting for the tail: RegisterNetworkClient's arguments.
+  struct DeferredSignIn {
+    std::string byJwt;
+    std::function<void(AuthResult)> done;
+  };
+  signoutrun::SignOutRun<DeferredSignIn> signOutRun_;
+  std::function<void(bool)> onSignOutProgress_;
+  // Logout's steps 3 and 4 under mutex_, then the sign-in that waited for them.
+  // Stopped with statsPublisher_, above mutex_: a tail in flight is waited out.
+  void SignOutTail();
+  void SignOutTailLocked();
+  CoalescedWorker signOutWorker_{[this] { SignOutTail(); }};
   void ReadDrawerSeedOnWorker();
   // SelectedLocation's value: kept by the presented controller's selection
   // listener and seeded as it opens (SubscribeStats), cleared when the session

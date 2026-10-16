@@ -367,6 +367,8 @@ SdkHost::~SdkHost() {
   // The user's writes still queued run, then the worker stops: each takes
   // mutex_, so above the lock.
   writer_.Stop();
+  // A sign-out's tail in flight is waited out the same way.
+  signOutWorker_.Stop();
   // Same rule, same reason: the rpc-sync watchdog takes mutex_ to look at the
   // device, so it is stopped and JOINED here, above the lock.
   StopSyncWatchdog();
@@ -1492,6 +1494,13 @@ bool SdkHost::ApplyNetworkServer(const std::string& hostName, const std::string&
   // approval (and an armed Google or Apple attempt) belongs to the server it began on, and
   // is answered and dropped here, before mutex_ like every caller of CancelPendingWalletFlows.
   CancelPendingWalletFlows("superseded by a network change");
+  // A sign-out's tail still runs over the old space's state: no switch until it
+  // has ended (SignOutRun.h). The sign-in sheet that asks shows only after its
+  // LoggedOut, so this is the gap before its end.
+  if (signOutRun_.Running()) {
+    LogInfo("sdkhost: network switch refused: a sign-out is still ending");
+    return false;
+  }
   bool ok = false;
   bool loggedIn = false;
   {
@@ -1654,6 +1663,22 @@ void SdkHost::RefreshJwt() {
 
 void SdkHost::RegisterNetworkClient(const std::string& byJwt,
                                     std::function<void(AuthResult)> done) {
+  // A sign-out still running: this sign-in waits for its tail and runs after it
+  // (SignOutRun.h), so the tail never logs out, or clears the credential of, an
+  // account that signed in after it began. An older one waiting is told.
+  {
+    std::optional<DeferredSignIn> replaced;
+    if (signOutRun_.Defer(DeferredSignIn{byJwt, done}, replaced)) {
+      LogInfo("sdkhost: sign-in: waits for the sign-out running to end");
+      if (replaced && replaced->done) {
+        replaced->done(AuthResult{false, false, "a newer sign-in replaced this one"});
+      }
+      return;
+    }
+  }
+  // A sign-out that begins after this moves the epoch: the callback then
+  // installs nothing for an account the user signed out of.
+  const std::uint64_t signOutEpoch = signOutRun_.Epoch();
   {
     // A new network jwt invalidates a running session (guest upgrade, verify
     // after an upgrade): tear the device + tunnel down so the registration
@@ -1676,8 +1701,9 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
   args.description = DeviceDescription();
   args.device_spec = DeviceSpec();
 
-  AuthNetworkClientWithLocale(args, [this, byJwt, done](std::optional<urnet::AuthNetworkClientResult> result,
-                                                        std::optional<std::string> err) {
+  AuthNetworkClientWithLocale(args, [this, byJwt, done, signOutEpoch](
+                                        std::optional<urnet::AuthNetworkClientResult> result,
+                                        std::optional<std::string> err) {
     if (err || !result) {
       AuthResult r{false, false, err ? *err : "no result"};
       SetAuthState(AuthState::Error, r.error);
@@ -1691,28 +1717,42 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
       return;
     }
     if (result->by_client_jwt) {
+      bool signedOutMeanwhile = false;
       {
         std::scoped_lock lock(mutex_);
-        try {
-          // SYNCHRONOUS setters, under the lock. These were
-          // asyncLocalState_->set*(..., [](bool){}): hand the commit to the
-          // SDK's own thread and carry on — and the next reader (then an
-          // immediate BootstrapSession, today the first Connect press's
-          // bootstrap) raced it. On a fresh install there is no earlier value
-          // to read, so the FIRST sign-in lost that race and reported "no
-          // client credentials are stored for this device" over an authLogin
-          // and an authNetworkClient that had both just succeeded. Pressing
-          // sign in again worked, because by then the async commit had landed
-          // — which is exactly what made it look like a flaky server rather
-          // than our own ordering. A fast Connect press can still arrive
-          // within milliseconds of this callback, so the setters stay
-          // synchronous.
-          localState_->setByJwt(byJwt);
-          localState_->setByClientJwt(*result->by_client_jwt);
-          loggedIn_.store(true, std::memory_order_release);
-        } catch (const std::exception& e) {
-          LogWarn("sdkhost: persist jwt failed: {}", e.what());
+        // Under the lock the tail's logout takes: a sign-out that began after
+        // this registration did signs its account out, so its credential is not
+        // installed; one that began after this section clears what it installs.
+        signedOutMeanwhile = signOutRun_.Epoch() != signOutEpoch;
+        if (!signedOutMeanwhile) {
+          try {
+            // SYNCHRONOUS setters, under the lock. These were
+            // asyncLocalState_->set*(..., [](bool){}): hand the commit to the
+            // SDK's own thread and carry on — and the next reader (then an
+            // immediate BootstrapSession, today the first Connect press's
+            // bootstrap) raced it. On a fresh install there is no earlier value
+            // to read, so the FIRST sign-in lost that race and reported "no
+            // client credentials are stored for this device" over an authLogin
+            // and an authNetworkClient that had both just succeeded. Pressing
+            // sign in again worked, because by then the async commit had landed
+            // — which is exactly what made it look like a flaky server rather
+            // than our own ordering. A fast Connect press can still arrive
+            // within milliseconds of this callback, so the setters stay
+            // synchronous.
+            localState_->setByJwt(byJwt);
+            localState_->setByClientJwt(*result->by_client_jwt);
+            loggedIn_.store(true, std::memory_order_release);
+          } catch (const std::exception& e) {
+            LogWarn("sdkhost: persist jwt failed: {}", e.what());
+          }
         }
+      }
+      if (signedOutMeanwhile) {
+        LogInfo("sdkhost: sign-in: signed out while it registered; its credential is not "
+                "installed");
+        AuthResult r{false, false, "signed out while this sign-in registered"};
+        if (done) done(r);
+        return;
       }
       // THE SIGN-IN SUCCEEDED, AND THAT IS ALL THAT HAPPENED. D8, owner
       // decision: signing in does not start the tunnel. BootstrapSession used
@@ -8085,6 +8125,13 @@ void SdkHost::TeardownSessionLocked(bool stopTunnel) {
 
 // See the contract in the header.
 void SdkHost::Logout() {
+  // One sign-out at a time: a click while one runs joins it (SignOutRun.h).
+  // Its sign-out controls are disabled meanwhile, so this is a second sign-out
+  // from elsewhere (the server's rejection, the sign-in page's action).
+  if (!signOutRun_.Begin()) {
+    LogInfo("sdkhost: sign-out: one is already running; this one joins it");
+    return;
+  }
   // 0. A browser or wallet flow the account started is answered and forgotten
   // (each network starts fresh, owner decision 2026-10-05): an add-sign-in
   // attempt's late return would otherwise add that sign-in method to the next
@@ -8105,10 +8152,33 @@ void SdkHost::Logout() {
   pendingCv_.notify_all();
   // 2. Signed out from here, before the lock: a pass that takes mutex_ ahead of
   // this one reads it and starts nothing for the account that is leaving
-  // (BootstrapSession, ReconcileProviderLocked). Also before SetAuthState below,
-  // whose handler asks IsLoggedIn().
+  // (BootstrapSession, ReconcileProviderLocked). Also before SetAuthState in the
+  // tail, whose handler asks IsLoggedIn().
   loggedIn_.store(false, std::memory_order_release);
-  std::scoped_lock lock(mutex_);
+  // 3 and 4 wait on mutex_, which a pass in flight holds through its rpcs up to
+  // the sdk's 60 s rpc timeout, and on the pipe: on the tail's own thread, with
+  // the window showing the sign-out running until it ends.
+  if (onSignOutProgress_) onSignOutProgress_(true);
+  signOutWorker_.Request();
+}
+
+void SdkHost::SignOutTail() {
+  {
+    std::scoped_lock lock(mutex_);
+    SignOutTailLocked();
+  }
+  // Signed out: the sign-in that waited for this tail, if any, runs now, with
+  // nothing of the signed-out account left for it to meet.
+  std::optional<DeferredSignIn> next = signOutRun_.Finish();
+  if (onSignOutProgress_) onSignOutProgress_(false);
+  if (next) {
+    LogInfo("sdkhost: sign-in: the sign-out has ended; the sign-in that waited for it runs");
+    RegisterNetworkClient(next->byJwt, std::move(next->done));
+  }
+}
+
+void SdkHost::SignOutTailLocked() {
+  // caller holds mutex_
   try {
     pendingWalletAuth_.reset();
     pendingAuthJwt_.reset();
@@ -8333,6 +8403,8 @@ bool SdkHost::ExitSettled() {
     std::scoped_lock lock(pendingMutex_);
     workerIdle = !sessionWorkerAlive_;
   }
+  // a sign-out's tail inside an rpc runs inside this host like a pass
+  if (signOutRun_.Running()) workerIdle = false;
   const bool quitFinished = !quitCompletion_ || quitCompletion_->Finished();
   return exitdrain::HostDestroyableAtExit(workerIdle, quitFinished);
 }
@@ -8381,6 +8453,8 @@ void SdkHost::QuitInOrder(std::chrono::steady_clock::time_point start) {
   drawerSeedReader_.Stop();
   // the user's writes still queued run first; each takes mutex_
   writer_.Stop();
+  // a sign-out's tail in flight ends first, under mutex_ (SignOutRun.h)
+  signOutWorker_.Stop();
   // 4. The service, under mutex_: after any pass in flight (a Connect's
   // bootstrap, a reconcile, the user's Disconnect), and with none able to
   // follow it.

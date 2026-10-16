@@ -96,7 +96,7 @@ func TestSignOutConnectFenceWiring(t *testing.T) {
 	quitRequireSequence(t, "SdkHost::SessionWorkerLoop", worker,
 		`plan\.sdkConnect && req\.kind != ConnectKind::None &&\s*signoutfence::Admits\(FenceWorkOf\(req\.kind\),\s*loggedIn_\.load\(`,
 		`ConnectLocked\(req\)`)
-	logout := functionBody(host, "void SdkHost::Logout(")
+	logout := signOutSource(t, host)
 	quitRequireSequence(t, "SdkHost::Logout", logout,
 		`loggedIn_\.store\(false`, `std::scoped_lock lock\(mutex_\)`)
 	header := stripComments(readAppSource(t, "SdkHost.h"))

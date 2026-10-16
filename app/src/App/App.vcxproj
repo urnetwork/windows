@@ -456,6 +456,7 @@
     <ClInclude Include="SdkHost.h" />
     <ClInclude Include="SeedOrder.h" />
     <ClInclude Include="SignOutConnectFence.h" />
+    <ClInclude Include="SignOutRun.h" />
     <ClInclude Include="StartConnectWait.h" />
     <ClInclude Include="VerifySendNotice.h" />
     <ClInclude Include="GuestConversion.h" />

@@ -405,6 +405,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   void OnStatsChanged(urnw::LiveStats const& stats);
   // A start waiting on its balance (StartConnectWait.h), for the connect page.
   void OnStartWaitChanged(urnw::StartWaitChange change);
+  // A sign-out's tail is running (SdkHost::Logout): its controls are disabled.
+  void SetSigningOut(bool signingOut);
   // The window is hiding to the tray (AppController::HideWindow): close whatever
   // sheet is open, so none comes back on a draft or a status read before the
   // hide (the rule EXTENDER.md O8 set for the Earnings provider transport

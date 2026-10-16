@@ -37,7 +37,7 @@ func signOutRequireInOrder(t *testing.T, where, text string, patterns ...string)
 // waits is signed out on disk, and nothing in Logout starts anything.
 func TestSignOutWiringLogoutStopsAsQuitThenForgets(t *testing.T) {
 	host := sdkHostSource(t)
-	logout := definitionBody(t, "SdkHost.cpp", host, "void SdkHost::Logout() {")
+	logout := signOutSource(t, host)
 	signOutRequireInOrder(t, "SdkHost::Logout", logout,
 		regexp.QuoteMeta("std::scoped_lock lock(pendingMutex_);"),
 		regexp.QuoteMeta("pending_ = SessionRequest{};"),

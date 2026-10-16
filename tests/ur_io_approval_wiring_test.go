@@ -166,7 +166,7 @@ func TestApprovalAttemptRidesTheFlowSerial(t *testing.T) {
 		t.Error("approvalFlow_ is not written by BeginBrowserApproval and read by RedeemApprovedCode")
 	}
 
-	logout := definitionBody(t, "SdkHost.cpp", host, "void SdkHost::Logout() {")
+	logout := signOutSource(t, host)
 	signOutRequireInOrder(t, "SdkHost::Logout", logout,
 		regexp.QuoteMeta(`CancelPendingWalletFlows("superseded by signing out");`),
 		regexp.QuoteMeta("pendingInstantJwt_.reset();"),
@@ -287,7 +287,7 @@ func TestRedeemHoldsTheCredentialUntilConfirmed(t *testing.T) {
 	holders := 0
 	for _, signature := range []string{
 		"void SdkHost::RedeemApprovedCode(", "void SdkHost::ConfirmApprovedNetwork(", "void SdkHost::DiscardApprovedNetwork(",
-		"bool SdkHost::ApplyNetworkServer(", "void SdkHost::Logout() {",
+		"bool SdkHost::ApplyNetworkServer(", "void SdkHost::SignOutTailLocked() {",
 	} {
 		holders += strings.Count(definitionBody(t, "SdkHost.cpp", host, signature), "pendingApprovedJwt_")
 	}

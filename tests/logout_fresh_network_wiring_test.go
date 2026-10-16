@@ -20,7 +20,7 @@ import (
 // asked.
 func TestLogoutFreshNetworkWiringEndsTheAccountsFlowsAndApiCredential(t *testing.T) {
 	host := sdkHostSource(t)
-	logout := definitionBody(t, "SdkHost.cpp", host, "void SdkHost::Logout() {")
+	logout := signOutSource(t, host)
 	signOutRequireInOrder(t, "SdkHost::Logout", logout,
 		regexp.QuoteMeta(`CancelPendingWalletFlows("superseded by signing out");`),
 		regexp.QuoteMeta("std::scoped_lock lock(pendingMutex_);"),

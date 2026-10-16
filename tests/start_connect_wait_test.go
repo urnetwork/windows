@@ -166,7 +166,7 @@ func TestStartConnectWaitWiring(t *testing.T) {
 	quitRequireSequence(t, "SdkHost::Disconnect", disconnect,
 		`CancelStartWait\("disconnect"\)`, `RequestSession\(`)
 
-	logout := functionBody(host, "void SdkHost::Logout(")
+	logout := signOutSource(t, host)
 	quitRequireSequence(t, "SdkHost::Logout", logout,
 		`CancelStartWait\("signing out"\)`, `loggedIn_\.store\(false`, `SetAuthState\(AuthState::LoggedOut\)`)
 

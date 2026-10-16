@@ -905,6 +905,8 @@ void SettingsPage::BuildDangerSection() {
   TextBlock unused{nullptr};
   auto signOut = NavRow(host, kit::MakeRowGlyph(kSignOutGlyph), Loc("sign_out"), unused);
   signOut.Click([this](auto const& sender, auto const& args) { OnSignOut(sender, args); });
+  signOutRow_ = signOut;
+  signOutRow_.IsEnabled(!signingOut_);
 
   // NOT red here. The spec is explicit that a destructive command must not be a
   // bright red control sitting in a default row, and that red belongs to the
@@ -1730,6 +1732,11 @@ winrt::fire_and_forget SettingsPage::ShowAppRulesSheet() {
 
 void SettingsPage::OnSignOut(IInspectable const&, RoutedEventArgs const&) {
   Sdk().Logout();
+}
+
+void SettingsPage::SetSigningOut(bool signingOut) {
+  signingOut_ = signingOut;
+  if (signOutRow_) signOutRow_.IsEnabled(!signingOut);
 }
 
 void SettingsPage::ShowPreviewSnackbar() {
