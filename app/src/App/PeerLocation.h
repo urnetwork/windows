@@ -37,6 +37,26 @@ std::string PeerDisplayName(const Peer& peer) {
   return peer.ClientId.value_or(std::string());
 }
 
+// The selected-location label the connect drawer and the status strip show
+// (req4): the location's own `name`, unless `selected` names a connected,
+// provide-enabled network peer, whose display name it then is.
+// `connectedPeers` is the device's connected peers (getNetworkPeers), which
+// PeerViewController.getPeers filters by ProvideEnabled the same way.
+// SdkHost::ReadStats resolves it off the UI thread.
+template <class Location, class PeerList>
+std::string SelectedLocationName(std::string name, const std::optional<Location>& selected,
+                                 const std::optional<PeerList>& connectedPeers) {
+  if (!selected || !selected->connect_location_id || !connectedPeers) return name;
+  const auto& clientId = selected->connect_location_id->client_id;
+  if (!clientId || clientId->empty()) return name;
+  for (const auto& peer : *connectedPeers) {
+    if (peer.ProvideEnabled && peer.ClientId && *peer.ClientId == *clientId) {
+      return PeerDisplayName(peer);
+    }
+  }
+  return name;
+}
+
 // The location a tap on a peer row connects to: the peer's client id as the
 // location id, its display name, and network_peer set.
 template <class Location, class Peer>

@@ -49,7 +49,7 @@ func TestProviderIdleReasonWiring(t *testing.T) {
 	wallet := stripLineComments(readAppSource(t, "WalletPage.cpp"))
 
 	apply := definitionBody(t, "WalletPage.cpp", wallet, "void WalletPage::ApplyProvideState(urnw::LiveStats const& stats) {")
-	read := strings.Index(apply, "Sdk().CurrentProvideControlMode()")
+	read := strings.Index(apply, "Sdk().StoredProvideControlMode()")
 	reason := strings.Index(apply, "ApplyProvideReason();")
 	gate := regexp.MustCompile(`if \(enabled [!=]= providingEnabled_\)`).FindStringIndex(apply)
 	switch {
@@ -58,8 +58,8 @@ func TestProviderIdleReasonWiring(t *testing.T) {
 	case reason > gate[0]:
 		t.Error("WalletPage::ApplyProvideState paints the idle reason behind the gate, so it would stop following the live stats")
 	}
-	if count := strings.Count(apply, "Sdk().CurrentProvideControlMode()"); count != 1 {
-		t.Errorf("WalletPage::ApplyProvideState reads the control mode %d times; it is an rpc into the service, read it once", count)
+	if count := strings.Count(apply, "Sdk().StoredProvideControlMode()"); count != 1 {
+		t.Errorf("WalletPage::ApplyProvideState reads the control mode %d times; it runs on every stats push, read the stored mode once", count)
 	}
 	for _, want := range []string{
 		"provideControlMode_ = provideridle::ProvideControlModeFrom(controlMode);",

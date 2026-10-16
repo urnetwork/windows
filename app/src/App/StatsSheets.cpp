@@ -1315,6 +1315,7 @@ std::shared_ptr<DnsEditorSheet> DnsEditorSheet::Create(
   auto sheet = std::shared_ptr<DnsEditorSheet>(new DnsEditorSheet(sdk));
   sheet->countryCode_ = ToLower(std::move(countryCode));
   sheet->countryName_ = std::move(countryName);
+  sheet->opened_ = current;
   sheet->draft_ = FromSettings(current);
   sheet->original_ = sheet->draft_;
   if (!sheet->countryCode_.empty()) {
@@ -1338,13 +1339,23 @@ void DnsEditorSheet::Build(XamlRoot const& root) {
     std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
     dialog_.PrimaryButtonClick(
         [weak](ContentDialog const&, ContentDialogButtonClickEventArgs const&) {
-          // apply the draft together; the dialog closes after this handler
-          if (auto self = weak.lock()) self->sdk_.ApplyDnsSettings(ToSettings(self->draft_));
+          // apply the draft together, over the reading it opened on (compare
+          // and set, EditorApply.h); the dialog closes after this handler
+          auto self = weak.lock();
+          if (self && self->opened_) {
+            self->sdk_.ApplyDnsSettings(self->opened_, ToSettings(self->draft_));
+          }
         });
   }
 
   StackPanel body;
   body.Spacing(12);
+
+  // No reading: the form shows blanks, not the device's resolver, and an
+  // Update would overwrite it (EditorApply.h). Said, and Update stays off.
+  if (!editorapply::DnsReadingKnown(opened_)) {
+    body.Children().Append(MakeText(Loc("dns_settings_unavailable"), 13, FaintBrush(), true));
+  }
 
   recPanel_ = StackPanel();
   recPanel_.Spacing(12);
@@ -1714,7 +1725,7 @@ void DnsEditorSheet::SyncFromDraft() {
 }
 
 void DnsEditorSheet::OnDraftChanged() {
-  dialog_.IsPrimaryButtonEnabled(!(draft_ == original_));
+  dialog_.IsPrimaryButtonEnabled(editorapply::DnsReadingKnown(opened_) && !(draft_ == original_));
   RenderRecommendationPanel();
 }
 
@@ -1751,6 +1762,7 @@ std::shared_ptr<TransportSettingsSheet> TransportSettingsSheet::Create(
     bare.mode = urnet::TransportModeAuto;
     sheet->defaults_ = bare;
   }
+  sheet->opened_ = current;
   sheet->original_ = current ? current : sheet->defaults_;
   sheet->draft_ = sheet->original_;
   sheet->status_ = sdk.CurrentTransportStatus(kind);
@@ -1781,8 +1793,13 @@ void TransportSettingsSheet::Build(XamlRoot const& root) {
         [weak](ContentDialog const&, ContentDialogButtonClickEventArgs const&) {
           // apply the draft together; the dialog closes after this handler. The
           // applied policy comes back through the device's change listener.
+          // Over the reading it opened on (compare and set, EditorApply.h):
+          // none opens on the default, which is written only while none is
+          // still the policy in force.
           auto self = weak.lock();
-          if (self && self->draft_) self->sdk_.ApplyTransportSettings(self->kind_, *self->draft_);
+          if (self && self->draft_) {
+            self->sdk_.ApplyTransportSettings(self->kind_, self->opened_, *self->draft_);
+          }
         });
   }
 

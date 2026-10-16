@@ -49,6 +49,7 @@
     <ClInclude Include="CrashDumps.h" />
     <ClInclude Include="DeleteAccountOutcome.h" />
     <ClInclude Include="DiagnosticLines.h" />
+    <ClInclude Include="ExitDrain.h" />
     <ClInclude Include="ExtenderReset.h" />
     <ClInclude Include="Heartbeat.h" />
     <ClInclude Include="Ids.h" />

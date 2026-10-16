@@ -16,6 +16,8 @@
 #include <windows.h>
 #include <shellapi.h>
 
+#include "TrayConnectionState.h"
+
 namespace urnw {
 
 // Connect x provide, matching the four macOS menu-bar assets.
@@ -27,7 +29,8 @@ class TrayIcon {
     std::function<void(POINT anchor)> onLeftClick;   // toggle flyout at anchor
     std::function<void()> onShowWindow;              // menu: Open
     std::function<void()> onConnectToggle;           // menu: Connect/Disconnect
-    std::function<bool()> isConnected;               // for the menu item label
+    // which of the two the menu offers, if either (TrayConnectionState.h)
+    std::function<tray::Action()> connectAction;
     // menu: Quit. The user's explicit Quit, which stops the tunnel and the
     // provider in the service as well as the app (AppLifetime.h).
     std::function<void()> onQuit;

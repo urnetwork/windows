@@ -19,7 +19,9 @@
 #include "BalanceGate.h"
 #include "InstanceHandover.h"
 #include "SdkHost.h"
+#include "StatsReadOrder.h"
 #include "SubscriptionBalance.h"
+#include "TrayConnectionState.h"
 #include "TrayIcon.h"
 #include "UpdateChecker.h"
 #include "UrIoApproval.h"
@@ -201,6 +203,10 @@ class AppController {
   // claim when no stats have ever flowed (the feed is presentation-scoped, so a
   // window that has never been shown has no evidence either way).
   health::State TrayHealth() const;
+  // What the tray decides its status, icon and Connect/Disconnect item on
+  // (TrayConnectionState.h): the sign-in, the service's last status and the
+  // last stats push's health. The wfp state points into lastTunnelStatus_.
+  tray::Facts CurrentTrayFacts() const;
   void ReconcileWindowPresentation();
   template <class F>
   void OnUi(F&& f);  // marshal onto the UI thread
@@ -292,6 +298,8 @@ class AppController {
   std::uint64_t windowHides_ = 0;  // how many HideWindow calls there have been (WindowHides)
   bool windowMinimized_ = false;  // IsIconic, synced by SyncWindowMinimized
   bool windowVisible_ = false;    // the reconciled result: the presentation is running
+  // which stats snapshots OnStats still applies: the newest read wins
+  urnw::StatsReadOrder statsReadOrder_;
   std::optional<proto::TunnelStatus> lastTunnelStatus_;
   // the out-of-balance state, latched (OutOfBalanceLatch) because the contract
   // status is reset with the destination and the raw push alone forgets it on

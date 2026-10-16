@@ -231,7 +231,7 @@ func TestProvideWiringAppReconcilesOnModePolicyAndKillSwitch(t *testing.T) {
 	provideRequireOrder(t, "ApplyTransportSettings", transport,
 		"localState_->setProviderTransportSettings(settings);",
 		"if (provider && !device_) RequestProviderReconcile(")
-	killSwitch := definitionBody(t, "SdkHost.cpp", source, "bool SdkHost::SetKillSwitch(bool on)")
+	killSwitch := definitionBody(t, "SdkHost.cpp", source, "void SdkHost::SetKillSwitch(bool on,")
 	provideRequireOrder(t, "SetKillSwitch", killSwitch, "service_.SetKillSwitch(on)",
 		"if (!on && !device_) RequestProviderReconcile(")
 	register := definitionBody(t, "SdkHost.cpp", source, "void SdkHost::RegisterNetworkClient(")

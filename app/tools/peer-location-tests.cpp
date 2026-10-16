@@ -4,7 +4,9 @@
 // SDK reaches the device as a trusted same-network peer (the Network provide
 // mode) and not as a public exit, as android and apple do; and a re-tap of a
 // device the user picked before the flag was set is not swallowed as "already
-// selected". Run against the same header the app compiles, on any host with a
+// selected"; and the drawer names a selected peer that is connected and
+// provides after its device (SelectedLocationName, which SdkHost::ReadStats
+// resolves off the UI thread). Run against the same header the app compiles, on any host with a
 // C++20 compiler. The rows and SdkHost cannot be built off Windows, so the
 // wiring cases read their source.
 //
@@ -32,6 +34,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "PeerLocation.h"
 
@@ -187,6 +190,51 @@ int main(int argc, char** argv) {
     Check(urnw::PeerConnectLocation<Location>(MakePeer("", "Windows 11")).name ==
               std::optional<std::string>("Windows 11"),
           "the location takes the same name the row shows");
+  }
+
+  // ---- the selected-location label (SdkHost::ReadStats) ----------------------
+
+  {
+    Case("a selected peer that is connected and provides is named after its device");
+    Location selected = urnw::PeerConnectLocation<Location>(MakePeer("Office laptop", ""));
+    // the name the location was connected under, since renamed on the device
+    selected.name = "Old laptop";
+    const std::optional<std::vector<Peer>> peers =
+        std::vector<Peer>{MakePeer("Office laptop", "Windows 11")};
+    Check(urnw::SelectedLocationName(std::string("Old laptop"), std::optional<Location>(selected),
+                                     peers) == "Office laptop",
+          "the drawer does not name the selected peer after its device");
+  }
+  {
+    Case("a selected peer that does not provide, or is not connected, keeps the location's name");
+    const Location selected = urnw::PeerConnectLocation<Location>(MakePeer("Office laptop", ""));
+    Peer notProviding = MakePeer("Office laptop renamed", "");
+    notProviding.ProvideEnabled = false;
+    Check(urnw::SelectedLocationName(std::string("Office laptop"),
+                                     std::optional<Location>(selected),
+                                     std::optional<std::vector<Peer>>(std::vector<Peer>{
+                                         notProviding})) == "Office laptop",
+          "a peer that does not provide is not one the peer list names");
+    Check(urnw::SelectedLocationName(std::string("Office laptop"),
+                                     std::optional<Location>(selected),
+                                     std::optional<std::vector<Peer>>(std::vector<Peer>{})) ==
+              "Office laptop",
+          "a peer that is not connected changed the name");
+    Check(urnw::SelectedLocationName(std::string("Office laptop"),
+                                     std::optional<Location>(selected),
+                                     std::optional<std::vector<Peer>>()) == "Office laptop",
+          "no peer list changed the name");
+  }
+  {
+    Case("a selection that is not a peer, or none, keeps the location's name");
+    const std::optional<std::vector<Peer>> peers =
+        std::vector<Peer>{MakePeer("Office laptop", "")};
+    Check(urnw::SelectedLocationName(std::string("Germany"),
+                                     std::optional<Location>(MakeCountry("de-1")), peers) ==
+              "Germany",
+          "a country was renamed after a peer");
+    Check(urnw::SelectedLocationName(std::string(), std::optional<Location>(), peers).empty(),
+          "best available was named after a peer");
   }
 
   // ---- the row coalescer's "already there" -----------------------------------

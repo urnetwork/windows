@@ -33,6 +33,7 @@
 #include "SdkHost.h"
 #include "ServiceSetup.h"
 #include "StatsSheets.h"
+#include "SeedOrder.h"
 #include "TapSequenceGate.h"
 #include "TransferChart.h"
 #include "TransportBar.h"
@@ -79,6 +80,10 @@ class ConnectPage {
 
   // ---- window-level relays ----
   void ApplyStats(urnw::LiveStats const& stats);
+  // A start waiting on its balance shows as connecting until the gate answers
+  // it (StartConnectWait.h): Admitted keeps that state into its connect, Ended
+  // goes back to the last reported status.
+  void OnStartWaitChanged(urnw::StartWaitChange change);
   // The provider extender row under the provide group (connect/EXTENDER.md N7).
   // MainWindow hands every pushed status here and to the Earnings page, as it
   // hands the live stats to both.
@@ -535,8 +540,27 @@ class ConnectPage {
   // "Connected to N providers" row (android ProviderLocationsScreen parity).
   winrt::fire_and_forget ShowProviderLocationsSheet();
   // drawer "N network peers" sub-label (req1); space-preserved (blank + Opacity
-  // 0 when there are none) so the location row never jumps
-  void ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers);
+  // 0 when there are none) so the location row never jumps. A stats push hands
+  // over its own readings (LiveStats::remoteConnected, connectedPeerCount);
+  // without them the line asks SdkHost, whose reads take mutex_.
+  struct PeerLineReading {
+    bool remoteConnected = false;
+    int64_t connectedPeerCount = 0;
+  };
+  void ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers,
+                      std::optional<PeerLineReading> reading = std::nullopt);
+  // The peers line's last reading: a stats snapshot's, with the remote half
+  // updated by the remote-changed push. Unknown reads as detached, which the
+  // line shows as discovery disabled until the first snapshot.
+  PeerLineReading peerLine_;
+  // The locations feed's last push, for the chooser sheet as it opens and for
+  // a peers push (SdkHost's getter takes mutex_).
+  std::optional<urnet::FilteredLocations> locations_;
+  // The drawer seed's reads against their listeners' pushes (SeedOrder.h).
+  urnw::SeedOrder dnsOrder_;
+  urnw::SeedOrder clientTransportOrder_;
+  urnw::SeedOrder providerTransportOrder_;
+  urnw::SeedOrder blockerOrder_;
 
   winrt::URnetwork::implementation::MainWindow& w_;
 
@@ -547,6 +571,12 @@ class ConnectPage {
   bool connected_ = false;
   // the SDK connect controller's own status (ApplyStats); see ConnectStatus
   ConnectStatus connectStatus_ = ConnectStatus::Disconnected;
+  // A start waits on its balance (OnStartWaitChanged): connectStatus_ and
+  // health_ show connecting, and the pushes meanwhile land in the two reported
+  // values, which the wait's end goes back to.
+  bool startWaiting_ = false;
+  ConnectStatus reportedConnectStatus_ = ConnectStatus::Disconnected;
+  urnw::health::State reportedHealth_ = urnw::health::State::NoService;
   // the easter egg's five-tap count on the status dot (Initialize wires it)
   TapSequenceGate connectedIconTaps_;
   // ---- #27: the aggregate connection health ----
@@ -634,6 +664,9 @@ class ConnectPage {
   // off LiveStats for the reason line ApplyConnectStatus renders. Empty means
   // nothing to say (idle, or a service that predates the field).
   std::string windowStallReason_;
+  // The last applied push's pre-clamp connection status, for the inspector's
+  // raw-status row (D5).
+  std::string rawConnectionStatus_;
   // ---- D5: Advanced Mode ----
   // Pushed from MainWindow::ApplyAdvancedMode, which is itself driven by
   // SdkHost's standing value — this page never reads the preference itself, so

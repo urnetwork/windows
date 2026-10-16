@@ -575,19 +575,15 @@ void NetworkPage::SetPresentationActive(bool active) {
 // difference - same handler, same FilteredLocations, same buckets.
 void NetworkPage::ReconcileFeeds() {
   if (selected_ && presentationActive_) {
+    // Returns at once; the feeds' content arrives on the observer pushes. No
+    // snapshot is read here: both sources load asynchronously (the view
+    // controller measured at ~1.2s against the shipped dll; the api path is
+    // an http round trip), so one read right after arming is empty by
+    // construction, and SdkHost's getters take mutex_, which the session
+    // worker holds through a whole connect. The pane says "loading" without
+    // it: every presentation close pushes the observers an empty feed
+    // (SdkHost::ClearDrawer), so the last session's buckets never show.
     Sdk().EnsureLocations();
-    if (!samplePinned_) {
-      // Deliberately not trusted to be the answer: both sources load
-      // asynchronously (the view controller measured at ~1.2s against the
-      // shipped dll; the api path is an http round trip), so a snapshot read
-      // taken right after arming is EMPTY by construction and the real content
-      // arrives on the push. This settles the state - so the pane says
-      // "loading" rather than showing the last session's buckets or nothing at
-      // all - it does not fetch.
-      locations_ = Sdk().CurrentFilteredLocations();
-      locationsState_ = Sdk().CurrentFilteredLocationState();
-      peers_ = Sdk().ConnectedProvidePeers();
-    }
   }
   if (selected_) Render();
 }

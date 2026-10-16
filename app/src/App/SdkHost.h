@@ -23,8 +23,12 @@
 #include "ApprovalNetwork.h"
 #include "BalanceGate.h"
 #include "ClientEvents.h"
+#include "CoalescedWorker.h"
+#include "EditorApply.h"
+#include "OrderedWorker.h"
 #include "ConnectAction.h"
 #include "ConnectionHealth.h"
+#include "ExitDrain.h"
 #include "ExtenderPresentation.h"
 #include "ExtenderReset.h"
 #include "MobileBroadband.h"
@@ -38,6 +42,8 @@
 #include "ServiceClient.h"
 #include "ServiceRecoveryPolicy.h"
 #include "SignOut.h"
+#include "SignOutConnectFence.h"
+#include "StartConnectWait.h"
 #include "VerifySendNotice.h"
 #include "Version.h"
 #include "WalletBridgeRoute.h"
@@ -110,6 +116,10 @@ struct CreateNetworkParams {
 // Snapshot of live connection / throughput / provide stats. Pushed to the UI on
 // SDK listener callbacks (macOS parity: listener-push, not polling).
 struct LiveStats {
+  // The read's place in the order reads began (SdkHost::ReadStats), from 1:
+  // the UI applies a snapshot only when it is newer than every one it applied
+  // (StatsReadOrder.h), since reads on different threads finish out of order.
+  std::uint64_t readSequence = 0;
   // getConnectionStatus() (CONNECTED/CONNECTING/DESTINATION_SET/DISCONNECTED)
   // -- EXCEPT in an rpc-only session, where it is forced to the deliberately
   // unrecognised "RPC_ONLY" so the connect page renders as disconnected. There
@@ -145,7 +155,15 @@ struct LiveStats {
   // service does not answer and which is read while the window presents
   // (SdkHost::ProviderOnlyStatsLoop).
   bool provideClientsUnknown = false;
-  std::string locationName;       // selected connect location (empty = best available)
+  // selected connect location (empty = best available); a selected network
+  // peer by its device's name (PeerLocation.h SelectedLocationName)
+  std::string locationName;
+  // The connect page's peers line (req1), read here so a stats push makes no
+  // SdkHost read on the UI thread: the device's rpc to the service is
+  // attached (RemoteConnected), and how many devices are connected, providing
+  // or not (ConnectedPeerCount's figure, from the device itself).
+  bool remoteConnected = false;
+  int64_t connectedPeerCount = 0;
   std::string countryCode;        // selected location country code (dns recommendations)
   std::string countryName;
 
@@ -219,6 +237,17 @@ struct PerformanceSettings {
   bool fixedIp = false;       // window size pinned to [1,1]
   bool allowDirect = false;   // inverse of the "Strong Anonymization" toggle
   bool postQuantum = false;   // "Post Quantum Encryption" toggle (not inverted)
+};
+
+// The connect drawer's settings that only the device knows, read off the UI
+// thread for a window that is built or signed in (SdkHost::RequestDrawerSeed):
+// each getter can wait on the device's state lock behind a held command for
+// the rpc timeout. Their listeners push later changes (SeedOrder.h).
+struct DrawerSeed {
+  std::optional<urnet::DnsResolverSettings> dns;
+  std::optional<urnet::TransportSettings> clientTransport;
+  std::optional<urnet::TransportSettings> providerTransport;
+  bool blockerEnabled = false;
 };
 
 // One contract, un-aggregated: its own used/total byte counts and bit rate.
@@ -930,12 +959,15 @@ class SdkHost {
   // network starts fresh). In order:
   //   0. the browser and wallet flows the account started are answered and
   //      forgotten (CancelPendingWalletFlows), so a late add-sign-in return
-  //      cannot add a method to the next account signed in;
+  //      cannot add a method to the next account signed in, and a start
+  //      waiting on its balance is cancelled (StartConnectWait.h);
   //   1. the session-request slot is emptied: a connect, a settling row click
   //      or a reconcile queued for the signed-out account never runs;
   //   2. the app is signed out (loggedIn_) before the lock, so a pass that
   //      takes mutex_ first starts nothing for the account: BootstrapSession
-  //      and ReconcileProviderLocked read it before the stored jwt;
+  //      and ReconcileProviderLocked read it before the stored jwt, a pass
+  //      that took a connect skips it, and a connect request is refused
+  //      (SignOutConnectFence.h) until the next sign-in;
   //   3. under mutex_, so after any pass in flight: the local credentials are
   //      logged out and the api's credential cleared (the next sign-in's calls
   //      would otherwise carry it), then the sign-out is recorded as owed
@@ -953,16 +985,24 @@ class SdkHost {
   // lock and the pipe calls, as the stop_tunnel it replaces did.
   void Logout();
 
-  // The tray's Quit, the service half (owner decision 2026-10-05,
-  // AppLifetime.h): the service ends with no session and no provider-only
-  // device, and nothing in this process starts either again. In order:
-  //   1. the session-request slot is emptied and closed for good, so a pass
-  //      already queued, the failsafe edge, a mode change or the watchdog's
-  //      recovery cannot reach start_tunnel or start_provider afterwards;
-  //   2. this object's own threads are stopped and joined: the service
-  //      watchdog, the presentation worker, the rpc-sync watchdog and the
-  //      provider-only statistics loop with its provider status poll;
-  //   3. under mutex_, so after any pass in flight: stop_tunnel, which ends
+  // The tray's Quit and the end of the Windows session, the service half
+  // (owner decision 2026-10-05, AppLifetime.h): the service ends with no
+  // session and no provider-only device, and nothing in this process starts
+  // either again. In order, on a thread of its own (QuitInOrder):
+  //   1. the session-request slot is closed for good, so the failsafe edge, a
+  //      mode change or the watchdog's recovery cannot reach start_tunnel or
+  //      start_provider afterwards; of what it holds only the user's
+  //      Disconnect is kept (ExitDrain.h), and the wait for it and for a pass
+  //      in flight ends at exitdrain::kCommandsCap;
+  //   2. a pass still holding mutex_ inside an rpc at that cap does not hold
+  //      the service stop: stop_tunnel and stop_provider go without the lock
+  //      (StopServiceWithoutLock), and the locked stop below follows if the
+  //      pass returns before the process ends;
+  //   3. this object's own threads are stopped and joined: the service
+  //      watchdog, the presentation worker, the rpc-sync watchdog, the
+  //      provider-only statistics loop with its provider status poll, and the
+  //      stats publish worker;
+  //   4. under mutex_, so after any pass in flight: stop_tunnel, which ends
   //      the session (tunnel or rpc-only) and lifts any firewall policy, the
   //      kill switch's armed floor included, as Disconnect does; then
   //      stop_provider; then the DeviceRemote and the saved rpc session go.
@@ -971,10 +1011,24 @@ class SdkHost {
   // provide mode and the auth are untouched: quitting is not signing out, and
   // the next launch reconciles from them.
   //
-  // Blocking (joins, the lock, two pipe calls), and it is the last thing the
-  // app does: AppController::Shutdown calls it from the UI thread after the
-  // window and the tray are gone. Not undone: the process is ending.
+  // Returns once that is done, or at exitdrain::kQuitCap whatever is still
+  // running: AppController::Shutdown calls it from the UI thread after the
+  // window and the tray are gone, and from inside WM_ENDSESSION for a sign-out
+  // of Windows or a shutdown, which must not hang. Not undone: the process is
+  // ending. ExitSettled says whether anything still runs in this object.
   void Quit();
+  // Every other ending's wait (a close request: taskkill, an installer): the
+  // service keeps what it runs, but the user's Disconnect still queued runs
+  // first, and anything else queued is dropped (ExitDrain.h). Returns true
+  // once the session worker is idle, false at `deadline`. Waits on
+  // pendingMutex_ alone, never on mutex_: the UI thread for a close request,
+  // Quit's own thread for a quit.
+  bool SettleCommandsForExit(std::chrono::steady_clock::time_point deadline);
+  // Whether nothing runs inside this object any more: the session worker is
+  // idle and Quit, if it ran, finished. Destroyed otherwise, a pass still
+  // inside an rpc would wake into freed members, so AppController leaves it
+  // to the process exit (exitdrain::HostDestroyableAtExit). UI thread.
+  bool ExitSettled();
 
   // ---- connect ------------------------------------------------------------
   //
@@ -1009,6 +1063,15 @@ class SdkHost {
   // that runs out of balance is never dropped by this.
   void ConnectBestAvailable();
   void Connect(const std::string& connectLocationJson);
+  // Connect to what the user picked: the presented controller's selection,
+  // else the device's location, best available when that is none or flagged
+  // so (IsBestAvailableSelected). Resolved on the session worker, because
+  // SelectedLocation takes mutex_ (held across whole bootstraps) and, with no
+  // presented controller, reads the device: the connect button and the
+  // balance recovery's rebuild read nothing on the caller's thread. With no
+  // session nothing is selected, so it is best available, as SelectedLocation
+  // answered then.
+  void ConnectSelected();
   void Disconnect();
   // The start-connect gate. facts gives urnw::balance::StartConnectFacts for
   // this instant; upgrade shows the upgrade path in place of a blocked
@@ -1035,9 +1098,21 @@ class SdkHost {
     connectAdmitted_ = std::move(admitted);
     onUserDisconnect_ = std::move(disconnected);
   }
+  // A start waiting on its balance (StartConnectWait.h): told Waiting as it
+  // begins, and how it ended at the moment the gate answers it again, before
+  // its upgrade path opens; Ended when a disconnect or a sign-out cancels it.
+  // Called on the UI thread, inside the gesture or the fetch's settle.
+  void SetStartWaitHandler(std::function<void(StartWaitChange)> handler) {
+    onStartWait_ = std::move(handler);
+  }
+  // Whether a start waits on its balance now, for a window that shows after
+  // it began. UI thread.
+  bool StartConnectWaiting() const { return startWait_.Waiting(); }
   // Whether a connect gesture may start now; when not, shows the upgrade path,
   // or, on a stale balance, fetches it and runs `again` (the same gesture,
-  // asked anew) once the fetch settles. `what` names the entry point in the log.
+  // asked anew) once the fetch settles, unless a newer tap, a disconnect or a
+  // sign-out came first (StartConnectWait.h). `what` names the entry point in
+  // the log.
   bool AdmitStartConnect(const char* what, std::function<void()> again);
   // Runs a connect gesture the gate refused earlier (the one upgrade was
   // handed) past the gate, and not as a new gesture: the balance recovery
@@ -1140,6 +1215,12 @@ class SdkHost {
   // torn-down feed that nothing puts back, and the snapshot getters CANNOT
   // recover from that on their own (both the SDK's initial load and the api
   // fetch are async; a read taken right after either starts is always empty).
+  //
+  // Returns at once: the work runs on locationsOpener_, because it takes
+  // mutex_, which the session worker holds across whole bootstraps, and opens
+  // the device's view controllers, whose rpcs wait behind a held command. Its
+  // callers are on the UI thread (a window built, a sheet opened, the Network
+  // destination shown); what it opens reaches them through the handlers.
   void EnsureLocations();
   // Set the provider-list search query. Proxies to the view controller when one
   // exists; otherwise runs the SAME two-endpoint dispatch the view controller
@@ -1170,8 +1251,13 @@ class SdkHost {
   // service's device: while this is false the peer count is unavailable
   // (not zero) and the peers status line shows a disabled-discovery state.
   bool RemoteConnected();
-  // The selected connect location (the chooser's selection check + the drawer's
-  // selected-peer name resolution).
+  // The selected connect location (the chooser's and the Network pane's check
+  // glyphs, the provider-locations sheet). The presented controller's
+  // selection as its listener last reported it (selectedLocation_), taken
+  // under a leaf lock: the sheets read it on every render, on the UI thread,
+  // and the controller and the device sat behind mutex_, which the session
+  // worker holds through a whole connect. Best available (nullopt) before the
+  // first presentation and once the session ends.
   std::optional<urnet::ConnectLocation> SelectedLocation();
   // Connect to a chosen provider location as-is: the chooser holds the typed
   // ConnectLocation (an SDK one, or one it built from a peer), so skip the json
@@ -1226,15 +1312,20 @@ class SdkHost {
   void SetJwtRefreshedHandler(JwtRefreshedHandler h) { onJwtRefreshed_ = std::move(h); }
   void SetTunnelStateHandler(TunnelStateHandler h) { onTunnel_ = std::move(h); }
   // Live stats push (connection/throughput/provide). Fired on SDK listener
-  // callbacks; the UI marshals to its thread and applies visibility gating.
+  // callbacks and on this object's own threads, never on the UI thread; the UI
+  // marshals to its thread, applies the snapshots in read order
+  // (LiveStats::readSequence) and applies visibility gating.
   void SetStatsHandler(StatsHandler h) { onStats_ = std::move(h); }
-  LiveStats CurrentStats();  // snapshot on demand (e.g. resync when window shows)
   // Read a fresh snapshot and push it through the stats handler, exactly like
-  // an SDK listener firing. For LiveStats::healthReevalAtMillis: the degrade
-  // hold expires on the clock, and this is the clock's way to reach every
-  // consumer (window AND tray) through the one existing path instead of a
-  // side-channel that could disagree with it.
-  void RepublishStats() { PublishStats(); }
+  // an SDK listener firing, and return at once: the read runs on the stats
+  // publish worker, since its DeviceRemote getters wait on the device's state
+  // lock, which a connect write holds through its rpc for up to the rpc
+  // timeout. Requests while a read runs fold into one more read. For the
+  // window's resync when it shows, and for LiveStats::healthReevalAtMillis:
+  // the degrade hold expires on the clock, and this is the clock's way to reach
+  // every consumer (window AND tray) through the one existing path instead of a
+  // side-channel that could disagree with it. Any thread.
+  void RepublishStats() { statsPublisher_.Request(); }
 
   // ---- connect drawer (stats cards + sheets) -------------------------------
   // Push handlers, set once by the window; fired on SDK callback threads, and
@@ -1249,6 +1340,21 @@ class SdkHost {
   void SetSplitRulesHandler(SplitRulesHandler h) { onSplitRules_ = std::move(h); }
   void SetDnsSettingsHandler(DnsSettingsHandler h) { onDnsSettings_ = std::move(h); }
   void SetBlockerEnabledHandler(BlockerEnabledHandler h) { onBlockerEnabled_ = std::move(h); }
+  // RequestDrawerSeed's answer, on the seed reader's thread; it only marshals.
+  using DrawerSeedHandler = std::function<void(DrawerSeed)>;
+  void SetDrawerSeedHandler(DrawerSeedHandler h) { onDrawerSeed_ = std::move(h); }
+  // Reads the DrawerSeed off the caller's thread and hands it to the handler;
+  // returns at once. Requests coalesce into one read, which answers the last.
+  void RequestDrawerSeed() { drawerSeedReader_.Request(); }
+  // The kill switch, the provide control mode and the performance settings as
+  // the app last stored them: its own setters keep LocalState first, and the
+  // session bootstrap restores the device from it, so a window that shows
+  // reads them here instead of from the device (CurrentKillSwitch and its
+  // siblings ask the DeviceRemote, which a held command keeps for the rpc
+  // timeout). No rpc, no mutex_: safe on the UI thread.
+  bool StoredKillSwitch();
+  std::string StoredProvideControlMode();
+  PerformanceSettings StoredPerformanceSettings();
   void SetExtenderStatusHandler(ExtenderStatusHandler h) {
     onExtenderStatus_ = std::move(h);
   }
@@ -1491,7 +1597,12 @@ class SdkHost {
   std::optional<urnet::TransportStatus> CurrentTransportStatus(TransportSettingsKind kind);
   PerformanceSettings CurrentPerformanceSettings();
 
-  // Drawer mutations (called from the UI thread).
+  // Drawer mutations, called from the UI thread. Each returns at once: the
+  // write runs on this object's write worker (OrderedWorker.h), after every
+  // write made before it, because it takes mutex_ (held across whole
+  // bootstraps and connect passes) and a DeviceRemote setter holds the
+  // device's state lock through its rpc, up to the rpc timeout. What a write
+  // changes comes back through the handlers below, from that worker.
   // Connection mode / fixed ip / strong anonymization / post quantum -> device
   // performance profile. Always writes a profile — Auto carries window_type
   // "auto" with no window size — so the orthogonal settings (allowDirect,
@@ -1510,10 +1621,11 @@ class SdkHost {
   // with no service session still sees and sets the real value. Without the
   // LocalState leg this control would be permanently dead outside a live tunnel.
   bool CurrentKillSwitch();
-  // Returns false when the setting did NOT fully apply. Callers must read
-  // CurrentKillSwitch() back and show the real state: a toggle left On over a
-  // setting that did not take is the one failure mode here that costs privacy.
-  bool SetKillSwitch(bool on);
+  // `done` hears whether the setting fully applied and the value read back
+  // after the write, on the write worker. Callers must show that value: a
+  // toggle left On over a setting that did not take is the one failure mode
+  // here that costs privacy.
+  void SetKillSwitch(bool on, std::function<void(bool applied, bool actual)> done = {});
   // Provide/earn control mode: "never"|"always"|"network"|"auto"|"manual".
   // "network" is the private provider: the provider is always on, but provides
   // ONLY to same-network peers — never publicly. Persisted in LocalState like
@@ -1539,7 +1651,11 @@ class SdkHost {
   // (SpeedTestsWriteRouteFor). No app-side mirror; callers never write while
   // the switch is hidden (N1).
   void SetMeasurementsEnabled(bool on);
-  void ApplyDnsSettings(const urnet::DnsResolverSettings& settings);
+  // The DNS editor's Update: written only while the device's settings are
+  // still `opened`, the reading the editor opened on (EditorApply.h); the
+  // views take the device's reading either way.
+  void ApplyDnsSettings(const std::optional<urnet::DnsResolverSettings>& opened,
+                        const urnet::DnsResolverSettings& settings);
   // Apply a transport policy (client or provider) to the device AND mirror it
   // into the app LocalState. The service's DeviceLocal persists the policy in
   // ITS local state and restores it at creation, so a policy set while the
@@ -1551,7 +1667,11 @@ class SdkHost {
   // from it (apple DeviceManager.initDevice parity). The applied policy comes
   // back through the change listener (the service's truth when attached, the
   // queued value when not).
+  // Written only while the policy in force is still `opened`, the reading the
+  // editor opened on (EditorApply.h); otherwise nothing is written and the
+  // views take the policy in force.
   void ApplyTransportSettings(TransportSettingsKind kind,
+                              const std::optional<urnet::TransportSettings>& opened,
                               const urnet::TransportSettings& settings);
   // The create wrappers return the new override's id ("" when nothing was
   // written - no device, empty hosts, or the rpc threw), because the caller's
@@ -1873,7 +1993,10 @@ class SdkHost {
   // step" (ReconcileProviderLocked), with no gesture, no bootstrap and no attach.
   // Every pass of the worker that leaves no session ends with that reconcile, so
   // a Provider request is covered by whatever else is pending.
-  enum class ConnectKind { None, BestAvailable, Location, Disconnect, Provider };
+  //
+  // Selected is the connect button's "what the user picked", resolved by the
+  // worker under mutex_ (ConnectLocked): the press itself reads nothing.
+  enum class ConnectKind { None, BestAvailable, Location, Selected, Disconnect, Provider };
   struct SessionRequest {
     ConnectKind kind = ConnectKind::None;
     std::optional<urnet::ConnectLocation> location;
@@ -1897,15 +2020,40 @@ class SdkHost {
   // this one" and the coalesced row click: they reach the same worker and want
   // the same plan, and the table pins them as separate rows so that a future
   // divergence has to be a deliberate one.
+  // The request in the sign-out fence's terms (SignOutConnectFence.h).
+  static constexpr signoutfence::Work FenceWorkOf(ConnectKind kind) {
+    switch (kind) {
+      case ConnectKind::BestAvailable: return signoutfence::Work::Connect;
+      case ConnectKind::Location:      return signoutfence::Work::Connect;
+      case ConnectKind::Selected:      return signoutfence::Work::Connect;
+      case ConnectKind::Disconnect:    return signoutfence::Work::Disconnect;
+      case ConnectKind::Provider:      return signoutfence::Work::Provider;
+      case ConnectKind::None:          break;
+    }
+    return signoutfence::Work::Ensure;
+  }
   static constexpr gesture::Gesture GestureOf(ConnectKind kind) {
     switch (kind) {
       case ConnectKind::BestAvailable: return gesture::Gesture::Connect;
       case ConnectKind::Location:      return gesture::Gesture::ConnectRow;
+      case ConnectKind::Selected:      return gesture::Gesture::Connect;
       case ConnectKind::Disconnect:    return gesture::Gesture::Disconnect;
       case ConnectKind::None:          break;
       case ConnectKind::Provider:      break;  // never reaches the table
     }
     return gesture::Gesture::EnsureSession;
+  }
+  // The queued request in the words an ending decides by (ExitDrain.h).
+  static constexpr exitdrain::Queued QueuedOf(ConnectKind kind) {
+    switch (kind) {
+      case ConnectKind::Disconnect:    return exitdrain::Queued::Disconnect;
+      case ConnectKind::BestAvailable: return exitdrain::Queued::Connect;
+      case ConnectKind::Location:      return exitdrain::Queued::Connect;
+      case ConnectKind::Selected:      return exitdrain::Queued::Connect;
+      case ConnectKind::Provider:      return exitdrain::Queued::Provider;
+      case ConnectKind::None:          break;
+    }
+    return exitdrain::Queued::Ensure;
   }
   // Record the request and make sure a worker is running. Takes ONLY
   // pendingMutex_ — never mutex_ — so it is safe from the UI thread while a
@@ -1916,7 +2064,8 @@ class SdkHost {
   // producer holds while it tests it, so a request that lands as the worker is
   // finishing cannot be dropped.
   void SessionWorkerLoop();
-  // Apply the request's connect intent. Caller holds mutex_.
+  // Apply the request's connect intent, reading the selection for a Selected
+  // one (ConnectSelected). Caller holds mutex_.
   void ConnectLocked(const SessionRequest& request);
   // Row-click support (see ConnectFromRow). Whether the session is already
   // driving at the clicked target: `matches` is handed the SDK's own selected
@@ -1945,8 +2094,9 @@ class SdkHost {
   // and for every RequestProviderReconcile.
   void ReconcileProviderLocked(const char* reason);
   // Queue that reconcile on the session worker, off the calling thread — the
-  // UI thread for a mode, policy or kill-switch change: start_provider builds a
-  // DeviceLocal in the service, and a click must not wait on it.
+  // write worker for a mode, policy or kill-switch change: start_provider
+  // builds a DeviceLocal in the service, and the writes behind it must not
+  // wait on it.
   void RequestProviderReconcile(const char* reason);
   // The provide fields of a snapshot with no DeviceRemote: the provider-only
   // device as the service's last status said, and its client count as the
@@ -1994,7 +2144,7 @@ class SdkHost {
   void ResetProviderOnlyStatus();
   void ProviderOnlyStatusUnavailable();
   // The Extender switch's write with no session: queued by SetProvideExtender
-  // (the UI thread) and sent by ProviderOnlyStatsLoop, outside mutex_. Written
+  // (the write worker) and sent by ProviderOnlyStatsLoop, outside mutex_. Written
   // or refused, the next published status replaces the switch's guess.
   void QueueProviderOnlyExtenderWrite(bool on);
   void WriteProviderOnlyExtender(bool on);
@@ -2043,6 +2193,16 @@ class SdkHost {
   // RequestSession records nothing and ReconcileProviderLocked asks the service
   // nothing. Atomic because the reconcile reads it under mutex_ alone.
   std::atomic<bool> quitting_{false};
+  // Quit's steps after the slot is closed, on the quit's own thread; `start`
+  // is when Quit began, which the commands' cap counts from.
+  void QuitInOrder(std::chrono::steady_clock::time_point start);
+  // stop_tunnel, then stop_provider, without mutex_: a pass still holds it
+  // inside an rpc. The pipe serializes the calls behind the pass's own
+  // (PipeClient::Call), as it does the tray's force-stop (StopServiceTunnel).
+  void StopServiceWithoutLock();
+  // Quit's thread, finished once its steps are done; null until Quit runs.
+  // UI thread only.
+  std::shared_ptr<exitdrain::Completion> quitCompletion_;
 
   // ---- the sign-out the service is owed (Common/SignOut.h) -------------------
   //
@@ -2244,6 +2404,8 @@ class SdkHost {
   void SubscribeStats();          // caller holds mutex_; opens presentation controllers
   LiveStats ReadStats();          // read the current snapshot from the SDK getters
   void PublishStats();            // ReadStats() -> onStats_
+  // PublishStats as statsPublisher_'s job: a throw is logged, not propagated
+  void PublishStatsOnWorker();
   void ClampCaptureStats(LiveStats& stats) const;
   // Drawer feeds: subscribe listeners (in BootstrapSession) and publish
   // snapshots, only on change (block actions storm per routing decision).
@@ -2331,6 +2493,18 @@ class SdkHost {
   std::function<void()> onUserDisconnect_;
   // RetryRefusedConnect is running the refused gesture: the gate admits it
   bool retryingRefusedConnect_ = false;
+  // the one start waiting on its balance, and its handler (SetStartWaitHandler);
+  // UI thread only, as every connect entry point
+  StartConnectWait startWait_;
+  std::function<void(StartWaitChange)> onStartWait_;
+  // The gate's FetchBalance: the start waits, and asks again once the fetch
+  // settles unless a newer tap, a disconnect or a sign-out came first.
+  void WaitForBalance(std::function<void()> again);
+  // Tells the views how a start that waited was answered (admitted or not),
+  // when the gate answers it; nothing for a gesture that did not wait.
+  void TellStartWaitOutcome(bool admitted);
+  // Ends a waiting start for a disconnect or a sign-out.
+  void CancelStartWait(const char* why);
   bool productUpdatesOptOut_ = false;  // the next create's product_updates
   // the sign-up pages' opt-out onto a create's args (absent = opted in)
   void ApplySignupPreferences(urnet::NetworkCreateArgs& args) const;
@@ -2616,15 +2790,48 @@ class SdkHost {
   std::string lastServiceWfpState_ = "off";
   // ---- aggregate connection health (#27) ------------------------------------
   // The one Tracker (ConnectionHealth.h) behind its own SMALL lock, never
-  // mutex_: ReadStats is deliberately lock-free against mutex_ (it runs on the
-  // UI thread and on SDK callback threads while a bootstrap can hold mutex_
-  // for seconds, and with mutex_ already held, for SubscribeStats' snapshot
+  // mutex_: ReadStats is deliberately lock-free against mutex_ (it runs on SDK
+  // callback threads and the stats publish worker while a bootstrap can hold
+  // mutex_ for seconds, and with mutex_ already held, for SubscribeStats' snapshot
   // and for the listeners ConnectLocked's write tells inline on the session
   // worker), and the tracker is folded in at the end of ReadStats. The
   // lock covers Update/ReevalAtMillis as one unit and NoteNewAttempt from the
   // session worker; it is held across nothing else.
   mutable std::mutex healthMutex_;
   health::Tracker healthTracker_;
+  // The last read sequence ReadStats handed out (LiveStats::readSequence).
+  std::atomic<std::uint64_t> statsReadSequence_{0};
+  // RepublishStats' reads, off the caller's thread (CoalescedWorker.h). Stopped
+  // with this object's other threads, above mutex_, by Quit and the destructor:
+  // a read in flight is waited out, and none starts after.
+  CoalescedWorker statsPublisher_{[this] { PublishStatsOnWorker(); }};
+  // EnsureLocations' work, off the caller's thread, stopped with
+  // statsPublisher_ for the same reason.
+  CoalescedWorker locationsOpener_{[this] { EnsureLocationsOnWorker(); }};
+  // RequestDrawerSeed's reads, stopped with statsPublisher_ for the same reason.
+  DrawerSeedHandler onDrawerSeed_;
+  CoalescedWorker drawerSeedReader_{[this] { ReadDrawerSeedOnWorker(); }};
+  void ReadDrawerSeedOnWorker();
+  // SelectedLocation's value: kept by the presented controller's selection
+  // listener and seeded as it opens (SubscribeStats), cleared when the session
+  // ends (ClosePresentationLocked). A leaf, held across nothing.
+  std::mutex selectedLocationMutex_;
+  std::optional<urnet::ConnectLocation> selectedLocation_;
+  void KeepSelectedLocation(std::optional<urnet::ConnectLocation> location);
+  // EnsureLocationsLocked under mutex_, as locationsOpener_'s job: a throw is
+  // logged, not propagated.
+  void EnsureLocationsOnWorker();
+  // The drawer mutations' writes, in the order made (OrderedWorker.h). Stopped
+  // with the stats publisher, above mutex_: the writes still queued run first.
+  OrderedWorker writer_;
+  // Queues a drawer mutation's write on writer_; `what` names it in the log.
+  void PostWrite(const char* what, std::function<void()> job);
+  // The three rule creates: the id at once, the write on writer_; `shape` sets
+  // the override's kind on it.
+  std::string PostRuleCreate(const char* what, const std::vector<std::string>& hosts,
+                             std::function<void(urnet::BlockActionOverride&)> shape);
+  // RemoveSplitRule's write, also UpdateSplitRule's with no hosts. writer_ only.
+  void RemoveSplitRuleOnWriter(const std::string& overrideId);
   // The egress binding currently in force on THIS process's SDK instance, as a
   // packed (index4, index6) pair, and the lock that keeps the compare and the
   // SDK call together.

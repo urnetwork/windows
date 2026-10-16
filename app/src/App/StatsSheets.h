@@ -336,6 +336,9 @@ class DnsEditorSheet : public std::enable_shared_from_this<DnsEditorSheet> {
 
   Draft draft_;
   Draft original_;
+  // the reading the editor opened on: none takes no Update, and an Update
+  // writes only while it is still the device's (EditorApply.h)
+  std::optional<urnet::DnsResolverSettings> opened_;
   std::optional<Draft> recommendation_;  // for the connected country, when any
   std::optional<Draft> defaults_;        // most secure defaults
   std::string countryCode_;              // lowercased
@@ -409,6 +412,9 @@ class TransportSettingsSheet : public std::enable_shared_from_this<TransportSett
 
   std::optional<urnet::TransportSettings> draft_;
   std::optional<urnet::TransportSettings> original_;
+  // the reading the editor opened on (none: the default in force, as far as
+  // the page knows); an Update writes only while it still is (EditorApply.h)
+  std::optional<urnet::TransportSettings> opened_;
   std::optional<urnet::TransportSettings> defaults_;
   std::optional<urnet::TransportStatus> status_;
   std::vector<std::string> selectableModes_;  // the SDK's list, in its order

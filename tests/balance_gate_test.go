@@ -72,7 +72,7 @@ func TestConnectEntryPointsAdmitStartConnect(t *testing.T) {
 
 	app := stripLineComments(readAppSource(t, "AppController.cpp"))
 	start := strings.Index(app, "cb.onConnectToggle = [this] {")
-	end := strings.Index(app, "cb.isConnected = ")
+	end := strings.Index(app, "cb.connectAction = ")
 	if start < 0 || end < start {
 		t.Fatal("AppController.cpp: no tray connect toggle; update this contract")
 	}
@@ -199,14 +199,21 @@ func TestBalanceRecoveryWiring(t *testing.T) {
 	ticker := stripLineComments(readAppSource(t, "FreeRefreshTicker.cpp"))
 
 	admit := definitionBody(t, "SdkHost.cpp", host, "bool SdkHost::AdmitStartConnect(const char* what, std::function<void()> again)")
+	// the retry passes the gate; a start that waited on its balance is told
+	// its outcome there too (start_connect_wait_test.go)
 	for _, want := range []string{
-		"if (!startConnectFacts_ || retryingRefusedConnect_) return true;",
+		"if (!startConnectFacts_ || retryingRefusedConnect_) {",
+		"return true;",
 		"host.startConnectUpgrade_(again);",
-		"if (admitted && connectAdmitted_) connectAdmitted_();",
+		"if (connectAdmitted_) connectAdmitted_();",
 	} {
 		if !strings.Contains(admit, want) {
 			t.Errorf("SdkHost::AdmitStartConnect: missing %s", want)
 		}
+	}
+	if decided := strings.Index(admit, "AdmitStartConnect(startConnectFacts_(), sinks)"); decided < 0 ||
+		!strings.Contains(admit[decided:], "if (admitted) {") {
+		t.Errorf("SdkHost::AdmitStartConnect: the observer must hear only an admitted gesture")
 	}
 	retry := definitionBody(t, "SdkHost.cpp", host, "void SdkHost::RetryRefusedConnect(const std::function<void()>& connect)")
 	set := strings.Index(retry, "retryingRefusedConnect_ = true;")
@@ -232,7 +239,7 @@ func TestBalanceRecoveryWiring(t *testing.T) {
 	if !strings.Contains(app, "sdk_.SetConnectGestureObserver([this] { ClearBalanceRecovery(); },") {
 		t.Error("AppController.cpp: an admitted connect or the user's Disconnect does not end the wait")
 	}
-	tray := app[strings.Index(app, "cb.onConnectToggle = [this] {"):strings.Index(app, "cb.isConnected = ")]
+	tray := app[strings.Index(app, "cb.onConnectToggle = [this] {"):strings.Index(app, "cb.connectAction = ")]
 	if !strings.Contains(tray, "app.WaitOnBalance(") {
 		t.Error("AppController.cpp: the tray's refused Connect does not wait on the balance")
 	}
@@ -262,7 +269,8 @@ func TestBalanceRecoveryWiring(t *testing.T) {
 	}
 	// every retry goes past the gate, never through a gated entry point directly
 	if strings.Count(observe, "sdk_.RetryRefusedConnect(") != 2 ||
-		strings.Count(observe, "sdk_.Connect") != strings.Count(observe, "sdk_.Connect(*location);")+strings.Count(observe, "sdk_.ConnectBestAvailable();") {
+		strings.Count(observe, "sdk_.Connect") != strings.Count(observe, "sdk_.Connect(*location);")+
+			strings.Count(observe, "sdk_.ConnectBestAvailable();")+strings.Count(observe, "sdk_.ConnectSelected();") {
 		t.Error("AppController::ObserveBalanceRecovery: a retry does not go through RetryRefusedConnect")
 	}
 	auth := definitionBody(t, "AppController.cpp", app, "void AppController::OnAuthState(AuthState state, const std::string& error)")

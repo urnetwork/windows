@@ -733,7 +733,7 @@ void WalletPage::ApplyStrings() {
   // pane C
   w_.NetworkReliabilityHeading().Text(Loc("site_app_network_reliability"));
   w_.WalletProvideModeLabel().Text(Loc("provide_mode"));
-  w_.WalletProvideModeValue().Text(Loc(Sdk().CurrentProvideControlMode().c_str()));
+  w_.WalletProvideModeValue().Text(Loc(Sdk().StoredProvideControlMode().c_str()));
   // the idle reason's action (P008) and its line, in the language
   w_.WalletProvideReasonChange().Content(LocBox("change"));
   ApplyProvideReason();
@@ -4577,7 +4577,8 @@ void WalletPage::ApplyProvideState(urnw::LiveStats const& stats) {
   w_.WalletProvideModeRing().Stroke(urnw::colors::MakeBrush(visual.color));
   w_.WalletProvideModeRing().Visibility(visual.ring ? Visibility::Visible : Visibility::Collapsed);
   // read once: on the DeviceRemote the control mode is an rpc into the service
-  const std::string controlMode = Sdk().CurrentProvideControlMode();
+  // as stored: this runs on every stats push, on the UI thread
+  const std::string controlMode = Sdk().StoredProvideControlMode();
   // the control mode strings are the store keys of their labels
   w_.WalletProvideModeValue().Text(Loc(controlMode));
   // The idle reason under the row (P008) follows every live update, so it is

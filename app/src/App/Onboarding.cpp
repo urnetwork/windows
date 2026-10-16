@@ -985,7 +985,7 @@ StackPanel Onboarding::BuildProviding() {
       {"network", "network", "provide_mode_network_description"},
       {"never", "never", nullptr},
   };
-  const std::string current = Sdk().CurrentProvideControlMode();
+  const std::string current = Sdk().StoredProvideControlMode();
   RadioButtons radios;
   int selected = 3;
   for (int i = 0; i < 4; ++i) {

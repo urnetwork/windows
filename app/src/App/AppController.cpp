@@ -38,6 +38,16 @@ namespace urnw {
 namespace {
 std::unique_ptr<AppController> g_app;
 
+// The controller, and the SdkHost in it, outlive a thread still running inside
+// them at exit: released, never destroyed, so the process exit ends that
+// thread rather than a destructor freeing what it uses
+// (exitdrain::HostDestroyableAtExit).
+void LeaveAppToProcessExit() {
+  LogWarn("app: a session pass or the quit is still running; the app is left to the "
+          "process exit");
+  (void)g_app.release();
+}
+
 // The presentation gate. `shown` is the tray-level intent (between ShowWindow
 // and HideWindow); `minimized` is the taskbar state. Focus is deliberately
 // absent: this used to be `shown && activated`, and stopping on mere
@@ -124,8 +134,12 @@ void AppController::Start() {
   // to DO.
   //
   // Out of balance the tray's Connect starts nothing and opens the upgrade path
-  // (BalanceGate.h, start connect); its Disconnect always works.
+  // (BalanceGate.h, start connect); its Disconnect always works. Neither is
+  // offered without a status to act on (TrayConnectionState.h), and a click
+  // that finds none since the menu opened does nothing.
   cb.onConnectToggle = [this] {
+    const tray::Action action = tray::ActionFor(CurrentTrayFacts());
+    if (action == tray::Action::None) return;
     struct Sinks {
       AppController& app;
       void Connect() { app.sdk_.ConnectBestAvailable(); }
@@ -137,12 +151,10 @@ void AppController::Start() {
         app.ShowUpgradeForBlockedConnect();
       }
     } sinks{*this};
-    urnw::balance::RouteConnectGesture(
-        gesture::ActionIsDisconnect(CurrentServiceFacts(), TrayHealth()), OutOfBalance(), sinks);
+    urnw::balance::RouteConnectGesture(action == tray::Action::Disconnect, OutOfBalance(),
+                                       sinks);
   };
-  cb.isConnected = [this] {
-    return gesture::ActionIsDisconnect(CurrentServiceFacts(), TrayHealth());
-  };
+  cb.connectAction = [this] { return tray::ActionFor(CurrentTrayFacts()); };
   // The two recovery items. Both read the LAST STATUS THE SERVICE PUSHED rather
   // than any app-side belief: the whole point is that they are reachable when
   // the app's own view of the world is the thing that has gone wrong (the window
@@ -215,6 +227,16 @@ void AppController::Start() {
   // another connect, or the user's Disconnect, ends any wait on the balance
   sdk_.SetConnectGestureObserver([this] { ClearBalanceRecovery(); },
                                  [this] { ClearBalanceRecovery(); });
+  // A start waiting on its balance shows as connecting (StartConnectWait.h).
+  // Through the queue, so a refused start's way back renders before the
+  // upgrade path it opens (ShowUpgradeForBlockedConnect queues after it).
+  sdk_.SetStartWaitHandler([this](StartWaitChange change) {
+    OnUi([this, change] {
+      if (!windowVisible_ || !window_) return;  // resynced on show
+      if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+        self->OnStartWaitChanged(change);
+    });
+  });
 
   // SDK state -> tray + window (marshaled onto the UI thread).
   sdk_.SetAuthStateHandler([this](AuthState s, const std::string& e) {
@@ -385,16 +407,23 @@ void AppController::Shutdown(lifetime::Ending ending) {
   windowHwnd_ = nullptr;
   // The user's Quit ends the tunnel and the provider too (owner decision,
   // 2026-10-05). Last before the exit, with the window and the tray already
-  // gone, because it blocks this thread: it joins SdkHost's own threads, waits
-  // out a session pass in flight and makes two pipe calls, each bounded by the
-  // pipe's timeout and in the service by StopBudget.h. Nothing on screen is
-  // left to freeze while it does. Nothing it throws may keep the app from
-  // exiting: the tray, its only way out, is already gone.
+  // gone, because it holds this thread: the user's Disconnect still queued
+  // runs first, then the service stops, and none of it holds the exit past
+  // exitdrain::kQuitCap, a sign-out of Windows waiting in WM_ENDSESSION
+  // included (ExitDrain.h). Every other ending leaves the service as it is,
+  // but the user's Disconnect still reaches it first, for at most the
+  // commands' cap, so the next launch does not reattach to a connection the
+  // user ended. Nothing on screen is left to freeze meanwhile. Nothing it
+  // throws may keep the app from exiting: the tray, its only way out, is
+  // already gone.
   try {
     if (plan.stopService) sdk_.Quit();
+    else sdk_.SettleCommandsForExit(std::chrono::steady_clock::now() + exitdrain::kCommandsCap);
   } catch (const std::exception& e) {
     LogError("app: stopping the service on quit failed: {}", e.what());
   }
+  // A pass or the quit still inside an rpc owns the host
+  if (!sdk_.ExitSettled()) LeaveAppToProcessExit();
   if (auto app = Application::Current()) app.Exit();
 }
 
@@ -532,6 +561,9 @@ void AppController::OnTunnelState(const proto::TunnelStatus& status) {
 }
 
 void AppController::OnStats(const LiveStats& stats) {
+  // Reads on different threads finish out of order: one older than a snapshot
+  // already applied would roll the tray and the window back (StatsReadOrder.h).
+  if (!statsReadOrder_.Admit(stats.readSequence)) return;
   // #27: the tray is a stats consumer now — the aggregate health rides every
   // snapshot. Change-gated: stats push on every throughput tick, and a
   // Shell_NotifyIcon per second for an unchanged icon is churn for nothing.
@@ -647,13 +679,8 @@ void AppController::ObserveBalanceRecovery() {
   if (step.kind == urnw::balance::RecoveryStepKind::Start) {
     sdk_.RetryRefusedConnect(step.target);
   } else {
-    sdk_.RetryRefusedConnect([this] {
-      if (auto location = sdk_.SelectedLocation()) {
-        sdk_.Connect(*location);
-      } else {
-        sdk_.ConnectBestAvailable();
-      }
-    });
+    // the held connection's selection, read on the session worker
+    sdk_.RetryRefusedConnect([this] { sdk_.ConnectSelected(); });
   }
   tray_.ShowBalloon(Localized("app_name"), Localized("insufficient_balance_reconnecting"));
 }
@@ -685,96 +712,80 @@ health::State AppController::TrayHealth() const {
   return connected_ ? health::State::Connected : health::State::Disconnected;
 }
 
+tray::Facts AppController::CurrentTrayFacts() const {
+  tray::Facts facts;
+  facts.signedIn = authState_ == AuthState::LoggedIn;
+  facts.statusKnown = lastTunnelStatus_.has_value();
+  if (lastTunnelStatus_) {
+    facts.tunnel = tray::TunnelOf(lastTunnelStatus_->state);
+    facts.routesInstalled = lastTunnelStatus_->routes_installed;
+    facts.wfpState = lastTunnelStatus_->wfp_state;
+    facts.failsafeStop = proto::IsFailsafeStop(lastTunnelStatus_->stop_reason);
+  }
+  facts.health = trayHealth_;
+  facts.actionIsDisconnect = gesture::ActionIsDisconnect(CurrentServiceFacts(), TrayHealth());
+  return facts;
+}
+
 void AppController::UpdateTray() {
-  // v1 maps provide=false; connect reflects the tunnel AND (#27) the aggregate
-  // health: the connected icon means "proven working", so Evaluating/Degraded
-  // map to the existing not-connected art rather than claiming green. With no
-  // evidence at all (window never shown: the stats feed is presentation-scoped)
-  // the tunnel's own claim stands, which is exactly the old behaviour.
-  using Health = health::State;
-  const Health h = trayHealth_.value_or(Health::Connected);
-  const bool verified = connected_ && h == Health::Connected;
-  tray_.SetState(verified ? TrayState::NoProvideConnect
-                          : TrayState::NoProvideNoConnect);
+  // v1 maps provide=false. The icon shows connected, and the status says so,
+  // only with the tunnel up and (#27) the aggregate health connected: "proven
+  // working", so Evaluating/Degraded keep the not-connected art. With no stats
+  // since the tunnel came up its own claim stands (TrayConnectionState.h).
+  const tray::View view = tray::Decide(CurrentTrayFacts());
+  tray_.SetState(view.connectedIcon ? TrayState::NoProvideConnect
+                                    : TrayState::NoProvideNoConnect);
   // "URnetwork — Connected": the app name, then the status. The em dash is
   // punctuation, not text. The health words reuse the connect page's exact
-  // strings (same Adv ids), so the tooltip and the status line can never name
-  // the same state differently.
+  // strings (same ids), so the tooltip and the status line can never name the
+  // same state differently.
+  std::wstring status;
+  switch (view.status) {
+    case tray::Status::None:
+      break;
+    case tray::Status::Connected:
+      status = Localized("connected");
+      break;
+    case tray::Status::FindingProviders:
+      status = pages::AdvW("conn_finding_providers", L"Finding providers…");
+      break;
+    case tray::Status::Degraded:
+      status = pages::AdvW("conn_degraded", L"Connection degraded — reconnecting");
+      break;
+    case tray::Status::Connecting:
+      // a connect in progress, the tunnel starting or up with no provider yet
+      status = Localized("connecting_status_indicator");
+      break;
+    case tray::Status::Failed:
+      // a start the service could not finish, or the window honesty layer's
+      // terminal outcome (track 2): the page shows the reason and a Retry
+      status = pages::AdvW("conn_failed", L"Couldn't connect");
+      break;
+    // #41: states that are not "disconnected" though no tunnel is up, which the
+    // app name alone would render as an idle machine. The icon keeps the
+    // ordinary not-connected art, so the tooltip carries the distinction.
+    case tray::Status::Disconnecting:
+      // routes still installed with nothing carrying them (the owner's bug A):
+      // the transient word, as the stop is in flight
+      status = pages::AdvW("conn_tray_disconnecting",
+                           L"Disconnecting — traffic is still going through the tunnel");
+      break;
+    case tray::Status::BlockedKillSwitch:
+      // blocked on purpose and nothing is leaking; the menu's lift item undoes it
+      status = pages::AdvW("conn_tray_blocked_kill_switch", L"Blocked (kill switch on)");
+      break;
+    case tray::Status::BlockedNoTunnel:
+      // a policy the kill switch did not put there, outliving its tunnel: blocked,
+      // and the honest word for it is not "kill switch"
+      status = pages::AdvW("conn_tray_blocked_no_tunnel",
+                           L"Blocked — leak protection is still in force with no tunnel up");
+      break;
+    case tray::Status::FailsafeStopped:
+      status = pages::AdvW("conn_tray_failsafe_stopped", L"Disconnected (the tunnel failed)");
+      break;
+  }
   std::wstring tip = Localized("app_name");
-  // #41: two states that are NOT "disconnected" even though no tunnel is up, and
-  // that a bare app name would render as an idle machine. The icon is shared
-  // with the ordinary not-connected art on purpose — a third asset would be a
-  // new symbol to learn for a state that lasts until the next click — so the
-  // tooltip is what carries the distinction.
-  if (!connected_ && lastTunnelStatus_) {
-    // ROUTES FIRST, and this row is the tooltip half of the owner's bug A. A
-    // machine whose capture routes are still installed with nothing carrying
-    // them has no internet — and the app used to render that as "Blocked (kill
-    // switch on)" with the kill switch OFF, which is the sentence that got the
-    // behaviour reported as a kill switch. After the fix this state is a
-    // fraction of a second wide (the stop is in flight), so the word is the
-    // transient one rather than an alarm.
-    if (lastTunnelStatus_->routes_installed) {
-      tray_.SetTooltip(tip + L" — " +
-                       pages::AdvW("conn_tray_disconnecting",
-                                   L"Disconnecting — traffic is still going "
-                                   L"through the tunnel"));
-      return;
-    }
-    if (lastTunnelStatus_->wfp_state == "armed") {
-      // The one the owner has to be able to read at a glance: the machine is
-      // blocked ON PURPOSE and nothing is leaking, which is a completely
-      // different situation from a tunnel that failed open. Gated on "armed"
-      // rather than on "not off" — that is the only state the kill switch put
-      // this machine in, and the only one the menu's lift item can undo.
-      tray_.SetTooltip(tip + L" — " +
-                       pages::AdvW("conn_tray_blocked_kill_switch",
-                                   L"Blocked (kill switch on)"));
-      return;
-    }
-    if (lastTunnelStatus_->wfp_state != "off") {
-      // A policy in force that the kill switch did not put there: a connect
-      // attempt in flight, or a connected policy outliving its tunnel. Blocked
-      // either way, and the honest word for it is not "kill switch".
-      tray_.SetTooltip(tip + L" — " +
-                       pages::AdvW("conn_tray_blocked_no_tunnel",
-                                   L"Blocked — leak protection is still in "
-                                   L"force with no tunnel up"));
-      return;
-    }
-    if (proto::IsFailsafeStop(lastTunnelStatus_->stop_reason)) {
-      tray_.SetTooltip(tip + L" — " +
-                       pages::AdvW("conn_tray_failsafe_stopped",
-                                   L"Disconnected (the tunnel failed)"));
-      return;
-    }
-  }
-  if (connected_) {
-    switch (h) {
-      case Health::Connected:
-        tip += L" — " + Localized("connected");
-        break;
-      case Health::Evaluating:
-        tip += L" — " + pages::AdvW("conn_finding_providers", L"Finding providers…");
-        break;
-      case Health::Degraded:
-        tip += L" — " +
-               pages::AdvW("conn_degraded", L"Connection degraded — reconnecting");
-        break;
-      case Health::Connecting:
-        tip += L" — " + Localized("connecting_status_indicator");
-        break;
-      case Health::Failed:
-        // the window honesty layer's terminal outcome (track 2): the page
-        // shows the reason and a Retry; the tray says the same headline
-        tip += L" — " + pages::AdvW("conn_failed", L"Couldn't connect");
-        break;
-      default:
-        // NoService/Disconnected under a tunnel that reports Up: a transient
-        // disagreement between the two feeds — claim nothing extra.
-        break;
-    }
-  }
+  if (!status.empty()) tip += L" — " + status;
   tray_.SetTooltip(tip);
 }
 
@@ -1061,7 +1072,11 @@ void AppController::ReconcileWindowPresentation() {
 
     // Re-apply the current state after the hidden/inactive interval. The stats
     // snapshot goes through OnStats (#27), not straight to the window, so the
-    // tray's health reading refreshes at the same instant the window's does.
+    // tray's health reading refreshes at the same instant the window's does,
+    // and it is read on SdkHost's publish worker: its DeviceRemote getters wait
+    // on the device's state lock, which a connect write holds through its rpc
+    // for up to the rpc timeout, and a show must not freeze this thread for
+    // that long. It arrives through the stats handler, in read order.
     // The standing ERROR is replayed only while no presented window has seen it
     // (authErrorUndelivered_): a failure that landed while the window was hidden
     // is delivered once on the next show, never again after that.
@@ -1069,8 +1084,11 @@ void AppController::ReconcileWindowPresentation() {
                              authErrorUndelivered_ ? authError_ : std::string());
     authErrorUndelivered_ = false;
     if (lastTunnelStatus_) self->OnTunnelStateChanged(*lastTunnelStatus_);
-    OnStats(sdk_.CurrentStats());
+    sdk_.RepublishStats();
     self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
+    // a start that began waiting on its balance while the window was hidden
+    self->OnStartWaitChanged(sdk_.StartConnectWaiting() ? StartWaitChange::Waiting
+                                                        : StartWaitChange::Ended);
     if (authState_ == AuthState::LoggedIn) balance_.Refresh();
   }
 }

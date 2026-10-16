@@ -384,14 +384,11 @@ void ConnectPage::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
   // On a stale balance the gate fetches it first and then asks again; that
   // second ask connects to the selection directly through the SdkHost entry
   // points (process lifetime, and gated themselves), never through this page,
-  // which may be gone by then.
+  // which may be gone by then. The wait shows as connecting meanwhile
+  // (OnStartWaitChanged).
   if (!Sdk().AdmitStartConnect("connect button", [retry] {
         if (retry) Sdk().Disconnect();
-        const auto selected = Sdk().SelectedLocation();
-        if (IsBestAvailableSelected(selected))
-          Sdk().ConnectBestAvailable();
-        else
-          Sdk().Connect(*selected);
+        Sdk().ConnectSelected();
       })) {
     return;
   }
@@ -405,12 +402,13 @@ void ConnectPage::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
   // best-available on the selection itself -- IsBestAvailableSelected, the
   // same test the chooser's check glyphs use).
   //
-  // Deliberately the IMMEDIATE entry points, not the coalesced row variants
+  // Deliberately an IMMEDIATE entry point, not the coalesced row variants
   // (SdkHost::ConnectFromRow): this is a single explicit press of THE connect
   // button, not a hunt through a list, and it also supersedes any row intent
-  // still settling.
-  const auto selected = Sdk().SelectedLocation();
-  const bool bestAvailable = IsBestAvailableSelected(selected);
+  // still settling. The selection is read by the session worker
+  // (SdkHost::ConnectSelected): read here it took mutex_, which the worker
+  // holds through a whole connect, so a press behind a held command froze the
+  // window.
   if (retry) {
     // The Retry contract: the disconnect tears down the failed session (multi
     // client, routes, window) and the connect below builds a fresh one — the
@@ -429,10 +427,34 @@ void ConnectPage::OnConnectToggle(IInspectable const&, RoutedEventArgs const&) {
   // health value — keep the two telling the same story from the same instant.
   health_ = urnw::health::State::Connecting;
   ApplyConnectStatus();
-  if (bestAvailable)
-    Sdk().ConnectBestAvailable();
-  else
-    Sdk().Connect(*selected);
+  Sdk().ConnectSelected();
+}
+
+// A tap on Connect whose balance is stale waits for the gate's fetch, for up
+// to its settle timeout, and nothing changed on screen meanwhile: the
+// optimistic Connecting below the gate never ran. It shows connecting now, and
+// a refused start goes back to the reported status before the upgrade path
+// opens (SdkHost tells Ended first). An admitted one keeps connecting into its
+// connect, as a tap that did not wait does, until the next push.
+void ConnectPage::OnStartWaitChanged(urnw::StartWaitChange change) {
+  switch (change) {
+    case urnw::StartWaitChange::Waiting:
+      startWaiting_ = true;
+      connectStatus_ = ConnectStatus::Connecting;
+      health_ = urnw::health::State::Connecting;
+      break;
+    case urnw::StartWaitChange::Admitted:
+      if (!startWaiting_) return;
+      startWaiting_ = false;
+      break;
+    case urnw::StartWaitChange::Ended:
+      if (!startWaiting_) return;
+      startWaiting_ = false;
+      connectStatus_ = reportedConnectStatus_;
+      health_ = reportedHealth_;
+      break;
+  }
+  ApplyConnectStatus();
 }
 
 // ---- state relay ---------------------------------------------------------
@@ -1264,38 +1286,31 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // the operator asked for a few hundred milliseconds after they appear. Same
   // gate, same reason, as PreviewHeroActive on the canvas.
   if (PreviewSampleActive()) return;
-  // Selected provider row. When the selected location is a connected network
-  // peer, show its device name instead of the raw client id (req4): resolve it
-  // from the live peer list by client id, like the linux drawer does.
-  // The provider name is an external string: filtered where it enters the
-  // page, so the row AND the automation name built from it stay shapeable.
-  std::string locationName = urnw::kit::SanitizeExternalDisplayText(stats.locationName);
-  const auto peers = Sdk().ConnectedProvidePeers();
-  if (auto selected = Sdk().SelectedLocation();
-      peers && selected && selected->connect_location_id &&
-      selected->connect_location_id->client_id &&
-      !selected->connect_location_id->client_id->empty()) {
-    const auto& clientId = *selected->connect_location_id->client_id;
-    for (const auto& peer : *peers) {
-      if (peer.ClientId && *peer.ClientId == clientId) {
-        // a peer's device name is off the wire too: same filter, same reason
-        locationName = urnw::kit::SanitizeExternalDisplayText(urnw::PeerDisplayName(peer));
-        break;
-      }
-    }
-  }
+  // Selected provider row. A selected network peer arrives named after its
+  // device (req4): SdkHost::ReadStats resolves it off this thread, since the
+  // selection and peer reads made here took mutex_, which the session worker
+  // holds through a whole connect. The name, a peer's device name included, is
+  // an external string: filtered where it enters the page, so the row AND the
+  // automation name built from it stay shapeable.
+  const std::string locationName = urnw::kit::SanitizeExternalDisplayText(stats.locationName);
   w_.LocationText().Text(locationName.empty() ? Loc("best_available_provider")
                                               : H(locationName));
   ApplyLocationRowName();  // the row's name carries the provider, not just the label
   // The SDK's connection status: the only signal in the client that carries a
-  // CONNECTING state. It was read into LiveStats and never used.
-  connectStatus_ = ParseConnectStatus(stats.connectionStatus);
+  // CONNECTING state. It was read into LiveStats and never used. A start
+  // waiting on its balance keeps showing connecting (OnStartWaitChanged).
+  reportedConnectStatus_ = ParseConnectStatus(stats.connectionStatus);
+  connectStatus_ = startWaiting_ ? ConnectStatus::Connecting : reportedConnectStatus_;
+  // the inspector's pre-clamp reading (D5): only an rpc-only session fills
+  // rawConnectionStatus, and in every other the clamped value is the raw one
+  rawConnectionStatus_ = stats.rpcOnly ? stats.rawConnectionStatus : stats.connectionStatus;
   // the stall diagnosis rides the same snapshot (track 2); rendered by
   // ApplyConnectStatus as the reason line under the hero
   windowStallReason_ = stats.windowStallReason;
   // #27: the aggregate health, derived in the SAME ReadStats as every other
   // field of this snapshot — the status line renders THIS, not the raw status.
-  health_ = stats.health;
+  reportedHealth_ = stats.health;
+  health_ = startWaiting_ ? urnw::health::State::Connecting : reportedHealth_;
   healthReevalAtMillis_ = stats.healthReevalAtMillis;
   // The provider grid, into the hero. This is the first consumer
   // getProviderGridPointList() has ever had in this client. An empty list is
@@ -1312,7 +1327,11 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
     ipFamilyStatusRow_->SetGrid(stats.gridPoints);
   }
   ApplyConnectStatus();
-  ApplyPeerCount(peers);  // the peers status line below the connect button (req1)
+  // the peers status line below the connect button (req1), from this snapshot;
+  // the list itself stays the peers push's (OnPeers), so this re-renders it
+  ApplyPeerCount(std::nullopt,
+                 PeerLineReading{.remoteConnected = stats.remoteConnected,
+                                 .connectedPeerCount = stats.connectedPeerCount});
   // the connected country drives the dns-card recommendation pill; only refresh
   // it when the country actually changes (stats push on every throughput tick).
   const bool countryChanged =
@@ -1759,6 +1778,7 @@ void ConnectPage::WireDrawerFeeds() {
     queue.TryEnqueue([weak, settings = std::move(settings)] {
       if (auto self = weak.get()) {
         auto& page = self->connect();
+        page.dnsOrder_.Pushed();  // newer than a seed read still out
         page.dnsSettled_ = true;  // a push is a reading, present or not
         page.dnsSettings_ = settings;
         page.ApplyDnsCard(settings);
@@ -1795,8 +1815,10 @@ void ConnectPage::WireDrawerFeeds() {
       if (auto self = weak.get()) {
         auto& page = self->connect();
         if (kind == urnw::TransportSettingsKind::Provider) {
+          page.providerTransportOrder_.Pushed();
           page.providerTransportSettings_ = settings;
         } else {
+          page.clientTransportOrder_.Pushed();
           page.clientTransportSettings_ = settings;
         }
       }
@@ -1804,16 +1826,49 @@ void ConnectPage::WireDrawerFeeds() {
   });
   sdk.SetBlockerEnabledHandler([queue, weak](bool on) {
     queue.TryEnqueue([weak, on] {
-      if (auto self = weak.get()) self->connect().ApplyBlockerUi(on);
+      if (auto self = weak.get()) {
+        auto& page = self->connect();
+        page.blockerOrder_.Pushed();
+        page.ApplyBlockerUi(on);
+      }
+    });
+  });
+  // The device-only settings a built or signed-in window shows, read off this
+  // thread (ResyncDrawer): each applies unless its listener pushed a newer
+  // value since the read was asked for (SeedOrder.h).
+  sdk.SetDrawerSeedHandler([queue, weak](urnw::DrawerSeed seed) {
+    queue.TryEnqueue([weak, seed = std::move(seed)] {
+      auto self = weak.get();
+      if (!self) return;
+      auto& page = self->connect();
+      if (page.dnsOrder_.Admits()) {
+        page.dnsSettled_ = true;
+        page.dnsSettings_ = seed.dns;
+        page.ApplyDnsCard(page.dnsSettings_);
+      }
+      if (page.clientTransportOrder_.Admits()) {
+        page.clientTransportSettings_ = seed.clientTransport;
+      }
+      if (page.providerTransportOrder_.Admits()) {
+        page.providerTransportSettings_ = seed.providerTransport;
+      }
+      if (page.blockerOrder_.Admits()) page.ApplyBlockerUi(seed.blockerEnabled);
     });
   });
   // location/provider chooser: the bucketed locations feed the open sheet; the
   // peers feed both the sheet's pinned section and the drawer's peer-count label
+  //
+  // Each push renders from what pushes carried (locations_, peers_, the
+  // peers line's reading), never from SdkHost's getters: those take mutex_,
+  // which the session worker holds through a whole connect, so a push behind
+  // a held command froze the window.
   sdk.SetLocationsHandler([queue, weak](std::optional<urnet::FilteredLocations> locations,
                                         std::string) {
     queue.TryEnqueue([weak, locations = std::move(locations)] {
-      if (auto self = weak.get(); self && self->connect().locationSheet_) {
-        self->connect().locationSheet_->Update(locations, Sdk().ConnectedProvidePeers());
+      if (auto self = weak.get()) {
+        auto& page = self->connect();
+        page.locations_ = locations;
+        if (page.locationSheet_) page.locationSheet_->Update(locations, page.peers_);
       }
     });
   });
@@ -1822,9 +1877,10 @@ void ConnectPage::WireDrawerFeeds() {
       if (auto self = weak.get()) {
         auto& page = self->connect();
         page.ApplyPeerCount(peers);
-        if (page.locationSheet_) {
-          page.locationSheet_->Update(Sdk().CurrentFilteredLocations(), peers);
-        }
+        // the line's count of every connected device comes with the next
+        // stats snapshot, read off this thread
+        Sdk().RepublishStats();
+        if (page.locationSheet_) page.locationSheet_->Update(page.locations_, peers);
       }
     });
   });
@@ -1837,7 +1893,7 @@ void ConnectPage::WireDrawerFeeds() {
         auto& page = self->connect();
         page.providerLocations_ = rows;
         if (page.providerLocationsSheet_) {
-          page.providerLocationsSheet_->Update(rows, Sdk().RemoteConnected());
+          page.providerLocationsSheet_->Update(rows, page.peerLine_.remoteConnected);
         }
       }
     });
@@ -1867,18 +1923,19 @@ void ConnectPage::WireDrawerFeeds() {
       }
     });
   });
-  sdk.SetRemoteChangedHandler([queue, weak](bool) {
-    queue.TryEnqueue([weak] {
+  sdk.SetRemoteChangedHandler([queue, weak](bool remoteConnected) {
+    queue.TryEnqueue([weak, remoteConnected] {
       if (auto self = weak.get()) {
         auto& page = self->connect();
-        // remote attach/detach flips the peers line's disabled state; the
-        // nullopt trigger leaves the chooser's peer rows untouched
+        // remote attach/detach flips the peers line's disabled state, as the
+        // push says; the nullopt trigger leaves the chooser's peer rows
+        // untouched
+        page.peerLine_.remoteConnected = remoteConnected;
         page.ApplyPeerCount(std::nullopt);
         // the same fact grays the provider-locations list: while the rpc is
         // down an empty window is unavailable, not "no providers"
         if (page.providerLocationsSheet_) {
-          page.providerLocationsSheet_->Update(page.providerLocations_,
-                                               Sdk().RemoteConnected());
+          page.providerLocationsSheet_->Update(page.providerLocations_, remoteConnected);
         }
       }
     });
@@ -1900,13 +1957,20 @@ void ConnectPage::ResyncDrawer() {
   blockActions_ = sdk.CurrentBlockActions();
   sdk.CurrentBlockCounts(allowedCount_, blockedCount_);
   splitRules_ = sdk.CurrentSplitRules();
-  dnsSettings_ = sdk.CurrentDnsSettings();
+  // The device-only settings are read off this thread: each getter can wait
+  // on the device's state lock behind a held command for the rpc timeout.
+  // Unknown until the read or their listener answers (DrawerSeed).
+  dnsSettings_.reset();
+  clientTransportSettings_.reset();
+  providerTransportSettings_.reset();
+  dnsOrder_.Asked();
+  clientTransportOrder_.Asked();
+  providerTransportOrder_.Asked();
+  blockerOrder_.Asked();
+  sdk.RequestDrawerSeed();
   if (transportBar_) transportBar_->SetDistribution(sdk.CurrentTransportDistribution());
   if (extenderPanel_) extenderPanel_->SetStatus(sdk.CurrentExtenderStatus());
   ApplyExtenderProvideState(sdk.CurrentExtenderProvideStatus());
-  clientTransportSettings_ = sdk.CurrentTransportSettings(urnw::TransportSettingsKind::Client);
-  providerTransportSettings_ =
-      sdk.CurrentTransportSettings(urnw::TransportSettingsKind::Provider);
   ApplySplitRuleCount();  // also rebuilds the split-rules list
   ApplyDnsCard(dnsSettings_);
   ApplyConnectionsList();
@@ -1959,7 +2023,9 @@ void ConnectPage::SettlePlaceholders() {
 
 void ConnectPage::SeedConnectControls() {
   updatingControls_ = true;
-  const urnw::PerformanceSettings settings = Sdk().CurrentPerformanceSettings();
+  // as the app stored them, which the device is restored from: no device read
+  // on this thread (SdkHost::StoredPerformanceSettings)
+  const urnw::PerformanceSettings settings = Sdk().StoredPerformanceSettings();
   switch (settings.mode) {
     case urnw::ConnectionMode::Auto:
       w_.ConnectionModeBar().SelectedItem(w_.ModeAutoItem());
@@ -1976,10 +2042,10 @@ void ConnectPage::SeedConnectControls() {
   // "Strong Anonymization" is the inverse of allowDirect
   w_.StrongAnonToggle().IsOn(!settings.allowDirect);
   w_.PostQuantumToggle().IsOn(settings.postQuantum);
-  w_.BlockerToggle().IsOn(Sdk().CurrentBlockerEnabled());
+  // the blocker is the device's alone: the drawer seed sets it (ResyncDrawer)
   // provide control mode ("manual"/unknown land on Never, the SDK's
   // conservative default case)
-  const std::string provideMode = Sdk().CurrentProvideControlMode();
+  const std::string provideMode = Sdk().StoredProvideControlMode();
   if (provideMode == "auto") {
     w_.ProvideModeBar().SelectedItem(w_.ProvideAutoItem());
   } else if (provideMode == "always") {
@@ -2848,9 +2914,10 @@ void ConnectPage::ApplySessionRows() {
   //
   // `exits` is how many exits the reliability stack currently holds, which is
   // the denominator for every "via" line the inspector prints.
-  const std::string raw = Sdk().CurrentStats().rpcOnly
-                              ? Sdk().CurrentStats().rawConnectionStatus
-                              : Sdk().CurrentStats().connectionStatus;
+  //
+  // `raw` is the last applied push's (ApplyStats): a snapshot read here ran the
+  // DeviceRemote getters on this thread, three times per render.
+  const std::string& raw = rawConnectionStatus_;
   host.Children().Append(
       urnw::kit::MakePaneKeyValueRow(Adv("adv_raw_status", L"Raw status"),
                                      raw.empty() ? Adv("adv_none", L"none") : H(raw))
@@ -3339,9 +3406,9 @@ void ConnectPage::RunBlockQuickAction(InspectorQuickAction const& state,
               : Adv("adv_host_allowed", L"This host will be allowed"),
         overrideId);
   }
-  // Re-derive now: CreateBlockRule/RemoveBlockRule republish the overrides
-  // synchronously (the handler push lands after this click returns), so the
-  // buttons flip with the click rather than a beat later.
+  // Re-derive now; the write runs on SdkHost's write worker, and its republish
+  // of the overrides re-renders the buttons when it lands (the split rules
+  // handler calls ApplyInspector).
   ApplyInspector();
 }
 
@@ -3861,7 +3928,8 @@ void ConnectPage::OnChartTick() {
   // per-pane gate below on purpose: the status strip renders health on every
   // destination, not only Home. One nudge per deadline (the push re-arms it if
   // the hold is still running), through the ordinary stats path so the window
-  // AND the tray both hear the answer.
+  // AND the tray both hear the answer. The read runs on SdkHost's publish
+  // worker, not on this thread.
   if (healthReevalAtMillis_ > 0) {
     const int64_t nowMillis =
         std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -4282,7 +4350,8 @@ winrt::fire_and_forget ConnectPage::ShowLocationChooserSheet() {
   Sdk().EnsureLocations();
   try {
     locationSheet_ = urnw::LocationChooserSheet::Create(self->Content().XamlRoot(), Sdk());
-    locationSheet_->Update(Sdk().CurrentFilteredLocations(), Sdk().ConnectedProvidePeers());
+    // what the feeds last pushed; EnsureLocations' own pushes follow
+    locationSheet_->Update(locations_, peers_);
     co_await locationSheet_->Dialog().ShowAsync();
   } catch (...) {
   }
@@ -4301,7 +4370,7 @@ winrt::fire_and_forget ConnectPage::ShowProviderLocationsSheet() {
         urnw::ProviderLocationsSheet::Create(self->Content().XamlRoot(), Sdk());
     // seeded from the CACHE, not a getter: the locations feed is signal-only, so
     // the rows the sheet should open on are the ones the last push left here
-    providerLocationsSheet_->Update(providerLocations_, Sdk().RemoteConnected());
+    providerLocationsSheet_->Update(providerLocations_, peerLine_.remoteConnected);
     // seed the badge set from the current snapshot so open-while-connected shows
     // badges immediately, not only after the next identity change
     providerIdentities_ = Sdk().CurrentProviderIdentities();
@@ -4313,7 +4382,8 @@ winrt::fire_and_forget ConnectPage::ShowProviderLocationsSheet() {
   w_.SetSheetOpen(false);
 }
 
-void ConnectPage::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers) {
+void ConnectPage::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers,
+                                 std::optional<PeerLineReading> reading) {
   // ALL connected devices (online, provide or not); the chooser's peers
   // section stays provide-filtered (connectable only). The list argument is
   // the update trigger; the count reads the unfiltered value.
@@ -4323,12 +4393,14 @@ void ConnectPage::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& pe
   // means "re-render what you have", not "there are no peers" - so the cache is
   // only replaced when a real list arrives.
   if (peers) peers_ = peers;
+  // the reading a stats snapshot carried, kept for the pushes that carry none
+  if (reading) peerLine_ = *reading;
   ApplyPeersList();
   // The peers state lives in the service's device: while the rpc is down
   // (service not running) a zero here would be a stale claim presented as
   // fact, so the line goes gray and says discovery is disabled (apple
   // ConnectActions parity).
-  if (!Sdk().RemoteConnected()) {
+  if (!peerLine_.remoteConnected) {
     const hstring disabled = Loc("peer_discovery_disabled");
     w_.PeerCountText().Text(disabled);
     // the row's automation name IS its text, and its text changes: set both
@@ -4338,7 +4410,7 @@ void ConnectPage::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& pe
     w_.PeerDot().Fill(urnw::colors::MutedBrush());
     return;
   }
-  const int64_t count = Sdk().ConnectedPeerCount();
+  const int64_t count = peerLine_.connectedPeerCount;
   // the standalone peers status line below the connect button, always shown:
   // "{n} peers" + a filled dot, green when providing peers are online and amber
   // at zero (apple ConnectActions parity)

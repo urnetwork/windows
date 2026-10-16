@@ -986,7 +986,9 @@ void SettingsPage::ApplyLocalDeviceState() {
   clientIdCopy_.IsEnabled(!clientId_.empty());
 
   applyingKillSwitch_ = true;
-  killSwitch_.IsOn(Sdk().CurrentKillSwitch());
+  // as stored, which the device is restored from: no device read on this
+  // thread (SdkHost::StoredKillSwitch)
+  killSwitch_.IsOn(Sdk().StoredKillSwitch());
   applyingKillSwitch_ = false;
   ApplyLaunchAtStartup();
 }
@@ -1321,18 +1323,27 @@ winrt::fire_and_forget SettingsPage::ShowKillSwitchException() {
 void SettingsPage::OnKillSwitchToggled() {
   if (applyingKillSwitch_) return;  // the load wrote it; do not echo it back
   const bool wanted = killSwitch_.IsOn();
-  const bool applied = Sdk().SetKillSwitch(wanted);
   // Read it BACK rather than trusting the write. The product-updates toggle
   // already reverts and says so on failure; this is the toggle where a wrong
   // state costs privacy rather than an email, so it gets the stronger check -
-  // the value the SDK actually holds now, not the return code alone.
-  const bool actual = Sdk().CurrentKillSwitch();
-  if (applied && actual == wanted) return;
-  LogWarn("settings: kill switch did not apply (wanted={} actual={})", wanted, actual);
-  applyingKillSwitch_ = true;
-  killSwitch_.IsOn(actual);
-  applyingKillSwitch_ = false;
-  snackbar_.Show(Loc("something_went_wrong"), InfoBarSeverity::Error);
+  // the value the SDK actually holds now, not the return code alone. The write
+  // and the read-back run on SdkHost's write worker, off this thread, and the
+  // answer comes back here.
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().SetKillSwitch(wanted, [queue, weak, wanted](bool applied, bool actual) {
+    queue.TryEnqueue([weak, wanted, applied, actual] {
+      auto self = weak.get();
+      if (!self) return;
+      auto& page = self->settings();
+      if (applied && actual == wanted) return;
+      LogWarn("settings: kill switch did not apply (wanted={} actual={})", wanted, actual);
+      page.applyingKillSwitch_ = true;
+      page.killSwitch_.IsOn(actual);
+      page.applyingKillSwitch_ = false;
+      page.snackbar_.Show(Loc("something_went_wrong"), InfoBarSeverity::Error);
+    });
+  });
 }
 
 void SettingsPage::OnLaunchAtStartupToggled() {

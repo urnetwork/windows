@@ -165,9 +165,13 @@ func TestQuitTrayQuitStopsTheTunnelAndTheProviderThenExits(t *testing.T) {
 	quitRequireSequence(t, "SdkHost::Quit", quit,
 		regexp.QuoteMeta("std::scoped_lock lock(pendingMutex_);"),
 		regexp.QuoteMeta("quitting_.store(true);"),
-		regexp.QuoteMeta("pending_ = SessionRequest{};"),
-		regexp.QuoteMeta("pendingRequested_ = false;"),
-		regexp.QuoteMeta("pendingCv_.notify_all();"),
+		regexp.QuoteMeta("QuitInOrder(start);"))
+	// its steps, on the quit's own thread: the user's Disconnect still queued
+	// runs first, and the waits are bounded (exit_drain_test.go)
+	inOrder := definitionBody(t, "SdkHost.cpp", host,
+		"void SdkHost::QuitInOrder(std::chrono::steady_clock::time_point start) {")
+	quitRequireSequence(t, "SdkHost::QuitInOrder", inOrder,
+		regexp.QuoteMeta("SettleCommandsForExit(start + exitdrain::kCommandsCap)"),
 		regexp.QuoteMeta("StopServiceWatchdog();"),
 		regexp.QuoteMeta("StopPresentationWorker();"),
 		regexp.QuoteMeta("StopSyncWatchdog();"),
@@ -177,11 +181,16 @@ func TestQuitTrayQuitStopsTheTunnelAndTheProviderThenExits(t *testing.T) {
 		regexp.QuoteMeta("service_.StopTunnel();"),
 		regexp.QuoteMeta("service_.StopProvider(&after, &error)"),
 		`TeardownSessionLocked\(\s*false\);`)
-	quitForbid(t, "SdkHost::Quit", quit,
-		"quitting is not signing out, and nothing may start what it stops",
-		"service_.Logout(", "asyncLocalState_->logout(", "setRouteLocal(",
-		"setProvideControlMode(", "service_.StartProvider(", "service_.StartTunnel(",
-		"RequestSession(", "RequestProviderReconcile(", "EnsureSession(", "SetKillSwitch(")
+	unlocked := definitionBody(t, "SdkHost.cpp", host, "void SdkHost::StopServiceWithoutLock() {")
+	for name, body := range map[string]string{
+		"SdkHost::Quit": quit, "SdkHost::QuitInOrder": inOrder, "SdkHost::StopServiceWithoutLock": unlocked,
+	} {
+		quitForbid(t, name, body,
+			"quitting is not signing out, and nothing may start what it stops",
+			"service_.Logout(", "asyncLocalState_->logout(", "setRouteLocal(",
+			"setProvideControlMode(", "service_.StartProvider(", "service_.StartTunnel(",
+			"RequestSession(", "RequestProviderReconcile(", "EnsureSession(", "SetKillSwitch(")
+	}
 
 	server := stripComments(readServiceSource(t, "ControlServer.cpp"))
 	stopTunnel := quitSourceFrom(t, "ControlServer::Handle", server,
