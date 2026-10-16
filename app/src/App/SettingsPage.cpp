@@ -1329,18 +1329,26 @@ void SettingsPage::OnKillSwitchToggled() {
   // the value the SDK actually holds now, not the return code alone. The write
   // and the read-back run on SdkHost's write worker, off this thread, and the
   // answer comes back here.
+  // Only the last write's answer is shown: an earlier one's is already
+  // overtaken by the user's next tap.
+  const uint64_t write = ++killSwitchWrites_;
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
-  Sdk().SetKillSwitch(wanted, [queue, weak, wanted](bool applied, bool actual) {
-    queue.TryEnqueue([weak, wanted, applied, actual] {
+  Sdk().SetKillSwitch(wanted, [queue, weak, wanted, write](bool applied, bool actual) {
+    queue.TryEnqueue([weak, wanted, write, applied, actual] {
       auto self = weak.get();
       if (!self) return;
       auto& page = self->settings();
+      if (write != page.killSwitchWrites_) return;
+      // The value the write left, even when it applied: a load that ran while
+      // the write was queued showed the value from before it.
+      if (page.killSwitch_.IsOn() != actual) {
+        page.applyingKillSwitch_ = true;
+        page.killSwitch_.IsOn(actual);
+        page.applyingKillSwitch_ = false;
+      }
       if (applied && actual == wanted) return;
       LogWarn("settings: kill switch did not apply (wanted={} actual={})", wanted, actual);
-      page.applyingKillSwitch_ = true;
-      page.killSwitch_.IsOn(actual);
-      page.applyingKillSwitch_ = false;
       page.snackbar_.Show(Loc("something_went_wrong"), InfoBarSeverity::Error);
     });
   });

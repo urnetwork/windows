@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -297,6 +298,8 @@ class SettingsPage {
   bool preferencesLoaded_ = false;
   // same echo guard for the kill switch, whose value is written by the load
   bool applyingKillSwitch_ = false;
+  // the kill switch writes made, so only the last one's answer is shown
+  uint64_t killSwitchWrites_ = 0;
   // and for the launch-on-startup toggle, written whenever Windows is read
   bool applyingLaunchAtStartup_ = false;
 

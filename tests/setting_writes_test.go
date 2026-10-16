@@ -166,14 +166,18 @@ func TestSettingWritesRunOffTheUiThread(t *testing.T) {
 		`statsPublisher_\.Stop\(\);`, `writer_\.Stop\(\);`, `std::scoped_lock lock\(mutex_\);`)
 }
 
-// The settings page shows the kill switch the write left, as the write's
-// answer, marshalled back to its thread; it reads nothing on the UI thread.
+// The settings page shows the kill switch the last write left, as that write's
+// answer, marshalled back to its thread, even when it applied (a load while the
+// write was queued showed the value from before it); it reads nothing on the
+// UI thread.
 func TestKillSwitchToggleReadsBackOffTheUiThread(t *testing.T) {
 	page := stripComments(readAppSource(t, "SettingsPage.cpp"))
 	toggled := functionBody(page, "void SettingsPage::OnKillSwitchToggled(")
 	quitRequireSequence(t, "SettingsPage::OnKillSwitchToggled", toggled,
-		`Sdk\(\)\.SetKillSwitch\(wanted, \[`, `queue\.TryEnqueue\(`, `if \(applied && actual == wanted\) return;`,
-		`page\.killSwitch_\.IsOn\(actual\);`)
+		`const uint64_t write = \+\+killSwitchWrites_;`, `Sdk\(\)\.SetKillSwitch\(wanted, \[`,
+		`queue\.TryEnqueue\(`, `if \(write != page\.killSwitchWrites_\) return;`,
+		`page\.killSwitch_\.IsOn\(actual\);`, `if \(applied && actual == wanted\) return;`,
+		`page\.snackbar_\.Show\(`)
 	quitForbid(t, "SettingsPage::OnKillSwitchToggled", toggled,
 		"the read-back is the write's answer, taken on the write worker", "CurrentKillSwitch(")
 }
