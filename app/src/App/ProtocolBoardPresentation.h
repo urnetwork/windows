@@ -1316,7 +1316,9 @@ inline ListView ListFor(const State& state, const Text& text) {
   const std::optional<Row> own = OwnRow(state);
   for (const auto& row : state.rows) {
     const bool isMe = row.isMe || (own && own->position == row.position);
-    view.items.push_back(ListItem{.line = false, .row = ListRowFor(row, isMe, seats, text)});
+    ListItem item;
+    item.row = ListRowFor(row, isMe, seats, text);
+    view.items.push_back(std::move(item));
     if (row.position == seats) {
       const std::string score = text.score(snapshot ? snapshot->projectedCutoff : row.projectedScore);
       ListItem line;

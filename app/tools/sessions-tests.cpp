@@ -346,7 +346,6 @@ struct FakeLogout {
   std::optional<std::string> cause;
 };
 
-const FakeSnapshot* gSnapshot = nullptr;
 std::map<uint64_t, Object> gLive;
 uint64_t gNext = 1000;
 int64_t gIssued = 0;
@@ -1189,7 +1188,6 @@ void TestSdkReader() {
   // the same snapshot through the generated header's own classes
   const ss::Snapshot rich = RichSnapshot();
   const FakeSnapshot fake = FakeOf(rich);
-  abi::gSnapshot = &fake;
   const uint64_t handle = abi::Issue(abi::Kind::Snapshot, &fake);
   {
     // the listener receives an owned handle (urnetwork_sdk.h)

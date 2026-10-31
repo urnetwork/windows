@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -53,8 +52,7 @@ func (self *libVm) bash(ctx context.Context, st *vmState, script string, args ..
 		}
 	}
 	// own process group, so a deadline also stops ssh/scp children
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	ownProcessGroup(cmd)
 	cmd.WaitDelay = 5 * time.Second
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -105,7 +103,7 @@ func parseBootLine(stdout string) (*vmState, error) {
 // The pid must still be this VM's QEMU (its command line names the overlay in
 // the run dir): a recycled pid, or another QEMU, is never signalled.
 func (self *libVm) Alive(st *vmState) bool {
-	if st == nil || st.QemuPid <= 0 || !isBootRunDir(st.RunDir) || syscall.Kill(st.QemuPid, 0) != nil {
+	if st == nil || st.QemuPid <= 0 || !isBootRunDir(st.RunDir) || !processExists(st.QemuPid) {
 		return false
 	}
 	out, err := exec.Command("ps", "-p", strconv.Itoa(st.QemuPid), "-o", "args=").Output()

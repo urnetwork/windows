@@ -60,7 +60,7 @@ func newWindowsHostBudgetFixture(t *testing.T, budget string) *windowsHostBudget
 [ "$#" -eq 2 ] && [ "$1" = --verify-held ] && [ "$2" = run-all ] && exit 0
 exit 71
 `, 0700)
-	self.write(t, "bin/go", `#!/bin/sh
+	shim := `#!/bin/sh
 printf '%s\000' "$PWD" "$@" "" >>"$WINDOWS_HOST_BUDGET_TRACE"
 last=
 for argument do last=$argument; done
@@ -69,7 +69,12 @@ if [ "$1" = test ] && [ "$PWD" = "$WINDOWS_HOST_BUDGET_ROOT/windows" ] && [ "$la
   exec "$WINDOWS_HOST_BUDGET_REAL_GO" "$@"
 fi
 exit 0
-`, 0700)
+`
+	// MSYS bash spells $PWD /tmp/...; pwd -W gives the path Go knows.
+	if runtime.GOOS == "windows" {
+		shim = strings.ReplaceAll(shim, `"$PWD"`, `"$(pwd -W)"`)
+	}
+	self.write(t, "bin/go", shim, 0700)
 	self.write(t, "windows/tests/budget_test.go", `package fixture
 
 import (
@@ -112,9 +117,9 @@ func TestFullSiblingCensus(t *testing.T) {
 	}
 	self.environment = append(self.environment,
 		"PATH="+filepath.Join(self.directory, "bin")+string(os.PathListSeparator)+os.Getenv("PATH"),
-		"URNETWORK_ROOT="+self.directory, "URNETWORK_NETWORK_TEST_LOCK_HELD=1",
+		"URNETWORK_ROOT="+filepath.ToSlash(self.directory), "URNETWORK_NETWORK_TEST_LOCK_HELD=1",
 		"GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off",
-		"WINDOWS_HOST_BUDGET_ROOT="+self.directory, "WINDOWS_HOST_BUDGET_TRACE="+self.tracePath,
+		"WINDOWS_HOST_BUDGET_ROOT="+filepath.ToSlash(self.directory), "WINDOWS_HOST_BUDGET_TRACE="+self.tracePath,
 		"WINDOWS_HOST_BUDGET_REAL_GO="+realGo, "WINDOWS_HOST_BUDGET_EXPECTED="+budget,
 	)
 	return self
@@ -148,7 +153,12 @@ func (self *windowsHostBudgetFixture) run(t *testing.T, arguments ...string) ([]
 		if len(field) != 0 {
 			fields = append(fields, string(field))
 		} else if len(fields) != 0 {
-			calls = append(calls, windowsHostBudgetCall{directory: fields[0], arguments: append([]string(nil), fields[1:]...)})
+			call := windowsHostBudgetCall{directory: filepath.Clean(fields[0]), arguments: append([]string(nil), fields[1:]...)}
+			// the shell's spelling of the one path argument; Clean changes nothing on unix
+			if len(call.arguments) > 1 && call.arguments[0] == "-C" {
+				call.arguments[1] = filepath.Clean(call.arguments[1])
+			}
+			calls = append(calls, call)
 			fields = nil
 		}
 	}

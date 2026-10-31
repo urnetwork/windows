@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 
+// The driver runs on the macOS/Linux hosts: POSIX modes guard its credentials
+// file, so on Windows it refuses them, and these cases cannot run there.
+//go:build !windows
+
 package main
 
 import (
