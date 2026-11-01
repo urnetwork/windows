@@ -1181,8 +1181,8 @@ maneira certa</value>
     <comment>Call to action</comment>
   </data>
   <data name="claim_across_epochs" xml:space="preserve">
-    <value>Épocas finalizadas: {}</value>
-    <comment>Subtitle of the claim dialog.</comment>
+    <value>Épocas resgatáveis: {}</value>
+    <comment>Under the unclaimed SN25α total, on the Unclaimed tile and in the claim dialog: how many epochs that total comes from. It counts the claimable epochs only (finalized epochs that are claimed, expired or have no payout are not in it), so it never says finalized. The count follows its label, so the line reads with any number without a plural key.</comment>
   </data>
   <data name="claim_alpha_title" xml:space="preserve">
     <value>Resgatar SN25α</value>
@@ -7402,8 +7402,8 @@ conteúdo do mundo</value>
     <comment>Claim status of an epoch whose alpha can be claimed now.</comment>
   </data>
   <data name="sn_status_not_finalized" xml:space="preserve">
-    <value>Não finalizada</value>
-    <comment>Claim status of an epoch the vault has not finalized yet.</comment>
+    <value>Nenhum pagamento publicado</value>
+    <comment>Claim status of an epoch the SDK reports as not-finalized. Despite that name the vault has finalized the epoch: with no payout root (the root was missed, so no payout list was published for it and nothing can ever be claimed for it), or with a payout list that has no share for this wallet. Never 'Finalizing' or 'Not finalized', and no 'yet': nothing more is published for that epoch.</comment>
   </data>
   <data name="sn_status_open" xml:space="preserve">
     <value>Aberta</value>

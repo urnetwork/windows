@@ -1169,8 +1169,8 @@
     <comment>Call to action</comment>
   </data>
   <data name="claim_across_epochs" xml:space="preserve">
-    <value>涵蓋 {} 個已確認的週期</value>
-    <comment>Subtitle of the claim dialog.</comment>
+    <value>可領取的週期：{} 個</value>
+    <comment>Under the unclaimed SN25α total, on the Unclaimed tile and in the claim dialog: how many epochs that total comes from. It counts the claimable epochs only (finalized epochs that are claimed, expired or have no payout are not in it), so it never says finalized. The count follows its label, so the line reads with any number without a plural key.</comment>
   </data>
   <data name="claim_alpha_title" xml:space="preserve">
     <value>領取 SN25α</value>
@@ -7287,8 +7287,8 @@
     <comment>Claim status of an epoch whose alpha can be claimed now.</comment>
   </data>
   <data name="sn_status_not_finalized" xml:space="preserve">
-    <value>未確認</value>
-    <comment>Claim status of an epoch the vault has not finalized yet.</comment>
+    <value>未發佈支付</value>
+    <comment>Claim status of an epoch the SDK reports as not-finalized. Despite that name the vault has finalized the epoch: with no payout root (the root was missed, so no payout list was published for it and nothing can ever be claimed for it), or with a payout list that has no share for this wallet. Never 'Finalizing' or 'Not finalized', and no 'yet': nothing more is published for that epoch.</comment>
   </data>
   <data name="sn_status_open" xml:space="preserve">
     <value>進行中</value>

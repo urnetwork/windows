@@ -1,7 +1,7 @@
 // The Earnings destination's claim dialogs, plus the presentation helpers the
 // destination and the dialogs share.
 //
-//   ClaimAlphaSheet   the unclaimed SN25a across the finalized epochs since the
+//   ClaimAlphaSheet   the unclaimed SN25a of the claimable epochs since the
 //                     coldkey was attached, the gas key that pays for the claim
 //                     transaction, and the claim itself: sent by the SDK on this
 //                     device straight to the settlement vault contract. No
@@ -77,6 +77,9 @@ std::wstring FormatShareBpsValue(int64_t shareBps);
 // The store's word for an epoch's claim status ("open", "claimable",
 // "claimed", "expired", "not-finalized"); the raw status for one this build
 // does not know, so a new server state is visible rather than blank.
+// "not-finalized" is, despite its name, an epoch the vault finalized with
+// nothing for this coldkey to claim (no payout root was published for it, or
+// no share in its payout list), so it reads "No payout published".
 winrt::hstring ClaimStatusText(std::string const& status);
 
 // ---- the claim dialog ----------------------------------------------------------
