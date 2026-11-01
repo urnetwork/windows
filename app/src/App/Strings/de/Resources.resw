@@ -914,6 +914,10 @@
     <value>Diese Anfrage ist abgelaufen. Starte erneut, um eine neue Nachricht zum Signieren zu erhalten.</value>
     <comment>Error: the single-use wallet challenge expired (5 minutes) before it was signed.</comment>
   </data>
+  <data name="bittensor_error_extension_not_authorized" xml:space="preserve">
+    <value>{} hat ur.io noch nicht erlaubt, dein Bittensor-Konto zu verwenden. Bestätige die Verbindungsanfrage in der Wallet oder erlaube ur.io in ihren Einstellungen unter „Verbundene Seiten“ und versuche es dann erneut.</value>
+    <comment>ur.io Bittensor wallet error (Earnings wallet card and payout consent, sign-in, add sign-in): the browser extension has not allowed the site to use an account yet, so nothing was signed. The user rejected or closed the extension's connect window, has no Polkadot/Bittensor account in the extension, removed the site's accounts in the extension's connected sites, or a connect request is still open in it. Talisman says "Site &lt;url&gt; has not been authorised for Talisman yet"; polkadot{.js} and SubWallet say "The source &lt;url&gt; has not been enabled yet" or "is not allowed to interact with this extension". The argument is the wallet product name (Talisman). "Connected Sites" is the extension's settings page that lists the sites allowed to use its accounts: use the extension's own name for it (Talisman: de Verbundene Seiten, es Sitios Conectados, ru Подключенные сайты, zh 连接网站; Talisman has no Arabic, so ar keeps the English name).</comment>
+  </data>
   <data name="bittensor_error_extension_not_found" xml:space="preserve">
     <value>Die {}-Erweiterung wurde in diesem Browser nicht gefunden. Installiere sie und versuche es dann erneut.</value>
     <comment>Error: the wallet's browser extension is not installed in this browser (on ur.io, or in the apps when a ur.io wallet bridge page returns extension_not_found). The argument is the wallet product name (Talisman on the Bittensor page, Phantom or Solflare on the Solana page).</comment>
@@ -937,6 +941,10 @@
   <data name="bittensor_error_user_rejected" xml:space="preserve">
     <value>Die Anfrage wurde in deiner Wallet abgelehnt. Starte erneut und bestätige sie, um fortzufahren.</value>
     <comment>Wallet error in the apps, when a ur.io wallet bridge page returns user_rejected: the user declined the connection or the signature request in the wallet, so nothing was signed. The Bittensor page (Talisman, or a WalletConnect wallet) and the Solana page of the desktop apps (Phantom or Solflare) both return it; on iOS, Phantom and Solflare decline with 4001, which reads the same.</comment>
+  </data>
+  <data name="bittensor_error_wallet_failed" xml:space="preserve">
+    <value>Deine {}-Wallet konnte die Anfrage nicht abschließen. Prüfe die Wallet und versuche es dann erneut.</value>
+    <comment>ur.io Bittensor wallet error (Earnings wallet card and payout consent, sign-in, add sign-in): the wallet (the Talisman extension, or a WalletConnect wallet) failed in a way the page has no specific message for, so nothing was signed. The wallet's own English text is only logged. The argument is the wallet product name (Talisman or WalletConnect).</comment>
   </data>
   <data name="bittensor_error_walletconnect_expired" xml:space="preserve">
     <value>Die WalletConnect-Anfrage ist abgelaufen, bevor die Wallet geantwortet hat. Starte erneut.</value>
