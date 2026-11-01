@@ -2287,7 +2287,7 @@ void WalletPage::RebuildHistory() {
         if (claim->status == "claimable") row.cells[5].Foreground(colors::AccentBrush());
         if (claim->status == "expired") row.cells[5].Foreground(colors::DangerBrush());
       } else {
-        // before the wallet, or not finalized: points only
+        // no claim row from the SDK (before the wallet, or out of its window): points only
         row.cells[4].Text(L"-");
         row.cells[4].Foreground(colors::FaintBrush());
         row.cells[5].Text(L"");

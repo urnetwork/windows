@@ -475,7 +475,7 @@ UIElement ClaimAlphaSheet::BuildRow(Row const& row) {
         MakeText(FailureText(row.claim.epoch, row.message), 12, colors::DangerBrush(), true));
   } else if (row.state == Row::State::Idle && !row.claim.message.empty() &&
              row.claim.status != "claimable" && row.claim.status != "claimed") {
-    // the SDK's reason an epoch cannot be claimed (not finalized, expired...)
+    // the SDK's reason an epoch cannot be claimed (no payout root, expired...)
     cell.Children().Append(MakeText(H(row.claim.message), 12, colors::MutedBrush(), true));
   }
   return cell;
