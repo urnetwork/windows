@@ -6100,6 +6100,14 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
     <value>Dieser Kauf konnte bei Google Play nicht verifiziert werden und kann deshalb nicht auf dein Konto angewendet werden. Falls dir etwas berechnet wurde und dein Plan nicht aktualisiert wird, wende dich bitte an den Support.</value>
     <comment>Error dialog body when the server's verify answer for a Play purchase is terminal `invalid` — the proof will never verify (unknown token, disallowed product, canceled before completing). The purchase is still acknowledged with Play so a real charge is not auto-refunded; this dialog is how the failure reaches the user instead of a silent nothing (android google/PlanViewModel.kt report path).</comment>
   </data>
+  <data name="purchase_disconnect_notice_message" xml:space="preserve">
+    <value>URnetwork verbindet es danach wieder. Bis dahin läuft dein Internetverkehr nicht über das VPN.</value>
+    <comment>macOS alert body under purchase_disconnect_notice_title. The app reconnects the VPN by itself after the purchase; "it" is the VPN. Until then the user's internet traffic does not go through the VPN.</comment>
+  </data>
+  <data name="purchase_disconnect_notice_title" xml:space="preserve">
+    <value>VPN für diesen Kauf trennen?</value>
+    <comment>macOS alert title, shown when the user starts a purchase while a VPN connection is requested, before the app disconnects the VPN for the purchase. The alert's buttons are Disconnect and Cancel.</comment>
+  </data>
   <data name="purchase_found_confirming_your_plan" xml:space="preserve">
     <value>Kauf gefunden. Dein Plan wird bestätigt — er wird automatisch aktualisiert.</value>
     <comment>Restore-purchases outcome: an entitlement for the current network was found; the confirmation poll now bridges the gap until the server credits it (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
