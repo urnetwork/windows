@@ -124,8 +124,8 @@ func TestBittensorBridgeErrorCodes(t *testing.T) {
 		t.Fatal("BittensorWalletFlow.h: BridgeErrorTextFor has no end")
 	}
 	keyMatches := regexp.MustCompile(`return \{"([a-z0-9_]+)", (true|false)\};`).FindAllStringSubmatch(flowSource[start:start+end], -1)
-	if len(keyMatches) != 7 {
-		t.Fatalf("BridgeErrorTextFor: %d keys, want 7", len(keyMatches))
+	if len(keyMatches) != 8 {
+		t.Fatalf("BridgeErrorTextFor: %d keys, want 8", len(keyMatches))
 	}
 	root := repositoryRoot(t)
 	localeEntries, err := os.ReadDir(filepath.Join(root, "app", "src", "App", "Strings"))
