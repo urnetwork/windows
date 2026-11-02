@@ -75,14 +75,6 @@ struct AuthResult {
   VerifySendNotice verify_send;
 };
 
-// The text for a refused wallet sign-in, network create or added sign-in
-// method: a pasted signature from another account than the entered address
-// (the server's signature_mismatch after a manual Bittensor wallet,
-// bittensor::ConnectErrorKey) says so with the wallet's name; anything else is
-// the server's `message`. `bittensorWalletId` is "" for a Solana wallet.
-std::string WalletProofRefusalText(const std::string& code, const std::string& message,
-                                   const std::string& bittensorWalletId);
-
 // Outcome of the authLogin account discovery (macOS LoginInitialViewModel
 // routing): an existing password account goes to the password step, an unknown
 // user auth goes to sign-up, an unverified account goes to the verify step.
@@ -854,39 +846,12 @@ class SdkHost {
   // urnetwork:// callback must be routed back in via HandleDeepLink.
   void SignInWithSolana(WalletConnect::Provider provider, std::function<void(AuthResult)> done);
 
-  // Sign in with a Bittensor wallet (`walletId`: "talisman" or "taocom",
-  // BittensorWalletFlow.h). The SDK session helper
-  // (urnet::BittensorWalletSession) runs the proof: Talisman through the ur.io
-  // bridge in the browser, TAO.com through the manual form (the manual
-  // handler below). The proof goes to authLogin{wallet_auth{blockchain=TAO}};
-  // a wallet with no network yet keeps its wallet for the create step.
+  // Sign in with a Bittensor wallet (`walletId`: a bittensor::kChooserWallets
+  // id, BittensorWalletFlow.h). The SDK session helper
+  // (urnet::BittensorWalletSession) runs the proof through the ur.io bridge in
+  // the browser. The proof goes to authLogin{wallet_auth{blockchain=TAO}}; a
+  // wallet with no network yet keeps its wallet for the create step.
   void SignInWithBittensor(const std::string& walletId, std::function<void(AuthResult)> done);
-
-  // The manual form of a Bittensor proof (TAO.com documents no programmatic
-  // interface): the UI shows `message` for the user to sign in the wallet,
-  // takes the address (prefilled with `address` when the flow is bound to
-  // one) and the signature, and answers with SubmitBittensorManual, or
-  // CancelBittensorProof when the user closes it. The handler runs on an SDK
-  // thread; the UI marshals.
-  struct BittensorManualRequest {
-    std::string walletId;
-    std::string walletName;
-    std::string message;
-    std::string address;
-    std::string purpose;
-  };
-  void SetBittensorManualHandler(std::function<void(BittensorManualRequest)> handler);
-  // accepted=false keeps the form open when the error is correctable (a typo);
-  // `error` is localized. A non-correctable refusal ends the proof (its flow
-  // is answered) and closes the form (`closed`).
-  struct BittensorManualAnswer {
-    bool accepted = false;
-    bool closed = false;
-    std::string error;
-  };
-  BittensorManualAnswer SubmitBittensorManual(const std::string& address,
-                                              const std::string& signature);
-  void CancelBittensorProof();
 
   // Sign `message` with a Solana wallet through the same browser bridge and hand
   // the address and signature back without authenticating. Adding a Solana
@@ -920,13 +885,9 @@ class SdkHost {
   void SignSolanaForAdd(WalletConnect::Provider provider,
                         std::function<void(std::string address, std::string signature,
                                            std::string message, std::string error)> done);
-  // A Bittensor proof under the session helper's add purpose
-  // (bittensor::kPurposeAdd): Talisman and WalletConnect through the bridge,
-  // TAO.com through `manualHandler` (the add sheet's own form, since a second
-  // ContentDialog cannot open over it), answered with SubmitBittensorManual /
-  // CancelBittensorProof as usual.
+  // A Bittensor proof through the bridge under the session helper's add purpose
+  // (bittensor::kPurposeAdd).
   void SignBittensorForAdd(const std::string& walletId,
-                           std::function<void(BittensorManualRequest)> manualHandler,
                            std::function<void(std::string address, std::string signature,
                                               std::string message, std::string error)> done);
   // The add sheet closed or switched method: answer and drop its flow.
@@ -959,8 +920,8 @@ class SdkHost {
                                                   std::string error)> done);
 
   // Sign the network payout consent (Api.snNetworkConsentChallenge's result)
-  // with a Bittensor wallet through the same session helper, bridge page and
-  // manual form as the coldkey connect, under the consent purpose
+  // with a Bittensor wallet through the same session helper and bridge page as
+  // the coldkey connect, under the consent purpose
   // (bittensor::kPurposeConsent). No challenge is fetched: the session takes
   // the server's message verbatim, bound to the coldkey and the expiry it names
   // (setNetworkConsentChallenge), and refuses a hand-back for another message,
@@ -2478,20 +2439,15 @@ class SdkHost {
   void RequestWalletChallenge(
       const std::string& blockchain, const std::string& walletAddress,
       std::function<void(std::optional<std::string> message, std::string error)> done);
-  // `bittensorWalletId` is the Bittensor wallet that signed `walletAuth` ("" for
-  // none), for the words of a refusal.
   void SubmitCreateNetwork(const CreateNetworkParams& params,
                            std::optional<urnet::WalletAuthArgs> walletAuth,
                            std::function<void(AuthResult)> done,
-                           std::uint64_t authEpoch,
-                           const std::string& bittensorWalletId = std::string());
+                           std::uint64_t authEpoch);
   // The wallet signed the challenge: authLogin{wallet_auth}. `signature` is what
   // the chain's verifier expects (base64 for SOL, hex for TAO).
-  // `bittensorWalletId` is the Bittensor wallet that signed ("" for Solana).
   void AuthLoginWithWallet(const std::string& address, const std::string& signature,
                            const std::string& message, WalletConnect::Provider provider,
-                           std::uint64_t authEpoch,
-                           const std::string& bittensorWalletId = std::string());
+                           std::uint64_t authEpoch);
   // The bridge returned an identity token: authLogin{auth_jwt_type:provider}.
   // An identity with no network yet is retained in pendingAuthJwt_ (with its
   // provider in pendingAuthJwtType_) and the UI routes to the create-network
@@ -3126,14 +3082,11 @@ class SdkHost {
     std::string code;
   };
   // Start a proof for `flow` (walletFlows_): fetch the session's challenge,
-  // then open the bridge (Talisman) or ask the manual handler (TAO.com).
-  // `done` runs once: with the proof, a refusal, or a superseding flow's reason.
-  // `manualHandler` replaces the window's manual form for this proof (the add
-  // sheet shows its own); null = the window's (SetBittensorManualHandler).
+  // then open the bridge. `done` runs once: with the proof, a refusal, or a
+  // superseding flow's reason.
   void BeginBittensorProof(uint64_t flow, const std::string& walletId, const std::string& purpose,
                            const std::string& expectedAddress,
-                           std::function<void(BittensorProofOutcome)> done,
-                           std::function<void(BittensorManualRequest)> manualHandler = nullptr);
+                           std::function<void(BittensorProofOutcome)> done);
   // A session for `walletId` under `purpose` (with the app's WalletConnect
   // project id where the wallet needs it), made the proof in flight, which
   // `done` answers; `serial` is the proof's. Null, with `done` answered, when
@@ -3141,24 +3094,19 @@ class SdkHost {
   std::shared_ptr<urnet::BittensorWalletSession> BeginBittensorSession(
       const std::string& walletId, const std::string& purpose,
       std::function<void(BittensorProofOutcome)> done, uint64_t& serial);
-  // The wallet hop once the session holds its message: the bridge page
-  // (Talisman, WalletConnect) or the manual form (TAO.com: `manualHandler`, or
-  // the window's when null), for proof `serial`.
+  // The wallet hop once the session holds its message: the bridge page, for
+  // proof `serial`, which any other transport answers with a failure.
   void OpenBittensorWallet(uint64_t serial,
-                           std::shared_ptr<urnet::BittensorWalletSession> const& session,
-                           const std::string& walletId, const std::string& purpose,
-                           const std::string& expectedAddress,
-                           std::function<void(BittensorManualRequest)> const& manualHandler);
+                           std::shared_ptr<urnet::BittensorWalletSession> const& session);
   // the urnetwork://bittensor-sign-message hand-back (WalletConnect)
   void HandleBittensorReturn(const std::string& url);
   // Answer proof `serial` if it is still the one in flight.
   void FinishBittensorProof(uint64_t serial, BittensorProofOutcome outcome);
-  // guards the four members below; never held while a callback runs
+  // guards the three members below; never held while a callback runs
   std::mutex bittensorLock_;
   uint64_t bittensorSerial_ = 0;
   std::shared_ptr<urnet::BittensorWalletSession> bittensorSession_;
   std::function<void(BittensorProofOutcome)> bittensorDone_;
-  std::function<void(BittensorManualRequest)> bittensorManualHandler_;
   // The wallet a Bittensor sign-in used: its network-create step (a fresh
   // challenge bound to the same address) goes through the same wallet.
   std::string pendingBittensorWalletId_;

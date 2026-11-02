@@ -257,10 +257,9 @@ class AuthCodeSheet : public std::enable_shared_from_this<AuthCodeSheet> {
 //   attempt (SdkHost::SsoTokenForAdd), then addAuth{auth_jwt}.
 // - Solana: Phantom or Solflare through the ur.io bridge signs a fresh
 //   challenge (SdkHost::SignSolanaForAdd), then addAuth{wallet_auth}.
-// - Bittensor: the shared chooser's wallets (BittensorWalletFlow.h) under the
-//   session helper's add purpose (SdkHost::SignBittensorForAdd); TAO.com's
-//   manual form is shown inside this sheet, since a second ContentDialog
-//   cannot open over it.
+// - Bittensor: the shared chooser's wallets (BittensorWalletFlow.h) through the
+//   ur.io bridge under the session helper's add purpose
+//   (SdkHost::SignBittensorForAdd).
 // Adding never signs in or replaces the session's jwt.
 class AddAuthSheet : public std::enable_shared_from_this<AddAuthSheet> {
  public:
@@ -280,7 +279,6 @@ class AddAuthSheet : public std::enable_shared_from_this<AddAuthSheet> {
   void Render();
   void SelectMethod(add_sign_in::Method method);
   void StartWallet(add_sign_in::WalletChain chain, std::string const& walletId);
-  void ShowManual(SdkHost::BittensorManualRequest request);
 
   SdkHost& sdk_;
   std::function<void()> onChanged_;
@@ -291,8 +289,6 @@ class AddAuthSheet : public std::enable_shared_from_this<AddAuthSheet> {
   add_sign_in::Method method_ = add_sign_in::kDefaultMethod;
   // the status line while the browser is open ("" for none)
   winrt::hstring browserHint_;
-  // the TAO.com proof waiting for the manual form
-  std::optional<SdkHost::BittensorManualRequest> manualRequest_;
   std::string addedMessageKey_;
   bool done_ = false;
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
@@ -301,12 +297,6 @@ class AddAuthSheet : public std::enable_shared_from_this<AddAuthSheet> {
   winrt::Microsoft::UI::Xaml::Controls::TextBlock providerHint_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button providerButton_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel walletPanel_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::StackPanel manualPanel_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::TextBlock manualInstructions_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::TextBox manualMessageBox_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::TextBox manualAddressBox_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::TextBox manualSignatureBox_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::TextBlock manualErrorText_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock statusText_{nullptr};
   std::vector<winrt::Microsoft::UI::Xaml::Controls::Button> walletButtons_;
   winrt::Microsoft::UI::Xaml::Controls::StackPanel signInPanel_{nullptr};

@@ -57,9 +57,9 @@ using winrt::Windows::Foundation::IInspectable;
 
 namespace {
 
-// The wallet bridge opens a browser (or the manual form waits for a pasted
-// signature) and the user may take a while; a plain api call does not. The
-// challenge itself lives five minutes, so waiting longer cannot succeed.
+// The wallet bridge opens a browser and the user may take a while (signing by
+// hand on its page included); a plain api call does not. The challenge itself
+// lives five minutes, so waiting longer cannot succeed.
 constexpr int kBridgeTimeoutMs = 300'000;
 constexpr int kApiTimeoutMs = 20'000;
 
@@ -1327,8 +1327,8 @@ void WalletPage::SetConnectingWallet(bool connecting) {
 
 // Both doors lead here. `pinnedAddress` is the pasted address (the challenge
 // is fetched for it and the wallet has to sign with it), or empty for the
-// wallet's own pick. The user picks the wallet first: Talisman continues in the
-// browser, TAO.com in the manual form.
+// wallet's own pick. The user picks the wallet first, and every wallet continues
+// in the browser.
 void WalletPage::StartWalletConnect(std::string const& pinnedAddress) {
   if (connectingWallet_ || w_.sheetOpen()) return;
   // Before the browser opens, not after: with no session this ends in a
@@ -1348,8 +1348,7 @@ void WalletPage::StartWalletConnect(std::string const& pinnedAddress) {
 void WalletPage::ConnectWithWallet(std::string const& walletId, std::string const& pinnedAddress) {
   if (connectingWallet_) return;
   SetConnectingWallet(true);
-  connectWalletId_ = walletId;
-  // Talisman asks for the extension's approval, WalletConnect for a scan
+  // Talisman and TAO.com ask for the extension's approval, WalletConnect for a scan
   const std::string browserHint = bittensor::BrowserHintKey(walletId);
   if (browserHint == "bittensor_continue_in_browser") {
     kit::SetTextOrCollapse(
@@ -1549,19 +1548,6 @@ void WalletPage::ApplyWalletConnectResult(uint32_t generation, bool ok,
   }
   SetConnectingWallet(false);
   if (!ok) {
-    // a signature pasted from the manual wallet that is not from the entered
-    // address: say so, and what to do in that wallet
-    const std::string transport =
-        connectWalletId_.empty()
-            ? std::string()
-            : urnet::bittensorWalletTransportFor(connectWalletId_, std::string(bittensor::kPlatform));
-    const std::string key = bittensor::ConnectErrorKey(
-        error ? error->code.value_or(std::string()) : std::string(), transport);
-    if (!key.empty()) {
-      Notify(hstring{urnw::Format(key, Widen(urnet::bittensorWalletDisplayName(connectWalletId_)))},
-             InfoBarSeverity::Error);
-      return;
-    }
     Notify(error ? SnErrorText(error) : Loc("wallet_connect_failed"), InfoBarSeverity::Error);
     return;
   }
@@ -2666,8 +2652,8 @@ winrt::fire_and_forget WalletPage::OnClaimV2(IInspectable const&, RoutedEventArg
 // button signs one, as every app does: the wallet (the chooser), the coldkey
 // the consent names (typed, and checked before any request), the server's
 // message for it, the wallet's signature through the coldkey connect's own
-// connector (SdkHost's session helper: the bridge page or the manual form),
-// and the submission. What it shows, which coldkey it takes and what it
+// connector (SdkHost's session helper: the bridge page), and the submission.
+// What it shows, which coldkey it takes and what it
 // submits are snconsent's decisions (SnConsentPresentation.h); this section
 // runs the reads and the writes.
 
@@ -2843,8 +2829,7 @@ void WalletPage::ApplyConsentSigned(uint32_t generation, snconsent::Challenge co
   }
   if (!ok) {
     if (bridge::IsSuperseded(error)) {
-      // another wallet flow started, or the user closed the wallet form: the
-      // panel is simply ready again
+      // another wallet flow started: the panel is simply ready again
       urnw::LogInfo("earnings: the payout consent signature was superseded ({})", error);
       EndConsent();
       return;

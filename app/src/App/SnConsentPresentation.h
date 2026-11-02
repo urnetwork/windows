@@ -11,8 +11,8 @@
 // type the coldkey the consent names (checked by the SDK's ss58 rule before any
 // request), have the server issue the message for it (SnNetworkConsentChallenge),
 // have the wallet sign it under the consent purpose through the coldkey
-// connect's own connector, the SDK session helper with its bridge page or
-// manual form (SdkHost::SignNetworkConsent), and submit it
+// connect's own connector, the SDK session helper with its bridge page
+// (SdkHost::SignNetworkConsent), and submit it
 // (SnNetworkConsentSubmit) only when the signature is the server's message's,
 // by the coldkey it names. Change wallet runs the same flow again.
 //

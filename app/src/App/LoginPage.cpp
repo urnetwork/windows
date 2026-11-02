@@ -1351,9 +1351,8 @@ winrt::fire_and_forget LoginPage::ShowApprovalSheet(std::string approvedCode) {
 // (main.cpp -> App::OnLaunched -> AppController::HandleDeepLink). `done` fires on
 // an SDK thread, so hop to the UI thread before touching the panel.
 
-// Bittensor asks which wallet first (Talisman or TAO.com): Talisman continues in
-// the browser through the bridge, TAO.com in the manual form (MainWindow
-// installs SdkHost's manual handler).
+// Bittensor asks which wallet first (Talisman, TAO.com or WalletConnect), and
+// every wallet continues in the browser through the bridge.
 void LoginPage::OnSignInWithBittensor(IInspectable const&, RoutedEventArgs const&) {
   SetInitialLoginError(hstring());
   auto weak = w_.get_weak();
