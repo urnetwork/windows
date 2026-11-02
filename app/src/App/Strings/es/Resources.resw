@@ -1050,10 +1050,6 @@
     <value>Pega la firma 0x…</value>
     <comment>Placeholder of the Bittensor signature field (a 0x-prefixed hex signature).</comment>
   </data>
-  <data name="bittensor_taocom_not_direct" xml:space="preserve">
-    <value>La extensión de TAO.com todavía no puede firmar en esta página. Elige aquí otra billetera o firma manualmente con btcli.</value>
-    <comment>Note under ur.io's Bittensor wallet chooser: the TAO.com browser extension signs only when a website asks it to, and this page does not ask it yet, so its users choose another wallet or sign with btcli.</comment>
-  </data>
   <data name="bittensor_wallet" xml:space="preserve">
     <value>Billetera de Bittensor</value>
     <comment>Label of the connected wallet block.</comment>

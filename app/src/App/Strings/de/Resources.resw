@@ -1050,10 +1050,6 @@
     <value>0x…-Signatur einfügen</value>
     <comment>Placeholder of the Bittensor signature field (a 0x-prefixed hex signature).</comment>
   </data>
-  <data name="bittensor_taocom_not_direct" xml:space="preserve">
-    <value>Die TAO.com-Erweiterung kann auf dieser Seite noch nicht signieren. Wähle hier eine andere Wallet oder signiere manuell mit btcli.</value>
-    <comment>Note under ur.io's Bittensor wallet chooser: the TAO.com browser extension signs only when a website asks it to, and this page does not ask it yet, so its users choose another wallet or sign with btcli.</comment>
-  </data>
   <data name="bittensor_wallet" xml:space="preserve">
     <value>Bittensor-Wallet</value>
     <comment>Label of the connected wallet block.</comment>
