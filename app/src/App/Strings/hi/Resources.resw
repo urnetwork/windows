@@ -4221,6 +4221,10 @@
     <value>अपर्याप्त शेष राशि — शेष राशि या कोई योजना जोड़ें</value>
     <comment>Connection status shown when the network has no data balance left.</comment>
   </data>
+  <data name="insufficient_balance_disconnect_first" xml:space="preserve">
+    <value>अपग्रेड करने के लिए पहले "डिस्कनेक्ट करें" चुनें। तब तक भुगतान पूरा नहीं हो पाएगा।</value>
+    <comment>Out-of-balance alert, on the builds whose checkout has to go through the tunnel (Windows, Linux, the Android Play flavor, the macOS direct download), while the tunnel holds or blocks traffic. Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. Each translation names that button by its own label (the disconnect key).</comment>
+  </data>
   <data name="insufficient_balance_exhausted" xml:space="preserve">
     <value>निःशुल्क रीफ़्रेश या अपग्रेड तक आपका डेटा खत्म हो गया है।</value>
     <comment>Out-of-balance notice (and the Upgrade screen when a blocked connect opened it), shown when the data is used up and almost nothing is held by open connections, so nothing meaningful will come back on its own. It follows the "Free data refreshes in {time}." line, which says when the free refresh is.</comment>

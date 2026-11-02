@@ -923,6 +923,48 @@ void TestDataLimitBannerHasNothingToBuy() {
 
 }  // namespace
 
+// Checkout is a page in another process, so the capture takes it and a firewall
+// policy stops it: the banner says to disconnect first while either stands, and
+// only then. With neither the page goes out the normal way, no session has nothing
+// to disconnect from, and a data limit has nothing to pay for.
+void TestBannerSaysDisconnectFirst() {
+  for (TrafficLine line : {TrafficLine::Held, TrafficLine::Blocked}) {
+    Check(BannerSaysDisconnectFirst(/*outOfBalance=*/true, line),
+          "disconnect first: out of balance, and the traffic cannot get out");
+    Check(!BannerSaysDisconnectFirst(/*outOfBalance=*/false, line),
+          "disconnect first: not out of balance, nothing to pay for here");
+  }
+  for (bool outOfBalance : {false, true}) {
+    Check(!BannerSaysDisconnectFirst(outOfBalance, TrafficLine::NotProtected),
+          "disconnect first: no capture and no policy, the page goes out the normal way");
+    Check(!BannerSaysDisconnectFirst(outOfBalance, TrafficLine::None),
+          "disconnect first: no session, nothing to disconnect from");
+  }
+  // from what the service reports, the way the banner asks
+  Check(BannerSaysDisconnectFirst(true, TrafficLineFor(true, true, false)),
+        "disconnect first: routes in, held");
+  Check(BannerSaysDisconnectFirst(true, TrafficLineFor(true, false, true)),
+        "disconnect first: no routes under a policy, blocked");
+  Check(!BannerSaysDisconnectFirst(true, TrafficLineFor(true, false, false)),
+        "disconnect first: a session that never captured");
+  Check(!BannerSaysDisconnectFirst(true, TrafficLineFor(false, true, true)),
+        "disconnect first: no session, whatever is left installed");
+}
+
+// The banner tells the user to disconnect, so it has to offer it, for as long as
+// the connect button would and only for the refusal: a refused start that waits
+// keeps the banner open with no session to end.
+void TestBannerOffersDisconnect() {
+  Check(BannerOffersDisconnect(/*refused=*/true, /*sessionUp=*/true),
+        "banner disconnect: a refused session can be ended from the banner");
+  Check(!BannerOffersDisconnect(/*refused=*/true, /*sessionUp=*/false),
+        "banner disconnect: no session, nothing to end");
+  Check(!BannerOffersDisconnect(/*refused=*/false, /*sessionUp=*/true),
+        "banner disconnect: open only for a waiting start, Cancel is its way out");
+  Check(!BannerOffersDisconnect(/*refused=*/false, /*sessionUp=*/false),
+        "banner disconnect: nothing refused and no session");
+}
+
 int main() {
   TestGate();
   TestConnectButton();
@@ -953,6 +995,8 @@ int main() {
   TestDataLimitWaitsForTheFirstBalance();
   TestDataLimitNoticeOncePerEpisodeAndNeverDisconnects();
   TestDataLimitBannerHasNothingToBuy();
+  TestBannerSaysDisconnectFirst();
+  TestBannerOffersDisconnect();
   std::cout << (gCases - gFailures) << "/" << gCases << " balance gate checks passed\n";
   return gFailures == 0 ? 0 : 1;
 }

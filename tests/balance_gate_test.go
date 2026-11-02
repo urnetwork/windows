@@ -412,6 +412,92 @@ func TestBalanceGateNegativeDataLimitInTheBalancesWords(t *testing.T) {
 		"at a data limit and held offers no upgrade")
 }
 
+// The line said for nobody leaves the page's stall unexplained.
+func TestBalanceGateNegativeNeverSaysDisconnectFirst(t *testing.T) {
+	requireBalanceGateFailure(t, "Common/BalanceGate.h",
+		"return outOfBalance && (line == TrafficLine::Held || line == TrafficLine::Blocked);",
+		"return false;",
+		"disconnect first: out of balance, and the traffic cannot get out")
+}
+
+// The line said over a session that never captured sends the user to disconnect
+// from nothing: the page goes out the normal way there.
+func TestBalanceGateNegativeSaysDisconnectFirstWithNothingInTheWay(t *testing.T) {
+	requireBalanceGateFailure(t, "Common/BalanceGate.h",
+		"return outOfBalance && (line == TrafficLine::Held || line == TrafficLine::Blocked);",
+		"return outOfBalance;",
+		"disconnect first: no capture and no policy, the page goes out the normal way")
+}
+
+// A banner telling the user to disconnect with nothing on it to do so.
+func TestBalanceGateNegativeBannerWithoutADisconnect(t *testing.T) {
+	requireBalanceGateFailure(t, "Common/BalanceGate.h",
+		"return refused && sessionUp;",
+		"return false;",
+		"banner disconnect: a refused session can be ended from the banner")
+}
+
+// Checkout runs in WebView2 or the browser, which the capture takes, so the banner
+// tells an account out of balance to disconnect first, from the decision and the
+// traffic line it already reads. A paying account at a limit is not told.
+func TestOutOfBalanceBannerSaysDisconnectFirst(t *testing.T) {
+	connect := stripComments(readAppSource(t, "ConnectPage.cpp"))
+	message := definitionBody(t, "ConnectPage.cpp", connect, "void ConnectPage::ApplyBalanceWarningMessage()")
+	provideRequireOrder(t, "ApplyBalanceWarningMessage", message,
+		"urnw::balance::BannerSaysDisconnectFirst(outOfBalance, traffic)",
+		`urnw::Localized("insufficient_balance_disconnect_first")`)
+	provideRequireOrder(t, "ApplyBalanceWarningMessage", message,
+		"urnw::datainfo::TrafficLineKey(dataLimit, traffic)",
+		"urnw::balance::BannerSaysDisconnectFirst(outOfBalance, traffic)")
+	// the checkout paths this rests on: the page in WebView2, then the browser, and
+	// the only UI image the firewall permits is the app's, whose SDK sockets alone
+	// are bound off the tun
+	sheets := stripComments(readAppSource(t, "BalanceSheets.cpp"))
+	provideRequire(t, "BalanceSheets.cpp", sheets, "core.Navigate(H(url));", "LaunchUriAsync(Uri(H(url)))")
+	policy := stripComments(readServiceSource(t, "WfpPolicy.h"))
+	provideRequire(t, "WfpPolicy.h", policy, "std::wstring app_image_path;")
+	requireNone(t, "the service", stripComments(readServiceSource(t, "TunnelController.cpp")+policy),
+		"msedgewebview2")
+}
+
+// The banner's Disconnect: on the banner, ending the session the way the connect
+// button's press does, offered from the one decision, and touching nothing else,
+// the provide mode least of all (a user who provides keeps providing).
+func TestOutOfBalanceBannerHasADisconnect(t *testing.T) {
+	window := stripComments(readAppSource(t, "MainWindow.xaml.cpp"))
+	if count := strings.Count(window, `L"acceptance.insufficient-balance.disconnect"`); count != 1 {
+		t.Errorf("MainWindow.xaml.cpp names the banner's Disconnect %d times, want once", count)
+	}
+	provideRequire(t, "MainWindow.xaml.cpp", window,
+		`balanceDisconnect_.Content(LocBox("disconnect"));`,
+		"links.Children().Append(balanceDisconnect_);",
+		"BalanceWarning().Content(links);")
+	at := strings.Index(window, "balanceDisconnect_.Click(")
+	if at < 0 {
+		t.Fatal("MainWindow.xaml.cpp: the banner's Disconnect has no click")
+	}
+	end := strings.Index(window[at:], "});")
+	if end < 0 {
+		t.Fatal("MainWindow.xaml.cpp: the banner's Disconnect click does not close")
+	}
+	click := window[at : at+end]
+	provideRequire(t, "the banner's Disconnect", click, "Sdk().Disconnect();")
+	requireNone(t, "the banner's Disconnect", click,
+		"Provide", "ConnectSelected", "AdmitStartConnect", "OnConnectToggle")
+
+	shown := definitionBody(t, "MainWindow.xaml.cpp", window, "void MainWindow::ApplyBalanceDisconnect(bool offered)")
+	provideRequire(t, "ApplyBalanceDisconnect", shown, "balanceDisconnect_.Visibility(")
+	connect := stripComments(readAppSource(t, "ConnectPage.cpp"))
+	message := definitionBody(t, "ConnectPage.cpp", connect, "void ConnectPage::ApplyBalanceWarningMessage()")
+	provideRequire(t, "ApplyBalanceWarningMessage", message,
+		"w_.ApplyBalanceDisconnect(urnw::balance::BannerOffersDisconnect(outOfBalance || dataLimit, sessionUp));")
+
+	// what the press runs: the session worker's Disconnect, which writes no mode
+	host := stripComments(readAppSource(t, "SdkHost.cpp"))
+	requireNone(t, "SdkHost::Disconnect", definitionBody(t, "SdkHost.cpp", host, "void SdkHost::Disconnect()"),
+		"setProvideControlMode", "SetProvideControlMode")
+}
+
 // Both surfaces read the one decision. The banner and the tray notice need Windows
 // and the service, so they are read with their comments blanked: neither names the
 // held string itself, each takes the routes and the firewall from the service's

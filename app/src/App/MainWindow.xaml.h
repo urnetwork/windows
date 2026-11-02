@@ -134,6 +134,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   // A paying account refused at a data limit (BalanceGate.h DataLimitGate): the
   // banner reads as the limit, with nothing to buy on it.
   void SetDataLimit(bool dataLimit);
+  // Whether the balance banner offers its Disconnect
+  // (ConnectPage::ApplyBalanceWarningMessage, BalanceGate.h BannerOffersDisconnect).
+  void ApplyBalanceDisconnect(bool offered);
   // ---- the persistent status strip (D4) ----
   // ProtonVPN's bottom line, at window level: it is true whichever destination
   // is on screen, so it cannot live on a page.
@@ -607,6 +610,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the banner's Get Pro and Why?, which a data limit has no use for
   winrt::Microsoft::UI::Xaml::Controls::Button balanceUpgrade_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::HyperlinkButton balanceWhy_{nullptr};
+  // the banner's Disconnect, shown while it has a session to end
+  winrt::Microsoft::UI::Xaml::Controls::Button balanceDisconnect_{nullptr};
   std::shared_ptr<urnw::UpgradeSheet> upgradeSheet_;
   std::shared_ptr<urnw::RedeemCodeSheet> redeemSheet_;
   std::shared_ptr<urnw::DataInfoSheet> dataInfoSheet_;
