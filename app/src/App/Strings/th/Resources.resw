@@ -4182,6 +4182,10 @@
     <value>ยอดเงินไม่เพียงพอ — เพิ่มยอดเงินหรือแพ็กเกจ</value>
     <comment>Connection status shown when the network has no data balance left.</comment>
   </data>
+  <data name="insufficient_balance_disconnect_first" xml:space="preserve">
+    <value>หากต้องการอัปเกรด ให้เลือก “ตัดการเชื่อมต่อ” ก่อน จนกว่าจะถึงตอนนั้น การชำระเงินจะไม่สำเร็จ</value>
+    <comment>Out-of-balance alert, on the builds whose checkout has to go through the tunnel (Windows, Linux, the Android Play flavor, the macOS direct download), while the tunnel holds or blocks traffic. Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. Each translation names that button by its own label (the disconnect key).</comment>
+  </data>
   <data name="insufficient_balance_exhausted" xml:space="preserve">
     <value>ข้อมูลของคุณหมดแล้วจนกว่าจะมีการรีเฟรชฟรีหรืออัปเกรด</value>
     <comment>Out-of-balance notice (and the Upgrade screen when a blocked connect opened it), shown when the data is used up and almost nothing is held by open connections, so nothing meaningful will come back on its own. It follows the "Free data refreshes in {time}." line, which says when the free refresh is.</comment>
