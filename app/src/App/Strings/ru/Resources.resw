@@ -5364,6 +5364,10 @@
     <value>Начать пробный период с {} бесплатными месяцами</value>
     <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_first_month_price" xml:space="preserve">
+    <value>{} за первый месяц</value>
+    <comment>Plan card with the win-back offer (a returning subscriber's first month of the monthly plan at a discount): the billed first-month amount on the monthly card (most prominent line).</comment>
+  </data>
   <data name="offer_first_year_price" xml:space="preserve">
     <value>{} за первый год</value>
     <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
@@ -5384,9 +5388,17 @@
     <value>{} месяцев Pro бесплатно</value>
     <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_percent_off_first_month" xml:space="preserve">
+    <value>Скидка {}% на первый месяц</value>
+    <comment>Win-back offer line on the monthly plan card and the account plan row. The number is the percent off the first month of the monthly plan.</comment>
+  </data>
   <data name="offer_percent_off_first_year" xml:space="preserve">
     <value>Скидка {}% на первый год</value>
     <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_month" xml:space="preserve">
+    <value>{0} за первый месяц, затем {1}/месяц. Отмена в любой момент.</value>
+    <comment>Plan picker with the win-back offer and the monthly plan chosen: the terms line under the button (the discounted first month, then the regular monthly price).</comment>
   </data>
   <data name="offer_terms_first_year.one" xml:space="preserve">
     <value>{0} день бесплатно, далее {1} за первый год, затем {2}/год. Отмена в любой момент.</value>
@@ -5403,6 +5415,10 @@
   <data name="offer_terms_first_year.other" xml:space="preserve">
     <value>{0} дней бесплатно, далее {1} за первый год, затем {2}/год. Отмена в любой момент.</value>
     <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_monthly_price" xml:space="preserve">
+    <value>далее {}/месяц</value>
+    <comment>Plan card with the win-back offer: the regular monthly price line under the first-month amount.</comment>
   </data>
   <data name="offer_then_regular_price" xml:space="preserve">
     <value>далее {}/год</value>
@@ -8010,6 +8026,14 @@
     <value>Скачать приложение</value>
     <comment>Email landing page: the store fallback button.</comment>
   </data>
+  <data name="site_landing_keep_failed" xml:space="preserve">
+    <value>Не получилось. Ответьте на письмо, и мы оставим вас в списке.</value>
+    <comment>Email landing page for the re-engagement "Keep me posted" button: shown when the choice could not be recorded; replying to the email is the fallback.</comment>
+  </data>
+  <data name="site_landing_kept" xml:space="preserve">
+    <value>Спасибо. Мы будем иногда присылать вам письма.</value>
+    <comment>Email landing page for the re-engagement "Keep me posted" button: shown once the choice is recorded. Nothing opens; the page stays.</comment>
+  </data>
   <data name="site_landing_open_app" xml:space="preserve">
     <value>Открыть в приложении</value>
     <comment>Email landing page: the button that retries the app link.</comment>
@@ -8553,6 +8577,10 @@
   <data name="site_usdc_offer_term" xml:space="preserve">
     <value>{1} месяцев плюс {0} дней Pro</value>
     <comment>USDC panel: the term the welcome-offer payment buys.</comment>
+  </data>
+  <data name="site_winback_sheet_line" xml:space="preserve">
+    <value>С возвращением: скидка {0}% на первый месяц до {1}</value>
+    <comment>Upgrade sheet: the win-back offer line while a returning subscriber's offer is active (the monthly plan's first month at a discount). {percent} whole number, {when} a local date and time.</comment>
   </data>
   <data name="skip" xml:space="preserve">
     <value>Пропустить</value>

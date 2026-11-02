@@ -5235,6 +5235,10 @@ enviamos para verificar tu identidad.</value>
     <value>Empezar la prueba gratis con {} meses gratis</value>
     <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_first_month_price" xml:space="preserve">
+    <value>{} tu primer mes</value>
+    <comment>Plan card with the win-back offer (a returning subscriber's first month of the monthly plan at a discount): the billed first-month amount on the monthly card (most prominent line).</comment>
+  </data>
   <data name="offer_first_year_price" xml:space="preserve">
     <value>{} tu primer año</value>
     <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
@@ -5247,9 +5251,17 @@ enviamos para verificar tu identidad.</value>
     <value>{} meses de Pro, gratis</value>
     <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_percent_off_first_month" xml:space="preserve">
+    <value>{}% de descuento en tu primer mes</value>
+    <comment>Win-back offer line on the monthly plan card and the account plan row. The number is the percent off the first month of the monthly plan.</comment>
+  </data>
   <data name="offer_percent_off_first_year" xml:space="preserve">
     <value>{}% de descuento en tu primer año</value>
     <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_month" xml:space="preserve">
+    <value>{0} tu primer mes, después {1}/mes. Cancela cuando quieras.</value>
+    <comment>Plan picker with the win-back offer and the monthly plan chosen: the terms line under the button (the discounted first month, then the regular monthly price).</comment>
   </data>
   <data name="offer_terms_first_year.one" xml:space="preserve">
     <value>{0} día gratis, después {1} tu primer año, después {2}/año. Cancela cuando quieras.</value>
@@ -5258,6 +5270,10 @@ enviamos para verificar tu identidad.</value>
   <data name="offer_terms_first_year.other" xml:space="preserve">
     <value>{0} días gratis, después {1} tu primer año, después {2}/año. Cancela cuando quieras.</value>
     <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_monthly_price" xml:space="preserve">
+    <value>después {}/mes</value>
+    <comment>Plan card with the win-back offer: the regular monthly price line under the first-month amount.</comment>
   </data>
   <data name="offer_then_regular_price" xml:space="preserve">
     <value>después {}/año</value>
@@ -7778,6 +7794,14 @@ del mundo</value>
     <value>Descargar la app</value>
     <comment>Email landing page: the store fallback button.</comment>
   </data>
+  <data name="site_landing_keep_failed" xml:space="preserve">
+    <value>No se pudo completar. Responde al correo y te mantendremos en la lista.</value>
+    <comment>Email landing page for the re-engagement "Keep me posted" button: shown when the choice could not be recorded; replying to the email is the fallback.</comment>
+  </data>
+  <data name="site_landing_kept" xml:space="preserve">
+    <value>Gracias. Seguirás recibiendo un mensaje nuestro de vez en cuando.</value>
+    <comment>Email landing page for the re-engagement "Keep me posted" button: shown once the choice is recorded. Nothing opens; the page stays.</comment>
+  </data>
   <data name="site_landing_open_app" xml:space="preserve">
     <value>Abrir en la app</value>
     <comment>Email landing page: the button that retries the app link.</comment>
@@ -8297,6 +8321,10 @@ del mundo</value>
   <data name="site_usdc_offer_term" xml:space="preserve">
     <value>{1} meses más {0} días de Pro</value>
     <comment>USDC panel: the term the welcome-offer payment buys.</comment>
+  </data>
+  <data name="site_winback_sheet_line" xml:space="preserve">
+    <value>Oferta de regreso: {0}% de descuento en tu primer mes, hasta el {1}</value>
+    <comment>Upgrade sheet: the win-back offer line while a returning subscriber's offer is active (the monthly plan's first month at a discount). {percent} whole number, {when} a local date and time.</comment>
   </data>
   <data name="skip" xml:space="preserve">
     <value>Omitir</value>

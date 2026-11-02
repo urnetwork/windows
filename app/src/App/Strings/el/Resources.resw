@@ -5227,6 +5227,10 @@
     <value>Ξεκίνα τη δωρεάν δοκιμή με {} μήνες δωρεάν</value>
     <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_first_month_price" xml:space="preserve">
+    <value>{} για τον πρώτο μήνα</value>
+    <comment>Plan card with the win-back offer (a returning subscriber's first month of the monthly plan at a discount): the billed first-month amount on the monthly card (most prominent line).</comment>
+  </data>
   <data name="offer_first_year_price" xml:space="preserve">
     <value>{} για τον πρώτο χρόνο</value>
     <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
@@ -5239,9 +5243,17 @@
     <value>{} μήνες Pro, δωρεάν</value>
     <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_percent_off_first_month" xml:space="preserve">
+    <value>{}% έκπτωση στον πρώτο μήνα</value>
+    <comment>Win-back offer line on the monthly plan card and the account plan row. The number is the percent off the first month of the monthly plan.</comment>
+  </data>
   <data name="offer_percent_off_first_year" xml:space="preserve">
     <value>{}% έκπτωση στον πρώτο χρόνο</value>
     <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_month" xml:space="preserve">
+    <value>{0} για τον πρώτο μήνα, έπειτα {1}/μήνα. Ακύρωση οποτεδήποτε.</value>
+    <comment>Plan picker with the win-back offer and the monthly plan chosen: the terms line under the button (the discounted first month, then the regular monthly price).</comment>
   </data>
   <data name="offer_terms_first_year.one" xml:space="preserve">
     <value>{0} ημέρα δωρεάν, έπειτα {1} για τον πρώτο χρόνο, έπειτα {2}/έτος. Ακύρωση οποτεδήποτε.</value>
@@ -5250,6 +5262,10 @@
   <data name="offer_terms_first_year.other" xml:space="preserve">
     <value>{0} ημέρες δωρεάν, έπειτα {1} για τον πρώτο χρόνο, έπειτα {2}/έτος. Ακύρωση οποτεδήποτε.</value>
     <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_monthly_price" xml:space="preserve">
+    <value>έπειτα {}/μήνα</value>
+    <comment>Plan card with the win-back offer: the regular monthly price line under the first-month amount.</comment>
   </data>
   <data name="offer_then_regular_price" xml:space="preserve">
     <value>έπειτα {}/έτος</value>
@@ -7257,6 +7273,10 @@
   <data name="site_subscription_error_store_unavailable" xml:space="preserve">
     <value>Δεν ήταν δυνατή η επικοινωνία με το Stripe αυτή τη στιγμή. Δοκιμάστε ξανά σε λίγο.</value>
     <comment>Manage subscription (ur.io's screen; Settings in the Windows app, Account in the Linux app): Stripe did not answer or refused the change, or the billing portal could not be opened; trying again usually works (error.code store_unavailable).</comment>
+  </data>
+  <data name="site_winback_sheet_line" xml:space="preserve">
+    <value>Καλώς ήρθες ξανά: {0}% έκπτωση στον πρώτο μήνα, έως {1}</value>
+    <comment>Upgrade sheet: the win-back offer line while a returning subscriber's offer is active (the monthly plan's first month at a discount). {percent} whole number, {when} a local date and time.</comment>
   </data>
   <data name="skip" xml:space="preserve">
     <value>Παράλειψη</value>

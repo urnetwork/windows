@@ -5227,6 +5227,10 @@ enviamos para verificar tu identidad.</value>
     <value>Empezar la prueba gratis con {} meses gratis</value>
     <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_first_month_price" xml:space="preserve">
+    <value>{} tu primer mes</value>
+    <comment>Plan card with the win-back offer (a returning subscriber's first month of the monthly plan at a discount): the billed first-month amount on the monthly card (most prominent line).</comment>
+  </data>
   <data name="offer_first_year_price" xml:space="preserve">
     <value>{} tu primer año</value>
     <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
@@ -5239,9 +5243,17 @@ enviamos para verificar tu identidad.</value>
     <value>{} meses de Pro, gratis</value>
     <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_percent_off_first_month" xml:space="preserve">
+    <value>{}% de descuento en tu primer mes</value>
+    <comment>Win-back offer line on the monthly plan card and the account plan row. The number is the percent off the first month of the monthly plan.</comment>
+  </data>
   <data name="offer_percent_off_first_year" xml:space="preserve">
     <value>{}% de descuento en tu primer año</value>
     <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_month" xml:space="preserve">
+    <value>{0} tu primer mes, después {1}/mes. Cancela cuando quieras.</value>
+    <comment>Plan picker with the win-back offer and the monthly plan chosen: the terms line under the button (the discounted first month, then the regular monthly price).</comment>
   </data>
   <data name="offer_terms_first_year.one" xml:space="preserve">
     <value>{0} día gratis, después {1} tu primer año, después {2}/año. Cancela cuando quieras.</value>
@@ -5250,6 +5262,10 @@ enviamos para verificar tu identidad.</value>
   <data name="offer_terms_first_year.other" xml:space="preserve">
     <value>{0} días gratis, después {1} tu primer año, después {2}/año. Cancela cuando quieras.</value>
     <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_monthly_price" xml:space="preserve">
+    <value>después {}/mes</value>
+    <comment>Plan card with the win-back offer: the regular monthly price line under the first-month amount.</comment>
   </data>
   <data name="offer_then_regular_price" xml:space="preserve">
     <value>después {}/año</value>
@@ -7257,6 +7273,10 @@ del mundo</value>
   <data name="site_subscription_error_store_unavailable" xml:space="preserve">
     <value>No se pudo conectar con Stripe en este momento. Vuelve a intentarlo en un momento.</value>
     <comment>Manage subscription (ur.io's screen; Settings in the Windows app, Account in the Linux app): Stripe did not answer or refused the change, or the billing portal could not be opened; trying again usually works (error.code store_unavailable).</comment>
+  </data>
+  <data name="site_winback_sheet_line" xml:space="preserve">
+    <value>Oferta de regreso: {0}% de descuento en tu primer mes, hasta el {1}</value>
+    <comment>Upgrade sheet: the win-back offer line while a returning subscriber's offer is active (the monthly plan's first month at a discount). {percent} whole number, {when} a local date and time.</comment>
   </data>
   <data name="skip" xml:space="preserve">
     <value>Omitir</value>

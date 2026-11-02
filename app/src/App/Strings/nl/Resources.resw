@@ -5228,6 +5228,10 @@ Ontvang je bonus door een netwerk aan te maken.</value>
     <value>Start gratis proefperiode met {} maanden gratis</value>
     <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_first_month_price" xml:space="preserve">
+    <value>{} voor je eerste maand</value>
+    <comment>Plan card with the win-back offer (a returning subscriber's first month of the monthly plan at a discount): the billed first-month amount on the monthly card (most prominent line).</comment>
+  </data>
   <data name="offer_first_year_price" xml:space="preserve">
     <value>{} voor je eerste jaar</value>
     <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
@@ -5240,9 +5244,17 @@ Ontvang je bonus door een netwerk aan te maken.</value>
     <value>{} maanden Pro, gratis</value>
     <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_percent_off_first_month" xml:space="preserve">
+    <value>{}% korting op je eerste maand</value>
+    <comment>Win-back offer line on the monthly plan card and the account plan row. The number is the percent off the first month of the monthly plan.</comment>
+  </data>
   <data name="offer_percent_off_first_year" xml:space="preserve">
     <value>{}% korting op je eerste jaar</value>
     <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_month" xml:space="preserve">
+    <value>{0} voor je eerste maand, daarna {1}/maand. Altijd opzegbaar.</value>
+    <comment>Plan picker with the win-back offer and the monthly plan chosen: the terms line under the button (the discounted first month, then the regular monthly price).</comment>
   </data>
   <data name="offer_terms_first_year.one" xml:space="preserve">
     <value>{0} dag gratis, daarna {1} voor je eerste jaar, daarna {2}/jaar. Altijd opzegbaar.</value>
@@ -5251,6 +5263,10 @@ Ontvang je bonus door een netwerk aan te maken.</value>
   <data name="offer_terms_first_year.other" xml:space="preserve">
     <value>{0} dagen gratis, daarna {1} voor je eerste jaar, daarna {2}/jaar. Altijd opzegbaar.</value>
     <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_monthly_price" xml:space="preserve">
+    <value>daarna {}/maand</value>
+    <comment>Plan card with the win-back offer: the regular monthly price line under the first-month amount.</comment>
   </data>
   <data name="offer_then_regular_price" xml:space="preserve">
     <value>daarna {}/jaar</value>
@@ -7257,6 +7273,10 @@ inhoud van de wereld</value>
   <data name="site_subscription_error_store_unavailable" xml:space="preserve">
     <value>Stripe is nu niet bereikbaar. Probeer het zo meteen opnieuw.</value>
     <comment>Manage subscription (ur.io's screen; Settings in the Windows app, Account in the Linux app): Stripe did not answer or refused the change, or the billing portal could not be opened; trying again usually works (error.code store_unavailable).</comment>
+  </data>
+  <data name="site_winback_sheet_line" xml:space="preserve">
+    <value>Welkom terug: {0}% korting op je eerste maand, tot {1}</value>
+    <comment>Upgrade sheet: the win-back offer line while a returning subscriber's offer is active (the monthly plan's first month at a discount). {percent} whole number, {when} a local date and time.</comment>
   </data>
   <data name="skip" xml:space="preserve">
     <value>Overslaan</value>
