@@ -345,10 +345,22 @@ MainWindow::MainWindow() {
     Automation::AutomationProperties::SetAutomationId(
         balanceRecoveryCancel_, L"acceptance.insufficient-balance.cancel-reconnect");
     balanceRecoveryCancel_.Click([](auto const&, auto const&) { urnw::App().ClearBalanceRecovery(); });
+    // the banner tells the user to disconnect before paying (BalanceGate.h), so it
+    // carries the press itself: the connect button's Disconnect, with none of that
+    // button's Retry. It ends the session and nothing else: the provide mode stands
+    balanceDisconnect_ = Button();
+    solidBannerAction(balanceDisconnect_);
+    balanceDisconnect_.Content(LocBox("disconnect"));
+    balanceDisconnect_.Visibility(Visibility::Collapsed);
+    Automation::AutomationProperties::SetAutomationId(balanceDisconnect_,
+                                                      L"acceptance.insufficient-balance.disconnect");
+    balanceDisconnect_.Click([](auto const&, auto const&) { Sdk().Disconnect(); });
     StackPanel links;
     links.Orientation(winrt::Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
+    links.Spacing(8);
     links.Children().Append(why);
     links.Children().Append(balanceRecoveryCancel_);
+    links.Children().Append(balanceDisconnect_);
     BalanceWarning().Content(links);
   }
 
@@ -2609,6 +2621,12 @@ void MainWindow::SetDataLimit(bool dataLimit) {
   if (dataLimit == dataLimit_) return;
   dataLimit_ = dataLimit;
   UpdateBalanceWarning();
+}
+
+void MainWindow::ApplyBalanceDisconnect(bool offered) {
+  if (balanceDisconnect_) {
+    balanceDisconnect_.Visibility(offered ? Visibility::Visible : Visibility::Collapsed);
+  }
 }
 
 void MainWindow::UpdateBalanceWarning() {

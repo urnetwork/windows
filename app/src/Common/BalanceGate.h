@@ -9,7 +9,9 @@
 // tunnel. Instead the user is told once per episode (a tray notice and the
 // in-app banner) and the explicit connect button keeps a working Disconnect.
 // A session that never captured has nothing held, and the notice and banner say
-// what its traffic is doing instead (TrafficLineFor).
+// what its traffic is doing instead (TrafficLineFor). A held tunnel stops a checkout
+// as well, so the banner says to disconnect before paying and carries the Disconnect
+// that does it (BannerSaysDisconnectFirst, BannerOffersDisconnect).
 // It used to be disabled with the connect, which left the tray as the only
 // way out. The round hero button is unchanged. The service's dead-tunnel failsafe
 // holds for the same state, read from the same status (Service/DeadTunnelVerdict.h
@@ -311,6 +313,28 @@ inline constexpr TrafficLine TrafficLineFor(bool sessionUp, bool routesInstalled
   return firewallInForce ? TrafficLine::Blocked : TrafficLine::NotProtected;
 }
 
+// ---- paying while refused ------------------------------------------------------
+// Checkout is a page in another process: the upgrade sheet's WebView2, or the
+// browser it falls back to. Only urnetworkd and the app's own image are permitted
+// off the tun (WfpPolicy.h), and only the app's SDK sockets are bound off it, so the
+// capture routes take the page and a firewall policy stops it. While the traffic is
+// held or blocked a payment cannot get through, and there is deliberately no way
+// around that: a checkout bypass could leak. So the banner says to disconnect first,
+// and the user's own Disconnect (which also lifts a kill switch's policy,
+// TunnelController::StopLocked) gives the network back. Nothing here disconnects.
+// With no capture and no policy the page goes out the normal way, and a paying
+// account at a limit is offered nothing to pay for.
+inline constexpr bool BannerSaysDisconnectFirst(bool outOfBalance, TrafficLine line) {
+  return outOfBalance && (line == TrafficLine::Held || line == TrafficLine::Blocked);
+}
+
+// The banner's own Disconnect, for as long as the connect button offers one
+// (gesture::ActionIsDisconnect), so the banner that asks for it can do it. A banner
+// open only for a refused start that waits has no session to end, and Cancel instead.
+inline constexpr bool BannerOffersDisconnect(bool refused, bool sessionUp) {
+  return refused && sessionUp;
+}
+
 // ---- a paying account refused: the data limit ---------------------------------
 // The server refuses a paying account with the same status it gives an empty
 // one when a data limit stands in the way: the client's own data cap, or the
@@ -353,7 +377,7 @@ constexpr void ReactToDataLimitPush(GateNoticeTracker& tracker, bool insufficien
 }
 
 // Get Pro and Why? explain a balance to refill. A paying account at a limit has
-// neither to act on, and Disconnect is on the connect button.
+// neither to act on, and Disconnect is on the banner as on the connect button.
 inline constexpr bool BannerOffersUpgrade(bool dataLimit) { return !dataLimit; }
 
 // ---- reserved or used up, and recovering by itself --------------------------

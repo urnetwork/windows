@@ -3980,7 +3980,9 @@ void ConnectPage::ApplyDnsRecommendationPill() {
 // balance. While a connect the user asked for waits on the balance it says the
 // app reconnects by itself (a refused start keeps the banner open with only that
 // line and Cancel). A paying account refused at a data limit gets its title and
-// the traffic line, and none of the balance's lines.
+// the traffic line, and none of the balance's lines. While the traffic is held or
+// blocked an account out of balance is told to disconnect before it pays, and the
+// banner carries the Disconnect that does it (BalanceGate.h, paying while refused).
 void ConnectPage::ApplyBalanceWarningMessage() {
   const bool outOfBalance = w_.outOfBalance();
   const bool dataLimit = w_.dataLimit();
@@ -3997,10 +3999,15 @@ void ConnectPage::ApplyBalanceWarningMessage() {
     if (!kind.empty()) message += kind + L"\n";
   }
   if (outOfBalance || dataLimit) {
-    const char* line = urnw::datainfo::TrafficLineKey(
-        dataLimit, urnw::balance::TrafficLineFor(sessionUp, facts.routesInstalled,
-                                                 urnw::gesture::WfpInForce(facts)));
+    const urnw::balance::TrafficLine traffic =
+        urnw::balance::TrafficLineFor(sessionUp, facts.routesInstalled,
+                                      urnw::gesture::WfpInForce(facts));
+    const char* line = urnw::datainfo::TrafficLineKey(dataLimit, traffic);
     if (line) message += urnw::Localized(line);
+    if (urnw::balance::BannerSaysDisconnectFirst(outOfBalance, traffic)) {
+      if (!message.empty()) message += L"\n";
+      message += urnw::Localized("insufficient_balance_disconnect_first");
+    }
   }
   if (recovery.willReconnect) {
     if (!message.empty()) message += L"\n";
@@ -4008,6 +4015,7 @@ void ConnectPage::ApplyBalanceWarningMessage() {
   }
   w_.BalanceWarning().Title(hstring{urnw::Localized(urnw::datainfo::AlertTitleKey(dataLimit))});
   w_.BalanceWarning().Message(hstring{message});
+  w_.ApplyBalanceDisconnect(urnw::balance::BannerOffersDisconnect(outOfBalance || dataLimit, sessionUp));
 }
 
 void ConnectPage::OnChartTick() {

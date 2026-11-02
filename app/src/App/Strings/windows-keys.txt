@@ -621,6 +621,7 @@ includes_free_trial_days
 instant_account_explainer
 instant_account_failed
 insufficient_balance
+insufficient_balance_disconnect_first
 insufficient_balance_exhausted
 insufficient_balance_held_notice
 insufficient_balance_message
