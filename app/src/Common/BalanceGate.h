@@ -2,12 +2,14 @@
 // account is out of balance, and how the app reacts to entering that state.
 //
 // Out of balance is a billing state, not a dropped tunnel. While the SDK still
-// holds a destination the service keeps the capture routes in place with no
-// exit to carry them, so traffic is held in the tunnel. That is kept on
-// purpose: the app never disconnects on its own, because falling back to the
-// open internet without the user knowing would leak traffic outside the
+// holds a destination the service keeps the capture routes it installed in
+// place with no exit to carry them, so traffic is held in the tunnel. That is
+// kept on purpose: the app never disconnects on its own, because falling back
+// to the open internet without the user knowing would leak traffic outside the
 // tunnel. Instead the user is told once per episode (a tray notice and the
 // in-app banner) and the explicit connect button keeps a working Disconnect.
+// A session that never captured has nothing held, and the notice and banner say
+// what its traffic is doing instead (TrafficLineFor).
 // It used to be disabled with the connect, which left the tray as the only
 // way out. The round hero button is unchanged. The service's dead-tunnel failsafe
 // holds for the same state, read from the same status (Service/DeadTunnelVerdict.h
@@ -281,6 +283,78 @@ constexpr void ReactToBalancePush(GateNoticeTracker& tracker, bool insufficientB
                                   bool supporter, bool confirming, Sinks& sinks) {
   if (tracker.Update(insufficientBalance, supporter, confirming)) sinks.Notice();
 }
+
+// ---- what the traffic is doing while refused ---------------------------------
+// "Held in the tunnel" is a claim about this machine's routes, and a session does
+// not have them just because it asked. The service installs the capture only
+// once a provider is proven (CaptureReadiness), so a session that starts out of
+// balance stays in Preparing with nothing captured: its traffic goes out the
+// normal way, or the kill switch's policy blocks it, and telling that user their
+// traffic is held implies a protection they do not have. The banner and the tray
+// notice read this one decision, from what the service reports, and its words
+// are in App/DataInfo.h.
+enum class TrafficLine {
+  // no session is asking: nothing to say about the traffic
+  None,
+  // the capture routes are installed: traffic goes into the tunnel and waits
+  Held,
+  // no capture, and a firewall policy keeps the machine's traffic in
+  Blocked,
+  // no capture and no policy: traffic goes out the normal way
+  NotProtected,
+};
+
+inline constexpr TrafficLine TrafficLineFor(bool sessionUp, bool routesInstalled,
+                                            bool firewallInForce) {
+  if (!sessionUp) return TrafficLine::None;
+  if (routesInstalled) return TrafficLine::Held;
+  return firewallInForce ? TrafficLine::Blocked : TrafficLine::NotProtected;
+}
+
+// ---- a paying account refused: the data limit ---------------------------------
+// The server refuses a paying account with the same status it gives an empty
+// one when a data limit stands in the way: the client's own data cap, or the
+// plan's data. The gate above never applies to it (Pro is not sent to upgrade),
+// so without this the account hears nothing. It gets the same kind of alert, in
+// words for a limit, with no upgrade and no free refresh on offer.
+//
+// Pro and the status together do not always mean that. A refusal made before a
+// purchase still stands right after it: the status changes only with the next
+// contract result, and a held connection that sends nothing may not get one. So
+// a refusal seen while the plan was known not to be Pro says nothing about the
+// Pro plan until it clears, and the first balance of a launch is not an upgrade:
+// a plan not fetched yet decides nothing.
+//
+// Fed the raw status, not the latch: the start gate needs the latch to outlive a
+// Disconnect, and a paying account's start is not gated, so its alert ends with
+// the refusal it describes.
+class DataLimitGate {
+ public:
+  constexpr bool Observe(bool insufficientBalance, bool planKnown, bool pro, bool confirming) {
+    if (!insufficientBalance) {
+      refusedBeforePro_ = false;
+      return false;
+    }
+    if (planKnown && !pro) refusedBeforePro_ = true;
+    return planKnown && pro && !refusedBeforePro_ && !confirming;
+  }
+
+ private:
+  bool refusedBeforePro_ = false;
+};
+
+// The notice for a data limit, once per episode of the raw status. sinks provides
+// DataLimitNotice() and, as for ReactToBalancePush, a Disconnect() that is never
+// called from here.
+template <class Sinks>
+constexpr void ReactToDataLimitPush(GateNoticeTracker& tracker, bool insufficientBalance,
+                                    bool dataLimit, Sinks& sinks) {
+  if (tracker.Update(insufficientBalance, !dataLimit, false)) sinks.DataLimitNotice();
+}
+
+// Get Pro and Why? explain a balance to refill. A paying account at a limit has
+// neither to act on, and Disconnect is on the connect button.
+inline constexpr bool BannerOffersUpgrade(bool dataLimit) { return !dataLimit; }
 
 // ---- reserved or used up, and recovering by itself --------------------------
 // Out of balance reads the same whether the balance is used up or only held as

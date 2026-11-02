@@ -190,12 +190,8 @@ int main() {
     Check(ShowsFreeRefresh(false), "the sheet's refresh line shows without Pro");
     Check(!ShowsFreeRefresh(true), "Pro gets no free grant: no refresh line");
 
-    Check(BannerLinesFor(true, true) == BannerLines{true, true},
-          "out of balance with a session up: the refresh, then the held traffic");
-    Check(BannerLinesFor(true, false) == BannerLines{true, false},
-          "out of balance with no session: the refresh, then add balance or a plan");
-    Check(BannerLinesFor(false, true) == BannerLines{false, false}, "funded, session up: no banner lines");
-    Check(BannerLinesFor(false, false) == BannerLines{false, false}, "funded: no banner lines");
+    Check(BannerLinesFor(true) == BannerLines{true}, "out of balance: the refresh leads");
+    Check(BannerLinesFor(false) == BannerLines{false}, "funded or at a data limit: no refresh line");
 
     Check(UpgradeShowsFreeRefresh(true, false), "a blocked connect's upgrade sheet shows the refresh");
     Check(!UpgradeShowsFreeRefresh(false, false), "Get Pro and the other entries do not");

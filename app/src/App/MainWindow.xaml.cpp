@@ -324,6 +324,7 @@ MainWindow::MainWindow() {
       }
     });
     BalanceWarning().ActionButton(getPro);
+    balanceUpgrade_ = getPro;
 
     // the banner leads with when the free data refreshes (ConnectPage); Why?
     // explains the balance in the "About your data" sheet
@@ -334,6 +335,7 @@ MainWindow::MainWindow() {
     why.Click([weak = get_weak()](auto const&, auto const&) {
       if (auto self = weak.get()) self->ShowDataInfoSheet();
     });
+    balanceWhy_ = why;
     // a refused start waits on the balance and is run by itself once data is
     // back (BalanceGate.h, BalanceRecovery); Cancel ends the wait, since a
     // connect that never started has no Disconnect
@@ -2621,11 +2623,23 @@ void MainWindow::SetBalanceRecovery(urnw::balance::RecoveryState state) {
   UpdateBalanceWarning();
 }
 
+void MainWindow::SetDataLimit(bool dataLimit) {
+  // pushed with every stats and balance push; re-render only on a change
+  if (dataLimit == dataLimit_) return;
+  dataLimit_ = dataLimit;
+  UpdateBalanceWarning();
+}
+
 void MainWindow::UpdateBalanceWarning() {
   // macOS ConnectActions: the insufficient-balance CTA shows for a non-Pro
   // account when no confirmation poll is bridging a just-made purchase. A
-  // refused start waiting on the balance keeps it open with its Cancel.
-  BalanceWarning().IsOpen(urnw::balance::BannerOpen(outOfBalance(), balanceRecovery_));
+  // refused start waiting on the balance keeps it open with its Cancel, and a
+  // paying account refused at a data limit gets it in words for the limit.
+  BalanceWarning().IsOpen(urnw::balance::BannerOpen(outOfBalance() || dataLimit_, balanceRecovery_));
+  const auto offered = urnw::balance::BannerOffersUpgrade(dataLimit_) ? Visibility::Visible
+                                                                      : Visibility::Collapsed;
+  if (balanceUpgrade_) balanceUpgrade_.Visibility(offered);
+  if (balanceWhy_) balanceWhy_.Visibility(offered);
   if (balanceRecoveryCancel_) {
     const bool cancel = urnw::balance::RecoveryLinesFor(outOfBalance(), false, outOfBalanceKind(),
                                                         balanceRecovery_)

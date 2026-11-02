@@ -27,6 +27,7 @@ func TestDataInfo(t *testing.T) {
 	program := filepath.Join(t.TempDir(), "data-info-tests")
 	build := exec.Command(compiler, "-std=c++20", "-Wall", "-Wextra", "-Werror",
 		"-I"+filepath.Join(root, "app", "src", "App"),
+		"-I"+filepath.Join(root, "app", "src", "Common"),
 		filepath.Join(root, "app", "tools", "data-info-tests.cpp"), "-o", program)
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build data info tests: %v\n%s", err, output)
@@ -119,8 +120,7 @@ func TestDataInfoEntryPoints(t *testing.T) {
 	for _, want := range []string{
 		"urnw::datainfo::BannerLinesFor(",
 		`"insufficient_balance_refreshes_in"`,
-		`"insufficient_balance_held_notice"`,
-		`"insufficient_balance_message"`,
+		"urnw::datainfo::TrafficLineKey(",
 	} {
 		if !strings.Contains(message, want) {
 			t.Errorf("ApplyBalanceWarningMessage: missing %s", want)

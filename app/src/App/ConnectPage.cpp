@@ -1000,7 +1000,7 @@ void ConnectPage::ApplyConnectStatus() {
   const bool outOfBalance = w_.outOfBalance();
   // the banner's message, kept current while it is open (ApplyBalanceWarningMessage);
   // a refused start waiting on the balance keeps it open on its own
-  if (urnw::balance::BannerOpen(outOfBalance, w_.balanceRecovery())) {
+  if (urnw::balance::BannerOpen(outOfBalance || w_.dataLimit(), w_.balanceRecovery())) {
     if (balanceRefreshTicker_.Running()) {
       ApplyBalanceWarningMessage();
     } else {
@@ -1239,7 +1239,7 @@ void ConnectPage::ApplyConnectStatus() {
   auto heroState = heroConnection;
   if (processing) {
     heroState = urnw::ConnectCanvas::State::Processing;
-  } else if (outOfBalance) {
+  } else if (outOfBalance || w_.dataLimit()) {
     heroState = urnw::ConnectCanvas::State::Error;
   }
   // --preview-ui drives the walk itself; letting the real status overwrite it
@@ -3975,14 +3975,18 @@ void ConnectPage::ApplyDnsRecommendationPill() {
 // The banner leads with when the free data refreshes (DataInfo.h), so Get Pro
 // does not read as the only way back; Why? beside it opens the "About your
 // data" sheet. Then whether the data is reserved or used up (BalanceGate.h),
-// and that the traffic is held while a session is up, which is the state the
-// tray notice announced; otherwise it asks for balance. While a connect the
-// user asked for waits on the balance it says the app reconnects by itself (a
-// refused start keeps the banner open with only that line and Cancel).
+// and what the traffic is doing while a session is up, from what the service
+// reports, as the tray notice said it (TrafficLineFor); otherwise it asks for
+// balance. While a connect the user asked for waits on the balance it says the
+// app reconnects by itself (a refused start keeps the banner open with only that
+// line and Cancel). A paying account refused at a data limit gets its title and
+// the traffic line, and none of the balance's lines.
 void ConnectPage::ApplyBalanceWarningMessage() {
   const bool outOfBalance = w_.outOfBalance();
+  const bool dataLimit = w_.dataLimit();
   const bool sessionUp = ConnectActionIsDisconnect();
-  const auto lines = urnw::datainfo::BannerLinesFor(outOfBalance, sessionUp);
+  const auto facts = CurrentServiceFacts();
+  const auto lines = urnw::datainfo::BannerLinesFor(outOfBalance);
   const auto recovery = urnw::balance::RecoveryLinesFor(outOfBalance, sessionUp,
                                                         w_.outOfBalanceKind(), w_.balanceRecovery());
   std::wstring message;
@@ -3991,13 +3995,18 @@ void ConnectPage::ApplyBalanceWarningMessage() {
               L"\n";
     const std::wstring kind = urnw::OutOfBalanceKindText(recovery.kind, w_.reservedByteCount());
     if (!kind.empty()) message += kind + L"\n";
-    message += urnw::Localized(lines.held ? "insufficient_balance_held_notice"
-                                          : "insufficient_balance_message");
+  }
+  if (outOfBalance || dataLimit) {
+    const char* line = urnw::datainfo::TrafficLineKey(
+        dataLimit, urnw::balance::TrafficLineFor(sessionUp, facts.routesInstalled,
+                                                 urnw::gesture::WfpInForce(facts)));
+    if (line) message += urnw::Localized(line);
   }
   if (recovery.willReconnect) {
     if (!message.empty()) message += L"\n";
     message += urnw::Localized("insufficient_balance_will_reconnect");
   }
+  w_.BalanceWarning().Title(hstring{urnw::Localized(urnw::datainfo::AlertTitleKey(dataLimit))});
   w_.BalanceWarning().Message(hstring{message});
 }
 

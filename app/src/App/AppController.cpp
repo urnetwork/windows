@@ -18,6 +18,7 @@
 #include "ApprovalUnseal.h"
 #include "AuthLink.h"
 #include "Config.h"
+#include "DataInfo.h"
 #include "Ids.h"
 #include "LaunchAtStartup.h"
 #include "Localization.h"
@@ -750,14 +751,38 @@ void AppController::ReactToBalance() {
       // one line per posted notice: the acceptance driver counts these, since
       // a balloon cannot be read back from the shell
       LogInfo("app: insufficient balance notice posted");
-      app.tray_.ShowBalloon(Localized("insufficient_balance"),
-                            Localized("insufficient_balance_held_notice"));
+      app.ShowRefusalNotice(/*dataLimit=*/false);
+    }
+    void DataLimitNotice() {
+      LogInfo("app: data limit notice posted");
+      app.ShowRefusalNotice(/*dataLimit=*/true);
     }
     void Disconnect() { app.sdk_.Disconnect(); }
   } sinks{*this};
-  urnw::balance::ReactToBalancePush(balanceNotice_, insufficientBalance_,
-                                    balance_.Current().isPro,
-                                    balance_.CurrentPoll().confirming, sinks);
+  const BalanceSnapshot balance = balance_.Current();
+  const bool confirming = balance_.CurrentPoll().confirming;
+  urnw::balance::ReactToBalancePush(balanceNotice_, insufficientBalance_, balance.isPro,
+                                    confirming, sinks);
+  dataLimit_ = dataLimitGate_.Observe(rawInsufficientBalance_, balance.loaded, balance.isPro,
+                                      confirming);
+  urnw::balance::ReactToDataLimitPush(dataLimitNotice_, rawInsufficientBalance_, dataLimit_,
+                                      sinks);
+  PublishDataLimit();
+}
+
+void AppController::ShowRefusalNotice(bool dataLimit) {
+  const gesture::ServiceFacts facts = CurrentServiceFacts();
+  const char* line = urnw::datainfo::TrafficLineKey(
+      dataLimit, urnw::balance::TrafficLineFor(connectRequested_, facts.routesInstalled,
+                                               gesture::WfpInForce(facts)));
+  tray_.ShowBalloon(Localized(urnw::datainfo::AlertTitleKey(dataLimit)),
+                    line ? Localized(line) : std::wstring{});
+}
+
+void AppController::PublishDataLimit() {
+  if (!windowVisible_ || !window_) return;
+  if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+    self->SetDataLimit(dataLimit_);
 }
 
 bool AppController::OutOfBalance() const {

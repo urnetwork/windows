@@ -187,9 +187,13 @@ class AppController {
   // numbers' refresh while the tray says slow.
   void ObserveSlowInternet();
   // The reaction to a stats or balance push in the insufficient-balance gate
-  // (BalanceGate.h): a tray notice once per out-of-balance episode, and never
-  // a disconnect.
+  // (BalanceGate.h): a tray notice once per out-of-balance or data limit
+  // episode, and never a disconnect.
   void ReactToBalance();
+  // That notice, saying what the traffic is doing as the service reports it now.
+  void ShowRefusalNotice(bool dataLimit);
+  // The window's copy of the data limit (DataLimitGate), pushed like the recovery.
+  void PublishDataLimit();
   // Feed the out-of-balance latch the last stats push and the current balance,
   // and read insufficientBalance_ back from it.
   void ObserveBalanceLatch();
@@ -357,6 +361,10 @@ class AppController {
   bool providersConnected_ = false;  // CONNECTED with providers in the window
   urnw::balance::OutOfBalanceLatch balanceLatch_;
   urnw::balance::GateNoticeTracker balanceNotice_;
+  // a paying account refused at a data limit, read from the raw status
+  urnw::balance::DataLimitGate dataLimitGate_;
+  urnw::balance::GateNoticeTracker dataLimitNotice_;
+  bool dataLimit_ = false;
   // a connect the balance blocked, retried by itself once data is back: the
   // refused gesture, or the connection held out of balance (a destination is
   // set: LiveStats.connected from the last push)

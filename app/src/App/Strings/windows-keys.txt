@@ -236,6 +236,7 @@ conn_failsafe_armed
 conn_failsafe_blocked
 conn_failsafe_restored
 conn_finding_providers
+conn_not_protected
 conn_reason_auth
 conn_reason_platform
 conn_reason_providers
@@ -342,6 +343,8 @@ data_info_refresh_at
 data_info_title
 data_info_used
 data_info_why
+data_limit_held_notice
+data_limit_reached
 data_usage
 days_ago_abbrev
 default_daily_data

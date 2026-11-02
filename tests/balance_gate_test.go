@@ -3,6 +3,7 @@
 package tests
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,7 @@ func TestBalanceGate(t *testing.T) {
 	program := filepath.Join(t.TempDir(), "balance-gate-tests")
 	build := exec.Command(compiler, "-std=c++20", "-Wall", "-Wextra", "-Werror",
 		"-I"+filepath.Join(root, "app", "src", "Common"),
+		"-I"+filepath.Join(root, "app", "src", "App"),
 		filepath.Join(root, "app", "tools", "balance-gate-tests.cpp"), "-o", program)
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build balance gate tests: %v\n%s", err, output)
@@ -280,7 +282,7 @@ func TestBalanceRecoveryWiring(t *testing.T) {
 
 	// the banner: open for a waiting start, Cancel, and the lines
 	update := definitionBody(t, "MainWindow.xaml.cpp", window, "void MainWindow::UpdateBalanceWarning()")
-	if !strings.Contains(update, "urnw::balance::BannerOpen(outOfBalance(), balanceRecovery_)") {
+	if !strings.Contains(update, "urnw::balance::BannerOpen(outOfBalance() || dataLimit_, balanceRecovery_)") {
 		t.Error("MainWindow::UpdateBalanceWarning: a waiting start does not keep the banner open")
 	}
 	if !strings.Contains(window, "urnw::App().ClearBalanceRecovery();") ||
@@ -320,4 +322,159 @@ func TestBalanceRecoveryWiring(t *testing.T) {
 			t.Errorf("en resw %s = %q, want %q", key, got, want)
 		}
 	}
+}
+
+// Compile the spec against a copy of a header rewritten by old -> replacement, and
+// require it to fail, naming want. `header` is its path under app/src.
+func requireBalanceGateFailure(t *testing.T, header, old, replacement, want string) {
+	t.Helper()
+	compiler, err := exec.LookPath("c++")
+	if err != nil {
+		t.Fatal("balance gate tests require a C++20 compiler: ", err)
+	}
+	root := repositoryRoot(t)
+	source, err := os.ReadFile(filepath.Join(root, "app", "src", filepath.FromSlash(header)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.ReplaceAll(string(source), old, replacement)
+	if mutated == string(source) {
+		t.Fatalf("negative control did not change the production %s: %q", header, old)
+	}
+	includeDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(includeDir, filepath.Base(header)), []byte(mutated), 0600); err != nil {
+		t.Fatal(err)
+	}
+	program := filepath.Join(includeDir, "balance-gate-tests")
+	build := exec.Command(compiler, "-std=c++20", "-Wall", "-Wextra", "-Werror",
+		"-Wno-unused-parameter", "-I"+includeDir,
+		"-I"+filepath.Join(root, "app", "src", "Common"),
+		"-I"+filepath.Join(root, "app", "src", "App"),
+		filepath.Join(root, "app", "tools", "balance-gate-tests.cpp"), "-o", program)
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build balance gate tests: %v\n%s", err, output)
+	}
+	output, err := exec.Command(program).CombinedOutput()
+	if err == nil {
+		t.Fatalf("the spec passed with %q rewritten\n%s", old, output)
+	}
+	if !strings.Contains(string(output), want) {
+		t.Fatalf("the spec did not name %q:\n%s", want, output)
+	}
+}
+
+// The defect: every session reads as held, what the banner and the tray notice
+// said before they asked the service.
+func TestBalanceGateNegativeEverySessionReadsAsHeld(t *testing.T) {
+	requireBalanceGateFailure(t, "Common/BalanceGate.h",
+		"if (routesInstalled) return TrafficLine::Held;",
+		"return TrafficLine::Held;",
+		"never captured: the notice does not claim the traffic is held")
+}
+
+// The other way to get it wrong: a kill switch's blocked machine told it is exposed.
+func TestBalanceGateNegativeBlockedReadsAsNotProtected(t *testing.T) {
+	requireBalanceGateFailure(t, "Common/BalanceGate.h",
+		"return firewallInForce ? TrafficLine::Blocked : TrafficLine::NotProtected;",
+		"return TrafficLine::NotProtected;",
+		"a session with no capture under a policy is blocked")
+}
+
+// The defect: a paying account refused hears nothing.
+func TestBalanceGateNegativeNoDataLimit(t *testing.T) {
+	requireBalanceGateFailure(t, "Common/BalanceGate.h",
+		"return planKnown && pro && !refusedBeforePro_ && !confirming;",
+		"return false;",
+		"Pro refused reads as the limit")
+}
+
+// The trap: a purchase while held announces a data limit.
+func TestBalanceGateNegativeUpgradeReadsAsADataLimit(t *testing.T) {
+	requireBalanceGateFailure(t, "Common/BalanceGate.h",
+		"if (planKnown && !pro) refusedBeforePro_ = true;",
+		"",
+		"the old refusal after the purchase does not read as a limit")
+}
+
+// The first balance of a launch taken for a purchase hides a real limit.
+func TestBalanceGateNegativeFirstBalanceReadsAsAnUpgrade(t *testing.T) {
+	requireBalanceGateFailure(t, "Common/BalanceGate.h",
+		"if (planKnown && !pro) refusedBeforePro_ = true;",
+		"if (!pro) refusedBeforePro_ = true;",
+		"Pro on the first reading is no upgrade")
+}
+
+// The limit's words: not the balance's upgrade.
+func TestBalanceGateNegativeDataLimitInTheBalancesWords(t *testing.T) {
+	requireBalanceGateFailure(t, "App/DataInfo.h",
+		`return dataLimit ? "data_limit_held_notice" : "insufficient_balance_held_notice";`,
+		`return "insufficient_balance_held_notice";`,
+		"at a data limit and held offers no upgrade")
+}
+
+// Both surfaces read the one decision. The banner and the tray notice need Windows
+// and the service, so they are read with their comments blanked: neither names the
+// held string itself, each takes the routes and the firewall from the service's
+// facts, and the tray reads them when it posts.
+func TestRefusalAlertsAskTheServiceWhatTheTrafficIsDoing(t *testing.T) {
+	connect := stripComments(readAppSource(t, "ConnectPage.cpp"))
+	message := definitionBody(t, "ConnectPage.cpp", connect, "void ConnectPage::ApplyBalanceWarningMessage()")
+	provideRequire(t, "ApplyBalanceWarningMessage", message,
+		"urnw::balance::TrafficLineFor(sessionUp, facts.routesInstalled,",
+		"urnw::gesture::WfpInForce(facts)",
+		"urnw::datainfo::AlertTitleKey(dataLimit)",
+		"if (outOfBalance || dataLimit) {")
+	requireNone(t, "ApplyBalanceWarningMessage", message,
+		"insufficient_balance_held_notice", "data_limit_held_notice", "lines.held")
+
+	app := stripComments(readAppSource(t, "AppController.cpp"))
+	notice := definitionBody(t, "AppController.cpp", app, "void AppController::ShowRefusalNotice(bool dataLimit)")
+	provideRequire(t, "ShowRefusalNotice", notice,
+		"CurrentServiceFacts();",
+		"urnw::balance::TrafficLineFor(connectRequested_, facts.routesInstalled,",
+		"gesture::WfpInForce(facts)",
+		"urnw::datainfo::AlertTitleKey(dataLimit)")
+	react := definitionBody(t, "AppController.cpp", app, "void AppController::ReactToBalance()")
+	requireNone(t, "ReactToBalance", react, "insufficient_balance_held_notice", "data_limit_held_notice", "ShowBalloon")
+	// the acceptance driver counts this line, once per out-of-balance episode
+	provideRequire(t, "ReactToBalance", react, `LogInfo("app: insufficient balance notice posted");`)
+}
+
+// A paying account refused gets the alert: the gate reads the raw status, the
+// banner opens for it with nothing to buy on it, the hero shows the error, and a
+// session's own Disconnect is untouched.
+func TestDataLimitAlertWiring(t *testing.T) {
+	app := stripComments(readAppSource(t, "AppController.cpp"))
+	react := definitionBody(t, "AppController.cpp", app, "void AppController::ReactToBalance()")
+	for _, pair := range [][2]string{
+		{"dataLimit_ = dataLimitGate_.Observe(rawInsufficientBalance_, balance.loaded, balance.isPro,",
+			"urnw::balance::ReactToDataLimitPush(dataLimitNotice_, rawInsufficientBalance_, dataLimit_,"},
+		{"urnw::balance::ReactToDataLimitPush(dataLimitNotice_, rawInsufficientBalance_, dataLimit_,",
+			"PublishDataLimit();"},
+	} {
+		provideRequireOrder(t, "ReactToBalance", react, pair[0], pair[1])
+	}
+	requireNone(t, "ReactToBalance", react, "dataLimitGate_.Observe(insufficientBalance_")
+	provideRequire(t, "PublishDataLimit",
+		definitionBody(t, "AppController.cpp", app, "void AppController::PublishDataLimit()"),
+		"self->SetDataLimit(dataLimit_);")
+
+	window := stripComments(readAppSource(t, "MainWindow.xaml.cpp"))
+	update := definitionBody(t, "MainWindow.xaml.cpp", window, "void MainWindow::UpdateBalanceWarning()")
+	provideRequire(t, "UpdateBalanceWarning", update,
+		"urnw::balance::BannerOpen(outOfBalance() || dataLimit_, balanceRecovery_)",
+		"urnw::balance::BannerOffersUpgrade(dataLimit_)",
+		"balanceUpgrade_.Visibility(offered);",
+		"balanceWhy_.Visibility(offered);")
+	provideRequire(t, "MainWindow.xaml.cpp", window, "balanceUpgrade_ = getPro;", "balanceWhy_ = why;")
+	set := definitionBody(t, "MainWindow.xaml.cpp", window, "void MainWindow::SetDataLimit(bool dataLimit)")
+	provideRequire(t, "SetDataLimit", set, "UpdateBalanceWarning();")
+
+	connect := stripComments(readAppSource(t, "ConnectPage.cpp"))
+	status := definitionBody(t, "ConnectPage.cpp", connect, "void ConnectPage::ApplyConnectStatus()")
+	provideRequire(t, "ApplyConnectStatus", status,
+		"urnw::balance::BannerOpen(outOfBalance || w_.dataLimit(), w_.balanceRecovery())",
+		"} else if (outOfBalance || w_.dataLimit()) {")
+	// a paying account's button stays what it was: the limit blocks no gesture
+	requireNone(t, "ApplyConnectStatus", status, "const bool blocked = processing || outOfBalance || w_.dataLimit();")
 }
