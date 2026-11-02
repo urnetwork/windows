@@ -902,6 +902,10 @@
     <value>이 요청이 만료되었습니다. 처음부터 다시 시작해 서명할 새 메시지를 받으세요.</value>
     <comment>Error: the single-use wallet challenge expired (5 minutes) before it was signed.</comment>
   </data>
+  <data name="bittensor_error_extension_not_authorized" xml:space="preserve">
+    <value>{}에서 아직 ur.io가 Bittensor 계정을 사용하도록 허용하지 않았습니다. 지갑에서 연결 요청을 승인하거나 설정의 “Connected Sites”(연결된 사이트)에서 ur.io를 허용한 후 다시 시도하세요.</value>
+    <comment>Bittensor wallet error (ur.io, and the apps when a ur.io wallet bridge page returns extension_not_authorized): the browser extension has not allowed the site to use an account yet, so nothing was signed. The user rejected or closed the extension's connect window, has no Polkadot/Bittensor account in the extension, removed the site's accounts in the extension's connected sites, or a connect request is still open in it. Talisman says "Site &lt;url&gt; has not been authorised for Talisman yet"; polkadot{.js}, SubWallet and TAO.com say "The source &lt;url&gt; has not been enabled yet" or "is not allowed to interact with this extension". The argument is the wallet product name (Talisman or TAO.com). "Connected Sites" is the extension's settings page that lists the sites allowed to use its accounts: use the extension's own name for it where it ships your language (Talisman: de Verbundene Seiten, es Sitios Conectados, ru Подключенные сайты, zh 连接网站); otherwise keep the English name, followed by a translation in parentheses.</comment>
+  </data>
   <data name="bittensor_error_extension_not_found" xml:space="preserve">
     <value>이 브라우저에서 {} 확장 프로그램을 찾을 수 없습니다. 설치한 후 다시 시도하세요.</value>
     <comment>Error: the wallet's browser extension is not installed in this browser (on ur.io, or in the apps when a ur.io wallet bridge page returns extension_not_found). The argument is the wallet product name (Talisman on the Bittensor page, Phantom or Solflare on the Solana page).</comment>
@@ -933,6 +937,18 @@
   <data name="bittensor_error_walletconnect_unavailable" xml:space="preserve">
     <value>지금은 WalletConnect를 사용할 수 없습니다. 나중에 다시 시도하거나 주소를 직접 입력하세요.</value>
     <comment>Bittensor wallet error in the apps, when the ur.io bridge page returns walletconnect_unavailable: the page has no WalletConnect project id, so it cannot pair a wallet. Manual entry still works. WalletConnect is a product name.</comment>
+  </data>
+  <data name="bittensor_manual_choice" xml:space="preserve">
+    <value>수동으로 서명</value>
+    <comment>The manual signing option in a Bittensor wallet chooser: on ur.io its own entry, and in the phone apps the line under a wallet that has no way to sign here directly. The user signs a message outside the page or app, for example with the btcli command line tool, and pastes the signature back.</comment>
+  </data>
+  <data name="bittensor_manual_no_popup" xml:space="preserve">
+    <value>여기서는 지갑 창이 열리지 않습니다. 메시지에 직접 서명한 다음 아래에 서명을 붙여 넣으세요.</value>
+    <comment>First line of the manual signing form, on ur.io and in the apps' sheet. Support inbox 8167: a user waited for a wallet window that never comes on this path.</comment>
+  </data>
+  <data name="bittensor_manual_phone_route" xml:space="preserve">
+    <value>지갑에서 붙여 넣은 메시지에 서명할 수 없다면 뒤로 돌아가 WalletConnect(Nova 등)를 선택하거나, 컴퓨터 브라우저의 ur.io/app/account/earnings에서 서명하세요.</value>
+    <comment>The phone apps' manual signing sheet: what to do when the wallet can't sign a pasted message. WalletConnect and Nova are product names, and ur.io/app/account/earnings is a web address: keep them as they are.</comment>
   </data>
   <data name="bittensor_manual_sign_instructions" xml:space="preserve">
     <value>coldkey가 있는 {} 지갑으로 이 메시지에 서명한 다음, 아래에 주소와 서명을 붙여 넣으세요.</value>

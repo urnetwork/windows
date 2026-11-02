@@ -64,21 +64,19 @@ inline std::string WalletForChoice(int index) {
   return std::string(kChooserWallets[index]);
 }
 
-// The localization key of the line under a chooser entry ("" = none): the
-// manual entry is named as such, and WalletConnect says which wallets it
-// reaches.
+// The localization key of the line under a chooser entry ("" = none):
+// WalletConnect says which wallets it reaches.
 inline std::string ChooserHintKey(std::string_view walletId) {
-  if (walletId == kWalletTaoCom) return "enter_address_manually";
   if (walletId == kWalletWalletConnect) return "bittensor_walletconnect_hint";
   return std::string();
 }
 
-// The status line while the browser is open: Talisman asks for the
+// The status line while the browser is open: Talisman and TAO.com ask for the
 // extension's approval (bittensor_continue_in_browser, with the wallet name),
 // WalletConnect for a scan or the wallet app (bittensor_walletconnect_continue).
-// "" for a manual wallet, which never opens the browser.
+// "" for a wallet this app does not know.
 inline std::string BrowserHintKey(std::string_view walletId) {
-  if (walletId == kWalletTalisman) return "bittensor_continue_in_browser";
+  if (walletId == kWalletTalisman || walletId == kWalletTaoCom) return "bittensor_continue_in_browser";
   if (walletId == kWalletWalletConnect) return "bittensor_walletconnect_continue";
   return std::string();
 }
@@ -164,6 +162,7 @@ inline BridgeErrorText BridgeErrorTextFor(std::string_view bridgeCode) {
   if (bridgeCode == "address_mismatch") return {"earnings_wallet_mismatch", false};
   if (bridgeCode == "extension_not_found") return {"bittensor_error_extension_not_found", true};
   if (bridgeCode == "no_account") return {"bittensor_error_no_account", true};
+  if (bridgeCode == "extension_not_authorized") return {"bittensor_error_extension_not_authorized", true};
   if (bridgeCode == "user_rejected") return {"bittensor_error_user_rejected", false};
   if (bridgeCode == "walletconnect_expired") return {"bittensor_error_walletconnect_expired", false};
   if (bridgeCode == "walletconnect_unavailable") return {"bittensor_error_walletconnect_unavailable", false};

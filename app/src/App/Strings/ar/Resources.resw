@@ -964,7 +964,7 @@
   </data>
   <data name="bittensor_error_extension_not_authorized" xml:space="preserve">
     <value>لم يسمح {} بعد لموقع ur.io باستخدام حساب Bittensor الخاص بك. وافق على طلب الاتصال في المحفظة، أو اسمح لموقع ur.io ضمن «Connected Sites» (المواقع المتصلة) في إعداداتها، ثم حاول مرة أخرى.</value>
-    <comment>ur.io Bittensor wallet error (Earnings wallet card and payout consent, sign-in, add sign-in): the browser extension has not allowed the site to use an account yet, so nothing was signed. The user rejected or closed the extension's connect window, has no Polkadot/Bittensor account in the extension, removed the site's accounts in the extension's connected sites, or a connect request is still open in it. Talisman says "Site &lt;url&gt; has not been authorised for Talisman yet"; polkadot{.js} and SubWallet say "The source &lt;url&gt; has not been enabled yet" or "is not allowed to interact with this extension". The argument is the wallet product name (Talisman). "Connected Sites" is the extension's settings page that lists the sites allowed to use its accounts: use the extension's own name for it (Talisman: de Verbundene Seiten, es Sitios Conectados, ru Подключенные сайты, zh 连接网站; Talisman has no Arabic, so ar keeps the English name).</comment>
+    <comment>Bittensor wallet error (ur.io, and the apps when a ur.io wallet bridge page returns extension_not_authorized): the browser extension has not allowed the site to use an account yet, so nothing was signed. The user rejected or closed the extension's connect window, has no Polkadot/Bittensor account in the extension, removed the site's accounts in the extension's connected sites, or a connect request is still open in it. Talisman says "Site &lt;url&gt; has not been authorised for Talisman yet"; polkadot{.js}, SubWallet and TAO.com say "The source &lt;url&gt; has not been enabled yet" or "is not allowed to interact with this extension". The argument is the wallet product name (Talisman or TAO.com). "Connected Sites" is the extension's settings page that lists the sites allowed to use its accounts: use the extension's own name for it where it ships your language (Talisman: de Verbundene Seiten, es Sitios Conectados, ru Подключенные сайты, zh 连接网站); otherwise keep the English name, followed by a translation in parentheses.</comment>
   </data>
   <data name="bittensor_error_extension_not_found" xml:space="preserve">
     <value>لم يتم العثور على إضافة {} في هذا المتصفح. ثبّتها ثم حاول مرة أخرى.</value>
@@ -1036,7 +1036,7 @@
   </data>
   <data name="bittensor_manual_choice" xml:space="preserve">
     <value>التوقيع يدويًا</value>
-    <comment>The manual signing option in ur.io's Bittensor wallet chooser: the user signs a message outside the page, for example with the btcli command line tool, and pastes the signature back.</comment>
+    <comment>The manual signing option in a Bittensor wallet chooser: on ur.io its own entry, and in the phone apps the line under a wallet that has no way to sign here directly. The user signs a message outside the page or app, for example with the btcli command line tool, and pastes the signature back.</comment>
   </data>
   <data name="bittensor_manual_choice_hint" xml:space="preserve">
     <value>btcli أو أي محفظة يمكنها توقيع رسالة تلصقها فيها</value>
@@ -1060,7 +1060,7 @@
   </data>
   <data name="bittensor_manual_no_popup" xml:space="preserve">
     <value>لن تُفتح نافذة محفظة هنا. وقّع الرسالة بنفسك، ثم الصق التوقيع أدناه.</value>
-    <comment>First line of ur.io's manual signing form. Support inbox 8167: a user waited for a wallet window that never comes on this path.</comment>
+    <comment>First line of the manual signing form, on ur.io and in the apps' sheet. Support inbox 8167: a user waited for a wallet window that never comes on this path.</comment>
   </data>
   <data name="bittensor_manual_other_label" xml:space="preserve">
     <value>باستخدام محفظة أخرى</value>
@@ -1069,6 +1069,10 @@
   <data name="bittensor_manual_other_steps" xml:space="preserve">
     <value>استخدم أداة توقيع الرسائل فيها مع العنوان أدناه. انسخ الرسالة كما هي تمامًا، مع فاصل الأسطر الموجود فيها.</value>
     <comment>ur.io's manual signing form: how to sign with a wallet that has a tool for signing a pasted message. The address is in the field below, and the message has one line break that must be kept.</comment>
+  </data>
+  <data name="bittensor_manual_phone_route" xml:space="preserve">
+    <value>إذا لم تتمكن محفظتك من توقيع رسالة ملصقة، فارجع واختر WalletConnect (Nova وغيرها)، أو وقّع من خلال ur.io/app/account/earnings في متصفح على الكمبيوتر.</value>
+    <comment>The phone apps' manual signing sheet: what to do when the wallet can't sign a pasted message. WalletConnect and Nova are product names, and ur.io/app/account/earnings is a web address: keep them as they are.</comment>
   </data>
   <data name="bittensor_manual_sign_instructions" xml:space="preserve">
     <value>وقّع هذه الرسالة باستخدام محفظة {} التي تملك مفتاحك البارد (coldkey)، ثم الصق العنوان والتوقيع أدناه.</value>

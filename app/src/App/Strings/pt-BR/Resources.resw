@@ -914,6 +914,10 @@
     <value>Esta solicitação expirou. Comece de novo para receber uma nova mensagem para assinar.</value>
     <comment>Error: the single-use wallet challenge expired (5 minutes) before it was signed.</comment>
   </data>
+  <data name="bittensor_error_extension_not_authorized" xml:space="preserve">
+    <value>{} ainda não permitiu que o ur.io use sua conta Bittensor. Aprove a solicitação de conexão na carteira ou permita o ur.io em “Connected Sites” (sites conectados) nas configurações e tente novamente.</value>
+    <comment>Bittensor wallet error (ur.io, and the apps when a ur.io wallet bridge page returns extension_not_authorized): the browser extension has not allowed the site to use an account yet, so nothing was signed. The user rejected or closed the extension's connect window, has no Polkadot/Bittensor account in the extension, removed the site's accounts in the extension's connected sites, or a connect request is still open in it. Talisman says "Site &lt;url&gt; has not been authorised for Talisman yet"; polkadot{.js}, SubWallet and TAO.com say "The source &lt;url&gt; has not been enabled yet" or "is not allowed to interact with this extension". The argument is the wallet product name (Talisman or TAO.com). "Connected Sites" is the extension's settings page that lists the sites allowed to use its accounts: use the extension's own name for it where it ships your language (Talisman: de Verbundene Seiten, es Sitios Conectados, ru Подключенные сайты, zh 连接网站); otherwise keep the English name, followed by a translation in parentheses.</comment>
+  </data>
   <data name="bittensor_error_extension_not_found" xml:space="preserve">
     <value>A extensão {} não foi encontrada neste navegador. Instale-a e tente novamente.</value>
     <comment>Error: the wallet's browser extension is not installed in this browser (on ur.io, or in the apps when a ur.io wallet bridge page returns extension_not_found). The argument is the wallet product name (Talisman on the Bittensor page, Phantom or Solflare on the Solana page).</comment>
@@ -945,6 +949,18 @@
   <data name="bittensor_error_walletconnect_unavailable" xml:space="preserve">
     <value>O WalletConnect não está disponível no momento. Tente novamente mais tarde ou digite seu endereço manualmente.</value>
     <comment>Bittensor wallet error in the apps, when the ur.io bridge page returns walletconnect_unavailable: the page has no WalletConnect project id, so it cannot pair a wallet. Manual entry still works. WalletConnect is a product name.</comment>
+  </data>
+  <data name="bittensor_manual_choice" xml:space="preserve">
+    <value>Assinar manualmente</value>
+    <comment>The manual signing option in a Bittensor wallet chooser: on ur.io its own entry, and in the phone apps the line under a wallet that has no way to sign here directly. The user signs a message outside the page or app, for example with the btcli command line tool, and pastes the signature back.</comment>
+  </data>
+  <data name="bittensor_manual_no_popup" xml:space="preserve">
+    <value>Nenhuma janela da carteira é aberta aqui. Você mesmo assina a mensagem e depois cola a assinatura abaixo.</value>
+    <comment>First line of the manual signing form, on ur.io and in the apps' sheet. Support inbox 8167: a user waited for a wallet window that never comes on this path.</comment>
+  </data>
+  <data name="bittensor_manual_phone_route" xml:space="preserve">
+    <value>Se sua carteira não puder assinar uma mensagem colada, volte e escolha WalletConnect (Nova e outras) ou assine em ur.io/app/account/earnings no navegador de um computador.</value>
+    <comment>The phone apps' manual signing sheet: what to do when the wallet can't sign a pasted message. WalletConnect and Nova are product names, and ur.io/app/account/earnings is a web address: keep them as they are.</comment>
   </data>
   <data name="bittensor_manual_sign_instructions" xml:space="preserve">
     <value>Assine esta mensagem com a carteira {} que guarda sua coldkey e depois cole o endereço e a assinatura abaixo.</value>

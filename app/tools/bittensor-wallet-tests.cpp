@@ -39,7 +39,7 @@ void Check(bool ok, std::string const& what) {
 }  // namespace
 
 int main() {
-  // three wallets, in the sdk's order: Talisman, TAO.com (manual), WalletConnect
+  // three wallets, in the sdk's order: Talisman, TAO.com, WalletConnect
   Check(kChooserWalletCount == 3, "three chooser entries");
   CheckEq("talisman", WalletForChoice(0), "first is Talisman");
   CheckEq("taocom", WalletForChoice(1), "second is TAO.com");
@@ -49,13 +49,13 @@ int main() {
 
   // the line under each entry
   CheckEq("", ChooserHintKey("talisman"), "talisman has no hint");
-  CheckEq("enter_address_manually", ChooserHintKey("taocom"), "tao.com is manual entry");
+  CheckEq("", ChooserHintKey("taocom"), "tao.com has no hint: its extension signs on the bridge page");
   CheckEq("bittensor_walletconnect_hint", ChooserHintKey("walletconnect"), "walletconnect wallets");
 
   // while the browser is open
   CheckEq("bittensor_continue_in_browser", BrowserHintKey("talisman"), "talisman hint");
   CheckEq("bittensor_walletconnect_continue", BrowserHintKey("walletconnect"), "walletconnect hint");
-  CheckEq("", BrowserHintKey("taocom"), "manual never opens the browser");
+  CheckEq("bittensor_continue_in_browser", BrowserHintKey("taocom"), "tao.com's extension signs on the bridge page");
 
   // only the walletconnect page gets the app's project id
   Check(NeedsWalletConnectProjectId("walletconnect"), "walletconnect takes the project id");
@@ -64,7 +64,7 @@ int main() {
 
   // the sdk transport decides the step; a desktop never drives an extension
   Check(NextStepFor("browser_bridge") == NextStep::OpenBrowser, "talisman opens the browser");
-  Check(NextStepFor("manual") == NextStep::ManualEntry, "tao.com is manual");
+  Check(NextStepFor("manual") == NextStep::ManualEntry, "a manual transport shows the form");
   Check(NextStepFor("extension") == NextStep::Unsupported, "extension is web-only");
   Check(NextStepFor("") == NextStep::Unsupported, "unknown transport");
 
@@ -116,6 +116,9 @@ int main() {
            BridgeCase{"address_mismatch", "earnings_wallet_mismatch", false},
            BridgeCase{"extension_not_found", "bittensor_error_extension_not_found", true},
            BridgeCase{"no_account", "bittensor_error_no_account", true},
+           // the follow-up from support inbox 8142: the page used to hand back
+           // wallet_error for this, with the extension's own English
+           BridgeCase{"extension_not_authorized", "bittensor_error_extension_not_authorized", true},
            BridgeCase{"user_rejected", "bittensor_error_user_rejected", false},
            BridgeCase{"walletconnect_expired", "bittensor_error_walletconnect_expired", false},
            BridgeCase{"walletconnect_unavailable", "bittensor_error_walletconnect_unavailable", false},
