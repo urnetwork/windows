@@ -176,6 +176,11 @@ enum class FieldState { NoSession, NoDevice, Loading, Loaded, Empty, Failed };
 void ApplyFieldState(winrt::Microsoft::UI::Xaml::Controls::TextBlock const& value,
                      FieldState state, winrt::hstring const& loadedText = {});
 
+// A line of prose in a pane row's inset, above the row's bottom hairline. The
+// row is collapsed while the line has nothing to say.
+void StatusLine(winrt::Microsoft::UI::Xaml::Controls::Panel const& host,
+                winrt::Microsoft::UI::Xaml::Controls::TextBlock const& line);
+
 // a 1px UrBorderBrush separator
 void Divider(winrt::Microsoft::UI::Xaml::Controls::Panel const& host);
 

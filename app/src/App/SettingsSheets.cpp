@@ -431,6 +431,24 @@ Button NavRow(Panel const& host, IconElement const& leading, hstring const& labe
   return button;
 }
 
+void StatusLine(Panel const& host, TextBlock const& line) {
+  Border box;
+  box.Padding(ThicknessHelper::FromLengths(12, 8, 12, 8));
+  box.BorderBrush(colors::BorderBrush());
+  box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
+  box.Child(line);
+  auto apply = [box](TextBlock const& text) {
+    box.Visibility(text.Text().empty() ? Visibility::Collapsed : Visibility::Visible);
+  };
+  apply(line);
+  line.RegisterPropertyChangedCallback(
+      TextBlock::TextProperty(),
+      [apply](DependencyObject const& sender, DependencyProperty const&) {
+        apply(sender.as<TextBlock>());
+      });
+  host.Children().Append(box);
+}
+
 void ApplyFieldState(TextBlock const& value, FieldState state, hstring const& loadedText) {
   if (!value) return;
   switch (state) {

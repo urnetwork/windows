@@ -366,14 +366,7 @@ void SettingsPage::BuildGeneralSection(Panel const& host) {
   // This was the ONE async field with no FieldState: a failed read left the
   // toggle disabled, byte-identical on screen to "no session" and to "still
   // loading". The line under it says which.
-  {
-    Border box;
-    box.Padding(ThicknessHelper::FromLengths(12, 8, 12, 8));
-    box.BorderBrush(colors::BorderBrush());
-    box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
-    box.Child(productUpdatesState_);
-    card.Children().Append(box);
-  }
+  rows::StatusLine(card, productUpdatesState_);
   ApplyFieldState(productUpdatesState_, FieldState::NoSession);
 
   // Check for updates automatically (beta spec §5). A LOCAL preference, unlike
