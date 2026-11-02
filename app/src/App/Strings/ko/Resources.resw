@@ -1354,7 +1354,7 @@
   </data>
   <data name="conn_not_protected" xml:space="preserve">
     <value>인터넷 트래픽이 보호되지 않습니다.</value>
-    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+    <comment>Connect page and the out-of-balance or data-limit alert: warning that the internet traffic is not protected, shown when the tunnel is not capturing traffic.</comment>
   </data>
   <data name="conn_reason_auth" xml:space="preserve">
     <value>플랫폼 로그인이 계속 실패하고 있습니다…</value>
@@ -1947,6 +1947,14 @@
   <data name="data_info_why" xml:space="preserve">
     <value>왜 그런가요?</value>
     <comment>Link under the out-of-balance notice that opens the "About your data" sheet.</comment>
+  </data>
+  <data name="data_limit_held_notice" xml:space="preserve">
+    <value>추가 데이터를 사용할 수 있게 되거나 연결을 해제할 때까지 트래픽이 터널 안에 보류됩니다.</value>
+    <comment>Alert body shown in the app and in a local notification when a paying account is refused at a data limit while the tunnel is capturing traffic. Connect stays requested and the VPN keeps holding traffic until the limit allows more data or the user disconnects. The paying counterpart of insufficient_balance_held_notice, with no upgrade to offer.</comment>
+  </data>
+  <data name="data_limit_reached" xml:space="preserve">
+    <value>데이터 한도에 도달했습니다</value>
+    <comment>Alert title and status line on the connect screen, and the title of a local notification, when the server refuses a paying account's connection because a data limit was reached (a per-device data cap or the plan's data), not because the account has no balance. Short.</comment>
   </data>
   <data name="data_usage" xml:space="preserve">
     <value>데이터 사용량</value>

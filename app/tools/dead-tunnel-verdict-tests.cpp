@@ -450,8 +450,11 @@ void TestTheAlertAndNoticeStayForTheWholeHold() {
   Check(sessionUp, "the session is still up for the banner to describe");
   Check(!warned, "no warning that the tunnel will be turned off");
   const bool outOfBalance = balance::OutOfBalance(sessionUp, false, false);
-  Check(datainfo::BannerLinesFor(outOfBalance, sessionUp) == datainfo::BannerLines{true, true},
-        "the banner says the traffic is held");
+  Check(datainfo::BannerLinesFor(outOfBalance) == datainfo::BannerLines{true},
+        "the banner leads with the refresh");
+  Check(balance::TrafficLineFor(sessionUp, /*routesInstalled=*/true, /*firewallInForce=*/false) ==
+            balance::TrafficLine::Held,
+        "the banner says the traffic is held, while the capture stands");
   const balance::ConnectButton button = balance::DecideConnectButton(
       /*failed=*/false, /*actionIsDisconnect=*/sessionUp, /*confirming=*/false, outOfBalance,
       /*transitional=*/false, /*watchdogFired=*/false);

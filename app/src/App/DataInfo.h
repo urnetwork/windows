@@ -20,6 +20,8 @@
 
 #include <cstdint>
 
+#include "BalanceGate.h"
+
 namespace urnw::datainfo {
 
 inline constexpr int64_t kDayMillis = 24LL * 60 * 60 * 1000;
@@ -97,17 +99,35 @@ constexpr bool ShowsFreeRefresh(bool pro) { return !pro; }
 struct BannerLines {
   // "Free data refreshes in {time}." first, with the Why? link to the sheet
   bool refresh = false;
-  // then the traffic held in the tunnel while a session is up, else the
-  // request to add balance or a plan
-  bool held = false;
   constexpr bool operator==(const BannerLines&) const = default;
 };
 
 // The out-of-balance banner leads with when the free data refreshes whenever
 // it is open (balance::OutOfBalance), so Get Pro does not read as the only way
-// back; the held line replaces "add balance or a plan" while a session is up.
-constexpr BannerLines BannerLinesFor(bool outOfBalance, bool sessionUp) {
-  return {outOfBalance, outOfBalance && sessionUp};
+// back. What the traffic is doing comes after it (balance::TrafficLineFor).
+constexpr BannerLines BannerLinesFor(bool outOfBalance) { return {outOfBalance}; }
+
+// The string for what the traffic is doing, in the banner and the tray notice.
+// No session: an out-of-balance account is asked for balance, and a data limit
+// has nothing to ask for (nullptr, no line).
+constexpr const char* TrafficLineKey(bool dataLimit, balance::TrafficLine line) {
+  switch (line) {
+    case balance::TrafficLine::Held:
+      return dataLimit ? "data_limit_held_notice" : "insufficient_balance_held_notice";
+    case balance::TrafficLine::Blocked:
+      return "conn_traffic_blocked";
+    case balance::TrafficLine::NotProtected:
+      return "conn_not_protected";
+    case balance::TrafficLine::None:
+      break;
+  }
+  return dataLimit ? nullptr : "insufficient_balance_message";
+}
+
+// The alert's title, in the banner and the tray notice. A refused start waiting
+// on the balance (balance::BannerOpen) reads as out of balance.
+constexpr const char* AlertTitleKey(bool dataLimit) {
+  return dataLimit ? "data_limit_reached" : "insufficient_balance";
 }
 
 // Whether the upgrade sheet leads with when the free data refreshes and offers

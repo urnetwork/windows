@@ -131,6 +131,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   // InfoBar: "You'll be reconnected when data is available again." and, for a
   // refused start, Cancel; a waiting start keeps the banner open on its own
   void SetBalanceRecovery(urnw::balance::RecoveryState state);
+  // A paying account refused at a data limit (BalanceGate.h DataLimitGate): the
+  // banner reads as the limit, with nothing to buy on it.
+  void SetDataLimit(bool dataLimit);
   // ---- the persistent status strip (D4) ----
   // ProtonVPN's bottom line, at window level: it is true whichever destination
   // is on screen, so it cannot live on a page.
@@ -158,6 +161,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   // data is reserved or used up, with the reserved amount, from the same
   // balance the banner reads.
   urnw::balance::RecoveryState balanceRecovery() const { return balanceRecovery_; }
+  bool dataLimit() const { return dataLimit_; }
   urnw::balance::OutOfBalanceKind outOfBalanceKind() const {
     urnw::balance::AccountBalance b;
     b.known = balance_.loaded;
@@ -597,8 +601,12 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::unique_ptr<urnw::UsageBar> accountUsageBar_;
   bool insufficientBalance_ = false;  // last ContractStatus push
   urnw::balance::RecoveryState balanceRecovery_;  // SetBalanceRecovery
+  bool dataLimit_ = false;                        // SetDataLimit
   // the warning InfoBar's Cancel, shown while a refused start waits
   winrt::Microsoft::UI::Xaml::Controls::HyperlinkButton balanceRecoveryCancel_{nullptr};
+  // the banner's Get Pro and Why?, which a data limit has no use for
+  winrt::Microsoft::UI::Xaml::Controls::Button balanceUpgrade_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::HyperlinkButton balanceWhy_{nullptr};
   std::shared_ptr<urnw::UpgradeSheet> upgradeSheet_;
   std::shared_ptr<urnw::RedeemCodeSheet> redeemSheet_;
   std::shared_ptr<urnw::DataInfoSheet> dataInfoSheet_;

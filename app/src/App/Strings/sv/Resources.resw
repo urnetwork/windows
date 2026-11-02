@@ -1366,7 +1366,7 @@ rätt sätt</value>
   </data>
   <data name="conn_not_protected" xml:space="preserve">
     <value>Din internettrafik är inte skyddad.</value>
-    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+    <comment>Connect page and the out-of-balance or data-limit alert: warning that the internet traffic is not protected, shown when the tunnel is not capturing traffic.</comment>
   </data>
   <data name="conn_reason_auth" xml:space="preserve">
     <value>Inloggningen till plattformen misslyckas…</value>
@@ -1967,6 +1967,14 @@ rätt sätt</value>
   <data name="data_info_why" xml:space="preserve">
     <value>Varför?</value>
     <comment>Link under the out-of-balance notice that opens the "About your data" sheet.</comment>
+  </data>
+  <data name="data_limit_held_notice" xml:space="preserve">
+    <value>Din trafik hålls kvar i tunneln tills mer data finns tillgänglig eller du kopplar från.</value>
+    <comment>Alert body shown in the app and in a local notification when a paying account is refused at a data limit while the tunnel is capturing traffic. Connect stays requested and the VPN keeps holding traffic until the limit allows more data or the user disconnects. The paying counterpart of insufficient_balance_held_notice, with no upgrade to offer.</comment>
+  </data>
+  <data name="data_limit_reached" xml:space="preserve">
+    <value>Datagränsen är nådd</value>
+    <comment>Alert title and status line on the connect screen, and the title of a local notification, when the server refuses a paying account's connection because a data limit was reached (a per-device data cap or the plan's data), not because the account has no balance. Short.</comment>
   </data>
   <data name="data_usage" xml:space="preserve">
     <value>Dataanvändning</value>

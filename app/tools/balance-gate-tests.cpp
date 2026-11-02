@@ -15,7 +15,7 @@
 // compiles, on any host with a C++20 compiler. No clocks: the time is an
 // explicit input.
 //
-//   c++ -std=c++20 -I ../src/Common balance-gate-tests.cpp -o /tmp/balance-gate-tests && /tmp/balance-gate-tests
+//   c++ -std=c++20 -I ../src/Common -I ../src/App balance-gate-tests.cpp -o /tmp/balance-gate-tests && /tmp/balance-gate-tests
 //
 // SPDX-License-Identifier: MPL-2.0
 
@@ -25,8 +25,11 @@
 #include <string>
 
 #include "BalanceGate.h"
+#include "DataInfo.h"
 
 using namespace urnw::balance;
+using urnw::datainfo::AlertTitleKey;
+using urnw::datainfo::TrafficLineKey;
 
 namespace {
 
@@ -59,7 +62,9 @@ struct FakeSinks {
   int disconnects = 0;
   int connects = 0;
   int upgrades = 0;
+  int dataLimitNotices = 0;
   void Notice() { ++notices; }
+  void DataLimitNotice() { ++dataLimitNotices; }
   void Disconnect() { ++disconnects; }
   void Connect() { ++connects; }
   void Upgrade() { ++upgrades; }
@@ -758,6 +763,164 @@ void TestRecoveryLines() {
         "lines: the banner opens out of balance and for a waiting start only");
 }
 
+// What the alert says about the traffic is what the service reports: the routes
+// decide whether anything is held, and with none the firewall decides whether
+// the machine is blocked or out in the clear.
+void TestTrafficLineSaysWhatTheServiceReports() {
+  Check(TrafficLineFor(true, true, true) == TrafficLine::Held,
+        "traffic line: captured with a firewall policy is held");
+  Check(TrafficLineFor(true, true, false) == TrafficLine::Held,
+        "traffic line: captured with no firewall policy is still held");
+  Check(TrafficLineFor(true, false, false) == TrafficLine::NotProtected,
+        "traffic line: a session with no capture and no policy is not protected");
+  Check(TrafficLineFor(true, false, true) == TrafficLine::Blocked,
+        "traffic line: a session with no capture under a policy is blocked");
+  Check(TrafficLineFor(false, false, false) == TrafficLine::None,
+        "traffic line: no session says nothing about the traffic");
+  Check(TrafficLineFor(false, true, true) == TrafficLine::None,
+        "traffic line: no session says nothing, whatever is left installed");
+}
+
+bool Same(const char* a, const std::string& b) { return a != nullptr && b == a; }
+
+// The strings for those lines, one wording for each reason.
+void TestTrafficLineStrings() {
+  Check(Same(TrafficLineKey(false, TrafficLine::Held), "insufficient_balance_held_notice"),
+        "strings: out of balance and held names the upgrade");
+  Check(Same(TrafficLineKey(true, TrafficLine::Held), "data_limit_held_notice"),
+        "strings: at a data limit and held offers no upgrade");
+  for (bool dataLimit : {false, true}) {
+    Check(Same(TrafficLineKey(dataLimit, TrafficLine::NotProtected), "conn_not_protected"),
+          "strings: no capture and no policy says it is not protected");
+    Check(Same(TrafficLineKey(dataLimit, TrafficLine::Blocked), "conn_traffic_blocked"),
+          "strings: no capture under a policy says it is blocked, not exposed");
+  }
+  Check(Same(TrafficLineKey(false, TrafficLine::None), "insufficient_balance_message"),
+        "strings: out of balance with no session asks for balance");
+  Check(TrafficLineKey(true, TrafficLine::None) == nullptr,
+        "strings: a data limit with no session has nothing to ask for");
+  Check(Same(AlertTitleKey(false), "insufficient_balance"), "strings: the balance's title");
+  Check(Same(AlertTitleKey(true), "data_limit_reached"), "strings: the data limit's title");
+}
+
+// The defect: a session that starts out of balance sits in Preparing, with no
+// routes and no policy, and both surfaces told the user their traffic was held in
+// the tunnel. The same decision serves both, so neither can say it now.
+void TestSessionThatNeverCapturedIsNotToldItIsHeld() {
+  const bool sessionUp = true;
+  const bool routesInstalled = false;  // Preparing: no provider proof, no capture
+  const bool firewallInForce = false;  // the kill switch is off
+  FakeSinks sinks;
+  GateNoticeTracker tracker;
+  ReactToBalancePush(tracker, /*insufficientBalance=*/true, /*supporter=*/false,
+                     /*confirming=*/false, sinks);
+  Check(sinks.notices == 1, "never captured: the user is still told");
+  const TrafficLine line = TrafficLineFor(sessionUp, routesInstalled, firewallInForce);
+  Check(!Same(TrafficLineKey(false, line), "insufficient_balance_held_notice"),
+        "never captured: the notice does not claim the traffic is held");
+  Check(Same(TrafficLineKey(false, line), "conn_not_protected"),
+        "never captured: the notice says the traffic is not protected");
+  Check(Same(TrafficLineKey(false, TrafficLineFor(sessionUp, routesInstalled, true)),
+             "conn_traffic_blocked"),
+        "never captured, kill switch on: blocked, not unprotected");
+  Check(sinks.disconnects == 0, "never captured: nothing disconnects");
+}
+
+void TestDataLimitIsAPayingAccountsRefusal() {
+  {
+    DataLimitGate gate;
+    Check(gate.Observe(true, true, true, false), "data limit: Pro refused reads as the limit");
+    Check(!OutOfBalance(true, true, false), "data limit: Pro stays outside the upgrade gate");
+    Check(!gate.Observe(false, true, true, false), "data limit: ends with the refusal");
+  }
+  {
+    DataLimitGate gate;
+    Check(!gate.Observe(true, true, false, false), "data limit: not Pro is out of balance instead");
+    Check(OutOfBalance(true, false, false), "data limit: not Pro is in the upgrade gate");
+  }
+  {
+    DataLimitGate gate;
+    Check(!gate.Observe(false, true, true, false), "data limit: Pro with no refusal is not one");
+  }
+  {
+    DataLimitGate gate;
+    Check(!gate.Observe(true, true, true, true), "data limit: a confirmation poll defers it");
+    Check(gate.Observe(true, true, true, false), "data limit: and it reads as one after the poll");
+  }
+}
+
+// The trap in the alert: a purchase while held turns the plan Pro with the old
+// refusal still standing. That refusal was about the balance the purchase fixed.
+void TestDataLimitIgnoresARefusalFromBeforePro() {
+  DataLimitGate gate;
+  Check(!gate.Observe(true, true, false, false), "upgrade: refused before Pro, no limit");
+  Check(!gate.Observe(true, true, false, true), "upgrade: the confirmation poll, no limit");
+  Check(!gate.Observe(true, true, true, true), "upgrade: Pro under the poll, no limit");
+  Check(!gate.Observe(true, true, true, false),
+        "upgrade: the old refusal after the purchase does not read as a limit");
+  Check(!gate.Observe(true, true, true, false), "upgrade: nor on the next push");
+  Check(!gate.Observe(false, true, true, false), "upgrade: the refusal clears");
+  Check(gate.Observe(true, true, true, false),
+        "upgrade: a refusal the Pro plan got is a limit, after the old one cleared");
+}
+
+// The plan not fetched yet is not a plan: the first balance of a launch is not
+// an upgrade, whichever way it reads.
+void TestDataLimitWaitsForTheFirstBalance() {
+  {
+    DataLimitGate gate;
+    Check(!gate.Observe(true, false, false, false), "first balance: unknown plan, no limit yet");
+    Check(gate.Observe(true, true, true, false),
+          "first balance: Pro on the first reading is no upgrade, the refusal is a limit");
+  }
+  {
+    DataLimitGate gate;
+    Check(!gate.Observe(true, false, false, false), "first balance: unknown plan again");
+    Check(!gate.Observe(true, true, false, false), "first balance: not Pro is out of balance");
+    Check(!gate.Observe(true, true, true, false), "first balance: then a purchase, no limit");
+  }
+}
+
+void TestDataLimitNoticeOncePerEpisodeAndNeverDisconnects() {
+  FakeSinks sinks;
+  GateNoticeTracker tracker;
+  DataLimitGate gate;
+  const auto push = [&](bool refused, bool known, bool pro, bool confirming) {
+    ReactToDataLimitPush(tracker, refused, gate.Observe(refused, known, pro, confirming), sinks);
+  };
+  push(true, false, false, false);
+  Check(sinks.dataLimitNotices == 0, "notice: not before the plan is known");
+  push(true, true, true, true);
+  Check(sinks.dataLimitNotices == 0, "notice: not during a confirmation poll");
+  push(true, true, true, false);
+  Check(sinks.dataLimitNotices == 1, "notice: posted for the limit");
+  push(true, true, true, false);
+  push(true, true, true, false);
+  Check(sinks.dataLimitNotices == 1, "notice: once per episode");
+  push(false, true, true, false);
+  push(true, true, true, false);
+  Check(sinks.dataLimitNotices == 2, "notice: a new refusal is a new episode");
+  Check(sinks.notices == 0, "notice: the balance's notice stays out of it");
+  Check(sinks.disconnects == 0, "notice: a data limit never disconnects");
+
+  FakeSinks upgraded;
+  GateNoticeTracker upgradedTracker;
+  DataLimitGate upgradedGate;
+  ReactToDataLimitPush(upgradedTracker, true, upgradedGate.Observe(true, true, false, false), upgraded);
+  ReactToDataLimitPush(upgradedTracker, true, upgradedGate.Observe(true, true, true, false), upgraded);
+  Check(upgraded.dataLimitNotices == 0, "notice: a purchase does not announce a data limit");
+}
+
+void TestDataLimitBannerHasNothingToBuy() {
+  Check(!BannerOffersUpgrade(true), "banner: a data limit offers no upgrade");
+  Check(BannerOffersUpgrade(false), "banner: out of balance keeps its upgrade");
+  Check(BannerOpen(/*outOfBalance or data limit=*/true, RecoveryState{}), "banner: opens for the limit");
+  const RecoveryLines lines = RecoveryLinesFor(/*outOfBalance=*/false, /*sessionUp=*/true,
+                                               OutOfBalanceKind::Exhausted, RecoveryState{});
+  Check(!lines.willReconnect, "banner: the limit promises no reconnect, nothing is waiting on it");
+  Check(lines.kind == OutOfBalanceKind::Unknown, "banner: the limit says nothing about the balance");
+}
+
 }  // namespace
 
 int main() {
@@ -782,6 +945,14 @@ int main() {
   TestRecoveryEndsAndEdges();
   TestRecoveryRunsTheRefusedGesturePastTheGate();
   TestRecoveryLines();
+  TestTrafficLineSaysWhatTheServiceReports();
+  TestTrafficLineStrings();
+  TestSessionThatNeverCapturedIsNotToldItIsHeld();
+  TestDataLimitIsAPayingAccountsRefusal();
+  TestDataLimitIgnoresARefusalFromBeforePro();
+  TestDataLimitWaitsForTheFirstBalance();
+  TestDataLimitNoticeOncePerEpisodeAndNeverDisconnects();
+  TestDataLimitBannerHasNothingToBuy();
   std::cout << (gCases - gFailures) << "/" << gCases << " balance gate checks passed\n";
   return gFailures == 0 ? 0 : 1;
 }

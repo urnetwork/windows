@@ -142,7 +142,10 @@ handle:
   afterwards; both of those were real bugs and both are covered now. An account
   out of balance is the exception: its traffic stays in the tunnel, the app
   tells the user, and Disconnect is theirs to press, because turning the tunnel
-  off would let the traffic out in the clear.
+  off would let the traffic out in the clear. A session that never captured (it
+  started out of balance, so no provider was proven) holds nothing, and the app
+  says what its traffic is doing instead. A paying account refused at a data
+  limit gets the same alert in words for the limit.
 - **UI** — connect flow, account, wallet/payouts, leaderboard, settings, split
   tunnel, and a developer/reliability screen behind an app-wide Advanced Mode
   toggle.

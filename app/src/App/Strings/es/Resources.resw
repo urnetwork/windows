@@ -1442,7 +1442,7 @@ de la manera correcta</value>
   </data>
   <data name="conn_not_protected" xml:space="preserve">
     <value>Tu tráfico de internet no está protegido.</value>
-    <comment>Connect page: warning that the internet traffic is not protected.</comment>
+    <comment>Connect page and the out-of-balance or data-limit alert: warning that the internet traffic is not protected, shown when the tunnel is not capturing traffic.</comment>
   </data>
   <data name="conn_reason_auth" xml:space="preserve">
     <value>El inicio de sesión en la plataforma está fallando…</value>
@@ -2043,6 +2043,14 @@ de la manera correcta</value>
   <data name="data_info_why" xml:space="preserve">
     <value>¿Por qué?</value>
     <comment>Link under the out-of-balance notice that opens the "About your data" sheet.</comment>
+  </data>
+  <data name="data_limit_held_notice" xml:space="preserve">
+    <value>Tu tráfico se mantiene en el túnel hasta que haya más datos disponibles o te desconectes.</value>
+    <comment>Alert body shown in the app and in a local notification when a paying account is refused at a data limit while the tunnel is capturing traffic. Connect stays requested and the VPN keeps holding traffic until the limit allows more data or the user disconnects. The paying counterpart of insufficient_balance_held_notice, with no upgrade to offer.</comment>
+  </data>
+  <data name="data_limit_reached" xml:space="preserve">
+    <value>Límite de datos alcanzado</value>
+    <comment>Alert title and status line on the connect screen, and the title of a local notification, when the server refuses a paying account's connection because a data limit was reached (a per-device data cap or the plan's data), not because the account has no balance. Short.</comment>
   </data>
   <data name="data_usage" xml:space="preserve">
     <value>Uso de datos</value>
