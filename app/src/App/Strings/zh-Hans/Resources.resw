@@ -1038,10 +1038,6 @@
     <value>粘贴 0x… 签名</value>
     <comment>Placeholder of the Bittensor signature field (a 0x-prefixed hex signature).</comment>
   </data>
-  <data name="bittensor_taocom_not_direct" xml:space="preserve">
-    <value>TAO.com 扩展目前还无法在此页面上签名。请在此选择其他钱包，或使用 btcli 手动签名。</value>
-    <comment>Note under ur.io's Bittensor wallet chooser: the TAO.com browser extension signs only when a website asks it to, and this page does not ask it yet, so its users choose another wallet or sign with btcli.</comment>
-  </data>
   <data name="bittensor_wallet" xml:space="preserve">
     <value>Bittensor 钱包</value>
     <comment>Label of the connected wallet block.</comment>
