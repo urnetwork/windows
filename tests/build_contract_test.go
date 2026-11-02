@@ -406,7 +406,7 @@ func TestWalletProvideStateCompileContracts(t *testing.T) {
 }
 
 func TestTunnelWatchdogObservesDestinationGenerationAndReadiness(t *testing.T) {
-	header := readServiceSource(t, "TunnelWatchdog.h")
+	header := readServiceSource(t, "DeadTunnelVerdict.h")
 	source := readServiceSource(t, "TunnelWatchdog.cpp")
 	for _, required := range []string{
 		"ConnectionEpochTracker",
@@ -414,7 +414,7 @@ func TestTunnelWatchdogObservesDestinationGenerationAndReadiness(t *testing.T) {
 		"trafficStartMillis",
 	} {
 		if !strings.Contains(header, required) {
-			t.Fatalf("TunnelWatchdog.h is missing the connection-epoch contract %q", required)
+			t.Fatalf("DeadTunnelVerdict.h is missing the connection-epoch contract %q", required)
 		}
 	}
 	for _, required := range []string{

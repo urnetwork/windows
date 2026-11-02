@@ -113,7 +113,9 @@ void TunnelWatchdog::Start(urnet::DeviceLocal* device,
           "the sdk at most once per {}ms. With the kill switch OFF a tunnel that "
           "cannot carry traffic is turned off automatically rather than left "
           "blocking this machine (no exit for {}s, or {}s of sending with "
-          "nothing coming back, or {}s of sdk silence).",
+          "nothing coming back, or {}s of sdk silence). An account out of balance "
+          "is turned off for the sdk's silence only: its traffic stays in the "
+          "tunnel until the user acts.",
           settings_.sampleIntervalMillis, settings_.evaluateIntervalMillis,
           settings_.networkNotify.windowMillis, settings_.deadTunnel.deadSlowMillis / 1000,
           settings_.deadTunnel.deadFastMillis / 1000,
@@ -359,6 +361,7 @@ void TunnelWatchdog::RunSampler(std::shared_ptr<WatchdogChannel> channel) {
   // seconds, and an unlatched warning would bury the log it is meant to help
   // someone read.
   static std::atomic<bool> exitsLogged{false};
+  static std::atomic<bool> contractStatusLogged{false};
   bool windowLogged = false;
   int64_t probedNetworkMillis = -1;
   int64_t reportedGeneration = -1;
@@ -471,6 +474,15 @@ void TunnelWatchdog::RunSampler(std::shared_ptr<WatchdogChannel> channel) {
         return std::nullopt;
       }
     };
+    // The balance, for the hold (OutOfBalanceHold), off the device the app reads
+    // it from: the contract status before the window status, because a
+    // destination change resets the one and moves the other's generation, and in
+    // this order a status it reset is never read with the generation before it.
+    const auto contractStatus = ReadSdkList(contractStatusLogged, "getContractStatus",
+                                            [&] { return device->getContractStatus(); });
+    if (channel->cancelled.load()) return;
+    const auto balanceWindow = readWindow();
+    if (channel->cancelled.load()) return;
     std::optional<urnet::WindowStatus> before;
     if (readiness) before = readWindow();
     if (channel->cancelled.load()) return;
@@ -521,6 +533,17 @@ void TunnelWatchdog::RunSampler(std::shared_ptr<WatchdogChannel> channel) {
       } else {
         readiness->CompleteSample(captureSample, {}, {}, 0);
       }
+    }
+
+    if (contractStatus && balanceWindow) {
+      std::scoped_lock lock(channel->mutex);
+      channel->balance = BalanceReading{
+          .sampled = true,
+          .insufficientBalance = contractStatus->InsufficientBalance,
+          .noPermission = contractStatus->NoPermission,
+          .connectionGeneration = balanceWindow->ConnectionGeneration,
+          .providerAddedCount = balanceWindow->ProviderStateAdded,
+      };
     }
 
     const int64_t now = NowMillis();
@@ -575,10 +598,13 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
     connectionEpoch.Observe(channel->connectionGeneration,
                             channel->providerWindowMinSatisfied);
   }
+  // Kept across every rebase below, for the life of this watch.
+  OutOfBalanceHold outOfBalance;
 
   for (;;) {
     int64_t connectionGeneration = 0;
     bool providerWindowMinSatisfied = true;
+    BalanceReading balance;
     {
       std::unique_lock lock(channel->mutex);
       if (channel->wake.wait_for(lock,
@@ -589,10 +615,22 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
       }
       connectionGeneration = channel->connectionGeneration;
       providerWindowMinSatisfied = channel->providerWindowMinSatisfied;
+      balance = channel->balance;
     }
     if (channel->cancelled.load()) return;
 
     const int64_t now = NowMillis();
+
+    // Ahead of the freeze below: a resume restarts the windows, and tells nothing
+    // about the balance.
+    const BalanceStep balanceStep = outOfBalance.Observe(balance);
+    if (balanceStep == BalanceStep::Entered) {
+      LogWarn("watchdog: this account is out of balance. Its traffic stays in the "
+              "tunnel, and the no-exit and no-inbound rules wait until a contract "
+              "goes through or the user disconnects: turning the tunnel off here "
+              "would let this machine's traffic out in the clear over a billing "
+              "state. The app tells the user.");
+    }
 
     // ---- was this process actually running for the interval it just waited? --
     //
@@ -644,6 +682,25 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
       // Accept the current connection generation/readiness as the resumed
       // baseline. Any edge after this tick is new evidence; anything before it
       // belongs to the unobserved interval that was just discarded.
+      connectionEpoch.Observe(connectionGeneration,
+                              providerWindowMinSatisfied);
+      continue;
+    }
+
+    // Contracts are going through again. Everything measured while held was a
+    // session meant to carry nothing, so it gets a fresh grace, as after a freeze:
+    // otherwise the rule the hold kept back would fire on this tick.
+    if (balanceStep == BalanceStep::Released) {
+      LogInfo("watchdog: contracts are going through again, so every failsafe "
+              "window starts again from now");
+      sessionStartMillis = now;
+      trafficStartMillis = now;
+      if (counters) {
+        traffic.Reset(counters->outbound.load(std::memory_order_relaxed),
+                      counters->inbound.load(std::memory_order_relaxed));
+      }
+      armed_.store(false, std::memory_order_relaxed);
+      millisToFailsafe_.store(0, std::memory_order_relaxed);
       connectionEpoch.Observe(connectionGeneration,
                               providerWindowMinSatisfied);
       continue;
@@ -723,6 +780,7 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
         StampInSession(channel->lastSampleMillis.load(), sessionStartMillis);
     signals.lastInboundMillis = traffic.lastInboundMillis();
     signals.outboundSinceInbound = traffic.outboundSinceInbound();
+    signals.outOfBalance = outOfBalance.held();
 
     const DeadTunnelVerdict verdict = Evaluate(signals, now, channel->settings.deadTunnel);
     armed_.store(verdict.armed, std::memory_order_relaxed);

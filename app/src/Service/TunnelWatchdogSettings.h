@@ -25,7 +25,7 @@
 
 namespace urnw {
 
-// The dead-tunnel verdict's thresholds (Evaluate, TunnelWatchdog.h). All
+// The dead-tunnel verdict's thresholds (Evaluate, DeadTunnelVerdict.h). All
 // durations are milliseconds on the steady clock the verdict is given.
 struct DeadTunnelSettings {
   // DEAD_FAST, and the carrying veto's window: a packet back out of the tun

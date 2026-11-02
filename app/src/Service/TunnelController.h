@@ -102,7 +102,10 @@ class TunnelController {
 
   // THE DEAD-TUNNEL FAILSAFE'S ONLY ENTRY POINT. Called by TunnelWatchdog, from
   // the watchdog's own thread, when a live tunnel has been proven unable to
-  // carry traffic (see TunnelWatchdog.h for the verdict and its thresholds).
+  // carry traffic (see DeadTunnelVerdict.h for the verdict, and
+  // TunnelWatchdogSettings.h for its thresholds). An account out of balance only
+  // arrives here for a wedged sdk: a tunnel that cannot carry because the platform
+  // refuses its contracts stays up, with its traffic in it (OutOfBalanceHold).
   //
   // It goes through StopLocked, the SAME teardown a user pressing Disconnect
   // takes, and there is deliberately NO second unwind path — a bespoke one is
@@ -811,7 +814,7 @@ class TunnelController {
 
   // --- what the app is told about the last teardown -------------------------
   //
-  // A bare const char* into the string literals TunnelWatchdog.h defines, for
+  // A bare const char* into the string literals DeadTunnelVerdict.h defines, for
   // Heartbeat.h's reason: it is published from the watchdog thread and read from
   // the RPC thread, and pointing at static storage means the read side needs no
   // allocation, no lock and no lifetime rule.
