@@ -4358,6 +4358,61 @@ void TestDeadTunnelConnectionEpoch() {
         "and a wedged sdk is still bounded while the provider window forms");
 }
 
+// An account out of balance is never stopped by a rule about traffic (owner
+// decisions 2026-10-02 and 2026-11-02). The session replays and the failure
+// directions are in tools/dead-tunnel-verdict-tests.cpp, which runs on any host;
+// this pins the table on the machine the service runs on.
+void TestDeadTunnelOutOfBalance() {
+  Section("TunnelWatchdog — an account out of balance is held, never stopped");
+  const TunnelWatchdogSettings watchdog;
+  const DeadTunnelSettings& dead = watchdog.deadTunnel;
+
+  DeadTunnelSignals s;
+  s.tunnelUp = true;
+  s.routesInstalled = true;
+  s.upSinceMillis = 1000;
+  const int64_t now = 1000 + dead.deadSlowMillis;
+  s.lastSampleMillis = now;
+  s.outboundSinceInbound = dead.deadFastOutboundPackets;
+  Check(Evaluate(s, now, dead).reason == DeadTunnelReason::NoInbound,
+        "in balance, nothing back and nothing proven is NoInbound");
+  s.outboundSinceInbound = 0;
+  Check(Evaluate(s, now, dead).reason == DeadTunnelReason::NoExit,
+        "in balance, nothing proven is NoExit");
+
+  s.outOfBalance = true;
+  Check(Evaluate(s, now, dead).reason == DeadTunnelReason::None && !Evaluate(s, now, dead).armed,
+        "out of balance, NoExit holds and no countdown runs for it");
+  s.outboundSinceInbound = dead.deadFastOutboundPackets;
+  Check(Evaluate(s, now, dead).reason == DeadTunnelReason::None && !Evaluate(s, now, dead).armed,
+        "out of balance, NoInbound holds and no countdown runs for it");
+  s.lastSampleMillis = now - dead.sdkUnresponsiveMillis;
+  Check(Evaluate(s, now, dead).reason == DeadTunnelReason::SdkUnresponsive,
+        "out of balance, a wedged sdk still stops the session: it is not about traffic");
+
+  OutOfBalanceHold hold;
+  BalanceReading reading;
+  Check(hold.Observe(reading) == BalanceStep::None && !hold.held(),
+        "a status nobody has read holds nothing");
+  reading.sampled = true;
+  reading.insufficientBalance = true;
+  reading.connectionGeneration = 1;
+  Check(hold.Observe(reading) == BalanceStep::Entered && hold.held(), "a refusal holds");
+  reading.insufficientBalance = false;
+  reading.connectionGeneration = 2;
+  Check(hold.Observe(reading) == BalanceStep::None && hold.held(),
+        "a new destination resetting the status says nothing about the balance");
+  reading.providerAddedCount = 1;
+  Check(hold.Observe(reading) == BalanceStep::Released && !hold.held(),
+        "a provider admitted on that destination ends the hold");
+  reading.insufficientBalance = true;
+  Check(hold.Observe(reading) == BalanceStep::Entered && hold.held(), "a new refusal holds again");
+  reading.insufficientBalance = false;
+  reading.providerAddedCount = 0;
+  Check(hold.Observe(reading) == BalanceStep::Released && !hold.held(),
+        "a grant on the refused destination ends it");
+}
+
 // The one-line function that decides whether the failsafe hands the machine
 // back its internet or leaves it blocked. Pinned on its own because inverting
 // it is a single character and the consequence is the opposite product.
@@ -5017,6 +5072,7 @@ int RunSelfTest() {
   TestWireSerialization();
   TestDeadTunnelVerdict();
   TestDeadTunnelConnectionEpoch();
+  TestDeadTunnelOutOfBalance();
   TestFailsafeDisarmChoice();
   TestEgressCoalescer();
 

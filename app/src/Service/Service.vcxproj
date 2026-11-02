@@ -69,6 +69,7 @@
     <ClInclude Include="ControlServer.h" />
     <ClInclude Include="InstallVerb.h" />
     <ClInclude Include="TunnelController.h" />
+    <ClInclude Include="DeadTunnelVerdict.h" />
     <ClInclude Include="TunnelWatchdog.h" />
     <ClInclude Include="TunnelWatchdogSettings.h" />
     <ClInclude Include="NetworkChangeNotify.h" />

@@ -139,7 +139,10 @@ handle:
 - **Failsafes** — network-change reaction, dead-tunnel detection, and teardown
   paths that clear their own latches. A tunnel that dies must not leave the
   machine unable to reach the internet, and must not refuse to restart
-  afterwards; both of those were real bugs and both are covered now.
+  afterwards; both of those were real bugs and both are covered now. An account
+  out of balance is the exception: its traffic stays in the tunnel, the app
+  tells the user, and Disconnect is theirs to press, because turning the tunnel
+  off would let the traffic out in the clear.
 - **UI** — connect flow, account, wallet/payouts, leaderboard, settings, split
   tunnel, and a developer/reliability screen behind an app-wide Advanced Mode
   toggle.

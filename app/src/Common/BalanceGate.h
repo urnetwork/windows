@@ -9,7 +9,9 @@
 // tunnel. Instead the user is told once per episode (a tray notice and the
 // in-app banner) and the explicit connect button keeps a working Disconnect.
 // It used to be disabled with the connect, which left the tray as the only
-// way out. The round hero button is unchanged.
+// way out. The round hero button is unchanged. The service's dead-tunnel failsafe
+// holds for the same state, read from the same status (Service/DeadTunnelVerdict.h
+// OutOfBalanceHold), so the capture stays there too.
 //
 // Two decisions, kept apart (owner decision 2026-10-03: "connect with no
 // balance should be blocked; however, connected and then runs out of balance

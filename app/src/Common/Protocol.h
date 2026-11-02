@@ -640,8 +640,9 @@ struct TunnelStatus {
   int64_t egress_index4 = 0;
   int64_t egress_index6 = 0;
   // WHY THE LAST TEARDOWN HAPPENED. "" | "user" | "failsafe_no_exit" |
-  // "failsafe_no_inbound" | "failsafe_sdk_unresponsive" (Service/TunnelWatchdog.h
-  // owns the failsafe spellings; they are literals there, not built by hand).
+  // "failsafe_no_inbound" | "failsafe_sdk_unresponsive" (Service/DeadTunnelVerdict.h
+  // owns the failsafe spellings; they are literals there, not built by hand). An
+  // account out of balance is never stopped with the first two.
   //
   // Without this a failsafe teardown is INDISTINGUISHABLE FROM THE USER PRESSING
   // DISCONNECT, and that is the difference between "you turned it off" and "it
@@ -654,7 +655,8 @@ struct TunnelStatus {
   std::string stop_reason;
   // A dead-tunnel countdown is running RIGHT NOW and is close enough to matter
   // (Service/TunnelWatchdogSettings.h, DeadTunnelSettings::failsafeNoticeMillis).
-  // The UI warns on this, so an automatic teardown is never a surprise. Defaults
+  // The UI warns on this, so an automatic teardown is never a surprise. It stays
+  // false out of balance, unless the sdk itself has stopped answering. Defaults
   // false — a peer that cannot say simply never warns, which is today's
   // behaviour.
   bool failsafe_armed = false;

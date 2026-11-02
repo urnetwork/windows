@@ -175,7 +175,8 @@ func TestNetworkChangeTimingIsSettings(t *testing.T) {
 		"coalescer(timing.networkNotify),",
 		"qualityCoalescer(timing.networkNotify) {}")
 	provideRequire(t, "TunnelWatchdog.h", header,
-		"const TunnelWatchdogSettings& settings() const { return settings_; }",
+		"const TunnelWatchdogSettings& settings() const { return settings_; }")
+	provideRequire(t, "DeadTunnelVerdict.h", stripComments(readServiceSource(t, "DeadTunnelVerdict.h")),
 		"const DeadTunnelSettings& settings) {",
 		"inboundAge < settings.deadFastMillis) return v;",
 		"sampleAge >= settings.sdkUnresponsiveMillis",
