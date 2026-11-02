@@ -6009,6 +6009,14 @@
     <value>无法通过 Google Play 验证此次购买，因此无法将其应用到您的账户。如果您已被扣款但方案未更新，请联系支持团队。</value>
     <comment>Error dialog body when the server's verify answer for a Play purchase is terminal `invalid` — the proof will never verify (unknown token, disallowed product, canceled before completing). The purchase is still acknowledged with Play so a real charge is not auto-refunded; this dialog is how the failure reaches the user instead of a silent nothing (android google/PlanViewModel.kt report path).</comment>
   </data>
+  <data name="purchase_disconnect_notice_message" xml:space="preserve">
+    <value>URnetwork 稍后会重新连接。在此之前，你的互联网流量不会通过 VPN。</value>
+    <comment>macOS alert body under purchase_disconnect_notice_title. The app reconnects the VPN by itself after the purchase; "it" is the VPN. Until then the user's internet traffic does not go through the VPN.</comment>
+  </data>
+  <data name="purchase_disconnect_notice_title" xml:space="preserve">
+    <value>要为此次购买断开 VPN 连接吗？</value>
+    <comment>macOS alert title, shown when the user starts a purchase while a VPN connection is requested, before the app disconnects the VPN for the purchase. The alert's buttons are Disconnect and Cancel.</comment>
+  </data>
   <data name="purchase_found_confirming_your_plan" xml:space="preserve">
     <value>已找到购买记录。正在确认您的方案，方案将自动更新。</value>
     <comment>Restore-purchases outcome: an entitlement for the current network was found; the confirmation poll now bridges the gap until the server credits it (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
