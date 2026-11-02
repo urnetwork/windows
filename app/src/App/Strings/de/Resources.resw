@@ -934,9 +934,33 @@
     <value>Deine {}-Wallet hat kein Konto zum Signieren. Füge in der Wallet ein Konto hinzu oder verbinde eins und versuche es dann erneut.</value>
     <comment>Wallet error in the apps, when a ur.io wallet bridge page returns no_account: the chosen wallet shared no account it can sign with (none is connected to the site, or it holds only accounts of another chain), so nothing was signed. The argument is the wallet product name (Talisman or WalletConnect on the Bittensor page, Phantom or Solflare on the Solana page).</comment>
   </data>
+  <data name="bittensor_error_signature_changed_message" xml:space="preserve">
+    <value>Diese Signatur stammt von der richtigen Adresse, aber über eine veränderte Kopie der Nachricht: Ein Zeilenumbruch oder Leerzeichen weicht ab, oder nur ein Teil wurde signiert. Signiere sie erneut. Verwende bei btcli „btcli-Befehl kopieren“.</value>
+    <comment>ur.io's manual signing form: the signature is from the entered address's key, but over a changed copy of the message, such as an added or changed line break, or only the first line. Copy btcli command is the button whose label is bittensor_manual_copy_command: use the same words.</comment>
+  </data>
+  <data name="bittensor_error_signature_format" xml:space="preserve">
+    <value>Das ist keine Signatur. Füge den langen Hex-Wert aus btcli oder deiner Wallet ein.</value>
+    <comment>ur.io's manual signing form: the pasted text holds no hex value, so it is not a signature. Nothing was sent.</comment>
+  </data>
+  <data name="bittensor_error_signature_length" xml:space="preserve">
+    <value>Diese Signatur hat die falsche Länge: Eine Signatur hat 128 Hex-Zeichen, und diese Eingabe hat {}. Kopiere sie vollständig, auch eine eventuelle zweite Zeile.</value>
+    <comment>ur.io's manual signing form: the pasted hex value has the wrong length, usually because only the first line of a wrapped value was copied. A signature has 128 hex characters. The argument is how many were pasted.</comment>
+  </data>
   <data name="bittensor_error_signature_mismatch" xml:space="preserve">
     <value>Diese Signatur stammt nicht von der eingegebenen Adresse. Signiere die Nachricht in {} mit dieser Adresse und füge die Signatur dann erneut ein.</value>
     <comment>Bittensor wallet connect (Earnings), manual entry (TAO.com, or Talisman on a phone): the server refused the pasted signature because it does not verify for the address the user typed over the shown message (POST /sn/wallet error.code signature_mismatch). Usually the user signed with another account in the wallet. The server cannot tell which account signed. The argument is the wallet product name (TAO.com or Talisman).</comment>
+  </data>
+  <data name="bittensor_error_signature_not_sr25519" xml:space="preserve">
+    <value>Diese Signatur ist nicht sr25519, der Schlüsseltyp, den die Zustimmung zur Auszahlung braucht. Ledger-Konten verwenden ed25519 und können sie nicht signieren. Wähle eine andere Wallet.</value>
+    <comment>ur.io's manual signing form on the payout consent: the signature is not sr25519 (for example ed25519, from a Ledger account), and the consent verifies only sr25519.</comment>
+  </data>
+  <data name="bittensor_error_signature_other_key" xml:space="preserve">
+    <value>Diese Signatur passt nicht zu der eingegebenen Adresse. Signiere mit dem Coldkey dieser Adresse, nicht mit einem Hotkey oder einer anderen Wallet, und füge dann die neue Signatur ein.</value>
+    <comment>ur.io's manual signing form, or the server's refusal of a pasted signature: it does not verify for the address the user entered. Usually another account signed, such as a hotkey or another wallet. An sr25519 signature cannot name the key that made it.</comment>
+  </data>
+  <data name="bittensor_error_signature_recovery_phrase" xml:space="preserve">
+    <value>Das sieht nach einer Seedphrase aus, nicht nach einer Signatur. Wir haben sie gelöscht und nichts gesendet. Füge deine Seedphrase niemals auf einer Website ein.</value>
+    <comment>ur.io's manual signing form: the user pasted 12 to 24 lowercase words, which looks like a wallet's recovery phrase. The page empties the field and sends nothing.</comment>
   </data>
   <data name="bittensor_error_user_rejected" xml:space="preserve">
     <value>Die Anfrage wurde in deiner Wallet abgelehnt. Starte erneut und bestätige sie, um fortzufahren.</value>
@@ -954,9 +978,61 @@
     <value>WalletConnect ist gerade nicht verfügbar. Versuche es später erneut oder gib deine Adresse manuell ein.</value>
     <comment>Bittensor wallet error in the apps, when the ur.io bridge page returns walletconnect_unavailable: the page has no WalletConnect project id, so it cannot pair a wallet. Manual entry still works. WalletConnect is a product name.</comment>
   </data>
+  <data name="bittensor_manual_btcli_label" xml:space="preserve">
+    <value>Mit btcli</value>
+    <comment>Heading in ur.io's manual signing form: signing with btcli, the Bittensor command line tool (a product name).</comment>
+  </data>
+  <data name="bittensor_manual_btcli_steps" xml:space="preserve">
+    <value>Kopiere diesen Befehl auf dem Computer mit deinem Coldkey (macOS, Linux oder WSL), füge ihn in ein Terminal ein und drücke die Eingabetaste. btcli fragt nach dem Wallet-Namen und seinem Passwort. Fragt es nach dem Hotkey, antworte mit n: Der Coldkey muss signieren.</value>
+    <comment>ur.io's manual signing form: how to sign with btcli, the Bittensor command line tool. The command comes from the button below this text. btcli 9 asks whether to sign with the hotkey (y/n), and the answer must be n; btcli 11 asks only for the wallet name and password. WSL is Windows Subsystem for Linux. Keep n as the letter to type.</comment>
+  </data>
+  <data name="bittensor_manual_choice" xml:space="preserve">
+    <value>Manuell signieren</value>
+    <comment>The manual signing option in ur.io's Bittensor wallet chooser: the user signs a message outside the page, for example with the btcli command line tool, and pastes the signature back.</comment>
+  </data>
+  <data name="bittensor_manual_choice_hint" xml:space="preserve">
+    <value>btcli oder jede Wallet, die eine eingefügte Nachricht signieren kann</value>
+    <comment>Subtitle of the manual signing option in ur.io's Bittensor wallet chooser: what can sign. btcli is the Bittensor command line tool, a product name.</comment>
+  </data>
+  <data name="bittensor_manual_copy_command" xml:space="preserve">
+    <value>btcli-Befehl kopieren</value>
+    <comment>Button in ur.io's manual signing form: copies the full btcli command, which contains the message to sign.</comment>
+  </data>
+  <data name="bittensor_manual_copy_message" xml:space="preserve">
+    <value>Nachricht kopieren</value>
+    <comment>Button in ur.io's manual signing form: copies the message to sign.</comment>
+  </data>
+  <data name="bittensor_manual_deadline" xml:space="preserve">
+    <value>Diese Nachricht ist bis {} gültig. Danach beginne erneut, um eine neue zu erhalten.</value>
+    <comment>ur.io's manual signing form: the message to sign is valid for 5 minutes. The argument is a local clock time such as 14:32.</comment>
+  </data>
+  <data name="bittensor_manual_no_phrase" xml:space="preserve">
+    <value>Deine Seedphrase brauchst du hier nie. Füge sie weder auf dieser Seite noch anderswo ein.</value>
+    <comment>ur.io's manual signing form: safety line. The recovery phrase is the wallet's seed phrase.</comment>
+  </data>
+  <data name="bittensor_manual_no_popup" xml:space="preserve">
+    <value>Hierfür öffnet sich kein Wallet-Fenster. Du signierst die Nachricht selbst und fügst die Signatur dann unten ein.</value>
+    <comment>First line of ur.io's manual signing form. Support inbox 8167: a user waited for a wallet window that never comes on this path.</comment>
+  </data>
+  <data name="bittensor_manual_other_label" xml:space="preserve">
+    <value>Mit einer anderen Wallet</value>
+    <comment>Heading in ur.io's manual signing form: signing with a wallet other than btcli that has its own tool for signing a pasted message.</comment>
+  </data>
+  <data name="bittensor_manual_other_steps" xml:space="preserve">
+    <value>Verwende das Werkzeug zum Signieren von Nachrichten mit der Adresse unten. Kopiere die Nachricht genau so, mit ihrem Zeilenumbruch.</value>
+    <comment>ur.io's manual signing form: how to sign with a wallet that has a tool for signing a pasted message. The address is in the field below, and the message has one line break that must be kept.</comment>
+  </data>
   <data name="bittensor_manual_sign_instructions" xml:space="preserve">
     <value>Signiere diese Nachricht mit der {}-Wallet, die deinen Coldkey enthält, und füge dann unten die Adresse und die Signatur ein.</value>
     <comment>Manual Bittensor wallet proof: how to sign the shown challenge message. The argument is the wallet product name (Talisman or TAO.com).</comment>
+  </data>
+  <data name="bittensor_manual_signature_help" xml:space="preserve">
+    <value>Füge den langen Hex-Wert vollständig ein, auch wenn er in eine zweite Zeile umbricht. btcli gibt ihn nach signed_message oder Signature: aus.</value>
+    <comment>ur.io's manual signing form, above the signature field: what to paste back. signed_message and Signature: are btcli's own output labels, in English: keep them as they are. btcli 9 breaks the value across two lines in a narrow terminal.</comment>
+  </data>
+  <data name="bittensor_manual_signature_placeholder" xml:space="preserve">
+    <value>Signatur einfügen</value>
+    <comment>Placeholder of the signature field in ur.io's manual signing form.</comment>
   </data>
   <data name="bittensor_message_to_sign" xml:space="preserve">
     <value>Zu signierende Nachricht</value>
@@ -974,9 +1050,17 @@
     <value>0x…-Signatur einfügen</value>
     <comment>Placeholder of the Bittensor signature field (a 0x-prefixed hex signature).</comment>
   </data>
+  <data name="bittensor_taocom_not_direct" xml:space="preserve">
+    <value>Die TAO.com-Erweiterung kann auf dieser Seite noch nicht signieren. Wähle hier eine andere Wallet oder signiere manuell mit btcli.</value>
+    <comment>Note under ur.io's Bittensor wallet chooser: the TAO.com browser extension signs only when a website asks it to, and this page does not ask it yet, so its users choose another wallet or sign with btcli.</comment>
+  </data>
   <data name="bittensor_wallet" xml:space="preserve">
     <value>Bittensor-Wallet</value>
     <comment>Label of the connected wallet block.</comment>
+  </data>
+  <data name="bittensor_wallet_extension_hint" xml:space="preserve">
+    <value>Browser-Erweiterung. Verbindet sich direkt und bittet dich um Bestätigung.</value>
+    <comment>Subtitle of a browser-extension wallet (Talisman) in ur.io's Bittensor wallet chooser: the wallet connects directly, and the extension opens a window to approve.</comment>
   </data>
   <data name="bittensor_walletconnect_continue" xml:space="preserve">
     <value>Fahre in deinem Browser fort: Scanne den Code mit deiner Wallet-App oder öffne die Wallet auf diesem Gerät.</value>
