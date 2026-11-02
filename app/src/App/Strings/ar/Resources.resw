@@ -5490,6 +5490,10 @@
     <value>ابدأ التجربة المجانية مع {} شهر مجانًا</value>
     <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_first_month_price" xml:space="preserve">
+    <value>{} لشهرك الأول</value>
+    <comment>Plan card with the win-back offer (a returning subscriber's first month of the monthly plan at a discount): the billed first-month amount on the monthly card (most prominent line).</comment>
+  </data>
   <data name="offer_first_year_price" xml:space="preserve">
     <value>{} لسنتك الأولى</value>
     <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
@@ -5518,9 +5522,17 @@
     <value>{} شهر من Pro مجانًا</value>
     <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_percent_off_first_month" xml:space="preserve">
+    <value>خصم {}% على شهرك الأول</value>
+    <comment>Win-back offer line on the monthly plan card and the account plan row. The number is the percent off the first month of the monthly plan.</comment>
+  </data>
   <data name="offer_percent_off_first_year" xml:space="preserve">
     <value>خصم {}% على سنتك الأولى</value>
     <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_month" xml:space="preserve">
+    <value>{0} لشهرك الأول، ثم {1}/شهر. يمكنك الإلغاء في أي وقت.</value>
+    <comment>Plan picker with the win-back offer and the monthly plan chosen: the terms line under the button (the discounted first month, then the regular monthly price).</comment>
   </data>
   <data name="offer_terms_first_year.zero" xml:space="preserve">
     <value>{0} يوم مجانًا، ثم {1} لسنتك الأولى، ثم {2}/سنة. يمكنك الإلغاء في أي وقت.</value>
@@ -5545,6 +5557,10 @@
   <data name="offer_terms_first_year.other" xml:space="preserve">
     <value>{0} يوم مجانًا، ثم {1} لسنتك الأولى، ثم {2}/سنة. يمكنك الإلغاء في أي وقت.</value>
     <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_monthly_price" xml:space="preserve">
+    <value>ثم {}/شهر</value>
+    <comment>Plan card with the win-back offer: the regular monthly price line under the first-month amount.</comment>
   </data>
   <data name="offer_then_regular_price" xml:space="preserve">
     <value>ثم {}/سنة</value>
@@ -8241,6 +8257,14 @@
     <value>احصل على التطبيق</value>
     <comment>Email landing page: the store fallback button.</comment>
   </data>
+  <data name="site_landing_keep_failed" xml:space="preserve">
+    <value>لم يكتمل ذلك. ردّ على الرسالة وسنُبقيك على القائمة.</value>
+    <comment>Email landing page for the re-engagement "Keep me posted" button: shown when the choice could not be recorded; replying to the email is the fallback.</comment>
+  </data>
+  <data name="site_landing_kept" xml:space="preserve">
+    <value>شكرًا. ستستمر في تلقّي رسالة منا بين الحين والآخر.</value>
+    <comment>Email landing page for the re-engagement "Keep me posted" button: shown once the choice is recorded. Nothing opens; the page stays.</comment>
+  </data>
   <data name="site_landing_open_app" xml:space="preserve">
     <value>فتح في التطبيق</value>
     <comment>Email landing page: the button that retries the app link.</comment>
@@ -8808,6 +8832,10 @@
   <data name="site_usdc_offer_term" xml:space="preserve">
     <value>{1} شهرًا بالإضافة إلى {0} يومًا من Pro</value>
     <comment>USDC panel: the term the welcome-offer payment buys.</comment>
+  </data>
+  <data name="site_winback_sheet_line" xml:space="preserve">
+    <value>عرض العودة: خصم {0}% على شهرك الأول حتى {1}</value>
+    <comment>Upgrade sheet: the win-back offer line while a returning subscriber's offer is active (the monthly plan's first month at a discount). {percent} whole number, {when} a local date and time.</comment>
   </data>
   <data name="skip" xml:space="preserve">
     <value>تخطي</value>

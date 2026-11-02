@@ -5354,6 +5354,10 @@ Získejte svůj bonus vytvořením sítě!</value>
     <value>Začít zkušební období s {} měsíci zdarma</value>
     <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_first_month_price" xml:space="preserve">
+    <value>{} za první měsíc</value>
+    <comment>Plan card with the win-back offer (a returning subscriber's first month of the monthly plan at a discount): the billed first-month amount on the monthly card (most prominent line).</comment>
+  </data>
   <data name="offer_first_year_price" xml:space="preserve">
     <value>{} za první rok</value>
     <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
@@ -5374,9 +5378,17 @@ Získejte svůj bonus vytvořením sítě!</value>
     <value>{} měsíců Pro zdarma</value>
     <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_percent_off_first_month" xml:space="preserve">
+    <value>{} % sleva na první měsíc</value>
+    <comment>Win-back offer line on the monthly plan card and the account plan row. The number is the percent off the first month of the monthly plan.</comment>
+  </data>
   <data name="offer_percent_off_first_year" xml:space="preserve">
     <value>{} % sleva na první rok</value>
     <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
+  </data>
+  <data name="offer_terms_first_month" xml:space="preserve">
+    <value>{0} za první měsíc, poté {1}/měsíc. Zrušit lze kdykoli.</value>
+    <comment>Plan picker with the win-back offer and the monthly plan chosen: the terms line under the button (the discounted first month, then the regular monthly price).</comment>
   </data>
   <data name="offer_terms_first_year.one" xml:space="preserve">
     <value>{0} den zdarma, poté {1} za první rok, poté {2}/rok. Zrušit lze kdykoli.</value>
@@ -5393,6 +5405,10 @@ Získejte svůj bonus vytvořením sítě!</value>
   <data name="offer_terms_first_year.other" xml:space="preserve">
     <value>{0} dní zdarma, poté {1} za první rok, poté {2}/rok. Zrušit lze kdykoli.</value>
     <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_monthly_price" xml:space="preserve">
+    <value>poté {}/měsíc</value>
+    <comment>Plan card with the win-back offer: the regular monthly price line under the first-month amount.</comment>
   </data>
   <data name="offer_then_regular_price" xml:space="preserve">
     <value>poté {}/rok</value>
@@ -7487,6 +7503,10 @@ kontent světa</value>
   <data name="site_subscription_error_store_unavailable" xml:space="preserve">
     <value>Stripe se teď nepodařilo kontaktovat. Zkuste to za chvíli znovu.</value>
     <comment>Manage subscription (ur.io's screen; Settings in the Windows app, Account in the Linux app): Stripe did not answer or refused the change, or the billing portal could not be opened; trying again usually works (error.code store_unavailable).</comment>
+  </data>
+  <data name="site_winback_sheet_line" xml:space="preserve">
+    <value>Vítejte zpět: {0} % sleva na první měsíc, do {1}</value>
+    <comment>Upgrade sheet: the win-back offer line while a returning subscriber's offer is active (the monthly plan's first month at a discount). {percent} whole number, {when} a local date and time.</comment>
   </data>
   <data name="skip" xml:space="preserve">
     <value>Přeskočit</value>

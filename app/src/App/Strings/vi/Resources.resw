@@ -5164,6 +5164,10 @@ Nhận thưởng bằng cách tạo mạng!</value>
     <value>Bắt đầu dùng thử miễn phí, tặng {} tháng</value>
     <comment>Onboarding offer screen: the single primary button. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_first_month_price" xml:space="preserve">
+    <value>{} cho tháng đầu tiên</value>
+    <comment>Plan card with the win-back offer (a returning subscriber's first month of the monthly plan at a discount): the billed first-month amount on the monthly card (most prominent line).</comment>
+  </data>
   <data name="offer_first_year_price" xml:space="preserve">
     <value>{} cho năm đầu tiên</value>
     <comment>Plan card with the welcome offer: the billed first-year amount (most prominent line).</comment>
@@ -5172,13 +5176,25 @@ Nhận thưởng bằng cách tạo mạng!</value>
     <value>{} tháng Pro miễn phí</value>
     <comment>Onboarding offer screen headline. The number is the months the discount equals.</comment>
   </data>
+  <data name="offer_percent_off_first_month" xml:space="preserve">
+    <value>Giảm {}% cho tháng đầu tiên</value>
+    <comment>Win-back offer line on the monthly plan card and the account plan row. The number is the percent off the first month of the monthly plan.</comment>
+  </data>
   <data name="offer_percent_off_first_year" xml:space="preserve">
     <value>Giảm {}% cho năm đầu tiên</value>
     <comment>Onboarding offer screen sub-line under the headline. The number is the percent off the first year.</comment>
   </data>
+  <data name="offer_terms_first_month" xml:space="preserve">
+    <value>{0} cho tháng đầu, sau đó {1}/tháng. Hủy bất cứ lúc nào.</value>
+    <comment>Plan picker with the win-back offer and the monthly plan chosen: the terms line under the button (the discounted first month, then the regular monthly price).</comment>
+  </data>
   <data name="offer_terms_first_year.other" xml:space="preserve">
     <value>Miễn phí {0} ngày, sau đó {1} cho năm đầu, rồi {2}/năm. Hủy bất cứ lúc nào.</value>
     <comment>Plan picker with the welcome offer: the terms line under the button (trial, discounted first year, renewal price).</comment>
+  </data>
+  <data name="offer_then_regular_monthly_price" xml:space="preserve">
+    <value>sau đó {}/tháng</value>
+    <comment>Plan card with the win-back offer: the regular monthly price line under the first-month amount.</comment>
   </data>
   <data name="offer_then_regular_price" xml:space="preserve">
     <value>sau đó {}/năm</value>
@@ -7141,6 +7157,10 @@ nội dung thế giới</value>
   <data name="site_subscription_error_store_unavailable" xml:space="preserve">
     <value>Hiện không thể kết nối với Stripe. Hãy thử lại sau giây lát.</value>
     <comment>Manage subscription (ur.io's screen; Settings in the Windows app, Account in the Linux app): Stripe did not answer or refused the change, or the billing portal could not be opened; trying again usually works (error.code store_unavailable).</comment>
+  </data>
+  <data name="site_winback_sheet_line" xml:space="preserve">
+    <value>Chào mừng bạn quay lại: giảm {0}% cho tháng đầu tiên, đến {1}</value>
+    <comment>Upgrade sheet: the win-back offer line while a returning subscriber's offer is active (the monthly plan's first month at a discount). {percent} whole number, {when} a local date and time.</comment>
   </data>
   <data name="skip" xml:space="preserve">
     <value>Bỏ qua</value>
