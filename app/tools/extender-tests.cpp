@@ -954,6 +954,7 @@ void ProvideRowTests() {
     const char* const kTakesArgument[] = {"extender_active", "extender_start_failed",
                                           "extender_tcp_unavailable", "extender_listen_failed",
                                           "extender_activation_refused",
+                                          "extender_activation_unreachable",
                                           "extender_activation_failed"};
     const char* const kWholeText[] = {"off", "extender_not_providing", "extender_setting_up",
                                       "ipv4", "ipv6", "ipv4_and_ipv6", "extender_revoked"};
@@ -1121,6 +1122,9 @@ void ProvideRowTests() {
         {kExtenderProvideErrorActivationRefused, "the operator refused the activation",
          "extender_activation_refused",
          "Activation refused: the operator refused the activation"},
+        {kExtenderProvideErrorActivationUnreachable, "the tcp carrier failed after 0.05 s: no route to host",
+         "extender_activation_unreachable",
+         "The internet can't reach this device on TCP port 443. Allow or forward TCP 443 (and UDP 443 and 4053), or turn Extender off: the tcp carrier failed after 0.05 s: no route to host"},
         {kExtenderProvideErrorActivationFailed, "context deadline exceeded",
          "extender_activation_failed", "Activation failed: context deadline exceeded"},
     };
