@@ -7617,6 +7617,10 @@
     <value>URnetwork가 비용을 부담하며, coldkey마다 {}일에 한 번 사용할 수 있습니다.</value>
     <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
   </data>
+  <data name="sn_claim_relay_claimed" xml:space="preserve">
+    <value>URnetwork가 받았습니다. {0} SN25α가 내 키 {1}에 있습니다.</value>
+    <comment>Earnings, the claim sheet and the settlement v2 tile, once URnetwork has claimed the balance and paid the gas (the claimed state, beside a link to the transaction). The first placeholder is the amount claimed, as 0.8420; the second is the user's Bittensor address, shortened (5F3s…kQ9v); keep both as they are.</comment>
+  </data>
   <data name="sn_claim_relay_for_you" xml:space="preserve">
     <value>URnetwork가 받기를 대신 처리합니다</value>
     <comment>Earnings screen, the settlement v2 tile and the claim sheet: a line beside a relay icon. URnetwork sends the claim transaction and pays its gas; the SN25α goes to the user's own address.</comment>

@@ -9361,6 +9361,10 @@
     <value>على حساب URnetwork، مرة كل {} يومًا لكل coldkey.</value>
     <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
   </data>
+  <data name="sn_claim_relay_claimed" xml:space="preserve">
+    <value>تمت المطالبة بواسطة URnetwork. أصبح {0} SN25α على مفتاحك، {1}.</value>
+    <comment>Earnings, the claim sheet and the settlement v2 tile, once URnetwork has claimed the balance and paid the gas (the claimed state, beside a link to the transaction). The first placeholder is the amount claimed, as 0.8420; the second is the user's Bittensor address, shortened (5F3s…kQ9v); keep both as they are.</comment>
+  </data>
   <data name="sn_claim_relay_for_you" xml:space="preserve">
     <value>يطالب URnetwork بهذا نيابةً عنك</value>
     <comment>Earnings screen, the settlement v2 tile and the claim sheet: a line beside a relay icon. URnetwork sends the claim transaction and pays its gas; the SN25α goes to the user's own address.</comment>
