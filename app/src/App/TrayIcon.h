@@ -43,6 +43,9 @@ class TrayIcon {
     // does (AppLifetime.h), before the handler returns and Windows ends the
     // process.
     std::function<void()> onSessionEnd;
+    // A click on the notification the tray last showed, with the tag it was
+    // shown with (ShowBalloon), 0 for one with nothing to open.
+    std::function<void(int tag)> onBalloonClick;
 
     // --- the two escapes, shown only when they are the answer to something ---
     //
@@ -88,7 +91,10 @@ class TrayIcon {
   // (SlowInternet.h), the tunnel icon `slowIcon`, 1 to 4, in its place.
   void SetState(TrayState state, int slowIcon = 0);
   void SetTooltip(const std::wstring& tip);
-  void ShowBalloon(const std::wstring& title, const std::wstring& text);
+  // A notification from the tray, which Windows shows as a toast. `tag` names
+  // what a click on it opens (Callbacks::onBalloonClick); 0 opens nothing.
+  // False when the shell refused it.
+  bool ShowBalloon(const std::wstring& title, const std::wstring& text, int tag = 0);
 
   HWND MessageWindow() const { return hwnd_; }
 
@@ -117,6 +123,8 @@ class TrayIcon {
   // the app with no icon and no way in. Cleared when that happens, which falls
   // the whole icon back to the classic hwnd+uID identity.
   bool useGuid_ = true;
+  // the tag of the notification shown last
+  int balloonTag_ = 0;
 };
 
 }  // namespace urnw

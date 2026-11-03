@@ -9,6 +9,7 @@
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 
+#include "BittensorKeyViews.h"
 #include "BittensorWalletFlow.h"
 #include "Localization.h"
 #include "Log.h"
@@ -26,7 +27,7 @@ namespace urnw::pages {
 
 winrt::fire_and_forget ChooseBittensorWallet(
     winrt::com_ptr<winrt::URnetwork::implementation::MainWindow> window,
-    std::function<void(std::string walletId)> next) {
+    std::function<void(std::string walletId)> next, WalletKeyOffer keyOffer) {
   if (!window || window->sheetOpen()) co_return;  // one ContentDialog at a time
 
   // the supported wallets, by their product names, each with the line that
@@ -41,6 +42,41 @@ winrt::fire_and_forget ChooseBittensorWallet(
   StackPanel list;
   list.MinWidth(320);
   list.Spacing(8);
+  // Change wallet's key offer first (the one-tap key's 3b): where earnings go
+  // from the next epoch, the one tap with what it is, and the sdk's disclaimer,
+  // then the wallets under their own heading
+  auto createKey = std::make_shared<bool>(false);
+  if (keyOffer.createKey) {
+    TextBlock body;
+    body.Text(Loc("bittensor_key_change_wallet_body"));
+    body.TextWrapping(TextWrapping::Wrap);
+    list.Children().Append(body);
+    Button create;
+    if (auto style = Application::Current().Resources().TryLookup(winrt::box_value(L"AccentButtonStyle"))
+                         .try_as<Style>()) {
+      create.Style(style);
+    }
+    create.HorizontalAlignment(HorizontalAlignment::Stretch);
+    create.Content(winrt::box_value(Loc("bittensor_key_create_here")));
+    create.Click([dialog, createKey](auto const&, auto const&) {
+      *createKey = true;
+      dialog.Hide();
+    });
+    list.Children().Append(create);
+    TextBlock createBody;
+    createBody.Text(Loc("bittensor_key_create_here_body"));
+    createBody.Opacity(0.7);
+    createBody.TextWrapping(TextWrapping::Wrap);
+    list.Children().Append(createBody);
+    if (auto disclaimer = btkeyviews::MakeFundsDisclaimer(keyOffer.disclaimer, /*boxed=*/true)) {
+      list.Children().Append(disclaimer);
+    }
+    TextBlock heading;
+    heading.Text(Loc("bittensor_key_or_choose_wallet"));
+    heading.FontWeight(winrt::Windows::UI::Text::FontWeights::SemiBold());
+    heading.Margin(Thickness{0, 8, 0, 0});
+    list.Children().Append(heading);
+  }
   for (int i = 0; i < bittensor::kChooserWalletCount; ++i) {
     const std::string walletId(bittensor::kChooserWallets[i]);
     StackPanel label;
@@ -78,6 +114,11 @@ winrt::fire_and_forget ChooseBittensorWallet(
   }
   window->SetSheetOpen(false);
 
+  if (*createKey) {
+    // the sheet has closed: the one tap, with its replace warning
+    if (keyOffer.createKey) keyOffer.createKey();
+    co_return;
+  }
   if (next) next(bittensor::WalletForChoice(*choice));
 }
 

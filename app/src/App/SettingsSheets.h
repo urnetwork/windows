@@ -497,6 +497,9 @@ class DeleteAccountSheet : public std::enable_shared_from_this<DeleteAccountShee
       winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+  // The network's one-tap Bittensor key isn't backed up, and the user chose
+  // Back up first: the page opens Earnings with the Key screen.
+  bool BackUpFirstChosen() const { return backUpFirstChosen_; }
 
  private:
   explicit DeleteAccountSheet(SdkHost& sdk) : sdk_(sdk) {}
@@ -515,6 +518,9 @@ class DeleteAccountSheet : public std::enable_shared_from_this<DeleteAccountShee
   winrt::Microsoft::UI::Xaml::Controls::TextBox confirmBox_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock errorText_{nullptr};
   bool deleting_ = false;
+  // the network the sheet opened over, whose one-tap key goes with the account
+  std::string networkId_;
+  bool backUpFirstChosen_ = false;
 };
 
 }  // namespace urnw

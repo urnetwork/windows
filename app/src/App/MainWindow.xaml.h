@@ -464,6 +464,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   // "Open in the app"): Earnings, with the sign sheet's box pre-filled. Never
   // signs. Dropped while signed out. Public: AppController invokes it.
   void HandleTop200SignLink(std::string const& url);
+  // Earnings with the one-tap Bittensor key's Key screen: Back up first, from
+  // Sign out and Delete account, and the key reminder's notification. Dropped
+  // while signed out. Public: AppController invokes it.
+  void OpenEarningsKeyScreen();
 
  private:
   // ---- referral crowning overlay ----

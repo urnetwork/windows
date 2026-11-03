@@ -41,6 +41,10 @@ UpdateChecker& Updates();
 // preference, kept by AppController (SlowInternetNotify).
 bool SlowInternetNotify();
 void SetSlowInternetNotify(bool on);
+// The one-tap Bittensor key's one reminder, as the tray's notification, whose
+// click opens Earnings with the Key screen (AppController). True once it went
+// out.
+bool PostBittensorKeyReminder();
 
 inline winrt::hstring H(std::string const& s) { return winrt::to_hstring(s); }
 

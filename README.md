@@ -36,6 +36,13 @@ browser", built off until the approval page is live) registers the
 leaves it behind when it is deleted, and `reg delete HKCU\Software\Classes\urnetwork /f`
 removes it (an MSI uninstall does not).
 
+The Bittensor key Earnings can create for payouts ("Set up payouts") is kept
+for the current Windows user only, in `%LOCALAPPDATA%\URnetwork\app\bittensor_key`,
+one file per network with its recovery phrase protected by DPAPI. A sign-out
+and an MSI uninstall leave it, so it comes back when that network signs in
+again; deleting the account deletes it. Back up its recovery phrase from the
+Key screen: a reinstalled or replaced Windows does not bring the key back.
+
 ## Architecture
 
 ```
