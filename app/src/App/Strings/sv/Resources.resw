@@ -7222,6 +7222,10 @@ innehåll i världen</value>
     <value>Behåll</value>
     <comment>Subscription: back out of the cancellation.</comment>
   </data>
+  <data name="site_sub_cancel_past_due_confirm" xml:space="preserve">
+    <value>Avsluta nu? Vi slutar försöka ta betalningen igen, och Pro upphör.</value>
+    <comment>Subscription: inline confirmation before cancelling a renewal whose payment is failing. The cancel takes effect now: Stripe stops retrying the failed payment, and the Pro plan ends. Retrying = Stripe trying to charge the card again.</comment>
+  </data>
   <data name="site_sub_cancel_yes" xml:space="preserve">
     <value>Ja, avsluta</value>
     <comment>Subscription: confirm the cancellation.</comment>

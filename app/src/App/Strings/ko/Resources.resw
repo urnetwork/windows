@@ -7105,6 +7105,10 @@
     <value>유지하기</value>
     <comment>Subscription: back out of the cancellation.</comment>
   </data>
+  <data name="site_sub_cancel_past_due_confirm" xml:space="preserve">
+    <value>지금 해지할까요? 결제 재시도가 중단되고 Pro가 종료됩니다.</value>
+    <comment>Subscription: inline confirmation before cancelling a renewal whose payment is failing. The cancel takes effect now: Stripe stops retrying the failed payment, and the Pro plan ends. Retrying = Stripe trying to charge the card again.</comment>
+  </data>
   <data name="site_sub_cancel_yes" xml:space="preserve">
     <value>예, 해지합니다</value>
     <comment>Subscription: confirm the cancellation.</comment>
