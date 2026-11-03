@@ -293,7 +293,7 @@ class WalletPage {
                                 std::string const& warning);
   void SetConnectingWallet(bool connecting);
   void StartWalletConnect(std::string const& pinnedAddress);
-  // after the chooser: the proof with `walletId` ("talisman" | "taocom")
+  // after the chooser: the proof with `walletId` (a bittensor::kChooserWallets id)
   void ConnectWithWallet(std::string const& walletId, std::string const& pinnedAddress);
 
   // ---- the manual address (still signed)
@@ -529,8 +529,6 @@ class WalletPage {
   std::optional<SnWalletInfo> snWallet_;
   Fetch walletState_ = Fetch::Loading;
   bool connectingWallet_ = false;
-  // the wallet the current coldkey connect signs with (its refusal names it)
-  std::string connectWalletId_;
   bool manualPanelOpen_ = false;
   bool manualAddressOk_ = false;
   std::string manualAddress_;

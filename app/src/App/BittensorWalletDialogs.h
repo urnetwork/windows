@@ -1,10 +1,7 @@
 // The Bittensor wallet dialogs: the chooser (Talisman / TAO.com /
-// WalletConnect) in front
-// of every Bittensor flow, the manual form a TAO.com proof needs (the
-// message to sign, the coldkey address, the pasted signature), and the coldkey
-// the payout consent names. The protocol behind them is the SDK session
-// helper, run by SdkHost; these only collect the user's answers. All run on
-// the UI thread.
+// WalletConnect) in front of every Bittensor flow, and the coldkey the payout
+// consent names. The protocol behind them is the SDK session helper, run by
+// SdkHost; these only collect the user's answers. All run on the UI thread.
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
@@ -28,13 +25,6 @@ namespace urnw::pages {
 winrt::fire_and_forget ChooseBittensorWallet(
     winrt::com_ptr<winrt::URnetwork::implementation::MainWindow> window,
     std::function<void(std::string walletId)> next);
-
-// The manual form for a proof SdkHost asked for (SetBittensorManualHandler).
-// Continue submits to SdkHost::SubmitBittensorManual and stays open on a
-// correctable error; closing it cancels the proof.
-winrt::fire_and_forget ShowBittensorManualForm(
-    winrt::com_ptr<winrt::URnetwork::implementation::MainWindow> window,
-    SdkHost::BittensorManualRequest request);
 
 // The coldkey the payout consent will name, typed by the user and never
 // prefilled: the payout coldkey is a deliberate choice, and may be another

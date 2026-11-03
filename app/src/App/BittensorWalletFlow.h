@@ -1,20 +1,19 @@
 // The app-side decisions of a Bittensor wallet proof. The protocol itself is
 // the SDK's session helper (urnet::BittensorWalletSession, sdk
 // bittensor_wallet.go): what is signed, the bridge url, and whether a
-// hand-back or a pasted signature is acceptable. What stays here is what only
-// the app can decide: which wallet the chooser picked, what the user does next
-// (switch to the browser or fill the manual form), which hand-backs this flow
-// should ignore, and the localized text for each refusal code.
+// hand-back is acceptable. What stays here is what only the app can decide:
+// which wallet the chooser picked, what the user does next (switch to the
+// browser), which hand-backs this flow should ignore, and the localized text for
+// each refusal code.
 //
-// The supported wallets are Talisman, TAO.com (manual entry, also for any
-// other wallet) and WalletConnect (UPGRADE.md 4.6). On Windows, Talisman and
-// WalletConnect are browser_bridge: the system browser opens the ur.io page,
-// which drives the Talisman extension or pairs a WalletConnect wallet (Nova,
-// Nightly, ...: a QR to scan) and returns on the existing
-// urnetwork://bittensor-sign-message protocol handler (installer
-// Package.wxs). TAO.com documents no programmatic interface, so it is manual:
-// the user signs the shown message with the wallet and pastes the address and
-// the signature.
+// The supported wallets are Talisman, TAO.com and WalletConnect (UPGRADE.md
+// 4.6), all browser_bridge on Windows: the system browser opens the ur.io page,
+// which drives the wallet's extension (Talisman, TAO.com) or pairs a
+// WalletConnect wallet (Nova, Nightly, ...: a QR to scan) and returns on the
+// existing urnetwork://bittensor-sign-message protocol handler (installer
+// Package.wxs). Signing by hand, with btcli or a wallet's own tool, happens on
+// the same page ("Enter address manually"): the page checks the paste and
+// returns it like any other proof. The app has no form of its own for it.
 //
 // Pure and header-only, so app/tools/bittensor-wallet-tests.cpp runs it
 // without WinRT or the SDK. The string constants mirror the SDK's
@@ -44,7 +43,6 @@ inline constexpr std::string_view kChooserWallets[] = {kWalletTalisman, kWalletT
 inline constexpr int kChooserWalletCount = 3;
 
 inline constexpr std::string_view kTransportBrowserBridge = "browser_bridge";
-inline constexpr std::string_view kTransportManual = "manual";
 
 inline constexpr std::string_view kPurposeLogin = "login";
 inline constexpr std::string_view kPurposeCreate = "create";
@@ -87,34 +85,14 @@ inline bool NeedsWalletConnectProjectId(std::string_view walletId) {
 }
 
 // What the app does once the challenge is in hand.
-enum class NextStep { Unsupported, OpenBrowser, ManualEntry };
+enum class NextStep { Unsupported, OpenBrowser };
 
 inline NextStep NextStepFor(std::string_view transport) {
   if (transport == kTransportBrowserBridge) return NextStep::OpenBrowser;
-  if (transport == kTransportManual) return NextStep::ManualEntry;
-  // "extension" is the web's; a desktop app never drives an extension itself
+  // "extension" is the web's, and "manual" a phone's or ur.io's: a desktop app
+  // neither drives an extension itself nor takes a pasted signature. The proof
+  // is answered with a failure.
   return NextStep::Unsupported;
-}
-
-// POST /sn/wallet refuses a well-formed signature that does not verify for the
-// entered address with this code, which the sdk keeps in SnError.code
-// (urnet::SnErrorCodeSignatureMismatch): the wallet signed with another account
-// (or other text), and the server cannot say which. Sign-in, network create and
-// add-auth refuse it with the same error.code (urnet::
-// WalletAuthErrorCodeSignatureMismatch; sign-in and create with result_errors).
-inline constexpr std::string_view kSnErrorSignatureMismatch = "signature_mismatch";
-
-// The localization key for a refused wallet proof (the coldkey connect, a
-// sign-in, a network create or an added sign-in method) when the app has its
-// own words for it, else "" (the error text, as before). Only a manual entry
-// pastes a signature, so only then does the app say to sign again in that
-// wallet (bittensor_error_signature_mismatch, with the wallet's name). A
-// browser-bridge wallet signed with the account it returned.
-inline std::string ConnectErrorKey(std::string_view snErrorCode, std::string_view transport) {
-  if (snErrorCode == kSnErrorSignatureMismatch && transport == kTransportManual) {
-    return "bittensor_error_signature_mismatch";
-  }
-  return std::string();
 }
 
 // A refusal that is not this flow's answer: a hand-back for another purpose
@@ -124,13 +102,6 @@ inline std::string ConnectErrorKey(std::string_view snErrorCode, std::string_vie
 inline bool IsForeignReturn(std::string_view errorCode) {
   return errorCode == "purpose_mismatch" || errorCode == "not_bittensor_return" ||
          errorCode == "not_awaiting_wallet";
-}
-
-// The manual form stays open on these: the user can correct a typo against
-// the same challenge.
-inline bool IsCorrectable(std::string_view errorCode) {
-  return errorCode == "invalid_signature" || errorCode == "invalid_ss58_address" ||
-         errorCode == "address_mismatch";
 }
 
 // The localization key for a refusal code. Empty for "wallet_error": the

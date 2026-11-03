@@ -93,7 +93,6 @@ struct AuthResult {
 };
 int VerifySendNoticeOf(const std::optional<urnet::Error>&) { return 0; }
 std::string NormalizeSeedphrase(const std::string& value) { return value; }
-std::string WalletProofRefusalText(const std::string&, const std::string& message, const std::string&) { return message; }
 std::optional<std::string> JwtClaimString(const std::string&, const std::string&) { return "synthetic network"; }
 struct WalletConnect { enum class Provider { Solana, Bittensor }; };
 namespace bittensor {
@@ -294,14 +293,14 @@ struct SdkHost {
   void StartLogin(const std::string&, std::function<void(LoginRouting)>);
   void CreateNetwork(const CreateNetworkParams&, std::function<void(AuthResult)>);
   void SubmitCreateNetwork(const CreateNetworkParams&, std::optional<urnet::WalletAuthArgs>,
-                           std::function<void(AuthResult)>, std::uint64_t, const std::string& = {});
+                           std::function<void(AuthResult)>, std::uint64_t);
   void CreateInstantAccount(std::function<void(InstantAccount)>);
   void ConfirmInstantAccount(std::function<void(AuthResult)>);
   void ConfirmApprovedNetwork(std::function<void(AuthResult)>);
   void RedeemApprovedCode(const std::string&, std::function<void(ApprovedNetwork)>);
   void AuthLoginWithSso(const std::string&, const std::string&, std::function<void(AuthResult)>, std::uint64_t);
   void AuthLoginWithWallet(const std::string&, const std::string&, const std::string&,
-                           WalletConnect::Provider, std::uint64_t, const std::string& = {});
+                           WalletConnect::Provider, std::uint64_t);
   void ApplySignupPreferences(urnet::NetworkCreateArgs&) const {}
   template <class F> void BeginBittensorProof(std::uint64_t, const std::string&, const std::string&,
                                               const std::string&, F) {}

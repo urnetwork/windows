@@ -10,10 +10,11 @@
 //     (generateWalletKeyPair / generateSharedSecret / encrypt|decryptData /
 //     base58), so it is wire-compatible with the Apple CryptoKit path and the
 //     Linux app.
-//   - Bittensor (Talisman): a single signMessage step whose url and hand-back
-//     are the SDK's (urnet::BittensorWalletSession). This class only opens the
-//     url and hands the raw urnetwork://bittensor-sign-message link back to
-//     the session; it parses nothing.
+//   - Bittensor (Talisman, TAO.com, WalletConnect): a single signMessage step
+//     whose url and hand-back are the SDK's (urnet::BittensorWalletSession).
+//     This class only opens the url and hands the raw
+//     urnetwork://bittensor-sign-message link back to the session; it parses
+//     nothing.
 //
 // First-principles: no macOS mobile-deeplink baggage — the desktop path is the
 // only path here.
@@ -45,7 +46,7 @@ class WalletConnect {
   void SignMessage(const std::string& message);
 
   // Bittensor: open the session's bridge url (BittensorWalletSession::
-  // bridgeUrl). The page drives the Talisman extension and returns on
+  // bridgeUrl). The page drives the wallet and returns on
   // urnetwork://bittensor-sign-message, which on_bittensor_return receives
   // whole for the session to check.
   void OpenBittensorBridge(const std::string& bridgeUrl);

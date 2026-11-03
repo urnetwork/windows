@@ -363,16 +363,15 @@ func snConsentWiringMisses(sources snConsentSources) []string {
 		"const std::string purpose(bittensor::kPurposeConsent);",
 		"BeginBittensorSession(\n      walletId, purpose,",
 		"session->setNetworkConsentChallenge(challenge, BittensorNowMillis());",
-		"OpenBittensorWallet(serial, session, walletId, purpose,\n                      snconsent::ChallengeFrom(challenge).coldkeySs58, nullptr);")
+		"OpenBittensorWallet(serial, session);")
 	forbid("SdkHost::SignNetworkConsent", consentHost,
 		"authWalletChallenge(", "challengeArgs(", "setChallenge(", "RequestWalletChallenge(", "bridgeUrl(")
 	// the wallet hop is the coldkey connect's own, shared, not a second one
 	require("SdkHost::BeginBittensorProof", body("SdkHost.cpp", host, "void SdkHost::BeginBittensorProof("),
 		"BeginBittensorSession(walletId, purpose, std::move(done), serial);",
-		"OpenBittensorWallet(serial, session, walletId, purpose, expectedAddress, manualHandler);")
+		"OpenBittensorWallet(serial, session);")
 	require("SdkHost::OpenBittensorWallet", body("SdkHost.cpp", host, "void SdkHost::OpenBittensorWallet("),
-		"url = session->bridgeUrl();", "wallet_.OpenBittensorBridge(url);",
-		"handler({walletId, urnet::bittensorWalletDisplayName(walletId), session->message(),")
+		"url = session->bridgeUrl();", "wallet_.OpenBittensorBridge(url);")
 	if strings.Count(host, "wallet_.OpenBittensorBridge(") != 1 {
 		misses = append(misses, "SdkHost.cpp: the Bittensor bridge opens from more than one place")
 	}
@@ -383,8 +382,6 @@ func snConsentWiringMisses(sources snConsentSources) []string {
 	requirePattern("SdkHost::HandleBittensorReturn", body("SdkHost.cpp", host, "void SdkHost::HandleBittensorReturn("),
 		`session->walletId\(\)\),\s*result->ErrorCode\}\);`,
 		"the bridge's refusal code does not reach the flow")
-	require("SdkHost::SubmitBittensorManual", body("SdkHost.cpp", host, "SdkHost::BittensorManualAnswer SdkHost::SubmitBittensorManual("),
-		"FinishBittensorProof(serial, {false, {}, answer.error, code});")
 	require("SdkHost::SignNetworkConsent", consentHost,
 		`{false, {}, Narrow(Localized("wallet_connect_failed")), e.what()});`)
 	require("WalletPage::FailConsent", body("WalletPage.cpp", page, "void WalletPage::FailConsent("),
@@ -524,14 +521,12 @@ func TestSnConsentWiringCatchesEachRegression(t *testing.T) {
 			"SdkHost::SignNetworkConsent: calls setChallenge("},
 		{"the consent signs under another purpose", "SdkHost.cpp", "const std::string purpose(bittensor::kPurposeConsent);", "const std::string purpose(bittensor::kPurposeConnect);",
 			"const std::string purpose(bittensor::kPurposeConsent);"},
-		{"the consent opens a bridge of its own", "SdkHost.cpp", "  OpenBittensorWallet(serial, session, walletId, purpose,\n                      snconsent::ChallengeFrom(challenge).coldkeySs58, nullptr);",
-			"  wallet_.OpenBittensorBridge(session->bridgeUrl());", "the Bittensor bridge opens from more than one place"},
+		{"the consent opens a bridge of its own", "SdkHost.cpp", "  OpenBittensorWallet(serial, session);\n}\n\nvoid SdkHost::HandleDeepLink(",
+			"  wallet_.OpenBittensorBridge(session->bridgeUrl());\n}\n\nvoid SdkHost::HandleDeepLink(", "the Bittensor bridge opens from more than one place"},
 		{"the consent does not take over the bridge", "SdkHost.cpp", "  CancelPendingWalletFlows(\"superseded by a payout consent signature\");\n", "",
 			`CancelPendingWalletFlows("superseded by a payout consent signature");`},
 		{"the bridge's refusal code is lost", "SdkHost.cpp", "                                                             session->walletId()),\n                                result->ErrorCode});",
 			"                                                             session->walletId())});", "the bridge's refusal code does not reach the flow"},
-		{"the manual form's refusal code is lost", "SdkHost.cpp", "FinishBittensorProof(serial, {false, {}, answer.error, code});", "FinishBittensorProof(serial, {false, {}, answer.error});",
-			"answer.error, code});"},
 		{"the session's expiry is lost", "SdkHost.cpp", `Narrow(Localized("wallet_connect_failed")), e.what()});`, `Narrow(Localized("wallet_connect_failed"))});`,
 			"e.what()});"},
 		{"refusals are not named", "WalletPage.cpp", "  const std::string key = snconsent::RefusalKey(codeOrError);\n", "  const std::string key;\n",

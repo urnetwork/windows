@@ -1,8 +1,7 @@
 // Executable spec for the app-side Bittensor wallet decisions
 // (App/BittensorWalletFlow.h): the chooser's three wallets, the next step per
-// sdk transport, which hand-backs a flow ignores, which manual errors keep
-// the form open, and the localized text for each sdk refusal code and for
-// each bridge page code.
+// sdk transport, which hand-backs a flow ignores, and the localized text for
+// each sdk refusal code and for each bridge page code.
 //
 //   c++ -std=c++20 -I ../src/App bittensor-wallet-tests.cpp -o /tmp/bittensor-wallet-tests && /tmp/bittensor-wallet-tests
 //
@@ -62,21 +61,12 @@ int main() {
   Check(!NeedsWalletConnectProjectId("talisman"), "talisman does not");
   Check(!NeedsWalletConnectProjectId("taocom"), "tao.com does not");
 
-  // the sdk transport decides the step; a desktop never drives an extension
+  // the sdk transport decides the step; a desktop never drives an extension,
+  // and signing by hand is on the bridge page, not a form of the app's
   Check(NextStepFor("browser_bridge") == NextStep::OpenBrowser, "talisman opens the browser");
-  Check(NextStepFor("manual") == NextStep::ManualEntry, "a manual transport shows the form");
+  Check(NextStepFor("manual") == NextStep::Unsupported, "a desktop has no form for a manual transport");
   Check(NextStepFor("extension") == NextStep::Unsupported, "extension is web-only");
   Check(NextStepFor("") == NextStep::Unsupported, "unknown transport");
-
-  // POST /sn/wallet refuses a signature that is not from the entered address
-  // (signature_mismatch): after a manual entry the page says to sign again in
-  // that wallet; a bridge signature and every other refusal read as before
-  CheckEq("bittensor_error_signature_mismatch", ConnectErrorKey("signature_mismatch", "manual"),
-          "a pasted signature from another account");
-  CheckEq("", ConnectErrorKey("signature_mismatch", "browser_bridge"), "the bridge signed");
-  CheckEq("", ConnectErrorKey("signature_mismatch", ""), "no wallet known");
-  CheckEq("", ConnectErrorKey("server_error", "manual"), "an uncoded refusal");
-  CheckEq("", ConnectErrorKey("", "manual"), "a transport error");
 
   // the app keeps its own hand-back link
   CheckEq("urnetwork://bittensor-sign-message", std::string(kRedirectLink), "redirect link");
@@ -88,12 +78,6 @@ int main() {
   Check(IsForeignReturn("not_awaiting_wallet"), "a late return is foreign");
   Check(!IsForeignReturn("message_mismatch"), "a different challenge ends the flow");
   Check(!IsForeignReturn("wallet_error"), "a wallet error ends the flow");
-
-  // the manual form stays open for a typo
-  Check(IsCorrectable("invalid_signature"), "bad signature is correctable");
-  Check(IsCorrectable("invalid_ss58_address"), "bad address is correctable");
-  Check(IsCorrectable("address_mismatch"), "other address is correctable");
-  Check(!IsCorrectable("challenge_expired"), "expiry needs a new challenge");
 
   // refusal codes -> store keys
   CheckEq("bittensor_error_invalid_signature", ErrorKey("invalid_signature", "x"), "invalid signature");

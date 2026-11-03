@@ -8,14 +8,12 @@
 #include <memory>
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
-#include <winrt/Windows.ApplicationModel.DataTransfer.h>
 
 #include "BittensorWalletFlow.h"
 #include "Localization.h"
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
-#include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "SnConsentPresentation.h"
 #include "Strings.h"
 #include "UrColors.h"
@@ -32,7 +30,7 @@ winrt::fire_and_forget ChooseBittensorWallet(
   if (!window || window->sheetOpen()) co_return;  // one ContentDialog at a time
 
   // the supported wallets, by their product names, each with the line that
-  // says what it is (manual entry; which WalletConnect wallets)
+  // says what it is (which WalletConnect wallets)
   ContentDialog dialog;
   dialog.XamlRoot(window->Content().XamlRoot());
   dialog.Title(winrt::box_value(Loc("bittensor_choose_wallet")));
@@ -81,111 +79,6 @@ winrt::fire_and_forget ChooseBittensorWallet(
   window->SetSheetOpen(false);
 
   if (next) next(bittensor::WalletForChoice(*choice));
-}
-
-winrt::fire_and_forget ShowBittensorManualForm(
-    winrt::com_ptr<winrt::URnetwork::implementation::MainWindow> window,
-    SdkHost::BittensorManualRequest request) {
-  if (!window || window->sheetOpen()) {
-    // nowhere to show it: the proof is answered rather than left waiting
-    Sdk().CancelBittensorProof();
-    co_return;
-  }
-
-  StackPanel content;
-  content.MinWidth(380);
-  content.Spacing(8);
-
-  TextBlock instructions;
-  instructions.TextWrapping(TextWrapping::Wrap);
-  instructions.Text(winrt::hstring{
-      urnw::Format("bittensor_manual_sign_instructions", Widen(request.walletName))});
-  content.Children().Append(instructions);
-
-  // the exact challenge: read-only, selectable, and one click to copy. A payout
-  // consent is about 2 KB of JSON: the box scrolls it, as the Top 200 sheet's
-  // payload box does, so the fields stay close below it
-  TextBox messageBox;
-  messageBox.Header(winrt::box_value(Loc("bittensor_message_to_sign")));
-  messageBox.Text(H(request.message));
-  messageBox.IsReadOnly(true);
-  messageBox.AcceptsReturn(true);
-  messageBox.TextWrapping(TextWrapping::Wrap);
-  messageBox.MaxHeight(160);
-  content.Children().Append(messageBox);
-
-  Button copyButton;
-  copyButton.Content(winrt::box_value(Loc("copy")));
-  const std::string message = request.message;
-  copyButton.Click([message](auto const&, auto const&) {
-    namespace dt = winrt::Windows::ApplicationModel::DataTransfer;
-    try {
-      dt::DataPackage package;
-      package.SetText(H(message));
-      dt::Clipboard::SetContent(package);
-    } catch (...) {
-      urnw::LogWarn("bittensor manual form: the clipboard refused the message");
-    }
-  });
-  content.Children().Append(copyButton);
-
-  TextBox addressBox;
-  addressBox.PlaceholderText(Loc("earnings_address_placeholder"));
-  addressBox.Text(H(request.address));
-  content.Children().Append(addressBox);
-
-  TextBox signatureBox;
-  signatureBox.Header(winrt::box_value(Loc("bittensor_signature_label")));
-  signatureBox.PlaceholderText(Loc("bittensor_signature_placeholder"));
-  content.Children().Append(signatureBox);
-
-  TextBlock errorText;
-  errorText.FontSize(12);
-  errorText.TextWrapping(TextWrapping::Wrap);
-  errorText.Foreground(colors::DangerBrush());
-  errorText.Visibility(Visibility::Collapsed);
-  content.Children().Append(errorText);
-
-  // a ContentDialog clips what overflows instead of scrolling it (SheetFit.h),
-  // which cut the signature field off below a consent: the form scrolls
-  ScrollViewer scroll;
-  scroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
-  scroll.HorizontalScrollBarVisibility(ScrollBarVisibility::Disabled);
-  scroll.MaxHeight(sheetfit::Height(window->Content().XamlRoot(), 520));
-  scroll.Content(content);
-
-  ContentDialog dialog;
-  dialog.XamlRoot(window->Content().XamlRoot());
-  dialog.Title(winrt::box_value(H(request.walletName)));
-  dialog.Content(scroll);
-  dialog.PrimaryButtonText(Loc("continue_txt"));
-  dialog.CloseButtonText(Loc("cancel"));
-  dialog.DefaultButton(ContentDialogButton::Primary);
-  dialog.Background(colors::SheetBrush());
-
-  // whether the session took the proof or ended it; the close then needs no cancel
-  auto settled = std::make_shared<bool>(false);
-  dialog.PrimaryButtonClick([addressBox, signatureBox, errorText, settled](
-                                auto const&, ContentDialogButtonClickEventArgs const& args) {
-    const auto answer = Sdk().SubmitBittensorManual(Narrow(addressBox.Text().c_str()),
-                                                    Narrow(signatureBox.Text().c_str()));
-    if (answer.closed) {
-      *settled = true;
-      return;  // the dialog closes; the flow has its answer
-    }
-    args.Cancel(true);  // a typo: keep the form, say what is wrong
-    errorText.Text(H(answer.error));
-    errorText.Visibility(Visibility::Visible);
-  });
-
-  window->SetSheetOpen(true);
-  try {
-    co_await dialog.ShowAsync();
-  } catch (...) {
-    urnw::LogError("bittensor manual form failed to open");
-  }
-  window->SetSheetOpen(false);
-  if (!*settled) Sdk().CancelBittensorProof();
 }
 
 winrt::fire_and_forget EnterConsentColdkey(

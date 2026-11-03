@@ -549,25 +549,6 @@ MainWindow::MainWindow() {
     Sdk().RefreshModeNotice();
   }
 
-  // ---- Bittensor manual proof (TAO.com) ----
-  // SdkHost asks for the manual form from an SDK thread once a TAO.com proof
-  // has its challenge; the form answers SdkHost directly. A window that is
-  // gone answers with a cancel so the flow is not left waiting.
-  {
-    auto queue = DispatcherQueue();
-    Sdk().SetBittensorManualHandler(
-        [weak = get_weak(), queue](urnw::SdkHost::BittensorManualRequest request) {
-          const bool queued = queue.TryEnqueue([weak, request] {
-            if (auto self = weak.get()) {
-              urnw::pages::ShowBittensorManualForm(self, request);
-            } else {
-              Sdk().CancelBittensorProof();
-            }
-          });
-          if (!queued) Sdk().CancelBittensorProof();
-        });
-  }
-
   // ---- Advanced Mode (D5) ----
   // The SAME two-line pair, for the same reason. The preference is read off
   // disk in SdkHost::Initialize(), which runs at startup; this window is not

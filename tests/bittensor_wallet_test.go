@@ -12,11 +12,10 @@ import (
 )
 
 // UPGRADE.md 4.6: a Bittensor wallet proof is the SDK's session helper
-// (urnet::BittensorWalletSession), for three wallets: Talisman and
-// WalletConnect through the ur.io bridge in the browser, TAO.com (and any
-// other wallet) through the manual form. The app
-// keeps only its own decisions (App/BittensorWalletFlow.h, compiled and run
-// here) and must not parse the hand-back or build the bridge url itself.
+// (urnet::BittensorWalletSession), for three wallets, all through the ur.io
+// bridge in the browser: Talisman, TAO.com and WalletConnect. The app keeps only
+// its own decisions (App/BittensorWalletFlow.h, compiled and run here) and must
+// not parse the hand-back or build the bridge url itself.
 func TestBittensorWalletSessionHelper(t *testing.T) {
 	compiler, err := exec.LookPath("c++")
 	if err != nil {
@@ -44,7 +43,6 @@ func TestBittensorWalletSessionHelper(t *testing.T) {
 		"session->setChallenge(result,",
 		"session->bridgeUrl()",
 		"session->handleBridgeReturn(url,",
-		"session->handleSignature(address, signature,",
 		"bittensor::IsForeignReturn(",
 		"bittensor::NeedsWalletConnectProjectId(walletId)",
 		"session->setWalletConnectProjectId(urnw::config::kWalletConnectProjectId)",
@@ -75,11 +73,7 @@ func TestBittensorWalletSessionHelper(t *testing.T) {
 		"bittensor::kChooserWallets[i]",
 		"bittensor::ChooserHintKey(walletId)",
 		"bittensor::WalletForChoice(*choice)",
-		"Sdk().SubmitBittensorManual(",
-		"Sdk().CancelBittensorProof()",
 		`Loc("bittensor_choose_wallet")`,
-		`Loc("bittensor_message_to_sign")`,
-		`Loc("bittensor_signature_label")`,
 	} {
 		if !strings.Contains(dialogs, want) {
 			t.Errorf("BittensorWalletDialogs.cpp: missing %s", want)
@@ -224,33 +218,68 @@ func TestBittensorBridgeCodesMatchTheSdkHeader(t *testing.T) {
 	}
 }
 
-// The manual form shows the exact message to sign above the address and
-// signature boxes. A payout consent is about 2 KB of JSON, and the form put it
-// in a box that grew with it, inside a ContentDialog, which clips what
-// overflows instead of scrolling it (SheetFit.h): the signature box was cut
-// off, so a consent could not be signed with TAO.com (support inbox 8058,
-// 8073). The message box is bounded and the form scrolls within the window.
-func TestBittensorManualFormScrolls(t *testing.T) {
-	dialogs := stripLineComments(readAppSource(t, "BittensorWalletDialogs.cpp"))
-	form := functionBody(dialogs, "winrt::fire_and_forget ShowBittensorManualForm(")
-	if form == "" {
-		t.Fatal("BittensorWalletDialogs.cpp: no ShowBittensorManualForm")
+// Signing by hand is on the bridge page ("Enter address manually"), which hands
+// its proof back like any other: every chooser wallet is browser_bridge on
+// Windows (sdk BittensorWalletTransportFor), so the app has no form of its own
+// and takes no signature except through the session's handleBridgeReturn. A
+// session of any other transport has no step: the proof is answered with a
+// failure at once (NextStepFor, run by the harness above).
+func TestBittensorProofHasNoFormInTheApp(t *testing.T) {
+	host := stripLineComments(readAppSource(t, "SdkHost.cpp"))
+	if strings.Contains(host, "handleSignature(") {
+		t.Error("SdkHost.cpp: a signature reaches the session other than through a bridge hand-back")
 	}
-	if !strings.Contains(dialogs, `#include "SheetFit.h"`) {
-		t.Error("BittensorWalletDialogs.cpp: the manual form does not clamp to the window (SheetFit.h)")
-	}
+	open := functionBody(host, "void SdkHost::OpenBittensorWallet(")
 	for _, want := range []string{
-		"messageBox.MaxHeight(",
-		"scroll.VerticalScrollBarVisibility(ScrollBarVisibility::Auto)",
-		"scroll.MaxHeight(sheetfit::Height(",
-		"scroll.Content(content)",
-		"dialog.Content(scroll)",
+		"bittensor::NextStepFor(session->transport())",
+		"case bittensor::NextStep::OpenBrowser:",
+		"case bittensor::NextStep::Unsupported:",
+		`FinishBittensorProof(serial, {false, {}, Narrow(Localized("wallet_connect_failed"))});`,
 	} {
-		if !strings.Contains(form, want) {
-			t.Errorf("ShowBittensorManualForm: missing %s", want)
+		if !strings.Contains(open, want) {
+			t.Errorf("SdkHost::OpenBittensorWallet: missing %s", want)
 		}
 	}
-	if strings.Contains(form, "dialog.Content(content)") {
-		t.Error("ShowBittensorManualForm: the form is the dialog's content, unscrolled")
+	for _, name := range []string{"BittensorWalletDialogs.cpp", "SettingsSheets.cpp", "MainWindow.xaml.cpp"} {
+		source := stripLineComments(readAppSource(t, name))
+		for _, unwanted := range []string{`"bittensor_message_to_sign"`, `"bittensor_signature_label"`, `"bittensor_manual_sign_instructions"`} {
+			if strings.Contains(source, unwanted) {
+				t.Errorf("%s: asks for a pasted signature (%s)", name, unwanted)
+			}
+		}
+	}
+}
+
+// A refused proof reads in the server's words. Sign-in and network create ask
+// for result_errors, so a signature from another account than the address comes
+// back as that sentence rather than a 401, and the add sheet shows addAuth's. The
+// bridge page's manual form checks a paste before it hands it back, so this is
+// what is left when it could not.
+func TestBittensorRefusedProofReadsInTheServersWords(t *testing.T) {
+	host := stripLineComments(readAppSource(t, "SdkHost.cpp"))
+	for _, signature := range []string{"void SdkHost::AuthLoginWithWallet(", "void SdkHost::SubmitCreateNetwork("} {
+		body := definitionBody(t, "SdkHost.cpp", host, signature)
+		for _, want := range []string{
+			"args.result_errors = true;",
+			"AuthResult r{false, false, result->error->message};",
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("SdkHost.cpp: %s is missing %s", signature, want)
+			}
+		}
+	}
+	if !strings.Contains(stripLineComments(readAppSource(t, "SettingsSheets.cpp")), "error = H(add_->Error());") {
+		t.Error("SettingsSheets.cpp: the add sheet does not show addAuth's refusal")
+	}
+}
+
+// The coldkey connect's api fallback keeps the refusal's code, as the device path
+// does, so the page words a coded refusal (SnErrorText: wallet_blocked, an
+// invalid address) the same on both.
+func TestWalletConnectFallbackKeepsTheRefusalsCode(t *testing.T) {
+	page := stripLineComments(readAppSource(t, "WalletPage.cpp"))
+	setWalletError := definitionBody(t, "WalletPage.cpp", page, "urnet::SnError SetWalletError(")
+	if !strings.Contains(setWalletError, "error.code = source.code;") {
+		t.Error("WalletPage.cpp: the api fallback drops the refusal's code")
 	}
 }

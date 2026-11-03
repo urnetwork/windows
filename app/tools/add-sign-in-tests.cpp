@@ -41,7 +41,7 @@ class FakeSession : public asi::AddSignInSession {
   std::vector<std::string> calls;
   std::function<void(std::string, std::string)> pendingToken;
   std::function<void(asi::WalletSignature, std::string)> pendingWallet;
-  std::function<void(std::string, std::string)> pendingAdd;
+  std::function<void(std::string)> pendingAdd;
   asi::AddAuthBody lastBody;
 
   void ProviderToken(std::string_view provider,
@@ -55,8 +55,7 @@ class FakeSession : public asi::AddSignInSession {
                     std::string(asi::WalletChainBlockchain(chain)) + " " + std::string(walletId));
     pendingWallet = std::move(done);
   }
-  void AddAuth(asi::AddAuthBody const& body,
-               std::function<void(std::string, std::string)> done) override {
+  void AddAuth(asi::AddAuthBody const& body, std::function<void(std::string)> done) override {
     calls.push_back("addAuth");
     lastBody = body;
     pendingAdd = std::move(done);
@@ -119,7 +118,7 @@ void TestProvider(asi::Method method, std::string_view provider) {
                                session.lastBody.auth_jwt_type == std::string(provider) &&
                                !session.lastBody.user_auth && !session.lastBody.wallet_auth);
   Expect("provider: not added before addAuth answers", !flow.Added());
-  session.pendingAdd("", "");
+  session.pendingAdd("");
   Expect("provider: added", flow.Added() == method && !flow.Busy());
   // nothing else: no sign-in, no session swap
   Expect("provider: only token and addAuth", session.calls.size() == 2);
@@ -140,7 +139,7 @@ void TestWallet(asi::WalletChain chain, std::string_view walletId, std::string_v
                              session.lastBody.wallet_auth->message ==
                                  "Sign in to URnetwork\nChallenge: c\nTimestamp: 1" &&
                              !session.lastBody.auth_jwt && !session.lastBody.user_auth);
-  session.pendingAdd("", "");
+  session.pendingAdd("");
   Expect("wallet: added", flow.Added() == asi::Method::Wallet);
   Expect("wallet: only sign and addAuth", session.calls.size() == 2);
 }
@@ -150,7 +149,7 @@ void TestErrors() {
     FakeSession session;
     asi::AddSignInFlow flow(session);
     flow.StartProvider(asi::Method::Google);
-    session.pendingToken("", "superseded by the user closing the wallet form");
+    session.pendingToken("", "superseded by the add sheet closing");
     Expect("quiet cancel shows nothing", flow.Error().empty() && flow.ErrorKey().empty() && !flow.Busy());
     Expect("quiet cancel adds nothing", session.calls.size() == 1 && !flow.Added());
   }
@@ -174,7 +173,7 @@ void TestErrors() {
     asi::AddSignInFlow flow(session);
     flow.StartProvider(asi::Method::Google);
     session.pendingToken("synthetic.id.token", "");
-    session.pendingAdd("This sign-in is already used by another network", "");
+    session.pendingAdd("This sign-in is already used by another network");
     Expect("addAuth refusal shown, not added",
            flow.Error() == "This sign-in is already used by another network" && !flow.Added() && !flow.Busy());
   }
@@ -196,49 +195,6 @@ void TestErrors() {
     flow.StartProvider(asi::Method::Google);
     flow.StartWallet(asi::WalletChain::Solana, asi::kSolanaPhantom);
     Expect("second start while busy ignored", session.calls.size() == 1);
-  }
-}
-
-// addAuth refuses a pasted Bittensor signature from another account than the
-// entered address with error.code signature_mismatch. The flow keeps the code
-// and the wallet that signed, so the sheet can say to sign with the entered
-// address in that wallet (WalletProofRefusalText); a manual wallet's key is
-// ConnectErrorKey's. Any other refusal, method or wallet has no such words.
-void TestWalletRefusalCode() {
-  const std::string message =
-      "The signature does not match this wallet address. Sign the challenge with this address.";
-  {
-    FakeSession session;
-    asi::AddSignInFlow flow(session);
-    flow.StartWallet(asi::WalletChain::Bittensor, urnw::bittensor::kWalletTaoCom);
-    session.pendingWallet({"synthetic-address", "0xsynthetic-signature", "challenge"}, "");
-    session.pendingAdd(message, "signature_mismatch");
-    Expect("mismatch: the server's message, not added", flow.Error() == message && !flow.Added() && !flow.Busy());
-    Expect("mismatch: keeps the code", flow.ErrorCode() == "signature_mismatch");
-    Expect("mismatch: names the wallet that signed", flow.ErrorWalletId() == urnw::bittensor::kWalletTaoCom);
-    Expect("mismatch: a manual wallet has words for it",
-           urnw::bittensor::ConnectErrorKey(flow.ErrorCode(), urnw::bittensor::kTransportManual) ==
-               "bittensor_error_signature_mismatch");
-    // a new attempt starts clean
-    flow.StartWallet(asi::WalletChain::Bittensor, urnw::bittensor::kWalletTaoCom);
-    Expect("mismatch: cleared by the next attempt", flow.ErrorCode().empty() && flow.ErrorWalletId().empty());
-  }
-  {
-    FakeSession session;
-    asi::AddSignInFlow flow(session);
-    flow.StartWallet(asi::WalletChain::Solana, asi::kSolanaPhantom);
-    session.pendingWallet({"synthetic-address", "c3lnbmF0dXJl", "challenge"}, "");
-    session.pendingAdd(message, "signature_mismatch");
-    Expect("solana: no Bittensor wallet to name", flow.ErrorWalletId().empty() && flow.Error() == message);
-  }
-  {
-    FakeSession session;
-    asi::AddSignInFlow flow(session);
-    flow.StartWallet(asi::WalletChain::Bittensor, urnw::bittensor::kWalletTaoCom);
-    session.pendingWallet({"synthetic-address", "0xsynthetic-signature", "challenge"}, "");
-    session.pendingAdd("This wallet is already linked to another account.", "");
-    Expect("uncoded refusal: no code", flow.ErrorCode().empty() &&
-                                           flow.Error() == "This wallet is already linked to another account.");
   }
 }
 
@@ -265,7 +221,6 @@ int main() {
     TestWallet(asi::WalletChain::Bittensor, urnw::bittensor::kChooserWallets[i], "TAO");
   }
   TestErrors();
-  TestWalletRefusalCode();
   TestBodies();
   if (gFailures) {
     std::cerr << gFailures << " of " << gCases << " add sign-in checks failed\n";

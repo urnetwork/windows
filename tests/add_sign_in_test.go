@@ -48,8 +48,6 @@ func TestAddAuthSheetOffersEveryMethod(t *testing.T) {
 		"bittensor::kChooserWallets[i]",
 		"std::make_unique<add_sign_in::AddSignInFlow>(*addSession_)",
 		"self->add_->StartProvider(self->method_)",
-		"self->sdk_.SubmitBittensorManual(",
-		"self->sdk_.CancelBittensorProof()",
 	} {
 		if !strings.Contains(build, want) {
 			t.Errorf("AddAuthSheet::Build: missing %s", want)
