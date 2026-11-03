@@ -938,6 +938,14 @@
     <value>WalletConnect 目前無法使用。請稍後再試，或手動輸入你的地址。</value>
     <comment>Bittensor wallet error in the apps, when the ur.io bridge page returns walletconnect_unavailable: the page has no WalletConnect project id, so it cannot pair a wallet. Manual entry still works. WalletConnect is a product name.</comment>
   </data>
+  <data name="bittensor_funds_disclaimer" xml:space="preserve">
+    <value>此金鑰本機儲存在應用程式的安全儲存空間中。它絕不會與 URnetwork 共用。URnetwork 不會觸碰任何用戶資金，亦不對其承擔任何責任。</value>
+    <comment>The owner's disclaimer (2026-11-03), on every screen of the one-tap Bittensor key flows where the key is in this app's secure storage on the device: the payout card, the Key screen with its delete and keep confirmations, the claim card, and later convert and Top 200. Three sentences: the key is kept on the device in the app's own secure storage (use your language's usual words for an app's secure storage), it is never shared with URnetwork, and URnetwork does not touch and is not responsible for any user funds. Keep the meaning exact. The last sentence is also the key bittensor_funds_disclaimer_funds_only and must read exactly the same.</comment>
+  </data>
+  <data name="bittensor_funds_disclaimer_funds_only" xml:space="preserve">
+    <value>URnetwork 不會觸碰任何用戶資金，亦不對其承擔任何責任。</value>
+    <comment>The last sentence of the owner's disclaimer (bittensor_funds_disclaimer) alone, for the screens of the one-tap Bittensor key flows where the key is not stored in this app: a network paid to an outside wallet or a key on another device, a key this app has deleted, and a recovery phrase being saved before anything is stored. Must read exactly as the last sentence of bittensor_funds_disclaimer.</comment>
+  </data>
   <data name="bittensor_key_auth_reason" xml:space="preserve">
     <value>使用你的 Bittensor 復原短語</value>
     <comment>The reason in the system's device authentication prompt (Face ID, Touch ID, passcode). macOS shows it after the app's name: 'URnetwork is trying to use your Bittensor recovery phrase'. iOS shows it alone. Write the phrase that reads naturally in both, in your language's form for a purpose, and start it in lower case where your language allows.</comment>
