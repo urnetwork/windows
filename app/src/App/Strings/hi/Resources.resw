@@ -7219,6 +7219,10 @@
     <value>रखें</value>
     <comment>Subscription: back out of the cancellation.</comment>
   </data>
+  <data name="site_sub_cancel_past_due_confirm" xml:space="preserve">
+    <value>अभी रद्द करें? हम भुगतान दोबारा करने की कोशिश बंद कर देंगे, और Pro समाप्त हो जाएगा।</value>
+    <comment>Subscription: inline confirmation before cancelling a renewal whose payment is failing. The cancel takes effect now: Stripe stops retrying the failed payment, and the Pro plan ends. Retrying = Stripe trying to charge the card again.</comment>
+  </data>
   <data name="site_sub_cancel_yes" xml:space="preserve">
     <value>हाँ, रद्द करें</value>
     <comment>Subscription: confirm the cancellation.</comment>

@@ -7222,6 +7222,10 @@ inhoud van de wereld</value>
     <value>Behouden</value>
     <comment>Subscription: back out of the cancellation.</comment>
   </data>
+  <data name="site_sub_cancel_past_due_confirm" xml:space="preserve">
+    <value>Nu opzeggen? We stoppen met het opnieuw proberen van de betaling, en Pro eindigt.</value>
+    <comment>Subscription: inline confirmation before cancelling a renewal whose payment is failing. The cancel takes effect now: Stripe stops retrying the failed payment, and the Pro plan ends. Retrying = Stripe trying to charge the card again.</comment>
+  </data>
   <data name="site_sub_cancel_yes" xml:space="preserve">
     <value>Ja, opzeggen</value>
     <comment>Subscription: confirm the cancellation.</comment>
