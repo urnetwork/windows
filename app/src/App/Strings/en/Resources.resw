@@ -9412,13 +9412,53 @@ world's content</value>
     <value>Claim now</value>
     <comment>Earnings, the settlement v2 tile and the claim sheet: a button that asks URnetwork to claim the balance now, without waiting for the automatic threshold. Short: a button.</comment>
   </data>
-  <data name="sn_claim_relay_claim_now_paid" xml:space="preserve">
+  <data name="sn_claim_relay_claim_now_paid.zero" xml:space="preserve">
     <value>Claim now is paid by URnetwork, once every {} days.</value>
-    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30). Claim now is the button's label; keep it recognizable as that label.</comment>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30 today; the count selects the plural form). Claim now is the button's label; keep it recognizable as that label.</comment>
   </data>
-  <data name="sn_claim_relay_claim_now_paid_each" xml:space="preserve">
+  <data name="sn_claim_relay_claim_now_paid.one" xml:space="preserve">
+    <value>Claim now is paid by URnetwork, once a day.</value>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30 today; the count selects the plural form). Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid.two" xml:space="preserve">
+    <value>Claim now is paid by URnetwork, once every {} days.</value>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30 today; the count selects the plural form). Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid.few" xml:space="preserve">
+    <value>Claim now is paid by URnetwork, once every {} days.</value>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30 today; the count selects the plural form). Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid.many" xml:space="preserve">
+    <value>Claim now is paid by URnetwork, once every {} days.</value>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30 today; the count selects the plural form). Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid.other" xml:space="preserve">
+    <value>Claim now is paid by URnetwork, once every {} days.</value>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30 today; the count selects the plural form). Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid_each.zero" xml:space="preserve">
     <value>Paid by URnetwork, once every {} days for each coldkey.</value>
-    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid_each.one" xml:space="preserve">
+    <value>Paid by URnetwork, once a day for each coldkey.</value>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid_each.two" xml:space="preserve">
+    <value>Paid by URnetwork, once every {} days for each coldkey.</value>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid_each.few" xml:space="preserve">
+    <value>Paid by URnetwork, once every {} days for each coldkey.</value>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid_each.many" xml:space="preserve">
+    <value>Paid by URnetwork, once every {} days for each coldkey.</value>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid_each.other" xml:space="preserve">
+    <value>Paid by URnetwork, once every {} days for each coldkey.</value>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
   </data>
   <data name="sn_claim_relay_claimed" xml:space="preserve">
     <value>Claimed by URnetwork. {0} SN25α is on your key, {1}.</value>

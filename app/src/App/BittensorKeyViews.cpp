@@ -387,10 +387,11 @@ void ShowFundsDisclaimer(StackPanel const& host, std::string_view disclaimer, bo
 hstring ClaimNowNoteText(btkey::ClaimNowNote note, int64_t periodDays, int64_t floorTaoRao,
                          int64_t nextAtMillis) {
   switch (note) {
+    // the period is a count: each language reads it in its own plural form
     case btkey::ClaimNowNote::Paid:
-      return hstring{urnw::Format("sn_claim_relay_claim_now_paid", periodDays)};
+      return hstring{urnw::Plural("sn_claim_relay_claim_now_paid", periodDays)};
     case btkey::ClaimNowNote::PaidEach:
-      return hstring{urnw::Format("sn_claim_relay_claim_now_paid_each", periodDays)};
+      return hstring{urnw::Plural("sn_claim_relay_claim_now_paid_each", periodDays)};
     case btkey::ClaimNowNote::UnderFloor:
       return hstring{urnw::Format("sn_claim_relay_under_floor", Widen(btkey::TaoAmount(floorTaoRao)))};
     case btkey::ClaimNowNote::Requested:

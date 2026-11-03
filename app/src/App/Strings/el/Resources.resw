@@ -7726,13 +7726,21 @@
     <value>Διεκδίκηση τώρα</value>
     <comment>Earnings, the settlement v2 tile and the claim sheet: a button that asks URnetwork to claim the balance now, without waiting for the automatic threshold. Short: a button.</comment>
   </data>
-  <data name="sn_claim_relay_claim_now_paid" xml:space="preserve">
-    <value>Το «Διεκδίκηση τώρα» πληρώνεται από το URnetwork, μία φορά κάθε {} ημέρες.</value>
-    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30). Claim now is the button's label; keep it recognizable as that label.</comment>
+  <data name="sn_claim_relay_claim_now_paid.one" xml:space="preserve">
+    <value>Το «Διεκδίκηση τώρα» πληρώνεται από το URnetwork, μία φορά την ημέρα.</value>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30 today; the count selects the plural form). Claim now is the button's label; keep it recognizable as that label.</comment>
   </data>
-  <data name="sn_claim_relay_claim_now_paid_each" xml:space="preserve">
+  <data name="sn_claim_relay_claim_now_paid.other" xml:space="preserve">
+    <value>Το «Διεκδίκηση τώρα» πληρώνεται από το URnetwork, μία φορά κάθε {} ημέρες.</value>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30 today; the count selects the plural form). Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid_each.one" xml:space="preserve">
+    <value>Πληρώνεται από το URnetwork, μία φορά την ημέρα για κάθε coldkey.</value>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid_each.other" xml:space="preserve">
     <value>Πληρώνεται από το URnetwork, μία φορά κάθε {} ημέρες για κάθε coldkey.</value>
-    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
   </data>
   <data name="sn_claim_relay_claimed" xml:space="preserve">
     <value>Διεκδικήθηκε από το URnetwork. {0} SN25α βρίσκονται στο κλειδί σας, {1}.</value>

@@ -8714,13 +8714,13 @@
     <value>立即领取</value>
     <comment>Earnings, the settlement v2 tile and the claim sheet: a button that asks URnetwork to claim the balance now, without waiting for the automatic threshold. Short: a button.</comment>
   </data>
-  <data name="sn_claim_relay_claim_now_paid" xml:space="preserve">
+  <data name="sn_claim_relay_claim_now_paid.other" xml:space="preserve">
     <value>“立即领取”由 URnetwork 支付费用，每 {} 天一次。</value>
-    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30). Claim now is the button's label; keep it recognizable as that label.</comment>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30 today; the count selects the plural form). Claim now is the button's label; keep it recognizable as that label.</comment>
   </data>
-  <data name="sn_claim_relay_claim_now_paid_each" xml:space="preserve">
+  <data name="sn_claim_relay_claim_now_paid_each.other" xml:space="preserve">
     <value>由 URnetwork 支付费用，每个 coldkey 每 {} 天一次。</value>
-    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
   </data>
   <data name="sn_claim_relay_claimed" xml:space="preserve">
     <value>已由 URnetwork 领取。{0} SN25α 已在您的密钥 {1} 上。</value>
