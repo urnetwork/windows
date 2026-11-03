@@ -950,6 +950,218 @@
     <value>WalletConnect haipatikani kwa sasa. Jaribu tena baadaye, au weka anwani yako mwenyewe.</value>
     <comment>Bittensor wallet error in the apps, when the ur.io bridge page returns walletconnect_unavailable: the page has no WalletConnect project id, so it cannot pair a wallet. Manual entry still works. WalletConnect is a product name.</comment>
   </data>
+  <data name="bittensor_key_auth_reason" xml:space="preserve">
+    <value>kutumia kifungu chako cha urejeshaji cha Bittensor</value>
+    <comment>The reason in the system's device authentication prompt (Face ID, Touch ID, passcode). macOS shows it after the app's name: 'URnetwork is trying to use your Bittensor recovery phrase'. iOS shows it alone. Write the phrase that reads naturally in both, in your language's form for a purpose, and start it in lower case where your language allows.</comment>
+  </data>
+  <data name="bittensor_key_back_up" xml:space="preserve">
+    <value>Hifadhi nakala ya ufunguo wako</value>
+    <comment>Earnings screen: the title of a warning banner, and a button on the payout card. Both open the Key screen, where the user saves the recovery phrase.</comment>
+  </data>
+  <data name="bittensor_key_banner_body" xml:space="preserve">
+    <value>Ukipoteza kifaa hiki kabla ya kuhifadhi kifungu chako cha urejeshaji, SN25α yako haitaweza kufikiwa.</value>
+    <comment>Earnings screen: the warning banner under Back up your key, which stays until the phrase is saved.</comment>
+  </data>
+  <data name="bittensor_key_capture_hidden" xml:space="preserve">
+    <value>Maneno yanabaki yamefichwa wakati skrini yako inarekodiwa au kuakisiwa.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Shown while a screen recording or mirroring is running.</comment>
+  </data>
+  <data name="bittensor_key_card_explain" xml:space="preserve">
+    <value>URnetwork inaunda ufunguo wa Bittensor kwenye kifaa hiki na inalipa kila mchimbaji kwenye mtandao wako kwenye ufunguo huo, kuanzia kipindi kijacho.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Explains the one tap, read before it. A miner is a device on the network that earns; this is the Bittensor sense of the word.</comment>
+  </data>
+  <data name="bittensor_key_card_none" xml:space="preserve">
+    <value>Bado hakuna pochi ya malipo. Mapato hayalipwi hadi usanidi pochi.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The first line while the network has no payout wallet. Set up payouts is the main button below it.</comment>
+  </data>
+  <data name="bittensor_key_card_not_linked" xml:space="preserve">
+    <value>Ufunguo wako upo kwenye kifaa hiki, lakini malipo bado hayajasanidiwa.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The key was made and stored, but the step that links it to payouts did not finish. The Finish setup button follows.</comment>
+  </data>
+  <data name="bittensor_key_card_not_wallet" xml:space="preserve">
+    <value>URnetwork si pochi. Ili kuhamisha au kutumia SN25α yako, unaingiza kifungu cha urejeshaji cha ufunguo kwenye pochi ya Bittensor au btcli. Ukipoteza kifaa hiki kabla ya kuhifadhi kifungu hicho, SN25α yako haitaweza kufikiwa.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The short form of the warning, read before the one tap.</comment>
+  </data>
+  <data name="bittensor_key_card_other_consent" xml:space="preserve">
+    <value>Ufunguo kwenye kifaa hiki haupokei malipo.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Payouts go to another wallet, and a key made earlier is still on this device.</comment>
+  </data>
+  <data name="bittensor_key_card_saved" xml:space="preserve">
+    <value>Kifungu chako cha urejeshaji kimehifadhiwa, na ufunguo unabaki kwenye kifaa hiki.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The user proved they saved the phrase and chose to keep the key on the device.</comment>
+  </data>
+  <data name="bittensor_key_confirm_body" xml:space="preserve">
+    <value>URnetwork haiwezi kurudisha ufunguo huu. Mapato yanaendelea kwenda kwenye anwani hii, na kifungu cha urejeshaji pekee ndicho kinachoweza kuyahamisha.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. </comment>
+  </data>
+  <data name="bittensor_key_confirm_convert" xml:space="preserve">
+    <value>Baada ya hili, programu hii pia haiwezi kubadilisha SN25α yako kuwa TAO. Pochi ya Bittensor au btcli inaweza, kwa kutumia kifungu hiki cha urejeshaji.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. </comment>
+  </data>
+  <data name="bittensor_key_confirm_prompt" xml:space="preserve">
+    <value>Ili kuonyesha kwamba umekihifadhi, weka maneno haya mawili kutoka kwenye kifungu chako cha urejeshaji.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. Two fields follow, labeled Word 3, Word 9 and so on.</comment>
+  </data>
+  <data name="bittensor_key_confirm_top200" xml:space="preserve">
+    <value>Kufuta ufunguo huu pia kunamaanisha kuacha kupata nafasi ya Top 200 kwa mguso mmoja. Bado unaweza kuipata kutoka kwenye pochi ya Bittensor iliyo na kifungu hiki cha urejeshaji.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. Top 200 is a ranking the network's miners can claim a place on.</comment>
+  </data>
+  <data name="bittensor_key_copy_warning" xml:space="preserve">
+    <value>Programu nyingine zinaweza kusoma ubao wa kunakili. Unafutwa baada ya sekunde 60.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Next to the Copy button.</comment>
+  </data>
+  <data name="bittensor_key_create_here" xml:space="preserve">
+    <value>Unda ufunguo kwenye kifaa hiki</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A small link when payouts go to another wallet. A warning follows before anything changes.</comment>
+  </data>
+  <data name="bittensor_key_delete_account_message" xml:space="preserve">
+    <value>Kifungu chako cha urejeshaji cha Bittensor bado hakijahifadhiwa. Kufuta akaunti yako pia kunafuta ufunguo huu kwenye kifaa hiki, na bila kifungu hicho SN25α yako haitaweza kufikiwa.</value>
+    <comment>The confirmation of Delete account, shown only while the Bittensor key's recovery phrase is not saved.</comment>
+  </data>
+  <data name="bittensor_key_delete_action" xml:space="preserve">
+    <value>Nimehifadhi ufunguo, unaweza kufutwa sasa.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The one destructive button: the user says the phrase is saved, and the app may forget it.</comment>
+  </data>
+  <data name="bittensor_key_delete_confirm" xml:space="preserve">
+    <value>Futa ufunguo</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. The destructive button.</comment>
+  </data>
+  <data name="bittensor_key_delete_title" xml:space="preserve">
+    <value>Ungependa kufuta ufunguo huu kwenye programu hii?</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. The title.</comment>
+  </data>
+  <data name="bittensor_key_elsewhere" xml:space="preserve">
+    <value>Ufunguo huu upo kwenye kifaa kingine au kwenye pochi yako.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Payouts go to an address whose key is not in this app. The phrase cannot be shown here.</comment>
+  </data>
+  <data name="bittensor_key_failure_consent" xml:space="preserve">
+    <value>Imeshindwa kusanidi malipo. Jaribu tena.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A general error under the Set up payouts button.</comment>
+  </data>
+  <data name="bittensor_key_failure_delete" xml:space="preserve">
+    <value>Imeshindwa kufuta ufunguo kwenye kifaa hiki. Bado upo hapa.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. An error after the user asked to delete the key.</comment>
+  </data>
+  <data name="bittensor_key_failure_generate" xml:space="preserve">
+    <value>Imeshindwa kuunda ufunguo kwenye kifaa hiki. Jaribu tena.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
+  </data>
+  <data name="bittensor_key_failure_keychain" xml:space="preserve">
+    <value>Imeshindwa kusoma keychain ya kifaa hiki. Fungua kifaa chako kisha ujaribu tena.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+  </data>
+  <data name="bittensor_key_failure_store" xml:space="preserve">
+    <value>Imeshindwa kuhifadhi ufunguo kwenye kifaa hiki, kwa hivyo hakuna kilichotiwa sahihi. Jaribu tena, au hifadhi kifungu cha urejeshaji kwanza.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button: the new key could not be written to the device's secure storage.</comment>
+  </data>
+  <data name="bittensor_key_finish_setup" xml:space="preserve">
+    <value>Kamilisha usanidi</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Button that retries the link between the key on this device and the network's payouts.</comment>
+  </data>
+  <data name="bittensor_key_hide" xml:space="preserve">
+    <value>Ficha</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Button that covers the words again.</comment>
+  </data>
+  <data name="bittensor_key_keep_action" xml:space="preserve">
+    <value>Nimeuhifadhi. Ubaki kwenye kifaa hiki.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. A smaller link: the user says the phrase is saved, and the key stays on the device, so the reminders stop.</comment>
+  </data>
+  <data name="bittensor_key_keep_confirm" xml:space="preserve">
+    <value>Baki na ufunguo</value>
+    <comment>Key screen, the button that finishes the check and keeps the key on the device.</comment>
+  </data>
+  <data name="bittensor_key_keep_title" xml:space="preserve">
+    <value>Ungependa kubaki na ufunguo huu kwenye kifaa hiki?</value>
+    <comment>Key screen, the check before the key stays on the device: the user enters two of its words.</comment>
+  </data>
+  <data name="bittensor_key_no_longer_here" xml:space="preserve">
+    <value>Programu hii haina tena ufunguo</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A status line after the user saved the phrase and the app deleted its copy of the key.</comment>
+  </data>
+  <data name="bittensor_key_no_longer_here_body" xml:space="preserve">
+    <value>Mapato yako yanaendelea kwenda kwenye anwani hii. Ili kuhamisha au kutumia SN25α yako, weka kifungu chako cha urejeshaji kwenye pochi ya Bittensor kama Talisman au Nova, au kwenye btcli.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Under: This app no longer has the key.</comment>
+  </data>
+  <data name="bittensor_key_not_seed_phrase" xml:space="preserve">
+    <value>Hiki si kifungu cha seed cha akaunti yako cha wakati wa kujisajili. Kifungu hiki cha urejeshaji kinadhibiti ufunguo huu wa Bittensor pekee.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The app also has a sign-in seed phrase of 24 words, a different secret, and people mix them up. Keep the two terms clearly different: use the same word for 'seed phrase' as the sign-up screen's 'Your Seedphrase' does in your language where it fits, and the word for 'recovery phrase' everywhere else in these strings.</comment>
+  </data>
+  <data name="bittensor_key_payouts_start" xml:space="preserve">
+    <value>Malipo yanaanza kipindi kijacho</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A status line after setup. An epoch is the network's settlement period.</comment>
+  </data>
+  <data name="bittensor_key_reminder_body" xml:space="preserve">
+    <value>Mapato ya kipindi chako cha kwanza sasa yanaweza kudaiwa. Ukipoteza kifaa hiki kabla ya kuhifadhi kifungu chako cha urejeshaji, SN25α yako haitaweza kufikiwa.</value>
+    <comment>A local notification, the body.</comment>
+  </data>
+  <data name="bittensor_key_reminder_title" xml:space="preserve">
+    <value>Hifadhi nakala ya ufunguo wako wa Bittensor</value>
+    <comment>A local notification, the title. It arrives once, when the first epoch's earnings can be claimed.</comment>
+  </data>
+  <data name="bittensor_key_replace_message" xml:space="preserve">
+    <value>Ufunguo huu unachukua nafasi ya pochi yako ya malipo kuanzia kipindi kijacho. Mapato ya awali yanabaki kwenye pochi ya zamani.</value>
+    <comment>Earnings screen, a warning before a new key on this device replaces the network's payout wallet.</comment>
+  </data>
+  <data name="bittensor_key_replace_title" xml:space="preserve">
+    <value>Ungependa kubadilisha pochi yako ya malipo?</value>
+    <comment>Earnings screen, the title of a warning before a new key on this device replaces the network's payout wallet.</comment>
+  </data>
+  <data name="bittensor_key_reveal" xml:space="preserve">
+    <value>Gusa ili kuonyesha</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The words are covered, and this is on the cover.</comment>
+  </data>
+  <data name="bittensor_key_save_first" xml:space="preserve">
+    <value>Hifadhi kifungu cha urejeshaji kwanza</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A smaller link under Set up payouts: shows the phrase to save before anything else happens.</comment>
+  </data>
+  <data name="bittensor_key_save_now_retry" xml:space="preserve">
+    <value>Malipo bado hayajasanidiwa. Hakuna mapato yaliyoingia kwenye ufunguo huu, na ukiondoka, ufunguo utatupwa.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. After the link to payouts failed, for a key that exists only in memory. A Retry button follows.</comment>
+  </data>
+  <data name="bittensor_key_screen_title" xml:space="preserve">
+    <value>Kifungu cha urejeshaji cha Bittensor</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The screen's title.</comment>
+  </data>
+  <data name="bittensor_key_screenshot_warning" xml:space="preserve">
+    <value>Ikiwa picha hiyo ya skrini inaonyesha kifungu chako cha urejeshaji, ifute. Yeyote aliye na kifungu hiki anadhibiti SN25α yako.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Shown after the user took a screenshot of the screen.</comment>
+  </data>
+  <data name="bittensor_key_set_up" xml:space="preserve">
+    <value>Sanidi malipo</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The main button: one tap makes the key, stores it on the device and links it to payouts.</comment>
+  </data>
+  <data name="bittensor_key_show" xml:space="preserve">
+    <value>Onyesha ufunguo</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A small link that opens the Key screen.</comment>
+  </data>
+  <data name="bittensor_key_sign_out_message" xml:space="preserve">
+    <value>Kifungu chako cha urejeshaji cha Bittensor bado hakijahifadhiwa. Ufunguo unabaki kwenye kifaa hiki na unarudi mtandao huu unapoingia tena. Ukipoteza kifaa hiki kabla ya kuhifadhi kifungu hicho, SN25α yako haitaweza kufikiwa.</value>
+    <comment>The confirmation of Sign out, the message.</comment>
+  </data>
+  <data name="bittensor_key_sign_out_title" xml:space="preserve">
+    <value>Ungependa kutoka bila kuhifadhi ufunguo wako?</value>
+    <comment>The confirmation of Sign out, shown only while the Bittensor key's recovery phrase is not saved. The buttons are Sign out and Cancel.</comment>
+  </data>
+  <data name="bittensor_key_use_wallet" xml:space="preserve">
+    <value>Tumia pochi ambayo tayari ninayo</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A smaller link under Set up payouts: for someone who already has a Bittensor wallet.</comment>
+  </data>
+  <data name="bittensor_key_word_number" xml:space="preserve">
+    <value>Neno {}</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. A field label: which word of the phrase to enter, counting from 1, for example Word 3.</comment>
+  </data>
+  <data name="bittensor_key_wording_control" xml:space="preserve">
+    <value>Yeyote aliye na kifungu hiki anadhibiti SN25α yako. URnetwork haitakiomba kamwe, na haiwezi kukirejesha. Ukipoteza kifaa hiki kabla ya kuhifadhi kifungu hicho, SN25α yako haitaweza kufikiwa.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Always visible on the screen.</comment>
+  </data>
+  <data name="bittensor_key_wording_not_wallet" xml:space="preserve">
+    <value>URnetwork si pochi. Iliunda ufunguo huu ili uweze kupokea SN25α. Ili kuhamisha au kutumia SN25α yako, weka kifungu hiki cha urejeshaji kwenye pochi ya Bittensor kama Talisman au Nova, au kwenye btcli.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Always visible on the screen.</comment>
+  </data>
+  <data name="bittensor_key_words_rejected" xml:space="preserve">
+    <value>Maneno hayo hayalingani. Angalia kifungu chako cha urejeshaji ulichohifadhi.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. An error under the two fields.</comment>
+  </data>
   <data name="bittensor_manual_choice" xml:space="preserve">
     <value>Saini mwenyewe</value>
     <comment>The manual signing option in a Bittensor wallet chooser: on ur.io its own entry, and in the phone apps the line under a wallet that has no way to sign here directly. The user signs a message outside the page or app, for example with the btcli command line tool, and pastes the signature back.</comment>

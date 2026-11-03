@@ -938,6 +938,218 @@
     <value>WalletConnect ไม่พร้อมใช้งานในขณะนี้ ลองอีกครั้งในภายหลัง หรือป้อนที่อยู่ของคุณด้วยตนเอง</value>
     <comment>Bittensor wallet error in the apps, when the ur.io bridge page returns walletconnect_unavailable: the page has no WalletConnect project id, so it cannot pair a wallet. Manual entry still works. WalletConnect is a product name.</comment>
   </data>
+  <data name="bittensor_key_auth_reason" xml:space="preserve">
+    <value>เพื่อใช้วลีสำรอง Bittensor ของคุณ</value>
+    <comment>The reason in the system's device authentication prompt (Face ID, Touch ID, passcode). macOS shows it after the app's name: 'URnetwork is trying to use your Bittensor recovery phrase'. iOS shows it alone. Write the phrase that reads naturally in both, in your language's form for a purpose, and start it in lower case where your language allows.</comment>
+  </data>
+  <data name="bittensor_key_back_up" xml:space="preserve">
+    <value>สำรองคีย์ของคุณ</value>
+    <comment>Earnings screen: the title of a warning banner, and a button on the payout card. Both open the Key screen, where the user saves the recovery phrase.</comment>
+  </data>
+  <data name="bittensor_key_banner_body" xml:space="preserve">
+    <value>หากคุณทำอุปกรณ์นี้หายก่อนบันทึกวลีสำรองของคุณ จะไม่สามารถเข้าถึง SN25α ของคุณได้</value>
+    <comment>Earnings screen: the warning banner under Back up your key, which stays until the phrase is saved.</comment>
+  </data>
+  <data name="bittensor_key_capture_hidden" xml:space="preserve">
+    <value>คำเหล่านี้จะถูกซ่อนไว้ขณะที่หน้าจอของคุณกำลังถูกบันทึกหรือสะท้อนภาพ</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Shown while a screen recording or mirroring is running.</comment>
+  </data>
+  <data name="bittensor_key_card_explain" xml:space="preserve">
+    <value>URnetwork จะสร้างคีย์ Bittensor บนอุปกรณ์นี้ และจ่ายรายได้ของนักขุดทุกรายในเครือข่ายของคุณเข้าคีย์นี้ ตั้งแต่อีพอคถัดไป</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Explains the one tap, read before it. A miner is a device on the network that earns; this is the Bittensor sense of the word.</comment>
+  </data>
+  <data name="bittensor_key_card_none" xml:space="preserve">
+    <value>ยังไม่มีกระเป๋ารับยอดจ่าย รายได้จะไม่ถูกจ่ายจนกว่าคุณจะตั้งค่า</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The first line while the network has no payout wallet. Set up payouts is the main button below it.</comment>
+  </data>
+  <data name="bittensor_key_card_not_linked" xml:space="preserve">
+    <value>คีย์ของคุณอยู่บนอุปกรณ์นี้ แต่ยังไม่ได้ตั้งค่าการจ่าย</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The key was made and stored, but the step that links it to payouts did not finish. The Finish setup button follows.</comment>
+  </data>
+  <data name="bittensor_key_card_not_wallet" xml:space="preserve">
+    <value>URnetwork ไม่ใช่กระเป๋าเงิน หากต้องการโอนหรือใช้ SN25α ของคุณ คุณต้องป้อนวลีสำรองของคีย์ลงในกระเป๋าเงิน Bittensor หรือ btcli หากคุณทำอุปกรณ์นี้หายก่อนบันทึกวลีนี้ จะไม่สามารถเข้าถึง SN25α ของคุณได้</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The short form of the warning, read before the one tap.</comment>
+  </data>
+  <data name="bittensor_key_card_other_consent" xml:space="preserve">
+    <value>คีย์บนอุปกรณ์นี้ไม่ได้รับการจ่าย</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Payouts go to another wallet, and a key made earlier is still on this device.</comment>
+  </data>
+  <data name="bittensor_key_card_saved" xml:space="preserve">
+    <value>บันทึกวลีสำรองของคุณแล้ว และคีย์จะยังอยู่บนอุปกรณ์นี้</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The user proved they saved the phrase and chose to keep the key on the device.</comment>
+  </data>
+  <data name="bittensor_key_confirm_body" xml:space="preserve">
+    <value>URnetwork ไม่สามารถเอาคีย์นี้คืนมาได้ รายได้ยังคงเข้าที่อยู่นี้ และมีเพียงวลีสำรองเท่านั้นที่ย้ายรายได้เหล่านั้นได้</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. </comment>
+  </data>
+  <data name="bittensor_key_confirm_convert" xml:space="preserve">
+    <value>หลังจากนี้ แอปนี้จะแปลง SN25α ของคุณเป็น TAO ไม่ได้เช่นกัน กระเป๋าเงิน Bittensor หรือ btcli ทำได้ โดยใช้วลีสำรองนี้</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. </comment>
+  </data>
+  <data name="bittensor_key_confirm_prompt" xml:space="preserve">
+    <value>เพื่อแสดงว่าคุณบันทึกไว้แล้ว ให้ป้อนคำสองคำนี้จากวลีสำรองของคุณ</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. Two fields follow, labeled Word 3, Word 9 and so on.</comment>
+  </data>
+  <data name="bittensor_key_confirm_top200" xml:space="preserve">
+    <value>การลบคีย์นี้ยังหมายถึงการสละการจองที่ใน Top 200 ด้วยการแตะครั้งเดียว คุณยังจองที่ได้จากกระเป๋าเงิน Bittensor ที่มีวลีสำรองนี้</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. Top 200 is a ranking the network's miners can claim a place on.</comment>
+  </data>
+  <data name="bittensor_key_copy_warning" xml:space="preserve">
+    <value>แอปอื่นอาจอ่านคลิปบอร์ดได้ คลิปบอร์ดจะถูกล้างหลังจาก 60 วินาที</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Next to the Copy button.</comment>
+  </data>
+  <data name="bittensor_key_create_here" xml:space="preserve">
+    <value>สร้างคีย์บนอุปกรณ์นี้</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A small link when payouts go to another wallet. A warning follows before anything changes.</comment>
+  </data>
+  <data name="bittensor_key_delete_account_message" xml:space="preserve">
+    <value>ยังไม่ได้บันทึกวลีสำรอง Bittensor ของคุณ การลบบัญชีจะลบคีย์นี้ออกจากอุปกรณ์นี้ด้วย และหากไม่มีวลีนี้ จะไม่สามารถเข้าถึง SN25α ของคุณได้</value>
+    <comment>The confirmation of Delete account, shown only while the Bittensor key's recovery phrase is not saved.</comment>
+  </data>
+  <data name="bittensor_key_delete_action" xml:space="preserve">
+    <value>ฉันบันทึกคีย์แล้ว ตอนนี้ลบได้เลย</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The one destructive button: the user says the phrase is saved, and the app may forget it.</comment>
+  </data>
+  <data name="bittensor_key_delete_confirm" xml:space="preserve">
+    <value>ลบคีย์</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. The destructive button.</comment>
+  </data>
+  <data name="bittensor_key_delete_title" xml:space="preserve">
+    <value>ลบคีย์นี้ออกจากแอปนี้ใช่ไหม</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. The title.</comment>
+  </data>
+  <data name="bittensor_key_elsewhere" xml:space="preserve">
+    <value>คีย์นี้อยู่บนอุปกรณ์อื่นหรือในกระเป๋าเงินของคุณ</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Payouts go to an address whose key is not in this app. The phrase cannot be shown here.</comment>
+  </data>
+  <data name="bittensor_key_failure_consent" xml:space="preserve">
+    <value>ไม่สามารถตั้งค่าการจ่ายได้ ลองอีกครั้ง</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A general error under the Set up payouts button.</comment>
+  </data>
+  <data name="bittensor_key_failure_delete" xml:space="preserve">
+    <value>ไม่สามารถลบคีย์ออกจากอุปกรณ์นี้ได้ คีย์ยังอยู่ที่นี่</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. An error after the user asked to delete the key.</comment>
+  </data>
+  <data name="bittensor_key_failure_generate" xml:space="preserve">
+    <value>ไม่สามารถสร้างคีย์บนอุปกรณ์นี้ได้ ลองอีกครั้ง</value>
+    <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
+  </data>
+  <data name="bittensor_key_failure_keychain" xml:space="preserve">
+    <value>ไม่สามารถอ่านพวงกุญแจของอุปกรณ์นี้ได้ ปลดล็อกอุปกรณ์ของคุณแล้วลองอีกครั้ง</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+  </data>
+  <data name="bittensor_key_failure_store" xml:space="preserve">
+    <value>ไม่สามารถบันทึกคีย์บนอุปกรณ์นี้ได้ จึงไม่มีการลงนามใดๆ ลองอีกครั้ง หรือบันทึกวลีสำรองก่อน</value>
+    <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button: the new key could not be written to the device's secure storage.</comment>
+  </data>
+  <data name="bittensor_key_finish_setup" xml:space="preserve">
+    <value>ตั้งค่าให้เสร็จสิ้น</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Button that retries the link between the key on this device and the network's payouts.</comment>
+  </data>
+  <data name="bittensor_key_hide" xml:space="preserve">
+    <value>ซ่อน</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Button that covers the words again.</comment>
+  </data>
+  <data name="bittensor_key_keep_action" xml:space="preserve">
+    <value>ฉันบันทึกแล้ว เก็บไว้บนอุปกรณ์นี้</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. A smaller link: the user says the phrase is saved, and the key stays on the device, so the reminders stop.</comment>
+  </data>
+  <data name="bittensor_key_keep_confirm" xml:space="preserve">
+    <value>เก็บคีย์ไว้</value>
+    <comment>Key screen, the button that finishes the check and keeps the key on the device.</comment>
+  </data>
+  <data name="bittensor_key_keep_title" xml:space="preserve">
+    <value>เก็บคีย์นี้ไว้บนอุปกรณ์นี้ใช่ไหม</value>
+    <comment>Key screen, the check before the key stays on the device: the user enters two of its words.</comment>
+  </data>
+  <data name="bittensor_key_no_longer_here" xml:space="preserve">
+    <value>แอปนี้ไม่มีคีย์แล้ว</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A status line after the user saved the phrase and the app deleted its copy of the key.</comment>
+  </data>
+  <data name="bittensor_key_no_longer_here_body" xml:space="preserve">
+    <value>รายได้ของคุณยังคงเข้าที่อยู่นี้ หากต้องการโอนหรือใช้ SN25α ของคุณ ให้ป้อนวลีสำรองของคุณลงในกระเป๋าเงิน Bittensor เช่น Talisman หรือ Nova หรือลงใน btcli</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Under: This app no longer has the key.</comment>
+  </data>
+  <data name="bittensor_key_not_seed_phrase" xml:space="preserve">
+    <value>นี่ไม่ใช่วลีกู้คืนของบัญชีคุณจากตอนสมัคร วลีสำรองนี้ควบคุมเฉพาะคีย์ Bittensor นี้เท่านั้น</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The app also has a sign-in seed phrase of 24 words, a different secret, and people mix them up. Keep the two terms clearly different: use the same word for 'seed phrase' as the sign-up screen's 'Your Seedphrase' does in your language where it fits, and the word for 'recovery phrase' everywhere else in these strings.</comment>
+  </data>
+  <data name="bittensor_key_payouts_start" xml:space="preserve">
+    <value>การจ่ายจะเริ่มในอีพอคถัดไป</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A status line after setup. An epoch is the network's settlement period.</comment>
+  </data>
+  <data name="bittensor_key_reminder_body" xml:space="preserve">
+    <value>ตอนนี้คุณรับรายได้จากอีพอคแรกได้แล้ว หากคุณทำอุปกรณ์นี้หายก่อนบันทึกวลีสำรองของคุณ จะไม่สามารถเข้าถึง SN25α ของคุณได้</value>
+    <comment>A local notification, the body.</comment>
+  </data>
+  <data name="bittensor_key_reminder_title" xml:space="preserve">
+    <value>สำรองคีย์ Bittensor ของคุณ</value>
+    <comment>A local notification, the title. It arrives once, when the first epoch's earnings can be claimed.</comment>
+  </data>
+  <data name="bittensor_key_replace_message" xml:space="preserve">
+    <value>คีย์นี้จะแทนที่กระเป๋ารับยอดจ่ายของคุณตั้งแต่อีพอคถัดไป รายได้ก่อนหน้านี้จะยังอยู่ในกระเป๋าเงินเดิม</value>
+    <comment>Earnings screen, a warning before a new key on this device replaces the network's payout wallet.</comment>
+  </data>
+  <data name="bittensor_key_replace_title" xml:space="preserve">
+    <value>แทนที่กระเป๋ารับยอดจ่ายของคุณใช่ไหม</value>
+    <comment>Earnings screen, the title of a warning before a new key on this device replaces the network's payout wallet.</comment>
+  </data>
+  <data name="bittensor_key_reveal" xml:space="preserve">
+    <value>แตะเพื่อแสดง</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The words are covered, and this is on the cover.</comment>
+  </data>
+  <data name="bittensor_key_save_first" xml:space="preserve">
+    <value>บันทึกวลีสำรองก่อน</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A smaller link under Set up payouts: shows the phrase to save before anything else happens.</comment>
+  </data>
+  <data name="bittensor_key_save_now_retry" xml:space="preserve">
+    <value>ยังไม่ได้ตั้งค่าการจ่าย ไม่มีรายได้เข้าคีย์นี้ และหากออกจากหน้านี้ คีย์จะถูกทิ้ง</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. After the link to payouts failed, for a key that exists only in memory. A Retry button follows.</comment>
+  </data>
+  <data name="bittensor_key_screen_title" xml:space="preserve">
+    <value>วลีสำรอง Bittensor</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The screen's title.</comment>
+  </data>
+  <data name="bittensor_key_screenshot_warning" xml:space="preserve">
+    <value>หากภาพหน้าจอนั้นแสดงวลีสำรองของคุณ ให้ลบภาพหน้าจอนั้น ใครก็ตามที่มีวลีนี้จะควบคุม SN25α ของคุณได้</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Shown after the user took a screenshot of the screen.</comment>
+  </data>
+  <data name="bittensor_key_set_up" xml:space="preserve">
+    <value>ตั้งค่าการจ่าย</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The main button: one tap makes the key, stores it on the device and links it to payouts.</comment>
+  </data>
+  <data name="bittensor_key_show" xml:space="preserve">
+    <value>แสดงคีย์</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A small link that opens the Key screen.</comment>
+  </data>
+  <data name="bittensor_key_sign_out_message" xml:space="preserve">
+    <value>ยังไม่ได้บันทึกวลีสำรอง Bittensor ของคุณ คีย์จะยังอยู่บนอุปกรณ์นี้และจะกลับมาเมื่อเครือข่ายนี้ลงชื่อเข้าใช้อีกครั้ง หากคุณทำอุปกรณ์นี้หายก่อนบันทึกวลีนี้ จะไม่สามารถเข้าถึง SN25α ของคุณได้</value>
+    <comment>The confirmation of Sign out, the message.</comment>
+  </data>
+  <data name="bittensor_key_sign_out_title" xml:space="preserve">
+    <value>ออกจากระบบโดยไม่บันทึกคีย์ของคุณใช่ไหม</value>
+    <comment>The confirmation of Sign out, shown only while the Bittensor key's recovery phrase is not saved. The buttons are Sign out and Cancel.</comment>
+  </data>
+  <data name="bittensor_key_use_wallet" xml:space="preserve">
+    <value>ใช้กระเป๋าเงินที่ฉันมีอยู่แล้ว</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A smaller link under Set up payouts: for someone who already has a Bittensor wallet.</comment>
+  </data>
+  <data name="bittensor_key_word_number" xml:space="preserve">
+    <value>คำที่ {}</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. A field label: which word of the phrase to enter, counting from 1, for example Word 3.</comment>
+  </data>
+  <data name="bittensor_key_wording_control" xml:space="preserve">
+    <value>ใครก็ตามที่มีวลีนี้จะควบคุม SN25α ของคุณได้ URnetwork จะไม่ขอวลีนี้จากคุณเด็ดขาด และไม่สามารถกู้คืนวลีนี้ได้ หากคุณทำอุปกรณ์นี้หายก่อนบันทึกวลีนี้ จะไม่สามารถเข้าถึง SN25α ของคุณได้</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Always visible on the screen.</comment>
+  </data>
+  <data name="bittensor_key_wording_not_wallet" xml:space="preserve">
+    <value>URnetwork ไม่ใช่กระเป๋าเงิน แต่สร้างคีย์นี้เพื่อให้คุณรับ SN25α ได้ หากต้องการโอนหรือใช้ SN25α ของคุณ ให้ป้อนวลีสำรองนี้ลงในกระเป๋าเงิน Bittensor เช่น Talisman หรือ Nova หรือลงใน btcli</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Always visible on the screen.</comment>
+  </data>
+  <data name="bittensor_key_words_rejected" xml:space="preserve">
+    <value>คำเหล่านั้นไม่ตรงกัน ตรวจสอบวลีสำรองที่คุณบันทึกไว้</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. An error under the two fields.</comment>
+  </data>
   <data name="bittensor_manual_choice" xml:space="preserve">
     <value>ลงนามด้วยตนเอง</value>
     <comment>The manual signing option in a Bittensor wallet chooser: on ur.io its own entry, and in the phone apps the line under a wallet that has no way to sign here directly. The user signs a message outside the page or app, for example with the btcli command line tool, and pastes the signature back.</comment>
