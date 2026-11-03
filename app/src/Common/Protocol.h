@@ -686,11 +686,11 @@ struct TunnelStatus {
 
 // get_provider_stats: what the provider-only device carries, for the screens a
 // tunnel session's DeviceRemote feeds while connected — the Connect page's
-// client count, the Earnings provider plots with their gate and their "no
-// traffic yet" line, the Earnings extender row and extender plot, and the
-// client id whose GET /network/provider-status row is this device's. The
-// service reads them off the device's own ContractViewController (the
-// controller the app opens on the DeviceRemote) and its network peers and
+// client count and its network peers, the Earnings provider plots with their
+// gate and their "no traffic yet" line, the Earnings extender row and extender
+// plot, and the client id whose GET /network/provider-status row is this
+// device's. The service reads them off the device's own ContractViewController
+// (the controller the app opens on the DeviceRemote) and its network peers and
 // extender status listeners, never with the session lock or a device call on
 // the way (TunnelController::ProviderStats), so asking cannot wedge the
 // control pipe. `available` is false while no provider-only device runs, or
@@ -716,6 +716,14 @@ struct ProviderStats {
   // the device's connected network peers (Device::getNetworkPeers' Connected),
   // which the Connect page shows as "Providing to N clients"
   int64_t client_count = 0;
+  // Those peers themselves, as the sdk's NetworkPeerList json (NetworkPeersOf)
+  // with each peer cut to what the rows show and connect with: client id,
+  // provide enabled, device name and spec. The Connect page's network peers,
+  // the chooser's and the Network destination's, which a session's
+  // PeerViewController feeds while connected. Read with the count, in one
+  // reading. A service from before the field never sends it, which the app
+  // reads as no list: the count stands alone, as it did.
+  nlohmann::json network_peers;
   int64_t window_seconds = 60;
   // the provider section's gate (ContractViewController::getProviderPacketStats)
   bool has_provider_stats = false;
@@ -1090,6 +1098,7 @@ inline void to_json(nlohmann::json& j, const ProviderStats& v) {
       {"available", v.available},
       {"client_id", v.client_id},
       {"client_count", v.client_count},
+      {"network_peers", v.network_peers},
       {"window_seconds", v.window_seconds},
       {"has_provider_stats", v.has_provider_stats},
       {"provider_points", v.provider_points},
@@ -1118,6 +1127,8 @@ inline void from_json(const nlohmann::json& j, ProviderStats& v) {
   get("measurements_enabled_writable", v.measurements_enabled_writable);
   // The sdk's documents are kept only in the shape they have to have: anything
   // else reads as none, never as a throw that loses the counts above.
+  if (auto it = j.find("network_peers"); it != j.end() && it->is_array())
+    v.network_peers = *it;
   if (auto it = j.find("provider_points"); it != j.end() && it->is_array())
     v.provider_points = *it;
   if (auto it = j.find("provider_distribution"); it != j.end() && it->is_object())
@@ -1165,6 +1176,20 @@ std::optional<Status> ExtenderProvideStatusOf(const ProviderStats& stats) {
   if (!stats.extender_provide_status.is_object()) return std::nullopt;
   try {
     return stats.extender_provide_status.get<Status>();
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+// The provider-only device's connected network peers as the reader's type
+// (urnet::NetworkPeerList). nullopt for none, which is what an older service
+// sends, or for a list the type cannot read: the app then leaves its peer
+// lists as they are. An empty list is a reading: no peers are connected.
+template <typename PeerList>
+std::optional<PeerList> NetworkPeersOf(const ProviderStats& stats) {
+  if (!stats.network_peers.is_array()) return std::nullopt;
+  try {
+    return stats.network_peers.get<PeerList>();
   } catch (const std::exception&) {
     return std::nullopt;
   }

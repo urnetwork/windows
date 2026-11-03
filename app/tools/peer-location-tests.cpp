@@ -6,7 +6,10 @@
 // device the user picked before the flag was set is not swallowed as "already
 // selected"; and the drawer names a selected peer that is connected and
 // provides after its device (SelectedLocationName, which SdkHost::ReadStats
-// resolves off the UI thread). Run against the same header the app compiles, on any host with a
+// resolves off the UI thread); and the service's provider-only device's peers,
+// which reach the app with no PeerViewController, are filtered as that
+// controller filters them (ConnectablePeers) and pushed only when the rows they
+// render change (SamePeerRows). Run against the same header the app compiles, on any host with a
 // C++20 compiler. The rows and SdkHost cannot be built off Windows, so the
 // wiring cases read their source.
 //
@@ -270,6 +273,64 @@ int main(int argc, char** argv) {
           "unset and network_peer false are told apart");
   }
 
+  // ---- the provider-only device's peers -----------------------------------------
+  //
+  // With no session the service's provider-only device discovers the peers, and
+  // they reach the app with no PeerViewController: SdkHost filters them as the
+  // controller does and pushes only a change.
+
+  std::vector<Peer> connected;
+  {
+    Peer laptop = MakePeer("Office laptop", "Windows 11");
+    laptop.ClientId = std::string("018f2c3e-0000-7000-8000-0000000000a1");
+    Peer phone = MakePeer("Phone", "iOS");
+    phone.ClientId = std::string("018f2c3e-0000-7000-8000-0000000000b2");
+    phone.ProvideEnabled = false;
+    Peer vps = MakePeer("vps provider", "linux amd64");
+    vps.ClientId = std::string("018f2c3e-0000-7000-8000-0000000000c3");
+    connected = {laptop, phone, vps};
+  }
+  {
+    Case("only the connected peers that provide can be connected to, in order");
+    const std::vector<Peer> connectable = urnw::ConnectablePeers(connected);
+    Check(connectable.size() == 2, "expected the two providing peers");
+    if (connectable.size() == 2) {
+      Check(connectable[0].ClientId == connected[0].ClientId &&
+                connectable[1].ClientId == connected[2].ClientId,
+            "the providing peers are not kept in the device's order");
+      Check(connectable[0].DeviceName == "Office laptop" && connectable[1].DeviceName == "vps provider",
+            "a providing peer lost its name on the way through");
+    }
+    std::vector<Peer> none = connected;
+    for (auto& peer : none) peer.ProvideEnabled = false;
+    Check(urnw::ConnectablePeers(none).empty(), "a peer that does not provide is listed");
+    Check(urnw::ConnectablePeers(std::vector<Peer>{}).empty(), "no peers are no rows");
+  }
+  {
+    Case("a list that renders the same rows is not pushed again");
+    const std::vector<Peer> rows = urnw::ConnectablePeers(connected);
+    Check(urnw::SamePeerRows(rows, rows), "a list differs from itself");
+    Check(urnw::SamePeerRows(std::vector<Peer>{}, std::vector<Peer>{}),
+          "two empty lists differ");
+    std::vector<Peer> renamed = rows;
+    renamed[1].DeviceName = "vps provider (renamed)";
+    Check(!urnw::SamePeerRows(rows, renamed), "a renamed peer is not pushed");
+    std::vector<Peer> respec = rows;
+    respec[0].DeviceSpec = "Windows 12";
+    Check(!urnw::SamePeerRows(rows, respec), "a peer whose spec changed is not pushed");
+    std::vector<Peer> reordered = {rows[1], rows[0]};
+    Check(!urnw::SamePeerRows(rows, reordered), "a reordered list is not pushed");
+    std::vector<Peer> fewer = {rows[0]};
+    Check(!urnw::SamePeerRows(rows, fewer), "a peer that left is not pushed");
+    Check(!urnw::SamePeerRows(fewer, rows), "a peer that arrived is not pushed");
+    std::vector<Peer> other = rows;
+    other[0].ClientId = std::string("018f2c3e-0000-7000-8000-0000000000d4");
+    Check(!urnw::SamePeerRows(rows, other), "another device under the same name is not pushed");
+    std::vector<Peer> stopped = rows;
+    stopped[0].ProvideEnabled = false;
+    Check(!urnw::SamePeerRows(rows, stopped), "a peer that stopped providing is not pushed");
+  }
+
 #if defined(URNW_PEER_LOCATION_TESTS_SDK)
   {
     Case("the SDK receives the peer location with network_peer true");
@@ -325,6 +386,19 @@ int main(int argc, char** argv) {
     Check(body.find("IsLocationSelected(sel, location) && SameNetworkPeer(sel, location)") !=
               std::string::npos,
           "ConnectFromRow treats a peer selected as a public exit as already current");
+  }
+  {
+    Case("the provider-only device's peers are filtered and pushed on a change only");
+    const std::string host = ReadFile(appDir + "/src/App/SdkHost.cpp");
+    const std::string show =
+        DefinitionBody(host, "void SdkHost::ShowProviderOnlyStatsLocked(");
+    Check(show.find("PublishProviderOnlyPeersLocked(ConnectablePeers(std::move(*peers)));") !=
+              std::string::npos,
+          "ShowProviderOnlyStatsLocked does not push the connectable peers");
+    const std::string publish =
+        DefinitionBody(host, "void SdkHost::PublishProviderOnlyPeersLocked(");
+    Check(publish.find("SamePeerRows(*lastProviderOnlyPeers_, peers)") != std::string::npos,
+          "PublishProviderOnlyPeersLocked pushes every answer, not a change");
   }
 
   std::cout << (gFailures == 0 ? "PASS" : "FAIL") << " peer location"

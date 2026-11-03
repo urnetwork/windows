@@ -4148,6 +4148,12 @@ void SdkHost::FillProviderOnlyStats(LiveStats& stats) const {
   const int64_t clients = serviceProviderClients_.load();
   stats.provideClients = clients < 0 ? 0 : clients;
   stats.provideClientsUnknown = stats.provideEnabled && clients < 0;
+  // The peers line, from the same answer: every connected device, providing or
+  // not, as a session's line counts them.
+  if (0 <= clients) {
+    stats.connectedPeerCount = clients;
+    stats.providerOnlyPeers = true;
+  }
 }
 
 void SdkHost::PublishStats() {
@@ -4531,6 +4537,8 @@ void SdkHost::ProviderOnlyStatsLoop() {
           shown = false;
           serviceProviderClients_.store(-1);
           lastClients = -1;
+          // its PeerViewController's pushes fill the peers feed now
+          ForgetProviderOnlyPeers();
           ResetProviderOnlyStatus();
           ForgetProviderOnlyExtenderStatus();
           continue;
@@ -4773,11 +4781,44 @@ void SdkHost::ShowProviderOnlyStatsLocked(const proto::ProviderStats& stats) {
   extender.serviceWritable = stats.provide_extender_writable;
   extender.measurementsServiceWritable = stats.measurements_enabled_writable;
   PublishExtenderProvideView(std::move(extender));
+  // The peers it discovers with no session: the lists a session's
+  // PeerViewController fills, filtered as it filters them. An older service
+  // sends none, and the lists stay as they were.
+  if (auto peers = proto::NetworkPeersOf<urnet::NetworkPeerList>(stats)) {
+    PublishProviderOnlyPeersLocked(ConnectablePeers(std::move(*peers)));
+  }
+}
+
+void SdkHost::PublishProviderOnlyPeersLocked(urnet::NetworkPeerList peers) {
+  // caller holds mutex_, with no session
+  {
+    std::scoped_lock lock(drawerMutex_);
+    if (lastProviderOnlyPeers_ && SamePeerRows(*lastProviderOnlyPeers_, peers)) return;
+    lastProviderOnlyPeers_ = peers;
+  }
+  if (onPeersObserver_) onPeersObserver_(peers);
+  if (onPeers_) onPeers_(std::move(peers));
+}
+
+void SdkHost::ForgetProviderOnlyPeers() {
+  std::scoped_lock lock(drawerMutex_);
+  lastProviderOnlyPeers_.reset();
 }
 
 void SdkHost::ClearProviderOnlyStatsLocked(bool providerGone) {
   // caller holds mutex_, with no session
   if (providerGone) serviceProviderClients_.store(-1);
+  // The rows of a provider that stopped do not stay. A hide leaves them, as
+  // ClearDrawer's rule is, and the next answer pushes again.
+  if (providerGone) {
+    bool pushed = false;
+    {
+      std::scoped_lock lock(drawerMutex_);
+      pushed = lastProviderOnlyPeers_.has_value();
+    }
+    if (pushed) PublishProviderOnlyPeersLocked({});
+  }
+  ForgetProviderOnlyPeers();
   {
     std::scoped_lock lock(drawerMutex_);
     lastProviderPoints_.clear();
@@ -5181,6 +5222,9 @@ void SdkHost::ClearDrawer(bool sessionEnding) {
     lastProviderPoints_.clear();
     lastExtenderPoints_.clear();
     lastProviderDistribution_ = {};
+    // the peers feed is emptied below: the provider-only device's next answer
+    // pushes its peers again (PublishProviderOnlyPeersLocked)
+    lastProviderOnlyPeers_.reset();
     // a hide keeps these for the window that comes back (O8), and the next
     // presentation's reads confirm them
     if (sessionEnding) {

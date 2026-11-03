@@ -170,6 +170,11 @@ struct LiveStats {
   // or not (ConnectedPeerCount's figure, from the device itself).
   bool remoteConnected = false;
   int64_t connectedPeerCount = 0;
+  // With no session: the service's provider-only device said how many devices
+  // are connected (get_provider_stats), and connectedPeerCount is its count.
+  // Its peers are discovered with no DeviceRemote, so the line counts them
+  // rather than saying discovery is disabled until connected.
+  bool providerOnlyPeers = false;
   std::string countryCode;        // selected location country code (dns recommendations)
   std::string countryName;
 
@@ -2190,6 +2195,14 @@ class SdkHost {
   // Caller holds mutex_, with no session.
   void ShowProviderOnlyStatsLocked(const proto::ProviderStats& stats);
   void ClearProviderOnlyStatsLocked(bool providerGone);
+  // The provider-only device's connectable peers (ConnectablePeers) on the
+  // peers feed, as a session's PeerViewController pushes its own: only when
+  // they changed since this last pushed. Caller holds mutex_, with no session,
+  // so the controller is never a second writer. Forgetting what was pushed
+  // (the feed was emptied, or a session took it over) makes the next answer
+  // push again.
+  void PublishProviderOnlyPeersLocked(urnet::NetworkPeerList peers);
+  void ForgetProviderOnlyPeers();
   // One GET /network/provider-status on the api, applied to the readings when
   // it answers unless they moved on meanwhile. Caller holds mutex_ (api_).
   void FetchProviderOnlyStatusLocked(const std::string& clientId);
@@ -2702,6 +2715,8 @@ class SdkHost {
   std::vector<urnet::ThroughputPoint> lastExtenderPoints_;
   bool lastHasProviderStats_ = false;
   TransportDistributionSnapshot lastProviderDistribution_;
+  // What PublishProviderOnlyPeersLocked last pushed; nullopt once forgotten.
+  std::optional<urnet::NetworkPeerList> lastProviderOnlyPeers_;
   // The value-compare baselines for the two signal-only provider feeds; see
   // CurrentProviderLocations() for why an identity compare is not enough.
   std::vector<ProviderLocationRow> lastProviderLocations_;

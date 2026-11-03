@@ -724,11 +724,30 @@ class TunnelController {
     mutable std::mutex mutex_;
     std::optional<urnet::ExtenderProvideStatus> status_;
   };
+  // The device's connected network peers (Device::getNetworkPeers' Connected):
+  // what its peers listener pushed last, or what the statistics' opening read
+  // before the first push. One list, so a reply's count and peers are one
+  // reading. Shared with that listener as the extender status is.
+  class LatestNetworkPeers {
+   public:
+    void Store(urnet::NetworkPeerList connected) {
+      std::scoped_lock lock(mutex_);
+      connected_ = std::move(connected);
+    }
+    urnet::NetworkPeerList Load() const {
+      std::scoped_lock lock(mutex_);
+      return connected_;
+    }
+
+   private:
+    mutable std::mutex mutex_;
+    urnet::NetworkPeerList connected_;
+  };
   // What get_provider_stats reads (ProviderStats), under a mutex of its own,
   // never mutex_: the request is served on the control pipe and must not queue
   // behind a bring-up holding the session lock. Innermost — taken under mutex_
   // by the build and the retire, alone by ProviderStats() — and never held
-  // across a call into the device. providerClients_ and providerExtender_ are
+  // across a call into the device. providerPeers_ and providerExtender_ are
   // shared with the peers and extender status listeners, which can still be
   // running after the retire has dropped them. providerExtenderSetting_ is the
   // provide extender setting, read when the statistics open and again after
@@ -738,7 +757,7 @@ class TunnelController {
   std::mutex providerStatsMutex_;
   std::optional<urnet::ContractViewController> providerStatsVc_;
   urnet::Sub providerPeersSub_;
-  std::shared_ptr<std::atomic<int64_t>> providerClients_;
+  std::shared_ptr<LatestNetworkPeers> providerPeers_;
   std::string providerClientId_;
   urnet::Sub providerExtenderSub_;
   std::shared_ptr<LatestExtenderProvideStatus> providerExtender_;

@@ -53,7 +53,7 @@ func TestDrawerPushesReadNothingOnTheUiThread(t *testing.T) {
 	apply := functionBody(page, "void ConnectPage::ApplyPeerCount(")
 	quitRequireSequence(t, "ConnectPage::ApplyPeerCount", apply,
 		regexp.QuoteMeta("if (reading) peerLine_ = *reading;"),
-		regexp.QuoteMeta("if (!peerLine_.remoteConnected) {"),
+		regexp.QuoteMeta("if (!PeerDiscoveryLive(peerLine_)) {"),
 		regexp.QuoteMeta("const int64_t count = peerLine_.connectedPeerCount;"))
 
 	sheets := stripComments(readAppSource(t, "LocationSheets.cpp"))

@@ -2358,7 +2358,7 @@ void TunnelController::RetireProviderDeviceLocked() {
     providerStatsVc_.reset();
     peersSub = std::move(providerPeersSub_);
     extenderSub = std::move(providerExtenderSub_);
-    providerClients_.reset();
+    providerPeers_.reset();
     providerClientId_.clear();
     providerExtender_.reset();
     providerExtenderSetting_ = false;
@@ -2458,10 +2458,24 @@ void TunnelController::ReadProviderFactsLocked() {
 }
 
 namespace {
-// The DeviceRemote path's client count (SdkHost::ReadStats): the connected
-// network peers, none when the device reports no peers at all.
-int64_t ConnectedPeerCount(const std::optional<urnet::NetworkPeers>& peers) {
-  return peers && peers->Connected ? static_cast<int64_t>(peers->Connected->size()) : 0;
+// The DeviceRemote path's peers (SdkHost::ReadStats counts them): the connected
+// network peers, none when the device reports no peers at all. Each keeps only
+// what the app's peer rows show and connect with (App/PeerLocation.h): the
+// control pipe is open to every signed-in user of this machine, unlike a
+// session's mTLS device rpc, and a peer's principal and roles are not for them.
+urnet::NetworkPeerList ConnectedPeers(std::optional<urnet::NetworkPeers> peers) {
+  urnet::NetworkPeerList rows;
+  if (!peers || !peers->Connected) return rows;
+  rows.reserve(peers->Connected->size());
+  for (auto& peer : *peers->Connected) {
+    urnet::NetworkPeer row;
+    row.ClientId = std::move(peer.ClientId);
+    row.ProvideEnabled = peer.ProvideEnabled;
+    row.DeviceName = std::move(peer.DeviceName);
+    row.DeviceSpec = std::move(peer.DeviceSpec);
+    rows.push_back(std::move(row));
+  }
+  return rows;
 }
 }  // namespace
 
@@ -2470,19 +2484,19 @@ void TunnelController::OpenProviderStatsLocked() {
   std::string clientId;
   std::optional<urnet::ContractViewController> vc;
   urnet::Sub peersSub;
-  auto clients = std::make_shared<std::atomic<int64_t>>(0);
+  auto peers = std::make_shared<LatestNetworkPeers>();
   try {
     clientId = providerDevice_->getClientId();
     vc.emplace(providerDevice_->openContractViewController());
     // Subscribed before the first read, so a change in between is either in
-    // that read or delivered after it. The listener holds a share of the count,
-    // never this object: a callback already running when the retire
+    // that read or delivered after it. The listener holds a share of the
+    // peers, never this object: a callback already running when the retire
     // unsubscribes still finds it.
     peersSub = providerDevice_->addNetworkPeersChangeListener(
-        [clients](std::optional<urnet::NetworkPeers> peers) {
-          clients->store(ConnectedPeerCount(peers));
+        [peers](std::optional<urnet::NetworkPeers> networkPeers) {
+          peers->Store(ConnectedPeers(std::move(networkPeers)));
         });
-    clients->store(ConnectedPeerCount(providerDevice_->getNetworkPeers()));
+    peers->Store(ConnectedPeers(providerDevice_->getNetworkPeers()));
   } catch (const std::exception&) {
     LogWarn("provide: the provider-only device's statistics could not be opened; the "
             "app shows no client count or provider plots while disconnected");
@@ -2525,7 +2539,7 @@ void TunnelController::OpenProviderStatsLocked() {
   std::scoped_lock lock(providerStatsMutex_);
   providerStatsVc_ = std::move(vc);
   providerPeersSub_ = std::move(peersSub);
-  providerClients_ = std::move(clients);
+  providerPeers_ = std::move(peers);
   providerClientId_ = std::move(clientId);
   providerExtenderSub_ = std::move(extenderSub);
   providerExtender_ = std::move(extender);
@@ -2619,7 +2633,12 @@ proto::ProviderStats TunnelController::ProviderStats() {
   if (!providerStatsVc_) return stats;
   stats.available = true;
   stats.client_id = providerClientId_;
-  stats.client_count = providerClients_ ? providerClients_->load() : 0;
+  // the count and the peers it counts, from one reading
+  if (providerPeers_) {
+    const urnet::NetworkPeerList connected = providerPeers_->Load();
+    stats.client_count = static_cast<int64_t>(connected.size());
+    stats.network_peers = connected;
+  }
   // Each read on its own, as SdkHost's ReadSdkList reads them: a document one
   // getter cannot decode costs that field, never the reply. Logged once.
   static std::atomic<bool> logged{false};

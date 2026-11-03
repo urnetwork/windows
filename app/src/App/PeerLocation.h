@@ -23,8 +23,10 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string>
+#include <utility>
 
 namespace urnw {
 
@@ -80,6 +82,35 @@ template <class Location>
 bool SameNetworkPeer(const std::optional<Location>& selected, const Location& location) {
   return selected &&
          selected->network_peer.value_or(false) == location.network_peer.value_or(false);
+}
+
+// The peers a row can connect to: connected ones that provide, in the device's
+// order. PeerViewController.getPeers filters a session's peers this way (sdk
+// peer_view_controller.go); SdkHost applies it to the provider-only device's
+// peers, which reach the app with no controller, so both sources fill the
+// lists alike.
+template <class PeerList>
+PeerList ConnectablePeers(PeerList peers) {
+  PeerList connectable;
+  for (auto& peer : peers) {
+    if (peer.ProvideEnabled) connectable.push_back(std::move(peer));
+  }
+  return connectable;
+}
+
+// Whether two peer lists render the same rows: the same peers in the same
+// order, by every field a row shows or connects with. The provider-only
+// device's peers arrive with every statistics answer; only a change is pushed.
+template <class PeerList>
+bool SamePeerRows(const PeerList& a, const PeerList& b) {
+  if (a.size() != b.size()) return false;
+  for (std::size_t i = 0; i < a.size(); ++i) {
+    if (a[i].ClientId != b[i].ClientId || a[i].ProvideEnabled != b[i].ProvideEnabled ||
+        a[i].DeviceName != b[i].DeviceName || a[i].DeviceSpec != b[i].DeviceSpec) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace urnw
