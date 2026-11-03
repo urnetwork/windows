@@ -1087,8 +1087,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>Impossible de lire le trousseau de cet appareil. Déverrouillez votre appareil et réessayez.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>Impossible de lire le stockage sécurisé de cet appareil. Déverrouillez votre appareil et réessayez.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>Impossible d’enregistrer la clé sur cet appareil, donc rien n’a été signé. Réessayez ou enregistrez d’abord la phrase de sauvegarde.</value>
@@ -7733,6 +7733,10 @@ du monde</value>
   <data name="sn_claim_relay_claim_now_paid_each" xml:space="preserve">
     <value>Payé par URnetwork, une fois tous les {} jours pour chaque coldkey.</value>
     <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claimed" xml:space="preserve">
+    <value>Réclamé par URnetwork. {0} SN25α sont sur votre clé, {1}.</value>
+    <comment>Earnings, the claim sheet and the settlement v2 tile, once URnetwork has claimed the balance and paid the gas (the claimed state, beside a link to the transaction). The first placeholder is the amount claimed, as 0.8420; the second is the user's Bittensor address, shortened (5F3s…kQ9v); keep both as they are.</comment>
   </data>
   <data name="sn_claim_relay_for_you" xml:space="preserve">
     <value>URnetwork le réclame pour vous</value>

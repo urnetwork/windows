@@ -1087,8 +1087,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>इस डिवाइस का कीचेन पढ़ा नहीं जा सका। अपना डिवाइस अनलॉक करें और दोबारा कोशिश करें।</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>इस डिवाइस का सुरक्षित स्टोरेज पढ़ा नहीं जा सका। अपना डिवाइस अनलॉक करें और दोबारा कोशिश करें।</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>इस डिवाइस पर कुंजी सहेजी नहीं जा सकी, इसलिए कुछ भी साइन नहीं हुआ। दोबारा कोशिश करें, या पहले रिकवरी फ़्रेज़ सहेजें।</value>
@@ -7730,6 +7730,10 @@
   <data name="sn_claim_relay_claim_now_paid_each" xml:space="preserve">
     <value>भुगतान URnetwork करता है, हर coldkey के लिए हर {} दिन में एक बार।</value>
     <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claimed" xml:space="preserve">
+    <value>URnetwork ने दावा किया। {0} SN25α आपकी कुंजी {1} पर है।</value>
+    <comment>Earnings, the claim sheet and the settlement v2 tile, once URnetwork has claimed the balance and paid the gas (the claimed state, beside a link to the transaction). The first placeholder is the amount claimed, as 0.8420; the second is the user's Bittensor address, shortened (5F3s…kQ9v); keep both as they are.</comment>
   </data>
   <data name="sn_claim_relay_for_you" xml:space="preserve">
     <value>URnetwork आपकी ओर से इसका दावा करता है</value>

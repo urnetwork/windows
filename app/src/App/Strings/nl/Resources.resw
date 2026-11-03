@@ -1087,8 +1087,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>De sleutelhanger van dit apparaat kon niet worden gelezen. Ontgrendel je apparaat en probeer het opnieuw.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>De beveiligde opslag van dit apparaat kon niet worden gelezen. Ontgrendel je apparaat en probeer het opnieuw.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>De sleutel kon niet op dit apparaat worden opgeslagen, dus er is niets ondertekend. Probeer het opnieuw of sla eerst de herstelzin op.</value>
@@ -7733,6 +7733,10 @@ inhoud van de wereld</value>
   <data name="sn_claim_relay_claim_now_paid_each" xml:space="preserve">
     <value>Betaald door URnetwork, één keer per {} dagen per coldkey.</value>
     <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claimed" xml:space="preserve">
+    <value>Opgeëist door URnetwork. {0} SN25α staat op je sleutel, {1}.</value>
+    <comment>Earnings, the claim sheet and the settlement v2 tile, once URnetwork has claimed the balance and paid the gas (the claimed state, beside a link to the transaction). The first placeholder is the amount claimed, as 0.8420; the second is the user's Bittensor address, shortened (5F3s…kQ9v); keep both as they are.</comment>
   </data>
   <data name="sn_claim_relay_for_you" xml:space="preserve">
     <value>URnetwork eist dit voor je op</value>
