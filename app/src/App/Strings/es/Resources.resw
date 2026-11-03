@@ -4640,7 +4640,11 @@ de la manera correcta</value>
   </data>
   <data name="insufficient_balance_disconnect_first" xml:space="preserve">
     <value>Para mejorar tu plan, elige primero «Desconectar». Hasta entonces, el pago no podrá completarse.</value>
-    <comment>Out-of-balance alert, on the builds whose checkout has to go through the tunnel (Windows, Linux, the Android Play flavor, the macOS direct download), while the tunnel holds or blocks traffic. Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. Each translation names that button by its own label (the disconnect key).</comment>
+    <comment>Out-of-balance alert, on the desktop builds whose checkout has to go through the tunnel (Windows, Linux), while the tunnel holds or blocks traffic. Their Disconnect lifts the kill switch too; apple and android say more (insufficient_balance_disconnect_first_kill_switch). Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. Each translation names that button by its own label (the disconnect key).</comment>
+  </data>
+  <data name="insufficient_balance_disconnect_first_kill_switch" xml:space="preserve">
+    <value>Para mejorar tu plan, elige primero «Desconectar» y desactiva el Kill switch si está activado. Hasta entonces, el pago no podrá completarse.</value>
+    <comment>Out-of-balance alert, on the apple and android builds whose checkout has to go through the tunnel (the macOS direct download, the Android Play flavor), while the tunnel holds traffic. Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. On these apps a kill switch that is on keeps the tunnel up after a Disconnect and still stops the payment, so the line also says to turn it off. Each translation names Disconnect by its own label (the disconnect key) and the kill switch by the label of its setting (the kill_switch key).</comment>
   </data>
   <data name="insufficient_balance_exhausted" xml:space="preserve">
     <value>Te quedaste sin datos hasta la renovación gratis o hasta que mejores tu plan.</value>

@@ -4600,7 +4600,11 @@
   </data>
   <data name="insufficient_balance_disconnect_first" xml:space="preserve">
     <value>要升级，请先选择“断开连接”。在此之前，付款无法完成。</value>
-    <comment>Out-of-balance alert, on the builds whose checkout has to go through the tunnel (Windows, Linux, the Android Play flavor, the macOS direct download), while the tunnel holds or blocks traffic. Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. Each translation names that button by its own label (the disconnect key).</comment>
+    <comment>Out-of-balance alert, on the desktop builds whose checkout has to go through the tunnel (Windows, Linux), while the tunnel holds or blocks traffic. Their Disconnect lifts the kill switch too; apple and android say more (insufficient_balance_disconnect_first_kill_switch). Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. Each translation names that button by its own label (the disconnect key).</comment>
+  </data>
+  <data name="insufficient_balance_disconnect_first_kill_switch" xml:space="preserve">
+    <value>要升级，请先选择“断开连接”；如果断网保护已开启，请将其关闭。在此之前，付款无法完成。</value>
+    <comment>Out-of-balance alert, on the apple and android builds whose checkout has to go through the tunnel (the macOS direct download, the Android Play flavor), while the tunnel holds traffic. Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. On these apps a kill switch that is on keeps the tunnel up after a Disconnect and still stops the payment, so the line also says to turn it off. Each translation names Disconnect by its own label (the disconnect key) and the kill switch by the label of its setting (the kill_switch key).</comment>
   </data>
   <data name="insufficient_balance_exhausted" xml:space="preserve">
     <value>在免费数据更新或升级之前，你的数据已用完。</value>
