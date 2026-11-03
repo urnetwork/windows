@@ -102,6 +102,37 @@ func TestProvideLifecycleRejectsAutoPublicWhileIdle(t *testing.T) {
 	}, "tiers: auto disconnected")
 }
 
+// One device across connect and disconnect. A stop that is not the user's
+// disconnect (the failsafe, a failed or replaced start, a logout, the service
+// stopping) must not keep the device; a disconnect that ignored the armed floor
+// would leave a provider beside the kill switch's block; and a connect must not
+// take a provider-only device built for another identity.
+func TestProvideLifecycleRejectsKeepingTheDeviceOnAnyStop(t *testing.T) {
+	requireProvideFailure(t, "provide-lifecycle-tests.cpp", map[string]func(string) string{
+		"ProvideLifecycle.h": func(source string) string {
+			return strings.Replace(source,
+				"if (!facts.sessionDevice || !facts.disconnect) return false;",
+				"if (!facts.sessionDevice) return false;", 1)
+		},
+	}, "one device: a stop that is not the user's disconnect")
+	requireProvideFailure(t, "provide-lifecycle-tests.cpp", map[string]func(string) string{
+		"ProvideLifecycle.h": func(source string) string {
+			return strings.Replace(source,
+				"  state.firewallInForce = facts.firewallInForce;\n", "", 1)
+		},
+	}, "one device: the kill switch's armed floor closes the device")
+}
+
+func TestProvideLifecycleRejectsPromotingAnotherIdentity(t *testing.T) {
+	requireProvideFailure(t, "provide-lifecycle-tests.cpp", map[string]func(string) string{
+		"ProvideLifecycle.h": func(source string) string {
+			return strings.Replace(source,
+				"         a.instanceId == b.instanceId && a.deviceDescription == b.deviceDescription &&",
+				"         a.deviceDescription == b.deviceDescription &&", 1)
+		},
+	}, "one device: a connect with a changed instance builds its own device")
+}
+
 // The service must not start a provider that would leave through the armed
 // floor's own permit.
 func TestProvideLifecycleRejectsProviderUnderArmedFloor(t *testing.T) {
@@ -169,8 +200,9 @@ func TestProvideProtocol(t *testing.T) {
 }
 
 // A status reader that drops the provider bit shows "not providing" over a
-// provider that is; a comparison that ignores the provider transport policy
-// keeps a device running on the old one.
+// provider that is; a comparison that takes the provider transport policy for
+// part of the device's identity rebuilds a device that only needs the policy
+// applied in place, the one a disconnect just kept among them.
 func TestProvideProtocolRejectsDroppedFields(t *testing.T) {
 	extra := provideJsonFlags(t)
 	requireProvideFailure(t, "provide-protocol-tests.cpp", map[string]func(string) string{
@@ -181,10 +213,11 @@ func TestProvideProtocolRejectsDroppedFields(t *testing.T) {
 	requireProvideFailure(t, "provide-protocol-tests.cpp", map[string]func(string) string{
 		"Protocol.h": func(source string) string {
 			return strings.Replace(source,
-				" &&\n         a.provider_transport_settings_json == b.provider_transport_settings_json;",
-				";", 1)
+				"  return provide::SameIdentity(IdentityOf(a), IdentityOf(b));\n}",
+				"  return provide::SameIdentity(IdentityOf(a), IdentityOf(b)) &&\n"+
+					"         a.provider_transport_settings_json == b.provider_transport_settings_json;\n}", 1)
 		},
-	}, "same device: a different provider_transport_settings_json builds a new device", extra...)
+	}, "same device: only the provider transport policy differs", extra...)
 }
 
 // The provider-only device's statistics on the wire, read back on the generated

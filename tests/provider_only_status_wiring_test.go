@@ -138,9 +138,12 @@ func TestProviderOnlyRetireTakesStatsAndWatch(t *testing.T) {
 
 // The provider-only device hears about network changes the way the tunnel
 // session's device does — an EgressMonitor's events, only for what moved the
-// network (EgressChangeFilter), coalesced, then networkChanged() — through a
-// monitor that binds nothing, so the device's sockets still follow the route
-// table.
+// network (EgressChangeFilter), coalesced, then networkChanged() — through its
+// own binding monitor. One device across connect and disconnect: the device
+// becomes the next session's, so none of its sockets may ever be unbound. The
+// monitor binds before the device is built, has no tun to exclude and so is
+// stopped before a session's adapter exists, and its retire resets the
+// binding.
 func TestProviderOnlyNetworkWatchWiring(t *testing.T) {
 	source := tunnelControllerSource(t)
 	watch := definitionBody(t, "TunnelController.cpp", source,
@@ -150,18 +153,48 @@ func TestProviderOnlyNetworkWatchWiring(t *testing.T) {
 		"providerNetwork_ = std::make_unique<NetworkChangeNotifier>(",
 		"device->networkChanged();",
 		"device->networkQualityChanged();",
-		"std::make_unique<EgressMonitor>(NET_LUID{}, EgressMonitor::Binding::ObserveOnly)",
 		"providerEgress_->SetOnNetworkEvent(providerNetwork_->NetworkEventSink());",
-		"providerEgress_->SetOnNetworkQualityEvent(providerNetwork_->NetworkQualitySink());",
-		"providerEgress_->Start();")
+		"providerEgress_->SetOnNetworkQualityEvent(providerNetwork_->NetworkQualitySink());")
+	// it attaches to the monitor that already binds and never makes another
 	requireNone(t, "WatchProviderNetworkLocked", watch,
-		"setEgressInterfaceIndex(", "EgressMonitor::Binding::Bind", "SetOnChange(",
+		"std::make_unique<EgressMonitor>(", "setEgressInterfaceIndex(", "SetOnChange(",
 		"deadTunnelWatchdog_")
-	// the tunnel's own monitor still binds
+	egress := definitionBody(t, "TunnelController.cpp", source,
+		"void TunnelController::StartProviderEgressLocked()")
+	provideRequire(t, "StartProviderEgressLocked", egress,
+		"providerEgress_ = std::make_unique<EgressMonitor>(NET_LUID{});",
+		"providerEgress_->Start()")
+	requireNone(t, "StartProviderEgressLocked", egress, "Binding::ObserveOnly", "SetOnChange(")
+	// R1 from the first socket: the monitor binds before the device exists
+	start := definitionBody(t, "TunnelController.cpp", source,
+		"bool TunnelController::StartProvider(")
+	provideRequireOrder(t, "StartProvider", start, "StartProviderEgressLocked();",
+		"NewDeviceLocked(*providerSpace_")
+	// a kept session device is bound by it before it is the provider's
+	resume := definitionBody(t, "TunnelController.cpp", source,
+		"void TunnelController::ResumeProvidingLocked(KeptSessionDevice kept)")
+	provideRequireOrder(t, "ResumeProvidingLocked", resume, "StartProviderEgressLocked();",
+		"providerDevice_ = std::move(kept.device);")
+	provideRequireOrder(t, "ResumeProvidingLocked", resume,
+		"providerDevice_ = std::move(kept.device);", "WatchProviderNetworkLocked();")
+	// a connect stops it, never unbinding, before the session's adapter exists
+	take := definitionBody(t, "TunnelController.cpp", source,
+		"TunnelController::HandedOffDevice TunnelController::TakeProviderDeviceLocked(")
+	provideRequireOrder(t, "TakeProviderDeviceLocked", take, "providerNetwork_.reset();",
+		"providerEgress_->Stop();")
+	requireNone(t, "TakeProviderDeviceLocked", take, "setEgressInterfaceIndex(", "->close()")
 	startLocked := definitionBody(t, "TunnelController.cpp", source,
 		"proto::TunnelStatus TunnelController::StartLocked(")
+	provideRequireOrder(t, "StartLocked", startLocked, "TakeProviderDeviceLocked(config);",
+		"WintunAdapter::Create(")
+	// the tunnel's own monitor still binds, and excludes the tun
 	provideRequire(t, "StartLocked", startLocked,
 		"egress_ = std::make_unique<EgressMonitor>(egressExcludeLuid);")
+	// the retire resets the binding once the device is closed
+	retire := definitionBody(t, "TunnelController.cpp", source,
+		"void TunnelController::RetireProviderDeviceLocked()")
+	provideRequireOrder(t, "RetireProviderDeviceLocked", retire, "if (device) device->close();",
+		"urnet::setEgressInterfaceIndex(0, 0);")
 
 	monitor := stripComments(readServiceSource(t, "EgressMonitor.cpp"))
 	update := definitionBody(t, "EgressMonitor.cpp", monitor, "void EgressMonitor::Update(Reading reading)")

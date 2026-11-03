@@ -344,7 +344,7 @@ func TestTunnelFollowsTheEgressBinding(t *testing.T) {
 		"proto::TunnelStatus TunnelController::StartLocked(")
 	provideRequireOrder(t, "StartLocked", startLocked, "egress_->Start();",
 		"liveEgressIndex4_.store(static_cast<int64_t>(bound.index4));")
-	teardown := definitionBody(t, "TunnelController.cpp", source, "bool TunnelController::TearDownSessionLocked()")
+	teardown := definitionBody(t, "TunnelController.cpp", source, "bool TunnelController::TearDownSessionLocked(bool keepDevice, KeptSessionDevice* kept)")
 	provideRequireOrder(t, "TearDownSessionLocked", teardown, "egress_->SetOnChange(nullptr);",
 		"liveEgressIndex4_.store(0);")
 	provideRequire(t, "TearDownSessionLocked", teardown, "liveEgressIndex6_.store(0);")

@@ -195,22 +195,34 @@ func TestQuitTrayQuitStopsTheTunnelAndTheProviderThenExits(t *testing.T) {
 	server := stripComments(readServiceSource(t, "ControlServer.cpp"))
 	stopTunnel := quitSourceFrom(t, "ControlServer::Handle", server,
 		"type == proto::msg::kStopTunnel", "} else if")
-	provideRequire(t, "ControlServer's stop_tunnel", stopTunnel, "tunnel_.Stop();")
+	// the user's disconnect, which may keep the session's device providing; the
+	// stop_provider a quit sends next retires it
+	provideRequire(t, "ControlServer's stop_tunnel", stopTunnel, "tunnel_.Disconnect();")
 	stopProvider := quitSourceFrom(t, "ControlServer::Handle", server,
 		"type == proto::msg::kStopProvider", "} else if")
 	provideRequire(t, "ControlServer's stop_provider", stopProvider, "reply.ok = tunnel_.StopProvider();")
 
 	controllerSource := tunnelControllerSource(t)
 	stop := definitionBody(t, "TunnelController.cpp", controllerSource, "void TunnelController::Stop() {")
-	if quitIndex(stop, `StopLocked\(\s*true\);`) < 0 {
-		t.Error("TunnelController::Stop must tear down with finalDisarm=true: a deliberate stop lifts the firewall policy")
+	if quitIndex(stop, `StopWith\(\s*false\s*\);`) < 0 {
+		t.Error("TunnelController::Stop must be the stop that closes the session's device")
+	}
+	disconnect := definitionBody(t, "TunnelController.cpp", controllerSource,
+		"void TunnelController::Disconnect() {")
+	if quitIndex(disconnect, `StopWith\(\s*true\s*\);`) < 0 {
+		t.Error("TunnelController::Disconnect must be the stop that may keep the session's device")
+	}
+	stopWith := definitionBody(t, "TunnelController.cpp", controllerSource,
+		"void TunnelController::StopWith(bool disconnect)")
+	if quitIndex(stopWith, `StopLocked\(\s*true\s*,\s*disconnect\s*\);`) < 0 {
+		t.Error("TunnelController::Stop and Disconnect must tear down with finalDisarm=true: a deliberate stop lifts the firewall policy")
 	}
 	stopLocked := definitionBody(t, "TunnelController.cpp", controllerSource,
-		"void TunnelController::StopLocked(bool finalDisarm)")
+		"void TunnelController::StopLocked(bool finalDisarm, bool disconnect)")
 	quitRequireSequence(t, "TunnelController::StopLocked", stopLocked,
 		regexp.QuoteMeta("RevertMachineStateLocked(finalDisarm, hadRoutes);"),
 		regexp.QuoteMeta("RetireProviderDeviceLocked();"),
-		regexp.QuoteMeta("TearDownSessionLocked();"))
+		regexp.QuoteMeta("TearDownSessionLocked(keepDevice, &kept);"))
 	revert := definitionBody(t, "TunnelController.cpp", controllerSource,
 		"void TunnelController::RevertMachineStateLocked(bool finalDisarm, bool hadRoutes)")
 	disarm := quitSourceFrom(t, "TunnelController::RevertMachineStateLocked", revert,

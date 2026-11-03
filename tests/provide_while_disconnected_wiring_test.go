@@ -83,7 +83,7 @@ func TestProvideWiringServiceRefusesBeforeBuilding(t *testing.T) {
 	provideRequire(t, "StartProvider", start,
 		"lock.try_lock_for(kStopLockBudget)",
 		"proto::IsSessionLive(state_)",
-		"device_.has_value()",
+		"device_ != nullptr",
 		"state.firewallInForce = wfp_.State() != WfpState::Off;",
 		"SweepAbandonedTeardowns()",
 		"state.deviceStillHeld = abandoned.outstanding > 0;",
@@ -100,21 +100,28 @@ func TestProvideWiringServiceRefusesBeforeBuilding(t *testing.T) {
 
 // Every teardown — and so the head of every bring-up, which opens with one —
 // retires the provider-only device, after the machine is given back and before
-// the session's own device (the same identity) exists. Both devices come from
-// one copy of the identity rules.
+// the session's own device (the same identity) exists, unless the bring-up took
+// it for its session first (one device across connect and disconnect). Both
+// devices come from one copy of the identity rules.
 func TestProvideWiringEveryTeardownRetiresTheProvider(t *testing.T) {
 	source := tunnelControllerSource(t)
 	stop := definitionBody(t, "TunnelController.cpp", source,
-		"void TunnelController::StopLocked(bool finalDisarm)")
+		"void TunnelController::StopLocked(bool finalDisarm, bool disconnect)")
 	provideRequireOrder(t, "StopLocked", stop,
 		"RevertMachineStateLocked(finalDisarm, hadRoutes);", "RetireProviderDeviceLocked();")
 	provideRequireOrder(t, "StopLocked", stop,
-		"RetireProviderDeviceLocked();", "TearDownSessionLocked();")
+		"RetireProviderDeviceLocked();", "TearDownSessionLocked(keepDevice, &kept);")
 	startLocked := definitionBody(t, "TunnelController.cpp", source,
 		"proto::TunnelStatus TunnelController::StartLocked(")
-	provideRequireOrder(t, "StartLocked", startLocked, "StopLocked(", "device_ = NewDeviceLocked(")
+	// the provider-only device leaves its role before the opening teardown would
+	// retire it
+	provideRequireOrder(t, "StartLocked", startLocked,
+		"HandedOffDevice handedOff = TakeProviderDeviceLocked(config);", "StopLocked(")
+	provideRequireOrder(t, "StartLocked", startLocked, "StopLocked(", "NewDeviceLocked(")
 	provideRequire(t, "StartLocked", startLocked,
-		"networkSpace_ = ImportNetworkSpaceLocked(config.network_space_json);")
+		"networkSpace_ = ImportNetworkSpaceLocked(config.network_space_json);",
+		"device_ = std::move(handedOff.device);",
+		"networkSpace_ = std::move(handedOff.space);")
 	if strings.Contains(startLocked, "newDeviceLocalWithMemoryTarget(") {
 		t.Error("StartLocked builds its DeviceLocal directly instead of through NewDeviceLocked: " +
 			"the tunnel and the provider-only device must share one copy of the identity rules")

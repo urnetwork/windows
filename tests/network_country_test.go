@@ -185,9 +185,9 @@ func TestNetworkCountryRejectsWireRegressions(t *testing.T) {
 		{
 			name: "a new country rebuilds the provider-only device",
 			mutate: map[string]func(string) string{"Protocol.h": replaceOnce(
-				" &&\n         a.provider_transport_settings_json == b.provider_transport_settings_json;",
-				" &&\n         a.provider_transport_settings_json == b.provider_transport_settings_json &&\n"+
-					"         a.network_country_code == b.network_country_code;")},
+				"  return provide::SameIdentity(IdentityOf(a), IdentityOf(b));\n}",
+				"  return provide::SameIdentity(IdentityOf(a), IdentityOf(b)) &&\n"+
+					"         a.network_country_code == b.network_country_code;\n}")},
 			want: "pipe: a new country keeps the running provider-only device",
 		},
 	})

@@ -37,7 +37,7 @@ func TestSpeedTestsSwitchServiceWiring(t *testing.T) {
 	provideRequireOrder(t, "SetMeasurementsEnabled", write,
 		"lock.try_lock_for(kStopLockBudget)", "provide::ExtenderSettingTargetFor(")
 	provideRequire(t, "SetMeasurementsEnabled", write,
-		"providerDevice_ != nullptr, device_.has_value(), spaceManager_ && lastSpaceKey_)",
+		"providerDevice_ != nullptr, device_ != nullptr, spaceManager_ && lastSpaceKey_)",
 		"device_->setMeasurementsEnabled(on);",
 		"spaceManager_->getNetworkSpace(lastSpaceKey_)",
 		".getAsyncLocalState().getLocalState().setMeasurementsEnabled(on);")
