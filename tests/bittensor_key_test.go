@@ -140,9 +140,17 @@ func TestBittensorKeyPresentationCatchesEachRegression(t *testing.T) {
 			"return inSheet ? ClaimNowNote::PaidEach : ClaimNowNote::Paid;", "(void)inSheet; return ClaimNowNote::Paid;",
 			"the sheet's, per coldkey"},
 		{"the claimed state never says when Claim now is back", presentation,
-			"return 0 < nextAtMillis ? ClaimNowNote::AgainOn : ClaimNowNote::None;",
-			"(void)nextAtMillis; return ClaimNowNote::None;",
+			"inline ClaimNowNote ClaimedNoteFor(int64_t nextAtMillis) {\n  return 0 < nextAtMillis ? ClaimNowNote::AgainOn : ClaimNowNote::None;",
+			"inline ClaimNowNote ClaimedNoteFor(int64_t nextAtMillis) {\n  (void)nextAtMillis; return ClaimNowNote::None;",
 			"the claimed state's limit"},
+		{"the claimed sentence names an amount it doesn't have", presentation,
+			"if (claimAmountRao <= 0 || coldkeySs58.empty()) return ClaimedWords::Claimed;",
+			"(void)claimAmountRao; if (coldkeySs58.empty()) return ClaimedWords::Claimed;",
+			"no amount"},
+		{"the claimed sentence names a key it doesn't have", presentation,
+			"if (claimAmountRao <= 0 || coldkeySs58.empty()) return ClaimedWords::Claimed;",
+			"(void)coldkeySs58; if (claimAmountRao <= 0) return ClaimedWords::Claimed;",
+			"no coldkey"},
 		{"an estimate keeps no decimal under ten", presentation,
 			"  if (10 <= value) {", "  if (1 <= value) {",
 			"one to ten"},
@@ -717,15 +725,23 @@ func TestBittensorKeyClaimsThroughTheRelay(t *testing.T) {
 	requireBittensorKey(t, "WalletPage::ApplyRelayToV2Section", relay, "claimStatus_->shows_claimed")
 	requireBittensorKey(t, "btkeyviews::DrawRelaySection", section,
 		"if (status.shows_claimed) add(MakeClaimedBanner(status));", "btkey::ClaimedNoteFor(nextAtMillis)")
-	// the claimed state (4d): what URnetwork's claim paid, the coldkey it landed
-	// on, its transaction, and when Claim now is available again
-	requireBittensorKey(t, "btkeyviews::MakeClaimedBanner", bittensorKeyBody(t, "BittensorKeyViews.cpp", views, "FrameworkElement MakeClaimedBanner("),
-		`Loc("claim_confirmed")`, "status.claim_amount_rao.value_or(0)", "status.coldkey_ss58.value_or(std::string())",
-		`urnw::Format("sn_claim_relay_lands_on", ShortAddress(coldkey))`,
-		"status.claim_tx_url.value_or(std::string())", `Loc("earnings_view_transaction")`)
+	// the claimed state (4d): what URnetwork's claim paid and the coldkey it
+	// landed on, in the store's one sentence for every app (the amount as a
+	// number, the address shortened), Claimed without both, its transaction,
+	// and when Claim now is available again
+	requireBittensorKeyOrder(t, "btkeyviews::MakeClaimedBanner", bittensorKeyBody(t, "BittensorKeyViews.cpp", views, "FrameworkElement MakeClaimedBanner("),
+		"const int64_t paid = status.claim_amount_rao.value_or(0);",
+		"const std::string coldkey = status.coldkey_ss58.value_or(std::string());",
+		"btkey::ClaimedWordsFor(paid, coldkey) == btkey::ClaimedWords::OnKey",
+		`? hstring{urnw::Format("sn_claim_relay_claimed", Widen(urnet::formatAlphaAmount(paid)),`,
+		"ShortAddress(coldkey))}", `: Loc("claim_confirmed");`,
+		"const std::string url = status.claim_tx_url.value_or(std::string());",
+		`if (!url.empty()) words.Children().Append(Link(Loc("transaction"), true, [url] { OpenTransaction(url); }));`)
 	requireBittensorKey(t, "btkeyviews::OpenTransaction", views, `if (url.rfind("https://", 0) != 0) return;`)
 	requireBittensorKeyOrder(t, "ClaimRelaySheet::ApplyState", bittensorKeyBody(t, "BittensorKeySheets.cpp", sheets, "void ClaimRelaySheet::ApplyState("),
-		"if (status.shows_claimed) {", "btkey::ClaimedNoteFor(nextAtMillis)", "} else if (btkey::RelayClaims(status.reason)) {")
+		"if (status.shows_claimed) {", `dialog_.CloseButtonText(Loc("done"));`,
+		"dialog_.DefaultButton(ContentDialogButton::Close);", "btkey::ClaimedNoteFor(nextAtMillis)",
+		"} else if (btkey::RelayClaims(status.reason)) {")
 	// the wallet card and the points card after the one tap
 	requireBittensorKey(t, "WalletPage::ApplyKeyWalletCard", bittensorKeyBody(t, "WalletPage.cpp", page, "void WalletPage::ApplyKeyWalletCard("),
 		"const bool key = keyCard_ && !keyCard_->stored_address.empty();",

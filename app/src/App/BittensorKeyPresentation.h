@@ -415,6 +415,19 @@ inline ClaimNowNote ClaimedNoteFor(int64_t nextAtMillis) {
   return 0 < nextAtMillis ? ClaimNowNote::AgainOn : ClaimNowNote::None;
 }
 
+// The claimed state's words: "Claimed by URnetwork. 0.8420 SN25α is on your key,
+// 5F3s…kQ9v." with what URnetwork's claim paid and the coldkey it landed on (the
+// sdk's ClaimAmountRao and ColdkeySs58), or "Claimed" when the status lacks either.
+enum class ClaimedWords {
+  Claimed,  // claim_confirmed
+  OnKey,    // sn_claim_relay_claimed: {0} the amount, number only; {1} the address, shortened
+};
+
+inline ClaimedWords ClaimedWordsFor(int64_t claimAmountRao, std::string_view coldkeySs58) {
+  if (claimAmountRao <= 0 || coldkeySs58.empty()) return ClaimedWords::Claimed;
+  return ClaimedWords::OnKey;
+}
+
 // ---- amounts ------------------------------------------------------------------------
 
 // "0.0125": an amount in rao of TAO, for a sentence that names TAO itself.

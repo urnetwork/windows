@@ -852,12 +852,19 @@ void ClaimRelaySheet::ApplyState() {
       break;
     case Outcome::None:
       if (status.shows_claimed) {
-        // the claimed state (4d): the banner above says what was claimed; Close
-        // is Done, and the line says when Claim now is available again
+        // the claimed state (4d): the banner above says what URnetwork's claim
+        // paid and on which key; the sheet closes with Done, as the API key
+        // sheet's created state, and the line says when Claim now is back
+        dialog_.CloseButtonText(Loc("done"));
+        dialog_.DefaultButton(ContentDialogButton::Close);
         const int64_t nextAtMillis = status.claim_now_next_at_millis.value_or(0);
         const hstring note = btkeyviews::ClaimNowNoteText(btkey::ClaimedNoteFor(nextAtMillis), 0,
                                                           status.transfer_floor_tao_rao, nextAtMillis);
-        if (!note.empty()) children.Append(Muted(note));
+        if (!note.empty()) {
+          auto line = Muted(note);
+          line.TextAlignment(TextAlignment::Center);
+          children.Append(line);
+        }
       } else if (btkey::RelayClaims(status.reason)) {
         auto claim = SheetButton(Loc("sn_claim_relay_claim_now"), /*accent=*/true);
         if (claiming_) {

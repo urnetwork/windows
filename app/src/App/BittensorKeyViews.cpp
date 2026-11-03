@@ -406,19 +406,17 @@ hstring ClaimNowNoteText(btkey::ClaimNowNote note, int64_t periodDays, int64_t f
 FrameworkElement MakeClaimedBanner(urnet::SnClaimStatusResult const& status) {
   StackPanel words;
   words.Spacing(4);
-  StackPanel head;
-  head.Orientation(Orientation::Horizontal);
-  head.Spacing(8);
-  head.Children().Append(MakeText(Loc("claim_confirmed"), 13, colors::TextBrush(), true));
   const int64_t paid = status.claim_amount_rao.value_or(0);
-  if (0 < paid) head.Children().Append(MakeText(hstring{FormatAlphaRao(paid)}, 13, colors::TextBrush()));
-  words.Children().Append(head);
   const std::string coldkey = status.coldkey_ss58.value_or(std::string());
-  if (!coldkey.empty()) {
-    words.Children().Append(Body(hstring{urnw::Format("sn_claim_relay_lands_on", ShortAddress(coldkey))}));
-  }
+  // what URnetwork's claim paid, on which key, in one sentence; Claimed without both
+  const hstring sentence =
+      btkey::ClaimedWordsFor(paid, coldkey) == btkey::ClaimedWords::OnKey
+          ? hstring{urnw::Format("sn_claim_relay_claimed", Widen(urnet::formatAlphaAmount(paid)),
+                                 ShortAddress(coldkey))}
+          : Loc("claim_confirmed");
+  words.Children().Append(MakeText(sentence, 13, colors::TextBrush()));
   const std::string url = status.claim_tx_url.value_or(std::string());
-  if (!url.empty()) words.Children().Append(Link(Loc("earnings_view_transaction"), true, [url] { OpenTransaction(url); }));
+  if (!url.empty()) words.Children().Append(Link(Loc("transaction"), true, [url] { OpenTransaction(url); }));
   Grid grid;
   grid.ColumnSpacing(10);
   ColumnDefinition lead;
@@ -436,7 +434,7 @@ FrameworkElement MakeClaimedBanner(urnet::SnClaimStatusResult const& status) {
   box.CornerRadius(CornerRadius{8, 8, 8, 8});
   box.Padding(Thickness{12, 10, 12, 10});
   box.Child(grid);
-  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(box, Loc("claim_confirmed"));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(box, sentence);
   return box;
 }
 

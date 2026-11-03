@@ -288,6 +288,15 @@ void TestRelay() {
   Check(btkey::ClaimedNoteFor(1'800'000'000'000) == ClaimNowNote::AgainOn, "the claimed state's limit");
   Check(btkey::ClaimedNoteFor(0) == ClaimNowNote::None, "no limit, no line");
 
+  TEST_CASE("the claimed state names what URnetwork's claim paid and its key, or says Claimed");
+  using btkey::ClaimedWords;
+  constexpr std::string_view kColdkey = "5FakeAddressOfTheStoreFormatSpec000000000000000";
+  Check(btkey::ClaimedWordsFor(842'000'000, kColdkey) == ClaimedWords::OnKey, "the amount on the key");
+  Check(btkey::ClaimedWordsFor(1, kColdkey) == ClaimedWords::OnKey, "a single rao");
+  Check(btkey::ClaimedWordsFor(0, kColdkey) == ClaimedWords::Claimed, "no amount");
+  Check(btkey::ClaimedWordsFor(-1, kColdkey) == ClaimedWords::Claimed, "a negative amount");
+  Check(btkey::ClaimedWordsFor(842'000'000, "") == ClaimedWords::Claimed, "no coldkey");
+
   TEST_CASE("amounts: TAO to four places, SN25α as precise as its size needs");
   CheckEq("0.0125", btkey::TaoAmount(12'500'000), "the automatic threshold");
   CheckEq("0.0001", btkey::TaoAmount(100'000), "the transfer floor");

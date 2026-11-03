@@ -1181,6 +1181,7 @@ sn_claim_relay_cap
 sn_claim_relay_claim_now
 sn_claim_relay_claim_now_paid
 sn_claim_relay_claim_now_paid_each
+sn_claim_relay_claimed
 sn_claim_relay_for_you
 sn_claim_relay_lands_on
 sn_claim_relay_not_running
@@ -1296,6 +1297,7 @@ total_clients
 total_referrals
 total_referrals_lld
 traffic_dns
+transaction
 transport
 transport_auto_degraded
 transport_auto_degraded_memory

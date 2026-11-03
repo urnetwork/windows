@@ -68,7 +68,8 @@ void DrawRelaySection(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& ho
                       std::function<void()> claimNow, std::function<void()> selfClaim);
 
 // The claimed state (the mocks' 4d), when the sdk's ShowsClaimed: what
-// URnetwork's claim paid, the coldkey it landed on, and its transaction.
+// URnetwork's claim paid and the coldkey it landed on, in one sentence
+// (btkey::ClaimedWordsFor), and its transaction.
 winrt::Microsoft::UI::Xaml::FrameworkElement MakeClaimedBanner(urnet::SnClaimStatusResult const& status);
 
 // The line under Claim now (btkey::ClaimNowNoteFor, or btkey::ClaimedNoteFor in
