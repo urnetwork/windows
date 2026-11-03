@@ -990,6 +990,10 @@
     <value>Створіть резервну копію ключа</value>
     <comment>Earnings screen: the title of a warning banner, and a button on the payout card. Both open the Key screen, where the user saves the recovery phrase.</comment>
   </data>
+  <data name="bittensor_key_back_up_first" xml:space="preserve">
+    <value>Спершу створити резервну копію</value>
+    <comment>Sign out and Delete account confirmations: a button that opens the Key screen, so the user can save the recovery phrase before going on. Short: a button.</comment>
+  </data>
   <data name="bittensor_key_banner_body" xml:space="preserve">
     <value>Якщо ви втратите цей пристрій, не зберігши фразу відновлення, отримати доступ до ваших SN25α буде неможливо.</value>
     <comment>Earnings screen: the warning banner under Back up your key, which stays until the phrase is saved.</comment>
@@ -997,10 +1001,6 @@
   <data name="bittensor_key_capture_hidden" xml:space="preserve">
     <value>Слова залишаються прихованими, поки ваш екран записується або транслюється.</value>
     <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Shown while a screen recording or mirroring is running.</comment>
-  </data>
-  <data name="bittensor_key_card_explain" xml:space="preserve">
-    <value>URnetwork створює ключ Bittensor на цьому пристрої та з наступної епохи виплачує на нього заробіток усіх майнерів вашої мережі.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. Explains the one tap, read before it. A miner is a device on the network that earns; this is the Bittensor sense of the word.</comment>
   </data>
   <data name="bittensor_key_card_none" xml:space="preserve">
     <value>Гаманця для виплат ще немає. Заробіток не виплачується, доки ви не налаштуєте гаманець.</value>
@@ -1010,61 +1010,93 @@
     <value>Ваш ключ на цьому пристрої, але виплати ще не налаштовано.</value>
     <comment>Earnings screen, the payout card for the network's payouts. The key was made and stored, but the step that links it to payouts did not finish. The Finish setup button follows.</comment>
   </data>
-  <data name="bittensor_key_card_not_wallet" xml:space="preserve">
-    <value>URnetwork не є гаманцем. Щоб переказати або використати свої SN25α, потрібно ввести фразу відновлення ключа в гаманець Bittensor або в btcli. Якщо ви втратите цей пристрій, не зберігши її, отримати доступ до ваших SN25α буде неможливо.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The short form of the warning, read before the one tap.</comment>
-  </data>
   <data name="bittensor_key_card_other_consent" xml:space="preserve">
     <value>Ключ на цьому пристрої не отримує виплат.</value>
     <comment>Earnings screen, the payout card for the network's payouts. Payouts go to another wallet, and a key made earlier is still on this device.</comment>
   </data>
-  <data name="bittensor_key_card_saved" xml:space="preserve">
-    <value>Вашу фразу відновлення збережено, а ключ залишається на цьому пристрої.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The user proved they saved the phrase and chose to keep the key on the device.</comment>
+  <data name="bittensor_key_card_short" xml:space="preserve">
+    <value>URnetwork не є гаманцем. «Налаштувати виплати» створює на цьому пристрої ключ Bittensor, і на нього виплачуються SN25α всієї вашої мережі. Створіть резервну копію фрази відновлення ключа: якщо ви втратите цей пристрій, не зберігши її, отримати доступ до ваших SN25α буде неможливо.</value>
+    <comment>Earnings screen, the payout card before setup, under its title and above the Set up payouts button. Read before the one tap: what the tap does and the one risk. Set up payouts is the button's label; keep it recognizable as that label.</comment>
   </data>
-  <data name="bittensor_key_confirm_body" xml:space="preserve">
-    <value>URnetwork не зможе повернути цей ключ. Заробіток і далі надходить на цю адресу, і перемістити його можна лише за допомогою фрази відновлення.</value>
-    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. </comment>
-  </data>
-  <data name="bittensor_key_confirm_convert" xml:space="preserve">
-    <value>Після цього застосунок також не зможе конвертувати ваші SN25α у TAO. Це можна зробити в гаманці Bittensor або в btcli за допомогою цієї фрази відновлення.</value>
-    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. </comment>
-  </data>
-  <data name="bittensor_key_confirm_prompt" xml:space="preserve">
-    <value>Щоб показати, що ви її зберегли, введіть ці два слова з фрази відновлення.</value>
-    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. Two fields follow, labeled Word 3, Word 9 and so on.</comment>
+  <data name="bittensor_key_change_wallet_body" xml:space="preserve">
+    <value>Виберіть, куди з наступної епохи виплачуватиметься заробіток цієї мережі. Попередній заробіток залишиться там, куди його було виплачено.</value>
+    <comment>The payout consent sheet when the network already pays a wallet (Change wallet): what changing does. An epoch is the subnet's payout period.</comment>
   </data>
   <data name="bittensor_key_confirm_top200" xml:space="preserve">
     <value>Видаляючи цей ключ, ви також відмовляєтеся від можливості зайняти місце в Топ-200 одним дотиком. Ви й надалі зможете зайняти його з гаманця Bittensor із цією фразою відновлення.</value>
     <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. Top 200 is a ranking the network's miners can claim a place on.</comment>
   </data>
-  <data name="bittensor_key_copy_warning" xml:space="preserve">
-    <value>Інші застосунки можуть прочитати буфер обміну. Він очищується через 60 секунд.</value>
-    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Next to the Copy button.</comment>
+  <data name="bittensor_key_copy_warning_2" xml:space="preserve">
+    <value>Інші застосунки можуть прочитати буфер обміну. Копія залишається на цьому пристрої та видаляється через 60 с.</value>
+    <comment>Key screen, under the Copy button for the recovery phrase: a warning about the clipboard. The copy isn't shared to the user's other devices and is removed after 60 seconds; 60 s is 60 seconds, abbreviate seconds as usual.</comment>
   </data>
   <data name="bittensor_key_create_here" xml:space="preserve">
     <value>Створити ключ на цьому пристрої</value>
     <comment>Earnings screen, the payout card for the network's payouts. A small link when payouts go to another wallet. A warning follows before anything changes.</comment>
   </data>
-  <data name="bittensor_key_delete_account_message" xml:space="preserve">
-    <value>Вашу фразу відновлення Bittensor ще не збережено. Видалення облікового запису також видалить цей ключ із цього пристрою, і без цієї фрази отримати доступ до ваших SN25α буде неможливо.</value>
-    <comment>The confirmation of Delete account, shown only while the Bittensor key's recovery phrase is not saved.</comment>
+  <data name="bittensor_key_create_here_body" xml:space="preserve">
+    <value>URnetwork не є гаманцем. Один дотик створює ключ Bittensor на цьому пристрої; після цього створіть резервну копію його фрази відновлення.</value>
+    <comment>The payout consent sheet (Change wallet), under the button Create a key on this device: what it does.</comment>
+  </data>
+  <data name="bittensor_key_delete_account_message_2" xml:space="preserve">
+    <value>У вашого ключа Bittensor немає резервної копії. Видалення облікового запису також видалить його з цього пристрою, і URnetwork не зможе його повернути.</value>
+    <comment>Delete account, the confirmation while this device holds the network's Bittensor key and its recovery phrase isn't saved. It is the key.</comment>
   </data>
   <data name="bittensor_key_delete_action" xml:space="preserve">
     <value>Ключ збережено, тепер його можна видалити.</value>
     <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The one destructive button: the user says the phrase is saved, and the app may forget it.</comment>
   </data>
+  <data name="bittensor_key_delete_bullet_address" xml:space="preserve">
+    <value>Заробіток і далі надходить на цю адресу, {}.</value>
+    <comment>Key screen, the delete confirmation: one point of a short list. The placeholder is the key's Bittensor address, shortened to its first and last characters around an ellipsis (5F3s…kQ9v); keep it as it is.</comment>
+  </data>
+  <data name="bittensor_key_delete_bullet_convert" xml:space="preserve">
+    <value>Конвертація в TAO перестане працювати в цьому застосунку.</value>
+    <comment>Key screen, the delete confirmation: one point of a short list. Convert to TAO is the app's action that swaps SN25α for TAO with this key.</comment>
+  </data>
+  <data name="bittensor_key_delete_bullet_no_recovery" xml:space="preserve">
+    <value>URnetwork не зможе повернути цей ключ.</value>
+    <comment>Key screen, the delete confirmation: one point of a short list.</comment>
+  </data>
+  <data name="bittensor_key_delete_bullet_phrase" xml:space="preserve">
+    <value>Перемістити його можна лише за допомогою фрази відновлення.</value>
+    <comment>Key screen, the delete confirmation: one point of a short list, after Earnings keep going to this address. Them is the earnings.</comment>
+  </data>
   <data name="bittensor_key_delete_confirm" xml:space="preserve">
     <value>Видалити ключ</value>
     <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. The destructive button.</comment>
   </data>
-  <data name="bittensor_key_delete_title" xml:space="preserve">
-    <value>Видалити цей ключ із цього застосунку?</value>
-    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. The title.</comment>
+  <data name="bittensor_key_delete_save_now_title" xml:space="preserve">
+    <value>Налаштувати виплати й видалити ключ?</value>
+    <comment>Key screen, the title of the confirmation when the user saved the recovery phrase first: payouts get set up with the key, and then the app drops it.</comment>
+  </data>
+  <data name="bittensor_key_delete_title_2" xml:space="preserve">
+    <value>Видалити ключ із цього пристрою?</value>
+    <comment>Key screen, the title of the confirmation before this app deletes its copy of the Bittensor key. The user has said they saved the recovery phrase.</comment>
+  </data>
+  <data name="bittensor_key_deleted_body" xml:space="preserve">
+    <value>Отримання заробітку й надалі працює. Щоб переказати або конвертувати свої SN25α чи зайняти місце в Топ-200, використовуйте гаманець Bittensor із вашою фразою відновлення.</value>
+    <comment>Earnings screen, the payout card after this app deleted its copy of the key (the user saved the recovery phrase first). Earnings keep going to the same address. Top 200 is the leaderboard of the subnet's top 200 miners; keep it as the app writes it elsewhere.</comment>
   </data>
   <data name="bittensor_key_elsewhere" xml:space="preserve">
     <value>Цей ключ на іншому пристрої або у вашому гаманці.</value>
     <comment>Earnings screen, the payout card for the network's payouts. Payouts go to an address whose key is not in this app. The phrase cannot be shown here.</comment>
+  </data>
+  <data name="bittensor_key_elsewhere_body" xml:space="preserve">
+    <value>Його фразу відновлення тут не можна показати.</value>
+    <comment>Earnings screen, the payout card, under This key is on another device or in your wallet: this app doesn't hold the key, so it can't show the key's recovery phrase.</comment>
+  </data>
+  <data name="bittensor_key_enter_two_words" xml:space="preserve">
+    <value>Введіть два слова з фрази</value>
+    <comment>Key screen, the title of the sheet where the user types two words of the recovery phrase, to show it was saved.</comment>
+  </data>
+  <data name="bittensor_key_enter_two_words_body" xml:space="preserve">
+    <value>Щоб підтвердити, що ви зберегли фразу відновлення, введіть ці два слова з неї.</value>
+    <comment>Key screen, the two-word sheet before deleting the key: what to do. The fields below say which word, as Word 4.</comment>
+  </data>
+  <data name="bittensor_key_every_device" xml:space="preserve">
+    <value>Заробіток кожного пристрою у вашій мережі виплачується на цю адресу.</value>
+    <comment>Earnings screen, the payout card, under the Bittensor address the network's earnings go to. Every device (miner) the user runs on this network earns to it.</comment>
   </data>
   <data name="bittensor_key_failure_consent" xml:space="preserve">
     <value>Не вдалося налаштувати виплати. Спробуйте ще раз.</value>
@@ -1086,6 +1118,10 @@
     <value>Не вдалося зберегти ключ на цьому пристрої, тому нічого не підписано. Спробуйте ще раз або спершу збережіть фразу відновлення.</value>
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button: the new key could not be written to the device's secure storage.</comment>
   </data>
+  <data name="bittensor_key_finish_body" xml:space="preserve">
+    <value>Налаштування зупинилося до підписання, тому на цей ключ нічого не виплачено. «Завершити налаштування» підпише ним згоду.</value>
+    <comment>Earnings screen, the payout card when a key was stored but setup stopped before the payout consent was signed, for example after a crash. Finish setup is the button's label below; keep it recognizable as that label.</comment>
+  </data>
   <data name="bittensor_key_finish_setup" xml:space="preserve">
     <value>Завершити налаштування</value>
     <comment>Earnings screen, the payout card for the network's payouts. Button that retries the link between the key on this device and the network's payouts.</comment>
@@ -1094,45 +1130,73 @@
     <value>Приховати</value>
     <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Button that covers the words again.</comment>
   </data>
+  <data name="bittensor_key_hides_in" xml:space="preserve">
+    <value>Знову сховається через {}</value>
+    <comment>Key screen, while the recovery phrase's words show: a countdown until they hide by themselves. The placeholder is minutes and seconds, as 0:58.</comment>
+  </data>
   <data name="bittensor_key_keep_action" xml:space="preserve">
     <value>Його збережено. Залишити його на цьому пристрої.</value>
     <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. A smaller link: the user says the phrase is saved, and the key stays on the device, so the reminders stop.</comment>
   </data>
-  <data name="bittensor_key_keep_confirm" xml:space="preserve">
-    <value>Залишити ключ</value>
-    <comment>Key screen, the button that finishes the check and keeps the key on the device.</comment>
+  <data name="bittensor_key_keep_body" xml:space="preserve">
+    <value>Ви зберегли фразу відновлення, тому нагадування про резервну копію припиняється. Ключ залишається на цьому пристрої для конвертації в TAO і для того, щоб зайняти місце в Топ-200 одним дотиком.</value>
+    <comment>Key screen, the keep sheet: what keeping does. Convert is the app's SN25α to TAO action; one-tap Top 200 is claiming a spot on the subnet's Top 200 leaderboard with one tap. Keep Top 200 as the app writes it.</comment>
   </data>
-  <data name="bittensor_key_keep_title" xml:space="preserve">
-    <value>Залишити цей ключ на цьому пристрої?</value>
-    <comment>Key screen, the check before the key stays on the device: the user enters two of its words.</comment>
+  <data name="bittensor_key_keep_confirm_2" xml:space="preserve">
+    <value>Залишити його на цьому пристрої</value>
+    <comment>Key screen, the keep sheet's button, enabled once the two words are right. Short: a button. It is the key that stays.</comment>
+  </data>
+  <data name="bittensor_key_keep_prompt" xml:space="preserve">
+    <value>Для підтвердження введіть ці два слова з фрази.</value>
+    <comment>Key screen, the keep sheet: what to do. The fields below say which word, as Word 4.</comment>
+  </data>
+  <data name="bittensor_key_keep_save_now_body" xml:space="preserve">
+    <value>Ви зберегли фразу відновлення. Ключ буде збережено на цьому пристрої для конвертації в TAO і для того, щоб зайняти місце в Топ-200 одним дотиком, а потім буде налаштовано виплати.</value>
+    <comment>Key screen, the keep sheet when the user saved the recovery phrase first: the key gets stored on this device, and then the app sets up payouts with it. Convert is the SN25α to TAO action; keep Top 200 as the app writes it.</comment>
+  </data>
+  <data name="bittensor_key_keep_title_2" xml:space="preserve">
+    <value>Залишити ключ на цьому пристрої?</value>
+    <comment>Key screen, the title of the sheet for keeping the Bittensor key on this device after the user saved its recovery phrase.</comment>
   </data>
   <data name="bittensor_key_no_longer_here" xml:space="preserve">
     <value>У цього застосунку більше немає ключа</value>
     <comment>Earnings screen, the payout card for the network's payouts. A status line after the user saved the phrase and the app deleted its copy of the key.</comment>
   </data>
-  <data name="bittensor_key_no_longer_here_body" xml:space="preserve">
-    <value>Ваш заробіток і далі надходить на цю адресу. Щоб переказати або використати свої SN25α, введіть фразу відновлення в гаманець Bittensor, наприклад Talisman або Nova, чи в btcli.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. Under: This app no longer has the key.</comment>
+  <data name="bittensor_key_not_seed_2" xml:space="preserve">
+    <value>Це не сід-фраза з реєстрації: у ній 24 слова, і вона потрібна для входу в URnetwork. У цій фразі відновлення Bittensor 12 слів, і вона зберігає ваші SN25α.</value>
+    <comment>Key screen: tells apart the two phrases a user may have. The account seedphrase from sign-up (24 words) signs in to URnetwork; this Bittensor recovery phrase (12 words) controls the user's SN25α tokens. Use the app's usual words for each.</comment>
   </data>
-  <data name="bittensor_key_not_seed_phrase" xml:space="preserve">
-    <value>Це не сід-фраза вашого облікового запису, отримана під час реєстрації. Ця фраза відновлення контролює лише цей ключ Bittensor.</value>
-    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The app also has a sign-in seed phrase of 24 words, a different secret, and people mix them up. Keep the two terms clearly different: use the same word for 'seed phrase' as the sign-up screen's 'Your Seedphrase' does in your language where it fits, and the word for 'recovery phrase' everywhere else in these strings.</comment>
+  <data name="bittensor_key_or_choose_wallet" xml:space="preserve">
+    <value>Або виберіть гаманець Bittensor</value>
+    <comment>The payout consent sheet (Change wallet), a heading above the list of Bittensor wallet apps, after the option to create a key on this device.</comment>
+  </data>
+  <data name="bittensor_key_payouts_on" xml:space="preserve">
+    <value>Виплати ввімкнено</value>
+    <comment>Earnings screen, the payout card's title once the network's earnings are being paid to its Bittensor key (from the first epoch after setup). Before that the title is Payouts start next epoch.</comment>
   </data>
   <data name="bittensor_key_payouts_start" xml:space="preserve">
     <value>Виплати почнуться з наступної епохи</value>
     <comment>Earnings screen, the payout card for the network's payouts. A status line after setup. An epoch is the network's settlement period.</comment>
   </data>
-  <data name="bittensor_key_reminder_body" xml:space="preserve">
-    <value>Заробіток за вашу першу епоху тепер можна отримати. Якщо ви втратите цей пристрій, не зберігши фразу відновлення, отримати доступ до ваших SN25α буде неможливо.</value>
-    <comment>A local notification, the body.</comment>
+  <data name="bittensor_key_reminder_body_2" xml:space="preserve">
+    <value>Створіть зараз резервну копію фрази відновлення Bittensor. Якщо ви втратите цей пристрій, не зберігши її, отримати доступ до ваших SN25α буде неможливо.</value>
+    <comment>The one local notification of an unsaved Bittensor key: the body. Tapping it opens the Key screen.</comment>
   </data>
-  <data name="bittensor_key_reminder_title" xml:space="preserve">
-    <value>Створіть резервну копію ключа Bittensor</value>
-    <comment>A local notification, the title. It arrives once, when the first epoch's earnings can be claimed.</comment>
+  <data name="bittensor_key_reminder_title_2" xml:space="preserve">
+    <value>Ваші перші SN25α можна отримати</value>
+    <comment>The one local notification, sent when the network's first earnings on the Bittensor key can be claimed while its recovery phrase still isn't saved: the title.</comment>
+  </data>
+  <data name="bittensor_key_replace_confirm" xml:space="preserve">
+    <value>Замінити гаманець для виплат</value>
+    <comment>The warning before a new key replaces the network's payout wallet: the button that goes ahead. Short: a button.</comment>
   </data>
   <data name="bittensor_key_replace_message" xml:space="preserve">
     <value>Цей ключ замінить ваш гаманець для виплат із наступної епохи. Попередній заробіток залишиться на старому гаманці.</value>
     <comment>Earnings screen, a warning before a new key on this device replaces the network's payout wallet.</comment>
+  </data>
+  <data name="bittensor_key_replace_message_2" xml:space="preserve">
+    <value>З наступної епохи заробіток вашої мережі надходитиме на новий ключ на цьому пристрої. Попередній заробіток залишиться на {}. Адміністратор мережі отримає лист про цю зміну.</value>
+    <comment>The warning before a new key on this device replaces the network's payout wallet. The placeholder is the old wallet's Bittensor address, shortened (5F3s…kQ9v); keep it as it is.</comment>
   </data>
   <data name="bittensor_key_replace_title" xml:space="preserve">
     <value>Замінити гаманець для виплат?</value>
@@ -1146,9 +1210,33 @@
     <value>Спершу зберегти фразу відновлення</value>
     <comment>Earnings screen, the payout card for the network's payouts. A smaller link under Set up payouts: shows the phrase to save before anything else happens.</comment>
   </data>
+  <data name="bittensor_key_save_now_banner" xml:space="preserve">
+    <value>Цей ключ не збережено на цьому пристрої. Запишіть 12 слів, а потім виберіть нижче. Якщо ви покинете цей екран, ключ буде видалено, і на нього нічого не буде виплачено.</value>
+    <comment>Key screen, a banner at the top when the user chose to save the recovery phrase first: the key exists only in memory. The 12 words are the recovery phrase. Below are two choices: keep the key on this device, or set up payouts and delete it.</comment>
+  </data>
+  <data name="bittensor_key_save_now_bullet_address" xml:space="preserve">
+    <value>З наступної епохи виплати надходитимуть на цю адресу, {}.</value>
+    <comment>Key screen, the confirmation when the user saved the recovery phrase first: one point of a short list. The placeholder is the key's Bittensor address, shortened (5F3s…kQ9v); keep it as it is. An epoch is the subnet's payout period.</comment>
+  </data>
+  <data name="bittensor_key_save_now_bullet_convert" xml:space="preserve">
+    <value>Для конвертації в TAO потрібен цей ключ, тому в цьому застосунку вона буде недоступна.</value>
+    <comment>Key screen, the confirmation when the user saved the recovery phrase first: one point of a short list. Convert to TAO is the app's action that swaps SN25α for TAO.</comment>
+  </data>
+  <data name="bittensor_key_save_now_bullet_phrase" xml:space="preserve">
+    <value>Перемістити ваші SN25α можна лише за допомогою фрази відновлення.</value>
+    <comment>Key screen, the confirmation when the user saved the recovery phrase first: one point of a short list.</comment>
+  </data>
+  <data name="bittensor_key_save_now_delete_confirm" xml:space="preserve">
+    <value>Налаштувати виплати й видалити ключ</value>
+    <comment>Key screen, the button that sets up payouts with the key and then drops it, after the user entered two words of the recovery phrase. Short: a button.</comment>
+  </data>
   <data name="bittensor_key_save_now_retry" xml:space="preserve">
     <value>Виплати ще не налаштовано. На цей ключ не надходив заробіток, і якщо ви підете, ключ буде видалено.</value>
     <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. After the link to payouts failed, for a key that exists only in memory. A Retry button follows.</comment>
+  </data>
+  <data name="bittensor_key_saved_question" xml:space="preserve">
+    <value>Зберегли фразу відновлення?</value>
+    <comment>Key screen, a small heading above the two choices for after the user has written the recovery phrase down: keep the key on this device, or delete it.</comment>
   </data>
   <data name="bittensor_key_screen_title" xml:space="preserve">
     <value>Фраза відновлення Bittensor</value>
@@ -1162,25 +1250,49 @@
     <value>Налаштувати виплати</value>
     <comment>Earnings screen, the payout card for the network's payouts. The main button: one tap makes the key, stores it on the device and links it to payouts.</comment>
   </data>
-  <data name="bittensor_key_show" xml:space="preserve">
-    <value>Показати ключ</value>
-    <comment>Earnings screen, the payout card for the network's payouts. A small link that opens the Key screen.</comment>
+  <data name="bittensor_key_setting_up" xml:space="preserve">
+    <value>Збереження ключа на цьому пристрої та повторне зчитування, потім підписання.</value>
+    <comment>Earnings screen, the payout card: under the Set up payouts button while it works, which takes a few seconds. The app writes the new key to the device's secure storage, reads it back to check it, and then signs the payout consent with it.</comment>
   </data>
   <data name="bittensor_key_sign_out_message" xml:space="preserve">
     <value>Вашу фразу відновлення Bittensor ще не збережено. Ключ залишиться на цьому пристрої та повернеться, коли ця мережа знову ввійде в систему. Якщо ви втратите цей пристрій, не зберігши її, отримати доступ до ваших SN25α буде неможливо.</value>
     <comment>The confirmation of Sign out, the message.</comment>
   </data>
-  <data name="bittensor_key_sign_out_title" xml:space="preserve">
-    <value>Вийти, не зберігши ключ?</value>
-    <comment>The confirmation of Sign out, shown only while the Bittensor key's recovery phrase is not saved. The buttons are Sign out and Cancel.</comment>
+  <data name="bittensor_key_sign_out_message_2" xml:space="preserve">
+    <value>Він залишиться на цьому пристрої та повернеться, коли ви знову ввійдете в цю мережу. Якщо ви втратите цей пристрій, не зберігши його, отримати доступ до ваших SN25α буде неможливо.</value>
+    <comment>Sign out, the confirmation while the Bittensor key's recovery phrase isn't saved: what happens to the key. It is the key.</comment>
+  </data>
+  <data name="bittensor_key_sign_out_title_2" xml:space="preserve">
+    <value>У вашого ключа Bittensor немає резервної копії</value>
+    <comment>Sign out, the confirmation while this device holds the network's Bittensor key and its recovery phrase isn't saved: the title.</comment>
+  </data>
+  <data name="bittensor_key_signing" xml:space="preserve">
+    <value>Налаштування виплат: підписання згоди на виплати вашої мережі цим ключем.</value>
+    <comment>Key screen, a banner with a spinner while the app signs the network's payout consent with the new key, after the user confirmed two words of the recovery phrase.</comment>
+  </data>
+  <data name="bittensor_key_status_saved" xml:space="preserve">
+    <value>Ключ на цьому пристрої, фразу відновлення збережено</value>
+    <comment>Earnings screen, the payout card: a status line beside a green dot. The Bittensor key is stored on this device and the user confirmed saving its recovery phrase.</comment>
+  </data>
+  <data name="bittensor_key_status_unsaved" xml:space="preserve">
+    <value>Ключ на цьому пристрої, резервної копії ще немає</value>
+    <comment>Earnings screen, the payout card: a status line beside an amber dot. The Bittensor key is stored on this device and the user hasn't confirmed saving its recovery phrase.</comment>
   </data>
   <data name="bittensor_key_use_wallet" xml:space="preserve">
     <value>Використати гаманець, який у мене вже є</value>
     <comment>Earnings screen, the payout card for the network's payouts. A smaller link under Set up payouts: for someone who already has a Bittensor wallet.</comment>
   </data>
+  <data name="bittensor_key_view" xml:space="preserve">
+    <value>Переглянути ключ</value>
+    <comment>Earnings screen, the payout card: a link that opens the Key screen, where the recovery phrase can be shown after device authentication.</comment>
+  </data>
   <data name="bittensor_key_word_number" xml:space="preserve">
     <value>Слово {}</value>
     <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. A field label: which word of the phrase to enter, counting from 1, for example Word 3.</comment>
+  </data>
+  <data name="bittensor_key_word_wrong" xml:space="preserve">
+    <value>Це не слово {} цієї фрази відновлення.</value>
+    <comment>Key screen, the two-word sheet: an error under a field whose word is wrong. The placeholder is the word's position in the phrase, counting from 1.</comment>
   </data>
   <data name="bittensor_key_wording_control" xml:space="preserve">
     <value>Будь-хто, хто має цю фразу, контролює ваші SN25α. URnetwork ніколи її не попросить і не зможе її відновити. Якщо ви втратите цей пристрій, не зберігши її, отримати доступ до ваших SN25α буде неможливо.</value>
@@ -1189,6 +1301,10 @@
   <data name="bittensor_key_wording_not_wallet" xml:space="preserve">
     <value>URnetwork не є гаманцем. Він створив цей ключ, щоб ви могли отримувати SN25α. Щоб переказати або використати свої SN25α, введіть цю фразу відновлення в гаманець Bittensor, наприклад Talisman або Nova, чи в btcli.</value>
     <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Always visible on the screen.</comment>
+  </data>
+  <data name="bittensor_key_words_label" xml:space="preserve">
+    <value>12 слів · адреса {}</value>
+    <comment>Key screen, a small label above the recovery phrase's words: that it has 12 words, and the key's Bittensor address, shortened to its first and last characters around an ellipsis (5F3s…kQ9v); keep the address as it is.</comment>
   </data>
   <data name="bittensor_key_words_rejected" xml:space="preserve">
     <value>Ці слова не збігаються. Перевірте збережену фразу відновлення.</value>
@@ -7829,6 +7945,86 @@
   <data name="slow_internet_upload_delay" xml:space="preserve">
     <value>Затримка надсилання</value>
     <comment>Label for the measured upload delay (for example 640 ms or 1.2 s, with the upload rate when it is limited) in the slow-internet details sheet, the expanded Dynamic Island and Lock Screen Live Activity, the Android VPN notification, and the Windows and Linux tray and notification. Upload = traffic this device sends. Keep it short: it labels a number in a small box.</comment>
+  </data>
+  <data name="sn_claim_relay_again_on" xml:space="preserve">
+    <value>«Отримати зараз» знову буде доступно {}.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: Claim now was used for this address, and works again from this date. The placeholder is a date, as Dec 3.</comment>
+  </data>
+  <data name="sn_claim_relay_cap" xml:space="preserve">
+    <value>Бюджет на отримання на сьогодні вичерпано, тож це зачекає до наступного дня. Нічого не втрачається: це нарахування не має строку дії.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: URnetwork's daily budget for paying claim gas is spent, so the claim waits for the next day (UTC).</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now" xml:space="preserve">
+    <value>Отримати зараз</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: a button that asks URnetwork to claim the balance now, without waiting for the automatic threshold. Short: a button.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid" xml:space="preserve">
+    <value>«Отримати зараз» оплачується URnetwork, раз на {} дн.</value>
+    <comment>Earnings, the settlement v2 tile, under the Claim now button: URnetwork pays the gas, and the button can be used once in this many days (30). Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_claim_now_paid_each" xml:space="preserve">
+    <value>Оплачується URnetwork, раз на {} дн. для кожного coldkey.</value>
+    <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_for_you" xml:space="preserve">
+    <value>URnetwork надсилає запит на отримання за вас</value>
+    <comment>Earnings screen, the settlement v2 tile and the claim sheet: a line beside a relay icon. URnetwork sends the claim transaction and pays its gas; the SN25α goes to the user's own address.</comment>
+  </data>
+  <data name="sn_claim_relay_lands_on" xml:space="preserve">
+    <value>URnetwork надсилає запит на отримання за вас. Він оплачує газ, а ваші SN25α надходять на {}.</value>
+    <comment>Earnings claim sheet: who claims and where the tokens go. The placeholder is the user's Bittensor address, shortened (5F3s…kQ9v); keep it as it is.</comment>
+  </data>
+  <data name="sn_claim_relay_not_running" xml:space="preserve">
+    <value>Автоматичне отримання зараз не працює.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: URnetwork isn't sending claims at the moment.</comment>
+  </data>
+  <data name="sn_claim_relay_paused" xml:space="preserve">
+    <value>URnetwork поки що призупинив отримання.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: URnetwork paused claims for everyone for a while.</comment>
+  </data>
+  <data name="sn_claim_relay_queued" xml:space="preserve">
+    <value>URnetwork незабаром надішле запит на отримання.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: why the balance is still pending, it is in line to be claimed.</comment>
+  </data>
+  <data name="sn_claim_relay_queued_button" xml:space="preserve">
+    <value>У черзі</value>
+    <comment>Earnings claim sheet: the Claim now button, disabled, after the claim was asked for. Short: a button.</comment>
+  </data>
+  <data name="sn_claim_relay_refused" xml:space="preserve">
+    <value>Останній запит на отримання не пройшов. URnetwork спробує ще раз пізніше.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: the last claim transaction failed, and URnetwork will try again by itself.</comment>
+  </data>
+  <data name="sn_claim_relay_requested" xml:space="preserve">
+    <value>«Отримати зараз» у черзі. URnetwork надішле цей запит першим, у межах сьогоднішнього бюджету.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, after the user tapped Claim now: the claim is in line and goes out before the automatic ones, as long as the day's gas budget lasts.</comment>
+  </data>
+  <data name="sn_claim_relay_self_claim" xml:space="preserve">
+    <value>Отримайте самостійно за допомогою свого ключа для газу</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: a link to claim the balance from this device, paying the gas with the user's gas key (a small TAO account on this device). Keep gas key as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_under_floor" xml:space="preserve">
+    <value>Для «Отримати зараз» потрібен баланс вартістю щонайменше {} TAO.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: why Claim now can't be used yet. The placeholder is the smallest amount, in TAO (0.0001).</comment>
+  </data>
+  <data name="sn_claim_relay_under_threshold" xml:space="preserve">
+    <value>Нижче порогу автоматичного отримання.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: why the balance is still pending. URnetwork claims automatically once a balance is worth a set amount.</comment>
+  </data>
+  <data name="sn_claim_relay_under_threshold_body" xml:space="preserve">
+    <value>Запит на отримання буде надіслано за вас, щойно вартість суми сягне приблизно {0} TAO, тобто приблизно {1} SN25α за сьогоднішнім курсом. Очікування нічого не коштує: це нарахування не має строку дії.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, under Below the automatic threshold. The placeholders are amounts: the threshold in TAO (0.0125), then the same in SN25α at today's price (3).</comment>
+  </data>
+  <data name="sn_claim_relay_under_threshold_no_price" xml:space="preserve">
+    <value>Запит на отримання буде надіслано за вас, щойно вартість суми сягне приблизно {} TAO. Очікування нічого не коштує: це нарахування не має строку дії.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, under Below the automatic threshold, when today's SN25α price isn't known. The placeholder is the threshold in TAO (0.0125).</comment>
+  </data>
+  <data name="sn_claim_relay_waits" xml:space="preserve">
+    <value>Ваші SN25α чекають у сховищі, а це нарахування не має строку дії.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, under Automatic claims aren't running right now: nothing is lost. The vault is the settlement contract holding the user's balance.</comment>
+  </data>
+  <data name="sn_claim_relay_waits_for_relay" xml:space="preserve">
+    <value>«Отримати зараз» зачекає, доки отримання знову не запрацює. Щоб отримати одразу, оплатіть газ самостійно:</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, when URnetwork isn't claiming: the link below claims with the user's own gas key. Ends with a colon before that link.</comment>
   </data>
   <data name="sn_consent_active" xml:space="preserve">
     <value>Заробіток виплачується на {}</value>
