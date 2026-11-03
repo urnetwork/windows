@@ -93,6 +93,12 @@ class AppController {
   // read once at Start and kept here, its one reader. UI thread.
   bool SlowInternetNotify() const { return slowNotify_; }
   void SetSlowInternetNotify(bool on);
+  // The one-tap Bittensor key's one reminder (the sdk's Reminder, posted by
+  // Earnings): the tray's notification, which Windows shows as a toast. Its
+  // click opens Earnings with the Key screen. True once it went out.
+  bool PostBittensorKeyReminder();
+  // Earnings with the Key screen: the reminder's click, and Back up first.
+  void OpenEarningsKeyScreen();
 
   // What the sign-in page says about the sign-out the server made, once
   // (AuthLogoutNotice.h): the window takes it whenever it shows that page,

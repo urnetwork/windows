@@ -1103,8 +1103,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>无法读取这台设备的钥匙串。请解锁您的设备，然后重试。</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>无法读取这台设备的安全存储。请解锁您的设备，然后重试。</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>无法在这台设备上保存密钥，因此未进行任何签名。请重试，或先保存恢复短语。</value>
@@ -8721,6 +8721,10 @@
   <data name="sn_claim_relay_claim_now_paid_each.other" xml:space="preserve">
     <value>由 URnetwork 支付费用，每个 coldkey 每 {} 天一次。</value>
     <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claimed" xml:space="preserve">
+    <value>已由 URnetwork 领取。{0} SN25α 已在您的密钥 {1} 上。</value>
+    <comment>Earnings, the claim sheet and the settlement v2 tile, once URnetwork has claimed the balance and paid the gas (the claimed state, beside a link to the transaction). The first placeholder is the amount claimed, as 0.8420; the second is the user's Bittensor address, shortened (5F3s…kQ9v); keep both as they are.</comment>
   </data>
   <data name="sn_claim_relay_for_you" xml:space="preserve">
     <value>URnetwork 代您发起领取</value>

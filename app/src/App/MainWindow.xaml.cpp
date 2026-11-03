@@ -491,6 +491,8 @@ MainWindow::MainWindow() {
                                 Microsoft::UI::Xaml::WindowActivatedEventArgs const& args) {
     if (args.WindowActivationState() ==
         Microsoft::UI::Xaml::WindowActivationState::Deactivated) {
+      // the one-tap key's words hide as soon as the window loses focus
+      if (auto self = weak.get()) self->wallet_->OnWindowDeactivated();
       return;
     }
     if (auto self = weak.get()) {
@@ -588,6 +590,8 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::SetPresentationActive(bool active) {
+  // the one-tap key's words hide while the window doesn't present
+  if (!active) wallet_->OnWindowDeactivated();
   connect_->SetPresentationActive(active);
   // the Earnings statistics charts' clock (EXTENDER.md O8)
   wallet_->SetPresentationActive(active);
@@ -2378,6 +2382,13 @@ void MainWindow::HandleTop200SignLink(std::string const& url) {
   wallet_->ShowTop200Sign(link.ok ? link.binding : std::string(), /*linkInvalid=*/!link.ok);
 }
 
+void MainWindow::OpenEarningsKeyScreen() {
+  if (!Sdk().IsLoggedIn() || previewUi_) return;
+  // the Earnings load this navigation starts makes the flow the screen needs
+  HomeNav().SelectedItem(WalletNavItem());
+  wallet_->OpenKeyScreenWhenReady();
+}
+
 void MainWindow::NoteConnected() {
   // connect.first: once per network. The network id keys the memory, so a
   // second account on the same machine gets its own first connect.
@@ -3134,6 +3145,8 @@ void MainWindow::OnTunnelStateChanged(urnw::proto::TunnelStatus const& status) {
 // its own button refuses this one too and comes back with the window: the
 // seedphrase sheet, which holds the only copy of a new network's credential.
 void MainWindow::CloseSheetsForHide() {
+  // the Key screen closes whatever its step, a phrase only in memory with it
+  wallet_->CloseKeyScreenForHide();
   const auto content = Content();
   if (!content) return;
   const auto root = content.XamlRoot();

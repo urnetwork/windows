@@ -1087,8 +1087,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>Δεν ήταν δυνατή η ανάγνωση του μπρελόκ αυτής της συσκευής. Ξεκλειδώστε τη συσκευή σας και δοκιμάστε ξανά.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>Δεν ήταν δυνατή η ανάγνωση του ασφαλούς χώρου αποθήκευσης αυτής της συσκευής. Ξεκλειδώστε τη συσκευή σας και δοκιμάστε ξανά.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>Δεν ήταν δυνατή η αποθήκευση του κλειδιού σε αυτή τη συσκευή, οπότε δεν υπογράφηκε τίποτα. Δοκιμάστε ξανά ή αποθηκεύστε πρώτα τη φράση επαναφοράς.</value>
@@ -7741,6 +7741,10 @@
   <data name="sn_claim_relay_claim_now_paid_each.other" xml:space="preserve">
     <value>Πληρώνεται από το URnetwork, μία φορά κάθε {} ημέρες για κάθε coldkey.</value>
     <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claimed" xml:space="preserve">
+    <value>Διεκδικήθηκε από το URnetwork. {0} SN25α βρίσκονται στο κλειδί σας, {1}.</value>
+    <comment>Earnings, the claim sheet and the settlement v2 tile, once URnetwork has claimed the balance and paid the gas (the claimed state, beside a link to the transaction). The first placeholder is the amount claimed, as 0.8420; the second is the user's Bittensor address, shortened (5F3s…kQ9v); keep both as they are.</comment>
   </data>
   <data name="sn_claim_relay_for_you" xml:space="preserve">
     <value>Το URnetwork το διεκδικεί για εσάς</value>

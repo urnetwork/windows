@@ -1075,8 +1075,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>Tidak dapat membaca rantai kunci perangkat ini. Buka kunci perangkat Anda dan coba lagi.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>Tidak dapat membaca penyimpanan aman perangkat ini. Buka kunci perangkat Anda dan coba lagi.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>Tidak dapat menyimpan kunci di perangkat ini, jadi tidak ada yang ditandatangani. Coba lagi, atau simpan frasa cadangan terlebih dahulu.</value>
@@ -7617,6 +7617,10 @@ konten dunia</value>
   <data name="sn_claim_relay_claim_now_paid_each.other" xml:space="preserve">
     <value>Dibayar oleh URnetwork, sekali setiap {} hari untuk setiap coldkey.</value>
     <comment>Earnings claim sheet, under the Claim now button: URnetwork pays the gas, once in this many days (30 today; the count selects the plural form) for each Bittensor address (coldkey). Keep coldkey as the app writes it elsewhere.</comment>
+  </data>
+  <data name="sn_claim_relay_claimed" xml:space="preserve">
+    <value>Diklaim oleh URnetwork. {0} SN25α sudah ada di kunci Anda, {1}.</value>
+    <comment>Earnings, the claim sheet and the settlement v2 tile, once URnetwork has claimed the balance and paid the gas (the claimed state, beside a link to the transaction). The first placeholder is the amount claimed, as 0.8420; the second is the user's Bittensor address, shortened (5F3s…kQ9v); keep both as they are.</comment>
   </data>
   <data name="sn_claim_relay_for_you" xml:space="preserve">
     <value>URnetwork mengklaim ini untuk Anda</value>

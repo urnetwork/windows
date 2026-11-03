@@ -16,6 +16,7 @@
 #include "Log.h"
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
+#include "BittensorKeyStore.h"  // this session's sign-out warns of a key that isn't backed up
 #include "SessionGlyphs.h"
 #include "SettingsSheets.h"  // rows::MakeSheet, rows::CopyToClipboard, rows::Lookup
 #include "StatsFormat.h"     // RelativeTime and the user's dates
@@ -589,12 +590,24 @@ void SessionsPage::CopyId(std::string const& sessionId) {
 winrt::fire_and_forget SessionsPage::ConfirmSignOut(std::string sessionId) {
   if (w_.sheetOpen() || !rendered_) co_return;
   std::optional<sessions::Confirmation> confirmation;
+  bool current = false;
   for (auto const& row : rendered_->rows) {
     if (row.sessionId == sessionId) {
       confirmation = sessions::ConfirmationFor(row, SessionsText(NowMillis()));
+      current = row.current;
     }
   }
   if (!confirmation) co_return;
+  // This session's sign-out signs this app out: a one-tap Bittensor key here
+  // whose phrase isn't known to be saved stays on this device, and the
+  // confirmation says so.
+  if (current) {
+    std::string networkId;
+    if (auto jwt = Sdk().ParsedJwt(); jwt && jwt->NetworkId) networkId = *jwt->NetworkId;
+    if (BittensorKeyNeedsBackup(networkId)) {
+      confirmation->body += "\n\n" + Narrow(std::wstring_view{Loc("bittensor_key_sign_out_message")});
+    }
+  }
   // the controller this confirmation is for
   const uint64_t generation = fence_.Current();
   auto self = w_.get_strong();

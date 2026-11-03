@@ -21,6 +21,7 @@
 #include "UrColors.h"
 #include "UrComponents.h"
 #include "UrIoApproval.h"
+#include "BittensorKeySheets.h"  // the sign-out warning while the key isn't backed up
 #include "WalletBridgeRoute.h"
 #include "WalletConnect.h"
 
@@ -1851,7 +1852,10 @@ void LoginPage::OnAccountMenu(IInspectable const&, RoutedEventArgs const&) {
       if (auto self = weak.get()) self->login().OpenGuestConversion();
     };
   }
-  actions.onSignOut = [] { Sdk().Logout(); };
+  // a one-tap Bittensor key that isn't backed up asks first; otherwise it signs out at once
+  actions.onSignOut = [weak] {
+    if (auto self = weak.get()) urnw::btkeysheets::RequestSignOut(self, [] { Sdk().Logout(); });
+  };
   actions.onShared = [weak] {
     if (auto self = weak.get()) {
       self->login().snackbar_->Show(Loc("bonus_referral_code_copied_to_clipboard"),

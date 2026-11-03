@@ -34,6 +34,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -43,6 +44,8 @@
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 
+#include "BittensorKeySheets.h"
+#include "BittensorWalletDialogs.h"
 #include "EarningsSheets.h"
 #include "ProtocolBoard.h"
 #include "ProviderIdleReason.h"
@@ -178,6 +181,18 @@ class WalletPage {
   void ShowEarningsActionsMenu(winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor);
 
   void RefreshAfterWalletChange();
+
+  // ---- the one-tap Bittensor key (apple/BTEASY.md, flows 1 to 4) -------------
+  // The sdk's BittensorLocalKeyFlow decides everything; these run its calls and
+  // draw what it says (BittensorKeyViews.h, BittensorKeySheets.h).
+  //
+  // Back up first (Sign out, Delete account) and the reminder's notification:
+  // the Key screen, once Earnings has the flow for the signed-in network.
+  void OpenKeyScreenWhenReady();
+  // The window lost focus or stopped presenting: the words hide.
+  void OnWindowDeactivated();
+  // The window is hiding to the tray: the Key screen closes, whatever its step.
+  void CloseKeyScreenForHide();
 
   // ---- the boards ------------------------------------------------------------
   // The leaderboard is three boards behind one switch, in the owner's order
@@ -401,6 +416,60 @@ class WalletPage {
   void FailConsent(std::string const& codeOrError, winrt::hstring const& fallback);
   void EndConsent();
 
+  // ---- the one-tap Bittensor key
+  // The flow for the signed-in network: made on the first load of a network
+  // and read again (the sdk's Reload) on every later one, closed at sign-out.
+  void OpenKeyFlow();
+  void CloseKeyFlow();
+  // The flow's listener, on the UI thread: the card, the banner, the card's
+  // place, the wallet card, the payout line and the Key screen read it again.
+  void ReadKeyFlow();
+  // The consent read, the epoch, the guest flag and the Top 200 registration,
+  // into the flow (SetConsent, SetCurrentEpoch, SetGuest, SetTop200Registered).
+  void FeedKeyConsent();
+  // The key's part of the payout card (btkey::CardLayoutFor), under the
+  // consent panel's own lines or in their place, and its disclaimer.
+  void RebuildKeyCard(snconsent::PanelView const& view);
+  // The backup banner, while the key's phrase isn't known to be saved.
+  void ApplyKeyBanner();
+  // The payout card leads Earnings while the sdk shows the key path; it keeps
+  // its old place after settlement v2 otherwise.
+  void PlaceConsentPanel();
+  // The Bittensor wallet card with no wallet read: the key on this device in
+  // place of Connect Bittensor wallet.
+  void ApplyKeyWalletCard();
+  // The sdk's card says the consent pays the key on this device.
+  bool KeyPaysThisDevice() const;
+  // The card's actions. A replacement of the payout wallet in force asks first.
+  enum class KeyAction { SetUp, SaveFirst, FinishSetup };
+  void OnKeyAction(KeyAction action);
+  winrt::fire_and_forget ConfirmKeyReplacement(KeyAction action);
+  void RunKeyAction(KeyAction action, bool replaceConfirmed);
+  void OpenKeyScreen();
+  // The wallet consent sheet: Change wallet offers a key on this device while
+  // the sdk's card offers one; Use a wallet I already have never does.
+  void StartWalletConsent(bool offerKey);
+  // the key offer the consent sheet starts with, or none (BittensorWalletDialogs.h)
+  pages::WalletKeyOffer KeyOfferForConsent(bool offerKey);
+  winrt::fire_and_forget ShowKeySheet();
+  // The one reminder (the sdk's Reminder), on each Earnings read.
+  void ApplyKeyReminder();
+  void PostKeyReminder();
+  // ---- claims through the relay (sn_claim_relay.go)
+  void LoadClaimStatus();
+  void ApplyClaimStatus(uint32_t read, std::optional<urnet::SnClaimStatusResult> status);
+  // A network with no wallet on this device: the settlement v2 tile shows what
+  // the relay claims for its consent.
+  bool RelayTileShows() const;
+  // The tile's relay rows and its disclaimer, after RebuildV2Section's balances.
+  void ApplyRelayToV2Section(snpayout::LedgerSectionView const& view);
+  // The claim tiles' funds disclaimer: the first claim tile shown carries the
+  // sdk's ClaimFundsDisclaimer (the v1 tile while a wallet is read, else v2's).
+  void ApplyClaimDisclaimers();
+  winrt::fire_and_forget OpenClaimRelaySheet();
+  // The sdk's disclaimer for a place (FundsDisclaimerAt), "" with no flow.
+  std::string KeyDisclaimerAt(std::string_view place) const;
+
   // ---- reliability
   void ApplyReliability(std::optional<urnet::ReliabilityWindow> window, Fetch state);
 
@@ -554,6 +623,36 @@ class WalletPage {
   bool consentSigning_ = false;
   // the newest read's number (LoadConsentStatus); a sign-out moves it on too
   uint32_t consentReadGeneration_ = 0;
+
+  // ---- the one-tap Bittensor key
+  // The sdk's flow for keyNetworkId_ (BittensorKeyStore.h NewBittensorKeyFlow),
+  // shared with the Key screen while it is up. Null with no network signed in.
+  std::shared_ptr<urnet::BittensorLocalKeyFlow> keyFlow_;
+  std::optional<urnet::Sub> keySub_;
+  std::string keyNetworkId_;
+  // the card the flow last said, and the link generation the page last
+  // re-read the consent and earnings for
+  std::optional<urnet::BittensorLocalKeyCard> keyCard_;
+  int64_t keyLinkGeneration_ = 0;
+  // the consent panel's last view, for the key's part of the card
+  std::optional<snconsent::PanelView> consentView_;
+  std::shared_ptr<urnw::BittensorKeySheet> keySheet_;
+  // Back up first or the reminder asked for the Key screen before the flow was there
+  bool keyScreenPending_ = false;
+  // Use a wallet I already have: the consent sheet opens without the key offer
+  bool walletOnlyConsent_ = false;
+  // the network has a claimed Top 200 fleet (the tile's answer)
+  bool keyTop200Registered_ = false;
+  // the Bittensor wallet card shows the key on this device
+  bool keyWalletCardShown_ = false;
+  // the card's BackupReminder as last read: its end takes a reminder back
+  bool keyBackupReminder_ = false;
+  // the one reminder's moment, waited for while the app runs
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer keyReminderTimer_{nullptr};
+  // ---- claims through the relay: the newest read's number and answer
+  uint32_t claimStatusGeneration_ = 0;
+  std::optional<urnet::SnClaimStatusResult> claimStatus_;
+  std::shared_ptr<urnw::ClaimRelaySheet> relaySheet_;
 
   int64_t leaderboardRank_ = 0;
   int64_t leaderboardCount_ = 0;

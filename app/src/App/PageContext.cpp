@@ -14,6 +14,7 @@ CryptoInvoiceStore& CryptoInvoice() { return urnw::App().cryptoInvoice(); }
 UpdateChecker& Updates() { return urnw::App().updates(); }
 bool SlowInternetNotify() { return urnw::App().SlowInternetNotify(); }
 void SetSlowInternetNotify(bool on) { urnw::App().SetSlowInternetNotify(on); }
+bool PostBittensorKeyReminder() { return urnw::App().PostBittensorKeyReminder(); }
 
 // The miss test IS the equality: Localized() returns the key id itself when the
 // store has no such key, so "the lookup gave me back what I asked for" means

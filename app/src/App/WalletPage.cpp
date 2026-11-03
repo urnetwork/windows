@@ -25,6 +25,10 @@
 #include <limits>
 #include <string_view>
 
+#include "BittensorKeyPresentation.h"
+#include "BittensorKeySheets.h"
+#include "BittensorKeyStore.h"
+#include "BittensorKeyViews.h"
 #include "BittensorWalletDialogs.h"
 #include "BittensorWalletFlow.h"
 #include "EarningsSheets.h"
@@ -38,6 +42,7 @@
 #include "StatsSheets.h"  // TransportSettingsSheet, for the provider transport bar
 #include "StatsFormat.h"
 #include "Strings.h"
+#include "SubscriptionBalance.h"  // Balance(): a guest network gets no key
 #include "UrColors.h"
 #include "UrComponents.h"
 #include "WalletBridgeRoute.h"
@@ -532,6 +537,15 @@ WalletPage::~WalletPage() {
   if (pointsPublicFlow_.timer) pointsPublicFlow_.timer.Stop();
   if (legacyFlow_.timer) legacyFlow_.timer.Stop();
   if (removeFlow_.timer) removeFlow_.timer.Stop();
+  if (keyReminderTimer_) keyReminderTimer_.Stop();
+  try {
+    // the flow's changes reach no page after this one
+    SetBittensorKeyFlowListener(nullptr);
+    keySub_.reset();
+    if (keyFlow_) keyFlow_->close();
+  } catch (...) {
+    // the sdk may already be gone at teardown
+  }
   try {
     ClosePointsBoard(/*deviceAlive=*/true);
   } catch (...) {
@@ -800,6 +814,9 @@ void WalletPage::ApplyStrings() {
   RebuildPayoutLine();
   RebuildV2Section();
   RebuildConsentPanel();
+  // the one-tap key's banner, and its wallet card's note, in the language
+  ApplyKeyBanner();
+  ApplyKeyWalletCard();
 }
 
 // The ledger pane shows ONE table at a time; this is the switch in its header.
@@ -836,6 +853,9 @@ void WalletPage::LoadLeaderboardIfShowing() {
 void WalletPage::LoadWallet() {
   if (!Sdk().IsLoggedIn()) return;  // the caller's guard is not the only one
   if (auto jwt = Sdk().ParsedJwt(); jwt && jwt->NetworkId) ownNetworkId_ = *jwt->NetworkId;
+  // the one-tap key's flow first, so the consent read below feeds it; a key
+  // comes back here after a sign-out, a crash or a reinstall
+  OpenKeyFlow();
   LoadPoints();
   LoadReliability();
   LoadEpochs();
@@ -845,6 +865,8 @@ void WalletPage::LoadWallet() {
   LoadLegacyWallets();
   LoadLeaderboardIfShowing();
   LoadConsentStatus();
+  // what URnetwork's claim relay says of the network's settlement v2 balance
+  LoadClaimStatus();
 }
 
 void WalletPage::RefreshAfterWalletChange() { LoadWallet(); }
@@ -905,6 +927,15 @@ void WalletPage::ResetForSignOut() {
   RebuildHistory();  // clears the rows; Loading draws nothing over the status line
   w_.PointsStatusText().Text(loading);
   w_.PointsStatusText().Visibility(Visibility::Visible);
+
+  // The one-tap key's flow was this network's: it closes, with a Key screen
+  // still up, and a phrase only in memory is let go. The key itself stays on
+  // this device and comes back when this network signs in again. The relay's
+  // answer was this network's too.
+  CloseKeyFlow();
+  ++claimStatusGeneration_;
+  claimStatus_.reset();
+  RebuildV2Section();
 
   // The payout consent is the network's that left: hidden until the next
   // account's read, and a read, a challenge or a submission still out for this
@@ -1063,6 +1094,7 @@ void WalletPage::LoadClaims() {
         s.endMillis = result->schedule->end_millis;
         s.claimOpenMillis = result->schedule->claim_open_millis;
         s.expiryMillis = result->schedule->expiry_millis;
+        s.epochBlocks = result->schedule->epoch_blocks;
         schedule = s;
       }
       if (result->claims) {
@@ -1302,6 +1334,9 @@ void WalletPage::ApplySnWallet(std::optional<SnWalletInfo> wallet, Fetch state) 
   RebuildHistory();
   RebuildPayoutLine();
   RebuildV2Section();
+  // with no wallet read, the key on this device in place of Connect
+  ApplyKeyWalletCard();
+  ApplyClaimDisclaimers();
   if (connected && !w_.previewUi()) {
     EnsureChainSettings([weak = w_.get_weak()] {
       if (auto self = weak.get()) {
@@ -2051,6 +2086,11 @@ void WalletPage::ShowEarningsActionsMenu(FrameworkElement const& anchor) {
   MenuFlyoutItem wallet;
   const bool connected =
       w_.WalletConnectedPanel().Visibility() == Visibility::Visible;
+  // the card shows the key on this device: no wallet to connect or change
+  // there (the payout card's Change wallet is where a network moves)
+  wallet.Visibility(connected && w_.ChangeWalletButton().Visibility() != Visibility::Visible
+                        ? Visibility::Collapsed
+                        : Visibility::Visible);
   wallet.Text(connected ? Loc("earnings_change_wallet") : Loc("connect_bittensor_wallet"));
   wallet.IsEnabled(!connectingWallet_);
   wallet.Click([weak, connected](IInspectable const& s, RoutedEventArgs const& e) {
@@ -2308,6 +2348,10 @@ void WalletPage::ApplyClaims(std::vector<EpochClaim> const& claims, int64_t tota
   claimsState_ = state;
   schedule_ = schedule;
   RebuildPayoutLine();
+  // "Payouts start next epoch" reads the current epoch, and the one reminder
+  // the schedule and whether anything is claimable
+  FeedKeyConsent();
+  ApplyKeyReminder();
   size_t claimable = 0;
   for (auto const& claim : claims_) {
     if (claim.status == "claimable") ++claimable;
@@ -2347,8 +2391,11 @@ void WalletPage::ApplyClaims(std::vector<EpochClaim> const& claims, int64_t tota
 // the Bittensor block's; the app never claims by itself.
 void WalletPage::RebuildPayoutLine() {
   const bool walletKnown = walletState_ == Fetch::Ready || snWallet_.has_value();
+  // a key on this device the consent pays is the network's coldkey: the line
+  // doesn't ask for one
+  const bool hasColdkey = snWallet_.has_value() || KeyPaysThisDevice();
   const auto view = snpayout::PayoutLineFor(
-      walletKnown, snWallet_.has_value(), totalClaimableRao_, schedule_, NowMillis(),
+      walletKnown || hasColdkey, hasColdkey, totalClaimableRao_, schedule_, NowMillis(),
       [](int64_t millis) {
         return snpayout::FormatScheduleTime(millis, LocalUtcOffsetMinutes(millis));
       });
@@ -2376,6 +2423,10 @@ void WalletPage::ApplyGas(std::optional<GasKeyInfo> gas) { gas_ = std::move(gas)
 // claim flow is unchanged. A claimed network shows its fleets' UIDs,
 // validator ranks and selection, as the board's detail sheet.
 void WalletPage::ApplyTop200(protocolboard::Tile const& tile) {
+  // a network with a claimed fleet: deleting the key no longer gives up a
+  // one-tap Top 200 claim
+  keyTop200Registered_ = tile.body == protocolboard::TileBody::Claimed;
+  FeedKeyConsent();
   const bool show = tile.body != protocolboard::TileBody::Hidden;
   w_.Top200Panel().Visibility(show ? Visibility::Visible : Visibility::Collapsed);
   if (!show) return;
@@ -2511,6 +2562,7 @@ void WalletPage::ApplyV2Accounts(snpayout::LedgerFetch fetch,
   v2Fetch_ = fetch;
   v2Accounts_ = accounts;
   RebuildV2Section();
+  ApplyKeyReminder();
 }
 
 // Settlement v2, beside the v1 tile: per account Claimable over its figure,
@@ -2521,8 +2573,32 @@ void WalletPage::ApplyV2Accounts(snpayout::LedgerFetch fetch,
 void WalletPage::RebuildV2Section() {
   const auto view = snpayout::LedgerSectionFor(snWallet_.has_value(), Vault2Configured(),
                                                v2Fetch_, v2Accounts_, CanClaim());
-  w_.SettlementV2Panel().Visibility(view.shown ? Visibility::Visible : Visibility::Collapsed);
-  if (!view.shown) return;
+  // A network with no wallet on this device has no ledger read here: the tile
+  // shows what URnetwork's claim relay claims for its consent, once the relay
+  // reports a claimable or pending balance.
+  const bool relayTile = !view.shown && RelayTileShows();
+  w_.SettlementV2Panel().Visibility(view.shown || relayTile ? Visibility::Visible
+                                                            : Visibility::Collapsed);
+  if (relayTile) {
+    kit::SetTextOrCollapse(w_.SettlementV2StatusText(), hstring{});
+    auto relayPanel = w_.SettlementV2AccountsPanel();
+    relayPanel.Children().Clear();
+    StackPanel block;
+    block.Spacing(2);
+    block.Children().Append(MakeText(Loc("sn_ledger_claimable"), 12, colors::MutedBrush()));
+    auto relayFigure = MakeValue(hstring{FormatAlphaRao(claimStatus_->claimable_rao)}, 32);
+    if (claimStatus_->claimable_rao > 0) relayFigure.Foreground(colors::AccentBrush());
+    block.Children().Append(relayFigure);
+    relayPanel.Children().Append(block);
+    kit::SetTextOrCollapse(w_.SettlementV2Note(), hstring{});
+    w_.SettlementV2ClaimButton().Visibility(Visibility::Collapsed);
+    ApplyRelayToV2Section(view);
+    return;
+  }
+  if (!view.shown) {
+    ApplyRelayToV2Section(view);
+    return;
+  }
   kit::SetTextOrCollapse(w_.SettlementV2StatusText(), view.loading ? Loc("loading") : hstring{});
   auto panel = w_.SettlementV2AccountsPanel();
   panel.Children().Clear();
@@ -2568,6 +2644,8 @@ void WalletPage::RebuildV2Section() {
   w_.SettlementV2ClaimButton().Visibility(view.showClaim ? Visibility::Visible
                                                          : Visibility::Collapsed);
   w_.SettlementV2ClaimButton().IsEnabled(view.claimEnabled);
+  // URnetwork's claim relay under the balances: who claims, why it waits, Claim now
+  ApplyRelayToV2Section(view);
 }
 
 // The device's merged chain settings (the defaults and what /sn/epoch synced),
@@ -2602,6 +2680,7 @@ LedgerClaimer WalletPage::MakeV2Claimer() {
         if (auto self = weak.get()) {
           self->wallet().LoadV2Accounts();
           self->wallet().LoadGas();
+          self->wallet().LoadClaimStatus();
         }
       });
     };
@@ -2690,6 +2769,8 @@ void WalletPage::ApplyConsentStatus(uint32_t read, snconsent::Fetch fetch,
   if (read != consentReadGeneration_) return;
   consentFetch_ = fetch;
   consent_ = status;
+  // the flow reads the same consent: the card's state is decided from it
+  FeedKeyConsent();
   RebuildConsentPanel();
 }
 
@@ -2701,7 +2782,10 @@ void WalletPage::ApplyConsentStatus(uint32_t read, snconsent::Fetch fetch,
 void WalletPage::RebuildConsentPanel() {
   const auto view = snconsent::PanelFor(CanCallApi() && !connectingWallet_, consentFetch_,
                                         consent_, consentSigning_);
+  consentView_ = view;
   w_.PayoutConsentPanel().Visibility(view.shown ? Visibility::Visible : Visibility::Collapsed);
+  // the card leads Earnings while the key path needs action
+  PlaceConsentPanel();
   if (!view.shown) return;
   kit::SetTextOrCollapse(w_.PayoutConsentStatusText(), view.loading  ? Loc("loading")
                                                        : view.failed ? Loc("something_went_wrong")
@@ -2718,6 +2802,8 @@ void WalletPage::RebuildConsentPanel() {
                                                              : Visibility::Visible);
   if (!view.buttonKey.empty()) w_.PayoutConsentButton().Content(LocBox(view.buttonKey));
   w_.PayoutConsentButton().IsEnabled(view.buttonEnabled);
+  // the one-tap key's part of the card, and the disclaimer that closes it
+  RebuildKeyCard(view);
 }
 
 // The panel's button and the Earnings actions menu's item, Sign with wallet
@@ -2725,6 +2811,11 @@ void WalletPage::RebuildConsentPanel() {
 // opens with), then the coldkey the consent names, typed and checked before
 // any request (EnterConsentColdkey), then the challenge for it.
 void WalletPage::OnSignConsent(IInspectable const&, RoutedEventArgs const&) {
+  // Use a wallet I already have opens the sheet without the key offer
+  // (StartWalletConsent); Change wallet and Sign with wallet offer it while the
+  // sdk's card offers a key here
+  const bool offerKey = !walletOnlyConsent_;
+  walletOnlyConsent_ = false;
   if (consentSigning_ || connectingWallet_ || w_.sheetOpen()) return;
   // before the chooser and the browser: every step of this ends in a server call
   if (!CanCallApi()) {
@@ -2740,7 +2831,7 @@ void WalletPage::OnSignConsent(IInspectable const&, RoutedEventArgs const&) {
       if (!page || coldkeySs58.empty()) return;
       page->wallet().StartConsent(coldkeySs58, walletId);
     });
-  });
+  }, KeyOfferForConsent(offerKey));
 }
 
 // The server's challenge for the typed coldkey (the SDK picks its epochs: from
@@ -2935,6 +3026,617 @@ winrt::fire_and_forget WalletPage::ShowTop200Sign(std::string prefill, bool link
 }
 
 void WalletPage::OpenProtocolSite() { OpenUrl(kUrXyzUrl); }
+
+// ---- the one-tap Bittensor key (apple/BTEASY.md, flows 1 to 3) ----------------
+//
+// The sdk's BittensorLocalKeyFlow decides every state, offer, disclaimer and
+// signature; the page feeds it the consent read, the epoch, the guest flag and
+// the Top 200 registration, runs its calls from the card and the Key screen,
+// and draws what GetCard says (BittensorKeyViews.h) where the payout consent
+// panel is. The key's store is BittensorKeyStore.h's.
+
+void WalletPage::OpenKeyFlow() {
+  if (!CanCallApi()) return;
+  std::string networkId;
+  if (auto jwt = Sdk().ParsedJwt(); jwt && jwt->NetworkId) networkId = *jwt->NetworkId;
+  if (networkId.empty()) {
+    CloseKeyFlow();
+    return;
+  }
+  if (keyFlow_ && keyNetworkId_ == networkId) {
+    // a visit reads the store again: the key returns after a sign-out, a crash
+    // or a reinstall
+    FeedKeyConsent();
+    try {
+      keyFlow_->reload();
+    } catch (std::exception const& e) {
+      urnw::LogWarn("earnings: the key flow's reload failed: {}", e.what());
+    }
+    return;
+  }
+  CloseKeyFlow();
+  // A change from any flow makes the page read its current one, on the UI
+  // thread: the listener fires on whichever thread the sdk publishes on.
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+  SetBittensorKeyFlowListener([queue, weak, alive] {
+    queue.TryEnqueue([weak, alive] {
+      if (!*alive) return;
+      if (auto self = weak.get()) self->wallet().ReadKeyFlow();
+    });
+  });
+  try {
+    auto flow = std::make_shared<urnet::BittensorLocalKeyFlow>(NewBittensorKeyFlow(&Sdk().api(), networkId));
+    if (!*flow) {
+      urnw::LogError("earnings: the key flow could not be made");
+      return;
+    }
+    keyFlow_ = std::move(flow);
+    keyNetworkId_ = networkId;
+    keyLinkGeneration_ = 0;
+    keySub_ = ListenToBittensorKeyFlow(*keyFlow_);
+  } catch (std::exception const& e) {
+    urnw::LogError("earnings: the key flow could not be made: {}", e.what());
+    return;
+  }
+  FeedKeyConsent();
+  ReadKeyFlow();
+}
+
+void WalletPage::CloseKeyFlow() {
+  // a Key screen still up closes, and a phrase only in memory is let go
+  if (keySheet_) keySheet_->CloseNow();
+  keySub_.reset();
+  if (keyFlow_) {
+    try {
+      keyFlow_->close();
+    } catch (std::exception const& e) {
+      urnw::LogWarn("earnings: closing the key flow failed: {}", e.what());
+    }
+  }
+  keyFlow_.reset();
+  keyNetworkId_.clear();
+  keyCard_.reset();
+  keyLinkGeneration_ = 0;
+  keyScreenPending_ = false;
+  keyBackupReminder_ = false;
+  if (keyReminderTimer_) keyReminderTimer_.Stop();
+  ApplyKeyBanner();
+  ApplyKeyWalletCard();
+}
+
+void WalletPage::FeedKeyConsent() {
+  if (!keyFlow_) return;
+  try {
+    // a guest network has no login to come back to: no key, only the wallet flow
+    const auto jwt = Sdk().ParsedJwt();
+    keyFlow_->setGuest((jwt && jwt->GuestMode) || Balance().Current().guest);
+    switch (consentFetch_) {
+      case snconsent::Fetch::Ready:
+        if (consent_ && consent_->active) {
+          keyFlow_->setConsent(true, consent_->coldkeySs58, consent_->fromEpoch);
+        } else {
+          keyFlow_->setConsent(false, std::string(), 0);
+        }
+        break;
+      case snconsent::Fetch::Failed:
+        // unknown, which is not "no consent"
+        keyFlow_->setConsentUnavailable();
+        break;
+      case snconsent::Fetch::Idle:
+      case snconsent::Fetch::Loading:
+        // not read yet: the flow keeps what the last read said
+        break;
+    }
+    keyFlow_->setCurrentEpoch(schedule_ ? schedule_->epoch : 0);
+    keyFlow_->setTop200Registered(keyTop200Registered_);
+  } catch (std::exception const& e) {
+    urnw::LogWarn("earnings: feeding the key flow failed: {}", e.what());
+  }
+}
+
+void WalletPage::ReadKeyFlow() {
+  std::optional<urnet::BittensorLocalKeyCard> card;
+  if (keyFlow_) {
+    try {
+      card = keyFlow_->getCard();
+    } catch (std::exception const& e) {
+      urnw::LogWarn("earnings: reading the key card failed: {}", e.what());
+    }
+  }
+  keyCard_ = card;
+  // a consent this flow got accepted: the consent and the earnings are read again
+  if (keyCard_ && keyCard_->link_generation != keyLinkGeneration_) {
+    keyLinkGeneration_ = keyCard_->link_generation;
+    LoadWallet();
+  }
+  // saved or deleted since the last look: a reminder still waited for is not
+  const bool backupReminder = keyCard_ && keyCard_->backup_reminder;
+  const bool reminderEnded = keyBackupReminder_ && !backupReminder;
+  keyBackupReminder_ = backupReminder;
+  RebuildConsentPanel();
+  ApplyKeyBanner();
+  ApplyKeyWalletCard();
+  RebuildPayoutLine();
+  ApplyClaimDisclaimers();
+  if (reminderEnded) ApplyKeyReminder();
+  if (keySheet_) keySheet_->Refresh();
+  // Back up first, or the reminder, asked for the Key screen before the flow was here
+  if (keyScreenPending_ && keyCard_) {
+    keyScreenPending_ = false;
+    OpenKeyScreen();
+  }
+}
+
+bool WalletPage::KeyPaysThisDevice() const {
+  // the sdk says the consent pays the key in this app's store
+  return keyCard_ && keyCard_->pays_key_on_this_device;
+}
+
+void WalletPage::RebuildKeyCard(snconsent::PanelView const& view) {
+  auto host = w_.PayoutKeyHost();
+  if (!keyCard_) {
+    host.Children().Clear();
+    host.Visibility(Visibility::Collapsed);
+    btkeyviews::ShowFundsDisclaimer(w_.PayoutKeyDisclaimerHost(), btkey::kDisclaimerNone, false);
+    return;
+  }
+  urnet::BittensorLocalKeyCard const& card = *keyCard_;
+  const btkey::ConsentLine line = view.line == snconsent::Line::None     ? btkey::ConsentLine::None
+                                  : view.line == snconsent::Line::Active ? btkey::ConsentLine::Active
+                                                                         : btkey::ConsentLine::Unknown;
+  const btkey::CardLayout layout = btkey::CardLayoutFor(line, card.state, card.shows_key_path);
+  if (layout.body != btkey::CardBody::WalletCard) {
+    // the key's body takes the place of the panel's own lines and button
+    w_.PayoutConsentText().Visibility(Visibility::Collapsed);
+    w_.PayoutConsentNote().Visibility(Visibility::Collapsed);
+    w_.PayoutConsentButton().Visibility(Visibility::Collapsed);
+  } else if (card.owner_only && view.line != snconsent::Line::Hidden) {
+    // a session without the network credential can't choose the payout wallet
+    kit::SetTextOrCollapse(w_.PayoutConsentNote(), Loc("sn_consent_owner_only"));
+    w_.PayoutConsentButton().Visibility(Visibility::Collapsed);
+  }
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+  auto page = [weak, alive](auto&& run) {
+    return [weak, alive, run]() {
+      if (!*alive) return;
+      if (auto self = weak.get()) run(self->wallet());
+    };
+  };
+  btkeyviews::CardActions actions;
+  actions.setUp = page([](WalletPage& wallet) { wallet.OnKeyAction(KeyAction::SetUp); });
+  actions.saveFirst = page([](WalletPage& wallet) { wallet.OnKeyAction(KeyAction::SaveFirst); });
+  actions.finishSetup = page([](WalletPage& wallet) { wallet.OnKeyAction(KeyAction::FinishSetup); });
+  actions.openKeyScreen = page([](WalletPage& wallet) { wallet.OpenKeyScreen(); });
+  actions.useWallet = page([](WalletPage& wallet) { wallet.StartWalletConsent(/*offerKey=*/false); });
+  actions.changeWallet = page([](WalletPage& wallet) { wallet.StartWalletConsent(/*offerKey=*/true); });
+  actions.reload = page([](WalletPage& wallet) {
+    if (!wallet.keyFlow_) return;
+    try {
+      wallet.keyFlow_->reload();
+    } catch (std::exception const& e) {
+      urnw::LogWarn("earnings: the key flow's reload failed: {}", e.what());
+    }
+  });
+  btkeyviews::DrawCard(host, layout, card, actions);
+  host.Visibility(host.Children().Size() > 0 ? Visibility::Visible : Visibility::Collapsed);
+  // the sdk's disclaimer closes the card, whatever its body
+  btkeyviews::ShowFundsDisclaimer(w_.PayoutKeyDisclaimerHost(), card.funds_disclaimer, false);
+}
+
+void WalletPage::ApplyKeyBanner() {
+  auto host = w_.BittensorKeyBannerHost();
+  host.Children().Clear();
+  if (!keyCard_ || !keyCard_->backup_reminder) {
+    host.Visibility(Visibility::Collapsed);
+    return;
+  }
+  host.Children().Append(btkeyviews::MakeBackupBanner([weak = w_.get_weak(), alive = alive_] {
+    if (!*alive) return;
+    if (auto self = weak.get()) self->wallet().OpenKeyScreen();
+  }));
+  host.Visibility(Visibility::Visible);
+}
+
+void WalletPage::PlaceConsentPanel() {
+  auto stack = w_.WalletPaneAStack().Children();
+  auto panel = w_.PayoutConsentPanel();
+  // right under the backup banner while the sdk shows the key path (no
+  // consent, or setup cut short); after settlement v2, its old place, otherwise
+  const bool lead = keyCard_ && keyCard_->shows_key_path;
+  UIElement anchor = lead ? UIElement(w_.BittensorKeyBannerHost()) : UIElement(w_.SettlementV2Panel());
+  uint32_t index = 0;
+  uint32_t anchorIndex = 0;
+  if (!stack.IndexOf(panel, index) || !stack.IndexOf(anchor, anchorIndex)) return;
+  if (index == anchorIndex + 1) return;
+  stack.RemoveAt(index);
+  if (!stack.IndexOf(anchor, anchorIndex)) {
+    stack.InsertAt(index, panel);
+    return;
+  }
+  stack.InsertAt(anchorIndex + 1, panel);
+}
+
+void WalletPage::ApplyKeyWalletCard() {
+  if (snWallet_) {
+    // a wallet read: the card is the wallet's, as before
+    keyWalletCardShown_ = false;
+    w_.ChangeWalletButton().Visibility(Visibility::Visible);
+    w_.WalletConnectedNote().Text(Loc("wallet_connected_to_protocol"));
+    return;
+  }
+  const bool key = keyCard_ && !keyCard_->stored_address.empty();
+  if (!key) {
+    if (!keyWalletCardShown_) return;
+    // the key went: the card is the disconnected one ApplySnWallet draws
+    keyWalletCardShown_ = false;
+    w_.ChangeWalletButton().Visibility(Visibility::Visible);
+    w_.WalletConnectedNote().Text(Loc("wallet_connected_to_protocol"));
+    w_.WalletConnectedPanel().Visibility(Visibility::Collapsed);
+    w_.WalletDisconnectedPanel().Visibility(Visibility::Visible);
+    kit::SetTextOrCollapse(w_.WalletStatusText(),
+                           walletState_ == Fetch::Failed ? Loc("something_went_wrong") : hstring{});
+    return;
+  }
+  // the key on this device in place of Connect Bittensor wallet, with the
+  // Solana menu kept beside it
+  keyWalletCardShown_ = true;
+  const bool linked = keyCard_->state == btkey::kStateSaveLaterLinked;
+  w_.WalletConnectedPanel().Visibility(Visibility::Visible);
+  w_.WalletDisconnectedPanel().Visibility(Visibility::Collapsed);
+  w_.ManualAddressPanel().Visibility(Visibility::Collapsed);
+  w_.WalletAddressText().Text(H(keyCard_->stored_address));
+  w_.WalletConnectedNote().Text(Loc(linked ? "wallet_connected_to_protocol" : "bittensor_key_card_not_linked"));
+  w_.ChangeWalletButton().Visibility(Visibility::Collapsed);
+  kit::SetTextOrCollapse(w_.WalletStatusText(), hstring{ShortAddress(keyCard_->stored_address)});
+}
+
+void WalletPage::OnKeyAction(KeyAction action) {
+  if (!keyFlow_ || !keyCard_) return;
+  if (!CanCallApi()) {
+    RefuseNoSession();
+    return;
+  }
+  // a new key replaces the payout wallet in force from the next epoch: the
+  // warning first, then the same action with the replacement confirmed
+  if (keyCard_->replaces_payout_wallet) {
+    ConfirmKeyReplacement(action);
+    return;
+  }
+  RunKeyAction(action, /*replaceConfirmed=*/false);
+}
+
+winrt::fire_and_forget WalletPage::ConfirmKeyReplacement(KeyAction action) {
+  if (!keyCard_ || w_.sheetOpen()) co_return;
+  auto self = w_.get_strong();
+  auto alive = alive_;
+  const bool confirmed = co_await btkeysheets::ConfirmReplacePayoutWallet(self, keyCard_->address);
+  if (!confirmed || !*alive) co_return;
+  self->wallet().RunKeyAction(action, /*replaceConfirmed=*/true);
+}
+
+void WalletPage::RunKeyAction(KeyAction action, bool replaceConfirmed) {
+  if (!keyFlow_) return;
+  try {
+    switch (action) {
+      case KeyAction::SetUp:
+        // the one tap: a new key, stored and read back, then signed with
+        keyFlow_->setUpPayouts(replaceConfirmed);
+        break;
+      case KeyAction::FinishSetup:
+        // the stored key signs: where a setup cut short resumes
+        keyFlow_->finishSetup(replaceConfirmed);
+        break;
+      case KeyAction::SaveFirst:
+        // a new key in memory only, and the Key screen; nothing written or signed
+        keyFlow_->saveFirst(replaceConfirmed);
+        ShowKeySheet();
+        break;
+    }
+  } catch (std::exception const& e) {
+    urnw::LogWarn("earnings: the key action failed: {}", e.what());
+  }
+  ReadKeyFlow();
+}
+
+void WalletPage::OpenKeyScreen() {
+  if (!keyFlow_) return;
+  try {
+    // the stored key's screen, hidden
+    keyFlow_->openScreen();
+  } catch (std::exception const& e) {
+    urnw::LogWarn("earnings: opening the Key screen failed: {}", e.what());
+    return;
+  }
+  ShowKeySheet();
+}
+
+void WalletPage::OpenKeyScreenWhenReady() {
+  if (keyFlow_ && keyCard_) {
+    OpenKeyScreen();
+    return;
+  }
+  // the Earnings load the navigation started makes the flow, then opens it
+  keyScreenPending_ = true;
+}
+
+void WalletPage::StartWalletConsent(bool offerKey) {
+  walletOnlyConsent_ = !offerKey;
+  OnSignConsent(nullptr, nullptr);
+}
+
+pages::WalletKeyOffer WalletPage::KeyOfferForConsent(bool offerKey) {
+  pages::WalletKeyOffer offer;
+  // Change wallet offers a key on this device while the sdk's card offers one
+  if (!offerKey || !keyFlow_ || !keyCard_ || !keyCard_->offers_set_up) return offer;
+  offer.disclaimer = KeyDisclaimerAt(btkey::kPlaceChangeWallet);
+  // after the sheet has closed: the one tap, with the replace warning first
+  offer.createKey = [weak = w_.get_weak(), alive = alive_] {
+    if (!*alive) return;
+    if (auto self = weak.get()) self->wallet().OnKeyAction(KeyAction::SetUp);
+  };
+  return offer;
+}
+
+winrt::fire_and_forget WalletPage::ShowKeySheet() {
+  if (keySheet_ || w_.sheetOpen() || !keyFlow_) co_return;
+  std::optional<urnet::BittensorLocalKeyScreen> screen;
+  try {
+    screen = keyFlow_->getScreen();
+  } catch (std::exception const& e) {
+    urnw::LogWarn("earnings: reading the Key screen failed: {}", e.what());
+  }
+  if (!screen || !screen->open) co_return;
+  auto self = w_.get_strong();
+  auto alive = alive_;
+  auto flow = keyFlow_;
+  HWND hwnd{};
+  if (auto native = self.try_as<::IWindowNative>()) native->get_WindowHandle(&hwnd);
+  self->SetSheetOpen(true);
+  try {
+    keySheet_ = urnw::BittensorKeySheet::Create(self->Content().XamlRoot(), self->DispatcherQueue(), hwnd, flow);
+    if (!keySheet_->Finished()) co_await keySheet_->Dialog().ShowAsync();
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("earnings: the Key screen failed to open: {}", urnw::Narrow(std::wstring{e.message()}));
+  } catch (...) {
+    urnw::LogError("earnings: the Key screen failed to open");
+  }
+  // Leaving: a phrase only in memory is discarded, and nothing was paid to it.
+  try {
+    flow->closeScreen();
+  } catch (...) {
+  }
+  self->SetSheetOpen(false);
+  if (!*alive) co_return;
+  self->wallet().keySheet_.reset();
+  self->wallet().ReadKeyFlow();
+}
+
+void WalletPage::OnWindowDeactivated() {
+  // the words hide when the window loses focus or stops presenting
+  if (keySheet_) {
+    keySheet_->HideWords();
+    return;
+  }
+  if (!keyFlow_) return;
+  try {
+    keyFlow_->hide();
+  } catch (...) {
+  }
+}
+
+void WalletPage::CloseKeyScreenForHide() {
+  if (keySheet_) keySheet_->CloseNow();
+}
+
+std::string WalletPage::KeyDisclaimerAt(std::string_view place) const {
+  try {
+    if (keyFlow_) return keyFlow_->fundsDisclaimerAt(std::string(place));
+    // no flow for a network: ask one made only to ask, which signs nothing
+    urnet::BittensorLocalKeyFlow asking = NewBittensorKeyFlow(nullptr, ownNetworkId_);
+    if (!asking) return std::string();
+    std::string disclaimer = asking.fundsDisclaimerAt(std::string(place));
+    asking.close();
+    return disclaimer;
+  } catch (std::exception const& e) {
+    urnw::LogWarn("earnings: reading the funds disclaimer failed: {}", e.what());
+  }
+  return std::string();
+}
+
+// The one local notification of an unsaved key, when its first epoch becomes
+// claimable (the sdk's Reminder). Windows has no notification the system
+// delivers later for this app, so the page posts it (btkey::ReminderStepFor):
+// at the sdk's moment while the app runs, or on the first read after it.
+void WalletPage::ApplyKeyReminder() {
+  if (!keyFlow_) return;
+  int64_t ledgerClaimable = 0;
+  for (auto const& account : v2Accounts_) {
+    if (account.claimableRao > 0) ledgerClaimable += account.claimableRao;
+  }
+  const bool claimable = totalClaimableRao_ > 0 || ledgerClaimable > 0 ||
+                         (claimStatus_ && !claimStatus_->error && claimStatus_->claimable_rao > 0);
+  std::optional<urnet::BittensorLocalKeyReminder> reminder;
+  try {
+    reminder = keyFlow_->reminder(schedule_ ? schedule_->epoch : 0, schedule_ ? schedule_->claimOpenMillis : 0,
+                                  schedule_ ? schedule_->epochBlocks : 0, claimable);
+  } catch (std::exception const& e) {
+    urnw::LogWarn("earnings: the key reminder failed: {}", e.what());
+    return;
+  }
+  if (!reminder) return;
+  switch (btkey::ReminderStepFor(reminder->action)) {
+    case btkey::ReminderStep::Arm: {
+      const int64_t delay = reminder->at_millis - NowMillis();
+      if (delay <= 0) {
+        PostKeyReminder();
+        return;
+      }
+      if (!keyReminderTimer_) {
+        keyReminderTimer_ = w_.DispatcherQueue().CreateTimer();
+        keyReminderTimer_.IsRepeating(false);
+        keyReminderTimer_.Tick([weak = w_.get_weak(), alive = alive_](auto const&, auto const&) {
+          if (!*alive) return;
+          // the moment came: the sdk is asked again, and says deliver now if it still holds
+          if (auto self = weak.get()) self->wallet().ApplyKeyReminder();
+        });
+      }
+      keyReminderTimer_.Stop();
+      keyReminderTimer_.Interval(std::chrono::milliseconds(delay));
+      keyReminderTimer_.Start();
+      return;
+    }
+    case btkey::ReminderStep::PostNow:
+      PostKeyReminder();
+      return;
+    case btkey::ReminderStep::Disarm:
+      if (keyReminderTimer_) keyReminderTimer_.Stop();
+      return;
+    case btkey::ReminderStep::Nothing:
+      return;
+  }
+}
+
+void WalletPage::PostKeyReminder() {
+  if (keyReminderTimer_) keyReminderTimer_.Stop();
+  if (!keyFlow_) return;
+  // the tray's notification; its click opens Earnings with the Key screen. Only
+  // one that went out is reported, and nothing repeats after it.
+  if (!PostBittensorKeyReminder()) return;
+  try {
+    keyFlow_->reminderDelivered();
+  } catch (...) {
+  }
+}
+
+// ---- claims through the relay (sn_claim_relay.go; the mocks' flow 4) -----------
+//
+// URnetwork claims every consented network's settlement v2 balance and pays the
+// gas: by itself once it is worth the automatic threshold, and on Claim now, at
+// most once a period for each coldkey. The sdk's SnClaimStatus decides who
+// claims and why a balance waits; the tile and the claim sheet word it, and the
+// device's own claim with its gas key stays as the fallback.
+
+void WalletPage::LoadClaimStatus() {
+  if (!CanCallApi() || !Sdk().hasDevice()) return;
+  const uint32_t read = ++claimStatusGeneration_;
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().device().snClaimStatus([queue, weak, read](std::optional<urnet::SnClaimStatusResult> result,
+                                                   std::optional<std::string> err) {
+    if (err) urnw::LogWarn("earnings: snClaimStatus failed: {}", *err);
+    std::optional<urnet::SnClaimStatusResult> status;
+    if (!err) status = result;
+    queue.TryEnqueue([weak, read, status] {
+      if (auto self = weak.get()) self->wallet().ApplyClaimStatus(read, status);
+    });
+  });
+}
+
+void WalletPage::ApplyClaimStatus(uint32_t read, std::optional<urnet::SnClaimStatusResult> status) {
+  // the answer to a read that a newer read or a sign-out superseded
+  if (read != claimStatusGeneration_) return;
+  claimStatus_ = std::move(status);
+  RebuildV2Section();
+  ApplyKeyReminder();
+}
+
+bool WalletPage::RelayTileShows() const {
+  // With no wallet on this device the sdk says whether the tile shows what the
+  // relay claims for the network's consent; with an error the balances are
+  // unavailable, never zero.
+  return claimStatus_ && !claimStatus_->error && claimStatus_->shows_tile;
+}
+
+void WalletPage::ApplyRelayToV2Section(snpayout::LedgerSectionView const&) {
+  auto host = w_.SettlementV2RelayHost();
+  const bool tile = w_.SettlementV2Panel().Visibility() == Visibility::Visible;
+  const bool relay = tile && claimStatus_ && !claimStatus_->error &&
+                     (claimStatus_->action != btkey::kActionNone || 0 < claimStatus_->claimable_rao ||
+                      claimStatus_->shows_claimed);
+  if (!relay) {
+    host.Children().Clear();
+    host.Visibility(Visibility::Collapsed);
+    ApplyClaimDisclaimers();
+    return;
+  }
+  auto weak = w_.get_weak();
+  auto alive = alive_;
+  btkeyviews::DrawRelaySection(
+      host, *claimStatus_, /*inSheet=*/false,
+      [weak, alive] {
+        if (!*alive) return;
+        if (auto self = weak.get()) self->wallet().OpenClaimRelaySheet();
+      },
+      [weak, alive] {
+        if (!*alive) return;
+        // the device's own claim, with its gas key: the v2 claim dialog
+        if (auto self = weak.get()) self->wallet().OnClaimV2(nullptr, nullptr);
+      });
+  host.Visibility(Visibility::Visible);
+  // the relay's Claim now takes the place of the device's own Claim, which
+  // stays as the self-claim link while URnetwork isn't claiming
+  w_.SettlementV2ClaimButton().Visibility(Visibility::Collapsed);
+  ApplyClaimDisclaimers();
+}
+
+void WalletPage::ApplyClaimDisclaimers() {
+  // The claim tiles share Earnings with the payout card, and the disclaimer
+  // shows once a screen: the sdk names the claim card's (ClaimFundsDisclaimer),
+  // none while the payout card has one. The first claim tile shown carries it:
+  // the unclaimed tile while a wallet is read, else settlement v2's.
+  const std::string disclaimer = keyCard_ ? keyCard_->claim_funds_disclaimer : std::string();
+  const bool v1Shown = w_.UnclaimedPanel().Visibility() == Visibility::Visible;
+  const bool v2Shown = w_.SettlementV2Panel().Visibility() == Visibility::Visible;
+  btkeyviews::ShowFundsDisclaimer(w_.UnclaimedDisclaimerHost(), v1Shown ? disclaimer : std::string(), false);
+  btkeyviews::ShowFundsDisclaimer(w_.SettlementV2DisclaimerHost(),
+                                  !v1Shown && v2Shown ? disclaimer : std::string(), false);
+}
+
+winrt::fire_and_forget WalletPage::OpenClaimRelaySheet() {
+  if (w_.sheetOpen() || relaySheet_) co_return;
+  auto self = w_.get_strong();
+  auto alive = alive_;
+  auto queue = self->DispatcherQueue();
+  // the claim sheet's own disclaimer, from the sdk: claims land on the
+  // consent's coldkey, wherever its key is
+  const std::string disclaimer = KeyDisclaimerAt(btkey::kPlaceClaimSheet);
+  urnw::ClaimRelaySheet::ClaimNow claimNow = [queue](std::string coldkey,
+                                                    urnw::ClaimRelaySheet::ClaimNowDone done) {
+    if (!Sdk().hasDevice()) {
+      done(std::nullopt, std::string());
+      return;
+    }
+    Sdk().device().snClaimNow(coldkey, [queue, done](std::optional<urnet::SnClaimNowResult> result,
+                                                      std::optional<std::string> err) {
+      if (err) urnw::LogWarn("earnings: snClaimNow failed: {}", *err);
+      // a transport failure reads as something went wrong; its text is the log's
+      std::optional<urnet::SnClaimNowResult> answer;
+      if (!err) answer = result;
+      queue.TryEnqueue([done, answer] { done(answer, std::string()); });
+    });
+  };
+  self->SetSheetOpen(true);
+  try {
+    relaySheet_ = urnw::ClaimRelaySheet::Create(self->Content().XamlRoot(), claimStatus_, disclaimer, claimNow);
+    co_await relaySheet_->Dialog().ShowAsync();
+  } catch (winrt::hresult_error const& e) {
+    urnw::LogError("earnings: the claim sheet failed to open: {}", urnw::Narrow(std::wstring{e.message()}));
+  } catch (...) {
+    urnw::LogError("earnings: the claim sheet failed to open");
+  }
+  self->SetSheetOpen(false);
+  if (!*alive) co_return;
+  auto& page = self->wallet();
+  const bool selfClaim = page.relaySheet_ && page.relaySheet_->SelfClaimChosen();
+  const bool answered = page.relaySheet_ && page.relaySheet_->ClaimNowAnswered();
+  page.relaySheet_.reset();
+  if (answered) page.LoadClaimStatus();
+  // the self-claim link: the gas-key claim, now this sheet has closed
+  if (selfClaim) page.OnClaimV2(nullptr, nullptr);
+}
 
 // ---- network reliability -------------------------------------------------
 
