@@ -950,6 +950,218 @@
     <value>WalletConnect non è disponibile al momento. Riprova più tardi oppure inserisci il tuo indirizzo manualmente.</value>
     <comment>Bittensor wallet error in the apps, when the ur.io bridge page returns walletconnect_unavailable: the page has no WalletConnect project id, so it cannot pair a wallet. Manual entry still works. WalletConnect is a product name.</comment>
   </data>
+  <data name="bittensor_key_auth_reason" xml:space="preserve">
+    <value>usare la tua frase di recupero Bittensor</value>
+    <comment>The reason in the system's device authentication prompt (Face ID, Touch ID, passcode). macOS shows it after the app's name: 'URnetwork is trying to use your Bittensor recovery phrase'. iOS shows it alone. Write the phrase that reads naturally in both, in your language's form for a purpose, and start it in lower case where your language allows.</comment>
+  </data>
+  <data name="bittensor_key_back_up" xml:space="preserve">
+    <value>Fai il backup della tua chiave</value>
+    <comment>Earnings screen: the title of a warning banner, and a button on the payout card. Both open the Key screen, where the user saves the recovery phrase.</comment>
+  </data>
+  <data name="bittensor_key_banner_body" xml:space="preserve">
+    <value>Se perdi questo dispositivo prima di aver salvato la tua frase di recupero, i tuoi SN25α non saranno più accessibili.</value>
+    <comment>Earnings screen: the warning banner under Back up your key, which stays until the phrase is saved.</comment>
+  </data>
+  <data name="bittensor_key_capture_hidden" xml:space="preserve">
+    <value>Le parole restano nascoste mentre il tuo schermo viene registrato o duplicato.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Shown while a screen recording or mirroring is running.</comment>
+  </data>
+  <data name="bittensor_key_card_explain" xml:space="preserve">
+    <value>URnetwork crea una chiave Bittensor su questo dispositivo e dalla prossima epoca paga su di essa ogni miner della tua rete.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Explains the one tap, read before it. A miner is a device on the network that earns; this is the Bittensor sense of the word.</comment>
+  </data>
+  <data name="bittensor_key_card_none" xml:space="preserve">
+    <value>Ancora nessun portafoglio di pagamento. I guadagni non vengono pagati finché non ne configuri uno.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The first line while the network has no payout wallet. Set up payouts is the main button below it.</comment>
+  </data>
+  <data name="bittensor_key_card_not_linked" xml:space="preserve">
+    <value>La tua chiave è su questo dispositivo, ma i pagamenti non sono ancora configurati.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The key was made and stored, but the step that links it to payouts did not finish. The Finish setup button follows.</comment>
+  </data>
+  <data name="bittensor_key_card_not_wallet" xml:space="preserve">
+    <value>URnetwork non è un portafoglio. Per trasferire o usare i tuoi SN25α, inserisci la frase di recupero della chiave in un portafoglio Bittensor o in btcli. Se perdi questo dispositivo prima di averla salvata, i tuoi SN25α non saranno più accessibili.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The short form of the warning, read before the one tap.</comment>
+  </data>
+  <data name="bittensor_key_card_other_consent" xml:space="preserve">
+    <value>La chiave su questo dispositivo non riceve i pagamenti.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Payouts go to another wallet, and a key made earlier is still on this device.</comment>
+  </data>
+  <data name="bittensor_key_card_saved" xml:space="preserve">
+    <value>La tua frase di recupero è salvata e la chiave resta su questo dispositivo.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The user proved they saved the phrase and chose to keep the key on the device.</comment>
+  </data>
+  <data name="bittensor_key_confirm_body" xml:space="preserve">
+    <value>URnetwork non può recuperare questa chiave. I guadagni continuano ad arrivare a questo indirizzo e solo la frase di recupero può spostarli.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. </comment>
+  </data>
+  <data name="bittensor_key_confirm_convert" xml:space="preserve">
+    <value>Dopo questa operazione, questa app non potrà nemmeno convertire i tuoi SN25α in TAO. Un portafoglio Bittensor o btcli può farlo, con questa frase di recupero.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. </comment>
+  </data>
+  <data name="bittensor_key_confirm_prompt" xml:space="preserve">
+    <value>Per dimostrare di averla salvata, inserisci queste due parole della tua frase di recupero.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. Two fields follow, labeled Word 3, Word 9 and so on.</comment>
+  </data>
+  <data name="bittensor_key_confirm_top200" xml:space="preserve">
+    <value>Eliminare questa chiave significa anche rinunciare a prendere un posto nella Top 200 con un tocco. Potresti comunque prenderlo da un portafoglio Bittensor che contiene questa frase di recupero.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. Top 200 is a ranking the network's miners can claim a place on.</comment>
+  </data>
+  <data name="bittensor_key_copy_warning" xml:space="preserve">
+    <value>Altre app potrebbero leggere gli appunti. Vengono cancellati dopo 60 secondi.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Next to the Copy button.</comment>
+  </data>
+  <data name="bittensor_key_create_here" xml:space="preserve">
+    <value>Crea una chiave su questo dispositivo</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A small link when payouts go to another wallet. A warning follows before anything changes.</comment>
+  </data>
+  <data name="bittensor_key_delete_account_message" xml:space="preserve">
+    <value>La tua frase di recupero Bittensor non è ancora salvata. Eliminando il tuo account elimini anche questa chiave da questo dispositivo e, senza la frase, i tuoi SN25α non saranno più accessibili.</value>
+    <comment>The confirmation of Delete account, shown only while the Bittensor key's recovery phrase is not saved.</comment>
+  </data>
+  <data name="bittensor_key_delete_action" xml:space="preserve">
+    <value>Ho salvato la chiave, ora si può eliminare.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The one destructive button: the user says the phrase is saved, and the app may forget it.</comment>
+  </data>
+  <data name="bittensor_key_delete_confirm" xml:space="preserve">
+    <value>Elimina chiave</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. The destructive button.</comment>
+  </data>
+  <data name="bittensor_key_delete_title" xml:space="preserve">
+    <value>Eliminare questa chiave da questa app?</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. The title.</comment>
+  </data>
+  <data name="bittensor_key_elsewhere" xml:space="preserve">
+    <value>Questa chiave è su un altro dispositivo o nel tuo portafoglio.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Payouts go to an address whose key is not in this app. The phrase cannot be shown here.</comment>
+  </data>
+  <data name="bittensor_key_failure_consent" xml:space="preserve">
+    <value>Impossibile configurare i pagamenti. Riprova.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A general error under the Set up payouts button.</comment>
+  </data>
+  <data name="bittensor_key_failure_delete" xml:space="preserve">
+    <value>Impossibile eliminare la chiave da questo dispositivo. È ancora qui.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. An error after the user asked to delete the key.</comment>
+  </data>
+  <data name="bittensor_key_failure_generate" xml:space="preserve">
+    <value>Impossibile creare una chiave su questo dispositivo. Riprova.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
+  </data>
+  <data name="bittensor_key_failure_keychain" xml:space="preserve">
+    <value>Impossibile leggere il portachiavi di questo dispositivo. Sblocca il dispositivo e riprova.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+  </data>
+  <data name="bittensor_key_failure_store" xml:space="preserve">
+    <value>Impossibile salvare la chiave su questo dispositivo, quindi non è stato firmato nulla. Riprova oppure salva prima la frase di recupero.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button: the new key could not be written to the device's secure storage.</comment>
+  </data>
+  <data name="bittensor_key_finish_setup" xml:space="preserve">
+    <value>Completa la configurazione</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Button that retries the link between the key on this device and the network's payouts.</comment>
+  </data>
+  <data name="bittensor_key_hide" xml:space="preserve">
+    <value>Nascondi</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Button that covers the words again.</comment>
+  </data>
+  <data name="bittensor_key_keep_action" xml:space="preserve">
+    <value>L’ho salvata. Tienila su questo dispositivo.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. A smaller link: the user says the phrase is saved, and the key stays on the device, so the reminders stop.</comment>
+  </data>
+  <data name="bittensor_key_keep_confirm" xml:space="preserve">
+    <value>Tieni la chiave</value>
+    <comment>Key screen, the button that finishes the check and keeps the key on the device.</comment>
+  </data>
+  <data name="bittensor_key_keep_title" xml:space="preserve">
+    <value>Tenere questa chiave su questo dispositivo?</value>
+    <comment>Key screen, the check before the key stays on the device: the user enters two of its words.</comment>
+  </data>
+  <data name="bittensor_key_no_longer_here" xml:space="preserve">
+    <value>Questa app non ha più la chiave</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A status line after the user saved the phrase and the app deleted its copy of the key.</comment>
+  </data>
+  <data name="bittensor_key_no_longer_here_body" xml:space="preserve">
+    <value>I tuoi guadagni continuano ad arrivare a questo indirizzo. Per trasferire o usare i tuoi SN25α, inserisci la tua frase di recupero in un portafoglio Bittensor come Talisman o Nova, oppure in btcli.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. Under: This app no longer has the key.</comment>
+  </data>
+  <data name="bittensor_key_not_seed_phrase" xml:space="preserve">
+    <value>Questa non è la frase seed del tuo account ricevuta alla registrazione. Questa frase di recupero controlla solo questa chiave Bittensor.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The app also has a sign-in seed phrase of 24 words, a different secret, and people mix them up. Keep the two terms clearly different: use the same word for 'seed phrase' as the sign-up screen's 'Your Seedphrase' does in your language where it fits, and the word for 'recovery phrase' everywhere else in these strings.</comment>
+  </data>
+  <data name="bittensor_key_payouts_start" xml:space="preserve">
+    <value>I pagamenti iniziano dalla prossima epoca</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A status line after setup. An epoch is the network's settlement period.</comment>
+  </data>
+  <data name="bittensor_key_reminder_body" xml:space="preserve">
+    <value>I guadagni della tua prima epoca ora si possono riscattare. Se perdi questo dispositivo prima di aver salvato la tua frase di recupero, i tuoi SN25α non saranno più accessibili.</value>
+    <comment>A local notification, the body.</comment>
+  </data>
+  <data name="bittensor_key_reminder_title" xml:space="preserve">
+    <value>Fai il backup della tua chiave Bittensor</value>
+    <comment>A local notification, the title. It arrives once, when the first epoch's earnings can be claimed.</comment>
+  </data>
+  <data name="bittensor_key_replace_message" xml:space="preserve">
+    <value>Questa chiave sostituisce il tuo portafoglio di pagamento dalla prossima epoca. I guadagni precedenti restano sul vecchio portafoglio.</value>
+    <comment>Earnings screen, a warning before a new key on this device replaces the network's payout wallet.</comment>
+  </data>
+  <data name="bittensor_key_replace_title" xml:space="preserve">
+    <value>Sostituire il tuo portafoglio di pagamento?</value>
+    <comment>Earnings screen, the title of a warning before a new key on this device replaces the network's payout wallet.</comment>
+  </data>
+  <data name="bittensor_key_reveal" xml:space="preserve">
+    <value>Tocca per mostrare</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The words are covered, and this is on the cover.</comment>
+  </data>
+  <data name="bittensor_key_save_first" xml:space="preserve">
+    <value>Salva prima la frase di recupero</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A smaller link under Set up payouts: shows the phrase to save before anything else happens.</comment>
+  </data>
+  <data name="bittensor_key_save_now_retry" xml:space="preserve">
+    <value>I pagamenti non sono ancora configurati. Nessun guadagno è arrivato a questa chiave e, se esci, verrà scartata.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. After the link to payouts failed, for a key that exists only in memory. A Retry button follows.</comment>
+  </data>
+  <data name="bittensor_key_screen_title" xml:space="preserve">
+    <value>Frase di recupero Bittensor</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. The screen's title.</comment>
+  </data>
+  <data name="bittensor_key_screenshot_warning" xml:space="preserve">
+    <value>Se quello screenshot mostra la tua frase di recupero, eliminalo. Chiunque abbia questa frase controlla i tuoi SN25α.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Shown after the user took a screenshot of the screen.</comment>
+  </data>
+  <data name="bittensor_key_set_up" xml:space="preserve">
+    <value>Configura i pagamenti</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The main button: one tap makes the key, stores it on the device and links it to payouts.</comment>
+  </data>
+  <data name="bittensor_key_show" xml:space="preserve">
+    <value>Mostra chiave</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A small link that opens the Key screen.</comment>
+  </data>
+  <data name="bittensor_key_sign_out_message" xml:space="preserve">
+    <value>La tua frase di recupero Bittensor non è ancora salvata. La chiave resta su questo dispositivo e torna quando questa rete accede di nuovo. Se perdi questo dispositivo prima di averla salvata, i tuoi SN25α non saranno più accessibili.</value>
+    <comment>The confirmation of Sign out, the message.</comment>
+  </data>
+  <data name="bittensor_key_sign_out_title" xml:space="preserve">
+    <value>Uscire senza salvare la tua chiave?</value>
+    <comment>The confirmation of Sign out, shown only while the Bittensor key's recovery phrase is not saved. The buttons are Sign out and Cancel.</comment>
+  </data>
+  <data name="bittensor_key_use_wallet" xml:space="preserve">
+    <value>Usa un portafoglio che ho già</value>
+    <comment>Earnings screen, the payout card for the network's payouts. A smaller link under Set up payouts: for someone who already has a Bittensor wallet.</comment>
+  </data>
+  <data name="bittensor_key_word_number" xml:space="preserve">
+    <value>Parola {}</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. A field label: which word of the phrase to enter, counting from 1, for example Word 3.</comment>
+  </data>
+  <data name="bittensor_key_wording_control" xml:space="preserve">
+    <value>Chiunque abbia questa frase controlla i tuoi SN25α. URnetwork non te la chiederà mai e non può recuperarla. Se perdi questo dispositivo prima di averla salvata, i tuoi SN25α non saranno più accessibili.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Always visible on the screen.</comment>
+  </data>
+  <data name="bittensor_key_wording_not_wallet" xml:space="preserve">
+    <value>URnetwork non è un portafoglio. Ha creato questa chiave per permetterti di ricevere SN25α. Per trasferire o usare i tuoi SN25α, inserisci questa frase di recupero in un portafoglio Bittensor come Talisman o Nova, oppure in btcli.</value>
+    <comment>Key screen: the screen that shows the Bittensor recovery phrase, a 12 word secret for a key this app made on the device. Always visible on the screen.</comment>
+  </data>
+  <data name="bittensor_key_words_rejected" xml:space="preserve">
+    <value>Queste parole non corrispondono. Controlla la frase di recupero che hai salvato.</value>
+    <comment>Key screen, the confirmation before the key leaves the app, where the user enters two of its words. An error under the two fields.</comment>
+  </data>
   <data name="bittensor_manual_choice" xml:space="preserve">
     <value>Firma manualmente</value>
     <comment>The manual signing option in a Bittensor wallet chooser: on ur.io its own entry, and in the phone apps the line under a wallet that has no way to sign here directly. The user signs a message outside the page or app, for example with the btcli command line tool, and pastes the signature back.</comment>
