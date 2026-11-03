@@ -46,6 +46,9 @@ class LocationChooserSheet : public std::enable_shared_from_this<LocationChooser
   // Cheap enough to run on every locations/peers change push.
   void Update(std::optional<urnet::FilteredLocations> locations,
               std::optional<urnet::NetworkPeerList> peers);
+  // The SDK's state for the next Update's locations: only it separates loading
+  // from failed from no providers, which all arrive as empty buckets.
+  void SetFeedState(std::string state) { feedState_ = std::move(state); }
 
  private:
   explicit LocationChooserSheet(SdkHost& sdk) : sdk_(sdk) {}
@@ -71,6 +74,7 @@ class LocationChooserSheet : public std::enable_shared_from_this<LocationChooser
   std::optional<urnet::FilteredLocations> locations_;
   std::optional<urnet::NetworkPeerList> peers_;
   std::string query_;  // current search text (empty = idle)
+  std::string feedState_;  // the SDK state of locations_
 };
 
 // ---- the Network destination (R4) -----------------------------------------

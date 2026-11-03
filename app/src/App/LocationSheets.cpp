@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include "LocationFeed.h"
 #include "Localization.h"
 #include "Log.h"
 #include "MainWindow.xaml.h"
@@ -236,8 +237,15 @@ void LocationChooserSheet::Update(std::optional<urnet::FilteredLocations> locati
 }
 
 void LocationChooserSheet::OnSearchChanged() {
-  query_ = Narrow(search_.Text());
+  std::string query = Narrow(search_.Text());
+  // Nothing is on its way when only surrounding spaces changed.
+  if (TrimLocationQuery(query) != TrimLocationQuery(query_)) {
+    feedState_ = std::string(kLocationFeedLoading);
+  }
+  query_ = std::move(query);
   sdk_.SetLocationFilter(query_);
+  // The first push can wait behind a connect; the sections follow the box now.
+  Render();
 }
 
 void LocationChooserSheet::AppendSection(hstring const& title,
@@ -257,7 +265,7 @@ void LocationChooserSheet::Render() {
   sections_.Children().Clear();
 
   const auto selected = sdk_.SelectedLocation();
-  const bool searching = !query_.empty();
+  const bool searching = !TrimLocationQuery(query_).empty();
 
   // 1. network peers pinned first (self-hides when there are none)
   const int peerCount = peers_ ? static_cast<int>(peers_->size()) : 0;
@@ -292,18 +300,29 @@ void LocationChooserSheet::Render() {
     AppendSection(Loc("devices"), locations_->Devices, selected);
   }
 
-  // no-results text: only while searching with nothing at all to show (peers are
-  // included in the check, unlike the android original)
+  // The feed's state, when the sections do not answer the query: BestMatches
+  // only renders while searching, so it only counts then.
   const bool anyLocation =
-      locations_ && (NonEmpty(locations_->BestMatches) || NonEmpty(locations_->Countries) ||
-                     NonEmpty(locations_->Regions) || NonEmpty(locations_->Cities) ||
-                     NonEmpty(locations_->Devices));
-  if (searching && !anyLocation && peerCount == 0) {
-    status_.Text(Loc("no_providers_found"));
-    status_.Visibility(Visibility::Visible);
-  } else {
-    status_.Visibility(Visibility::Collapsed);
+      locations_ && ((searching && NonEmpty(locations_->BestMatches)) ||
+                     NonEmpty(locations_->Countries) || NonEmpty(locations_->Regions) ||
+                     NonEmpty(locations_->Cities) || NonEmpty(locations_->Devices));
+  hstring notice;
+  switch (ChooserFeedNotice(feedState_, locations_.has_value(), anyLocation || 0 < peerCount,
+                            searching)) {
+    case LocationFeedNotice::None:
+      break;
+    case LocationFeedNotice::Loading:
+      notice = Loc("loading");
+      break;
+    case LocationFeedNotice::Failed:
+      notice = pages::Adv("adv_providers_load_failed", L"Could not load the provider list.");
+      break;
+    case LocationFeedNotice::NoResults:
+      notice = Loc("no_providers_found");
+      break;
   }
+  status_.Text(notice);
+  status_.Visibility(notice.empty() ? Visibility::Collapsed : Visibility::Visible);
 }
 
 Grid LocationChooserSheet::MakeLocationRow(const urnet::ConnectLocation& location, bool selected) {
@@ -583,6 +602,8 @@ void NetworkPage::ReconcileFeeds() {
     // worker holds through a whole connect. The pane says "loading" without
     // it: every presentation close pushes the observers an empty feed
     // (SdkHost::ClearDrawer), so the last session's buckets never show.
+    // The sheet shares this filter and resets it: the box here says what it holds.
+    Sdk().SetLocationFilter(query_);
     Sdk().EnsureLocations();
   }
   if (selected_) Render();

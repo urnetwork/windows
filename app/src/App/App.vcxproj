@@ -480,6 +480,8 @@
     <ClInclude Include="LocationSheets.h" />
     <!-- header-only and WinRT-free: tools/peer-location-tests.cpp runs it -->
     <ClInclude Include="PeerLocation.h" />
+    <!-- header-only and WinRT-free: tools/location-feed-tests.cpp runs it -->
+    <ClInclude Include="LocationFeed.h" />
     <ClInclude Include="GlobeGeometry.h" />
     <ClInclude Include="WorldTopology.h" />
     <ClInclude Include="ProviderLocations.h" />
