@@ -294,6 +294,12 @@
     <ClCompile Include="CryptoPayViews.cpp" />
     <ClCompile Include="FreeRefreshTicker.cpp" />
     <ClCompile Include="BittensorWalletDialogs.cpp" />
+    <!-- the one-tap Bittensor key (apple/BTEASY.md): its store, Windows Hello and
+         the window's privacy, the card's views and the Key screen's sheets -->
+    <ClCompile Include="BittensorKeyStore.cpp" />
+    <ClCompile Include="BittensorKeyPlatform.cpp" />
+    <ClCompile Include="BittensorKeyViews.cpp" />
+    <ClCompile Include="BittensorKeySheets.cpp" />
     <ClCompile Include="Localization.cpp" />
     <ClCompile Include="LocationSheets.cpp" />
     <!-- The provider-locations pure logic is deliberately WinRT-free (no pch)
@@ -459,6 +465,12 @@
     <ClInclude Include="FreeRefreshTicker.h" />
     <ClInclude Include="AddSignIn.h" />
     <ClInclude Include="BittensorWalletDialogs.h" />
+    <ClInclude Include="BittensorKeyStore.h" />
+    <ClInclude Include="BittensorKeyStoreFormat.h" />
+    <ClInclude Include="BittensorKeyPresentation.h" />
+    <ClInclude Include="BittensorKeyPlatform.h" />
+    <ClInclude Include="BittensorKeyViews.h" />
+    <ClInclude Include="BittensorKeySheets.h" />
     <ClInclude Include="BittensorWalletFlow.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="BalanceCodeRedeem.h" />

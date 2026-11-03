@@ -27,6 +27,7 @@
 #include "PageContext.h"
 #include "PaymentPastDueSdk.h"
 #include "PaymentRefusal.h"
+#include "BittensorKeySheets.h"  // the sign-out warning while the key isn't backed up
 #include "Strings.h"
 #include "SupportContact.h"
 #include "UpdateChecker.h"
@@ -1796,8 +1797,11 @@ winrt::fire_and_forget SettingsPage::ShowDeleteAccountSheet() {
     co_await deleteSheet_->Dialog().ShowAsync();
   } catch (...) {
   }
+  // Back up first: the one-tap key's Key screen, before anything is deleted
+  const bool backUpFirst = deleteSheet_ && deleteSheet_->BackUpFirstChosen();
   deleteSheet_.reset();
   w_.SetSheetOpen(false);
+  if (backUpFirst) self->OpenEarningsKeyScreen();
 }
 
 // ---- split tunnel ----------------------------------------------------------
@@ -1822,7 +1826,8 @@ winrt::fire_and_forget SettingsPage::ShowAppRulesSheet() {
 // ---- account ---------------------------------------------------------------
 
 void SettingsPage::OnSignOut(IInspectable const&, RoutedEventArgs const&) {
-  Sdk().Logout();
+  // a one-tap Bittensor key that isn't backed up asks first; otherwise it signs out at once
+  urnw::btkeysheets::RequestSignOut(w_.get_strong(), [] { Sdk().Logout(); });
 }
 
 void SettingsPage::SetSigningOut(bool signingOut) {

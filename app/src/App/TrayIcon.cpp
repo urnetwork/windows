@@ -177,7 +177,7 @@ void TrayIcon::SetTooltip(const std::wstring& tip) {
     LogDebug("tray: Shell_NotifyIcon(MODIFY tip) failed");
 }
 
-void TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& text) {
+bool TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& text, int tag) {
   NOTIFYICONDATAW nid{};
   nid.cbSize = sizeof(nid);
   nid.uFlags = NIF_INFO;
@@ -185,8 +185,12 @@ void TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& text) 
   wcsncpy_s(nid.szInfoTitle, title.c_str(), _TRUNCATE);
   wcsncpy_s(nid.szInfo, text.c_str(), _TRUNCATE);
   nid.dwInfoFlags = NIIF_USER;
-  if (!::Shell_NotifyIconW(NIM_MODIFY, &nid))
+  if (!::Shell_NotifyIconW(NIM_MODIFY, &nid)) {
     LogDebug("tray: Shell_NotifyIcon(MODIFY balloon) failed");
+    return false;
+  }
+  balloonTag_ = tag;
+  return true;
 }
 
 HICON TrayIcon::CurrentIcon() {
@@ -330,6 +334,8 @@ LRESULT CALLBACK TrayIcon::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         POINT anchor{GET_X_LPARAM(wParam), GET_Y_LPARAM(wParam)};
         if (event == NIN_SELECT || event == NIN_KEYSELECT) {
           if (self->cb_.onLeftClick) self->cb_.onLeftClick(anchor);
+        } else if (event == NIN_BALLOONUSERCLICK) {
+          if (self->cb_.onBalloonClick) self->cb_.onBalloonClick(self->balloonTag_);
         } else if (event == WM_CONTEXTMENU) {
           self->ShowContextMenu(anchor);
         }

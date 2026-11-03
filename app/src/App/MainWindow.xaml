@@ -2629,6 +2629,12 @@
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="WalletPaneAStack">
+                                <!-- the one-tap Bittensor key's backup banner: it leads
+                                     Earnings while the key's recovery phrase isn't known
+                                     to be saved, and the payout consent panel follows it
+                                     while the key path needs action
+                                     (WalletPage::ApplyKeyBanner, PlaceConsentPanel) -->
+                                <StackPanel x:Name="BittensorKeyBannerHost" Visibility="Collapsed" />
                                 <!-- THE FIGURE: net points, in the display face,
                                      with its caption and the fetch state beside
                                      it. The breakdown rows follow on the pane's
@@ -2870,6 +2876,9 @@
                                                     HorizontalAlignment="Stretch"
                                                     IsEnabled="False"
                                                     Click="OnClaimAlpha" />
+                                            <!-- the claim card's funds disclaimer, on the first
+                                                 claim tile shown (WalletPage::ApplyClaimDisclaimers) -->
+                                            <StackPanel x:Name="UnclaimedDisclaimerHost" Visibility="Collapsed" />
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
@@ -2896,6 +2905,12 @@
                                             <TextBlock x:Name="SettlementV2Note" TextWrapping="Wrap"
                                                        Style="{StaticResource UrRowNoteStyle}"
                                                        TextTrimming="None" Visibility="Collapsed" />
+                                            <!-- URnetwork's claim relay under the balances: who
+                                                 claims, why a balance waits, Claim now, and the
+                                                 device's own claim as the fallback
+                                                 (WalletPage::ApplyRelayToV2Section) -->
+                                            <StackPanel x:Name="SettlementV2RelayHost" Spacing="8"
+                                                        Visibility="Collapsed" />
                                             <!-- the v2 claim dialog. The same action as the v1
                                                  tile's Claim above, so the same style: on every
                                                  platform the two Claims are one button, and here
@@ -2905,6 +2920,7 @@
                                                     HorizontalAlignment="Stretch"
                                                     IsEnabled="False" Visibility="Collapsed"
                                                     Click="OnClaimV2" />
+                                            <StackPanel x:Name="SettlementV2DisclaimerHost" Visibility="Collapsed" />
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
@@ -2932,6 +2948,11 @@
                                                        Style="{StaticResource UrKeyTextStyle}"
                                                        TextWrapping="Wrap" TextTrimming="None"
                                                        Visibility="Collapsed" />
+                                            <!-- the one-tap Bittensor key's part of the card: its
+                                                 body in place of the lines above and below, or its
+                                                 lines under them (WalletPage::RebuildKeyCard) -->
+                                            <StackPanel x:Name="PayoutKeyHost" Spacing="8"
+                                                        Visibility="Collapsed" />
                                             <TextBlock x:Name="PayoutConsentNote" TextWrapping="Wrap"
                                                        Style="{StaticResource UrRowNoteStyle}"
                                                        TextTrimming="None" Visibility="Collapsed" />
@@ -2941,6 +2962,8 @@
                                                     HorizontalAlignment="Stretch"
                                                     IsEnabled="False" Visibility="Collapsed"
                                                     Click="OnSignConsent" />
+                                            <!-- the funds disclaimer the sdk names for the card -->
+                                            <StackPanel x:Name="PayoutKeyDisclaimerHost" Visibility="Collapsed" />
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>

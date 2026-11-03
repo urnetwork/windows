@@ -38,6 +38,10 @@ using namespace winrt::Microsoft::UI::Xaml;
 
 namespace urnw {
 namespace {
+
+// The tag of the one-tap Bittensor key's reminder among the tray's
+// notifications (TrayIcon::ShowBalloon): its click opens the Key screen.
+constexpr int kBalloonBittensorKey = 1;
 std::unique_ptr<AppController> g_app;
 
 // The controller, and the SdkHost in it, outlive a thread still running inside
@@ -139,6 +143,11 @@ void AppController::Start() {
   TrayIcon::Callbacks cb;
   cb.onLeftClick = [this](POINT anchor) { ShowWindow(&anchor); };
   cb.onShowWindow = [this] { ShowWindow(nullptr); };
+  // the one-tap key's reminder opens Earnings with the Key screen; the other
+  // notifications open nothing, as before
+  cb.onBalloonClick = [this](int tag) {
+    if (tag == kBalloonBittensorKey) OpenEarningsKeyScreen();
+  };
   // ONE RULE, SHARED WITH THE WINDOW. The tray used to test `state == Up` while
   // the connect page tested the SDK's connect status, and in the state the owner
   // hit — SDK disconnected, tunnel still installed, machine blocked — the two
@@ -694,6 +703,20 @@ void AppController::ObserveSlowInternet() {
 void AppController::SetSlowInternetNotify(bool on) {
   slowNotify_ = on;
   SaveAppPref(kSlowInternetNotifyPrefKey, on);
+}
+
+bool AppController::PostBittensorKeyReminder() {
+  const bool posted = tray_.ShowBalloon(Localized("bittensor_key_reminder_title_2"),
+                                        Localized("bittensor_key_reminder_body_2"), kBalloonBittensorKey);
+  LogInfo("app: the Bittensor key reminder {}", posted ? "was posted" : "could not be posted");
+  return posted;
+}
+
+void AppController::OpenEarningsKeyScreen() {
+  ShowWindow(nullptr);
+  if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>()) {
+    self->OpenEarningsKeyScreen();
+  }
 }
 
 void AppController::OnStats(const LiveStats& stats) {

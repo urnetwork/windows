@@ -147,6 +147,7 @@ var catalogAssignedKeyPattern = regexp.MustCompile(`\b(\w*Key)\s*=\s*"([a-z][a-z
 // Literals the code spells like the id of a catalog key without looking that
 // key up, each with what it is instead.
 var catalogNonLookupLiteralReasons = map[string]string{
+	"delete":     "the sdk's confirmation the Key screen is asking for (BittensorKeyPresentation.h kConfirmDelete)",
 	"developer":  "a --preview-ui destination (MainWindow.xaml.cpp)",
 	"key":        "a JSON field (SdkHost.cpp, VlessPresentation.h)",
 	"other":      "a CLDR plural category (Localization.cpp)",

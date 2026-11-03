@@ -36,6 +36,8 @@ struct EpochSchedule {
   int64_t endMillis = 0;
   int64_t claimOpenMillis = 0;
   int64_t expiryMillis = 0;
+  // the policy's epoch length in blocks, which the one-tap key's reminder reads
+  int64_t epochBlocks = 0;
 };
 
 enum class LineKind {

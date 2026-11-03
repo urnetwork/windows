@@ -18,6 +18,7 @@
 #include "Localization.h"
 #include "Log.h"
 #include "PageContext.h"
+#include "BittensorKeyStore.h"  // the one-tap key's warning, and its removal with the account
 #include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "SubscriptionBalance.h"
 #include "Strings.h"
@@ -2254,6 +2255,22 @@ void DeleteAccountSheet::Build(XamlRoot const& root) {
   warning.Foreground(colors::DangerBrush());
   content.Children().Append(warning);
 
+  // The network's one-tap Bittensor key goes with the account, and URnetwork
+  // can't get it back: while its phrase isn't known to be saved, the sheet says
+  // so and offers Back up first (the Key screen) in place of going on.
+  if (auto jwt = sdk_.ParsedJwt(); jwt && jwt->NetworkId) networkId_ = *jwt->NetworkId;
+  if (BittensorKeyNeedsBackup(networkId_)) {
+    TextBlock keyWarning;
+    keyWarning.Text(Loc("bittensor_key_delete_account_message_2"));
+    keyWarning.FontSize(13);
+    keyWarning.TextWrapping(TextWrapping::Wrap);
+    content.Children().Append(keyWarning);
+    dialog_.SecondaryButtonText(Loc("bittensor_key_back_up_first"));
+    dialog_.SecondaryButtonClick([weak = weak_from_this()](auto const&, auto const&) {
+      if (auto self = weak.lock()) self->backUpFirstChosen_ = true;
+    });
+  }
+
   // WHICH network is about to go. Shown as its own line rather than only as a
   // placeholder, because the name is the whole basis of the decision and a
   // placeholder disappears the moment the user starts typing.
@@ -2301,8 +2318,9 @@ void DeleteAccountSheet::Submit() {
   auto queue = dialog_.DispatcherQueue();
   auto weak = weak_from_this();
   auto* sdk = &sdk_;
-  sdk_.api().networkDelete([queue, weak, sdk](std::optional<urnet::NetworkDeleteResult> result,
-                                              std::optional<std::string> err) {
+  sdk_.api().networkDelete([queue, weak, sdk, networkId = networkId_](
+                               std::optional<urnet::NetworkDeleteResult> result,
+                               std::optional<std::string> err) {
     // A refused deletion is a result with an error (HTTP 200): the account
     // still exists, so only a result with no error signs out.
     const bool serverError = result && result->error.has_value();
@@ -2311,11 +2329,14 @@ void DeleteAccountSheet::Submit() {
         serverError ? result->error->message : std::string());
     const bool ok = outcome.deleted;
     const std::string detail = outcome.detail;
-    queue.TryEnqueue([weak, sdk, ok, detail] {
+    queue.TryEnqueue([weak, sdk, ok, detail, networkId] {
       auto self = weak.lock();
       if (!self) return;
       self->deleting_ = false;
       if (ok) {
+        // The network is gone, and its one-tap Bittensor key and notes go
+        // with it, before the sign-out (the sdk's ForgetNetwork).
+        ForgetBittensorKey(networkId);
         // The network is gone; the session is meaningless. Signing out is what
         // iOS does too, and it is the only coherent next state.
         self->dialog_.Hide();
