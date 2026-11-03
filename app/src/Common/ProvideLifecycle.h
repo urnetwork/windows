@@ -199,6 +199,77 @@ constexpr const char* ToString(ExtenderSettingTarget target) {
   return "nothing";
 }
 
+// ---- the service's half: one device across connect and disconnect ----------
+//
+// The provider-only device and a tunnel session's device carry one identity:
+// the persisted key material and the request's jwt, space and description. A
+// Connect used to retire the provider-only device and build the session a new
+// DeviceLocal, and a Disconnect closed that one for a new provider-only device
+// to be built. Every switch closed at once everything the old device held:
+// its platform transports, its network peers, and every contract, each close
+// posted to the api by itself. On a busy provider that is thousands of posts
+// in a few seconds, drawing 429s whose retries dial again, and thousands of
+// blocking socket closes, each holding an os thread. So the device now moves
+// between the two roles whenever the identity allows, and only what belongs to
+// a session (the adapter, the routes, the rpc listener, the destination) comes
+// and goes with it.
+
+// The request fields a DeviceLocal is built from, as StartProvider and
+// StartTunnel both carry them.
+struct DeviceIdentity {
+  std::string_view byJwt;
+  std::string_view networkSpaceJson;
+  std::string_view instanceId;
+  std::string_view deviceDescription;
+  std::string_view deviceSpec;
+  std::string_view appVersion;
+};
+
+constexpr bool SameIdentity(const DeviceIdentity& a, const DeviceIdentity& b) {
+  return a.byJwt == b.byJwt && a.networkSpaceJson == b.networkSpaceJson &&
+         a.instanceId == b.instanceId && a.deviceDescription == b.deviceDescription &&
+         a.deviceSpec == b.deviceSpec && a.appVersion == b.appVersion;
+}
+
+// Connect: the running provider-only device becomes the session's device when
+// it was built for the identity the start carries. Otherwise it is retired and
+// the session builds its own, as before.
+constexpr bool PromotesProviderDevice(bool providerDevice, const DeviceIdentity& provider,
+                                      const DeviceIdentity& start) {
+  return providerDevice && SameIdentity(provider, start);
+}
+
+// Disconnect: what the service knows when a session ends.
+struct SessionStopFacts {
+  // The session holds a DeviceLocal.
+  bool sessionDevice = false;
+  // The user's disconnect (stop_tunnel). Not the failsafe, not a failed or
+  // replaced start, not a logout and not the service stopping: each of those
+  // closes the device, as before.
+  bool disconnect = false;
+  // The device's own provide control mode.
+  ControlMode mode = ControlMode::Unknown;
+  // After the machine is given back. The kill switch's armed floor outlasts a
+  // failsafe stop only, but the rule is ProviderStartRefusal's either way.
+  bool firewallInForce = false;
+  // Another DeviceLocal under this identity is still held by an abandoned
+  // teardown.
+  bool deviceStillHeld = false;
+  bool restartPending = false;
+};
+
+// The session's device stays, as the provider-only device, exactly when a
+// provider-only device could start in its place now: the same rule, so the two
+// paths cannot disagree about when this machine provides.
+constexpr bool KeepsSessionDevice(const SessionStopFacts& facts) {
+  if (!facts.sessionDevice || !facts.disconnect) return false;
+  ServiceProviderState state;
+  state.firewallInForce = facts.firewallInForce;
+  state.deviceStillHeld = facts.deviceStillHeld;
+  state.restartPending = facts.restartPending;
+  return ProviderStartRefusal(facts.mode, state) == ProviderRefusal::None;
+}
+
 // ---- the app's half: what to ask the service while there is no session -----
 
 // What one service status says, as the app's reconcile reads it

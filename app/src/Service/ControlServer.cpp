@@ -80,7 +80,9 @@ nlohmann::json ControlServer::Handle(const nlohmann::json& request) {
       reply.status = st;
       PushState();
     } else if (type == proto::msg::kStopTunnel) {
-      tunnel_.Stop();
+      // The user's disconnect: the session's device may stay, providing
+      // (TunnelController::Disconnect). The service's own stop closes it.
+      tunnel_.Disconnect();
       reply.ok = true;
       reply.status = tunnel_.Status();
       PushState();

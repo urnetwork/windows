@@ -245,6 +245,25 @@ void TestSameProviderDevice() {
   remoded.provide_mode = "network";
   Check(SameProviderDevice(base, remoded), "same device: only the mode differs");
   Check(SameProviderDevice(base, base), "same device: identical");
+  // the provider transport policy is applied to the running device in place,
+  // as the build applies it right after construction
+  StartProvider repoliced = base;
+  repoliced.provider_transport_settings_json = "";
+  Check(SameProviderDevice(base, repoliced),
+        "same device: only the provider transport policy differs");
+  // a tunnel start carries the same identity fields
+  StartTunnel start;
+  start.by_jwt = base.by_jwt;
+  start.network_space_json = base.network_space_json;
+  start.instance_id = base.instance_id;
+  start.device_description = base.device_description;
+  start.device_spec = base.device_spec;
+  start.app_version = base.app_version;
+  Check(urnw::provide::SameIdentity(IdentityOf(base), IdentityOf(start)),
+        "same device: a tunnel start with the provider's identity is the same device");
+  start.instance_id = "0193e520-0000-7000-8000-000000000002";
+  Check(!urnw::provide::SameIdentity(IdentityOf(base), IdentityOf(start)),
+        "same device: a tunnel start with another identity is another device");
 
   struct Change {
     const char* field;
@@ -258,8 +277,6 @@ void TestSameProviderDevice() {
       {"device_description", [](StartProvider& r) { r.device_description = "DESKTOP-2"; }},
       {"device_spec", [](StartProvider& r) { r.device_spec = "windows arm64"; }},
       {"app_version", [](StartProvider& r) { r.app_version = "2026.10.6-1"; }},
-      {"provider_transport_settings_json",
-       [](StartProvider& r) { r.provider_transport_settings_json = ""; }},
   };
   for (const Change& change : changes) {
     StartProvider other = base;

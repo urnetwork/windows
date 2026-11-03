@@ -320,9 +320,12 @@ struct SetKillSwitch {
 // Refused while a tunnel session exists or is starting, while the kill
 // switch's armed floor is in force, and for a mode that does not provide while
 // disconnected (provide::ProviderStartRefusal). The same request again keeps
-// the running device and only applies the mode (SameProviderDevice); any other
-// request replaces it. stop_provider retires it, and every tunnel teardown
-// retires it first, so a Connect never runs two devices under one identity.
+// the running device and applies the mode and the provider transport policy in
+// place (SameProviderDevice); any other request replaces it. stop_provider
+// retires it. A Connect with the same identity takes it as the session's
+// device and any other Connect retires it first, so a Connect never runs two
+// devices under one identity; a disconnect may hand the session's device back
+// (provide::KeepsSessionDevice).
 struct StartProvider {
   std::string by_jwt;              // client JWT for this device
   std::string network_space_json;  // NetworkSpace.toJson() from the app
@@ -1003,17 +1006,26 @@ inline void from_json(const nlohmann::json& j, SetIngressDns& v) {
   v.control_doh_urls = std::move(controlDohUrls);
 }
 
-// "A device built from `a` can keep running for `b`." Everything that goes into
-// constructing the device must match — credentials, identity, space and the
-// provider transport policy; only the provide mode may differ, because the
-// running device takes a new mode in place, and the network country, which
-// the service applies in place for every device. Shared by the service, which
-// keeps its device for such a request, and the tests.
+// The identity a DeviceLocal is built from (provide::DeviceIdentity), as each
+// request carries it. Views into the request: valid while the request lives.
+inline provide::DeviceIdentity IdentityOf(const StartProvider& r) {
+  return {r.by_jwt, r.network_space_json, r.instance_id, r.device_description, r.device_spec,
+          r.app_version};
+}
+inline provide::DeviceIdentity IdentityOf(const StartTunnel& r) {
+  return {r.by_jwt, r.network_space_json, r.instance_id, r.device_description, r.device_spec,
+          r.app_version};
+}
+
+// "A device built from `a` can keep running for `b`." The identity it was
+// built from must match — credentials, identity and space. The provide mode,
+// the provider transport policy and the network country may differ: the
+// running device takes a new mode and a new policy in place (the build applies
+// both the same way, right after construction), and the service applies the
+// country in place for every device. Shared by the service, which keeps its
+// device for such a request, and the tests.
 inline bool SameProviderDevice(const StartProvider& a, const StartProvider& b) {
-  return a.by_jwt == b.by_jwt && a.network_space_json == b.network_space_json &&
-         a.instance_id == b.instance_id && a.device_description == b.device_description &&
-         a.device_spec == b.device_spec && a.app_version == b.app_version &&
-         a.provider_transport_settings_json == b.provider_transport_settings_json;
+  return provide::SameIdentity(IdentityOf(a), IdentityOf(b));
 }
 
 inline void to_json(nlohmann::json& j, const TunnelStatus& v) {
