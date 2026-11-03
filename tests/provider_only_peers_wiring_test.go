@@ -38,10 +38,19 @@ func TestProviderOnlyPeersServiceWiring(t *testing.T) {
 	listener := handlerSource(t, "TunnelController.cpp", open,
 		"providerDevice_->addNetworkPeersChangeListener(")
 	provideRequire(t, "the peers listener", listener,
-		"peers->Store(ConnectedPeers(std::move(networkPeers)));")
+		"KeepProviderPeers(*peers, std::move(networkPeers), PeersReading::Changed);")
 	provideRequireOrder(t, "OpenProviderStatsLocked", open,
-		"peers->Store(ConnectedPeers(providerDevice_->getNetworkPeers()));",
+		"KeepProviderPeers(*peers, providerDevice_->getNetworkPeers(), PeersReading::Opened);",
 		"providerPeers_ = std::move(peers);")
+	// what the platform delivered to it is logged as counts, never as names
+	keep := definitionBody(t, "TunnelController.cpp", source, "void KeepProviderPeers(Peers& peers,")
+	provideRequireOrder(t, "KeepProviderPeers", keep,
+		"urnet::NetworkPeerList connected = ConnectedPeers(std::move(networkPeers));",
+		"const size_t previous = peers.Store(std::move(connected));")
+	provideRequire(t, "KeepProviderPeers", keep,
+		"if (reading == PeersReading::Opened || previous != count) {",
+		"count, providing,")
+	requireNone(t, "KeepProviderPeers", keep, "DeviceName", "DeviceSpec", "ClientId")
 
 	retire := definitionBody(t, "TunnelController.cpp", source,
 		"void TunnelController::RetireProviderDeviceLocked()")

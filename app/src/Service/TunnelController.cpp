@@ -2477,6 +2477,30 @@ urnet::NetworkPeerList ConnectedPeers(std::optional<urnet::NetworkPeers> peers) 
   }
   return rows;
 }
+
+enum class PeersReading { Opened, Changed };
+
+// Keeps the provider-only device's reading, and logs its count when the
+// statistics open and whenever it moves. The device has no DeviceRemote, so
+// nothing else records what the platform delivered to it; a session's device
+// shows the same through its rpc pushes. Counts only, never names.
+template <class Peers>
+void KeepProviderPeers(Peers& peers, std::optional<urnet::NetworkPeers> networkPeers,
+                       PeersReading reading) {
+  urnet::NetworkPeerList connected = ConnectedPeers(std::move(networkPeers));
+  const size_t count = connected.size();
+  size_t providing = 0;
+  for (const auto& peer : connected) {
+    if (peer.ProvideEnabled) ++providing;
+  }
+  const size_t previous = peers.Store(std::move(connected));
+  if (reading == PeersReading::Opened || previous != count) {
+    LogInfo("provide: the provider-only device holds {} connected network peer(s), {} "
+            "providing ({})",
+            count, providing,
+            reading == PeersReading::Opened ? "statistics opened" : "a peers change");
+  }
+}
 }  // namespace
 
 void TunnelController::OpenProviderStatsLocked() {
@@ -2494,9 +2518,9 @@ void TunnelController::OpenProviderStatsLocked() {
     // unsubscribes still finds it.
     peersSub = providerDevice_->addNetworkPeersChangeListener(
         [peers](std::optional<urnet::NetworkPeers> networkPeers) {
-          peers->Store(ConnectedPeers(std::move(networkPeers)));
+          KeepProviderPeers(*peers, std::move(networkPeers), PeersReading::Changed);
         });
-    peers->Store(ConnectedPeers(providerDevice_->getNetworkPeers()));
+    KeepProviderPeers(*peers, providerDevice_->getNetworkPeers(), PeersReading::Opened);
   } catch (const std::exception&) {
     LogWarn("provide: the provider-only device's statistics could not be opened; the "
             "app shows no client count or provider plots while disconnected");

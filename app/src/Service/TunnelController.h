@@ -730,9 +730,12 @@ class TunnelController {
   // reading. Shared with that listener as the extender status is.
   class LatestNetworkPeers {
    public:
-    void Store(urnet::NetworkPeerList connected) {
+    // Returns how many peers the reading it replaced held.
+    size_t Store(urnet::NetworkPeerList connected) {
       std::scoped_lock lock(mutex_);
+      const size_t previous = connected_.size();
       connected_ = std::move(connected);
+      return previous;
     }
     urnet::NetworkPeerList Load() const {
       std::scoped_lock lock(mutex_);
