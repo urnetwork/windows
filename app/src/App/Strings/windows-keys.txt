@@ -555,6 +555,7 @@ export_logs
 extender
 extender_activation_failed
 extender_activation_refused
+extender_activation_unreachable
 extender_active
 extender_address_copied
 extender_address_label

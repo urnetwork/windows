@@ -3830,6 +3830,10 @@
     <value>सक्रियण अस्वीकार: {}</value>
     <comment>Extender status when the operator refused the activation and no family is active. The argument is the operator's reason.</comment>
   </data>
+  <data name="extender_activation_unreachable" xml:space="preserve">
+    <value>इंटरनेट से इस डिवाइस तक TCP पोर्ट 443 पर नहीं पहुँचा जा सकता। TCP 443 (और UDP 443 व 4053) की अनुमति दें या उन्हें फ़ॉरवर्ड करें, या एक्सटेंडर बंद करें: {}</value>
+    <comment>Extender status when the operator's required test could not reach this device from the internet on TCP port 443, usually because a firewall rejects it or a router doesn't forward the port, and no family is active. The extender is an optional extra on top of providing, so this tells the user what it needs and that they can turn it off. 'Extender' names the Extender switch; use its label. The argument is the operator's technical reason.</comment>
+  </data>
   <data name="extender_active" xml:space="preserve">
     <value>सक्रिय · {}</value>
     <comment>Extender status when at least one address family is activated. The argument is the family or families, from the IPv4, IPv6 and IPv4 and IPv6 labels.</comment>

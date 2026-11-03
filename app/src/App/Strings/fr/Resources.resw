@@ -3831,6 +3831,10 @@ bonne manière</value>
     <value>Activation refusée : {}</value>
     <comment>Extender status when the operator refused the activation and no family is active. The argument is the operator's reason.</comment>
   </data>
+  <data name="extender_activation_unreachable" xml:space="preserve">
+    <value>Internet ne peut pas joindre cet appareil sur le port TCP 443. Autorisez ou redirigez TCP 443 (ainsi qu'UDP 443 et 4053), ou désactivez l'Extendeur : {}</value>
+    <comment>Extender status when the operator's required test could not reach this device from the internet on TCP port 443, usually because a firewall rejects it or a router doesn't forward the port, and no family is active. The extender is an optional extra on top of providing, so this tells the user what it needs and that they can turn it off. 'Extender' names the Extender switch; use its label. The argument is the operator's technical reason.</comment>
+  </data>
   <data name="extender_active" xml:space="preserve">
     <value>Actif · {}</value>
     <comment>Extender status when at least one address family is activated. The argument is the family or families, from the IPv4, IPv6 and IPv4 and IPv6 labels.</comment>

@@ -401,6 +401,7 @@ inline constexpr const char* kExtenderProvideErrorTcpUnavailable = "tcp_unavaila
 inline constexpr const char* kExtenderProvideErrorListen = "listen";
 inline constexpr const char* kExtenderProvideErrorActivationFailed = "activation_failed";
 inline constexpr const char* kExtenderProvideErrorActivationRefused = "activation_refused";
+inline constexpr const char* kExtenderProvideErrorActivationUnreachable = "activation_unreachable";
 
 // As much of the SDK's ExtenderProvideStatus as the apps read (N7), with the
 // setting read beside it. The SDK derived `state` and `errorCase` once from the

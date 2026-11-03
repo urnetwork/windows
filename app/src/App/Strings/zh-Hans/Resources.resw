@@ -3883,6 +3883,10 @@
     <value>激活被拒绝：{}</value>
     <comment>Extender status when the operator refused the activation and no family is active. The argument is the operator's reason.</comment>
   </data>
+  <data name="extender_activation_unreachable" xml:space="preserve">
+    <value>无法从互联网通过 TCP 端口 443 访问此设备。请允许或转发 TCP 443（以及 UDP 443 和 4053），或关闭扩展器：{}</value>
+    <comment>Extender status when the operator's required test could not reach this device from the internet on TCP port 443, usually because a firewall rejects it or a router doesn't forward the port, and no family is active. The extender is an optional extra on top of providing, so this tells the user what it needs and that they can turn it off. 'Extender' names the Extender switch; use its label. The argument is the operator's technical reason.</comment>
+  </data>
   <data name="extender_active" xml:space="preserve">
     <value>已激活 · {}</value>
     <comment>Extender status when at least one address family is activated. The argument is the family or families, from the IPv4, IPv6 and IPv4 and IPv6 labels.</comment>
