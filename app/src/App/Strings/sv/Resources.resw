@@ -1087,8 +1087,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>Det gick inte att läsa den här enhetens nyckelring. Lås upp din enhet och försök igen.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>Det gick inte att läsa den här enhetens säkra lagring. Lås upp din enhet och försök igen.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>Det gick inte att spara nyckeln på den här enheten, så inget har signerats. Försök igen eller spara återställningsfrasen först.</value>

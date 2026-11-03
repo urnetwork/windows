@@ -1075,8 +1075,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>이 기기의 키체인을 읽지 못했습니다. 기기 잠금을 해제하고 다시 시도하세요.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>이 기기의 보안 저장소를 읽지 못했습니다. 기기 잠금을 해제하고 다시 시도하세요.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>이 기기에 키를 저장하지 못해 아무것도 서명되지 않았습니다. 다시 시도하거나 복구 문구를 먼저 저장하세요.</value>

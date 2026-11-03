@@ -1115,8 +1115,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>Der Schlüsselbund dieses Geräts konnte nicht gelesen werden. Entsperre dein Gerät und versuche es erneut.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>Der sichere Speicher dieses Geräts konnte nicht gelesen werden. Entsperre dein Gerät und versuche es erneut.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>Der Schlüssel konnte auf diesem Gerät nicht gespeichert werden, daher wurde nichts signiert. Versuche es erneut oder speichere zuerst die Wiederherstellungsphrase.</value>

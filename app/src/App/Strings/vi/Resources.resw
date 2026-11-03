@@ -1075,8 +1075,8 @@
     <comment>Earnings screen, the payout card for the network's payouts. An error under the Set up payouts button.</comment>
   </data>
   <data name="bittensor_key_failure_keychain" xml:space="preserve">
-    <value>Không thể đọc chuỗi khóa của thiết bị này. Hãy mở khóa thiết bị rồi thử lại.</value>
-    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage (Apple's Keychain) did not answer, usually because the device is locked.</comment>
+    <value>Không thể đọc bộ nhớ an toàn của thiết bị này. Hãy mở khóa thiết bị rồi thử lại.</value>
+    <comment>Earnings screen, the payout card for the network's payouts. The device's secure storage did not answer, usually because the device is locked: Keychain on Apple, Keystore on Android, the credential store on a desktop. The same words on every platform, so name none of them.</comment>
   </data>
   <data name="bittensor_key_failure_store" xml:space="preserve">
     <value>Không thể lưu khóa trên thiết bị này nên không có gì được ký. Hãy thử lại hoặc lưu cụm từ sao lưu trước.</value>
