@@ -403,6 +403,43 @@ hstring ClaimNowNoteText(btkey::ClaimNowNote note, int64_t periodDays, int64_t f
   return hstring{};
 }
 
+FrameworkElement MakeClaimedBanner(urnet::SnClaimStatusResult const& status) {
+  StackPanel words;
+  words.Spacing(4);
+  StackPanel head;
+  head.Orientation(Orientation::Horizontal);
+  head.Spacing(8);
+  head.Children().Append(MakeText(Loc("claim_confirmed"), 13, colors::TextBrush(), true));
+  const int64_t paid = status.claim_amount_rao.value_or(0);
+  if (0 < paid) head.Children().Append(MakeText(hstring{FormatAlphaRao(paid)}, 13, colors::TextBrush()));
+  words.Children().Append(head);
+  const std::string coldkey = status.coldkey_ss58.value_or(std::string());
+  if (!coldkey.empty()) {
+    words.Children().Append(Body(hstring{urnw::Format("sn_claim_relay_lands_on", ShortAddress(coldkey))}));
+  }
+  const std::string url = status.claim_tx_url.value_or(std::string());
+  if (!url.empty()) words.Children().Append(Link(Loc("earnings_view_transaction"), true, [url] { OpenTransaction(url); }));
+  Grid grid;
+  grid.ColumnSpacing(10);
+  ColumnDefinition lead;
+  lead.Width(GridLengthHelper::Auto());
+  grid.ColumnDefinitions().Append(lead);
+  grid.ColumnDefinitions().Append(ColumnDefinition());
+  auto check = Glyph(kCheckGlyph, 16, colors::MakeBrush(colors::kUrGreen));
+  check.VerticalAlignment(VerticalAlignment::Top);
+  Grid::SetColumn(check, 0);
+  grid.Children().Append(check);
+  Grid::SetColumn(words, 1);
+  grid.Children().Append(words);
+  Border box;
+  box.Background(colors::MakeBrush(colors::WithAlpha(colors::kUrGreen, 0x1F)));
+  box.CornerRadius(CornerRadius{8, 8, 8, 8});
+  box.Padding(Thickness{12, 10, 12, 10});
+  box.Child(grid);
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(box, Loc("claim_confirmed"));
+  return box;
+}
+
 void DrawRelaySection(StackPanel const& host, urnet::SnClaimStatusResult const& status, bool inSheet,
                       std::function<void()> claimNow, std::function<void()> selfClaim) {
   host.Children().Clear();
@@ -418,33 +455,8 @@ void DrawRelaySection(StackPanel const& host, urnet::SnClaimStatusResult const& 
     row.Children().Append(MakeText(Loc("sn_claim_relay_for_you"), 12, colors::TextBrush(), true));
     add(row);
   }
-  if (status.shows_claimed) {
-    // URnetwork's claim is the latest and nothing is claimable: the claimed
-    // pill, what it paid, and its transaction (the mocks' 4d)
-    StackPanel row;
-    row.Orientation(Orientation::Horizontal);
-    row.Spacing(8);
-    Border pill;
-    pill.Background(colors::MakeBrush(colors::WithAlpha(colors::kUrLightBlue, 0x33)));
-    pill.CornerRadius(CornerRadius{9, 9, 9, 9});
-    pill.Padding(Thickness{8, 2, 8, 2});
-    pill.VerticalAlignment(VerticalAlignment::Center);
-    pill.Child(MakeText(Loc("claim_confirmed"), 12, colors::TextBrush(), true));
-    row.Children().Append(pill);
-    const int64_t paid = status.claim_amount_rao.value_or(0);
-    if (0 < paid) {
-      auto amount = MakeText(hstring{FormatAlphaRao(paid)}, 12, colors::TextBrush());
-      amount.VerticalAlignment(VerticalAlignment::Center);
-      row.Children().Append(amount);
-    }
-    const std::string url = status.claim_tx_url.value_or(std::string());
-    if (!url.empty()) {
-      auto link = Link(Loc("earnings_view_transaction"), true, [url] { OpenTransaction(url); });
-      link.VerticalAlignment(VerticalAlignment::Center);
-      row.Children().Append(link);
-    }
-    add(row);
-  }
+  // the claimed state (4d): what URnetwork's claim paid, where, and its transaction
+  if (status.shows_claimed) add(MakeClaimedBanner(status));
   if (0 < status.claimable_rao) {
     // the pending pill, and why the balance waits
     Grid row;
@@ -488,14 +500,19 @@ void DrawRelaySection(StackPanel const& host, urnet::SnClaimStatusResult const& 
   }
   if (inSheet) return;
   if (relayClaims) {
-    // Claim now opens the claim sheet; under it, who pays, or why it can't act
+    // Claim now opens the claim sheet; under it, who pays, or why it can't act,
+    // or in the claimed state when it is available again
     add(ActionButton(Loc("sn_claim_relay_claim_now"), /*primary=*/false, /*busy=*/false,
                      status.claim_now_available, std::move(claimNow)));
-    const hstring note = ClaimNowNoteText(
-        btkey::ClaimNowNoteFor(status.claim_now_available, status.claim_now_period_days,
-                               status.claim_now_reason.value_or(std::string()), status.transfer_floor_tao_rao,
-                               status.claim_now_next_at_millis.value_or(0), /*inSheet=*/false),
-        status.claim_now_period_days, status.transfer_floor_tao_rao, status.claim_now_next_at_millis.value_or(0));
+    const int64_t nextAtMillis = status.claim_now_next_at_millis.value_or(0);
+    const btkey::ClaimNowNote kind =
+        status.shows_claimed
+            ? btkey::ClaimedNoteFor(nextAtMillis)
+            : btkey::ClaimNowNoteFor(status.claim_now_available, status.claim_now_period_days,
+                                     status.claim_now_reason.value_or(std::string()),
+                                     status.transfer_floor_tao_rao, nextAtMillis, /*inSheet=*/false);
+    const hstring note =
+        ClaimNowNoteText(kind, status.claim_now_period_days, status.transfer_floor_tao_rao, nextAtMillis);
     if (!note.empty()) add(Body(note));
     return;
   }

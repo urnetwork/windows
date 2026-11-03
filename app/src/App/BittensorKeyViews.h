@@ -67,7 +67,12 @@ void DrawRelaySection(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& ho
                       urnet::SnClaimStatusResult const& status, bool inSheet,
                       std::function<void()> claimNow, std::function<void()> selfClaim);
 
-// The line under Claim now (btkey::ClaimNowNoteFor), "" for none.
+// The claimed state (the mocks' 4d), when the sdk's ShowsClaimed: what
+// URnetwork's claim paid, the coldkey it landed on, and its transaction.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakeClaimedBanner(urnet::SnClaimStatusResult const& status);
+
+// The line under Claim now (btkey::ClaimNowNoteFor, or btkey::ClaimedNoteFor in
+// the claimed state), "" for none.
 winrt::hstring ClaimNowNoteText(btkey::ClaimNowNote note, int64_t periodDays, int64_t floorTaoRao,
                                 int64_t nextAtMillis);
 

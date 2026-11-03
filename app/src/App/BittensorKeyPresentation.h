@@ -408,6 +408,13 @@ inline ClaimNowNote ClaimNowNoteFor(bool available, int64_t periodDays, std::str
   return ClaimNowNote::None;
 }
 
+// The claimed state (the mocks' 4d): URnetwork's claim is the latest and nothing
+// is claimable, so Claim now has nothing to act on. The line under it says when
+// it is available again, while its limit holds, and nothing else.
+inline ClaimNowNote ClaimedNoteFor(int64_t nextAtMillis) {
+  return 0 < nextAtMillis ? ClaimNowNote::AgainOn : ClaimNowNote::None;
+}
+
 // ---- amounts ------------------------------------------------------------------------
 
 // "0.0125": an amount in rao of TAO, for a sentence that names TAO itself.

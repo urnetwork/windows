@@ -284,6 +284,10 @@ void TestRelay() {
   Check(btkey::ClaimNowNoteFor(false, 30, "limit", 0, 0, false) == ClaimNowNote::None, "no date");
   Check(btkey::ClaimNowNoteFor(false, 30, "queued", 0, 0, false) == ClaimNowNote::None, "another reason");
 
+  TEST_CASE("in the claimed state the line says when Claim now is available again, and nothing else");
+  Check(btkey::ClaimedNoteFor(1'800'000'000'000) == ClaimNowNote::AgainOn, "the claimed state's limit");
+  Check(btkey::ClaimedNoteFor(0) == ClaimNowNote::None, "no limit, no line");
+
   TEST_CASE("amounts: TAO to four places, SN25α as precise as its size needs");
   CheckEq("0.0125", btkey::TaoAmount(12'500'000), "the automatic threshold");
   CheckEq("0.0001", btkey::TaoAmount(100'000), "the transfer floor");

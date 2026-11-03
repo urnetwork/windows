@@ -139,6 +139,10 @@ func TestBittensorKeyPresentationCatchesEachRegression(t *testing.T) {
 		{"the sheet says the tile's note", presentation,
 			"return inSheet ? ClaimNowNote::PaidEach : ClaimNowNote::Paid;", "(void)inSheet; return ClaimNowNote::Paid;",
 			"the sheet's, per coldkey"},
+		{"the claimed state never says when Claim now is back", presentation,
+			"return 0 < nextAtMillis ? ClaimNowNote::AgainOn : ClaimNowNote::None;",
+			"(void)nextAtMillis; return ClaimNowNote::None;",
+			"the claimed state's limit"},
 		{"an estimate keeps no decimal under ten", presentation,
 			"  if (10 <= value) {", "  if (1 <= value) {",
 			"one to ten"},
@@ -712,9 +716,16 @@ func TestBittensorKeyClaimsThroughTheRelay(t *testing.T) {
 		"return claimStatus_ && !claimStatus_->error && claimStatus_->shows_tile;")
 	requireBittensorKey(t, "WalletPage::ApplyRelayToV2Section", relay, "claimStatus_->shows_claimed")
 	requireBittensorKey(t, "btkeyviews::DrawRelaySection", section,
-		"if (status.shows_claimed) {", `Loc("claim_confirmed")`, "status.claim_amount_rao.value_or(0)",
+		"if (status.shows_claimed) add(MakeClaimedBanner(status));", "btkey::ClaimedNoteFor(nextAtMillis)")
+	// the claimed state (4d): what URnetwork's claim paid, the coldkey it landed
+	// on, its transaction, and when Claim now is available again
+	requireBittensorKey(t, "btkeyviews::MakeClaimedBanner", bittensorKeyBody(t, "BittensorKeyViews.cpp", views, "FrameworkElement MakeClaimedBanner("),
+		`Loc("claim_confirmed")`, "status.claim_amount_rao.value_or(0)", "status.coldkey_ss58.value_or(std::string())",
+		`urnw::Format("sn_claim_relay_lands_on", ShortAddress(coldkey))`,
 		"status.claim_tx_url.value_or(std::string())", `Loc("earnings_view_transaction")`)
 	requireBittensorKey(t, "btkeyviews::OpenTransaction", views, `if (url.rfind("https://", 0) != 0) return;`)
+	requireBittensorKeyOrder(t, "ClaimRelaySheet::ApplyState", bittensorKeyBody(t, "BittensorKeySheets.cpp", sheets, "void ClaimRelaySheet::ApplyState("),
+		"if (status.shows_claimed) {", "btkey::ClaimedNoteFor(nextAtMillis)", "} else if (btkey::RelayClaims(status.reason)) {")
 	// the wallet card and the points card after the one tap
 	requireBittensorKey(t, "WalletPage::ApplyKeyWalletCard", bittensorKeyBody(t, "WalletPage.cpp", page, "void WalletPage::ApplyKeyWalletCard("),
 		"const bool key = keyCard_ && !keyCard_->stored_address.empty();",

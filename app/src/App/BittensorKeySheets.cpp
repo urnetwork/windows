@@ -851,7 +851,14 @@ void ClaimRelaySheet::ApplyState() {
       children.Append(Danger(hstring{Widen(failure_)}));
       break;
     case Outcome::None:
-      if (btkey::RelayClaims(status.reason)) {
+      if (status.shows_claimed) {
+        // the claimed state (4d): the banner above says what was claimed; Close
+        // is Done, and the line says when Claim now is available again
+        const int64_t nextAtMillis = status.claim_now_next_at_millis.value_or(0);
+        const hstring note = btkeyviews::ClaimNowNoteText(btkey::ClaimedNoteFor(nextAtMillis), 0,
+                                                          status.transfer_floor_tao_rao, nextAtMillis);
+        if (!note.empty()) children.Append(Muted(note));
+      } else if (btkey::RelayClaims(status.reason)) {
         auto claim = SheetButton(Loc("sn_claim_relay_claim_now"), /*accent=*/true);
         if (claiming_) {
           ProgressRing ring{nullptr};
