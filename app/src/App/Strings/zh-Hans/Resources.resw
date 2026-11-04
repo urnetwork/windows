@@ -6359,15 +6359,23 @@
   </data>
   <data name="purchase_disconnect_notice_message" xml:space="preserve">
     <value>URnetwork 稍后会重新连接。在此之前，你的互联网流量不会通过 VPN。</value>
-    <comment>macOS alert body under purchase_disconnect_notice_title. The app reconnects the VPN by itself after the purchase; "it" is the VPN. Until then the user's internet traffic does not go through the VPN.</comment>
+    <comment>Mac App Store alert body under purchase_disconnect_notice_title. The app reconnects the VPN by itself after the purchase; "it" is the VPN. Until then the user's internet traffic does not go through the VPN: the kill switch is off whenever this alert shows.</comment>
   </data>
   <data name="purchase_disconnect_notice_title" xml:space="preserve">
     <value>要为此次购买断开 VPN 连接吗？</value>
-    <comment>macOS alert title, shown when the user starts a purchase while a VPN connection is requested, before the app disconnects the VPN for the purchase. The alert's buttons are Disconnect and Cancel.</comment>
+    <comment>Mac App Store build's alert title, shown when the user starts a purchase while a VPN connection is requested and the kill switch is off, before the app disconnects the VPN for the purchase. The alert's buttons are Disconnect and Cancel. With the kill switch on, purchase_kill_switch_notice_title shows instead.</comment>
   </data>
   <data name="purchase_found_confirming_your_plan" xml:space="preserve">
     <value>已找到购买记录。正在确认您的方案，方案将自动更新。</value>
     <comment>Restore-purchases outcome: an entitlement for the current network was found; the confirmation poll now bridges the gap until the server credits it (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
+  </data>
+  <data name="purchase_kill_switch_notice_message" xml:space="preserve">
+    <value>在 App Store 购买需要断开 VPN，而断开期间，断网保护会阻止你的互联网流量。请关闭断网保护，然后重试。之后你可以再将其打开。</value>
+    <comment>Mac App Store alert body under purchase_kill_switch_notice_title. In "while it's disconnected", "it" is the VPN; in "turn it back on", "it" is the kill switch, which the user may turn back on after the purchase. Keep App Store and VPN as they are. Name the kill switch by the label of its setting (the kill_switch key).</comment>
+  </data>
+  <data name="purchase_kill_switch_notice_title" xml:space="preserve">
+    <value>关闭断网保护后再购买</value>
+    <comment>Mac App Store build's alert title, shown in place of purchase_disconnect_notice_title when the user starts a purchase while the kill switch is on. An App Store purchase there needs the VPN disconnected, and with the kill switch on the internet traffic is blocked while the VPN is disconnected, so nothing is bought until the user turns the kill switch off. The alert's one button is Got it. Name the kill switch by the label of its setting (the kill_switch key).</comment>
   </data>
   <data name="purchase_pending_body" xml:space="preserve">
     <value>你的购买正在等待批准。购买完成后，UR Pro 会自动开启，无需再次购买。</value>

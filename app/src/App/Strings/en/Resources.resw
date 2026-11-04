@@ -6873,15 +6873,23 @@ and most decentralized ingress and egress protocol.</value>
   </data>
   <data name="purchase_disconnect_notice_message" xml:space="preserve">
     <value>URnetwork reconnects it afterward. Until it does, your internet traffic won't go through the VPN.</value>
-    <comment>macOS alert body under purchase_disconnect_notice_title. The app reconnects the VPN by itself after the purchase; "it" is the VPN. Until then the user's internet traffic does not go through the VPN.</comment>
+    <comment>Mac App Store alert body under purchase_disconnect_notice_title. The app reconnects the VPN by itself after the purchase; "it" is the VPN. Until then the user's internet traffic does not go through the VPN: the kill switch is off whenever this alert shows.</comment>
   </data>
   <data name="purchase_disconnect_notice_title" xml:space="preserve">
     <value>Disconnect the VPN for this purchase?</value>
-    <comment>macOS alert title, shown when the user starts a purchase while a VPN connection is requested, before the app disconnects the VPN for the purchase. The alert's buttons are Disconnect and Cancel.</comment>
+    <comment>Mac App Store build's alert title, shown when the user starts a purchase while a VPN connection is requested and the kill switch is off, before the app disconnects the VPN for the purchase. The alert's buttons are Disconnect and Cancel. With the kill switch on, purchase_kill_switch_notice_title shows instead.</comment>
   </data>
   <data name="purchase_found_confirming_your_plan" xml:space="preserve">
     <value>Purchase found. Confirming your plan — it will update automatically.</value>
     <comment>Restore-purchases outcome: an entitlement for the current network was found; the confirmation poll now bridges the gap until the server credits it (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
+  </data>
+  <data name="purchase_kill_switch_notice_message" xml:space="preserve">
+    <value>App Store purchases need the VPN disconnected, and while it's disconnected, the kill switch blocks your internet traffic. Turn off the kill switch, then try again. You can turn it back on afterward.</value>
+    <comment>Mac App Store alert body under purchase_kill_switch_notice_title. In "while it's disconnected", "it" is the VPN; in "turn it back on", "it" is the kill switch, which the user may turn back on after the purchase. Keep App Store and VPN as they are. Name the kill switch by the label of its setting (the kill_switch key).</comment>
+  </data>
+  <data name="purchase_kill_switch_notice_title" xml:space="preserve">
+    <value>Turn off the kill switch to buy</value>
+    <comment>Mac App Store build's alert title, shown in place of purchase_disconnect_notice_title when the user starts a purchase while the kill switch is on. An App Store purchase there needs the VPN disconnected, and with the kill switch on the internet traffic is blocked while the VPN is disconnected, so nothing is bought until the user turns the kill switch off. The alert's one button is Got it. Name the kill switch by the label of its setting (the kill_switch key).</comment>
   </data>
   <data name="purchase_pending_body" xml:space="preserve">
     <value>Your purchase is waiting for approval. UR Pro will turn on by itself once it goes through — there's no need to buy again.</value>
