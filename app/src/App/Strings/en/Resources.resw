@@ -9344,6 +9344,74 @@ world's content</value>
     <value>Something unexpected happened.</value>
     <comment>Account panel: generic unexpected error</comment>
   </data>
+  <data name="site_unique_exit" xml:space="preserve">
+    <value>Unique exit IP</value>
+    <comment>Create proxy: the option that gives each proxy its own exit IP</comment>
+  </data>
+  <data name="site_unique_exit_count" xml:space="preserve">
+    <value>Number of proxies</value>
+    <comment>Create proxy: how many unique exit IP proxies to create at once</comment>
+  </data>
+  <data name="site_unique_exit_count_note" xml:space="preserve">
+    <value>Up to {} at a time.</value>
+    <comment>Create proxy: the most unique exit IP proxies created at once (the Pro per-minute create limit)</comment>
+  </data>
+  <data name="site_unique_exit_created" xml:space="preserve">
+    <value>Proxies with unique exit IPs ready: {}</value>
+    <comment>Create proxy: a batch of unique exit IP proxies was created; count is how many</comment>
+  </data>
+  <data name="site_unique_exit_no_supply" xml:space="preserve">
+    <value>No unique exit IP is available in this location right now. Try another location.</value>
+    <comment>Create proxy: the server found no unused exit IP for this network in the chosen location</comment>
+  </data>
+  <data name="site_unique_exit_no_supply_state" xml:space="preserve">
+    <value>No unique exit available</value>
+    <comment>Proxies list: no unused exit IP is available for this proxy right now</comment>
+  </data>
+  <data name="site_unique_exit_partial" xml:space="preserve">
+    <value>Created {0} of {1}.</value>
+    <comment>Create proxy: a batch stopped early; how many of the requested proxies were created</comment>
+  </data>
+  <data name="site_unique_exit_pro_note" xml:space="preserve">
+    <value>Unique exit IPs are part of UR Pro.</value>
+    <comment>Create proxy: why choosing a unique exit IP opens the Pro upgrade</comment>
+  </data>
+  <data name="site_unique_exit_reason_cap" xml:space="preserve">
+    <value>Too many replacements this hour; it tries again later.</value>
+    <comment>Proxies list: a unique exit proxy waits for a replacement because too many were replaced this hour (state_reason cap)</comment>
+  </data>
+  <data name="site_unique_exit_reason_manual" xml:space="preserve">
+    <value>Exit lost. Rotate exit to choose a new one.</value>
+    <comment>Proxies list: a manual-mode unique exit proxy lost its exit and waits for the customer to rotate it (state_reason manual)</comment>
+  </data>
+  <data name="site_unique_exit_replacing" xml:space="preserve">
+    <value>Replacing exit…</value>
+    <comment>Proxies list: the proxy's exit failed and a new unique exit is being assigned</comment>
+  </data>
+  <data name="site_unique_exit_rotate" xml:space="preserve">
+    <value>Rotate exit</value>
+    <comment>Proxies list: give this unique exit IP proxy a new unique exit</comment>
+  </data>
+  <data name="site_unique_exit_rotate_error" xml:space="preserve">
+    <value>Couldn't rotate the exit. Try again in a minute.</value>
+    <comment>Proxies list: a rotate exit request failed</comment>
+  </data>
+  <data name="site_unique_exit_rotate_limited" xml:space="preserve">
+    <value>A proxy's exit can be rotated once a minute and up to 60 times a day. Try again later.</value>
+    <comment>Proxies list: a rotate exit request was refused by the per-proxy rotate limit (once a minute, 60 a day)</comment>
+  </data>
+  <data name="site_unique_exit_rotate_no_supply" xml:space="preserve">
+    <value>No other unique exit IP is available in this location right now. The proxy keeps its current exit.</value>
+    <comment>Proxies list: a rotate exit request found no other unused exit IP in the location; the proxy keeps its current exit</comment>
+  </data>
+  <data name="site_unique_exit_since" xml:space="preserve">
+    <value>since {}</value>
+    <comment>Proxies list: when a unique exit IP proxy got its current exit; time is a formatted date and time</comment>
+  </data>
+  <data name="site_unique_exit_sub" xml:space="preserve">
+    <value>Each proxy gets its own exit IP that your other proxies don't use.</value>
+    <comment>Create proxy: what the unique exit IP option does</comment>
+  </data>
   <data name="site_usdc_offer_term" xml:space="preserve">
     <value>{1} months plus {0} days of Pro</value>
     <comment>USDC panel: the term the welcome-offer payment buys.</comment>

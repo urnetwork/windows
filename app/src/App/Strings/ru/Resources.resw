@@ -9034,6 +9034,74 @@
     <value>Произошла непредвиденная ошибка.</value>
     <comment>Account panel: generic unexpected error</comment>
   </data>
+  <data name="site_unique_exit" xml:space="preserve">
+    <value>Уникальный IP выхода</value>
+    <comment>Create proxy: the option that gives each proxy its own exit IP</comment>
+  </data>
+  <data name="site_unique_exit_count" xml:space="preserve">
+    <value>Количество прокси</value>
+    <comment>Create proxy: how many unique exit IP proxies to create at once</comment>
+  </data>
+  <data name="site_unique_exit_count_note" xml:space="preserve">
+    <value>До {} за раз.</value>
+    <comment>Create proxy: the most unique exit IP proxies created at once (the Pro per-minute create limit)</comment>
+  </data>
+  <data name="site_unique_exit_created" xml:space="preserve">
+    <value>Готово прокси с уникальными IP выхода: {}</value>
+    <comment>Create proxy: a batch of unique exit IP proxies was created; count is how many</comment>
+  </data>
+  <data name="site_unique_exit_no_supply" xml:space="preserve">
+    <value>Сейчас в этом месте нет свободного уникального IP выхода. Попробуйте другое место.</value>
+    <comment>Create proxy: the server found no unused exit IP for this network in the chosen location</comment>
+  </data>
+  <data name="site_unique_exit_no_supply_state" xml:space="preserve">
+    <value>Нет свободного уникального выхода</value>
+    <comment>Proxies list: no unused exit IP is available for this proxy right now</comment>
+  </data>
+  <data name="site_unique_exit_partial" xml:space="preserve">
+    <value>Создано {0} из {1}.</value>
+    <comment>Create proxy: a batch stopped early; how many of the requested proxies were created</comment>
+  </data>
+  <data name="site_unique_exit_pro_note" xml:space="preserve">
+    <value>Уникальные IP выхода входят в UR Pro.</value>
+    <comment>Create proxy: why choosing a unique exit IP opens the Pro upgrade</comment>
+  </data>
+  <data name="site_unique_exit_reason_cap" xml:space="preserve">
+    <value>Слишком много замен за этот час; попытка повторится позже.</value>
+    <comment>Proxies list: a unique exit proxy waits for a replacement because too many were replaced this hour (state_reason cap)</comment>
+  </data>
+  <data name="site_unique_exit_reason_manual" xml:space="preserve">
+    <value>Выход потерян. Нажмите «Сменить выход», чтобы выбрать новый.</value>
+    <comment>Proxies list: a manual-mode unique exit proxy lost its exit and waits for the customer to rotate it (state_reason manual)</comment>
+  </data>
+  <data name="site_unique_exit_replacing" xml:space="preserve">
+    <value>Замена выхода…</value>
+    <comment>Proxies list: the proxy's exit failed and a new unique exit is being assigned</comment>
+  </data>
+  <data name="site_unique_exit_rotate" xml:space="preserve">
+    <value>Сменить выход</value>
+    <comment>Proxies list: give this unique exit IP proxy a new unique exit</comment>
+  </data>
+  <data name="site_unique_exit_rotate_error" xml:space="preserve">
+    <value>Не удалось сменить выход. Попробуйте снова через минуту.</value>
+    <comment>Proxies list: a rotate exit request failed</comment>
+  </data>
+  <data name="site_unique_exit_rotate_limited" xml:space="preserve">
+    <value>Выход прокси можно менять раз в минуту и до 60 раз в день. Попробуйте позже.</value>
+    <comment>Proxies list: a rotate exit request was refused by the per-proxy rotate limit (once a minute, 60 a day)</comment>
+  </data>
+  <data name="site_unique_exit_rotate_no_supply" xml:space="preserve">
+    <value>Сейчас в этом месте нет другого свободного уникального IP выхода. Прокси сохраняет текущий выход.</value>
+    <comment>Proxies list: a rotate exit request found no other unused exit IP in the location; the proxy keeps its current exit</comment>
+  </data>
+  <data name="site_unique_exit_since" xml:space="preserve">
+    <value>с {}</value>
+    <comment>Proxies list: when a unique exit IP proxy got its current exit; time is a formatted date and time</comment>
+  </data>
+  <data name="site_unique_exit_sub" xml:space="preserve">
+    <value>Каждый прокси получает свой IP выхода, который не используют другие ваши прокси.</value>
+    <comment>Create proxy: what the unique exit IP option does</comment>
+  </data>
   <data name="site_usdc_offer_term" xml:space="preserve">
     <value>{1} месяцев плюс {0} дней Pro</value>
     <comment>USDC panel: the term the welcome-offer payment buys.</comment>
