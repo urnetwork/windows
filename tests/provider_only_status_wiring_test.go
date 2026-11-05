@@ -39,7 +39,7 @@ func TestProviderOnlyStatsServiceWiring(t *testing.T) {
 		"if (!providerStatsVc_) return stats;",
 		"stats.available = true;",
 		"stats.client_id = providerClientId_;",
-		"providerClients_->load()",
+		"providerPeers_->Load()",
 		"providerStatsVc_->getProviderThroughputPoints()",
 		"providerStatsVc_->getProviderTransportDistribution()",
 		"providerStatsVc_->getProviderPacketStats()",
@@ -58,12 +58,12 @@ func TestProviderOnlyStatsServiceWiring(t *testing.T) {
 	// subscribed before the first read, so no change is lost in between
 	provideRequireOrder(t, "OpenProviderStatsLocked", open,
 		"providerDevice_->addNetworkPeersChangeListener(", "providerDevice_->getNetworkPeers()")
-	// the listener holds a share of the count, never the controller
+	// the listener holds a share of the peers, never the controller
 	listener := open[strings.Index(open, "addNetworkPeersChangeListener("):]
 	if end := strings.Index(listener, "});"); end >= 0 {
 		listener = listener[:end]
 	}
-	provideRequire(t, "the peers listener", listener, "[clients]")
+	provideRequire(t, "the peers listener", listener, "[peers]")
 	requireNone(t, "the peers listener", listener, "this")
 
 	start := definitionBody(t, "TunnelController.cpp", source,
@@ -77,7 +77,7 @@ func TestProviderOnlyStatsServiceWiring(t *testing.T) {
 
 	compose := definitionBody(t, "TunnelController.cpp", source,
 		"proto::TunnelStatus TunnelController::ComposeStatusLocked()")
-	requireNone(t, "ComposeStatusLocked", compose, "providerStatsVc_", "providerClients_")
+	requireNone(t, "ComposeStatusLocked", compose, "providerStatsVc_", "providerPeers_")
 
 	server := stripComments(readServiceSource(t, "ControlServer.cpp"))
 	handle := definitionBody(t, "ControlServer.cpp", server, "nlohmann::json ControlServer::Handle(")

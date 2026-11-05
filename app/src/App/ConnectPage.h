@@ -558,7 +558,15 @@ class ConnectPage {
   struct PeerLineReading {
     bool remoteConnected = false;
     int64_t connectedPeerCount = 0;
+    // LiveStats::providerOnlyPeers: with no session the count is the service's
+    // provider-only device's, which discovers peers with no DeviceRemote
+    bool providerOnlyPeers = false;
   };
+  // Whether the line has a count to show: the device's rpc is attached, or the
+  // provider-only device said how many devices are connected.
+  static bool PeerDiscoveryLive(PeerLineReading const& reading) {
+    return reading.remoteConnected || reading.providerOnlyPeers;
+  }
   void ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& peers,
                       std::optional<PeerLineReading> reading = std::nullopt);
   // The peers line's last reading: a stats snapshot's, with the remote half

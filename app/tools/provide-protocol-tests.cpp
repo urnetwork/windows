@@ -7,7 +7,8 @@
 // the ProviderStats payload in a reply and an older service's silence, its
 // extender fields and a service too old to send them, and the readers that
 // turn its sdk documents back into the app's types (ProviderPointsOf,
-// ProviderDistributionOf, ExtenderPointsOf, ExtenderProvideStatusOf). And the
+// ProviderDistributionOf, ExtenderPointsOf, ExtenderProvideStatusOf,
+// NetworkPeersOf for the device's connected network peers). And the
 // Extender switch while disconnected: set_provide_extender, its strict
 // request, and provide_extender_writable with an older service's silence. And
 // the lag.dev speed tests switch the same way: set_measurements_enabled, its
@@ -104,6 +105,30 @@ inline void from_json(const nlohmann::json& j, ExtenderProvideStatus& v) {
   j.at("Reason").get_to(v.Reason);
   j.at("Enabled").get_to(v.Enabled);
   j.at("ActivatedV4").get_to(v.ActivatedV4);
+}
+// the fields of urnet::NetworkPeer the peer rows read, every one optional on
+// the wire as in the generated wrapper's from_json
+struct NetworkPeer {
+  std::optional<std::string> ClientId;
+  bool ProvideEnabled = false;
+  std::string Principal;
+  std::string DeviceSpec;
+  std::string DeviceName;
+};
+inline void to_json(nlohmann::json& j, const NetworkPeer& v) {
+  j = {{"ProvideEnabled", v.ProvideEnabled},
+       {"Principal", v.Principal},
+       {"DeviceSpec", v.DeviceSpec},
+       {"DeviceName", v.DeviceName}};
+  if (v.ClientId) j["ClientId"] = *v.ClientId;
+}
+inline void from_json(const nlohmann::json& j, NetworkPeer& v) {
+  if (!j.is_object()) return;
+  if (auto it = j.find("ClientId"); it != j.end() && !it->is_null()) v.ClientId = it->get<std::string>();
+  if (auto it = j.find("ProvideEnabled"); it != j.end() && !it->is_null()) it->get_to(v.ProvideEnabled);
+  if (auto it = j.find("Principal"); it != j.end() && !it->is_null()) it->get_to(v.Principal);
+  if (auto it = j.find("DeviceSpec"); it != j.end() && !it->is_null()) it->get_to(v.DeviceSpec);
+  if (auto it = j.find("DeviceName"); it != j.end() && !it->is_null()) it->get_to(v.DeviceName);
 }
 }  // namespace sample
 namespace doc = sample;
@@ -393,6 +418,72 @@ void TestProviderStatsReaders() {
         "readers: a distribution the type cannot read is none");
 }
 
+// (g2) the provider-only device's network peers: the list the app shows while
+// disconnected, read back on the sdk's own NetworkPeer when built against the
+// header, with the count from the same reading; what an older service sends,
+// and shapes that are not a list of peers
+void TestProviderStatsPeers() {
+  std::vector<doc::NetworkPeer> connected(2);
+  connected[0].ClientId = std::string("018f2b1e-0000-7000-8000-0000000000a1");
+  connected[0].ProvideEnabled = true;
+  connected[0].DeviceName = "vps provider";
+  connected[0].DeviceSpec = "linux amd64";
+  connected[1].ClientId = std::string("018f2b1e-0000-7000-8000-0000000000b2");
+  connected[1].ProvideEnabled = false;
+  connected[1].DeviceName = "office laptop";
+  connected[1].DeviceSpec = "windows amd64";
+
+  ProviderStats stats;
+  stats.available = true;
+  stats.client_count = static_cast<int64_t>(connected.size());
+  stats.network_peers = connected;  // the service's write
+  const ProviderStats wire = nlohmann::json::parse(DumpForWire(nlohmann::json(stats))).get<ProviderStats>();
+  Check(wire.client_count == 2, "peers: the count comes with the list");
+  const std::optional<std::vector<doc::NetworkPeer>> read =
+      NetworkPeersOf<std::vector<doc::NetworkPeer>>(wire);
+  Check(read && read->size() == 2, "peers: the connected peers come back");
+  if (read && read->size() == 2) {
+    Check((*read)[0].ClientId == connected[0].ClientId && (*read)[0].ProvideEnabled &&
+              (*read)[0].DeviceName == "vps provider" && (*read)[0].DeviceSpec == "linux amd64",
+          "peers: a providing peer comes back unchanged, in order");
+    Check((*read)[1].ClientId == connected[1].ClientId && !(*read)[1].ProvideEnabled &&
+              (*read)[1].DeviceName == "office laptop",
+          "peers: a peer that does not provide comes back as such");
+  }
+
+  // no peers connected is a reading, not an absence
+  ProviderStats none;
+  none.available = true;
+  none.network_peers = std::vector<doc::NetworkPeer>{};
+  const ProviderStats noneWire = nlohmann::json::parse(DumpForWire(nlohmann::json(none))).get<ProviderStats>();
+  const auto noneRead = NetworkPeersOf<std::vector<doc::NetworkPeer>>(noneWire);
+  Check(noneRead && noneRead->empty(), "peers: an empty list reads as no peers connected");
+
+  // an older service sends the count alone, and the app has no list to show
+  const ProviderStats older = nlohmann::json::parse(
+      R"({"available":true,"client_id":"c","client_count":3,"window_seconds":60,"has_provider_stats":true,"provider_points":[],"provider_distribution":null})")
+                                  .get<ProviderStats>();
+  Check(older.client_count == 3 && older.network_peers.is_null(),
+        "peers: an older service's answer carries the count and no list");
+  Check(!NetworkPeersOf<std::vector<doc::NetworkPeer>>(older),
+        "peers: no list reads as none, not as no peers");
+  // nothing runs: no list
+  const ProviderStats idle = nlohmann::json::parse(DumpForWire(nlohmann::json(ProviderStats{}))).get<ProviderStats>();
+  Check(!NetworkPeersOf<std::vector<doc::NetworkPeer>>(idle),
+        "peers: no provider-only device has no list");
+  // a shape that is not a list of peers is none, never a throw that loses the rest
+  const ProviderStats odd = nlohmann::json::parse(
+      R"({"available":true,"client_count":2,"network_peers":{"ClientId":"x"}})")
+                                .get<ProviderStats>();
+  Check(odd.available && odd.client_count == 2 && odd.network_peers.is_null() &&
+            !NetworkPeersOf<std::vector<doc::NetworkPeer>>(odd),
+        "peers: a list of the wrong shape reads as none");
+  ProviderStats unreadable;
+  unreadable.network_peers = nlohmann::json::parse(R"([{"ClientId":"x","ProvideEnabled":"yes"}])");
+  Check(!NetworkPeersOf<std::vector<doc::NetworkPeer>>(unreadable),
+        "peers: peers the type cannot read are none, never a partial list");
+}
+
 // (h) the extender role on the wire: its series, its status and the setting,
 // what a service too old to send them answers, and shapes that are not theirs
 void TestProviderStatsExtender() {
@@ -634,6 +725,7 @@ int main() {
   TestProviderFacts();
   TestProviderStatsReply();
   TestProviderStatsReaders();
+  TestProviderStatsPeers();
   TestProviderStatsExtender();
   TestExtenderReaders();
   TestSetProvideExtender();

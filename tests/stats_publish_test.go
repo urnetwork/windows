@@ -319,7 +319,7 @@ func TestStatsPushReadsNothingOnTheUiThread(t *testing.T) {
 	if strings.Contains(apply, "Sdk()") {
 		t.Error("ConnectPage::ApplyStats reads SdkHost on the UI thread")
 	}
-	if statsIndex(apply, `ApplyPeerCount\(std::nullopt,\s*PeerLineReading\{\.remoteConnected = stats\.remoteConnected,\s*\.connectedPeerCount = stats\.connectedPeerCount\}\);`) < 0 {
+	if statsIndex(apply, `ApplyPeerCount\(std::nullopt,\s*PeerLineReading\{\.remoteConnected = stats\.remoteConnected,\s*\.connectedPeerCount = stats\.connectedPeerCount,\s*\.providerOnlyPeers = stats\.providerOnlyPeers\}\);`) < 0 {
 		t.Error("ConnectPage::ApplyStats does not hand the peers line the snapshot's readings")
 	}
 	// the line keeps the snapshot's reading for the pushes that carry none,

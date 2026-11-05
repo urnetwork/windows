@@ -1365,7 +1365,8 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   // the list itself stays the peers push's (OnPeers), so this re-renders it
   ApplyPeerCount(std::nullopt,
                  PeerLineReading{.remoteConnected = stats.remoteConnected,
-                                 .connectedPeerCount = stats.connectedPeerCount});
+                                 .connectedPeerCount = stats.connectedPeerCount,
+                                 .providerOnlyPeers = stats.providerOnlyPeers});
   // the connected country drives the dns-card recommendation pill; only refresh
   // it when the country actually changes (stats push on every throughput tick).
   const bool countryChanged =
@@ -3812,7 +3813,14 @@ void ConnectPage::ApplyPeersList() {
   w_.PeersGroupCount().Text(count == 0 ? hstring{L""}
                                        : H(urnw::FormatCountCompact(count)));
   if (!peers_ || peers_->empty()) {
-    auto row = urnw::kit::MakePaneKeyValueRow(Loc("peer_discovery_disabled"), {}, 34);
+    // What the line under the connect button says, so the two never disagree:
+    // discovery disabled, or how many devices are online (none of them
+    // provides, or this list would hold it).
+    const hstring empty =
+        PeerDiscoveryLive(peerLine_)
+            ? hstring{urnw::Plural("network_peer_count", peerLine_.connectedPeerCount)}
+            : Loc("peer_discovery_disabled");
+    auto row = urnw::kit::MakePaneKeyValueRow(empty, {}, 34);
     host.Children().Append(row.root);
     return;
   }
@@ -4495,11 +4503,12 @@ void ConnectPage::ApplyPeerCount(std::optional<urnet::NetworkPeerList> const& pe
   // the reading a stats snapshot carried, kept for the pushes that carry none
   if (reading) peerLine_ = *reading;
   ApplyPeersList();
-  // The peers state lives in the service's device: while the rpc is down
-  // (service not running) a zero here would be a stale claim presented as
-  // fact, so the line goes gray and says discovery is disabled (apple
-  // ConnectActions parity).
-  if (!peerLine_.remoteConnected) {
+  // The peers state lives in the service's devices: while neither the session's
+  // rpc nor the provider-only device can say (service not running, nothing
+  // provides) a zero here would be a stale claim presented as fact, so the
+  // line goes gray and says discovery is disabled (apple ConnectActions
+  // parity).
+  if (!PeerDiscoveryLive(peerLine_)) {
     const hstring disabled = Loc("peer_discovery_disabled");
     w_.PeerCountText().Text(disabled);
     // the row's automation name IS its text, and its text changes: set both
