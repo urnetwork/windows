@@ -8479,7 +8479,7 @@
     <comment>Sign-up pages: the product-updates consent row (default on, one tap off)</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
-    <value>用户名为URL中的令牌；密码为空。</value>
+    <value>用户名为URL中的令牌；任意密码均可。</value>
     <comment>Account panel: SOCKS credential note</comment>
   </data>
   <data name="site_solana_no_wallet_hint" xml:space="preserve">

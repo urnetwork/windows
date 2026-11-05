@@ -9173,7 +9173,7 @@ world's content</value>
     <comment>Sign-up pages: the product-updates consent row (default on, one tap off)</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
-    <value>Username is the token in the URL; password is empty.</value>
+    <value>Username is the token in the URL; any password works.</value>
     <comment>Account panel: SOCKS credential note</comment>
   </data>
   <data name="site_solana_no_wallet_hint" xml:space="preserve">
