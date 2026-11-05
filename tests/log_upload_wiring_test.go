@@ -85,7 +85,7 @@ func TestLogUploadWiringStandaloneDeviceTouchesNoMachineState(t *testing.T) {
 	upload := definitionBody(t, "TunnelController.cpp", tunnelControllerSource(t),
 		"TunnelController::LogUploadResult TunnelController::UploadLogs(")
 	provideRequire(t, "UploadLogs", upload,
-		"logupload::CarrierFor(device_.has_value(), providerDevice_ != nullptr)",
+		"logupload::CarrierFor(device_ != nullptr, providerDevice_ != nullptr)",
 		"deviceHandle = device_->handle();",
 		"deviceHandle = providerDevice_->handle();",
 		"SweepAbandonedTeardowns()",
@@ -189,11 +189,11 @@ func TestLogUploadWiringUploadAndRetirement(t *testing.T) {
 func TestLogUploadWiringEveryOtherDeviceRetiresIt(t *testing.T) {
 	source := tunnelControllerSource(t)
 	stop := definitionBody(t, "TunnelController.cpp", source,
-		"void TunnelController::StopLocked(bool finalDisarm)")
+		"void TunnelController::StopLocked(bool finalDisarm, bool disconnect)")
 	provideRequireOrder(t, "StopLocked", stop, "RetireProviderDeviceLocked();",
 		"RetireLogUploadDeviceLocked();")
 	provideRequireOrder(t, "StopLocked", stop, "RetireLogUploadDeviceLocked();",
-		"TearDownSessionLocked();")
+		"TearDownSessionLocked(keepDevice, &kept);")
 	start := definitionBody(t, "TunnelController.cpp", source,
 		"bool TunnelController::StartProvider(")
 	provideRequireOrder(t, "StartProvider", start, "provide::ProviderStartRefusal(mode, state)",
@@ -207,7 +207,7 @@ func TestLogUploadWiringEveryOtherDeviceRetiresIt(t *testing.T) {
 }
 
 // The device the upload's call is on stays alive until that call returns:
-// each of the three teardown workers closes it as always and then hands it to
+// each of the teardown workers closes it as always and then hands it to
 // the flight, which it owns a share of, instead of releasing it. The
 // controller's teardown clears the flight's finish hook first (the hook
 // reaches into it) and gives a zipping upload a moment, and no more.
@@ -216,11 +216,23 @@ func TestLogUploadWiringTheCallsDeviceStaysAliveUntilTheCallReturns(t *testing.T
 	session := definitionBody(t, "TunnelController.cpp", source,
 		"bool TunnelController::TearDownSessionLocked(")
 	sessionWorker := uploadSpan(session, "RunBounded(", "AbandonHazard::HoldsSessionDevice")
-	provideRequire(t, "the session teardown worker", sessionWorker, "flight = logUploadFlight_]")
+	provideRequire(t, "the session teardown worker", sessionWorker,
+		"flight = logUploadFlight_, handback]")
 	provideRequireOrder(t, "the session teardown worker", sessionWorker, "device->close();",
-		"flight->KeepUntilReturned(device->handle(),")
+		"flight->KeepUntilReturned(deviceHandle,")
 	provideRequireOrder(t, "the session teardown worker", sessionWorker,
-		"flight->KeepUntilReturned(device->handle(),", "device.reset();")
+		"flight->KeepUntilReturned(deviceHandle,", "device.reset();")
+
+	// the provider-only device a start took and did not keep, closed as the
+	// retire closes it
+	handedOff := definitionBody(t, "TunnelController.cpp", source,
+		"void TunnelController::CloseHandedOffDeviceLocked(")
+	handedOffWorker := uploadSpan(handedOff, "RunBounded(", "AbandonHazard::HoldsSessionDevice")
+	provideRequire(t, "the handed-off close worker", handedOffWorker, "flight = logUploadFlight_]")
+	provideRequireOrder(t, "the handed-off close worker", handedOffWorker, "device->close();",
+		"flight->KeepUntilReturned(deviceHandle,")
+	provideRequireOrder(t, "the handed-off close worker", handedOffWorker,
+		"flight->KeepUntilReturned(deviceHandle,", "device.reset();")
 
 	provider := definitionBody(t, "TunnelController.cpp", source,
 		"void TunnelController::RetireProviderDeviceLocked()")

@@ -13,7 +13,9 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+#include <cstddef>
 #include <iostream>
+#include <iterator>
 #include <string>
 
 #include "ProvideLifecycle.h"
@@ -272,6 +274,124 @@ void TestExtenderSettingTarget() {
   }
 }
 
+// One device across connect and disconnect: the identity a device is built
+// from decides whether a Connect keeps the provider-only device, and a
+// Disconnect keeps the session's device exactly when a provider-only device
+// could start in its place.
+void TestOneDevice() {
+  const DeviceIdentity base{"jwt", "{\"space\":1}", "instance", "windows-desktop", "spec", "1.2-3"};
+  Check(SameIdentity(base, base), "one device: an identity is its own");
+  const std::pair<const char*, DeviceIdentity> changed[] = {
+      {"jwt", {"jwt2", base.networkSpaceJson, base.instanceId, base.deviceDescription,
+               base.deviceSpec, base.appVersion}},
+      {"space", {base.jwtSubject, "{\"space\":2}", base.instanceId, base.deviceDescription,
+                 base.deviceSpec, base.appVersion}},
+      {"instance", {base.jwtSubject, base.networkSpaceJson, "instance2", base.deviceDescription,
+                    base.deviceSpec, base.appVersion}},
+      {"description", {base.jwtSubject, base.networkSpaceJson, base.instanceId, "other",
+                       base.deviceSpec, base.appVersion}},
+      {"spec", {base.jwtSubject, base.networkSpaceJson, base.instanceId, base.deviceDescription,
+                "spec2", base.appVersion}},
+      {"app version", {base.jwtSubject, base.networkSpaceJson, base.instanceId,
+                       base.deviceDescription, base.deviceSpec, "1.2-4"}},
+  };
+  for (const auto& [field, identity] : changed) {
+    Check(!SameIdentity(base, identity),
+          std::string("one device: a changed ") + field + " is another identity");
+    Check(!PromotesProviderDevice(true, base, identity),
+          std::string("one device: a connect with a changed ") + field +
+              " builds its own device");
+  }
+  Check(PromotesProviderDevice(true, base, base),
+        "one device: a connect keeps the provider-only device built for its identity");
+  Check(!PromotesProviderDevice(false, base, base),
+        "one device: with no provider-only device a connect builds one");
+
+  // A rebuild names what differs, by request field name, in the order above.
+  const char* const fieldNames[] = {"by_jwt",      "network_space_json", "instance_id",
+                                    "device_description", "device_spec", "app_version"};
+  static_assert(std::size(fieldNames) == std::size(changed));
+  for (std::size_t i = 0; i < std::size(changed); ++i) {
+    Check(DifferingIdentityFields(base, changed[i].second) == fieldNames[i],
+          std::string("one device: the differing fields name ") + fieldNames[i]);
+  }
+  Check(DifferingIdentityFields(base, base).empty(),
+        "one device: an identity differs from itself in nothing");
+  // Another client on another instance: both fields are named.
+  const DeviceIdentity moved{"jwt2", base.networkSpaceJson, "instance2",
+                             base.deviceDescription, base.deviceSpec, base.appVersion};
+  Check(DifferingIdentityFields(base, moved) == "by_jwt, instance_id",
+        "one device: every differing field is named");
+
+  // The disconnect rule, for every mode.
+  SessionStopFacts disconnect;
+  disconnect.sessionDevice = true;
+  disconnect.disconnect = true;
+  for (const ControlMode mode : {ControlMode::Always, ControlMode::Network, ControlMode::Auto}) {
+    SessionStopFacts facts = disconnect;
+    facts.mode = mode;
+    Check(KeepsSessionDevice(facts), std::string("one device: a disconnect in mode ") +
+                                         ToString(mode) + " keeps the device providing");
+  }
+  for (const ControlMode mode : {ControlMode::Never, ControlMode::Unknown}) {
+    SessionStopFacts facts = disconnect;
+    facts.mode = mode;
+    Check(!KeepsSessionDevice(facts), std::string("one device: a disconnect in mode ") +
+                                          ToString(mode) + " closes the device");
+  }
+  // Every reason a provider-only device would be refused closes the device.
+  SessionStopFacts facts = disconnect;
+  facts.mode = ControlMode::Auto;
+  {
+    SessionStopFacts f = facts;
+    f.sessionDevice = false;
+    Check(!KeepsSessionDevice(f), "one device: a session without a device keeps nothing");
+  }
+  {
+    SessionStopFacts f = facts;
+    f.disconnect = false;
+    Check(!KeepsSessionDevice(f),
+          "one device: a stop that is not the user's disconnect (failsafe, failed or "
+          "replaced start, logout, service stop) closes the device");
+  }
+  {
+    SessionStopFacts f = facts;
+    f.firewallInForce = true;
+    Check(!KeepsSessionDevice(f),
+          "one device: the kill switch's armed floor closes the device, as it refuses a "
+          "provider");
+  }
+  {
+    SessionStopFacts f = facts;
+    f.deviceStillHeld = true;
+    Check(!KeepsSessionDevice(f),
+          "one device: another device still held under this identity closes this one");
+  }
+  {
+    SessionStopFacts f = facts;
+    f.restartPending = true;
+    Check(!KeepsSessionDevice(f), "one device: a pending self-restart closes the device");
+  }
+  // Kept exactly when a provider-only device could start in its place.
+  for (const ControlMode mode : {ControlMode::Never, ControlMode::Always, ControlMode::Network,
+                                 ControlMode::Auto, ControlMode::Unknown}) {
+    for (int bits = 0; bits < 8; ++bits) {
+      SessionStopFacts f = disconnect;
+      f.mode = mode;
+      f.firewallInForce = (bits & 1) != 0;
+      f.deviceStillHeld = (bits & 2) != 0;
+      f.restartPending = (bits & 4) != 0;
+      ServiceProviderState state;
+      state.firewallInForce = f.firewallInForce;
+      state.deviceStillHeld = f.deviceStillHeld;
+      state.restartPending = f.restartPending;
+      Check(KeepsSessionDevice(f) == (ProviderStartRefusal(mode, state) == ProviderRefusal::None),
+            std::string("one device: the disconnect agrees with the provider start rule (mode ") +
+                ToString(mode) + ", case " + std::to_string(bits) + ")");
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -281,6 +401,7 @@ int main() {
   TestServiceRefusals();
   TestDisconnectedStep();
   TestExtenderSettingTarget();
+  TestOneDevice();
   std::cout << (gCases - gFailures) << "/" << gCases << " provide lifecycle checks passed\n";
   return gFailures == 0 ? 0 : 1;
 }

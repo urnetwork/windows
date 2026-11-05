@@ -28,9 +28,11 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+#include <cstdint>
 #include <iostream>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Protocol.h"
@@ -245,21 +247,38 @@ void TestSameProviderDevice() {
   remoded.provide_mode = "network";
   Check(SameProviderDevice(base, remoded), "same device: only the mode differs");
   Check(SameProviderDevice(base, base), "same device: identical");
+  // the provider transport policy is applied to the running device in place,
+  // as the build applies it right after construction
+  StartProvider repoliced = base;
+  repoliced.provider_transport_settings_json = "";
+  Check(SameProviderDevice(base, repoliced),
+        "same device: only the provider transport policy differs");
+  // a tunnel start carries the same identity fields
+  StartTunnel start;
+  start.by_jwt = base.by_jwt;
+  start.network_space_json = base.network_space_json;
+  start.instance_id = base.instance_id;
+  start.device_description = base.device_description;
+  start.device_spec = base.device_spec;
+  start.app_version = base.app_version;
+  Check(urnw::provide::SameIdentity(IdentityOf(base), IdentityOf(start)),
+        "same device: a tunnel start with the provider's identity is the same device");
+  start.instance_id = "0193e520-0000-7000-8000-000000000002";
+  Check(!urnw::provide::SameIdentity(IdentityOf(base), IdentityOf(start)),
+        "same device: a tunnel start with another identity is another device");
 
   struct Change {
     const char* field;
     void (*apply)(StartProvider&);
   };
   const Change changes[] = {
-      {"by_jwt", [](StartProvider& r) { r.by_jwt = "refreshed.jwt"; }},
+      {"by_jwt", [](StartProvider& r) { r.by_jwt = "another.jwt.value"; }},
       {"network_space_json", [](StartProvider& r) { r.network_space_json = "{}"; }},
       {"instance_id",
        [](StartProvider& r) { r.instance_id = "0193e520-0000-7000-8000-000000000002"; }},
       {"device_description", [](StartProvider& r) { r.device_description = "DESKTOP-2"; }},
       {"device_spec", [](StartProvider& r) { r.device_spec = "windows arm64"; }},
       {"app_version", [](StartProvider& r) { r.app_version = "2026.10.6-1"; }},
-      {"provider_transport_settings_json",
-       [](StartProvider& r) { r.provider_transport_settings_json = ""; }},
   };
   for (const Change& change : changes) {
     StartProvider other = base;
@@ -267,6 +286,93 @@ void TestSameProviderDevice() {
     Check(!SameProviderDevice(base, other),
           std::string("same device: a different ") + change.field + " builds a new device");
   }
+}
+
+// A jwt-shaped token: base64url header and claims, then an opaque signature.
+// The subject reads the claims only, so the signature never has to verify.
+std::string Base64Url(std::string_view in) {
+  static constexpr char kAlphabet[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  std::string out;
+  std::uint32_t buffer = 0;
+  int bits = 0;
+  for (const unsigned char c : in) {
+    buffer = (buffer << 8) | c;
+    bits += 8;
+    while (bits >= 6) {
+      bits -= 6;
+      out.push_back(kAlphabet[(buffer >> bits) & 0x3Fu]);
+    }
+  }
+  if (bits > 0) out.push_back(kAlphabet[(buffer << (6 - bits)) & 0x3Fu]);
+  return out;
+}
+
+std::string Jwt(const std::string& claims, const std::string& signature) {
+  return Base64Url(R"({"alg":"ES256","typ":"JWT"})") + "." + Base64Url(claims) + "." +
+         signature;
+}
+
+// (d2) the credential counts by the client it names. The app refreshes its
+// token on every connect, in its own process, and each device refreshes its
+// own as it starts: compared token by token, every disconnect that kept the
+// session's device rebuilt it 25ms later (measured).
+void TestSameDeviceAcrossJwtRefresh() {
+  const std::string network = "0193e520-0000-7000-8000-0000000000aa";
+  const std::string client = "0193e520-0000-7000-8000-0000000000bb";
+  const auto claims = [](const std::string& networkId, const std::string& clientId,
+                         const std::string& created) {
+    return R"({"network_id":")" + networkId +
+           R"(","network_name":"example","user_id":"0193e520-0000-7000-8000-0000000000cc",)" +
+           R"("client_id":")" + clientId + R"(","create_time":")" + created + R"("})";
+  };
+  StartProvider kept = SampleRequest();
+  kept.by_jwt = Jwt(claims(network, client, "2026-11-03T09:00:00Z"), "signature1");
+  StartProvider refreshed = kept;
+  refreshed.by_jwt = Jwt(claims(network, client, "2026-11-03T19:33:57Z"), "signature2");
+  Check(SameProviderDevice(kept, refreshed), "same device: a refreshed jwt for the same client");
+  StartTunnel start;
+  start.by_jwt = refreshed.by_jwt;
+  start.network_space_json = kept.network_space_json;
+  start.instance_id = kept.instance_id;
+  start.device_description = kept.device_description;
+  start.device_spec = kept.device_spec;
+  start.app_version = kept.app_version;
+  Check(urnw::provide::SameIdentity(IdentityOf(kept), IdentityOf(start)),
+        "same device: a connect with a refreshed jwt for the same client keeps the device");
+
+  StartProvider otherClient = kept;
+  otherClient.by_jwt =
+      Jwt(claims(network, "0193e520-0000-7000-8000-0000000000dd", "2026-11-03T19:33:57Z"),
+          "signature2");
+  Check(!SameProviderDevice(kept, otherClient),
+        "same device: a jwt for another client builds a new device");
+  StartProvider otherNetwork = kept;
+  otherNetwork.by_jwt =
+      Jwt(claims("0193e520-0000-7000-8000-0000000000ee", client, "2026-11-03T19:33:57Z"),
+          "signature2");
+  Check(!SameProviderDevice(kept, otherNetwork),
+        "same device: a jwt for another network's client builds a new device");
+
+  // a token that names no client is compared whole, as every token was
+  StartProvider networkOnly = kept;
+  networkOnly.by_jwt = Jwt(R"({"network_id":")" + network + R"("})", "signature1");
+  StartProvider networkOnlyRefreshed = networkOnly;
+  networkOnlyRefreshed.by_jwt = Jwt(R"({"network_id":")" + network + R"("})", "signature2");
+  Check(SameProviderDevice(networkOnly, networkOnly), "same device: a network jwt is its own");
+  Check(!SameProviderDevice(networkOnly, networkOnlyRefreshed),
+        "same device: a jwt that names no client is compared whole");
+
+  Check(JwtSubject(kept.by_jwt) == "client:" + network + "/" + client,
+        "jwt subject: the network and the client the claims name");
+  Check(JwtSubject(kept.by_jwt).find("signature1") == std::string::npos,
+        "jwt subject: never the token itself");
+  Check(JwtSubject("client.jwt.value") == "client.jwt.value",
+        "jwt subject: a token that is not a jwt is its own subject");
+  Check(JwtSubject("a.%%%.c") == "a.%%%.c",
+        "jwt subject: claims that are not base64url leave the token its own subject");
+  Check(JwtSubject(Jwt(R"({"client_id":7})", "s")) == Jwt(R"({"client_id":7})", "s"),
+        "jwt subject: a client_id that is not a string leaves the token its own subject");
 }
 
 // (e) what one status tells the app's reconcile
@@ -722,6 +828,7 @@ int main() {
   TestStartProviderJson();
   TestStatusFields();
   TestSameProviderDevice();
+  TestSameDeviceAcrossJwtRefresh();
   TestProviderFacts();
   TestProviderStatsReply();
   TestProviderStatsReaders();

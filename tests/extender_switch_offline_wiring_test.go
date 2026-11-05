@@ -58,7 +58,7 @@ func TestExtenderSwitchOfflineServiceWiring(t *testing.T) {
 	provideRequireOrder(t, "SetProvideExtender", write,
 		"lock.try_lock_for(kStopLockBudget)", "provide::ExtenderSettingTargetFor(")
 	provideRequire(t, "SetProvideExtender", write,
-		"providerDevice_ != nullptr, device_.has_value(), spaceManager_ && lastSpaceKey_)",
+		"providerDevice_ != nullptr, device_ != nullptr, spaceManager_ && lastSpaceKey_)",
 		"device_->setProvideExtender(on);",
 		"spaceManager_->getNetworkSpace(lastSpaceKey_)",
 		".getAsyncLocalState().getLocalState().setProvideExtender(on);")

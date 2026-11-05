@@ -99,6 +99,13 @@ class TunnelController {
   // re-reads it and lets the start through the moment the worker finishes. See
   // the two questions at the top of StopBudget.h.
   void Stop();
+  // The user's disconnect (stop_tunnel): Stop(), with one difference. When a
+  // provider-only device could start in its place (provide::KeepsSessionDevice),
+  // the session's DeviceLocal is not closed: what belongs to the session — the
+  // adapter, the pump, the rpc listener and the destination — goes, and the
+  // device keeps providing as the provider-only device, its transports, peers
+  // and contracts intact. Bounded exactly like Stop().
+  void Disconnect();
 
   // THE DEAD-TUNNEL FAILSAFE'S ONLY ENTRY POINT. Called by TunnelWatchdog, from
   // the watchdog's own thread, when a live tunnel has been proven unable to
@@ -190,17 +197,22 @@ class TunnelController {
   // transport policy and provide mode — and nothing else. No wintun adapter, no
   // route, no DNS entry, no firewall policy, no active marker and no device RPC
   // listener, so this machine's own traffic is routed exactly as it would be
-  // without URnetwork, and no client can drive the device.
+  // without URnetwork, and no client can drive the device. Its own sockets are
+  // bound to the physical interface (R1) from the first, as a session's are:
+  // the same device becomes the next session's (StartLocked), and a socket
+  // made unbound would follow that session's routes into the tun.
   //
   // Refused (false, `error` set) while a tunnel session exists or is starting,
   // while the kill switch's armed floor is in force, while an abandoned
   // teardown still holds a device under this identity, and for a mode that does
   // not provide while disconnected (provide::ProviderStartRefusal) — every
   // refusal before anything is built. The same request again keeps the running
-  // device and only applies the mode (proto::SameProviderDevice); any other
-  // request replaces it. Every teardown retires it (StopLocked: the first SDK
-  // teardown, right after the machine is given back), and every bring-up opens
-  // with a teardown, so a Connect never runs two devices under one identity.
+  // device and applies the mode and the provider transport policy in place
+  // (proto::SameProviderIdentity); any other request replaces it. A Connect
+  // carrying the device's identity takes it as the session's device, and any
+  // other teardown retires it (StopLocked: the first SDK teardown, right after
+  // the machine is given back), so a Connect never runs two devices under one
+  // identity.
   bool StartProvider(const proto::StartProvider& request, std::string& error);
   // stop_provider: retire the provider-only device and touch nothing else — no
   // tunnel, no firewall policy. False only when the session lock could not be
@@ -461,8 +473,13 @@ class TunnelController {
   // the gap — that gap is exactly what a kill switch is for — so the internal
   // teardown inside StartLocked passes false and leaves the policy Armed, while
   // the public Stop() (user disconnect, service shutdown) passes true and lifts
-  // it. Caller holds mutex_.
-  void StopLocked(bool finalDisarm);
+  // it. `disconnect` is Disconnect()'s: the session's device stays as the
+  // provider-only device when provide::KeepsSessionDevice says it may. Caller
+  // holds mutex_.
+  void StopLocked(bool finalDisarm, bool disconnect = false);
+  // The user's stop and the service's, one body: `disconnect` is passed to
+  // StopLocked.
+  void StopWith(bool disconnect);
   // Phase 1 of StopLocked: request route, DNS, resolver-cache, marker and policy
   // cleanup before SDK teardown. Releases configuration ownership but does not
   // independently verify OS removal. Caller holds mutex_.
@@ -472,10 +489,43 @@ class TunnelController {
   // the opposite of the goal. If even this could wedge, the floor below it is
   // NetworkConfig::CrashRevert() from the console handler.
   void RevertMachineStateLocked(bool finalDisarm, bool hadRoutes);
+  // A DeviceLocal and its network space, moving between the provider-only role
+  // and a session's: a Connect takes the provider-only device for its session
+  // (TakeProviderDeviceLocked), and a disconnect hands the session's back
+  // (TearDownSessionLocked, ResumeProvidingLocked). The device moves by
+  // pointer, so its address never changes.
+  struct HandedOffDevice {
+    std::unique_ptr<urnet::DeviceLocal> device;
+    std::optional<urnet::NetworkSpace> space;
+  };
+  using KeptSessionDevice = HandedOffDevice;
   // Phase 2 of StopLocked: hand every per-session SDK and native object to a
   // worker that OWNS them and wait kSdkTeardownBudget for it. Returns false if
   // the budget expired and the worker was abandoned. Caller holds mutex_.
-  bool TearDownSessionLocked();
+  //
+  // With `keepDevice` the worker also takes what the session added to its
+  // DeviceLocal off it (the destination, the rpc listener) instead of closing
+  // it, and hands the device and its space back through `kept` when it
+  // finishes inside the budget. Abandoned, it closes the device itself when it
+  // does finish, so a device it still holds is held exactly as a closing one
+  // is, and `kept` stays empty.
+  bool TearDownSessionLocked(bool keepDevice = false, KeptSessionDevice* kept = nullptr);
+  // The session's device, kept by a disconnect, becomes the provider-only
+  // device: bound by a provider egress monitor of its own, with the request it
+  // now serves synthesized from the session's identity and the device's own
+  // provide mode, its statistics and network watch opened. Caller holds mutex_.
+  void ResumeProvidingLocked(KeptSessionDevice kept);
+  // Take the provider-only device out of its role for a session started with
+  // `config`, when provide::PromotesProviderDevice says so: its statistics,
+  // network watch and egress monitor stop (the binding they kept stays in force
+  // until the session's own monitor takes it over), and the device and its
+  // space are returned instead of retired. Empty otherwise. Caller holds
+  // mutex_.
+  HandedOffDevice TakeProviderDeviceLocked(const proto::StartTunnel& config);
+  // A handed-off device a start did not reach step 4 with: closed on a bounded
+  // worker, exactly as the retire closes the provider-only device. Caller holds
+  // mutex_.
+  void CloseHandedOffDeviceLocked(HandedOffDevice& handedOff);
   // Build the WFP config for the current session and push a state. Returns
   // false when the policy could not be installed; the caller decides whether
   // that is fatal. Caller holds mutex_.
@@ -576,10 +626,15 @@ class TunnelController {
   // get_provider_stats answers. Nothing when the role's reading never opened.
   // An SDK call; caller holds mutex_.
   void RefreshProviderMeasurementsLocked();
+  // The provider-only device's egress monitor: a binding one, like a session's
+  // (R1 from the first socket; see StartProvider), with no tun to exclude.
+  // Started before the device is built, and before a kept session device is
+  // handed back, so no socket of the device is ever unbound. Throws when the
+  // monitor cannot be made. Caller holds mutex_.
+  void StartProviderEgressLocked();
   // Tell the provider-only device the network moved, as the tunnel session's
-  // device is told by TunnelWatchdog's sampler, which EgressMonitor feeds. An
-  // observe-only EgressMonitor (it binds nothing, so the device's sockets
-  // still follow the route table) feeds a NetworkChangeNotifier, whose own
+  // device is told by TunnelWatchdog's sampler, which EgressMonitor feeds. The
+  // provider egress monitor's events feed a NetworkChangeNotifier, whose own
   // thread calls networkChanged() once per burst and networkQualityChanged()
   // for a Wi-Fi signal change. Best effort, like the statistics. Caller holds
   // mutex_.
@@ -684,7 +739,11 @@ class TunnelController {
   // into it when no device runs. Guarded by mutex_.
   std::optional<urnet::NetworkSpaceKey> lastSpaceKey_;
   std::optional<urnet::NetworkSpace> networkSpace_;
-  std::optional<urnet::DeviceLocal> device_;
+  // On the heap so its address never moves: the packet pump holds a reference
+  // to it (PacketPump::device_) until the teardown worker stops the pump, and a
+  // device moves between this slot and providerDevice_ (StartLocked,
+  // ResumeProvidingLocked) by pointer, never by value.
+  std::unique_ptr<urnet::DeviceLocal> device_;
   // The provider-only device (StartProvider), its space and the request it was
   // built from. Separate slots from networkSpace_ and device_, which keep their
   // one meaning — the tunnel session's — for every check that reads them (the
@@ -699,6 +758,11 @@ class TunnelController {
   std::optional<urnet::NetworkSpace> providerSpace_;
   std::unique_ptr<urnet::DeviceLocal> providerDevice_;
   proto::StartProvider providerRequest_;
+  // The identity the running session's device was built for (StartLocked),
+  // in StartProvider's shape: what a disconnect that keeps the device says the
+  // provider-only device now serves (ResumeProvidingLocked). Cleared with the
+  // session.
+  proto::StartProvider sessionIdentity_;
   int64_t providerTier_ = 0;
   bool providerNetworkKey_ = false;
   // The provider-only device's network watch (WatchProviderNetworkLocked).
