@@ -89,17 +89,10 @@ void AccountPage::BuildProfileExtra() {
   nameStatus_ = TextBlock();
   nameStatus_.FontSize(12);
   nameStatus_.TextWrapping(TextWrapping::Wrap);
-  {
-    // Prose, so it may wrap - but it still carries the pane row's inset and
-    // bottom hairline, or a verdict about the name appears to float between two
-    // rows belonging to neither.
-    Border box;
-    box.Padding(ThicknessHelper::FromLengths(12, 8, 12, 8));
-    box.BorderBrush(urnw::colors::BorderBrush());
-    box.BorderThickness(ThicknessHelper::FromLengths(0, 0, 0, 1));
-    box.Child(nameStatus_);
-    host.Children().Append(box);
-  }
+  // Prose, so it may wrap - but it still carries the pane row's inset and
+  // bottom hairline, or a verdict about the name appears to float between two
+  // rows belonging to neither.
+  rows::StatusLine(host, nameStatus_);
 
   // The password row is a ROW like every other one in this pane, not a loose
   // button under a card: the label says what it is and the trailing word says
@@ -357,8 +350,12 @@ void AccountPage::LoadAccount() {
           u.user_auth, u.auth_type, u.auth_types, urnw::account::PasswordSignIns(u.user_auths));
       page.ApplyNetworkName(u.network_name);
       const std::wstring auth = urnw::Widen(page.userAuth_);
-      page.SetAuthText(hstring{urnw::Format(
-          u.verified ? "account_auth_verified" : "account_auth_unverified", auth)});
+      // a network with no email or phone has nothing for the verdict to describe
+      page.SetAuthText(auth.empty()
+                           ? hstring{}
+                           : hstring{urnw::Format(u.verified ? "account_auth_verified"
+                                                             : "account_auth_unverified",
+                                                  auth)});
       page.ApplyAccountState(FieldState::Loaded);
       // The load succeeded, so the status line has nothing left to say; the
       // save/reset paths write it next.
