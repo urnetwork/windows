@@ -8607,7 +8607,7 @@ der Welt</value>
     <comment>Sign-up pages: the product-updates consent row (default on, one tap off)</comment>
   </data>
   <data name="site_socks_cred_note" xml:space="preserve">
-    <value>Der Benutzername ist das Token in der URL; das Passwort ist leer.</value>
+    <value>Der Benutzername ist das Token in der URL; jedes Passwort funktioniert.</value>
     <comment>Account panel: SOCKS credential note</comment>
   </data>
   <data name="site_solana_no_wallet_hint" xml:space="preserve">
