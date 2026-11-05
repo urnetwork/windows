@@ -1946,12 +1946,16 @@ void ConnectPage::WireDrawerFeeds() {
   // which the session worker holds through a whole connect, so a push behind
   // a held command froze the window.
   sdk.SetLocationsHandler([queue, weak](std::optional<urnet::FilteredLocations> locations,
-                                        std::string) {
-    queue.TryEnqueue([weak, locations = std::move(locations)] {
+                                        std::string state) {
+    queue.TryEnqueue([weak, locations = std::move(locations), state = std::move(state)] {
       if (auto self = weak.get()) {
         auto& page = self->connect();
         page.locations_ = locations;
-        if (page.locationSheet_) page.locationSheet_->Update(locations, page.peers_);
+        page.locationsState_ = state;
+        if (page.locationSheet_) {
+          page.locationSheet_->SetFeedState(state);
+          page.locationSheet_->Update(locations, page.peers_);
+        }
       }
     });
   });
@@ -4452,12 +4456,15 @@ winrt::fire_and_forget ConnectPage::ShowLocationChooserSheet() {
   if (w_.sheetOpen()) co_return;  // only one ContentDialog can show at a time
   auto self = w_.get_strong();
   w_.SetSheetOpen(true);
-  // open the locations + peers view controllers (idempotent) and push an initial
-  // snapshot before seeding the sheet from the current values
-  Sdk().EnsureLocations();
+  // The sheet opens with an empty box, and the filter is shared and outlives a
+  // sheet: a search left in it (here or on the Network destination) would fill
+  // this one with that search's buckets. This also opens the feeds (idempotent)
+  // and retries a failed load.
+  Sdk().SetLocationFilter(std::string());
   try {
     locationSheet_ = urnw::LocationChooserSheet::Create(self->Content().XamlRoot(), Sdk());
     // what the feeds last pushed; EnsureLocations' own pushes follow
+    locationSheet_->SetFeedState(locationsState_);
     locationSheet_->Update(locations_, peers_);
     co_await locationSheet_->Dialog().ShowAsync();
   } catch (...) {
