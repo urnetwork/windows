@@ -1006,19 +1006,74 @@ inline void from_json(const nlohmann::json& j, SetIngressDns& v) {
   v.control_doh_urls = std::move(controlDohUrls);
 }
 
+namespace detail {
+// RFC 4648 §5 base64url, padding optional, as a jwt segment carries it. False
+// for any other character.
+inline bool DecodeBase64Url(std::string_view in, std::string& out) {
+  out.clear();
+  std::uint32_t buffer = 0;
+  int bits = 0;
+  for (const char c : in) {
+    int value;
+    if (c >= 'A' && c <= 'Z') value = c - 'A';
+    else if (c >= 'a' && c <= 'z') value = c - 'a' + 26;
+    else if (c >= '0' && c <= '9') value = c - '0' + 52;
+    else if (c == '-') value = 62;
+    else if (c == '_') value = 63;
+    else if (c == '=') break;
+    else return false;
+    buffer = (buffer << 6) | static_cast<std::uint32_t>(value);
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out.push_back(static_cast<char>((buffer >> bits) & 0xFFu));
+    }
+  }
+  return true;
+}
+}  // namespace detail
+
+// The client a credential names: its network_id and client_id claims, read
+// without verifying the signature, as the sdk reads them (parseByJwtClientId)
+// and as the service already takes the token from the app over its own pipe.
+// A refreshed token names the same client. Anything that is not a jwt naming a
+// client is its own subject, compared whole, as every credential was before.
+inline std::string JwtSubject(std::string_view jwt) {
+  const std::size_t first = jwt.find('.');
+  const std::size_t second =
+      first == std::string_view::npos ? first : jwt.find('.', first + 1);
+  std::string payload;
+  if (second == std::string_view::npos ||
+      !detail::DecodeBase64Url(jwt.substr(first + 1, second - first - 1), payload))
+    return std::string(jwt);
+  const nlohmann::json claims = nlohmann::json::parse(payload, nullptr, false);
+  if (!claims.is_object()) return std::string(jwt);
+  const auto client = claims.find("client_id");
+  if (client == claims.end() || !client->is_string() ||
+      client->get_ref<const std::string&>().empty())
+    return std::string(jwt);
+  const auto network = claims.find("network_id");
+  const std::string networkId = network != claims.end() && network->is_string()
+                                    ? network->get<std::string>()
+                                    : std::string();
+  return "client:" + networkId + "/" + client->get<std::string>();
+}
+
 // The identity a DeviceLocal is built from (provide::DeviceIdentity), as each
-// request carries it. Views into the request: valid while the request lives.
+// request carries it: the client its credential names, and views into the
+// request for the rest, valid while the request lives.
 inline provide::DeviceIdentity IdentityOf(const StartProvider& r) {
-  return {r.by_jwt, r.network_space_json, r.instance_id, r.device_description, r.device_spec,
-          r.app_version};
+  return {JwtSubject(r.by_jwt), r.network_space_json, r.instance_id, r.device_description,
+          r.device_spec, r.app_version};
 }
 inline provide::DeviceIdentity IdentityOf(const StartTunnel& r) {
-  return {r.by_jwt, r.network_space_json, r.instance_id, r.device_description, r.device_spec,
-          r.app_version};
+  return {JwtSubject(r.by_jwt), r.network_space_json, r.instance_id, r.device_description,
+          r.device_spec, r.app_version};
 }
 
 // "A device built from `a` can keep running for `b`." The identity it was
-// built from must match — credentials, identity and space. The provide mode,
+// built from must match — the client its credential names, identity and
+// space; a refreshed credential for the same client is the same device. The provide mode,
 // the provider transport policy and the network country may differ: the
 // running device takes a new mode and a new policy in place (the build applies
 // both the same way, right after construction), and the service applies the

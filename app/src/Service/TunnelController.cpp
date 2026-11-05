@@ -2225,6 +2225,13 @@ bool TunnelController::StartProvider(const proto::StartProvider& request,
     return true;
   }
 
+  // Which fields made this another device, by name: rebuilding the running one
+  // closes every transport, peer and contract it holds.
+  if (providerDevice_)
+    LogInfo("provide: start_provider is for another device ({} differ); the running "
+            "provider-only device is replaced",
+            provide::DifferingIdentityFields(proto::IdentityOf(providerRequest_),
+                                             proto::IdentityOf(request)));
   RetireProviderDeviceLocked();
   // A standalone log upload device runs under the same identity; its upload
   // goes on without it (StopLocked says why).
@@ -2943,6 +2950,9 @@ void TunnelController::ResumeProvidingLocked(KeptSessionDevice kept) {
   // identity and the device's own mode. The provider transport policy is the
   // one the device runs; the app's next start_provider for this identity keeps
   // the device and applies its own in place (SameProviderDevice).
+  // The token the session started with: the app's next start_provider carries
+  // one it refreshed since, for the same client, and the identity counts the
+  // client (proto::JwtSubject).
   providerRequest_ = sessionIdentity_;
   try {
     providerRequest_.provide_mode = providerDevice_->getProvideControlMode();

@@ -330,3 +330,22 @@ func TestProvideWiringIndicatorShowsTheProvider(t *testing.T) {
 	project := readCommonSource(t, "Common.vcxproj")
 	provideRequire(t, "Common.vcxproj", project, `<ClInclude Include="ProvideLifecycle.h" />`)
 }
+
+// A start_provider that replaces the running provider-only device says which
+// identity fields made it another device, by name: the replacement closes every
+// transport, peer and contract the running one holds. (The connect's token
+// refresh was found by hand; the identity now counts the client a token names,
+// proto::JwtSubject, and the protocol spec holds it to that.)
+func TestProvideWiringReplacingTheDeviceNamesTheDifference(t *testing.T) {
+	source := tunnelControllerSource(t)
+	start := definitionBody(t, "TunnelController.cpp", source,
+		"bool TunnelController::StartProvider(")
+	provideRequireOrder(t, "StartProvider", start,
+		"proto::SameProviderDevice(providerRequest_, request)", "provide::DifferingIdentityFields(")
+	provideRequireOrder(t, "StartProvider", start,
+		"provide::DifferingIdentityFields(", "RetireProviderDeviceLocked();")
+	resume := definitionBody(t, "TunnelController.cpp", source,
+		"void TunnelController::ResumeProvidingLocked(KeptSessionDevice kept)")
+	provideRequireOrder(t, "ResumeProvidingLocked", resume,
+		"providerRequest_ = sessionIdentity_;", "PublishStatusLocked();")
+}

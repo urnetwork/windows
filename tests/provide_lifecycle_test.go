@@ -133,6 +133,17 @@ func TestProvideLifecycleRejectsPromotingAnotherIdentity(t *testing.T) {
 	}, "one device: a connect with a changed instance builds its own device")
 }
 
+// A rebuild that does not name a differing field leaves the next one to be
+// traced by hand, as the connect's jwt refresh was.
+func TestProvideLifecycleRejectsAnUnnamedDifference(t *testing.T) {
+	requireProvideFailure(t, "provide-lifecycle-tests.cpp", map[string]func(string) string{
+		"ProvideLifecycle.h": func(source string) string {
+			return strings.Replace(source,
+				"  note(a.instanceId != b.instanceId, \"instance_id\");\n", "", 1)
+		},
+	}, "one device: the differing fields name instance_id")
+}
+
 // The service must not start a provider that would leave through the armed
 // floor's own permit.
 func TestProvideLifecycleRejectsProviderUnderArmedFloor(t *testing.T) {
@@ -218,6 +229,19 @@ func TestProvideProtocolRejectsDroppedFields(t *testing.T) {
 					"         a.provider_transport_settings_json == b.provider_transport_settings_json;\n}", 1)
 		},
 	}, "same device: only the provider transport policy differs", extra...)
+}
+
+// A comparison that takes the token itself for the identity rebuilds the device
+// a disconnect just kept: the app refreshes its token on every connect, and
+// each device refreshes its own as it starts.
+func TestProvideProtocolRejectsComparingTheRawJwt(t *testing.T) {
+	extra := provideJsonFlags(t)
+	requireProvideFailure(t, "provide-protocol-tests.cpp", map[string]func(string) string{
+		"Protocol.h": func(source string) string {
+			return strings.Replace(source, "return {JwtSubject(r.by_jwt), ",
+				"return {std::string(r.by_jwt), ", 1)
+		},
+	}, "same device: a refreshed jwt for the same client", extra...)
 }
 
 // The provider-only device's statistics on the wire, read back on the generated

@@ -13,7 +13,9 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+#include <cstddef>
 #include <iostream>
+#include <iterator>
 #include <string>
 
 #include "ProvideLifecycle.h"
@@ -282,15 +284,15 @@ void TestOneDevice() {
   const std::pair<const char*, DeviceIdentity> changed[] = {
       {"jwt", {"jwt2", base.networkSpaceJson, base.instanceId, base.deviceDescription,
                base.deviceSpec, base.appVersion}},
-      {"space", {base.byJwt, "{\"space\":2}", base.instanceId, base.deviceDescription,
+      {"space", {base.jwtSubject, "{\"space\":2}", base.instanceId, base.deviceDescription,
                  base.deviceSpec, base.appVersion}},
-      {"instance", {base.byJwt, base.networkSpaceJson, "instance2", base.deviceDescription,
+      {"instance", {base.jwtSubject, base.networkSpaceJson, "instance2", base.deviceDescription,
                     base.deviceSpec, base.appVersion}},
-      {"description", {base.byJwt, base.networkSpaceJson, base.instanceId, "other",
+      {"description", {base.jwtSubject, base.networkSpaceJson, base.instanceId, "other",
                        base.deviceSpec, base.appVersion}},
-      {"spec", {base.byJwt, base.networkSpaceJson, base.instanceId, base.deviceDescription,
+      {"spec", {base.jwtSubject, base.networkSpaceJson, base.instanceId, base.deviceDescription,
                 "spec2", base.appVersion}},
-      {"app version", {base.byJwt, base.networkSpaceJson, base.instanceId,
+      {"app version", {base.jwtSubject, base.networkSpaceJson, base.instanceId,
                        base.deviceDescription, base.deviceSpec, "1.2-4"}},
   };
   for (const auto& [field, identity] : changed) {
@@ -304,6 +306,22 @@ void TestOneDevice() {
         "one device: a connect keeps the provider-only device built for its identity");
   Check(!PromotesProviderDevice(false, base, base),
         "one device: with no provider-only device a connect builds one");
+
+  // A rebuild names what differs, by request field name, in the order above.
+  const char* const fieldNames[] = {"by_jwt",      "network_space_json", "instance_id",
+                                    "device_description", "device_spec", "app_version"};
+  static_assert(std::size(fieldNames) == std::size(changed));
+  for (std::size_t i = 0; i < std::size(changed); ++i) {
+    Check(DifferingIdentityFields(base, changed[i].second) == fieldNames[i],
+          std::string("one device: the differing fields name ") + fieldNames[i]);
+  }
+  Check(DifferingIdentityFields(base, base).empty(),
+        "one device: an identity differs from itself in nothing");
+  // Another client on another instance: both fields are named.
+  const DeviceIdentity moved{"jwt2", base.networkSpaceJson, "instance2",
+                             base.deviceDescription, base.deviceSpec, base.appVersion};
+  Check(DifferingIdentityFields(base, moved) == "by_jwt, instance_id",
+        "one device: every differing field is named");
 
   // The disconnect rule, for every mode.
   SessionStopFacts disconnect;

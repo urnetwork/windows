@@ -45,6 +45,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 namespace urnw::provide {
@@ -215,9 +216,14 @@ constexpr const char* ToString(ExtenderSettingTarget target) {
 // and goes with it.
 
 // The request fields a DeviceLocal is built from, as StartProvider and
-// StartTunnel both carry them.
+// StartTunnel both carry them. The credential counts by the client it names,
+// never by the token (proto::JwtSubject): tokens are refreshed all the time.
+// The app refreshes its token on every connect, in its own process, and every
+// device refreshes its own as it starts, so two requests for one device rarely
+// carry the same token. Measured: compared token by token, every disconnect
+// that kept the session's device rebuilt it 25ms later.
 struct DeviceIdentity {
-  std::string_view byJwt;
+  std::string jwtSubject;
   std::string_view networkSpaceJson;
   std::string_view instanceId;
   std::string_view deviceDescription;
@@ -225,17 +231,37 @@ struct DeviceIdentity {
   std::string_view appVersion;
 };
 
-constexpr bool SameIdentity(const DeviceIdentity& a, const DeviceIdentity& b) {
-  return a.byJwt == b.byJwt && a.networkSpaceJson == b.networkSpaceJson &&
+inline bool SameIdentity(const DeviceIdentity& a, const DeviceIdentity& b) {
+  return a.jwtSubject == b.jwtSubject && a.networkSpaceJson == b.networkSpaceJson &&
          a.instanceId == b.instanceId && a.deviceDescription == b.deviceDescription &&
          a.deviceSpec == b.deviceSpec && a.appVersion == b.appVersion;
+}
+
+// The fields that tell two identities apart, by request field name only: the
+// values are credentials. Empty exactly when SameIdentity holds. The service
+// logs it when a start_provider rebuilds the running provider-only device,
+// which closes every transport, peer and contract that device holds.
+inline std::string DifferingIdentityFields(const DeviceIdentity& a, const DeviceIdentity& b) {
+  std::string names;
+  const auto note = [&names](bool differs, std::string_view name) {
+    if (!differs) return;
+    if (!names.empty()) names += ", ";
+    names += name;
+  };
+  note(a.jwtSubject != b.jwtSubject, "by_jwt");
+  note(a.networkSpaceJson != b.networkSpaceJson, "network_space_json");
+  note(a.instanceId != b.instanceId, "instance_id");
+  note(a.deviceDescription != b.deviceDescription, "device_description");
+  note(a.deviceSpec != b.deviceSpec, "device_spec");
+  note(a.appVersion != b.appVersion, "app_version");
+  return names;
 }
 
 // Connect: the running provider-only device becomes the session's device when
 // it was built for the identity the start carries. Otherwise it is retired and
 // the session builds its own, as before.
-constexpr bool PromotesProviderDevice(bool providerDevice, const DeviceIdentity& provider,
-                                      const DeviceIdentity& start) {
+inline bool PromotesProviderDevice(bool providerDevice, const DeviceIdentity& provider,
+                                   const DeviceIdentity& start) {
   return providerDevice && SameIdentity(provider, start);
 }
 
