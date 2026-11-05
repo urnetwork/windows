@@ -9376,6 +9376,14 @@ world's content</value>
     <value>Unique exit IPs are part of UR Pro.</value>
     <comment>Create proxy: why choosing a unique exit IP opens the Pro upgrade</comment>
   </data>
+  <data name="site_unique_exit_reason_cap" xml:space="preserve">
+    <value>Too many replacements this hour; it tries again later.</value>
+    <comment>Proxies list: a unique exit proxy waits for a replacement because too many were replaced this hour (state_reason cap)</comment>
+  </data>
+  <data name="site_unique_exit_reason_manual" xml:space="preserve">
+    <value>Exit lost. Rotate exit to choose a new one.</value>
+    <comment>Proxies list: a manual-mode unique exit proxy lost its exit and waits for the customer to rotate it (state_reason manual)</comment>
+  </data>
   <data name="site_unique_exit_replacing" xml:space="preserve">
     <value>Replacing exit…</value>
     <comment>Proxies list: the proxy's exit failed and a new unique exit is being assigned</comment>
@@ -9387,6 +9395,14 @@ world's content</value>
   <data name="site_unique_exit_rotate_error" xml:space="preserve">
     <value>Couldn't rotate the exit. Try again in a minute.</value>
     <comment>Proxies list: a rotate exit request failed</comment>
+  </data>
+  <data name="site_unique_exit_rotate_limited" xml:space="preserve">
+    <value>A proxy's exit can be rotated once a minute and up to 60 times a day. Try again later.</value>
+    <comment>Proxies list: a rotate exit request was refused by the per-proxy rotate limit (once a minute, 60 a day)</comment>
+  </data>
+  <data name="site_unique_exit_rotate_no_supply" xml:space="preserve">
+    <value>No other unique exit IP is available in this location right now. The proxy keeps its current exit.</value>
+    <comment>Proxies list: a rotate exit request found no other unused exit IP in the location; the proxy keeps its current exit</comment>
   </data>
   <data name="site_unique_exit_since" xml:space="preserve">
     <value>since {}</value>

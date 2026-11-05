@@ -8682,6 +8682,14 @@
     <value>独立出口 IP 是 UR Pro 的一部分。</value>
     <comment>Create proxy: why choosing a unique exit IP opens the Pro upgrade</comment>
   </data>
+  <data name="site_unique_exit_reason_cap" xml:space="preserve">
+    <value>本小时内更换次数过多；稍后会再试。</value>
+    <comment>Proxies list: a unique exit proxy waits for a replacement because too many were replaced this hour (state_reason cap)</comment>
+  </data>
+  <data name="site_unique_exit_reason_manual" xml:space="preserve">
+    <value>出口已失效。点击「更换出口」选择一个新的出口。</value>
+    <comment>Proxies list: a manual-mode unique exit proxy lost its exit and waits for the customer to rotate it (state_reason manual)</comment>
+  </data>
   <data name="site_unique_exit_replacing" xml:space="preserve">
     <value>正在更换出口…</value>
     <comment>Proxies list: the proxy's exit failed and a new unique exit is being assigned</comment>
@@ -8693,6 +8701,14 @@
   <data name="site_unique_exit_rotate_error" xml:space="preserve">
     <value>无法更换出口。请一分钟后再试。</value>
     <comment>Proxies list: a rotate exit request failed</comment>
+  </data>
+  <data name="site_unique_exit_rotate_limited" xml:space="preserve">
+    <value>每个代理的出口每分钟可更换一次，每天最多 60 次。请稍后再试。</value>
+    <comment>Proxies list: a rotate exit request was refused by the per-proxy rotate limit (once a minute, 60 a day)</comment>
+  </data>
+  <data name="site_unique_exit_rotate_no_supply" xml:space="preserve">
+    <value>此位置目前没有其他可用的独立出口 IP。代理会保留当前的出口。</value>
+    <comment>Proxies list: a rotate exit request found no other unused exit IP in the location; the proxy keeps its current exit</comment>
   </data>
   <data name="site_unique_exit_since" xml:space="preserve">
     <value>自 {} 起</value>
