@@ -12,6 +12,7 @@
 #include <chrono>
 #include <cwctype>
 #include <fstream>
+#include <future>
 #include <limits>
 #include <random>
 #include <thread>
@@ -1845,6 +1846,12 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
             LogWarn("sdkhost: persist jwt failed: {}", e.what());
             persistenceError = "could not store the device credentials";
           }
+        }
+        // A client this sign-in will not install goes now, under the lock the
+        // tail takes, while the network credential it needs is still set:
+        // nothing else names it, so the sign-out cannot remove it.
+        if (signedOutMeanwhile || !persistenceError.empty()) {
+          RemoveAbandonedClientLocked(result->client_id);
         }
       }
       if (signedOutMeanwhile) {
@@ -8545,6 +8552,52 @@ void SdkHost::TeardownSessionLocked(bool stopTunnel) {
   PublishModeNotice();
 }
 
+// Past the sdk's own 2 s bound for its sign-out: the tail's local half runs at
+// the latest this long after it starts the server half.
+constexpr std::chrono::milliseconds kServerSignOutWait{2500};
+
+void SdkHost::ServerSignOutLocked() {
+  // caller holds mutex_; the sdk answers on its own thread, which takes no lock of ours
+  if (!api_) return;
+  auto answered = std::make_shared<std::promise<void>>();
+  std::future<void> answer = answered->get_future();
+  auto once = std::make_shared<std::once_flag>();
+  try {
+    api_->signOut([answered, once](urnet::SessionSignOutResult, std::optional<std::string> err) {
+      if (err) LogInfo("sdkhost: sign-out: the server sign-out answered: {}", *err);
+      std::call_once(*once, [&answered] { answered->set_value(); });
+    });
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: sign-out: the server sign-out did not start: {}", e.what());
+    return;
+  }
+  if (answer.wait_for(kServerSignOutWait) != std::future_status::ready) {
+    LogWarn("sdkhost: sign-out: the server sign-out did not answer within {} ms; the local "
+            "sign-out goes on",
+            kServerSignOutWait.count());
+  }
+}
+
+void SdkHost::RemoveAbandonedClientLocked(const std::optional<std::string>& clientId) {
+  // caller holds mutex_. Best effort: the answer is only logged.
+  if (!api_ || !clientId || clientId->empty()) return;
+  try {
+    urnet::RemoveNetworkClientArgs args;
+    args.client_id = *clientId;
+    api_->removeNetworkClient(args, [id = *clientId](std::optional<urnet::RemoveNetworkClientResult> result,
+                                                     std::optional<std::string> err) {
+      if (err) {
+        LogInfo("sdkhost: sign-in: the abandoned client {} was not removed: {}", id, *err);
+      } else if (result && result->error) {
+        LogInfo("sdkhost: sign-in: the abandoned client {} was not removed: {}", id,
+                result->error->message);
+      }
+    });
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: sign-in: removing the abandoned client failed: {}", e.what());
+  }
+}
+
 // See the contract in the header.
 void SdkHost::Logout() {
   // One sign-out at a time: a click while one runs joins it (SignOutRun.h).
@@ -8612,7 +8665,12 @@ void SdkHost::SignOutTailLocked() {
     // and so is a network a ur.io approval redeemed and nobody confirmed
     pendingApprovedJwt_.reset();
     if (events_) events_->NewSession();  // the next sign-in is a new session
-    // The local credentials first, because nothing can hold them up: the app
+    // The server half before the local credentials, which clear the network
+    // credential it needs: the sdk removes this device's client and revokes the
+    // session, within its own 2 s bound, and the wait ends at kServerSignOutWait,
+    // so an offline sign-out still ends.
+    ServerSignOutLocked();
+    // The local credentials next, because nothing can hold them up: the app
     // is signed out on disk even if it is ended while the service half below
     // waits on the pipe.
     // This tail already runs off the UI thread. Queueing the destructive
