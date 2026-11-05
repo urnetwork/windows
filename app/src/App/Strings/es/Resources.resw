@@ -8778,6 +8778,58 @@ del mundo</value>
     <value>Ocurrió algo inesperado.</value>
     <comment>Account panel: generic unexpected error</comment>
   </data>
+  <data name="site_unique_exit" xml:space="preserve">
+    <value>IP de salida única</value>
+    <comment>Create proxy: the option that gives each proxy its own exit IP</comment>
+  </data>
+  <data name="site_unique_exit_count" xml:space="preserve">
+    <value>Número de proxies</value>
+    <comment>Create proxy: how many unique exit IP proxies to create at once</comment>
+  </data>
+  <data name="site_unique_exit_count_note" xml:space="preserve">
+    <value>Hasta {} a la vez.</value>
+    <comment>Create proxy: the most unique exit IP proxies created at once (the Pro per-minute create limit)</comment>
+  </data>
+  <data name="site_unique_exit_created" xml:space="preserve">
+    <value>Proxies con IP de salida única listos: {}</value>
+    <comment>Create proxy: a batch of unique exit IP proxies was created; count is how many</comment>
+  </data>
+  <data name="site_unique_exit_no_supply" xml:space="preserve">
+    <value>Ahora no hay una IP de salida única disponible en esta ubicación. Prueba otra ubicación.</value>
+    <comment>Create proxy: the server found no unused exit IP for this network in the chosen location</comment>
+  </data>
+  <data name="site_unique_exit_no_supply_state" xml:space="preserve">
+    <value>No hay salida única disponible</value>
+    <comment>Proxies list: no unused exit IP is available for this proxy right now</comment>
+  </data>
+  <data name="site_unique_exit_partial" xml:space="preserve">
+    <value>Se crearon {0} de {1}.</value>
+    <comment>Create proxy: a batch stopped early; how many of the requested proxies were created</comment>
+  </data>
+  <data name="site_unique_exit_pro_note" xml:space="preserve">
+    <value>Las IP de salida únicas forman parte de UR Pro.</value>
+    <comment>Create proxy: why choosing a unique exit IP opens the Pro upgrade</comment>
+  </data>
+  <data name="site_unique_exit_replacing" xml:space="preserve">
+    <value>Reemplazando la salida…</value>
+    <comment>Proxies list: the proxy's exit failed and a new unique exit is being assigned</comment>
+  </data>
+  <data name="site_unique_exit_rotate" xml:space="preserve">
+    <value>Cambiar salida</value>
+    <comment>Proxies list: give this unique exit IP proxy a new unique exit</comment>
+  </data>
+  <data name="site_unique_exit_rotate_error" xml:space="preserve">
+    <value>No se pudo cambiar la salida. Inténtalo de nuevo en un minuto.</value>
+    <comment>Proxies list: a rotate exit request failed</comment>
+  </data>
+  <data name="site_unique_exit_since" xml:space="preserve">
+    <value>desde {}</value>
+    <comment>Proxies list: when a unique exit IP proxy got its current exit; time is a formatted date and time</comment>
+  </data>
+  <data name="site_unique_exit_sub" xml:space="preserve">
+    <value>Cada proxy recibe su propia IP de salida, que tus otros proxies no usan.</value>
+    <comment>Create proxy: what the unique exit IP option does</comment>
+  </data>
   <data name="site_usdc_offer_term" xml:space="preserve">
     <value>{1} meses más {0} días de Pro</value>
     <comment>USDC panel: the term the welcome-offer payment buys.</comment>
