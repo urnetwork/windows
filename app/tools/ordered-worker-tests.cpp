@@ -35,7 +35,8 @@ void Check(bool condition, const std::string& what) {
   ++gCases;
   if (!condition) {
     ++gFailures;
-    std::cout << "  FAIL " << what << "\n";
+    // flushed: a negative control can end the run with an uncaught throw
+    std::cout << "  FAIL " << what << std::endl;
   }
 }
 
