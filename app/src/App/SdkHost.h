@@ -2965,6 +2965,13 @@ class SdkHost {
   // Stopped with statsPublisher_, above mutex_: a tail in flight is waited out.
   void SignOutTail();
   void SignOutTailLocked();
+  // The server half of a sign-out, and of a sign-in abandoned after the server
+  // created its client: while api_ still holds the network credential. The
+  // server does not deactivate a client when its session is revoked, so a
+  // client left behind counts toward the network's active top-level clients
+  // until the idle reap. Callers hold mutex_.
+  void ServerSignOutLocked();
+  void RemoveAbandonedClientLocked(const std::optional<std::string>& clientId);
   CoalescedWorker signOutWorker_{[this] { SignOutTail(); }};
   // ApplySdkEgressBind's "the network moved" for this process's own sdk, off
   // the caller's thread: that is the pipe reader, which must stay free to read,
