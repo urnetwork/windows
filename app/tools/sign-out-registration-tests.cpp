@@ -9,6 +9,9 @@
 #include <condition_variable>
 #include <cstdint>
 #include <functional>
+#include <future>
+#include <memory>
+#include <chrono>
 #include <iostream>
 #include <mutex>
 #include <optional>
@@ -79,7 +82,11 @@ struct AuthNetworkClientArgs { std::string description; std::string device_spec;
 struct AuthNetworkClientResult {
   std::optional<Error> error;
   std::optional<std::string> by_client_jwt;
+  std::optional<std::string> client_id{};
 };
+struct SessionSignOutResult {};
+struct RemoveNetworkClientArgs { std::optional<std::string> client_id; };
+struct RemoveNetworkClientResult { std::optional<Error> error; };
 using AuthNetworkClientCallback = std::function<void(std::optional<AuthNetworkClientResult>,
                                                     std::optional<std::string>)>;
 }
@@ -193,6 +200,22 @@ struct Api {
   std::vector<ApiAnswer<urnet::AuthCodeLoginResult>> codes;
   std::vector<ApiAnswer<urnet::AuthVerifyResult>> verifies;
   std::vector<ApiAnswer<urnet::NetworkCreateResult>> creates;
+  std::function<void()> onSignOut;
+  bool duplicateSignOutAnswer = false;
+  int signOutRequests = 0;
+  struct RemovedClient { std::optional<std::string> clientId; std::string networkJwt; };
+  std::vector<RemovedClient> removedClients;
+  void signOut(std::function<void(urnet::SessionSignOutResult, std::optional<std::string>)> answer) {
+    ++signOutRequests;
+    if (onSignOut) onSignOut();
+    answer({}, {});
+    if (duplicateSignOutAnswer) answer({}, {});
+  }
+  void removeNetworkClient(const std::optional<urnet::RemoveNetworkClientArgs>& args,
+                           ApiAnswer<urnet::RemoveNetworkClientResult> answer) {
+    removedClients.push_back({.clientId = args ? args->client_id : std::optional<std::string>{}, .networkJwt = jwt});
+    answer(urnet::RemoveNetworkClientResult{}, {});
+  }
   void setByJwt(std::string value) { jwt = std::move(value); }
   void authLogin(const urnet::AuthLoginArgs&, ApiAnswer<urnet::AuthLoginResult> answer) { logins.push_back(std::move(answer)); }
   void authLoginWithPassword(const urnet::AuthLoginWithPasswordArgs&, ApiAnswer<urnet::AuthLoginWithPasswordResult> answer) { passwords.push_back(std::move(answer)); }
@@ -278,6 +301,8 @@ struct SdkHost {
     onAuth_.callback = [this](AuthState state, const std::string&, std::uint64_t) { authEvents.push_back(state); };
   }
   void RegisterNetworkClient(const std::string&, std::function<void(AuthResult)>, std::uint64_t);
+  void ServerSignOutLocked();
+  void RemoveAbandonedClientLocked(const std::optional<std::string>&);
   void Logout();
   void SignOutTail();
   void SignOutTailLocked();
@@ -759,9 +784,59 @@ void TestQueuedSignOutProgressReadsTheCurrentTail() {
   controller.Drain();
   Check(!controller.window_.view.signingOut, "the sign-out row settles after the current tail finishes");
 }
+// The production tail must start server cleanup before either credential is
+// erased. Duplicate local answers also exercise its exactly-once promise.
+void TestCurrentServerCleanupDependencies() {
+  SdkHost host;
+  host.api.duplicateSignOutAnswer = true;
+  host.api.onSignOut = [&] {
+    Check(host.local.networkJwt == "initial-network" && host.local.clientJwt == "initial-client" &&
+              host.api.jwt == "initial-network",
+          "server cleanup starts before local and API credentials are cleared");
+  };
+  host.Logout();
+  host.SignOutTail();
+  Check(host.api.signOutRequests == 1, "the production tail invokes server sign-out exactly once");
+  Check(host.local.networkJwt.empty() && host.local.clientJwt.empty() && host.api.jwt.empty(),
+        "the production tail still clears local and API credentials after server cleanup");
+  std::cout << "server-cleanup dependency checks passed\n";
+}
+
+// Failed installation must remove the ID returned by the registration, not a
+// guessed JWT or a later account identity. No external API is contacted.
+void TestCurrentAbandonedClientDependency() {
+  SdkHost host;
+  host.local.failClientWrite = true;
+  host.Start("synthetic-network");
+  urnet::AuthNetworkClientResult result;
+  result.by_client_jwt = "synthetic-client-jwt";
+  result.client_id = "synthetic-client-id";
+  host.Answer(0, result);
+  Check(host.api.removedClients.size() == 1, "failed registration removes its returned client ID");
+  if (!host.api.removedClients.empty()) {
+    Check(host.api.removedClients.front().clientId == result.client_id &&
+              host.api.removedClients.front().networkJwt == "synthetic-network",
+          "abandoned cleanup uses the exact response ID while its network credential is present");
+  }
+  Check(host.answers.size() == 1 && !host.answers.front().ok,
+        "abandoned cleanup preserves the failed registration completion");
+  host.RemoveAbandonedClientLocked({});
+  host.RemoveAbandonedClientLocked(std::string{});
+  Check(host.api.removedClients.size() == 1, "missing or empty client IDs never dispatch removal");
+  std::cout << "abandoned-client dependency checks passed\n";
+}
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+  if (argc == 2) {
+    const std::string mode = argv[1];
+    if (mode == "server-cleanup") TestCurrentServerCleanupDependencies();
+    else if (mode == "abandoned-client") TestCurrentAbandonedClientDependency();
+    else { std::cerr << "unknown synthetic test mode\n"; return 2; }
+    return failures ? 1 : 0;
+  }
+  TestCurrentServerCleanupDependencies();
+  TestCurrentAbandonedClientDependency();
   TestAdmissionAndEpochAreOneDecision();
   TestEveryStaleCompletionLeavesTheNextAccountAlone();
   TestLogoutFinishesItsCredentialWriteBeforeReleasingSignIn();

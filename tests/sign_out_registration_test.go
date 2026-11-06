@@ -35,9 +35,22 @@ func signOutRegistrationProgramWithUi(t *testing.T, mutate, mutateUi func(string
 			t.Fatal("negative control did not change the production SdkHost.cpp")
 		}
 	}
-	var bodies []string
+	// These helpers are now part of the real tail/registration dependency graph.
+	// Keep the production wait declaration rather than copying its value.
+	const waitPrefix = "constexpr std::chrono::milliseconds kServerSignOutWait{"
+	if strings.Count(host, waitPrefix) != 1 {
+		t.Fatal("SdkHost.cpp no longer has exactly one server sign-out wait declaration")
+	}
+	waitStart := strings.Index(host, waitPrefix)
+	waitEnd := strings.Index(host[waitStart:], ";")
+	if waitEnd < 0 {
+		t.Fatal("SdkHost.cpp server sign-out wait declaration has no terminator")
+	}
+	bodies := []string{host[waitStart : waitStart+waitEnd+1]}
 	for _, signature := range []string{
 		"void SdkHost::RegisterNetworkClient(",
+		"void SdkHost::ServerSignOutLocked(",
+		"void SdkHost::RemoveAbandonedClientLocked(",
 		"void SdkHost::Logout(",
 		"void SdkHost::SignOutTail(",
 		"void SdkHost::SignOutTailLocked(",
@@ -194,5 +207,25 @@ func TestSignOutRegistrationRejectsQueuedProgressFromAnOlderTail(t *testing.T) {
 	output, err := exec.Command(program).CombinedOutput()
 	if err == nil || !strings.Contains(string(output), "an old false sign-out progress event cannot hide a second logout still running") {
 		t.Fatalf("stale sign-out progress did not reach its runtime assertion: %v\n%s", err, output)
+	}
+}
+
+// Both server cleanup dependencies execute their extracted production bodies.
+// Immediate local callbacks expose call ordering without sleeping or networking.
+func TestSignOutRegistrationKeepsServerCleanupBeforeCredentialDisposal(t *testing.T) {
+	program := signOutRegistrationProgram(t, nil)
+	if output, err := exec.Command(program, "server-cleanup").CombinedOutput(); err != nil {
+		t.Fatalf("production server cleanup ordering: %v\n%s", err, output)
+	} else if !strings.Contains(string(output), "server-cleanup dependency checks passed") {
+		t.Fatalf("server cleanup control did not run: %s", output)
+	}
+}
+
+func TestSignOutRegistrationRemovesTheAbandonedResultClient(t *testing.T) {
+	program := signOutRegistrationProgram(t, nil)
+	if output, err := exec.Command(program, "abandoned-client").CombinedOutput(); err != nil {
+		t.Fatalf("production abandoned-client cleanup: %v\n%s", err, output)
+	} else if !strings.Contains(string(output), "abandoned-client dependency checks passed") {
+		t.Fatalf("abandoned-client control did not run: %s", output)
 	}
 }
