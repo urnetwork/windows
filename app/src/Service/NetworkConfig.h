@@ -27,8 +27,8 @@ namespace urnw {
 
 // Mirrors sdk.GetDefaultTunnelMtu/connect.DefaultTunnelMtu: the interface
 // MTU, 1280 because Windows refuses IPv6 on an interface below RFC 8200's
-// minimum. Packets written into the tunnel stay at most connect.DefaultMtu
-// (1100) so one full encrypted packet still fits one H3 QUIC DATAGRAM.
+// minimum. The provider packetizer also uses 1280 bytes. H3 uses its stream
+// lane when framing overhead prevents a complete packet fitting a DATAGRAM.
 inline constexpr uint32_t kTunnelMtu = 1280;
 
 struct TunnelNetworkSettings {
