@@ -113,9 +113,10 @@ void TunnelWatchdog::Start(urnet::DeviceLocal* device,
           "the sdk at most once per {}ms. With the kill switch OFF a tunnel that "
           "cannot carry traffic is turned off automatically rather than left "
           "blocking this machine (no exit for {}s, or {}s of sending with "
-          "nothing coming back, or {}s of sdk silence). An account out of balance "
-          "is turned off for the sdk's silence only: its traffic stays in the "
-          "tunnel until the user acts.",
+          "nothing coming back, or {}s of sdk silence). An account out of balance, "
+          "or a device the platform holds off for its network's client limit, is "
+          "turned off for the sdk's silence only: its traffic stays in the tunnel "
+          "until the user acts.",
           settings_.sampleIntervalMillis, settings_.evaluateIntervalMillis,
           settings_.networkNotify.windowMillis, settings_.deadTunnel.deadSlowMillis / 1000,
           settings_.deadTunnel.deadFastMillis / 1000,
@@ -362,6 +363,7 @@ void TunnelWatchdog::RunSampler(std::shared_ptr<WatchdogChannel> channel) {
   // someone read.
   static std::atomic<bool> exitsLogged{false};
   static std::atomic<bool> contractStatusLogged{false};
+  static std::atomic<bool> clientLimitLogged{false};
   bool windowLogged = false;
   int64_t probedNetworkMillis = -1;
   int64_t reportedGeneration = -1;
@@ -483,6 +485,12 @@ void TunnelWatchdog::RunSampler(std::shared_ptr<WatchdogChannel> channel) {
     if (channel->cancelled.load()) return;
     const auto balanceWindow = readWindow();
     if (channel->cancelled.load()) return;
+    // The client limit hold (ClientLimitHold), off the same device the app's
+    // notice reads it from: whether the platform closed it for its network's
+    // concurrent client limit and the sdk holds it off the platform.
+    const auto clientLimitStatus = ReadSdkList(clientLimitLogged, "getClientLimitStatus",
+                                               [&] { return device->getClientLimitStatus(); });
+    if (channel->cancelled.load()) return;
     std::optional<urnet::WindowStatus> before;
     if (readiness) before = readWindow();
     if (channel->cancelled.load()) return;
@@ -545,6 +553,13 @@ void TunnelWatchdog::RunSampler(std::shared_ptr<WatchdogChannel> channel) {
           .providerAddedCount = balanceWindow->ProviderStateAdded,
       };
     }
+    if (clientLimitStatus) {
+      std::scoped_lock lock(channel->mutex);
+      channel->clientLimit = ClientLimitReading{
+          .sampled = true,
+          .exceeded = clientLimitStatus->Status == urnet::ClientLimitStatusExceeded,
+      };
+    }
 
     const int64_t now = NowMillis();
     channel->provenCount.store(proven);
@@ -600,11 +615,13 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
   }
   // Kept across every rebase below, for the life of this watch.
   OutOfBalanceHold outOfBalance;
+  ClientLimitHold clientLimit;
 
   for (;;) {
     int64_t connectionGeneration = 0;
     bool providerWindowMinSatisfied = true;
     BalanceReading balance;
+    ClientLimitReading clientLimitReading;
     {
       std::unique_lock lock(channel->mutex);
       if (channel->wake.wait_for(lock,
@@ -616,13 +633,24 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
       connectionGeneration = channel->connectionGeneration;
       providerWindowMinSatisfied = channel->providerWindowMinSatisfied;
       balance = channel->balance;
+      clientLimitReading = channel->clientLimit;
     }
     if (channel->cancelled.load()) return;
 
     const int64_t now = NowMillis();
 
     // Ahead of the freeze below: a resume restarts the windows, and tells nothing
-    // about the balance.
+    // about the balance or the client limit.
+    const ClientLimitStep clientLimitStep = clientLimit.Observe(clientLimitReading);
+    if (clientLimitStep == ClientLimitStep::Entered) {
+      LogWarn("watchdog: the platform holds this device off for its network's "
+              "concurrent client limit. Its traffic stays in the tunnel, and the "
+              "no-exit and no-inbound rules wait until the hold ends or the user "
+              "disconnects: turning the tunnel off here would let this machine's "
+              "traffic out in the clear, and the device that replaced this one "
+              "would dial the platform at once, past the hold. The app tells the "
+              "user.");
+    }
     const BalanceStep balanceStep = outOfBalance.Observe(balance);
     if (balanceStep == BalanceStep::Entered) {
       LogWarn("watchdog: this account is out of balance. Its traffic stays in the "
@@ -692,6 +720,26 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
     // otherwise the rule the hold kept back would fire on this tick.
     if (balanceStep == BalanceStep::Released) {
       LogInfo("watchdog: contracts are going through again, so every failsafe "
+              "window starts again from now");
+      sessionStartMillis = now;
+      trafficStartMillis = now;
+      if (counters) {
+        traffic.Reset(counters->outbound.load(std::memory_order_relaxed),
+                      counters->inbound.load(std::memory_order_relaxed));
+      }
+      armed_.store(false, std::memory_order_relaxed);
+      millisToFailsafe_.store(0, std::memory_order_relaxed);
+      connectionEpoch.Observe(connectionGeneration,
+                              providerWindowMinSatisfied);
+      continue;
+    }
+
+    // The device's client limit hold ended: it dials the platform again. The
+    // same fresh grace, for the same reason: nothing measured while it was held
+    // off says anything about the tunnel, and a refusal holds it again within
+    // seconds, inside the new windows.
+    if (clientLimitStep == ClientLimitStep::Released) {
+      LogInfo("watchdog: the device's client limit hold ended, so every failsafe "
               "window starts again from now");
       sessionStartMillis = now;
       trafficStartMillis = now;
@@ -781,6 +829,7 @@ void TunnelWatchdog::RunEvaluator(std::shared_ptr<WatchdogChannel> channel,
     signals.lastInboundMillis = traffic.lastInboundMillis();
     signals.outboundSinceInbound = traffic.outboundSinceInbound();
     signals.outOfBalance = outOfBalance.held();
+    signals.clientLimitHeld = clientLimit.held();
 
     const DeadTunnelVerdict verdict = Evaluate(signals, now, channel->settings.deadTunnel);
     armed_.store(verdict.armed, std::memory_order_relaxed);
