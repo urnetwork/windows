@@ -5228,8 +5228,8 @@
     <comment>Device list: this app holds no sign-in token that can remove other devices, or the server refused it. Signing in again gives it one.</comment>
   </data>
   <data name="manage_devices_this_device" xml:space="preserve">
-    <value>此设备</value>
-    <comment>Device list: the label of the row for the device the app runs on. It cannot be removed here (the user signs out instead). On apple the same source text resolves to top200_sign_this_device.</comment>
+    <value>这台设备</value>
+    <comment>Device list: the label of the row for the device the app runs on. It cannot be removed here (the user signs out instead). On apple the same source text resolves to top200_sign_this_device, so the translations must stay the same as that key's.</comment>
   </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>管理订阅</value>

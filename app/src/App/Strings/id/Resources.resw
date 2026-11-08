@@ -5153,7 +5153,7 @@ kami kirimkan untuk memverifikasi identitas Anda.</value>
   </data>
   <data name="manage_devices_this_device" xml:space="preserve">
     <value>Perangkat ini</value>
-    <comment>Device list: the label of the row for the device the app runs on. It cannot be removed here (the user signs out instead). On apple the same source text resolves to top200_sign_this_device.</comment>
+    <comment>Device list: the label of the row for the device the app runs on. It cannot be removed here (the user signs out instead). On apple the same source text resolves to top200_sign_this_device, so the translations must stay the same as that key's.</comment>
   </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>Kelola langganan</value>
