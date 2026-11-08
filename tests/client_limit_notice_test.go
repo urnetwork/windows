@@ -115,7 +115,12 @@ func TestClientLimitFeedWiring(t *testing.T) {
 	retry := definitionBody(t, "SdkHost.cpp", source, "void SdkHost::RetryClientLimitOnWorker() {")
 	provideRequire(t, "RetryClientLimitOnWorker", retry, "urnet_device_retry_client_limit(device)",
 		"if (ended) clientLimitReader_.Request();")
-	requireNone(t, "the client limit feed", publish+read+retry, "device_->", "mutex_.lock", "std::scoped_lock lock(mutex_)")
+	// the retry after a change (a purchase): the sdk starts its floor over
+	changeRetry := definitionBody(t, "SdkHost.cpp", source, "void SdkHost::RetryClientLimitAfterChangeOnWorker() {")
+	provideRequire(t, "RetryClientLimitAfterChangeOnWorker", changeRetry,
+		"urnet_device_retry_client_limit_after_change(device)",
+		"if (ended) clientLimitReader_.Request();")
+	requireNone(t, "the client limit feed", publish+read+retry+changeRetry, "device_->", "mutex_.lock", "std::scoped_lock lock(mutex_)")
 
 	teardown := definitionBody(t, "SdkHost.cpp", source, "void SdkHost::TeardownSessionLocked(")
 	provideRequireOrder(t, "TeardownSessionLocked", teardown, "EndClientLimit();",
@@ -126,8 +131,12 @@ func TestClientLimitFeedWiring(t *testing.T) {
 	if n := strings.Count(source, "clientLimitRetrier_.Stop();"); n != 2 {
 		t.Errorf("SdkHost.cpp stops the client limit retry in %d places, want 2", n)
 	}
+	if n := strings.Count(source, "clientLimitChangeRetrier_.Stop();"); n != 2 {
+		t.Errorf("SdkHost.cpp stops the client limit change retry in %d places, want 2", n)
+	}
 	header := stripComments(readAppSource(t, "SdkHost.h"))
-	provideRequire(t, "SdkHost.h", header, "void RetryClientLimit() { clientLimitRetrier_.Request(); }")
+	provideRequire(t, "SdkHost.h", header, "void RetryClientLimit() { clientLimitRetrier_.Request(); }",
+		"void RetryClientLimitAfterChange() { clientLimitChangeRetrier_.Request(); }")
 }
 
 // AppController: the window's notice and the tray's, from the feed and the
@@ -147,7 +156,10 @@ func TestClientLimitNoticeAppWiring(t *testing.T) {
 	provideRequire(t, "ShowWindowImpl", show,
 		"windowFocused_ = args.WindowActivationState() != WindowActivationState::Deactivated;")
 	upgrade := start[strings.Index(start, "clientlimit::UpgradeEndsHold("):]
-	provideRequireOrder(t, "the upgrade's retry", upgrade, "sdk_.RetryClientLimit();", "clientLimitBalancePro_ = snapshot.isPro;")
+	// a purchase is a change the server confirmed: the change retry, past the
+	// backoff of retries refused before it (delta review D-K1)
+	provideRequireOrder(t, "the upgrade's retry", upgrade, "sdk_.RetryClientLimitAfterChange();", "clientLimitBalancePro_ = snapshot.isPro;")
+	requireNone(t, "the upgrade's retry", upgrade[:strings.Index(upgrade, "clientLimitBalancePro_ = snapshot.isPro;")], "sdk_.RetryClientLimit();")
 
 	stats := definitionBody(t, "AppController.cpp", source, "void AppController::OnStats(")
 	provideRequireOrder(t, "OnStats", stats, "connectRequested_ = stats.connected;", "ObserveClientLimit();")

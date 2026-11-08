@@ -338,12 +338,14 @@ void AppController::Start() {
     // The plan turned Pro in this run, as after a purchase from the client
     // limit notice: a device the limit holds dials again now instead of at the
     // end of its hold (clientlimit::UpgradeEndsHold; never on a launch's first
-    // read, and the sdk ends nothing with no hold in force).
+    // read, and the sdk ends nothing with no hold in force). The purchase is a
+    // change the server confirmed, so this is the sdk's change retry, past the
+    // backoff of any retries refused before it.
     if (clientlimit::UpgradeEndsHold(clientLimitBalanceLoaded_, clientLimitBalancePro_,
                                      snapshot.loaded, snapshot.isPro,
                                      clientlimit::Held(clientLimit_))) {
       LogInfo("app: the plan is Pro now: the client limit hold ends so the device dials again");
-      sdk_.RetryClientLimit();
+      sdk_.RetryClientLimitAfterChange();
     }
     if (snapshot.loaded) {
       clientLimitBalanceLoaded_ = true;

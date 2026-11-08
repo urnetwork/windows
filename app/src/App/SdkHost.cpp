@@ -370,6 +370,7 @@ SdkHost::~SdkHost() {
   // So are a client limit read and a retry.
   clientLimitReader_.Stop();
   clientLimitRetrier_.Stop();
+  clientLimitChangeRetrier_.Stop();
   // A network kick in flight is a call into the sdk this teardown closes.
   sdkNetworkKick_.Stop();
   // The user's writes still queued run, then the worker stops: each takes
@@ -3194,6 +3195,28 @@ void SdkHost::RetryClientLimitOnWorker() {
                 : "no hold ended (none in force, one ended within the sdk's interval, or no "
                   "service)");
   // what the device says now: the hold gone, or back after a refusal
+  if (ended) clientLimitReader_.Request();
+}
+
+void SdkHost::RetryClientLimitAfterChangeOnWorker() {
+  std::uint64_t device = 0;
+  {
+    std::scoped_lock lock(clientLimitMutex_);
+    device = clientLimitDevice_;
+  }
+  if (device == 0) {
+    LogInfo("sdkhost: client limit retry after a change: no session");
+    return;
+  }
+  // Device::RetryClientLimitAfterChange by the handle, forwarded to the
+  // service's device; a service on an older sdk gets RetryClientLimit. False:
+  // no hold was in force, a change retry ended one in the last 30 s, or the
+  // service is out of reach (nothing is queued for later).
+  const bool ended = urnet_device_retry_client_limit_after_change(device);
+  LogInfo("sdkhost: client limit retry after a change: {}",
+          ended ? "the hold ended; the device dials the platform again"
+                : "no hold ended (none in force, one ended within the sdk's interval, or no "
+                  "service)");
   if (ended) clientLimitReader_.Request();
 }
 
@@ -9276,6 +9299,7 @@ void SdkHost::QuitInOrder(std::chrono::steady_clock::time_point start) {
   transportDelayReader_.Stop();
   clientLimitReader_.Stop();
   clientLimitRetrier_.Stop();
+  clientLimitChangeRetrier_.Stop();
   // a call into the sdk; nothing follows it
   sdkNetworkKick_.Stop();
   // the user's writes still queued run first; each takes mutex_

@@ -1426,6 +1426,13 @@ class SdkHost {
   // retry storm against the limit; a refusal starts a new hold, which the feed
   // reports. Nothing with no session. Coalesced; returns at once.
   void RetryClientLimit() { clientLimitRetrier_.Request(); }
+  // Ends the hold at once after a change that raised the limit: the plan
+  // turning Pro after an upgrade (Device.RetryClientLimitAfterChange). Unlike
+  // RetryClientLimit, the sdk starts its retry floor over, so retries refused
+  // before the purchase never keep a paid plan waiting out the hold; it allows
+  // one such retry per 30 s. A service on an older sdk gets RetryClientLimit
+  // instead (the sdk's remote device falls back). Coalesced; returns at once.
+  void RetryClientLimitAfterChange() { clientLimitChangeRetrier_.Request(); }
 
   // ---- the device list (ManageDevicesSheet; client limit SDK-API.md) ----
   // What the sheet renders: every snapshot of the list it has open.
@@ -3039,6 +3046,8 @@ class SdkHost {
   CoalescedWorker clientLimitReader_{[this] { ReadClientLimitOnWorker(); }};
   void RetryClientLimitOnWorker();
   CoalescedWorker clientLimitRetrier_{[this] { RetryClientLimitOnWorker(); }};
+  void RetryClientLimitAfterChangeOnWorker();
+  CoalescedWorker clientLimitChangeRetrier_{[this] { RetryClientLimitAfterChangeOnWorker(); }};
   // ---- the device list (OpenManageDevices) ----
   // What the open list was opened on.
   enum class ManageDevicesOwner { None, Device, Api, SignIn };
