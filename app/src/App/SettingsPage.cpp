@@ -346,6 +346,14 @@ void SettingsPage::BuildDeviceSection(Panel const& host) {
   deviceSpecValue_ = ValueRow(card, Loc("device_spec_label"));
   ApplyFieldState(deviceNameValue_, FieldState::NoSession);
   ApplyFieldState(deviceSpecValue_, FieldState::NoSession);
+  // The network's devices and hosted proxies, each removable but this one, to
+  // free a slot of the concurrent client limit: the list the client limit
+  // notice opens (ManageDevicesSheet; owner, 2026-11-08). It needs no session:
+  // without one the list opens on the sign-in token.
+  TextBlock unused{nullptr};
+  auto manageDevices = NavRow(card, Loc("manage_devices"), unused);
+  // the account's list, not a refused sign-in's
+  manageDevices.Click([this](auto const&, auto const&) { w_.ShowManageDevicesSheet(false); });
 }
 
 // GENERAL. One preference ships today - whether the account wants product mail -

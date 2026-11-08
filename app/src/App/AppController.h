@@ -87,6 +87,11 @@ class AppController {
   // any more (BalanceGate.h, BalanceRecovery). UI thread.
   void ClearBalanceRecovery();
 
+  // The client limit notice's Retry (ClientLimitNotice.h): the session device
+  // dials the platform again now instead of at the end of its hold
+  // (SdkHost::RetryClientLimit, which the sdk paces). UI thread.
+  void RetryClientLimit();
+
   // Settings > General: "Notify me when my internet is slow", whether the tray
   // posts its one balloon per slow episode (SlowInternet.h). A preference of
   // this installation, in app_prefs.json beside Advanced Mode, default on:
@@ -192,6 +197,21 @@ class AppController {
   // anything else starts the dwell over. Arms the dwell's timer, and the
   // numbers' refresh while the tray says slow.
   void ObserveSlowInternet();
+  // ---- the client limit hold (ClientLimitNotice.h) ----
+  // The session device's client limit status as SdkHost pushed it (nullopt: no
+  // session, or its remote is down).
+  void OnClientLimit(std::optional<clientlimit::Reading> reading);
+  // The notice the window shows, and the tray's notice as the sdk's tracker
+  // decides it, from the last reading and whether a connection is requested.
+  // After every push of either; never a disconnect.
+  void ObserveClientLimit();
+  // What the tray does for one of the tracker's actions.
+  void ApplyClientLimitTray(const std::string& action);
+  // The window's copy of the notice (visible window only; resynced on show).
+  void PublishClientLimit();
+  // The user is not looking at the window: hidden to the tray, minimized, or
+  // behind another app's.
+  bool InBackground() const;
   // The reaction to a stats or balance push in the insufficient-balance gate
   // (BalanceGate.h): a tray notice once per out-of-balance or data limit
   // episode, and never a disconnect.
@@ -376,6 +396,20 @@ class AppController {
   // set: LiveStats.connected from the last push)
   urnw::balance::BalanceRecovery<std::function<void()>> balanceRecovery_;
   bool connectRequested_ = false;
+  // ---- the client limit hold (ClientLimitNotice.h) ----
+  // The session device's last readout, as SdkHost pushed it.
+  std::optional<clientlimit::Reading> clientLimit_;
+  // What the window's notice shows (NoticeFor), nullopt for no notice.
+  std::optional<clientlimit::Notice> clientLimitNotice_;
+  // The sdk's notice policy for the tray (ClientLimitNoticeTracker): built at
+  // Start, driven from this thread only, as the sdk requires.
+  urnet::ClientLimitNoticeTracker clientLimitTracker_;
+  // The plan as the last balance push read it, for the upgrade that ends a hold
+  // (clientlimit::UpgradeEndsHold).
+  bool clientLimitBalanceLoaded_ = false;
+  bool clientLimitBalancePro_ = false;
+  // The window has the focus (Window.Activated), for InBackground.
+  bool windowFocused_ = false;
 };
 
 // The single app controller instance (created in App::OnLaunched).

@@ -7,7 +7,10 @@
 // (TunnelWatchdog::RunEvaluator; tests/dead_tunnel_verdict_test.go reads that they
 // are the ones it takes) over the readings the sdk gives such a session: a window
 // that never admits a provider, or one that loses its exits once its contracts run
-// out, with the sampler answering all along. Run against the same headers the
+// out, with the sampler answering all along. A device the platform holds off for
+// its network's concurrent client limit (owner, 2026-11-08) is held the same way:
+// its window never forms either, and a stop would let the traffic out and hand the
+// session to a device that dials past the hold. Run against the same headers the
 // service compiles, on any host with a C++20 compiler. No clocks: the time is an
 // explicit input.
 //
@@ -51,6 +54,10 @@ struct Readings {
   bool insufficientBalance = false;
   bool noPermission = false;
   bool balanceRead = true;
+  // ClientLimitStatus: the platform closed the device for its network's client
+  // limit; unread for a status that could not be read.
+  bool clientLimitExceeded = false;
+  bool clientLimitRead = true;
   bool answering = true;
   uint64_t outPerTick = 50;
   uint64_t inPerTick = 0;
@@ -60,6 +67,8 @@ struct Tick {
   DeadTunnelVerdict verdict;
   BalanceStep balanceStep = BalanceStep::None;
   bool outOfBalance = false;
+  ClientLimitStep clientLimitStep = ClientLimitStep::None;
+  bool clientLimitHeld = false;
 };
 
 // One watched Up session, ticked as RunEvaluator ticks it.
@@ -73,6 +82,7 @@ struct Session {
   int64_t lastProvenMillis = -1;
   int64_t lastSampleMillis = -1;
   BalanceReading balance;
+  ClientLimitReading clientLimitReading;
   int64_t connectionGeneration = 1;
   bool providerWindowMinSatisfied = false;
   // the pump
@@ -84,6 +94,7 @@ struct Session {
   TrafficTracker traffic;
   ConnectionEpochTracker connectionEpoch;
   OutOfBalanceHold outOfBalance;
+  ClientLimitHold clientLimit;
 
   Session() { connectionEpoch.Observe(connectionGeneration, providerWindowMinSatisfied); }
 
@@ -101,6 +112,10 @@ struct Session {
                                .connectionGeneration = readings.generation,
                                .providerAddedCount = readings.added};
     }
+    if (readings.clientLimitRead) {
+      clientLimitReading =
+          ClientLimitReading{.sampled = true, .exceeded = readings.clientLimitExceeded};
+    }
   }
 
   void Rebase() {
@@ -117,9 +132,12 @@ struct Session {
     inbound += readings.inPerTick;
 
     Tick tick;
+    tick.clientLimitStep = clientLimit.Observe(clientLimitReading);
+    tick.clientLimitHeld = clientLimit.held();
     tick.balanceStep = outOfBalance.Observe(balance);
     tick.outOfBalance = outOfBalance.held();
-    if (step >= kWatchdog.frozenMillis || tick.balanceStep == BalanceStep::Released) {
+    if (step >= kWatchdog.frozenMillis || tick.balanceStep == BalanceStep::Released ||
+        tick.clientLimitStep == ClientLimitStep::Released) {
       Rebase();
     } else {
       const ConnectionEpochUpdate update =
@@ -143,6 +161,7 @@ struct Session {
       signals.lastInboundMillis = traffic.lastInboundMillis();
       signals.outboundSinceInbound = traffic.outboundSinceInbound();
       signals.outOfBalance = outOfBalance.held();
+      signals.clientLimitHeld = clientLimit.held();
       tick.verdict = Evaluate(signals, now, kDead);
     }
     if (tick.verdict.armed) armedEver = true;
@@ -496,6 +515,174 @@ void TestTheHoldsTable() {
         "a refusal on the newer destination moves the bar with it");
 }
 
+// ---- a device the client limit holds off ------------------------------------
+//
+// The platform closed the session's device for its network's concurrent client
+// limit, and the sdk holds it off the platform for 15 to 20 minutes
+// (ClientLimitStatus): the window never forms, or loses its exits, exactly as out
+// of balance. Before the hold, NoExit stopped such a session at its window: the
+// traffic went out in the clear, and the provider-only device the app reconciled
+// after the drop, or the user's next Connect, dialed the platform at once, past
+// the hold.
+
+const int64_t kClientLimitHold = 15 * 60000;
+
+void TestClientLimitHoldIsNotStopped() {
+  {
+    Session session;
+    session.readings.clientLimitExceeded = true;
+    session.Sample();
+    Check(session.RunUntilDead(kLong) == -1,
+          "a session the client limit holds from the start is not stopped past NoExit's window");
+    Check(!session.armedEver, "...and no countdown ever said it would be");
+  }
+  {
+    Session session;
+    FormAndCarry(session);
+    session.readings.clientLimitExceeded = true;
+    LoseExits(session);
+    session.Sample();
+    Check(session.RunUntilDead(kLong) == -1,
+          "a session the client limit holds once up is not stopped past NoInbound's window");
+    Check(!session.armedEver, "...and no countdown ever said it would be");
+  }
+  {
+    Session session;
+    session.readings.clientLimitExceeded = true;
+    session.Sample();
+    Check(session.RunUntilDead(kClientLimitHold) == -1, "a whole hold costs no stop");
+    const Tick frozen = session.Step(2 * kWatchdog.frozenMillis);
+    Check(frozen.clientLimitHeld, "a resume restarts the windows and keeps the hold");
+    Check(session.RunUntilDead(kLong) == -1, "...and nothing fires after it");
+  }
+}
+
+void TestTheClientLimitHoldEnding() {
+  {
+    Session session;
+    session.readings.clientLimitExceeded = true;
+    session.Sample();
+    session.Run(kClientLimitHold);
+    session.readings.clientLimitExceeded = false;
+    session.Sample();
+    const Tick released = session.Step();
+    Check(released.clientLimitStep == ClientLimitStep::Released && !released.clientLimitHeld,
+          "the end of the device's hold ends the hold");
+    Check(released.verdict.reason == DeadTunnelReason::None && !released.verdict.armed,
+          "...and the rule it kept back does not fire on that tick");
+    DeadTunnelReason reason = DeadTunnelReason::None;
+    const int64_t at = session.RunUntilDead(kLong, &reason);
+    Check(at == kDead.deadSlowMillis && reason == DeadTunnelReason::NoExit,
+          "...and a tunnel still dead a full window after the hold ended is stopped");
+  }
+  {
+    Session session;
+    session.readings.clientLimitExceeded = true;
+    session.Sample();
+    session.Run(kClientLimitHold);
+    session.readings.clientLimitExceeded = false;
+    session.readings.added = 2;
+    session.readings.proven = 2;
+    session.readings.minSatisfied = true;
+    session.readings.inPerTick = 40;
+    session.Sample();
+    Check(session.RunUntilDead(kLong) == -1, "the window forming once the hold ends stops nothing");
+  }
+  {
+    // The platform refuses the device again every time its hold ends: a few
+    // seconds dialing out of every hold, round after round.
+    Session session;
+    bool neverStopped = true;
+    for (int round = 0; round < 8; ++round) {
+      session.readings.clientLimitExceeded = true;
+      session.Sample();
+      neverStopped = session.RunUntilDead(kClientLimitHold) == -1 && neverStopped;
+      session.readings.clientLimitExceeded = false;
+      session.Sample();
+      neverStopped = session.RunUntilDead(5000) == -1 && neverStopped;
+    }
+    Check(neverStopped, "a hold that returns each time it ends costs no stop");
+    Check(!session.armedEver, "...and no countdown");
+  }
+  {
+    Session session;
+    session.readings.clientLimitExceeded = true;
+    session.Sample();
+    session.Run(60000);
+    session.readings.clientLimitRead = false;
+    session.readings.clientLimitExceeded = false;
+    session.clientLimitReading = ClientLimitReading{};
+    session.Sample();
+    Check(session.RunUntilDead(kLong) == -1, "an unreadable client limit status keeps the hold");
+    Check(!session.armedEver, "...with no countdown");
+  }
+  {
+    Session session;
+    session.readings.clientLimitRead = false;
+    session.Sample();
+    DeadTunnelReason reason = DeadTunnelReason::None;
+    Check(session.RunUntilDead(kLong, &reason) == kDead.deadSlowMillis &&
+              reason == DeadTunnelReason::NoExit,
+          "a client limit status never readable is judged by the rules");
+  }
+}
+
+void TestAHungSdkStillStopsAHeldSession() {
+  Session session;
+  session.readings.clientLimitExceeded = true;
+  session.Sample();
+  session.Run(10000);
+  session.readings.answering = false;
+  DeadTunnelReason reason = DeadTunnelReason::None;
+  const int64_t at = session.RunUntilDead(kLong, &reason);
+  Check(reason == DeadTunnelReason::SdkUnresponsive &&
+            at >= kDead.sdkUnresponsiveMillis - kWatchdog.sampleIntervalMillis &&
+            at <= kDead.sdkUnresponsiveMillis,
+        "a wedged sdk stops the session, held by the client limit");
+  Check(session.armedEver, "...with its countdown");
+}
+
+void TestTheVerdictAloneUnderAClientLimitHold() {
+  DeadTunnelSignals s;
+  s.tunnelUp = true;
+  s.routesInstalled = true;
+  s.upSinceMillis = 1000;
+  const int64_t now = 1000 + kDead.deadSlowMillis;
+  s.lastSampleMillis = now;
+  s.clientLimitHeld = true;
+  Check(Evaluate(s, now, kDead).reason == DeadTunnelReason::None && !Evaluate(s, now, kDead).armed,
+        "held: NoExit holds, with no countdown");
+  s.outboundSinceInbound = kDead.deadFastOutboundPackets;
+  Check(Evaluate(s, now, kDead).reason == DeadTunnelReason::None && !Evaluate(s, now, kDead).armed,
+        "held: NoInbound holds, with no countdown");
+  s.lastSampleMillis = now - kDead.sdkUnresponsiveMillis;
+  Check(Evaluate(s, now, kDead).reason == DeadTunnelReason::SdkUnresponsive,
+        "held: SdkUnresponsive fires");
+  s.clientLimitHeld = false;
+  s.lastSampleMillis = now;
+  Check(Evaluate(s, now, kDead).reason == DeadTunnelReason::NoInbound,
+        "the same signals not held: NoInbound");
+}
+
+void TestTheClientLimitHoldsTable() {
+  const auto reading = [](bool exceeded) {
+    return ClientLimitReading{.sampled = true, .exceeded = exceeded};
+  };
+  ClientLimitHold hold;
+  Check(hold.Observe(ClientLimitReading{}) == ClientLimitStep::None &&
+            hold.Observe(reading(false)) == ClientLimitStep::None && !hold.held(),
+        "not told: an unread status and a device never closed hold nothing");
+  Check(hold.Observe(reading(true)) == ClientLimitStep::Entered &&
+            hold.Observe(reading(true)) == ClientLimitStep::None && hold.held(),
+        "a client limit close holds, once");
+  Check(hold.Observe(ClientLimitReading{}) == ClientLimitStep::None && hold.held(),
+        "an unreadable status is not the end of the hold");
+  Check(hold.Observe(reading(false)) == ClientLimitStep::Released && !hold.held(),
+        "the end of the device's hold is");
+  Check(hold.Observe(reading(true)) == ClientLimitStep::Entered && hold.held(),
+        "and a new close holds again");
+}
+
 }  // namespace
 
 int main() {
@@ -508,6 +695,11 @@ int main() {
   TestTheVerdictAlone();
   TestTheAlertAndNoticeStayForTheWholeHold();
   TestTheHoldsTable();
+  TestClientLimitHoldIsNotStopped();
+  TestTheClientLimitHoldEnding();
+  TestAHungSdkStillStopsAHeldSession();
+  TestTheVerdictAloneUnderAClientLimitHold();
+  TestTheClientLimitHoldsTable();
   std::cout << (gCases - gFailures) << "/" << gCases << " dead tunnel verdict checks passed\n";
   return gFailures == 0 ? 0 : 1;
 }

@@ -4413,6 +4413,47 @@ void TestDeadTunnelOutOfBalance() {
         "a grant on the refused destination ends it");
 }
 
+// A device the platform holds off for its network's concurrent client limit is
+// never stopped by a rule about traffic either (owner, 2026-11-08): a stop lets
+// the traffic out and its replacement device dials past the hold. The replays
+// are in tools/dead-tunnel-verdict-tests.cpp; this pins the table here.
+void TestDeadTunnelClientLimit() {
+  Section("TunnelWatchdog — a device the client limit holds off is held, never stopped");
+  const TunnelWatchdogSettings watchdog;
+  const DeadTunnelSettings& dead = watchdog.deadTunnel;
+
+  DeadTunnelSignals s;
+  s.tunnelUp = true;
+  s.routesInstalled = true;
+  s.upSinceMillis = 1000;
+  const int64_t now = 1000 + dead.deadSlowMillis;
+  s.lastSampleMillis = now;
+  s.clientLimitHeld = true;
+  Check(Evaluate(s, now, dead).reason == DeadTunnelReason::None && !Evaluate(s, now, dead).armed,
+        "held, NoExit holds and no countdown runs for it");
+  s.outboundSinceInbound = dead.deadFastOutboundPackets;
+  Check(Evaluate(s, now, dead).reason == DeadTunnelReason::None && !Evaluate(s, now, dead).armed,
+        "held, NoInbound holds and no countdown runs for it");
+  s.lastSampleMillis = now - dead.sdkUnresponsiveMillis;
+  Check(Evaluate(s, now, dead).reason == DeadTunnelReason::SdkUnresponsive,
+        "held, a wedged sdk still stops the session: it is not about traffic");
+
+  ClientLimitHold hold;
+  ClientLimitReading reading;
+  Check(hold.Observe(reading) == ClientLimitStep::None && !hold.held(),
+        "a status nobody has read holds nothing");
+  reading.sampled = true;
+  Check(hold.Observe(reading) == ClientLimitStep::None && !hold.held(),
+        "a device the platform has not closed holds nothing");
+  reading.exceeded = true;
+  Check(hold.Observe(reading) == ClientLimitStep::Entered && hold.held(), "a client limit close holds");
+  Check(hold.Observe(ClientLimitReading{}) == ClientLimitStep::None && hold.held(),
+        "an unreadable status keeps the hold");
+  reading.exceeded = false;
+  Check(hold.Observe(reading) == ClientLimitStep::Released && !hold.held(),
+        "the end of the device's hold ends it");
+}
+
 // The one-line function that decides whether the failsafe hands the machine
 // back its internet or leaves it blocked. Pinned on its own because inverting
 // it is a single character and the consequence is the opposite product.
@@ -5073,6 +5114,7 @@ int RunSelfTest() {
   TestDeadTunnelVerdict();
   TestDeadTunnelConnectionEpoch();
   TestDeadTunnelOutOfBalance();
+  TestDeadTunnelClientLimit();
   TestFailsafeDisarmChoice();
   TestEgressCoalescer();
 

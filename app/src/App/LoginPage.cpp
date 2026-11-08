@@ -11,6 +11,7 @@
 
 #include "AppController.h"
 #include "BittensorWalletDialogs.h"
+#include "ClientLimitNotice.h"  // a sign-in the client limit refused
 #include "ConnectionRegionSheet.h"  // RegionLabel: the "Connecting from" control
 #include "Log.h"
 #include "MainWindow.xaml.h"
@@ -1480,6 +1481,11 @@ hstring LoginPage::MapAuthErrorForDisplay(std::string const& error) {
     return Adv("adv_sso_not_configured",
                L"Provider sign-in isn't available on this network yet — use "
                L"email or browser sign-in");
+  }
+  // the network's client limit refused this device (SdkHost::RegisterNetworkClient):
+  // what to do for the plan, as the connect screen's notice says it
+  if (const char* key = urnw::clientlimit::SignInRefusalMessageKey(error)) {
+    return Loc(key);
   }
   return H(error);
 }

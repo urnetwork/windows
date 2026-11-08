@@ -1,8 +1,9 @@
 // The dead-tunnel failsafe's decision (TunnelWatchdog.h): the verdict, the balance
-// hold that keeps an account out of balance from it, and the trackers that turn
-// raw counters and SDK readings into what it reads. Pure C++ with no Windows or SDK
-// header, so tools/dead-tunnel-verdict-tests.cpp runs it on any host. The hold is
-// the same as urnetwork/linux's (TunnelWatchdog.hpp).
+// hold that keeps an account out of balance from it, the client limit hold that
+// keeps a device the platform holds off from it, and the trackers that turn raw
+// counters and SDK readings into what it reads. Pure C++ with no Windows or SDK
+// header, so tools/dead-tunnel-verdict-tests.cpp runs it on any host. The holds
+// are the same as urnetwork/linux's (TunnelWatchdog.hpp).
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
@@ -118,6 +119,64 @@ class OutOfBalanceHold {
  private:
   bool held_ = false;
   int64_t refusedGeneration_ = 0;
+};
+
+// ---------------------------------------------------------------------------
+// the client limit hold
+// ---------------------------------------------------------------------------
+
+// What one sample of the SDK says about the client limit: Device.
+// GetClientLimitStatus, the same reading the app's notice takes from this device
+// over rpc.
+struct ClientLimitReading {
+  // The status was read. False says nothing about the limit, and the hold stays
+  // as it is.
+  bool sampled = false;
+  // ClientLimitStatus::Status is ClientLimitStatusExceeded: the platform closed
+  // this device for its network's concurrent client limit, and the device holds
+  // every platform transport of its client off until the hold's retry time (15
+  // to 20 minutes) or the app's Retry (Device.RetryClientLimit).
+  bool exceeded = false;
+};
+
+// What one reading did to the hold.
+enum class ClientLimitStep {
+  None,
+  // First seen held: the traffic rules hold from here.
+  Entered,
+  // The device's hold ended: every window starts again.
+  Released,
+};
+
+// Whether the platform holds this session's device off for its network's
+// concurrent client limit (owner, 2026-11-08: Windows and Linux at parity with
+// the apple health audit, which reads such a tunnel as healthy). Such a session
+// cannot form a window, so every reading the traffic rules take says dead, and a
+// stop is worse here than leaving it: the teardown lets the traffic out in the
+// clear (with the kill switch off), and the device that replaces this one (the
+// provider-only device the app reconciles after the drop, or the next Connect)
+// dials the platform at once, past the hold the sdk keeps per device, which is a
+// retry storm against the limit. The app's notice tells the user what to do
+// instead, and Disconnect is theirs to press, as out of balance.
+//
+// Unlike the balance, the sdk reports the hold itself, so a reading says it
+// either way: exceeded holds, not exceeded ends it, and only no reading leaves it
+// as it is. The device dials again when its hold ends, and a refusal holds it
+// again within seconds, inside the fresh windows the end gave it. The rule the
+// hold never takes: SdkUnresponsive, since a wedged device answers nothing, its
+// hold included.
+class ClientLimitHold {
+ public:
+  constexpr ClientLimitStep Observe(const ClientLimitReading& reading) {
+    if (!reading.sampled || reading.exceeded == held_) return ClientLimitStep::None;
+    held_ = reading.exceeded;
+    return held_ ? ClientLimitStep::Entered : ClientLimitStep::Released;
+  }
+
+  constexpr bool held() const { return held_; }
+
+ private:
+  bool held_ = false;
 };
 
 // ---------------------------------------------------------------------------
@@ -237,6 +296,11 @@ struct DeadTunnelSignals {
   // ---- from the balance hold ----
   // The account is out of balance: the two traffic rules hold (OutOfBalanceHold).
   bool outOfBalance = false;
+
+  // ---- from the client limit hold ----
+  // The platform holds this device off for its network's concurrent client
+  // limit: the two traffic rules hold (ClientLimitHold).
+  bool clientLimitHeld = false;
 };
 
 struct DeadTunnelVerdict {
@@ -327,9 +391,10 @@ inline constexpr DeadTunnelVerdict Evaluate(const DeadTunnelSignals& s,
   // Deliberately ahead of the other two: provenCount is a reading FROM the SDK,
   // so if the SDK has stopped answering, the other two rules would be judging
   // stale data. This rule judges the answering itself. It stays out of balance
-  // too, because it is about a hung process and not about traffic: no balance
-  // brings a wedged device back, it cannot say whether it is out of balance, and
-  // a Disconnect would only wait on the same lock.
+  // and under a client limit hold too, because it is about a hung process and
+  // not about traffic: no balance or free slot brings a wedged device back, it
+  // cannot say whether it is out of balance or held, and a Disconnect would only
+  // wait on the same lock.
   if (sampleAge >= settings.sdkUnresponsiveMillis) {
     v.reason = DeadTunnelReason::SdkUnresponsive;
     return v;
@@ -337,10 +402,11 @@ inline constexpr DeadTunnelVerdict Evaluate(const DeadTunnelSignals& s,
 
   // ---- DEAD_FAST ------------------------------------------------------------
   // Committed outbound, zero inbound, nothing proven — all three, continuously.
-  // Never out of balance: that tunnel is meant to carry nothing until the user
-  // acts, and stopping it lets the traffic out in the clear.
+  // Never out of balance or under a client limit hold: that tunnel is meant to
+  // carry nothing until the user acts, stopping it lets the traffic out in the
+  // clear, and a held device's replacement dials past its hold.
   const bool fastApplies =
-      !s.outOfBalance && s.providerWindowReady && s.provenCount == 0 &&
+      !s.outOfBalance && !s.clientLimitHeld && s.providerWindowReady && s.provenCount == 0 &&
       s.outboundSinceInbound >= settings.deadFastOutboundPackets;
   if (fastApplies && inboundAge >= settings.deadFastMillis &&
       provenAge >= settings.deadFastMillis) {
@@ -357,8 +423,9 @@ inline constexpr DeadTunnelVerdict Evaluate(const DeadTunnelSignals& s,
   // Gated on the sampler having ANSWERED AT LEAST ONCE. "We never got a reading"
   // is the unresponsive rule's business, not this one's, and firing here on an
   // absence of evidence would be exactly the kind of guess this file refuses.
-  // Never out of balance, as above.
-  const bool slowApplies = !s.outOfBalance && s.provenCount == 0 && s.lastSampleMillis >= 0;
+  // Never out of balance or under a client limit hold, as above.
+  const bool slowApplies = !s.outOfBalance && !s.clientLimitHeld && s.provenCount == 0 &&
+                           s.lastSampleMillis >= 0;
   if (slowApplies && provenAge >= settings.deadSlowMillis) {
     v.reason = DeadTunnelReason::NoExit;
     return v;

@@ -17,7 +17,9 @@
 #include "ApiKeysPage.h"
 #include "BalanceGate.h"
 #include "BalanceSheets.h"
+#include "ClientLimitNotice.h"
 #include "ConnectPage.h"
+#include "ManageDevicesSheet.h"
 #include "ConnectionRegionSheet.h"
 #include "DeveloperPage.h"
 #include "GuestConversion.h"
@@ -137,6 +139,17 @@ struct MainWindow : MainWindowT<MainWindow> {
   // Whether the balance banner offers its Disconnect
   // (ConnectPage::ApplyBalanceWarningMessage, BalanceGate.h BannerOffersDisconnect).
   void ApplyBalanceDisconnect(bool offered);
+  // The client limit notice (AppController, ClientLimitNotice.h) -> the
+  // ClientLimitNotice InfoBar: the platform holds the device off for its
+  // network's concurrent client limit while a connection is requested. Title,
+  // what to do for the plan, Get Pro when UR Pro lifts the limit, Manage
+  // devices when only a free slot does, and Retry. nullopt closes it.
+  // Re-renders only on a change.
+  void SetClientLimitNotice(std::optional<urnw::clientlimit::Notice> notice);
+  // The device list (ManageDevicesSheet), in the single-sheet gate: from the
+  // notice's Manage devices and Settings, or, `forSignIn`, for the sign-in the
+  // client limit refused, with `message` above the list.
+  winrt::fire_and_forget ShowManageDevicesSheet(bool forSignIn, winrt::hstring message = {});
   // ---- the persistent status strip (D4) ----
   // ProtonVPN's bottom line, at window level: it is true whichever destination
   // is on screen, so it cannot live on a page.
@@ -551,6 +564,20 @@ struct MainWindow : MainWindowT<MainWindow> {
 
   // ---- balance / plan (SubscriptionBalanceStore relay) ----
   void UpdateBalanceWarning();  // insufficient-balance InfoBar gating
+  // The client limit notice's one writer (SetClientLimitNotice): title,
+  // message, which buttons, open.
+  void ApplyClientLimitNotice();
+  std::optional<urnw::clientlimit::Notice> clientLimitNotice_;
+  // its Get Pro (the upgrade flow, as the balance banner's), Manage devices
+  // and Retry
+  winrt::Microsoft::UI::Xaml::Controls::Button clientLimitUpgrade_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button clientLimitManage_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button clientLimitRetry_{nullptr};
+  // A sign-in the client limit refused (ApplyAuthState): its device list, or,
+  // with that list open, what a retry of the sign-in answered.
+  void OfferSignInManageDevices(std::string const& error);
+  // the open device list, or none
+  std::shared_ptr<urnw::ManageDevicesSheet> manageDevicesSheet_;
   winrt::fire_and_forget ShowUpgradeSheet();
   // A guest's purchase entry: the in-place conversion first, then `checkout`
   // once it is done and the network no longer reads as a guest

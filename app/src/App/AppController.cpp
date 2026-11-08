@@ -42,6 +42,9 @@ namespace {
 // The tag of the one-tap Bittensor key's reminder among the tray's
 // notifications (TrayIcon::ShowBalloon): its click opens the Key screen.
 constexpr int kBalloonBittensorKey = 1;
+// The client limit notice's (ClientLimitNotice.h): its click opens the window,
+// whose connect screen says what to do.
+constexpr int kBalloonClientLimit = 2;
 std::unique_ptr<AppController> g_app;
 
 // The controller, and the SdkHost in it, outlive a thread still running inside
@@ -143,10 +146,12 @@ void AppController::Start() {
   TrayIcon::Callbacks cb;
   cb.onLeftClick = [this](POINT anchor) { ShowWindow(&anchor); };
   cb.onShowWindow = [this] { ShowWindow(nullptr); };
-  // the one-tap key's reminder opens Earnings with the Key screen; the other
-  // notifications open nothing, as before
+  // the one-tap key's reminder opens Earnings with the Key screen, and the
+  // client limit notice the window; the other notifications open nothing, as
+  // before
   cb.onBalloonClick = [this](int tag) {
     if (tag == kBalloonBittensorKey) OpenEarningsKeyScreen();
+    if (tag == kBalloonClientLimit) ShowWindow(nullptr);
   };
   // ONE RULE, SHARED WITH THE WINDOW. The tray used to test `state == Up` while
   // the connect page tested the SDK's connect status, and in the state the owner
@@ -310,6 +315,13 @@ void AppController::Start() {
   sdk_.SetTransportDelayHandler([this](std::optional<slow::Reading> reading) {
     OnUi([this, reading] { OnTransportDelay(reading); });
   });
+  // The session device's client limit hold (ClientLimitNotice.h): session-
+  // scoped too, so the tray's notice follows it while the window is hidden.
+  // The tracker is the sdk's notice policy, driven from this thread only.
+  clientLimitTracker_ = urnet::newClientLimitNoticeTracker();
+  sdk_.SetClientLimitHandler([this](std::optional<clientlimit::Reading> reading) {
+    OnUi([this, reading] { OnClientLimit(reading); });
+  });
   slowNotify_ = LoadAppPrefs().value(kSlowInternetNotifyPrefKey, true);
 
   // Subscription balance / plan store (Api::subscriptionBalance + polling).
@@ -323,6 +335,22 @@ void AppController::Start() {
     ReactToBalance();
     // and a balance that is back runs a connect the balance blocked
     ObserveBalanceRecovery();
+    // The plan turned Pro in this run, as after a purchase from the client
+    // limit notice: a device the limit holds dials again now instead of at the
+    // end of its hold (clientlimit::UpgradeEndsHold; never on a launch's first
+    // read, and the sdk ends nothing with no hold in force). The purchase is a
+    // change the server confirmed, so this is the sdk's change retry, past the
+    // backoff of any retries refused before it.
+    if (clientlimit::UpgradeEndsHold(clientLimitBalanceLoaded_, clientLimitBalancePro_,
+                                     snapshot.loaded, snapshot.isPro,
+                                     clientlimit::Held(clientLimit_))) {
+      LogInfo("app: the plan is Pro now: the client limit hold ends so the device dials again");
+      sdk_.RetryClientLimitAfterChange();
+    }
+    if (snapshot.loaded) {
+      clientLimitBalanceLoaded_ = true;
+      clientLimitBalancePro_ = snapshot.isPro;
+    }
     if (windowVisible_ && window_) {
       if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>()) {
         self->SetInsufficientBalance(insufficientBalance_);
@@ -585,6 +613,14 @@ void AppController::OnAuthState(AuthState state, const std::string& error) {
     // a connect the previous session asked for must not start in this one
     connectRequested_ = false;
     ClearBalanceRecovery();
+    // and its client limit hold ends with it, with the tray's notice
+    // (ClientLimitNoticeTracker.Reset) and the plan it was read against
+    clientLimit_.reset();
+    ApplyClientLimitTray(clientLimitTracker_.reset());
+    clientLimitNotice_.reset();
+    PublishClientLimit();
+    clientLimitBalanceLoaded_ = false;
+    clientLimitBalancePro_ = false;
   }
   // the tray always reflects state; only push into the window when it is
   // actually visible (resynced on show) so a hidden window doesn't churn.
@@ -742,6 +778,8 @@ void AppController::OnStats(const LiveStats& stats) {
   ObserveBalanceLatch();
   ReactToBalance();
   ObserveBalanceRecovery();
+  // the client limit notice follows the connection request
+  ObserveClientLimit();
   // Live stats otherwise only matter to the window; push only when visible.
   // The window's gate and banner read the same latched state.
   if (windowVisible_ && window_) {
@@ -876,6 +914,78 @@ void AppController::PublishBalanceRecovery() {
   if (!windowVisible_ || !window_) return;
   if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
     self->SetBalanceRecovery(balanceRecovery_.State());
+}
+
+// ---- the client limit hold (ClientLimitNotice.h) ------------------------------
+
+void AppController::OnClientLimit(std::optional<clientlimit::Reading> reading) {
+  if (clientlimit::Held(reading) != clientlimit::Held(clientLimit_)) {
+    LogInfo("app: the platform {} this device for its network's client limit (prompt {})",
+            clientlimit::Held(reading) ? "holds off" : "no longer holds off",
+            reading ? reading->prompt : std::string());
+  }
+  clientLimit_ = std::move(reading);
+  ObserveClientLimit();
+}
+
+void AppController::ObserveClientLimit() {
+  // The window's notice: while held and a connection is requested. The words
+  // and buttons follow the sdk's prompt.
+  const std::optional<clientlimit::Notice> notice =
+      clientlimit::NoticeFor(clientLimit_, connectRequested_);
+  if (notice != clientLimitNotice_) {
+    clientLimitNotice_ = notice;
+    PublishClientLimit();
+  }
+  // The tray's notice, as the sdk decides it for every platform: once per
+  // connection request, quietly when the hold returns or its prompt changes,
+  // and gone with the hold or the request. Nothing here disconnects.
+  std::optional<urnet::ClientLimitStatus> status;
+  if (clientLimit_) {
+    urnet::ClientLimitStatus s;
+    s.Status = clientLimit_->status;
+    s.RetryTime = clientLimit_->retryTimeMillis;
+    s.Prompt = clientLimit_->prompt;
+    status = std::move(s);
+  }
+  ApplyClientLimitTray(clientLimitTracker_.update(status, connectRequested_));
+}
+
+void AppController::ApplyClientLimitTray(const std::string& action) {
+  const clientlimit::TrayStep step = clientlimit::TrayStepFor(action, InBackground());
+  switch (step) {
+    case clientlimit::TrayStep::None:
+      return;
+    case clientlimit::TrayStep::Withdraw:
+      tray_.HideBalloon(kBalloonClientLimit);
+      return;
+    case clientlimit::TrayStep::Alert:
+    case clientlimit::TrayStep::Quiet: {
+      // the notice's words: a post or an update only comes with a hold
+      const bool offersUpgrade = clientLimitNotice_ ? clientLimitNotice_->offersUpgrade : true;
+      const bool quiet = step == clientlimit::TrayStep::Quiet;
+      // one line per posted notice, as the balance notice logs: a balloon
+      // cannot be read back from the shell
+      LogInfo("app: client limit notice posted{}", quiet ? " (quietly)" : "");
+      tray_.ShowBalloon(Localized(clientlimit::kTitleKey),
+                        Localized(clientlimit::MessageKey(offersUpgrade)), kBalloonClientLimit,
+                        quiet);
+      return;
+    }
+  }
+}
+
+void AppController::PublishClientLimit() {
+  if (!windowVisible_ || !window_) return;
+  if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+    self->SetClientLimitNotice(clientLimitNotice_);
+}
+
+bool AppController::InBackground() const { return !windowVisible_ || !windowFocused_; }
+
+void AppController::RetryClientLimit() {
+  LogInfo("app: client limit notice -> Retry");
+  sdk_.RetryClientLimit();
 }
 
 gesture::ServiceFacts AppController::CurrentServiceFacts() const {
@@ -1116,12 +1226,15 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
       SyncWindowMinimized();
       ReconcileWindowPresentation();
     });
-    // Activation feeds only the purchase-confirmation poll. A hosted checkout
-    // leaves this window visible behind the browser, so without focus the
-    // confirmation budget burned while the user paid and came back to a
-    // false "timed out" (UPGRADE.md D1).
+    // Activation feeds the purchase-confirmation poll and nothing else of the
+    // presentation. A hosted checkout leaves this window visible behind the
+    // browser, so without focus the confirmation budget burned while the user
+    // paid and came back to a false "timed out" (UPGRADE.md D1). It also says
+    // whether the user is looking at the window, which decides whether the
+    // client limit notice goes to the tray as well (InBackground).
     window_.Activated([this](auto const&, WindowActivatedEventArgs const& args) {
-      balance_.SetFocused(args.WindowActivationState() != WindowActivationState::Deactivated);
+      windowFocused_ = args.WindowActivationState() != WindowActivationState::Deactivated;
+      balance_.SetFocused(windowFocused_);
     });
   }
 
@@ -1326,6 +1439,9 @@ void AppController::ReconcileWindowPresentation() {
     // the slow-internet pill: the level now, and fresh numbers behind it
     self->OnTransportDelayChanged(transportDelay_);
     sdk_.RefreshTransportDelay();
+    // the client limit notice, as it stands: a hold that began while the
+    // window was hidden shows now
+    self->SetClientLimitNotice(clientLimitNotice_);
     sdk_.RepublishStats();
     self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
     // a tap the tray holds, made while the window was hidden

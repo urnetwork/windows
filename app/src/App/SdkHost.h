@@ -23,6 +23,7 @@
 #include "ApprovalNetwork.h"
 #include "BalanceGate.h"
 #include "ClientEvents.h"
+#include "ClientLimitNotice.h"
 #include "CoalescedWorker.h"
 #include "EditorApply.h"
 #include "OrderedWorker.h"
@@ -616,6 +617,17 @@ class SdkHost {
   // the reader's, with transportDelayMutex_ held so pushes arrive in the order
   // they were made: the handler only marshals.
   using TransportDelayHandler = std::function<void(std::optional<slow::Reading>)>;
+  // The client limit feed (ClientLimitNotice.h): the session device's client
+  // limit status (Device.GetClientLimitStatus, the service's DeviceLocal read
+  // over the rpc) while its remote is connected, nullopt while there is no
+  // session or the remote is down. Gated on the remote because a DeviceRemote
+  // that lost the service answers with its last readout, which can be a hold
+  // that ended since (client-limit REVIEW.md A1). Session-scoped, not
+  // presentation-scoped: the tray's notice follows it while the window is
+  // hidden. Pushed only when the value changed, on an sdk thread or the
+  // reader's, with clientLimitMutex_ held so pushes arrive in the order they
+  // were made: the handler only marshals.
+  using ClientLimitHandler = std::function<void(std::optional<clientlimit::Reading>)>;
   // Location/provider chooser feeds (invoked on SDK callback threads; payloads
   // by value so the UI can marshal them onto its thread).
   using LocationsHandler =
@@ -1404,6 +1416,56 @@ class SdkHost {
   // change of level or fallback (connect/DELAY.md §10.3), so a surface that
   // shows the numbers asks for fresh ones. Coalesced; returns at once.
   void RefreshTransportDelay() { transportDelayReader_.Request(); }
+  // Set once, before Initialize (AppController::Start).
+  void SetClientLimitHandler(ClientLimitHandler h) { onClientLimit_ = std::move(h); }
+  // Ends the session device's client limit hold so it dials the platform again
+  // at once (Device.RetryClientLimit, over the rpc to the service's device),
+  // off the caller's thread: the notice's Retry, and the plan turning Pro after
+  // an upgrade. The sdk ends at most one hold per ClientLimitRetryMinInterval
+  // (30 s) and none with no hold in force, so a repeated press cannot become a
+  // retry storm against the limit; a refusal starts a new hold, which the feed
+  // reports. Nothing with no session. Coalesced; returns at once.
+  void RetryClientLimit() { clientLimitRetrier_.Request(); }
+  // Ends the hold at once after a change that raised the limit: the plan
+  // turning Pro after an upgrade (Device.RetryClientLimitAfterChange). Unlike
+  // RetryClientLimit, the sdk starts its retry floor over, so retries refused
+  // before the purchase never keep a paid plan waiting out the hold; it allows
+  // one such retry per 30 s. A service on an older sdk gets RetryClientLimit
+  // instead (the sdk's remote device falls back). Coalesced; returns at once.
+  void RetryClientLimitAfterChange() { clientLimitChangeRetrier_.Request(); }
+
+  // ---- the device list (ManageDevicesSheet; client limit SDK-API.md) ----
+  // What the sheet renders: every snapshot of the list it has open.
+  struct ManageDevicesUpdate {
+    urnet::ManageDevicesSnapshot snapshot;
+    // the list holds a network credential to list and remove devices with
+    bool canManage = false;
+  };
+  using ManageDevicesHandler = std::function<void(ManageDevicesUpdate)>;
+  // Opens the sdk's device list for the sheet, one at a time (a second
+  // replaces the first): on the session's device while there is one, so a
+  // removal that frees a slot ends the device's client limit hold at once (the
+  // sdk retries it); else on the in-process Api with the stored sign-in token,
+  // where there is no device to add again. `forSignIn`: the list of the sign-in
+  // the network's client limit refused last (HasRefusedSignIn), on the Api with
+  // that sign-in's token, whose removal runs its registration again; nothing
+  // without one. Every snapshot goes to `handler` on an sdk thread (it only
+  // marshals), the first as soon as the list is open. A teardown of the session
+  // a list was opened on opens it again on the Api, so the sheet keeps a list.
+  // Opened on the writer worker: the device is read under mutex_.
+  void OpenManageDevices(bool forSignIn, ManageDevicesHandler handler);
+  // The open list's Refresh and RemoveDevice: the sdk runs each on a goroutine
+  // of its own, so both return at once.
+  void RefreshManageDevices();
+  void RemoveManagedDevice(const std::string& clientId);
+  // The sheet closed: the open list is closed, and its handler hears nothing
+  // more.
+  void CloseManageDevices();
+  // A sign-in the network's client limit refused is kept, so its device list
+  // can run its registration again after a removal (RegisterNetworkClient):
+  // true while there is one. A sign-in that goes through, another sign-in and
+  // a sign-out end it.
+  bool HasRefusedSignIn() const;
   void SetLocationsHandler(LocationsHandler h) { onLocations_ = std::move(h); }
   void SetPeersHandler(PeersHandler h) { onPeers_ = std::move(h); }
   // R4: a SECOND, independent subscriber to the same two feeds.
@@ -2952,6 +3014,90 @@ class SdkHost {
   // reason.
   void ReadTransportDelayOnWorker();
   CoalescedWorker transportDelayReader_{[this] { ReadTransportDelayOnWorker(); }};
+  // ---- the client limit feed (SetClientLimitHandler) ----
+  // The slow-internet feed's shape, for the same reasons: the session's device
+  // handle, the session it belongs to, the last reading and whether the remote
+  // is connected, behind their own leaf lock, and the reader and the retry ask
+  // the device by its handle through the c abi, never through device_.
+  mutable std::mutex clientLimitMutex_;
+  std::uint64_t clientLimitDevice_ = 0;
+  // the sessionGeneration_ the listener and the reading belong to; 0: none
+  std::uint64_t clientLimitGeneration_ = 0;
+  std::optional<clientlimit::Reading> clientLimitReading_;
+  bool clientLimitRemote_ = false;
+  // what the handler was last told: nullopt until a session has a reading over
+  // a connected remote
+  std::optional<clientlimit::Reading> clientLimitPublished_;
+  ClientLimitHandler onClientLimit_;
+  // A reading (the listener's or the reader's) or the remote's presence, for
+  // the session `generation`; a stale session's is dropped.
+  void NoteClientLimit(std::uint64_t generation, std::optional<clientlimit::Reading> reading);
+  void NoteClientLimitRemote(std::uint64_t generation, bool remoteConnected);
+  // Starts the session's feed (BootstrapSession, mutex_ held) and ends it
+  // (TeardownSessionLocked): the ended feed publishes nullopt.
+  void BeginClientLimit(std::uint64_t generation, std::uint64_t device);
+  void EndClientLimit();
+  // Pushes the gated value when it changed. Caller holds clientLimitMutex_.
+  void PublishClientLimitLocked();
+  // The bootstrap's one read (registration does not replay the current
+  // value), and RetryClientLimit's call, each on its worker: both are rpcs that
+  // can wait out the rpc timeout. Stopped with statsPublisher_.
+  void ReadClientLimitOnWorker();
+  CoalescedWorker clientLimitReader_{[this] { ReadClientLimitOnWorker(); }};
+  void RetryClientLimitOnWorker();
+  CoalescedWorker clientLimitRetrier_{[this] { RetryClientLimitOnWorker(); }};
+  void RetryClientLimitAfterChangeOnWorker();
+  CoalescedWorker clientLimitChangeRetrier_{[this] { RetryClientLimitAfterChangeOnWorker(); }};
+  // ---- the device list (OpenManageDevices) ----
+  // What the open list was opened on.
+  enum class ManageDevicesOwner { None, Device, Api, SignIn };
+  // The open list, behind its own leaf lock (order: mutex_, then this one).
+  // Every call on the list returns at once (the sdk works on goroutines), and
+  // its listener takes no lock of this host's, so the lock is never held across
+  // a wait, and a listener the list calls from inside Refresh or RemoveDevice
+  // cannot deadlock against it.
+  mutable std::mutex manageDevicesMutex_;
+  urnet::ManageDevicesViewController manageDevicesVc_;
+  ManageDevicesOwner manageDevicesOwner_ = ManageDevicesOwner::None;
+  // the sessionGeneration_ a device's list belongs to
+  std::uint64_t manageDevicesSession_ = 0;
+  urnet::Sub manageDevicesSub_;
+  // the sheet's, shared with the listener, which copies it
+  std::shared_ptr<ManageDevicesHandler> manageDevicesHandler_;
+  bool manageDevicesForSignIn_ = false;
+  // Moved by every open and close, outside any lock: a list opened, or a
+  // snapshot sent, for an older open is dropped.
+  std::atomic<std::uint64_t> manageDevicesGeneration_{0};
+  // Opens the list of open `generation` (the writer's job, mutex_ held).
+  void OpenManageDevicesLocked(std::uint64_t generation);
+  // Closes the open list: through the device it was opened on while that
+  // device is still the session's, else by itself. Caller holds mutex_ and
+  // manageDevicesMutex_.
+  void CloseManageDevicesVcLocked();
+  // Opens the list on the Api (no device): with the refused sign-in's token
+  // and its retry, or the stored sign-in token and none. Caller holds mutex_
+  // and manageDevicesMutex_; false when there is no token to open it with.
+  bool OpenManageDevicesOnApiLocked(bool forSignIn);
+  // Subscribes the open list's listener and hands the sheet its first snapshot.
+  // Caller holds manageDevicesMutex_.
+  void StartManageDevicesLocked(std::uint64_t generation);
+  // The session tears down under a device's list: open it again on the Api.
+  // Caller holds mutex_; device_ is still the session's.
+  void ReopenManageDevicesOffDeviceLocked();
+  // ---- the refused sign-in (RegisterNetworkClient) ----
+  // The sign-in token and auth epoch of the sign-in the network's client limit
+  // refused last, behind its own leaf lock. In memory only, as the Api already
+  // holds the token.
+  struct RefusedSignIn {
+    std::string byJwt;
+    std::uint64_t epoch = 0;
+  };
+  mutable std::mutex refusedSignInMutex_;
+  std::optional<RefusedSignIn> refusedSignIn_;
+  // The device list freed a slot for it (ManageDevicesSignInRetry): its
+  // registration again, with the same token and epoch. Its outcome reaches the
+  // window through the auth state, as the first attempt's did.
+  void RetryRefusedSignIn();
   // ---- the sign-out's tail (Logout, SignOutRun.h) ----
   // A registration waiting for the tail: RegisterNetworkClient's arguments.
   struct DeferredSignIn {

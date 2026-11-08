@@ -21,9 +21,11 @@
 #include <utility>
 #include <vector>
 
+#include "ClientLimitNotice.h"
 #include "SignOutRun.h"
 
 namespace {
+namespace clientlimit = urnw::clientlimit;
 int failures = 0;
 int checks = 0;
 void Check(bool ok, const std::string& message) {
@@ -38,7 +40,13 @@ template <class... Args> void LogWarn(Args&&...) {}
 template <class... Args> void LogError(Args&&...) {}
 
 namespace urnet {
-struct Error { std::string message; std::optional<std::string> code = {}; };
+struct Error {
+  std::string message;
+  std::optional<std::string> code = {};
+  // AuthNetworkClientError.ClientLimitPrompt: the sdk's decision for a refusal
+  // the network's client limit made
+  std::optional<std::string> client_limit_prompt = {};
+};
 struct WalletAuthArgs {
   std::optional<std::string> wallet_address, wallet_signature, wallet_message, blockchain;
 };
@@ -255,6 +263,10 @@ struct SdkHost {
   };
   struct Request { std::string networkJwt; urnet::AuthNetworkClientCallback callback; };
   struct SessionRequest {};
+  // the sign-in the network's client limit refused, for its device list's retry
+  struct RefusedSignIn { std::string byJwt; std::uint64_t epoch = 0; };
+  std::mutex refusedSignInMutex_;
+  std::optional<RefusedSignIn> refusedSignIn_;
   ProbedSignOutRun<DeferredSignIn> signOutRun_;
   std::mutex mutex_, pendingMutex_;
   std::atomic<bool> loggedIn_{true};
@@ -825,6 +837,53 @@ void TestCurrentAbandonedClientDependency() {
   Check(host.api.removedClients.size() == 1, "missing or empty client IDs never dispatch removal");
   std::cout << "abandoned-client dependency checks passed\n";
 }
+
+// A refusal the network's client limit made answers the sdk's decision as the
+// sign-in page's token, not the server's message (which, with x402 on, used to
+// be the payment terms), and keeps the sign-in for its device list's retry. A
+// sign-in that goes through, and a sign-out, forget it; any other refusal keeps
+// the server's message and keeps nothing.
+void TestAClientLimitRefusalKeepsTheSignInForItsDeviceList() {
+  SdkHost host;
+  host.Start("held-network");
+  urnet::AuthNetworkClientResult refused;
+  refused.error = urnet::Error{"Your plan's concurrent client limit is reached.", {},
+                               std::string(clientlimit::kPromptRemoveClient)};
+  host.Answer(0, refused);
+  Check(host.answers.size() == 1 && !host.answers.back().ok &&
+            host.answers.back().error == clientlimit::kSignInRefusedRemoveClient,
+        "a client limit refusal answers the sdk's decision, not the server's message");
+  Check(host.refusedSignIn_ && host.refusedSignIn_->byJwt == "held-network" &&
+            host.refusedSignIn_->epoch == host.signOutRun_.Epoch(),
+        "the refused sign-in is kept with its token and epoch");
+  // the device list freed a slot: the same sign-in again, which goes through
+  host.Start("held-network");
+  host.Answer(1, urnet::AuthNetworkClientResult{{}, "held-network-client"});
+  Check(host.answers.size() == 2 && host.answers.back().ok,
+        "the retry signs in");
+  Check(!host.refusedSignIn_, "a sign-in that goes through forgets the refusal");
+
+  SdkHost upgrade;
+  upgrade.Start("free-network");
+  urnet::AuthNetworkClientResult offered;
+  offered.error = urnet::Error{"x402 terms", {}, std::string(clientlimit::kPromptUpgrade)};
+  upgrade.Answer(0, offered);
+  Check(upgrade.answers.size() == 1 &&
+            upgrade.answers.back().error == clientlimit::kSignInRefusedUpgrade,
+        "a refusal an upgrade lifts answers the upgrade's token");
+  upgrade.Logout();
+  upgrade.SignOutTail();
+  Check(!upgrade.refusedSignIn_, "a sign-out forgets the refusal");
+
+  SdkHost plain;
+  plain.Start("plain-network");
+  urnet::AuthNetworkClientResult refusal;
+  refusal.error = urnet::Error{"some other refusal"};
+  plain.Answer(0, refusal);
+  Check(plain.answers.size() == 1 && plain.answers.back().error == "some other refusal" &&
+            !plain.refusedSignIn_,
+        "any other refusal keeps the server's message and keeps nothing");
+}
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -856,6 +915,7 @@ int main(int argc, char** argv) {
   TestRetainedIdentitiesRememberTheirCreationEpoch();
   TestAnOldBrowserOrWalletHandoffDoesNotStartAuth();
   TestQueuedSignOutProgressReadsTheCurrentTail();
+  TestAClientLimitRefusalKeepsTheSignInForItsDeviceList();
   std::cout << (checks - failures) << '/' << checks << " registration/logout checks passed\n";
   return failures ? 1 : 0;
 }

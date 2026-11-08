@@ -221,7 +221,156 @@ func TestDeadTunnelVerdictHasOneHome(t *testing.T) {
 	provideRequire(t, "TunnelWatchdog.h", header, `#include "DeadTunnelVerdict.h"`)
 	requireNone(t, "TunnelWatchdog.h", header,
 		"inline constexpr DeadTunnelVerdict Evaluate(", "class TrafficTracker", "class ConnectionEpochTracker",
-		"struct DeadTunnelSignals", "class OutOfBalanceHold")
+		"struct DeadTunnelSignals", "class OutOfBalanceHold", "class ClientLimitHold")
 	verdict := stripComments(readServiceSource(t, "DeadTunnelVerdict.h"))
 	requireNone(t, "DeadTunnelVerdict.h", verdict, "windows.h", "Sdk.h", "urnet::")
+}
+
+// ---- a device the client limit holds off (owner, 2026-11-08) ----------------
+//
+// The root cause: the verdict knew nothing of the device's client limit hold
+// (ClientLimitStatus), so a session the platform held off for its network's
+// concurrent client limit read as a dead tunnel and NoExit stopped it at its
+// window. The stop let the traffic out with the kill switch off, and the device
+// that replaced the session's, the provider-only device the app reconciles after
+// the drop (SdkHost's unexpected drop) or the next Connect's, dialed the platform
+// at once, past the hold the sdk keeps per device. The controls below put each
+// piece of the hold back the way it was, or wrong the other way, and require the
+// spec (tools/dead-tunnel-verdict-tests.cpp) to fail.
+
+// The defect itself: nothing tells the verdict the device is held.
+func TestDeadTunnelVerdictNegativeNoClientLimitHold(t *testing.T) {
+	requireDeadTunnelVerdictFailure(t,
+		"if (!reading.sampled || reading.exceeded == held_) return ClientLimitStep::None;",
+		"return ClientLimitStep::None;",
+		"a session the client limit holds from the start is not stopped past NoExit's window")
+}
+
+// NoExit not told of the hold.
+func TestDeadTunnelVerdictNegativeNoExitIgnoresTheClientLimitHold(t *testing.T) {
+	requireDeadTunnelVerdictFailure(t,
+		"const bool slowApplies = !s.outOfBalance && !s.clientLimitHeld && s.provenCount == 0 &&",
+		"const bool slowApplies = !s.outOfBalance && s.provenCount == 0 &&",
+		"a session the client limit holds from the start is not stopped past NoExit's window")
+}
+
+// NoInbound not told of the hold.
+func TestDeadTunnelVerdictNegativeNoInboundIgnoresTheClientLimitHold(t *testing.T) {
+	requireDeadTunnelVerdictFailure(t,
+		"!s.outOfBalance && !s.clientLimitHeld && s.providerWindowReady && s.provenCount == 0 &&",
+		"!s.outOfBalance && s.providerWindowReady && s.provenCount == 0 &&",
+		"a session the client limit holds once up is not stopped past NoInbound's window")
+}
+
+// The other way to get it wrong: a hold for every device takes the failsafe away
+// from the dead tunnels it exists for.
+func TestDeadTunnelVerdictNegativeClientLimitHoldsEverybody(t *testing.T) {
+	requireDeadTunnelVerdictFailure(t,
+		"    return held_ ? ClientLimitStep::Entered : ClientLimitStep::Released;\n  }\n\n  constexpr bool held() const { return held_; }",
+		"    return held_ ? ClientLimitStep::Entered : ClientLimitStep::Released;\n  }\n\n  constexpr bool held() const { return true; }",
+		"the same session in balance stops with NoExit, at its window")
+}
+
+// A hold that outlives the device's: a session dead after its hold ended is never
+// stopped.
+func TestDeadTunnelVerdictNegativeClientLimitHoldNeverEnds(t *testing.T) {
+	requireDeadTunnelVerdictFailure(t,
+		"    held_ = reading.exceeded;\n    return held_ ? ClientLimitStep::Entered",
+		"    held_ = held_ || reading.exceeded;\n    return held_ ? ClientLimitStep::Entered",
+		"the end of the device's hold ends the hold")
+}
+
+// An unreadable status read as the hold's end.
+func TestDeadTunnelVerdictNegativeUnreadableClientLimitReleases(t *testing.T) {
+	requireDeadTunnelVerdictFailure(t,
+		"if (!reading.sampled || reading.exceeded == held_) return ClientLimitStep::None;",
+		"if (reading.exceeded == held_) return ClientLimitStep::None;",
+		"an unreadable client limit status keeps the hold")
+}
+
+// The hold taking a hung process with it.
+func TestDeadTunnelVerdictNegativeClientLimitHoldsAHungSdk(t *testing.T) {
+	requireDeadTunnelVerdictFailure(t,
+		"if (sampleAge >= settings.sdkUnresponsiveMillis) {",
+		"if (!s.clientLimitHeld && sampleAge >= settings.sdkUnresponsiveMillis) {",
+		"a wedged sdk stops the session, held by the client limit")
+}
+
+// The two threads, for the client limit as for the balance. The sampler reads the
+// device's ClientLimitStatus off the session's device, on its own thread, and
+// publishes it whole under the channel's lock before the stamp that means a
+// sample completed. The evaluator reads it there and observes it ahead of the
+// freeze rebase; on the hold's end it rebases and reaches no verdict, and the
+// held state reaches the verdict. One hold for the life of the watch, and nothing
+// in the controller writes the reading.
+func TestDeadTunnelWatchdogReadsTheClientLimitOffItsDevice(t *testing.T) {
+	source := stripComments(readServiceSource(t, "TunnelWatchdog.cpp"))
+	sampler := definitionBody(t, "TunnelWatchdog.cpp", source,
+		"void TunnelWatchdog::RunSampler(std::shared_ptr<WatchdogChannel> channel)")
+	order := []string{
+		"device->getClientLimitStatus();",
+		"if (clientLimitStatus) {",
+		"channel->lastSampleMillis.store(now);",
+	}
+	for i := 0; i+1 < len(order); i++ {
+		provideRequireOrder(t, "RunSampler", sampler, order[i], order[i+1])
+	}
+	published := clientLimitBlock(t, "RunSampler", sampler,
+		"if (clientLimitStatus) {", "channel->lastSampleMillis.store(now);")
+	for _, step := range [][2]string{
+		{"std::scoped_lock lock(channel->mutex);", "channel->clientLimit = ClientLimitReading{"},
+		{"channel->clientLimit = ClientLimitReading{", ".sampled = true,"},
+		{".sampled = true,", ".exceeded = clientLimitStatus->Status == urnet::ClientLimitStatusExceeded,"},
+	} {
+		provideRequireOrder(t, "the client limit's publish", published, step[0], step[1])
+	}
+
+	evaluator := definitionBody(t, "TunnelWatchdog.cpp", source, "void TunnelWatchdog::RunEvaluator(")
+	order = []string{
+		"clientLimitReading = channel->clientLimit;",
+		"const ClientLimitStep clientLimitStep = clientLimit.Observe(clientLimitReading);",
+		"if (freeze.rebase) {",
+		"if (clientLimitStep == ClientLimitStep::Released) {",
+		"signals.clientLimitHeld = clientLimit.held();",
+		"const DeadTunnelVerdict verdict = Evaluate(signals, now, channel->settings.deadTunnel);",
+	}
+	for i := 0; i+1 < len(order); i++ {
+		provideRequireOrder(t, "RunEvaluator", evaluator, order[i], order[i+1])
+	}
+	released := clientLimitBlock(t, "RunEvaluator", evaluator,
+		"if (clientLimitStep == ClientLimitStep::Released) {", "continue;")
+	provideRequire(t, "the hold's end", released,
+		"sessionStartMillis = now;",
+		"trafficStartMillis = now;",
+		"traffic.Reset(",
+		"armed_.store(false, std::memory_order_relaxed);",
+		"connectionEpoch.Observe(connectionGeneration,")
+	if n := strings.Count(evaluator, "ClientLimitHold clientLimit;"); n != 1 {
+		t.Errorf("RunEvaluator declares the client limit hold %d times", n)
+	}
+	loop := clientLimitBlock(t, "RunEvaluator", evaluator, "for (;;) {", "")
+	requireNone(t, "RunEvaluator's loop", loop, "ClientLimitHold clientLimit;", "clientLimit = ClientLimitHold")
+
+	header := stripComments(readServiceSource(t, "TunnelWatchdog.h"))
+	provideRequire(t, "WatchdogChannel", header, "ClientLimitReading clientLimit;")
+	requireNone(t, "TunnelController.cpp", tunnelControllerSource(t), "ClientLimitReading", "getClientLimitStatus")
+}
+
+// The text of `source` from `start` up to the first `end` after it (the rest
+// when `end` is empty), or a fatal error naming what is missing.
+func clientLimitBlock(t *testing.T, where, source, start, end string) string {
+	t.Helper()
+	i := strings.Index(source, start)
+	if i < 0 {
+		t.Fatalf("%s has no %q", where, start)
+	}
+	block := source[i:]
+	if end == "" {
+		return block
+	}
+	j := strings.Index(block, end)
+	if j < 0 {
+		t.Fatalf("%s has no %q after %q", where, end, start)
+	}
+	return block[:j]
 }

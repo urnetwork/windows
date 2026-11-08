@@ -367,6 +367,10 @@ SdkHost::~SdkHost() {
   drawerSeedReader_.Stop();
   // A transport delay read in flight is a call into the sdk as well.
   transportDelayReader_.Stop();
+  // So are a client limit read and a retry.
+  clientLimitReader_.Stop();
+  clientLimitRetrier_.Stop();
+  clientLimitChangeRetrier_.Stop();
   // A network kick in flight is a call into the sdk this teardown closes.
   sdkNetworkKick_.Stop();
   // The user's writes still queued run, then the worker stops: each takes
@@ -1811,6 +1815,27 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
       complete(r);
       return;
     }
+    // The network's client limit refused this device. What that offers is the
+    // sdk's decision (AuthNetworkClientError.ClientLimitPrompt: upgrade for a
+    // free plan, remove_client for one already at its most devices), and the
+    // sign-in page shows the words for it (ClientLimitNotice.h) instead of the
+    // server's message, which said neither; the sdk reads production's 402
+    // payment terms for this refusal as the same refusal, so they no longer
+    // reach the page raw. Every other refusal keeps the server's message. The
+    // sign-in is kept, so the device list it offers can run this registration
+    // again once a removal frees a slot (OpenManageDevices, forSignIn).
+    if (result->error) {
+      if (auto token = clientlimit::SignInRefusalToken(result->error->client_limit_prompt)) {
+        LogInfo("sdkhost: sign-in refused by the network's client limit (prompt {})",
+                result->error->client_limit_prompt.value_or(""));
+        {
+          std::scoped_lock lock(refusedSignInMutex_);
+          refusedSignIn_ = RefusedSignIn{byJwt, signOutEpoch};
+        }
+        complete(AuthResult{false, false, *token});
+        return;
+      }
+    }
     if (result->error && !result->error->message.empty()) {
       AuthResult r{false, false, result->error->message};
       complete(r);
@@ -1885,6 +1910,11 @@ void SdkHost::RegisterNetworkClient(const std::string& byJwt,
       // replaces one built from an older jwt: the request differs). It installs
       // nothing on this machine, so this is not the session start D8 forbids
       // here.
+      // A sign-in the client limit refused earlier has nothing left to retry.
+      {
+        std::scoped_lock lock(refusedSignInMutex_);
+        refusedSignIn_.reset();
+      }
       AuthResult r{true, false, ""};
       complete(r);
     } else {
@@ -3059,6 +3089,313 @@ void SdkHost::ReadTransportDelayOnWorker() {
   if (reading) NoteTransportDelay(generation, std::move(reading));
 }
 
+// ---- the client limit feed (ClientLimitNotice.h) --------------------------------
+//
+// See SetClientLimitHandler and RetryClientLimit in the header.
+
+namespace {
+// The sdk's ClientLimitStatus onto the plain reading the window and the tray
+// decide on.
+clientlimit::Reading ClientLimitReadingOf(const urnet::ClientLimitStatus& status) {
+  clientlimit::Reading reading;
+  reading.status = status.Status;
+  reading.retryTimeMillis = status.RetryTime;
+  reading.prompt = status.Prompt;
+  return reading;
+}
+}  // namespace
+
+void SdkHost::BeginClientLimit(std::uint64_t generation, std::uint64_t device) {
+  std::scoped_lock lock(clientLimitMutex_);
+  clientLimitGeneration_ = generation;
+  clientLimitDevice_ = device;
+  clientLimitReading_.reset();
+  clientLimitRemote_ = false;
+  PublishClientLimitLocked();
+}
+
+void SdkHost::EndClientLimit() {
+  std::scoped_lock lock(clientLimitMutex_);
+  clientLimitGeneration_ = 0;
+  clientLimitDevice_ = 0;
+  clientLimitReading_.reset();
+  clientLimitRemote_ = false;
+  PublishClientLimitLocked();
+}
+
+void SdkHost::NoteClientLimit(std::uint64_t generation,
+                              std::optional<clientlimit::Reading> reading) {
+  std::scoped_lock lock(clientLimitMutex_);
+  if (generation == 0 || generation != clientLimitGeneration_) return;
+  clientLimitReading_ = std::move(reading);
+  PublishClientLimitLocked();
+}
+
+void SdkHost::NoteClientLimitRemote(std::uint64_t generation, bool remoteConnected) {
+  {
+    std::scoped_lock lock(clientLimitMutex_);
+    if (generation == 0 || generation != clientLimitGeneration_) return;
+    const bool reconnected = remoteConnected && !clientLimitRemote_;
+    clientLimitRemote_ = remoteConnected;
+    PublishClientLimitLocked();
+    if (!reconnected) return;
+  }
+  // Back: what the device says now, not what it said before the remote went
+  // down. A hold that began or ended meanwhile reported to no listener here.
+  clientLimitReader_.Request();
+}
+
+void SdkHost::PublishClientLimitLocked() {
+  std::optional<clientlimit::Reading> value;
+  if (clientLimitRemote_) value = clientLimitReading_;
+  if (value == clientLimitPublished_) return;
+  clientLimitPublished_ = value;
+  if (onClientLimit_) onClientLimit_(std::move(value));
+}
+
+void SdkHost::ReadClientLimitOnWorker() {
+  std::uint64_t device = 0;
+  std::uint64_t generation = 0;
+  {
+    std::scoped_lock lock(clientLimitMutex_);
+    device = clientLimitDevice_;
+    generation = clientLimitGeneration_;
+  }
+  if (device == 0) return;
+  // Device::GetClientLimitStatus by the handle: never nil in Go; a released
+  // handle answers null.
+  char* json = urnet_device_get_client_limit_status(device);
+  if (json == nullptr) return;
+  std::optional<clientlimit::Reading> reading;
+  try {
+    reading = ClientLimitReadingOf(nlohmann::json::parse(json).get<urnet::ClientLimitStatus>());
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: reading the client limit status failed: {}", e.what());
+  }
+  urnet_free_string(json);
+  if (reading) NoteClientLimit(generation, std::move(reading));
+}
+
+void SdkHost::RetryClientLimitOnWorker() {
+  std::uint64_t device = 0;
+  {
+    std::scoped_lock lock(clientLimitMutex_);
+    device = clientLimitDevice_;
+  }
+  if (device == 0) {
+    LogInfo("sdkhost: client limit retry: no session");
+    return;
+  }
+  // Device::RetryClientLimit by the handle, forwarded to the service's device.
+  // False: no hold was in force, or the sdk ended one in the last 30 s, or the
+  // service is out of reach (nothing is queued for later).
+  const bool ended = urnet_device_retry_client_limit(device);
+  LogInfo("sdkhost: client limit retry: {}",
+          ended ? "the hold ended; the device dials the platform again"
+                : "no hold ended (none in force, one ended within the sdk's interval, or no "
+                  "service)");
+  // what the device says now: the hold gone, or back after a refusal
+  if (ended) clientLimitReader_.Request();
+}
+
+void SdkHost::RetryClientLimitAfterChangeOnWorker() {
+  std::uint64_t device = 0;
+  {
+    std::scoped_lock lock(clientLimitMutex_);
+    device = clientLimitDevice_;
+  }
+  if (device == 0) {
+    LogInfo("sdkhost: client limit retry after a change: no session");
+    return;
+  }
+  // Device::RetryClientLimitAfterChange by the handle, forwarded to the
+  // service's device; a service on an older sdk gets RetryClientLimit. False:
+  // no hold was in force, a change retry ended one in the last 30 s, or the
+  // service is out of reach (nothing is queued for later).
+  const bool ended = urnet_device_retry_client_limit_after_change(device);
+  LogInfo("sdkhost: client limit retry after a change: {}",
+          ended ? "the hold ended; the device dials the platform again"
+                : "no hold ended (none in force, one ended within the sdk's interval, or no "
+                  "service)");
+  if (ended) clientLimitReader_.Request();
+}
+
+// ---- the device list (ManageDevicesSheet) ----------------------------------------
+//
+// See OpenManageDevices in the header. The decisions are the sdk's
+// (ManageDevicesViewController): what is listed and in what order, what can be
+// removed, and the retry that adds this device again after a removal. This only
+// opens it on the right thing, hands its snapshots to the sheet, and closes it.
+
+void SdkHost::OpenManageDevices(bool forSignIn, ManageDevicesHandler handler) {
+  const std::uint64_t generation = manageDevicesGeneration_.fetch_add(1) + 1;
+  {
+    std::scoped_lock lock(manageDevicesMutex_);
+    manageDevicesHandler_ = std::make_shared<ManageDevicesHandler>(std::move(handler));
+    manageDevicesForSignIn_ = forSignIn;
+  }
+  PostWrite("open the device list", [this, generation] {
+    std::scoped_lock lock(mutex_);
+    OpenManageDevicesLocked(generation);
+  });
+}
+
+void SdkHost::OpenManageDevicesLocked(std::uint64_t generation) {
+  std::scoped_lock lock(manageDevicesMutex_);
+  // closed, or opened again, since this open was asked for
+  if (generation != manageDevicesGeneration_.load()) return;
+  CloseManageDevicesVcLocked();
+  bool opened = false;
+  try {
+    if (!manageDevicesForSignIn_ && device_) {
+      // on the session's device: a removal ends its client limit hold
+      manageDevicesVc_ = device_->openManageDevicesViewController();
+      manageDevicesOwner_ = ManageDevicesOwner::Device;
+      manageDevicesSession_ = sessionGeneration_;
+      opened = static_cast<bool>(manageDevicesVc_);
+    } else {
+      opened = OpenManageDevicesOnApiLocked(manageDevicesForSignIn_);
+    }
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: opening the device list failed: {}", e.what());
+  }
+  if (!opened) {
+    // signed out, or the refused sign-in is gone: the sheet says to sign in
+    LogInfo("sdkhost: the device list has no sign-in to open with");
+    manageDevicesOwner_ = ManageDevicesOwner::None;
+    if (manageDevicesHandler_ && *manageDevicesHandler_)
+      (*manageDevicesHandler_)(ManageDevicesUpdate{urnet::ManageDevicesSnapshot{}, false});
+    return;
+  }
+  LogInfo("sdkhost: the device list is open (on {})",
+          manageDevicesOwner_ == ManageDevicesOwner::Device ? "the session's device"
+          : manageDevicesOwner_ == ManageDevicesOwner::SignIn ? "the refused sign-in"
+                                                              : "the api");
+  StartManageDevicesLocked(generation);
+}
+
+bool SdkHost::OpenManageDevicesOnApiLocked(bool forSignIn) {
+  if (!api_) return false;
+  std::string byJwt;
+  urnet::ManageDevicesSignInRetry retry;
+  if (forSignIn) {
+    std::scoped_lock lock(refusedSignInMutex_);
+    if (!refusedSignIn_) return false;
+    byJwt = refusedSignIn_->byJwt;
+    // a removal freed a slot: the refused sign-in registers again
+    retry = [this] { RetryRefusedSignIn(); };
+  } else {
+    // no device to add again: the stored sign-in token, and no retry
+    if (!loggedIn_.load(std::memory_order_acquire) || !localState_) return false;
+    byJwt = localState_->getByJwt();
+  }
+  if (byJwt.empty()) return false;
+  manageDevicesVc_ = urnet::newSignInManageDevicesViewController(*api_, byJwt, std::move(retry));
+  manageDevicesOwner_ = forSignIn ? ManageDevicesOwner::SignIn : ManageDevicesOwner::Api;
+  manageDevicesSession_ = 0;
+  return static_cast<bool>(manageDevicesVc_);
+}
+
+void SdkHost::StartManageDevicesLocked(std::uint64_t generation) {
+  bool canManage = false;
+  try {
+    canManage = manageDevicesVc_.getCanManage();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: the device list's credential could not be read: {}", e.what());
+  }
+  // Copies the handler and takes no lock of this host's: the list calls it on
+  // its goroutines, and from inside start, refresh and removeDevice too, while
+  // manageDevicesMutex_ is held. A snapshot of an older open is dropped.
+  const auto handler = manageDevicesHandler_;
+  manageDevicesSub_ = manageDevicesVc_.addManageDevicesListener(
+      [this, generation, handler, canManage](std::optional<urnet::ManageDevicesSnapshot> snapshot) {
+        if (!snapshot || !handler || !*handler) return;
+        if (generation != manageDevicesGeneration_.load()) return;
+        (*handler)(ManageDevicesUpdate{std::move(*snapshot), canManage});
+      });
+  // loads the list; its first snapshot (loading) reaches the sheet from here
+  manageDevicesVc_.start();
+}
+
+void SdkHost::CloseManageDevicesVcLocked() {
+  manageDevicesSub_ = urnet::Sub{};
+  if (manageDevicesVc_) {
+    try {
+      if (manageDevicesOwner_ == ManageDevicesOwner::Device && device_ &&
+          manageDevicesSession_ == sessionGeneration_) {
+        device_->closeManageDevicesViewController(manageDevicesVc_);
+      } else {
+        manageDevicesVc_.close();
+      }
+    } catch (const std::exception& e) {
+      LogWarn("sdkhost: closing the device list failed: {}", e.what());
+    }
+  }
+  manageDevicesVc_ = urnet::ManageDevicesViewController{};
+  manageDevicesOwner_ = ManageDevicesOwner::None;
+  manageDevicesSession_ = 0;
+}
+
+void SdkHost::ReopenManageDevicesOffDeviceLocked() {
+  std::scoped_lock lock(manageDevicesMutex_);
+  if (manageDevicesOwner_ != ManageDevicesOwner::Device) return;
+  CloseManageDevicesVcLocked();
+  const std::uint64_t generation = manageDevicesGeneration_.load();
+  if (OpenManageDevicesOnApiLocked(/*forSignIn=*/false)) {
+    LogInfo("sdkhost: the session ended under the device list: it is open on the api now");
+    StartManageDevicesLocked(generation);
+  }
+}
+
+void SdkHost::RefreshManageDevices() {
+  std::scoped_lock lock(manageDevicesMutex_);
+  if (manageDevicesVc_) manageDevicesVc_.refresh();
+}
+
+void SdkHost::RemoveManagedDevice(const std::string& clientId) {
+  std::scoped_lock lock(manageDevicesMutex_);
+  if (!manageDevicesVc_) return;
+  LogInfo("sdkhost: the device list removes a device");
+  manageDevicesVc_.removeDevice(clientId);
+}
+
+void SdkHost::CloseManageDevices() {
+  manageDevicesGeneration_.fetch_add(1);
+  {
+    std::scoped_lock lock(manageDevicesMutex_);
+    manageDevicesHandler_.reset();
+  }
+  PostWrite("close the device list", [this] {
+    std::scoped_lock lock(mutex_);
+    std::scoped_lock vcLock(manageDevicesMutex_);
+    CloseManageDevicesVcLocked();
+  });
+}
+
+bool SdkHost::HasRefusedSignIn() const {
+  std::scoped_lock lock(refusedSignInMutex_);
+  return refusedSignIn_.has_value();
+}
+
+void SdkHost::RetryRefusedSignIn() {
+  std::optional<RefusedSignIn> refused;
+  {
+    std::scoped_lock lock(refusedSignInMutex_);
+    refused = refusedSignIn_;
+  }
+  if (!refused) return;
+  LogInfo("sdkhost: the device list freed a slot: the refused sign-in registers again");
+  // The auth state carries the outcome to the window, as it carried the
+  // refusal: signed in, or the sign-in page's error again. The first attempt's
+  // own callback has had its answer and is not called twice.
+  RegisterNetworkClient(
+      refused->byJwt,
+      [](AuthResult r) {
+        LogInfo("sdkhost: the refused sign-in's retry {}", r.ok ? "signed in" : "did not sign in");
+      },
+      refused->epoch);
+}
+
 // ---- the network country (P052) ---------------------------------------------
 //
 // See the contract in the header and Common/NetworkCountry.h.
@@ -3653,8 +3990,9 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
         persistenceRecord.state == rpcsession::State::Confirmed ? generation : 0,
         std::memory_order_release);
     // The slow-internet feed belongs to this session from here on, before the
-    // presence listener below reports on it.
+    // presence listener below reports on it. So does the client limit feed.
     BeginTransportDelay(generation, device_->handle());
+    BeginClientLimit(generation, device_->handle());
 
     // Register BEFORE setRpcServer: a loopback sync may complete immediately,
     // and a transition-only listener installed afterwards would miss the only
@@ -3682,6 +4020,9 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
       // the slow-internet feed is shown only over a connected remote: down,
       // its last level is stale (connect/DELAY.md §10.5)
       NoteTransportDelayRemote(generation, remoteConnected);
+      // and so is the client limit feed: down, the last readout may be a hold
+      // that has ended since
+      NoteClientLimitRemote(generation, remoteConnected);
       if (onRemoteChanged_) onRemoteChanged_(remoteConnected);
     };
     subs_.push_back(device_->addRemoteChangeListener(remoteChanged));
@@ -3725,6 +4066,16 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
           if (delay) NoteTransportDelay(generation, ReadingOf(*delay));
         }));
     transportDelayReader_.Request();
+    // The client limit feed (ClientLimitNotice.h), functional for the same
+    // reason: the tray's notice follows it while the window is hidden. The same
+    // registration first, then one read off this pass, for the same reasons: a
+    // hold the service's device began before this session attached (a relaunch
+    // into a held tunnel) reaches the app through the read.
+    subs_.push_back(device_->addClientLimitStatusChangeListener(
+        [this, generation](std::optional<urnet::ClientLimitStatus> status) {
+          if (status) NoteClientLimit(generation, ClientLimitReadingOf(*status));
+        }));
+    clientLimitReader_.Request();
     // Re-apply the persisted performance profile onto the (re)created device
     // (macOS DeviceManager parity: LocalState is the profile's persistence).
     try {
@@ -8519,6 +8870,11 @@ void SdkHost::TeardownSessionLocked(bool stopTunnel) {
   // never the level it last had. A listener or a read still in flight finds
   // its session gone and is dropped.
   EndTransportDelay();
+  // The client limit feed the same way: no session, no hold to show.
+  EndClientLimit();
+  // A device list open on this device closes with it, through it, and opens
+  // again on the api, so the sheet keeps a list (signed out, it stays closed).
+  ReopenManageDevicesOffDeviceLocked();
   subs_.clear();
   if (device_) { device_->close(); device_.reset(); }
   // A pending rpc-sync check must not act on the session that is ending — its
@@ -8625,6 +8981,12 @@ void SdkHost::Logout() {
     pendingRequested_ = false;
   }
   pendingCv_.notify_all();
+  // A sign-in the client limit refused is forgotten with the account: its
+  // device list never runs it again.
+  {
+    std::scoped_lock lock(refusedSignInMutex_);
+    refusedSignIn_.reset();
+  }
   // 2. Signed out from here, before the lock: a pass that takes mutex_ ahead of
   // this one reads it and starts nothing for the account that is leaving
   // (BootstrapSession, ReconcileProviderLocked). Also before SetAuthState in the
@@ -8935,6 +9297,9 @@ void SdkHost::QuitInOrder(std::chrono::steady_clock::time_point start) {
   locationsOpener_.Stop();
   drawerSeedReader_.Stop();
   transportDelayReader_.Stop();
+  clientLimitReader_.Stop();
+  clientLimitRetrier_.Stop();
+  clientLimitChangeRetrier_.Stop();
   // a call into the sdk; nothing follows it
   sdkNetworkKick_.Stop();
   // the user's writes still queued run first; each takes mutex_

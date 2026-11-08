@@ -364,6 +364,56 @@ MainWindow::MainWindow() {
     BalanceWarning().Content(links);
   }
 
+  // The client limit notice (ClientLimitNotice.h): the platform holds this
+  // device off for its network's concurrent client limit. Get Pro opens the
+  // upgrade flow the balance banner opens (a guest converts first), shown only
+  // when UR Pro lifts the limit; Retry asks the session device to dial again
+  // now (AppController::RetryClientLimit, which the sdk paces). The words and
+  // which buttons show are ApplyClientLimitNotice's. Disconnect stays on the
+  // connect button: nothing here disconnects.
+  {
+    clientLimitUpgrade_ = Button();
+    solidBannerAction(clientLimitUpgrade_);
+    clientLimitUpgrade_.Content(LocBox("get_pro"));
+    Automation::AutomationProperties::SetAutomationId(clientLimitUpgrade_,
+                                                      L"acceptance.client-limit.upgrade");
+    clientLimitUpgrade_.Click([weak = get_weak()](auto const&, auto const&) {
+      auto self = weak.get();
+      if (!self) return;
+      if (self->balance_.guest) {
+        self->DivertGuestToConversion([weak] {
+          if (auto self = weak.get()) self->ShowUpgradeSheet();
+        });
+      } else {
+        self->ShowUpgradeSheet();
+      }
+    });
+    ClientLimitNotice().ActionButton(clientLimitUpgrade_);
+    // A plan already at its most devices: the device list, where a removal
+    // frees a slot and the sdk ends this device's hold (ManageDevicesSheet).
+    clientLimitManage_ = Button();
+    solidBannerAction(clientLimitManage_);
+    clientLimitManage_.Content(LocBox("manage_devices"));
+    Automation::AutomationProperties::SetAutomationId(clientLimitManage_,
+                                                      L"acceptance.client-limit.manage-devices");
+    clientLimitManage_.Click([weak = get_weak()](auto const&, auto const&) {
+      // the account's list, not a refused sign-in's
+      if (auto self = weak.get()) self->ShowManageDevicesSheet(false);
+    });
+    clientLimitRetry_ = Button();
+    solidBannerAction(clientLimitRetry_);
+    clientLimitRetry_.Content(LocBox("retry"));
+    Automation::AutomationProperties::SetAutomationId(clientLimitRetry_,
+                                                      L"acceptance.client-limit.retry");
+    clientLimitRetry_.Click([](auto const&, auto const&) { urnw::App().RetryClientLimit(); });
+    StackPanel actions;
+    actions.Orientation(winrt::Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
+    actions.Spacing(8);
+    actions.Children().Append(clientLimitManage_);
+    actions.Children().Append(clientLimitRetry_);
+    ClientLimitNotice().Content(actions);
+  }
+
   // The service-setup banner's one click (beta spec §3): a single elevated
   // `urnetworkd install`, whatever the banner currently says — package B made
   // the verb idempotent and starting, so "Set up", "Start" and "Update" are
@@ -2662,6 +2712,61 @@ void MainWindow::UpdateBalanceWarning() {
   if (connect_) connect_->ApplyConnectStatus();
 }
 
+// ---- the client limit notice (ClientLimitNotice.h) ------------------------------
+
+void MainWindow::SetClientLimitNotice(std::optional<urnw::clientlimit::Notice> notice) {
+  if (notice == clientLimitNotice_) return;
+  clientLimitNotice_ = notice;
+  ApplyClientLimitNotice();
+}
+
+void MainWindow::ApplyClientLimitNotice() {
+  auto bar = ClientLimitNotice();
+  if (!clientLimitNotice_) {
+    bar.IsOpen(false);
+    return;
+  }
+  // what to do for the plan: upgrade, or free a slot (the sdk's prompt)
+  const bool offersUpgrade = clientLimitNotice_->offersUpgrade;
+  bar.Title(Loc(urnw::clientlimit::kTitleKey));
+  bar.Message(Loc(urnw::clientlimit::MessageKey(offersUpgrade)));
+  if (clientLimitUpgrade_)
+    clientLimitUpgrade_.Visibility(offersUpgrade ? Visibility::Visible : Visibility::Collapsed);
+  if (clientLimitManage_)
+    clientLimitManage_.Visibility(offersUpgrade ? Visibility::Collapsed : Visibility::Visible);
+  bar.IsOpen(true);
+}
+
+winrt::fire_and_forget MainWindow::ShowManageDevicesSheet(bool forSignIn, hstring message) {
+  if (sheetOpen_) co_return;  // only one ContentDialog can show at a time
+  auto self = get_strong();
+  self->sheetOpen_ = true;
+  try {
+    self->manageDevicesSheet_ =
+        urnw::ManageDevicesSheet::Create(Content().XamlRoot(), Sdk(), forSignIn, message);
+    co_await self->manageDevicesSheet_->Dialog().ShowAsync();
+  } catch (...) {
+  }
+  // the list closes with the sheet, whatever closed it
+  if (self->manageDevicesSheet_) self->manageDevicesSheet_->Close();
+  self->manageDevicesSheet_.reset();
+  self->sheetOpen_ = false;
+}
+
+void MainWindow::OfferSignInManageDevices(std::string const& error) {
+  const char* key = urnw::clientlimit::SignInRefusalMessageKey(error);
+  if (manageDevicesSheet_ && manageDevicesSheet_->ForSignIn()) {
+    // a retry of the refused sign-in answered: what it said, above the list
+    manageDevicesSheet_->SetMessage(key ? Loc(key) : hstring{urnw::Widen(error)});
+    return;
+  }
+  // The network's client limit refused the sign-in: the device list, where a
+  // removal frees a slot and runs the sign-in again (SdkHost keeps it). No Get
+  // Pro here: a purchase needs a signed-in account, and the server signs the
+  // apps in and holds a free plan at connect, where the notice offers it.
+  if (key && Sdk().HasRefusedSignIn()) ShowManageDevicesSheet(true, Loc(key));
+}
+
 // ---- the in-app service manager (beta spec §3) ------------------------------
 //
 // One snapshot, one writer set. RefreshServiceSetup and the two Begin* verbs
@@ -3009,6 +3114,14 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
     // surface the error on the sign-in step the user is looking at (raw: the
     // page maps the machine tokens it knows to their friendly copy)
     login_->ShowErrorOnCurrentStep(error);
+    // and a sign-in the client limit refused offers its device list
+    OfferSignInManageDevices(error);
+  }
+  // The device list's account is gone: the sign-in it was opened for went
+  // through, or the account it lists signed out.
+  if (manageDevicesSheet_ &&
+      (manageDevicesSheet_->ForSignIn() ? loggedIn : state == urnw::AuthState::LoggedOut)) {
+    manageDevicesSheet_->Dismiss();
   }
   // The network name behind the idle "{name} is ready to connect" copy. Read
   // from the stored jwt once per auth change (ParsedJwt re-parses on every

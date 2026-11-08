@@ -59,6 +59,15 @@
 // the capture stays, the app's banner and tray notice tell the user, and their
 // Disconnect is the way out.
 //
+// THE SAME FOR A DEVICE THE CLIENT LIMIT HOLDS (owner, 2026-11-08). The platform
+// closed this device for its network's concurrent client limit, and the sdk holds
+// it off the platform for 15 to 20 minutes, so its tunnel cannot carry either. A
+// stop there let the traffic out and handed the session to a new device (the
+// provider-only device the app reconciles after the drop, or the next Connect)
+// that dialed the platform at once, past the hold: a retry storm against the
+// limit. So the traffic rules hold for it too (ClientLimitHold), the app's notice
+// says what to do (upgrade, or free a slot), and Disconnect is the user's.
+//
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
@@ -172,6 +181,10 @@ struct WatchdogChannel {
   // The balance as the sampler last could read it, guarded by `mutex`, so a
   // status is never paired with another sample's generation (BalanceReading).
   BalanceReading balance;
+
+  // The device's client limit hold as the sampler last could read it, guarded
+  // by `mutex` (ClientLimitReading).
+  ClientLimitReading clientLimit;
 
   // the network-change coalescers, on the settings' window, guarded by `mutex`
   NotifyCoalescer coalescer;
