@@ -93,8 +93,16 @@ class TrayIcon {
   void SetTooltip(const std::wstring& tip);
   // A notification from the tray, which Windows shows as a toast. `tag` names
   // what a click on it opens (Callbacks::onBalloonClick); 0 opens nothing.
+  // `quiet` shows it without a sound (NIIF_NOSOUND): a notice shown again, or
+  // corrected, that already alerted once. A new one replaces the one showing.
   // False when the shell refused it.
-  bool ShowBalloon(const std::wstring& title, const std::wstring& text, int tag = 0);
+  bool ShowBalloon(const std::wstring& title, const std::wstring& text, int tag = 0,
+                   bool quiet = false);
+  // Takes down the notification showing, when it is the one shown last and with
+  // `tag` (an empty NIF_INFO, which ends a balloon still on screen). A toast
+  // Windows has already moved to the notification centre stays there; its click
+  // still opens what `tag` names, which then shows what holds now.
+  void HideBalloon(int tag);
 
   HWND MessageWindow() const { return hwnd_; }
 

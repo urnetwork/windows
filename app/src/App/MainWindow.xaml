@@ -995,6 +995,16 @@
                                 <InfoBar x:Name="BalanceWarning" IsOpen="False" IsClosable="False"
                                          AutomationProperties.AutomationId="acceptance.insufficient-balance.alert"
                                          Margin="12,8" Severity="Warning" />
+                                <!-- the platform holds this device off for its network's
+                                     concurrent client limit while a connection is requested:
+                                     what to do for the plan, Get Pro (the action, when UR Pro
+                                     lifts the limit) and Retry. Title, message, the action's
+                                     visibility and IsOpen are written by
+                                     MainWindow::ApplyClientLimitNotice (one writer); the buttons
+                                     are built in the MainWindow ctor beside the balance bar's. -->
+                                <InfoBar x:Name="ClientLimitNotice" IsOpen="False" IsClosable="False"
+                                         AutomationProperties.AutomationId="acceptance.client-limit.notice"
+                                         Margin="12,8" Severity="Warning" />
                                 <!-- the VPN service needs setting up / starting / updating:
                                      the action is ONE elevated `urnetworkd install`. Title,
                                      message, action label and IsOpen are all written by

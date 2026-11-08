@@ -1604,6 +1604,18 @@
     <value>클라이언트 ID가 클립보드에 복사되었습니다</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
+  <data name="client_limit_reached" xml:space="preserve">
+    <value>기기 한도에 도달했습니다</value>
+    <comment>Title of the in-app notice and of the local notification shown while the platform holds this device off because the account network already has its plan's most devices connected at once (the concurrent client limit). The device does not connect until a slot frees, the user upgrades, or the hold ends; the user's traffic stays in the tunnel. Short, like a heading.</comment>
+  </data>
+  <data name="client_limit_remove_client_message" xml:space="preserve">
+    <value>요금제의 동시 연결 기기 한도에 도달했습니다. 더 이상 사용하지 않는 기기에서 URnetwork에서 로그아웃한 다음 다시 시도하세요.</value>
+    <comment>Body under client_limit_reached, in the app and in the local notification, for a UR Pro account: it already has as many devices connected at once as its plan allows, the highest plan, so no upgrade helps. Signing out on another device frees its slot; Retry is the button beside it. Also shown when a sign-in on a new device is refused for the same limit. Keep URnetwork as it is.</comment>
+  </data>
+  <data name="client_limit_upgrade_message" xml:space="preserve">
+    <value>무료 요금제는 동시에 연결할 수 있는 기기 수가 제한됩니다. 더 많이 연결하려면 UR Pro로 업그레이드하거나 다른 기기에서 URnetwork 연결을 해제하세요.</value>
+    <comment>Body under client_limit_reached, in the app and in the local notification, for an account on the free plan: it already has as many devices connected at once as the free plan allows, so this device cannot connect. UR Pro allows more; Get Pro is the button beside it. Also shown when a sign-in on a new device is refused for the same limit. Keep UR Pro and URnetwork as they are.</comment>
+  </data>
   <data name="client_statistics" xml:space="preserve">
     <value>클라이언트 통계</value>
     <comment>Title of a card that shows statistics about the client's network usage.</comment>
@@ -5102,6 +5114,46 @@
   <data name="manage_apps" xml:space="preserve">
     <value>앱 관리</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
+  <data name="manage_devices" xml:space="preserve">
+    <value>기기 관리</value>
+    <comment>The device list (the network's devices and hosted proxies, each removable): the button in the client limit notice beside Get Pro, the row in Settings, and the screen's title. The user removes a device to free a slot so this device can connect.</comment>
+  </data>
+  <data name="manage_devices_connecting" xml:space="preserve">
+    <value>이 기기를 연결하는 중…</value>
+    <comment>Device list: shown after a removal freed a slot, while this device connects (or its sign-in runs again).</comment>
+  </data>
+  <data name="manage_devices_help" xml:space="preserve">
+    <value>연결된 기기나 프록시는 각각 요금제의 자리를 하나씩 사용합니다. 더 이상 사용하지 않는 것을 제거하면 자리가 비워집니다.</value>
+    <comment>Device list: the line above the list. A slot is one of the plan's concurrent connections (2 on the free plan); a connected device or hosted proxy takes one.</comment>
+  </data>
+  <data name="manage_devices_last_seen" xml:space="preserve">
+    <value>마지막 확인: {}</value>
+    <comment>Device list, a row's second line for a device that is not connected now: when it last signed in. {time} is a relative time up to 7 days (such as "5m ago" or "now"), then a date ("Oct 3"), so the wording must read with either.</comment>
+  </data>
+  <data name="manage_devices_load_failed" xml:space="preserve">
+    <value>기기를 불러오지 못했습니다.</value>
+    <comment>Device list: the list could not be loaded. Retry is the button beside it.</comment>
+  </data>
+  <data name="manage_devices_proxy" xml:space="preserve">
+    <value>호스팅 프록시</value>
+    <comment>Device list: the label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. It takes a slot of the plan while connected, so the user can remove it too.</comment>
+  </data>
+  <data name="manage_devices_remove_failed" xml:space="preserve">
+    <value>기기를 제거하지 못했습니다. 다시 시도하세요.</value>
+    <comment>Device list: a removal failed and the device is still listed.</comment>
+  </data>
+  <data name="manage_devices_remove_title" xml:space="preserve">
+    <value>이 기기를 제거할까요?</value>
+    <comment>Device list: the title of the confirmation before a device or hosted proxy is removed. The body says it will be signed out (sessions_confirm_body_no_place); the buttons are Remove and Cancel.</comment>
+  </data>
+  <data name="manage_devices_sign_in_required" xml:space="preserve">
+    <value>기기를 관리하려면 다시 로그인하세요.</value>
+    <comment>Device list: this app holds no sign-in token that can remove other devices, or the server refused it. Signing in again gives it one.</comment>
+  </data>
+  <data name="manage_devices_this_device" xml:space="preserve">
+    <value>이 기기</value>
+    <comment>Device list: the label of the row for the device the app runs on. It cannot be removed here (the user signs out instead). On apple the same source text resolves to top200_sign_this_device.</comment>
   </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>구독 관리</value>

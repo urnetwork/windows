@@ -257,6 +257,7 @@
     <ClCompile Include="ReferralCard.cpp" />
     <ClCompile Include="ReferralsPage.cpp" />
     <ClCompile Include="SessionsPage.cpp" />
+    <ClCompile Include="ManageDevicesSheet.cpp" />
     <ClCompile Include="ApiKeysPage.cpp" />
     <ClCompile Include="ProtocolBoard.cpp" />
     <ClCompile Include="LicensesPage.cpp" />
@@ -403,6 +404,9 @@
     <ClInclude Include="ReferralTotalsState.h" />
     <ClInclude Include="ReferralsPage.h" />
     <ClInclude Include="SessionsPage.h" />
+    <ClInclude Include="ManageDevicesSheet.h" />
+    <!-- header-only and WinRT-free: tools/manage-devices-tests.cpp runs it -->
+    <ClInclude Include="ManageDevicesPresentation.h" />
     <!-- header-only and WinRT-free: tools/sessions-tests.cpp runs them -->
     <ClInclude Include="SessionsPresentation.h" />
     <ClInclude Include="SessionGlyphs.h" />
@@ -521,6 +525,8 @@
     <ClInclude Include="PaymentPastDueSdk.h" />
     <ClInclude Include="ConfirmationPollGate.h" />
     <ClInclude Include="ClientEvents.h" />
+    <!-- header-only, WinRT-free: tools/client-limit-notice-tests.cpp runs it -->
+    <ClInclude Include="ClientLimitNotice.h" />
     <ClInclude Include="OfferCard.h" />
     <ClInclude Include="OnboardingRouting.h" />
     <ClInclude Include="PricePresentation.h" />

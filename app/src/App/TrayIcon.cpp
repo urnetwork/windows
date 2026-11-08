@@ -177,20 +177,35 @@ void TrayIcon::SetTooltip(const std::wstring& tip) {
     LogDebug("tray: Shell_NotifyIcon(MODIFY tip) failed");
 }
 
-bool TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& text, int tag) {
+bool TrayIcon::ShowBalloon(const std::wstring& title, const std::wstring& text, int tag,
+                           bool quiet) {
   NOTIFYICONDATAW nid{};
   nid.cbSize = sizeof(nid);
   nid.uFlags = NIF_INFO;
   FillIdentity(nid);
   wcsncpy_s(nid.szInfoTitle, title.c_str(), _TRUNCATE);
   wcsncpy_s(nid.szInfo, text.c_str(), _TRUNCATE);
-  nid.dwInfoFlags = NIIF_USER;
+  nid.dwInfoFlags = static_cast<DWORD>(quiet ? (NIIF_USER | NIIF_NOSOUND) : NIIF_USER);
   if (!::Shell_NotifyIconW(NIM_MODIFY, &nid)) {
     LogDebug("tray: Shell_NotifyIcon(MODIFY balloon) failed");
     return false;
   }
   balloonTag_ = tag;
   return true;
+}
+
+void TrayIcon::HideBalloon(int tag) {
+  if (tag == 0 || balloonTag_ != tag) return;
+  NOTIFYICONDATAW nid{};
+  nid.cbSize = sizeof(nid);
+  nid.uFlags = NIF_INFO;
+  FillIdentity(nid);
+  // empty text: the shell ends the balloon on screen
+  if (!::Shell_NotifyIconW(NIM_MODIFY, &nid)) {
+    LogDebug("tray: Shell_NotifyIcon(MODIFY hide balloon) failed");
+    return;
+  }
+  balloonTag_ = 0;
 }
 
 HICON TrayIcon::CurrentIcon() {

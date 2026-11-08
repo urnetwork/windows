@@ -1616,6 +1616,18 @@ modo giusto</value>
     <value>ID client copiato negli appunti</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
+  <data name="client_limit_reached" xml:space="preserve">
+    <value>Limite di dispositivi raggiunto</value>
+    <comment>Title of the in-app notice and of the local notification shown while the platform holds this device off because the account network already has its plan's most devices connected at once (the concurrent client limit). The device does not connect until a slot frees, the user upgrades, or the hold ends; the user's traffic stays in the tunnel. Short, like a heading.</comment>
+  </data>
+  <data name="client_limit_remove_client_message" xml:space="preserve">
+    <value>Il tuo piano ha raggiunto il limite di dispositivi collegati contemporaneamente. Esci da URnetwork su un dispositivo che non usi più, poi riprova.</value>
+    <comment>Body under client_limit_reached, in the app and in the local notification, for a UR Pro account: it already has as many devices connected at once as its plan allows, the highest plan, so no upgrade helps. Signing out on another device frees its slot; Retry is the button beside it. Also shown when a sign-in on a new device is refused for the same limit. Keep URnetwork as it is.</comment>
+  </data>
+  <data name="client_limit_upgrade_message" xml:space="preserve">
+    <value>Il tuo piano gratuito collega un numero limitato di dispositivi alla volta. Passa a UR Pro per collegarne di più, oppure disconnetti URnetwork su un altro dispositivo.</value>
+    <comment>Body under client_limit_reached, in the app and in the local notification, for an account on the free plan: it already has as many devices connected at once as the free plan allows, so this device cannot connect. UR Pro allows more; Get Pro is the button beside it. Also shown when a sign-in on a new device is refused for the same limit. Keep UR Pro and URnetwork as they are.</comment>
+  </data>
   <data name="client_statistics" xml:space="preserve">
     <value>Statistiche client</value>
     <comment>Title of a card that shows statistics about the client's network usage.</comment>
@@ -5154,6 +5166,46 @@ ti abbiamo inviato per verificare la tua identità.</value>
   <data name="manage_apps" xml:space="preserve">
     <value>Gestisci app</value>
     <comment>Split tunnel settings: button opening the app split rules sheet.</comment>
+  </data>
+  <data name="manage_devices" xml:space="preserve">
+    <value>Gestisci dispositivi</value>
+    <comment>The device list (the network's devices and hosted proxies, each removable): the button in the client limit notice beside Get Pro, the row in Settings, and the screen's title. The user removes a device to free a slot so this device can connect.</comment>
+  </data>
+  <data name="manage_devices_connecting" xml:space="preserve">
+    <value>Connessione di questo dispositivo…</value>
+    <comment>Device list: shown after a removal freed a slot, while this device connects (or its sign-in runs again).</comment>
+  </data>
+  <data name="manage_devices_help" xml:space="preserve">
+    <value>Ogni dispositivo o proxy collegato occupa un posto del tuo piano. Rimuovi quello che non usi più per liberarne il posto.</value>
+    <comment>Device list: the line above the list. A slot is one of the plan's concurrent connections (2 on the free plan); a connected device or hosted proxy takes one.</comment>
+  </data>
+  <data name="manage_devices_last_seen" xml:space="preserve">
+    <value>Ultima attività: {}</value>
+    <comment>Device list, a row's second line for a device that is not connected now: when it last signed in. {time} is a relative time up to 7 days (such as "5m ago" or "now"), then a date ("Oct 3"), so the wording must read with either.</comment>
+  </data>
+  <data name="manage_devices_load_failed" xml:space="preserve">
+    <value>Impossibile caricare i tuoi dispositivi.</value>
+    <comment>Device list: the list could not be loaded. Retry is the button beside it.</comment>
+  </data>
+  <data name="manage_devices_proxy" xml:space="preserve">
+    <value>Proxy ospitato</value>
+    <comment>Device list: the label of a hosted proxy, a proxy the account runs from ur.io, the browser extension or the API. It takes a slot of the plan while connected, so the user can remove it too.</comment>
+  </data>
+  <data name="manage_devices_remove_failed" xml:space="preserve">
+    <value>Impossibile rimuovere il dispositivo. Riprova.</value>
+    <comment>Device list: a removal failed and the device is still listed.</comment>
+  </data>
+  <data name="manage_devices_remove_title" xml:space="preserve">
+    <value>Rimuovere questo dispositivo?</value>
+    <comment>Device list: the title of the confirmation before a device or hosted proxy is removed. The body says it will be signed out (sessions_confirm_body_no_place); the buttons are Remove and Cancel.</comment>
+  </data>
+  <data name="manage_devices_sign_in_required" xml:space="preserve">
+    <value>Accedi di nuovo per gestire i dispositivi.</value>
+    <comment>Device list: this app holds no sign-in token that can remove other devices, or the server refused it. Signing in again gives it one.</comment>
+  </data>
+  <data name="manage_devices_this_device" xml:space="preserve">
+    <value>Questo dispositivo</value>
+    <comment>Device list: the label of the row for the device the app runs on. It cannot be removed here (the user signs out instead). On apple the same source text resolves to top200_sign_this_device.</comment>
   </data>
   <data name="manage_subscription" xml:space="preserve">
     <value>Gestisci abbonamento</value>
