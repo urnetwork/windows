@@ -729,7 +729,7 @@ func TestHostUnitRunnerOwnsPortableWindowsContracts(t *testing.T) {
 	for _, required := range []string{
 		`run-all run-all-windows-host`,
 		`--verify-held run-all`,
-		`(cd "$here" && go test -timeout 30m "$@" ./tests)`,
+		`(cd "$here" && go test -timeout 30m -parallel 2 "$@" ./tests)`,
 		`(cd "$here" && go test "$@" ./tests/insufficientbalance)`,
 		`(cd "$root/build/all/windows" && go test "$@" ./...)`,
 	} {

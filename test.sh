@@ -15,18 +15,33 @@ if [ ! -x "$network_test_gate" ]; then
   echo "Windows host test suite gate is missing or not executable: $network_test_gate" >&2
   exit 127
 fi
-if [ "${URNETWORK_NETWORK_TEST_LOCK_HELD:-}" != 1 ]; then
-  exec "$network_test_gate" run-all run-all-windows-host -- \
-    "$here/test.sh" "$@"
-fi
-if ! "$network_test_gate" --verify-held run-all; then
-  echo "Windows host test suite inherited an invalid network-intensive lock" >&2
-  exit 70
+offline_admission="${URNETWORK_WINDOWS_HOST_OFFLINE_ADMISSION:-}"
+if [ -n "$offline_admission" ]; then
+  if [ "$offline_admission" != windows-host-darwin-network-denied-v1 ] ||
+     [ "$(uname -s)" != Darwin ] || [ "${GOPROXY:-}" != off ] ||
+     [ "${GOSUMDB:-}" != off ] || [ "${GOVCS:-}" != '*:off' ] ||
+     [ "${GOTOOLCHAIN:-}" != local ] || [ "${GOWORK:-}" != off ]; then
+    echo 'Windows offline-host admission scope or offline dependency policy is invalid' >&2
+    exit 70
+  fi
+  # The marker selects the lane; only actual parent+child OS denial admits it.
+  python3 "$root/tests/windows-host-network-deny.py"
+else
+  if [ "${URNETWORK_NETWORK_TEST_LOCK_HELD:-}" != 1 ]; then
+    exec "$network_test_gate" run-all run-all-windows-host -- \
+      "$here/test.sh" "$@"
+  fi
+  if ! "$network_test_gate" --verify-held run-all; then
+    echo "Windows host test suite inherited an invalid network-intensive lock" >&2
+    exit 70
+  fi
 fi
 
 # The complete C++ specification and mutation census shares one package alarm.
-# Declare its aggregate budget; a caller -timeout still overrides this default.
-(cd "$here" && go test -timeout 30m "$@" ./tests)
+# Declare its aggregate budget and two independent compiler slots. The host
+# owner grants two cores; inherited -parallel=1 would serialize every
+# mutation table. Caller flags still override both defaults.
+(cd "$here" && go test -timeout 30m -parallel 2 "$@" ./tests)
 # the insufficient-balance acceptance driver (test-insufficient-balance-driver)
 (cd "$here" && go test "$@" ./tests/insufficientbalance)
 (cd "$root/build/all/windows" && go test "$@" ./...)

@@ -104,6 +104,7 @@ func TestFullSiblingCensus(t *testing.T) {
 `, 0600)
 	replaced := map[string]bool{
 		"PATH": true, "URNETWORK_ROOT": true, "URNETWORK_NETWORK_TEST_LOCK_HELD": true,
+		"URNETWORK_WINDOWS_HOST_OFFLINE_ADMISSION": true,
 		"GOTOOLCHAIN": true, "GOPROXY": true, "GOSUMDB": true, "GOWORK": true,
 		"WINDOWS_HOST_BUDGET_ROOT": true, "WINDOWS_HOST_BUDGET_TRACE": true,
 		"WINDOWS_HOST_BUDGET_REAL_GO": true, "WINDOWS_HOST_BUDGET_EXPECTED": true,
@@ -168,7 +169,7 @@ func (self *windowsHostBudgetFixture) run(t *testing.T, arguments ...string) ([]
 // All original phases and their exact selectors remain, including license drift.
 func (self *windowsHostBudgetFixture) requireCensus(t *testing.T, calls []windowsHostBudgetCall, arguments ...string) {
 	t.Helper()
-	first := []string{"test", "-timeout", "30m"}
+	first := []string{"test", "-timeout", "30m", "-parallel", "2"}
 	explicitBudget := false
 	for _, argument := range arguments {
 		if argument == "-timeout" || strings.HasPrefix(argument, "-timeout=") {
@@ -176,7 +177,7 @@ func (self *windowsHostBudgetFixture) requireCensus(t *testing.T, calls []window
 		}
 	}
 	if explicitBudget {
-		first = []string{"test"}
+		first = []string{"test", "-parallel", "2"}
 		// Only the explicit override control accepts an optional default prefix.
 		// Copy the observation before normalization; retain all other exact args.
 		if len(calls) > 0 && len(calls[0].arguments) >= 3 &&
