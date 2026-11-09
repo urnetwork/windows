@@ -1432,7 +1432,7 @@
   </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>Блокировать рекламу и трекеры</value>
-    <comment>dns settings</comment>
+    <comment>DNS settings: heading of the group of DNS providers that block ads and trackers (AdGuard DNS, Control D, DNS4EU), beside "Block malware" and "Family". Screens that haven't moved to dns_builtin_blocker_label also label URnetwork's own blocker's toggle with it, so it reads both as a heading and as an action.</comment>
   </data>
   <data name="blocked" xml:space="preserve">
     <value>Заблокировано</value>
@@ -3856,13 +3856,113 @@
     <value>Отображать сеть в таблице лидеров</value>
     <comment>Call to action</comment>
   </data>
+  <data name="dns_apple_profiles_note" xml:space="preserve">
+    <value>Профили DNS, установленные на этом устройстве, не действуют во время подключения. Вместо них используется DNS, выбранный здесь.</value>
+    <comment>iOS and macOS DNS settings: note that DNS configuration profiles installed on the device don't apply inside the VPN tunnel; the DNS chosen on this screen does.</comment>
+  </data>
+  <data name="dns_blocked_count.one" xml:space="preserve">
+    <value>{0} запрос заблокирован сервисом {1} за это подключение</value>
+    <comment>DNS settings: how many DNS lookups the selected filtering provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_blocked_count.few" xml:space="preserve">
+    <value>{0} запроса заблокированы сервисом {1} за это подключение</value>
+    <comment>DNS settings: how many DNS lookups the selected filtering provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_blocked_count.many" xml:space="preserve">
+    <value>{0} запросов заблокировано сервисом {1} за это подключение</value>
+    <comment>DNS settings: how many DNS lookups the selected filtering provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_blocked_count.other" xml:space="preserve">
+    <value>{0} запроса заблокировано сервисом {1} за это подключение</value>
+    <comment>DNS settings: how many DNS lookups the selected filtering provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_blocked_count_floor_note" xml:space="preserve">
+    <value>Некоторые блокировки не учитываются, поэтому реальное число может быть больше.</value>
+    <comment>DNS settings: note under the blocked lookups count. Some ways a provider answers a block can't be recognized, so the count is a minimum.</comment>
+  </data>
+  <data name="dns_builtin_blocker_label" xml:space="preserve">
+    <value>Блокировщик рекламы URnetwork</value>
+    <comment>Connect drawer and DNS settings: label of the toggle for URnetwork's own ad and tracker blocker, which works on the device beside any DNS choice. It is named as URnetwork's own so it isn't mistaken for the DNS providers in "Block ads and trackers".</comment>
+  </data>
+  <data name="dns_builtin_blocker_note" xml:space="preserve">
+    <value>Собственный блокировщик URnetwork. Работает с любым выбранным DNS и проверяет каждое имя первым.</value>
+    <comment>Connect drawer and DNS settings: line under the URnetwork ad blocker toggle. It can stay on with any DNS choice, a provider that blocks ads included, and it checks each name before the DNS provider is asked.</comment>
+  </data>
+  <data name="dns_custom_mix_note" xml:space="preserve">
+    <value>Сочетание фильтрующего сервера с серверами по умолчанию не фильтрует: побеждает самый быстрый ответ.</value>
+    <comment>DNS settings, Custom: note that a filtering DNS server added beside URnetwork's default servers doesn't filter, because each lookup takes the fastest answer, usually an unfiltered one.</comment>
+  </data>
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>Безопасные настройки по умолчанию не применены</value>
     <comment>dns settings</comment>
   </data>
+  <data name="dns_group_block_malware" xml:space="preserve">
+    <value>Блокировать вредоносное ПО</value>
+    <comment>DNS settings, provider picker: heading of the group of DNS providers that block malware and phishing but not ads (Cloudflare, DNS4EU, Quad9). It sits below "Block ads and trackers" and reads like it.</comment>
+  </data>
+  <data name="dns_group_family" xml:space="preserve">
+    <value>Семья</value>
+    <comment>DNS settings, provider picker: heading of the group of family DNS providers, which block adult sites and similar content (some of them also block ads).</comment>
+  </data>
+  <data name="dns_group_my_account" xml:space="preserve">
+    <value>Использовать мой аккаунт</value>
+    <comment>DNS settings, provider picker: heading of the group for people with their own account at a DNS provider (AdGuard DNS, Control D, NextDNS). Choosing one asks for the account's profile ID, so the provider applies the person's own filters.</comment>
+  </data>
+  <data name="dns_group_no_filtering" xml:space="preserve">
+    <value>Без фильтрации</value>
+    <comment>DNS settings, provider picker: heading of the group of other DNS providers that resolve every name and block nothing.</comment>
+  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS через HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
+  </data>
+  <data name="dns_personal_id_block_response" xml:space="preserve">
+    <value>В {} оставьте ответ на блокировку «нулевой IP» (0.0.0.0, по умолчанию) или NXDOMAIN. REFUSED и другие ответы выглядят как сбой.</value>
+    <comment>DNS settings, Use my account: help about the provider's block response setting. URnetwork treats a REFUSED answer as a failing provider, so blocks must be answered with zero IP (0.0.0.0, the providers' default) or NXDOMAIN. 0.0.0.0, NXDOMAIN and REFUSED are technical values: keep them as they are. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_dashboard_link" xml:space="preserve">
+    <value>Открыть панель управления {}</value>
+    <comment>DNS settings, Use my account: link that opens the provider's dashboard, for example under "Saved, but we can't confirm this profile". {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_format_adguard" xml:space="preserve">
+    <value>ID устройств {0} состоят из 8 символов: цифр и букв от a до f, например {1}.</value>
+    <comment>DNS settings, Use my account: shown under the profile ID field when the AdGuard DNS device ID has the wrong format. {provider} is AdGuard DNS and {example} an example ID such as 1a2b3c4d, both inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_format_controld" xml:space="preserve">
+    <value>ID резолвера {0} состоят только из букв и цифр, например {1}.</value>
+    <comment>DNS settings, Use my account: shown under the profile ID field when the Control D resolver ID has the wrong format. {provider} is Control D and {example} an example ID such as abcd1234, both inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_format_nextdns" xml:space="preserve">
+    <value>ID {0} состоят из 6 символов: цифр и букв от a до f, например {1}.</value>
+    <comment>DNS settings, Use my account: shown under the profile ID field when the NextDNS ID has the wrong format. {provider} is NextDNS and {example} an example ID such as abc123, both inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_label" xml:space="preserve">
+    <value>ID профиля или адрес DNS</value>
+    <comment>DNS settings, Use my account: label of the field where the person enters the ID of their profile at the DNS provider, or pastes the DNS address the provider's dashboard shows (a DNS over HTTPS URL or a Private DNS hostname).</comment>
+  </data>
+  <data name="dns_personal_id_linked_ip_note" xml:space="preserve">
+    <value>Привязывать IP-адрес в панели управления не нужно: через URnetwork ваши запросы идут с чужого адреса. Достаточно вашего ID.</value>
+    <comment>DNS settings, Use my account: provider dashboards suggest linking your IP address to your account. Through URnetwork, lookups come from the VPN exit's address, which belongs to someone else, so the app uses only the ID and doesn't offer linking.</comment>
+  </data>
+  <data name="dns_personal_id_quota_adguard" xml:space="preserve">
+    <value>Бесплатный тариф {} ограничен 300 000 запросов в месяц.</value>
+    <comment>DNS settings, Use my account: free-plan note under the profile ID field for AdGuard DNS. What happens at the limit is not documented, so the note states only the limit. {provider} is AdGuard DNS, inserted as is. The sdk names this key for the preset.</comment>
+  </data>
+  <data name="dns_personal_id_quota_nextdns" xml:space="preserve">
+    <value>Бесплатный тариф {} перестаёт фильтровать после 300 000 запросов в месяц.</value>
+    <comment>DNS settings, Use my account: free-plan note under the profile ID field for NextDNS, which answers without filtering once the free monthly queries are used up. {provider} is NextDNS, inserted as is. The sdk names this key for the preset.</comment>
+  </data>
+  <data name="dns_personal_id_where_adguard" xml:space="preserve">
+    <value>Его можно найти на странице вашего устройства в панели управления {}.</value>
+    <comment>DNS settings, Use my account: help under the profile ID field for AdGuard DNS. {provider} is AdGuard DNS, inserted as is. Each device's page in the AdGuard DNS dashboard shows its device ID and DNS addresses.</comment>
+  </data>
+  <data name="dns_personal_id_where_controld" xml:space="preserve">
+    <value>В панели управления {} выберите Show Resolvers для своей конечной точки.</value>
+    <comment>DNS settings, Use my account: help under the profile ID field for Control D. {provider} is Control D, inserted as is. "Show Resolvers" is the button's name in Control D's English dashboard, so it stays in English; an endpoint is what Control D calls a device or profile you connect.</comment>
+  </data>
+  <data name="dns_personal_id_where_nextdns" xml:space="preserve">
+    <value>Его можно найти на странице Setup в вашем аккаунте {}.</value>
+    <comment>DNS settings, Use my account: help under the profile ID field for NextDNS. {provider} is NextDNS, inserted as is. "Setup" is the name of the page in the NextDNS dashboard, so it stays in English.</comment>
   </data>
   <data name="dns_pill_default" xml:space="preserve">
     <value>Безопасные настройки по умолчанию не применены</value>
@@ -3876,29 +3976,233 @@
     <value>{}: есть неприменённые рекомендуемые настройки</value>
     <comment>dns settings</comment>
   </data>
+  <data name="dns_preset_apply_note" xml:space="preserve">
+    <value>Изменения сразу применяются к новым запросам. Приложения могут хранить прежние ответы около минуты.</value>
+    <comment>DNS settings: footnote. A new DNS choice applies to new lookups at once, but apps keep answers they already have for up to about a minute.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_adult_safe_search" xml:space="preserve">
+    <value>Блокирует рекламу, трекеры и сайты для взрослых, включает безопасный поиск</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for AdGuard DNS Family in "Family": it also forces safe search on search engines. The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_malware" xml:space="preserve">
+    <value>Блокирует рекламу, трекеры и вредоносное ПО</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for Control D in "Block ads and trackers". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_malware_adult_drugs" xml:space="preserve">
+    <value>Блокирует рекламу, трекеры, вредоносное ПО, сайты для взрослых и наркотики</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for Control D Family in "Family". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_malware_phishing" xml:space="preserve">
+    <value>Блокирует рекламу, трекеры, вредоносное ПО и фишинг</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for DNS4EU in "Block ads and trackers". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_phishing" xml:space="preserve">
+    <value>Блокирует рекламу, трекеры и фишинг</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for AdGuard DNS in "Block ads and trackers". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_child" xml:space="preserve">
+    <value>Блокирует вредоносное ПО, сайты для взрослых, азартные игры, наркотики и насилие, но не рекламу</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for DNS4EU's child protection in "Family". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_child_ads" xml:space="preserve">
+    <value>Блокирует рекламу, трекеры, вредоносное ПО, сайты для взрослых, азартные игры, наркотики и насилие</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for DNS4EU's child protection with ad blocking in "Family". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_court_orders" xml:space="preserve">
+    <value>Блокирует только то, что предписывают суды</value>
+    <comment>DNS settings, provider picker: the line under DNS4EU in "No filtering". It does no protective filtering, but the domains courts order blocked stay blocked on every DNS4EU resolver. The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_malware" xml:space="preserve">
+    <value>Блокирует вредоносное ПО, но не рекламу</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for Cloudflare in "Block malware". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_malware_adult" xml:space="preserve">
+    <value>Блокирует вредоносное ПО и сайты для взрослых, но не рекламу</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for Cloudflare Family in "Family". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_malware_phishing" xml:space="preserve">
+    <value>Блокирует вредоносное ПО и фишинг, но не рекламу</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for DNS4EU and Quad9 in "Block malware". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_nothing" xml:space="preserve">
+    <value>Ничего не блокирует</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name in "No filtering" (AdGuard DNS, Cloudflare, Control D): the provider resolves every name and blocks nothing. The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_personal" xml:space="preserve">
+    <value>Использует фильтры из вашего аккаунта {}</value>
+    <comment>DNS settings, provider picker: the line under each provider in "Use my account". {provider} is the provider's name (AdGuard DNS, Control D or NextDNS), inserted as is.</comment>
+  </data>
+  <data name="dns_preset_disclosure" xml:space="preserve">
+    <value>Ваши DNS-запросы идут через туннель к {}, поэтому сервис никогда не видит ваш IP-адрес. Действует его политика конфиденциальности.</value>
+    <comment>DNS settings: disclosure under the selected DNS provider, above the Privacy policy and Help links. The provider receives the names looked up while connected, from the VPN exit's address, never the person's own IP address. {provider} is the provider's name (for example AdGuard DNS), inserted as is.</comment>
+  </data>
+  <data name="dns_preset_dropped" xml:space="preserve">
+    <value>Сервис {} больше недоступен. Вы используете DNS URnetwork, поэтому запросы не фильтруются.</value>
+    <comment>DNS settings and connect drawer: notice after an app update removed the DNS provider the person had selected. The app switched to URnetwork's own DNS, which doesn't filter. {provider} is the removed provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_preset_dropped_choose" xml:space="preserve">
+    <value>Выбрать другую предустановку</value>
+    <comment>DNS settings: button on the notice of a removed DNS provider that opens the provider list. "Preset" means one of the DNS providers listed on the screen.</comment>
+  </data>
+  <data name="dns_preset_dropped_custom" xml:space="preserve">
+    <value>Ввести вручную в разделе «Пользовательский»</value>
+    <comment>DNS settings: button on the notice of a removed DNS provider that opens the Custom editor, where the person can enter the provider's addresses themselves. It names the "Custom" pick, so it uses that pick's exact word.</comment>
+  </data>
+  <data name="dns_preset_error_personal_id_invalid" xml:space="preserve">
+    <value>Неверный формат ID.</value>
+    <comment>DNS settings, Use my account: error id the sdk returns when the profile ID doesn't have the provider's format. The provider's own format line is shown with it.</comment>
+  </data>
+  <data name="dns_preset_error_personal_id_not_accepted" xml:space="preserve">
+    <value>Эта предустановка не использует ID профиля.</value>
+    <comment>DNS settings: error id the sdk returns when a profile ID is given for a DNS preset that doesn't take one. "Preset" means one of the DNS providers listed on the screen.</comment>
+  </data>
+  <data name="dns_preset_error_personal_id_other_provider" xml:space="preserve">
+    <value>Этот адрес принадлежит другому DNS-провайдеру. Выберите этого провайдера.</value>
+    <comment>DNS settings, Use my account: error id the sdk returns when the pasted DNS address or hostname belongs to another DNS provider in the list.</comment>
+  </data>
+  <data name="dns_preset_error_personal_id_required" xml:space="preserve">
+    <value>Введите ID профиля.</value>
+    <comment>DNS settings, Use my account: error id the sdk returns when the profile ID field is empty.</comment>
+  </data>
+  <data name="dns_preset_error_unknown" xml:space="preserve">
+    <value>Эта предустановка недоступна. Выберите другую.</value>
+    <comment>DNS settings: error id the sdk returns when a DNS preset is no longer in the app's catalog. "Preset" means one of the DNS providers listed on the screen.</comment>
+  </data>
+  <data name="dns_preset_fast_dns_note" xml:space="preserve">
+    <value>Во время подключения запросы идут через DNS URnetwork, поэтому {} их не фильтрует.</value>
+    <comment>DNS settings: note beside the "Fast DNS on connect" toggle while a DNS provider is selected. While the tunnel connects, lookups go to URnetwork's own DNS, so the provider never sees the person's own address, but those lookups aren't filtered. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_preset_help_link" xml:space="preserve">
+    <value>Справка</value>
+    <comment>DNS settings: link under the selected DNS provider, beside "Privacy policy", that opens the provider's help page.</comment>
+  </data>
+  <data name="dns_preset_jurisdiction" xml:space="preserve">
+    <value>Юрисдикция: {}</value>
+    <comment>DNS settings, provider picker: which country's law the DNS provider operates under. {jurisdiction} comes from the app's provider catalog in English (for example Cyprus or Switzerland) and is inserted as is.</comment>
+  </data>
+  <data name="dns_preset_privacy_link" xml:space="preserve">
+    <value>Политика конфиденциальности</value>
+    <comment>DNS settings: link under the selected DNS provider that opens the provider's privacy policy.</comment>
+  </data>
+  <data name="dns_private_dns_overrides_preset" xml:space="preserve">
+    <value>Частный DNS заменяет выбранный вами DNS ({}).</value>
+    <comment>Android connect screen: line added to the strict Private DNS notice while a DNS provider is selected, since Android's Private DNS sends lookups to its own server instead. {provider} is the selected DNS provider's name, inserted as is. Private DNS is Android's own setting, named as in Android.</comment>
+  </data>
+  <data name="dns_provider_custom" xml:space="preserve">
+    <value>Пользовательский</value>
+    <comment>DNS settings, provider picker: the pick that opens the advanced editor, where the person enters their own DNS over HTTPS URLs and DNS servers. Other strings send the reader to this pick by name ("Enter it yourself under Custom"), so they use the same word.</comment>
+  </data>
+  <data name="dns_provider_custom_copy" xml:space="preserve">
+    <value>Ваши собственные URL DNS через HTTPS и DNS-серверы</value>
+    <comment>DNS settings, provider picker: the line under "Custom" that says what it holds.</comment>
+  </data>
+  <data name="dns_provider_default" xml:space="preserve">
+    <value>URnetwork (по умолчанию)</value>
+    <comment>DNS settings, provider picker: the first pick, URnetwork's own encrypted DNS through the tunnel, which every app uses by default. URnetwork is the product name.</comment>
+  </data>
+  <data name="dns_provider_default_copy" xml:space="preserve">
+    <value>Зашифрованный DNS через туннель, без фильтрации</value>
+    <comment>DNS settings, provider picker: the line under "URnetwork (default)" that says what it does: names are resolved over encrypted DNS inside the VPN tunnel, and nothing is blocked.</comment>
+  </data>
+  <data name="dns_provider_regional" xml:space="preserve">
+    <value>Региональный ({}), без шифрования</value>
+    <comment>DNS settings, provider picker: the last pick, shown only while the exit's country has a recommended set of plain DNS servers that work better there. It is never selected automatically. {country} is the exit country's name, inserted as is. Unencrypted means the DNS lookups are sent without encryption.</comment>
+  </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>{}: известно, что здесь самые строгие правила безопасности не работают. Есть менее безопасные рекомендуемые настройки DNS, которые работают лучше.</value>
-    <comment>dns settings</comment>
-  </data>
-  <data name="dns_restore_secure_message" xml:space="preserve">
-    <value>Восстановите самые безопасные настройки: шифрованный DNS через HTTPS в туннеле.</value>
     <comment>dns settings</comment>
   </data>
   <data name="dns_settings_unavailable" xml:space="preserve">
     <value>Настройки DNS недоступны</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_status_change_location" xml:space="preserve">
+    <value>Сменить локацию</value>
+    <comment>DNS settings and connect drawer: button beside a DNS provider status that opens the location picker, since a provider can be blocked or unreachable from some exit locations.</comment>
+  </data>
+  <data name="dns_status_fallback" xml:space="preserve">
+    <value>{} не отвечает. Используется DNS URnetwork.</value>
+    <comment>DNS settings and connect drawer: status line when a DNS provider from "No filtering" isn't answering, so URnetwork's own DNS answers until it does. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_status_paused" xml:space="preserve">
+    <value>Блокировка рекламы приостановлена: {} не отвечает</value>
+    <comment>DNS settings and connect drawer: status line when an ad-blocking DNS provider isn't answering from the current exit, so URnetwork's own DNS answers for now and ads aren't blocked. It switches back on its own when the provider answers. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_status_paused_detail" xml:space="preserve">
+    <value>Пока сервис не ответит, используется DNS URnetwork. Блокировка рекламы возобновится сама.</value>
+    <comment>DNS settings: line under "Ad blocking paused: … isn't answering". "it" is the ad-blocking DNS provider named in that line.</comment>
+  </data>
+  <data name="dns_status_provider" xml:space="preserve">
+    <value>DNS: {}</value>
+    <comment>DNS settings: status line while the selected DNS provider answers normally. {provider} is the provider's name (for example AdGuard DNS), inserted as is.</comment>
+  </data>
+  <data name="dns_status_unreachable" xml:space="preserve">
+    <value>{} не отвечает</value>
+    <comment>DNS settings and connect drawer: status line when a family, malware-blocking or personal DNS provider isn't answering. To keep its filtering, URnetwork doesn't switch to other DNS, so sites may not load until the provider answers or the person picks "Use URnetwork DNS". {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_status_unreachable_detail" xml:space="preserve">
+    <value>Чтобы фильтрация оставалась включённой, URnetwork не переключает DNS сам. Пока сервис не ответит, сайты могут не загружаться.</value>
+    <comment>DNS settings: line under "… isn't answering" for a family, malware-blocking or personal DNS provider. "it" is the DNS provider named in that line.</comment>
+  </data>
+  <data name="dns_status_use_default" xml:space="preserve">
+    <value>Использовать DNS URnetwork</value>
+    <comment>DNS settings and connect drawer: button beside a DNS provider status that isn't answering. It switches back to URnetwork's own DNS, the default, in one tap.</comment>
+  </data>
+  <data name="dns_summary_ad_blocking" xml:space="preserve">
+    <value>DNS: {} · Блокировка рекламы</value>
+    <comment>Connect drawer, DNS card: summary row while a DNS provider from "Block ads and trackers" is selected. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_custom" xml:space="preserve">
+    <value>DNS: Пользовательский</value>
+    <comment>Connect drawer, DNS card: summary row while the person's own servers are selected under "Custom", all of them encrypted.</comment>
+  </data>
+  <data name="dns_summary_custom_unencrypted" xml:space="preserve">
+    <value>DNS: Пользовательский (без шифрования)</value>
+    <comment>Connect drawer, DNS card: summary row while the person's own servers are selected under "Custom" and some lookups are sent without encryption (plain DNS is on).</comment>
+  </data>
+  <data name="dns_summary_default" xml:space="preserve">
+    <value>DNS: URnetwork</value>
+    <comment>Connect drawer, DNS card: summary row while URnetwork's own DNS, the default, is selected. URnetwork is the product name.</comment>
+  </data>
+  <data name="dns_summary_family" xml:space="preserve">
+    <value>DNS: {} · Семейный фильтр</value>
+    <comment>Connect drawer, DNS card: summary row while a DNS provider from "Family" is selected. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_malware_blocking" xml:space="preserve">
+    <value>DNS: {} · Блокировка вредоносного ПО</value>
+    <comment>Connect drawer, DNS card: summary row while a DNS provider from "Block malware" is selected. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_no_filtering" xml:space="preserve">
+    <value>DNS: {} · Без фильтрации</value>
+    <comment>Connect drawer, DNS card: summary row while a DNS provider from "No filtering" is selected. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_personal" xml:space="preserve">
+    <value>DNS: {} · ваш профиль</value>
+    <comment>Connect drawer, DNS card: summary row while a provider from "Use my account" is selected. The profile ID itself is never shown. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_regional" xml:space="preserve">
+    <value>DNS: Региональный (без шифрования)</value>
+    <comment>Connect drawer, DNS card: summary row while the regional pick is selected: plain DNS servers recommended for the exit's country, which send lookups without encryption.</comment>
+  </data>
   <data name="dns_unapplied_recommended" xml:space="preserve">
     <value>{}: есть неприменённые рекомендуемые настройки</value>
     <comment>dns settings</comment>
   </data>
-  <data name="dns_using_recommended" xml:space="preserve">
-    <value>Используются рекомендованные региональные настройки</value>
-    <comment>dns settings</comment>
+  <data name="dns_verify_malformed_adguard" xml:space="preserve">
+    <value>{}: этот ID устройства отклонён</value>
+    <comment>DNS settings, Use my account: AdGuard DNS fails every lookup for a device ID it can't read. {provider} is AdGuard DNS, inserted as is. "Device ID" is AdGuard DNS's name for the ID.</comment>
   </data>
-  <data name="dns_using_secure" xml:space="preserve">
-    <value>Используются самые безопасные настройки по умолчанию</value>
-    <comment>dns settings</comment>
+  <data name="dns_verify_not_filtering" xml:space="preserve">
+    <value>{} не фильтрует из этой локации</value>
+    <comment>DNS settings: result of the check the app runs after a filtering DNS provider is chosen: the provider answered a name it normally blocks with a real address, so it isn't filtering from the current exit location. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_verify_rejected_controld" xml:space="preserve">
+    <value>{} не распознаёт этот ID резолвера</value>
+    <comment>DNS settings, Use my account: Control D refuses every lookup for a resolver ID it doesn't know. {provider} is Control D, inserted as is. "Resolver ID" is Control D's name for the ID.</comment>
+  </data>
+  <data name="dns_verify_unconfirmed" xml:space="preserve">
+    <value>Сохранено, но мы не можем подтвердить этот профиль. Если ID неверный, {} отвечает без фильтрации.</value>
+    <comment>DNS settings, Use my account: shown after a profile ID is saved and the provider answers normally. A wrong ID or a used-up free plan also answers normally, just without filtering, so the app can't confirm the profile. {provider} is the provider's name, inserted as is.</comment>
   </data>
   <data name="done" xml:space="preserve">
     <value>Готово</value>
@@ -7078,10 +7382,6 @@
   <data name="restore_default_transports" xml:space="preserve">
     <value>Восстановить транспорты по умолчанию</value>
     <comment>Button that resets the transport settings draft to the SDK default policy.</comment>
-  </data>
-  <data name="restore_most_secure_settings" xml:space="preserve">
-    <value>Вернуть самые безопасные настройки</value>
-    <comment>dns settings</comment>
   </data>
   <data name="restore_purchases" xml:space="preserve">
     <value>Восстановить покупки</value>
@@ -10367,10 +10667,6 @@
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>Используется самый стабильный провайдер</value>
     <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
-  </data>
-  <data name="use_recommended_settings" xml:space="preserve">
-    <value>Использовать рекомендованные настройки</value>
-    <comment>dns settings</comment>
   </data>
   <data name="use_wireguard_socks_https_proxy" xml:space="preserve">
     <value>Использовать прокси WireGuard / SOCKS / HTTPS</value>

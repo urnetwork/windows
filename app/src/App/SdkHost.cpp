@@ -365,6 +365,8 @@ SdkHost::~SdkHost() {
   statsPublisher_.Stop();
   locationsOpener_.Stop();
   drawerSeedReader_.Stop();
+  // A blocked count read in flight is a call into the sdk too.
+  dnsBlockedCountReader_.Stop();
   // A transport delay read in flight is a call into the sdk as well.
   transportDelayReader_.Stop();
   // So are a client limit read and a retry.
@@ -3993,6 +3995,12 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
     // presence listener below reports on it. So does the client limit feed.
     BeginTransportDelay(generation, device_->handle());
     BeginClientLimit(generation, device_->handle());
+    // and the DNS editor's blocked count reads by this handle, for this session
+    {
+      std::scoped_lock lock(dnsBlockedCountMutex_);
+      dnsBlockedCountDevice_ = device_->handle();
+      dnsBlockedCountGeneration_ = generation;
+    }
 
     // Register BEFORE setRpcServer: a loopback sync may complete immediately,
     // and a transition-only listener installed afterwards would miss the only
@@ -4586,6 +4594,12 @@ void SdkHost::SubscribeDrawer() {
       [this](std::optional<urnet::DnsResolverSettings> settings) {
         if (onDnsSettings_) onDnsSettings_(std::move(settings));
       }));
+  // the dns resolver's status (connect ADBLOCK3RD C5, C6): its state, its
+  // verification and the selection it describes, never the blocked count
+  presentationSubs_.push_back(device_->addDnsResolverStatusChangeListener(
+      [this](std::optional<urnet::DnsResolverStatus> status) {
+        if (onDnsStatus_) onDnsStatus_(std::move(status));
+      }));
   presentationSubs_.push_back(device_->addBlockerEnabledChangeListener([this](bool on) {
     if (onBlockerEnabled_) onBlockerEnabled_(on);
   }));
@@ -4687,6 +4701,7 @@ void SdkHost::SubscribeDrawer() {
   PublishSplitRules();
   PushLocalOverrideAppsToDriver();  // seed the driver once the device + service are up
   if (onDnsSettings_) onDnsSettings_(device_->getDnsResolverSettings());
+  if (onDnsStatus_) onDnsStatus_(device_->getDnsResolverStatus());
   if (onBlockerEnabled_) onBlockerEnabled_(device_->getBlockerEnabled());
   if (onTransportSettings_) {
     onTransportSettings_(TransportSettingsKind::Client, device_->getTransportSettings());
@@ -5618,6 +5633,7 @@ void SdkHost::ClearDrawer(bool sessionEnding) {
   if (onSplitRules_) onSplitRules_({});
   if (onProviderLocations_) onProviderLocations_({});
   if (onDnsSettings_) onDnsSettings_(std::nullopt);
+  if (onDnsStatus_) onDnsStatus_(std::nullopt);
   // clear the chooser's peer-count sub-label + any open sheet on logout
   if (onLocations_) onLocations_(std::nullopt, std::string());
   if (onPeers_) onPeers_(std::nullopt);
@@ -5681,6 +5697,37 @@ std::optional<urnet::DnsResolverSettings> SdkHost::CurrentDnsSettings() {
     LogWarn("sdkhost: get dns settings failed: {}", e.what());
     return std::nullopt;
   }
+}
+
+std::optional<urnet::DnsResolverStatus> SdkHost::CurrentDnsStatus() {
+  if (!device_) return std::nullopt;
+  try {
+    return device_->getDnsResolverStatus();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: get dns resolver status failed: {}", e.what());
+    return std::nullopt;
+  }
+}
+
+void SdkHost::ReadDnsBlockedCountOnWorker() {
+  std::uint64_t device = 0;
+  std::uint64_t generation = 0;
+  {
+    std::scoped_lock lock(dnsBlockedCountMutex_);
+    device = dnsBlockedCountDevice_;
+    generation = dnsBlockedCountGeneration_;
+  }
+  if (device == 0) return;
+  // Device::GetDnsBlockedCount by the handle: 0 for a released handle, and
+  // from the remote device 0 while the service cannot be reached. The count
+  // stays on the device and is never logged (ADBLOCK3RD H5).
+  const int64_t count = urnet_device_get_dns_blocked_count(device);
+  // A count of a session that ended or was replaced while the read was out is
+  // not this one's. The handler only marshals, so it runs under the leaf lock,
+  // and a teardown cannot come between the check and the delivery.
+  std::scoped_lock lock(dnsBlockedCountMutex_);
+  if (generation == 0 || generation != dnsBlockedCountGeneration_) return;
+  if (onDnsBlockedCount_) onDnsBlockedCount_(count);
 }
 
 bool SdkHost::CurrentBlockerEnabled() {
@@ -6248,6 +6295,7 @@ void SdkHost::ReadDrawerSeedOnWorker() {
   try {
     DrawerSeed seed;
     seed.dns = CurrentDnsSettings();
+    seed.dnsStatus = CurrentDnsStatus();
     seed.clientTransport = CurrentTransportSettings(TransportSettingsKind::Client);
     seed.providerTransport = CurrentTransportSettings(TransportSettingsKind::Provider);
     seed.blockerEnabled = CurrentBlockerEnabled();
@@ -8872,6 +8920,13 @@ void SdkHost::TeardownSessionLocked(bool stopTunnel) {
   EndTransportDelay();
   // The client limit feed the same way: no session, no hold to show.
   EndClientLimit();
+  // The blocked count reads nothing more, and drops a read still in flight: no
+  // session, no count.
+  {
+    std::scoped_lock lock(dnsBlockedCountMutex_);
+    dnsBlockedCountDevice_ = 0;
+    dnsBlockedCountGeneration_ = 0;
+  }
   // A device list open on this device closes with it, through it, and opens
   // again on the api, so the sheet keeps a list (signed out, it stays closed).
   ReopenManageDevicesOffDeviceLocked();
@@ -9296,6 +9351,7 @@ void SdkHost::QuitInOrder(std::chrono::steady_clock::time_point start) {
   statsPublisher_.Stop();
   locationsOpener_.Stop();
   drawerSeedReader_.Stop();
+  dnsBlockedCountReader_.Stop();
   transportDelayReader_.Stop();
   clientLimitReader_.Stop();
   clientLimitRetrier_.Stop();

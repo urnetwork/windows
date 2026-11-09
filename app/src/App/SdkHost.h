@@ -257,6 +257,8 @@ struct PerformanceSettings {
 // the rpc timeout. Their listeners push later changes (SeedOrder.h).
 struct DrawerSeed {
   std::optional<urnet::DnsResolverSettings> dns;
+  // the dns resolver's status (connect ADBLOCK3RD C5, C6)
+  std::optional<urnet::DnsResolverStatus> dnsStatus;
   std::optional<urnet::TransportSettings> clientTransport;
   std::optional<urnet::TransportSettings> providerTransport;
   bool blockerEnabled = false;
@@ -585,6 +587,12 @@ class SdkHost {
   using BlockStatsHandler = std::function<void(int64_t allowed, int64_t blocked)>;
   using SplitRulesHandler = std::function<void(std::vector<SplitRule>)>;
   using DnsSettingsHandler = std::function<void(std::optional<urnet::DnsResolverSettings>)>;
+  // The dns resolver's status (connect ADBLOCK3RD C5, C6): pushed when its
+  // state, its verification or the selection it describes changes, never for
+  // the blocked lookups count, which RequestDnsBlockedCount reads.
+  using DnsStatusHandler = std::function<void(std::optional<urnet::DnsResolverStatus>)>;
+  // RequestDnsBlockedCount's answer, on the reader's thread.
+  using DnsBlockedCountHandler = std::function<void(int64_t)>;
   using BlockerEnabledHandler = std::function<void(bool)>;
   // The transport bar's feed: the client (remote) distribution, published from
   // the SAME throughput tick as the points and only when it changed.
@@ -1375,6 +1383,13 @@ class SdkHost {
   void SetBlockStatsHandler(BlockStatsHandler h) { onBlockStats_ = std::move(h); }
   void SetSplitRulesHandler(SplitRulesHandler h) { onSplitRules_ = std::move(h); }
   void SetDnsSettingsHandler(DnsSettingsHandler h) { onDnsSettings_ = std::move(h); }
+  void SetDnsStatusHandler(DnsStatusHandler h) { onDnsStatus_ = std::move(h); }
+  // The DNS editor's blocked lookups count (connect ADBLOCK3RD I3), read while
+  // the editor shows it: off the caller's thread, by the session's device
+  // handle through the c abi, and answered through the handler. Requests
+  // coalesce into one read; with no session nothing is read.
+  void SetDnsBlockedCountHandler(DnsBlockedCountHandler h) { onDnsBlockedCount_ = std::move(h); }
+  void RequestDnsBlockedCount() { dnsBlockedCountReader_.Request(); }
   void SetBlockerEnabledHandler(BlockerEnabledHandler h) { onBlockerEnabled_ = std::move(h); }
   // RequestDrawerSeed's answer, on the seed reader's thread; it only marshals.
   using DrawerSeedHandler = std::function<void(DrawerSeed)>;
@@ -1539,6 +1554,7 @@ class SdkHost {
   void CurrentBlockCounts(int64_t& allowed, int64_t& blocked);
   std::vector<SplitRule> CurrentSplitRules();
   std::optional<urnet::DnsResolverSettings> CurrentDnsSettings();
+  std::optional<urnet::DnsResolverStatus> CurrentDnsStatus();
   bool CurrentBlockerEnabled();
   // The last published transport distribution (TRANSPORTSTATS). A cache read
   // like CurrentSplitRules, no rpc: the value is refreshed by PublishThroughput
@@ -2983,6 +2999,22 @@ class SdkHost {
   // RequestDrawerSeed's reads, stopped with statsPublisher_ for the same reason.
   DrawerSeedHandler onDrawerSeed_;
   CoalescedWorker drawerSeedReader_{[this] { ReadDrawerSeedOnWorker(); }};
+  // ---- the DNS blocked lookups count (RequestDnsBlockedCount) ----
+  // The session's device handle and the session it belongs to, behind their
+  // own leaf lock, as the client limit feed keeps them: the reader asks the
+  // device by its handle through the c abi, never through device_, so it takes
+  // no mutex_, and a read behind a held command waits on its own thread. Set by
+  // BootstrapSession and cleared by TeardownSessionLocked, both under mutex_;
+  // a handle the teardown has released since answers 0, and a count read for a
+  // session that ended or was replaced meanwhile is dropped. Stopped with
+  // statsPublisher_ for the same reason.
+  mutable std::mutex dnsBlockedCountMutex_;
+  std::uint64_t dnsBlockedCountDevice_ = 0;
+  // the sessionGeneration_ the handle belongs to; 0: none
+  std::uint64_t dnsBlockedCountGeneration_ = 0;
+  DnsBlockedCountHandler onDnsBlockedCount_;
+  void ReadDnsBlockedCountOnWorker();
+  CoalescedWorker dnsBlockedCountReader_{[this] { ReadDnsBlockedCountOnWorker(); }};
   // ---- the slow-internet feed (SetTransportDelayHandler) ----
   // The session's device handle, the session it belongs to, the last reading
   // and whether the remote is connected, behind their own leaf lock: never
@@ -3392,6 +3424,7 @@ class SdkHost {
   AdvancedModeHandler AdvancedModeHandlerCopy() const;
 
   DnsSettingsHandler onDnsSettings_;
+  DnsStatusHandler onDnsStatus_;
   BlockerEnabledHandler onBlockerEnabled_;
   TransportDistributionHandler onTransportDistribution_;
   ExtenderStatusHandler onExtenderStatus_;

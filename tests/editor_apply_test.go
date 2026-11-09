@@ -113,11 +113,14 @@ func TestEditorApplyWiring(t *testing.T) {
 
 	sheets := stripComments(readAppSource(t, "StatsSheets.cpp"))
 	for _, want := range []string{
-		"sheet->opened_ = current;\n  sheet->draft_ = FromSettings(current);",
-		"self->sdk_.ApplyDnsSettings(self->opened_, ToSettings(self->draft_));",
-		"dialog_.IsPrimaryButtonEnabled(editorapply::DnsReadingKnown(opened_) && !(draft_ == original_));",
+		"sheet->opened_ = current;\n  sheet->draft_ = current;",
+		"self->sdk_.ApplyDnsSettings(self->opened_, *self->draft_);",
+		"dialog_.IsPrimaryButtonEnabled(editorapply::DnsReadingKnown(opened_) && !pickPending_ &&",
 		`if (!editorapply::DnsReadingKnown(opened_)) {`,
 		`Loc("dns_settings_unavailable")`,
+		// "Use URnetwork DNS" and the removed provider's Got it write over the
+		// reading the editor opened on too
+		"sdk_.ApplyDnsSettings(opened_, *settings);",
 		"sheet->opened_ = current;\n  sheet->original_ = current ? current : sheet->defaults_;",
 		"self->sdk_.ApplyTransportSettings(self->kind_, self->opened_, *self->draft_);",
 	} {

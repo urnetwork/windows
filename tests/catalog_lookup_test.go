@@ -147,8 +147,10 @@ var catalogAssignedKeyPattern = regexp.MustCompile(`\b(\w*Key)\s*=\s*"([a-z][a-z
 // Literals the code spells like the id of a catalog key without looking that
 // key up, each with what it is instead.
 var catalogNonLookupLiteralReasons = map[string]string{
-	"delete":     "the sdk's confirmation the Key screen is asking for (BittensorKeyPresentation.h kConfirmDelete)",
-	"developer":  "a --preview-ui destination (MainWindow.xaml.cpp)",
+	"delete":    "the sdk's confirmation the Key screen is asking for (BittensorKeyPresentation.h kConfirmDelete)",
+	"developer": "a --preview-ui destination (MainWindow.xaml.cpp)",
+	"dns_pill_defaults": "the sdk's id for the defaults pill, android's key for the text the dns card " +
+		"shows from dns_pill_default (DnsPresetPresentation.h kPillDefaultsId)",
 	"key":        "a JSON field (SdkHost.cpp, VlessPresentation.h)",
 	"other":      "a CLDR plural category (Localization.cpp)",
 	"provide":    "an onboarding step id (OnboardingRouting.h)",

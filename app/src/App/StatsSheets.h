@@ -23,6 +23,7 @@
 
 #include "ConnectionRegionSheet.h"  // ConnectionRegionBlock: the DNS editor's region picker
 #include "InstalledApps.h"
+#include "Localization.h"  // DnsKeyText: the store's text of an sdk key
 #include "SdkHost.h"
 
 namespace urnw {
@@ -256,41 +257,81 @@ class AppRulesSheet : public std::enable_shared_from_this<AppRulesSheet> {
   winrt::Microsoft::UI::Xaml::Controls::TextBlock noAppsLine_{nullptr};
 };
 
-// ---- Custom DNS editor -----------------------------------------------------
-// Draft copy of the device dns resolver settings; Update applies the draft via
-// setDnsResolverSettings. Includes the regional recommendation / secure default
-// panel, the four resolver switches, the fallback switch, regional server
-// suggestions, and the four editable server-list sections (IPv4 + IPv6).
+// ---- DNS editor ------------------------------------------------------------
+// The store's text for a DNS key this build knows (DnsPresetPresentation.h),
+// formatted with the arguments its kind takes; empty for "", a key the sdk
+// named that this build does not know, and for a text that does not format.
+// The editor below and the connect drawer's DNS card show the sdk's keys
+// through it.
+template <typename... Args>
+winrt::hstring DnsKeyText(const char* known, const Args&... args) {
+  if (known == nullptr || *known == '\0') return {};
+  try {
+    return winrt::hstring{Format(known, args...)};
+  } catch (...) {
+    return {};
+  }
+}
+
+// The traffic DNS editor, titled Custom DNS (connect ADBLOCK3RD.md F1, F2).
+// Under the connection region and the Traffic DNS heading: the notice of a
+// provider an update removed (A7), then the sdk's picks in its order
+// (urnet::getDnsPicks for the exit's country) -- URnetwork (default), the
+// preset groups, Custom, and the country's Regional pick -- each with its line,
+// a preset with its jurisdiction and privacy policy. Under the selected pick: a
+// preset's disclosure with its Privacy policy and Help links (H2), a Use my
+// account pick's id field (D3), and while the pick is the one in force the
+// resolver's status with its actions, the verification and the blocked
+// lookups count (C6, C8, I3); under Custom, today's resolver switches,
+// suggested servers and server lists. Then Fast DNS on connect, with the
+// preset note (C7), and the footnote.
+//
+// The draft is an sdk DnsResolverSettings, changed only through the sdk's
+// helpers -- urnet::dnsResolverSettingsWithPreset for a pick,
+// dnsResolverSettingsAsCustom for Custom, dnsResolverSettingsWithFallback for
+// Fast DNS on connect -- and under Custom by its own switches and lists, never
+// one built from scratch, so an Update keeps every field: the selection, the
+// personal id and the mask (ADBLOCK3RD 3.8, E3). Update applies it over the
+// reading the editor opened on (EditorApply.h); "Use URnetwork DNS" and the
+// removed provider's Got it save default at once and close. Which picks, their
+// copy, the status and what shows when are the sdk's; the sheet renders them.
+// The window has no hosted device, which takes no resolver settings (E6), so
+// the picker always shows.
 class DnsEditorSheet : public std::enable_shared_from_this<DnsEditorSheet> {
  public:
+  // `current` is the reading in force (none: unknown, nothing to edit) and
+  // `status` the resolver's last status push.
   static std::shared_ptr<DnsEditorSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root, SdkHost& sdk,
-      std::optional<urnet::DnsResolverSettings> const& current, std::string countryCode,
+      std::optional<urnet::DnsResolverSettings> const& current,
+      std::optional<urnet::DnsResolverStatus> const& status, std::string countryCode,
       std::string countryName);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+  // A status push while the sheet is open.
+  void SetStatus(std::optional<urnet::DnsResolverStatus> status);
+  // A blocked count read (SdkHost::RequestDnsBlockedCount) while it is open.
+  void SetBlockedCount(int64_t count);
+  // Whether the blocked count shows, so the page reads it on its clock while
+  // the sheet is open (I3).
+  bool ShowsBlockedCount() const { return static_cast<bool>(blockedCountText_); }
+  // "Change location" was chosen: the dialog closed for the page to open the
+  // location chooser.
+  bool ChangeLocationChosen() const { return changeLocationChosen_; }
 
  private:
-  struct Draft {
-    bool enableRemoteDoh = false;
-    bool enableLocalDoh = false;
-    bool enableRemoteDns = false;
-    bool enableLocalDns = false;
-    bool enableFallback = false;
-    std::vector<std::string> remoteDohUrlsIpv4;
-    std::vector<std::string> remoteDohUrlsIpv6;
-    std::vector<std::string> localDohUrlsIpv4;
-    std::vector<std::string> localDohUrlsIpv6;
-    std::vector<std::string> remoteDnsIpv4;
-    std::vector<std::string> remoteDnsIpv6;
-    std::vector<std::string> localDnsIpv4;
-    std::vector<std::string> localDnsIpv6;
-  };
-  friend bool operator==(const Draft& a, const Draft& b);
+  using ListMember = std::optional<urnet::StringList> urnet::DnsResolverSettings::*;
+  using FlagMember = bool urnet::DnsResolverSettings::*;
 
-  // one editable value sublist (IPv4 or IPv6 of a section)
+  // one pick: its radio, and the panel under it that the selected pick fills
+  struct PickUi {
+    urnet::DnsPick pick;
+    winrt::Microsoft::UI::Xaml::Controls::RadioButton radio{nullptr};
+    winrt::Microsoft::UI::Xaml::Controls::StackPanel details{nullptr};
+  };
+  // one editable value sublist of Custom (IPv4 or IPv6 of a section)
   struct ListUi {
-    std::vector<std::string> Draft::*member = nullptr;
+    ListMember member = nullptr;
     bool doh = false;  // validation: https URL vs IP address
     winrt::Microsoft::UI::Xaml::Controls::StackPanel rows{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBox input{nullptr};
@@ -301,50 +342,96 @@ class DnsEditorSheet : public std::enable_shared_from_this<DnsEditorSheet> {
     winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch toggle{nullptr};
   };
 
+  static constexpr size_t kNoPick = static_cast<size_t>(-1);
+
   explicit DnsEditorSheet(SdkHost& sdk) : sdk_(sdk) {}
 
-  static Draft FromSettings(std::optional<urnet::DnsResolverSettings> const& settings);
-  static urnet::DnsResolverSettings ToSettings(const Draft& draft);
-
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
+  void BuildDroppedNotice(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent);
+  void BuildPicker(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent);
+  void BuildPick(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent,
+                 urnet::DnsPick const& pick);
+  void BuildFastDnsSection(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent);
+  void BuildCustomSection(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent);
   void BuildResolverSection(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent);
   void BuildSuggestionSection(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent);
   // titles/labels/placeholders are localized strings (Localization.h), not literals
   void BuildListSection(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent,
                         winrt::hstring const& title, winrt::hstring const& placeholder,
-                        bool doh, std::vector<std::string> Draft::*ipv4,
-                        std::vector<std::string> Draft::*ipv6);
+                        bool doh, ListMember ipv4, ListMember ipv6);
   size_t AddSublist(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent,
                     winrt::hstring const& label, winrt::hstring const& placeholder, bool doh,
-                    std::vector<std::string> Draft::*member);
-  void RenderRecommendationPanel();
+                    ListMember member);
+  void BuildPersonalIdField(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& parent,
+                            urnet::DnsPreset const& preset);
+  // A pick was chosen: the draft takes it through the sdk, a Use my account
+  // pick once its id validates (OnPersonalIdChanged).
+  void SelectPick(size_t index);
+  // Checks the radio of a pick, which selects it.
+  void CheckPick(size_t index);
+  void OnPersonalIdChanged();
+  // The selected pick's panel filled, every other one emptied.
+  void RenderDetails();
+  // The status, verification and blocked count of the selection in force, in
+  // the selected pick's panel while the draft selects it.
+  void RenderStatus();
+  void RenderFastDnsNote();
   void RenderListRows(ListUi& list);
   void UpdateAddEnabled(ListUi& list);
   void AddValue(ListUi& list);
-  void SyncFromDraft();     // draft -> all controls (guarded against re-entry)
-  void OnDraftChanged();    // dirty state + recommendation panel
+  // A helper's settings as the draft; none (a failed sdk call) keeps it.
+  void SetDraft(std::optional<urnet::DnsResolverSettings> draft);
+  void SyncFromDraft();   // draft -> the Custom and Fast DNS controls (guarded)
+  void OnDraftChanged();  // dirty state, the Fast DNS note
+  // Saves URnetwork's default DNS over the reading in force, at once, and
+  // closes: "Use URnetwork DNS" and the removed provider's Got it.
+  void SaveDefaultAndClose();
+  // The draft selects what is in force, so the resolver's status is its.
+  bool DraftIsApplied() const;
+  // The draft's list of `member`, present to edit.
+  urnet::StringList& DraftList(ListMember member);
+  // A country's name for a pick: the exit's name, else its code, else "this
+  // region".
+  std::wstring CountryDisplayName(std::string const& countryCode) const;
 
   SdkHost& sdk_;
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   // the connection region, above the Traffic DNS controls (saves on its own)
   std::shared_ptr<ConnectionRegionBlock> regionBlock_;
-  winrt::Microsoft::UI::Xaml::Controls::StackPanel recPanel_{nullptr};
+  std::vector<PickUi> picks_;
+  size_t selected_ = kNoPick;
+  // under Custom, built once and shown while Custom is the selected pick
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel customPanel_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch remoteDohToggle_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch localDohToggle_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch remoteDnsToggle_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch localDnsToggle_{nullptr};
-  winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch fallbackToggle_{nullptr};
   std::vector<SuggestionUi> suggestions_;
   std::vector<std::unique_ptr<ListUi>> lists_;
+  winrt::Microsoft::UI::Xaml::Controls::ToggleSwitch fallbackToggle_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock fastDnsNote_{nullptr};
+  // the selected pick's panel parts that change after it is filled
+  winrt::Microsoft::UI::Xaml::Controls::TextBox personalIdBox_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock personalIdError_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::StackPanel statusPanel_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::TextBlock blockedCountText_{nullptr};
+  std::wstring blockedCountProvider_;
 
-  Draft draft_;
-  Draft original_;
+  // an sdk-edited copy of the reading, what Update applies
+  std::optional<urnet::DnsResolverSettings> draft_;
+  std::optional<urnet::DnsResolverSettings> original_;
   // the reading the editor opened on: none takes no Update, and an Update
   // writes only while it is still the device's (EditorApply.h)
   std::optional<urnet::DnsResolverSettings> opened_;
-  std::optional<Draft> recommendation_;  // for the connected country, when any
-  std::optional<Draft> defaults_;        // most secure defaults
-  std::string countryCode_;              // lowercased
+  std::optional<urnet::DnsResolverStatus> status_;
+  // the newest blocked count: a status push's (SetStatus), then each read's
+  // (SetBlockedCount); none until either, when the opening status's shows
+  std::optional<int64_t> blockedCount_;
+  // the selected pick is not in the draft: a Use my account pick with no valid
+  // id yet, or a pick the sdk could not apply; Update stays off meanwhile
+  bool pickPending_ = false;
+  bool changeLocationChosen_ = false;
+  std::string countryCode_;  // lowercased
   std::string countryName_;
   bool updating_ = false;
 };

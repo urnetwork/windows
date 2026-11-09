@@ -252,11 +252,15 @@ class ConnectPage {
   // provide control mode picker <-> the SDK's mode string (same non-const note)
   std::string SelectedProvideMode();
   void ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& settings);
-  // The unapplied-recommendation pill atop the dns card: compares the applied dns
-  // settings against the connected country's regional recommendation (else the
-  // safe defaults) and shows/collapses the pill. Recomputed on dns-setting changes
-  // (ApplyDnsCard) and connected-country changes (ApplyStats).
-  void ApplyDnsRecommendationPill();
+  // The dns card's selection row ("DNS: AdGuard DNS · Ad blocking"), the status
+  // line of a provider that isn't answering with its two actions, or the notice
+  // of a provider an update removed, and the pill over the card, all from the
+  // sdk's summaries of dnsSettings_ and dnsStatus_ (connect ADBLOCK3RD F1, F2,
+  // C8). Recomputed on dns-setting changes (ApplyDnsCard), status pushes,
+  // connected-country changes (ApplyStats) and language changes (ApplyStrings).
+  void ApplyDnsSummary();
+  // The card's "Use URnetwork DNS": default saved over the settings shown.
+  void OnDnsUseDefault();
   // the row's automation name: the label plus the provider it names
   void ApplyLocationRowName();
   void ApplySplitRuleCount();
@@ -579,6 +583,7 @@ class ConnectPage {
   std::string locationsState_;  // the SDK's state for locations_
   // The drawer seed's reads against their listeners' pushes (SeedOrder.h).
   urnw::SeedOrder dnsOrder_;
+  urnw::SeedOrder dnsStatusOrder_;
   urnw::SeedOrder clientTransportOrder_;
   urnw::SeedOrder providerTransportOrder_;
   urnw::SeedOrder blockerOrder_;
@@ -685,6 +690,9 @@ class ConnectPage {
   int64_t providerCount_ = 0;
   bool statsConnected_ = false;
   std::optional<urnet::DnsResolverSettings> dnsSettings_;
+  // the dns resolver's last status push (SdkHost::SetDnsStatusHandler), for
+  // the card's status line and the editor as it opens
+  std::optional<urnet::DnsResolverStatus> dnsStatus_;
   std::string countryCode_;  // selected location country (dns recommendations)
   std::string countryName_;
   // The SDK's stall diagnosis for a still-forming window (track 2), cached

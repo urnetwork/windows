@@ -1356,7 +1356,7 @@
   </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>חסום פרסומות ורכיבי מעקב</value>
-    <comment>dns settings</comment>
+    <comment>DNS settings: heading of the group of DNS providers that block ads and trackers (AdGuard DNS, Control D, DNS4EU), beside "Block malware" and "Family". Screens that haven't moved to dns_builtin_blocker_label also label URnetwork's own blocker's toggle with it, so it reads both as a heading and as an action.</comment>
   </data>
   <data name="blocked" xml:space="preserve">
     <value>חסום</value>
@@ -3780,13 +3780,113 @@
     <value>הצג רשת בטבלת המובילים</value>
     <comment>Call to action</comment>
   </data>
+  <data name="dns_apple_profiles_note" xml:space="preserve">
+    <value>פרופילי DNS שמותקנים במכשיר הזה לא חלים בזמן החיבור. במקומם נעשה שימוש ב-DNS שנבחר כאן.</value>
+    <comment>iOS and macOS DNS settings: note that DNS configuration profiles installed on the device don't apply inside the VPN tunnel; the DNS chosen on this screen does.</comment>
+  </data>
+  <data name="dns_blocked_count.one" xml:space="preserve">
+    <value>חיפוש אחד נחסם על ידי {1} בחיבור הזה</value>
+    <comment>DNS settings: how many DNS lookups the selected filtering provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_blocked_count.two" xml:space="preserve">
+    <value>שני חיפושים נחסמו על ידי {1} בחיבור הזה</value>
+    <comment>DNS settings: how many DNS lookups the selected filtering provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_blocked_count.many" xml:space="preserve">
+    <value>{0} חיפושים נחסמו על ידי {1} בחיבור הזה</value>
+    <comment>DNS settings: how many DNS lookups the selected filtering provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_blocked_count.other" xml:space="preserve">
+    <value>{0} חיפושים נחסמו על ידי {1} בחיבור הזה</value>
+    <comment>DNS settings: how many DNS lookups the selected filtering provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_blocked_count_floor_note" xml:space="preserve">
+    <value>חלק מהחסימות לא נספרות, כך שהמספר האמיתי עשוי להיות גבוה יותר.</value>
+    <comment>DNS settings: note under the blocked lookups count. Some ways a provider answers a block can't be recognized, so the count is a minimum.</comment>
+  </data>
+  <data name="dns_builtin_blocker_label" xml:space="preserve">
+    <value>חוסם הפרסומות של URnetwork</value>
+    <comment>Connect drawer and DNS settings: label of the toggle for URnetwork's own ad and tracker blocker, which works on the device beside any DNS choice. It is named as URnetwork's own so it isn't mistaken for the DNS providers in "Block ads and trackers".</comment>
+  </data>
+  <data name="dns_builtin_blocker_note" xml:space="preserve">
+    <value>החוסם של URnetwork עצמו. הוא עובד עם כל בחירת DNS ובודק כל שם ראשון.</value>
+    <comment>Connect drawer and DNS settings: line under the URnetwork ad blocker toggle. It can stay on with any DNS choice, a provider that blocks ads included, and it checks each name before the DNS provider is asked.</comment>
+  </data>
+  <data name="dns_custom_mix_note" xml:space="preserve">
+    <value>שילוב שרת מסנן עם שרתי ברירת המחדל לא מסנן: התשובה המהירה ביותר מנצחת.</value>
+    <comment>DNS settings, Custom: note that a filtering DNS server added beside URnetwork's default servers doesn't filter, because each lookup takes the fastest answer, usually an unfiltered one.</comment>
+  </data>
   <data name="dns_default_not_applied" xml:space="preserve">
     <value>הגדרות ברירת המחדל הבטוחות אינן מוחלות</value>
     <comment>dns settings</comment>
   </data>
+  <data name="dns_group_block_malware" xml:space="preserve">
+    <value>חסום תוכנות זדוניות</value>
+    <comment>DNS settings, provider picker: heading of the group of DNS providers that block malware and phishing but not ads (Cloudflare, DNS4EU, Quad9). It sits below "Block ads and trackers" and reads like it.</comment>
+  </data>
+  <data name="dns_group_family" xml:space="preserve">
+    <value>משפחה</value>
+    <comment>DNS settings, provider picker: heading of the group of family DNS providers, which block adult sites and similar content (some of them also block ads).</comment>
+  </data>
+  <data name="dns_group_my_account" xml:space="preserve">
+    <value>שימוש בחשבון שלי</value>
+    <comment>DNS settings, provider picker: heading of the group for people with their own account at a DNS provider (AdGuard DNS, Control D, NextDNS). Choosing one asks for the account's profile ID, so the provider applies the person's own filters.</comment>
+  </data>
+  <data name="dns_group_no_filtering" xml:space="preserve">
+    <value>ללא סינון</value>
+    <comment>DNS settings, provider picker: heading of the group of other DNS providers that resolve every name and block nothing.</comment>
+  </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS דרך HTTPS</value>
     <comment>A label displayed in a row of a custom dns settings.</comment>
+  </data>
+  <data name="dns_personal_id_block_response" xml:space="preserve">
+    <value>ב-{}, השאירו את תגובת החסימה על IP אפס (0.0.0.0, ברירת המחדל) או NXDOMAIN. REFUSED ותגובות אחרות נראות כמו תקלה.</value>
+    <comment>DNS settings, Use my account: help about the provider's block response setting. URnetwork treats a REFUSED answer as a failing provider, so blocks must be answered with zero IP (0.0.0.0, the providers' default) or NXDOMAIN. 0.0.0.0, NXDOMAIN and REFUSED are technical values: keep them as they are. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_dashboard_link" xml:space="preserve">
+    <value>פתיחת לוח הבקרה של {}</value>
+    <comment>DNS settings, Use my account: link that opens the provider's dashboard, for example under "Saved, but we can't confirm this profile". {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_format_adguard" xml:space="preserve">
+    <value>מזהי המכשירים של {0} הם בני 8 תווים: ספרות והאותיות a עד f, למשל {1}.</value>
+    <comment>DNS settings, Use my account: shown under the profile ID field when the AdGuard DNS device ID has the wrong format. {provider} is AdGuard DNS and {example} an example ID such as 1a2b3c4d, both inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_format_controld" xml:space="preserve">
+    <value>מזהי Resolver של {0} כוללים רק אותיות וספרות, למשל {1}.</value>
+    <comment>DNS settings, Use my account: shown under the profile ID field when the Control D resolver ID has the wrong format. {provider} is Control D and {example} an example ID such as abcd1234, both inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_format_nextdns" xml:space="preserve">
+    <value>מזהי {0} הם בני 6 תווים: ספרות והאותיות a עד f, למשל {1}.</value>
+    <comment>DNS settings, Use my account: shown under the profile ID field when the NextDNS ID has the wrong format. {provider} is NextDNS and {example} an example ID such as abc123, both inserted as is.</comment>
+  </data>
+  <data name="dns_personal_id_label" xml:space="preserve">
+    <value>מזהה פרופיל או כתובת DNS</value>
+    <comment>DNS settings, Use my account: label of the field where the person enters the ID of their profile at the DNS provider, or pastes the DNS address the provider's dashboard shows (a DNS over HTTPS URL or a Private DNS hostname).</comment>
+  </data>
+  <data name="dns_personal_id_linked_ip_note" xml:space="preserve">
+    <value>אין צורך לקשר כתובת IP בלוח הבקרה: דרך URnetwork, החיפושים שלכם מגיעים מכתובת שאינה שלכם. המזהה שלכם מספיק.</value>
+    <comment>DNS settings, Use my account: provider dashboards suggest linking your IP address to your account. Through URnetwork, lookups come from the VPN exit's address, which belongs to someone else, so the app uses only the ID and doesn't offer linking.</comment>
+  </data>
+  <data name="dns_personal_id_quota_adguard" xml:space="preserve">
+    <value>התוכנית החינמית של {} מוגבלת ל-300,000 בקשות בחודש.</value>
+    <comment>DNS settings, Use my account: free-plan note under the profile ID field for AdGuard DNS. What happens at the limit is not documented, so the note states only the limit. {provider} is AdGuard DNS, inserted as is. The sdk names this key for the preset.</comment>
+  </data>
+  <data name="dns_personal_id_quota_nextdns" xml:space="preserve">
+    <value>התוכנית החינמית של {} מפסיקה לסנן אחרי 300,000 שאילתות בחודש.</value>
+    <comment>DNS settings, Use my account: free-plan note under the profile ID field for NextDNS, which answers without filtering once the free monthly queries are used up. {provider} is NextDNS, inserted as is. The sdk names this key for the preset.</comment>
+  </data>
+  <data name="dns_personal_id_where_adguard" xml:space="preserve">
+    <value>תמצאו אותו בדף המכשיר שלכם בלוח הבקרה של {}.</value>
+    <comment>DNS settings, Use my account: help under the profile ID field for AdGuard DNS. {provider} is AdGuard DNS, inserted as is. Each device's page in the AdGuard DNS dashboard shows its device ID and DNS addresses.</comment>
+  </data>
+  <data name="dns_personal_id_where_controld" xml:space="preserve">
+    <value>בלוח הבקרה של {}, בחרו Show Resolvers בנקודת הקצה שלכם.</value>
+    <comment>DNS settings, Use my account: help under the profile ID field for Control D. {provider} is Control D, inserted as is. "Show Resolvers" is the button's name in Control D's English dashboard, so it stays in English; an endpoint is what Control D calls a device or profile you connect.</comment>
+  </data>
+  <data name="dns_personal_id_where_nextdns" xml:space="preserve">
+    <value>תמצאו אותו בדף Setup בחשבון {} שלכם.</value>
+    <comment>DNS settings, Use my account: help under the profile ID field for NextDNS. {provider} is NextDNS, inserted as is. "Setup" is the name of the page in the NextDNS dashboard, so it stays in English.</comment>
   </data>
   <data name="dns_pill_default" xml:space="preserve">
     <value>הגדרות ברירת המחדל הבטוחות אינן מוחלות</value>
@@ -3800,29 +3900,233 @@
     <value>יש הגדרות מומלצות שלא הוחלו עבור {}</value>
     <comment>dns settings</comment>
   </data>
+  <data name="dns_preset_apply_note" xml:space="preserve">
+    <value>השינויים חלים מיד על חיפושים חדשים. אפליקציות עשויות לשמור תשובות קודמות למשך כדקה.</value>
+    <comment>DNS settings: footnote. A new DNS choice applies to new lookups at once, but apps keep answers they already have for up to about a minute.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_adult_safe_search" xml:space="preserve">
+    <value>חוסם פרסומות, רכיבי מעקב ואתרים למבוגרים, ומפעיל חיפוש בטוח</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for AdGuard DNS Family in "Family": it also forces safe search on search engines. The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_malware" xml:space="preserve">
+    <value>חוסם פרסומות, רכיבי מעקב ותוכנות זדוניות</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for Control D in "Block ads and trackers". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_malware_adult_drugs" xml:space="preserve">
+    <value>חוסם פרסומות, רכיבי מעקב, תוכנות זדוניות, אתרים למבוגרים וסמים</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for Control D Family in "Family". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_malware_phishing" xml:space="preserve">
+    <value>חוסם פרסומות, רכיבי מעקב, תוכנות זדוניות ופישינג</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for DNS4EU in "Block ads and trackers". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_ads_phishing" xml:space="preserve">
+    <value>חוסם פרסומות, רכיבי מעקב ופישינג</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for AdGuard DNS in "Block ads and trackers". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_child" xml:space="preserve">
+    <value>חוסם תוכנות זדוניות, אתרים למבוגרים, הימורים, סמים ואלימות, לא פרסומות</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for DNS4EU's child protection in "Family". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_child_ads" xml:space="preserve">
+    <value>חוסם פרסומות, רכיבי מעקב, תוכנות זדוניות, אתרים למבוגרים, הימורים, סמים ואלימות</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for DNS4EU's child protection with ad blocking in "Family". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_court_orders" xml:space="preserve">
+    <value>חוסם רק את מה שבתי משפט מורים לחסום</value>
+    <comment>DNS settings, provider picker: the line under DNS4EU in "No filtering". It does no protective filtering, but the domains courts order blocked stay blocked on every DNS4EU resolver. The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_malware" xml:space="preserve">
+    <value>חוסם תוכנות זדוניות, לא פרסומות</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for Cloudflare in "Block malware". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_malware_adult" xml:space="preserve">
+    <value>חוסם תוכנות זדוניות ואתרים למבוגרים, לא פרסומות</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for Cloudflare Family in "Family". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_malware_phishing" xml:space="preserve">
+    <value>חוסם תוכנות זדוניות ופישינג, לא פרסומות</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for DNS4EU and Quad9 in "Block malware". The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_nothing" xml:space="preserve">
+    <value>לא חוסם דבר</value>
+    <comment>DNS settings, provider picker: the line under a DNS provider's name in "No filtering" (AdGuard DNS, Cloudflare, Control D): the provider resolves every name and blocks nothing. The provider's name is shown above it, not in this string.</comment>
+  </data>
+  <data name="dns_preset_copy_personal" xml:space="preserve">
+    <value>משתמש במסננים שהגדרתם בחשבון {} שלכם</value>
+    <comment>DNS settings, provider picker: the line under each provider in "Use my account". {provider} is the provider's name (AdGuard DNS, Control D or NextDNS), inserted as is.</comment>
+  </data>
+  <data name="dns_preset_disclosure" xml:space="preserve">
+    <value>חיפושי ה-DNS שלכם עוברים דרך המנהרה אל {}, כך שהוא לעולם לא רואה את כתובת ה-IP שלכם. מדיניות הפרטיות שלו חלה.</value>
+    <comment>DNS settings: disclosure under the selected DNS provider, above the Privacy policy and Help links. The provider receives the names looked up while connected, from the VPN exit's address, never the person's own IP address. {provider} is the provider's name (for example AdGuard DNS), inserted as is.</comment>
+  </data>
+  <data name="dns_preset_dropped" xml:space="preserve">
+    <value>{} כבר לא זמין. אתם משתמשים ב-DNS של URnetwork, ולכן החיפושים לא מסוננים.</value>
+    <comment>DNS settings and connect drawer: notice after an app update removed the DNS provider the person had selected. The app switched to URnetwork's own DNS, which doesn't filter. {provider} is the removed provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_preset_dropped_choose" xml:space="preserve">
+    <value>בחירת הגדרה מוכנה אחרת</value>
+    <comment>DNS settings: button on the notice of a removed DNS provider that opens the provider list. "Preset" means one of the DNS providers listed on the screen.</comment>
+  </data>
+  <data name="dns_preset_dropped_custom" xml:space="preserve">
+    <value>הזנה ידנית תחת מותאם אישית</value>
+    <comment>DNS settings: button on the notice of a removed DNS provider that opens the Custom editor, where the person can enter the provider's addresses themselves. It names the "Custom" pick, so it uses that pick's exact word.</comment>
+  </data>
+  <data name="dns_preset_error_personal_id_invalid" xml:space="preserve">
+    <value>המזהה הזה לא בפורמט הנכון.</value>
+    <comment>DNS settings, Use my account: error id the sdk returns when the profile ID doesn't have the provider's format. The provider's own format line is shown with it.</comment>
+  </data>
+  <data name="dns_preset_error_personal_id_not_accepted" xml:space="preserve">
+    <value>ההגדרה המוכנה הזו לא משתמשת במזהה פרופיל.</value>
+    <comment>DNS settings: error id the sdk returns when a profile ID is given for a DNS preset that doesn't take one. "Preset" means one of the DNS providers listed on the screen.</comment>
+  </data>
+  <data name="dns_preset_error_personal_id_other_provider" xml:space="preserve">
+    <value>הכתובת הזו שייכת לספק DNS אחר. בחרו בספק הזה במקום.</value>
+    <comment>DNS settings, Use my account: error id the sdk returns when the pasted DNS address or hostname belongs to another DNS provider in the list.</comment>
+  </data>
+  <data name="dns_preset_error_personal_id_required" xml:space="preserve">
+    <value>הזינו את מזהה הפרופיל שלכם.</value>
+    <comment>DNS settings, Use my account: error id the sdk returns when the profile ID field is empty.</comment>
+  </data>
+  <data name="dns_preset_error_unknown" xml:space="preserve">
+    <value>ההגדרה המוכנה הזו לא זמינה. בחרו אחרת.</value>
+    <comment>DNS settings: error id the sdk returns when a DNS preset is no longer in the app's catalog. "Preset" means one of the DNS providers listed on the screen.</comment>
+  </data>
+  <data name="dns_preset_fast_dns_note" xml:space="preserve">
+    <value>בזמן ההתחברות, החיפושים משתמשים ב-DNS של URnetwork, ולכן {} לא מסנן אותם.</value>
+    <comment>DNS settings: note beside the "Fast DNS on connect" toggle while a DNS provider is selected. While the tunnel connects, lookups go to URnetwork's own DNS, so the provider never sees the person's own address, but those lookups aren't filtered. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_preset_help_link" xml:space="preserve">
+    <value>עזרה</value>
+    <comment>DNS settings: link under the selected DNS provider, beside "Privacy policy", that opens the provider's help page.</comment>
+  </data>
+  <data name="dns_preset_jurisdiction" xml:space="preserve">
+    <value>סמכות שיפוט: {}</value>
+    <comment>DNS settings, provider picker: which country's law the DNS provider operates under. {jurisdiction} comes from the app's provider catalog in English (for example Cyprus or Switzerland) and is inserted as is.</comment>
+  </data>
+  <data name="dns_preset_privacy_link" xml:space="preserve">
+    <value>מדיניות פרטיות</value>
+    <comment>DNS settings: link under the selected DNS provider that opens the provider's privacy policy.</comment>
+  </data>
+  <data name="dns_private_dns_overrides_preset" xml:space="preserve">
+    <value>DNS פרטי עוקף את בחירת ה-DNS שלכם ({}).</value>
+    <comment>Android connect screen: line added to the strict Private DNS notice while a DNS provider is selected, since Android's Private DNS sends lookups to its own server instead. {provider} is the selected DNS provider's name, inserted as is. Private DNS is Android's own setting, named as in Android.</comment>
+  </data>
+  <data name="dns_provider_custom" xml:space="preserve">
+    <value>מותאם אישית</value>
+    <comment>DNS settings, provider picker: the pick that opens the advanced editor, where the person enters their own DNS over HTTPS URLs and DNS servers. Other strings send the reader to this pick by name ("Enter it yourself under Custom"), so they use the same word.</comment>
+  </data>
+  <data name="dns_provider_custom_copy" xml:space="preserve">
+    <value>כתובות URL משלכם ל-DNS דרך HTTPS ושרתי DNS</value>
+    <comment>DNS settings, provider picker: the line under "Custom" that says what it holds.</comment>
+  </data>
+  <data name="dns_provider_default" xml:space="preserve">
+    <value>URnetwork (ברירת מחדל)</value>
+    <comment>DNS settings, provider picker: the first pick, URnetwork's own encrypted DNS through the tunnel, which every app uses by default. URnetwork is the product name.</comment>
+  </data>
+  <data name="dns_provider_default_copy" xml:space="preserve">
+    <value>DNS מוצפן דרך המנהרה, ללא סינון</value>
+    <comment>DNS settings, provider picker: the line under "URnetwork (default)" that says what it does: names are resolved over encrypted DNS inside the VPN tunnel, and nothing is blocked.</comment>
+  </data>
+  <data name="dns_provider_regional" xml:space="preserve">
+    <value>אזורי ({}), לא מוצפן</value>
+    <comment>DNS settings, provider picker: the last pick, shown only while the exit's country has a recommended set of plain DNS servers that work better there. It is never selected automatically. {country} is the exit country's name, inserted as is. Unencrypted means the DNS lookups are sent without encryption.</comment>
+  </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>ידוע שכללי האבטחה החזקים ביותר אינם עובדים באזור {}. יש הגדרות DNS מומלצות, פחות מאובטחות, שעובדות טוב יותר.</value>
-    <comment>dns settings</comment>
-  </data>
-  <data name="dns_restore_secure_message" xml:space="preserve">
-    <value>שחזור ההגדרות המאובטחות ביותר: DNS מוצפן דרך HTTPS במנהרה.</value>
     <comment>dns settings</comment>
   </data>
   <data name="dns_settings_unavailable" xml:space="preserve">
     <value>הגדרות DNS אינן זמינות</value>
     <comment>A message displayed when the dns settings are unavailable.</comment>
   </data>
+  <data name="dns_status_change_location" xml:space="preserve">
+    <value>שינוי מיקום</value>
+    <comment>DNS settings and connect drawer: button beside a DNS provider status that opens the location picker, since a provider can be blocked or unreachable from some exit locations.</comment>
+  </data>
+  <data name="dns_status_fallback" xml:space="preserve">
+    <value>{} לא עונה. נעשה שימוש ב-DNS של URnetwork.</value>
+    <comment>DNS settings and connect drawer: status line when a DNS provider from "No filtering" isn't answering, so URnetwork's own DNS answers until it does. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_status_paused" xml:space="preserve">
+    <value>חסימת הפרסומות מושהית: {} לא עונה</value>
+    <comment>DNS settings and connect drawer: status line when an ad-blocking DNS provider isn't answering from the current exit, so URnetwork's own DNS answers for now and ads aren't blocked. It switches back on its own when the provider answers. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_status_paused_detail" xml:space="preserve">
+    <value>נעשה שימוש ב-DNS של URnetwork עד שהספק יענה. חסימת הפרסומות תחזור מעצמה.</value>
+    <comment>DNS settings: line under "Ad blocking paused: … isn't answering". "it" is the ad-blocking DNS provider named in that line.</comment>
+  </data>
+  <data name="dns_status_provider" xml:space="preserve">
+    <value>DNS: {}</value>
+    <comment>DNS settings: status line while the selected DNS provider answers normally. {provider} is the provider's name (for example AdGuard DNS), inserted as is.</comment>
+  </data>
+  <data name="dns_status_unreachable" xml:space="preserve">
+    <value>{} לא עונה</value>
+    <comment>DNS settings and connect drawer: status line when a family, malware-blocking or personal DNS provider isn't answering. To keep its filtering, URnetwork doesn't switch to other DNS, so sites may not load until the provider answers or the person picks "Use URnetwork DNS". {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_status_unreachable_detail" xml:space="preserve">
+    <value>כדי לשמור על הסינון, URnetwork לא מחליף DNS בעצמו. ייתכן שאתרים לא ייטענו עד שהספק יענה.</value>
+    <comment>DNS settings: line under "… isn't answering" for a family, malware-blocking or personal DNS provider. "it" is the DNS provider named in that line.</comment>
+  </data>
+  <data name="dns_status_use_default" xml:space="preserve">
+    <value>שימוש ב-DNS של URnetwork</value>
+    <comment>DNS settings and connect drawer: button beside a DNS provider status that isn't answering. It switches back to URnetwork's own DNS, the default, in one tap.</comment>
+  </data>
+  <data name="dns_summary_ad_blocking" xml:space="preserve">
+    <value>DNS: {} · חסימת פרסומות</value>
+    <comment>Connect drawer, DNS card: summary row while a DNS provider from "Block ads and trackers" is selected. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_custom" xml:space="preserve">
+    <value>DNS: מותאם אישית</value>
+    <comment>Connect drawer, DNS card: summary row while the person's own servers are selected under "Custom", all of them encrypted.</comment>
+  </data>
+  <data name="dns_summary_custom_unencrypted" xml:space="preserve">
+    <value>DNS: מותאם אישית (לא מוצפן)</value>
+    <comment>Connect drawer, DNS card: summary row while the person's own servers are selected under "Custom" and some lookups are sent without encryption (plain DNS is on).</comment>
+  </data>
+  <data name="dns_summary_default" xml:space="preserve">
+    <value>DNS: URnetwork</value>
+    <comment>Connect drawer, DNS card: summary row while URnetwork's own DNS, the default, is selected. URnetwork is the product name.</comment>
+  </data>
+  <data name="dns_summary_family" xml:space="preserve">
+    <value>DNS: {} · סינון משפחתי</value>
+    <comment>Connect drawer, DNS card: summary row while a DNS provider from "Family" is selected. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_malware_blocking" xml:space="preserve">
+    <value>DNS: {} · חסימת תוכנות זדוניות</value>
+    <comment>Connect drawer, DNS card: summary row while a DNS provider from "Block malware" is selected. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_no_filtering" xml:space="preserve">
+    <value>DNS: {} · ללא סינון</value>
+    <comment>Connect drawer, DNS card: summary row while a DNS provider from "No filtering" is selected. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_personal" xml:space="preserve">
+    <value>DNS: {} · הפרופיל שלכם</value>
+    <comment>Connect drawer, DNS card: summary row while a provider from "Use my account" is selected. The profile ID itself is never shown. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_summary_regional" xml:space="preserve">
+    <value>DNS: אזורי (לא מוצפן)</value>
+    <comment>Connect drawer, DNS card: summary row while the regional pick is selected: plain DNS servers recommended for the exit's country, which send lookups without encryption.</comment>
+  </data>
   <data name="dns_unapplied_recommended" xml:space="preserve">
     <value>יש הגדרות מומלצות שלא הוחלו עבור {}</value>
     <comment>dns settings</comment>
   </data>
-  <data name="dns_using_recommended" xml:space="preserve">
-    <value>משתמש בהגדרות אזוריות מומלצות</value>
-    <comment>dns settings</comment>
+  <data name="dns_verify_malformed_adguard" xml:space="preserve">
+    <value>{} דחה את מזהה המכשיר הזה</value>
+    <comment>DNS settings, Use my account: AdGuard DNS fails every lookup for a device ID it can't read. {provider} is AdGuard DNS, inserted as is. "Device ID" is AdGuard DNS's name for the ID.</comment>
   </data>
-  <data name="dns_using_secure" xml:space="preserve">
-    <value>משתמש בהגדרות ברירת המחדל המאובטחות ביותר</value>
-    <comment>dns settings</comment>
+  <data name="dns_verify_not_filtering" xml:space="preserve">
+    <value>{} לא מסנן מהמיקום הזה</value>
+    <comment>DNS settings: result of the check the app runs after a filtering DNS provider is chosen: the provider answered a name it normally blocks with a real address, so it isn't filtering from the current exit location. {provider} is the provider's name, inserted as is.</comment>
+  </data>
+  <data name="dns_verify_rejected_controld" xml:space="preserve">
+    <value>{} לא מזהה את מזהה ה-Resolver הזה</value>
+    <comment>DNS settings, Use my account: Control D refuses every lookup for a resolver ID it doesn't know. {provider} is Control D, inserted as is. "Resolver ID" is Control D's name for the ID.</comment>
+  </data>
+  <data name="dns_verify_unconfirmed" xml:space="preserve">
+    <value>נשמר, אבל איננו יכולים לאמת את הפרופיל הזה. אם המזהה שגוי, {} עונה ללא סינון.</value>
+    <comment>DNS settings, Use my account: shown after a profile ID is saved and the provider answers normally. A wrong ID or a used-up free plan also answers normally, just without filtering, so the app can't confirm the profile. {provider} is the provider's name, inserted as is.</comment>
   </data>
   <data name="done" xml:space="preserve">
     <value>סיום</value>
@@ -7003,10 +7307,6 @@
     <value>שחזור פרוטוקולי ברירת המחדל</value>
     <comment>Button that resets the transport settings draft to the SDK default policy.</comment>
   </data>
-  <data name="restore_most_secure_settings" xml:space="preserve">
-    <value>שחזר להגדרות המאובטחות ביותר</value>
-    <comment>dns settings</comment>
-  </data>
   <data name="restore_purchases" xml:space="preserve">
     <value>שחזור רכישות</value>
     <comment>Action label that resyncs App Store purchases (AppStore.sync + entitlement scan). Shown in Settings and in the upgrade flow's failure states (Main/Account/Settings/SettingsForm-iOS.swift, SettingsForm-macOS.swift, Shared/Views/UpgradeSubscriptionSheet.swift, Shared/Views/PurchaseSuccessView.swift, Shared/Views/Introduction/IntroductionView.swift).</comment>
@@ -9159,10 +9459,6 @@
   <data name="use_most_stable_provider" xml:space="preserve">
     <value>משתמש בספק היציב ביותר</value>
     <comment>Note under the location sync toggle explaining that the most stable (longest-connected) provider's location is used. Doubles as the resting status when no more specific status applies.</comment>
-  </data>
-  <data name="use_recommended_settings" xml:space="preserve">
-    <value>השתמש בהגדרות המומלצות</value>
-    <comment>dns settings</comment>
   </data>
   <data name="use_wireguard_socks_https_proxy" xml:space="preserve">
     <value>שימוש בפרוקסי WireGuard / SOCKS / HTTPS</value>

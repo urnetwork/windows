@@ -22,6 +22,7 @@
 
 #include "BalanceGate.h"
 #include "ConnectionRegion.h"  // the can't-reach prompt on a platform-unreachable stall
+#include "DnsPresetPresentation.h"  // the dns card's sdk keys and pills
 #include "FastDnsOnConnect.h"
 #include "Log.h"
 #include "MainWindow.xaml.h"
@@ -73,28 +74,6 @@ winrt::Windows::UI::Color ColorFromHex(std::string hex) {
   } catch (...) {
   }
   return urnw::colors::kTextMuted;
-}
-
-// Two applied dns snapshots are equivalent when every resolver flag and every
-// server list matches; an absent list and an empty list are the same. This is
-// the same field-for-field comparison DnsEditorSheet makes on its Draft and the
-// iOS DnsSettings ==, so the pill agrees with the editor's recommendation panel.
-bool DnsSettingsEquivalent(urnet::DnsResolverSettings const& a,
-                           urnet::DnsResolverSettings const& b) {
-  auto list = [](std::optional<urnet::StringList> const& v) {
-    return v ? *v : urnet::StringList{};
-  };
-  return a.EnableRemoteDoh == b.EnableRemoteDoh && a.EnableLocalDoh == b.EnableLocalDoh &&
-         a.EnableRemoteDns == b.EnableRemoteDns && a.EnableLocalDns == b.EnableLocalDns &&
-         a.EnableFallback == b.EnableFallback &&
-         list(a.RemoteDohUrlsIpv4) == list(b.RemoteDohUrlsIpv4) &&
-         list(a.RemoteDohUrlsIpv6) == list(b.RemoteDohUrlsIpv6) &&
-         list(a.LocalDohUrlsIpv4) == list(b.LocalDohUrlsIpv4) &&
-         list(a.LocalDohUrlsIpv6) == list(b.LocalDohUrlsIpv6) &&
-         list(a.RemoteDnsIpv4) == list(b.RemoteDnsIpv4) &&
-         list(a.RemoteDnsIpv6) == list(b.RemoteDnsIpv6) &&
-         list(a.LocalDnsIpv4) == list(b.LocalDnsIpv4) &&
-         list(a.LocalDnsIpv6) == list(b.LocalDnsIpv6);
 }
 }  // namespace
 
@@ -178,6 +157,15 @@ void ConnectPage::Initialize() {
   inspectorUndoButton_.Content(winrt::box_value(Adv("adv_undo", L"Undo")));
   inspectorUndoButton_.Click([weak = w_.get_weak()](auto const&, auto const&) {
     if (auto self = weak.get()) self->connect().OnInspectorUndo();
+  });
+  // The dns card's actions under a provider that isn't answering (connect
+  // ADBLOCK3RD C8), wired here for the same reason: URnetwork's DNS in one
+  // tap, or another location.
+  w_.DnsUseDefaultButton().Click([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().OnDnsUseDefault();
+  });
+  w_.DnsChangeLocationButton().Click([weak = w_.get_weak()](auto const&, auto const&) {
+    if (auto self = weak.get()) self->connect().ShowLocationChooserSheet();
   });
 
   // the easter egg: five taps on the status dot while connected, each within
@@ -351,7 +339,15 @@ void ConnectPage::ApplyStrings() {
   w_.LdnsState().Text(Loc("off"));
   w_.FallbackState().Text(Loc("off"));
   w_.DnsUnavailableText().Text(Loc("dns_settings_unavailable"));
-  w_.BlockerLabel().Text(Loc("block_ads_and_trackers"));
+  w_.DnsUseDefaultButton().Content(LocBox("dns_status_use_default"));
+  w_.DnsChangeLocationButton().Content(LocBox("dns_status_change_location"));
+  // the selection row and the status line are sdk keys, re-strung with the rest
+  ApplyDnsSummary();
+  // URnetwork's own blocker, named as its own so it is not taken for the DNS
+  // providers that block ads (connect ADBLOCK3RD F1 item 6), whose group
+  // heading is block_ads_and_trackers now
+  w_.BlockerLabel().Text(Loc("dns_builtin_blocker_label"));
+  w_.BlockerNote().Text(Loc("dns_builtin_blocker_note"));
   // The status row's labels and lines, and the extender panel's own fixed
   // labels (title, the two automation names); guarded because ApplyStrings
   // also runs before BuildCharts has made them.
@@ -1367,13 +1363,13 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
                  PeerLineReading{.remoteConnected = stats.remoteConnected,
                                  .connectedPeerCount = stats.connectedPeerCount,
                                  .providerOnlyPeers = stats.providerOnlyPeers});
-  // the connected country drives the dns-card recommendation pill; only refresh
-  // it when the country actually changes (stats push on every throughput tick).
+  // the connected country drives the dns card's summary and pill; only refresh
+  // them when the country actually changes (stats push on every throughput tick).
   const bool countryChanged =
       countryCode_ != stats.countryCode || countryName_ != stats.countryName;
   countryCode_ = stats.countryCode;
   countryName_ = stats.countryName;
-  if (countryChanged) ApplyDnsRecommendationPill();
+  if (countryChanged) ApplyDnsSummary();
 
   // Provider window size ("Connected to N providers"), like macOS. The count is a
   // CLDR plural in the store: select the form, never inflect here.
@@ -1868,6 +1864,30 @@ void ConnectPage::WireDrawerFeeds() {
       }
     });
   });
+  // The dns resolver's status (connect ADBLOCK3RD C5, C6), pushed when its
+  // state, its verification or the selection it describes changes: the card's
+  // status line, and the open editor's.
+  sdk.SetDnsStatusHandler([queue, weak](std::optional<urnet::DnsResolverStatus> status) {
+    queue.TryEnqueue([weak, status = std::move(status)] {
+      if (auto self = weak.get()) {
+        auto& page = self->connect();
+        page.dnsStatusOrder_.Pushed();  // newer than a seed read still out
+        page.dnsStatus_ = status;
+        page.ApplyDnsSummary();
+        if (page.dnsSheet_) page.dnsSheet_->SetStatus(status);
+      }
+    });
+  });
+  // The open editor's blocked lookups count, which the status pushes do not
+  // carry: read on this page's clock while the editor shows it (OnChartTick).
+  sdk.SetDnsBlockedCountHandler([queue, weak](int64_t count) {
+    queue.TryEnqueue([weak, count] {
+      if (auto self = weak.get()) {
+        auto& page = self->connect();
+        if (page.dnsSheet_) page.dnsSheet_->SetBlockedCount(count);
+      }
+    });
+  });
   // the transport distribution: SdkHost reads it on the same throughput tick as
   // the points and pushes only when it changed, so this can apply every push
   sdk.SetTransportDistributionHandler([queue, weak](urnw::TransportDistributionSnapshot d) {
@@ -1928,6 +1948,10 @@ void ConnectPage::WireDrawerFeeds() {
         page.dnsSettled_ = true;
         page.dnsSettings_ = seed.dns;
         page.ApplyDnsCard(page.dnsSettings_);
+      }
+      if (page.dnsStatusOrder_.Admits()) {
+        page.dnsStatus_ = seed.dnsStatus;
+        page.ApplyDnsSummary();
       }
       if (page.clientTransportOrder_.Admits()) {
         page.clientTransportSettings_ = seed.clientTransport;
@@ -2048,9 +2072,11 @@ void ConnectPage::ResyncDrawer() {
   // on the device's state lock behind a held command for the rpc timeout.
   // Unknown until the read or their listener answers (DrawerSeed).
   dnsSettings_.reset();
+  dnsStatus_.reset();
   clientTransportSettings_.reset();
   providerTransportSettings_.reset();
   dnsOrder_.Asked();
+  dnsStatusOrder_.Asked();
   clientTransportOrder_.Asked();
   providerTransportOrder_.Asked();
   blockerOrder_.Asked();
@@ -3883,20 +3909,27 @@ void ConnectPage::ApplySplitRuleCount() {
 
 void ConnectPage::ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& settings) {
   if (settings) dnsSettled_ = true;
-  // DESIGNSTYLE "Placeholders, not pop-in": before the first reading the four
-  // rows are up with their labels (the labels are static) and a skeleton where
-  // the On/Off value goes, so the group opens at its settled 4x34 and the
-  // values are replaced in place. Only a reading that comes back empty swaps
-  // to the unavailable row — the error state, in the same group.
+  // DESIGNSTYLE "Placeholders, not pop-in": before the first reading the
+  // selection row holds a skeleton, and the four rows under it are up with
+  // their labels (the labels are static) and a skeleton where the On/Off value
+  // goes, so the group opens at its settled 5x34 and the values are replaced in
+  // place. Only a reading that comes back empty swaps to the unavailable row —
+  // the error state, in the same group.
   const bool loading = !settings && !dnsSettled_;
   w_.DnsRowsPanel().Visibility(settings || loading ? Visibility::Visible : Visibility::Collapsed);
   // the ROW, not the text inside it: see ProvideStatsRow
   w_.DnsUnavailableRow().Visibility(settings || loading ? Visibility::Collapsed
                                                         : Visibility::Visible);
-  // the applied settings just changed: re-evaluate the recommendation pill (it
-  // reads dnsSettings_, already updated to `settings` by the caller). Runs in
-  // the unavailable path too so the pill collapses with the rows.
-  ApplyDnsRecommendationPill();
+  // the applied settings just changed: re-evaluate the selection row and the
+  // pill (they read dnsSettings_, already updated to `settings` by the caller).
+  // Runs in the unavailable path too so the pill collapses with the rows.
+  ApplyDnsSummary();
+  // the selection row's skeleton while loading, as the values' below
+  w_.DnsSummarySkeleton().Visibility(loading ? Visibility::Visible : Visibility::Collapsed);
+  if (loading && !winrt::unbox_value_or<bool>(w_.DnsSummarySkeleton().Tag(), false)) {
+    w_.DnsSummarySkeleton().Tag(winrt::box_value(true));
+    kit::StartSkeletonShimmer(w_.DnsSummarySkeleton());
+  }
   {
     // the value's skeleton (shimmer begun once, on the first loading pass)
     const hstring loadingText = Loc("loading");
@@ -3940,48 +3973,92 @@ void ConnectPage::ApplyDnsCard(std::optional<urnet::DnsResolverSettings> const& 
   applyRow(w_.FallbackDot(), w_.FallbackState(), settings->EnableFallback);
 }
 
-// The unapplied-recommendation pill atop the dns card (iOS DnsRecommendationPill
-// parity). Priority, matching the iOS computed `recommendation`:
-//   1. no applied settings -> hidden (nothing to compare; the card shows
-//      "unavailable").
-//   2. a connected country whose regional recommendation differs from the
-//      applied settings -> pill "...recommended settings for {country}" with the
-//      country-color dot. If that recommendation IS already applied, hide and do
-//      NOT fall through to the default nudge.
-//   3. otherwise (no country, or the country has no regional recommendation) and
-//      the safe defaults are not applied -> pill "default safe settings are not
-//      applied", no dot.
-//   4. hidden otherwise.
-void ConnectPage::ApplyDnsRecommendationPill() {
-  const auto& current = dnsSettings_;
-  if (!current) {
-    w_.DnsRecPill().Visibility(Visibility::Collapsed);
-    return;
+// The selection row atop the dns card, the line under it and the pill over the
+// card, from the sdk (connect ADBLOCK3RD F1, F2, C8, A7): urnet::
+// describeDnsResolverSettings for the settings in force and the exit's country,
+// and describeDnsResolverStatus for the resolver's status. The sdk decides the
+// pill as it decides the editor's picks: none while a preset is selected (an
+// explicit, encrypted choice), else the exit country's unapplied
+// recommendation, else the defaults not applied. No applied settings: nothing
+// to describe, and the card shows the skeleton or "unavailable" (ApplyDnsCard).
+void ConnectPage::ApplyDnsSummary() {
+  std::optional<urnet::DnsSelectionSummary> summary;
+  std::optional<urnet::DnsStatusSummary> status;
+  if (dnsSettings_) {
+    static std::atomic<bool> loggedSummary{false};
+    summary = urnw::ReadSdkList(loggedSummary, "describeDnsResolverSettings", [this] {
+      return urnet::describeDnsResolverSettings(dnsSettings_, ToLower(countryCode_));
+    });
+    static std::atomic<bool> loggedStatus{false};
+    status = urnw::ReadSdkList(loggedStatus, "describeDnsResolverStatus", [this] {
+      return urnet::describeDnsResolverStatus(dnsSettings_, dnsStatus_);
+    });
   }
-  if (!countryCode_.empty()) {
-    const std::string code = ToLower(countryCode_);
-    if (auto rec = urnet::getRecommendedDnsResolverSettings(code)) {
-      if (!DnsSettingsEquivalent(*current, *rec)) {
-        const std::wstring name = countryName_.empty() ? urnw::Widen(ToUpper(countryCode_))
-                                                       : urnw::Widen(countryName_);
-        w_.DnsRecText().Text(hstring{urnw::Format("dns_pill_recommended", name)});
-        w_.DnsRecDot().Fill(urnw::colors::MakeBrush(ColorFromHex(urnet::getColorHex(code))));
-        w_.DnsRecDot().Visibility(Visibility::Visible);
-        w_.DnsRecPill().Visibility(Visibility::Visible);
-      } else {
-        w_.DnsRecPill().Visibility(Visibility::Collapsed);
-      }
-      return;  // the country has a recommendation: never fall through to defaults
+
+  // "DNS: URnetwork", "DNS: AdGuard DNS · Ad blocking", "DNS: NextDNS · your
+  // profile": the provider's name as it is, and never a personal id (D5)
+  w_.DnsSummaryText().Text(
+      summary ? DnsKeyText(dnspresets::Known(summary->SummaryKey, dnspresets::kSummaryKeys),
+                           urnw::Widen(summary->ProviderName))
+              : hstring{});
+
+  // under it: the notice of a provider an update removed (A7), or the status
+  // of a preset that isn't answering, with its two actions (C8)
+  hstring line;
+  bool failing = false;
+  if (summary && summary->Dropped) {
+    line = summary->DroppedProviderName.empty()
+               ? Loc("dns_preset_error_unknown")
+               : hstring{urnw::Format("dns_preset_dropped",
+                                      urnw::Widen(summary->DroppedProviderName))};
+  } else if (status && status->ShowUseDefault) {
+    line = DnsKeyText(dnspresets::Known(status->StatusKey, dnspresets::kStatusKeys),
+                      urnw::Widen(status->ProviderName));
+    failing = true;
+  }
+  w_.DnsStatusText().Foreground(urnw::colors::MakeBrush(urnw::colors::kUrAmber));
+  kit::SetTextOrCollapse(w_.DnsStatusText(), line);
+  w_.DnsUseDefaultButton().Visibility(failing ? Visibility::Visible : Visibility::Collapsed);
+  w_.DnsChangeLocationButton().Visibility(failing && status->ShowChangeLocation
+                                              ? Visibility::Visible
+                                              : Visibility::Collapsed);
+  w_.DnsStatusActions().Visibility(failing ? Visibility::Visible : Visibility::Collapsed);
+
+  // the pill over the card
+  switch (summary ? dnspresets::PillOf(summary->PillKey) : dnspresets::Pill::None) {
+    case dnspresets::Pill::Recommended: {
+      const std::string code = ToLower(summary->PillCountryCode);
+      const std::wstring name = (code == ToLower(countryCode_) && !countryName_.empty())
+                                    ? urnw::Widen(countryName_)
+                                    : urnw::Widen(ToUpper(code));
+      w_.DnsRecText().Text(hstring{urnw::Format("dns_pill_recommended", name)});
+      w_.DnsRecDot().Fill(urnw::colors::MakeBrush(ColorFromHex(urnet::getColorHex(code))));
+      w_.DnsRecDot().Visibility(Visibility::Visible);
+      w_.DnsRecPill().Visibility(Visibility::Visible);
+      break;
     }
+    case dnspresets::Pill::Defaults:
+      w_.DnsRecText().Text(Loc("dns_pill_default"));
+      w_.DnsRecDot().Visibility(Visibility::Collapsed);
+      w_.DnsRecPill().Visibility(Visibility::Visible);
+      break;
+    case dnspresets::Pill::None:
+      w_.DnsRecPill().Visibility(Visibility::Collapsed);
+      break;
   }
-  if (auto def = urnet::getDefaultDnsResolverSettings();
-      def && !DnsSettingsEquivalent(*current, *def)) {
-    w_.DnsRecText().Text(Loc("dns_pill_default"));
-    w_.DnsRecDot().Visibility(Visibility::Collapsed);
-    w_.DnsRecPill().Visibility(Visibility::Visible);
-    return;
-  }
-  w_.DnsRecPill().Visibility(Visibility::Collapsed);
+}
+
+void ConnectPage::OnDnsUseDefault() {
+  if (!dnsSettings_) return;
+  // URnetwork's default over the settings the card shows, written only while
+  // they are still the device's (compare and set, EditorApply.h); their Fast
+  // DNS on connect and mask stay
+  static std::atomic<bool> logged{false};
+  const auto settings = urnw::ReadSdkList(logged, "dnsResolverSettingsWithPreset", [this] {
+    return urnet::dnsResolverSettingsWithPreset(dnsSettings_, urnet::DnsPresetIdDefault,
+                                                std::string());
+  });
+  if (settings) Sdk().ApplyDnsSettings(dnsSettings_, *settings);
 }
 
 // The banner leads with when the free data refreshes (DataInfo.h), so Get Pro
@@ -4082,6 +4159,10 @@ void ConnectPage::OnChartTick() {
   if (PreviewSampleActive() && chartTickCount_ % 20 == 0) PreviewSampleCharts();
   if (++chartTickCount_ % 10 == 0) {  // ~1s cadence
     if (splitRulesSheet_) splitRulesSheet_->RefreshTimes();  // "Ns ago" labels
+    // the open DNS editor's blocked lookups count, while it shows one (I3): no
+    // status push carries it, so it is read off this thread, by the session's
+    // device handle, and lands through SetDnsBlockedCountHandler
+    if (dnsSheet_ && dnsSheet_->ShowsBlockedCount()) Sdk().RequestDnsBlockedCount();
     // the activity rows' age prefix rides the same 1s cadence as the sheet's;
     // gated on the pane being on screen, like every other repaint here
     if (w_.ConnectView().Visibility() == Visibility::Visible) RefreshConnectionRowTimes();
@@ -4420,16 +4501,21 @@ winrt::fire_and_forget ConnectPage::ShowDnsSheet() {
   if (w_.sheetOpen()) co_return;
   auto self = w_.get_strong();
   w_.SetSheetOpen(true);
+  bool changeLocation = false;
   try {
     // draft edits apply together on Update; live store pushes don't reset the
-    // open editor (macOS parity)
-    dnsSheet_ = urnw::DnsEditorSheet::Create(self->Content().XamlRoot(), Sdk(),
-                                             dnsSettings_, countryCode_, countryName_);
+    // open editor (macOS parity), while status pushes reach it (SetStatus)
+    dnsSheet_ = urnw::DnsEditorSheet::Create(self->Content().XamlRoot(), Sdk(), dnsSettings_,
+                                             dnsStatus_, countryCode_, countryName_);
     co_await dnsSheet_->Dialog().ShowAsync();
+    // "Change location" under a provider that isn't answering closed the
+    // editor for the location chooser, which opens once it is gone
+    changeLocation = dnsSheet_ && dnsSheet_->ChangeLocationChosen();
   } catch (...) {
   }
   dnsSheet_.reset();
   w_.SetSheetOpen(false);
+  if (changeLocation) ShowLocationChooserSheet();
 }
 
 winrt::fire_and_forget ConnectPage::ShowTransportSettingsSheet(
