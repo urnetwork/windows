@@ -45,6 +45,7 @@ SubscriptionBalanceStore::~SubscriptionBalanceStore() {
 void SubscriptionBalanceStore::Initialize(
     winrt::Microsoft::UI::Dispatching::DispatcherQueue queue) {
   queue_ = queue;
+  proTracker_ = urnet::newSubscriptionProTracker();
 
   backgroundTimer_ = queue_.CreateTimer();
   backgroundTimer_.Interval(kBackgroundInterval);
@@ -93,14 +94,15 @@ void SubscriptionBalanceStore::Start() {
   fetchSettledAtMillis_ = 0;
 
   // Pro and guest are readable without any network call: they are claims baked
-  // into the stored jwt.
+  // into the stored jwt. The sdk's decision reads the Pro claim until the
+  // first fetch lands.
   serverGuest_ = false;
+  proTracker_.reset();
+  TrackStoredJwt();
+  snapshot_.isPro = proTracker_.getIsPro();
   if (auto jwt = sdk_.ParsedJwt()) {
-    jwtPro_ = jwt->Pro;
     jwtGuest_ = jwt->GuestMode;
-    snapshot_.isPro = jwt->Pro;
   } else {
-    jwtPro_ = false;
     jwtGuest_ = false;
   }
   snapshot_.guest = IsGuestNetwork(jwtGuest_, serverGuest_);
@@ -127,7 +129,7 @@ void SubscriptionBalanceStore::Stop() {
   timedOut_ = false;
   snapshot_ = {};
   fetchSettledAtMillis_ = 0;
-  jwtPro_ = false;
+  proTracker_.reset();
   jwtGuest_ = false;
   serverGuest_ = false;
   Publish();
@@ -227,20 +229,32 @@ void SubscriptionBalanceStore::ClearTimeout() {
 void SubscriptionBalanceStore::OnJwtRefreshed() {
   auto byJwt = sdk_.ParsedJwt();
   if (!byJwt) return;
-  jwtPro_ = byJwt->Pro;  // the claim actually landed; advance the tracking
+  // The claim tracking advances only when a new jwt actually landed. The
+  // refresh renewed the client token, so the stored jwt is usually the one
+  // read before, and once a fetch answered Pro stays the server's: taking Pro
+  // from the unchanged claim here flipped the plan back on every refresh
+  // (support inbox 8211).
+  TrackStoredJwt();
+  const bool isPro = proTracker_.getIsPro();  // moves only before the first fetch
   // a refresh signs the jwt without GuestMode; the server's guest still holds
   jwtGuest_ = byJwt->GuestMode;
   const bool guest = IsGuestNetwork(jwtGuest_, serverGuest_);
   const bool guestChanged = snapshot_.guest != guest;
   snapshot_.guest = guest;
-  if (snapshot_.isPro == jwtPro_) {
+  if (snapshot_.isPro == isPro) {
     if (guestChanged) Publish();
     return;
   }
-  snapshot_.isPro = jwtPro_;
+  snapshot_.isPro = isPro;
   // a lapse back to free resumes the background poll; Pro stops it (Apply parity)
-  if (!jwtPro_) EnsureBackgroundPolling();
+  if (!isPro) EnsureBackgroundPolling();
   Publish();
+}
+
+void SubscriptionBalanceStore::TrackStoredJwt() {
+  if (const std::string byJwt = sdk_.StoredByJwt(); !byJwt.empty()) {
+    proTracker_.setJwt(byJwt);
+  }
 }
 
 void SubscriptionBalanceStore::Fetch() {
@@ -321,19 +335,17 @@ void SubscriptionBalanceStore::Apply(urnet::SubscriptionBalanceResult const& res
 
   // The server is the source of truth for Pro, and current_subscription is
   // set exactly when the network is Pro. The jwt's Pro claim is baked in when
-  // the token is issued, so it goes stale on BOTH an upgrade and a lapse:
-  // refresh the jwt whenever the two disagree, in either direction (macOS
-  // SubscriptionBalanceViewModel parity). Request it once per flip, not on
-  // every poll.
+  // the token is issued, so it goes stale on BOTH an upgrade and a lapse. The
+  // sdk's decision (urnet::SubscriptionProTracker) keeps Pro the server's from
+  // here on and asks for one refresh per stored jwt: the refresh renews the
+  // client token and leaves the stored jwt as it was, so asking on every poll
+  // refreshed on every poll (support inbox 8211). A stored jwt renewed since
+  // (it renews on its own schedule) is read again here.
   const bool serverIsPro = result.current_subscription.has_value();
-  if (serverIsPro != jwtPro_) {
-    // trigger a refresh; the jwt-refresh listener (OnJwtRefreshed) advances jwtPro_
-    // from the real new claim once it lands. Advancing it here optimistically would
-    // "forget" the disagreement when RefreshJwt no-ops (device not yet up on resume),
-    // leaving the stored token's stale Pro claim frozen for its lifetime.
-    sdk_.RefreshJwt();
-  }
-  snapshot_.isPro = serverIsPro;
+  TrackStoredJwt();
+  const bool refreshJwt = proTracker_.balanceLoaded(serverIsPro);
+  snapshot_.isPro = proTracker_.getIsPro();
+  if (refreshJwt) sdk_.RefreshJwt();
   snapshot_.subscriptionStoreFamily =
       result.current_subscription ? urnet::classifySubscriptionStore(result.current_subscription->store)
                                   : std::string();

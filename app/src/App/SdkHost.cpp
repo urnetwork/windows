@@ -1741,6 +1741,17 @@ std::optional<urnet::ByJwt> SdkHost::ParsedJwt() {
   }
 }
 
+std::string SdkHost::StoredByJwt() {
+  std::scoped_lock lock(mutex_);
+  if (!localState_) return std::string();
+  try {
+    return localState_->getByJwt();
+  } catch (const std::exception& e) {
+    LogWarn("sdkhost: read stored jwt failed: {}", e.what());
+    return std::string();
+  }
+}
+
 void SdkHost::RefreshJwt() {
   std::scoped_lock lock(mutex_);
   if (!device_) return;

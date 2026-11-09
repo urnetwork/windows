@@ -862,8 +862,12 @@ class SdkHost {
   // The claims baked into the stored network jwt (Pro, GuestMode, network
   // name) — readable offline. Empty when logged out.
   std::optional<urnet::ByJwt> ParsedJwt();
-  // Refresh the device token when the server's Pro state and the jwt disagree
-  // (macOS device.refreshToken(0)).
+  // The stored network jwt itself, which the sdk's Pro decision reads its
+  // claim from (urnet::SubscriptionProTracker); "" when logged out. Never
+  // logged.
+  std::string StoredByJwt();
+  // Refresh the device token when the sdk's Pro decision asks for it (macOS
+  // device.refreshToken(0)). It renews the client token, not the stored jwt.
   void RefreshJwt();
 
   // Sign in with a Solana wallet (Phantom/Solflare) via the ur.io/wallet-connect
