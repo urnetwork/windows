@@ -9,10 +9,14 @@
 // checkout leaves the window visible behind the browser, so the clock must
 // also stop on focus loss while the user is off paying.
 //
-// Pro is readable OFFLINE from the stored jwt (LocalState::parseByJwt), which
-// seeds the snapshot at login; the server is the source of truth afterwards,
-// and the jwt is refreshed whenever the two disagree in either direction
-// (an upgrade and a lapse both go stale in the token).
+// Pro is the sdk's decision (urnet::SubscriptionProTracker): readable OFFLINE
+// from the stored jwt's claim, which seeds the snapshot at login, and the
+// server's answer from the first fetch on. When the two disagree (an upgrade
+// and a lapse both go stale in the token) the jwt is refreshed once per
+// stored jwt: the refresh renews the client token, not the stored network
+// jwt, so taking Pro from the unchanged claim on the refresh flipped the plan
+// back on every background poll and asked for a refresh on every one
+// (support inbox 8211).
 //
 // Threading: all public methods run on the UI thread; SDK callbacks marshal
 // back through the DispatcherQueue. The change handler fires on the UI thread.
@@ -157,11 +161,11 @@ class SubscriptionBalanceStore {
   // steady clock, when a fetch last settled (0 = never this session)
   int64_t FetchSettledAtMillis() const { return fetchSettledAtMillis_; }
 
-  // Re-derive Pro from the (freshly refreshed) jwt. Wired to the sdk's jwt-refresh
-  // listener so a mid-session Pro change -- notably a Pro->free lapse a Pro
-  // network's paused poll would miss -- is reflected right away, and so the jwt's
-  // Pro claim (jwtPro_) advances only when a refresh actually lands. Must be called
-  // on the UI thread (AppController marshals it via OnUi).
+  // Hand the stored jwt to the Pro decision after a jwt refresh (the sdk's
+  // jwt-refresh listener), so the claim tracking advances only when a new jwt
+  // actually lands. Its claim counts only before the first fetch: once the
+  // server answered, Pro stays the server's until the next fetch. Must be
+  // called on the UI thread (AppController marshals it via OnUi).
   void OnJwtRefreshed();
 
   // After a checkout was handed to the browser: poll every 5 seconds until the
@@ -217,6 +221,8 @@ class SubscriptionBalanceStore {
   void ResumeConfirmationPolling();
   void StopBackground();
   void StopConfirmation(bool timedOut);
+  // hands the stored jwt to proTracker_ (an empty read changes nothing)
+  void TrackStoredJwt();
   void Publish();
   // a fetch settled: run the FetchThen waiters
   void Settle();
@@ -238,7 +244,9 @@ class SubscriptionBalanceStore {
   BalanceSnapshot snapshot_;
   bool started_ = false;
   bool visible_ = false;
-  bool jwtPro_ = false;     // the jwt's Pro claim (stale across plan changes)
+  // the sdk's Pro and jwt refresh decision (made in Initialize, driven from
+  // the UI thread only); snapshot_.isPro is its GetIsPro
+  urnet::SubscriptionProTracker proTracker_;
   // snapshot_.guest is IsGuestNetwork(jwtGuest_, serverGuest_): the jwt's
   // GuestMode claim (a refresh clears it) or the server's `guest` (no login
   // method, read live)
