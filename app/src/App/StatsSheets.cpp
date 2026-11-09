@@ -1294,6 +1294,20 @@ std::optional<urnet::DnsResolverSettings> DnsHelper(const char* what, Fn&& fn) {
   return urnw::ReadSdkList(logged, what, std::forward<Fn>(fn));
 }
 
+// The saved id a personal preset's field starts on, as the sdk gives it for
+// that field alone (decision 21): the id in force while `settings` select the
+// preset, else empty, as when the call failed (ReadSdkList's guard, logged
+// once).
+std::string DnsPersonalIdForEdit(std::optional<urnet::DnsResolverSettings> const& settings,
+                                 std::string const& presetId) {
+  static std::atomic<bool> logged{false};
+  return urnw::ReadSdkList(logged, "getDnsPresetPersonalIdForEdit",
+                           [&]() -> std::optional<std::string> {
+                             return urnet::getDnsPresetPersonalIdForEdit(settings, presetId);
+                           })
+      .value_or(std::string());
+}
+
 // A link to `url` in the default browser, labeled `label`; none for an empty
 // label or url, or a url Uri cannot read.
 HyperlinkButton MakeDnsLink(hstring const& label, hstring const& url) {
@@ -1836,11 +1850,10 @@ void DnsEditorSheet::BuildPersonalIdField(StackPanel const& parent,
   personalIdBox_.FontSize(13);
   // the provider's own example as the placeholder (D3)
   personalIdBox_.PlaceholderText(H(preset.PersonalIdExample));
-  // the id the draft holds for this preset, to edit; the screen shows it
-  // nowhere else (D5)
-  if (draft_ && draft_->PresetId == preset.PresetId) {
-    personalIdBox_.Text(H(draft_->PresetPersonalId));
-  }
+  // the id the draft holds for this preset, to edit, as the sdk gives it for
+  // this field; the screen shows it nowhere else (decision 21, D5)
+  const std::string personalId = DnsPersonalIdForEdit(draft_, preset.PresetId);
+  if (!personalId.empty()) personalIdBox_.Text(H(personalId));
   {
     std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
     personalIdBox_.TextChanged([weak](IInspectable const&, TextChangedEventArgs const&) {
@@ -1887,12 +1900,12 @@ void DnsEditorSheet::SelectPick(size_t index) {
   } else if (pick.Preset && pick.Preset->PersonalIdRequired) {
     // The draft takes a Use my account pick once its id validates
     // (OnPersonalIdChanged). A draft already on this preset keeps its id, and
-    // the id in force for it is taken back.
+    // the id in force for it, as the sdk gives it for its field, is taken back.
     const bool held = draft_ && draft_->PresetId == pick.PresetId;
-    if (!held && opened_ && opened_->PresetId == pick.PresetId) {
+    const std::string saved = held ? std::string() : DnsPersonalIdForEdit(opened_, pick.PresetId);
+    if (!saved.empty()) {
       next = DnsHelper("dnsResolverSettingsWithPreset", [&] {
-        return urnet::dnsResolverSettingsWithPreset(draft_, pick.PresetId,
-                                                    opened_->PresetPersonalId);
+        return urnet::dnsResolverSettingsWithPreset(draft_, pick.PresetId, saved);
       });
     }
     pickPending_ = !held && !next;
