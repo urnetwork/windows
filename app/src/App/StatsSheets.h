@@ -424,7 +424,8 @@ class DnsEditorSheet : public std::enable_shared_from_this<DnsEditorSheet> {
   // writes only while it is still the device's (EditorApply.h)
   std::optional<urnet::DnsResolverSettings> opened_;
   std::optional<urnet::DnsResolverStatus> status_;
-  // the last blocked count read; none until the first, when the status's shows
+  // the newest blocked count: a status push's (SetStatus), then each read's
+  // (SetBlockedCount); none until either, when the opening status's shows
   std::optional<int64_t> blockedCount_;
   // the selected pick is not in the draft: a Use my account pick with no valid
   // id yet, or a pick the sdk could not apply; Update stays off meanwhile

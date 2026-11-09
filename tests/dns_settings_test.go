@@ -117,3 +117,66 @@ func TestDnsCardShowsTheSdkSummary(t *testing.T) {
 		}
 	}
 }
+
+// The DNS editor's blocked lookups count is read off the UI thread, by the
+// session's device handle (the client limit feed's shape): the bootstrap sets
+// the handle and its session generation and the teardown clears them, under
+// their own leaf lock, before the device closes; the read never goes through
+// device_ or mutex_, and drops a count of a session that ended or was
+// replaced while it was out; the reader stops before the destructor and the
+// quit take mutex_. The editor takes the status's count with each status, so a
+// reconnect's zero replaces a count read before it.
+func TestDnsBlockedCountReaderLifecycle(t *testing.T) {
+	host := stripComments(readAppSource(t, "SdkHost.cpp"))
+	bootstrap := functionBody(host, "bool SdkHost::BootstrapSession(")
+	if bootstrap == "" {
+		t.Fatal("SdkHost.cpp no longer defines BootstrapSession; update this contract")
+	}
+	quitRequireSequence(t, "SdkHost::BootstrapSession", bootstrap,
+		regexp.QuoteMeta("const std::uint64_t generation = sessionGeneration_;"),
+		regexp.QuoteMeta("std::scoped_lock lock(dnsBlockedCountMutex_);"),
+		regexp.QuoteMeta("dnsBlockedCountDevice_ = device_->handle();"),
+		regexp.QuoteMeta("dnsBlockedCountGeneration_ = generation;"))
+	teardown := definitionBody(t, "SdkHost.cpp", host, "void SdkHost::TeardownSessionLocked(bool stopTunnel) {")
+	quitRequireSequence(t, "SdkHost::TeardownSessionLocked", teardown,
+		regexp.QuoteMeta("std::scoped_lock lock(dnsBlockedCountMutex_);"),
+		regexp.QuoteMeta("dnsBlockedCountDevice_ = 0;"),
+		regexp.QuoteMeta("dnsBlockedCountGeneration_ = 0;"),
+		regexp.QuoteMeta("if (device_) { device_->close(); device_.reset(); }"))
+
+	reader := functionBody(host, "void SdkHost::ReadDnsBlockedCountOnWorker(")
+	quitRequireSequence(t, "SdkHost::ReadDnsBlockedCountOnWorker", reader,
+		regexp.QuoteMeta("device = dnsBlockedCountDevice_;"),
+		regexp.QuoteMeta("generation = dnsBlockedCountGeneration_;"),
+		regexp.QuoteMeta("const int64_t count = urnet_device_get_dns_blocked_count(device);"),
+		// the delivery's own lock, the second of the read
+		regexp.QuoteMeta("std::scoped_lock lock(dnsBlockedCountMutex_);")+`\s*`+
+			regexp.QuoteMeta("if (generation == 0 || generation != dnsBlockedCountGeneration_) return;"),
+		regexp.QuoteMeta("onDnsBlockedCount_(count);"))
+	quitForbid(t, "SdkHost::ReadDnsBlockedCountOnWorker", reader,
+		"the read runs off mutex_ and by the device's handle, so a teardown cannot free what it reads",
+		"device_->", "lock(mutex_")
+
+	for _, signature := range []string{"SdkHost::~SdkHost(", "void SdkHost::QuitInOrder("} {
+		quitRequireSequence(t, signature, functionBody(host, signature),
+			regexp.QuoteMeta("dnsBlockedCountReader_.Stop();"), regexp.QuoteMeta("std::scoped_lock lock(mutex_);"))
+	}
+	if n := strings.Count(host, "dnsBlockedCountReader_.Stop();"); n != 2 {
+		t.Errorf("SdkHost.cpp stops the blocked count reader in %d places, want 2 (the destructor and the quit)", n)
+	}
+	header := stripComments(readAppSource(t, "SdkHost.h"))
+	for _, want := range []string{
+		"void RequestDnsBlockedCount() { dnsBlockedCountReader_.Request(); }",
+		"CoalescedWorker dnsBlockedCountReader_{[this] { ReadDnsBlockedCountOnWorker(); }};",
+	} {
+		if !strings.Contains(header, want) {
+			t.Errorf("SdkHost.h is missing %q", want)
+		}
+	}
+
+	setStatus := functionBody(dnsEditorSource(t), "void DnsEditorSheet::SetStatus(")
+	quitRequireSequence(t, "DnsEditorSheet::SetStatus", setStatus,
+		regexp.QuoteMeta("status_ = std::move(status);"),
+		regexp.QuoteMeta("blockedCount_ = status_ ? std::optional<int64_t>{status_->BlockedCount} : std::nullopt;"),
+		regexp.QuoteMeta("RenderStatus();"))
+}

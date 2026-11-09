@@ -3995,10 +3995,11 @@ bool SdkHost::BootstrapSession(const char* reason, bool attachOnly) {
     // presence listener below reports on it. So does the client limit feed.
     BeginTransportDelay(generation, device_->handle());
     BeginClientLimit(generation, device_->handle());
-    // and the DNS editor's blocked count reads by this handle
+    // and the DNS editor's blocked count reads by this handle, for this session
     {
       std::scoped_lock lock(dnsBlockedCountMutex_);
       dnsBlockedCountDevice_ = device_->handle();
+      dnsBlockedCountGeneration_ = generation;
     }
 
     // Register BEFORE setRpcServer: a loopback sync may complete immediately,
@@ -5710,15 +5711,22 @@ std::optional<urnet::DnsResolverStatus> SdkHost::CurrentDnsStatus() {
 
 void SdkHost::ReadDnsBlockedCountOnWorker() {
   std::uint64_t device = 0;
+  std::uint64_t generation = 0;
   {
     std::scoped_lock lock(dnsBlockedCountMutex_);
     device = dnsBlockedCountDevice_;
+    generation = dnsBlockedCountGeneration_;
   }
   if (device == 0) return;
   // Device::GetDnsBlockedCount by the handle: 0 for a released handle, and
   // from the remote device 0 while the service cannot be reached. The count
   // stays on the device and is never logged (ADBLOCK3RD H5).
   const int64_t count = urnet_device_get_dns_blocked_count(device);
+  // A count of a session that ended or was replaced while the read was out is
+  // not this one's. The handler only marshals, so it runs under the leaf lock,
+  // and a teardown cannot come between the check and the delivery.
+  std::scoped_lock lock(dnsBlockedCountMutex_);
+  if (generation == 0 || generation != dnsBlockedCountGeneration_) return;
   if (onDnsBlockedCount_) onDnsBlockedCount_(count);
 }
 
@@ -8912,10 +8920,12 @@ void SdkHost::TeardownSessionLocked(bool stopTunnel) {
   EndTransportDelay();
   // The client limit feed the same way: no session, no hold to show.
   EndClientLimit();
-  // The blocked count reads nothing more: no session, no count.
+  // The blocked count reads nothing more, and drops a read still in flight: no
+  // session, no count.
   {
     std::scoped_lock lock(dnsBlockedCountMutex_);
     dnsBlockedCountDevice_ = 0;
+    dnsBlockedCountGeneration_ = 0;
   }
   // A device list open on this device closes with it, through it, and opens
   // again on the api, so the sheet keeps a list (signed out, it stays closed).

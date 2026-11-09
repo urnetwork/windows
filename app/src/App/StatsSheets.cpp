@@ -1867,6 +1867,10 @@ void DnsEditorSheet::BuildPersonalIdField(StackPanel const& parent,
   parent.Children().Append(MakeText(
       hstring{Format("dns_personal_id_block_response", provider)}, 11, FaintBrush(), true));
   parent.Children().Append(MakeText(Loc("dns_personal_id_linked_ip_note"), 11, FaintBrush(), true));
+  // and the ur.io help on personal ids, as android and apple link it
+  if (auto help = MakeDnsLink(Loc("learn_more"), hstring{dnspresets::kPersonalIdsHelpUrl})) {
+    parent.Children().Append(help);
+  }
 }
 
 void DnsEditorSheet::SelectPick(size_t index) {
@@ -2079,6 +2083,10 @@ void DnsEditorSheet::RenderFastDnsNote() {
 
 void DnsEditorSheet::SetStatus(std::optional<urnet::DnsResolverStatus> status) {
   status_ = std::move(status);
+  // The status's count is as new as the status: a reconnect's zero replaces a
+  // count read before it. With no status (no session) none is kept, and the
+  // summary's own shows.
+  blockedCount_ = status_ ? std::optional<int64_t>{status_->BlockedCount} : std::nullopt;
   RenderStatus();
 }
 

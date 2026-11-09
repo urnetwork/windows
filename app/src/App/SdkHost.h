@@ -3000,14 +3000,18 @@ class SdkHost {
   DrawerSeedHandler onDrawerSeed_;
   CoalescedWorker drawerSeedReader_{[this] { ReadDrawerSeedOnWorker(); }};
   // ---- the DNS blocked lookups count (RequestDnsBlockedCount) ----
-  // The session's device handle behind its own leaf lock, as the client limit
-  // feed keeps it: the reader asks the device by its handle through the c abi,
-  // never through device_, so it takes no mutex_, and a read behind a held
-  // command waits on its own thread. Set by BootstrapSession and cleared by
-  // TeardownSessionLocked, both under mutex_; a handle the teardown has
-  // released since answers 0. Stopped with statsPublisher_ for the same reason.
+  // The session's device handle and the session it belongs to, behind their
+  // own leaf lock, as the client limit feed keeps them: the reader asks the
+  // device by its handle through the c abi, never through device_, so it takes
+  // no mutex_, and a read behind a held command waits on its own thread. Set by
+  // BootstrapSession and cleared by TeardownSessionLocked, both under mutex_;
+  // a handle the teardown has released since answers 0, and a count read for a
+  // session that ended or was replaced meanwhile is dropped. Stopped with
+  // statsPublisher_ for the same reason.
   mutable std::mutex dnsBlockedCountMutex_;
   std::uint64_t dnsBlockedCountDevice_ = 0;
+  // the sessionGeneration_ the handle belongs to; 0: none
+  std::uint64_t dnsBlockedCountGeneration_ = 0;
   DnsBlockedCountHandler onDnsBlockedCount_;
   void ReadDnsBlockedCountOnWorker();
   CoalescedWorker dnsBlockedCountReader_{[this] { ReadDnsBlockedCountOnWorker(); }};

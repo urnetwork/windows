@@ -23,6 +23,10 @@ namespace urnw::dnspresets {
 // The ur.io help on DNS providers, the faq's section, behind learn_more. In
 // English, as every ur.io link of the app is (ApiKeysPresentation.h kDocsUrl).
 inline constexpr const wchar_t* kHelpUrl = L"https://ur.io/docs/faq#dns-providers";
+// The same faq's help on personal ids, where each provider shows the id and
+// which block response to keep, behind learn_more under the Use my account
+// field, as android and apple link it.
+inline constexpr const wchar_t* kPersonalIdsHelpUrl = L"https://ur.io/docs/faq#dns-personal-ids";
 
 // The headings over the groups of preset picks (DnsPick.GroupKey): no
 // arguments. The ad-blocking group's is the existing block_ads_and_trackers.

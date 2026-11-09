@@ -191,9 +191,18 @@ int main(int argc, char** argv) {
     Fail("a pill this build does not know is shown");
   }
 
-  Case("the help link is the ur.io faq's DNS providers section");
+  Case("the help links are the ur.io faq's DNS providers and personal ids sections");
   if (std::wstring_view{presets::kHelpUrl} != L"https://ur.io/docs/faq#dns-providers") {
     Fail("unexpected help link");
+  }
+  // the Use my account field's, as android and apple link it
+  if (std::wstring_view{presets::kPersonalIdsHelpUrl} !=
+      L"https://ur.io/docs/faq#dns-personal-ids") {
+    Fail("unexpected personal ids help link");
+  }
+  if (!Contains(ReadFile(appDir + "/src/App/StatsSheets.cpp"),
+                "MakeDnsLink(Loc(\"learn_more\"), hstring{dnspresets::kPersonalIdsHelpUrl})")) {
+    Fail("the Use my account field does not link the personal ids help");
   }
 
   Case("every key the picker can show is in the generated English strings");
