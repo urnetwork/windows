@@ -3995,25 +3995,27 @@ void ConnectPage::ApplyDnsSummary() {
     });
   }
 
-  // "DNS: URnetwork", "DNS: AdGuard DNS · Ad blocking", "DNS: NextDNS · your
-  // profile": the provider's name as it is, and never a personal id (D5)
+  // "DNS: URnetwork", "DNS: AdGuard Ad Blocking", "DNS: NextDNS Personal": a
+  // preset by its name, and never a personal id (D5)
   w_.DnsSummaryText().Text(
       summary ? DnsKeyText(dnspresets::Known(summary->SummaryKey, dnspresets::kSummaryKeys),
-                           urnw::Widen(summary->ProviderName))
+                           DnsPresetName(summary->NameKey, summary->NameProvider))
               : hstring{});
 
-  // under it: the notice of a provider an update removed (A7), or the status
-  // of a preset that isn't answering, with its two actions (C8)
+  // under it: the notice of a preset an update removed, named as it showed
+  // (A7), or the status of a preset that isn't answering, with its two
+  // actions (C8)
   hstring line;
   bool failing = false;
   if (summary && summary->Dropped) {
-    line = summary->DroppedProviderName.empty()
+    line = summary->DroppedNameKey.empty()
                ? Loc("dns_preset_error_unknown")
                : hstring{urnw::Format("dns_preset_dropped",
-                                      urnw::Widen(summary->DroppedProviderName))};
+                                      DnsPresetName(summary->DroppedNameKey,
+                                                    summary->DroppedNameProvider))};
   } else if (status && status->ShowUseDefault) {
     line = DnsKeyText(dnspresets::Known(status->StatusKey, dnspresets::kStatusKeys),
-                      urnw::Widen(status->ProviderName));
+                      DnsPresetName(status->NameKey, status->NameProvider));
     failing = true;
   }
   w_.DnsStatusText().Foreground(urnw::colors::MakeBrush(urnw::colors::kUrAmber));

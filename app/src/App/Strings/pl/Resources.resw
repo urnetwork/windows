@@ -3786,19 +3786,19 @@ właściwy sposób</value>
   </data>
   <data name="dns_blocked_count.one" xml:space="preserve">
     <value>{0} zapytanie zablokowane przez {1} w tym połączeniu</value>
-    <comment>DNS settings: how many DNS lookups the selected adblock provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the adblock provider's name, inserted as is.</comment>
+    <comment>DNS settings: how many DNS lookups the selected adblock provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the selected preset's name (dns_preset_name_*, for example AdGuard Ad Blocking), inserted as is.</comment>
   </data>
   <data name="dns_blocked_count.few" xml:space="preserve">
     <value>{0} zapytania zablokowane przez {1} w tym połączeniu</value>
-    <comment>DNS settings: how many DNS lookups the selected adblock provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the adblock provider's name, inserted as is.</comment>
+    <comment>DNS settings: how many DNS lookups the selected adblock provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the selected preset's name (dns_preset_name_*, for example AdGuard Ad Blocking), inserted as is.</comment>
   </data>
   <data name="dns_blocked_count.many" xml:space="preserve">
     <value>{0} zapytań zablokowanych przez {1} w tym połączeniu</value>
-    <comment>DNS settings: how many DNS lookups the selected adblock provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the adblock provider's name, inserted as is.</comment>
+    <comment>DNS settings: how many DNS lookups the selected adblock provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the selected preset's name (dns_preset_name_*, for example AdGuard Ad Blocking), inserted as is.</comment>
   </data>
   <data name="dns_blocked_count.other" xml:space="preserve">
     <value>{0} zapytań zablokowanych przez {1} w tym połączeniu</value>
-    <comment>DNS settings: how many DNS lookups the selected adblock provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the adblock provider's name, inserted as is.</comment>
+    <comment>DNS settings: how many DNS lookups the selected adblock provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the selected preset's name (dns_preset_name_*, for example AdGuard Ad Blocking), inserted as is.</comment>
   </data>
   <data name="dns_blocked_count_floor_note" xml:space="preserve">
     <value>Niektóre blokady nie są liczone, więc faktyczna liczba może być wyższa.</value>
@@ -3962,7 +3962,7 @@ właściwy sposób</value>
   </data>
   <data name="dns_preset_dropped" xml:space="preserve">
     <value>Usługa {} nie jest już dostępna. Używasz DNS URnetwork, więc zapytania nie są filtrowane.</value>
-    <comment>DNS settings and connect drawer: notice after an app update removed the adblock provider the person had selected. The app switched to URnetwork's own DNS, which doesn't filter. {provider} is the removed adblock provider's name, inserted as is.</comment>
+    <comment>DNS settings and connect drawer: notice after an app update removed the preset the person had selected. The app switched to URnetwork's own DNS, which doesn't filter. {provider} is the removed preset's name (dns_preset_name_*, for example AdGuard Family), inserted as is.</comment>
   </data>
   <data name="dns_preset_dropped_choose" xml:space="preserve">
     <value>Wybierz inne gotowe ustawienie</value>
@@ -3994,7 +3994,7 @@ właściwy sposób</value>
   </data>
   <data name="dns_preset_fast_dns_note" xml:space="preserve">
     <value>Podczas łączenia zapytania korzystają z DNS URnetwork, więc {} ich nie filtruje.</value>
-    <comment>DNS settings: note beside the "Fast DNS on connect" toggle while an adblock provider is selected. While the tunnel connects, lookups go to URnetwork's own DNS, so the adblock provider never sees the person's own address, but those lookups aren't filtered. {provider} is the adblock provider's name, inserted as is.</comment>
+    <comment>DNS settings: note beside the "Fast DNS on connect" toggle while an adblock provider is selected. While the tunnel connects, lookups go to URnetwork's own DNS, so the adblock provider never sees the person's own address, but those lookups aren't filtered. {provider} is the selected preset's name (dns_preset_name_*, for example AdGuard Family), inserted as is.</comment>
   </data>
   <data name="dns_preset_help_link" xml:space="preserve">
     <value>Pomoc</value>
@@ -4004,13 +4004,41 @@ właściwy sposób</value>
     <value>Jurysdykcja: {}</value>
     <comment>DNS settings, adblock provider picker: which country's law the adblock provider operates under. {jurisdiction} comes from the app's adblock provider catalog in English (for example Cyprus or Switzerland) and is inserted as is.</comment>
   </data>
+  <data name="dns_preset_name_ad_blocking" xml:space="preserve">
+    <value>{} Blokowanie reklam</value>
+    <comment>DNS settings: the name of an adblock provider's preset in "Block ads and trackers", which blocks ads and trackers. Shown alone as the preset's label on the DNS screen, and inserted as is wherever the selected preset is named, as in "DNS: AdGuard Ad Blocking" and "AdGuard Ad Blocking isn't answering", so it reads as a short name that works on its own and inside a sentence. {provider} is the adblock provider's short name, inserted as is (for example AdGuard); keep it first, so the presets of a group stay in alphabetical order.</comment>
+  </data>
+  <data name="dns_preset_name_child" xml:space="preserve">
+    <value>{} Dzieci</value>
+    <comment>DNS settings: the name of DNS4EU's child protection preset in "Family", which blocks malware, adult sites, gambling, drugs and violence and doesn't block ads. Next to it is the same protection with ads blocked (dns_preset_name_child_ads). Shown alone as the preset's label on the DNS screen, and inserted as is wherever the selected preset is named, as in "DNS: DNS4EU Child" and "DNS4EU Child isn't answering", so it reads as a short name that works on its own and inside a sentence. {provider} is the adblock provider's short name, inserted as is (for example DNS4EU); keep it first, so the presets of a group stay in alphabetical order.</comment>
+  </data>
+  <data name="dns_preset_name_child_ads" xml:space="preserve">
+    <value>{} Dzieci, bez reklam</value>
+    <comment>DNS settings: the name of DNS4EU's child protection preset that also blocks ads and trackers, in "Family". "no ads" means the person sees no ads, because they are blocked. Next to it is the same protection without ad blocking (dns_preset_name_child). Shown alone as the preset's label on the DNS screen, and inserted as is wherever the selected preset is named, as in "DNS: DNS4EU Child, no ads" and "DNS4EU Child, no ads isn't answering", so it reads as a short name that works on its own and inside a sentence. {provider} is the adblock provider's short name, inserted as is (for example DNS4EU); keep it first, so the presets of a group stay in alphabetical order.</comment>
+  </data>
+  <data name="dns_preset_name_family" xml:space="preserve">
+    <value>{} Rodzina</value>
+    <comment>DNS settings: the name of an adblock provider's preset in "Family", which blocks adult sites and, for some adblock providers, ads. Shown alone as the preset's label on the DNS screen, and inserted as is wherever the selected preset is named, as in "DNS: AdGuard Family" and "AdGuard Family isn't answering", so it reads as a short name that works on its own and inside a sentence. {provider} is the adblock provider's short name, inserted as is (for example AdGuard); keep it first, so the presets of a group stay in alphabetical order.</comment>
+  </data>
+  <data name="dns_preset_name_malware_blocking" xml:space="preserve">
+    <value>{} Blokowanie złośliwego oprogramowania</value>
+    <comment>DNS settings: the name of an adblock provider's preset in "Block malware", which blocks malware and doesn't block ads. Shown alone as the preset's label on the DNS screen, and inserted as is wherever the selected preset is named, as in "DNS: Quad9 Malware Blocking" and "Quad9 Malware Blocking isn't answering", so it reads as a short name that works on its own and inside a sentence. {provider} is the adblock provider's short name, inserted as is (for example Quad9); keep it first, so the presets of a group stay in alphabetical order.</comment>
+  </data>
+  <data name="dns_preset_name_no_filtering" xml:space="preserve">
+    <value>{} Bez filtrowania</value>
+    <comment>DNS settings: the name of an adblock provider's preset in "No filtering", which blocks nothing. Shown alone as the preset's label on the DNS screen, and inserted as is wherever the selected preset is named, as in "DNS: Cloudflare No Filtering" and "Cloudflare No Filtering isn't answering", so it reads as a short name that works on its own and inside a sentence. {provider} is the adblock provider's short name, inserted as is (for example Cloudflare); keep it first, so the presets of a group stay in alphabetical order.</comment>
+  </data>
+  <data name="dns_preset_name_personal" xml:space="preserve">
+    <value>{} Osobisty</value>
+    <comment>DNS settings: the name of an adblock provider's preset in "Use my account", which uses the filters the person set up in their own account there. It never includes the account's ID. Shown alone as the preset's label on the DNS screen, and inserted as is wherever the selected preset is named, as in "DNS: NextDNS Personal" and "NextDNS Personal isn't answering", so it reads as a short name that works on its own and inside a sentence. {provider} is the adblock provider's short name, inserted as is (for example NextDNS); keep it first, so the presets of a group stay in alphabetical order.</comment>
+  </data>
   <data name="dns_preset_privacy_link" xml:space="preserve">
     <value>Polityka prywatności</value>
     <comment>DNS settings: link under the selected adblock provider that opens the adblock provider's privacy policy.</comment>
   </data>
   <data name="dns_private_dns_overrides_preset" xml:space="preserve">
     <value>Prywatny DNS zastępuje wybrany przez Ciebie DNS ({}).</value>
-    <comment>Android connect screen: line added to the strict Private DNS notice while an adblock provider is selected, since Android's Private DNS sends lookups to its own server instead. {provider} is the selected adblock provider's name, inserted as is. Private DNS is Android's own setting, named as in Android.</comment>
+    <comment>Android connect screen: line added to the strict Private DNS notice while an adblock provider is selected, since Android's Private DNS sends lookups to its own server instead. {provider} is the selected preset's name (dns_preset_name_*, for example AdGuard Family), inserted as is. Private DNS is Android's own setting, named as in Android.</comment>
   </data>
   <data name="dns_provider_custom" xml:space="preserve">
     <value>Własny</value>
@@ -4046,11 +4074,11 @@ właściwy sposób</value>
   </data>
   <data name="dns_status_fallback" xml:space="preserve">
     <value>{} nie odpowiada. Używany jest DNS URnetwork.</value>
-    <comment>DNS settings and connect drawer: status line when an adblock provider from "No filtering" isn't answering, so URnetwork's own DNS answers until it does. {provider} is the adblock provider's name, inserted as is.</comment>
+    <comment>DNS settings and connect drawer: status line when an adblock provider from "No filtering" isn't answering, so URnetwork's own DNS answers until it does. {provider} is the selected preset's name (dns_preset_name_*, for example Cloudflare No Filtering), inserted as is.</comment>
   </data>
   <data name="dns_status_paused" xml:space="preserve">
     <value>Blokowanie reklam wstrzymane: {} nie odpowiada</value>
-    <comment>DNS settings and connect drawer: status line when an adblock provider that blocks ads isn't answering from the current exit, so URnetwork's own DNS answers for now and ads aren't blocked. It switches back on its own when the adblock provider answers. {provider} is the adblock provider's name, inserted as is.</comment>
+    <comment>DNS settings and connect drawer: status line when an adblock provider that blocks ads isn't answering from the current exit, so URnetwork's own DNS answers for now and ads aren't blocked. It switches back on its own when the adblock provider answers. {provider} is the selected preset's name (dns_preset_name_*, for example AdGuard Ad Blocking), inserted as is.</comment>
   </data>
   <data name="dns_status_paused_detail" xml:space="preserve">
     <value>Do czasu odpowiedzi używany jest DNS URnetwork. Blokowanie reklam wznowi się samo.</value>
@@ -4058,11 +4086,11 @@ właściwy sposób</value>
   </data>
   <data name="dns_status_provider" xml:space="preserve">
     <value>DNS: {}</value>
-    <comment>DNS settings: status line while the selected adblock provider answers normally. {provider} is the adblock provider's name (for example AdGuard DNS), inserted as is.</comment>
+    <comment>DNS settings and connect drawer: status line while the selected preset answers normally, and the summary row of a selected preset. {provider} is the preset's name (dns_preset_name_*, for example AdGuard Family), inserted as is; the name already says what the preset does.</comment>
   </data>
   <data name="dns_status_unreachable" xml:space="preserve">
     <value>{} nie odpowiada</value>
-    <comment>DNS settings and connect drawer: status line when an adblock provider's family, malware-blocking or personal pick isn't answering. To keep its filtering, URnetwork doesn't switch to other DNS, so sites may not load until the adblock provider answers or the person picks "Use URnetwork DNS". {provider} is the adblock provider's name, inserted as is.</comment>
+    <comment>DNS settings and connect drawer: status line when an adblock provider's family, malware-blocking or personal pick isn't answering. To keep its filtering, URnetwork doesn't switch to other DNS, so sites may not load until the adblock provider answers or the person picks "Use URnetwork DNS". {provider} is the selected preset's name (dns_preset_name_*, for example AdGuard Family), inserted as is.</comment>
   </data>
   <data name="dns_status_unreachable_detail" xml:space="preserve">
     <value>Aby filtrowanie pozostało włączone, URnetwork nie zmienia DNS samodzielnie. Strony mogą się nie ładować, dopóki dostawca blokowania reklam nie odpowie.</value>
@@ -4071,10 +4099,6 @@ właściwy sposób</value>
   <data name="dns_status_use_default" xml:space="preserve">
     <value>Użyj DNS URnetwork</value>
     <comment>DNS settings and connect drawer: button beside the status of an adblock provider that isn't answering. It switches back to URnetwork's own DNS, the default, in one tap.</comment>
-  </data>
-  <data name="dns_summary_ad_blocking" xml:space="preserve">
-    <value>DNS: {} · Blokowanie reklam</value>
-    <comment>Connect drawer, DNS card: summary row while an adblock provider from "Block ads and trackers" is selected. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_summary_custom" xml:space="preserve">
     <value>DNS: Własny</value>
@@ -4087,22 +4111,6 @@ właściwy sposób</value>
   <data name="dns_summary_default" xml:space="preserve">
     <value>DNS: URnetwork</value>
     <comment>Connect drawer, DNS card: summary row while URnetwork's own DNS, the default, is selected. URnetwork is the product name.</comment>
-  </data>
-  <data name="dns_summary_family" xml:space="preserve">
-    <value>DNS: {} · Filtr rodzinny</value>
-    <comment>Connect drawer, DNS card: summary row while an adblock provider from "Family" is selected. {provider} is the adblock provider's name, inserted as is.</comment>
-  </data>
-  <data name="dns_summary_malware_blocking" xml:space="preserve">
-    <value>DNS: {} · Blokowanie złośliwego oprogramowania</value>
-    <comment>Connect drawer, DNS card: summary row while an adblock provider from "Block malware" is selected. {provider} is the adblock provider's name, inserted as is.</comment>
-  </data>
-  <data name="dns_summary_no_filtering" xml:space="preserve">
-    <value>DNS: {} · Bez filtrowania</value>
-    <comment>Connect drawer, DNS card: summary row while an adblock provider from "No filtering" is selected. {provider} is the adblock provider's name, inserted as is.</comment>
-  </data>
-  <data name="dns_summary_personal" xml:space="preserve">
-    <value>DNS: {} · Twój profil</value>
-    <comment>Connect drawer, DNS card: summary row while an adblock provider from "Use my account" is selected. The profile ID itself is never shown. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_summary_regional" xml:space="preserve">
     <value>DNS: Regionalny (nieszyfrowany)</value>

@@ -159,9 +159,28 @@ int main(int argc, char** argv) {
       Fail(std::string("an id this build does not know is shown: ") + id);
     }
   }
-  // a key known for one line is not taken for another's
-  if (*presets::Known("dns_status_provider", presets::kSummaryKeys) != '\0') {
-    Fail("a status key is shown as a summary");
+  // a key known for one line is not taken for another's; a preset's summary
+  // row is "DNS: <name>", the status line's text and key, and the per-group
+  // summary rows it replaced are not shown (owner, 2026-11-09)
+  if (*presets::Known("dns_summary_default", presets::kStatusKeys) != '\0') {
+    Fail("a summary key is shown as a status");
+  }
+  if (*presets::Known("dns_status_provider", presets::kSummaryKeys) == '\0') {
+    Fail("a preset's summary row, DNS: and its name, is not shown");
+  }
+  for (const char* id : {"dns_summary_ad_blocking", "dns_summary_malware_blocking",
+                         "dns_summary_family", "dns_summary_no_filtering",
+                         "dns_summary_personal"}) {
+    if (*presets::Known(id, presets::kSummaryKeys) != '\0') {
+      Fail(std::string("a retired summary row is shown: ") + id);
+    }
+  }
+  // each preset's name is one of the store's name keys, and no other line's
+  for (const char* id : presets::kNameKeys) {
+    if (std::string_view{id}.rfind("dns_preset_name_", 0) != 0 ||
+        *presets::Known(id, presets::kPickLabelKeys) != '\0') {
+      Fail(std::string("not a preset name key: ") + id);
+    }
   }
 
   Case("a personal id error reads as its own key, anything else as something_went_wrong");
@@ -217,6 +236,7 @@ int main(int argc, char** argv) {
     };
     requireAll("group", presets::kGroupKeys);
     requireAll("pick label", presets::kPickLabelKeys);
+    requireAll("preset name", presets::kNameKeys);
     requireAll("pick copy", presets::kPickCopyKeys);
     requireAll("summary", presets::kSummaryKeys);
     requireAll("status", presets::kStatusKeys);

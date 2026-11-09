@@ -1396,6 +1396,12 @@ void DnsEditorSheet::Build(XamlRoot const& root) {
   SyncFromDraft();
 }
 
+std::wstring DnsPresetName(std::string const& nameKey, std::string const& nameProvider) {
+  const std::wstring provider = Widen(nameProvider);
+  const hstring name = DnsKeyText(dnspresets::Known(nameKey, dnspresets::kNameKeys), provider);
+  return name.empty() ? provider : std::wstring{name};
+}
+
 void DnsEditorSheet::BuildDroppedNotice(StackPanel const& parent) {
   static std::atomic<bool> logged{false};
   const auto summary = urnw::ReadSdkList(logged, "describeDnsResolverSettings", [this] {
@@ -1404,13 +1410,15 @@ void DnsEditorSheet::BuildDroppedNotice(StackPanel const& parent) {
   if (!summary || !summary->Dropped) return;
   StackPanel notice;
   notice.Spacing(4);
-  // An update removed the stored provider, and URnetwork's DNS, which does
-  // not filter, is in force (A7, O8). A provider this release never knew, as
-  // after a downgrade, reads as the generic line.
+  // An update removed the stored preset, and URnetwork's DNS, which does not
+  // filter, is in force (A7, O8): the notice names the preset as it showed. A
+  // preset this release never knew, as after a downgrade, reads as the
+  // generic line.
   const hstring text =
-      summary->DroppedProviderName.empty()
+      summary->DroppedNameKey.empty()
           ? Loc("dns_preset_error_unknown")
-          : hstring{Format("dns_preset_dropped", Widen(summary->DroppedProviderName))};
+          : hstring{Format("dns_preset_dropped",
+                           DnsPresetName(summary->DroppedNameKey, summary->DroppedNameProvider))};
   notice.Children().Append(MakeText(text, 13, SolidColorBrush(colors::kUrAmber), true));
   std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
   HyperlinkButton choose;
@@ -1531,18 +1539,19 @@ void DnsEditorSheet::BuildPicker(StackPanel const& parent) {
 void DnsEditorSheet::BuildPick(StackPanel const& parent, urnet::DnsPick const& pick) {
   const size_t index = picks_.size();
   const bool preset = pick.Kind == urnet::DnsPickKindPreset && pick.Preset.has_value();
+  // the adblock provider's name, which a personal preset's line names
   const std::wstring provider = preset ? Widen(pick.Preset->ProviderName) : std::wstring{};
   const std::wstring country = CountryDisplayName(pick.CountryCode);
 
   StackPanel block;
   block.Spacing(2);
 
-  // the pick: a preset's provider name, as it is and with no logo (O10), or
-  // the pick's own label; then its line
+  // the pick: a preset's name, with no logo (O10), or the pick's own label;
+  // then its line
   StackPanel text;
   text.Spacing(1);
   text.Children().Append(MakeText(
-      preset ? hstring{provider}
+      preset ? hstring{DnsPresetName(pick.Preset->NameKey, pick.Preset->NameProvider)}
              : DnsKeyText(dnspresets::Known(pick.LabelKey, dnspresets::kPickLabelKeys), country),
       13, nullptr, true));
   const hstring copy = DnsKeyText(dnspresets::Known(pick.CopyKey, dnspresets::kPickCopyKeys),
@@ -2013,12 +2022,15 @@ void DnsEditorSheet::RenderStatus() {
     return urnet::describeDnsResolverStatus(opened_, status_);
   });
   if (!summary) return;
+  // the status line and the blocked count name the preset; the verification
+  // and its link name the adblock provider
+  const std::wstring presetName = DnsPresetName(summary->NameKey, summary->NameProvider);
   const std::wstring provider = Widen(summary->ProviderName);
   const Brush amber = SolidColorBrush(colors::kUrAmber);
-  // the status line (C8), amber while the provider is not answering, and the
+  // the status line (C8), amber while the preset is not answering, and the
   // line under it
   const hstring status =
-      DnsKeyText(dnspresets::Known(summary->StatusKey, dnspresets::kStatusKeys), provider);
+      DnsKeyText(dnspresets::Known(summary->StatusKey, dnspresets::kStatusKeys), presetName);
   if (!status.empty()) {
     statusPanel_.Children().Append(
         MakeText(status, 13, summary->ShowUseDefault ? amber : Brush{nullptr}, true));
@@ -2068,12 +2080,12 @@ void DnsEditorSheet::RenderStatus() {
           H(summary->VerificationUrl))) {
     statusPanel_.Children().Append(dashboard);
   }
-  // this connection's lookups the provider blocked, a floor (I3, B9)
+  // this connection's lookups the preset blocked, a floor (I3, B9)
   if (summary->ShowBlockedCount) {
-    blockedCountProvider_ = provider;
+    blockedCountPresetName_ = presetName;
     const int64_t count = blockedCount_.value_or(summary->BlockedCount);
     blockedCountText_ = MakeText(
-        hstring{PluralFormat("dns_blocked_count", count, count, blockedCountProvider_)}, 13,
+        hstring{PluralFormat("dns_blocked_count", count, count, blockedCountPresetName_)}, 13,
         nullptr, true);
     statusPanel_.Children().Append(blockedCountText_);
     statusPanel_.Children().Append(
@@ -2088,7 +2100,8 @@ void DnsEditorSheet::RenderFastDnsNote() {
   if (selected_ < picks_.size()) {
     const urnet::DnsPick& pick = picks_[selected_].pick;
     if (pick.Kind == urnet::DnsPickKindPreset && pick.Preset) {
-      note = hstring{Format("dns_preset_fast_dns_note", Widen(pick.Preset->ProviderName))};
+      note = hstring{Format("dns_preset_fast_dns_note",
+                            DnsPresetName(pick.Preset->NameKey, pick.Preset->NameProvider))};
     }
   }
   kit::SetTextOrCollapse(fastDnsNote_, note);
@@ -2107,7 +2120,7 @@ void DnsEditorSheet::SetBlockedCount(int64_t count) {
   blockedCount_ = count;
   if (blockedCountText_) {
     blockedCountText_.Text(
-        hstring{PluralFormat("dns_blocked_count", count, count, blockedCountProvider_)});
+        hstring{PluralFormat("dns_blocked_count", count, count, blockedCountPresetName_)});
   }
 }
 
