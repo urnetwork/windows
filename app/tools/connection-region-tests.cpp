@@ -250,12 +250,14 @@ int main(int argc, char** argv) {
 
   Case("the DNS editor heads the egress controls Traffic DNS, below the region");
   {
+    // the provider picker leads the traffic controls (connect ADBLOCK3RD F2),
+    // and the resolver switches sit under its Custom pick
     const size_t regionAt = dns.find("ConnectionRegionBlock::Create");
     const size_t trafficAt = dns.find("Loc(connection_region::kTrafficDnsKey)");
-    const size_t resolversAt = dns.find("BuildResolverSection(body)");
+    const size_t pickerAt = dns.find("BuildPicker(body)");
     if (trafficAt == std::string::npos || regionAt == std::string::npos ||
-        !(regionAt < trafficAt && trafficAt < resolversAt)) {
-      Fail("region, Traffic DNS heading, resolvers not in that order");
+        pickerAt == std::string::npos || !(regionAt < trafficAt && trafficAt < pickerAt)) {
+      Fail("region, Traffic DNS heading, DNS picker not in that order");
     }
   }
 

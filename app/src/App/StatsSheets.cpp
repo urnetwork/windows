@@ -18,10 +18,12 @@
 #include "AppRuleRows.h"  // the app split rules sheet's list: one row per app
 #include "BlockActionReason.h"  // safety-rule chip + "Route locally" offer
 #include "ConnectionRegion.h"  // the DNS editor's region picker
+#include "DnsPresetPresentation.h"  // the DNS editor's sdk keys
 #include "FastDnsOnConnect.h"
 #include "Localization.h"
 #include "PageContext.h"   // pages::Adv: the sheets' not-yet-in-store strings
 #include "Sdk.h"   // ReadSdkList: the list-getter null-unwrap guard
+#include "SdkErrorId.h"  // kSdkErrorIdInternal: a personal id check that could not run
 #include "SheetFit.h"  // sheetfit: sheets clamp to the window at open time
 #include "StatsFormat.h"
 #include "Strings.h"  // Widen: the sdk's utf-8 data into the utf-16 ui
@@ -1256,77 +1258,72 @@ void SplitRulesSheet::ApplyEditor() {
 
 // ---- DnsEditorSheet --------------------------------------------------------
 
-bool operator==(const DnsEditorSheet::Draft& a, const DnsEditorSheet::Draft& b) {
-  return a.enableRemoteDoh == b.enableRemoteDoh && a.enableLocalDoh == b.enableLocalDoh &&
-         a.enableRemoteDns == b.enableRemoteDns && a.enableLocalDns == b.enableLocalDns &&
-         a.enableFallback == b.enableFallback &&
-         a.remoteDohUrlsIpv4 == b.remoteDohUrlsIpv4 &&
-         a.remoteDohUrlsIpv6 == b.remoteDohUrlsIpv6 &&
-         a.localDohUrlsIpv4 == b.localDohUrlsIpv4 &&
-         a.localDohUrlsIpv6 == b.localDohUrlsIpv6 && a.remoteDnsIpv4 == b.remoteDnsIpv4 &&
-         a.remoteDnsIpv6 == b.remoteDnsIpv6 && a.localDnsIpv4 == b.localDnsIpv4 &&
-         a.localDnsIpv6 == b.localDnsIpv6;
-}
+namespace {
 
-DnsEditorSheet::Draft DnsEditorSheet::FromSettings(
-    std::optional<urnet::DnsResolverSettings> const& settings) {
-  Draft draft;
-  if (!settings) return draft;
-  draft.enableRemoteDoh = settings->EnableRemoteDoh;
-  draft.enableLocalDoh = settings->EnableLocalDoh;
-  draft.enableRemoteDns = settings->EnableRemoteDns;
-  draft.enableLocalDns = settings->EnableLocalDns;
-  draft.enableFallback = urnw::fast_dns_on_connect::FromSettings(settings);
-  auto list = [](std::optional<urnet::StringList> const& values) {
-    return values ? *values : std::vector<std::string>{};
+// The lists of the settings, for a comparison that reads an absent list as an
+// empty one.
+using DnsListMember = std::optional<urnet::StringList> urnet::DnsResolverSettings::*;
+constexpr DnsListMember kDnsListMembers[] = {
+    &urnet::DnsResolverSettings::RemoteDohUrlsIpv4, &urnet::DnsResolverSettings::RemoteDohUrlsIpv6,
+    &urnet::DnsResolverSettings::LocalDohUrlsIpv4,  &urnet::DnsResolverSettings::LocalDohUrlsIpv6,
+    &urnet::DnsResolverSettings::RemoteDnsIpv4,     &urnet::DnsResolverSettings::RemoteDnsIpv6,
+    &urnet::DnsResolverSettings::LocalDnsIpv4,      &urnet::DnsResolverSettings::LocalDnsIpv6,
+};
+
+// Whether two drafts are the same edit: every field, the selection, the
+// personal id and the mask included, with an absent list the same as an empty
+// one (a Custom list emptied by hand is the list it started as).
+bool DnsDraftSame(std::optional<urnet::DnsResolverSettings> const& a,
+                  std::optional<urnet::DnsResolverSettings> const& b) {
+  if (a.has_value() != b.has_value()) return false;
+  if (!a) return true;
+  auto json = [](urnet::DnsResolverSettings settings) {
+    for (DnsListMember member : kDnsListMembers) {
+      if (!(settings.*member)) settings.*member = urnet::StringList{};
+    }
+    return nlohmann::json(settings);
   };
-  draft.remoteDohUrlsIpv4 = list(settings->RemoteDohUrlsIpv4);
-  draft.remoteDohUrlsIpv6 = list(settings->RemoteDohUrlsIpv6);
-  draft.localDohUrlsIpv4 = list(settings->LocalDohUrlsIpv4);
-  draft.localDohUrlsIpv6 = list(settings->LocalDohUrlsIpv6);
-  draft.remoteDnsIpv4 = list(settings->RemoteDnsIpv4);
-  draft.remoteDnsIpv6 = list(settings->RemoteDnsIpv6);
-  draft.localDnsIpv4 = list(settings->LocalDnsIpv4);
-  draft.localDnsIpv6 = list(settings->LocalDnsIpv6);
-  return draft;
+  return json(*a) == json(*b);
 }
 
-urnet::DnsResolverSettings DnsEditorSheet::ToSettings(const Draft& draft) {
-  urnet::DnsResolverSettings settings;
-  settings.EnableRemoteDoh = draft.enableRemoteDoh;
-  settings.EnableLocalDoh = draft.enableLocalDoh;
-  settings.EnableRemoteDns = draft.enableRemoteDns;
-  settings.EnableLocalDns = draft.enableLocalDns;
-  urnw::fast_dns_on_connect::ToSettings(settings, draft.enableFallback);
-  settings.RemoteDohUrlsIpv4 = draft.remoteDohUrlsIpv4;
-  settings.RemoteDohUrlsIpv6 = draft.remoteDohUrlsIpv6;
-  settings.LocalDohUrlsIpv4 = draft.localDohUrlsIpv4;
-  settings.LocalDohUrlsIpv6 = draft.localDohUrlsIpv6;
-  settings.RemoteDnsIpv4 = draft.remoteDnsIpv4;
-  settings.RemoteDnsIpv6 = draft.remoteDnsIpv6;
-  settings.LocalDnsIpv4 = draft.localDnsIpv4;
-  settings.LocalDnsIpv6 = draft.localDnsIpv6;
-  return settings;
+// Settings from one of the sdk's helpers, or none when the call failed
+// (ReadSdkList's guard; each call site logs once).
+template <typename Fn>
+std::optional<urnet::DnsResolverSettings> DnsHelper(const char* what, Fn&& fn) {
+  static std::atomic<bool> logged{false};
+  return urnw::ReadSdkList(logged, what, std::forward<Fn>(fn));
 }
+
+// A link to `url` in the default browser, labeled `label`; none for an empty
+// label or url, or a url Uri cannot read.
+HyperlinkButton MakeDnsLink(hstring const& label, hstring const& url) {
+  if (label.empty() || url.empty()) return HyperlinkButton{nullptr};
+  try {
+    HyperlinkButton link;
+    link.Content(winrt::box_value(label));
+    link.NavigateUri(Uri(url));
+    link.FontSize(12);
+    link.Padding(Thickness{0, 0, 0, 0});
+    return link;
+  } catch (...) {
+    return HyperlinkButton{nullptr};
+  }
+}
+
+}  // namespace
 
 std::shared_ptr<DnsEditorSheet> DnsEditorSheet::Create(
     XamlRoot const& root, SdkHost& sdk,
-    std::optional<urnet::DnsResolverSettings> const& current, std::string countryCode,
+    std::optional<urnet::DnsResolverSettings> const& current,
+    std::optional<urnet::DnsResolverStatus> const& status, std::string countryCode,
     std::string countryName) {
   auto sheet = std::shared_ptr<DnsEditorSheet>(new DnsEditorSheet(sdk));
   sheet->countryCode_ = ToLower(std::move(countryCode));
   sheet->countryName_ = std::move(countryName);
   sheet->opened_ = current;
-  sheet->draft_ = FromSettings(current);
-  sheet->original_ = sheet->draft_;
-  if (!sheet->countryCode_.empty()) {
-    if (auto rec = urnet::getRecommendedDnsResolverSettings(sheet->countryCode_)) {
-      sheet->recommendation_ = FromSettings(rec);
-    }
-  }
-  if (auto defaults = urnet::getDefaultDnsResolverSettings()) {
-    sheet->defaults_ = FromSettings(defaults);
-  }
+  sheet->draft_ = current;
+  sheet->original_ = current;
+  sheet->status_ = status;
   sheet->Build(root);
   return sheet;
 }
@@ -1340,11 +1337,12 @@ void DnsEditorSheet::Build(XamlRoot const& root) {
     std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
     dialog_.PrimaryButtonClick(
         [weak](ContentDialog const&, ContentDialogButtonClickEventArgs const&) {
-          // apply the draft together, over the reading it opened on (compare
-          // and set, EditorApply.h); the dialog closes after this handler
+          // apply the draft, an sdk-edited copy of the reading, over the
+          // reading it opened on (compare and set, EditorApply.h); the dialog
+          // closes after this handler
           auto self = weak.lock();
-          if (self && self->opened_) {
-            self->sdk_.ApplyDnsSettings(self->opened_, ToSettings(self->draft_));
+          if (self && self->opened_ && self->draft_ && !self->pickPending_) {
+            self->sdk_.ApplyDnsSettings(self->opened_, *self->draft_);
           }
         });
   }
@@ -1352,8 +1350,8 @@ void DnsEditorSheet::Build(XamlRoot const& root) {
   StackPanel body;
   body.Spacing(12);
 
-  // No reading: the form shows blanks, not the device's resolver, and an
-  // Update would overwrite it (EditorApply.h). Said, and Update stays off.
+  // No reading: there is nothing to edit, and an Update would write over the
+  // device's resolver (EditorApply.h). Said, and Update stays off.
   if (!editorapply::DnsReadingKnown(opened_)) {
     body.Children().Append(MakeText(Loc("dns_settings_unavailable"), 13, FaintBrush(), true));
   }
@@ -1368,61 +1366,292 @@ void DnsEditorSheet::Build(XamlRoot const& root) {
   regionBlock_->Load();
   body.Children().Append(SectionHeader(Loc(connection_region::kTrafficDnsKey)));
 
-  recPanel_ = StackPanel();
-  recPanel_.Spacing(12);
-  body.Children().Append(recPanel_);
-
-  BuildResolverSection(body);
-
-  // fast dns on connect (the opt-in host-network fallback, off by default) + footer
-  body.Children().Append(SectionHeader(Loc(urnw::fast_dns_on_connect::kLabelKey)));
-  {
-    Grid row = MakeStarAutoRow();
-    auto label = MakeText(Loc(urnw::fast_dns_on_connect::kLabelKey), 13);
-    label.VerticalAlignment(VerticalAlignment::Center);
-    Grid::SetColumn(label, 0);
-    row.Children().Append(label);
-    fallbackToggle_ = MakeBareToggle();
-    {
-      std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
-      fallbackToggle_.Toggled([weak](IInspectable const&, RoutedEventArgs const&) {
-        auto self = weak.lock();
-        if (!self || self->updating_) return;
-        self->draft_.enableFallback = self->fallbackToggle_.IsOn();
-        self->OnDraftChanged();
-      });
+  if (editorapply::DnsReadingKnown(opened_)) {
+    BuildDroppedNotice(body);
+    BuildPicker(body);
+    BuildFastDnsSection(body);
+    // a change reaches new lookups at once, while apps keep earlier answers
+    // for about a minute (F1 item 8); then the help on DNS providers
+    body.Children().Append(MakeText(Loc("dns_preset_apply_note"), 11, FaintBrush(), true));
+    if (auto help = MakeDnsLink(Loc("learn_more"), hstring{dnspresets::kHelpUrl})) {
+      body.Children().Append(help);
     }
-    Grid::SetColumn(fallbackToggle_, 1);
-    row.Children().Append(fallbackToggle_);
-    body.Children().Append(row);
-    body.Children().Append(
-        MakeText(Loc(urnw::fast_dns_on_connect::kDescriptionKey), 11, FaintBrush(), true));
   }
 
-  BuildSuggestionSection(body);
+  dialog_.Content(MakeSheetScroll(root, body));
+  SyncFromDraft();
+}
 
+void DnsEditorSheet::BuildDroppedNotice(StackPanel const& parent) {
+  static std::atomic<bool> logged{false};
+  const auto summary = urnw::ReadSdkList(logged, "describeDnsResolverSettings", [this] {
+    return urnet::describeDnsResolverSettings(opened_, countryCode_);
+  });
+  if (!summary || !summary->Dropped) return;
+  StackPanel notice;
+  notice.Spacing(4);
+  // An update removed the stored provider, and URnetwork's DNS, which does
+  // not filter, is in force (A7, O8). A provider this release never knew, as
+  // after a downgrade, reads as the generic line.
+  const hstring text =
+      summary->DroppedProviderName.empty()
+          ? Loc("dns_preset_error_unknown")
+          : hstring{Format("dns_preset_dropped", Widen(summary->DroppedProviderName))};
+  notice.Children().Append(MakeText(text, 13, SolidColorBrush(colors::kUrAmber), true));
+  std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
+  HyperlinkButton choose;
+  choose.Content(LocBox("dns_preset_dropped_choose"));
+  choose.Padding(Thickness{0, 0, 0, 0});
+  choose.Click([weak](IInspectable const&, RoutedEventArgs const&) {
+    auto self = weak.lock();
+    if (!self) return;
+    // to the picker's first preset
+    for (auto& ui : self->picks_) {
+      if (ui.pick.Kind == urnet::DnsPickKindPreset) {
+        ui.radio.Focus(FocusState::Programmatic);
+        ui.radio.StartBringIntoView();
+        return;
+      }
+    }
+  });
+  notice.Children().Append(choose);
+  HyperlinkButton custom;
+  custom.Content(LocBox("dns_preset_dropped_custom"));
+  custom.Padding(Thickness{0, 0, 0, 0});
+  custom.Click([weak](IInspectable const&, RoutedEventArgs const&) {
+    auto self = weak.lock();
+    if (!self) return;
+    for (size_t i = 0; i < self->picks_.size(); ++i) {
+      if (self->picks_[i].pick.Kind == urnet::DnsPickKindCustom) {
+        self->CheckPick(i);
+        return;
+      }
+    }
+  });
+  notice.Children().Append(custom);
+  // dismissing the notice keeps URnetwork's DNS: it saves default
+  HyperlinkButton dismiss;
+  dismiss.Content(LocBox("got_it"));
+  dismiss.Padding(Thickness{0, 0, 0, 0});
+  dismiss.Click([weak](IInspectable const&, RoutedEventArgs const&) {
+    if (auto self = weak.lock()) self->SaveDefaultAndClose();
+  });
+  notice.Children().Append(dismiss);
+  parent.Children().Append(notice);
+}
+
+void DnsEditorSheet::BuildPicker(StackPanel const& parent) {
+  // the sdk's picks for the exit's country, in its order (O9), none of them
+  // preselected or marked as recommended (H1)
+  static std::atomic<bool> loggedPicks{false};
+  std::vector<urnet::DnsPick> picks;
+  if (auto offered = urnw::ReadSdkList(loggedPicks, "getDnsPicks",
+                                       [this] { return urnet::getDnsPicks(countryCode_); })) {
+    picks = std::move(*offered);
+  }
+  // the pick the reading selects, by the sdk's summary of it
+  static std::atomic<bool> loggedSummary{false};
+  const auto summary = urnw::ReadSdkList(loggedSummary, "describeDnsResolverSettings", [this] {
+    return urnet::describeDnsResolverSettings(draft_, countryCode_);
+  });
+  // A regional selection made for another exit's country keeps its pick,
+  // which the picks of this exit's country do not offer.
+  if (summary && summary->Kind == urnet::DnsPickKindRegional &&
+      std::none_of(picks.begin(), picks.end(), [&](urnet::DnsPick const& pick) {
+        return pick.PresetId == summary->PresetId;
+      })) {
+    static std::atomic<bool> loggedRegional{false};
+    if (auto regional = urnw::ReadSdkList(loggedRegional, "getDnsPicks", [&] {
+          return urnet::getDnsPicks(summary->CountryCode);
+        })) {
+      for (auto const& pick : *regional) {
+        if (pick.Kind == urnet::DnsPickKindRegional && pick.PresetId == summary->PresetId) {
+          picks.push_back(pick);
+        }
+      }
+    }
+  }
+
+  StackPanel list;
+  list.Spacing(4);
+  std::string group;
+  for (auto const& pick : picks) {
+    if (pick.GroupKey != group) {
+      // each group's heading over its presets, then a rule over Custom and
+      // Regional, which follow the groups
+      if (!pick.GroupKey.empty()) {
+        const hstring heading =
+            DnsKeyText(dnspresets::Known(pick.GroupKey, dnspresets::kGroupKeys));
+        if (!heading.empty()) list.Children().Append(SectionHeader(heading));
+      } else {
+        list.Children().Append(kit::MakeDivider());
+      }
+      group = pick.GroupKey;
+    }
+    BuildPick(list, pick);
+  }
+  parent.Children().Append(list);
+
+  // the reading's pick, checked without selecting it again
+  selected_ = kNoPick;
+  if (summary) {
+    for (size_t i = 0; i < picks_.size(); ++i) {
+      const urnet::DnsPick& pick = picks_[i].pick;
+      const bool match = summary->Kind == urnet::DnsPickKindCustom
+                             ? pick.Kind == urnet::DnsPickKindCustom
+                             : !pick.PresetId.empty() && pick.PresetId == summary->PresetId;
+      if (match) {
+        selected_ = i;
+        break;
+      }
+    }
+  }
+  if (selected_ != kNoPick) {
+    updating_ = true;
+    picks_[selected_].radio.IsChecked(true);
+    updating_ = false;
+  }
+  RenderDetails();
+}
+
+void DnsEditorSheet::BuildPick(StackPanel const& parent, urnet::DnsPick const& pick) {
+  const size_t index = picks_.size();
+  const bool preset = pick.Kind == urnet::DnsPickKindPreset && pick.Preset.has_value();
+  const std::wstring provider = preset ? Widen(pick.Preset->ProviderName) : std::wstring{};
+  const std::wstring country = CountryDisplayName(pick.CountryCode);
+
+  StackPanel block;
+  block.Spacing(2);
+
+  // the pick: a preset's provider name, as it is and with no logo (O10), or
+  // the pick's own label; then its line
+  StackPanel text;
+  text.Spacing(1);
+  text.Children().Append(MakeText(
+      preset ? hstring{provider}
+             : DnsKeyText(dnspresets::Known(pick.LabelKey, dnspresets::kPickLabelKeys), country),
+      13, nullptr, true));
+  const hstring copy = DnsKeyText(dnspresets::Known(pick.CopyKey, dnspresets::kPickCopyKeys),
+                                  pick.Kind == urnet::DnsPickKindRegional ? country : provider);
+  if (!copy.empty()) text.Children().Append(MakeText(copy, 12, MutedBrush(), true));
+  RadioButton radio;
+  radio.GroupName(L"urnwDnsPick");
+  radio.Content(text);
+  {
+    std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
+    radio.Checked([weak, index](IInspectable const&, RoutedEventArgs const&) {
+      auto self = weak.lock();
+      if (!self || self->updating_) return;
+      self->SelectPick(index);
+    });
+  }
+  block.Children().Append(radio);
+
+  // a preset's jurisdiction and privacy policy (O10), beside the radio rather
+  // than inside it, so the link is not a control within the pick
+  if (preset) {
+    StackPanel facts;
+    facts.Orientation(Orientation::Horizontal);
+    facts.Spacing(12);
+    facts.Margin(Thickness{28, 0, 0, 0});
+    if (!pick.Preset->Jurisdiction.empty()) {
+      auto jurisdiction = MakeText(
+          hstring{Format("dns_preset_jurisdiction", Widen(pick.Preset->Jurisdiction))}, 11,
+          FaintBrush());
+      jurisdiction.VerticalAlignment(VerticalAlignment::Center);
+      facts.Children().Append(jurisdiction);
+    }
+    if (auto privacy = MakeDnsLink(Loc("dns_preset_privacy_link"), H(pick.Preset->PrivacyUrl))) {
+      privacy.FontSize(11);
+      facts.Children().Append(privacy);
+    }
+    block.Children().Append(facts);
+  }
+
+  // under the pick, what the selected pick shows (RenderDetails)
+  StackPanel details;
+  details.Spacing(8);
+  details.Margin(Thickness{28, 4, 0, 4});
+  details.Visibility(Visibility::Collapsed);
+  block.Children().Append(details);
+  // under Custom, today's editor of servers, always offered (O1), built once
+  if (pick.Kind == urnet::DnsPickKindCustom && !customPanel_) {
+    customPanel_ = StackPanel();
+    customPanel_.Spacing(12);
+    customPanel_.Margin(Thickness{28, 4, 0, 4});
+    customPanel_.Visibility(Visibility::Collapsed);
+    BuildCustomSection(customPanel_);
+    block.Children().Append(customPanel_);
+  }
+
+  picks_.push_back(PickUi{.pick = pick, .radio = radio, .details = details});
+  parent.Children().Append(block);
+}
+
+void DnsEditorSheet::BuildFastDnsSection(StackPanel const& parent) {
+  // fast dns on connect (the opt-in host-network fallback, off by default) + footer
+  parent.Children().Append(SectionHeader(Loc(urnw::fast_dns_on_connect::kLabelKey)));
+  Grid row = MakeStarAutoRow();
+  auto label = MakeText(Loc(urnw::fast_dns_on_connect::kLabelKey), 13);
+  label.VerticalAlignment(VerticalAlignment::Center);
+  Grid::SetColumn(label, 0);
+  row.Children().Append(label);
+  fallbackToggle_ = MakeBareToggle();
+  {
+    std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
+    // the switch from the sender: a handler holding it would own its own
+    // switch (tests/handler_self_capture_test.go)
+    fallbackToggle_.Toggled([weak](IInspectable const& sender, RoutedEventArgs const&) {
+      auto self = weak.lock();
+      if (!self || self->updating_) return;
+      // through the sdk, which keeps the selection and every other field (E2)
+      const bool on = sender.as<ToggleSwitch>().IsOn();
+      self->SetDraft(DnsHelper("dnsResolverSettingsWithFallback", [&] {
+        return urnet::dnsResolverSettingsWithFallback(self->draft_, on);
+      }));
+    });
+  }
+  Grid::SetColumn(fallbackToggle_, 1);
+  row.Children().Append(fallbackToggle_);
+  parent.Children().Append(row);
+  parent.Children().Append(
+      MakeText(Loc(urnw::fast_dns_on_connect::kDescriptionKey), 11, FaintBrush(), true));
+  // with a preset picked, the lookups while connecting are URnetwork's, which
+  // the preset does not filter (C7)
+  fastDnsNote_ = MakeText({}, 11, FaintBrush(), true);
+  fastDnsNote_.Visibility(Visibility::Collapsed);
+  parent.Children().Append(fastDnsNote_);
+}
+
+void DnsEditorSheet::BuildCustomSection(StackPanel const& parent) {
+  // a filtering server beside URnetwork's servers does not filter, because
+  // the fastest answer wins (O1, F1 item 7)
+  parent.Children().Append(MakeText(Loc("dns_custom_mix_note"), 12, MutedBrush(), true));
+  BuildResolverSection(parent);
+  BuildSuggestionSection(parent);
   // "https://" is the required URL scheme, not prose: the store carries it as a
   // non-translatable literal so this file has none.
   const hstring dohUrl = Loc("doh_url_placeholder");
   const hstring ipAddress = Loc("ip_address");
-  BuildListSection(body, Loc("remote_doh_urls"), dohUrl, true, &Draft::remoteDohUrlsIpv4,
-                   &Draft::remoteDohUrlsIpv6);
-  BuildListSection(body, Loc("local_doh_urls"), dohUrl, true, &Draft::localDohUrlsIpv4,
-                   &Draft::localDohUrlsIpv6);
-  BuildListSection(body, Loc("remote_dns_servers"), ipAddress, false, &Draft::remoteDnsIpv4,
-                   &Draft::remoteDnsIpv6);
-  BuildListSection(body, Loc("local_dns_servers"), ipAddress, false, &Draft::localDnsIpv4,
-                   &Draft::localDnsIpv6);
-
-  dialog_.Content(MakeSheetScroll(root, body));
-  SyncFromDraft();
+  BuildListSection(parent, Loc("remote_doh_urls"), dohUrl, true,
+                   &urnet::DnsResolverSettings::RemoteDohUrlsIpv4,
+                   &urnet::DnsResolverSettings::RemoteDohUrlsIpv6);
+  BuildListSection(parent, Loc("local_doh_urls"), dohUrl, true,
+                   &urnet::DnsResolverSettings::LocalDohUrlsIpv4,
+                   &urnet::DnsResolverSettings::LocalDohUrlsIpv6);
+  BuildListSection(parent, Loc("remote_dns_servers"), ipAddress, false,
+                   &urnet::DnsResolverSettings::RemoteDnsIpv4,
+                   &urnet::DnsResolverSettings::RemoteDnsIpv6);
+  BuildListSection(parent, Loc("local_dns_servers"), ipAddress, false,
+                   &urnet::DnsResolverSettings::LocalDnsIpv4,
+                   &urnet::DnsResolverSettings::LocalDnsIpv6);
 }
 
 void DnsEditorSheet::BuildResolverSection(StackPanel const& parent) {
   parent.Children().Append(SectionHeader(Loc("resolvers")));
   std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
   auto makeToggleRow = [&](hstring const& title, hstring const& detail, ToggleSwitch& toggle,
-                           bool Draft::*flag) {
+                           FlagMember flag) {
     Grid row = MakeStarAutoRow();
     StackPanel label;
     label.Orientation(Orientation::Horizontal);
@@ -1437,8 +1666,10 @@ void DnsEditorSheet::BuildResolverSection(StackPanel const& parent) {
     // switch (tests/handler_self_capture_test.go)
     toggle.Toggled([weak, flag](IInspectable const& sender, RoutedEventArgs const&) {
       auto self = weak.lock();
-      if (!self || self->updating_) return;
-      self->draft_.*flag = sender.as<ToggleSwitch>().IsOn();
+      if (!self || self->updating_ || !self->draft_) return;
+      // the draft is custom settings here (dnsResolverSettingsAsCustom), so
+      // the switches are the user's own
+      (*self->draft_).*flag = sender.as<ToggleSwitch>().IsOn();
       self->OnDraftChanged();
     });
     Grid::SetColumn(toggle, 1);
@@ -1449,10 +1680,10 @@ void DnsEditorSheet::BuildResolverSection(StackPanel const& parent) {
   const hstring udns = Loc("unencrypted_dns");
   const hstring remote = Loc("remote_lowercase");
   const hstring local = Loc("local_lowercase");
-  makeToggleRow(doh, remote, remoteDohToggle_, &Draft::enableRemoteDoh);
-  makeToggleRow(doh, local, localDohToggle_, &Draft::enableLocalDoh);
-  makeToggleRow(udns, remote, remoteDnsToggle_, &Draft::enableRemoteDns);
-  makeToggleRow(udns, local, localDnsToggle_, &Draft::enableLocalDns);
+  makeToggleRow(doh, remote, remoteDohToggle_, &urnet::DnsResolverSettings::EnableRemoteDoh);
+  makeToggleRow(doh, local, localDohToggle_, &urnet::DnsResolverSettings::EnableLocalDoh);
+  makeToggleRow(udns, remote, remoteDnsToggle_, &urnet::DnsResolverSettings::EnableRemoteDns);
+  makeToggleRow(udns, local, localDnsToggle_, &urnet::DnsResolverSettings::EnableLocalDns);
 }
 
 void DnsEditorSheet::BuildSuggestionSection(StackPanel const& parent) {
@@ -1517,14 +1748,14 @@ void DnsEditorSheet::BuildSuggestionSection(StackPanel const& parent) {
       // the switch from the sender, as above
       suggestion.toggle.Toggled([weak, ipv4](IInspectable const& sender, RoutedEventArgs const&) {
         auto self = weak.lock();
-        if (!self || self->updating_) return;
-        auto& values = self->draft_.remoteDnsIpv4;
+        if (!self || self->updating_ || !self->draft_) return;
+        auto& values = self->DraftList(&urnet::DnsResolverSettings::RemoteDnsIpv4);
         if (sender.as<ToggleSwitch>().IsOn()) {
           // on adds the server to the remote dns list and enables remote dns
           if (std::find(values.begin(), values.end(), ipv4) == values.end()) {
             values.push_back(ipv4);
           }
-          self->draft_.enableRemoteDns = true;
+          self->draft_->EnableRemoteDns = true;
         } else {
           values.erase(std::remove(values.begin(), values.end(), ipv4), values.end());
         }
@@ -1541,17 +1772,15 @@ void DnsEditorSheet::BuildSuggestionSection(StackPanel const& parent) {
 }
 
 void DnsEditorSheet::BuildListSection(StackPanel const& parent, hstring const& title,
-                                      hstring const& placeholder, bool doh,
-                                      std::vector<std::string> Draft::*ipv4,
-                                      std::vector<std::string> Draft::*ipv6) {
+                                      hstring const& placeholder, bool doh, ListMember ipv4,
+                                      ListMember ipv6) {
   parent.Children().Append(SectionHeader(title));
   AddSublist(parent, Loc("ipv4"), placeholder, doh, ipv4);
   AddSublist(parent, Loc("ipv6"), placeholder, doh, ipv6);
 }
 
 size_t DnsEditorSheet::AddSublist(StackPanel const& parent, hstring const& label,
-                                  hstring const& placeholder, bool doh,
-                                  std::vector<std::string> Draft::*member) {
+                                  hstring const& placeholder, bool doh, ListMember member) {
   auto list = std::make_unique<ListUi>();
   list->member = member;
   list->doh = doh;
@@ -1599,77 +1828,275 @@ size_t DnsEditorSheet::AddSublist(StackPanel const& parent, hstring const& label
   return lists_.size() - 1;
 }
 
-void DnsEditorSheet::RenderRecommendationPanel() {
-  recPanel_.Children().Clear();
-  std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
-
-  auto statusRow = [&](hstring const& text, bool showsCountryColor) {
-    StackPanel row;
-    row.Orientation(Orientation::Horizontal);
-    row.Spacing(10);
-    if (showsCountryColor) {
-      row.Children().Append(MakeDot(ColorFromHex(urnet::getColorHex(countryCode_)), 14));
-    } else {
-      auto check = MakeText(L"✔", 13, SolidColorBrush(colors::kUrGreen));
-      check.VerticalAlignment(VerticalAlignment::Center);
-      row.Children().Append(check);
-    }
-    auto label = MakeText(text, 13);
-    label.VerticalAlignment(VerticalAlignment::Center);
-    row.Children().Append(label);
-    recPanel_.Children().Append(row);
-  };
-  auto applyPanel = [&](hstring const& text, hstring const& buttonText,
-                        bool showsCountryColor, const Draft& target) {
-    recPanel_.Children().Append(MakeText(text, 12, nullptr, true));
-    StackPanel row;
-    row.Orientation(Orientation::Horizontal);
-    row.Spacing(10);
-    if (showsCountryColor) {
-      row.Children().Append(MakeDot(ColorFromHex(urnet::getColorHex(countryCode_)), 14));
-    }
-    Button apply;
-    apply.Content(winrt::box_value(buttonText));
-    if (auto style = AccentButtonStyle()) apply.Style(*style);
-    Draft applied = target;
-    apply.Click([weak, applied](IInspectable const&, RoutedEventArgs const&) {
-      if (auto self = weak.lock()) {
-        self->draft_ = applied;
-        self->SyncFromDraft();
-      }
-    });
-    row.Children().Append(apply);
-    recPanel_.Children().Append(row);
-  };
-
-  std::wstring countryDisplayName = Localized("this_region");
-  if (!countryName_.empty()) {
-    countryDisplayName = Widen(countryName_);
-  } else if (!countryCode_.empty()) {
-    countryDisplayName = Widen(ToUpper(countryCode_));
+void DnsEditorSheet::BuildPersonalIdField(StackPanel const& parent,
+                                          urnet::DnsPreset const& preset) {
+  const std::wstring provider = Widen(preset.ProviderName);
+  parent.Children().Append(MakeText(Loc("dns_personal_id_label"), 12, MutedBrush()));
+  personalIdBox_ = TextBox();
+  personalIdBox_.FontSize(13);
+  // the provider's own example as the placeholder (D3)
+  personalIdBox_.PlaceholderText(H(preset.PersonalIdExample));
+  // the id the draft holds for this preset, to edit; the screen shows it
+  // nowhere else (D5)
+  if (draft_ && draft_->PresetId == preset.PresetId) {
+    personalIdBox_.Text(H(draft_->PresetPersonalId));
   }
+  {
+    std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
+    personalIdBox_.TextChanged([weak](IInspectable const&, TextChangedEventArgs const&) {
+      if (auto self = weak.lock()) self->OnPersonalIdChanged();
+    });
+  }
+  parent.Children().Append(personalIdBox_);
+  personalIdError_ = MakeText({}, 12, DangerBrush(), true);
+  personalIdError_.Visibility(Visibility::Collapsed);
+  parent.Children().Append(personalIdError_);
+  // where the provider shows the id, and its dashboard
+  const hstring where = DnsKeyText(
+      dnspresets::Known(preset.PersonalIdWhereKey, dnspresets::kPersonalIdWhereKeys), provider);
+  if (!where.empty()) parent.Children().Append(MakeText(where, 11, FaintBrush(), true));
+  if (auto dashboard = MakeDnsLink(hstring{Format("dns_personal_id_dashboard_link", provider)},
+                                   H(preset.PersonalIdHelpUrl))) {
+    parent.Children().Append(dashboard);
+  }
+  // the free plan's limit, the block response that still reads as a block, and
+  // why no IP address is linked (D2, D3, C10)
+  const hstring quota =
+      DnsKeyText(dnspresets::Known(preset.QuotaNoteKey, dnspresets::kQuotaNoteKeys), provider);
+  if (!quota.empty()) parent.Children().Append(MakeText(quota, 11, FaintBrush(), true));
+  parent.Children().Append(MakeText(
+      hstring{Format("dns_personal_id_block_response", provider)}, 11, FaintBrush(), true));
+  parent.Children().Append(MakeText(Loc("dns_personal_id_linked_ip_note"), 11, FaintBrush(), true));
+}
 
-  if (recommendation_) {
-    if (draft_ == *recommendation_) {
-      statusRow(Loc("dns_using_recommended"), true);
-    } else {
-      applyPanel(hstring{Format("dns_recommendation_message", countryDisplayName)},
-                 Loc("use_recommended_settings"), true, *recommendation_);
+void DnsEditorSheet::SelectPick(size_t index) {
+  if (index >= picks_.size()) return;
+  selected_ = index;
+  const urnet::DnsPick& pick = picks_[index].pick;
+  std::optional<urnet::DnsResolverSettings> next;
+  if (pick.Kind == urnet::DnsPickKindCustom) {
+    // Custom starts from the lists in force for the draft's selection, its
+    // selection cleared and every other field kept
+    next = DnsHelper("dnsResolverSettingsAsCustom",
+                     [this] { return urnet::dnsResolverSettingsAsCustom(draft_); });
+    pickPending_ = !next;
+  } else if (pick.Preset && pick.Preset->PersonalIdRequired) {
+    // The draft takes a Use my account pick once its id validates
+    // (OnPersonalIdChanged). A draft already on this preset keeps its id, and
+    // the id in force for it is taken back.
+    const bool held = draft_ && draft_->PresetId == pick.PresetId;
+    if (!held && opened_ && opened_->PresetId == pick.PresetId) {
+      next = DnsHelper("dnsResolverSettingsWithPreset", [&] {
+        return urnet::dnsResolverSettingsWithPreset(draft_, pick.PresetId,
+                                                    opened_->PresetPersonalId);
+      });
     }
-  } else if (defaults_) {
-    if (draft_ == *defaults_) {
-      statusRow(Loc("dns_using_secure"), false);
-    } else {
-      applyPanel(Loc("dns_restore_secure_message"), Loc("restore_most_secure_settings"), false,
-                 *defaults_);
+    pickPending_ = !held && !next;
+  } else {
+    // URnetwork (default), a one-tap preset or the regional pick
+    next = DnsHelper("dnsResolverSettingsWithPreset", [&] {
+      return urnet::dnsResolverSettingsWithPreset(draft_, pick.PresetId, std::string());
+    });
+    pickPending_ = !next;
+  }
+  if (next) draft_ = std::move(next);
+  RenderDetails();
+  SyncFromDraft();
+}
+
+void DnsEditorSheet::CheckPick(size_t index) {
+  if (index >= picks_.size()) return;
+  // the radio's Checked selects the pick (BuildPick); a checked one already is
+  picks_[index].radio.IsChecked(true);
+}
+
+void DnsEditorSheet::OnPersonalIdChanged() {
+  if (!personalIdBox_ || selected_ >= picks_.size()) return;
+  const urnet::DnsPick& pick = picks_[selected_].pick;
+  if (!pick.Preset || !pick.Preset->PersonalIdRequired) return;
+  const urnet::DnsPreset& preset = *pick.Preset;
+  const std::string input = winrt::to_string(personalIdBox_.Text());
+  // The sdk reads what was typed or pasted: the bare id, the dashboard's DoH
+  // url or its Private DNS hostname, and stores the id alone (D3, D4).
+  const std::string errorId = urnet::validateDnsPresetPersonalId(pick.PresetId, input);
+  std::optional<urnet::DnsResolverSettings> next;
+  if (errorId.empty()) {
+    const std::string id = urnet::normalizeDnsPresetPersonalId(pick.PresetId, input);
+    next = DnsHelper("dnsResolverSettingsWithPreset", [&] {
+      return urnet::dnsResolverSettingsWithPreset(draft_, pick.PresetId, id);
+    });
+  }
+  const bool taken = next.has_value();
+  pickPending_ = !taken;
+  if (taken) draft_ = std::move(next);
+  // what is wrong with an id once there is one: the sdk's error, and the
+  // provider's format for an id not in it (D4)
+  std::wstring message;
+  if (!taken && !TrimWhitespace(input).empty()) {
+    message = std::wstring{
+        DnsKeyText(dnspresets::PersonalIdErrorKey(errorId.empty() ? kSdkErrorIdInternal : errorId))};
+    if (errorId == urnet::DnsPresetErrorPersonalIdInvalid) {
+      const hstring format = DnsKeyText(
+          dnspresets::Known(preset.PersonalIdFormatKey, dnspresets::kPersonalIdFormatKeys),
+          Widen(preset.ProviderName), Widen(preset.PersonalIdExample));
+      if (!format.empty()) message += L" " + std::wstring{format};
     }
+  }
+  kit::SetTextOrCollapse(personalIdError_, hstring{message});
+  RenderStatus();
+  OnDraftChanged();
+}
+
+void DnsEditorSheet::RenderDetails() {
+  personalIdBox_ = nullptr;
+  personalIdError_ = nullptr;
+  statusPanel_ = nullptr;
+  blockedCountText_ = nullptr;
+  for (auto& ui : picks_) {
+    ui.details.Children().Clear();
+    ui.details.Visibility(Visibility::Collapsed);
+  }
+  const bool custom =
+      selected_ < picks_.size() && picks_[selected_].pick.Kind == urnet::DnsPickKindCustom;
+  if (customPanel_) customPanel_.Visibility(custom ? Visibility::Visible : Visibility::Collapsed);
+  if (selected_ >= picks_.size()) return;
+  PickUi& ui = picks_[selected_];
+  if (ui.pick.Kind != urnet::DnsPickKindPreset || !ui.pick.Preset) return;
+  const urnet::DnsPreset& preset = *ui.pick.Preset;
+  const std::wstring provider = Widen(preset.ProviderName);
+  // what the provider receives, on the screen where the pick is made (H2)
+  ui.details.Children().Append(
+      MakeText(hstring{Format("dns_preset_disclosure", provider)}, 12, MutedBrush(), true));
+  StackPanel links;
+  links.Orientation(Orientation::Horizontal);
+  links.Spacing(16);
+  if (auto privacy = MakeDnsLink(Loc("dns_preset_privacy_link"), H(preset.PrivacyUrl))) {
+    links.Children().Append(privacy);
+  }
+  if (auto help = MakeDnsLink(Loc("dns_preset_help_link"), H(preset.HelpUrl))) {
+    links.Children().Append(help);
+  }
+  if (links.Children().Size() > 0) ui.details.Children().Append(links);
+  if (preset.PersonalIdRequired) BuildPersonalIdField(ui.details, preset);
+  statusPanel_ = StackPanel();
+  statusPanel_.Spacing(6);
+  ui.details.Children().Append(statusPanel_);
+  ui.details.Visibility(Visibility::Visible);
+  RenderStatus();
+}
+
+void DnsEditorSheet::RenderStatus() {
+  if (!statusPanel_) return;
+  statusPanel_.Children().Clear();
+  blockedCountText_ = nullptr;
+  // the status is the selection in force's, so it shows under that pick only
+  if (!DraftIsApplied()) return;
+  static std::atomic<bool> logged{false};
+  const auto summary = urnw::ReadSdkList(logged, "describeDnsResolverStatus", [this] {
+    return urnet::describeDnsResolverStatus(opened_, status_);
+  });
+  if (!summary) return;
+  const std::wstring provider = Widen(summary->ProviderName);
+  const Brush amber = SolidColorBrush(colors::kUrAmber);
+  // the status line (C8), amber while the provider is not answering, and the
+  // line under it
+  const hstring status =
+      DnsKeyText(dnspresets::Known(summary->StatusKey, dnspresets::kStatusKeys), provider);
+  if (!status.empty()) {
+    statusPanel_.Children().Append(
+        MakeText(status, 13, summary->ShowUseDefault ? amber : Brush{nullptr}, true));
+  }
+  const hstring detail =
+      DnsKeyText(dnspresets::Known(summary->StatusDetailKey, dnspresets::kStatusDetailKeys));
+  if (!detail.empty()) statusPanel_.Children().Append(MakeText(detail, 12, MutedBrush(), true));
+  // its actions: URnetwork's DNS in one tap, or another location
+  if (summary->ShowUseDefault || summary->ShowChangeLocation) {
+    StackPanel actions;
+    actions.Orientation(Orientation::Horizontal);
+    actions.Spacing(8);
+    std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
+    if (summary->ShowUseDefault) {
+      Button useDefault;
+      useDefault.Content(LocBox("dns_status_use_default"));
+      useDefault.Click([weak](IInspectable const&, RoutedEventArgs const&) {
+        if (auto self = weak.lock()) self->SaveDefaultAndClose();
+      });
+      actions.Children().Append(useDefault);
+    }
+    if (summary->ShowChangeLocation) {
+      Button changeLocation;
+      changeLocation.Content(LocBox("dns_status_change_location"));
+      changeLocation.Click([weak](IInspectable const&, RoutedEventArgs const&) {
+        auto self = weak.lock();
+        if (!self) return;
+        // the page opens the location chooser once the editor has closed
+        self->changeLocationChosen_ = true;
+        self->dialog_.Hide();
+      });
+      actions.Children().Append(changeLocation);
+    }
+    statusPanel_.Children().Append(actions);
+  }
+  // the verification (C6), with the provider's dashboard for a profile it
+  // cannot confirm
+  const hstring verification = DnsKeyText(
+      dnspresets::Known(summary->VerificationKey, dnspresets::kVerificationKeys), provider);
+  if (!verification.empty()) {
+    statusPanel_.Children().Append(MakeText(verification, 12, amber, true));
+  }
+  if (auto dashboard = MakeDnsLink(
+          DnsKeyText(dnspresets::Known(summary->VerificationLinkKey,
+                                       dnspresets::kVerificationLinkKeys),
+                     provider),
+          H(summary->VerificationUrl))) {
+    statusPanel_.Children().Append(dashboard);
+  }
+  // this connection's lookups the provider blocked, a floor (I3, B9)
+  if (summary->ShowBlockedCount) {
+    blockedCountProvider_ = provider;
+    const int64_t count = blockedCount_.value_or(summary->BlockedCount);
+    blockedCountText_ = MakeText(
+        hstring{PluralFormat("dns_blocked_count", count, count, blockedCountProvider_)}, 13,
+        nullptr, true);
+    statusPanel_.Children().Append(blockedCountText_);
+    statusPanel_.Children().Append(
+        MakeText(Loc("dns_blocked_count_floor_note"), 11, FaintBrush(), true));
+  }
+}
+
+void DnsEditorSheet::RenderFastDnsNote() {
+  if (!fastDnsNote_) return;
+  // with a preset picked, the lookups while connecting are URnetwork's (C7)
+  hstring note;
+  if (selected_ < picks_.size()) {
+    const urnet::DnsPick& pick = picks_[selected_].pick;
+    if (pick.Kind == urnet::DnsPickKindPreset && pick.Preset) {
+      note = hstring{Format("dns_preset_fast_dns_note", Widen(pick.Preset->ProviderName))};
+    }
+  }
+  kit::SetTextOrCollapse(fastDnsNote_, note);
+}
+
+void DnsEditorSheet::SetStatus(std::optional<urnet::DnsResolverStatus> status) {
+  status_ = std::move(status);
+  RenderStatus();
+}
+
+void DnsEditorSheet::SetBlockedCount(int64_t count) {
+  blockedCount_ = count;
+  if (blockedCountText_) {
+    blockedCountText_.Text(
+        hstring{PluralFormat("dns_blocked_count", count, count, blockedCountProvider_)});
   }
 }
 
 void DnsEditorSheet::RenderListRows(ListUi& list) {
   list.rows.Children().Clear();
+  if (!draft_) return;
+  const auto& listed = (*draft_).*(list.member);
+  if (!listed) return;
   std::weak_ptr<DnsEditorSheet> weak = weak_from_this();
-  for (const auto& value : draft_.*(list.member)) {
+  for (const auto& value : *listed) {
     Grid row = MakeStarAutoRow();
     row.ColumnSpacing(8);
     auto text = MakeText(H(value), 13);
@@ -1685,8 +2112,8 @@ void DnsEditorSheet::RenderListRows(ListUi& list) {
     std::string removed = value;
     remove.Click([weak, ui, removed](IInspectable const&, RoutedEventArgs const&) {
       auto self = weak.lock();
-      if (!self) return;
-      auto& values = self->draft_.*(ui->member);
+      if (!self || !self->draft_) return;
+      auto& values = self->DraftList(ui->member);
       values.erase(std::remove(values.begin(), values.end(), removed), values.end());
       self->SyncFromDraft();
     });
@@ -1698,35 +2125,47 @@ void DnsEditorSheet::RenderListRows(ListUi& list) {
 
 void DnsEditorSheet::UpdateAddEnabled(ListUi& list) {
   const std::string value = TrimWhitespace(winrt::to_string(list.input.Text()));
-  const auto& values = draft_.*(list.member);
+  bool duplicate = false;
+  if (draft_) {
+    const auto& values = (*draft_).*(list.member);
+    duplicate = values && std::find(values->begin(), values->end(), value) != values->end();
+  }
   const bool valid = list.doh ? IsValidDohUrl(value) : IsIpAddressValue(value);
-  const bool duplicate = std::find(values.begin(), values.end(), value) != values.end();
-  list.add.IsEnabled(valid && !duplicate);
+  list.add.IsEnabled(draft_.has_value() && valid && !duplicate);
 }
 
 void DnsEditorSheet::AddValue(ListUi& list) {
+  if (!draft_) return;
   const std::string value = TrimWhitespace(winrt::to_string(list.input.Text()));
-  auto& values = draft_.*(list.member);
-  const bool valid = list.doh ? IsValidDohUrl(value) : IsIpAddressValue(value);
-  if (!valid || std::find(values.begin(), values.end(), value) != values.end()) return;
+  if (!(list.doh ? IsValidDohUrl(value) : IsIpAddressValue(value))) return;
+  auto& values = DraftList(list.member);
+  if (std::find(values.begin(), values.end(), value) != values.end()) return;
   values.push_back(value);
   list.input.Text(L"");
+  SyncFromDraft();
+}
+
+void DnsEditorSheet::SetDraft(std::optional<urnet::DnsResolverSettings> draft) {
+  // a nullopt from a helper is a failed sdk call, not settings: keep the draft
+  if (draft) draft_ = std::move(draft);
   SyncFromDraft();
 }
 
 void DnsEditorSheet::SyncFromDraft() {
   // programmatic control updates must not re-enter the Toggled handlers
   updating_ = true;
-  remoteDohToggle_.IsOn(draft_.enableRemoteDoh);
-  localDohToggle_.IsOn(draft_.enableLocalDoh);
-  remoteDnsToggle_.IsOn(draft_.enableRemoteDns);
-  localDnsToggle_.IsOn(draft_.enableLocalDns);
-  fallbackToggle_.IsOn(draft_.enableFallback);
-  for (auto& suggestion : suggestions_) {
-    const auto& values = draft_.remoteDnsIpv4;
-    suggestion.toggle.IsOn(std::find(values.begin(), values.end(), suggestion.server.Ipv4) !=
-                           values.end());
+  if (draft_) {
+    if (remoteDohToggle_) remoteDohToggle_.IsOn(draft_->EnableRemoteDoh);
+    if (localDohToggle_) localDohToggle_.IsOn(draft_->EnableLocalDoh);
+    if (remoteDnsToggle_) remoteDnsToggle_.IsOn(draft_->EnableRemoteDns);
+    if (localDnsToggle_) localDnsToggle_.IsOn(draft_->EnableLocalDns);
+    const auto& remoteDns = draft_->RemoteDnsIpv4;
+    for (auto& suggestion : suggestions_) {
+      suggestion.toggle.IsOn(remoteDns && std::find(remoteDns->begin(), remoteDns->end(),
+                                                    suggestion.server.Ipv4) != remoteDns->end());
+    }
   }
+  if (fallbackToggle_) fallbackToggle_.IsOn(urnw::fast_dns_on_connect::FromSettings(draft_));
   for (auto& list : lists_) {
     RenderListRows(*list);
     UpdateAddEnabled(*list);
@@ -1736,8 +2175,40 @@ void DnsEditorSheet::SyncFromDraft() {
 }
 
 void DnsEditorSheet::OnDraftChanged() {
-  dialog_.IsPrimaryButtonEnabled(editorapply::DnsReadingKnown(opened_) && !(draft_ == original_));
-  RenderRecommendationPanel();
+  dialog_.IsPrimaryButtonEnabled(editorapply::DnsReadingKnown(opened_) && !pickPending_ &&
+                                 !DnsDraftSame(draft_, original_));
+  RenderFastDnsNote();
+}
+
+void DnsEditorSheet::SaveDefaultAndClose() {
+  if (!opened_) return;
+  // over the reading in force, whose Fast DNS on connect and mask stay; the
+  // draft's unsaved edits are dropped with the editor
+  const auto settings = DnsHelper("dnsResolverSettingsWithPreset", [this] {
+    return urnet::dnsResolverSettingsWithPreset(opened_, urnet::DnsPresetIdDefault,
+                                                std::string());
+  });
+  if (!settings) return;
+  sdk_.ApplyDnsSettings(opened_, *settings);
+  dialog_.Hide();
+}
+
+bool DnsEditorSheet::DraftIsApplied() const {
+  return !pickPending_ && draft_ && opened_ && draft_->PresetId == opened_->PresetId &&
+         draft_->PresetPersonalId == opened_->PresetPersonalId;
+}
+
+urnet::StringList& DnsEditorSheet::DraftList(ListMember member) {
+  auto& list = (*draft_).*member;
+  if (!list) list = urnet::StringList{};
+  return *list;
+}
+
+std::wstring DnsEditorSheet::CountryDisplayName(std::string const& countryCode) const {
+  const std::string code = ToLower(countryCode);
+  if (!code.empty() && code == countryCode_ && !countryName_.empty()) return Widen(countryName_);
+  if (!code.empty()) return Widen(ToUpper(code));
+  return Localized("this_region");
 }
 
 // ---- TransportSettingsSheet ------------------------------------------------

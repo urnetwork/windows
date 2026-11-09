@@ -533,6 +533,8 @@
     <ClInclude Include="TransferChart.h" />
     <ClInclude Include="TransportBar.h" />
     <ClInclude Include="FastDnsOnConnect.h" />
+    <!-- header-only and WinRT-free: tools/dns-settings-tests.cpp runs it -->
+    <ClInclude Include="DnsPresetPresentation.h" />
     <ClInclude Include="IpFamilyStatus.h" />
     <ClInclude Include="IpFamilyStatusRow.h" />
     <ClInclude Include="ProviderDotDiameter.h" />

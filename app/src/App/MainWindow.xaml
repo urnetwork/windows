@@ -1213,7 +1213,10 @@
                                                       Toggled="OnPostQuantumToggled" />
                                     </Grid>
                                 </Border>
-                                <Border Style="{StaticResource UrPaneRowStyle}">
+                                <!-- URnetwork's own blocker, named as its own with a line
+                                     under it, so it is not taken for the DNS providers
+                                     that block ads (connect ADBLOCK3RD F1 item 6) -->
+                                <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="44">
                                     <Grid ColumnSpacing="10">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
@@ -1222,8 +1225,15 @@
                                         </Grid.ColumnDefinitions>
                                         <FontIcon Glyph="&#xEA39;" FontSize="14"
                                                   Style="{StaticResource UrRowIconStyle}" />
-                                        <TextBlock x:Name="BlockerLabel" Grid.Column="1"
-                                                   Style="{StaticResource UrRowTitleStyle}" />
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                                    Spacing="1" Padding="0,4">
+                                            <TextBlock x:Name="BlockerLabel"
+                                                       Style="{StaticResource UrRowTitleStyle}" />
+                                            <TextBlock x:Name="BlockerNote"
+                                                       TextWrapping="Wrap"
+                                                       Style="{StaticResource UrRowNoteStyle}"
+                                                       TextTrimming="None" />
+                                        </StackPanel>
                                         <ToggleSwitch x:Name="BlockerToggle" Grid.Column="2" Width="44"
                                                       Style="{StaticResource UrSwitchToggleStyle}"
                                                       AutomationProperties.LabeledBy="{Binding ElementName=BlockerLabel}"
@@ -1806,6 +1816,37 @@
                                     </StackPanel>
                                 </Border>
                                 <StackPanel x:Name="DnsRowsPanel" Grid.Row="12">
+                                    <!-- the selection, from the sdk's summary (connect ADBLOCK3RD
+                                         F1; ConnectPage::ApplyDnsSummary): "DNS: URnetwork",
+                                         "DNS: AdGuard DNS · Ad blocking". Under it the status of a
+                                         provider that isn't answering with its two actions, or the
+                                         notice of a provider an update removed. -->
+                                    <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
+                                        <StackPanel VerticalAlignment="Center" Spacing="4"
+                                                    Padding="0,8">
+                                            <Grid>
+                                                <TextBlock x:Name="DnsSummaryText"
+                                                           Style="{StaticResource UrKeyTextStyle}"
+                                                           Foreground="{StaticResource UrTextBrush}" />
+                                                <!-- DESIGNSTYLE "Placeholders, not pop-in": the summary's
+                                                     box while the settings are still loading
+                                                     (ConnectPage::ApplyDnsCard) -->
+                                                <Border x:Name="DnsSummarySkeleton" Visibility="Collapsed"
+                                                        Style="{StaticResource UrSkeletonStyle}" Width="140"
+                                                        Height="14" HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center" />
+                                            </Grid>
+                                            <TextBlock x:Name="DnsStatusText" Visibility="Collapsed"
+                                                       FontSize="12" TextWrapping="Wrap" />
+                                            <StackPanel x:Name="DnsStatusActions" Visibility="Collapsed"
+                                                        Orientation="Horizontal" Spacing="12">
+                                                <HyperlinkButton x:Name="DnsUseDefaultButton"
+                                                                 FontSize="12" Padding="0" />
+                                                <HyperlinkButton x:Name="DnsChangeLocationButton"
+                                                                 FontSize="12" Padding="0" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
                                     <Border Style="{StaticResource UrPaneRowStyle}" MinHeight="34">
                                         <Grid ColumnSpacing="8">
                                             <Grid.ColumnDefinitions>
