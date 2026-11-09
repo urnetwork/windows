@@ -36,12 +36,27 @@ inline constexpr const char* kGroupKeys[] = {
 };
 
 // The labels of the default, Custom and Regional picks (DnsPick.LabelKey); a
-// preset pick shows its provider's name instead. One argument, the exit's
+// preset pick shows its name instead (kNameKeys). One argument, the exit's
 // country, which only the regional label uses.
 inline constexpr const char* kPickLabelKeys[] = {
     "dns_provider_default",
     "dns_provider_custom",
     "dns_provider_regional",
+};
+
+// Each preset's name (DnsPreset.NameKey; the summary's and the status's
+// NameKey, and the summary's DroppedNameKey), its purpose with the adblock
+// provider's short name (NameProvider) as the one argument: "AdGuard Family"
+// (owner, 2026-11-09). The lines that name the selected preset take the name,
+// rendered (DnsPresetName in StatsSheets.h), as their argument.
+inline constexpr const char* kNameKeys[] = {
+    "dns_preset_name_ad_blocking",
+    "dns_preset_name_malware_blocking",
+    "dns_preset_name_family",
+    "dns_preset_name_child",
+    "dns_preset_name_child_ads",
+    "dns_preset_name_no_filtering",
+    "dns_preset_name_personal",
 };
 
 // The line under each pick (DnsPick.CopyKey, DnsPreset.CopyKey). One argument:
@@ -68,21 +83,18 @@ inline constexpr const char* kPickCopyKeys[] = {
 };
 
 // The summary row of the selection (DnsSelectionSummary.SummaryKey). One
-// argument, the provider's name, which the default, Custom and Regional rows
-// do not use.
+// argument, the selected preset's name, which only a preset's row uses: it is
+// "DNS: <name>", the status line's dns_status_provider, since the name says
+// what the preset does.
 inline constexpr const char* kSummaryKeys[] = {
     "dns_summary_default",
     "dns_summary_custom",
     "dns_summary_custom_unencrypted",
     "dns_summary_regional",
-    "dns_summary_ad_blocking",
-    "dns_summary_malware_blocking",
-    "dns_summary_family",
-    "dns_summary_no_filtering",
-    "dns_summary_personal",
+    "dns_status_provider",
 };
 
-// The resolver's status line (DnsStatusSummary.StatusKey): the provider's name.
+// The resolver's status line (DnsStatusSummary.StatusKey): the preset's name.
 inline constexpr const char* kStatusKeys[] = {
     "dns_status_provider",
     "dns_status_paused",
@@ -98,8 +110,8 @@ inline constexpr const char* kStatusDetailKeys[] = {
 };
 
 // The verification line (DnsStatusSummary.VerificationKey) and the label of
-// its link to the provider's dashboard (VerificationLinkKey): the provider's
-// name.
+// its link to the provider's dashboard (VerificationLinkKey): the adblock
+// provider's name (ProviderName).
 inline constexpr const char* kVerificationKeys[] = {
     "dns_verify_not_filtering",
     "dns_verify_unconfirmed",

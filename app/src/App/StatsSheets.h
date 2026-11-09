@@ -273,6 +273,14 @@ winrt::hstring DnsKeyText(const char* known, const Args&... args) {
   }
 }
 
+// A preset's name (DnsPreset.NameKey with NameProvider; the summary's and the
+// status's): the store's text of its key with the adblock provider's short
+// name, as it is, "AdGuard Family" (owner, 2026-11-09). The lines that name the
+// selected preset take it as their argument; the lines that name the adblock
+// provider take its ProviderName. A key this build does not know shows the
+// adblock provider's name alone.
+std::wstring DnsPresetName(std::string const& nameKey, std::string const& nameProvider);
+
 // The traffic DNS editor, titled Custom DNS (connect ADBLOCK3RD.md F1, F2).
 // Under the connection region and the Traffic DNS heading: the notice of a
 // provider an update removed (A7), then the sdk's picks in its order
@@ -415,7 +423,8 @@ class DnsEditorSheet : public std::enable_shared_from_this<DnsEditorSheet> {
   winrt::Microsoft::UI::Xaml::Controls::TextBlock personalIdError_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel statusPanel_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock blockedCountText_{nullptr};
-  std::wstring blockedCountProvider_;
+  // the preset's name the blocked count names
+  std::wstring blockedCountPresetName_;
 
   // an sdk-edited copy of the reading, what Update applies
   std::optional<urnet::DnsResolverSettings> draft_;
