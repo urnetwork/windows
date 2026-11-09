@@ -1320,7 +1320,7 @@
   </data>
   <data name="block_ads_and_trackers" xml:space="preserve">
     <value>Chặn quảng cáo và trình theo dõi</value>
-    <comment>DNS settings: heading of the group of DNS providers that block ads and trackers (AdGuard DNS, Control D, DNS4EU), beside "Block malware" and "Family". Screens that haven't moved to dns_builtin_blocker_label also label URnetwork's own blocker's toggle with it, so it reads both as a heading and as an action.</comment>
+    <comment>DNS settings: heading of the group of adblock providers that block ads and trackers (AdGuard DNS, Control D, DNS4EU), beside "Block malware" and "Family". Screens that haven't moved to dns_builtin_blocker_label also label URnetwork's own blocker's toggle with it, so it reads both as a heading and as an action.</comment>
   </data>
   <data name="blocked" xml:space="preserve">
     <value>Bị chặn</value>
@@ -3714,19 +3714,19 @@ cách đúng đắn</value>
   </data>
   <data name="dns_blocked_count.other" xml:space="preserve">
     <value>{1} đã chặn {0} truy vấn trong kết nối này</value>
-    <comment>DNS settings: how many DNS lookups the selected filtering provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the provider's name, inserted as is.</comment>
+    <comment>DNS settings: how many DNS lookups the selected adblock provider has blocked since the device connected. Counted on the device only and reset at each connect. {count} is the number, {provider} the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_blocked_count_floor_note" xml:space="preserve">
     <value>Một số lượt chặn không được tính, nên con số thực tế có thể cao hơn.</value>
-    <comment>DNS settings: note under the blocked lookups count. Some ways a provider answers a block can't be recognized, so the count is a minimum.</comment>
+    <comment>DNS settings: note under the blocked lookups count. Some ways an adblock provider answers a block can't be recognized, so the count is a minimum.</comment>
   </data>
   <data name="dns_builtin_blocker_label" xml:space="preserve">
     <value>Trình chặn quảng cáo của URnetwork</value>
-    <comment>Connect drawer and DNS settings: label of the toggle for URnetwork's own ad and tracker blocker, which works on the device beside any DNS choice. It is named as URnetwork's own so it isn't mistaken for the DNS providers in "Block ads and trackers".</comment>
+    <comment>Connect drawer and DNS settings: label of the toggle for URnetwork's own ad and tracker blocker, which works on the device beside any DNS choice. It is named as URnetwork's own so it isn't mistaken for the adblock providers in "Block ads and trackers".</comment>
   </data>
   <data name="dns_builtin_blocker_note" xml:space="preserve">
     <value>Trình chặn riêng của URnetwork. Hoạt động với mọi lựa chọn DNS và kiểm tra từng tên trước tiên.</value>
-    <comment>Connect drawer and DNS settings: line under the URnetwork ad blocker toggle. It can stay on with any DNS choice, a provider that blocks ads included, and it checks each name before the DNS provider is asked.</comment>
+    <comment>Connect drawer and DNS settings: line under the URnetwork ad blocker toggle. It can stay on with any DNS choice, an adblock provider that blocks ads included, and it checks each name before the chosen DNS is asked.</comment>
   </data>
   <data name="dns_custom_mix_note" xml:space="preserve">
     <value>Kết hợp máy chủ có lọc với các máy chủ mặc định sẽ không lọc: câu trả lời nhanh nhất được dùng.</value>
@@ -3738,19 +3738,19 @@ cách đúng đắn</value>
   </data>
   <data name="dns_group_block_malware" xml:space="preserve">
     <value>Chặn phần mềm độc hại</value>
-    <comment>DNS settings, provider picker: heading of the group of DNS providers that block malware and phishing but not ads (Cloudflare, DNS4EU, Quad9). It sits below "Block ads and trackers" and reads like it.</comment>
+    <comment>DNS settings, adblock provider picker: heading of the group of adblock providers that block malware and phishing but not ads (Cloudflare, DNS4EU, Quad9). It sits below "Block ads and trackers" and reads like it.</comment>
   </data>
   <data name="dns_group_family" xml:space="preserve">
     <value>Gia đình</value>
-    <comment>DNS settings, provider picker: heading of the group of family DNS providers, which block adult sites and similar content (some of them also block ads).</comment>
+    <comment>DNS settings, adblock provider picker: heading of the group of the adblock providers' family filters, which block adult sites and similar content (some of them also block ads).</comment>
   </data>
   <data name="dns_group_my_account" xml:space="preserve">
     <value>Dùng tài khoản của tôi</value>
-    <comment>DNS settings, provider picker: heading of the group for people with their own account at a DNS provider (AdGuard DNS, Control D, NextDNS). Choosing one asks for the account's profile ID, so the provider applies the person's own filters.</comment>
+    <comment>DNS settings, adblock provider picker: heading of the group for people with their own account at an adblock provider (AdGuard DNS, Control D, NextDNS). Choosing one asks for the account's profile ID, so the adblock provider applies the person's own filters.</comment>
   </data>
   <data name="dns_group_no_filtering" xml:space="preserve">
     <value>Không lọc</value>
-    <comment>DNS settings, provider picker: heading of the group of other DNS providers that resolve every name and block nothing.</comment>
+    <comment>DNS settings, adblock provider picker: heading of the group of the adblock providers' picks that resolve every name and block nothing.</comment>
   </data>
   <data name="dns_over_https" xml:space="preserve">
     <value>DNS qua HTTPS</value>
@@ -3758,11 +3758,11 @@ cách đúng đắn</value>
   </data>
   <data name="dns_personal_id_block_response" xml:space="preserve">
     <value>Trong {}, hãy để phản hồi chặn ở IP 0 (0.0.0.0, mặc định) hoặc NXDOMAIN. REFUSED và các phản hồi khác trông như sự cố.</value>
-    <comment>DNS settings, Use my account: help about the provider's block response setting. URnetwork treats a REFUSED answer as a failing provider, so blocks must be answered with zero IP (0.0.0.0, the providers' default) or NXDOMAIN. 0.0.0.0, NXDOMAIN and REFUSED are technical values: keep them as they are. {provider} is the provider's name, inserted as is.</comment>
+    <comment>DNS settings, Use my account: help about the adblock provider's block response setting. URnetwork treats a REFUSED answer as a failing adblock provider, so blocks must be answered with zero IP (0.0.0.0, the adblock providers' default) or NXDOMAIN. 0.0.0.0, NXDOMAIN and REFUSED are technical values: keep them as they are. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_personal_id_dashboard_link" xml:space="preserve">
     <value>Mở bảng điều khiển {} của bạn</value>
-    <comment>DNS settings, Use my account: link that opens the provider's dashboard, for example under "Saved, but we can't confirm this profile". {provider} is the provider's name, inserted as is.</comment>
+    <comment>DNS settings, Use my account: link that opens the adblock provider's dashboard, for example under "Saved, but we can't confirm this profile". {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_personal_id_format_adguard" xml:space="preserve">
     <value>ID thiết bị của {0} gồm 8 ký tự: chữ số và các chữ cái từ a đến f, ví dụ {1}.</value>
@@ -3778,11 +3778,11 @@ cách đúng đắn</value>
   </data>
   <data name="dns_personal_id_label" xml:space="preserve">
     <value>ID hồ sơ hoặc địa chỉ DNS</value>
-    <comment>DNS settings, Use my account: label of the field where the person enters the ID of their profile at the DNS provider, or pastes the DNS address the provider's dashboard shows (a DNS over HTTPS URL or a Private DNS hostname).</comment>
+    <comment>DNS settings, Use my account: label of the field where the person enters the ID of their profile at the adblock provider, or pastes the DNS address the adblock provider's dashboard shows (a DNS over HTTPS URL or a Private DNS hostname).</comment>
   </data>
   <data name="dns_personal_id_linked_ip_note" xml:space="preserve">
     <value>Không cần liên kết địa chỉ IP trong bảng điều khiển: qua URnetwork, các truy vấn của bạn đến từ một địa chỉ không phải của bạn. Chỉ cần ID là đủ.</value>
-    <comment>DNS settings, Use my account: provider dashboards suggest linking your IP address to your account. Through URnetwork, lookups come from the VPN exit's address, which belongs to someone else, so the app uses only the ID and doesn't offer linking.</comment>
+    <comment>DNS settings, Use my account: adblock provider dashboards suggest linking your IP address to your account. Through URnetwork, lookups come from the VPN exit's address, which belongs to someone else, so the app uses only the ID and doesn't offer linking.</comment>
   </data>
   <data name="dns_personal_id_quota_adguard" xml:space="preserve">
     <value>Gói miễn phí của {} giới hạn 300.000 yêu cầu mỗi tháng.</value>
@@ -3822,83 +3822,83 @@ cách đúng đắn</value>
   </data>
   <data name="dns_preset_copy_ads_adult_safe_search" xml:space="preserve">
     <value>Chặn quảng cáo, trình theo dõi và trang web người lớn, đồng thời bật tìm kiếm an toàn</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for AdGuard DNS Family in "Family": it also forces safe search on search engines. The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks. Used for AdGuard DNS Family in "Family": it also forces safe search on search engines. The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_ads_malware" xml:space="preserve">
     <value>Chặn quảng cáo, trình theo dõi và phần mềm độc hại</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for Control D in "Block ads and trackers". The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks. Used for Control D in "Block ads and trackers". The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_ads_malware_adult_drugs" xml:space="preserve">
     <value>Chặn quảng cáo, trình theo dõi, phần mềm độc hại, trang web người lớn và ma túy</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for Control D Family in "Family". The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks. Used for Control D Family in "Family". The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_ads_malware_phishing" xml:space="preserve">
     <value>Chặn quảng cáo, trình theo dõi, phần mềm độc hại và lừa đảo</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for DNS4EU in "Block ads and trackers". The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks. Used for DNS4EU in "Block ads and trackers". The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_ads_phishing" xml:space="preserve">
     <value>Chặn quảng cáo, trình theo dõi và lừa đảo</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for AdGuard DNS in "Block ads and trackers". The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks. Used for AdGuard DNS in "Block ads and trackers". The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_child" xml:space="preserve">
     <value>Chặn phần mềm độc hại, trang web người lớn, cờ bạc, ma túy và bạo lực, không chặn quảng cáo</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for DNS4EU's child protection in "Family". The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks, and that it doesn't block ads. Used for DNS4EU's child protection in "Family". The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_child_ads" xml:space="preserve">
     <value>Chặn quảng cáo, trình theo dõi, phần mềm độc hại, trang web người lớn, cờ bạc, ma túy và bạo lực</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks. Used for DNS4EU's child protection with ad blocking in "Family". The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks. Used for DNS4EU's child protection with ad blocking in "Family". The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_court_orders" xml:space="preserve">
     <value>Chỉ chặn những gì tòa án yêu cầu</value>
-    <comment>DNS settings, provider picker: the line under DNS4EU in "No filtering". It does no protective filtering, but the domains courts order blocked stay blocked on every DNS4EU resolver. The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under DNS4EU in "No filtering". It does no protective filtering, but the domains courts order blocked stay blocked on every DNS4EU resolver. The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_malware" xml:space="preserve">
     <value>Chặn phần mềm độc hại, không chặn quảng cáo</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for Cloudflare in "Block malware". The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks, and that it doesn't block ads. Used for Cloudflare in "Block malware". The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_malware_adult" xml:space="preserve">
     <value>Chặn phần mềm độc hại và trang web người lớn, không chặn quảng cáo</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for Cloudflare Family in "Family". The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks, and that it doesn't block ads. Used for Cloudflare Family in "Family". The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_malware_phishing" xml:space="preserve">
     <value>Chặn phần mềm độc hại và lừa đảo, không chặn quảng cáo</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name that says what it blocks, and that it doesn't block ads. Used for DNS4EU and Quad9 in "Block malware". The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name that says what it blocks, and that it doesn't block ads. Used for DNS4EU and Quad9 in "Block malware". The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_nothing" xml:space="preserve">
     <value>Không chặn gì</value>
-    <comment>DNS settings, provider picker: the line under a DNS provider's name in "No filtering" (AdGuard DNS, Cloudflare, Control D): the provider resolves every name and blocks nothing. The provider's name is shown above it, not in this string.</comment>
+    <comment>DNS settings, adblock provider picker: the line under an adblock provider's name in "No filtering" (AdGuard DNS, Cloudflare, Control D): the adblock provider resolves every name and blocks nothing. The adblock provider's name is shown above it, not in this string.</comment>
   </data>
   <data name="dns_preset_copy_personal" xml:space="preserve">
     <value>Dùng các bộ lọc bạn đã thiết lập trong tài khoản {} của bạn</value>
-    <comment>DNS settings, provider picker: the line under each provider in "Use my account". {provider} is the provider's name (AdGuard DNS, Control D or NextDNS), inserted as is.</comment>
+    <comment>DNS settings, adblock provider picker: the line under each adblock provider in "Use my account". {provider} is the adblock provider's name (AdGuard DNS, Control D or NextDNS), inserted as is.</comment>
   </data>
   <data name="dns_preset_disclosure" xml:space="preserve">
-    <value>Các truy vấn DNS của bạn đi qua đường hầm đến {}, nên nhà cung cấp này không bao giờ thấy địa chỉ IP của bạn. Chính sách quyền riêng tư của họ được áp dụng.</value>
-    <comment>DNS settings: disclosure under the selected DNS provider, above the Privacy policy and Help links. The provider receives the names looked up while connected, from the VPN exit's address, never the person's own IP address. {provider} is the provider's name (for example AdGuard DNS), inserted as is.</comment>
+    <value>Các truy vấn DNS của bạn đi qua đường hầm đến {}, nên nhà cung cấp chặn quảng cáo này không bao giờ thấy địa chỉ IP của bạn. Chính sách quyền riêng tư của họ được áp dụng.</value>
+    <comment>DNS settings: disclosure under the selected adblock provider, above the Privacy policy and Help links. The adblock provider receives the names looked up while connected, from the VPN exit's address, never the person's own IP address. {provider} is the adblock provider's name (for example AdGuard DNS), inserted as is.</comment>
   </data>
   <data name="dns_preset_dropped" xml:space="preserve">
     <value>{} không còn khả dụng. Bạn đang dùng DNS của URnetwork nên các truy vấn không được lọc.</value>
-    <comment>DNS settings and connect drawer: notice after an app update removed the DNS provider the person had selected. The app switched to URnetwork's own DNS, which doesn't filter. {provider} is the removed provider's name, inserted as is.</comment>
+    <comment>DNS settings and connect drawer: notice after an app update removed the adblock provider the person had selected. The app switched to URnetwork's own DNS, which doesn't filter. {provider} is the removed adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_preset_dropped_choose" xml:space="preserve">
     <value>Chọn cài đặt sẵn khác</value>
-    <comment>DNS settings: button on the notice of a removed DNS provider that opens the provider list. "Preset" means one of the DNS providers listed on the screen.</comment>
+    <comment>DNS settings: button on the notice of a removed adblock provider that opens the adblock provider list. "Preset" means one of the adblock providers listed on the screen.</comment>
   </data>
   <data name="dns_preset_dropped_custom" xml:space="preserve">
     <value>Tự nhập trong mục Tùy chỉnh</value>
-    <comment>DNS settings: button on the notice of a removed DNS provider that opens the Custom editor, where the person can enter the provider's addresses themselves. It names the "Custom" pick, so it uses that pick's exact word.</comment>
+    <comment>DNS settings: button on the notice of a removed adblock provider that opens the Custom editor, where the person can enter the adblock provider's addresses themselves. It names the "Custom" pick, so it uses that pick's exact word.</comment>
   </data>
   <data name="dns_preset_error_personal_id_invalid" xml:space="preserve">
     <value>ID này không đúng định dạng.</value>
-    <comment>DNS settings, Use my account: error id the sdk returns when the profile ID doesn't have the provider's format. The provider's own format line is shown with it.</comment>
+    <comment>DNS settings, Use my account: error id the sdk returns when the profile ID doesn't have the adblock provider's format. The adblock provider's own format line is shown with it.</comment>
   </data>
   <data name="dns_preset_error_personal_id_not_accepted" xml:space="preserve">
     <value>Cài đặt sẵn này không dùng ID hồ sơ.</value>
-    <comment>DNS settings: error id the sdk returns when a profile ID is given for a DNS preset that doesn't take one. "Preset" means one of the DNS providers listed on the screen.</comment>
+    <comment>DNS settings: error id the sdk returns when a profile ID is given for a DNS preset that doesn't take one. "Preset" means one of the adblock providers listed on the screen.</comment>
   </data>
   <data name="dns_preset_error_personal_id_other_provider" xml:space="preserve">
-    <value>Địa chỉ này thuộc về nhà cung cấp DNS khác. Hãy chọn nhà cung cấp đó.</value>
-    <comment>DNS settings, Use my account: error id the sdk returns when the pasted DNS address or hostname belongs to another DNS provider in the list.</comment>
+    <value>Địa chỉ này thuộc về nhà cung cấp chặn quảng cáo khác. Hãy chọn nhà cung cấp chặn quảng cáo đó.</value>
+    <comment>DNS settings, Use my account: error id the sdk returns when the pasted DNS address or hostname belongs to another adblock provider in the list. "Adblock provider" is what the app calls these DNS companies (AdGuard, Control D, Quad9, Cloudflare, DNS4EU, NextDNS): say it in full both times, never with the word the app uses for URnetwork's providers, which are the bandwidth providers.</comment>
   </data>
   <data name="dns_preset_error_personal_id_required" xml:space="preserve">
     <value>Nhập ID hồ sơ của bạn.</value>
@@ -3906,47 +3906,47 @@ cách đúng đắn</value>
   </data>
   <data name="dns_preset_error_unknown" xml:space="preserve">
     <value>Cài đặt sẵn này không khả dụng. Hãy chọn cài đặt khác.</value>
-    <comment>DNS settings: error id the sdk returns when a DNS preset is no longer in the app's catalog. "Preset" means one of the DNS providers listed on the screen.</comment>
+    <comment>DNS settings: error id the sdk returns when a DNS preset is no longer in the app's catalog. "Preset" means one of the adblock providers listed on the screen.</comment>
   </data>
   <data name="dns_preset_fast_dns_note" xml:space="preserve">
     <value>Trong lúc kết nối, các truy vấn dùng DNS của URnetwork nên {} không lọc chúng.</value>
-    <comment>DNS settings: note beside the "Fast DNS on connect" toggle while a DNS provider is selected. While the tunnel connects, lookups go to URnetwork's own DNS, so the provider never sees the person's own address, but those lookups aren't filtered. {provider} is the provider's name, inserted as is.</comment>
+    <comment>DNS settings: note beside the "Fast DNS on connect" toggle while an adblock provider is selected. While the tunnel connects, lookups go to URnetwork's own DNS, so the adblock provider never sees the person's own address, but those lookups aren't filtered. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_preset_help_link" xml:space="preserve">
     <value>Trợ giúp</value>
-    <comment>DNS settings: link under the selected DNS provider, beside "Privacy policy", that opens the provider's help page.</comment>
+    <comment>DNS settings: link under the selected adblock provider, beside "Privacy policy", that opens the adblock provider's help page.</comment>
   </data>
   <data name="dns_preset_jurisdiction" xml:space="preserve">
     <value>Quyền tài phán: {}</value>
-    <comment>DNS settings, provider picker: which country's law the DNS provider operates under. {jurisdiction} comes from the app's provider catalog in English (for example Cyprus or Switzerland) and is inserted as is.</comment>
+    <comment>DNS settings, adblock provider picker: which country's law the adblock provider operates under. {jurisdiction} comes from the app's adblock provider catalog in English (for example Cyprus or Switzerland) and is inserted as is.</comment>
   </data>
   <data name="dns_preset_privacy_link" xml:space="preserve">
     <value>Chính sách quyền riêng tư</value>
-    <comment>DNS settings: link under the selected DNS provider that opens the provider's privacy policy.</comment>
+    <comment>DNS settings: link under the selected adblock provider that opens the adblock provider's privacy policy.</comment>
   </data>
   <data name="dns_private_dns_overrides_preset" xml:space="preserve">
     <value>DNS riêng tư ghi đè lựa chọn DNS của bạn ({}).</value>
-    <comment>Android connect screen: line added to the strict Private DNS notice while a DNS provider is selected, since Android's Private DNS sends lookups to its own server instead. {provider} is the selected DNS provider's name, inserted as is. Private DNS is Android's own setting, named as in Android.</comment>
+    <comment>Android connect screen: line added to the strict Private DNS notice while an adblock provider is selected, since Android's Private DNS sends lookups to its own server instead. {provider} is the selected adblock provider's name, inserted as is. Private DNS is Android's own setting, named as in Android.</comment>
   </data>
   <data name="dns_provider_custom" xml:space="preserve">
     <value>Tùy chỉnh</value>
-    <comment>DNS settings, provider picker: the pick that opens the advanced editor, where the person enters their own DNS over HTTPS URLs and DNS servers. Other strings send the reader to this pick by name ("Enter it yourself under Custom"), so they use the same word.</comment>
+    <comment>DNS settings, adblock provider picker: the pick that opens the advanced editor, where the person enters their own DNS over HTTPS URLs and DNS servers. Other strings send the reader to this pick by name ("Enter it yourself under Custom"), so they use the same word.</comment>
   </data>
   <data name="dns_provider_custom_copy" xml:space="preserve">
     <value>URL DNS qua HTTPS và máy chủ DNS của riêng bạn</value>
-    <comment>DNS settings, provider picker: the line under "Custom" that says what it holds.</comment>
+    <comment>DNS settings, adblock provider picker: the line under "Custom" that says what it holds.</comment>
   </data>
   <data name="dns_provider_default" xml:space="preserve">
     <value>URnetwork (mặc định)</value>
-    <comment>DNS settings, provider picker: the first pick, URnetwork's own encrypted DNS through the tunnel, which every app uses by default. URnetwork is the product name.</comment>
+    <comment>DNS settings, adblock provider picker: the first pick, URnetwork's own encrypted DNS through the tunnel, which every app uses by default. URnetwork is the product name.</comment>
   </data>
   <data name="dns_provider_default_copy" xml:space="preserve">
     <value>DNS được mã hóa qua đường hầm, không lọc</value>
-    <comment>DNS settings, provider picker: the line under "URnetwork (default)" that says what it does: names are resolved over encrypted DNS inside the VPN tunnel, and nothing is blocked.</comment>
+    <comment>DNS settings, adblock provider picker: the line under "URnetwork (default)" that says what it does: names are resolved over encrypted DNS inside the VPN tunnel, and nothing is blocked.</comment>
   </data>
   <data name="dns_provider_regional" xml:space="preserve">
     <value>Theo khu vực ({}), không mã hóa</value>
-    <comment>DNS settings, provider picker: the last pick, shown only while the exit's country has a recommended set of plain DNS servers that work better there. It is never selected automatically. {country} is the exit country's name, inserted as is. Unencrypted means the DNS lookups are sent without encryption.</comment>
+    <comment>DNS settings, adblock provider picker: the last pick, shown only while the exit's country has a recommended set of plain DNS servers that work better there. It is never selected automatically. {country} is the exit country's name, inserted as is. Unencrypted means the DNS lookups are sent without encryption.</comment>
   </data>
   <data name="dns_recommendation_message" xml:space="preserve">
     <value>Các quy tắc bảo mật mạnh nhất được biết là không hoạt động ở {}. Có những cài đặt DNS được khuyến nghị, kém an toàn hơn nhưng hoạt động tốt hơn.</value>
@@ -3958,39 +3958,39 @@ cách đúng đắn</value>
   </data>
   <data name="dns_status_change_location" xml:space="preserve">
     <value>Đổi vị trí</value>
-    <comment>DNS settings and connect drawer: button beside a DNS provider status that opens the location picker, since a provider can be blocked or unreachable from some exit locations.</comment>
+    <comment>DNS settings and connect drawer: button beside an adblock provider's status that opens the location picker, since an adblock provider can be blocked or unreachable from some exit locations.</comment>
   </data>
   <data name="dns_status_fallback" xml:space="preserve">
     <value>{} không phản hồi. Đang dùng DNS của URnetwork.</value>
-    <comment>DNS settings and connect drawer: status line when a DNS provider from "No filtering" isn't answering, so URnetwork's own DNS answers until it does. {provider} is the provider's name, inserted as is.</comment>
+    <comment>DNS settings and connect drawer: status line when an adblock provider from "No filtering" isn't answering, so URnetwork's own DNS answers until it does. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_status_paused" xml:space="preserve">
     <value>Đã tạm dừng chặn quảng cáo: {} không phản hồi</value>
-    <comment>DNS settings and connect drawer: status line when an ad-blocking DNS provider isn't answering from the current exit, so URnetwork's own DNS answers for now and ads aren't blocked. It switches back on its own when the provider answers. {provider} is the provider's name, inserted as is.</comment>
+    <comment>DNS settings and connect drawer: status line when an adblock provider that blocks ads isn't answering from the current exit, so URnetwork's own DNS answers for now and ads aren't blocked. It switches back on its own when the adblock provider answers. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_status_paused_detail" xml:space="preserve">
-    <value>Đang dùng DNS của URnetwork cho đến khi nhà cung cấp phản hồi. Tính năng chặn quảng cáo sẽ tự bật lại.</value>
-    <comment>DNS settings: line under "Ad blocking paused: … isn't answering". "it" is the ad-blocking DNS provider named in that line.</comment>
+    <value>Đang dùng DNS của URnetwork cho đến khi nhà cung cấp chặn quảng cáo phản hồi. Tính năng chặn quảng cáo sẽ tự bật lại.</value>
+    <comment>DNS settings: line under "Ad blocking paused: … isn't answering". "it" is the adblock provider named in that line.</comment>
   </data>
   <data name="dns_status_provider" xml:space="preserve">
     <value>DNS: {}</value>
-    <comment>DNS settings: status line while the selected DNS provider answers normally. {provider} is the provider's name (for example AdGuard DNS), inserted as is.</comment>
+    <comment>DNS settings: status line while the selected adblock provider answers normally. {provider} is the adblock provider's name (for example AdGuard DNS), inserted as is.</comment>
   </data>
   <data name="dns_status_unreachable" xml:space="preserve">
     <value>{} không phản hồi</value>
-    <comment>DNS settings and connect drawer: status line when a family, malware-blocking or personal DNS provider isn't answering. To keep its filtering, URnetwork doesn't switch to other DNS, so sites may not load until the provider answers or the person picks "Use URnetwork DNS". {provider} is the provider's name, inserted as is.</comment>
+    <comment>DNS settings and connect drawer: status line when an adblock provider's family, malware-blocking or personal pick isn't answering. To keep its filtering, URnetwork doesn't switch to other DNS, so sites may not load until the adblock provider answers or the person picks "Use URnetwork DNS". {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_status_unreachable_detail" xml:space="preserve">
-    <value>Để giữ tính năng lọc, URnetwork không tự đổi DNS. Các trang web có thể không tải được cho đến khi nhà cung cấp phản hồi.</value>
-    <comment>DNS settings: line under "… isn't answering" for a family, malware-blocking or personal DNS provider. "it" is the DNS provider named in that line.</comment>
+    <value>Để giữ tính năng lọc, URnetwork không tự đổi DNS. Các trang web có thể không tải được cho đến khi nhà cung cấp chặn quảng cáo phản hồi.</value>
+    <comment>DNS settings: line under "… isn't answering" for an adblock provider's family, malware-blocking or personal pick. "it" is the adblock provider named in that line.</comment>
   </data>
   <data name="dns_status_use_default" xml:space="preserve">
     <value>Dùng DNS của URnetwork</value>
-    <comment>DNS settings and connect drawer: button beside a DNS provider status that isn't answering. It switches back to URnetwork's own DNS, the default, in one tap.</comment>
+    <comment>DNS settings and connect drawer: button beside the status of an adblock provider that isn't answering. It switches back to URnetwork's own DNS, the default, in one tap.</comment>
   </data>
   <data name="dns_summary_ad_blocking" xml:space="preserve">
     <value>DNS: {} · Chặn quảng cáo</value>
-    <comment>Connect drawer, DNS card: summary row while a DNS provider from "Block ads and trackers" is selected. {provider} is the provider's name, inserted as is.</comment>
+    <comment>Connect drawer, DNS card: summary row while an adblock provider from "Block ads and trackers" is selected. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_summary_custom" xml:space="preserve">
     <value>DNS: Tùy chỉnh</value>
@@ -4006,19 +4006,19 @@ cách đúng đắn</value>
   </data>
   <data name="dns_summary_family" xml:space="preserve">
     <value>DNS: {} · Bộ lọc gia đình</value>
-    <comment>Connect drawer, DNS card: summary row while a DNS provider from "Family" is selected. {provider} is the provider's name, inserted as is.</comment>
+    <comment>Connect drawer, DNS card: summary row while an adblock provider from "Family" is selected. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_summary_malware_blocking" xml:space="preserve">
     <value>DNS: {} · Chặn phần mềm độc hại</value>
-    <comment>Connect drawer, DNS card: summary row while a DNS provider from "Block malware" is selected. {provider} is the provider's name, inserted as is.</comment>
+    <comment>Connect drawer, DNS card: summary row while an adblock provider from "Block malware" is selected. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_summary_no_filtering" xml:space="preserve">
     <value>DNS: {} · Không lọc</value>
-    <comment>Connect drawer, DNS card: summary row while a DNS provider from "No filtering" is selected. {provider} is the provider's name, inserted as is.</comment>
+    <comment>Connect drawer, DNS card: summary row while an adblock provider from "No filtering" is selected. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_summary_personal" xml:space="preserve">
     <value>DNS: {} · hồ sơ của bạn</value>
-    <comment>Connect drawer, DNS card: summary row while a provider from "Use my account" is selected. The profile ID itself is never shown. {provider} is the provider's name, inserted as is.</comment>
+    <comment>Connect drawer, DNS card: summary row while an adblock provider from "Use my account" is selected. The profile ID itself is never shown. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_summary_regional" xml:space="preserve">
     <value>DNS: Theo khu vực (không mã hóa)</value>
@@ -4034,7 +4034,7 @@ cách đúng đắn</value>
   </data>
   <data name="dns_verify_not_filtering" xml:space="preserve">
     <value>{} không lọc từ vị trí này</value>
-    <comment>DNS settings: result of the check the app runs after a filtering DNS provider is chosen: the provider answered a name it normally blocks with a real address, so it isn't filtering from the current exit location. {provider} is the provider's name, inserted as is.</comment>
+    <comment>DNS settings: result of the check the app runs after a filtering adblock provider is chosen: the adblock provider answered a name it normally blocks with a real address, so it isn't filtering from the current exit location. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="dns_verify_rejected_controld" xml:space="preserve">
     <value>{} không nhận ra ID trình phân giải này</value>
@@ -4042,7 +4042,7 @@ cách đúng đắn</value>
   </data>
   <data name="dns_verify_unconfirmed" xml:space="preserve">
     <value>Đã lưu, nhưng chúng tôi không thể xác nhận hồ sơ này. Nếu ID sai, {} sẽ trả lời mà không lọc.</value>
-    <comment>DNS settings, Use my account: shown after a profile ID is saved and the provider answers normally. A wrong ID or a used-up free plan also answers normally, just without filtering, so the app can't confirm the profile. {provider} is the provider's name, inserted as is.</comment>
+    <comment>DNS settings, Use my account: shown after a profile ID is saved and the adblock provider answers normally. A wrong ID or a used-up free plan also answers normally, just without filtering, so the app can't confirm the profile. {provider} is the adblock provider's name, inserted as is.</comment>
   </data>
   <data name="done" xml:space="preserve">
     <value>Xong</value>
