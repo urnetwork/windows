@@ -4268,6 +4268,10 @@ właściwy sposób</value>
     <value>Nie wiem, czy ufam VPN-owi</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 dni za darmo, potem {0} za pierwszy rok, potem {1}/rok. Anuluj w każdej chwili.</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>Napisz do pomocy technicznej na</value>
     <comment>Settings: label before the support email address link.</comment>

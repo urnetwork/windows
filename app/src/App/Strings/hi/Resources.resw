@@ -4211,6 +4211,10 @@
     <value>मुझे VPN पर भरोसा नहीं है</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 दिन मुफ़्त, फिर पहले साल के लिए {0}, फिर {1}/वर्ष। कभी भी रद्द करें।</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>सपोर्ट को ईमेल करें:</value>
     <comment>Settings: label before the support email address link.</comment>

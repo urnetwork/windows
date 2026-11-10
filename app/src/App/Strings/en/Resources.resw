@@ -4431,6 +4431,10 @@ right way</value>
     <value>I'm not sure I trust a VPN</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 days free, then {0} for your first year, then {1}/year. Cancel anytime.</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>Email support at</value>
     <comment>Settings: label before the support email address link.</comment>
@@ -8996,6 +9000,14 @@ world's content</value>
     <value>Your plan is at its concurrent client limit — Pro raises it to 1,000.</value>
     <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
   </data>
+  <data name="site_connect_app_install_body" xml:space="preserve">
+    <value>This browser can't run the URnetwork extension. Install the app on this device and sign in to this account to connect.</value>
+    <comment>Connect, the account panel and the onboarding's connect step: the install body in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
+  <data name="site_connect_app_install_title" xml:space="preserve">
+    <value>Install the app to connect</value>
+    <comment>Connect: the install alert's title in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
   <data name="site_connect_code_hint" xml:space="preserve">
     <value>Enter this code when you sign up in the app.</value>
     <comment>Referral link page (ur.io/c): under the referral code to copy, on iOS and on Android when the app did not open.</comment>
@@ -9075,6 +9087,10 @@ world's content</value>
   <data name="site_ext_install" xml:space="preserve">
     <value>Install the extension</value>
     <comment>Extension status: install CTA</comment>
+  </data>
+  <data name="site_ext_installed_reload" xml:space="preserve">
+    <value>Installed it? Reload this page</value>
+    <comment>Connect: after the extension's store opened in another tab, the button that reloads this tab (an open tab sees a newly installed extension only after a reload)</comment>
   </data>
   <data name="site_ext_proxy_on" xml:space="preserve">
     <value>Browser connection active</value>

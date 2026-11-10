@@ -4260,6 +4260,10 @@
     <value>不确定能不能信任 VPN</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 天免费，然后第一年 {0}，之后 {1}/年。随时可取消。</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>发送电子邮件给支持团队：</value>
     <comment>Settings: label before the support email address link.</comment>
@@ -8342,6 +8346,14 @@
     <value>您的套餐已达并发客户端上限——Pro可将上限提升至1,000。</value>
     <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
   </data>
+  <data name="site_connect_app_install_body" xml:space="preserve">
+    <value>此浏览器无法运行 URnetwork 扩展。请在此设备上安装应用，并登录此账户以连接。</value>
+    <comment>Connect, the account panel and the onboarding's connect step: the install body in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
+  <data name="site_connect_app_install_title" xml:space="preserve">
+    <value>安装应用以连接</value>
+    <comment>Connect: the install alert's title in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
   <data name="site_connect_code_hint" xml:space="preserve">
     <value>在应用中注册时请输入此推荐码。</value>
     <comment>Referral link page (ur.io/c): under the referral code to copy, on iOS and on Android when the app did not open.</comment>
@@ -8421,6 +8433,10 @@
   <data name="site_ext_install" xml:space="preserve">
     <value>安装扩展</value>
     <comment>Extension status: install CTA</comment>
+  </data>
+  <data name="site_ext_installed_reload" xml:space="preserve">
+    <value>已安装？刷新此页面</value>
+    <comment>Connect: after the extension's store opened in another tab, the button that reloads this tab (an open tab sees a newly installed extension only after a reload)</comment>
   </data>
   <data name="site_ext_proxy_on" xml:space="preserve">
     <value>浏览器连接已激活</value>

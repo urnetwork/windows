@@ -4344,6 +4344,10 @@
     <value>Не уверен, что доверяю VPN</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 дней бесплатно, затем {0} за первый год, затем {1}/год. Отмена в любое время.</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>Пишите в поддержку:</value>
     <comment>Settings: label before the support email address link.</comment>
@@ -8702,6 +8706,14 @@
     <value>Достигнут лимит одновременных клиентов вашего тарифа — Pro повышает его до 1000.</value>
     <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
   </data>
+  <data name="site_connect_app_install_body" xml:space="preserve">
+    <value>Этот браузер не поддерживает расширение URnetwork. Установите приложение на это устройство и войдите в этот аккаунт, чтобы подключиться.</value>
+    <comment>Connect, the account panel and the onboarding's connect step: the install body in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
+  <data name="site_connect_app_install_title" xml:space="preserve">
+    <value>Установите приложение, чтобы подключиться</value>
+    <comment>Connect: the install alert's title in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
   <data name="site_connect_code_hint" xml:space="preserve">
     <value>Введите этот код при регистрации в приложении.</value>
     <comment>Referral link page (ur.io/c): under the referral code to copy, on iOS and on Android when the app did not open.</comment>
@@ -8781,6 +8793,10 @@
   <data name="site_ext_install" xml:space="preserve">
     <value>Установить расширение</value>
     <comment>Extension status: install CTA</comment>
+  </data>
+  <data name="site_ext_installed_reload" xml:space="preserve">
+    <value>Установили? Обновите страницу</value>
+    <comment>Connect: after the extension's store opened in another tab, the button that reloads this tab (an open tab sees a newly installed extension only after a reload)</comment>
   </data>
   <data name="site_ext_proxy_on" xml:space="preserve">
     <value>Подключение браузера активно</value>
