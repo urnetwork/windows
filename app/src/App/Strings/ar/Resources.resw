@@ -4400,6 +4400,10 @@
     <value>لست متأكداً أنني أثق بـ VPN</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 يوماً مجاناً، ثم {0} لسنتك الأولى، ثم {1} سنوياً. يمكنك الإلغاء في أي وقت.</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>راسل الدعم على</value>
     <comment>Settings: label before the support email address link.</comment>
@@ -4869,7 +4873,7 @@
   </data>
   <data name="free" xml:space="preserve">
     <value>مجاني</value>
-    <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+    <comment>Name of the free plan: the plan shown when the network has no Pro subscription, on the account, settings and Connect screens of the apps and ur.io. Free as in no cost, not as in freedom.</comment>
   </data>
   <data name="friends_save_too" xml:space="preserve">
     <value>أصدقاؤك يوفرون أيضًا -- الجميع يفوز.</value>
@@ -8941,6 +8945,14 @@
     <value>بلغت خطتك الحد الأقصى للعملاء المتزامنين — يرفعه Pro إلى 1,000.</value>
     <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
   </data>
+  <data name="site_connect_app_install_body" xml:space="preserve">
+    <value>لا يمكن لهذا المتصفح تشغيل إضافة URnetwork. ثبّت التطبيق على هذا الجهاز وسجّل الدخول إلى هذا الحساب للاتصال.</value>
+    <comment>Connect, the account panel and the onboarding's connect step: the install body in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
+  <data name="site_connect_app_install_title" xml:space="preserve">
+    <value>ثبّت التطبيق للاتصال</value>
+    <comment>Connect: the install alert's title in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
   <data name="site_connect_code_hint" xml:space="preserve">
     <value>أدخل هذا الرمز عند التسجيل في التطبيق.</value>
     <comment>Referral link page (ur.io/c): under the referral code to copy, on iOS and on Android when the app did not open.</comment>
@@ -9020,6 +9032,10 @@
   <data name="site_ext_install" xml:space="preserve">
     <value>تثبيت الإضافة</value>
     <comment>Extension status: install CTA</comment>
+  </data>
+  <data name="site_ext_installed_reload" xml:space="preserve">
+    <value>هل ثبّتها؟ أعد تحميل هذه الصفحة</value>
+    <comment>Connect: after the extension's store opened in another tab, the button that reloads this tab (an open tab sees a newly installed extension only after a reload)</comment>
   </data>
   <data name="site_ext_proxy_on" xml:space="preserve">
     <value>اتصال المتصفح نشط</value>

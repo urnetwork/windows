@@ -4288,6 +4288,10 @@ de la manera correcta</value>
     <value>No sé si confío en una VPN</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 días gratis, luego {0} por tu primer año, luego {1}/año. Cancela cuando quieras.</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>Escribe a soporte:</value>
     <comment>Settings: label before the support email address link.</comment>
@@ -4741,7 +4745,7 @@ de la manera correcta</value>
   </data>
   <data name="free" xml:space="preserve">
     <value>Gratis</value>
-    <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+    <comment>Name of the free plan: the plan shown when the network has no Pro subscription, on the account, settings and Connect screens of the apps and ur.io. Free as in no cost, not as in freedom.</comment>
   </data>
   <data name="friends_save_too" xml:space="preserve">
     <value>Tus amigos también ahorran -- todos ganan.</value>
@@ -8462,6 +8466,14 @@ del mundo</value>
     <value>Tu plan alcanzó su límite de clientes simultáneos; Pro lo amplía a 1000.</value>
     <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
   </data>
+  <data name="site_connect_app_install_body" xml:space="preserve">
+    <value>Este navegador no puede ejecutar la extensión de URnetwork. Instala la app en este dispositivo e inicia sesión con esta cuenta para conectarte.</value>
+    <comment>Connect, the account panel and the onboarding's connect step: the install body in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
+  <data name="site_connect_app_install_title" xml:space="preserve">
+    <value>Instala la app para conectarte</value>
+    <comment>Connect: the install alert's title in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
   <data name="site_connect_code_hint" xml:space="preserve">
     <value>Introduce este código al registrarte en la app.</value>
     <comment>Referral link page (ur.io/c): under the referral code to copy, on iOS and on Android when the app did not open.</comment>
@@ -8541,6 +8553,10 @@ del mundo</value>
   <data name="site_ext_install" xml:space="preserve">
     <value>Instalar la extensión</value>
     <comment>Extension status: install CTA</comment>
+  </data>
+  <data name="site_ext_installed_reload" xml:space="preserve">
+    <value>¿Ya la instalaste? Recarga esta página</value>
+    <comment>Connect: after the extension's store opened in another tab, the button that reloads this tab (an open tab sees a newly installed extension only after a reload)</comment>
   </data>
   <data name="site_ext_proxy_on" xml:space="preserve">
     <value>Conexión del navegador activa</value>

@@ -4268,6 +4268,10 @@
     <value>לא בטוח שאני סומך על VPN</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 יום בחינם, אחר כך {0} לשנה הראשונה, אחר כך {1} לשנה. אפשר לבטל בכל עת.</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>שלחו אימייל לתמיכה בכתובת</value>
     <comment>Settings: label before the support email address link.</comment>
@@ -4729,7 +4733,7 @@
   </data>
   <data name="free" xml:space="preserve">
     <value>חינם</value>
-    <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+    <comment>Name of the free plan: the plan shown when the network has no Pro subscription, on the account, settings and Connect screens of the apps and ur.io. Free as in no cost, not as in freedom.</comment>
   </data>
   <data name="friends_save_too" xml:space="preserve">
     <value>גם החברים שלך חוסכים -- כולם מרוויחים.</value>

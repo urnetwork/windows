@@ -4212,6 +4212,10 @@ maneira certa</value>
     <value>Não sei se confio em VPN</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 dias grátis, depois {0} pelo seu primeiro ano, depois {1}/ano. Cancele quando quiser.</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>Envie um e-mail ao suporte em</value>
     <comment>Settings: label before the support email address link.</comment>
@@ -4665,7 +4669,7 @@ maneira certa</value>
   </data>
   <data name="free" xml:space="preserve">
     <value>Grátis</value>
-    <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+    <comment>Name of the free plan: the plan shown when the network has no Pro subscription, on the account, settings and Connect screens of the apps and ur.io. Free as in no cost, not as in freedom.</comment>
   </data>
   <data name="friends_save_too" xml:space="preserve">
     <value>Seus amigos também economizam -- todo mundo sai ganhando.</value>

@@ -4288,6 +4288,10 @@ richtig auf</value>
     <value>Ich bin nicht sicher, ob ich einem VPN vertraue</value>
     <comment>Onboarding feedback email, not-activated variant: one-tap reason 3.</comment>
   </data>
+  <data name="email_offer_terms" xml:space="preserve">
+    <value>14 Tage gratis, dann {0} für dein erstes Jahr, dann {1}/Jahr. Jederzeit kündbar.</value>
+    <comment>Onboarding emails E3a, E4b, E5b: the terms line under the button. ur.io: the terms line under the yearly plan's button while the welcome offer is active (site_plan_offer_trial_terms). {offer_price} and {regular_price} are localized amounts.</comment>
+  </data>
   <data name="email_support_at" xml:space="preserve">
     <value>Schreib dem Support unter</value>
     <comment>Settings: label before the support email address link.</comment>
@@ -4741,7 +4745,7 @@ richtig auf</value>
   </data>
   <data name="free" xml:space="preserve">
     <value>Kostenlos</value>
-    <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+    <comment>Name of the free plan: the plan shown when the network has no Pro subscription, on the account, settings and Connect screens of the apps and ur.io. Free as in no cost, not as in freedom.</comment>
   </data>
   <data name="friends_save_too" xml:space="preserve">
     <value>Deine Freunde sparen ebenfalls – alle gewinnen.</value>
@@ -6289,7 +6293,7 @@ und am stärksten dezentralisierten Ingress- und Egress-Protokoll.</value>
     <comment>Placeholder text for an empty text field.</comment>
   </data>
   <data name="plan" xml:space="preserve">
-    <value>Planen</value>
+    <value>Plan</value>
     <comment>Upgrade subscription overlay</comment>
   </data>
   <data name="plan_billed_monthly_cancel_anytime" xml:space="preserve">
@@ -8462,6 +8466,14 @@ der Welt</value>
     <value>Dein Tarif hat sein Limit für gleichzeitige Clients erreicht — Pro erhöht es auf 1.000.</value>
     <comment>Account panel: concurrent-client-limit upgrade prompt</comment>
   </data>
+  <data name="site_connect_app_install_body" xml:space="preserve">
+    <value>Dieser Browser kann die URnetwork-Erweiterung nicht ausführen. Installiere die App auf diesem Gerät und melde dich mit diesem Konto an, um dich zu verbinden.</value>
+    <comment>Connect, the account panel and the onboarding's connect step: the install body in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
+  <data name="site_connect_app_install_title" xml:space="preserve">
+    <value>Installiere die App, um dich zu verbinden</value>
+    <comment>Connect: the install alert's title in a browser that can't run the extension (a phone's, iPadOS's, desktop Safari's), which is offered the app instead</comment>
+  </data>
   <data name="site_connect_code_hint" xml:space="preserve">
     <value>Gib diesen Code bei der Anmeldung in der App ein.</value>
     <comment>Referral link page (ur.io/c): under the referral code to copy, on iOS and on Android when the app did not open.</comment>
@@ -8541,6 +8553,10 @@ der Welt</value>
   <data name="site_ext_install" xml:space="preserve">
     <value>Erweiterung installieren</value>
     <comment>Extension status: install CTA</comment>
+  </data>
+  <data name="site_ext_installed_reload" xml:space="preserve">
+    <value>Installiert? Seite neu laden</value>
+    <comment>Connect: after the extension's store opened in another tab, the button that reloads this tab (an open tab sees a newly installed extension only after a reload)</comment>
   </data>
   <data name="site_ext_proxy_on" xml:space="preserve">
     <value>Browser-Verbindung aktiv</value>
