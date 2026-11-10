@@ -4708,8 +4708,8 @@
     <comment>Forgot your password?</comment>
   </data>
   <data name="free" xml:space="preserve">
-    <value>自由</value>
-    <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
+    <value>免费</value>
+    <comment>Name of the free plan: the plan shown when the network has no Pro subscription, on the account, settings and Connect screens of the apps and ur.io. Free as in no cost, not as in freedom.</comment>
   </data>
   <data name="friends_save_too" xml:space="preserve">
     <value>你的朋友也能省钱——人人受益。</value>
