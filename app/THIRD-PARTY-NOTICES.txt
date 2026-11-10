@@ -344,5 +344,63 @@ The Apache License, Version 2.0:
   limitations under the License.
 
 ===============================================================================
+Coin marks - TAO, Bitcoin, ETH and SOL
+app/src/App/Assets/coin_tao.svg, coin_btc.svg, coin_eth.svg and coin_sol.svg
+
+The crypto payment widget shows each of these coins with its project's own
+mark, in one colour, drawn as one path on a 24x24 box. The marks say which
+coins the app accepts; their projects do not sponsor or endorse URnetwork.
+
+Bitcoin - the Bitcoin logo   (https://bitcoin.org)
+
+The Bitcoin logo was made by bitboy and released into the public domain
+(https://en.bitcoin.it/wiki/Promotional_graphics). URnetwork draws it in one
+colour, the B cut out of the circle, from bitcoin.org's img/icons/logotop.svg,
+which bitcoin.org publishes under the MIT License:
+
+  Copyright (c) 2009-2026 Bitcoin.org
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
+
+ETH - the ETH diamond   (https://ethereum.org/en/assets/)
+
+"ETH diamond (gray)" by the Ethereum Foundation (ethereum.org) is licensed
+under the Creative Commons Attribution 4.0 International License (CC BY 4.0),
+https://creativecommons.org/licenses/by/4.0/, the license ethereum.org's terms
+of use (https://ethereum.org/en/terms-of-use/) give the site's content.
+Changed by URnetwork: the diamond's five facets are filled in one flat colour,
+as ethereum.org's "ETH diamond (glyph)" shows it, and the mark is fitted to a
+24x24 box.
+
+SOL - the Solana logomark   (https://solana.com/branding)
+
+Solana, SOL and the Solana logomark are trademarks of the Solana Foundation,
+shown under the Solana Foundation Brand Guidelines. URnetwork uses the
+Foundation's own one-colour logomark (img/logomark-black.svg), unaltered.
+
+TAO - the Bittensor logo   (https://bittensor.com)
+
+The Bittensor logo, the symbol of the TAO currency, is the Opentensor
+Foundation's, shown as its graphic standards allow: unaltered, in black or
+white. It comes from the Bittensor media kit:
+  https://github.com/latent-to/developer-docs/tree/main/static/bittensor-media-assets
+
+===============================================================================
 Note: URnetworkSdk.dll (the Go/cgo SDK) statically links additional open-source
 Go modules; their notices are maintained with the SDK.
