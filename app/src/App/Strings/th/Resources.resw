@@ -2066,7 +2066,7 @@
   </data>
   <data name="crypto_does_not_renew" xml:space="preserve">
     <value>ไม่ต่ออายุอัตโนมัติ ชำระอีกครั้งเมื่อสิ้นสุด</value>
-    <comment>Wherever subscriptions are listed (account, subscription details): the note under a plan paid once in crypto (USDC, Zcash or Monero). It never auto-renews and there is nothing to cancel; the payer buys another term when this one ends. The method-neutral counterpart of site_sub_solana_no_renew, worded the same way.</comment>
+    <comment>Wherever subscriptions are listed (account, subscription details): the note under a plan paid once in crypto (in any coin). It never auto-renews and there is nothing to cancel; the payer buys another term when this one ends. The method-neutral counterpart of site_sub_solana_no_renew, worded the same way.</comment>
   </data>
   <data name="crypto_fine_print_data" xml:space="preserve">
     <value>ชำระครั้งเดียว ข้อมูลใช้ได้นานหนึ่งปี</value>
@@ -2076,6 +2076,10 @@
     <value>ชำระครั้งเดียวสำหรับ Pro หนึ่งปี ไม่ต่ออายุอัตโนมัติ และไม่มีช่วงทดลองใช้ฟรี</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
   </data>
+  <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
+    <value>ส่งเฉพาะ Bitcoin บนเครือข่าย Bitcoin มายังที่อยู่นี้ Bitcoin ที่ส่งบนเครือข่ายอื่นจะไม่ถูกนับเป็นยอดชำระ</value>
+    <comment>Crypto invoice, Bitcoin only: the network to send on, shown with the address. Bitcoin sent on another network is not credited to this payment. The Bitcoin counterpart of usdc_solana_network_only. Bitcoin is a product name.</comment>
+  </data>
   <data name="crypto_invoice_copied" xml:space="preserve">
     <value>คัดลอกแล้ว</value>
     <comment>Crypto invoice: shown briefly in place of Copy after the amount or the address was copied.</comment>
@@ -2083,6 +2087,18 @@
   <data name="crypto_invoice_copy" xml:space="preserve">
     <value>คัดลอก</value>
     <comment>Crypto invoice: button that copies the amount or the address beside it to the clipboard. Apple shows this text through the copy key, which has the same source.</comment>
+  </data>
+  <data name="crypto_invoice_copy_address" xml:space="preserve">
+    <value>คัดลอกที่อยู่</value>
+    <comment>Crypto invoice: button that copies the receiving address to the clipboard, where the amount has its own copy button too (crypto_invoice_copy_amount), as on a TAO invoice. It shows Copied (crypto_invoice_copied) for a moment after a tap.</comment>
+  </data>
+  <data name="crypto_invoice_copy_amount" xml:space="preserve">
+    <value>คัดลอกจำนวนเงิน</value>
+    <comment>Crypto invoice: button that copies the exact amount to send (the number, without the ticker) to the clipboard, beside Copy address (crypto_invoice_copy_address), as on a TAO invoice. It shows Copied (crypto_invoice_copied) for a moment after a tap.</comment>
+  </data>
+  <data name="crypto_invoice_eth_network_only" xml:space="preserve">
+    <value>ส่งเฉพาะ ETH บนเครือข่ายหลักของ Ethereum มายังที่อยู่นี้ โทเค็นและ ETH บนเครือข่ายอื่น เช่น Base หรือ Arbitrum จะไม่ถูกนับเป็นยอดชำระ</value>
+    <comment>Crypto invoice, ETH only: the network to send on, shown with the address. The same address exists on other networks that carry ETH, such as Base and Arbitrum (network names, never translated), and ETH sent there, like any token sent to the address, is not credited to this payment. Use the same words for mainnet as crypto_network_eth. Ethereum and ETH are product names.</comment>
   </data>
   <data name="crypto_invoice_expires_in" xml:space="preserve">
     <value>ราคาเสนอจะหมดอายุใน {}</value>
@@ -2116,13 +2132,29 @@
     <value>ส่งจำนวนนี้ให้ตรงพอดี</value>
     <comment>Crypto invoice: the label above the exact amount of the coin to send (e.g. 0.072387 XMR), which has a copy button.</comment>
   </data>
+  <data name="crypto_invoice_send_exactly_to_address" xml:space="preserve">
+    <value>ส่งจำนวนเงินนี้ให้ตรงพอดีไปยังที่อยู่นี้</value>
+    <comment>Crypto invoice for a coin with no payment link (TAO): the instruction above the exact amount and the receiving address, which each have their own copy button (crypto_invoice_copy_amount, crypto_invoice_copy_address). It stands where other coins show Open in wallet. Exactly: the payer must send this amount, no more and no less.</comment>
+  </data>
+  <data name="crypto_invoice_sol_network_only" xml:space="preserve">
+    <value>ส่งเฉพาะ SOL บนเครือข่าย Solana มายังที่อยู่นี้ โทเค็นต่างๆ รวมถึง USDC จะไม่ถูกนับเป็นยอดชำระ</value>
+    <comment>Crypto invoice, SOL only: the coin to send, shown with the address. Only SOL itself counts: tokens sent to the address, USDC among them, are not credited to this payment (USDC is paid on its own tab, USDC on Solana). Solana, SOL and USDC are product names.</comment>
+  </data>
+  <data name="crypto_invoice_tao_network_only" xml:space="preserve">
+    <value>ส่งเฉพาะ TAO บนเครือข่าย Bittensor มายังที่อยู่นี้ TAO ที่ส่งบนเครือข่ายอื่นจะไม่ถูกนับเป็นยอดชำระ</value>
+    <comment>Crypto invoice, TAO only: the network to send on, shown with the address. TAO sent on another network is not credited to this payment. The TAO counterpart of usdc_solana_network_only. Bittensor and TAO are product names.</comment>
+  </data>
+  <data name="crypto_invoice_tao_no_payment_link" xml:space="preserve">
+    <value>TAO ไม่มีลิงก์ชำระเงิน รหัส QR นี้จึงมีเพียงที่อยู่ โปรดป้อนจำนวนเงินให้ตรงพอดีในกระเป๋าเงินของคุณ</value>
+    <comment>Crypto invoice, TAO only: why it has no Open in wallet button, and what its QR code holds. TAO has no payment link (a link or QR code that fills in both the address and the amount, as other coins have), so the QR code carries the address alone and the payer enters the exact amount by hand. TAO is a product name.</comment>
+  </data>
   <data name="crypto_invoice_to_address" xml:space="preserve">
     <value>ไปยังที่อยู่นี้</value>
     <comment>Crypto invoice: the label above the receiving address, which has a copy button.</comment>
   </data>
   <data name="crypto_invoice_unavailable" xml:space="preserve">
     <value>ไม่สามารถชำระด้วย {} ได้ชั่วคราว โปรดลองอีกครั้งภายหลัง หรือชำระด้วยวิธีอื่น</value>
-    <comment>Crypto invoice: shown when an invoice can't be started or its quote refreshed because the coin can't be quoted right now. {method} is the coin's name: USDC, Zcash or Monero.</comment>
+    <comment>Crypto invoice: shown when an invoice can't be started or its quote refreshed because the coin can't be quoted right now. {method} is the coin's name: USDC, Zcash, Monero, TAO, Bitcoin, ETH or SOL (product names, never translated).</comment>
   </data>
   <data name="crypto_invoice_wallets" xml:space="preserve">
     <value>กระเป๋าเงินที่ใช้ได้: {}</value>
@@ -2132,9 +2164,25 @@
     <value>กระดานเทรดอย่าง Coinbase และ Robinhood ส่งไปยังที่อยู่แบบชิลด์นี้ไม่ได้ โปรดส่งจากกระเป๋าเงินที่รองรับที่อยู่แบบชิลด์</value>
     <comment>Crypto invoice, Zcash only: warning that exchange accounts cannot pay a shielded address, so the payer must send from a wallet that supports shielded Zcash addresses. Coinbase and Robinhood are company names. Use the same word for shielded as in crypto_network_zcash.</comment>
   </data>
+  <data name="crypto_network_bitcoin" xml:space="preserve">
+    <value>เครือข่าย Bitcoin</value>
+    <comment>The network a Bitcoin payment is sent on: the Bitcoin invoice's first line, and the line under Bitcoin in the More coins list, so the payer picks the right network in the wallet or the exchange. Bitcoin is a product name.</comment>
+  </data>
+  <data name="crypto_network_eth" xml:space="preserve">
+    <value>เครือข่ายหลักของ Ethereum</value>
+    <comment>The network an ETH payment is sent on: the ETH invoice's first line, and the line under ETH in the More coins list. Mainnet is Ethereum's main network, as opposed to its test networks and to other networks that carry ETH, such as Base and Arbitrum (ETH sent there is not credited). Use the same words for mainnet as crypto_invoice_eth_network_only. Ethereum is a product name.</comment>
+  </data>
+  <data name="crypto_network_sol" xml:space="preserve">
+    <value>Solana (SOL แบบเนทีฟ)</value>
+    <comment>The network a SOL payment is sent on: the SOL invoice's first line, and the line under SOL in the More coins list. Native SOL is the Solana network's own coin, as opposed to the tokens on Solana such as USDC, which has its own tab. Solana and SOL are product names.</comment>
+  </data>
+  <data name="crypto_network_tao" xml:space="preserve">
+    <value>เครือข่าย Bittensor</value>
+    <comment>The network a TAO payment is sent on: the TAO invoice's first line, and the line under TAO in the More coins list, so the payer picks the right network in the wallet or the exchange. Bittensor is a product name.</comment>
+  </data>
   <data name="crypto_network_usdc" xml:space="preserve">
     <value>USDC บน Solana</value>
-    <comment>Crypto invoice: its first line, naming the coin and the network to send it on, so the payer picks the right chain in the wallet (USDC sent on another chain is lost).</comment>
+    <comment>Crypto invoice: its first line, naming the coin and the network to send it on, so the payer picks the right chain in the wallet (USDC sent on another chain is lost). On apple it also labels the USDC tab of the payment method row (pay_method_usdc_solana, the same text), so keep it short enough for a tab.</comment>
   </data>
   <data name="crypto_network_zcash" xml:space="preserve">
     <value>Zcash แบบชิลด์</value>
@@ -2142,11 +2190,11 @@
   </data>
   <data name="crypto_pay_button" xml:space="preserve">
     <value>ชำระด้วย {}</value>
-    <comment>The buy button while a coin is the chosen payment method. {method} is the coin's name as the method row shows it: USDC, Zcash or Monero (product names, never translated).</comment>
+    <comment>The buy button while a coin is the chosen payment method. {method} is the coin's name as the method row or the More coins list shows it: USDC, Zcash, Monero, TAO, Bitcoin, ETH or SOL (product names, never translated). A word that changes with the name's last sound (Korean 로/으로) takes the form that fits every name.</comment>
   </data>
   <data name="crypto_payment_in_progress" xml:space="preserve">
     <value>การชำระเงินกำลังดำเนินการ</value>
-    <comment>Account screen and plan area: the label of the row or banner that reopens a crypto invoice (USDC, Zcash or Monero) saved on this device and not paid yet. Tapping it opens the invoice.</comment>
+    <comment>Account screen and plan area: the label of the row or banner that reopens a crypto invoice (in any coin) saved on this device and not paid yet. Tapping it opens the invoice.</comment>
   </data>
   <data name="crypto_status_confirming" xml:space="preserve">
     <value>กำลังยืนยัน: {0} จาก {1}</value>
@@ -6043,15 +6091,27 @@
   </data>
   <data name="pay_method_card_only_monthly" xml:space="preserve">
     <value>รายเดือนชำระด้วยบัตรเท่านั้น</value>
-    <comment>Plan picker: the note on the monthly plan, which is greyed out while a coin (USDC, Zcash or Monero) is the chosen payment method. Coins sell the yearly plan and data packs only; monthly is paid by card.</comment>
+    <comment>Plan picker: the note on the monthly plan, which is greyed out while a coin (USDC, Zcash, Monero, or TAO, Bitcoin, ETH or SOL under More coins) is the chosen payment method. Coins sell the yearly plan and data packs only; monthly is paid by card.</comment>
   </data>
   <data name="pay_method_label" xml:space="preserve">
     <value>ชำระเงินด้วย</value>
-    <comment>Payment method row, directly above the buy button (plan picker, upgrade sheet, onboarding, Buy data): the label of the row of methods (Card, USDC, Zcash, Monero). Screen readers read it before the selected method, and a platform may also show it as the row's visible label.</comment>
+    <comment>Payment method row, directly above the buy button (plan picker, upgrade sheet, onboarding, Buy data): the label of the row of methods (Card, USDC on Solana, Zcash, Monero, More coins). Screen readers read it before the selected method, and a platform may also show it as the row's visible label.</comment>
+  </data>
+  <data name="pay_method_more_coins" xml:space="preserve">
+    <value>เหรียญอื่นๆ</value>
+    <comment>Payment method row: the tab after Card, USDC on Solana, Zcash and Monero that holds the other coins, shown with their icons (TAO, Bitcoin, ETH and SOL). Choosing it opens a list of those coins, and it may title that list. A coin is a cryptocurrency, not a metal coin. Keep it short: it shares the row with the other tabs.</comment>
+  </data>
+  <data name="pay_method_more_coins_a11y" xml:space="preserve">
+    <value>เหรียญอื่นๆ: {}</value>
+    <comment>Payment method row, for screen readers: the More coins tab (pay_method_more_coins), which may show only the coins' icons. {coins} lists the coins behind it in their order (TAO, Bitcoin, ETH, SOL), joined the way the app joins a list. The coin names are never translated. Start with the tab's own words.</comment>
   </data>
   <data name="pay_method_unavailable" xml:space="preserve">
     <value>ไม่พร้อมใช้งานชั่วคราว</value>
-    <comment>Payment method row: the note under a coin that is switched on but cannot be quoted right now (exchange rates or the payment service are unavailable). The coin can't be chosen until it clears.</comment>
+    <comment>Payment method row: the note under a coin that is switched on but cannot be quoted right now (exchange rates or the payment service are unavailable). The coin can't be chosen until it clears. In the More coins list it is the note on such a coin, which stays visible but greyed, its icon dimmed on the More coins tab.</comment>
+  </data>
+  <data name="pay_method_usdc_solana" xml:space="preserve">
+    <value>USDC บน Solana</value>
+    <comment>Payment method row: the USDC tab, naming the coin and the network it is paid on, beside Card, Zcash, Monero and More coins. Its words are those of crypto_network_usdc, the USDC invoice's first line: apple shows this tab through that entry (one catalog entry per English text), so this key is not tagged apple, and the two read the same in every language.</comment>
   </data>
   <data name="pay_with_solana_wallet" xml:space="preserve">
     <value>ชำระเงินด้วยกระเป๋าเงิน Solana</value>
