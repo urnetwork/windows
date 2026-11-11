@@ -371,7 +371,7 @@ void InvoiceWords() {
   CheckEq("0.072387 XMR", AmountWithTicker("0.072387", "XMR"), "the amount with its ticker");
   CheckEq("0.072387", AmountWithTicker("0.072387", ""), "no ticker");
   CheckEq("", AmountWithTicker("", "XMR"), "no amount");
-  CheckEq("Cake, Feather, Monerujo", JoinNames({"Cake", "Feather", "", "Monerujo"}), "the wallets");
+  CheckEq("btcli, Talisman, Nova", JoinNames({"btcli", "Talisman", "", "Nova"}), "the wallets");
   CheckEq("", JoinNames({}), "no wallets");
 }
 
