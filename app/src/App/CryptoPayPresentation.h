@@ -1,14 +1,18 @@
 // Crypto payments on the billing surfaces (crypto-pay CONTRACT §1, §4.3, §4.4,
-// §6): the payment-method row's rules, what the native invoice shows for each
-// state of the sdk's CryptoInvoiceViewController, the quote countdown, the
-// gate in front of every payment uri, and a crypto year's plan rows.
+// §6; mmm/BTCPAY.md §17.6): the payment-method row's rules over the sdk's coin
+// selector, what the native invoice shows for each state of the sdk's
+// CryptoInvoiceViewController, the quote countdown, the gate in front of every
+// payment uri, and a crypto year's plan rows.
 //
 // The sdk owns the invoice (quote, countdown, requote, status, persistence)
-// and builds every payment uri; this app renders CryptoInvoiceState and calls
-// the controller's actions. CryptoInvoiceView mirrors that state field for
-// field (CryptoPaySdk.h ViewFromSdk is the one place that reads the sdk's
-// struct), and everything a surface decides from it is decided here, so the
-// upgrade sheet, the onboarding pages and the Account rows cannot disagree.
+// and builds every payment uri and the text its QR code holds; this app
+// renders CryptoInvoiceState and calls the controller's actions.
+// CryptoInvoiceView mirrors that state field for field (CryptoPaySdk.h
+// ViewFromSdk is the one place that reads the sdk's struct), and everything a
+// surface decides from it is decided here, so the upgrade sheet, the
+// onboarding pages and the Account rows cannot disagree. The sdk also lays the
+// coins out (urnet::cryptoPaymentTabs: the tabs, their order, their coins,
+// their labels and which can be paid with now), read into PaymentTabView.
 //
 // The literals are the sdk's constants (crypto_pay.go, client_events.go),
 // named beside each, in the ManageSubscription.h / PaymentRefusal.h manner.
@@ -35,6 +39,51 @@ inline constexpr const char* kMethodCard = "card";              // urnet::Paymen
 inline constexpr const char* kAssetUsdcSolana = "usdc_solana";  // urnet::CryptoAssetUsdcSolana
 inline constexpr const char* kAssetZec = "zec";                 // urnet::CryptoAssetZec
 inline constexpr const char* kAssetXmr = "xmr";                 // urnet::CryptoAssetXmr
+inline constexpr const char* kAssetTao = "tao";                 // urnet::CryptoAssetTao
+inline constexpr const char* kAssetBtc = "btc";                 // urnet::CryptoAssetBtc
+inline constexpr const char* kAssetEth = "eth";                 // urnet::CryptoAssetEth
+inline constexpr const char* kAssetSol = "sol";                 // urnet::CryptoAssetSol
+
+// The selector's tab of the coins beyond the main three, which opens a
+// sub-selector of them (urnet::CryptoPaymentTabMoreCoins). A tab of one coin
+// is named by its asset.
+inline constexpr const char* kTabMoreCoins = "more_coins";
+
+// What this app shows of a coin beyond the sdk's labels: the scheme of its
+// payment uri for the gate below (urnet::cryptoPaymentUriScheme, with its
+// colon; "" for TAO, which has no payment link), the line naming the network
+// it is sent on (the invoice's first line, and the line under the coin in the
+// More coins list), the warning beside its address ("" for none), and for a
+// coin with no payment link the note under its QR code, which holds the
+// address alone. Store keys (CONTRACT §5). A coin missing here is no coin of
+// this app's (IsCoin); tests/crypto_pay_test.go holds the schemes to the
+// sdk's.
+struct CoinWords {
+  const char* asset;
+  const char* uriScheme;
+  const char* networkLineKey;
+  const char* networkWarningKey;
+  const char* noPaymentLinkKey;
+};
+
+inline constexpr std::array<CoinWords, 7> kCoinWords = {{
+    {kAssetUsdcSolana, "solana:", "crypto_network_usdc", "usdc_solana_network_only", ""},
+    {kAssetZec, "zcash:", "crypto_network_zcash", "", ""},
+    {kAssetXmr, "monero:", "crypto_network_monero", "", ""},
+    {kAssetTao, "", "crypto_network_tao", "crypto_invoice_tao_network_only",
+     "crypto_invoice_tao_no_payment_link"},
+    {kAssetBtc, "bitcoin:", "crypto_network_bitcoin", "crypto_invoice_bitcoin_network_only", ""},
+    {kAssetEth, "ethereum:", "crypto_network_eth", "crypto_invoice_eth_network_only", ""},
+    {kAssetSol, "solana:", "crypto_network_sol", "crypto_invoice_sol_network_only", ""},
+}};
+
+// The words of `asset`, or nullptr for anything else.
+inline const CoinWords* WordsFor(std::string_view asset) {
+  for (const CoinWords& words : kCoinWords) {
+    if (asset == words.asset) return &words;
+  }
+  return nullptr;
+}
 
 // The plans a surface sells. No coin sells monthly (decision 6).
 inline constexpr const char* kPlanYearly = "yearly";                       // urnet::PlanYearly
@@ -61,37 +110,91 @@ inline constexpr const char* kErrorAssetUnavailable = "asset_unavailable";
 inline constexpr const char* kErrorQuoteExpired = "quote_expired";
 inline constexpr const char* kErrorGuestSignInRequired = "guest_sign_in_required";
 
-// ---- the method row (§6.1) --------------------------------------------------
+// ---- the method row (§6.1, mmm/BTCPAY.md §17.6) -------------------------------
+// Card, then the sdk's coin selector: the tabs USDC on Solana, Zcash, Monero
+// and More coins, which opens a sub-selector of TAO, Bitcoin, ETH and SOL. The
+// sdk decides the tabs, their order, their coins, their labels and which coins
+// can be paid with now (urnet::cryptoPaymentTabs, read by CryptoPaySdk.h
+// PaymentTabsFor); the rules below only choose among them.
 
-inline bool IsCoin(std::string_view method) {
-  return method == kAssetUsdcSolana || method == kAssetZec || method == kAssetXmr;
-}
+// A coin of this app's (kCoinWords): not Card, nothing, or a ticker.
+inline bool IsCoin(std::string_view method) { return WordsFor(method) != nullptr; }
 
-// The row shows only when the server lists a coin for the surface's item
-// (urnet::paymentMethods is Card, then each coin that sells it). With no coin
-// the surface looks exactly as it did before crypto.
-inline bool MethodRowShows(const std::vector<std::string>& methods) {
-  for (const std::string& method : methods) {
-    if (IsCoin(method)) return true;
+// A coin of the selector (urnet::CryptoPaymentCoin).
+struct PaymentCoinView {
+  std::string asset;
+  std::string label;     // in English: the fallback when the catalog lacks labelKey
+  std::string labelKey;  // the store key of its label
+  std::string iconKey;   // its mark: the bundled Assets\<iconKey>.svg
+  // payable now. A coin that is not stays in its place and cannot be chosen:
+  // its label is greyed and says "Temporarily unavailable", and its mark stays
+  // at full contrast (Solana's and Bittensor's brand rules).
+  bool available = false;
+
+  bool operator==(const PaymentCoinView&) const = default;
+};
+
+// A tab of the selector (urnet::CryptoPaymentTab).
+struct PaymentTabView {
+  std::string id;  // the asset of a tab of one coin, or kTabMoreCoins
+  std::string label;
+  std::string labelKey;
+  // the marks the tab shows, in order: for More coins each coin's, as separate
+  // marks with space between them, never one badge
+  std::vector<std::string> iconKeys;
+  std::vector<PaymentCoinView> coins;  // in the sub-selector's order
+  bool available = false;              // one of its coins is
+
+  bool operator==(const PaymentTabView&) const = default;
+};
+
+// The row shows only while the sdk lays a selector out: its tabs are empty
+// when no coin the server lists sells the surface's item, and the surface then
+// looks exactly as it did before crypto.
+inline bool MethodRowShows(const std::vector<PaymentTabView>& tabs) { return !tabs.empty(); }
+
+// The coin `asset` among the tabs, or nullptr.
+inline const PaymentCoinView* FindCoin(const std::vector<PaymentTabView>& tabs, std::string_view asset) {
+  for (const PaymentTabView& tab : tabs) {
+    for (const PaymentCoinView& coin : tab.coins) {
+      if (coin.asset == asset) return &coin;
+    }
   }
-  return false;
+  return nullptr;
 }
 
-// Whether the row offers `method` now: Card always, a coin while it is listed.
-inline bool MethodOffered(const std::vector<std::string>& methods, std::string_view method) {
+// Whether the row offers `method` now: Card always, a coin of this app's while
+// the selector has it available.
+inline bool MethodOffered(const std::vector<PaymentTabView>& tabs, std::string_view method) {
   if (method == kMethodCard) return true;
-  if (!IsCoin(method) || !MethodRowShows(methods)) return false;
-  for (const std::string& listed : methods) {
-    if (listed == method) return true;
-  }
-  return false;
+  if (!IsCoin(method)) return false;
+  const PaymentCoinView* coin = FindCoin(tabs, method);
+  return coin != nullptr && coin->available;
 }
 
 // The method the row selects: `wanted` (the device's remembered choice, or
-// the selection before the list changed) while the server still lists it,
-// else Card. A coin switched off server-side falls back to Card.
-inline std::string MethodToSelect(const std::vector<std::string>& methods, std::string_view wanted) {
-  return MethodOffered(methods, wanted) ? std::string(wanted) : std::string(kMethodCard);
+// the selection before the tabs changed) while it is offered, else Card. A
+// coin that cannot be paid with now, or that the server stopped selling,
+// falls back to Card.
+inline std::string MethodToSelect(const std::vector<PaymentTabView>& tabs, std::string_view wanted) {
+  return MethodOffered(tabs, wanted) ? std::string(wanted) : std::string(kMethodCard);
+}
+
+// A tab opens a sub-selector of its coins (More coins); a tab of one coin is
+// that coin.
+inline bool TabOpensCoins(const PaymentTabView& tab) { return tab.id == kTabMoreCoins; }
+
+// The coin choosing `tab` selects: `wanted` (the coin chosen there last, or
+// remembered) while it is one of the tab's available coins, else the tab's
+// first available coin; "" when none is, and the tab cannot be chosen.
+inline std::string TabCoinToSelect(const PaymentTabView& tab, std::string_view wanted) {
+  for (const PaymentCoinView& coin : tab.coins) {
+    if (coin.available && coin.asset == wanted && IsCoin(coin.asset)) return coin.asset;
+  }
+  for (const PaymentCoinView& coin : tab.coins) {
+    if (coin.available && IsCoin(coin.asset)) return coin.asset;
+  }
+  return std::string();
 }
 
 // The plan a coin buys on a plan surface: the welcome offer while it is
@@ -107,21 +210,8 @@ inline std::vector<std::string> PlanSurfaceItems(bool offerActive) {
   return {CryptoPlanFor(offerActive)};
 }
 
-// The segment's label.
-inline const char* MethodLabelKey(std::string_view method) {
-  if (method == kAssetUsdcSolana) return "pay_method_usdc";
-  if (method == kAssetZec) return "pay_method_zcash";
-  if (method == kAssetXmr) return "pay_method_monero";
-  return "pay_method_card";
-}
-
-// The store a method's offer and purchase events name (§6.1 Events).
-inline const char* MethodEventStore(std::string_view method) {
-  if (method == kAssetUsdcSolana) return "solana";  // urnet::EventStoreSolana
-  if (method == kAssetZec) return "zcash";          // urnet::EventStoreZcash
-  if (method == kAssetXmr) return "monero";         // urnet::EventStoreMonero
-  return "stripe";                                  // urnet::EventStoreStripe
-}
+// A method's label and the store its events name are the sdk's
+// (CryptoPaySdk.h MethodLabel, MethodEventStore).
 
 // Only the card's yearly plan starts with a free trial.
 inline bool PurchaseHasTrial(std::string_view method, bool yearly) {
@@ -175,20 +265,38 @@ inline std::array<PlanCardSlot, 4> YearlyCardSlots(bool cardTermsShown, bool sec
 
 // ---- the invoice (§6.2) -------------------------------------------------------
 
-// The invoice's first line: the network the coin is sent on.
+// The invoice's first line: the network the coin is sent on. The More coins
+// list names it under each coin too.
 inline const char* NetworkLineKey(std::string_view asset) {
-  if (asset == kAssetUsdcSolana) return "crypto_network_usdc";
-  if (asset == kAssetZec) return "crypto_network_zcash";
-  if (asset == kAssetXmr) return "crypto_network_monero";
-  return "";
+  const CoinWords* words = WordsFor(asset);
+  return words ? words->networkLineKey : "";
 }
 
-// The payment uri scheme of each asset (§3.5, §4.3).
+// The warning beside the address: the network to send on, and that anything
+// sent on another is not credited. "" for a coin without one.
+inline const char* NetworkWarningKey(std::string_view asset) {
+  const CoinWords* words = WordsFor(asset);
+  return words ? words->networkWarningKey : "";
+}
+
+// The payment uri scheme of each asset (§3.5, §4.3; mmm/BTCPAY.md §17.7), ""
+// for a coin with no payment link.
 inline const char* UriSchemeFor(std::string_view asset) {
-  if (asset == kAssetUsdcSolana) return "solana:";
-  if (asset == kAssetZec) return "zcash:";
-  if (asset == kAssetXmr) return "monero:";
-  return "";
+  const CoinWords* words = WordsFor(asset);
+  return words ? words->uriScheme : "";
+}
+
+// A coin of this app's with no payment link (TAO): its invoice is paid by
+// hand, the address and the exact amount, and its QR code holds the address
+// alone.
+inline bool HasNoPaymentLink(std::string_view asset) {
+  return IsCoin(asset) && std::string_view(UriSchemeFor(asset)).empty();
+}
+
+// The note under such a coin's QR code, which says it holds only the address.
+inline const char* NoPaymentLinkKey(std::string_view asset) {
+  const CoinWords* words = WordsFor(asset);
+  return words ? words->noPaymentLinkKey : "";
 }
 
 // The gate in front of the QR and Open in wallet. The server builds the uri
@@ -307,10 +415,15 @@ struct CryptoInvoiceView {
   std::string address;
   std::string amount;
   std::string ticker;  // urnet::cryptoAssetTicker(asset), set by the sdk
-  // the server's uri; the sdk already empties one that fails its check, and
-  // this app checks again before drawing or opening it (CryptoUriAllowed)
+  // the server's uri, for Open in wallet; the sdk already empties one that
+  // fails its check (and TAO has none), and this app checks again before
+  // drawing or opening it (CryptoUriAllowed)
   std::string uri;
-  std::string memo;
+  // what the QR code holds (urnet::cryptoPaymentQrText): the uri once the
+  // sdk's check passed it, or for a coin with no payment link the address
+  // alone; "" for no QR code
+  std::string qrText;
+  std::string memo;  // usdc_solana and sol: the memo for a transfer sent by hand
   double priceUsd = 0;
   std::string expiresAt;
   int64_t secondsLeft = 0;  // 0 once expired
@@ -402,9 +515,14 @@ enum class QuoteLine {
 
 // Everything the invoice shows for one state, top to bottom (§6.2), by the
 // rules of §6.2.1:
-//   payable    open, pending and time left: the amount, the QR and Open in
-//              wallet (a non-empty uri the gate passed), the address, the
-//              USDC memo and the countdown
+//   payable    open, pending and time left: the amount, the QR (the sdk's qr
+//              text: the uri the gate passed, or the address alone for a coin
+//              with no payment link), Open in wallet (a non-empty uri the gate
+//              passed), the address with the coin's network warning, the memo
+//              of a coin on Solana and the countdown. A coin with no payment
+//              link (TAO) says to send exactly this amount to this address,
+//              its Copy buttons say what they copy, and its QR says it holds
+//              only the address
 //   not polled a resumed invoice before its first status (""): a brief
 //              loading line in place of the payment details, nothing payable
 //   expired    expired, or pending at zero: the expired line and Refresh
@@ -425,12 +543,22 @@ struct CryptoInvoiceDisplay {
   // 2-3. what to send, where
   bool showAmount = false;  // "Send exactly" and the amount with its ticker
   std::string amountText;
-  bool showQr = false;  // with Open in wallet
+  bool showQr = false;
+  std::string qrText;  // what the QR encodes while it shows
+  bool showOpenWallet = false;
+  // a coin with no payment link (TAO): "Send exactly this amount to this
+  // address." while payable, Copy amount and Copy address on the buttons, and
+  // under its QR (the address alone) the note saying so
+  bool noPaymentLink = false;
+  bool showByHandLine = false;
+  std::string noPaymentLinkKey;  // "" while no such QR shows
   bool showAddress = false;
   std::string address;
-  bool showMemo = false;  // USDC: the memo, for a transfer sent by hand
+  bool showMemo = false;  // a coin on Solana: the memo, for a transfer sent by hand
   std::string memo;
-  bool showUsdcWarning = false;  // usdc_solana_network_only, with the address
+  // the coin's network warning, with the address ("" for a coin without one)
+  bool showNetworkWarning = false;
+  std::string networkWarningKey;
   // 4. the quote
   QuoteLine quote = QuoteLine::Hidden;
   std::string countdown;
@@ -478,15 +606,28 @@ inline CryptoInvoiceDisplay DisplayFor(const CryptoInvoiceView& view, bool uriAl
 
   display.showAmount = payable && !view.amount.empty();
   display.amountText = AmountWithTicker(view.amount, ticker);
-  // an empty uri (another device requoted the invoice, or the sdk's check
-  // failed and it blanked the uri): no QR and no Open in wallet, the address
-  // and the exact amount to send by hand (CONTRACT §4.4.1)
-  display.showQr = payable && uriAllowed && !view.uri.empty();
+  // The QR draws the sdk's qr text: the uri, once the sdk's check and this
+  // app's gate passed it, or for a coin with no payment link the bare address.
+  // An empty uri (another device requoted the invoice, or the sdk's check
+  // failed and it blanked the uri) leaves a coin with a payment link no QR and
+  // no Open in wallet: the address and the exact amount, sent by hand
+  // (CONTRACT §4.4.1).
+  const bool qrIsUri = uriAllowed && !view.uri.empty() && view.qrText == view.uri;
+  const bool qrIsAddress = HasNoPaymentLink(view.asset) && view.uri.empty() &&
+                           !view.address.empty() && view.qrText == view.address;
+  display.showQr = payable && (qrIsUri || qrIsAddress);
+  display.qrText = display.showQr ? view.qrText : std::string();
+  display.showOpenWallet = payable && uriAllowed && !view.uri.empty();
+  display.noPaymentLink = HasNoPaymentLink(view.asset);
+  display.showByHandLine = display.noPaymentLink && display.showAmount;
+  display.noPaymentLinkKey = display.showQr && qrIsAddress ? NoPaymentLinkKey(view.asset) : "";
   display.showAddress = (payable || partial) && !view.address.empty();
   display.address = view.address;
-  display.showMemo = payable && view.asset == kAssetUsdcSolana && !view.memo.empty();
+  display.showMemo = payable && (view.asset == kAssetUsdcSolana || view.asset == kAssetSol) &&
+                     !view.memo.empty();
   display.memo = view.memo;
-  display.showUsdcWarning = display.showAddress && view.asset == kAssetUsdcSolana;
+  display.networkWarningKey = NetworkWarningKey(view.asset);
+  display.showNetworkWarning = display.showAddress && !display.networkWarningKey.empty();
 
   if (expired) {
     display.quote = QuoteLine::Expired;
@@ -635,8 +776,9 @@ struct CryptoTermView {
 };
 
 // A subscription in the "crypto" store family (urnet::classifySubscriptionStore:
-// solana, monero and zcash) is one-time: it never renews, so nothing manages
-// or cancels it, and the term notice is its renewal reminder.
+// solana, zcash, monero, bittensor, bitcoin and ethereum) is one-time: it
+// never renews, so nothing manages or cancels it, and the term notice is its
+// renewal reminder.
 inline constexpr const char* kStoreFamilyCrypto = "crypto";  // urnet::SubscriptionStoreCrypto
 
 inline bool StoreFamilyRenews(std::string_view storeFamily) {
@@ -647,6 +789,70 @@ inline bool StoreFamilyRenews(std::string_view storeFamily) {
 // until its term has ended and the renewal notice says the rest.
 inline bool DoesNotRenewShows(std::string_view storeFamily, bool termNoticeShows) {
   return storeFamily == kStoreFamilyCrypto && !termNoticeShows;
+}
+
+// ---- the coins' marks (mmm/BTCPAY.md §17.6) ---------------------------------------
+// A coin's mark is the bundled Assets\<icon key>.svg (App.vcxproj copies the
+// four of More coins beside the exe), one path filled nonzero on a 24 x 24
+// box, drawn as a PathIcon (CryptoPayViews.cpp CoinMark).
+
+inline constexpr double kMarkViewBox = 24;
+
+// An icon key that names a bundled file: lowercase letters, digits and
+// underscores (the sdk's CryptoIconKey* values), never a path.
+inline bool IsMarkKey(std::string_view key) {
+  if (key.empty()) return false;
+  for (const char c : key) {
+    if (!(('a' <= c && c <= 'z') || ('0' <= c && c <= '9') || c == '_')) return false;
+  }
+  return true;
+}
+
+// The d attribute of an svg's one <path> element (comments skipped), or ""
+// when it has none or several, or when the data holds anything but letters,
+// digits, spaces, points, commas and signs: only path data ever reaches the
+// PathIcon's markup.
+inline std::string SvgPathData(std::string_view svg) {
+  const auto startsAt = [&](size_t pos, std::string_view what) {
+    return pos <= svg.size() && svg.substr(pos, what.size()) == what;
+  };
+  const auto isSpace = [](char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; };
+  std::string_view data;
+  int paths = 0;
+  size_t pos = 0;
+  while (pos < svg.size()) {
+    if (startsAt(pos, "<!--")) {
+      const size_t end = svg.find("-->", pos + 4);
+      if (end == std::string_view::npos) return std::string();
+      pos = end + 3;
+      continue;
+    }
+    const bool element = startsAt(pos, "<path") && pos + 5 < svg.size() &&
+                         (isSpace(svg[pos + 5]) || svg[pos + 5] == '/' || svg[pos + 5] == '>');
+    if (!element) {
+      ++pos;
+      continue;
+    }
+    const size_t close = svg.find('>', pos + 5);
+    if (close == std::string_view::npos) return std::string();
+    ++paths;
+    const std::string_view tag = svg.substr(pos + 5, close - (pos + 5));
+    for (size_t at = 0; at + 4 <= tag.size(); ++at) {
+      if (!isSpace(tag[at]) || tag.substr(at + 1, 3) != "d=\"") continue;
+      const size_t end = tag.find('"', at + 4);
+      if (end == std::string_view::npos) return std::string();
+      data = tag.substr(at + 4, end - (at + 4));
+      break;
+    }
+    pos = close + 1;
+  }
+  if (paths != 1 || data.empty()) return std::string();
+  for (const char c : data) {
+    const bool allowed = ('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') ||
+                         c == ' ' || c == '.' || c == ',' || c == '-' || c == '+';
+    if (!allowed) return std::string();
+  }
+  return std::string(data);
 }
 
 }  // namespace urnw::cryptopay

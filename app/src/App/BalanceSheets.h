@@ -129,7 +129,8 @@ class DataInfoSheet {
 //     path never hard-fails for want of a webview.
 //
 // Crypto (crypto-pay CONTRACT §6): while the server sells a coin, the method
-// row Card · USDC · Zcash · Monero sits directly above the buy button. Card is
+// row Card · USDC on Solana · Zcash · Monero · More coins (TAO, Bitcoin, ETH,
+// SOL) sits directly above the buy button. Card is
 // all of the above. A coin buys the yearly plan (the welcome offer while it is
 // active) through the sdk's crypto invoice, which this sheet shows natively on
 // its Invoice page, above whatever surface opened it; once the invoice is paid
@@ -194,7 +195,7 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void BeginCheckout();
   // ---- crypto (crypto-pay CONTRACT §6) ----
-  // The method row from the balance's coins (cryptopay::PaymentMethodsFor),
+  // The method row from the balance's coins (cryptopay::PaymentTabsFor),
   // keeping the selection, or the device's remembered method until one is
   // made here. Products page only, and never mid-purchase.
   void ApplyMethods();
@@ -305,7 +306,7 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   uint32_t webviewGeneration_ = 0;    // drops async results of a torn-down webview
 
   // ---- crypto (crypto-pay CONTRACT §6) ----
-  PaymentMethodRow methods_;  // Card · USDC · Zcash · Monero, above the button
+  PaymentMethodRow methods_;  // Card, then the sdk's coin tabs, above the button
   // the method picked here or by the page that opened the sheet; "" until
   // then, when the row starts on the device's remembered method
   std::string wantedMethod_;

@@ -315,11 +315,11 @@ void Onboarding::StartCheckout(bool yearly) {
 
 void Onboarding::ApplyMethods() {
   if (!built_) return;
-  const std::vector<std::string> methods =
-      cryptopay::PaymentMethodsFor(balance_.cryptoAssets, balance_.offer.active);
+  const std::vector<cryptopay::PaymentTabView> tabs =
+      cryptopay::PaymentTabsFor(balance_.cryptoAssets, balance_.offer.active);
   const std::string wanted = wantedMethod_.empty() ? CryptoInvoice().PaymentMethod() : wantedMethod_;
-  welcomeMethods_.SetMethods(methods, wanted);
-  offerMethods_.SetMethods(methods, wanted);
+  welcomeMethods_.SetTabs(tabs, wanted);
+  offerMethods_.SetTabs(tabs, wanted);
   ApplyMethod(welcomeMethods_.Method());
 }
 
@@ -358,8 +358,7 @@ void Onboarding::ApplyMethod(std::string const& method) {
 void Onboarding::ApplyOfferCta() {
   if (!offerCta_) return;
   if (cryptopay::IsCoin(method_)) {
-    offerCta_.Content(winrt::box_value(
-        hstring{Format("crypto_pay_button", Localized(cryptopay::MethodLabelKey(method_)))}));
+    offerCta_.Content(winrt::box_value(hstring{Format("crypto_pay_button", PaymentMethodName(method_))}));
     return;
   }
   const OfferView& offer = balance_.offer;
@@ -872,8 +871,7 @@ void Onboarding::StopTrip() {
 void Onboarding::ApplyPlanCta(bool yearly) {
   if (!checkoutButton_) return;
   if (cryptopay::IsCoin(method_)) {
-    checkoutButton_.Content(winrt::box_value(
-        hstring{Format("crypto_pay_button", Localized(cryptopay::MethodLabelKey(method_)))}));
+    checkoutButton_.Content(winrt::box_value(hstring{Format("crypto_pay_button", PaymentMethodName(method_))}));
     return;
   }
   checkoutButton_.Content(winrt::box_value(PlanPicker::CtaLabel(yearly)));

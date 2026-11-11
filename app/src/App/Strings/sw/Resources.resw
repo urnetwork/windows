@@ -2210,7 +2210,7 @@ kwa njia sahihi</value>
   </data>
   <data name="crypto_pay_button" xml:space="preserve">
     <value>Lipa kwa {}</value>
-    <comment>The buy button while a coin is the chosen payment method. {method} is the coin's name as the method row or the More coins list shows it: USDC, Zcash, Monero, TAO, Bitcoin, ETH or SOL (product names, never translated). A word that changes with the name's last sound (Korean 로/으로) takes the form that fits every name.</comment>
+    <comment>The buy button while a coin is the chosen payment method. {method} is the sdk's label for the coin, as the method row or the More coins list shows it, for example USDC on Solana, Zcash, Monero, TAO, Bitcoin, ETH or SOL (product names, never translated). A word that changes with the name's last sound (Korean 로/으로) takes the form that fits every name.</comment>
   </data>
   <data name="crypto_payment_in_progress" xml:space="preserve">
     <value>Malipo yanaendelea</value>
@@ -6182,7 +6182,7 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
   </data>
   <data name="pay_method_unavailable" xml:space="preserve">
     <value>Haipatikani kwa muda</value>
-    <comment>Payment method row: the note under a coin that is switched on but cannot be quoted right now (exchange rates or the payment service are unavailable). The coin can't be chosen until it clears. In the More coins list it is the note on such a coin, which stays visible but greyed, its icon dimmed on the More coins tab.</comment>
+    <comment>Payment method row: the note under a coin that is switched on but cannot be quoted right now (exchange rates or the payment service are unavailable). The coin can't be chosen until it clears. In the More coins list it is the note on such a coin, which stays visible with its label greyed; its icon is never dimmed and stays at full contrast.</comment>
   </data>
   <data name="pay_method_usdc_solana" xml:space="preserve">
     <value>USDC kwenye Solana</value>

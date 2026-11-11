@@ -10,7 +10,12 @@
 #include <algorithm>
 #include <chrono>
 #include <exception>
+#include <filesystem>
+#include <fstream>
+#include <map>
 #include <optional>
+#include <sstream>
+#include <utility>
 
 #include <qrcodegen.hpp>
 
@@ -48,6 +53,14 @@ constexpr winrt::Windows::UI::Color kQrLight{255, 0xFF, 0xFF, 0xFF};
 constexpr winrt::Windows::UI::Color kTransparent{0, 0, 0, 0};
 // how long a Copy button says Copied
 constexpr auto kCopiedFor = std::chrono::seconds(2);
+// A coin's mark at full contrast: black on a light theme, white on a dark
+// one, so white on this app's (App.xaml RequestedTheme Dark). Never dimmed,
+// not even for a coin that cannot be paid with now: Solana's and Bittensor's
+// brand rules allow their marks only in black or white (mmm/BTCPAY.md §17.6).
+constexpr winrt::Windows::UI::Color kMarkOnDark{255, 0xFF, 0xFF, 0xFF};
+// a mark on the More coins tab, and beside a coin in its list
+constexpr double kTabMarkSize = 16;
+constexpr double kCoinMarkSize = 20;
 
 TextBlock MakeText(hstring const& text, double size, Brush const& brush = nullptr,
                    bool wrap = false) {
@@ -75,9 +88,68 @@ std::optional<Style> AccentStyle() {
   return std::nullopt;
 }
 
-// The words a method goes by on its segment and its button.
-std::wstring MethodName(std::string const& method) {
-  return Localized(cryptopay::MethodLabelKey(method));
+// The catalog's text for `key`, or `english` while the catalog lacks the key:
+// the sdk hands out each tab's and coin's label as a store key with its
+// English.
+std::wstring PaymentLabel(std::string const& key, std::string const& english) {
+  if (key.empty()) return Widen(english);
+  std::wstring text = Localized(key);
+  if (text == Widen(key)) return Widen(english);
+  return text;
+}
+
+// The running exe's folder, which holds Assets; empty when it cannot be read.
+// Unbounded, as UpdateChecker's OwnExePath: the portable folder can sit under
+// a long path.
+std::filesystem::path ExeDir() {
+  std::wstring path(MAX_PATH, L'\0');
+  for (;;) {
+    const DWORD n = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+    if (n == 0) return {};
+    if (n < path.size()) {
+      path.resize(n);
+      return std::filesystem::path(std::move(path)).parent_path();
+    }
+    if (path.size() >= 0x8000) return {};  // beyond the NT path limit: give up
+    path.resize(path.size() * 2);
+  }
+}
+
+// The path data of the mark `iconKey` names, Assets\<iconKey>.svg beside the
+// exe (App.vcxproj copies the four of More coins there), read once per key
+// (UI thread only); "" for a key without a file, or a file that is not one
+// plain path (cryptopay::SvgPathData).
+std::wstring const& MarkPathData(std::string const& iconKey) {
+  static std::map<std::string, std::wstring> read;
+  if (const auto found = read.find(iconKey); found != read.end()) return found->second;
+  std::wstring data;
+  if (cryptopay::IsMarkKey(iconKey)) {
+    const std::filesystem::path dir = ExeDir();
+    if (!dir.empty()) {
+      std::ifstream in(dir / L"Assets" / (Widen(iconKey) + L".svg"), std::ios::binary);
+      std::ostringstream svg;
+      svg << in.rdbuf();
+      data = Widen(cryptopay::SvgPathData(svg.str()));
+    }
+    if (data.empty()) LogWarn("crypto pay: no mark for {}", iconKey);
+  }
+  return read.emplace(iconKey, std::move(data)).first->second;
+}
+
+// The coin's mark, `size` square at full contrast (kMarkOnDark), or nullptr
+// when there is none: the label beside it names the coin either way. Path
+// data (kit::MakeRowPathIcon fills it nonzero, the svg's rule: XAML's default
+// even-odd would hollow out ETH's facets and TAO's stem).
+PathIcon CoinMark(std::string const& iconKey, double size) {
+  std::wstring const& data = MarkPathData(iconKey);
+  if (data.empty()) return nullptr;
+  try {
+    return kit::MakeRowPathIcon(data, cryptopay::kMarkViewBox, size, colors::MakeBrush(kMarkOnDark));
+  } catch (...) {
+    // markup the reader refused: no mark
+    LogWarn("crypto pay: the mark for {} did not load", iconKey);
+    return nullptr;
+  }
 }
 
 // The status line is a polite live region, so a screen reader hears the
@@ -135,6 +207,11 @@ StackPanel MakeCopyBlock(hstring const& label, double valueSize, TextBlock& outV
 
 }  // namespace
 
+std::wstring PaymentMethodName(std::string const& method) {
+  const cryptopay::MethodLabelText label = cryptopay::MethodLabel(method);
+  return PaymentLabel(label.key, label.english);
+}
+
 // ---- PaymentMethodRow -----------------------------------------------------------
 
 StackPanel PaymentMethodRow::Build() {
@@ -156,10 +233,21 @@ StackPanel PaymentMethodRow::Build() {
     if (!self || self->applying) return;
     const SelectorBarItem item = sender.SelectedItem();
     if (!item) return;
-    for (size_t index = 0; index < self->items.size() && index < self->methods.size(); ++index) {
+    for (size_t index = 0; index < self->items.size(); ++index) {
       if (self->items[index] != item) continue;
-      if (self->methods[index] == self->selected) return;
-      self->selected = self->methods[index];
+      // Card's segment, or a tab: a tab of one coin is that coin, More coins
+      // the coin chosen there last (or remembered), else its first that can
+      // be paid with now
+      std::string method = cryptopay::kMethodCard;
+      if (0 < index && index - 1 < self->tabs.size()) {
+        method = cryptopay::TabCoinToSelect(self->tabs[index - 1], self->wanted);
+      }
+      if (method.empty() || method == self->selected) {
+        Apply(*self);
+        return;
+      }
+      self->selected = method;
+      if (cryptopay::IsCoin(method)) self->wanted = method;
       Apply(*self);
       if (self->onSelect && *self->onSelect) (*self->onSelect)(self->selected);
       return;
@@ -167,49 +255,166 @@ StackPanel PaymentMethodRow::Build() {
   });
   state.root.Children().Append(state.bar);
 
+  // the coins of More coins, under the bar while it is chosen
+  state.coinsPanel = StackPanel();
+  state.coinsPanel.Spacing(2);
+  state.coinsPanel.Margin(Thickness{12, 0, 0, 0});
+  state.coinsPanel.Visibility(Visibility::Collapsed);
+  state.root.Children().Append(state.coinsPanel);
+
   state.unavailable = MakeText(Loc("pay_method_unavailable"), 12, colors::MakeBrush(colors::kUrAmber), true);
   state.unavailable.Visibility(Visibility::Collapsed);
   state.root.Children().Append(state.unavailable);
   return state.root;
 }
 
-void PaymentMethodRow::SetMethods(std::vector<std::string> const& methods, std::string const& wanted) {
+void PaymentMethodRow::SetTabs(std::vector<cryptopay::PaymentTabView> const& tabs, std::string const& wanted) {
   State& state = *state_;
   if (!state.bar) return;
-  // Card and the coins this app knows, in the sdk's order; nothing at all when
-  // no coin is listed, which hides the row
-  std::vector<std::string> listed;
-  if (cryptopay::MethodRowShows(methods)) {
-    for (std::string const& method : methods) {
-      if (method == cryptopay::kMethodCard || cryptopay::IsCoin(method)) listed.push_back(method);
-    }
+  if (tabs != state.tabs) {
+    state.tabs = tabs;
+    Rebuild(state_);
   }
-  if (listed != state.methods) {
-    state.applying = true;
-    state.bar.Items().Clear();
-    state.items.clear();
-    for (std::string const& method : listed) {
-      SelectorBarItem item;
-      item.Text(hstring{MethodName(method)});
-      automation::AutomationProperties::SetAutomationId(
-          item, hstring{L"acceptance.payment-method-" + Widen(method)});
-      state.bar.Items().Append(item);
-      state.items.push_back(item);
-    }
-    state.methods = std::move(listed);
-    state.applying = false;
-  }
-  state.selected = cryptopay::MethodToSelect(state.methods, wanted);
+  state.selected = cryptopay::MethodToSelect(state.tabs, wanted);
+  if (cryptopay::IsCoin(wanted)) state.wanted = wanted;
   Apply(state);
 }
 
+void PaymentMethodRow::Rebuild(std::shared_ptr<State> const& shared) {
+  State& state = *shared;
+  const auto weak = std::weak_ptr<State>(shared);
+  state.applying = true;
+  state.bar.Items().Clear();
+  state.items.clear();
+  state.coinsPanel.Children().Clear();
+  state.coins.clear();
+  // Card first, then the sdk's tabs in its order; nothing at all without
+  // them, which hides the row
+  if (cryptopay::MethodRowShows(state.tabs)) {
+    SelectorBarItem card;
+    card.Text(hstring{PaymentMethodName(cryptopay::kMethodCard)});
+    automation::AutomationProperties::SetAutomationId(card, L"acceptance.payment-method-card");
+    state.bar.Items().Append(card);
+    state.items.push_back(card);
+  }
+  for (cryptopay::PaymentTabView const& tab : state.tabs) {
+    SelectorBarItem item;
+    const hstring tabName{PaymentLabel(tab.labelKey, tab.label)};
+    automation::AutomationProperties::SetAutomationId(item,
+                                                      hstring{L"acceptance.payment-method-" + Widen(tab.id)});
+    if (!tab.available && !cryptopay::TabOpensCoins(tab)) {
+      // a coin that cannot be paid with now: its name greyed, with
+      // "Temporarily unavailable" under it, as the item's Child (no Text, so
+      // the template's own line collapses; the padding is the template's)
+      StackPanel lines;
+      lines.Margin(Thickness{12, 6, 12, 5});
+      lines.Children().Append(MakeText(tabName, 14, colors::FaintBrush()));
+      lines.Children().Append(MakeText(Loc("pay_method_unavailable"), 11, colors::MutedBrush()));
+      item.Child(lines);
+      automation::AutomationProperties::SetName(item, tabName);
+    } else {
+      item.Text(tabName);
+    }
+    if (cryptopay::TabOpensCoins(tab)) {
+      // its coins' marks ahead of its name, each its own with space between
+      // them, never merged into one badge (Solana's brand rules). They sit in
+      // the item's Child, which its disabled state does not grey, at full
+      // contrast whatever the tab's state; the padding is the template's.
+      StackPanel marks;
+      marks.Orientation(Orientation::Horizontal);
+      marks.Spacing(8);
+      marks.Margin(Thickness{12, 10, 0, 7});
+      marks.VerticalAlignment(VerticalAlignment::Center);
+      for (std::string const& iconKey : tab.iconKeys) {
+        if (PathIcon mark = CoinMark(iconKey, kTabMarkSize)) marks.Children().Append(mark);
+      }
+      if (0 < marks.Children().Size()) item.Child(marks);
+      // the marks stand for coins the name does not list: a screen reader
+      // hears them
+      std::vector<std::string> names;
+      for (cryptopay::PaymentCoinView const& coin : tab.coins) {
+        names.push_back(Narrow(PaymentLabel(coin.labelKey, coin.label)));
+      }
+      automation::AutomationProperties::SetName(
+          item, hstring{Format("pay_method_more_coins_a11y", Widen(cryptopay::JoinNames(names)))});
+
+      // the list under the bar, titled with the tab's name: each coin with
+      // its mark, its name over its network, and while it cannot be paid with
+      // now its name greyed and "Temporarily unavailable" under it, its mark
+      // as it is
+      state.coinsPanel.Children().Append(MakeText(tabName, 12, colors::MutedBrush()));
+      for (cryptopay::PaymentCoinView const& coin : tab.coins) {
+        Grid content;
+        content.ColumnSpacing(10);
+        ColumnDefinition markColumn;
+        markColumn.Width(GridLength{0, GridUnitType::Auto});
+        ColumnDefinition textColumn;
+        textColumn.Width(GridLength{1, GridUnitType::Star});
+        content.ColumnDefinitions().Append(markColumn);
+        content.ColumnDefinitions().Append(textColumn);
+        if (PathIcon mark = CoinMark(coin.iconKey, kCoinMarkSize)) content.Children().Append(mark);
+        StackPanel texts;
+        texts.Spacing(1);
+        const std::wstring name = PaymentLabel(coin.labelKey, coin.label);
+        texts.Children().Append(
+            MakeText(hstring{name}, 14, coin.available ? colors::TextBrush() : colors::FaintBrush()));
+        std::wstring help;
+        const std::string networkKey = cryptopay::NetworkLineKey(coin.asset);
+        if (!networkKey.empty()) {
+          const hstring network = Loc(networkKey);
+          texts.Children().Append(MakeText(network, 12, colors::MutedBrush(), true));
+          help = network.c_str();
+        }
+        if (!coin.available) {
+          const hstring unavailable = Loc("pay_method_unavailable");
+          texts.Children().Append(MakeText(unavailable, 12, colors::MutedBrush(), true));
+          help += (help.empty() ? L"" : L". ") + std::wstring{unavailable.c_str()};
+        }
+        Grid::SetColumn(texts, 1);
+        content.Children().Append(texts);
+
+        // a radio in this panel's own group (no GroupName: the onboarding has
+        // two rows on screen at once)
+        RadioButton choice;
+        choice.Content(content);
+        choice.IsEnabled(state.enabled && coin.available);
+        automation::AutomationProperties::SetName(choice, hstring{name});
+        automation::AutomationProperties::SetHelpText(choice, hstring{help});
+        automation::AutomationProperties::SetAutomationId(
+            choice, hstring{L"acceptance.payment-method-" + Widen(coin.asset)});
+        choice.Checked([weak, asset = coin.asset](auto const&, auto const&) {
+          auto self = weak.lock();
+          if (!self || self->applying || asset == self->selected) return;
+          self->selected = asset;
+          self->wanted = asset;
+          Apply(*self);
+          if (self->onSelect && *self->onSelect) (*self->onSelect)(self->selected);
+        });
+        state.coinsPanel.Children().Append(choice);
+        state.coins.push_back(Coin{coin.asset, coin.available, choice});
+      }
+      automation::AutomationProperties::SetName(state.coinsPanel, tabName);
+    }
+    // a tab none of whose coins can be paid with now cannot be chosen, and its
+    // label greys (its Child's, above, by hand)
+    item.IsEnabled(tab.available);
+    if (!tab.available) automation::AutomationProperties::SetHelpText(item, Loc("pay_method_unavailable"));
+    state.bar.Items().Append(item);
+    state.items.push_back(item);
+  }
+  state.applying = false;
+}
+
 void PaymentMethodRow::Select(std::string const& method) {
-  state_->selected = cryptopay::MethodToSelect(state_->methods, method);
+  state_->selected = cryptopay::MethodToSelect(state_->tabs, method);
+  if (cryptopay::IsCoin(state_->selected)) state_->wanted = state_->selected;
   if (state_->bar) Apply(*state_);
 }
 
 void PaymentMethodRow::SetEnabled(bool enabled) {
+  state_->enabled = enabled;
   if (state_->bar) state_->bar.IsEnabled(enabled);
+  for (Coin const& coin : state_->coins) coin.button.IsEnabled(enabled && coin.available);
 }
 
 void PaymentMethodRow::SetUnavailable(std::string const& method) {
@@ -218,12 +423,20 @@ void PaymentMethodRow::SetUnavailable(std::string const& method) {
 }
 
 void PaymentMethodRow::Apply(State& state) {
-  state.root.Visibility(state.methods.empty() ? Visibility::Collapsed : Visibility::Visible);
-  state.applying = true;
-  for (size_t index = 0; index < state.items.size() && index < state.methods.size(); ++index) {
-    if (state.methods[index] == state.selected) state.bar.SelectedItem(state.items[index]);
+  state.root.Visibility(cryptopay::MethodRowShows(state.tabs) ? Visibility::Visible : Visibility::Collapsed);
+  // the selection's segment: Card's, or the tab its coin sits in (the sdk's
+  // tab id), and More coins' list while that is the one
+  const std::string tabId = cryptopay::TabIdFor(state.selected);
+  size_t segment = 0;
+  for (size_t index = 0; index < state.tabs.size(); ++index) {
+    if (!tabId.empty() && state.tabs[index].id == tabId) segment = index + 1;
   }
+  const bool coins = 0 < segment && cryptopay::TabOpensCoins(state.tabs[segment - 1]);
+  state.applying = true;
+  if (segment < state.items.size()) state.bar.SelectedItem(state.items[segment]);
+  for (Coin const& coin : state.coins) coin.button.IsChecked(coin.asset == state.selected);
   state.applying = false;
+  state.coinsPanel.Visibility(coins ? Visibility::Visible : Visibility::Collapsed);
   const bool unavailable = !state.unavailableMethod.empty() && state.unavailableMethod == state.selected;
   state.unavailable.Visibility(unavailable ? Visibility::Visible : Visibility::Collapsed);
 }
@@ -270,6 +483,11 @@ StackPanel CryptoInvoicePanel::Build(winrt::Microsoft::UI::Dispatching::Dispatch
   // 2-3. what to send, where
   state.instructions = StackPanel();
   state.instructions.Spacing(12);
+  // a coin with no payment link (TAO): nothing fills the amount in for the
+  // payer, so the invoice says to send exactly this amount to this address
+  state.byHandLine = MakeText(Loc("crypto_invoice_send_exactly_to_address"), 14, colors::TextBrush(), true);
+  state.byHandLine.Visibility(Visibility::Collapsed);
+  state.instructions.Children().Append(state.byHandLine);
   state.qrFrame = Border();
   state.qrFrame.Background(colors::MakeBrush(kQrLight));
   state.qrFrame.CornerRadius(CornerRadius{8, 8, 8, 8});
@@ -277,10 +495,18 @@ StackPanel CryptoInvoicePanel::Build(winrt::Microsoft::UI::Dispatching::Dispatch
   state.qrFrame.Visibility(Visibility::Collapsed);
   state.qrCanvas = Canvas();
   state.qrFrame.Child(state.qrCanvas);
-  // a picture of the uri: the words below say the same for a screen reader
+  // a picture of the uri or the address: the words below say the same for a
+  // screen reader
   automation::AutomationProperties::SetAccessibilityView(state.qrFrame,
                                                          automation::Peers::AccessibilityView::Raw);
   state.instructions.Children().Append(state.qrFrame);
+  // under the QR of a coin with no payment link: it holds only the address,
+  // and the exact amount is entered in the wallet
+  state.noLinkNote = MakeText(hstring{}, 12, colors::MutedBrush(), true);
+  state.noLinkNote.HorizontalAlignment(HorizontalAlignment::Center);
+  state.noLinkNote.TextAlignment(TextAlignment::Center);
+  state.noLinkNote.Visibility(Visibility::Collapsed);
+  state.instructions.Children().Append(state.noLinkNote);
 
   state.openWallet = Button();
   state.openWallet.Content(winrt::box_value(Loc("crypto_invoice_open_wallet")));
@@ -316,11 +542,11 @@ StackPanel CryptoInvoicePanel::Build(winrt::Microsoft::UI::Dispatching::Dispatch
   });
   state.instructions.Children().Append(state.addressBlock);
 
-  // USDC: the chain to send on, under the address (a transfer on another
-  // chain is lost)
-  state.usdcWarning = MakeText(Loc("usdc_solana_network_only"), 12, colors::MakeBrush(colors::kUrAmber), true);
-  state.usdcWarning.Visibility(Visibility::Collapsed);
-  state.instructions.Children().Append(state.usdcWarning);
+  // the coin's network to send on, under the address (a transfer on another
+  // is not credited): cryptopay::NetworkWarningKey
+  state.networkWarning = MakeText(hstring{}, 12, colors::MakeBrush(colors::kUrAmber), true);
+  state.networkWarning.Visibility(Visibility::Collapsed);
+  state.instructions.Children().Append(state.networkWarning);
 
   state.memoBlock = MakeCopyBlock(Loc("crypto_invoice_memo"), 13, state.memoText, state.copyMemo);
   state.copyMemo.Click([weak](auto const&, auto const&) {
@@ -436,16 +662,12 @@ StackPanel CryptoInvoicePanel::Build(winrt::Microsoft::UI::Dispatching::Dispatch
   state.payAnotherWay.Visibility(Visibility::Collapsed);
   root.Children().Append(state.payAnotherWay);
 
-  // "Copied" goes back to "Copy" after a moment
+  // "Copied" goes back to the button's own label after a moment
   state.copiedTimer = queue.CreateTimer();
   state.copiedTimer.Interval(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(kCopiedFor));
   state.copiedTimer.IsRepeating(false);
   state.copiedTimer.Tick([weak](auto const&, auto const&) {
-    if (auto self = weak.lock()) {
-      for (Button const& button : {self->copyAmount, self->copyAddress, self->copyMemo}) {
-        button.Content(winrt::box_value(Loc("crypto_invoice_copy")));
-      }
-    }
+    if (auto self = weak.lock()) LabelCopyButtons(*self);
   });
 
   automation::AutomationProperties::SetAutomationId(root, L"acceptance.crypto-panel");
@@ -464,25 +686,37 @@ void CryptoInvoicePanel::Render(cryptopay::CryptoInvoiceView const& view, bool u
   Show(state.busyLine, display.busy);
 
   // 2-3. what to send, where (CONTRACT §6.2.1): the amount, the QR and Open in
-  // wallet only while payable, the QR and Open in wallet only for a uri the
-  // sdk's check passed (cryptopay::UriAllowed), drawn again only for a new
-  // uri; the address also for a top-up
+  // wallet only while payable; the QR is the sdk's qr text (a uri the sdk's
+  // check and cryptopay::UriAllowed passed, or a coin with no payment link's
+  // address alone), drawn again only when it changes, and Open in wallet only
+  // for such a uri; the address also for a top-up, with the coin's network
+  // warning
   Show(state.instructions, display.showAmount || display.showQr || display.showAddress);
+  Show(state.byHandLine, display.showByHandLine);
   if (display.showQr) {
-    if (state.qrUri != view.uri) DrawQr(state, view.uri);
-  } else if (!state.qrUri.empty()) {
+    if (state.qrText != display.qrText) DrawQr(state, display.qrText);
+  } else if (!state.qrText.empty()) {
     state.qrCanvas.Children().Clear();
-    state.qrUri.clear();
+    state.qrText.clear();
   }
-  Show(state.qrFrame, display.showQr && !state.qrUri.empty());
-  Show(state.openWallet, display.showQr);
+  const bool qrDrawn = display.showQr && !state.qrText.empty();
+  Show(state.qrFrame, qrDrawn);
+  state.noLinkNote.Text(display.noPaymentLinkKey.empty() ? hstring{} : Loc(display.noPaymentLinkKey));
+  Show(state.noLinkNote, qrDrawn && !display.noPaymentLinkKey.empty());
+  Show(state.openWallet, display.showOpenWallet);
+  if (display.noPaymentLink != state.copySaysWhat) {
+    // a coin paid by hand: Copy amount and Copy address
+    state.copySaysWhat = display.noPaymentLink;
+    LabelCopyButtons(state);
+  }
   state.amount = view.amount;
   state.amountText.Text(H(display.amountText));
   Show(state.amountBlock, display.showAmount);
   state.address = display.address;
   state.addressText.Text(H(display.address));
   Show(state.addressBlock, display.showAddress);
-  Show(state.usdcWarning, display.showUsdcWarning);
+  state.networkWarning.Text(display.networkWarningKey.empty() ? hstring{} : Loc(display.networkWarningKey));
+  Show(state.networkWarning, display.showNetworkWarning);
   state.memo = display.memo;
   state.memoText.Text(H(display.memo));
   Show(state.memoBlock, display.showMemo);
@@ -555,7 +789,7 @@ void CryptoInvoicePanel::Render(cryptopay::CryptoInvoiceView const& view, bool u
   // a failure in this app's words (PaymentRefusal.h): the last requote's, or
   // an invoice the server no longer knows
   if (display.showUnavailable) {
-    state.errorText.Text(hstring{Format("crypto_invoice_unavailable", MethodName(view.asset))});
+    state.errorText.Text(hstring{Format("crypto_invoice_unavailable", PaymentMethodName(view.asset))});
   } else if (display.showRefusal) {
     const PaymentRefusalText refusal =
         PaymentRefusalTextFor(view.errorCode, view.errorMessage, "something_went_wrong");
@@ -572,17 +806,18 @@ void CryptoInvoicePanel::Stop() {
   if (state_->copiedTimer) state_->copiedTimer.Stop();
 }
 
-void CryptoInvoicePanel::DrawQr(State& state, std::string const& uri) {
+void CryptoInvoicePanel::DrawQr(State& state, std::string const& text) {
   state.qrCanvas.Children().Clear();
-  state.qrUri.clear();
+  state.qrText.clear();
   int moduleCount = 0;
   std::vector<bool> dark;
   try {
     // level M: a payment uri carries a long address (Zcash's unified address
     // is over 200 characters), and M keeps the code at 57-69 modules, four dip
-    // each in the frame (tools/crypto-pay-tests.cpp)
+    // each in the frame (tools/crypto-pay-tests.cpp); a bare address is
+    // shorter still
     const qrcodegen::QrCode code =
-        qrcodegen::QrCode::encodeText(uri.c_str(), qrcodegen::QrCode::Ecc::MEDIUM);
+        qrcodegen::QrCode::encodeText(text.c_str(), qrcodegen::QrCode::Ecc::MEDIUM);
     moduleCount = code.getSize();
     dark.assign(static_cast<size_t>(moduleCount) * static_cast<size_t>(moduleCount), false);
     for (int y = 0; y < moduleCount; ++y) {
@@ -613,17 +848,23 @@ void CryptoInvoicePanel::DrawQr(State& state, std::string const& uri) {
     Canvas::SetTop(cell, run.y * layout.moduleSize);
     state.qrCanvas.Children().Append(cell);
   }
-  state.qrUri = uri;
+  state.qrText = text;
+}
+
+void CryptoInvoicePanel::LabelCopyButtons(State& state) {
+  if (!state.copyAmount) return;
+  // a coin paid by hand (TAO) has two values to carry over to the wallet:
+  // each button names its own
+  state.copyAmount.Content(winrt::box_value(
+      Loc(state.copySaysWhat ? "crypto_invoice_copy_amount" : "crypto_invoice_copy")));
+  state.copyAddress.Content(winrt::box_value(
+      Loc(state.copySaysWhat ? "crypto_invoice_copy_address" : "crypto_invoice_copy")));
+  state.copyMemo.Content(winrt::box_value(Loc("crypto_invoice_copy")));
 }
 
 void CryptoInvoicePanel::ShowCopied(State& state, Button const& copied) {
-  for (Button const& button : {state.copyAmount, state.copyAddress, state.copyMemo}) {
-    if (button == copied) {
-      button.Content(winrt::box_value(Loc("crypto_invoice_copied")));
-    } else {
-      button.Content(winrt::box_value(Loc("crypto_invoice_copy")));
-    }
-  }
+  LabelCopyButtons(state);
+  copied.Content(winrt::box_value(Loc("crypto_invoice_copied")));
   if (state.copiedTimer) {
     state.copiedTimer.Stop();
     state.copiedTimer.Start();

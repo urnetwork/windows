@@ -1,8 +1,10 @@
-// The sdk's crypto-pay surface (crypto-pay CONTRACT §4.2-4.5), read into this
-// app's views (CryptoPayPresentation.h). The one place that names the fields
-// of urnet::CryptoInvoiceState and of SubscriptionBalanceResult's
-// crypto_assets / crypto_term, and the one place that calls the sdk's pure
-// crypto-pay rules: urnet::paymentMethods, urnet::paymentMethodAllowsPlan,
+// The sdk's crypto-pay surface (crypto-pay CONTRACT §4.2-4.5, mmm/BTCPAY.md
+// §17.6), read into this app's views (CryptoPayPresentation.h). The one place
+// that names the fields of urnet::CryptoInvoiceState, of urnet::CryptoPaymentTab
+// and of SubscriptionBalanceResult's crypto_assets / crypto_term, and the one
+// place that calls the sdk's pure crypto-pay rules: urnet::cryptoPaymentTabs,
+// urnet::cryptoPaymentTabId, urnet::cryptoAssetLabelKey, urnet::cryptoAssetLabel,
+// urnet::cryptoAssetMarket, urnet::paymentMethodAllowsPlan,
 // urnet::checkCryptoPaymentUri, urnet::cryptoWalletSuggestions and
 // urnet::cryptoTermNoticeDue. Everything else in the app reads the views, so a
 // change in the generated wrapper is a change here alone.
@@ -21,6 +23,7 @@
 #include <exception>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <urnetwork_sdk.hpp>
@@ -43,6 +46,7 @@ inline CryptoInvoiceView ViewFromSdk(const urnet::CryptoInvoiceState& state) {
   view.amount = state.amount;
   view.ticker = state.ticker;
   view.uri = state.uri;
+  view.qrText = state.qr_text;
   view.memo = state.memo;
   view.priceUsd = state.price_usd;
   view.expiresAt = state.expires_at;
@@ -75,22 +79,95 @@ inline urnet::CryptoPaymentAssetList AssetsFromSdk(const urnet::SubscriptionBala
   return result.crypto_assets.value_or(urnet::CryptoPaymentAssetList{});
 }
 
-// The method row's methods on a plan surface: urnet::paymentMethods over the
-// balance's coins and the plan a coin buys there (Card, then each listed coin
-// that sells it, in the order usdc_solana, zec, xmr). Card alone when no coin
-// is listed or the sdk refuses, which hides the row.
-inline std::vector<std::string> PaymentMethodsFor(const urnet::CryptoPaymentAssetList& assets,
+// The sdk's selector (urnet::CryptoPaymentTab), tab for tab and coin for coin.
+inline std::vector<PaymentTabView> TabsFromSdk(const urnet::CryptoPaymentTabList& sdkTabs) {
+  std::vector<PaymentTabView> tabs;
+  for (const urnet::CryptoPaymentTab& sdkTab : sdkTabs) {
+    PaymentTabView tab;
+    tab.id = sdkTab.id;
+    tab.label = sdkTab.label;
+    tab.labelKey = sdkTab.label_key;
+    if (sdkTab.icon_keys) tab.iconKeys = *sdkTab.icon_keys;
+    if (sdkTab.coins) {
+      for (const urnet::CryptoPaymentCoin& sdkCoin : *sdkTab.coins) {
+        PaymentCoinView coin;
+        coin.asset = sdkCoin.asset;
+        coin.label = sdkCoin.label;
+        coin.labelKey = sdkCoin.label_key;
+        coin.iconKey = sdkCoin.icon_key;
+        coin.available = sdkCoin.available;
+        tab.coins.push_back(std::move(coin));
+      }
+    }
+    tab.available = sdkTab.available;
+    tabs.push_back(std::move(tab));
+  }
+  return tabs;
+}
+
+// The method row's coin selector on a plan surface: urnet::cryptoPaymentTabs
+// over the balance's coins, no list of coins that cannot be quoted (the
+// balance names only the coins it can sell now), and the plan a coin buys
+// there. USDC on Solana, Zcash, Monero, then More coins with TAO, Bitcoin, ETH
+// and SOL; each coin says whether it can be paid with now. Empty when no coin
+// sells the plan, when the server lists none, or when the sdk refuses: the row
+// hides, and the surface shows Card alone.
+inline std::vector<PaymentTabView> PaymentTabsFor(const urnet::CryptoPaymentAssetList& assets,
                                                   bool offerActive) {
-  if (assets.empty()) return {kMethodCard};
+  if (assets.empty()) return {};
   try {
     const urnet::StringList items = PlanSurfaceItems(offerActive);
-    if (const std::optional<urnet::StringList> methods = urnet::paymentMethods(assets, items)) {
-      return *methods;
+    if (const std::optional<urnet::CryptoPaymentTabList> tabs =
+            urnet::cryptoPaymentTabs(assets, urnet::CryptoPaymentAssetList{}, items)) {
+      return TabsFromSdk(*tabs);
     }
   } catch (const std::exception&) {
     // a malformed list: Card alone, as an older server
   }
-  return {kMethodCard};
+  return {};
+}
+
+// The tab a method sits in (urnet::cryptoPaymentTabId): the asset itself for
+// USDC on Solana, Zcash and Monero, kTabMoreCoins for TAO, Bitcoin, ETH and
+// SOL, "" for Card. The remembered method selects this tab.
+inline std::string TabIdFor(const std::string& method) {
+  if (!IsCoin(method)) return std::string();
+  try {
+    return urnet::cryptoPaymentTabId(method);
+  } catch (const std::exception&) {
+    return std::string();
+  }
+}
+
+// A method's label (CONTRACT §5): the store key, and the English it falls back
+// to while the catalog lacks the key.
+struct MethodLabelText {
+  std::string key;
+  std::string english;
+};
+
+// Card's own, or a coin's from the sdk (urnet::cryptoAssetLabelKey and
+// urnet::cryptoAssetLabel: "USDC on Solana", "Zcash", "Monero", "TAO",
+// "Bitcoin", "ETH", "SOL"), for "Pay with {method}" and the invoice's lines.
+inline MethodLabelText MethodLabel(const std::string& method) {
+  if (!IsCoin(method)) return MethodLabelText{"pay_method_card", "Card"};
+  try {
+    return MethodLabelText{urnet::cryptoAssetLabelKey(method), urnet::cryptoAssetLabel(method)};
+  } catch (const std::exception&) {
+    return MethodLabelText{std::string(), method};
+  }
+}
+
+// The store a method's offer and purchase events name (§6.1 Events): a coin's
+// market (urnet::cryptoAssetMarket: solana for USDC and SOL, zcash, monero,
+// bittensor, bitcoin, ethereum), stripe for Card.
+inline std::string MethodEventStore(const std::string& method) {
+  if (!IsCoin(method)) return urnet::EventStoreStripe;
+  try {
+    return urnet::cryptoAssetMarket(method);
+  } catch (const std::exception&) {
+    return std::string();
+  }
 }
 
 // Picking a coin greys out monthly ("Monthly is card only") and moves the
@@ -114,7 +191,8 @@ inline bool UriAllowed(const CryptoInvoiceView& view) {
                           });
 }
 
-// "Wallets that work" for an asset (urnet::cryptoWalletSuggestions).
+// "Wallets that work" for an asset (urnet::cryptoWalletSuggestions): none for
+// Bitcoin and ETH, which most wallets send, and the line goes.
 inline std::vector<std::string> WalletSuggestions(const std::string& asset) {
   try {
     if (const std::optional<urnet::StringList> names = urnet::cryptoWalletSuggestions(asset)) {
