@@ -833,17 +833,20 @@ void ClaimRelaySheet::ApplyState() {
   const urnet::SnClaimStatusResult& status = *status_;
   switch (outcome_) {
     case Outcome::Requested: {
-      children.Append(Line(Loc("sn_claim_relay_requested")));
+      // the queued note, with when the next Claim now opens (the relay's period)
+      children.Append(Line(btkeyviews::ClaimNowNoteText(btkey::ClaimNowNote::Requested, status.claim_now_period_days,
+                                                        status.transfer_floor_tao_rao, 0)));
       auto queued = SheetButton(Loc("sn_claim_relay_queued_button"), /*accent=*/true);
       queued.IsEnabled(false);
       children.Append(queued);
       break;
     }
     case Outcome::Refused: {
+      // a tap already queued reads as queued, with the relay's period
       const hstring note = btkeyviews::ClaimNowNoteText(
           btkey::ClaimNowNoteFor(false, 0, refusedReason_, status.transfer_floor_tao_rao, refusedNextAtMillis_,
                                  /*inSheet=*/true),
-          0, status.transfer_floor_tao_rao, refusedNextAtMillis_);
+          status.claim_now_period_days, status.transfer_floor_tao_rao, refusedNextAtMillis_);
       if (!note.empty()) children.Append(Muted(note));
       break;
     }

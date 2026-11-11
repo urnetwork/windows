@@ -717,7 +717,25 @@ func TestBittensorKeyClaimsThroughTheRelay(t *testing.T) {
 		"if (claiming_ || !status_ || !status_->claim_now_available || !claimNow_) return;",
 		"self->outcome_ = Outcome::Requested;", "self->outcome_ = Outcome::Refused;")
 	requireBittensorKey(t, "ClaimRelaySheet::ApplyState", bittensorKeyBody(t, "BittensorKeySheets.cpp", sheets, "void ClaimRelaySheet::ApplyState("),
-		`Loc("sn_claim_relay_requested")`, `Loc("sn_claim_relay_queued_button")`, "if (status.self_claim_available) {")
+		"btkeyviews::ClaimNowNoteText(btkey::ClaimNowNote::Requested, status.claim_now_period_days,",
+		`Loc("sn_claim_relay_queued_button")`, "if (status.self_claim_available) {")
+	// Claim now queued (4c) says what the relay does, as the owner decided on
+	// 2026-11-11 (BTEASY.md, Claim now and the daily cap): taps go out ahead of
+	// the automatic claims, the oldest first, as each day's budget allows, and
+	// the coldkey's limit starts when this claim goes through, not at the tap.
+	// The tile's note, the sheet after the tap and a tap the server finds
+	// already queued all carry the relay's period, as a plural. Before, the note
+	// was the one sentence "within today's budget" with no period.
+	requireBittensorKeyOrder(t, "btkeyviews::ClaimNowNoteText", bittensorKeyBody(t, "BittensorKeyViews.cpp", views, "hstring ClaimNowNoteText("),
+		"case btkey::ClaimNowNote::Requested: {",
+		`std::wstring text = urnw::Localized("sn_claim_relay_requested");`,
+		`if (0 < periodDays) text += L"\n" + urnw::Plural("sn_claim_relay_requested_period", periodDays);`,
+		"return hstring{text};")
+	requireBittensorKey(t, "ClaimRelaySheet::ApplyState", bittensorKeyBody(t, "BittensorKeySheets.cpp", sheets, "void ClaimRelaySheet::ApplyState("),
+		"status.claim_now_period_days, status.transfer_floor_tao_rao, refusedNextAtMillis_);")
+	if strings.Contains(sheets, `Loc("sn_claim_relay_requested")`) || strings.Contains(views, `Loc("sn_claim_relay_requested")`) {
+		t.Error("a queued note drops the period")
+	}
 	// the sdk decides when a network with no wallet here shows the tile, and
 	// when the claim is drawn as claimed, with its transaction
 	requireBittensorKey(t, "WalletPage::RelayTileShows", bittensorKeyBody(t, "WalletPage.cpp", page, "bool WalletPage::RelayTileShows("),

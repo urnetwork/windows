@@ -394,8 +394,16 @@ hstring ClaimNowNoteText(btkey::ClaimNowNote note, int64_t periodDays, int64_t f
       return hstring{urnw::Plural("sn_claim_relay_claim_now_paid_each", periodDays)};
     case btkey::ClaimNowNote::UnderFloor:
       return hstring{urnw::Format("sn_claim_relay_under_floor", Widen(btkey::TaoAmount(floorTaoRao)))};
-    case btkey::ClaimNowNote::Requested:
-      return Loc("sn_claim_relay_requested");
+    case btkey::ClaimNowNote::Requested: {
+      // queued (owner, 2026-11-11; BTEASY.md, Claim now and the daily cap): taps go
+      // out ahead of the automatic claims, the oldest first, as each day's budget
+      // allows, and the coldkey's limit starts when this claim goes through, not at
+      // the tap, so the next Claim now opens the relay's period after it. No period,
+      // no second line.
+      std::wstring text = urnw::Localized("sn_claim_relay_requested");
+      if (0 < periodDays) text += L"\n" + urnw::Plural("sn_claim_relay_requested_period", periodDays);
+      return hstring{text};
+    }
     case btkey::ClaimNowNote::AgainOn:
       return hstring{urnw::Format("sn_claim_relay_again_on", DateFromMillis(nextAtMillis))};
     case btkey::ClaimNowNote::None:

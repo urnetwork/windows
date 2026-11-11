@@ -29,6 +29,8 @@ var countedCopies = []countedCopy{
 	// Claim now's period: the relay's 30 days today, any count tomorrow
 	{"BittensorKeyViews.cpp", `Plural("sn_claim_relay_claim_now_paid", periodDays)`},
 	{"BittensorKeyViews.cpp", `Plural("sn_claim_relay_claim_now_paid_each", periodDays)`},
+	// when the next Claim now opens, under a queued one: the relay's period again
+	{"BittensorKeyViews.cpp", `Plural("sn_claim_relay_requested_period", periodDays)`},
 }
 
 func TestCountedCopySelectsAPluralForm(t *testing.T) {
@@ -53,13 +55,14 @@ func TestCountedCopySelectsAPluralForm(t *testing.T) {
 func TestCountedCopyCatalogHasEachForm(t *testing.T) {
 	root := repositoryRoot(t)
 	want := map[string]string{
-		"offer_months_free_headline.one":     "{} месяц Pro бесплатно",
-		"offer_months_free_headline.few":     "{} месяца Pro бесплатно",
-		"offer_months_free_headline.many":    "{} месяцев Pro бесплатно",
-		"offer_terms_first_year.one":         "{0} день бесплатно, далее {1} за первый год, затем {2}/год. Отмена в любой момент.",
-		"seedphrase_word_count_warning.few":  "Это {} слова — сид-фраза состоит из 12 или 24 слов",
-		"sn_claim_relay_claim_now_paid.one":  "«Получить сейчас» оплачивается URnetwork, раз в {} день.",
-		"sn_claim_relay_claim_now_paid.many": "«Получить сейчас» оплачивается URnetwork, раз в {} дней.",
+		"offer_months_free_headline.one":       "{} месяц Pro бесплатно",
+		"offer_months_free_headline.few":       "{} месяца Pro бесплатно",
+		"offer_months_free_headline.many":      "{} месяцев Pro бесплатно",
+		"offer_terms_first_year.one":           "{0} день бесплатно, далее {1} за первый год, затем {2}/год. Отмена в любой момент.",
+		"seedphrase_word_count_warning.few":    "Это {} слова — сид-фраза состоит из 12 или 24 слов",
+		"sn_claim_relay_claim_now_paid.one":    "«Получить сейчас» оплачивается URnetwork, раз в {} день.",
+		"sn_claim_relay_claim_now_paid.many":   "«Получить сейчас» оплачивается URnetwork, раз в {} дней.",
+		"sn_claim_relay_requested_period.many": "Следующее «Получить сейчас» будет доступно через {} дней после того, как этот запрос пройдёт.",
 	}
 	for name, value := range want {
 		if got := reswValue(t, root, "ru", name); got != value {
@@ -73,6 +76,8 @@ func TestCountedCopyCatalogHasEachForm(t *testing.T) {
 		"sn_claim_relay_claim_now_paid.one":        "Claim now is paid by URnetwork, once a day.",
 		"sn_claim_relay_claim_now_paid.other":      "Claim now is paid by URnetwork, once every {} days.",
 		"sn_claim_relay_claim_now_paid_each.other": "Paid by URnetwork, once every {} days for each coldkey.",
+		"sn_claim_relay_requested_period.one":      "Your next Claim now opens a day after this claim goes through.",
+		"sn_claim_relay_requested_period.other":    "Your next Claim now opens {} days after this claim goes through.",
 	} {
 		if got := reswValue(t, root, "en", name); got != value {
 			t.Errorf("en %s = %q, want %q", name, got, value)
