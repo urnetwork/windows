@@ -5176,7 +5176,7 @@
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>رصيد غير كافٍ</value>
-    <comment>Call to action</comment>
+    <comment>Shown on the Connect screen when the account's data balance has run out: a balance of data, not of money.</comment>
   </data>
   <data name="insufficient_balance_add_balance_or_plan" xml:space="preserve">
     <value>رصيد غير كافٍ — أضف رصيدًا أو خطة</value>
@@ -9642,11 +9642,11 @@
     <comment>Subscription: date line when auto-renew is off (cancelled, or a one-time USDC year). {date} is a localized date.</comment>
   </data>
   <data name="site_sub_free_body" xml:space="preserve">
-    <value>أنت على خطة Free. رقِّ إلى Pro للحصول على بيانات وميزات أكثر.</value>
+    <value>أنت على الخطة المجانية. رقِّ إلى Pro للحصول على بيانات وميزات أكثر.</value>
     <comment>Subscription: free plan body</comment>
   </data>
   <data name="site_sub_free_title" xml:space="preserve">
-    <value>خطة Free</value>
+    <value>الخطة المجانية</value>
     <comment>Subscription: free plan title</comment>
   </data>
   <data name="site_sub_manage_on" xml:space="preserve">

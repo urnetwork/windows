@@ -5000,7 +5000,7 @@ richtig auf</value>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Unzureichendes Guthaben</value>
-    <comment>Call to action</comment>
+    <comment>Shown on the Connect screen when the account's data balance has run out: a balance of data, not of money.</comment>
   </data>
   <data name="insufficient_balance_add_balance_or_plan" xml:space="preserve">
     <value>Unzureichendes Guthaben — Guthaben oder Plan hinzufügen</value>
@@ -9115,11 +9115,11 @@ der Welt</value>
     <comment>Subscription: date line when auto-renew is off (cancelled, or a one-time USDC year). {date} is a localized date.</comment>
   </data>
   <data name="site_sub_free_body" xml:space="preserve">
-    <value>Du nutzt den Free-Plan. Wechsle zu Pro für mehr Daten und Funktionen.</value>
+    <value>Du nutzt den kostenlosen Plan. Wechsle zu Pro für mehr Daten und Funktionen.</value>
     <comment>Subscription: free plan body</comment>
   </data>
   <data name="site_sub_free_title" xml:space="preserve">
-    <value>Free-Plan</value>
+    <value>Kostenloser Plan</value>
     <comment>Subscription: free plan title</comment>
   </data>
   <data name="site_sub_manage_on" xml:space="preserve">

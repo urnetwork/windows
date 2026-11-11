@@ -5011,11 +5011,11 @@
     <comment>Instant account creation: explains that the account has no email or password and is secured by the seedphrase.</comment>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
-    <value>Недостатньо коштів</value>
-    <comment>Call to action</comment>
+    <value>Недостатній баланс даних</value>
+    <comment>Shown on the Connect screen when the account's data balance has run out: a balance of data, not of money.</comment>
   </data>
   <data name="insufficient_balance_add_balance_or_plan" xml:space="preserve">
-    <value>Недостатньо коштів — поповніть баланс або додайте план</value>
+    <value>Недостатній баланс даних — поповніть баланс або додайте план</value>
     <comment>Connection status shown when the network has no data balance left.</comment>
   </data>
   <data name="insufficient_balance_disconnect_first" xml:space="preserve">

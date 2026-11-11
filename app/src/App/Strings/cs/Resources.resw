@@ -5011,7 +5011,7 @@ správným způsobem</value>
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>Nedostatečný zůstatek</value>
-    <comment>Call to action</comment>
+    <comment>Shown on the Connect screen when the account's data balance has run out: a balance of data, not of money.</comment>
   </data>
   <data name="insufficient_balance_add_balance_or_plan" xml:space="preserve">
     <value>Nedostatečný zůstatek — přidejte zůstatek nebo plán</value>

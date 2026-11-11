@@ -43,21 +43,21 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="a_seedphrase_lets_you_recover_your_account" xml:space="preserve">
-    <value>如果你无法访问帐户，助记词可以帮你恢复。</value>
+    <value>如果你无法访问账户，助记词可以帮你恢复。</value>
   </data>
   <data name="a_seedphrase_lets_you_recover_your_account_2" xml:space="preserve">
-    <value>如果你无法访问帐户，助记词可以帮你恢复。请妥善保管。</value>
+    <value>如果你无法访问账户，助记词可以帮你恢复。请妥善保管。</value>
   </data>
   <data name="about" xml:space="preserve">
     <value>关于</value>
     <comment>Settings: heading of the about section.</comment>
   </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
-    <value>要获取您的认证码，请创建账户并登录{link}ur.io{/link}。进入账户 -&gt; 设置 -&gt; 创建/复制认证码 -&gt; 粘贴 -&gt; 完成！</value>
+    <value>要获取您的验证码，请创建账户并登录{link}ur.io{/link}。进入账户 -&gt; 设置 -&gt; 创建/复制验证码 -&gt; 粘贴 -&gt; 完成！</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
   </data>
   <data name="account" xml:space="preserve">
-    <value>帐户</value>
+    <value>账户</value>
     <comment>Account Screen</comment>
   </data>
   <data name="account_auth_unverified" xml:space="preserve">
@@ -164,7 +164,7 @@
     <comment>Connect page, Advanced Mode, the connection inspector and an Activity row's menu: the button that blocks the connection's host. It adds a blocking rule, or removes the rule allowing the host while one is in force, so the label always names what the press leaves behind.</comment>
   </data>
   <data name="adv_browser_sign_in_body" xml:space="preserve">
-    <value>请在浏览器中登录 ur.io——您的密码管理器和已登录的 Google 或 Apple 会话都能在那里使用。然后粘贴在任一已登录设备上生成的一次性验证码（帐户 → 创建授权码）。</value>
+    <value>请在浏览器中登录 ur.io——您的密码管理器和已登录的 Google 或 Apple 会话都能在那里使用。然后粘贴在任一已登录设备上生成的一次性验证码（账户 → 创建验证码）。</value>
     <comment>Windows sign-in screen, browser sign-in sheet: the text above the auth code field that says how the sheet works. ur.io, Google and Apple are names. The Google or Apple sessions are the sign-ins the browser already holds. 'Account → Create auth code' is the way to the Create auth code button on a signed-in device: use this language's labels of Account (account) and Create auth code (site_app_create_auth_code); right-to-left languages point the arrow the other way.</comment>
   </data>
   <data name="adv_browser_sign_in_title" xml:space="preserve">
@@ -730,7 +730,7 @@
     <comment>Description of the split-tunneling app list: the listed apps do not go through the tunnel.</comment>
   </data>
   <data name="are_you_sure_delete_account" xml:space="preserve">
-    <value>您确定要删除您的帐户吗？</value>
+    <value>您确定要删除您的账户吗？</value>
     <comment>Call to action</comment>
   </data>
   <data name="are_you_sure_you_want_to_remove" xml:space="preserve">
@@ -747,7 +747,7 @@
     <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
-    <value>创建认证码</value>
+    <value>创建验证码</value>
     <comment>Used in Main/Account/Settings/AuthCodeCreate/AuthCodeCreate.swift.</comment>
   </data>
   <data name="auth_code_created" xml:space="preserve">
@@ -763,15 +763,15 @@
     <comment>Call to action</comment>
   </data>
   <data name="auth_code_input_invalid" xml:space="preserve">
-    <value>认证码无效或已过期。请登录 ur.io 获取有效认证码。</value>
+    <value>验证码无效或已过期。请登录 ur.io 获取有效验证码。</value>
     <comment>Invalid auth code input error message</comment>
   </data>
   <data name="auth_code_input_label" xml:space="preserve">
-    <value>认证码</value>
+    <value>验证码</value>
     <comment>Auth code input label</comment>
   </data>
   <data name="auth_code_loading" xml:space="preserve">
-    <value>正在加载身份验证代码</value>
+    <value>正在加载验证码</value>
     <comment>Call to action</comment>
   </data>
   <data name="auth_code_login_button_text" xml:space="preserve">
@@ -2105,7 +2105,7 @@
     <comment>Call to action</comment>
   </data>
   <data name="create_account" xml:space="preserve">
-    <value>创建帐户</value>
+    <value>创建账户</value>
     <comment>Display name for the paid plan. The WIRE value stays "supporter" (subscription_type / current_subscription.plan) because already-shipped app versions parse that string; only what the user reads changes.</comment>
   </data>
   <data name="create_account_2" xml:space="preserve">
@@ -2117,7 +2117,7 @@
     <comment>Used in Main/Account/AccountRootView.swift.</comment>
   </data>
   <data name="create_instant_account" xml:space="preserve">
-    <value>创建即时帐户</value>
+    <value>创建即时账户</value>
     <comment>A title for the screen where a user can create an instant account.</comment>
   </data>
   <data name="create_network_error" xml:space="preserve">
@@ -2125,7 +2125,7 @@
     <comment>Call to action</comment>
   </data>
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
-    <value>创建的认证码将在5分钟后失效</value>
+    <value>创建的验证码将在5分钟后失效</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
   <data name="crypto_code_emailed" xml:space="preserve">
@@ -2133,7 +2133,7 @@
     <comment>ur.io Buy data, under the data code: shown when the buyer gave an email address, which the code was also sent to. {email} is that address.</comment>
   </data>
   <data name="crypto_code_redeem_hint" xml:space="preserve">
-    <value>可在 URnetwork 应用中兑换，或在 ur.io 的“帐户”下兑换。</value>
+    <value>可在 URnetwork 应用中兑换，或在 ur.io 的“账户”下兑换。</value>
     <comment>ur.io Buy data, under the data code: where to redeem it. URnetwork is the product name, ur.io the website, and Account the name of the account section on ur.io (the account key).</comment>
   </data>
   <data name="crypto_code_title" xml:space="preserve">
@@ -2457,7 +2457,7 @@
     <comment>Delete button label. Apple: Main/Account/BlockedLocations/BlockedLocationsView.swift. Android: the swipe-to-reveal delete button label (SwipeToRevealRow).</comment>
   </data>
   <data name="delete_account" xml:space="preserve">
-    <value>删除帐户</value>
+    <value>删除账户</value>
     <comment>Call to action</comment>
   </data>
   <data name="delete_account_2" xml:space="preserve">
@@ -4956,7 +4956,7 @@
   </data>
   <data name="insufficient_balance" xml:space="preserve">
     <value>余额不足</value>
-    <comment>Call to action</comment>
+    <comment>Shown on the Connect screen when the account's data balance has run out: a balance of data, not of money.</comment>
   </data>
   <data name="insufficient_balance_add_balance_or_plan" xml:space="preserve">
     <value>余额不足 — 请添加余额或计划</value>
@@ -5423,7 +5423,7 @@
     <comment>Licenses screen: section header for the open source libraries and fonts</comment>
   </data>
   <data name="link_another_way_to_sign_in_to" xml:space="preserve">
-    <value>关联另一种登录帐户的方式。</value>
+    <value>关联另一种登录账户的方式。</value>
     <comment>A description of the add auth sheet.</comment>
   </data>
   <data name="load_failed" xml:space="preserve">
@@ -5925,7 +5925,7 @@
     <comment>Add sign-in method sheet (android): no installed wallet app can sign the challenge.</comment>
   </data>
   <data name="no_email_phone_or_password_needed_your" xml:space="preserve">
-    <value>无需邮箱、电话或密码。你的帐户由助记词保护。</value>
+    <value>无需邮箱、电话或密码。你的账户由助记词保护。</value>
     <comment>A description of the benefits of creating an Instant Account.</comment>
   </data>
   <data name="no_ethos_wallet_found" xml:space="preserve">
@@ -7200,7 +7200,7 @@
     <comment>Compact relative-time label with an abbreviated seconds unit ("42s ago"), shown by the windows and linux stats formatters for events 5-59 seconds old (younger events show the `now` key). The argument is the elapsed seconds. Not a plural: the abbreviated unit does not inflect, but the word order and the unit letter localize.</comment>
   </data>
   <data name="secure_your_account" xml:space="preserve">
-    <value>保护你的帐户</value>
+    <value>保护你的账户</value>
     <comment>The title of the screen.</comment>
   </data>
   <data name="see_world_content" xml:space="preserve">
@@ -7683,11 +7683,11 @@
     <comment>App connect: allowed count label</comment>
   </data>
   <data name="site_app_auth_code_limit" xml:space="preserve">
-    <value>已达授权码上限。请稍后重试。</value>
+    <value>已达验证码上限。请稍后重试。</value>
     <comment>App settings: auth code limit error</comment>
   </data>
   <data name="site_app_auth_code_note" xml:space="preserve">
-    <value>创建的授权码将在5分钟后过期</value>
+    <value>创建的验证码将在5分钟后过期</value>
     <comment>App settings: auth code expiry note</comment>
   </data>
   <data name="site_app_average_reliability" xml:space="preserve">
@@ -7819,7 +7819,7 @@
     <comment>Reliability: country multipliers heading</comment>
   </data>
   <data name="site_app_create_auth_code" xml:space="preserve">
-    <value>创建授权码</value>
+    <value>创建验证码</value>
     <comment>App settings: create auth code button</comment>
   </data>
   <data name="site_app_created" xml:space="preserve">
@@ -8383,7 +8383,7 @@
     <comment>ur.io: body of the switch-accounts prompt for a sign-in link. {link_network} is the network the link signs in to; {current_network} is the network this browser is signed in to. Both are network names, shown as typed.</comment>
   </data>
   <data name="site_auth_code_switch_title" xml:space="preserve">
-    <value>切换帐户？</value>
+    <value>切换账户？</value>
     <comment>ur.io: title of the prompt shown when a sign-in link (an app's one-time auth code, such as the iPhone app's Manage subscription) is for a different network than the one this browser is signed in to.</comment>
   </data>
   <data name="site_best_available" xml:space="preserve">
@@ -8831,7 +8831,7 @@
     <comment>Pay page (/app/pay-sheet) and the Pro upgrade sheet on ur.io: too many payment attempts in a short time, so Stripe or URnetwork's server turned this one away. Nothing was charged.</comment>
   </data>
   <data name="site_payment_not_seen_body" xml:space="preserve">
-    <value>我们尚未看到您的付款。如果您已在钱包中完成付款，它可能仍在处理中；付款到账后，您的方案会在“帐户”中自动更新。</value>
+    <value>我们尚未看到您的付款。如果您已在钱包中完成付款，它可能仍在处理中；付款到账后，您的方案会在“账户”中自动更新。</value>
     <comment>Upgrade sheet: give-up state body — the payment may still be processing and will appear under Account</comment>
   </data>
   <data name="site_payment_not_seen_title" xml:space="preserve">
@@ -8983,11 +8983,11 @@
     <comment>Subscription: date line when auto-renew is off (cancelled, or a one-time USDC year). {date} is a localized date.</comment>
   </data>
   <data name="site_sub_free_body" xml:space="preserve">
-    <value>您当前使用 Free 方案。升级到 Pro 可获得更多流量和功能。</value>
+    <value>您当前使用免费方案。升级到 Pro 可获得更多流量和功能。</value>
     <comment>Subscription: free plan body</comment>
   </data>
   <data name="site_sub_free_title" xml:space="preserve">
-    <value>Free 方案</value>
+    <value>免费方案</value>
     <comment>Subscription: free plan title</comment>
   </data>
   <data name="site_sub_manage_on" xml:space="preserve">
@@ -9739,11 +9739,11 @@
     <comment>Windows banner title when the installed VPN service is a different version than the app.</comment>
   </data>
   <data name="switch_account" xml:space="preserve">
-    <value>切换帐户</value>
+    <value>切换账户</value>
     <comment>Call to action</comment>
   </data>
   <data name="switch_account_details" xml:space="preserve">
-    <value>您要断开与 {} 的连接并切换帐户吗？</value>
+    <value>您要断开与 {} 的连接并切换账户吗？</value>
     <comment>Call to action</comment>
   </data>
   <data name="symbol_ellipsis" xml:space="preserve">
@@ -9803,7 +9803,7 @@
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
   <data name="there_was_an_error_validating_your_auth_code" xml:space="preserve">
-    <value>验证您的认证码时出错。请重试或生成新的认证码。</value>
+    <value>验证您的验证码时出错。请重试或生成新的验证码。</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
@@ -10799,7 +10799,7 @@
     <comment>Onboarding Carousel</comment>
   </data>
   <data name="write_it_down_and_store_it_somewhere" xml:space="preserve">
-    <value>请抄写下来并存放在安全的地方。一旦丢失，你将无法再访问你的帐户。</value>
+    <value>请抄写下来并存放在安全的地方。一旦丢失，你将无法再访问你的账户。</value>
     <comment>A warning message that instructs the user to write down their seedphrase and store it in a secure location.</comment>
   </data>
   <data name="yearly" xml:space="preserve">
