@@ -8226,12 +8226,12 @@ conteúdo do mundo</value>
     <comment>Label for the measured upload delay (for example 640 ms or 1.2 s, with the upload rate when it is limited) in the slow-internet details sheet, the expanded Dynamic Island and Lock Screen Live Activity, the Android VPN notification, and the Windows and Linux tray and notification. Upload = traffic this device sends. Keep it short: it labels a number in a small box.</comment>
   </data>
   <data name="sn_claim_relay_again_on" xml:space="preserve">
-    <value>«Reivindicar agora» volta a estar disponível a {}.</value>
-    <comment>Earnings, the settlement v2 tile and the claim sheet: Claim now was used for this address, and works again from this date. The placeholder is a date, as Dec 3.</comment>
+    <value>O próximo «Reivindicar agora» fica disponível a {}.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: a Claim now for this address went through, so the next one opens on this date, 30 days after that claim went through (the limit the queued note names). The placeholder is a date, as Dec 3. Claim now is the button's label; keep it recognizable as that label.</comment>
   </data>
   <data name="sn_claim_relay_cap" xml:space="preserve">
-    <value>O orçamento de reivindicações de hoje esgotou-se, por isso isto fica à espera do dia seguinte. Nada se perde: este saldo nunca expira.</value>
-    <comment>Earnings, the settlement v2 tile and the claim sheet: URnetwork's daily budget for paying claim gas is spent, so the claim waits for the next day (UTC).</comment>
+    <value>O orçamento de reivindicações de hoje esgotou-se, por isso isto fica à espera. O orçamento renova-se todos os dias às 00:00 UTC. Nada se perde: este saldo nunca expira.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: URnetwork's daily budget for paying claim gas is spent, so the claim waits. The budget renews every day at 00:00 UTC, and a waiting claim goes out once a day's budget reaches it, which can be later than the next day. Say nothing that promises a day, and keep 00:00 and UTC.</comment>
   </data>
   <data name="sn_claim_relay_claim_now" xml:space="preserve">
     <value>Reivindicar agora</value>
@@ -8286,8 +8286,16 @@ conteúdo do mundo</value>
     <comment>Earnings, the settlement v2 tile and the claim sheet: the last claim transaction failed, and URnetwork will try again by itself.</comment>
   </data>
   <data name="sn_claim_relay_requested" xml:space="preserve">
-    <value>«Reivindicar agora» está na fila. O URnetwork envia-o primeiro, dentro do orçamento de hoje.</value>
-    <comment>Earnings, the settlement v2 tile and the claim sheet, after the user tapped Claim now: the claim is in line and goes out before the automatic ones, as long as the day's gas budget lasts.</comment>
+    <value>«Reivindicar agora» está na fila. É enviado antes das reivindicações automáticas, pela ordem de chegada dos pedidos, dentro do orçamento de cada dia.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, after the user tapped Claim now: the claim is in line. URnetwork sends tapped claims before its automatic ones, the oldest request first, as far as each day's gas budget reaches, so it can go out today or on a later day. Say nothing that promises a day. Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_requested_period.one" xml:space="preserve">
+    <value>O próximo «Reivindicar agora» fica disponível um dia depois de esta reivindicação ser concluída.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, under the queued Claim now: the Claim now limit (once in this many days, 30 today; the count selects the plural form) starts when URnetwork's claim of this balance is paid, not at the tap, so the next Claim now opens this many days after this claim goes through. Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_requested_period.other" xml:space="preserve">
+    <value>O próximo «Reivindicar agora» fica disponível {} dias depois de esta reivindicação ser concluída.</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, under the queued Claim now: the Claim now limit (once in this many days, 30 today; the count selects the plural form) starts when URnetwork's claim of this balance is paid, not at the tap, so the next Claim now opens this many days after this claim goes through. Claim now is the button's label; keep it recognizable as that label.</comment>
   </data>
   <data name="sn_claim_relay_self_claim" xml:space="preserve">
     <value>Reivindique-o por conta própria com a sua chave de gás</value>
