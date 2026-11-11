@@ -390,7 +390,7 @@ inline std::string AmountWithTicker(const std::string& amount, const std::string
   return amount + " " + ticker;
 }
 
-// "Cake, Feather, Monerujo" for crypto_invoice_wallets.
+// "btcli, Talisman, Nova" for crypto_invoice_wallets.
 inline std::string JoinNames(const std::vector<std::string>& names) {
   std::string joined;
   for (const std::string& name : names) {

@@ -346,8 +346,8 @@ inline bool UriAllowed(const CryptoInvoiceView& view) {
 }
 
 // "Wallets that work" for an asset (urnet::cryptoWalletSuggestions), the sdk's
-// names in its order, untranslated: every coin has its list, Bitcoin's and
-// ETH's among them; with none the line goes.
+// names in its order, untranslated: TAO's alone (the owner, 2026-11-11), so
+// every other coin has none, and with none the line goes.
 inline std::vector<std::string> WalletSuggestions(const std::string& asset) {
   try {
     if (const std::optional<urnet::StringList> names = urnet::cryptoWalletSuggestions(asset)) {
