@@ -1036,6 +1036,15 @@ func TestCryptoPayAgreesWithTheSdk(t *testing.T) {
 	if !slices.Equal(slices.Sorted(slices.Values(appCoins)), slices.Sorted(slices.Values(sdkCoins))) {
 		t.Errorf("kCoins is %v, the sdk's coins %v", appCoins, sdkCoins)
 	}
+	// how a status step is drawn: the sdk's words (CryptoPaymentStep*), which the
+	// invoice's rows read
+	for _, progress := range []string{"Done", "Current", "Upcoming"} {
+		sdkValue := regexp.MustCompile(`\n\tCryptoPaymentStep` + progress + `\s*=\s*"([a-z]+)"`).FindStringSubmatch(sdk)
+		appValue := regexp.MustCompile(`inline constexpr const char\* kStep` + progress + ` = "([a-z]+)";`).FindStringSubmatch(presentation)
+		if sdkValue == nil || appValue == nil || sdkValue[1] != appValue[1] {
+			t.Errorf("kStep%s is %v, the sdk's CryptoPaymentStep%s %v", progress, appValue, progress, sdkValue)
+		}
+	}
 	// no scheme of the app's: the sdk's check is the whole uri gate
 	for _, scheme := range []string{`"solana:"`, `"zcash:"`, `"monero:"`, `"bitcoin:"`, `"ethereum:"`} {
 		if strings.Contains(presentation, scheme) || strings.Contains(stripComments(readAppSource(t, "CryptoPaySdk.h")), scheme) {
