@@ -53,7 +53,7 @@
     <comment>Settings: heading of the about section.</comment>
   </data>
   <data name="access_auth_code_instructions" xml:space="preserve">
-    <value>要获取您的验证码，请创建账户并登录{link}ur.io{/link}。进入账户 -&gt; 设置 -&gt; 创建/复制验证码 -&gt; 粘贴 -&gt; 完成！</value>
+    <value>要获取您的授权码，请创建账户并登录{link}ur.io{/link}。进入账户 -&gt; 设置 -&gt; 创建/复制授权码 -&gt; 粘贴 -&gt; 完成！</value>
     <comment>Instructions for accessing the authentication code. Use the {link}...{/link} markers to wrap the "ur.io" portion, which should be rendered as a clickable link. Example usage:   - Web: Replace {link} with &lt;a href="https://ur.io" target="_blank"&gt; and {/link} with &lt;/a&gt;   - SwiftUI: Use AttributedString parsing to detect {link}...{/link} and apply .link attribute to the range   - Jetpack Compose: Use AnnotatedString with an annotation for the {link}...{/link} range, and handle clicks accordingly </comment>
   </data>
   <data name="account" xml:space="preserve">
@@ -164,7 +164,7 @@
     <comment>Connect page, Advanced Mode, the connection inspector and an Activity row's menu: the button that blocks the connection's host. It adds a blocking rule, or removes the rule allowing the host while one is in force, so the label always names what the press leaves behind.</comment>
   </data>
   <data name="adv_browser_sign_in_body" xml:space="preserve">
-    <value>请在浏览器中登录 ur.io——您的密码管理器和已登录的 Google 或 Apple 会话都能在那里使用。然后粘贴在任一已登录设备上生成的一次性验证码（账户 → 创建验证码）。</value>
+    <value>请在浏览器中登录 ur.io——您的密码管理器和已登录的 Google 或 Apple 会话都能在那里使用。然后粘贴在任一已登录设备上生成的一次性授权码（账户 → 创建授权码）。</value>
     <comment>Windows sign-in screen, browser sign-in sheet: the text above the auth code field that says how the sheet works. ur.io, Google and Apple are names. The Google or Apple sessions are the sign-ins the browser already holds. 'Account → Create auth code' is the way to the Create auth code button on a signed-in device: use this language's labels of Account (account) and Create auth code (site_app_create_auth_code); right-to-left languages point the arrow the other way.</comment>
   </data>
   <data name="adv_browser_sign_in_title" xml:space="preserve">
@@ -737,21 +737,21 @@
     <value>确定要移除 {} 作为登录方式吗？</value>
   </data>
   <data name="auth_code" xml:space="preserve">
-    <value>验证码</value>
+    <value>授权码</value>
     <comment>Call to action</comment>
   </data>
   <data name="auth_code_2" xml:space="preserve">
-    <value>验证码 
+    <value>授权码 
 
 {0}...{1}</value>
     <comment>A message that displays the first and last six characters of an auth code.</comment>
   </data>
   <data name="auth_code_create" xml:space="preserve">
-    <value>创建验证码</value>
+    <value>创建授权码</value>
     <comment>Used in Main/Account/Settings/AuthCodeCreate/AuthCodeCreate.swift.</comment>
   </data>
   <data name="auth_code_created" xml:space="preserve">
-    <value>验证码已创建</value>
+    <value>授权码已创建</value>
     <comment>Call to action</comment>
   </data>
   <data name="auth_code_error" xml:space="preserve">
@@ -759,27 +759,27 @@
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
   <data name="auth_code_expires" xml:space="preserve">
-    <value>验证码在5分钟后过期</value>
+    <value>授权码在5分钟后过期</value>
     <comment>Call to action</comment>
   </data>
   <data name="auth_code_input_invalid" xml:space="preserve">
-    <value>验证码无效或已过期。请登录 ur.io 获取有效验证码。</value>
+    <value>授权码无效或已过期。请登录 ur.io 获取有效授权码。</value>
     <comment>Invalid auth code input error message</comment>
   </data>
   <data name="auth_code_input_label" xml:space="preserve">
-    <value>验证码</value>
+    <value>授权码</value>
     <comment>Auth code input label</comment>
   </data>
   <data name="auth_code_loading" xml:space="preserve">
-    <value>正在加载验证码</value>
+    <value>正在加载授权码</value>
     <comment>Call to action</comment>
   </data>
   <data name="auth_code_login_button_text" xml:space="preserve">
-    <value>使用验证码登录</value>
+    <value>使用授权码登录</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
   <data name="auth_code_login_sheet_header" xml:space="preserve">
-    <value>验证码登录</value>
+    <value>授权码登录</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
   <data name="authentication" xml:space="preserve">
@@ -787,11 +787,11 @@
     <comment>Call to action</comment>
   </data>
   <data name="authentication_code" xml:space="preserve">
-    <value>验证码</value>
+    <value>授权码</value>
     <comment>Guidance for someone who has no code yet. Deliberately PLAIN TEXT with no link and no button: app store rules forbid steering a user to an external purchase, but nothing stops us saying where codes come from. Without this, the sheet asks for a code and gives no way to obtain one.</comment>
   </data>
   <data name="authentication_code_input_placeholder" xml:space="preserve">
-    <value>输入您的一次性验证码</value>
+    <value>输入您的一次性授权码</value>
     <comment>Placeholder text for the authentication code input field</comment>
   </data>
   <data name="auto" xml:space="preserve">
@@ -1709,7 +1709,7 @@
     <comment>Used in Main/Account/TransferBalanceCodes/TransferBalanceCodesView.swift.</comment>
   </data>
   <data name="code_sign_in_failed" xml:space="preserve">
-    <value>使用验证码登录失败</value>
+    <value>使用授权码登录失败</value>
     <comment>Error shown when signing in with an auth code fails.</comment>
   </data>
   <data name="collapsed" xml:space="preserve">
@@ -2045,7 +2045,7 @@
     <comment>Call to action</comment>
   </data>
   <data name="copy_auth_code" xml:space="preserve">
-    <value>复制验证码</value>
+    <value>复制授权码</value>
     <comment>Call to action</comment>
   </data>
   <data name="copy_client_id" xml:space="preserve">
@@ -2125,7 +2125,7 @@
     <comment>Call to action</comment>
   </data>
   <data name="created_auth_codes_expire_after_5_minutes" xml:space="preserve">
-    <value>创建的验证码将在5分钟后失效</value>
+    <value>创建的授权码将在5分钟后失效</value>
     <comment>Used in Main/Account/Settings/SettingsForm-iOS.swift.</comment>
   </data>
   <data name="crypto_code_emailed" xml:space="preserve">
@@ -7417,7 +7417,7 @@
     <comment>Sessions screen (Account &gt; Sessions), row line 3, after the sign-in date: the sign-in method of a session created with Sign in with Apple. Not tagged apple: Apple's catalog is keyed by the English source, and apple already carries "Apple" there, so the apple screen reads that entry. Translated as apple is, so every platform shows the same words.</comment>
   </data>
   <data name="sessions_kind_auth_code" xml:space="preserve">
-    <value>验证码</value>
+    <value>授权码</value>
     <comment>Sessions screen (Account &gt; Sessions), row line 3, after the sign-in date: the sign-in method of a session created with an auth code made on another signed-in device or with the command-line tools. Not tagged apple: Apple's catalog is keyed by the English source, and auth_code already carries "Auth code" there, so the apple screen reads that entry. Translated as auth_code is, so every platform shows the same words.</comment>
   </data>
   <data name="sessions_kind_device_adopt" xml:space="preserve">
@@ -7683,11 +7683,11 @@
     <comment>App connect: allowed count label</comment>
   </data>
   <data name="site_app_auth_code_limit" xml:space="preserve">
-    <value>已达验证码上限。请稍后重试。</value>
+    <value>已达授权码上限。请稍后重试。</value>
     <comment>App settings: auth code limit error</comment>
   </data>
   <data name="site_app_auth_code_note" xml:space="preserve">
-    <value>创建的验证码将在5分钟后过期</value>
+    <value>创建的授权码将在5分钟后过期</value>
     <comment>App settings: auth code expiry note</comment>
   </data>
   <data name="site_app_average_reliability" xml:space="preserve">
@@ -7819,7 +7819,7 @@
     <comment>Reliability: country multipliers heading</comment>
   </data>
   <data name="site_app_create_auth_code" xml:space="preserve">
-    <value>创建验证码</value>
+    <value>创建授权码</value>
     <comment>App settings: create auth code button</comment>
   </data>
   <data name="site_app_created" xml:space="preserve">
@@ -8611,7 +8611,7 @@
     <comment>Account panel: location chooser list aria-label</comment>
   </data>
   <data name="site_login_auth_code_hint" xml:space="preserve">
-    <value>粘贴在其他设备上或通过命令行工具生成的验证码。</value>
+    <value>粘贴在其他设备上或通过命令行工具生成的授权码。</value>
     <comment>Login stack: hint above the auth code field when signing in with a code generated elsewhere.</comment>
   </data>
   <data name="site_login_seed_hint" xml:space="preserve">
@@ -9803,7 +9803,7 @@
     <comment>Used in Authenticate/LoginInitial/LoginInitialView.swift.</comment>
   </data>
   <data name="there_was_an_error_validating_your_auth_code" xml:space="preserve">
-    <value>验证您的验证码时出错。请重试或生成新的验证码。</value>
+    <value>验证您的授权码时出错。请重试或生成新的授权码。</value>
     <comment>Used in Authenticate/LoginInitial/AuthCodeLoginSheet.swift.</comment>
   </data>
   <data name="this_is_the_only_time_you_ll" xml:space="preserve">
