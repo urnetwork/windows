@@ -7,10 +7,12 @@
 //                     device straight to the settlement vault contract. No
 //                     URnetwork API is in that path.
 //   ClaimLedgerSheet  the same for settlement v2: the coldkey's claimable v2
-//                     accounts, the same gas key and funding hint, and the
-//                     claim, sent by the SDK on this device to the pinned vault2,
-//                     one transaction per account, each proof verified against
-//                     vault2's root first.
+//                     accounts, each titled by its pool (capture the flag's
+//                     beside the provider pool's), the same gas key and funding
+//                     hint, and the claim of every pool, sent by the SDK on this
+//                     device to the pinned vault2, each proof verified against
+//                     vault2's root first: one transaction for one account, one
+//                     batch transaction for two or more.
 //
 // Plain C++ helpers like StatsSheets/BalanceSheets: no runtime classes; every
 // method runs on the UI thread. Control handlers capture the sheet WEAKLY: the
@@ -81,6 +83,16 @@ std::wstring FormatShareBpsValue(int64_t shareBps);
 // nothing for this coldkey to claim (no payout root was published for it, or
 // no share in its payout list), so it reads "No payout published".
 winrt::hstring ClaimStatusText(std::string const& status);
+
+// A v2 account's title in the store's words, from its key
+// (snpayout::PoolTitleKey): "Capture the flag", "Provider pool", or "Pool 1"
+// with the pool's noId. The tile, the claim dialog and the claim sheet say it.
+winrt::hstring PoolTitleText(std::string const& titleKey, int64_t noId);
+
+// Capture the flag's won-slot line (snpayout::CtfWinKey) with the country's
+// name in the reader's language, or its code where Windows has none: "You won
+// one of the Iceland provider slots".
+winrt::hstring CtfWinText(snpayout::CtfWin const& win);
 
 // ---- the claim dialog ----------------------------------------------------------
 
@@ -191,23 +203,28 @@ using LedgerClaimer = std::function<void(snpayout::LedgerClaimEvents events)>;
 
 class ClaimLedgerSheet : public std::enable_shared_from_this<ClaimLedgerSheet> {
  public:
-  // `accounts` are the v2 accounts as the page last read them; the dialog lists
-  // the claimable ones and moves them along with the claim events
-  // (snpayout::LedgerClaimProgress). `explorerTxUrl` and `allowActions` as for
-  // ClaimAlphaSheet. The page reads the accounts again after the claim's Done,
-  // through its claimer, whether or not the dialog is still up.
+  // `accounts` are the v2 accounts as the page last read them, and
+  // `unavailable` the pools that read could not read; the dialog lists the
+  // claimable accounts and those pools and moves them along with the claim
+  // events (snpayout::LedgerClaimProgress). `transferFloorRao` is the claim
+  // relay's transfer floor, 0 when unknown. `explorerTxUrl` and `allowActions`
+  // as for ClaimAlphaSheet. The page reads the accounts again after the
+  // claim's Done, through its claimer, whether or not the dialog is still up.
   static std::shared_ptr<ClaimLedgerSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root,
       winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-      std::vector<snpayout::LedgerAccount> const& accounts, GasKeyInfo gas,
-      std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer);
+      std::vector<snpayout::LedgerAccount> const& accounts,
+      std::vector<snpayout::UnavailablePool> const& unavailable, int64_t transferFloorRao,
+      GasKeyInfo gas, std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
 
  private:
   ClaimLedgerSheet(winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-                   std::vector<snpayout::LedgerAccount> const& accounts, GasKeyInfo gas,
-                   std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer);
+                   std::vector<snpayout::LedgerAccount> const& accounts,
+                   std::vector<snpayout::UnavailablePool> const& unavailable,
+                   int64_t transferFloorRao, GasKeyInfo gas, std::string explorerTxUrl,
+                   bool allowActions, LedgerClaimer claimer);
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void StartClaim();

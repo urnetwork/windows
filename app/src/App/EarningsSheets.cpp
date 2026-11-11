@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <iterator>
 
+#include "ConnectionRegionSheet.h"  // RegionDisplayName: a country's name in the reader's language
 #include "EmojiKeyboard.h"
 #include "Localization.h"
 #include "Log.h"
@@ -236,6 +237,22 @@ hstring ClaimStatusText(std::string const& status) {
   if (status == "open") return Loc("sn_status_open");
   if (status == "not-finalized") return Loc("sn_status_not_finalized");
   return H(status);
+}
+
+hstring PoolTitleText(std::string const& titleKey, int64_t noId) {
+  // only Pool {} names its pool, by its number; the other titles are words
+  if (titleKey == "sn_ledger_pool") return hstring{urnw::Format("sn_ledger_pool", noId)};
+  return Loc(titleKey);
+}
+
+hstring CtfWinText(snpayout::CtfWin const& win) {
+  std::wstring country = RegionDisplayName(win.country);
+  if (country.empty()) {
+    for (char c : win.country) {
+      country.push_back(static_cast<wchar_t>(std::toupper(static_cast<unsigned char>(c))));
+    }
+  }
+  return hstring{urnw::Format(snpayout::CtfWinKey(win), country)};
 }
 
 // ---- ClaimAlphaSheet ---------------------------------------------------------
@@ -627,21 +644,24 @@ void ClaimAlphaSheet::OpenTx(std::string const& txHash) {
 
 std::shared_ptr<ClaimLedgerSheet> ClaimLedgerSheet::Create(
     XamlRoot const& root, winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-    std::vector<snpayout::LedgerAccount> const& accounts, GasKeyInfo gas,
-    std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer) {
+    std::vector<snpayout::LedgerAccount> const& accounts,
+    std::vector<snpayout::UnavailablePool> const& unavailable, int64_t transferFloorRao,
+    GasKeyInfo gas, std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer) {
   auto sheet = std::shared_ptr<ClaimLedgerSheet>(
-      new ClaimLedgerSheet(queue, accounts, std::move(gas), std::move(explorerTxUrl),
-                           allowActions, std::move(claimer)));
+      new ClaimLedgerSheet(queue, accounts, unavailable, transferFloorRao, std::move(gas),
+                           std::move(explorerTxUrl), allowActions, std::move(claimer)));
   sheet->Build(root);
   return sheet;
 }
 
 ClaimLedgerSheet::ClaimLedgerSheet(winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
                                    std::vector<snpayout::LedgerAccount> const& accounts,
-                                   GasKeyInfo gas, std::string explorerTxUrl, bool allowActions,
+                                   std::vector<snpayout::UnavailablePool> const& unavailable,
+                                   int64_t transferFloorRao, GasKeyInfo gas,
+                                   std::string explorerTxUrl, bool allowActions,
                                    LedgerClaimer claimer)
     : queue_(queue),
-      progress_(accounts, gas.tao),
+      progress_(accounts, gas.tao, unavailable, transferFloorRao),
       gas_(std::move(gas)),
       explorerTxUrl_(std::move(explorerTxUrl)),
       allowActions_(allowActions),
@@ -760,12 +780,16 @@ UIElement ClaimLedgerSheet::BuildRow(snpayout::LedgerClaimRow const& row) {
   grid.ColumnDefinitions().Append(StarColumn(3));
   grid.ColumnDefinitions().Append(AutoColumn());
 
-  auto pool = MakeText(hstring{urnw::Format("sn_ledger_pool", row.noId)}, 13, colors::TextBrush());
+  // the pool: Pool {}, or capture the flag's and the provider pool's beside it
+  auto pool = MakeText(PoolTitleText(progress_.TitleKey(row), row.noId), 13, colors::TextBrush());
   pool.VerticalAlignment(VerticalAlignment::Center);
   Grid::SetColumn(pool, 0);
   grid.Children().Append(pool);
 
-  auto amount = MakeText(hstring{FormatAlphaRao(row.amountRao)}, 13, colors::TextBrush());
+  // an unavailable pool at rest has no figure, never a zero
+  const bool unavailable = row.unavailable && row.state == snpayout::LedgerClaimState::Idle;
+  auto amount = MakeText(unavailable ? hstring{} : hstring{FormatAlphaRao(row.amountRao)}, 13,
+                         colors::TextBrush());
   amount.VerticalAlignment(VerticalAlignment::Center);
   Grid::SetColumn(amount, 1);
   grid.Children().Append(amount);
@@ -795,8 +819,15 @@ UIElement ClaimLedgerSheet::BuildRow(snpayout::LedgerClaimRow const& row) {
       brush = colors::DangerBrush();
       break;
     case snpayout::LedgerClaimState::Idle:
-      word = Loc("sn_ledger_claimable");
-      brush = colors::MakeBrush(colors::kUrGreen);
+      if (row.unavailable) {
+        word = Loc("sn_ledger_pool_unavailable");
+      } else if (row.underFloor) {
+        // no claim moves it until it clears the transfer floor
+        word = Loc("sn_ledger_pool_under_floor");
+      } else {
+        word = Loc("sn_ledger_claimable");
+        brush = colors::MakeBrush(colors::kUrGreen);
+      }
       break;
   }
   state.Children().Append(MakeText(word, 13, brush));
@@ -834,8 +865,12 @@ void ClaimLedgerSheet::ApplyState() {
     errorText_.Visibility(Visibility::Visible);
   }
 
+  // one Claim sends every pool's: while capture the flag's and the provider
+  // pool's both have something to claim it says Claim both, else the amount
   claimButton_.Content(winrt::box_value(
-      hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}));
+      progress_.ClaimsBoth()
+          ? Loc("sn_ledger_claim_both")
+          : hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}));
   claimButton_.IsEnabled(progress_.CanClaim(allowActions_));
 }
 

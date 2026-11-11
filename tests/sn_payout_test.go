@@ -124,18 +124,21 @@ func TestSnPayoutLine(t *testing.T) {
 }
 
 // The v2 boundary templates against the generated SDK header: WalletPage
-// instantiates snpayout::LedgerAccountFrom with urnet::SnLedgerAccount and
-// snpayout::LedgerClaimCallbackFor with urnet::SnLedgerClaimCallback, so the
-// spec builds both with the header's own types and reads an account from the
-// json the device answers with. The header is git-ignored (fetch-deps unpacks
-// it into app/third_party/urnetwork-sdk/<arch>; URNETWORK_SDK_INCLUDE names
-// another directory) and needs nlohmann/json, so a host without them skips
-// this, and so does a copy from before the v2 claim.
+// instantiates snpayout::LedgerAccountFrom with urnet::SnLedgerAccount,
+// snpayout::UnavailablePoolsFrom with its unavailable pools,
+// snpayout::LedgerClaimCallbackFor with urnet::SnLedgerClaimCallback and
+// snpayout::CtfWinFrom with urnet::SnCtfClientResult, and the claim sheet
+// snpayout::RelayAccountFrom with urnet::SnClaimRelayAccount, so the spec
+// builds each with the header's own types and reads the json the device
+// answers with. The header is git-ignored (fetch-deps unpacks it into
+// app/third_party/urnetwork-sdk/<arch>; URNETWORK_SDK_INCLUDE names another
+// directory) and needs nlohmann/json, so a host without them skips this, and
+// so does a copy from before capture the flag's claim flow.
 func TestSnPayoutAgainstSdkHeader(t *testing.T) {
 	root := repositoryRoot(t)
-	sdkDir := sdkHeaderDirWith(t, root, "SnLedgerClaimCallback")
+	sdkDir := sdkHeaderDirWith(t, root, "SnCtfClientResult")
 	if sdkDir == "" {
-		t.Skip("no urnetwork_sdk.hpp with the v2 claim (set URNETWORK_SDK_INCLUDE)")
+		t.Skip("no urnetwork_sdk.hpp with capture the flag's claim flow (set URNETWORK_SDK_INCLUDE)")
 	}
 	jsonDir, found := jsonIncludeDir(root)
 	if !found {
@@ -186,11 +189,12 @@ func TestSettlementV2Wiring(t *testing.T) {
 		"Sdk().device().snLedgerClaim(",
 		"snpayout::LedgerClaimCallbackFor<urnet::SnLedgerClaimCallback>(events)",
 		"urnw::ClaimLedgerSheet::Create(",
-		// every line of the section: the heading, each account's labels and
-		// pending line, and the note the spec chose (snpayout::LedgerNoteKey)
-		`Loc("sn_ledger_title")`, `"sn_ledger_pool"`, `Loc("sn_ledger_claimable")`,
-		`Loc("sn_ledger_paid")`, `Loc("sn_ledger_earned")`, `"sn_ledger_pending"`,
-		"snpayout::LedgerNoteKey(view.note)",
+		// every line of the section: the heading, each account's title (Pool {}
+		// as before capture the flag: EarningsSheets.cpp PoolTitleText), labels
+		// and pending line, and the note the spec chose (snpayout::LedgerNoteKey)
+		`Loc("sn_ledger_title")`, "PoolTitleText(account.titleKey, account.noId)",
+		`Loc("sn_ledger_claimable")`, `Loc("sn_ledger_paid")`, `Loc("sn_ledger_earned")`,
+		`"sn_ledger_pending"`, "snpayout::LedgerNoteKey(view.note)",
 	)
 	// the claimable figure takes the v1 tile's earnings accent while there is some
 	requireAll("WalletPage::RebuildV2Section", functionBody(walletPage, "void WalletPage::RebuildV2Section("),
@@ -238,7 +242,7 @@ func TestSettlementV2Wiring(t *testing.T) {
 	// Sent links the explorer; a failure says the store's sentence or the
 	// message as it came
 	requireAll("ClaimLedgerSheet::BuildRow", sheet("UIElement ClaimLedgerSheet::BuildRow("),
-		`urnw::Format("sn_ledger_pool", row.noId)`,
+		"PoolTitleText(progress_.TitleKey(row), row.noId)",
 		"snpayout::ExplorerTxLink(explorerTxUrl_, row.txHash)",
 		`link.Content(LocBox("earnings_view_transaction"));`,
 		"LedgerFailureText(row.message)",
@@ -297,6 +301,144 @@ func TestSettlementV2Wiring(t *testing.T) {
 		"sn_ledger_pool":        "Pool {}",
 		"sn_ledger_unavailable": "Unavailable",
 		"sn_ledger_claim":       "Claim settlement v2",
+	}
+	catalogs, err := filepath.Glob(filepath.Join(root, "app", "src", "App", "Strings", "*", "Resources.resw"))
+	if err != nil || len(catalogs) < 28 {
+		t.Fatalf("catalogs: %v %v", catalogs, err)
+	}
+	for key, want := range english {
+		if got := reswValue(t, root, "en", key); got != want {
+			t.Errorf("%s = %q, want %q", key, got, want)
+		}
+		for _, catalog := range catalogs {
+			locale := filepath.Base(filepath.Dir(catalog))
+			if got := reswValue(t, root, locale, key); got == "" ||
+				strings.Count(got, "{}") != strings.Count(want, "{}") {
+				t.Errorf("%s: %s = %q", locale, key, got)
+			}
+		}
+	}
+}
+
+// Capture the flag in the claim flow (sn CAPTURETHEFLAG.md §10): the ledger
+// lists the coldkey's capture the flag account beside its provider pool
+// account, and the SDK claims both with one SnLedgerClaim, in one batch
+// transaction. Earnings titles each account by its pool, shows a pool the
+// ledger could not read as unavailable beside the others, says Claim both
+// while the one claim claims both, marks an account under the relay's
+// transfer floor, adds the claim sheet's pool rows and says this client's won
+// slot from GET /sn/ctf/client, all in the store's sn_ctf_* and sn_ledger_*
+// words. The decisions are the spec's (TestSnPayoutLine); this reads the page
+// and the sheets that draw them.
+func TestCaptureTheFlagClaimFlow(t *testing.T) {
+	root := repositoryRoot(t)
+	requireAll := func(file string, source string, wants ...string) {
+		t.Helper()
+		for _, want := range wants {
+			if !strings.Contains(source, want) {
+				t.Errorf("%s: missing %s", file, want)
+			}
+		}
+	}
+	body := func(file, source, signature string) string {
+		t.Helper()
+		found := functionBody(source, signature)
+		if found == "" {
+			t.Fatalf("%s: no %s", file, signature)
+		}
+		return found
+	}
+
+	page := stripComments(readAppSource(t, "WalletPage.cpp"))
+	// the read: the pools the ledger could not read come with the accounts
+	requireAll("WalletPage::LoadV2Accounts", body("WalletPage.cpp", page, "void WalletPage::LoadV2Accounts("),
+		"unavailable = snpayout::UnavailablePoolsFrom(result->unavailable_pools);",
+		"ok ? snpayout::LedgerFetch::Ready : snpayout::LedgerFetch::Failed, accounts, unavailable);")
+	requireAll("WalletPage::ApplyV2Accounts", body("WalletPage.cpp", page, "void WalletPage::ApplyV2Accounts("),
+		"v2Unavailable_ = unavailable;")
+	// the tile: each block's title, an unavailable pool's block, the floor's
+	// status, the won slot with capture the flag's account, and Claim both
+	section := body("WalletPage.cpp", page, "void WalletPage::RebuildV2Section(")
+	requireAll("WalletPage::RebuildV2Section", section,
+		"CanClaim(), v2Unavailable_, TransferFloorRao());",
+		"if (!account.titleKey.empty()) {",
+		"MakeText(PoolTitleText(account.titleKey, account.noId), 13, colors::TextBrush())",
+		"if (account.unavailable) {",
+		`MakeText(Loc("sn_ledger_pool_unavailable"), 13, colors::MutedBrush(), true)`,
+		"if (account.underFloor) {",
+		`MakeText(Loc("sn_ledger_pool_under_floor"), 13, colors::MutedBrush(), true)`,
+		"if (ctfWin_ && !winShown && account.kind == snpayout::PoolKind::Ctf) {",
+		"MakeText(CtfWinText(*ctfWin_), 13, colors::TextBrush(), true)",
+		`w_.SettlementV2ClaimButton().Content(LocBox(view.claimBoth ? "sn_ledger_claim_both" : "claim"));`)
+	// an unavailable pool's block draws no figure: the figures are the else
+	// branch of the unavailable line
+	if at := strings.Index(section, "if (account.unavailable) {"); at >= 0 {
+		rest := section[at:]
+		elseBranch := strings.Index(rest, "} else {")
+		figure := strings.Index(rest, `MakeValue(hstring{FormatAlphaRao(account.claimableRao)}, 32)`)
+		if elseBranch < 0 || figure < elseBranch {
+			t.Error("WalletPage::RebuildV2Section: an unavailable pool's block is not drawn without its figures")
+		}
+	}
+	requireAll("WalletPage::TransferFloorRao", body("WalletPage.cpp", page, "int64_t WalletPage::TransferFloorRao("),
+		"return claimStatus_ && !claimStatus_->error ? claimStatus_->transfer_floor_rao : 0;")
+	// the claim dialog gets the read's unavailable pools and the floor; its one
+	// Claim is the SDK's SnLedgerClaim, which batches
+	requireAll("WalletPage::OnClaimV2", body("WalletPage.cpp", page, "winrt::fire_and_forget WalletPage::OnClaimV2("),
+		"v2Accounts_, v2Unavailable_,", "TransferFloorRao(), gas, ExplorerTxUrl(), allowActions, MakeV2Claimer());")
+	requireAll("WalletPage::MakeV2Claimer", body("WalletPage.cpp", page, "LedgerClaimer WalletPage::MakeV2Claimer("),
+		"Sdk().device().snLedgerClaim(")
+	// the won slot: read with the Earnings reads, dropped at sign-out
+	requireAll("WalletPage::LoadCtfClient", body("WalletPage.cpp", page, "void WalletPage::LoadCtfClient("),
+		"Sdk().device().snCtfClient(", "win = snpayout::CtfWinFrom(*result);",
+		"self->wallet().ApplyCtfClient(read, win);")
+	requireAll("WalletPage::ApplyCtfClient", body("WalletPage.cpp", page, "void WalletPage::ApplyCtfClient("),
+		"if (read != ctfClientGeneration_) return;", "RebuildV2Section();")
+	requireAll("WalletPage::LoadWallet", body("WalletPage.cpp", page, "void WalletPage::LoadWallet("), "LoadCtfClient();")
+	requireAll("WalletPage::ResetForSignOut", body("WalletPage.cpp", page, "void WalletPage::ResetForSignOut("),
+		"++ctfClientGeneration_;", "ctfWin_.reset();")
+
+	sheets := stripComments(readAppSource(t, "EarningsSheets.cpp"))
+	// the titles and the won line in the store's words
+	requireAll("PoolTitleText", body("EarningsSheets.cpp", sheets, "hstring PoolTitleText("),
+		`if (titleKey == "sn_ledger_pool") return hstring{urnw::Format("sn_ledger_pool", noId)};`,
+		"return Loc(titleKey);")
+	requireAll("CtfWinText", body("EarningsSheets.cpp", sheets, "hstring CtfWinText("),
+		"RegionDisplayName(win.country)", "urnw::Format(snpayout::CtfWinKey(win), country)")
+	// the claim dialog: the read's unavailable pools and the floor, each row's
+	// title, its unavailable and under-the-floor words, and Claim both
+	requireAll("ClaimLedgerSheet::ClaimLedgerSheet", sheets,
+		"progress_(accounts, gas.tao, unavailable, transferFloorRao)")
+	requireAll("ClaimLedgerSheet::BuildRow", body("EarningsSheets.cpp", sheets, "UIElement ClaimLedgerSheet::BuildRow("),
+		"PoolTitleText(progress_.TitleKey(row), row.noId)",
+		"const bool unavailable = row.unavailable && row.state == snpayout::LedgerClaimState::Idle;",
+		`word = Loc("sn_ledger_pool_unavailable");`, `word = Loc("sn_ledger_pool_under_floor");`)
+	requireAll("ClaimLedgerSheet::ApplyState", body("EarningsSheets.cpp", sheets, "void ClaimLedgerSheet::ApplyState("),
+		"progress_.ClaimsBoth()", `? Loc("sn_ledger_claim_both")`,
+		`: hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}`)
+
+	// the claim sheet: a row per pool under its figure
+	relaySheet := stripComments(readAppSource(t, "BittensorKeySheets.cpp"))
+	requireAll("ClaimRelaySheet::Build", body("BittensorKeySheets.cpp", relaySheet, "void ClaimRelaySheet::Build("),
+		"if (auto rows = btkeyviews::MakeRelayPoolRows(*status_)) content.Children().Append(rows);")
+	views := stripComments(readAppSource(t, "BittensorKeyViews.cpp"))
+	requireAll("btkeyviews::MakeRelayPoolRows", body("BittensorKeyViews.cpp", views, "FrameworkElement MakeRelayPoolRows("),
+		"accounts.push_back(snpayout::RelayAccountFrom(account));",
+		"snpayout::RelayRowsFor(",
+		"accounts, snpayout::UnavailablePoolsFrom(status.unavailable_pools), status.transfer_floor_rao);",
+		"PoolTitleText(row.titleKey, row.noId)",
+		`word = Loc("pending_data_key");`, `word = Loc("sn_ledger_pool_under_floor");`,
+		`word = Loc("claim_confirmed");`, `word = Loc("sn_ledger_pool_unavailable");`)
+
+	// the store's words, in every catalog with their placeholders
+	english := map[string]string{
+		"sn_ctf_pool":                "Capture the flag",
+		"sn_ledger_provider_pool":    "Provider pool",
+		"sn_ledger_pool_under_floor": "Below the claim minimum",
+		"sn_ledger_pool_unavailable": "Unavailable right now",
+		"sn_ledger_claim_both":       "Claim both",
+		"sn_ctf_won_provider_slot":   "You won one of the {} provider slots",
+		"sn_ctf_won_extender_slot":   "You won one of the {} extender slots",
 	}
 	catalogs, err := filepath.Glob(filepath.Join(root, "app", "src", "App", "Strings", "*", "Resources.resw"))
 	if err != nil || len(catalogs) < 28 {
