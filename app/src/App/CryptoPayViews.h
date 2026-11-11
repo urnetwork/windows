@@ -1,17 +1,22 @@
-// The crypto payment views (crypto-pay CONTRACT §6), built in code like every
-// sheet here, and drawn from the decisions in CryptoPayPresentation.h:
+// The crypto payment views (crypto-pay CONTRACT §6, mmm/BTCPAY.md §17.6),
+// built in code like every sheet here, and drawn from the decisions in
+// CryptoPayPresentation.h:
 //
-//   PaymentMethodRow   the segmented Card · USDC · Zcash · Monero row
-//                      (SelectorBar) directly above a buy button, shared by
-//                      the upgrade sheet's products page and the onboarding
-//                      welcome and offer pages, with "Temporarily
-//                      unavailable" under it after a coin failed to quote;
+//   PaymentMethodRow   the segmented Card · USDC on Solana · Zcash · Monero ·
+//                      More coins row (SelectorBar) directly above a buy
+//                      button, the sdk's tabs after Card; More coins shows the
+//                      TAO, Bitcoin, ETH and SOL marks, each its own, and opens
+//                      a list of those coins under the row. Shared by the
+//                      upgrade sheet's products page and the onboarding welcome
+//                      and offer pages, with "Temporarily unavailable" under it
+//                      after a coin failed to quote;
 //   CryptoInvoicePanel the native invoice, the upgrade sheet's Invoice page:
-//                      the network line, the QR of the server's uri (only
-//                      once the sdk's check passed), Open in wallet, the
-//                      amount, the address and the memo with Copy, the quote's
-//                      countdown with Refresh quote, the status steps, the
-//                      wallets that work and Pay another way;
+//                      the network line, the QR of the sdk's qr text (the
+//                      server's uri once the sdk's check passed, or TAO's
+//                      address alone), Open in wallet, the amount, the address
+//                      with the coin's network warning and the memo with Copy,
+//                      the quote's countdown with Refresh quote, the status
+//                      steps, the wallets that work and Pay another way;
 //   CryptoAccountRows  the Account plan pane's rows: "Does not renew" under a
 //                      plan paid once in crypto, the crypto_term notice with
 //                      Renew, and "Payment in progress" for a saved invoice.
@@ -38,20 +43,27 @@ namespace urnw {
 
 struct BalanceSnapshot;
 
+// A method's name, for "Pay with {method}" and "Paying with {method} is
+// temporarily unavailable": the catalog's text for its label key
+// (cryptopay::MethodLabel, the sdk's for a coin), or the sdk's English while
+// the catalog lacks the key.
+std::wstring PaymentMethodName(std::string const& method);
+
 // ---- the payment-method row (§6.1) ------------------------------------------
 class PaymentMethodRow {
  public:
-  // The row and its unavailable line, collapsed until SetMethods lists a coin.
+  // The row and its unavailable line, collapsed until SetTabs lays out a coin.
   winrt::Microsoft::UI::Xaml::Controls::StackPanel Build();
-  // The methods the server sells on this surface (cryptopay::PaymentMethodsFor:
-  // Card first) and the method wanted (the device's remembered one, or the
-  // selection the user made here). Rebuilds the segments when the list
+  // The sdk's coin selector for this surface (cryptopay::PaymentTabsFor) and
+  // the method wanted (the device's remembered one, or the selection the user
+  // made here). Rebuilds the segments and the More coins list when the tabs
   // changed and selects cryptopay::MethodToSelect: Card when the wanted coin
-  // is not listed, and Card with the row hidden when no coin is.
-  void SetMethods(std::vector<std::string> const& methods, std::string const& wanted);
-  // The selection: Card while the row is hidden.
+  // cannot be paid with now, and Card with the row hidden when the tabs are
+  // empty.
+  void SetTabs(std::vector<cryptopay::PaymentTabView> const& tabs, std::string const& wanted);
+  // The selection, Card or a coin's asset: Card while the row is hidden.
   std::string Method() const { return state_->selected; }
-  // Select programmatically (a coin must be listed): repaints, does NOT fire
+  // Select programmatically (a coin must be offered): repaints, does NOT fire
   // onSelect.
   void Select(std::string const& method);
   void SetEnabled(bool enabled);
@@ -64,18 +76,35 @@ class PaymentMethodRow {
   std::function<void(std::string const& method)> onSelect;
 
  private:
+  // A coin of the More coins list.
+  struct Coin {
+    std::string asset;
+    bool available = false;
+    winrt::Microsoft::UI::Xaml::Controls::RadioButton button{nullptr};
+  };
   struct State {
     winrt::Microsoft::UI::Xaml::Controls::StackPanel root{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::SelectorBar bar{nullptr};
+    // the list of a tab of several coins (More coins), under the bar while
+    // that tab is chosen
+    winrt::Microsoft::UI::Xaml::Controls::StackPanel coinsPanel{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock unavailable{nullptr};
-    std::vector<std::string> methods;
+    std::vector<cryptopay::PaymentTabView> tabs;
+    // Card's segment, then one per tab
     std::vector<winrt::Microsoft::UI::Xaml::Controls::SelectorBarItem> items;
+    std::vector<Coin> coins;
+    // the coin a tab of several selects when it is chosen again: the one
+    // chosen there last, or the remembered method
+    std::string wanted;
     std::string selected = cryptopay::kMethodCard;
     std::string unavailableMethod;
-    // a programmatic selection: SelectionChanged stays quiet
+    bool enabled = true;
+    // a programmatic selection: SelectionChanged and Checked stay quiet
     bool applying = false;
     std::function<void(std::string const&)>* onSelect = nullptr;
   };
+  // The segments and the More coins list for state.tabs.
+  static void Rebuild(std::shared_ptr<State> const& shared);
   static void Apply(State& state);
 
   std::shared_ptr<State> state_ = std::make_shared<State>();
@@ -89,8 +118,8 @@ class CryptoInvoicePanel {
   winrt::Microsoft::UI::Xaml::Controls::StackPanel Build(
       winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue, double qrMaxSide);
   // Paint one state. `uriAllowed` is cryptopay::UriAllowed's answer for it,
-  // which alone lets the QR and Open in wallet show; `wallets` the sdk's
-  // suggestions for its asset. The QR is encoded again only when its uri
+  // which alone lets a uri's QR and Open in wallet show; `wallets` the sdk's
+  // suggestions for its asset. The QR is encoded again only when its text
   // changes; the countdown repaints on every tick.
   void Render(cryptopay::CryptoInvoiceView const& view, bool uriAllowed,
               std::vector<std::string> const& wallets);
@@ -115,9 +144,14 @@ class CryptoInvoicePanel {
     winrt::Microsoft::UI::Xaml::Controls::StackPanel busyLine{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::ProgressRing busyRing{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::StackPanel instructions{nullptr};
+    // a coin with no payment link (TAO): "Send exactly this amount to this
+    // address."
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock byHandLine{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Border qrFrame{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Canvas qrCanvas{nullptr};
-    std::string qrUri;  // the uri the canvas holds ("" for none)
+    std::string qrText;  // the text the canvas holds ("" for none)
+    // under the QR of a coin with no payment link: it holds only the address
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock noLinkNote{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Button openWallet{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::StackPanel amountBlock{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock amountText{nullptr};
@@ -125,7 +159,10 @@ class CryptoInvoicePanel {
     winrt::Microsoft::UI::Xaml::Controls::StackPanel addressBlock{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock addressText{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Button copyAddress{nullptr};
-    winrt::Microsoft::UI::Xaml::Controls::TextBlock usdcWarning{nullptr};
+    // the coin's network and that a transfer on another is not credited
+    winrt::Microsoft::UI::Xaml::Controls::TextBlock networkWarning{nullptr};
+    // Copy amount and Copy address on a coin with no payment link, else Copy
+    bool copySaysWhat = false;
     winrt::Microsoft::UI::Xaml::Controls::StackPanel memoBlock{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock memoText{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::Button copyMemo{nullptr};
@@ -152,10 +189,12 @@ class CryptoInvoicePanel {
     std::function<void()>* onRefresh = nullptr;
     std::function<void()>* onPayAnotherWay = nullptr;
   };
-  // the code for `uri` on the canvas, or the frame hidden when it will not encode
-  static void DrawQr(State& state, std::string const& uri);
-  // "Copied" on the button that copied, "Copy" back on the others
+  // the code for `text` on the canvas, or the frame hidden when it will not encode
+  static void DrawQr(State& state, std::string const& text);
+  // "Copied" on the button that copied, its own label back on the others
   static void ShowCopied(State& state, winrt::Microsoft::UI::Xaml::Controls::Button const& copied);
+  // each Copy button's label: Copy amount, Copy address or Copy
+  static void LabelCopyButtons(State& state);
 
   std::shared_ptr<State> state_ = std::make_shared<State>();
 };

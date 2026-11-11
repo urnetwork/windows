@@ -1508,7 +1508,7 @@ void UpgradeSheet::OnBalance(BalanceSnapshot const& snapshot, BalancePollState c
 hstring UpgradeSheet::CtaLabel() const {
   const std::string method = methods_.Method();
   if (cryptopay::IsCoin(method)) {
-    return hstring{Format("crypto_pay_button", Localized(cryptopay::MethodLabelKey(method)))};
+    return hstring{Format("crypto_pay_button", PaymentMethodName(method))};
   }
   return PlanPicker::CtaLabel(plans_.Yearly());
 }
@@ -1518,9 +1518,9 @@ void UpgradeSheet::ApplyMethods() {
   // row stays as it is
   if (!subscribeButton_ || !cryptoFinePrint_ || checkingOut_ || page_ != Page::Products) return;
   const BalanceSnapshot snapshot = balance_.Current();
-  const std::vector<std::string> methods =
-      cryptopay::PaymentMethodsFor(snapshot.cryptoAssets, snapshot.offer.active);
-  methods_.SetMethods(methods, wantedMethod_.empty() ? invoice_.PaymentMethod() : wantedMethod_);
+  const std::vector<cryptopay::PaymentTabView> tabs =
+      cryptopay::PaymentTabsFor(snapshot.cryptoAssets, snapshot.offer.active);
+  methods_.SetTabs(tabs, wantedMethod_.empty() ? invoice_.PaymentMethod() : wantedMethod_);
   ApplyMethod(methods_.Method());
 }
 

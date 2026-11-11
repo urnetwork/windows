@@ -114,9 +114,11 @@ var catalogFallbackFunctionNames = map[string]bool{
 	"fault":         true,
 }
 
-// Functions that take a key of something other than the catalog. None today:
-// the release list's JSON is read by Common/ReleaseJson.h, outside the app.
-var catalogNonLookupFunctionReasons = map[string]string{}
+// Functions that take a key of something other than the catalog. The release
+// list's JSON is read by Common/ReleaseJson.h, outside the app.
+var catalogNonLookupFunctionReasons = map[string]string{
+	"IsMarkKey": "the sdk's icon key, which names a bundled coin mark (CryptoPayPresentation.h)",
+}
 
 // One lookup a source makes, at the line of its call.
 type catalogLookup struct {
@@ -160,9 +162,25 @@ var catalogNonLookupLiteralReasons = map[string]string{
 }
 
 // Keys tagged windows that the app looks up only where the scan cannot see,
-// each with where. None today: every lookup is a call or a key literal of an
-// app source the scan reads.
-var catalogUnscannedTaggedKeyReasons = map[string]string{}
+// each with where: the crypto payment row's labels, which the sdk hands out as
+// a store key with its English (urnet::cryptoPaymentTabs' label_key and
+// urnet::cryptoAssetLabelKey), looked up by CryptoPayViews.cpp PaymentLabel.
+// crypto_pay_test.go TestCryptoPayStrings holds each to the catalog and to the
+// sdk's keys. Every other lookup is a call or a key literal of an app source
+// the scan reads.
+var catalogUnscannedTaggedKeyReasons = map[string]string{
+	"pay_method_usdc_solana": cryptoPaySdkLabelReason,
+	"pay_method_zcash":       cryptoPaySdkLabelReason,
+	"pay_method_monero":      cryptoPaySdkLabelReason,
+	"pay_method_more_coins":  cryptoPaySdkLabelReason,
+	"pay_method_tao":         cryptoPaySdkLabelReason,
+	"pay_method_bitcoin":     cryptoPaySdkLabelReason,
+	"pay_method_eth":         cryptoPaySdkLabelReason,
+	"pay_method_sol":         cryptoPaySdkLabelReason,
+}
+
+const cryptoPaySdkLabelReason = "a crypto payment label the sdk hands out by its key " +
+	"(urnet::cryptoPaymentTabs, urnet::cryptoAssetLabelKey), looked up by CryptoPayViews.cpp PaymentLabel"
 
 // Keys tagged windows that the app no longer looks up, each with why, until the
 // store moves windows to deprecated for them and the catalogs are regenerated.

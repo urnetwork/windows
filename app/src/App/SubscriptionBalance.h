@@ -50,8 +50,8 @@ struct BalanceSnapshot {
   int64_t startBalanceByteCount = 0;  // the "daily data balance" row
   bool isPro = false;
   // the current subscription's store family (urnet::classifySubscriptionStore:
-  // "stripe", "apple", "google", "crypto" for a one-time USDC, Zcash or Monero
-  // year, "other"), "" without a subscription
+  // "stripe", "apple", "google", "crypto" for a year paid once in a coin,
+  // "other"), "" without a subscription
   std::string subscriptionStoreFamily;
   bool guest = false;
   bool loaded = false;  // at least one successful fetch this session
@@ -65,7 +65,7 @@ struct BalanceSnapshot {
   std::string offerVariant;       // offer.in_app variant ("" when unassigned)
   std::string offerExperimentId;
   // The coins the server sells now (crypto-pay CONTRACT §2.2 crypto_assets),
-  // what the payment-method rows offer (cryptopay::PaymentMethodsFor). Empty
+  // what the payment-method rows offer (cryptopay::PaymentTabsFor). Empty
   // from an older server and with every coin switched off, which keeps every
   // billing surface exactly as it was.
   urnet::CryptoPaymentAssetList cryptoAssets;

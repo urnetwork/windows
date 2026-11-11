@@ -634,6 +634,22 @@
     <CopyFileToFolders Include="Assets\LoginCarousel3.jpg">
       <DestinationFolders>$(OutDir)Assets</DestinationFolders>
     </CopyFileToFolders>
+    <!-- The More coins tab's marks (mmm/BTCPAY.md section 17.6), named by the
+         sdk's icon keys. CryptoPayViews.cpp reads each file's one path and
+         draws it as a PathIcon, white at full contrast; THIRD-PARTY-NOTICES.txt
+         credits all four. -->
+    <CopyFileToFolders Include="Assets\coin_tao.svg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\coin_btc.svg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\coin_eth.svg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Assets\coin_sol.svg">
+      <DestinationFolders>$(OutDir)Assets</DestinationFolders>
+    </CopyFileToFolders>
   </ItemGroup>
 
   <!-- Brand faces (Assets/README.md). Same deal as the image above: an unpackaged

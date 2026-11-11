@@ -7,12 +7,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
 
-// Crypto payments (crypto-pay CONTRACT §4-§6): the payment-method row Card ·
-// USDC · Zcash · Monero on the upgrade sheet and the onboarding plan and offer
+// Crypto payments (crypto-pay CONTRACT §4-§6, mmm/BTCPAY.md §17.6): the
+// payment-method row Card · USDC on Solana · Zcash · Monero · More coins (TAO,
+// Bitcoin, ETH, SOL) on the upgrade sheet and the onboarding plan and offer
 // pages, the native invoice on the upgrade sheet, and the Account rows. The
 // rules are App/CryptoPayPresentation.h, run here by
 // app/tools/crypto-pay-tests.cpp; the sdk adapter App/CryptoPaySdk.h is built
@@ -20,14 +22,16 @@ import (
 // and the WinRT surfaces, which only a Windows build compiles, are read from
 // their sources.
 
-// The keys the crypto surfaces look up (CONTRACT §5, the lead's additions:
-// usdc_solana_network_only, crypto_payment_in_progress, crypto_does_not_renew).
+// The keys the crypto surfaces look up by name (CONTRACT §5, the lead's
+// additions: usdc_solana_network_only, crypto_payment_in_progress,
+// crypto_does_not_renew; the More coins words of 2026-11-10).
 // crypto_fine_print_data is the data packs' fine print, and Windows sells no
 // data pack.
 var cryptoPayKeys = []string{
-	"pay_method_label", "pay_method_card", "pay_method_usdc", "pay_method_zcash", "pay_method_monero",
-	"pay_method_card_only_monthly", "pay_method_unavailable", "crypto_pay_button",
+	"pay_method_label", "pay_method_card", "pay_method_card_only_monthly", "pay_method_unavailable",
+	"pay_method_more_coins_a11y", "crypto_pay_button",
 	"crypto_fine_print_yearly", "crypto_network_usdc", "crypto_network_zcash", "crypto_network_monero",
+	"crypto_network_tao", "crypto_network_bitcoin", "crypto_network_eth", "crypto_network_sol",
 	"crypto_invoice_send_exactly", "crypto_invoice_to_address", "crypto_invoice_memo",
 	"crypto_invoice_open_wallet", "crypto_invoice_copy", "crypto_invoice_copied",
 	"crypto_invoice_expires_in", "crypto_invoice_refresh_quote", "crypto_invoice_quote_expired",
@@ -35,8 +39,23 @@ var cryptoPayKeys = []string{
 	"crypto_status_paid", "crypto_status_review", "crypto_invoice_pay_another_way",
 	"crypto_invoice_wallets", "crypto_invoice_zcash_exchange_note", "crypto_invoice_unavailable",
 	"crypto_term_ended_notice", "crypto_term_renew", "usdc_solana_network_only",
-	"crypto_payment_in_progress", "crypto_does_not_renew",
+	"crypto_invoice_tao_network_only", "crypto_invoice_bitcoin_network_only",
+	"crypto_invoice_eth_network_only", "crypto_invoice_sol_network_only",
+	"crypto_invoice_send_exactly_to_address", "crypto_invoice_copy_address", "crypto_invoice_copy_amount",
+	"crypto_invoice_tao_no_payment_link", "crypto_payment_in_progress", "crypto_does_not_renew",
 }
+
+// The labels the sdk hands out with each tab and coin, a store key with its
+// English (CryptoPayViews.cpp PaymentLabel looks each up): the coins'
+// (cryptoAssetCoins) and More coins' (cryptoPaymentTabLayouts) in the sdk's
+// crypto_pay.go.
+var cryptoPaySdkLabelKeys = []string{
+	"pay_method_usdc_solana", "pay_method_zcash", "pay_method_monero", "pay_method_more_coins",
+	"pay_method_tao", "pay_method_bitcoin", "pay_method_eth", "pay_method_sol",
+}
+
+// The four marks of More coins, by the sdk's icon keys (CryptoIconKey*).
+var cryptoPayMoreCoinsMarks = []string{"coin_tao", "coin_btc", "coin_eth", "coin_sol"}
 
 // The sources of the crypto surfaces.
 var cryptoPaySources = []string{
@@ -324,11 +343,11 @@ func TestCryptoPayUpgradeSheetWiring(t *testing.T) {
 	requireCryptoPay(t, "UpgradeSheet::ApplyPrices", body("void UpgradeSheet::ApplyPrices("),
 		"root.Visibility(snapshot.offer.active?Visibility::Visible:Visibility::Collapsed);")
 	requireCryptoPay(t, "UpgradeSheet::CtaLabel", body("hstring UpgradeSheet::CtaLabel("),
-		`Format("crypto_pay_button",Localized(cryptopay::MethodLabelKey(method)))`,
+		`Format("crypto_pay_button",PaymentMethodName(method))`,
 		"returnPlanPicker::CtaLabel(plans_.Yearly());")
 	requireCryptoPay(t, "UpgradeSheet::ApplyMethods", body("void UpgradeSheet::ApplyMethods("),
-		"cryptopay::PaymentMethodsFor(snapshot.cryptoAssets,snapshot.offer.active);",
-		"methods_.SetMethods(methods,wantedMethod_.empty()?invoice_.PaymentMethod():wantedMethod_);")
+		"cryptopay::PaymentTabsFor(snapshot.cryptoAssets,snapshot.offer.active);",
+		"methods_.SetTabs(tabs,wantedMethod_.empty()?invoice_.PaymentMethod():wantedMethod_);")
 
 	emit := body("void UpgradeSheet::EmitPurchase(")
 	requireCryptoPay(t, "UpgradeSheet::EmitPurchase", emit,
@@ -361,15 +380,27 @@ func TestCryptoPayViewsWiring(t *testing.T) {
 	requireCryptoPayOrder(t, "CryptoInvoicePanel::Render", render,
 		"constcryptopay::CryptoInvoiceDisplaydisplay=cryptopay::DisplayFor(view,uriAllowed);",
 		"Show(state.busyLine,display.busy);",
-		"if(display.showQr){if(state.qrUri!=view.uri)DrawQr(state,view.uri);}",
-		"Show(state.openWallet,display.showQr);",
+		"Show(state.byHandLine,display.showByHandLine);",
+		// the QR is the sdk's qr text: a checked uri, or TAO's address alone
+		"if(display.showQr){if(state.qrText!=display.qrText)DrawQr(state,display.qrText);}",
+		"Show(state.noLinkNote,qrDrawn&&!display.noPaymentLinkKey.empty());",
+		"Show(state.openWallet,display.showOpenWallet);",
 		"Show(state.amountBlock,display.showAmount);",
 		"Show(state.addressBlock,display.showAddress);",
+		"Show(state.networkWarning,display.showNetworkWarning);",
 		"Show(state.memoBlock,display.showMemo);",
 		"Show(state.refreshButton,display.showRefresh);",
 		"Show(state.payAnotherWay,display.showPayAnotherWay);")
+	// Open in wallet hands over a uri, never the qr text: TAO's address-only QR
+	// has no Open in wallet
+	if strings.Contains(render, "Show(state.openWallet,display.showQr)") {
+		t.Error("CryptoInvoicePanel::Render shows Open in wallet with the QR; a coin with no payment link has a QR and nothing to open")
+	}
+	requireCryptoPay(t, "CryptoInvoicePanel::LabelCopyButtons", body("void CryptoInvoicePanel::LabelCopyButtons("),
+		`Loc(state.copySaysWhat?"crypto_invoice_copy_amount":"crypto_invoice_copy")`,
+		`Loc(state.copySaysWhat?"crypto_invoice_copy_address":"crypto_invoice_copy")`)
 	requireCryptoPay(t, "CryptoInvoicePanel::DrawQr", body("void CryptoInvoicePanel::DrawQr("),
-		"qrcodegen::QrCode::encodeText(uri.c_str(),qrcodegen::QrCode::Ecc::MEDIUM);",
+		"qrcodegen::QrCode::encodeText(text.c_str(),qrcodegen::QrCode::Ecc::MEDIUM);",
 		"cryptopay::QrLayoutFor(moduleCount,state.qrMaxSide);",
 		"ExtenderQrRunsFor(moduleCount,dark,0,0)")
 	requireCryptoPay(t, "CopyText", cryptoPayCode(views), "rows::CopyToClipboard(text);")
@@ -511,8 +542,11 @@ func TestCryptoPayOnboardingWiring(t *testing.T) {
 		"CryptoInvoice().SetPaymentMethod(method);",
 		"welcomeMethods_.Select(method);offerMethods_.Select(method);")
 	requireCryptoPay(t, "Onboarding::ApplyMethods", body("void Onboarding::ApplyMethods("),
-		"cryptopay::PaymentMethodsFor(balance_.cryptoAssets,balance_.offer.active);",
-		"welcomeMethods_.SetMethods(methods,wanted);offerMethods_.SetMethods(methods,wanted);")
+		"cryptopay::PaymentTabsFor(balance_.cryptoAssets,balance_.offer.active);",
+		"welcomeMethods_.SetTabs(tabs,wanted);offerMethods_.SetTabs(tabs,wanted);")
+	for _, signature := range []string{"void Onboarding::ApplyOfferCta(", "void Onboarding::ApplyPlanCta("} {
+		requireCryptoPay(t, signature, body(signature), `Format("crypto_pay_button",PaymentMethodName(method_))`)
+	}
 	requireCryptoPayOrder(t, "Onboarding::ApplyMethod", body("void Onboarding::ApplyMethod("),
 		"plans_.SetCardOnlyMonthly(cryptopay::MonthlyLocked(method));",
 		// no trial or renewal wording while a coin is selected (§6.1)
@@ -643,7 +677,9 @@ func TestCryptoPaySdkIsReadInOnePlace(t *testing.T) {
 	adapterOnly := []string{
 		"urnet::paymentMethods(", "urnet::checkCryptoPaymentUri(", "urnet::cryptoWalletSuggestions(",
 		"urnet::cryptoTermNoticeDue(", "urnet::paymentMethodAllowsPlan(", ".crypto_assets", ".crypto_term",
-		".seconds_left", ".error_code",
+		".seconds_left", ".error_code", "urnet::cryptoPaymentTabs(", "urnet::cryptoPaymentTabId(",
+		"urnet::cryptoAssetLabelKey(", "urnet::cryptoAssetLabel(", "urnet::cryptoAssetMarket(",
+		"urnet::CryptoPaymentTab", ".qr_text", ".icon_keys", ".label_key",
 	}
 	storeOnly := []string{"urnet::newCryptoInvoiceViewController(", "urnet::CryptoInvoiceViewController"}
 	for name, source := range appSourceFiles(t, ".cpp", ".h") {
@@ -695,6 +731,36 @@ func TestCryptoPayStrings(t *testing.T) {
 	if strings.Contains(code, `"crypto_fine_print_data"`) {
 		t.Error("crypto_fine_print_data is looked up, but Windows sells no data pack")
 	}
+	// the tabs' and coins' labels are the sdk's keys, looked up as it hands
+	// them out: in the catalog, tagged windows, and named where the catalog
+	// scan cannot see them; USDC's tab reads USDC on Solana, so the bare USDC
+	// label is no longer this app's
+	for _, key := range cryptoPaySdkLabelKeys {
+		if reswValue(t, root, "en", key) == "" {
+			t.Errorf("en/Resources.resw has no %s", key)
+		}
+		if !taggedKeys[key] {
+			t.Errorf("%s is not tagged windows", key)
+		}
+		if catalogUnscannedTaggedKeyReasons[key] == "" {
+			t.Errorf("%s is not in catalogUnscannedTaggedKeyReasons, where the sdk's labels are named", key)
+		}
+		if strings.Contains(code, `"`+key+`"`) {
+			t.Errorf("the crypto surfaces name %s themselves: a label comes from the sdk's tabs and coins", key)
+		}
+	}
+	if taggedKeys["pay_method_usdc"] || strings.Contains(code, `"pay_method_usdc"`) {
+		t.Error("pay_method_usdc is still looked up or tagged windows: the USDC tab is the sdk's pay_method_usdc_solana")
+	}
+	views := cryptoPayCode(stripComments(readAppSource(t, "CryptoPayViews.cpp")))
+	requireCryptoPayOrder(t, "PaymentLabel", views,
+		"std::wstringPaymentLabel(std::stringconst&key,std::stringconst&english){",
+		"if(key.empty())returnWiden(english);",
+		"std::wstringtext=Localized(key);",
+		"if(text==Widen(key))returnWiden(english);",
+		"returntext;")
+	requireCryptoPay(t, "PaymentMethodName", views,
+		"constcryptopay::MethodLabelTextlabel=cryptopay::MethodLabel(method);returnPaymentLabel(label.key,label.english);")
 	// the two counted lines format their counts with Format, never by hand
 	for _, want := range []string{
 		`Format("crypto_status_confirming", display.confirmations,`,
@@ -703,5 +769,230 @@ func TestCryptoPayStrings(t *testing.T) {
 		if !strings.Contains(stripComments(readAppSource(t, "CryptoPayViews.cpp")), want) {
 			t.Errorf("CryptoPayViews.cpp: missing %s", want)
 		}
+	}
+}
+
+// The row lays out the sdk's tabs after Card (mmm/BTCPAY.md §17.6): each tab
+// labelled by the sdk's key, More coins with its coins' marks each its own
+// with space between them and its coins named for a screen reader, a list of
+// those coins under the bar while it is chosen, each with its network line;
+// an unavailable coin or tab cannot be chosen and greys its label, never its
+// mark; choosing More coins picks its coin chosen last (or remembered), and
+// the selection's tab is the sdk's tab id.
+func TestCryptoPayMoreCoinsRowWiring(t *testing.T) {
+	views := stripComments(readAppSource(t, "CryptoPayViews.cpp"))
+	body := func(signature string) string {
+		return cryptoPayCode(definitionBody(t, "CryptoPayViews.cpp", views, signature))
+	}
+	rebuild := body("void PaymentMethodRow::Rebuild(")
+	requireCryptoPayOrder(t, "PaymentMethodRow::Rebuild", rebuild,
+		"if(cryptopay::MethodRowShows(state.tabs)){",
+		"card.Text(hstring{PaymentMethodName(cryptopay::kMethodCard)});",
+		"for(cryptopay::PaymentTabViewconst&tab:state.tabs){",
+		"consthstringtabName{PaymentLabel(tab.labelKey,tab.label)};",
+		// a coin's tab that cannot be paid with now: greyed, with the note
+		"if(!tab.available&&!cryptopay::TabOpensCoins(tab)){",
+		"lines.Children().Append(MakeText(tabName,14,colors::FaintBrush()));",
+		`lines.Children().Append(MakeText(Loc("pay_method_unavailable"),11,colors::MutedBrush()));`,
+		"item.Child(lines);",
+		"item.Text(tabName);",
+		"if(cryptopay::TabOpensCoins(tab)){",
+		"marks.Spacing(8);",
+		"for(std::stringconst&iconKey:tab.iconKeys){if(PathIconmark=CoinMark(iconKey,kTabMarkSize))marks.Children().Append(mark);}",
+		"if(0<marks.Children().Size())item.Child(marks);",
+		`Format("pay_method_more_coins_a11y",Widen(cryptopay::JoinNames(names)))`,
+		// the list, titled with the tab's name
+		"state.coinsPanel.Children().Append(MakeText(tabName,12,colors::MutedBrush()));",
+		"for(cryptopay::PaymentCoinViewconst&coin:tab.coins){",
+		"if(PathIconmark=CoinMark(coin.iconKey,kCoinMarkSize))content.Children().Append(mark);",
+		"coin.available?colors::TextBrush():colors::FaintBrush()",
+		"conststd::stringnetworkKey=cryptopay::NetworkLineKey(coin.asset);",
+		`consthstringunavailable=Loc("pay_method_unavailable");`,
+		"choice.IsEnabled(state.enabled&&coin.available);",
+		"item.IsEnabled(tab.available);")
+	// a mark is never dimmed, and the onboarding's two rows never share a
+	// radio group
+	for _, gone := range []string{"Opacity(", "GroupName("} {
+		if strings.Contains(rebuild, gone) {
+			t.Errorf("PaymentMethodRow::Rebuild calls %s", gone)
+		}
+	}
+	requireCryptoPay(t, "PaymentMethodRow::Build", body("StackPanel PaymentMethodRow::Build("),
+		"method=cryptopay::TabCoinToSelect(self->tabs[index-1],self->wanted);",
+		"state.root.Children().Append(state.coinsPanel);")
+	requireCryptoPay(t, "PaymentMethodRow::SetTabs", body("void PaymentMethodRow::SetTabs("),
+		"state.selected=cryptopay::MethodToSelect(state.tabs,wanted);")
+	requireCryptoPayOrder(t, "PaymentMethodRow::Apply", body("void PaymentMethodRow::Apply("),
+		"conststd::stringtabId=cryptopay::TabIdFor(state.selected);",
+		"if(segment<state.items.size())state.bar.SelectedItem(state.items[segment]);",
+		"coin.button.IsChecked(coin.asset==state.selected);",
+		"state.coinsPanel.Visibility(coins?Visibility::Visible:Visibility::Collapsed);")
+
+	// the marks: white on this dark app, whatever the coin's state
+	requireCryptoPay(t, "CryptoPayViews.cpp", cryptoPayCode(views),
+		"constexprwinrt::Windows::UI::ColorkMarkOnDark{255,0xFF,0xFF,0xFF};")
+	requireCryptoPay(t, "CoinMark", body("PathIcon CoinMark("),
+		"PathIconCoinMark(std::stringconst&iconKey,doublesize){",
+		"returnkit::MakeRowPathIcon(data,cryptopay::kMarkViewBox,size,colors::MakeBrush(kMarkOnDark));")
+	requireCryptoPayOrder(t, "MarkPathData", body("std::wstring const& MarkPathData("),
+		"if(cryptopay::IsMarkKey(iconKey)){",
+		`std::ifstreamin(dir/L"Assets"/(Widen(iconKey)+L".svg"),std::ios::binary);`,
+		"data=Widen(cryptopay::SvgPathData(svg.str()));")
+	// the PathIcon's markup fills nonzero (an even-odd fill hollows ETH's
+	// facets and TAO's stem)
+	components := stripComments(readAppSource(t, "UrComponents.cpp"))
+	if !strings.Contains(components, `Data='F1 " +`) {
+		t.Error("kit::MakeRowPathIcon no longer prefixes the path data with F1: XAML fills even-odd by default")
+	}
+	if !strings.Contains(stripComments(readAppSource(t, "App.xaml")), `RequestedTheme="Dark"`) {
+		t.Error(`App.xaml is no longer RequestedTheme="Dark": the marks' white (kMarkOnDark) is for a dark theme only`)
+	}
+}
+
+// One plain path of an svg (CryptoPayPresentation.h SvgPathData's rules): its
+// d attribute, or "" when the file has none, several, or data the PathIcon's
+// markup must not carry.
+func cryptoPayMarkPathData(svg string) string {
+	code := regexp.MustCompile(`(?s)<!--.*?-->`).ReplaceAllString(svg, "")
+	paths := regexp.MustCompile(`<path[\s/>][^>]*>`).FindAllString(code, -1)
+	if len(paths) != 1 {
+		return ""
+	}
+	match := regexp.MustCompile(`\sd="([^"]*)"`).FindStringSubmatch(paths[0])
+	if match == nil || !regexp.MustCompile(`^[0-9A-Za-z .,+-]+$`).MatchString(match[1]) {
+		return ""
+	}
+	return match[1]
+}
+
+// The marks ship beside the exe, where CoinMark reads them: App.vcxproj copies
+// each to $(OutDir)Assets, and each is one path on a 24 x 24 box, filled
+// nonzero, that SvgPathData reads.
+func TestCryptoPayCoinMarksShip(t *testing.T) {
+	root := repositoryRoot(t)
+	project := cryptoPayCode(stripComments(readAppSource(t, "App.vcxproj")))
+	for _, mark := range cryptoPayMoreCoinsMarks {
+		want := `<CopyFileToFoldersInclude="Assets\` + mark + `.svg"><DestinationFolders>$(OutDir)Assets</DestinationFolders></CopyFileToFolders>`
+		if !strings.Contains(project, want) {
+			t.Errorf("App.vcxproj does not copy Assets\\%s.svg beside the exe", mark)
+		}
+		data, err := os.ReadFile(filepath.Join(root, "app", "src", "App", "Assets", mark+".svg"))
+		if err != nil {
+			t.Errorf("%s: %v", mark, err)
+			continue
+		}
+		svg := string(data)
+		if cryptoPayMarkPathData(svg) == "" {
+			t.Errorf("Assets/%s.svg is not one plain path SvgPathData reads", mark)
+		}
+		if !strings.Contains(svg, `viewBox="0 0 24 24"`) {
+			t.Errorf("Assets/%s.svg is not on the 24 x 24 box kMarkViewBox draws", mark)
+		}
+		if strings.Contains(svg, "evenodd") {
+			t.Errorf("Assets/%s.svg fills even-odd; the PathIcon fills nonzero", mark)
+		}
+	}
+	if cryptoPayMarkPathData(`<svg><path d="M0 0Z"/><path d="M1 1Z"/></svg>`) != "" ||
+		cryptoPayMarkPathData(`<svg><!-- <path d="M9 9Z"/> --><path d="M0 0'Z"/></svg>`) != "" ||
+		cryptoPayMarkPathData(`<svg><path fill="currentColor" d="M0 0L1 1Z"/></svg>`) != "M0 0L1 1Z" {
+		t.Error("cryptoPayMarkPathData does not follow SvgPathData's rules")
+	}
+}
+
+// The words this app keeps for each coin (kCoinWords) are the sdk's coins:
+// one row per CryptoAsset*, the same asset ids, each payment uri's scheme the
+// sdk's (urnet::cryptoPaymentUriScheme), More coins' marks the files that
+// ship, and the labels the sdk hands out the ones this app names. Read from
+// the sdk's crypto_pay.go beside this repository; skipped without one.
+func TestCryptoPayAgreesWithTheSdk(t *testing.T) {
+	root := repositoryRoot(t)
+	sdkFile := filepath.Join(filepath.Dir(root), "sdk", "crypto_pay.go")
+	if dir := os.Getenv("URNETWORK_SDK_SOURCE"); dir != "" {
+		sdkFile = filepath.Join(dir, "crypto_pay.go")
+	}
+	data, err := os.ReadFile(sdkFile)
+	if err != nil {
+		t.Skipf("no sdk crypto_pay.go beside this repository (set URNETWORK_SDK_SOURCE): %v", err)
+	}
+	sdk := string(data)
+
+	sdkAssets := map[string]string{} // CryptoAssetTao -> "tao"
+	for _, match := range regexp.MustCompile(`\n\t(CryptoAsset\w+)\s*=\s*"([a-z_]+)"`).FindAllStringSubmatch(sdk, -1) {
+		sdkAssets[match[1]] = match[2]
+	}
+	iconKeys := map[string]string{} // CryptoIconKeyTao -> "coin_tao"
+	for _, match := range regexp.MustCompile(`\n\t(CryptoIconKey\w+)\s*=\s*"([a-z_]+)"`).FindAllStringSubmatch(sdk, -1) {
+		iconKeys[match[1]] = match[2]
+	}
+	coins := regexp.MustCompile(`(?s)\n\t(CryptoAsset\w+): \{(.*?)\n\t\},`).FindAllStringSubmatch(sdk, -1)
+	if len(sdkAssets) < 7 || len(coins) < 7 {
+		t.Fatalf("%s: read %d assets and %d coins; update this contract", sdkFile, len(sdkAssets), len(coins))
+	}
+
+	presentation := stripComments(readAppSource(t, "CryptoPayPresentation.h"))
+	appAssets := map[string]string{} // kAssetTao -> "tao"
+	for _, match := range regexp.MustCompile(`inline constexpr const char\* (kAsset\w+) = "([a-z_]+)";`).FindAllStringSubmatch(presentation, -1) {
+		appAssets[match[1]] = match[2]
+	}
+	appSchemes := map[string]string{} // kAssetTao -> ""
+	for _, match := range regexp.MustCompile(`\{(kAsset\w+),\s*"([a-z]*:?)"`).FindAllStringSubmatch(presentation, -1) {
+		appSchemes[match[1]] = match[2]
+	}
+	if len(appSchemes) != len(coins) {
+		t.Errorf("kCoinWords has %d rows, the sdk %d coins", len(appSchemes), len(coins))
+	}
+	for _, coin := range coins {
+		name := strings.TrimPrefix(coin[1], "CryptoAsset")
+		appName := "kAsset" + name
+		if appAssets[appName] != sdkAssets[coin[1]] {
+			t.Errorf("%s is %q, the sdk's %s %q", appName, appAssets[appName], coin[1], sdkAssets[coin[1]])
+		}
+		scheme, ok := appSchemes[appName]
+		if !ok {
+			t.Errorf("kCoinWords has no row for %s", appName)
+			continue
+		}
+		sdkScheme := regexp.MustCompile(`uriScheme:\s*"([a-z]*)"`).FindStringSubmatch(coin[2])
+		if sdkScheme == nil {
+			t.Errorf("the sdk's %s names no uriScheme; update this contract", coin[1])
+			continue
+		}
+		want := sdkScheme[1]
+		if want != "" {
+			want += ":"
+		}
+		if scheme != want {
+			t.Errorf("kCoinWords gives %s the scheme %q, the sdk %q", appName, scheme, want)
+		}
+	}
+
+	// the labels the sdk hands out are the ones TestCryptoPayStrings holds
+	sdkLabels := []string{}
+	for _, match := range regexp.MustCompile(`labelKey:\s*"([a-z_]+)"`).FindAllStringSubmatch(sdk, -1) {
+		sdkLabels = append(sdkLabels, match[1])
+	}
+	if !slices.Equal(slices.Sorted(slices.Values(sdkLabels)), slices.Sorted(slices.Values(cryptoPaySdkLabelKeys))) {
+		t.Errorf("the sdk's labels are %v, cryptoPaySdkLabelKeys %v", sdkLabels, cryptoPaySdkLabelKeys)
+	}
+
+	// More coins' marks, in its order, are the files that ship
+	moreCoins := regexp.MustCompile(`(?s)id:\s*CryptoPaymentTabMoreCoins,.*?assets:\s*\[\]string\{([^}]*)\}`).FindStringSubmatch(sdk)
+	if moreCoins == nil {
+		t.Fatalf("%s: no More coins layout; update this contract", sdkFile)
+	}
+	marks := []string{}
+	for _, asset := range strings.Split(moreCoins[1], ",") {
+		asset = strings.TrimSpace(asset)
+		for _, coin := range coins {
+			if coin[1] != asset {
+				continue
+			}
+			if icon := regexp.MustCompile(`iconKey:\s*(CryptoIconKey\w+)`).FindStringSubmatch(coin[2]); icon != nil {
+				marks = append(marks, iconKeys[icon[1]])
+			}
+		}
+	}
+	if strings.Join(marks, ",") != strings.Join(cryptoPayMoreCoinsMarks, ",") {
+		t.Errorf("More coins' marks are %v in the sdk, %v here", marks, cryptoPayMoreCoinsMarks)
 	}
 }
