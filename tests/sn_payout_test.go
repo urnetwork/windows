@@ -369,7 +369,11 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		`MakeText(Loc("sn_ledger_pool_under_floor"), 13, colors::MutedBrush(), true)`,
 		"if (ctfWin_ && !winShown && account.kind == snpayout::PoolKind::Ctf) {",
 		"MakeText(CtfWinText(*ctfWin_), 13, colors::TextBrush(), true)",
-		`w_.SettlementV2ClaimButton().Content(LocBox(view.claimBoth ? "sn_ledger_claim_both" : "claim"));`)
+		`w_.SettlementV2ClaimButton().Content(LocBox(view.claimBoth ? "sn_ledger_claim_both" : "claim"));`,
+		// a network with no wallet here: the relay's figure sums the pools it
+		// could read, and its pool rows say which one it could not
+		"if (auto rows = btkeyviews::MakeRelayPoolRows(*claimStatus_)) relayPanel.Children().Append(rows);",
+		"if (ctfWin_) relayPanel.Children().Append(MakeText(CtfWinText(*ctfWin_), 13, colors::TextBrush(), true));")
 	// an unavailable pool's block draws no figure: the figures are the else
 	// branch of the unavailable line
 	if at := strings.Index(section, "if (account.unavailable) {"); at >= 0 {
@@ -411,7 +415,9 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		"progress_(accounts, gas.tao, unavailable, transferFloorRao)")
 	requireAll("ClaimLedgerSheet::BuildRow", body("EarningsSheets.cpp", sheets, "UIElement ClaimLedgerSheet::BuildRow("),
 		"PoolTitleText(progress_.TitleKey(row), row.noId)",
-		"const bool unavailable = row.unavailable && row.state == snpayout::LedgerClaimState::Idle;",
+		// no figure for an unavailable pool or an amount not known yet: never a zero
+		"const bool known = row.amountRao > 0 && !row.unavailable;",
+		"known ? hstring{FormatAlphaRao(row.amountRao)} : hstring{}",
 		`word = Loc("sn_ledger_pool_unavailable");`, `word = Loc("sn_ledger_pool_under_floor");`)
 	requireAll("ClaimLedgerSheet::ApplyState", body("EarningsSheets.cpp", sheets, "void ClaimLedgerSheet::ApplyState("),
 		"progress_.ClaimsBoth()", `? Loc("sn_ledger_claim_both")`,

@@ -84,7 +84,6 @@ LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, Ledge
       block.noId = account.noId;
       block.kind = account.kind;
       block.claimableRao = account.claimableRao;
-      block.underFloor = UnderTransferFloor(account.claimableRao, transferFloorRao);
       block.paidRao = account.paidRao;
       block.earnedRao = account.finalizedRao;
       block.showPending = account.pending && account.pendingRao > account.finalizedRao;
@@ -116,8 +115,13 @@ LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, Ledge
       std::any_of(view.accounts.begin(), view.accounts.end(),
                   [](const LedgerAccountView& block) { return block.kind == PoolKind::Ctf; });
   view.poolTitles = view.accounts.size() > 1 || besideCtf;
+  // blocks that name their pools say their own status; a lone account's floor
+  // is the claim relay's note under it, as before capture the flag
   if (view.poolTitles) {
-    for (LedgerAccountView& block : view.accounts) block.titleKey = PoolTitleKey(block.kind, besideCtf);
+    for (LedgerAccountView& block : view.accounts) {
+      block.titleKey = PoolTitleKey(block.kind, besideCtf);
+      block.underFloor = UnderTransferFloor(block.claimableRao, transferFloorRao);
+    }
   }
   if (fetch == LedgerFetch::Failed) view.note = LedgerNote::Unavailable;
   if (fetch == LedgerFetch::NoDevice) view.note = LedgerNote::NeedsSession;
@@ -187,6 +191,18 @@ LedgerClaimProgress::LedgerClaimProgress(const std::vector<LedgerAccount>& accou
     // chain did not answer) does not block the attempt, and the SDK's
     // preflight says needs_gas if it comes to that.
     : needsGas_(gasTao.has_value() && *gasTao <= 0.0) {
+  // the pools of the page's read, as the tile has them: every account,
+  // claimable or not, and each pool it could not read and did not list (the
+  // SDK refuses an answer with a pool in both)
+  std::vector<UnavailablePool> unlisted;
+  for (const UnavailablePool& pool : unavailable) {
+    auto same = [&pool](const LedgerAccount& account) { return account.noId == pool.noId; };
+    if (!std::any_of(accounts.begin(), accounts.end(), same)) unlisted.push_back(pool);
+  }
+  for (const LedgerAccount& account : accounts) besideCtf_ = besideCtf_ || account.kind == PoolKind::Ctf;
+  for (const UnavailablePool& pool : unlisted) besideCtf_ = besideCtf_ || pool.kind == PoolKind::Ctf;
+  // a row says its own floor where the tile's blocks do: beside another pool
+  const bool namesPools = accounts.size() + unlisted.size() > 1 || besideCtf_;
   for (const LedgerAccount& account : accounts) {
     if (account.claimableRao <= 0) continue;
     LedgerClaimRow row;
@@ -194,14 +210,12 @@ LedgerClaimProgress::LedgerClaimProgress(const std::vector<LedgerAccount>& accou
     row.index = account.index;
     row.kind = account.kind;
     row.amountRao = account.claimableRao;
-    row.underFloor = UnderTransferFloor(account.claimableRao, transferFloorRao);
+    row.underFloor = namesPools && UnderTransferFloor(account.claimableRao, transferFloorRao);
     rows_.push_back(row);
   }
   // a pool the page could not read: its noId and index 0, as the claim
   // reports it (SnLedgerClaimCallback, ledger_unavailable)
-  for (const UnavailablePool& pool : unavailable) {
-    auto same = [&pool](const LedgerClaimRow& row) { return row.noId == pool.noId; };
-    if (std::any_of(rows_.begin(), rows_.end(), same)) continue;
+  for (const UnavailablePool& pool : unlisted) {
     LedgerClaimRow row;
     row.noId = pool.noId;
     row.kind = pool.kind;
@@ -237,9 +251,10 @@ bool LedgerClaimProgress::ClaimsBoth() const {
 }
 
 std::string LedgerClaimProgress::TitleKey(const LedgerClaimRow& row) const {
-  const bool besideCtf = std::any_of(rows_.begin(), rows_.end(), [](const LedgerClaimRow& other) {
-    return other.kind == PoolKind::Ctf;
-  });
+  const bool besideCtf =
+      besideCtf_ || std::any_of(rows_.begin(), rows_.end(), [](const LedgerClaimRow& other) {
+        return other.kind == PoolKind::Ctf;
+      });
   return PoolTitleKey(row.kind, besideCtf);
 }
 
@@ -372,12 +387,14 @@ std::vector<RelayRow> RelayRowsFor(const std::vector<RelayAccount>& accounts,
     rows.push_back(row);
     kinds.push_back(pool.kind);
   }
-  // one pool's row alone is the sheet's figure, as before capture the flag
-  if (rows.size() == 1 && kinds[0] == PoolKind::Pool &&
-      rows[0].status != RelayRowStatus::Unavailable) {
-    return {};
-  }
+  // capture the flag's account, or a pool the status could not read, makes the
+  // rows; the provider pool's accounts alone are the sheet's figure and its
+  // notes, as before capture the flag
   const bool besideCtf = std::find(kinds.begin(), kinds.end(), PoolKind::Ctf) != kinds.end();
+  const bool anyUnavailable = std::any_of(rows.begin(), rows.end(), [](const RelayRow& row) {
+    return row.status == RelayRowStatus::Unavailable;
+  });
+  if (!besideCtf && !anyUnavailable) return {};
   for (size_t i = 0; i < rows.size(); ++i) {
     rows[i].titleKey = PoolTitleKey(kinds[i], besideCtf);
     // a network paid to one coldkey needs no coldkey on its rows

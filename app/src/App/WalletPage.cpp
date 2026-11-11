@@ -2639,9 +2639,12 @@ void WalletPage::RebuildV2Section() {
     auto relayFigure = MakeValue(hstring{FormatAlphaRao(claimStatus_->claimable_rao)}, 32);
     if (claimStatus_->claimable_rao > 0) relayFigure.Foreground(colors::AccentBrush());
     block.Children().Append(relayFigure);
-    // capture the flag's won slot, under the figure the relay claims
-    if (ctfWin_) block.Children().Append(MakeText(CtfWinText(*ctfWin_), 13, colors::TextBrush(), true));
     relayPanel.Children().Append(block);
+    // the figure sums the pools the relay could read: a row per pool beside
+    // capture the flag's, and a pool it could not read says so, never hidden
+    if (auto rows = btkeyviews::MakeRelayPoolRows(*claimStatus_)) relayPanel.Children().Append(rows);
+    // capture the flag's won slot, under the figure the relay claims
+    if (ctfWin_) relayPanel.Children().Append(MakeText(CtfWinText(*ctfWin_), 13, colors::TextBrush(), true));
     kit::SetTextOrCollapse(w_.SettlementV2Note(), hstring{});
     w_.SettlementV2ClaimButton().Visibility(Visibility::Collapsed);
     ApplyRelayToV2Section(view);
@@ -2749,11 +2752,13 @@ int64_t WalletPage::TransferFloorRao() const {
 
 // Device.snLedgerClaim, as the v2 dialog's claimer: the SDK reads the accounts
 // of every pool (capture the flag's beside the provider pool's) and their
-// proofs, verifies each against vault2's root, preflights, and sends them to
-// the pinned vault2, one claim alone or two or more in one STClaimBatcher
-// transaction, signed with the gas key and reported per account. After its
-// Done the page reads the accounts and the gas balance again, whether or not
-// the dialog is still up. Nothing here touches a URnetwork API.
+// proofs, verifies each against vault2's root, preflights, and sends them,
+// signed with the gas key and reported per account: two or more in one
+// STClaimBatcher transaction that calls the pinned vault2 for each, where the
+// chain settings name a batcher and the gas key can pay for it, else one claim
+// each to vault2. After its Done the page reads the accounts and the gas
+// balance again, whether or not the dialog is still up. Nothing here touches a
+// URnetwork API.
 LedgerClaimer WalletPage::MakeV2Claimer() {
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();

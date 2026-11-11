@@ -712,16 +712,40 @@ int main() {
   }
   {
     TEST_CASE("ctf: an older server's entries are pools, and everything is what it was");
-    // an entry without a kind reads as a pool (LedgerAccountFrom of kind "")
-    const LedgerSectionView one = Section(true, LedgerFetch::Ready, {Account()});
-    Check(!one.poolTitles && one.accounts.size() == 1 && one.accounts[0].titleKey.empty(),
-          "a lone account names no pool");
-    Check(one.showClaim && one.claimEnabled && !one.claimBoth, "Claim");
-    LedgerClaimProgress progress({Account()}, 0.5);
-    CheckEq("sn_ledger_pool", progress.TitleKey(progress.rows()[0]), "Pool {} in the dialog");
-    Check(!progress.ClaimsBoth(), "Claim with its amount");
-    Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000)}, {}, 0).empty(),
-          "the claim sheet's figure, with no rows");
+    // an entry without a kind reads as a pool (LedgerAccountFrom of kind ""),
+    // and the relay's floor is known today too
+    constexpr int64_t kFloor = 100'000'000;
+    LedgerAccount small = Account();
+    small.claimableRao = 50'000'000;
+    for (const int64_t floor : {int64_t{0}, kFloor}) {
+      const std::string with = floor ? ", with the relay's floor" : "";
+      const LedgerSectionView one =
+          LedgerSectionFor(true, true, LedgerFetch::Ready, {Account()}, true, {}, floor);
+      Check(one == Section(true, LedgerFetch::Ready, {Account()}), "the section as before" + with);
+      Check(!one.poolTitles && one.accounts.size() == 1 && one.accounts[0].titleKey.empty(),
+            "a lone account names no pool" + with);
+      Check(one.showClaim && one.claimEnabled && !one.claimBoth, "Claim" + with);
+      // a lone account under the floor: the relay's note says it, not the block
+      Check(!LedgerSectionFor(true, true, LedgerFetch::Ready, {small}, true, {}, floor)
+                 .accounts[0]
+                 .underFloor,
+            "a lone account is not marked under the floor" + with);
+      LedgerClaimProgress progress({Account()}, 0.5, {}, floor);
+      CheckEq("sn_ledger_pool", progress.TitleKey(progress.rows()[0]), "Pool {} in the dialog" + with);
+      Check(!progress.ClaimsBoth(), "Claim with its amount" + with);
+      Check(!LedgerClaimProgress({small}, 0.5, {}, floor).rows()[0].underFloor,
+            "its dialog row is not marked" + with);
+      Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000)}, {}, floor).empty(),
+            "the claim sheet's figure, with no rows" + with);
+      Check(RelayRowsFor({Relay(1, PoolKind::Pool, 50'000'000)}, {}, floor).empty(),
+            "under the floor too: the claim sheet's note says it" + with);
+      // a network paid to two coldkeys (one of them a wallet it replaced)
+      Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000, "5AAA"),
+                          Relay(1, PoolKind::Pool, 120'000'000, "5BBB")},
+                         {}, floor)
+                .empty(),
+            "two coldkeys' provider pool accounts: no rows, as before" + with);
+    }
   }
   {
     TEST_CASE("ctf: the capture the flag account is a block of its own beside the provider pool's");
@@ -822,11 +846,30 @@ int main() {
     Check(view.claimEnabled && !view.claimBoth, "Claim, not Claim both: no claim moves 0.05 now");
     Check(!Section(true, LedgerFetch::Ready, {Account(), CtfAccount()}).accounts[1].underFloor,
           "without the relay's floor nothing is under it");
+    // a lone capture the flag account names its pool, so it says its floor
+    Check(LedgerSectionFor(true, true, LedgerFetch::Ready, {CtfAccount()}, true, {}, kFloor)
+              .accounts[0]
+              .underFloor,
+          "capture the flag's alone");
+    // beside a pool the read could not read
+    LedgerAccount smallPool = Account();
+    smallPool.claimableRao = 50'000'000;
+    const LedgerSectionView beside = LedgerSectionFor(true, true, LedgerFetch::Ready, {smallPool}, true,
+                                                      {Unavailable(kCtfNoId, PoolKind::Ctf)}, kFloor);
+    Check(beside.accounts[0].underFloor && !beside.accounts[1].underFloor,
+          "the provider pool's under it, beside capture the flag unavailable");
     // under the floor alone, Claim stays as it was: the SDK's preflight decides
     LedgerAccount small = Account();
     small.claimableRao = 1;
     Check(LedgerSectionFor(true, true, LedgerFetch::Ready, {small}, true, {}, kFloor).claimEnabled,
           "Claim enabled");
+    // the dialog marks a row where the tile marks its block
+    const LedgerClaimProgress dialog({Account(), CtfAccount()}, 0.5, {}, kFloor);
+    Check(!dialog.rows()[0].underFloor && dialog.rows()[1].underFloor, "the dialog's rows");
+    Check(LedgerClaimProgress({smallPool}, 0.5, {Unavailable(kCtfNoId, PoolKind::Ctf)}, kFloor)
+              .rows()[0]
+              .underFloor,
+          "beside an unavailable pool");
   }
   {
     TEST_CASE("ctf claim: one Claim claims both pools, in one batch transaction");
@@ -867,6 +910,21 @@ int main() {
     Check(alone.rows().size() == 2, "the same row");
     CheckRow(alone.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Confirmed, "0xalone", "",
              "its own transaction");
+    // capture the flag's account with nothing to claim has no row, and the
+    // provider pool's row is named as the tile names its block
+    LedgerAccount ctfPaid = CtfAccount();
+    ctfPaid.claimableRao = 0;
+    ctfPaid.paidRao = ctfPaid.finalizedRao;
+    const LedgerClaimProgress paidCtf({Account(), ctfPaid}, 0.5);
+    Check(paidCtf.rows().size() == 1, "one row");
+    CheckEq("sn_ledger_provider_pool", paidCtf.TitleKey(paidCtf.rows()[0]), "the dialog's title");
+    CheckEq("sn_ledger_provider_pool",
+            Section(true, LedgerFetch::Ready, {Account(), ctfPaid}).accounts[0].titleKey,
+            "the tile's title");
+    Check(!paidCtf.ClaimsBoth(), "Claim with its amount");
+    const LedgerClaimProgress unavailableCtf({Account()}, 0.5, {Unavailable(kCtfNoId, PoolKind::Ctf)});
+    CheckEq("sn_ledger_provider_pool", unavailableCtf.TitleKey(unavailableCtf.rows()[0]),
+            "beside capture the flag unavailable");
     // under the relay's floor, capture the flag's is not Claim both; the claim
     // still sends what it can, and its preflight decides
     LedgerClaimProgress floor({Account(), CtfAccount()}, 0.5, {}, 100'000'000);
@@ -996,13 +1054,20 @@ int main() {
                        {Unavailable(kCtfNoId, PoolKind::Ctf)}, 0)
                   .size() == 1,
           "a pool both read and unavailable shows its account");
-    // a network paid to two coldkeys names each row's
+    // capture the flag's with nothing to claim and no claim of URnetwork's has
+    // no row, and the provider pool's alone is the figure again
+    Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000), Relay(kCtfNoId, PoolKind::Ctf, 0)}, {}, 0)
+              .empty(),
+          "capture the flag's with nothing: the figure alone");
+    // a network paid to two coldkeys names each row's coldkey
     Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000, "5AAA"),
+                        Relay(kCtfNoId, PoolKind::Ctf, 50'000'000, "5AAA"),
                         Relay(1, PoolKind::Pool, 120'000'000, "5BBB")},
                        {}, 0) ==
               std::vector<RelayRow>{
-                  Row(1, "sn_ledger_pool", RelayRowStatus::Pending, 841'000'000, "5AAA"),
-                  Row(1, "sn_ledger_pool", RelayRowStatus::Pending, 120'000'000, "5BBB")},
+                  Row(1, "sn_ledger_provider_pool", RelayRowStatus::Pending, 841'000'000, "5AAA"),
+                  Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::Pending, 50'000'000, "5AAA"),
+                  Row(1, "sn_ledger_provider_pool", RelayRowStatus::Pending, 120'000'000, "5BBB")},
           "each coldkey named");
   }
   {

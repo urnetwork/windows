@@ -786,9 +786,11 @@ UIElement ClaimLedgerSheet::BuildRow(snpayout::LedgerClaimRow const& row) {
   Grid::SetColumn(pool, 0);
   grid.Children().Append(pool);
 
-  // an unavailable pool at rest has no figure, never a zero
-  const bool unavailable = row.unavailable && row.state == snpayout::LedgerClaimState::Idle;
-  auto amount = MakeText(unavailable ? hstring{} : hstring{FormatAlphaRao(row.amountRao)}, 13,
+  // no figure for an unavailable pool, nor for an account whose amount the
+  // dialog does not know yet (one the page's read did not list, until its
+  // Claimed event): never a zero
+  const bool known = row.amountRao > 0 && !row.unavailable;
+  auto amount = MakeText(known ? hstring{FormatAlphaRao(row.amountRao)} : hstring{}, 13,
                          colors::TextBrush());
   amount.VerticalAlignment(VerticalAlignment::Center);
   Grid::SetColumn(amount, 1);

@@ -10,9 +10,10 @@
 //                     accounts, each titled by its pool (capture the flag's
 //                     beside the provider pool's), the same gas key and funding
 //                     hint, and the claim of every pool, sent by the SDK on this
-//                     device to the pinned vault2, each proof verified against
-//                     vault2's root first: one transaction for one account, one
-//                     batch transaction for two or more.
+//                     device for the pinned vault2, each proof verified against
+//                     vault2's root first: two or more accounts in one batch
+//                     transaction through the chain settings' batcher where the
+//                     gas key can pay for it, else one claim each to vault2.
 //
 // Plain C++ helpers like StatsSheets/BalanceSheets: no runtime classes; every
 // method runs on the UI thread. Control handlers capture the sheet WEAKLY: the
