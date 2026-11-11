@@ -4575,6 +4575,14 @@ bonne manière</value>
     <value>Ne fournit pas</value>
     <comment>Extender status when the setting is on but this device is not providing. Apple is not listed because its catalog is keyed by the English text, which widget_not_providing already carries.</comment>
   </data>
+  <data name="extender_port_mapping" xml:space="preserve">
+    <value>Ouvrir un port sur mon routeur</value>
+    <comment>Title of the toggle under the Extender setting that has the extender ask the router (UPnP, NAT-PMP or PCP) to forward its ports to this device. Off by default on every app.</comment>
+  </data>
+  <data name="extender_port_mapping_description" xml:space="preserve">
+    <value>Demande à votre routeur, via UPnP, NAT-PMP ou PCP, de rediriger TCP et UDP 443 et UDP 4053 vers cet appareil, afin que l’extendeur soit joignable depuis Internet. Cela ouvre un port sur votre routeur.</value>
+    <comment>Secondary text under the Open a port on my router toggle: what turning it on does. It must say plainly that it opens a port on the user's router.</comment>
+  </data>
   <data name="extender_revoked" xml:space="preserve">
     <value>Révoqué par l’opérateur</value>
     <comment>Extender status when the operator revoked this device's extender key.</comment>
@@ -8394,9 +8402,25 @@ du monde</value>
     <value>Consentement aux paiements</value>
     <comment>Payout consent section, beside the settlement v2 tile and claim: its title. The network owner signs once with a Bittensor wallet, and that coldkey is paid the earnings of every provider client of the network.</comment>
   </data>
+  <data name="sn_ctf_pool" xml:space="preserve">
+    <value>Capture du drapeau</value>
+    <comment>Earnings, the settlement v2 tile, the claim sheet and the claim dialog: names the coldkey's account in URnetwork's capture the flag pool (an account whose kind is ctf), in place of Pool {no_id} (sn_ledger_pool). Capture the flag is a draw in each country: each epoch it picks up to five of the providers and up to five of the extenders that were online there for at least half the epoch, and pays them SN25α into this account. A short title: use your language's name for the game capture the flag, never the hacking contest.</comment>
+  </data>
+  <data name="sn_ctf_won_extender_slot" xml:space="preserve">
+    <value>{} : vous avez gagné l’une des places d’extendeur</value>
+    <comment>Earnings, with the capture the flag account (sn_ctf_pool): a line saying a capture the flag draw gave this device one of a country's five extender slots (GET /sn/ctf/client). Up to five devices win a role's slots, and a flag counts as held only once all ten of a country's slots are won, so say the device won a slot, never that it captured or holds the flag. The placeholder is the country's name exactly as the app shows it, e.g. Kenya, with no case ending or article added, so keep it where the bare name reads correctly (several languages lead with it: "{country}: ..."). Mention no amount.</comment>
+  </data>
+  <data name="sn_ctf_won_provider_slot" xml:space="preserve">
+    <value>{} : vous avez gagné l’une des places de fournisseur</value>
+    <comment>Earnings, with the capture the flag account (sn_ctf_pool): a line saying a capture the flag draw gave this device one of a country's five provider slots (GET /sn/ctf/client). Up to five devices win a role's slots, and a flag counts as held only once all ten of a country's slots are won, so say the device won a slot, never that it captured or holds the flag. The placeholder is the country's name exactly as the app shows it, e.g. Kenya, with no case ending or article added, so keep it where the bare name reads correctly (several languages lead with it: "{country}: ..."). Mention no amount.</comment>
+  </data>
   <data name="sn_ledger_claim" xml:space="preserve">
     <value>Réclamer le règlement v2</value>
     <comment>Windows Earnings page, the ledger header's Earnings actions menu (which repeats the page's actions while the window is too narrow to show them): the item for settlement v2's claim, which opens its claim dialog. Keep "v2".</comment>
+  </data>
+  <data name="sn_ledger_claim_both" xml:space="preserve">
+    <value>Réclamer les deux</value>
+    <comment>Earnings, the settlement v2 tile and the claim dialog: the one button that claims the coldkey's provider pool account (sn_ledger_provider_pool) and its capture the flag account (sn_ctf_pool) together, while both are claimable. The device sends the two claims in one transaction. Claim now, URnetwork's own button, keeps its label and claims both pools too. Short: a button.</comment>
   </data>
   <data name="sn_ledger_claimable" xml:space="preserve">
     <value>À réclamer</value>
@@ -8417,6 +8441,18 @@ du monde</value>
   <data name="sn_ledger_pool" xml:space="preserve">
     <value>Pool {}</value>
     <comment>Settlement v2 tile and claim dialog: names an operator pool. {} is its number.</comment>
+  </data>
+  <data name="sn_ledger_pool_unavailable" xml:space="preserve">
+    <value>Indisponible pour le moment</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: shown in one pool's row in place of its balances, never a zero, when the server lists that pool in unavailable_pools (its ledger could not be read just now). The other pools' rows show as usual. The tile's Unavailable (sn_ledger_unavailable) stays for when no balance can be read at all.</comment>
+  </data>
+  <data name="sn_ledger_pool_under_floor" xml:space="preserve">
+    <value>Sous le minimum pour réclamer</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: the status of one pool's account, in its row where Pending or Claimed would be, while its balance is under the transfer floor, the smallest amount the chain lets a claim move (sn_claim_relay_under_floor gives it in TAO). Neither URnetwork's claim nor the device's can claim it until it is worth at least that; it waits in the vault, and this credit never expires. A capture the flag account is often this small. Short: a status. Say nothing about when it becomes claimable.</comment>
+  </data>
+  <data name="sn_ledger_provider_pool" xml:space="preserve">
+    <value>Pool des fournisseurs</value>
+    <comment>Earnings, the settlement v2 tile, the claim sheet and the claim dialog: names the coldkey's account in URnetwork's provider pool (an account whose kind is provider) beside its capture the flag account (sn_ctf_pool), in place of Pool {no_id} (sn_ledger_pool). The provider pool is the settlement v2 pool that pays for the network's usage and the extenders' share. A short title; use the app's word for provider and for pool.</comment>
   </data>
   <data name="sn_ledger_title" xml:space="preserve">
     <value>Règlement v2</value>
