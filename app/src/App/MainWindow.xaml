@@ -1005,6 +1005,21 @@
                                 <InfoBar x:Name="ClientLimitNotice" IsOpen="False" IsClosable="False"
                                          AutomationProperties.AutomationId="acceptance.client-limit.notice"
                                          Margin="12,8" Severity="Warning" />
+                                <!-- the network's hosted proxies hold SOCKS or WireGuard, which
+                                     are part of Pro, and the network has no Pro (the sdk's
+                                     ProFeaturesViewController MainPrompt, ProFeaturesNotice.h):
+                                     what that means before the switch and after it, Get Pro (the
+                                     action, the client limit notice's upgrade path), Manage
+                                     devices and Close. Title, message, IsOpen and Visibility are
+                                     written by MainWindow::ApplyProFeaturesNotice (one writer);
+                                     the buttons are built in the MainWindow ctor beside the client
+                                     limit notice's. No InfoBar close button: Close is the sdk's
+                                     dismissal, worded from the store. Collapsed, not only closed,
+                                     while it says nothing, so it keeps no gap in this column. -->
+                                <InfoBar x:Name="ProFeaturesNotice" IsOpen="False" IsClosable="False"
+                                         Visibility="Collapsed"
+                                         AutomationProperties.AutomationId="acceptance.pro-features.notice"
+                                         Margin="12,8" Severity="Warning" />
                                 <!-- the VPN service needs setting up / starting / updating:
                                      the action is ONE elevated `urnetworkd install`. Title,
                                      message, action label and IsOpen are all written by

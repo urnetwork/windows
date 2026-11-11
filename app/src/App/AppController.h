@@ -92,6 +92,14 @@ class AppController {
   // (SdkHost::RetryClientLimit, which the sdk paces). UI thread.
   void RetryClientLimit();
 
+  // ---- the network's Pro features in use (ProFeaturesNotice.h) ----
+  // The main window's notice's Close: the sdk withdraws it while its prompt
+  // stays the same (ProFeaturesViewController.dismissMainNotice). UI thread.
+  void DismissProFeaturesNotice();
+  // The network's proxies read again (ProFeaturesViewController.refresh), as
+  // after the device list closed. Nothing while signed out. UI thread.
+  void RefreshProFeatures();
+
   // Settings > General: "Notify me when my internet is slow", whether the tray
   // posts its one balloon per slow episode (SlowInternet.h). A preference of
   // this installation, in app_prefs.json beside Advanced Mode, default on:
@@ -212,6 +220,22 @@ class AppController {
   // The user is not looking at the window: hidden to the tray, minimized, or
   // behind another app's.
   bool InBackground() const;
+  // ---- the network's Pro features in use (ProFeaturesNotice.h) ----
+  // Opens the sdk's ProFeaturesViewController on the Api for this sign-in, its
+  // listener first, then starts it (the first read of the proxies). One per
+  // sign-in: a repeated sign-in push (a re-registration, another network
+  // server's Api) closes the last one and opens a fresh one, whose notice
+  // alerts again and holds no dismissal.
+  void OpenProFeatures();
+  // The sign-in ends (sign-out, quit): the listener goes, then the controller,
+  // and its notice with it. A snapshot still queued for it is dropped.
+  void CloseProFeatures();
+  // A snapshot, on this thread: dropped unless `generation` is the open
+  // controller's.
+  void OnProFeatures(std::uint64_t generation, const urnet::ProFeaturesSnapshot& snapshot);
+  // What the window's notice shows (the snapshot's MainPrompt), pushed to a
+  // visible window; resynced on show.
+  void SetProFeaturesPrompt(std::string prompt);
   // The reaction to a stats or balance push in the insufficient-balance gate
   // (BalanceGate.h): a tray notice once per out-of-balance or data limit
   // episode, and never a disconnect.
@@ -405,11 +429,24 @@ class AppController {
   // Start, driven from this thread only, as the sdk requires.
   urnet::ClientLimitNoticeTracker clientLimitTracker_;
   // The plan as the last balance push read it, for the upgrade that ends a hold
-  // (clientlimit::UpgradeEndsHold).
+  // (clientlimit::UpgradeEndsHold) and the one that reads the network's proxies
+  // again (profeatures::PlanTurnedPro).
   bool clientLimitBalanceLoaded_ = false;
   bool clientLimitBalancePro_ = false;
   // The window has the focus (Window.Activated), for InBackground.
   bool windowFocused_ = false;
+  // ---- the network's Pro features in use (ProFeaturesNotice.h) ----
+  // This sign-in's controller (OpenProFeatures), and its listener's
+  // subscription, unsubscribed before the controller closes. UI thread only.
+  std::optional<urnet::ProFeaturesViewController> proFeatures_;
+  std::optional<urnet::Sub> proFeaturesSub_;
+  // Moved on by every close: a snapshot the listener queued for a controller
+  // that is gone is dropped (OnProFeatures).
+  std::uint64_t proFeaturesGeneration_ = 0;
+  // What the window's notice shows: the last snapshot's MainPrompt, "" for none.
+  std::string proFeaturesPrompt_;
+  // The last read's failure, for the log's one line per change.
+  std::string proFeaturesErrorId_;
 };
 
 // The single app controller instance (created in App::OnLaunched).

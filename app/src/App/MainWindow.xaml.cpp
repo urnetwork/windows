@@ -378,15 +378,7 @@ MainWindow::MainWindow() {
     Automation::AutomationProperties::SetAutomationId(clientLimitUpgrade_,
                                                       L"acceptance.client-limit.upgrade");
     clientLimitUpgrade_.Click([weak = get_weak()](auto const&, auto const&) {
-      auto self = weak.get();
-      if (!self) return;
-      if (self->balance_.guest) {
-        self->DivertGuestToConversion([weak] {
-          if (auto self = weak.get()) self->ShowUpgradeSheet();
-        });
-      } else {
-        self->ShowUpgradeSheet();
-      }
+      if (auto self = weak.get()) self->OpenNoticeUpgrade();
     });
     ClientLimitNotice().ActionButton(clientLimitUpgrade_);
     // A plan already at its most devices: the device list, where a removal
@@ -412,6 +404,46 @@ MainWindow::MainWindow() {
     actions.Children().Append(clientLimitManage_);
     actions.Children().Append(clientLimitRetry_);
     ClientLimitNotice().Content(actions);
+  }
+
+  // The Pro features notice (ProFeaturesNotice.h; owner, 2026-11-11): the
+  // network's hosted proxies hold SOCKS or WireGuard, which are part of Pro,
+  // and the network has no Pro. Get Pro is the client limit notice's
+  // (OpenNoticeUpgrade); Manage devices opens the device list, where the
+  // proxies are; Close withdraws the notice while its prompt stays the same
+  // (AppController::DismissProFeaturesNotice, the sdk's dismissal). The words
+  // are ApplyProFeaturesNotice's. Nothing here disconnects or holds a connect
+  // back.
+  {
+    Button upgrade;
+    solidBannerAction(upgrade);
+    upgrade.Content(LocBox("get_pro"));
+    Automation::AutomationProperties::SetAutomationId(upgrade, L"acceptance.pro-features.upgrade");
+    upgrade.Click([weak = get_weak()](auto const&, auto const&) {
+      if (auto self = weak.get()) self->OpenNoticeUpgrade();
+    });
+    ProFeaturesNotice().ActionButton(upgrade);
+    Button manage;
+    solidBannerAction(manage);
+    manage.Content(LocBox("manage_devices"));
+    Automation::AutomationProperties::SetAutomationId(manage,
+                                                      L"acceptance.pro-features.manage-devices");
+    manage.Click([weak = get_weak()](auto const&, auto const&) {
+      // the account's list, with its proxies
+      if (auto self = weak.get()) self->ShowManageDevicesSheet(false);
+    });
+    // a link beside the buttons, as the update banner's Later: the InfoBar's
+    // own close button is labelled by WinUI, not from the store
+    HyperlinkButton dismiss;
+    dismiss.Content(LocBox("close"));
+    Automation::AutomationProperties::SetAutomationId(dismiss, L"acceptance.pro-features.close");
+    dismiss.Click([](auto const&, auto const&) { urnw::App().DismissProFeaturesNotice(); });
+    StackPanel actions;
+    actions.Orientation(winrt::Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
+    actions.Spacing(8);
+    actions.Children().Append(manage);
+    actions.Children().Append(dismiss);
+    ProFeaturesNotice().Content(actions);
   }
 
   // The service-setup banner's one click (beta spec §3): a single elevated
@@ -2737,20 +2769,62 @@ void MainWindow::ApplyClientLimitNotice() {
   bar.IsOpen(true);
 }
 
+void MainWindow::OpenNoticeUpgrade() {
+  // a guest first creates a full account, then the sheet (GuestUpgradeContinuation)
+  if (balance_.guest) {
+    DivertGuestToConversion([weak = get_weak()] {
+      if (auto self = weak.get()) self->ShowUpgradeSheet();
+    });
+    return;
+  }
+  ShowUpgradeSheet();
+}
+
+// ---- the Pro features notice (ProFeaturesNotice.h) ------------------------------
+
+void MainWindow::SetProFeaturesNotice(std::string const& prompt) {
+  if (prompt == proFeaturesPrompt_) return;
+  proFeaturesPrompt_ = prompt;
+  ApplyProFeaturesNotice();
+}
+
+void MainWindow::ApplyProFeaturesNotice() {
+  auto bar = ProFeaturesNotice();
+  // the words for the sdk's prompt: before the switch, or after it
+  const std::optional<urnw::profeatures::Words> words =
+      urnw::profeatures::WordsFor(proFeaturesPrompt_);
+  if (!words) {
+    bar.IsOpen(false);
+    // a closed InfoBar still measures its margin: no gap under the client limit notice
+    bar.Visibility(Visibility::Collapsed);
+    return;
+  }
+  bar.Title(Loc(words->titleKey));
+  bar.Message(Loc(words->messageKey));
+  bar.Visibility(Visibility::Visible);
+  bar.IsOpen(true);
+}
+
 winrt::fire_and_forget MainWindow::ShowManageDevicesSheet(bool forSignIn, hstring message) {
   if (sheetOpen_) co_return;  // only one ContentDialog can show at a time
   auto self = get_strong();
   self->sheetOpen_ = true;
+  bool upgrade = false;
   try {
     self->manageDevicesSheet_ =
         urnw::ManageDevicesSheet::Create(Content().XamlRoot(), Sdk(), forSignIn, message);
     co_await self->manageDevicesSheet_->Dialog().ShowAsync();
+    upgrade = self->manageDevicesSheet_->UpgradeRequested();
   } catch (...) {
   }
   // the list closes with the sheet, whatever closed it
   if (self->manageDevicesSheet_) self->manageDevicesSheet_->Close();
   self->manageDevicesSheet_.reset();
   self->sheetOpen_ = false;
+  // a proxy removed there changes what the Pro features notice says
+  urnw::App().RefreshProFeatures();
+  // its Pro features notice's Get Pro, now that no sheet is open
+  if (upgrade) self->OpenNoticeUpgrade();
 }
 
 void MainWindow::OfferSignInManageDevices(std::string const& error) {

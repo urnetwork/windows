@@ -78,6 +78,8 @@ managedevices::Snapshot PlainOf(urnet::ManageDevicesSnapshot const& snapshot) {
   plain.removingClientId = snapshot.RemovingClientId.value_or("");
   plain.errorId = snapshot.ErrorId;
   plain.addRetryCount = snapshot.AddRetryCount;
+  // a device process on an older sdk sends none: no notice
+  plain.proFeaturesPrompt = snapshot.ProFeatures ? snapshot.ProFeatures->Prompt : std::string();
   return plain;
 }
 
@@ -112,6 +114,28 @@ void ManageDevicesSheet::Build(XamlRoot const& root, hstring const& message) {
 
   listPanel_ = StackPanel();
   listPanel_.Spacing(8);
+
+  // The network's Pro features in use (ProFeaturesNotice.h), above the rows it
+  // is about, and gone with them while a removal asks. The words and Get Pro
+  // are Render's; there is no close control here. Collapsed, not only closed,
+  // while it says nothing: a closed InfoBar still measures its own box.
+  proFeaturesNotice_ = InfoBar();
+  proFeaturesNotice_.Severity(InfoBarSeverity::Warning);
+  proFeaturesNotice_.IsClosable(false);
+  proFeaturesNotice_.IsOpen(false);
+  proFeaturesNotice_.Visibility(Visibility::Collapsed);
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+      proFeaturesNotice_, L"acceptance.manage-devices.pro-features");
+  proFeaturesUpgrade_ = Button();
+  proFeaturesUpgrade_.Content(winrt::box_value(Loc("get_pro")));
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetAutomationId(
+      proFeaturesUpgrade_, L"acceptance.manage-devices.pro-features.upgrade");
+  proFeaturesUpgrade_.Click([weak = weak_from_this()](auto const&, auto const&) {
+    if (auto self = weak.lock()) self->RequestUpgrade();
+  });
+  proFeaturesNotice_.ActionButton(proFeaturesUpgrade_);
+  listPanel_.Children().Append(proFeaturesNotice_);
+
   listPanel_.Children().Append(MakeLine(Loc(managedevices::kHelpKey), 13, colors::MutedBrush()));
 
   StackPanel status;
@@ -214,6 +238,19 @@ void ManageDevicesSheet::Render() {
   loadingRing_.IsActive(status.loading);
   loadingRing_.Visibility(status.loading ? Visibility::Visible : Visibility::Collapsed);
 
+  // the Pro features notice: about the rows, so only beside them
+  const std::optional<profeatures::ListNotice> notice =
+      status.showsRows ? profeatures::ListNoticeFor(snapshot_.proFeaturesPrompt, forSignIn_)
+                       : std::nullopt;
+  if (notice) {
+    proFeaturesNotice_.Title(Loc(notice->words.titleKey));
+    proFeaturesNotice_.Message(Loc(notice->words.messageKey));
+    proFeaturesUpgrade_.Visibility(notice->offersUpgrade ? Visibility::Visible
+                                                         : Visibility::Collapsed);
+  }
+  proFeaturesNotice_.IsOpen(notice.has_value());
+  proFeaturesNotice_.Visibility(notice ? Visibility::Visible : Visibility::Collapsed);
+
   rowsPanel_.Children().Clear();
   if (!status.showsRows) return;
   const managedevices::Text text = StoreText();
@@ -285,6 +322,15 @@ void ManageDevicesSheet::CancelRemove() {
   confirming_.reset();
   confirmPanel_.Visibility(Visibility::Collapsed);
   listPanel_.Visibility(Visibility::Visible);
+}
+
+void ManageDevicesSheet::RequestUpgrade() {
+  if (closed_ || !dialog_) return;
+  LogInfo("app: the device list's Pro features notice -> Get Pro");
+  // the window opens the upgrade flow once this dialog has closed
+  // (MainWindow::ShowManageDevicesSheet): one ContentDialog at a time
+  upgradeRequested_ = true;
+  dialog_.Hide();
 }
 
 void ManageDevicesSheet::SetMessage(hstring const& message) {

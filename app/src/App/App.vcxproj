@@ -527,6 +527,8 @@
     <ClInclude Include="ClientEvents.h" />
     <!-- header-only, WinRT-free: tools/client-limit-notice-tests.cpp runs it -->
     <ClInclude Include="ClientLimitNotice.h" />
+    <!-- header-only, WinRT-free: tools/pro-features-notice-tests.cpp runs it -->
+    <ClInclude Include="ProFeaturesNotice.h" />
     <ClInclude Include="OfferCard.h" />
     <ClInclude Include="OnboardingRouting.h" />
     <ClInclude Include="PricePresentation.h" />

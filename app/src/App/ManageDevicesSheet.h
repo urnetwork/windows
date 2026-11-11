@@ -1,15 +1,22 @@
 // The device list (owner, 2026-11-08: the windows app at parity with apple and
 // android): the network's devices and hosted proxies, each removable but this
 // one, so the user frees a slot of the concurrent client limit for this device.
-// Opened from the client limit notice's Manage devices, from Settings, and for a
-// sign-in the limit refused. The list is the sdk's ManageDevicesViewController,
-// which SdkHost opens (OpenManageDevices) on the session's device when there is
-// one, so a removal that frees a slot ends the device's hold at once, else on the
-// Api, and for a refused sign-in on that sign-in's token, so a removal runs its
-// registration again. This sheet renders the snapshots
+// Opened from the client limit notice's and the Pro features notice's Manage
+// devices, from Settings, and for a sign-in the limit refused. The list is the
+// sdk's ManageDevicesViewController, which SdkHost opens (OpenManageDevices) on
+// the session's device when there is one, so a removal that frees a slot ends
+// the device's hold at once, else on the Api, and for a refused sign-in on that
+// sign-in's token, so a removal runs its registration again. This sheet renders
+// the snapshots
 // (ManageDevicesPresentation.h decides the words) and asks for a refresh or a
 // removal; a removal asks first, inside the sheet, since only one ContentDialog
 // can show at a time.
+//
+// Above the list, the network's Pro features in use (ProFeaturesNotice.h, owner
+// 2026-11-11): while the snapshot's ProFeatures has a prompt, its words, and Get
+// Pro, which closes the sheet so the window can open its upgrade flow (only one
+// ContentDialog shows at a time). It has no close control: the list shows the
+// prompt whatever the main window's notice does.
 //
 // Threading is SessionsPage's: the list publishes on its own goroutines, the
 // update is marshalled to the UI thread through the dialog's DispatcherQueue,
@@ -27,6 +34,7 @@
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
 #include "ManageDevicesPresentation.h"
+#include "ProFeaturesNotice.h"
 #include "SdkHost.h"
 
 namespace urnw {
@@ -51,6 +59,9 @@ class ManageDevicesSheet : public std::enable_shared_from_this<ManageDevicesShee
   // The dialog closed: the list closes with it, and a snapshot still on its way
   // is dropped.
   void Close();
+  // The Pro features notice's Get Pro closed the sheet: the window opens its
+  // upgrade flow once the dialog has closed.
+  bool UpgradeRequested() const { return upgradeRequested_; }
 
  private:
   ManageDevicesSheet(SdkHost& sdk, bool forSignIn) : sdk_(sdk), forSignIn_(forSignIn) {}
@@ -64,12 +75,17 @@ class ManageDevicesSheet : public std::enable_shared_from_this<ManageDevicesShee
   void AskRemove(managedevices::Device const& device);
   void ConfirmRemove();
   void CancelRemove();
+  // The Pro features notice's Get Pro: noted, and the sheet closes.
+  void RequestUpgrade();
 
   SdkHost& sdk_;
   const bool forSignIn_;
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock messageText_{nullptr};
-  // the list: the help, the state line with its Retry, the ring, the rows
+  // the list: the Pro features notice with its Get Pro, the help, the state
+  // line with its Retry, the ring, the rows
+  winrt::Microsoft::UI::Xaml::Controls::InfoBar proFeaturesNotice_{nullptr};
+  winrt::Microsoft::UI::Xaml::Controls::Button proFeaturesUpgrade_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::StackPanel listPanel_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock statusText_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::HyperlinkButton retryLink_{nullptr};
@@ -82,6 +98,8 @@ class ManageDevicesSheet : public std::enable_shared_from_this<ManageDevicesShee
   managedevices::Snapshot snapshot_;
   bool canManage_ = true;
   bool closed_ = false;
+  // the Pro features notice's Get Pro closed it (UpgradeRequested)
+  bool upgradeRequested_ = false;
 };
 
 }  // namespace urnw

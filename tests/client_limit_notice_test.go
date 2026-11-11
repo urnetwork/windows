@@ -190,8 +190,9 @@ func TestClientLimitNoticeAppWiring(t *testing.T) {
 }
 
 // The window's notice: one writer for its words and its Get Pro, Retry through
-// the controller, Get Pro through the balance banner's upgrade path, and the
-// InfoBar itself beside the balance banner.
+// the controller, Get Pro through the balance banner's upgrade path (the
+// notices' one OpenNoticeUpgrade, which the Pro features notice's Get Pro runs
+// too), and the InfoBar itself beside the balance banner.
 func TestClientLimitNoticeWindowWiring(t *testing.T) {
 	source := stripComments(readAppSource(t, "MainWindow.xaml.cpp"))
 	apply := definitionBody(t, "MainWindow.xaml.cpp", source, "void MainWindow::ApplyClientLimitNotice() {")
@@ -208,7 +209,12 @@ func TestClientLimitNoticeWindowWiring(t *testing.T) {
 		"ClientLimitNotice().Content(actions);")
 	upgrade := source[strings.Index(source, "clientLimitUpgrade_.Click("):]
 	upgrade = upgrade[:strings.Index(upgrade, "});")]
-	provideRequire(t, "the notice's Get Pro", upgrade, "self->DivertGuestToConversion(", "self->ShowUpgradeSheet();")
+	provideRequire(t, "the notice's Get Pro", upgrade, "self->OpenNoticeUpgrade();")
+	// a guest converts first and then gets the sheet; anyone else gets it at once
+	flow := definitionBody(t, "MainWindow.xaml.cpp", source, "void MainWindow::OpenNoticeUpgrade() {")
+	provideRequireOrder(t, "OpenNoticeUpgrade", flow, "if (balance_.guest) {", "DivertGuestToConversion(")
+	provideRequireOrder(t, "OpenNoticeUpgrade", flow, "DivertGuestToConversion(", "self->ShowUpgradeSheet();")
+	provideRequireOrder(t, "OpenNoticeUpgrade", flow, "return;", "ShowUpgradeSheet();\n}")
 
 	ids := xamlAutomationIds(t, filepath.Join(repositoryRoot(t), "app", "src", "App", "MainWindow.xaml"))
 	if got := ids["ClientLimitNotice"]; got != "acceptance.client-limit.notice" {
