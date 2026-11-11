@@ -9144,6 +9144,10 @@ world's content</value>
     <value>Could not create the proxy.</value>
     <comment>Account panel: proxy creation failed</comment>
   </data>
+  <data name="site_data_limit_pro" xml:space="preserve">
+    <value>Your Pro data for this month is used up. It renews on the 1st of next month (UTC), and a data pack adds more now.</value>
+    <comment>ur.io Connect screen, out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's data is granted at 00:00 UTC on the 1st of each month; a data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and UTC as is.</comment>
+  </data>
   <data name="site_download_conf" xml:space="preserve">
     <value>Download .conf</value>
     <comment>Account panel: download a WireGuard config file</comment>
@@ -9427,6 +9431,14 @@ world's content</value>
   <data name="site_operator_client_ui" xml:space="preserve">
     <value>Operator Client UI</value>
     <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
+  </data>
+  <data name="site_out_of_data_browser_direct" xml:space="preserve">
+    <value>With the kill switch off, the extension soon lets this browser connect directly, without URnetwork.</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is off (its default). The extension then takes its proxy off after failed health checks (or, in Firefox, sends each request directly), so the browser goes online without URnetwork. Keep URnetwork as is; translate kill switch as the extension and the apps do.</comment>
+  </data>
+  <data name="site_out_of_data_browser_held" xml:space="preserve">
+    <value>With the kill switch on, pages won't load in this browser until data is available or you disconnect.</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is on. The extension keeps its proxy set, so pages fail until data is available again or the user disconnects. Translate kill switch as the extension and the apps do.</comment>
   </data>
   <data name="site_pay_another_way" xml:space="preserve">
     <value>Pay another way</value>

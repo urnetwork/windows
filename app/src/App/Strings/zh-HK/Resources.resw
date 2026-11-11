@@ -7778,6 +7778,10 @@
     <value>複製助記詞</value>
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
   </data>
+  <data name="site_data_limit_pro" xml:space="preserve">
+    <value>您本月的 Pro 數據已用完。將於下月 1 日（UTC）更新，購買數據包可立即增加。</value>
+    <comment>ur.io Connect screen, out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's data is granted at 00:00 UTC on the 1st of each month; a data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and UTC as is.</comment>
+  </data>
   <data name="site_ext_setting_up" xml:space="preserve">
     <value>正在設定…</value>
     <comment>Extension status: setup in flight</comment>
@@ -7817,6 +7821,14 @@
   <data name="site_manage_subscription_hint" xml:space="preserve">
     <value>查看續訂日期、自動續訂狀態和取消選項。</value>
     <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_out_of_data_browser_direct" xml:space="preserve">
+    <value>斷線開關 (Kill switch) 關閉時，擴充功能很快會讓此瀏覽器直接連線，不經過 URnetwork。</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is off (its default). The extension then takes its proxy off after failed health checks (or, in Firefox, sends each request directly), so the browser goes online without URnetwork. Keep URnetwork as is; translate kill switch as the extension and the apps do.</comment>
+  </data>
+  <data name="site_out_of_data_browser_held" xml:space="preserve">
+    <value>斷線開關 (Kill switch) 開啟時，在有可用數據或您中斷連線之前，此瀏覽器中的頁面不會載入。</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is on. The extension keeps its proxy set, so pages fail until data is available again or the user disconnects. Translate kill switch as the extension and the apps do.</comment>
   </data>
   <data name="site_payment_error_already_subscribed" xml:space="preserve">
     <value>你已擁有 Pro，因此沒有扣款。請在你的帳戶中管理訂閱。</value>

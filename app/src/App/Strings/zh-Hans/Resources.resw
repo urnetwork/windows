@@ -8474,6 +8474,10 @@
     <value>无法创建代理。</value>
     <comment>Account panel: proxy creation failed</comment>
   </data>
+  <data name="site_data_limit_pro" xml:space="preserve">
+    <value>您本月的 Pro 数据已用完。将于下月 1 日（UTC）更新，购买数据包可立即增加。</value>
+    <comment>ur.io Connect screen, out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's data is granted at 00:00 UTC on the 1st of each month; a data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and UTC as is.</comment>
+  </data>
   <data name="site_download_conf" xml:space="preserve">
     <value>下载.conf</value>
     <comment>Account panel: download a WireGuard config file</comment>
@@ -8717,6 +8721,14 @@
   <data name="site_operator_client_ui" xml:space="preserve">
     <value>运营者客户端界面</value>
     <comment>App sidebar: open the operator client UI (formerly the client admin UI)</comment>
+  </data>
+  <data name="site_out_of_data_browser_direct" xml:space="preserve">
+    <value>断网保护关闭时，扩展很快会让此浏览器直接连接，不经过 URnetwork。</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is off (its default). The extension then takes its proxy off after failed health checks (or, in Firefox, sends each request directly), so the browser goes online without URnetwork. Keep URnetwork as is; translate kill switch as the extension and the apps do.</comment>
+  </data>
+  <data name="site_out_of_data_browser_held" xml:space="preserve">
+    <value>断网保护开启时，在有可用数据或您断开连接之前，此浏览器中的页面不会加载。</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is on. The extension keeps its proxy set, so pages fail until data is available again or the user disconnects. Translate kill switch as the extension and the apps do.</comment>
   </data>
   <data name="site_pay_another_way" xml:space="preserve">
     <value>使用其他方式支付</value>

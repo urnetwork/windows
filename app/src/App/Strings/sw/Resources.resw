@@ -7897,6 +7897,10 @@ maudhui ya dunia</value>
     <value>Nakili seedphrase</value>
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
   </data>
+  <data name="site_data_limit_pro" xml:space="preserve">
+    <value>Data yako ya Pro ya mwezi huu imekwisha. Itasasishwa tarehe 1 ya mwezi ujao (UTC), na kifurushi cha data kinaongeza zaidi sasa.</value>
+    <comment>ur.io Connect screen, out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's data is granted at 00:00 UTC on the 1st of each month; a data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and UTC as is.</comment>
+  </data>
   <data name="site_ext_setting_up" xml:space="preserve">
     <value>Inaweka mipangilio…</value>
     <comment>Extension status: setup in flight</comment>
@@ -7936,6 +7940,14 @@ maudhui ya dunia</value>
   <data name="site_manage_subscription_hint" xml:space="preserve">
     <value>Angalia tarehe ya kusasisha, hali ya kusasisha kiotomatiki na chaguo za kughairi.</value>
     <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_out_of_data_browser_direct" xml:space="preserve">
+    <value>Kill switch ikiwa imezimwa, kiendelezi hivi karibuni kitaruhusu kivinjari hiki kuunganishwa moja kwa moja, bila URnetwork.</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is off (its default). The extension then takes its proxy off after failed health checks (or, in Firefox, sends each request directly), so the browser goes online without URnetwork. Keep URnetwork as is; translate kill switch as the extension and the apps do.</comment>
+  </data>
+  <data name="site_out_of_data_browser_held" xml:space="preserve">
+    <value>Kill switch ikiwa imewashwa, kurasa hazitapakia katika kivinjari hiki hadi data ipatikane au utenganishe.</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is on. The extension keeps its proxy set, so pages fail until data is available again or the user disconnects. Translate kill switch as the extension and the apps do.</comment>
   </data>
   <data name="site_payment_error_already_subscribed" xml:space="preserve">
     <value>Tayari una Pro, kwa hivyo hukutozwa chochote. Dhibiti usajili wako kutoka kwenye akaunti yako.</value>

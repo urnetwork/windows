@@ -8138,6 +8138,10 @@
     <value>העתקת ביטוי הסיד</value>
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
   </data>
+  <data name="site_data_limit_pro" xml:space="preserve">
+    <value>נתוני ה-Pro שלך לחודש הזה נגמרו. הם יתחדשו ב-1 בחודש הבא (UTC), וחבילת נתונים מוסיפה עוד כבר עכשיו.</value>
+    <comment>ur.io Connect screen, out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's data is granted at 00:00 UTC on the 1st of each month; a data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and UTC as is.</comment>
+  </data>
   <data name="site_ext_setting_up" xml:space="preserve">
     <value>מגדיר…</value>
     <comment>Extension status: setup in flight</comment>
@@ -8177,6 +8181,14 @@
   <data name="site_manage_subscription_hint" xml:space="preserve">
     <value>צפו בתאריך החידוש, במצב החידוש האוטומטי ובאפשרויות הביטול.</value>
     <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_out_of_data_browser_direct" xml:space="preserve">
+    <value>כשהקיל סוויץ' כבוי, התוסף יאפשר בקרוב לדפדפן הזה להתחבר ישירות, בלי URnetwork.</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is off (its default). The extension then takes its proxy off after failed health checks (or, in Firefox, sends each request directly), so the browser goes online without URnetwork. Keep URnetwork as is; translate kill switch as the extension and the apps do.</comment>
+  </data>
+  <data name="site_out_of_data_browser_held" xml:space="preserve">
+    <value>כשהקיל סוויץ' פועל, דפים לא ייטענו בדפדפן הזה עד שיהיו נתונים זמינים או עד שתתנתק.</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is on. The extension keeps its proxy set, so pages fail until data is available again or the user disconnects. Translate kill switch as the extension and the apps do.</comment>
   </data>
   <data name="site_payment_error_already_subscribed" xml:space="preserve">
     <value>כבר יש לכם Pro, ולכן לא בוצע חיוב. נהלו את המינוי מהחשבון שלכם.</value>

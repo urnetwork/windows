@@ -7778,6 +7778,10 @@ nội dung thế giới</value>
     <value>Sao chép seedphrase</value>
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
   </data>
+  <data name="site_data_limit_pro" xml:space="preserve">
+    <value>Dữ liệu Pro của bạn trong tháng này đã hết. Dữ liệu sẽ được làm mới vào ngày 1 tháng sau (UTC), và gói dữ liệu giúp thêm ngay bây giờ.</value>
+    <comment>ur.io Connect screen, out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's data is granted at 00:00 UTC on the 1st of each month; a data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and UTC as is.</comment>
+  </data>
   <data name="site_ext_setting_up" xml:space="preserve">
     <value>Đang thiết lập…</value>
     <comment>Extension status: setup in flight</comment>
@@ -7817,6 +7821,14 @@ nội dung thế giới</value>
   <data name="site_manage_subscription_hint" xml:space="preserve">
     <value>Xem ngày gia hạn, trạng thái tự động gia hạn và tùy chọn hủy.</value>
     <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_out_of_data_browser_direct" xml:space="preserve">
+    <value>Khi tắt kill switch, tiện ích sẽ sớm cho trình duyệt này kết nối trực tiếp, không qua URnetwork.</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is off (its default). The extension then takes its proxy off after failed health checks (or, in Firefox, sends each request directly), so the browser goes online without URnetwork. Keep URnetwork as is; translate kill switch as the extension and the apps do.</comment>
+  </data>
+  <data name="site_out_of_data_browser_held" xml:space="preserve">
+    <value>Khi bật kill switch, các trang sẽ không tải trong trình duyệt này cho đến khi có dữ liệu hoặc bạn ngắt kết nối.</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is on. The extension keeps its proxy set, so pages fail until data is available again or the user disconnects. Translate kill switch as the extension and the apps do.</comment>
   </data>
   <data name="site_payment_error_already_subscribed" xml:space="preserve">
     <value>Bạn đã có Pro nên không bị tính phí. Hãy quản lý gói đăng ký trong tài khoản của bạn.</value>
