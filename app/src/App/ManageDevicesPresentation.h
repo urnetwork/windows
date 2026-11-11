@@ -56,6 +56,9 @@ struct Snapshot {
   std::string errorId;
   // removals that freed a slot and added this device again
   int64_t addRetryCount = 0;
+  // the network's Pro features in use, from the same proxies list: its
+  // ProFeatures.Prompt, "" for none (ProFeaturesNotice.h words it)
+  std::string proFeaturesPrompt;
 };
 
 // The words a row and the sheet are made of, from the store (the sheet's Loc,

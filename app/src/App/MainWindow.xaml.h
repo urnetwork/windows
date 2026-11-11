@@ -28,6 +28,7 @@
 #include "LoginPage.h"
 #include "Onboarding.h"
 #include "ProCelebration.h"
+#include "ProFeaturesNotice.h"
 #include "Protocol.h"
 #include "ReferralsPage.h"
 #include "SdkHost.h"
@@ -146,9 +147,16 @@ struct MainWindow : MainWindowT<MainWindow> {
   // devices when only a free slot does, and Retry. nullopt closes it.
   // Re-renders only on a change.
   void SetClientLimitNotice(std::optional<urnw::clientlimit::Notice> notice);
+  // The Pro features notice (AppController, ProFeaturesNotice.h) -> the
+  // ProFeaturesNotice InfoBar: the network's hosted proxies hold SOCKS or
+  // WireGuard without Pro. `prompt` is the sdk's MainPrompt, "" for none (or
+  // dismissed): its words, Get Pro, Manage devices and Close. Re-renders only
+  // on a change.
+  void SetProFeaturesNotice(std::string const& prompt);
   // The device list (ManageDevicesSheet), in the single-sheet gate: from the
-  // notice's Manage devices and Settings, or, `forSignIn`, for the sign-in the
-  // client limit refused, with `message` above the list.
+  // notices' Manage devices and Settings, or, `forSignIn`, for the sign-in the
+  // client limit refused, with `message` above the list. Its Pro features
+  // notice's Get Pro opens OpenNoticeUpgrade once the sheet has closed.
   winrt::fire_and_forget ShowManageDevicesSheet(bool forSignIn, winrt::hstring message = {});
   // ---- the persistent status strip (D4) ----
   // ProtonVPN's bottom line, at window level: it is true whichever destination
@@ -573,6 +581,15 @@ struct MainWindow : MainWindowT<MainWindow> {
   winrt::Microsoft::UI::Xaml::Controls::Button clientLimitUpgrade_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button clientLimitManage_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::Button clientLimitRetry_{nullptr};
+  // The Pro features notice's one writer (SetProFeaturesNotice): title,
+  // message, open. The sdk's MainPrompt it shows.
+  void ApplyProFeaturesNotice();
+  std::string proFeaturesPrompt_;
+  // A notice's Get Pro: the client limit notice's, the Pro features notice's
+  // and the device list's. The upgrade sheet, after the in-place conversion
+  // for a guest: the balance banner's upgrade path, which changes the plan and
+  // never the provide mode.
+  void OpenNoticeUpgrade();
   // A sign-in the client limit refused (ApplyAuthState): its device list, or,
   // with that list open, what a retry of the sign-in answered.
   void OfferSignInManageDevices(std::string const& error);

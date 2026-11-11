@@ -26,6 +26,7 @@
 #include "MainWindow.xaml.h"
 #include "PageContext.h"  // pages::AdvW — the tray tooltip's health words (#27)
 #include "Paths.h"        // LoadAppPrefs / SaveAppPref — the slow-internet notice setting
+#include "ProFeaturesNotice.h"
 #include "ProtocolHandler.h"
 #include "SingleInstance.h"
 #include "Startup.h"
@@ -347,6 +348,14 @@ void AppController::Start() {
       LogInfo("app: the plan is Pro now: the client limit hold ends so the device dials again");
       sdk_.RetryClientLimitAfterChange();
     }
+    // The same purchase ends the Pro features notice: the network's proxies
+    // are read again, and the server reads the plan as Pro (ProFeaturesNotice.h)
+    // rather than at the controller's next hourly read.
+    if (profeatures::PlanTurnedPro(clientLimitBalanceLoaded_, clientLimitBalancePro_,
+                                   snapshot.loaded, snapshot.isPro)) {
+      LogInfo("app: the plan is Pro now: the Pro features notice reads the proxies again");
+      RefreshProFeatures();
+    }
     if (snapshot.loaded) {
       clientLimitBalanceLoaded_ = true;
       clientLimitBalancePro_ = snapshot.isPro;
@@ -516,6 +525,8 @@ void AppController::Shutdown(lifetime::Ending ending) {
   balance_.Stop();
   // the controller closes; a saved invoice stays for the next launch
   cryptoInvoice_.Stop(/*signedOut=*/false);
+  // the Pro features controller and its hourly read end with the app
+  CloseProFeatures();
   tray_.Destroy();
   if (window_) window_.Close();
   window_ = nullptr;
@@ -603,6 +614,16 @@ void AppController::OnAuthState(AuthState state, const std::string& error) {
     cryptoInvoice_.Start();
   } else if (state == AuthState::LoggedOut && wasLoggedIn) {
     cryptoInvoice_.Stop(/*signedOut=*/true);
+  }
+  // The network's Pro features in use follow the sign-in as well
+  // (ProFeaturesNotice.h): one controller per sign-in, so its notice alerts
+  // once per sign-in and a dismissal ends with it. Opened at sign-in (at launch
+  // too, which arrives here signed in), a fresh one at a repeated push, which
+  // may come with another server's Api; closed at sign-out, its notice with it.
+  if (state == AuthState::LoggedIn) {
+    OpenProFeatures();
+  } else if (state == AuthState::LoggedOut && wasLoggedIn) {
+    CloseProFeatures();
   }
   // a sign-in or sign-out ends the session the out-of-balance latch describes
   if (state == AuthState::LoggedIn || (state == AuthState::LoggedOut && wasLoggedIn)) {
@@ -988,6 +1009,118 @@ void AppController::RetryClientLimit() {
   sdk_.RetryClientLimit();
 }
 
+// ---- the network's Pro features in use (ProFeaturesNotice.h) --------------------
+//
+// The sdk's ProFeaturesViewController decides everything the notice says and
+// when the main window says it; this holds the one controller of the sign-in.
+// It is the Api's, not the device's, so it reads whether or not a tunnel is up.
+// Every call on it returns at once (the read runs on the sdk's goroutines), so
+// all of this runs on the UI thread; its listener, called on an sdk thread or
+// from inside a call, only hops here with the snapshot by value. There is no
+// tray notification for it (owner, 2026-11-11): the window's notice is all.
+
+void AppController::OpenProFeatures() {
+  CloseProFeatures();  // a repeated sign-in push opens a fresh one
+  // IsLoggedIn(), not apiReady(): apiReady is set at SDK init, not at sign-in
+  if (!sdk_.apiReady() || !sdk_.IsLoggedIn()) return;
+  try {
+    proFeatures_.emplace(sdk_.api().openProFeaturesViewController());
+  } catch (const std::exception& e) {
+    LogError("app: could not open the Pro features controller: {}", e.what());
+    proFeatures_.reset();
+    return;
+  }
+  if (!*proFeatures_) {
+    // a handle of 0: the sdk refused the Api
+    LogError("app: the sdk opened no Pro features controller");
+    proFeatures_.reset();
+    return;
+  }
+  const std::uint64_t generation = proFeaturesGeneration_;
+  try {
+    proFeaturesSub_.emplace(proFeatures_->addProFeaturesListener(
+        [this, generation](std::optional<urnet::ProFeaturesSnapshot> snapshot) {
+          // an sdk thread, or inside a call on this one: only the hop
+          if (!snapshot) return;
+          OnUi([this, generation, snapshot = std::move(*snapshot)] {
+            OnProFeatures(generation, snapshot);
+          });
+        }));
+    // the first read of the network's proxies, then one every hour while open
+    proFeatures_->start();
+  } catch (const std::exception& e) {
+    LogError("app: could not start the Pro features controller: {}", e.what());
+  }
+}
+
+void AppController::CloseProFeatures() {
+  ++proFeaturesGeneration_;  // a snapshot already queued for it is dropped
+  proFeaturesSub_.reset();   // unsubscribes, before the controller closes
+  if (proFeatures_) {
+    try {
+      proFeatures_->stop();
+      proFeatures_->close();
+    } catch (const std::exception& e) {
+      LogWarn("app: closing the Pro features controller failed: {}", e.what());
+    }
+    proFeatures_.reset();
+  }
+  proFeaturesErrorId_.clear();
+  // its notice goes with it; the next sign-in's controller says what shows
+  SetProFeaturesPrompt(std::string());
+}
+
+void AppController::OnProFeatures(std::uint64_t generation,
+                                  const urnet::ProFeaturesSnapshot& snapshot) {
+  if (generation != proFeaturesGeneration_) return;  // a closed controller's
+  // one line per change of what shows and per failed read: the prompts and the
+  // counts, never a proxy
+  if (snapshot.MainPrompt != proFeaturesPrompt_) {
+    const urnet::ProFeaturesStatus status =
+        snapshot.Status.value_or(urnet::ProFeaturesStatus{});
+    LogInfo("app: the Pro features notice says \"{}\" (the network's prompt \"{}\", {} SOCKS and {} "
+            "WireGuard proxies)",
+            snapshot.MainPrompt, status.Prompt, status.SocksProxyCount,
+            status.WireguardProxyCount);
+  }
+  if (snapshot.ErrorId != proFeaturesErrorId_) {
+    if (!snapshot.ErrorId.empty()) {
+      LogWarn("app: the Pro features read failed ({}); the last status stands", snapshot.ErrorId);
+    }
+    proFeaturesErrorId_ = snapshot.ErrorId;
+  }
+  SetProFeaturesPrompt(snapshot.MainPrompt);
+}
+
+void AppController::SetProFeaturesPrompt(std::string prompt) {
+  if (prompt == proFeaturesPrompt_) return;
+  proFeaturesPrompt_ = std::move(prompt);
+  if (!windowVisible_ || !window_) return;  // resynced on show
+  if (auto self = window_.try_as<winrt::URnetwork::implementation::MainWindow>())
+    self->SetProFeaturesNotice(proFeaturesPrompt_);
+}
+
+void AppController::RefreshProFeatures() {
+  if (!proFeatures_) return;
+  try {
+    proFeatures_->refresh();
+  } catch (const std::exception& e) {
+    LogWarn("app: the Pro features refresh failed: {}", e.what());
+  }
+}
+
+void AppController::DismissProFeaturesNotice() {
+  LogInfo("app: Pro features notice -> Close");
+  if (!proFeatures_) return;
+  try {
+    // the sdk withdraws it while its prompt stays the same, and says so in a
+    // snapshot; the device list keeps showing the prompt
+    proFeatures_->dismissMainNotice();
+  } catch (const std::exception& e) {
+    LogWarn("app: dismissing the Pro features notice failed: {}", e.what());
+  }
+}
+
 gesture::ServiceFacts AppController::CurrentServiceFacts() const {
   gesture::ServiceFacts f;
   if (!lastTunnelStatus_) return f;
@@ -1231,10 +1364,14 @@ void AppController::ShowWindowImpl(const POINT* anchor) {
     // browser, so without focus the confirmation budget burned while the user
     // paid and came back to a false "timed out" (UPGRADE.md D1). It also says
     // whether the user is looking at the window, which decides whether the
-    // client limit notice goes to the tray as well (InBackground).
+    // client limit notice goes to the tray as well (InBackground). Coming to
+    // the front (a show from the tray, a restore, a click back) reads the
+    // network's proxies again, as the sdk asks: one made or removed on ur.io
+    // meanwhile changes the Pro features notice.
     window_.Activated([this](auto const&, WindowActivatedEventArgs const& args) {
       windowFocused_ = args.WindowActivationState() != WindowActivationState::Deactivated;
       balance_.SetFocused(windowFocused_);
+      if (windowFocused_) RefreshProFeatures();
     });
   }
 
@@ -1442,6 +1579,8 @@ void AppController::ReconcileWindowPresentation() {
     // the client limit notice, as it stands: a hold that began while the
     // window was hidden shows now
     self->SetClientLimitNotice(clientLimitNotice_);
+    // and the Pro features notice, which the sdk may have posted meanwhile
+    self->SetProFeaturesNotice(proFeaturesPrompt_);
     sdk_.RepublishStats();
     self->OnBalanceChanged(balance_.Current(), balance_.CurrentPoll());
     // a tap the tray holds, made while the window was hidden

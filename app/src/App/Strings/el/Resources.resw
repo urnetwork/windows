@@ -6492,6 +6492,22 @@
     <value>Η καλύτερη έκδοση του URnetwork.</value>
     <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
   </data>
+  <data name="pro_features_in_use" xml:space="preserve">
+    <value>Χρησιμοποιούνται λειτουργίες Pro</value>
+    <comment>Title of a notice on the app's main screen and above the list of proxies (the device list, ur.io's Proxies page), shown before the free plan loses SOCKS and WireGuard: the account is not on Pro, and its hosted proxies hold SOCKS or WireGuard, which are Pro features. pro_features_upgrade_message is the body, and Get Pro the button. Keep Pro as it is.</comment>
+  </data>
+  <data name="pro_features_stopped" xml:space="preserve">
+    <value>Τα SOCKS και WireGuard σταμάτησαν να λειτουργούν</value>
+    <comment>Title of a notice on the app's main screen and above the list of proxies (the device list, ur.io's Proxies page), shown once the free plan no longer includes SOCKS and WireGuard: the account is not on Pro, and its hosted proxies stopped accepting SOCKS and WireGuard connections. pro_features_stopped_message is the body. Keep SOCKS and WireGuard as they are.</comment>
+  </data>
+  <data name="pro_features_stopped_message" xml:space="preserve">
+    <value>Τα SOCKS και WireGuard είναι μέρος του Pro, οπότε δεν λειτουργούν πια στους διακομιστές μεσολάβησής σας. Τα HTTP και HTTPS εξακολουθούν να λειτουργούν. Αναβαθμίστε για να τα ενεργοποιήσετε ξανά. Η επανασύνδεση του WireGuard μπορεί να διαρκέσει έως 30 λεπτά.</value>
+    <comment>Body under pro_features_stopped: SOCKS and WireGuard are Pro features, so the hosted proxies of an account on the free plan no longer accept SOCKS or WireGuard connections, while their HTTP and HTTPS proxies keep working. Upgrading to Pro turns them back on: SOCKS at once, WireGuard within 30 minutes. Get Pro is the button beside it. Keep SOCKS, WireGuard, HTTP, HTTPS and Pro as they are.</comment>
+  </data>
+  <data name="pro_features_upgrade_message" xml:space="preserve">
+    <value>Οι διακομιστές μεσολάβησης SOCKS και WireGuard είναι μέρος του Pro. Αναβαθμίστε για να συνεχίσετε να τους χρησιμοποιείτε.</value>
+    <comment>Body under pro_features_in_use, before the free plan loses SOCKS and WireGuard: the account's hosted proxies use SOCKS or WireGuard, which are part of the Pro plan, and upgrading keeps them working. Get Pro is the button beside it. Keep SOCKS, WireGuard and Pro as they are.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>Επεξεργασία πληρωμής</value>
     <comment>Call to action</comment>

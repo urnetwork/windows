@@ -1020,6 +1020,10 @@ private_extender_hint
 private_extender_ip
 private_extender_secret
 private_network
+pro_features_in_use
+pro_features_stopped
+pro_features_stopped_message
+pro_features_upgrade_message
 processing_payment
 profile
 promoted
