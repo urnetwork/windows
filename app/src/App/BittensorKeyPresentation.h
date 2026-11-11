@@ -388,7 +388,7 @@ enum class ClaimNowNote {
   Paid,        // sn_claim_relay_claim_now_paid, on the tile
   PaidEach,    // sn_claim_relay_claim_now_paid_each, in the claim sheet
   UnderFloor,  // sn_claim_relay_under_floor, the floor in TAO
-  Requested,   // sn_claim_relay_requested
+  Requested,   // sn_claim_relay_requested, then sn_claim_relay_requested_period with a period
   AgainOn,     // sn_claim_relay_again_on, the limit's date
 };
 

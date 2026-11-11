@@ -8032,12 +8032,12 @@
     <comment>Label for the measured upload delay (for example 640 ms or 1.2 s, with the upload rate when it is limited) in the slow-internet details sheet, the expanded Dynamic Island and Lock Screen Live Activity, the Android VPN notification, and the Windows and Linux tray and notification. Upload = traffic this device sends. Keep it short: it labels a number in a small box.</comment>
   </data>
   <data name="sn_claim_relay_again_on" xml:space="preserve">
-    <value>「今すぐ受け取る」は {} に再び利用できるようになります。</value>
-    <comment>Earnings, the settlement v2 tile and the claim sheet: Claim now was used for this address, and works again from this date. The placeholder is a date, as Dec 3.</comment>
+    <value>次の「今すぐ受け取る」は {} に利用できるようになります。</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: a Claim now for this address went through, so the next one opens on this date, 30 days after that claim went through (the limit the queued note names). The placeholder is a date, as Dec 3. Claim now is the button's label; keep it recognizable as that label.</comment>
   </data>
   <data name="sn_claim_relay_cap" xml:space="preserve">
-    <value>本日の受け取り予算が尽きたため、翌日まで待機します。失われるものはありません。この残高に有効期限はありません。</value>
-    <comment>Earnings, the settlement v2 tile and the claim sheet: URnetwork's daily budget for paying claim gas is spent, so the claim waits for the next day (UTC).</comment>
+    <value>本日の受け取り予算が尽きたため、待機します。予算は毎日 00:00 UTC に更新されます。失われるものはありません。この残高に有効期限はありません。</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet: URnetwork's daily budget for paying claim gas is spent, so the claim waits. The budget renews every day at 00:00 UTC, and a waiting claim goes out once a day's budget reaches it, which can be later than the next day. Say nothing that promises a day, and keep 00:00 and UTC.</comment>
   </data>
   <data name="sn_claim_relay_claim_now" xml:space="preserve">
     <value>今すぐ受け取る</value>
@@ -8084,8 +8084,12 @@
     <comment>Earnings, the settlement v2 tile and the claim sheet: the last claim transaction failed, and URnetwork will try again by itself.</comment>
   </data>
   <data name="sn_claim_relay_requested" xml:space="preserve">
-    <value>「今すぐ受け取る」は順番待ちです。URnetwork が本日の予算の範囲内で優先して送信します。</value>
-    <comment>Earnings, the settlement v2 tile and the claim sheet, after the user tapped Claim now: the claim is in line and goes out before the automatic ones, as long as the day's gas budget lasts.</comment>
+    <value>「今すぐ受け取る」は順番待ちです。自動受け取りより先に、リクエストを受け付けた順に、各日の予算の範囲内で送信されます。</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, after the user tapped Claim now: the claim is in line. URnetwork sends tapped claims before its automatic ones, the oldest request first, as far as each day's gas budget reaches, so it can go out today or on a later day. Say nothing that promises a day. Claim now is the button's label; keep it recognizable as that label.</comment>
+  </data>
+  <data name="sn_claim_relay_requested_period.other" xml:space="preserve">
+    <value>次の「今すぐ受け取る」は、この受け取りが完了してから {} 日後に利用できます。</value>
+    <comment>Earnings, the settlement v2 tile and the claim sheet, under the queued Claim now: the Claim now limit (once in this many days, 30 today; the count selects the plural form) starts when URnetwork's claim of this balance is paid, not at the tap, so the next Claim now opens this many days after this claim goes through. Claim now is the button's label; keep it recognizable as that label.</comment>
   </data>
   <data name="sn_claim_relay_self_claim" xml:space="preserve">
     <value>ガスキーを使って自分で受け取る</value>

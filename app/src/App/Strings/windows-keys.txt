@@ -1293,6 +1293,7 @@ sn_claim_relay_queued
 sn_claim_relay_queued_button
 sn_claim_relay_refused
 sn_claim_relay_requested
+sn_claim_relay_requested_period
 sn_claim_relay_self_claim
 sn_claim_relay_under_floor
 sn_claim_relay_under_threshold
