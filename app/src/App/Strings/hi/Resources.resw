@@ -3760,7 +3760,7 @@
     <comment>Hint under the Ignore battery optimizations row in builds that can ask for the exemption directly. Once the exemption is on, tapping the row opens Android's system battery optimization list, which by default shows only apps that are not optimized; the quoted labels are Android's own labels for the list filter and the per-app choice.</comment>
   </data>
   <data name="disconnect" xml:space="preserve">
-    <value>डिस्कनेक्ट क</value>
+    <value>डिस्कनेक्ट करें</value>
     <comment>Disconnect VPN button text</comment>
   </data>
   <data name="disconnect_urnetwork_vpn" xml:space="preserve">
