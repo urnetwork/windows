@@ -4635,6 +4635,78 @@ bonne manière</value>
     <value>Extendeurs réinitialisés</value>
     <comment>Confirmation after the extenders were reset (Extenders section under account).</comment>
   </data>
+  <data name="extension_buy_data" xml:space="preserve">
+    <value>Acheter des données</value>
+    <comment>Browser extension popup, out-of-balance alert: a button that opens ur.io's data packs (ur.io/buy-data) in a new tab. Short.</comment>
+  </data>
+  <data name="extension_connect_failed" xml:space="preserve">
+    <value>Échec de la connexion. Vérifiez votre compte.</value>
+    <comment>Browser extension popup, under the button: a connect failed and the server gave no reason of its own (when it gives one, the popup shows that instead).</comment>
+  </data>
+  <data name="extension_data_limit_disconnect_first" xml:space="preserve">
+    <value>Pour acheter des données, choisissez d’abord « Déconnecter ». Le paiement ne peut pas aboutir avant cela.</value>
+    <comment>Browser extension popup, out-of-balance alert for a Pro account at its plan's data, while the extension holds the browser's traffic: ur.io's data packs (the Buy data button) can't load through URnetwork until the user disconnects, and nothing disconnects for them. Disconnect is the button above this line; name it by its own label (the disconnect key). The free plan's counterpart is insufficient_balance_disconnect_first.</comment>
+  </data>
+  <data name="extension_ip_checking" xml:space="preserve">
+    <value>Vérification de l’IP…</value>
+    <comment>Browser extension popup, the IP line at its top, while the popup asks which IP address the browser's requests leave from. IP is the IP address.</comment>
+  </data>
+  <data name="extension_ip_unavailable" xml:space="preserve">
+    <value>IP indisponible</value>
+    <comment>Browser extension popup, the IP line at its top, when the check of which IP address the browser's requests leave from failed. Short.</comment>
+  </data>
+  <data name="extension_kill_switch_blocks_on_failure" xml:space="preserve">
+    <value>Bloque le trafic en cas de panne</value>
+    <comment>Browser extension popup, subtitle under the Kill switch toggle while it is on: if the proxy fails, the browser's traffic stops instead of going out without URnetwork. Short.</comment>
+  </data>
+  <data name="extension_kill_switch_may_leak_on_failure" xml:space="preserve">
+    <value>Le trafic peut fuiter en cas de panne</value>
+    <comment>Browser extension popup, subtitle under the Kill switch toggle while it is off (its default): if the proxy fails, the browser's traffic can go out without URnetwork. Short.</comment>
+  </data>
+  <data name="extension_location_unchanged" xml:space="preserve">
+    <value>Le navigateur reste connecté à l’emplacement précédent.</value>
+    <comment>Browser extension popup, under the reason a location change failed: the change did not happen, and the browser stays connected through the proxy and the location it had before.</comment>
+  </data>
+  <data name="extension_out_of_data_held" xml:space="preserve">
+    <value>Les pages ne se chargeront pas dans ce navigateur tant que des données ne sont pas disponibles ou que vous ne vous déconnectez pas.</value>
+    <comment>Browser extension popup, out-of-balance alert, and the body of the browser notification for it: the account has no data left, and the extension keeps its proxy set whatever the kill switch says, so pages fail rather than load without URnetwork, until the free refresh, an upgrade or a data pack makes data available, or the user presses Disconnect. The ur.io counterpart is site_out_of_data_browser_held, without its kill switch clause.</comment>
+  </data>
+  <data name="extension_proxy_active_network_unreachable" xml:space="preserve">
+    <value>Proxy actif, mais réseau injoignable.</value>
+    <comment>Browser extension popup, note under the button: the browser is set to the extension's proxy, but the popup's own IP check found three times running that requests do not leave through URnetwork.</comment>
+  </data>
+  <data name="extension_proxy_fell_back" xml:space="preserve">
+    <value>Le proxy ne répondait plus, l’extension l’a donc désactivé. Ce navigateur se connecte sans URnetwork jusqu’à ce que vous vous reconnectiez.</value>
+    <comment>Browser extension popup, under the Connect button (status Disconnected): the proxy failed three health checks in a row with the kill switch off, so the extension took its proxy setting off, and the browser went back to its own connection (direct, or the proxy its own settings name). Keep URnetwork as is.</comment>
+  </data>
+  <data name="extension_proxy_other_extension" xml:space="preserve">
+    <value>Une autre extension contrôle les paramètres de proxy de ce navigateur, URnetwork ne peut donc pas se connecter. Désactivez cette extension pour utiliser URnetwork.</value>
+    <comment>Browser extension popup, under the button while the status line reads Another extension controls the proxy (extension_status_other_extension). Turning the other extension off is done in the browser's extension settings. Keep URnetwork as is.</comment>
+  </data>
+  <data name="extension_proxy_policy" xml:space="preserve">
+    <value>Les paramètres de proxy de ce navigateur sont gérés par une règle, URnetwork ne peut donc pas se connecter.</value>
+    <comment>Browser extension popup, under the button while the status line reads Proxy managed by policy (extension_status_proxy_policy). Keep URnetwork as is.</comment>
+  </data>
+  <data name="extension_proxy_unreachable_kill_switch" xml:space="preserve">
+    <value>Le proxy ne répond pas. Le kill switch maintient le navigateur hors ligne jusqu’à ce que le proxy réponde.</value>
+    <comment>Browser extension popup, under the Disconnect button while the status line reads Proxy not answering (extension_status_proxy_not_answering): why pages don't load. Translate kill switch as the kill_switch key does.</comment>
+  </data>
+  <data name="extension_setting_not_saved" xml:space="preserve">
+    <value>Le paramètre n’a pas pu être enregistré, il n’a donc pas été modifié. Réessayez.</value>
+    <comment>Browser extension popup, under the Kill switch or the location sync toggle when saving a change failed: the toggle went back to its previous state.</comment>
+  </data>
+  <data name="extension_status_other_extension" xml:space="preserve">
+    <value>Une autre extension contrôle le proxy</value>
+    <comment>Browser extension popup, status line at its foot: another browser extension holds the browser's proxy setting, and the browser gives it priority over URnetwork, so URnetwork is not connected. Short.</comment>
+  </data>
+  <data name="extension_status_proxy_not_answering" xml:space="preserve">
+    <value>Le proxy ne répond pas</value>
+    <comment>Browser extension popup, status line at its foot: the kill switch keeps the extension's proxy set although the proxy failed three health checks in a row, so this browser is offline until the proxy answers or the user disconnects. Short.</comment>
+  </data>
+  <data name="extension_status_proxy_policy" xml:space="preserve">
+    <value>Proxy géré par une règle</value>
+    <comment>Browser extension popup, status line at its foot: the browser's proxy settings are fixed by policy (set by an administrator or an organization), so no extension can set them and URnetwork is not connected. Short; use the word the browser itself uses for its managed settings in the language.</comment>
+  </data>
   <data name="failed_to_connect" xml:space="preserve">
     <value>Échec de la connexion</value>
     <comment>Used in Shared/Intents/ConnectIntent.swift.</comment>

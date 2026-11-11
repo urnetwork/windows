@@ -563,12 +563,15 @@ namespace {
 // The device type this app reports (sdk ClientInfo, server
 // session/REVOKE-UI-FINAL.md §2).
 constexpr const char* kClientDeviceType = "windows";
+// The distribution it reports with it (sdk ClientDistribution*): one Windows
+// build, which the MSI and the portable zip both carry, billed by Stripe.
+constexpr const char* kClientDistribution = urnet::ClientDistributionWindows;
 }  // namespace
 
 void SdkHost::BindApiLocked() {
   // Every request, renewal and connect auth this Api makes carries it; the
   // sdk fills in its own version.
-  api_->setClientInfo(urnet::newClientInfo(kClientDeviceType, appVersion_));
+  api_->setClientInfo(urnet::newClientInfoWithDistribution(kClientDeviceType, appVersion_, kClientDistribution));
   // The sdk drops the account's credential on a confirmed 401 against it, and
   // after a sign-out of this session from the Sessions page, and tells this
   // Api's logout listeners. The app then signs out the way it does when the

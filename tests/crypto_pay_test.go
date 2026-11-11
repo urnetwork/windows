@@ -421,6 +421,11 @@ func TestCryptoPayViewsWiring(t *testing.T) {
 		"constbooldone=step.progress==cryptopay::kStepDone;",
 		"constboolcurrent=step.progress==cryptopay::kStepCurrent;",
 		"constintannounced=cryptopay::AnnouncedStep(display.steps);",
+		// the wallets line only with a name to show: the sdk names TAO's
+		// alone (the owner, 2026-11-11), so every other coin has no line, and
+		// never an empty one
+		"conststd::stringnames=cryptopay::JoinNames(wallets);",
+		"Show(state.walletsText,display.showWallets&&!names.empty());",
 		"Show(state.payAnotherWay,display.showPayAnotherWay);")
 	// Open in wallet hands over a uri, never the qr text: TAO's address-only QR
 	// has no Open in wallet
