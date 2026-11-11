@@ -115,8 +115,9 @@ inline bool IsCoin(std::string_view method) {
 // One of a coin's lines as the sdk hands it out (urnet::cryptoAssetLinesFor):
 // its store key, and its English, the store's byte for byte, which shows while
 // the catalog lacks the key. A line whose key is "" is one the coin does not
-// have (Zcash and Monero have no network warning, and only TAO has the note
-// under its QR), and is not shown.
+// have (Zcash and Monero have no network warning, only TAO has the note under
+// its QR, and only Bitcoin the two lines of its confirmation grace), and is
+// not shown.
 struct CoinLine {
   std::string key;
   std::string english;
@@ -128,11 +129,18 @@ struct CoinLine {
 // invoice's first line, and the line under the coin in the More coins list),
 // the warning beside its address (only this coin, sent on this network, is
 // credited), and for a coin with no payment link (TAO) the note under its QR
-// code, which holds the address alone.
+// code, which holds the address alone. A coin with a confirmation grace
+// (Bitcoin's, mmm/BTCPAY.md §16.8) has two more: the note with the quote's
+// countdown (its payments can take up to 3 hours to confirm, and one sent
+// before the quote expires is credited at its price), and the line in place
+// of the expired copy while a payment sent in time may still confirm
+// (AwaitingConfirmation).
 struct CoinLines {
   CoinLine networkLine;
   CoinLine networkWarning;
   CoinLine noPaymentLinkNote;
+  CoinLine confirmationNote;
+  CoinLine awaitingConfirmationNote;
 
   bool operator==(const CoinLines&) const = default;
 };
@@ -301,9 +309,11 @@ inline std::array<PlanCardSlot, 4> YearlyCardSlots(bool cardTermsShown, bool sec
 }
 
 // ---- the invoice (§6.2) -------------------------------------------------------
-// The coin's own lines (its network, its warning, TAO's note under its QR) and
-// whether it has a payment link are the sdk's, carried in the view
-// (CryptoInvoiceView.lines, .noPaymentLink).
+// The coin's own lines (its network, its warning, TAO's note under its QR,
+// Bitcoin's two of its confirmation grace) and whether it has a payment link
+// are the sdk's, carried in the view (CryptoInvoiceView.lines,
+// .noPaymentLink), and so is whether a payment sent within an ended quote may
+// still confirm (.awaitingConfirmation).
 
 // The gate in front of the QR and Open in wallet. The server builds the uri,
 // and the sdk's urnet::checkCryptoPaymentUri(asset, uri, address) is the whole
@@ -441,7 +451,13 @@ struct CryptoInvoiceView {
   double priceUsd = 0;
   std::string expiresAt;
   int64_t secondsLeft = 0;  // 0 once expired
-  std::string status;       // §2.5
+  // the quote ended with nothing received, but a payment sent within it may
+  // not be confirmed yet and is still credited at its price: the sdk's
+  // awaiting_confirmation (open, pending, at zero, and the coin's confirmation
+  // grace not over: Bitcoin's 3 hours, mmm/BTCPAY.md §16.8). False for every
+  // coin without a grace.
+  bool awaitingConfirmation = false;
+  std::string status;  // §2.5
   std::string reviewReason;
   std::string received;
   std::string remaining;
@@ -506,11 +522,28 @@ inline bool NothingReceived(const CryptoInvoiceView& view) {
   return view.status == kStatusPending || view.status == kStatusExpired;
 }
 
+// The quote ended with nothing received, but a payment sent within it may
+// still confirm and be credited at its price: the sdk's awaiting_confirmation,
+// for an open invoice pending at zero (Bitcoin's confirmation grace,
+// mmm/BTCPAY.md §16.8). The server sees a Bitcoin payment only once it is
+// mined, credits one sent within the quote at its price while it is mined
+// within 3 hours of the expiry, keeps the invoice pending through that grace,
+// and refuses a requote in it. The countdown still ends at the expiry, the
+// time to send by. Not the expired invoice: the coin's awaiting line takes the
+// place of the expired copy, with no Refresh quote; Pay another way stays.
+inline bool AwaitingConfirmation(const CryptoInvoiceView& view) {
+  return view.awaitingConfirmation && RouteFor(view) == InvoiceRoute::Open &&
+         view.status == kStatusPending && view.secondsLeft <= 0;
+}
+
 // The quote ran out with nothing received: the server's expired, or a pending
-// quote whose countdown reached zero before the next poll said so.
+// quote whose countdown reached zero before the next poll said so. Not while
+// a payment sent within it may still confirm (AwaitingConfirmation): the
+// server keeps that invoice pending until the coin's grace is over, and says
+// expired only then.
 inline bool QuoteExpired(const CryptoInvoiceView& view) {
   return view.status == kStatusExpired ||
-         (view.status == kStatusPending && view.secondsLeft <= 0);
+         (view.status == kStatusPending && view.secondsLeft <= 0 && !AwaitingConfirmation(view));
 }
 
 // The status line's key: waiting -> payment seen -> confirming n of N -> paid,
@@ -544,8 +577,11 @@ inline int AnnouncedStep(const std::vector<PaymentStepView>& steps) {
 
 enum class QuoteLine {
   Hidden,
-  Counting,  // "Quote expires in m:ss"
+  Counting,  // "Quote expires in m:ss", with the coin's confirmation note (Bitcoin's)
   Expired,   // crypto_invoice_quote_expired
+  // the coin's awaiting line in place of the expired copy, while a payment
+  // sent within the quote may still confirm (AwaitingConfirmation)
+  AwaitingConfirmation,
 };
 
 // Everything the invoice shows for one state, top to bottom (§6.2), by the
@@ -555,14 +591,22 @@ enum class QuoteLine {
 //              with no payment link), Open in wallet (a non-empty uri the gate
 //              passed), the address with the coin's network warning, the memo
 //              when the sdk says it shows (the server sent one: USDC on
-//              Solana) and the countdown. A coin with no payment link (TAO)
-//              says to send exactly this amount to this address, its Copy
-//              buttons say what they copy, and its QR says it holds only the
-//              address
+//              Solana) and the countdown, with the coin's confirmation note
+//              under it (Bitcoin's: its payments can take up to 3 hours to
+//              confirm, and one sent before the quote expires is credited at
+//              this price). A coin with no payment link (TAO) says to send
+//              exactly this amount to this address, its Copy buttons say what
+//              they copy, and its QR says it holds only the address
 //   not polled a resumed invoice before its first status (""): a brief
 //              loading line in place of the payment details, nothing payable
 //   expired    expired, or pending at zero: the expired line and Refresh
 //              quote, no amount, no QR, no Open in wallet
+//   awaiting   pending at zero while a payment sent within the quote may still
+//              confirm (AwaitingConfirmation, Bitcoin's grace, mmm/BTCPAY.md
+//              §16.8): the coin's awaiting line in place of the expired one
+//              and no Refresh quote (the server refuses a requote then); no
+//              amount, no QR, no Open in wallet, as expired; the steps and Pay
+//              another way as for any pending invoice
 //   seen       the address with Copy for the top-up, and "{remaining} more to
 //              send"; never the QR or the full amount (scanning again overpays)
 //   confirming the status steps
@@ -570,7 +614,8 @@ enum class QuoteLine {
 // The status steps are the sdk's (the view's steps, each drawn by its
 // progress); this app only says when they show: while pending, seen or
 // confirming and not expired, and once paid. Refresh quote only while nothing
-// was received (pending, expired), disabled while a requote is in flight. Pay
+// was received (pending, expired) and no payment sent in time may still
+// confirm (not awaiting), disabled while a requote is in flight. Pay
 // another way only while nothing was received, or when the invoice failed or
 // is unknown; otherwise only Close, which hides the invoice and leaves
 // "Payment in progress".
@@ -601,6 +646,12 @@ struct CryptoInvoiceDisplay {
   // 4. the quote
   QuoteLine quote = QuoteLine::Hidden;
   std::string countdown;
+  // the coin's note with the countdown (Bitcoin's confirmation time): no key
+  // while no countdown shows, nor for a coin without one
+  CoinLine confirmationNote;
+  // the coin's line in place of the expired copy: no key unless the quote
+  // line is AwaitingConfirmation
+  CoinLine awaitingConfirmationNote;
   bool showRefresh = false;
   bool refreshEnabled = false;
   // 5. the status: the sdk's steps while they show (each by its progress,
@@ -638,6 +689,8 @@ inline CryptoInvoiceDisplay DisplayFor(const CryptoInvoiceView& view, bool uriAl
   display.review = open && status == kStatusReview;
   display.paid = route == InvoiceRoute::Paid;
   const bool expired = open && QuoteExpired(view);
+  // past the countdown, a payment sent in time may still confirm (Bitcoin's grace)
+  const bool awaiting = AwaitingConfirmation(view);
   const bool payable = open && status == kStatusPending && 0 < view.secondsLeft;
   const bool partial = open && status == kStatusSeen;
   const std::string& ticker = view.ticker;
@@ -669,11 +722,21 @@ inline CryptoInvoiceDisplay DisplayFor(const CryptoInvoiceView& view, bool uriAl
 
   if (expired) {
     display.quote = QuoteLine::Expired;
+  } else if (awaiting) {
+    // the coin's awaiting line in place of the expired copy; a coin without
+    // one (none has a grace without it) shows no quote line at all
+    if (!view.lines.awaitingConfirmationNote.key.empty()) {
+      display.quote = QuoteLine::AwaitingConfirmation;
+      display.awaitingConfirmationNote = view.lines.awaitingConfirmationNote;
+    }
   } else if (payable) {
     display.quote = QuoteLine::Counting;
     display.countdown = FormatCountdown(view.secondsLeft);
+    display.confirmationNote = view.lines.confirmationNote;
   }
-  display.showRefresh = open && NothingReceived(view);
+  // the server refuses a requote while a payment sent within the quote may
+  // still confirm, and the sdk asks none (mmm/BTCPAY.md §16.8)
+  display.showRefresh = open && NothingReceived(view) && !awaiting;
   display.refreshEnabled = display.showRefresh && !view.refreshing;
 
   // when the steps show is this app's; what they say is the sdk's
@@ -712,7 +775,11 @@ inline bool ShowsPaymentInProgress(const CryptoInvoiceView& view) {
 
 // That row's second line: none before the first status (money may be on its
 // way), the expired line once the quote ran out, else the status line
-// (crypto_status_confirming takes the counts).
+// (crypto_status_confirming takes the counts). While a payment sent within the
+// quote may still confirm (AwaitingConfirmation, mmm/BTCPAY.md §16.8) the
+// quote has not run out for the row either: it reads waiting for your
+// payment, as the invoice's steps do, not the expired line (whose refresh the
+// server refuses then).
 inline const char* InProgressNoteKey(const CryptoInvoiceView& view) {
   if (!InvoiceInProgress(view) || view.status.empty()) return "";
   if (QuoteExpired(view)) return "crypto_invoice_quote_expired";

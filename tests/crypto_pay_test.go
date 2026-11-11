@@ -53,15 +53,18 @@ var cryptoPaySdkLabelKeys = []string{
 // Each coin's own lines, which the sdk hands out as a store key with its
 // English (urnet::cryptoAssetLinesFor; CryptoPayViews.cpp PaymentLabel looks
 // each up): its network (the invoice's first line, and the line under it in
-// the More coins list), its network's warning beside the address, and TAO's
-// note under its address-only QR, as cryptoAssetCoins in the sdk's
-// crypto_pay.go spells them.
+// the More coins list), its network's warning beside the address, TAO's note
+// under its address-only QR, and Bitcoin's two of its confirmation grace
+// (mmm/BTCPAY.md §16.8), the note with the countdown and the line in place of
+// the expired copy, as cryptoAssetCoins in the sdk's crypto_pay.go spells
+// them.
 var cryptoPaySdkLineKeys = []string{
 	"crypto_network_usdc", "crypto_network_zcash", "crypto_network_monero", "crypto_network_tao",
 	"crypto_network_bitcoin", "crypto_network_eth", "crypto_network_sol",
 	"usdc_solana_network_only", "crypto_invoice_tao_network_only", "crypto_invoice_bitcoin_network_only",
 	"crypto_invoice_eth_network_only", "crypto_invoice_sol_network_only",
 	"crypto_invoice_tao_no_payment_link",
+	"crypto_invoice_bitcoin_confirmation_time", "crypto_invoice_bitcoin_awaiting_confirmation",
 }
 
 // The four marks of More coins, by the sdk's icon keys (CryptoIconKey*).
@@ -413,6 +416,15 @@ func TestCryptoPayViewsWiring(t *testing.T) {
 		"state.networkWarning.Text(hstring{LineText(display.networkWarning)});",
 		"Show(state.networkWarning,display.showNetworkWarning);",
 		"Show(state.memoBlock,display.showMemo);",
+		// the quote: the countdown with the coin's confirmation note, the
+		// expired copy, or the coin's awaiting line in its place (Bitcoin's
+		// grace, mmm/BTCPAY.md §16.8), each line the sdk's, looked up as its
+		// labels are
+		`state.quoteText.Text(hstring{Format("crypto_invoice_expires_in",Widen(display.countdown))});`,
+		`state.quoteText.Text(Loc("crypto_invoice_quote_expired"));`,
+		"elseif(display.quote==cryptopay::QuoteLine::AwaitingConfirmation){state.quoteText.Text(hstring{LineText(display.awaitingConfirmationNote)});}",
+		"state.confirmationNote.Text(hstring{LineText(display.confirmationNote)});",
+		"Show(state.confirmationNote,!display.confirmationNote.key.empty());",
 		"Show(state.refreshButton,display.showRefresh);",
 		// the sdk's steps, row by row, each drawn by its progress
 		"Show(state.steps,display.showSteps);",
@@ -732,6 +744,8 @@ func TestCryptoPaySdkIsReadInOnePlace(t *testing.T) {
 		"urnet::CryptoPaymentStep", "urnet::cryptoPaymentEventProduct(", "urnet::cryptoPaidAsset(",
 		".crypto_unavailable_assets", ".network_line_key", ".network_warning_key",
 		".no_payment_link_note_key", ".confirmations_required",
+		// Bitcoin's confirmation grace (mmm/BTCPAY.md §16.8)
+		".awaiting_confirmation", ".confirmation_note_key", ".awaiting_confirmation_note_key",
 	}
 	storeOnly := []string{"urnet::newCryptoInvoiceViewController(", "urnet::CryptoInvoiceViewController"}
 	for name, source := range appSourceFiles(t, ".cpp", ".h") {
@@ -1067,9 +1081,10 @@ func TestCryptoPayAgreesWithTheSdk(t *testing.T) {
 	}
 
 	// and so are its coins' lines, each English the catalog's (PaymentLabel
-	// shows it while the catalog lacks the key)
+	// shows it while the catalog lacks the key), Bitcoin's two of its
+	// confirmation grace among them
 	sdkLines := []string{}
-	linePattern := regexp.MustCompile(`(?s)(networkLine|networkWarning|noPaymentLinkNote):\s*"((?:[^"\\]|\\.)*)",\s*(?:networkLine|networkWarning|noPaymentLinkNote)Key:\s*"([a-z_]+)"`)
+	linePattern := regexp.MustCompile(`(?s)(networkLine|networkWarning|noPaymentLinkNote|confirmationNote|awaitingConfirmationNote):\s*"((?:[^"\\]|\\.)*)",\s*(?:networkLine|networkWarning|noPaymentLinkNote|confirmationNote|awaitingConfirmationNote)Key:\s*"([a-z_]+)"`)
 	for _, coin := range coins {
 		for _, match := range linePattern.FindAllStringSubmatch(coin[2], -1) {
 			english, key := match[2], match[3]

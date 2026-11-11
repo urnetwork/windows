@@ -2076,6 +2076,14 @@
     <value>一次性支付一年 Pro 費用。不會自動續訂，亦不設免費試用。</value>
     <comment>Fine print under the buy button when a coin pays for the yearly Pro plan: a coin payment is a one-time payment for one year, it never auto-renews, and the free trial is card only.</comment>
   </data>
+  <data name="crypto_invoice_bitcoin_awaiting_confirmation" xml:space="preserve">
+    <value>此報價已過期。在過期前發送的付款將在確認後按此價格入賬，確認最多可能需要 3 小時。如果你尚未付款，請使用其他方式付款。</value>
+    <comment>Crypto invoice, Bitcoin only: shown in place of crypto_invoice_quote_expired and its Refresh quote button for up to 3 hours after a Bitcoin quote expires with nothing received yet. The server sees a Bitcoin payment only once it is confirmed (mined), so one sent in time may still be on its way, and it is credited at the quoted price. "pay another way" refers to the button crypto_invoice_pay_another_way.</comment>
+  </data>
+  <data name="crypto_invoice_bitcoin_confirmation_time" xml:space="preserve">
+    <value>Bitcoin 付款最多可能需要 3 小時才能確認。在報價過期前發送的付款將按此價格入賬。</value>
+    <comment>Crypto invoice, Bitcoin only: shown under the quote's countdown while the invoice can be paid. The server sees a Bitcoin payment only once it is confirmed (mined), which can take hours, and credits a payment sent before the quote expires at the quoted price if it confirms within 3 hours of the expiry. "this price" is the price on the invoice. Bitcoin is a product name.</comment>
+  </data>
   <data name="crypto_invoice_bitcoin_network_only" xml:space="preserve">
     <value>請僅向此地址發送 Bitcoin 網絡上的 Bitcoin。透過其他網絡發送的 Bitcoin 將不會入賬。</value>
     <comment>Crypto invoice, Bitcoin only: the network to send on, shown with the address. Bitcoin sent on another network is not credited to this payment. The Bitcoin counterpart of usdc_solana_network_only. Bitcoin is a product name.</comment>
