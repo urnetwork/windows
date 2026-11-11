@@ -15,8 +15,9 @@
 //                      server's uri once the sdk's check passed, or TAO's
 //                      address alone), Open in wallet, the amount, the address
 //                      with the coin's network warning and the memo with Copy,
-//                      the quote's countdown with Refresh quote, the status
-//                      steps, the wallets that work and Pay another way;
+//                      the quote's countdown with Refresh quote, the sdk's
+//                      status steps, the wallets that work and Pay another
+//                      way;
 //   CryptoAccountRows  the Account plan pane's rows: "Does not renew" under a
 //                      plan paid once in crypto, the crypto_term notice with
 //                      Renew, and "Payment in progress" for a saved invoice.
@@ -56,15 +57,16 @@ class PaymentMethodRow {
   winrt::Microsoft::UI::Xaml::Controls::StackPanel Build();
   // The sdk's coin selector for this surface (cryptopay::PaymentTabsFor) and
   // the method wanted (the device's remembered one, or the selection the user
-  // made here). Rebuilds the segments and the More coins list when the tabs
-  // changed and selects cryptopay::MethodToSelect: Card when the wanted coin
-  // cannot be paid with now, and Card with the row hidden when the tabs are
-  // empty.
+  // made here, which is remembered too). Rebuilds the segments and the More
+  // coins list when the tabs changed and selects cryptopay::MethodToSelect:
+  // Card when the wanted coin cannot be paid with now, and Card with the row
+  // hidden when the tabs are empty. `wanted` is also the remembered method a
+  // tap on a tab hands the sdk (cryptopay::TabCoinFor).
   void SetTabs(std::vector<cryptopay::PaymentTabView> const& tabs, std::string const& wanted);
   // The selection, Card or a coin's asset: Card while the row is hidden.
   std::string Method() const { return state_->selected; }
   // Select programmatically (a coin must be offered): repaints, does NOT fire
-  // onSelect.
+  // onSelect. `method` is the remembered one from here on, as for SetTabs.
   void Select(std::string const& method);
   void SetEnabled(bool enabled);
   // "Temporarily unavailable" under the row while `method` (the coin whose
@@ -93,9 +95,11 @@ class PaymentMethodRow {
     // Card's segment, then one per tab
     std::vector<winrt::Microsoft::UI::Xaml::Controls::SelectorBarItem> items;
     std::vector<Coin> coins;
-    // the coin a tab of several selects when it is chosen again: the one
-    // chosen there last, or the remembered method
-    std::string wanted;
+    // what a tap on a tab hands the sdk (cryptopay::TabCoinFor): the coin
+    // chosen last in that tab, kept per tab, and the remembered method (the
+    // one SetTabs or Select was given last)
+    cryptopay::LastChosenCoins lastChosen;
+    std::string remembered;
     std::string selected = cryptopay::kMethodCard;
     std::string unavailableMethod;
     bool enabled = true;
@@ -176,8 +180,10 @@ class CryptoInvoicePanel {
     winrt::Microsoft::UI::Xaml::Controls::Button refreshButton{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::ProgressRing refreshRing{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::StackPanel steps{nullptr};
-    std::vector<Step> stepRows;  // waiting, seen, confirming, paid
-    std::string statusKey;       // the status line last announced
+    // the sdk's steps in order, one row each (at most four: waiting, seen,
+    // confirming, paid)
+    std::vector<Step> stepRows;
+    std::string statusKey;  // the status line last announced
     winrt::Microsoft::UI::Xaml::Controls::TextBlock remainingText{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock reviewText{nullptr};
     winrt::Microsoft::UI::Xaml::Controls::TextBlock walletsText{nullptr};

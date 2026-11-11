@@ -318,6 +318,7 @@ void SubscriptionBalanceStore::Apply(urnet::SubscriptionBalanceResult const& res
   // the coins on sale and the crypto term, read through the one adapter that
   // names the sdk's crypto fields (CryptoPaySdk.h)
   snapshot_.cryptoAssets = cryptopay::AssetsFromSdk(result);
+  snapshot_.cryptoUnavailableAssets = cryptopay::UnavailableAssetsFromSdk(result);
   snapshot_.cryptoTerm = cryptopay::TermFromSdk(result);
   // a failed Stripe renewal still being retried, read through its one adapter
   // (PaymentPastDueSdk.h)

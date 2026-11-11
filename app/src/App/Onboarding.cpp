@@ -315,8 +315,8 @@ void Onboarding::StartCheckout(bool yearly) {
 
 void Onboarding::ApplyMethods() {
   if (!built_) return;
-  const std::vector<cryptopay::PaymentTabView> tabs =
-      cryptopay::PaymentTabsFor(balance_.cryptoAssets, balance_.offer.active);
+  const std::vector<cryptopay::PaymentTabView> tabs = cryptopay::PaymentTabsFor(
+      balance_.cryptoAssets, balance_.cryptoUnavailableAssets, balance_.offer.active);
   const std::string wanted = wantedMethod_.empty() ? CryptoInvoice().PaymentMethod() : wantedMethod_;
   welcomeMethods_.SetTabs(tabs, wanted);
   offerMethods_.SetTabs(tabs, wanted);
