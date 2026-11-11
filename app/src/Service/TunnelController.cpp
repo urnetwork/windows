@@ -216,10 +216,12 @@ urnet::NetworkSpace TunnelController::ImportNetworkSpaceLocked(
   // built on it signs in and connects with that Api's (server
   // session/REVOKE-UI-FINAL.md §1.13), and the app's own Api, which the app
   // sets, is in another process. The service ships with the app, so this
-  // build's version is the app's. Its own best effort: an sdk that refuses it
-  // reports an unknown device, and must not cost the start.
+  // build's version and distribution are the app's. Its own best effort: an
+  // sdk that refuses it reports an unknown device, and must not cost the
+  // start.
   try {
-    space.getApi().setClientInfo(urnet::newClientInfo("windows", version::kString));
+    space.getApi().setClientInfo(
+        urnet::newClientInfoWithDistribution("windows", version::kString, urnet::ClientDistributionWindows));
   } catch (const std::exception& e) {
     LogWarn("tunnel: setting the client info failed: {}", e.what());
   }
