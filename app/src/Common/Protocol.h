@@ -99,6 +99,15 @@ namespace urnw::proto {
 //    tests switch hidden while disconnected; the setting itself still applies,
 //    since every device reads it from its space.
 //
+//    Nor for set_provide_extender_port_mapping and
+//    ProviderStats::provide_extender_port_mapping and
+//    provide_extender_port_mapping_writable (connect EXTENDER.md S8): the same
+//    rule. The app sends the verb only to a service whose get_provider_stats
+//    said it takes it, and a service that does not say so keeps the router
+//    port mapping switch hidden while disconnected; a peer that drops the
+//    setting reads it as off, the apps' default, and the setting itself still
+//    applies, since every device reads it from its space.
+//
 //    Nor for reset_extenders, Reply::reset and Reply::reset_busy: a service
 //    that does not know the verb answers "unknown request type" and resets
 //    nothing, which is the behaviour before it existed, and the app then leaves
@@ -141,6 +150,8 @@ inline constexpr const char* kUploadLogs = "upload_logs";        // app -> servi
 inline constexpr const char* kSetProvideExtender = "set_provide_extender";  // app -> service
 // app -> service
 inline constexpr const char* kSetMeasurementsEnabled = "set_measurements_enabled";
+// app -> service
+inline constexpr const char* kSetProvideExtenderPortMapping = "set_provide_extender_port_mapping";
 inline constexpr const char* kResetExtenders = "reset_extenders";  // app -> service
 inline constexpr const char* kSetIngressDns = "set_ingress_dns";  // app -> service
 inline constexpr const char* kReply = "reply";                   // service -> app
@@ -466,6 +477,23 @@ struct SetMeasurementsEnabled {
   bool measurements_enabled = true;
 };
 
+// set_provide_extender_port_mapping: the router port mapping switch while
+// disconnected ("Open a port on my router", connect EXTENDER.md S8): whether
+// the extender role asks the router, by UPnP, NAT-PMP or PCP, to forward its
+// ports (tcp 443, udp 443 and udp 4053) to this device, which opens them on the
+// router. Off until the user turns it on, on every app (owner, 2026-11-11; the
+// miner turns it on). Like the provide extender setting it belongs to the
+// network space (`.provide_extender_port_mapping`) and every device reads it
+// from its space when it starts, but it is written only through a device that
+// runs (provide::ExtenderSettingTargetFor's two device targets): the sdk has
+// no setter for it on a space alone, so with no device the service refuses
+// it. Sent only over a status whose
+// ProviderStats::provide_extender_port_mapping_writable said the service takes
+// it.
+struct SetProvideExtenderPortMapping {
+  bool provide_extender_port_mapping = false;
+};
+
 // reset_extenders: "Reset extenders" in the app's Account > Extenders (connect
 // EXTENDER.md E7). The app has reset its own network space -- everything it
 // learned about extenders is cleared and the extenders a user added are
@@ -753,6 +781,17 @@ struct ProviderStats {
   // from before the verb never sends it, which the app reads as no writer and
   // keeps the speed tests switch hidden while disconnected (N1).
   bool measurements_enabled_writable = false;
+  // The router port mapping setting (Device::getProvideExtenderPortMapping,
+  // connect EXTENDER.md S8), read beside the provide extender setting: the
+  // "Open a port on my router" switch under the speed tests switch. Off by
+  // default, as the sdk's on every app, so a service that does not send it
+  // reads as off.
+  bool provide_extender_port_mapping = false;
+  // The service takes set_provide_extender_port_mapping for that setting. A
+  // service from before the verb never sends it, which the app reads as no
+  // writer and keeps the router port mapping switch hidden while disconnected
+  // (N1).
+  bool provide_extender_port_mapping_writable = false;
 };
 
 struct Reply {
@@ -939,6 +978,21 @@ inline void from_json(const nlohmann::json& j, SetMeasurementsEnabled& v) {
     throw std::runtime_error("set_measurements_enabled requires measurements_enabled (a boolean)");
   }
   v.measurements_enabled = it->get<bool>();
+}
+
+inline void to_json(nlohmann::json& j, const SetProvideExtenderPortMapping& v) {
+  j = {{"provide_extender_port_mapping", v.provide_extender_port_mapping}};
+}
+
+// Strict, as set_provide_extender's: a write whose value did not arrive must
+// not write a default the user never chose, and least of all open a port.
+inline void from_json(const nlohmann::json& j, SetProvideExtenderPortMapping& v) {
+  auto it = j.find("provide_extender_port_mapping");
+  if (it == j.end() || !it->is_boolean()) {
+    throw std::runtime_error(
+        "set_provide_extender_port_mapping requires provide_extender_port_mapping (a boolean)");
+  }
+  v.provide_extender_port_mapping = it->get<bool>();
 }
 
 inline void to_json(nlohmann::json& j, const ResetExtenders& v) {
@@ -1176,6 +1230,8 @@ inline void to_json(nlohmann::json& j, const ProviderStats& v) {
       {"provide_extender_writable", v.provide_extender_writable},
       {"measurements_enabled", v.measurements_enabled},
       {"measurements_enabled_writable", v.measurements_enabled_writable},
+      {"provide_extender_port_mapping", v.provide_extender_port_mapping},
+      {"provide_extender_port_mapping_writable", v.provide_extender_port_mapping_writable},
   };
 }
 
@@ -1192,6 +1248,8 @@ inline void from_json(const nlohmann::json& j, ProviderStats& v) {
   get("provide_extender_writable", v.provide_extender_writable);
   get("measurements_enabled", v.measurements_enabled);
   get("measurements_enabled_writable", v.measurements_enabled_writable);
+  get("provide_extender_port_mapping", v.provide_extender_port_mapping);
+  get("provide_extender_port_mapping_writable", v.provide_extender_port_mapping_writable);
   // The sdk's documents are kept only in the shape they have to have: anything
   // else reads as none, never as a throw that loses the counts above.
   if (auto it = j.find("network_peers"); it != j.end() && it->is_array())

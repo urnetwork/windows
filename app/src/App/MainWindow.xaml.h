@@ -424,6 +424,9 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the lag.dev speed tests switch under it (lag.dev/PLAN.md C4)
   void OnSpeedTestsToggled(winrt::Windows::Foundation::IInspectable const&,
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the router port mapping switch under that (connect EXTENDER.md S8)
+  void OnPortMappingToggled(winrt::Windows::Foundation::IInspectable const&,
+                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnFixedIpToggled(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnStrongAnonToggled(winrt::Windows::Foundation::IInspectable const&,

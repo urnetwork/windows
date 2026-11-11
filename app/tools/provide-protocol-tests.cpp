@@ -13,6 +13,9 @@
 // request, and provide_extender_writable with an older service's silence. And
 // the lag.dev speed tests switch the same way: set_measurements_enabled, its
 // strict request, and measurements_enabled with measurements_enabled_writable
+// and an older service's silence. And the router port mapping switch the same
+// way, off by default: set_provide_extender_port_mapping, its strict request,
+// and provide_extender_port_mapping with provide_extender_port_mapping_writable
 // and an older service's silence. Run
 // against the same header the service and the app compile; it needs
 // nlohmann/json, like the app.
@@ -821,6 +824,81 @@ void TestSetMeasurementsEnabled() {
   Check(kProtocolVersion == 4, "speed tests: no protocol bump for the verb and its fields");
 }
 
+// (l) the router port mapping switch while disconnected (connect EXTENDER.md
+// S8): the set_provide_extender_port_mapping verb and its strict request, and
+// the provide_extender_port_mapping setting with the
+// provide_extender_port_mapping_writable field beside the role, an older
+// service's silence read as no writer and the setting off, the apps' default
+void TestSetProvideExtenderPortMapping() {
+  Check(std::string(msg::kSetProvideExtenderPortMapping) == "set_provide_extender_port_mapping",
+        "port mapping: the set_provide_extender_port_mapping tag");
+  Check(!SetProvideExtenderPortMapping{}.provide_extender_port_mapping,
+        "port mapping: the request starts off");
+  for (const bool on : {false, true}) {
+    SetProvideExtenderPortMapping sent;
+    sent.provide_extender_port_mapping = on;
+    const nlohmann::json request =
+        Request(msg::kSetProvideExtenderPortMapping, nlohmann::json(sent));
+    const nlohmann::json wire = nlohmann::json::parse(DumpForWire(request));
+    Check(TypeOf(wire) == "set_provide_extender_port_mapping",
+          "port mapping: the request carries its type");
+    Check(wire.get<SetProvideExtenderPortMapping>().provide_extender_port_mapping == on,
+          std::string("port mapping: provide_extender_port_mapping round-trips ") +
+              (on ? "on" : "off"));
+  }
+  // a write whose value did not arrive writes nothing, not a default, and
+  // least of all opens a port
+  for (const char* malformed :
+       {R"({})", R"({"provide_extender_port_mapping":null})",
+        R"({"provide_extender_port_mapping":"true"})", R"({"provide_extender_port_mapping":1})",
+        R"({"provide_extender":true})", R"({"port_mapping":true})"}) {
+    bool threw = false;
+    try {
+      (void)nlohmann::json::parse(malformed).get<SetProvideExtenderPortMapping>();
+    } catch (const std::exception&) {
+      threw = true;
+    }
+    Check(threw,
+          std::string("port mapping: a request without a boolean value is refused: ") + malformed);
+  }
+
+  ProviderStats sent;
+  sent.available = true;
+  sent.extender_provide_status = nlohmann::json::parse(
+      R"({"Supported":true,"State":"active","Reason":"","Enabled":true,"ActivatedV4":true})");
+  sent.provide_extender = true;
+  sent.provide_extender_writable = true;
+  sent.measurements_enabled = false;
+  sent.measurements_enabled_writable = true;
+  sent.provide_extender_port_mapping = true;
+  sent.provide_extender_port_mapping_writable = true;
+  Reply reply;
+  reply.ok = true;
+  reply.in_reply_to = msg::kGetProviderStats;
+  reply.provider_stats = sent;
+  const Reply back = nlohmann::json::parse(DumpForWire(nlohmann::json(reply))).get<Reply>();
+  Check(back.provider_stats && back.provider_stats->provide_extender_port_mapping,
+        "provider stats: provide_extender_port_mapping round-trips on");
+  Check(back.provider_stats && back.provider_stats->provide_extender_port_mapping_writable,
+        "provider stats: provide_extender_port_mapping_writable round-trips");
+  Check(back.provider_stats && back.provider_stats->provide_extender &&
+            !back.provider_stats->measurements_enabled,
+        "port mapping: the settings beside it stay their own");
+  // a service from before the verb: no writer, and the setting reads as the
+  // apps' default, off
+  const ProviderStats older = nlohmann::json::parse(
+      R"({"available":true,"client_count":1,"provide_extender":true,"provide_extender_writable":true,"measurements_enabled":true,"measurements_enabled_writable":true,"extender_provide_status":{"Supported":true,"State":"active","Reason":"","Enabled":true,"ActivatedV4":true}})")
+                                  .get<ProviderStats>();
+  Check(older.measurements_enabled_writable && !older.provide_extender_port_mapping_writable,
+        "port mapping: a service without the field reads as no writer");
+  Check(!older.provide_extender_port_mapping, "port mapping: and its setting as the default, off");
+  const ProviderStats none =
+      nlohmann::json::parse(DumpForWire(nlohmann::json(ProviderStats{}))).get<ProviderStats>();
+  Check(!none.provide_extender_port_mapping_writable && !none.provide_extender_port_mapping,
+        "port mapping: no provider-only device has no writer, and the setting off");
+  Check(kProtocolVersion == 4, "port mapping: no protocol bump for the verb and its fields");
+}
+
 }  // namespace
 
 int main() {
@@ -837,6 +915,7 @@ int main() {
   TestExtenderReaders();
   TestSetProvideExtender();
   TestSetMeasurementsEnabled();
+  TestSetProvideExtenderPortMapping();
   std::cout << (gCases - gFailures) << "/" << gCases << " provide protocol checks passed"
 #if defined(URNW_PROVIDE_PROTOCOL_TESTS_SDK)
             << " (against urnetwork_sdk.hpp)"

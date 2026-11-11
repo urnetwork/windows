@@ -3548,6 +3548,9 @@ void MainWindow::OnExtenderToggled(IInspectable const& s, RoutedEventArgs const&
 void MainWindow::OnSpeedTestsToggled(IInspectable const& s, RoutedEventArgs const& e) {
   connect_->OnSpeedTestsToggled(s, e);
 }
+void MainWindow::OnPortMappingToggled(IInspectable const& s, RoutedEventArgs const& e) {
+  connect_->OnPortMappingToggled(s, e);
+}
 void MainWindow::OnFixedIpToggled(IInspectable const& s, RoutedEventArgs const& e) {
   connect_->OnFixedIpToggled(s, e);
 }

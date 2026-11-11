@@ -1197,8 +1197,10 @@ void ProvideRowTests() {
 // Every field of urnet::ExtenderProvideStatus (urnetwork_sdk.hpp), by the SDK's
 // names and types. ExtenderProvideStatusViewOf reads the same names in SdkHost,
 // so a rename breaks the app build there; here the struct pins which of the
-// twenty-six the view reads, and that the eighteen it leaves alone change
-// nothing.
+// thirty-three the view reads, and that the twenty-five it leaves alone change
+// nothing. The router port mapping's own state (PortMapping and the six after
+// it, connect EXTENDER.md S8) is among those: the switch is the setting, read
+// beside the status, never this reading.
 struct FullStatus {
   bool Supported{};
   std::string State{};
@@ -1225,6 +1227,13 @@ struct FullStatus {
   int64_t LastPeerPingTime{};
   int64_t LimitedBySubnetsCount{};
   int64_t LimitedBySourceCount{};
+  std::string PortMapping{};
+  std::string PortMappingMethod{};
+  std::string PortMappingExternalIp{};
+  int64_t PortMappingTcpPort{};
+  int64_t PortMappingUdpPort{};
+  int64_t PortMappingDnsPort{};
+  std::string PortMappingError{};
   int64_t ConnectionCount{};
 };
 
@@ -1239,10 +1248,11 @@ FullStatus BaseStatus() {
 }
 
 ExtenderProvideStatusView ViewOf(const FullStatus& status, bool setting = true,
-                                 bool measurements = true) {
+                                 bool measurements = true, bool portMapping = false) {
   return ExtenderProvideStatusViewOf(std::optional<FullStatus>(status),
                                      [setting] { return setting; },
-                                     [measurements] { return measurements; });
+                                     [measurements] { return measurements; },
+                                     [portMapping] { return portMapping; });
 }
 
 void ProvideStatusViewTests() {
@@ -1268,9 +1278,19 @@ void ProvideStatusViewTests() {
     noisy.LastPeerPingTime = 1757800000002;
     noisy.LimitedBySubnetsCount = 3;
     noisy.LimitedBySourceCount = 4;
+    noisy.PortMapping = "mapped";
+    noisy.PortMappingMethod = "pcp";
+    noisy.PortMappingExternalIp = "198.51.100.7";
+    noisy.PortMappingTcpPort = 443;
+    noisy.PortMappingUdpPort = 443;
+    noisy.PortMappingDnsPort = 4053;
+    noisy.PortMappingError = "udp 4053: the router refused the mapping";
     noisy.ConnectionCount = 12;
     Check(ViewOf(noisy) == base,
-          "the eighteen fields the view leaves alone change nothing");
+          "the twenty-five fields the view leaves alone change nothing");
+    // a mapped router does not turn the switch on: the switch is the setting
+    Check(!ViewOf(noisy).provideExtenderPortMapping,
+          "the router port mapping's state is not the port mapping switch");
   }
   {
     TEST_CASE("eachReadFieldMovesTheView");
@@ -1297,6 +1317,8 @@ void ProvideStatusViewTests() {
     Check(ViewOf(BaseStatus(), false) != base, "the setting alone is a change");
     Check(ViewOf(BaseStatus(), true, false) != base,
           "the measurements setting alone is a change");
+    Check(ViewOf(BaseStatus(), true, true, true) != base,
+          "the port mapping setting alone is a change");
     // Supported alone: a device that starts reporting the role with its setting
     // off differs from the unsupported view in nothing else, and the feed must
     // still publish it, or the row would stay hidden
@@ -1305,7 +1327,7 @@ void ProvideStatusViewTests() {
     offStatus.State = kExtenderProvideStateOff;
     Check(ViewOf(offStatus, false) !=
               ExtenderProvideStatusViewOf(std::optional<FullStatus>(), [] { return false; },
-                                          [] { return true; }),
+                                          [] { return true; }, [] { return false; }),
           "Supported alone is a change the feed publishes");
 
     // and each lands where the row reads it
@@ -1341,6 +1363,10 @@ void ProvideStatusViewTests() {
     measurementsWritable.measurementsServiceWritable = true;
     Check(measurementsWritable != writable,
           "whether the service writes the measurements setting alone is a change");
+    ExtenderProvideStatusView portMappingWritable = measurementsWritable;
+    portMappingWritable.portMappingServiceWritable = true;
+    Check(portMappingWritable != measurementsWritable,
+          "whether the service writes the port mapping setting alone is a change");
   }
   {
     TEST_CASE("aHiddenRowReadsNoSetting");
@@ -1350,16 +1376,18 @@ void ProvideStatusViewTests() {
       return true;
     };
     const ExtenderProvideStatusView none =
-        ExtenderProvideStatusViewOf(std::optional<FullStatus>(), counting, counting);
+        ExtenderProvideStatusViewOf(std::optional<FullStatus>(), counting, counting, counting);
     Check(!ExtenderProvideRowModelFor(none).visible, "no status is hidden");
     FullStatus unsupported = BaseStatus();
     unsupported.Supported = false;
-    const ExtenderProvideStatusView hidden =
-        ExtenderProvideStatusViewOf(std::optional<FullStatus>(unsupported), counting, counting);
+    const ExtenderProvideStatusView hidden = ExtenderProvideStatusViewOf(
+        std::optional<FullStatus>(unsupported), counting, counting, counting);
     Check(!ExtenderProvideRowModelFor(hidden).visible, "an unsupported status is hidden");
-    CheckEq(0, reads, "and neither asks the device for either setting");
+    CheckEq(0, reads, "and neither asks the device for any setting");
+    Check(!hidden.provideExtenderPortMapping, "and the port mapping setting reads off");
     int supportedReads = 0;
     int measurementsReads = 0;
+    int portMappingReads = 0;
     const ExtenderProvideStatusView shown = ExtenderProvideStatusViewOf(
         std::optional<FullStatus>(BaseStatus()),
         [&supportedReads] {
@@ -1369,11 +1397,17 @@ void ProvideStatusViewTests() {
         [&measurementsReads] {
           ++measurementsReads;
           return false;
+        },
+        [&portMappingReads] {
+          ++portMappingReads;
+          return true;
         });
     CheckEq(1, supportedReads, "a row that shows reads the setting once");
     Check(!shown.provideExtender, "and its switch is that setting");
     CheckEq(1, measurementsReads, "and the measurements setting once");
     Check(!shown.measurementsEnabled, "which the speed tests switch shows");
+    CheckEq(1, portMappingReads, "and the port mapping setting once");
+    Check(shown.provideExtenderPortMapping, "which the port mapping switch shows");
   }
 }
 
@@ -1618,6 +1652,183 @@ void SpeedTestsWriteRouteTests() {
   }
 }
 
+// ---- ExtenderPresentation.h: the router port mapping switch -----------------
+
+// The provider-only statuses a service can send, from one too old to take any
+// switch's write to one that takes all three, and one that takes the port
+// mapping switch's write without the speed tests switch's, which no service
+// sends: it pins that the switch never shows without the speed tests switch.
+struct PortMappingStatuses {
+  ExtenderProvideStatusView session;
+  ExtenderProvideStatusView older;
+  ExtenderProvideStatusView extenderOnly;
+  ExtenderProvideStatusView speedTestsOnly;
+  ExtenderProvideStatusView portMappingOnly;
+  ExtenderProvideStatusView writable;
+};
+
+PortMappingStatuses PortMappingStatusesFor() {
+  PortMappingStatuses statuses;
+  statuses.session = ProvideStatus(kExtenderProvideStateActive);
+  statuses.older = statuses.session;
+  statuses.older.providerOnly = true;
+  statuses.extenderOnly = statuses.older;
+  statuses.extenderOnly.serviceWritable = true;
+  statuses.speedTestsOnly = statuses.extenderOnly;
+  statuses.speedTestsOnly.measurementsServiceWritable = true;
+  statuses.portMappingOnly = statuses.extenderOnly;
+  statuses.portMappingOnly.portMappingServiceWritable = true;
+  statuses.writable = statuses.speedTestsOnly;
+  statuses.writable.portMappingServiceWritable = true;
+  return statuses;
+}
+
+void PortMappingRowTests() {
+  const PortMappingStatuses s = PortMappingStatusesFor();
+  {
+    TEST_CASE("theStoreHasItsTitleAndDescription");
+    for (const char* key : {"extender_port_mapping", "extender_port_mapping_description"}) {
+      const auto found = EnglishStore().find(key);
+      Check(found != EnglishStore().end(), std::string("the store carries ") + key);
+      if (found == EnglishStore().end()) continue;
+      Check(!found->second.empty() && found->second.find('{') == std::string::npos,
+            std::string(key) + " is whole text, with no placeholder");
+    }
+  }
+  {
+    TEST_CASE("offByDefault");
+    Check(!ExtenderProvideStatusView{}.provideExtenderPortMapping,
+          "the view starts with the setting off, as the sdk's on every app");
+    Check(!PortMappingRowModel{}.on, "and so does the row");
+    Check(!PortMappingRowModelFor(s.writable).on,
+          "a status read with the setting at its default reads off");
+  }
+  {
+    TEST_CASE("hiddenWithoutTheRole");
+    Check(!PortMappingRowModelFor(ExtenderProvideStatusView{}).visible, "no status: hidden");
+    ExtenderProvideStatusView unsupported = s.session;
+    unsupported.supported = false;
+    Check(!PortMappingRowModelFor(unsupported).visible, "an unsupported role: hidden");
+  }
+  {
+    TEST_CASE("underTheSpeedTestsSwitch");
+    Check(PortMappingRowModelFor(s.session).visible, "a session's status shows it");
+    for (bool extenderOn : {false, true}) {
+      ExtenderProvideStatusView view = s.session;
+      view.provideExtender = extenderOn;
+      view.state = extenderOn ? kExtenderProvideStateActive : kExtenderProvideStateOff;
+      Check(PortMappingRowModelFor(view).visible,
+            "it shows whether or not the Extender switch is on: the setting still applies");
+    }
+    // only where the speed tests switch shows, never without it
+    for (const ExtenderProvideStatusView& view :
+         {s.session, s.older, s.extenderOnly, s.speedTestsOnly, s.portMappingOnly, s.writable,
+          ExtenderProvideStatusView{}}) {
+      if (PortMappingRowModelFor(view).visible) {
+        Check(SpeedTestsRowModelFor(view).visible,
+              "the port mapping switch never shows without the speed tests switch");
+        Check(ExtenderProvideRowModelFor(view).switchVisible,
+              "nor without the Extender switch");
+      }
+    }
+  }
+  {
+    TEST_CASE("theProviderOnlyStatusNeedsTheServicesSay");
+    Check(!PortMappingRowModelFor(s.older).visible, "an older service's status: hidden");
+    Check(!PortMappingRowModelFor(s.extenderOnly).visible,
+          "a service that takes only the Extender switch's write: hidden");
+    Check(!PortMappingRowModelFor(s.speedTestsOnly).visible,
+          "a service that takes the other switches' writes but not this one: hidden");
+    Check(PortMappingRowModelFor(s.writable).visible, "a service that takes all three: shown");
+  }
+  {
+    TEST_CASE("theSwitchIsTheSetting");
+    ExtenderProvideStatusView on = s.session;
+    on.provideExtenderPortMapping = true;
+    Check(PortMappingRowModelFor(on).on, "on reads on");
+    Check(!PortMappingRowModelFor(s.session).on, "off reads off");
+  }
+  {
+    TEST_CASE("itsGuessChangesOnlyTheSetting");
+    const ExtenderProvideStatusView guess = PortMappingGuessFor(s.writable, true);
+    Check(guess.provideExtenderPortMapping, "the guess holds the new position");
+    ExtenderProvideStatusView expected = s.writable;
+    expected.provideExtenderPortMapping = true;
+    Check(guess == expected, "and nothing else");
+    Check(PortMappingRowModelFor(guess).visible, "so the switch just flipped stays shown");
+    Check(!PortMappingGuessFor(guess, false).provideExtenderPortMapping,
+          "and a flip back holds off");
+  }
+  {
+    TEST_CASE("theOtherSwitchesGuessesKeepIt");
+    ExtenderProvideStatusView on = s.writable;
+    on.provideExtenderPortMapping = true;
+    for (bool extenderOn : {false, true}) {
+      const ExtenderProvideStatusView guess = ExtenderProvideGuessFor(on, extenderOn, true);
+      Check(guess.provideExtenderPortMapping,
+            "flipping the Extender switch leaves the port mapping switch where it was");
+      Check(guess.portMappingServiceWritable, "and its writer");
+      Check(PortMappingRowModelFor(guess).visible, "so it stays shown under the guess");
+    }
+    for (bool measurementsOn : {false, true}) {
+      const ExtenderProvideStatusView guess = SpeedTestsGuessFor(on, measurementsOn);
+      Check(guess.provideExtenderPortMapping && PortMappingRowModelFor(guess).visible,
+            "flipping the speed tests switch leaves the port mapping switch where it was");
+    }
+    // and its own guess leaves the speed tests switch where it was
+    ExtenderProvideStatusView speedTestsOff = s.writable;
+    speedTestsOff.measurementsEnabled = false;
+    Check(!PortMappingGuessFor(speedTestsOff, true).measurementsEnabled,
+          "flipping the port mapping switch leaves the speed tests switch where it was");
+  }
+}
+
+void PortMappingWriteRouteTests() {
+  const PortMappingStatuses s = PortMappingStatusesFor();
+  {
+    TEST_CASE("aSessionsDeviceTakesEveryWrite");
+    for (const ExtenderProvideStatusView& shown :
+         {s.session, s.older, s.extenderOnly, s.speedTestsOnly, s.writable,
+          ExtenderProvideStatusView{}}) {
+      Check(PortMappingWriteRouteFor(true, shown) == ExtenderProvideWriteRoute::Device,
+            "with a session the write goes through its device");
+    }
+  }
+  {
+    TEST_CASE("withNoSessionTheServiceTakesItOnlyWhenItSaidSo");
+    Check(PortMappingWriteRouteFor(false, s.writable) == ExtenderProvideWriteRoute::Service,
+          "a service that takes it is written");
+    Check(PortMappingWriteRouteFor(false, s.speedTestsOnly) == ExtenderProvideWriteRoute::None,
+          "a service that takes only the other switches' writes is not");
+    Check(PortMappingWriteRouteFor(false, s.extenderOnly) == ExtenderProvideWriteRoute::None,
+          "a service that takes only the Extender switch's write is not");
+    Check(PortMappingWriteRouteFor(false, s.older) == ExtenderProvideWriteRoute::None,
+          "an older service is not");
+    Check(PortMappingWriteRouteFor(false, s.session) == ExtenderProvideWriteRoute::None,
+          "a session's status left over with no session is not");
+    Check(PortMappingWriteRouteFor(false, ExtenderProvideStatusView{}) ==
+              ExtenderProvideWriteRoute::None,
+          "no status is not");
+    ExtenderProvideStatusView unsupported = s.writable;
+    unsupported.supported = false;
+    Check(PortMappingWriteRouteFor(false, unsupported) == ExtenderProvideWriteRoute::None,
+          "an unsupported role is not");
+  }
+  {
+    TEST_CASE("theServiceIsWrittenExactlyWhereTheSwitchShows");
+    for (const ExtenderProvideStatusView& shown :
+         {s.older, s.extenderOnly, s.speedTestsOnly, s.portMappingOnly, s.writable}) {
+      for (bool supported : {false, true}) {
+        ExtenderProvideStatusView view = shown;
+        view.supported = supported;
+        Check(PortMappingRowModelFor(view).visible ==
+                  (PortMappingWriteRouteFor(false, view) == ExtenderProvideWriteRoute::Service),
+              "the provider-only switch shows exactly when its write goes to the service");
+      }
+    }
+  }
+}
+
 // ---- ExtenderPresentation.h: the statistics sections (O8) --------------------
 
 void StatsSectionsTests() {
@@ -1848,6 +2059,10 @@ int main() {
   SpeedTestsRowTests();
   std::cout << "lag.dev speed tests switch write\n";
   SpeedTestsWriteRouteTests();
+  std::cout << "router port mapping switch\n";
+  PortMappingRowTests();
+  std::cout << "router port mapping switch write\n";
+  PortMappingWriteRouteTests();
   std::cout << "statistics sections\n";
   StatsSectionsTests();
 

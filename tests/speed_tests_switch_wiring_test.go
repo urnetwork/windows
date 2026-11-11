@@ -91,7 +91,7 @@ func TestSpeedTestsSwitchAppWiring(t *testing.T) {
 	provideRequire(t, "PublishExtenderProvideStatus", publish,
 		"device_->getMeasurementsEnabled()",
 		"return lastExtenderProvideStatus_.measurementsEnabled;",
-		"ExtenderProvideStatusViewOf(status, readSetting, readMeasurements)")
+		"ExtenderProvideStatusViewOf(status, readSetting, readMeasurements, readPortMapping)")
 	// ...and with none from the service's answer, with its say on the write
 	show := definitionBody(t, "SdkHost.cpp", source,
 		"void SdkHost::ShowProviderOnlyStatsLocked(const proto::ProviderStats& stats)")

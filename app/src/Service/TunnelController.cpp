@@ -2406,6 +2406,55 @@ bool TunnelController::SetMeasurementsEnabled(bool on, std::string& error) {
   return true;
 }
 
+bool TunnelController::SetProvideExtenderPortMapping(bool on, std::string& error) {
+  // Timed, as SetProvideExtender's: a wedged bring-up must not hold the control
+  // pipe. The app then shows the setting as it stands.
+  std::unique_lock<std::timed_mutex> lock(mutex_, std::defer_lock);
+  if (!lock.try_lock_for(kStopLockBudget)) {
+    error = "a tunnel operation is in progress";
+    LogWarn("provide: set_provide_extender_port_mapping refused: the session lock was not free "
+            "within {}ms",
+            kStopLockBudget.count());
+    return false;
+  }
+  // the provide extender setting's rule (Common/ProvideLifecycle.h) for the two
+  // devices; the space alone cannot take this setting
+  const provide::ExtenderSettingTarget target = provide::ExtenderSettingTargetFor(
+      providerDevice_ != nullptr, device_ != nullptr, spaceManager_ && lastSpaceKey_);
+  try {
+    switch (target) {
+      case provide::ExtenderSettingTarget::ProviderDevice:
+        // persisted in its space and applied at once: a running role is
+        // replaced by one that asks the router to forward its ports, or that
+        // removes what the router forwards to this device
+        providerDevice_->setProvideExtenderPortMapping(on);
+        RefreshProviderPortMappingLocked();
+        break;
+      case provide::ExtenderSettingTarget::SessionDevice:
+        device_->setProvideExtenderPortMapping(on);
+        break;
+      case provide::ExtenderSettingTarget::NetworkSpace:
+      case provide::ExtenderSettingTarget::None:
+        // The sdk writes this setting only through a device: a space has no
+        // setter for it. The app shows the switch only over a running device's
+        // status, and its next status shows the setting as it stands.
+        error = "no device runs in this service, and the router port mapping setting is written "
+                "only through one";
+        LogWarn("provide: set_provide_extender_port_mapping refused ({}): {}",
+                provide::ToString(target), error);
+        return false;
+    }
+  } catch (const std::exception&) {
+    error = std::string("the router port mapping setting could not be written to ") +
+            provide::ToString(target);
+    LogError("provide: stage=set-provide-extender-port-mapping outcome=failed target={}",
+             provide::ToString(target));
+    return false;
+  }
+  LogInfo("provide: router port mapping {} ({})", on ? "on" : "off", provide::ToString(target));
+  return true;
+}
+
 TunnelController::ExtenderResetResult TunnelController::ResetExtenders(
     const proto::ResetExtenders& request) {
   ExtenderResetResult result;
@@ -2523,6 +2572,7 @@ void TunnelController::RetireProviderDeviceLocked() {
     providerExtender_.reset();
     providerExtenderSetting_ = false;
     providerMeasurementsSetting_ = true;
+    providerPortMappingSetting_ = false;
   }
   // The network watch's handlers are dropped on this thread, as
   // TearDownSessionLocked drops the session monitor's, so the monitor the
@@ -2710,6 +2760,9 @@ void TunnelController::OpenProviderStatsLocked() {
   // the lag.dev measurements setting rides on the role (lag.dev/PLAN.md C4):
   // read with it, and reported only beside it
   bool measurementsSetting = true;
+  // and so does the router port mapping setting (connect EXTENDER.md S8), off
+  // until a reading says otherwise
+  bool portMappingSetting = false;
   try {
     extenderSub = providerDevice_->addExtenderProvideStatusChangeListener(
         [extender](std::optional<urnet::ExtenderProvideStatus> status) {
@@ -2718,6 +2771,7 @@ void TunnelController::OpenProviderStatsLocked() {
     extender->Store(providerDevice_->getExtenderProvideStatus());
     extenderSetting = providerDevice_->getProvideExtender();
     measurementsSetting = providerDevice_->getMeasurementsEnabled();
+    portMappingSetting = providerDevice_->getProvideExtenderPortMapping();
   } catch (const std::exception&) {
     LogWarn("provide: the provider-only device's extender status could not be read; the "
             "app shows no extender row or plot while disconnected");
@@ -2733,6 +2787,7 @@ void TunnelController::OpenProviderStatsLocked() {
   providerExtender_ = std::move(extender);
   providerExtenderSetting_ = extenderSetting;
   providerMeasurementsSetting_ = measurementsSetting;
+  providerPortMappingSetting_ = portMappingSetting;
 }
 
 void TunnelController::RefreshProviderExtenderLocked() {
@@ -2770,6 +2825,21 @@ void TunnelController::RefreshProviderMeasurementsLocked() {
   // reported only beside the role, as the extender setting is
   if (!providerExtender_) return;
   providerMeasurementsSetting_ = setting;
+}
+
+void TunnelController::RefreshProviderPortMappingLocked() {
+  bool setting = false;
+  try {
+    setting = providerDevice_->getProvideExtenderPortMapping();
+  } catch (const std::exception&) {
+    LogWarn("provide: re-reading the provider-only device's router port mapping setting "
+            "failed; its next statistics open reports it");
+    return;
+  }
+  std::scoped_lock lock(providerStatsMutex_);
+  // reported only beside the role, as the extender setting is
+  if (!providerExtender_) return;
+  providerPortMappingSetting_ = setting;
 }
 
 void TunnelController::WatchProviderNetworkLocked() {
@@ -2854,6 +2924,7 @@ TunnelController::HandedOffDevice TunnelController::TakeProviderDeviceLocked(
     providerExtender_.reset();
     providerExtenderSetting_ = false;
     providerMeasurementsSetting_ = true;
+    providerPortMappingSetting_ = false;
   }
   if (providerEgress_) {
     providerEgress_->SetOnNetworkEvent(nullptr);
@@ -3028,6 +3099,10 @@ proto::ProviderStats TunnelController::ProviderStats() {
     // (SetMeasurementsEnabled)
     stats.measurements_enabled = providerMeasurementsSetting_;
     stats.measurements_enabled_writable = true;
+    // and the router port mapping setting, which it writes through this device
+    // (SetProvideExtenderPortMapping)
+    stats.provide_extender_port_mapping = providerPortMappingSetting_;
+    stats.provide_extender_port_mapping_writable = true;
   }
   return stats;
 }

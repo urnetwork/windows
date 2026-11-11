@@ -387,6 +387,9 @@ ExtenderProvideStatusView ExtenderProvideGuessFor(const ExtenderProvideStatusVie
   // the speed tests switch under it keeps its place and its position
   guess.measurementsEnabled = current.measurementsEnabled;
   guess.measurementsServiceWritable = current.measurementsServiceWritable;
+  // and so does the router port mapping switch under that
+  guess.provideExtenderPortMapping = current.provideExtenderPortMapping;
+  guess.portMappingServiceWritable = current.portMappingServiceWritable;
   return guess;
 }
 
@@ -426,6 +429,37 @@ ExtenderProvideWriteRoute SpeedTestsWriteRouteFor(bool sessionDevice,
 ExtenderProvideStatusView SpeedTestsGuessFor(const ExtenderProvideStatusView& current, bool on) {
   ExtenderProvideStatusView guess = current;
   guess.measurementsEnabled = on;
+  return guess;
+}
+
+// ---- the router port mapping switch -------------------------------------------
+
+PortMappingRowModel PortMappingRowModelFor(const ExtenderProvideStatusView& view) {
+  PortMappingRowModel model;
+  // under the speed tests switch, never without it, and for the provider-only
+  // device's status only when the service takes this setting's write as well
+  model.visible = SpeedTestsRowModelFor(view).visible &&
+                  (!view.providerOnly || view.portMappingServiceWritable);
+  model.on = view.provideExtenderPortMapping;
+  return model;
+}
+
+ExtenderProvideWriteRoute PortMappingWriteRouteFor(bool sessionDevice,
+                                                   const ExtenderProvideStatusView& shown) {
+  if (sessionDevice) return ExtenderProvideWriteRoute::Device;
+  // exactly the status the switch shows over with no session: the one the
+  // speed tests switch's write goes to the service for, when the service takes
+  // this write too
+  if (SpeedTestsWriteRouteFor(false, shown) == ExtenderProvideWriteRoute::Service &&
+      shown.portMappingServiceWritable) {
+    return ExtenderProvideWriteRoute::Service;
+  }
+  return ExtenderProvideWriteRoute::None;
+}
+
+ExtenderProvideStatusView PortMappingGuessFor(const ExtenderProvideStatusView& current, bool on) {
+  ExtenderProvideStatusView guess = current;
+  guess.provideExtenderPortMapping = on;
   return guess;
 }
 

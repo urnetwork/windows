@@ -100,6 +100,12 @@ class ServiceClient {
   // `error` for a refusal or a transport failure. Sent only to a service whose
   // get_provider_stats said it takes it (measurements_enabled_writable).
   bool SetMeasurementsEnabled(bool on, std::string* error = nullptr);
+  // The router port mapping switch's write while there is no session
+  // (set_provide_extender_port_mapping). True when the service wrote it; false
+  // with `error` for a refusal (no device runs to take it) or a transport
+  // failure. Sent only to a service whose get_provider_stats said it takes it
+  // (provide_extender_port_mapping_writable).
+  bool SetProvideExtenderPortMapping(bool on, std::string* error = nullptr);
   // reset_extenders (Protocol.h ResetExtenders): the service applies a reset
   // the app made in its own space to the space it holds under the same key,
   // which its session's device and its provider-only device run in. Taken when

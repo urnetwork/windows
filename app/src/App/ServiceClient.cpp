@@ -173,6 +173,14 @@ bool ServiceClient::SetMeasurementsEnabled(bool on, std::string* error) {
   return CallProvider(proto::Request(proto::msg::kSetMeasurementsEnabled, body), nullptr, error);
 }
 
+bool ServiceClient::SetProvideExtenderPortMapping(bool on, std::string* error) {
+  proto::SetProvideExtenderPortMapping s;
+  s.provide_extender_port_mapping = on;
+  nlohmann::json body = s;
+  return CallProvider(proto::Request(proto::msg::kSetProvideExtenderPortMapping, body), nullptr,
+                      error);
+}
+
 extenderreset::ServiceAnswer ServiceClient::ResetExtenders(const proto::ResetExtenders& request,
                                                            bool* reset, std::string* error) {
   if (reset) *reset = false;

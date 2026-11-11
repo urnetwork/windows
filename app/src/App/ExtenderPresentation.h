@@ -437,6 +437,17 @@ inline constexpr const char* kExtenderProvideErrorActivationUnreachable = "activ
 //                    measurements_enabled_writable). A service from before
 //                    set_measurements_enabled does not, and that switch stays
 //                    hidden over its status (N1).
+//   provideExtenderPortMapping
+//                    Device::getProvideExtenderPortMapping() read beside the
+//                    provide extender setting: the router port mapping switch's
+//                    position ("Open a port on my router", connect EXTENDER.md
+//                    S8). Off by default, as the sdk's on every app.
+//   portMappingServiceWritable
+//                    providerOnly only: the service said it takes the router
+//                    port mapping switch's write too (get_provider_stats'
+//                    provide_extender_port_mapping_writable). A service from
+//                    before set_provide_extender_port_mapping does not, and
+//                    that switch stays hidden over its status (N1).
 //
 // A default-constructed view is "no session": unsupported, so both rows hide.
 struct ExtenderProvideStatusView {
@@ -453,6 +464,8 @@ struct ExtenderProvideStatusView {
   bool serviceWritable = false;
   bool measurementsEnabled = true;
   bool measurementsServiceWritable = false;
+  bool provideExtenderPortMapping = false;
+  bool portMappingServiceWritable = false;
 
   // The device pushes a status after any change of the setting, the provide
   // state or the role, coalesced to one status per epoch and never on
@@ -468,6 +481,8 @@ struct ExtenderProvideStatusView {
            provideExtender == o.provideExtender && providerOnly == o.providerOnly &&
            measurementsEnabled == o.measurementsEnabled &&
            measurementsServiceWritable == o.measurementsServiceWritable &&
+           provideExtenderPortMapping == o.provideExtenderPortMapping &&
+           portMappingServiceWritable == o.portMappingServiceWritable &&
            serviceWritable == o.serviceWritable;
   }
   bool operator!=(const ExtenderProvideStatusView& o) const { return !(*this == o); }
@@ -477,13 +492,15 @@ struct ExtenderProvideStatusView {
 // apps may read and nothing else, with the settings read beside it only when
 // the row will show: a device that reports the role unsupported is never asked
 // for a setting it may not have (N1). Those are the provide extender setting
-// and the lag.dev measurements setting that rides on the role. Generic over the
-// status type so the host tests hand it every field of
-// urnet::ExtenderProvideStatus by the SDK's names.
-template <typename Status, typename ReadSetting, typename ReadMeasurements>
+// and the two that ride on the role, the lag.dev measurements setting and the
+// router port mapping setting. Generic over the status type so the host tests
+// hand it every field of urnet::ExtenderProvideStatus by the SDK's names.
+template <typename Status, typename ReadSetting, typename ReadMeasurements,
+          typename ReadPortMapping>
 ExtenderProvideStatusView ExtenderProvideStatusViewOf(const std::optional<Status>& status,
                                                       const ReadSetting& readSetting,
-                                                      const ReadMeasurements& readMeasurements) {
+                                                      const ReadMeasurements& readMeasurements,
+                                                      const ReadPortMapping& readPortMapping) {
   ExtenderProvideStatusView view;
   if (!status || !status->Supported) return view;
   view.supported = true;
@@ -496,6 +513,7 @@ ExtenderProvideStatusView ExtenderProvideStatusViewOf(const std::optional<Status
   view.enabled = status->Enabled;
   view.provideExtender = readSetting();
   view.measurementsEnabled = readMeasurements();
+  view.provideExtenderPortMapping = readPortMapping();
   return view;
 }
 
@@ -620,6 +638,43 @@ ExtenderProvideWriteRoute SpeedTestsWriteRouteFor(bool sessionDevice,
 // view with the setting guessed and nothing else changed. The next pushed
 // status replaces it, as it does the Extender switch's guess.
 ExtenderProvideStatusView SpeedTestsGuessFor(const ExtenderProvideStatusView& current, bool on);
+
+// ---- the router port mapping switch (connect EXTENDER.md S8) -----------------
+
+// The switch under the speed tests switch, "Open a port on my router": whether
+// this device's extender role asks the router, by UPnP, NAT-PMP or PCP, to
+// forward its ports (tcp 443, udp 443 and udp 4053) to this device, so the
+// extender can be reached from the internet. Turning it on opens those ports on
+// the router, so it is off until the user turns it on, on every app (owner,
+// 2026-11-11; the miner turns it on). It rides on the role, so it shows only
+// where the speed tests switch does, and only where its own write has a taker:
+// a session's device, or for the provider-only device's status the service,
+// when it said it takes this write too (portMappingServiceWritable). Hidden,
+// never disabled (N1).
+struct PortMappingRowModel {
+  bool visible = false;
+  // the setting: off by default, as the sdk's on every app
+  bool on = false;
+
+  bool operator==(const PortMappingRowModel& o) const {
+    return visible == o.visible && on == o.on;
+  }
+  bool operator!=(const PortMappingRowModel& o) const { return !(*this == o); }
+};
+
+PortMappingRowModel PortMappingRowModelFor(const ExtenderProvideStatusView& view);
+
+// Where the port mapping switch's write goes
+// (SdkHost::SetProvideExtenderPortMapping): the speed tests switch's rule, with
+// the service's own say for this setting. So the switch is written exactly
+// where it shows.
+ExtenderProvideWriteRoute PortMappingWriteRouteFor(bool sessionDevice,
+                                                   const ExtenderProvideStatusView& shown);
+
+// The view the port mapping switch paints the moment it is flipped: the shown
+// view with the setting guessed and nothing else changed. The next pushed
+// status replaces it, as it does the other switches' guesses.
+ExtenderProvideStatusView PortMappingGuessFor(const ExtenderProvideStatusView& current, bool on);
 
 // The one line of state text a model reads as. `localized(key)` answers the
 // store's text for a key and `formatted(key, text)` the store's text with its
