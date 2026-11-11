@@ -312,11 +312,11 @@
     <comment>Kill switch: status while the change is being applied.</comment>
   </data>
   <data name="adv_kill_switch_armed_way_out" xml:space="preserve">
-    <value>أوقف مفتاح القتل لاستعادة الوصول الطبيعي دون الاتصال.</value>
+    <value>عطّل مفتاح الإيقاف لاستعادة الوصول الطبيعي دون الاتصال.</value>
     <comment>Kill switch: how to restore normal access while the block is armed.</comment>
   </data>
   <data name="adv_kill_switch_deliberate" xml:space="preserve">
-    <value>الضغط على قطع الاتصال يعيد الإنترنت فورًا دائمًا. لا ينطبق مفتاح القتل إلا على الانقطاعات التي لم تطلبها - نفق توقف عن نقل البيانات، أو تغيّر في الشبكة، أو توقف خدمة URnetwork.</value>
+    <value>الضغط على قطع الاتصال يعيد الإنترنت فورًا دائمًا. لا ينطبق مفتاح الإيقاف إلا على الانقطاعات التي لم تطلبها - نفق توقف عن نقل البيانات، أو تغيّر في الشبكة، أو توقف خدمة URnetwork.</value>
     <comment>Settings, kill switch: Disconnect always restores the internet; the switch only covers drops the user did not ask for.</comment>
   </data>
   <data name="adv_kill_switch_dns_window" xml:space="preserve">
@@ -340,11 +340,11 @@
     <comment>Kill switch status: in force while connected, traffic is blocked if the tunnel drops.</comment>
   </data>
   <data name="adv_kill_switch_state_failed" xml:space="preserve">
-    <value>تعذّر على خدمة نظام URnetwork تثبيت مفتاح القتل، لذا لا تُحجب حركة البيانات.</value>
+    <value>تعذّر على خدمة نظام URnetwork تثبيت مفتاح الإيقاف، لذا لا تُحجب حركة البيانات.</value>
     <comment>Kill switch status: the system service could not install the block.</comment>
   </data>
   <data name="adv_kill_switch_state_not_in_force" xml:space="preserve">
-    <value>مفتاح القتل غير ساري المفعول: حركة بياناتك لا تُحجب.</value>
+    <value>مفتاح الإيقاف غير ساري المفعول: حركة بياناتك لا تُحجب.</value>
     <comment>Kill switch status: not in force, traffic is not blocked.</comment>
   </data>
   <data name="adv_kill_switch_state_pending" xml:space="preserve">
@@ -352,15 +352,15 @@
     <comment>Kill switch status: nothing is blocked yet, takes effect on connect.</comment>
   </data>
   <data name="adv_kill_switch_state_still_installed" xml:space="preserve">
-    <value>مفتاح القتل متوقف، لكن خدمة نظام URnetwork لا يزال لديها حجب مثبّت، لذا تُحجب حركة هذا الجهاز.</value>
+    <value>مفتاح الإيقاف معطّل، لكن خدمة نظام URnetwork لا يزال لديها حجب مثبّت، لذا تُحجب حركة هذا الجهاز.</value>
     <comment>Kill switch status: the switch is off but the service still has a block installed, so traffic is blocked.</comment>
   </data>
   <data name="adv_kill_switch_state_unknown" xml:space="preserve">
-    <value>يتعذّر التحقق الآن مما إذا كان مفتاح القتل ساري المفعول.</value>
+    <value>يتعذّر التحقق الآن مما إذا كان مفتاح الإيقاف ساري المفعول.</value>
     <comment>Kill switch status: cannot be checked right now.</comment>
   </data>
   <data name="adv_kill_switch_still_installed_fix" xml:space="preserve">
-    <value>تشغيل مفتاح القتل ثم إيقافه مجددًا يطلب من الخدمة إزالته؛ إذا لم ينجح ذلك، أزله باستخدام: {}</value>
+    <value>تشغيل مفتاح الإيقاف ثم تعطيله مجددًا يطلب من الخدمة إزالته؛ إذا لم ينجح ذلك، أزله باستخدام: {}</value>
     <comment>Kill switch: how to clear a block the service still has installed; {command} is the shell command to use if toggling does not work.</comment>
   </data>
   <data name="adv_last_decision" xml:space="preserve">
@@ -460,7 +460,7 @@
     <comment>Windows and Linux status strip (Advanced Mode), Routes value: routes are installed but the tunnel's DNS is not. Lowercase, a short status value.</comment>
   </data>
   <data name="adv_routes_kill_switch_armed" xml:space="preserve">
-    <value>معطّلة، مفتاح القتل مسلّح</value>
+    <value>معطّلة، مفتاح الإيقاف مسلّح</value>
     <comment>Windows and Linux status strip (Advanced Mode), Routes value: no routes are installed and the kill switch is blocking traffic. Lowercase, a short status value.</comment>
   </data>
   <data name="adv_routes_no_firewall" xml:space="preserve">
@@ -1793,7 +1793,7 @@
     <comment>A label displayed next to a companion contract.</comment>
   </data>
   <data name="conn_blocked_kill_switch" xml:space="preserve">
-    <value>محجوب — مفتاح القتل مفعّل</value>
+    <value>محجوب — مفتاح الإيقاف مفعّل</value>
     <comment>Windows Connect page status when the connection is down and the kill switch is deliberately blocking this computer's traffic.</comment>
   </data>
   <data name="conn_connect_on_launch" xml:space="preserve">
@@ -1825,7 +1825,7 @@
     <comment>Windows Connect page: sentence appended to the line above when the service will stop a tunnel that carries nothing. Linux Connect page: shown on its own on the notice line under the connect controls while no other notice is there.</comment>
   </data>
   <data name="conn_failsafe_blocked" xml:space="preserve">
-    <value>لم يتمكن النفق من نقل حركة البيانات، لذا أوقفه URnetwork. مفتاح القتل مفعّل، لذا لا يغادر أي شيء هذا الكمبيوتر حتى تتصل مجددًا أو توقف مفتاح القتل — لا يوجد أي تسرب.</value>
+    <value>لم يتمكن النفق من نقل حركة البيانات، لذا أوقفه URnetwork. مفتاح الإيقاف مفعّل، لذا لا يغادر أي شيء هذا الكمبيوتر حتى تتصل مجددًا أو تعطّل مفتاح الإيقاف — لا يوجد أي تسرب.</value>
     <comment>Windows and Linux Connect page line after the service stopped a tunnel that carried nothing, while the kill switch keeps this computer blocked.</comment>
   </data>
   <data name="conn_failsafe_restored" xml:space="preserve">
@@ -1865,7 +1865,7 @@
     <comment>Windows and Linux Connect page line while connected but no provider carries traffic, and leak protection (the Windows firewall policy, the Linux kill switch's block floor) is not in force.</comment>
   </data>
   <data name="conn_tray_blocked_kill_switch" xml:space="preserve">
-    <value>محجوب (مفتاح القتل مفعّل)</value>
+    <value>محجوب (مفتاح الإيقاف مفعّل)</value>
     <comment>Windows tray tooltip when the kill switch is deliberately blocking this computer's traffic.</comment>
   </data>
   <data name="conn_tray_blocked_no_tunnel" xml:space="preserve">
@@ -1877,7 +1877,7 @@
     <comment>Windows tray tooltip while the tunnel is being stopped but its routes are still installed.</comment>
   </data>
   <data name="conn_tray_failsafe_blocked" xml:space="preserve">
-    <value>لم يتمكن النفق من نقل حركة البيانات، لذا أوقفه URnetwork. مفتاح القتل مفعّل، لذا يبقى هذا الكمبيوتر محجوبًا ولا يوجد أي تسرب. أعد الاتصال، أو أوقف مفتاح القتل من هذه القائمة.</value>
+    <value>لم يتمكن النفق من نقل حركة البيانات، لذا أوقفه URnetwork. مفتاح الإيقاف مفعّل، لذا يبقى هذا الكمبيوتر محجوبًا ولا يوجد أي تسرب. أعد الاتصال، أو عطّل مفتاح الإيقاف من هذه القائمة.</value>
     <comment>Windows tray notification after the service stopped a tunnel that carried nothing, while the kill switch keeps this computer blocked. "This menu" is the tray icon's menu.</comment>
   </data>
   <data name="conn_tray_failsafe_stopped" xml:space="preserve">
@@ -1889,7 +1889,7 @@
     <comment>Windows tray menu item that stops the tunnel directly when the normal Disconnect is stuck. Linux tray menu item that stops the service's tunnel while the app holds no session of its own.</comment>
   </data>
   <data name="conn_tray_lift_kill_switch" xml:space="preserve">
-    <value>إيقاف مفتاح القتل (إلغاء حجب هذا الكمبيوتر)</value>
+    <value>تعطيل مفتاح الإيقاف (إلغاء حجب هذا الكمبيوتر)</value>
     <comment>Windows and Linux tray menu item that lifts the kill switch's block on this computer.</comment>
   </data>
   <data name="connect" xml:space="preserve">
@@ -4688,7 +4688,7 @@
     <comment>Settings, Connections: note under the Exclude apps from the VPN row.</comment>
   </data>
   <data name="exclude_apps_launcher_note" xml:space="preserve">
-    <value>يحصل كل تطبيق تفعّله على مشغّل ثانٍ في قائمة التطبيقات، يتبع اسمه (خارج VPN). التطبيق الذي يُفتح من هذا المشغّل يتجاوز VPN ومفتاح القتل. التطبيق الذي يعمل بالفعل يبقى داخل VPN حتى تغلقه، ولا تُدرج تطبيقات Flatpak وSnap.</value>
+    <value>يحصل كل تطبيق تفعّله على مشغّل ثانٍ في قائمة التطبيقات، يتبع اسمه (خارج VPN). التطبيق الذي يُفتح من هذا المشغّل يتجاوز VPN ومفتاح الإيقاف. التطبيق الذي يعمل بالفعل يبقى داخل VPN حتى تغلقه، ولا تُدرج تطبيقات Flatpak وSnap.</value>
     <comment>Exclude apps from the VPN sheet: how the launcher copies work and what stays in the VPN. The suffix in parentheses must match exclude_app_launcher_name.</comment>
   </data>
   <data name="excluded" xml:space="preserve">
@@ -4876,7 +4876,7 @@
     <comment>Browser extension popup, under the button while the status line reads Proxy managed by policy (extension_status_proxy_policy). Keep URnetwork as is.</comment>
   </data>
   <data name="extension_proxy_unreachable_kill_switch" xml:space="preserve">
-    <value>الوكيل لا يستجيب. يُبقي مفتاح القتل المتصفح غير متصل حتى يستجيب الوكيل.</value>
+    <value>الوكيل لا يستجيب. يُبقي مفتاح الإيقاف المتصفح غير متصل حتى يستجيب الوكيل.</value>
     <comment>Browser extension popup, under the Disconnect button while the status line reads Proxy not answering (extension_status_proxy_not_answering): why pages don't load. Translate kill switch as the kill_switch key does.</comment>
   </data>
   <data name="extension_setting_not_saved" xml:space="preserve">
@@ -5259,7 +5259,7 @@
     <comment>Out-of-balance alert, on the desktop builds whose checkout has to go through the tunnel (Windows, Linux), while the tunnel holds or blocks traffic. Their Disconnect lifts the kill switch too; apple and android say more (insufficient_balance_disconnect_first_kill_switch). Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. Each translation names that button by its own label (the disconnect key).</comment>
   </data>
   <data name="insufficient_balance_disconnect_first_kill_switch" xml:space="preserve">
-    <value>للترقية، اختر «قطع الاتصال» أولًا، وأوقف «مفتاح القتل» إن كان مفعّلًا. لا يمكن إتمام الدفع قبل ذلك.</value>
+    <value>للترقية، اختر «قطع الاتصال» أولًا، وعطّل «مفتاح الإيقاف» إن كان مفعّلًا. لا يمكن إتمام الدفع قبل ذلك.</value>
     <comment>Out-of-balance alert, on the apple and android builds whose checkout has to go through the tunnel (the macOS direct download, the Android Play flavor), while the tunnel holds traffic. Payment cannot reach the store until the user disconnects, and nothing disconnects for them; Disconnect is the button beside this line. On these apps a kill switch that is on keeps the tunnel up after a Disconnect and still stops the payment, so the line also says to turn it off. Each translation names Disconnect by its own label (the disconnect key) and the kill switch by the label of its setting (the kill_switch key).</comment>
   </data>
   <data name="insufficient_balance_exhausted" xml:space="preserve">
@@ -5511,19 +5511,19 @@
     <comment>Used in Main/Account/Wallets/NetworkReliability/NetworkReliabilityView.swift.</comment>
   </data>
   <data name="kill_switch" xml:space="preserve">
-    <value>مفتاح القتل</value>
+    <value>مفتاح الإيقاف</value>
     <comment>Call to action</comment>
   </data>
   <data name="kill_switch_exception" xml:space="preserve">
-    <value>استثناء مفتاح القتل</value>
+    <value>استثناء مفتاح الإيقاف</value>
     <comment>Title for the disclosure explaining traffic that intentionally bypasses the VPN kill switch.</comment>
   </data>
   <data name="kill_switch_exception_smtp_detail" xml:space="preserve">
-    <value>أثناء اتصال VPN، يُوجَّه IPv6 عبر URnetwork مثل IPv4. يتجاوز SMTP الصادر عبر منفذ TCP رقم 25 شبكة VPN، حتى عند تشغيل مفتاح القتل، وقد يكشف ذلك عنوان IP العام المحلي لديك لخوادم البريد تلك. يبقى SMTP على المنفذين 465 و587 داخل VPN ويجب أن يُنشئ اتصال TLS.</value>
+    <value>أثناء اتصال VPN، يُوجَّه IPv6 عبر URnetwork مثل IPv4. يتجاوز SMTP الصادر عبر منفذ TCP رقم 25 شبكة VPN، حتى عند تشغيل مفتاح الإيقاف، وقد يكشف ذلك عنوان IP العام المحلي لديك لخوادم البريد تلك. يبقى SMTP على المنفذين 465 و587 داخل VPN ويجب أن يُنشئ اتصال TLS.</value>
     <comment>Explains the deliberate SMTP port 25 exception to the VPN kill switch, that IPv6 is routed through the tunnel, and the encrypted SMTP behavior.</comment>
   </data>
   <data name="kill_switch_exception_unrecognized_encrypted" xml:space="preserve">
-    <value>عند إيقاف مفتاح القتل، تتجاوز حركة المرور التي تُبقيها قواعد أمان URnetwork خارج الشبكة، مثل البروتوكولات المشفرة غير المعروفة، شبكة VPN وتستخدم عنوان IP العام المحلي لديك. عند تشغيل مفتاح القتل، تُحظر حركة المرور هذه.</value>
+    <value>عند تعطيل مفتاح الإيقاف، تتجاوز حركة المرور التي تُبقيها قواعد أمان URnetwork خارج الشبكة، مثل البروتوكولات المشفرة غير المعروفة، شبكة VPN وتستخدم عنوان IP العام المحلي لديك. عند تشغيل مفتاح الإيقاف، تُحظر حركة المرور هذه.</value>
     <comment>Explains that, with the kill switch off, traffic URnetwork safety rules keep off the network (such as unrecognized encrypted protocols) bypasses the VPN.</comment>
   </data>
   <data name="launch" xml:space="preserve">
@@ -6903,6 +6903,22 @@
     <value>أفضل نسخة من URnetwork.</value>
     <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
   </data>
+  <data name="pro_features_in_use" xml:space="preserve">
+    <value>ميزات Pro قيد الاستخدام</value>
+    <comment>Title of a notice on the app's main screen and above the list of proxies (the device list, ur.io's Proxies page), shown before the free plan loses SOCKS and WireGuard: the account is not on Pro, and its hosted proxies hold SOCKS or WireGuard, which are Pro features. pro_features_upgrade_message is the body, and Get Pro the button. Keep Pro as it is.</comment>
+  </data>
+  <data name="pro_features_stopped" xml:space="preserve">
+    <value>توقف SOCKS وWireGuard عن العمل</value>
+    <comment>Title of a notice on the app's main screen and above the list of proxies (the device list, ur.io's Proxies page), shown once the free plan no longer includes SOCKS and WireGuard: the account is not on Pro, and its hosted proxies stopped accepting SOCKS and WireGuard connections. pro_features_stopped_message is the body. Keep SOCKS and WireGuard as they are.</comment>
+  </data>
+  <data name="pro_features_stopped_message" xml:space="preserve">
+    <value>SOCKS وWireGuard جزء من Pro، لذا لم يعودا يعملان على وكلائك. لا يزال HTTP وHTTPS يعملان. قم بالترقية لتشغيلهما من جديد. قد يستغرق WireGuard ما يصل إلى 30 دقيقة لإعادة الاتصال.</value>
+    <comment>Body under pro_features_stopped: SOCKS and WireGuard are Pro features, so the hosted proxies of an account on the free plan no longer accept SOCKS or WireGuard connections, while their HTTP and HTTPS proxies keep working. Upgrading to Pro turns them back on: SOCKS at once, WireGuard within 30 minutes. Get Pro is the button beside it. Keep SOCKS, WireGuard, HTTP, HTTPS and Pro as they are.</comment>
+  </data>
+  <data name="pro_features_upgrade_message" xml:space="preserve">
+    <value>وكلاء SOCKS وWireGuard جزء من Pro. قم بالترقية لمواصلة استخدامها.</value>
+    <comment>Body under pro_features_in_use, before the free plan loses SOCKS and WireGuard: the account's hosted proxies use SOCKS or WireGuard, which are part of the Pro plan, and upgrading keeps them working. Get Pro is the button beside it. Keep SOCKS, WireGuard and Pro as they are.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>جارٍ معالجة الدفع</value>
     <comment>Call to action</comment>
@@ -7336,11 +7352,11 @@
     <comment>Restore-purchases outcome: an entitlement for the current network was found; the confirmation poll now bridges the gap until the server credits it (Shared/ViewModels/AppStoreSubscriptionManager.swift).</comment>
   </data>
   <data name="purchase_kill_switch_notice_message" xml:space="preserve">
-    <value>تتطلب عمليات الشراء من App Store قطع اتصال VPN، وأثناء قطعه يحظر «مفتاح القتل» حركة الإنترنت لديك. أوقف «مفتاح القتل»، ثم حاول مرة أخرى. يمكنك تشغيله من جديد بعد ذلك.</value>
+    <value>تتطلب عمليات الشراء من App Store قطع اتصال VPN، وأثناء قطعه يحظر «مفتاح الإيقاف» حركة الإنترنت لديك. عطّل «مفتاح الإيقاف»، ثم حاول مرة أخرى. يمكنك تشغيله من جديد بعد ذلك.</value>
     <comment>Mac App Store alert body under purchase_kill_switch_notice_title. In "while it's disconnected", "it" is the VPN; in "turn it back on", "it" is the kill switch, which the user may turn back on after the purchase. Keep App Store and VPN as they are. Name the kill switch by the label of its setting (the kill_switch key).</comment>
   </data>
   <data name="purchase_kill_switch_notice_title" xml:space="preserve">
-    <value>أوقف «مفتاح القتل» لإتمام الشراء</value>
+    <value>عطّل «مفتاح الإيقاف» لإتمام الشراء</value>
     <comment>Mac App Store build's alert title, shown in place of purchase_disconnect_notice_title when the user starts a purchase while the kill switch is on. An App Store purchase there needs the VPN disconnected, and with the kill switch on the internet traffic is blocked while the VPN is disconnected, so nothing is bought until the user turns the kill switch off. The alert's one button is Got it. Name the kill switch by the label of its setting (the kill_switch key).</comment>
   </data>
   <data name="purchase_pending_body" xml:space="preserve">
@@ -8268,7 +8284,7 @@
     <comment>Call to action</comment>
   </data>
   <data name="show_kill_switch_exception" xml:space="preserve">
-    <value>عرض استثناء مفتاح القتل</value>
+    <value>عرض استثناء مفتاح الإيقاف</value>
     <comment>Accessibility label for the kill switch exception information button.</comment>
   </data>
   <data name="show_on_points_leaderboard" xml:space="preserve">

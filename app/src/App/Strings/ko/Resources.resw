@@ -6408,6 +6408,22 @@
     <value>URnetwork의 최고의 버전.</value>
     <comment>Upgrade screen: the one-line Pro benefits prompt under the Get Pro title.</comment>
   </data>
+  <data name="pro_features_in_use" xml:space="preserve">
+    <value>Pro 기능 사용 중</value>
+    <comment>Title of a notice on the app's main screen and above the list of proxies (the device list, ur.io's Proxies page), shown before the free plan loses SOCKS and WireGuard: the account is not on Pro, and its hosted proxies hold SOCKS or WireGuard, which are Pro features. pro_features_upgrade_message is the body, and Get Pro the button. Keep Pro as it is.</comment>
+  </data>
+  <data name="pro_features_stopped" xml:space="preserve">
+    <value>SOCKS와 WireGuard가 더 이상 작동하지 않습니다</value>
+    <comment>Title of a notice on the app's main screen and above the list of proxies (the device list, ur.io's Proxies page), shown once the free plan no longer includes SOCKS and WireGuard: the account is not on Pro, and its hosted proxies stopped accepting SOCKS and WireGuard connections. pro_features_stopped_message is the body. Keep SOCKS and WireGuard as they are.</comment>
+  </data>
+  <data name="pro_features_stopped_message" xml:space="preserve">
+    <value>SOCKS와 WireGuard는 Pro에 포함된 기능이므로 이제 프록시에서 작동하지 않습니다. HTTP와 HTTPS는 계속 작동합니다. 다시 사용하려면 업그레이드하세요. WireGuard가 다시 연결되기까지 최대 30분이 걸릴 수 있습니다.</value>
+    <comment>Body under pro_features_stopped: SOCKS and WireGuard are Pro features, so the hosted proxies of an account on the free plan no longer accept SOCKS or WireGuard connections, while their HTTP and HTTPS proxies keep working. Upgrading to Pro turns them back on: SOCKS at once, WireGuard within 30 minutes. Get Pro is the button beside it. Keep SOCKS, WireGuard, HTTP, HTTPS and Pro as they are.</comment>
+  </data>
+  <data name="pro_features_upgrade_message" xml:space="preserve">
+    <value>SOCKS 및 WireGuard 프록시는 Pro에 포함된 기능입니다. 계속 사용하려면 업그레이드하세요.</value>
+    <comment>Body under pro_features_in_use, before the free plan loses SOCKS and WireGuard: the account's hosted proxies use SOCKS or WireGuard, which are part of the Pro plan, and upgrading keeps them working. Get Pro is the button beside it. Keep SOCKS, WireGuard and Pro as they are.</comment>
+  </data>
   <data name="processing_payment" xml:space="preserve">
     <value>결제 처리 중</value>
     <comment>Call to action</comment>
