@@ -894,7 +894,9 @@ void UpgradeSheet::EmitPurchase(const char* outcome, std::string const& errorCla
   if (!sdk_.eventsReady()) return;
   // the method's store (crypto-pay §6.1 Events): stripe for Card, else the
   // coin's. A coin buys the year (the welcome offer while active) with no
-  // trial, at the invoice's quoted price once it has one.
+  // trial, at the invoice's quoted price once it has one, and its product is
+  // the sdk's for the coin (pro_yearly_<ticker>: USDC and SOL share the solana
+  // store); Card's is its plan's.
   const bool coin = cryptopay::IsCoin(purchaseMethod_);
   const bool yearly = coin || plans_.Yearly();
   const BalanceSnapshot snapshot = balance_.Current();
@@ -904,18 +906,19 @@ void UpgradeSheet::EmitPurchase(const char* outcome, std::string const& errorCla
   if (coin && 0 < purchasePriceUsd_) price = purchasePriceUsd_;
   const std::string currency = coin ? std::string("USD") : snapshot.tier.currency;
   const std::string store = cryptopay::MethodEventStore(purchaseMethod_);
+  const std::string coinProduct = cryptopay::MethodEventProduct(purchaseMethod_);
+  const std::string product = coinProduct.empty() ? std::string(PlanProduct(yearly)) : coinProduct;
   const bool trial = cryptopay::PurchaseHasTrial(purchaseMethod_, yearly);
   const std::string out(outcome);
   ClientEventQueue& events = sdk_.events();
   if (out == "started") {
-    events.PurchaseStarted(store, PlanProduct(yearly), PlanName(yearly), trial, price, currency);
+    events.PurchaseStarted(store, product, PlanName(yearly), trial, price, currency);
   } else if (out == "completed") {
-    events.PurchaseCompleted(store, PlanProduct(yearly), PlanName(yearly), trial, price, currency);
+    events.PurchaseCompleted(store, product, PlanName(yearly), trial, price, currency);
   } else if (out == "cancelled") {
-    events.PurchaseCancelled(store, PlanProduct(yearly), PlanName(yearly), trial, price, currency);
+    events.PurchaseCancelled(store, product, PlanName(yearly), trial, price, currency);
   } else {
-    events.PurchaseFailed(store, PlanProduct(yearly), PlanName(yearly), trial, price, currency,
-                          errorClass);
+    events.PurchaseFailed(store, product, PlanName(yearly), trial, price, currency, errorClass);
   }
 }
 
@@ -1518,8 +1521,8 @@ void UpgradeSheet::ApplyMethods() {
   // row stays as it is
   if (!subscribeButton_ || !cryptoFinePrint_ || checkingOut_ || page_ != Page::Products) return;
   const BalanceSnapshot snapshot = balance_.Current();
-  const std::vector<cryptopay::PaymentTabView> tabs =
-      cryptopay::PaymentTabsFor(snapshot.cryptoAssets, snapshot.offer.active);
+  const std::vector<cryptopay::PaymentTabView> tabs = cryptopay::PaymentTabsFor(
+      snapshot.cryptoAssets, snapshot.cryptoUnavailableAssets, snapshot.offer.active);
   methods_.SetTabs(tabs, wantedMethod_.empty() ? invoice_.PaymentMethod() : wantedMethod_);
   ApplyMethod(methods_.Method());
 }

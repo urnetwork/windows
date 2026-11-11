@@ -69,6 +69,11 @@ struct BalanceSnapshot {
   // from an older server and with every coin switched off, which keeps every
   // billing surface exactly as it was.
   urnet::CryptoPaymentAssetList cryptoAssets;
+  // The coins that are on but cannot be quoted now
+  // (crypto_unavailable_assets), which the rows show greyed, "Temporarily
+  // unavailable", beside the others instead of leaving out. Empty from a
+  // server before 2026-11-10.
+  urnet::CryptoPaymentAssetList cryptoUnavailableAssets;
   // The network's latest one-time crypto credit still in its grace
   // (crypto_term): the renewal notice's dates. Empty when there is none.
   cryptopay::CryptoTermView cryptoTerm;

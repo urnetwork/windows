@@ -98,6 +98,14 @@ std::wstring PaymentLabel(std::string const& key, std::string const& english) {
   return text;
 }
 
+// A coin's line as the sdk hands it out (cryptopay::CoinLine: its network,
+// its warning, TAO's note), looked up as a label is; nothing for a line the
+// coin does not have (no key).
+std::wstring LineText(cryptopay::CoinLine const& line) {
+  if (line.key.empty()) return std::wstring();
+  return PaymentLabel(line.key, line.english);
+}
+
 // The running exe's folder, which holds Assets; empty when it cannot be read.
 // Unbounded, as UpdateChecker's OwnExePath: the portable folder can sit under
 // a long path.
@@ -235,19 +243,20 @@ StackPanel PaymentMethodRow::Build() {
     if (!item) return;
     for (size_t index = 0; index < self->items.size(); ++index) {
       if (self->items[index] != item) continue;
-      // Card's segment, or a tab: a tab of one coin is that coin, More coins
-      // the coin chosen there last (or remembered), else its first that can
-      // be paid with now
+      // Card's segment, or a tab: the sdk's coin for the tap (a tab of one
+      // coin is that coin; More coins the coin chosen there last, else the
+      // remembered one, else its first that can be paid with now)
       std::string method = cryptopay::kMethodCard;
       if (0 < index && index - 1 < self->tabs.size()) {
-        method = cryptopay::TabCoinToSelect(self->tabs[index - 1], self->wanted);
+        cryptopay::PaymentTabView const& tab = self->tabs[index - 1];
+        method = cryptopay::TabCoinFor(tab, self->lastChosen.In(tab.id), self->remembered);
       }
       if (method.empty() || method == self->selected) {
         Apply(*self);
         return;
       }
       self->selected = method;
-      if (cryptopay::IsCoin(method)) self->wanted = method;
+      self->lastChosen.Choose(self->tabs, method);
       Apply(*self);
       if (self->onSelect && *self->onSelect) (*self->onSelect)(self->selected);
       return;
@@ -275,8 +284,9 @@ void PaymentMethodRow::SetTabs(std::vector<cryptopay::PaymentTabView> const& tab
     state.tabs = tabs;
     Rebuild(state_);
   }
+  state.remembered = wanted;
   state.selected = cryptopay::MethodToSelect(state.tabs, wanted);
-  if (cryptopay::IsCoin(wanted)) state.wanted = wanted;
+  state.lastChosen.Choose(state.tabs, state.selected);
   Apply(state);
 }
 
@@ -359,11 +369,10 @@ void PaymentMethodRow::Rebuild(std::shared_ptr<State> const& shared) {
         texts.Children().Append(
             MakeText(hstring{name}, 14, coin.available ? colors::TextBrush() : colors::FaintBrush()));
         std::wstring help;
-        const std::string networkKey = cryptopay::NetworkLineKey(coin.asset);
-        if (!networkKey.empty()) {
-          const hstring network = Loc(networkKey);
-          texts.Children().Append(MakeText(network, 12, colors::MutedBrush(), true));
-          help = network.c_str();
+        const std::wstring network = LineText(coin.networkLine);
+        if (!network.empty()) {
+          texts.Children().Append(MakeText(hstring{network}, 12, colors::MutedBrush(), true));
+          help = network;
         }
         if (!coin.available) {
           const hstring unavailable = Loc("pay_method_unavailable");
@@ -386,7 +395,7 @@ void PaymentMethodRow::Rebuild(std::shared_ptr<State> const& shared) {
           auto self = weak.lock();
           if (!self || self->applying || asset == self->selected) return;
           self->selected = asset;
-          self->wanted = asset;
+          self->lastChosen.Choose(self->tabs, asset);
           Apply(*self);
           if (self->onSelect && *self->onSelect) (*self->onSelect)(self->selected);
         });
@@ -406,8 +415,9 @@ void PaymentMethodRow::Rebuild(std::shared_ptr<State> const& shared) {
 }
 
 void PaymentMethodRow::Select(std::string const& method) {
+  state_->remembered = method;
   state_->selected = cryptopay::MethodToSelect(state_->tabs, method);
-  if (cryptopay::IsCoin(state_->selected)) state_->wanted = state_->selected;
+  state_->lastChosen.Choose(state_->tabs, state_->selected);
   if (state_->bar) Apply(*state_);
 }
 
@@ -543,7 +553,7 @@ StackPanel CryptoInvoicePanel::Build(winrt::Microsoft::UI::Dispatching::Dispatch
   state.instructions.Children().Append(state.addressBlock);
 
   // the coin's network to send on, under the address (a transfer on another
-  // is not credited): cryptopay::NetworkWarningKey
+  // is not credited): the sdk's warning for the coin
   state.networkWarning = MakeText(hstring{}, 12, colors::MakeBrush(colors::kUrAmber), true);
   state.networkWarning.Visibility(Visibility::Collapsed);
   state.instructions.Children().Append(state.networkWarning);
@@ -599,7 +609,8 @@ StackPanel CryptoInvoicePanel::Build(winrt::Microsoft::UI::Dispatching::Dispatch
   state.quoteRow.Visibility(Visibility::Collapsed);
   root.Children().Append(state.quoteRow);
 
-  // 5. the status: waiting -> payment seen -> confirming n of N -> paid
+  // 5. the status: the sdk's steps, waiting -> payment seen -> confirming n of
+  // N -> paid (two for USDC), one row each
   state.steps = StackPanel();
   state.steps.Spacing(8);
   for (int index = 0; index < 4; ++index) {
@@ -681,7 +692,7 @@ void CryptoInvoicePanel::Render(cryptopay::CryptoInvoiceView const& view, bool u
   const cryptopay::CryptoInvoiceDisplay display = cryptopay::DisplayFor(view, uriAllowed);
 
   // 1. the network, first
-  state.networkLine.Text(display.networkLineKey.empty() ? hstring{} : Loc(display.networkLineKey));
+  state.networkLine.Text(hstring{LineText(display.networkLine)});
   state.busyRing.IsActive(display.busy);
   Show(state.busyLine, display.busy);
 
@@ -701,8 +712,8 @@ void CryptoInvoicePanel::Render(cryptopay::CryptoInvoiceView const& view, bool u
   }
   const bool qrDrawn = display.showQr && !state.qrText.empty();
   Show(state.qrFrame, qrDrawn);
-  state.noLinkNote.Text(display.noPaymentLinkKey.empty() ? hstring{} : Loc(display.noPaymentLinkKey));
-  Show(state.noLinkNote, qrDrawn && !display.noPaymentLinkKey.empty());
+  state.noLinkNote.Text(hstring{LineText(display.noPaymentLinkNote)});
+  Show(state.noLinkNote, qrDrawn && !display.noPaymentLinkNote.key.empty());
   Show(state.openWallet, display.showOpenWallet);
   if (display.noPaymentLink != state.copySaysWhat) {
     // a coin paid by hand: Copy amount and Copy address
@@ -715,7 +726,7 @@ void CryptoInvoicePanel::Render(cryptopay::CryptoInvoiceView const& view, bool u
   state.address = display.address;
   state.addressText.Text(H(display.address));
   Show(state.addressBlock, display.showAddress);
-  state.networkWarning.Text(display.networkWarningKey.empty() ? hstring{} : Loc(display.networkWarningKey));
+  state.networkWarning.Text(hstring{LineText(display.networkWarning)});
   Show(state.networkWarning, display.showNetworkWarning);
   state.memo = display.memo;
   state.memoText.Text(H(display.memo));
@@ -735,43 +746,44 @@ void CryptoInvoicePanel::Render(cryptopay::CryptoInvoiceView const& view, bool u
   Show(state.refreshRing, refreshing);
   Show(state.quoteRow, display.quote != cryptopay::QuoteLine::Hidden || display.showRefresh);
 
-  // 5. the status steps
+  // 5. the status steps: the sdk's, each drawn by its progress (a step the
+  // payment skipped is done, and once paid every step is), the confirming
+  // one with its own counts
   Show(state.steps, display.showSteps);
-  const std::vector<int> steps = cryptopay::StepsFor(view.asset, view.confirmationsRequired);
   const auto pending = colors::MakeBrush(colors::kTextFaint);
-  for (int index = 0; index < static_cast<int>(state.stepRows.size()); ++index) {
-    Step& step = state.stepRows[static_cast<size_t>(index)];
-    const bool listed = std::find(steps.begin(), steps.end(), index) != steps.end();
-    Show(step.row, listed);
+  for (size_t index = 0; index < state.stepRows.size(); ++index) {
+    Step& row = state.stepRows[index];
+    const bool listed = index < display.steps.size();
+    Show(row.row, listed);
     if (!listed) continue;
-    switch (index) {
-      case 0: step.label.Text(Loc("crypto_status_waiting")); break;
-      case 1: step.label.Text(Loc("crypto_status_seen")); break;
-      case 2:
-        step.label.Text(hstring{Format("crypto_status_confirming", display.confirmations,
-                                       display.confirmationsRequired)});
-        break;
-      default: step.label.Text(Loc("crypto_status_paid")); break;
+    const cryptopay::PaymentStepView& step = display.steps[index];
+    if (step.status == cryptopay::kStatusConfirming) {
+      row.label.Text(hstring{Format("crypto_status_confirming", step.confirmations,
+                                    step.confirmationsRequired)});
+    } else {
+      row.label.Text(Loc(cryptopay::StepKey(step.status)));
     }
-    const bool done = index < display.step || (display.paid && index == 3);
-    const bool current = index == display.step && !display.paid;
+    const bool done = step.progress == cryptopay::kStepDone;
+    const bool current = step.progress == cryptopay::kStepCurrent;
     const auto accent = done ? colors::MakeBrush(colors::kUrGreen) : colors::MakeBrush(colors::kUrPink);
-    step.dot.Stroke(done || current ? accent : pending);
-    step.dot.Fill(done ? accent : colors::MakeBrush(kTransparent));
-    step.label.Foreground(done || current ? colors::TextBrush() : pending);
-    step.label.FontWeight(current ? winrt::Windows::UI::Text::FontWeights::SemiBold()
-                                  : winrt::Windows::UI::Text::FontWeights::Normal());
+    row.dot.Stroke(done || current ? accent : pending);
+    row.dot.Fill(done ? accent : colors::MakeBrush(kTransparent));
+    row.label.Foreground(done || current ? colors::TextBrush() : pending);
+    row.label.FontWeight(current ? winrt::Windows::UI::Text::FontWeights::SemiBold()
+                                 : winrt::Windows::UI::Text::FontWeights::Normal());
   }
   // the one line that says where the payment is, for a screen reader, and
-  // announced when the payment moves on
+  // announced when the payment moves on: the current step's, or the last
+  // once every step is done
   automation::AutomationProperties::SetName(state.steps, Loc(display.statusKey));
   if (display.statusKey != state.statusKey) {
     state.statusKey = display.statusKey;
+    const int announced = cryptopay::AnnouncedStep(display.steps);
     if (display.review) {
       Announce(state.reviewText);
-    } else if (display.showSteps && 0 <= display.step &&
-               display.step < static_cast<int>(state.stepRows.size())) {
-      Announce(state.stepRows[static_cast<size_t>(display.step)].label);
+    } else if (display.showSteps && 0 <= announced &&
+               announced < static_cast<int>(state.stepRows.size())) {
+      Announce(state.stepRows[static_cast<size_t>(announced)].label);
     }
   }
   Show(state.remainingText, display.showRemaining);
@@ -964,8 +976,7 @@ void CryptoAccountRows::ApplyInvoice(cryptopay::CryptoInvoiceView const& view) {
                                               view.confirmationsRequired)}
                              : Loc(noteKey);
   kit::SetTextOrCollapse(state.inProgressNote, status);
-  const std::string networkKey = cryptopay::NetworkLineKey(view.asset);
-  state.inProgressValue.Text(networkKey.empty() ? hstring{} : Loc(networkKey));
+  state.inProgressValue.Text(hstring{LineText(view.lines.networkLine)});
   automation::AutomationProperties::SetFullDescription(state.inProgress, status);
 }
 
