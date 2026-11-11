@@ -7778,6 +7778,10 @@
     <value>คัดลอกซีดเฟรส</value>
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
   </data>
+  <data name="site_data_limit_pro" xml:space="preserve">
+    <value>ข้อมูล Pro ของเดือนนี้หมดแล้ว จะรีเฟรชในวันที่ 1 ของเดือนหน้า (UTC) และแพ็กข้อมูลช่วยเพิ่มได้ทันที</value>
+    <comment>ur.io Connect screen, out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's data is granted at 00:00 UTC on the 1st of each month; a data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and UTC as is.</comment>
+  </data>
   <data name="site_ext_setting_up" xml:space="preserve">
     <value>กำลังตั้งค่า…</value>
     <comment>Extension status: setup in flight</comment>
@@ -7817,6 +7821,14 @@
   <data name="site_manage_subscription_hint" xml:space="preserve">
     <value>ดูวันต่ออายุ สถานะการต่ออายุอัตโนมัติ และตัวเลือกการยกเลิก</value>
     <comment>Account panel: hint under the plan card for Pro members, next to the Manage button that opens Manage Subscription.</comment>
+  </data>
+  <data name="site_out_of_data_browser_direct" xml:space="preserve">
+    <value>เมื่อปิดสวิตช์หยุดการเชื่อมต่อ ส่วนขยายจะให้เบราว์เซอร์นี้เชื่อมต่อโดยตรงโดยไม่ผ่าน URnetwork ในอีกไม่ช้า</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is off (its default). The extension then takes its proxy off after failed health checks (or, in Firefox, sends each request directly), so the browser goes online without URnetwork. Keep URnetwork as is; translate kill switch as the extension and the apps do.</comment>
+  </data>
+  <data name="site_out_of_data_browser_held" xml:space="preserve">
+    <value>เมื่อเปิดสวิตช์หยุดการเชื่อมต่อ หน้าเว็บจะไม่โหลดในเบราว์เซอร์นี้จนกว่าจะมีข้อมูลหรือคุณยกเลิกการเชื่อมต่อ</value>
+    <comment>ur.io Connect screen, out-of-balance notice: what the browser does meanwhile when the URnetwork extension's kill switch is on. The extension keeps its proxy set, so pages fail until data is available again or the user disconnects. Translate kill switch as the extension and the apps do.</comment>
   </data>
   <data name="site_payment_error_already_subscribed" xml:space="preserve">
     <value>คุณมี Pro อยู่แล้ว จึงไม่มีการเรียกเก็บเงิน จัดการการสมัครสมาชิกได้จากบัญชีของคุณ</value>
