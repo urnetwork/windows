@@ -1,17 +1,19 @@
 // Executable spec for the crypto payment rules (App/CryptoPayPresentation.h,
 // crypto-pay CONTRACT §4.3, §4.4, §6, mmm/BTCPAY.md §17.6): the payment-method
 // row over the sdk's coin selector (when it shows, the remembered method and
-// its fallback to Card, the coin choosing a tab selects, the plan a coin
-// buys), each coin's words (network line, warning, uri scheme, the note of a
-// coin with no payment link) and the marks' svg reading, the invoice's display
-// for every state of the sdk's controller and for every coin, the quote
-// countdown, the gate in front of every payment uri, the QR's layout for real
-// payment uris, the "Payment in progress" row, and a crypto year's plan rows
-// (the notice's date, "Does not renew"). The rules the sdk owns
-// (urnet::cryptoPaymentTabs, paymentMethodAllowsPlan, checkCryptoPaymentUri,
-// cryptoPaymentQrText, cryptoTermNoticeDue, the labels and the event stores)
-// are the sdk's own tests'; the gate's use of the uri check is pinned here
-// with a fake.
+// its fallback to Card, the coin chosen last in each tab that a tap hands the
+// sdk, the plan a coin buys), the marks' svg reading, the invoice's display
+// for every state of the sdk's controller and for every coin, with the sdk's
+// answers for the coin as the view carries them (its lines, its payment link,
+// its memo, its steps), the quote countdown, the gate in front of every
+// payment uri, the QR's layout for real payment uris, the "Payment in
+// progress" row, and a crypto year's plan rows (the notice's date, "Does not
+// renew"). The rules the sdk owns (urnet::cryptoPaymentTabs,
+// cryptoPaymentTabCoin, paymentMethodAllowsPlan, checkCryptoPaymentUri,
+// cryptoPaymentQrText, cryptoAssetLinesFor, cryptoPaymentShowsMemo,
+// cryptoPaymentSteps, cryptoPaymentEventProduct, cryptoTermNoticeDue, the
+// labels and the event stores) are the sdk's own tests', which replay the
+// shared vectors; the gate's use of the uri check is pinned here with a fake.
 //
 //   c++ -std=c++20 -Wall -Wextra -Werror -I ../src/App -I ../third_party/qrcodegen crypto-pay-tests.cpp ../third_party/qrcodegen/qrcodegen.cpp -o /tmp/crypto-pay-tests && /tmp/crypto-pay-tests
 //
@@ -68,9 +70,27 @@ std::string Join(const std::vector<std::string>& values) {
   return joined;
 }
 
-std::string Join(const std::vector<int>& values) {
+// A status step as the sdk hands it over (urnet::CryptoPaymentStep).
+PaymentStepView MakeStep(const char* status, const char* progress, int64_t confirmations = 0,
+                         int64_t confirmationsRequired = 0) {
+  PaymentStepView step;
+  step.status = status;
+  step.progress = progress;
+  step.confirmations = confirmations;
+  step.confirmationsRequired = confirmationsRequired;
+  return step;
+}
+
+// "pending=done,confirming=current 3/6,paid=upcoming": each step's status, how
+// it is drawn, and the confirming step's counts.
+std::string Steps(const std::vector<PaymentStepView>& steps) {
   std::string joined;
-  for (const int value : values) joined += (joined.empty() ? "" : ",") + std::to_string(value);
+  for (const PaymentStepView& step : steps) {
+    joined += (joined.empty() ? "" : ",") + step.status + "=" + step.progress;
+    if (step.status == kStatusConfirming) {
+      joined += " " + std::to_string(step.confirmations) + "/" + std::to_string(step.confirmationsRequired);
+    }
+  }
   return joined;
 }
 
@@ -128,7 +148,10 @@ std::string Bech32Fill(const std::string& prefix, size_t count) {
   return text;
 }
 
-// The invoice of a Monero yearly plan, open and waiting.
+// The invoice of a Monero yearly plan, open and waiting, with the sdk's
+// answers for Monero beside it as CryptoPaySdk.h ViewFromSdk carries them: its
+// network line (no warning, no payment-link note), a payment link, no memo,
+// and its four steps at pending.
 CryptoInvoiceView MoneroInvoice() {
   CryptoInvoiceView view;
   view.phase = kPhaseOpen;
@@ -146,6 +169,9 @@ CryptoInvoiceView MoneroInvoice() {
   view.status = kStatusPending;
   view.remaining = "0.072387";
   view.confirmationsRequired = 1;
+  view.steps = {MakeStep(kStatusPending, kStepCurrent), MakeStep(kStatusSeen, kStepUpcoming),
+                MakeStep(kStatusConfirming, kStepUpcoming, 0, 1), MakeStep(kStatusPaid, kStepUpcoming)};
+  view.lines.networkLine = {"crypto_network_monero", "Monero"};
   return view;
 }
 
@@ -247,21 +273,42 @@ void MethodRow() {
   Check(eth != nullptr && eth->labelKey == "pay_method_eth", "a coin found by its asset");
   Check(FindCoin(all, "doge") == nullptr, "and no coin the selector does not lay out");
 
-  // a tab chosen: a tab of one coin is its coin; More coins its coin chosen
-  // there last while it can be paid with, else its first that can
+  // a tab chosen: the sdk's coin for the tap (urnet::cryptoPaymentTabCoin,
+  // CryptoPaySdk.h TabCoinFor), asked with the coin chosen last in that tab
   const PaymentTabView& more = taoAndSol[3];
   CheckEq(kTabMoreCoins, more.id, "More coins is the fourth tab");
   Check(TabOpensCoins(more) && !TabOpensCoins(taoAndSol[0]), "only More coins opens a list");
-  CheckEq(kAssetTao, TabCoinToSelect(more, ""), "More coins: its first coin that can be paid with");
-  CheckEq(kAssetSol, TabCoinToSelect(more, kAssetSol), "More coins: the coin chosen there last");
-  CheckEq(kAssetTao, TabCoinToSelect(more, kAssetBtc), "chosen last but greyed now: the first that can be paid with");
-  CheckEq(kAssetTao, TabCoinToSelect(more, kAssetXmr), "another tab's coin: this tab's first");
-  CheckEq(kAssetZec, TabCoinToSelect(all[1], kAssetXmr), "a tab of one coin is that coin");
   {
     const std::vector<PaymentTabView> solOnly = Tabs({kAssetSol});
-    CheckEq(kAssetSol, TabCoinToSelect(solOnly[3], ""), "TAO, Bitcoin and ETH greyed: SOL");
     Check(!solOnly[0].available && solOnly[3].available, "USDC greyed, More coins not");
-    CheckEq("", TabCoinToSelect(solOnly[0], ""), "a tab whose coins cannot be paid with now cannot be chosen");
+  }
+
+  // the coin chosen last in each tab, which a tap on it hands the sdk: kept
+  // per tab, so a choice in another tab never replaces it (one "chosen last
+  // anywhere" sent USDC to More coins, which then fell back to TAO)
+  {
+    LastChosenCoins chosen;
+    CheckEq("", chosen.In(kTabMoreCoins), "nothing chosen in More coins yet");
+    chosen.Choose(all, kAssetSol);
+    CheckEq(kAssetSol, chosen.In(kTabMoreCoins), "SOL, chosen in the More coins list");
+    chosen.Choose(all, kAssetUsdcSolana);
+    CheckEq(kAssetUsdcSolana, chosen.In(kAssetUsdcSolana), "then USDC on Solana, chosen in its own tab");
+    CheckEq(kAssetSol, chosen.In(kTabMoreCoins), "More coins still has SOL: USDC's tab is another");
+    chosen.Choose(all, kMethodCard);
+    chosen.Choose(all, "");
+    chosen.Choose(all, "doge");
+    chosen.Choose(all, kTabMoreCoins);
+    chosen.Choose(all, "XMR");
+    CheckEq(2, static_cast<int64_t>(chosen.byTab.size()),
+            "Card, nothing, a coin no tab holds, a tab and a ticker change nothing");
+    CheckEq(kAssetSol, chosen.In(kTabMoreCoins), "and More coins keeps SOL through them");
+    chosen.Choose(all, kAssetBtc);
+    CheckEq(kAssetBtc, chosen.In(kTabMoreCoins), "a later choice in More coins replaces SOL");
+    chosen.Choose(monero, kAssetEth);
+    CheckEq(kAssetBtc, chosen.In(kTabMoreCoins), "a coin of a tab the row does not lay out changes nothing");
+    chosen.Choose(monero, kAssetXmr);
+    CheckEq(kAssetXmr, chosen.In(kAssetXmr), "a tab of one coin keeps its coin");
+    CheckEq("", chosen.In(kAssetZec), "and a tab never chosen has none");
   }
   // the row rebuilds only for a selector that changed
   Check(Tabs({kAssetXmr}) == monero && !(taoAndSol == all), "the selector compares by value");
@@ -279,35 +326,29 @@ void MethodRow() {
 }
 
 void InvoiceWords() {
-  CheckEq("crypto_network_usdc", NetworkLineKey(kAssetUsdcSolana), "USDC's network line");
-  CheckEq("crypto_network_zcash", NetworkLineKey(kAssetZec), "Zcash's network line");
-  CheckEq("crypto_network_monero", NetworkLineKey(kAssetXmr), "Monero's network line");
-  CheckEq("crypto_network_tao", NetworkLineKey(kAssetTao), "TAO's: the Bittensor network");
-  CheckEq("crypto_network_bitcoin", NetworkLineKey(kAssetBtc), "Bitcoin's network line");
-  CheckEq("crypto_network_eth", NetworkLineKey(kAssetEth), "ETH's: Ethereum mainnet");
-  CheckEq("crypto_network_sol", NetworkLineKey(kAssetSol), "SOL's: native SOL on Solana");
-  CheckEq("", NetworkLineKey(kMethodCard), "Card has no network line");
-  CheckEq("usdc_solana_network_only", NetworkWarningKey(kAssetUsdcSolana), "USDC's network warning");
-  CheckEq("", NetworkWarningKey(kAssetZec), "Zcash has none");
-  CheckEq("", NetworkWarningKey(kAssetXmr), "Monero has none");
-  CheckEq("crypto_invoice_tao_network_only", NetworkWarningKey(kAssetTao), "TAO's network warning");
-  CheckEq("crypto_invoice_bitcoin_network_only", NetworkWarningKey(kAssetBtc), "Bitcoin's network warning");
-  CheckEq("crypto_invoice_eth_network_only", NetworkWarningKey(kAssetEth), "ETH's network warning");
-  CheckEq("crypto_invoice_sol_network_only", NetworkWarningKey(kAssetSol), "SOL's network warning");
-  CheckEq("", NetworkWarningKey(kMethodCard), "Card has none");
-  CheckEq("solana:", UriSchemeFor(kAssetUsdcSolana), "USDC's scheme");
-  CheckEq("zcash:", UriSchemeFor(kAssetZec), "Zcash's scheme");
-  CheckEq("monero:", UriSchemeFor(kAssetXmr), "Monero's scheme");
-  CheckEq("bitcoin:", UriSchemeFor(kAssetBtc), "Bitcoin's scheme (BIP 21)");
-  CheckEq("ethereum:", UriSchemeFor(kAssetEth), "ETH's scheme (EIP-681)");
-  CheckEq("solana:", UriSchemeFor(kAssetSol), "native SOL's scheme (Solana Pay)");
-  CheckEq("", UriSchemeFor(kAssetTao), "TAO has no payment link");
-  Check(HasNoPaymentLink(kAssetTao), "TAO is paid by hand");
-  Check(!HasNoPaymentLink(kAssetBtc) && !HasNoPaymentLink(kAssetXmr) && !HasNoPaymentLink(kMethodCard) &&
-            !HasNoPaymentLink(""),
-        "every other coin has a payment link; Card and nothing are no coin");
-  CheckEq("crypto_invoice_tao_no_payment_link", NoPaymentLinkKey(kAssetTao), "the note under TAO's QR");
-  CheckEq("", NoPaymentLinkKey(kAssetSol), "a coin with a payment link has no such note");
+  // (each coin's network line, its warning, TAO's note and whether it has a
+  // payment link are the sdk's: CryptoPaySdk.h, pinned below against the
+  // generated header)
+
+  // a status step's line, whatever coin it is for
+  CheckEq("crypto_status_waiting", StepKey(kStatusPending), "pending: waiting for your payment");
+  CheckEq("crypto_status_seen", StepKey(kStatusSeen), "seen: payment seen");
+  CheckEq("crypto_status_confirming", StepKey(kStatusConfirming), "confirming n of N");
+  CheckEq("crypto_status_paid", StepKey(kStatusPaid), "paid");
+  CheckEq("", StepKey(kStatusExpired), "expired is no step");
+  CheckEq("", StepKey(kStatusReview), "nor review");
+  CheckEq("", StepKey(""), "nor nothing");
+
+  // the step a screen reader hears when the payment moves on
+  CheckEq(1, AnnouncedStep({MakeStep(kStatusPending, kStepDone), MakeStep(kStatusSeen, kStepCurrent),
+                            MakeStep(kStatusConfirming, kStepUpcoming, 0, 6), MakeStep(kStatusPaid, kStepUpcoming)}),
+          "the current step");
+  CheckEq(2, AnnouncedStep({MakeStep(kStatusPending, kStepDone), MakeStep(kStatusSeen, kStepDone),
+                            MakeStep(kStatusConfirming, kStepCurrent, 3, 6), MakeStep(kStatusPaid, kStepUpcoming)}),
+          "confirming, the seen step skipped and drawn done");
+  CheckEq(1, AnnouncedStep({MakeStep(kStatusPending, kStepDone), MakeStep(kStatusPaid, kStepDone)}),
+          "paid, every step done: the last");
+  CheckEq(-1, AnnouncedStep({}), "no steps: none");
 
   CheckEq("0:00", FormatCountdown(0), "zero");
   CheckEq("0:05", FormatCountdown(5), "seconds");
@@ -356,9 +397,12 @@ void UriGate() {
     Check(!CryptoUriAllowed(kAssetXmr, uri, address, check), "a check that throws refuses");
   }
   {
+    // a scheme in capitals is the same scheme to the sdk (RFC 3986), and the
+    // gate adds no judgement of its own
     FakeCheck check;
     Check(CryptoUriAllowed(kAssetXmr, "MONERO:8sample?tx_amount=1", address, check),
-          "a scheme in capitals is the same scheme");
+          "what the sdk's check passes, the gate passes");
+    CheckEq("MONERO:8sample?tx_amount=1", check.uri, "the uri reaches the sdk as it is");
   }
   // the links of Bitcoin, ETH and native SOL (mmm/BTCPAY.md §17.7) reach the
   // sdk's check, which alone reads their parameters
@@ -375,6 +419,11 @@ void UriGate() {
     Check(CryptoUriAllowed(c.asset, c.uri, "sample", check), "the sdk is asked about " + c.asset + "'s link");
     CheckEq(1, check.calls, c.asset + ": asked once");
   }
+  // The sdk's check is the whole gate (urnet::checkCryptoPaymentUri refuses an
+  // empty field, another coin's scheme, a byte outside printable ASCII, a
+  // fragment, and every uri of TAO): this app keeps no scheme list or
+  // pre-check of its own. Each of these reaches the check as it is, and the
+  // check's refusal (the fake's here) stands.
   struct Refused {
     const char* why;
     std::string asset;
@@ -399,10 +448,14 @@ void UriGate() {
            Refused{"a control character", kAssetXmr, std::string("monero:8sample") + '\x01', address},
            Refused{"DEL", kAssetXmr, std::string("monero:8sample") + '\x7F', address},
            Refused{"a byte outside ASCII", kAssetXmr, "monero:8sample?tx_description=caf\xC3\xA9", address},
+           Refused{"a fragment", kAssetXmr, "monero:8sample?tx_amount=1#x", address},
        }) {
     FakeCheck check;
-    Check(!CryptoUriAllowed(c.asset, c.uri, c.address, check), std::string("refused: ") + c.why);
-    CheckEq(0, check.calls, std::string("refused before the sdk is asked: ") + c.why);
+    check.answer = false;
+    Check(!CryptoUriAllowed(c.asset, c.uri, c.address, check), std::string("refused by the sdk: ") + c.why);
+    CheckEq(1, check.calls, std::string("the sdk's check is asked: ") + c.why);
+    Check(check.asset == c.asset && check.uri == c.uri && check.address == c.address,
+          std::string("with the asset, the uri and the address as they are: ") + c.why);
   }
 }
 
@@ -435,17 +488,20 @@ void Routes() {
   CheckEq("refused", Route(RouteFor(view)), "a failure without a code (no answer)");
 }
 
-// The rules of CONTRACT §6.2.1, state by state.
+// The rules of CONTRACT §6.2.1, state by state. The coin's lines, its payment
+// link, whether its memo shows and its steps are the sdk's, carried in the
+// view as CryptoPaySdk.h ViewFromSdk fills it; when each shows is this app's.
 void Display() {
   // payable: open, pending, time left
   CryptoInvoiceView view = MoneroInvoice();
   CryptoInvoiceDisplay display = DisplayFor(view, true);
-  CheckEq("crypto_network_monero", display.networkLineKey, "the network line comes first");
+  CheckEq("crypto_network_monero", display.networkLine.key, "the network line comes first");
+  CheckEq("Monero", display.networkLine.english, "with the sdk's English");
   Check(!display.busy, "an open, polled invoice is not loading");
   Check(display.showAmount && display.showQr && display.showAddress, "payable: the amount, the QR, the address");
   CheckEq(view.uri, display.qrText, "the QR holds the uri the gate passed (the sdk's qr text)");
   Check(display.showOpenWallet, "and Open in wallet opens it");
-  Check(!display.noPaymentLink && !display.showByHandLine && display.noPaymentLinkKey.empty(),
+  Check(!display.noPaymentLink && !display.showByHandLine && display.noPaymentLinkNote.key.empty(),
         "a payment link fills the amount in: no by-hand line, no note under the QR");
   CheckEq("0.072387 XMR", display.amountText, "send exactly the amount with its ticker");
   CheckEq("8sample", display.address, "to this address");
@@ -455,10 +511,10 @@ void Display() {
   CheckEq("29:59", display.countdown, "m:ss");
   Check(display.showRefresh && display.refreshEnabled, "Refresh quote while nothing was received");
   Check(display.showSteps, "the steps");
-  CheckEq(0, display.step, "waiting");
+  CheckEq("pending=current,seen=upcoming,confirming=upcoming 0/1,paid=upcoming", Steps(display.steps),
+          "the sdk's steps, as it draws them");
   CheckEq("crypto_status_waiting", display.statusKey, "waiting for your payment");
-  Check(!display.statusCounts && !display.showRemaining && !display.review && !display.paid,
-        "nothing else to say while waiting");
+  Check(!display.showRemaining && !display.review && !display.paid, "nothing else to say while waiting");
   Check(display.showWallets, "the wallets that work");
   Check(display.showPayAnotherWay, "another way while nothing was received");
   Check(!display.showUnavailable && !display.showRefusal, "no failure");
@@ -493,8 +549,10 @@ void Display() {
           "an empty uri is never drawn or opened");
     CheckEq("0.071111 XMR", display.amountText, "the new amount, to send by hand");
     FakeCheck check;
-    Check(!CryptoUriAllowed(kAssetXmr, requoted.uri, requoted.address, check), "the gate refuses an empty uri");
-    CheckEq(0, check.calls, "without asking the sdk");
+    check.answer = false;  // as urnet::checkCryptoPaymentUri answers an empty uri
+    Check(!CryptoUriAllowed(kAssetXmr, requoted.uri, requoted.address, check),
+          "the gate refuses an empty uri: the sdk's check does");
+    CheckEq(1, check.calls, "asked of the sdk, which keeps the whole gate");
   }
 
   // a requote in flight: the button stays, disabled
@@ -503,17 +561,18 @@ void Display() {
   Check(display.showRefresh && !display.refreshEnabled, "one requote at a time");
   view.refreshing = false;
 
-  // expired: the countdown reached zero before the next poll said so
+  // expired: the countdown reached zero before the next poll said so. The
+  // sdk still lists the pending steps; this app does not show them then
   view.secondsLeft = 0;
   display = DisplayFor(view, true);
   CheckEq("expired", Quote(display.quote), "a pending quote at zero reads expired");
   Check(!display.showAmount && !display.showQr && !display.showAddress && !display.showMemo,
         "expired: no amount, no QR, no Open in wallet");
   Check(display.showRefresh && display.refreshEnabled, "and Refresh quote");
-  Check(!display.showSteps && !display.showWallets, "nothing else to pay with");
+  Check(!display.showSteps && display.steps.empty() && !display.showWallets, "nothing else to pay with");
   Check(display.showPayAnotherWay, "another way stays open");
 
-  // the server's expired
+  // the server's expired (the sdk's steps are at the first step, as for pending)
   view = MoneroInvoice();
   view.status = kStatusExpired;
   view.secondsLeft = 0;
@@ -521,12 +580,14 @@ void Display() {
   CheckEq("expired", Quote(display.quote), "expired");
   Check(!display.showAmount && !display.showQr && display.showRefresh && display.showPayAnotherWay,
         "expired: refresh or another way, nothing to send");
+  Check(!display.showSteps, "and no steps while the quote is gone");
   view.secondsLeft = 120;
   display = DisplayFor(view, true);
   CheckEq("expired", Quote(display.quote), "the server's expired whatever the clock says");
   Check(!display.showAmount, "and still nothing to send");
 
-  // not polled yet: a resumed invoice before its first status
+  // not polled yet: a resumed invoice before its first status (the sdk lists
+  // no steps then; none would show if it did)
   view = MoneroInvoice();
   view.status = "";
   display = DisplayFor(view, true);
@@ -547,52 +608,60 @@ void Display() {
   view.received = "0.06";
   view.remaining = "0.012387";
   view.secondsLeft = 600;
+  view.steps = {MakeStep(kStatusPending, kStepDone), MakeStep(kStatusSeen, kStepCurrent),
+                MakeStep(kStatusConfirming, kStepUpcoming, 0, 1), MakeStep(kStatusPaid, kStepUpcoming)};
   display = DisplayFor(view, true);
   Check(display.showAddress && !display.showQr && !display.showAmount, "seen: the address, no QR, no full amount");
   Check(display.showRemaining, "how much more to send");
   CheckEq("0.012387 XMR", display.remainingText, "the remainder with its ticker");
   CheckEq("hidden", Quote(display.quote), "no countdown once money arrived");
   Check(!display.showRefresh && !display.showPayAnotherWay, "no requote, no other way once money arrived");
-  CheckEq(1, display.step, "payment seen");
+  CheckEq("pending=done,seen=current,confirming=upcoming 0/1,paid=upcoming", Steps(display.steps),
+          "payment seen");
   CheckEq("crypto_status_seen", display.statusKey, "payment seen");
   Check(display.showSteps && display.showWallets, "the steps and the wallets");
   view.remaining = "0";
   display = DisplayFor(view, true);
   Check(!display.showRemaining, "nothing more to send");
 
-  // confirming: the steps
+  // confirming: the steps, the confirming one with the sdk's counts (a whole
+  // payment never reports seen: that step is drawn done all the same)
   view = MoneroInvoice();
   view.status = kStatusConfirming;
   view.received = "0.072387";
   view.remaining = "0";
   view.confirmations = 0;
   view.confirmationsRequired = 1;
+  view.steps = {MakeStep(kStatusPending, kStepDone), MakeStep(kStatusSeen, kStepDone),
+                MakeStep(kStatusConfirming, kStepCurrent, 0, 1), MakeStep(kStatusPaid, kStepUpcoming)};
   display = DisplayFor(view, true);
   Check(!display.showAmount && !display.showQr && !display.showAddress && !display.showWallets,
         "confirming: nothing to send");
   CheckEq("hidden", Quote(display.quote), "no countdown while confirming");
   Check(!display.showRefresh && !display.showPayAnotherWay, "only Close");
   Check(display.showSteps, "the steps");
-  CheckEq(2, display.step, "confirming");
+  CheckEq("pending=done,seen=done,confirming=current 0/1,paid=upcoming", Steps(display.steps),
+          "confirming n of N, the step's own counts");
+  CheckEq(2, AnnouncedStep(display.steps), "the confirming step is the one announced");
   CheckEq("crypto_status_confirming", display.statusKey, "confirming n of N");
-  Check(display.statusCounts, "with its counts");
-  CheckEq(0, display.confirmations, "n");
-  CheckEq(1, display.confirmationsRequired, "N");
 
-  // paid
+  // paid: every step done, the confirming one at its full count
   view.phase = kPhasePaid;
   view.status = kStatusPaid;
+  view.steps = {MakeStep(kStatusPending, kStepDone), MakeStep(kStatusSeen, kStepDone),
+                MakeStep(kStatusConfirming, kStepDone, 1, 1), MakeStep(kStatusPaid, kStepDone)};
   display = DisplayFor(view, true);
   Check(display.paid && display.showSteps, "paid: the steps, done");
-  CheckEq(3, display.step, "paid");
+  CheckEq("pending=done,seen=done,confirming=done 1/1,paid=done", Steps(display.steps), "every step done");
+  CheckEq(3, AnnouncedStep(display.steps), "paid is the one announced");
   CheckEq("crypto_status_paid", display.statusKey, "paid, thank you");
-  Check(!display.statusCounts && !display.showAmount && !display.showRefresh && !display.showPayAnotherWay,
-        "nothing left to do");
+  Check(!display.showAmount && !display.showRefresh && !display.showPayAnotherWay, "nothing left to do");
   view.phase = kPhaseOpen;
   display = DisplayFor(view, true);
-  Check(display.paid, "an open invoice whose status is paid is paid");
+  Check(display.paid && display.showSteps, "an open invoice whose status is paid is paid");
 
-  // review: the copy, and nothing else to do
+  // review: the copy, and nothing else to do (the sdk lists no steps then;
+  // none would show if it did)
   view = MoneroInvoice();
   view.status = kStatusReview;
   view.reviewReason = "underpaid";
@@ -604,37 +673,59 @@ void Display() {
             !display.showRefresh && !display.showWallets && !display.showPayAnotherWay &&
             !display.showUnavailable && !display.showRefusal,
         "review: nothing else to do");
-  CheckEq(-1, display.step, "no step in review");
+  Check(display.steps.empty(), "no step in review");
 
-  // USDC: the memo with the amount, the network warning with the address
+  // no steps from the sdk (an asset it does not know): no steps block at all
+  view = MoneroInvoice();
+  view.steps.clear();
+  display = DisplayFor(view, true);
+  Check(!display.showSteps && display.steps.empty(), "no steps listed, no steps shown");
+
+  // USDC: the memo with the amount, the network warning with the address, and
+  // two steps (its server sees confirmed transfers only)
   view = MoneroInvoice();
   view.asset = kAssetUsdcSolana;
   view.ticker = "USDC";
   view.amount = "40.012345";
   view.memo = "Rsample";
+  view.showsMemo = true;  // urnet::cryptoPaymentShowsMemo: the server sent one
   view.uri = "solana:Msample?amount=40.012345";
   view.qrText = view.uri;
   view.address = "Msample";
+  view.lines.networkLine = {"crypto_network_usdc", "USDC on Solana"};
+  view.lines.networkWarning = {
+      "usdc_solana_network_only",
+      "Send USDC on the Solana network only. USDC sent on any other network will not arrive."};
+  view.steps = {MakeStep(kStatusPending, kStepCurrent), MakeStep(kStatusPaid, kStepUpcoming)};
   display = DisplayFor(view, true);
-  CheckEq("crypto_network_usdc", display.networkLineKey, "USDC on Solana");
+  CheckEq("crypto_network_usdc", display.networkLine.key, "USDC on Solana");
   CheckEq("40.012345 USDC", display.amountText, "USDC's amount");
   Check(display.showMemo && display.memo == "Rsample", "the memo, for a transfer sent by hand");
   Check(display.showNetworkWarning, "the Solana-only warning, with the address");
-  CheckEq("usdc_solana_network_only", display.networkWarningKey, "USDC's own words");
+  CheckEq("usdc_solana_network_only", display.networkWarning.key, "USDC's own words");
+  CheckEq("pending=current,paid=upcoming", Steps(display.steps), "USDC's two steps");
   view.memo = "";
+  view.showsMemo = false;
   display = DisplayFor(view, true);
   Check(!display.showMemo && display.showNetworkWarning, "no memo to show; the warning stays");
   view.secondsLeft = 0;
   display = DisplayFor(view, true);
   Check(!display.showNetworkWarning, "no address, no warning, once the quote expired");
+  view = MoneroInvoice();
+  view.memo = "Rsample";
+  view.showsMemo = true;
+  view.secondsLeft = 0;
+  display = DisplayFor(view, true);
+  Check(!display.showMemo, "a memo the sdk would show waits for a payable quote");
 
   // Zcash: the exchange note while a payment is asked for
   view = MoneroInvoice();
   view.asset = kAssetZec;
   view.ticker = "ZEC";
+  view.lines.networkLine = {"crypto_network_zcash", "Zcash, shielded"};
   display = DisplayFor(view, true);
-  CheckEq("crypto_network_zcash", display.networkLineKey, "Zcash, shielded");
-  Check(display.showZcashNote && !display.showNetworkWarning, "the shielded-address note");
+  CheckEq("crypto_network_zcash", display.networkLine.key, "Zcash, shielded");
+  Check(display.showZcashNote && !display.showNetworkWarning, "the shielded-address note, and no warning");
   view.status = kStatusSeen;
   display = DisplayFor(view, true);
   Check(display.showZcashNote, "and for the top-up");
@@ -655,17 +746,25 @@ void Display() {
     tao.address = "5Tsample";
     tao.uri = "";
     tao.qrText = tao.address;
+    tao.noPaymentLink = true;  // urnet::cryptoPaymentUriScheme("tao") is ""
+    tao.lines.networkLine = {"crypto_network_tao", "Bittensor network"};
+    tao.lines.networkWarning = {"crypto_invoice_tao_network_only",
+                                "Send only TAO on the Bittensor network to this address. TAO sent on "
+                                "any other network won't be credited."};
+    tao.lines.noPaymentLinkNote = {"crypto_invoice_tao_no_payment_link",
+                                   "TAO has no payment link, so this QR code holds only the address. "
+                                   "Enter the exact amount in your wallet."};
     display = DisplayFor(tao, false);  // the gate refuses an empty uri
-    CheckEq("crypto_network_tao", display.networkLineKey, "TAO: the Bittensor network first");
+    CheckEq("crypto_network_tao", display.networkLine.key, "TAO: the Bittensor network first");
     Check(display.showQr, "TAO: a QR code");
     CheckEq("5Tsample", display.qrText, "of the address alone");
-    CheckEq("crypto_invoice_tao_no_payment_link", display.noPaymentLinkKey, "with the note saying so");
+    CheckEq("crypto_invoice_tao_no_payment_link", display.noPaymentLinkNote.key, "with the note saying so");
     Check(!display.showOpenWallet, "TAO: nothing to open in a wallet");
     Check(display.noPaymentLink && display.showByHandLine, "TAO: send exactly this amount to this address");
     Check(display.showAmount && display.showAddress, "the exact amount and the address, each with its Copy");
     CheckEq("0.123456 TAO", display.amountText, "TAO's amount with its ticker");
     Check(display.showNetworkWarning, "the Bittensor network's warning, with the address");
-    CheckEq("crypto_invoice_tao_network_only", display.networkWarningKey, "TAO's words");
+    CheckEq("crypto_invoice_tao_network_only", display.networkWarning.key, "TAO's words");
     Check(!display.showMemo && !display.showZcashNote, "no memo, no Zcash note");
     CheckEq("counting", Quote(display.quote), "the countdown, as for any quote");
     display = DisplayFor(tao, true);
@@ -674,14 +773,22 @@ void Display() {
     // the QR holds the address, or nothing
     tao.qrText = "tao:5Tsample";
     display = DisplayFor(tao, false);
-    Check(!display.showQr && display.noPaymentLinkKey.empty(), "a qr text that is not the address: no QR, no note");
+    Check(!display.showQr && display.noPaymentLinkNote.key.empty(),
+          "a qr text that is not the address: no QR, no note");
     Check(display.showAmount && display.showAddress && display.showByHandLine, "the address and the amount, by hand");
     tao.qrText = "";
     display = DisplayFor(tao, false);
     Check(!display.showQr && display.showAmount && display.showAddress, "no qr text: no QR, the rest by hand");
 
-    // a top-up: the address for the rest, never the QR or the full amount
+    // a coin the sdk says has a payment link never draws its bare address
     tao.qrText = tao.address;
+    tao.noPaymentLink = false;
+    display = DisplayFor(tao, false);
+    Check(!display.showQr && display.noPaymentLinkNote.key.empty() && !display.showByHandLine,
+          "the address-only QR is for a coin without a payment link alone");
+    tao.noPaymentLink = true;
+
+    // a top-up: the address for the rest, never the QR or the full amount
     tao.status = kStatusSeen;
     tao.received = "0.12";
     tao.remaining = "0.003456";
@@ -695,65 +802,85 @@ void Display() {
     tao.status = kStatusPending;
     tao.secondsLeft = 0;
     display = DisplayFor(tao, false);
-    Check(!display.showQr && !display.showAmount && !display.showByHandLine && display.noPaymentLinkKey.empty(),
+    Check(!display.showQr && !display.showAmount && !display.showByHandLine &&
+              display.noPaymentLinkNote.key.empty(),
           "expired: no QR, no amount, no instruction");
   }
 
   // Bitcoin, ETH and native SOL: each its link's QR and Open in wallet, as
-  // Monero's, and its network's warning with the address; SOL's memo as USDC's
+  // Monero's, its network's warning with the address, and its steps as the
+  // sdk lists them (SOL, TAO and ETH usually jump from pending to paid, the
+  // steps between drawn done)
   {
     struct LinkedCoin {
       const char* asset;
       const char* ticker;
       std::string uri;
-      const char* networkLineKey;
-      const char* networkWarningKey;
+      CoinLine networkLine;
+      CoinLine networkWarning;
     };
     for (const LinkedCoin& c : {
-             LinkedCoin{kAssetBtc, "BTC", "bitcoin:bc1qsample?amount=0.00061234", "crypto_network_bitcoin",
-                        "crypto_invoice_bitcoin_network_only"},
-             LinkedCoin{kAssetEth, "ETH", "ethereum:0xsample@1?value=12000000000000000", "crypto_network_eth",
-                        "crypto_invoice_eth_network_only"},
-             LinkedCoin{kAssetSol, "SOL", "solana:Ssample?amount=0.251234", "crypto_network_sol",
-                        "crypto_invoice_sol_network_only"},
+             LinkedCoin{kAssetBtc, "BTC", "bitcoin:bc1qsample?amount=0.00061234",
+                        {"crypto_network_bitcoin", "Bitcoin network"},
+                        {"crypto_invoice_bitcoin_network_only", "Send only Bitcoin on the Bitcoin network."}},
+             LinkedCoin{kAssetEth, "ETH", "ethereum:0xsample@1?value=12000000000000000",
+                        {"crypto_network_eth", "Ethereum mainnet"},
+                        {"crypto_invoice_eth_network_only", "Send only ETH on Ethereum mainnet."}},
+             LinkedCoin{kAssetSol, "SOL", "solana:Ssample?amount=0.251234",
+                        {"crypto_network_sol", "Solana (native SOL)"},
+                        {"crypto_invoice_sol_network_only", "Send only SOL on the Solana network."}},
          }) {
       CryptoInvoiceView coin = MoneroInvoice();
       coin.asset = c.asset;
       coin.ticker = c.ticker;
       coin.uri = c.uri;
       coin.qrText = c.uri;
+      coin.lines.networkLine = c.networkLine;
+      coin.lines.networkWarning = c.networkWarning;
       display = DisplayFor(coin, true);
       const std::string name = c.asset;
-      CheckEq(c.networkLineKey, display.networkLineKey, name + ": its network line first");
+      Check(display.networkLine == c.networkLine, name + ": its network line first, key and English");
       Check(display.showQr && display.qrText == c.uri && display.showOpenWallet,
             name + ": the QR of its link, and Open in wallet");
-      Check(!display.noPaymentLink && !display.showByHandLine && display.noPaymentLinkKey.empty(),
+      Check(!display.noPaymentLink && !display.showByHandLine && display.noPaymentLinkNote.key.empty(),
             name + ": its link fills the amount in");
       Check(display.showNetworkWarning, name + ": its network's warning with the address");
-      CheckEq(c.networkWarningKey, display.networkWarningKey, name + ": in its own words");
+      Check(display.networkWarning == c.networkWarning, name + ": in its own words");
       Check(!display.showMemo && !display.showZcashNote, name + ": no memo given, no Zcash note");
+      coin.phase = kPhasePaid;
+      coin.status = kStatusPaid;
+      coin.steps = {MakeStep(kStatusPending, kStepDone), MakeStep(kStatusSeen, kStepDone),
+                    MakeStep(kStatusConfirming, kStepDone, 1, 1), MakeStep(kStatusPaid, kStepDone)};
+      display = DisplayFor(coin, true);
+      CheckEq("pending=done,seen=done,confirming=done 1/1,paid=done", Steps(display.steps),
+              name + ": straight to paid, every step done");
     }
+    // a memo shows exactly when the sdk says so (only a memo the server sent;
+    // it sends one for USDC alone, SOL included in the "")
     CryptoInvoiceView sol = MoneroInvoice();
     sol.asset = kAssetSol;
-    sol.memo = "Rsample";
+    sol.memo = "";
+    sol.showsMemo = false;
     display = DisplayFor(sol, true);
-    Check(display.showMemo, "SOL: the memo, for a transfer sent by hand, as USDC's");
+    Check(!display.showMemo, "SOL: no memo row, the server sends none");
     CryptoInvoiceView btc = MoneroInvoice();
     btc.asset = kAssetBtc;
     btc.memo = "Rsample";
+    btc.showsMemo = false;
     display = DisplayFor(btc, true);
-    Check(!display.showMemo, "Bitcoin has no memo, whatever the state says");
+    Check(!display.showMemo, "a memo the sdk does not show stays hidden, whatever the state says");
   }
 
   // starting: busy
   view = CryptoInvoiceView{};
   view.phase = kPhaseStarting;
   view.asset = kAssetXmr;
+  view.lines.networkLine = {"crypto_network_monero", "Monero"};
   display = DisplayFor(view, true);
   Check(display.busy && !display.showAmount && !display.showSteps && !display.showRefresh &&
             !display.showPayAnotherWay,
         "starting: busy, nothing else");
-  CheckEq("crypto_network_monero", display.networkLineKey, "the network line while starting");
+  CheckEq("crypto_network_monero", display.networkLine.key, "the network line while starting");
 
   // the last requote failed
   view = MoneroInvoice();
@@ -783,12 +910,6 @@ void Display() {
   Check(!display.showAmount && !display.showQr && !display.showAddress && !display.showSteps &&
             !display.showRefresh,
         "unknown: nothing to pay");
-
-  // the steps each asset passes through
-  CheckEq("0,1,2,3", Join(StepsFor(kAssetXmr, 1)), "Monero: waiting, seen, confirming, paid");
-  CheckEq("0,1,2,3", Join(StepsFor(kAssetZec, 10)), "Zcash: the same");
-  CheckEq("0,3", Join(StepsFor(kAssetUsdcSolana, 1)), "USDC: waiting, paid");
-  CheckEq("0,1,3", Join(StepsFor(kAssetXmr, 0)), "no confirmations known: no confirming step");
 }
 
 void PaymentInProgress() {
@@ -951,7 +1072,10 @@ void Marks() {
 }
 
 #if defined(URNW_CRYPTO_PAY_TESTS_SDK)
-// The generated wrapper's own structs, read through CryptoPaySdk.h.
+// The generated wrapper's own structs, read (and, for a tap on a tab, written
+// back) through CryptoPaySdk.h. Its calls into the sdk (ViewFromSdk's answers
+// for the coin, PaymentTabsFor, TabCoinFor, MethodEventProduct, ...) need the
+// sdk library and are not run here; what they read and write is.
 void Sdk() {
   urnet::CryptoInvoiceState state;
   state.phase = "open";
@@ -974,10 +1098,16 @@ void Sdk() {
   state.remaining = "0.012387";
   state.confirmations = 0;
   state.confirmations_required = 1;
+  state.steps = nlohmann::json::parse(R"([
+    {"status": "pending", "progress": "done", "confirmations": 0, "confirmations_required": 0},
+    {"status": "seen", "progress": "current", "confirmations": 0, "confirmations_required": 0},
+    {"status": "confirming", "progress": "upcoming", "confirmations": 0, "confirmations_required": 1},
+    {"status": "paid", "progress": "upcoming", "confirmations": 0, "confirmations_required": 0}
+  ])").get<urnet::CryptoPaymentStepList>();
   state.refreshing = true;
   state.error_code = "asset_unavailable";
   state.error_message = "Temporarily unavailable";
-  const CryptoInvoiceView view = ViewFromSdk(state);
+  const CryptoInvoiceView view = StateFromSdk(state);
   CheckEq("open", view.phase, "sdk: the phase");
   CheckEq("0b6f", view.intentId, "sdk: the intent");
   CheckEq("xmr", view.asset, "sdk: the asset");
@@ -994,11 +1124,55 @@ void Sdk() {
   CheckEq("0.06", view.received, "sdk: received");
   CheckEq("0.012387", view.remaining, "sdk: remaining");
   CheckEq(1, view.confirmationsRequired, "sdk: confirmations required");
+  CheckEq("pending=done,seen=current,confirming=upcoming 0/1,paid=upcoming", Steps(view.steps),
+          "sdk: the state's steps, step for step");
   Check(view.refreshing, "sdk: refreshing");
   CheckEq("asset_unavailable", view.errorCode, "sdk: the error code");
   CheckEq("Temporarily unavailable", view.errorMessage, "sdk: the error message");
+  Check(view.lines == CoinLines{} && !view.noPaymentLink && !view.showsMemo,
+        "sdk: the state alone carries none of the sdk's answers (ViewFromSdk adds them)");
 
-  // the balance's coins and term, from the server's json
+  // the state as the controller hands it over (json-tagged): SOL paid at once,
+  // the confirming step not listed (no count required), every step done
+  const urnet::CryptoInvoiceState paid = nlohmann::json::parse(R"({
+    "phase": "paid", "asset": "sol", "status": "paid", "confirmations": 0, "confirmations_required": 0,
+    "steps": [{"status": "pending", "progress": "done", "confirmations": 0, "confirmations_required": 0},
+              {"status": "seen", "progress": "done", "confirmations": 0, "confirmations_required": 0},
+              {"status": "paid", "progress": "done", "confirmations": 0, "confirmations_required": 0}]
+  })").get<urnet::CryptoInvoiceState>();
+  CheckEq("pending=done,seen=done,paid=done", Steps(StateFromSdk(paid).steps), "sdk: the steps from the json");
+  const urnet::CryptoInvoiceState unpolled = nlohmann::json::parse(R"({
+    "phase": "open", "asset": "xmr", "status": "", "steps": []
+  })").get<urnet::CryptoInvoiceState>();
+  Check(StateFromSdk(unpolled).steps.empty(), "sdk: no steps before the first status");
+
+  // a coin's lines (urnet::cryptoAssetLinesFor's answer)
+  const urnet::CryptoAssetLines taoLines = nlohmann::json::parse(R"({
+    "network_line": "Bittensor network", "network_line_key": "crypto_network_tao",
+    "network_warning": "Send only TAO on the Bittensor network to this address.",
+    "network_warning_key": "crypto_invoice_tao_network_only",
+    "no_payment_link_note": "TAO has no payment link.",
+    "no_payment_link_note_key": "crypto_invoice_tao_no_payment_link"
+  })").get<urnet::CryptoAssetLines>();
+  const CoinLines tao = LinesFromSdk(taoLines);
+  CheckEq("crypto_network_tao", tao.networkLine.key, "sdk: a coin's network line, its key");
+  CheckEq("Bittensor network", tao.networkLine.english, "sdk: and its English");
+  CheckEq("crypto_invoice_tao_network_only", tao.networkWarning.key, "sdk: its warning");
+  CheckEq("Send only TAO on the Bittensor network to this address.", tao.networkWarning.english,
+          "sdk: the warning's English");
+  CheckEq("crypto_invoice_tao_no_payment_link", tao.noPaymentLinkNote.key, "sdk: TAO's note");
+  CheckEq("TAO has no payment link.", tao.noPaymentLinkNote.english, "sdk: the note's English");
+  const urnet::CryptoAssetLines zecLines = nlohmann::json::parse(R"({
+    "network_line": "Zcash, shielded", "network_line_key": "crypto_network_zcash",
+    "network_warning": "", "network_warning_key": "", "no_payment_link_note": "", "no_payment_link_note_key": ""
+  })").get<urnet::CryptoAssetLines>();
+  const CoinLines zec = LinesFromSdk(zecLines);
+  Check(zec.networkLine.key == "crypto_network_zcash" && zec.networkWarning.key.empty() &&
+            zec.noPaymentLinkNote.key.empty(),
+        "sdk: a line the coin does not have has no key");
+
+  // the balance's coins, the ones it cannot quote now, and its term, from the
+  // server's json
   const urnet::SubscriptionBalanceResult result = nlohmann::json::parse(R"({
     "start_balance_byte_count": 0, "balance_byte_count": 0, "open_transfer_byte_count": 0,
     "crypto_assets": [
@@ -1006,20 +1180,31 @@ void Sdk() {
        "confirmations_required": 1, "quote_ttl_seconds": 3600},
       {"asset": "xmr", "plans": ["yearly"], "confirmations_required": 1, "quote_ttl_seconds": 1800}
     ],
-    "crypto_term": {"market": "monero", "term_end_time": "2026-11-19T00:00:00Z",
+    "crypto_unavailable_assets": [
+      {"asset": "btc", "plans": ["yearly", "yearly_onboarding"], "confirmations_required": 1,
+       "quote_ttl_seconds": 1800}
+    ],
+    "crypto_term": {"market": "solana", "asset": "sol", "term_end_time": "2026-11-19T00:00:00Z",
                     "grace_end_time": "2026-12-19T00:00:00Z"}
   })").get<urnet::SubscriptionBalanceResult>();
   const urnet::CryptoPaymentAssetList assets = AssetsFromSdk(result);
   CheckEq(2, static_cast<int64_t>(assets.size()), "sdk: the balance's coins");
   if (assets.size() == 2) CheckEq("xmr", assets[1].asset, "sdk: a coin's asset");
+  const urnet::CryptoPaymentAssetList unavailable = UnavailableAssetsFromSdk(result);
+  CheckEq(1, static_cast<int64_t>(unavailable.size()), "sdk: the coins it cannot quote now");
+  if (unavailable.size() == 1) CheckEq("btc", unavailable[0].asset, "sdk: Bitcoin, greyed in its place");
   const CryptoTermView term = TermFromSdk(result);
-  CheckEq("monero", term.market, "sdk: the term's market");
+  CheckEq("solana", term.market, "sdk: the term's market");
   CheckEq("2026-11-19T00:00:00Z", term.termEndTime, "sdk: the term's end");
   CheckEq("2026-12-19T00:00:00Z", term.graceEndTime, "sdk: the grace's end");
+  // the term's coin decodes (USDC and SOL share solana) but nothing here names
+  // the coin a year was paid with
+  CheckEq("sol", result.crypto_term ? result.crypto_term->asset : std::string(), "sdk: the term's coin");
   const urnet::SubscriptionBalanceResult older = nlohmann::json::parse(R"({
     "start_balance_byte_count": 0, "balance_byte_count": 0, "open_transfer_byte_count": 0
   })").get<urnet::SubscriptionBalanceResult>();
   Check(AssetsFromSdk(older).empty(), "sdk: an older server lists no coin");
+  Check(UnavailableAssetsFromSdk(older).empty(), "sdk: and none it cannot quote");
   Check(TermFromSdk(older).termEndTime.empty(), "sdk: and has no term");
 
   // the selector as urnet::cryptoPaymentTabs hands it over (json-tagged)
@@ -1052,8 +1237,22 @@ void Sdk() {
       Check(btc.asset == "btc" && btc.label == "Bitcoin" && btc.labelKey == "pay_method_bitcoin" &&
                 btc.iconKey == "coin_btc" && !btc.available,
             "sdk: a coin, field for field");
+      Check(btc.networkLine.key.empty(), "sdk: its network line is no part of the tab (PaymentTabsFor adds it)");
     }
     Check(tabs[1].available, "sdk: a tab with a coin that can be paid with");
+
+    // and back, as a tap hands the tab to urnet::cryptoPaymentTabCoin
+    const urnet::CryptoPaymentTab back = TabToSdk(tabs[1]);
+    CheckEq("more_coins", back.id, "sdk: a tab back, its id");
+    CheckEq("pay_method_more_coins", back.label_key, "sdk: its label key");
+    Check(back.icon_keys && back.icon_keys->size() == 4, "sdk: its marks");
+    Check(back.coins && back.coins->size() == 2 && (*back.coins)[0].asset == "tao" &&
+              (*back.coins)[0].available && (*back.coins)[1].asset == "btc" && !(*back.coins)[1].available,
+          "sdk: its coins, each with whether it can be paid with now");
+    Check(back.available, "sdk: and whether the tab can be chosen");
+    const urnet::CryptoPaymentTab sent = nlohmann::json(back).get<urnet::CryptoPaymentTab>();
+    Check(TabsFromSdk({sent}) == std::vector<PaymentTabView>{tabs[1]},
+          "sdk: a tab survives the trip to the sdk as json, field for field");
   }
 }
 #endif

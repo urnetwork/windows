@@ -4,15 +4,20 @@
 // CryptoInvoiceViewController, the quote countdown, the gate in front of every
 // payment uri, and a crypto year's plan rows.
 //
-// The sdk owns the invoice (quote, countdown, requote, status, persistence)
-// and builds every payment uri and the text its QR code holds; this app
-// renders CryptoInvoiceState and calls the controller's actions.
-// CryptoInvoiceView mirrors that state field for field (CryptoPaySdk.h
-// ViewFromSdk is the one place that reads the sdk's struct), and everything a
-// surface decides from it is decided here, so the upgrade sheet, the
-// onboarding pages and the Account rows cannot disagree. The sdk also lays the
-// coins out (urnet::cryptoPaymentTabs: the tabs, their order, their coins,
-// their labels and which can be paid with now), read into PaymentTabView.
+// The sdk owns the invoice (quote, countdown, requote, status, its status
+// steps, persistence) and builds every payment uri and the text its QR code
+// holds; this app renders CryptoInvoiceState and calls the controller's
+// actions. CryptoInvoiceView mirrors that state field for field, with the
+// sdk's answers for its coin beside it (CryptoPaySdk.h ViewFromSdk is the one
+// place that reads the sdk), and everything a surface decides from it is
+// decided here, so the upgrade sheet, the onboarding pages and the Account
+// rows cannot disagree. The sdk also lays the coins out
+// (urnet::cryptoPaymentTabs: the tabs, their order, their coins, their labels
+// and which can be paid with now), read into PaymentTabView, and holds every
+// rule about a coin: its lines, its payment uri and the check in front of it,
+// when its memo shows, its status steps, the coin a tap on a tab chooses and
+// the product its events name. This app keeps no table of the coins beyond
+// their ids (kCoins).
 //
 // The literals are the sdk's constants (crypto_pay.go, client_events.go),
 // named beside each, in the ManageSubscription.h / PaymentRefusal.h manner.
@@ -25,6 +30,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -49,41 +55,14 @@ inline constexpr const char* kAssetSol = "sol";                 // urnet::Crypto
 // is named by its asset.
 inline constexpr const char* kTabMoreCoins = "more_coins";
 
-// What this app shows of a coin beyond the sdk's labels: the scheme of its
-// payment uri for the gate below (urnet::cryptoPaymentUriScheme, with its
-// colon; "" for TAO, which has no payment link), the line naming the network
-// it is sent on (the invoice's first line, and the line under the coin in the
-// More coins list), the warning beside its address ("" for none), and for a
-// coin with no payment link the note under its QR code, which holds the
-// address alone. Store keys (CONTRACT §5). A coin missing here is no coin of
-// this app's (IsCoin); tests/crypto_pay_test.go holds the schemes to the
-// sdk's.
-struct CoinWords {
-  const char* asset;
-  const char* uriScheme;
-  const char* networkLineKey;
-  const char* networkWarningKey;
-  const char* noPaymentLinkKey;
+// The coins this app takes, in the sdk's order: the methods that are a coin
+// (IsCoin). Everything else about a coin is the sdk's, read in CryptoPaySdk.h:
+// its label and mark, its lines, its payment uri and the check in front of
+// it, its status steps and the product its events name.
+// tests/crypto_pay_test.go holds this list to the sdk's coins.
+inline constexpr std::array<const char*, 7> kCoins = {
+    kAssetUsdcSolana, kAssetZec, kAssetXmr, kAssetTao, kAssetBtc, kAssetEth, kAssetSol,
 };
-
-inline constexpr std::array<CoinWords, 7> kCoinWords = {{
-    {kAssetUsdcSolana, "solana:", "crypto_network_usdc", "usdc_solana_network_only", ""},
-    {kAssetZec, "zcash:", "crypto_network_zcash", "", ""},
-    {kAssetXmr, "monero:", "crypto_network_monero", "", ""},
-    {kAssetTao, "", "crypto_network_tao", "crypto_invoice_tao_network_only",
-     "crypto_invoice_tao_no_payment_link"},
-    {kAssetBtc, "bitcoin:", "crypto_network_bitcoin", "crypto_invoice_bitcoin_network_only", ""},
-    {kAssetEth, "ethereum:", "crypto_network_eth", "crypto_invoice_eth_network_only", ""},
-    {kAssetSol, "solana:", "crypto_network_sol", "crypto_invoice_sol_network_only", ""},
-}};
-
-// The words of `asset`, or nullptr for anything else.
-inline const CoinWords* WordsFor(std::string_view asset) {
-  for (const CoinWords& words : kCoinWords) {
-    if (asset == words.asset) return &words;
-  }
-  return nullptr;
-}
 
 // The plans a surface sells. No coin sells monthly (decision 6).
 inline constexpr const char* kPlanYearly = "yearly";                       // urnet::PlanYearly
@@ -105,6 +84,12 @@ inline constexpr const char* kStatusExpired = "expired";
 inline constexpr const char* kStatusReview = "review";
 inline constexpr const char* kStatusUnknown = "unknown";
 
+// How one of the invoice's status steps is drawn (CryptoInvoiceState.steps'
+// progress): urnet::CryptoPaymentStepDone, ...Current, ...Upcoming
+inline constexpr const char* kStepDone = "done";
+inline constexpr const char* kStepCurrent = "current";
+inline constexpr const char* kStepUpcoming = "upcoming";
+
 // The refusal codes a start or a requote reports (§2.7; PurchaseErrorCode*)
 inline constexpr const char* kErrorAssetUnavailable = "asset_unavailable";
 inline constexpr const char* kErrorQuoteExpired = "quote_expired";
@@ -115,10 +100,42 @@ inline constexpr const char* kErrorGuestSignInRequired = "guest_sign_in_required
 // and More coins, which opens a sub-selector of TAO, Bitcoin, ETH and SOL. The
 // sdk decides the tabs, their order, their coins, their labels and which coins
 // can be paid with now (urnet::cryptoPaymentTabs, read by CryptoPaySdk.h
-// PaymentTabsFor); the rules below only choose among them.
+// PaymentTabsFor), and the coin a tap on a tab chooses
+// (urnet::cryptoPaymentTabCoin, CryptoPaySdk.h TabCoinFor); the rules below
+// only choose among them, and keep what the sdk is asked with.
 
-// A coin of this app's (kCoinWords): not Card, nothing, or a ticker.
-inline bool IsCoin(std::string_view method) { return WordsFor(method) != nullptr; }
+// A coin of this app's (kCoins): not Card, nothing, a ticker or a tab.
+inline bool IsCoin(std::string_view method) {
+  for (const char* coin : kCoins) {
+    if (method == coin) return true;
+  }
+  return false;
+}
+
+// One of a coin's lines as the sdk hands it out (urnet::cryptoAssetLinesFor):
+// its store key, and its English, the store's byte for byte, which shows while
+// the catalog lacks the key. A line whose key is "" is one the coin does not
+// have (Zcash and Monero have no network warning, and only TAO has the note
+// under its QR), and is not shown.
+struct CoinLine {
+  std::string key;
+  std::string english;
+
+  bool operator==(const CoinLine&) const = default;
+};
+
+// A coin's own lines (urnet::CryptoAssetLines): the network it is sent on (the
+// invoice's first line, and the line under the coin in the More coins list),
+// the warning beside its address (only this coin, sent on this network, is
+// credited), and for a coin with no payment link (TAO) the note under its QR
+// code, which holds the address alone.
+struct CoinLines {
+  CoinLine networkLine;
+  CoinLine networkWarning;
+  CoinLine noPaymentLinkNote;
+
+  bool operator==(const CoinLines&) const = default;
+};
 
 // A coin of the selector (urnet::CryptoPaymentCoin).
 struct PaymentCoinView {
@@ -130,6 +147,9 @@ struct PaymentCoinView {
   // its label is greyed and says "Temporarily unavailable", and its mark stays
   // at full contrast (Solana's and Bittensor's brand rules).
   bool available = false;
+  // the network it is sent on, under it in the More coins list: the sdk's
+  // line for it (CryptoPaySdk.h PaymentTabsFor)
+  CoinLine networkLine;
 
   bool operator==(const PaymentCoinView&) const = default;
 };
@@ -184,18 +204,35 @@ inline std::string MethodToSelect(const std::vector<PaymentTabView>& tabs, std::
 // that coin.
 inline bool TabOpensCoins(const PaymentTabView& tab) { return tab.id == kTabMoreCoins; }
 
-// The coin choosing `tab` selects: `wanted` (the coin chosen there last, or
-// remembered) while it is one of the tab's available coins, else the tab's
-// first available coin; "" when none is, and the tab cannot be chosen.
-inline std::string TabCoinToSelect(const PaymentTabView& tab, std::string_view wanted) {
-  for (const PaymentCoinView& coin : tab.coins) {
-    if (coin.available && coin.asset == wanted && IsCoin(coin.asset)) return coin.asset;
+// The coin chosen last in each tab of a row while it is up, by tab id: the
+// `lastChosen` a tap on that tab hands the sdk, which chooses it again while
+// it can be paid with (CryptoPaySdk.h TabCoinFor, urnet::cryptoPaymentTabCoin:
+// else the remembered method, else the tab's first). Every choice counts: a
+// tap's, the More coins list's, and the row's own selection (the remembered
+// method it opens on, or the one choice the onboarding's two rows share). Each
+// counts for its own tab alone, so choosing USDC on Solana after SOL leaves
+// More coins' SOL in place: a single "chosen last anywhere" lost it, and a tap
+// back on More coins fell back to TAO.
+struct LastChosenCoins {
+  std::map<std::string, std::string> byTab;
+
+  // `coin` was chosen: it is now the coin chosen last in the tab of `tabs` it
+  // sits in. Card, nothing, or a coin no tab holds changes nothing.
+  void Choose(const std::vector<PaymentTabView>& tabs, std::string_view coin) {
+    if (!IsCoin(coin)) return;
+    for (const PaymentTabView& tab : tabs) {
+      for (const PaymentCoinView& tabCoin : tab.coins) {
+        if (tabCoin.asset == coin) byTab[tab.id] = tabCoin.asset;
+      }
+    }
   }
-  for (const PaymentCoinView& coin : tab.coins) {
-    if (coin.available && IsCoin(coin.asset)) return coin.asset;
+
+  // The coin chosen last in the tab `tabId`, "" while none was.
+  std::string In(std::string_view tabId) const {
+    const auto found = byTab.find(std::string(tabId));
+    return found == byTab.end() ? std::string() : found->second;
   }
-  return std::string();
-}
+};
 
 // The plan a coin buys on a plan surface: the welcome offer while it is
 // active (the card path keeps its own trial and coupon handling), else yearly.
@@ -264,63 +301,22 @@ inline std::array<PlanCardSlot, 4> YearlyCardSlots(bool cardTermsShown, bool sec
 }
 
 // ---- the invoice (§6.2) -------------------------------------------------------
+// The coin's own lines (its network, its warning, TAO's note under its QR) and
+// whether it has a payment link are the sdk's, carried in the view
+// (CryptoInvoiceView.lines, .noPaymentLink).
 
-// The invoice's first line: the network the coin is sent on. The More coins
-// list names it under each coin too.
-inline const char* NetworkLineKey(std::string_view asset) {
-  const CoinWords* words = WordsFor(asset);
-  return words ? words->networkLineKey : "";
-}
-
-// The warning beside the address: the network to send on, and that anything
-// sent on another is not credited. "" for a coin without one.
-inline const char* NetworkWarningKey(std::string_view asset) {
-  const CoinWords* words = WordsFor(asset);
-  return words ? words->networkWarningKey : "";
-}
-
-// The payment uri scheme of each asset (§3.5, §4.3; mmm/BTCPAY.md §17.7), ""
-// for a coin with no payment link.
-inline const char* UriSchemeFor(std::string_view asset) {
-  const CoinWords* words = WordsFor(asset);
-  return words ? words->uriScheme : "";
-}
-
-// A coin of this app's with no payment link (TAO): its invoice is paid by
-// hand, the address and the exact amount, and its QR code holds the address
-// alone.
-inline bool HasNoPaymentLink(std::string_view asset) {
-  return IsCoin(asset) && std::string_view(UriSchemeFor(asset)).empty();
-}
-
-// The note under such a coin's QR code, which says it holds only the address.
-inline const char* NoPaymentLinkKey(std::string_view asset) {
-  const CoinWords* words = WordsFor(asset);
-  return words ? words->noPaymentLinkKey : "";
-}
-
-// The gate in front of the QR and Open in wallet. The server builds the uri
-// and the sdk's urnet::checkCryptoPaymentUri(asset, uri, address) checks that
-// its scheme is the asset's and that it pays exactly `address`; this app never
-// draws or opens a uri that check did not pass. `check` is that sdk call (a
-// fake in the spec); a check that throws refuses. Before it runs, the gate
-// also refuses what it can see itself: an empty field, a scheme other than the
-// asset's, and a space, a control character or a byte outside ASCII (a uri
-// is ASCII; the server percent-encodes), none of which is handed to the OS.
+// The gate in front of the QR and Open in wallet. The server builds the uri,
+// and the sdk's urnet::checkCryptoPaymentUri(asset, uri, address) is the whole
+// check: the scheme is the asset's, the uri pays exactly `address`, and it is
+// plain printable ASCII with no fragment, so an empty field, another coin's
+// scheme, a space or a byte outside ASCII never passes, and neither does any
+// uri of TAO, which has no payment link. This app keeps no scheme list or
+// pre-check of its own, and never draws or opens a uri that check did not
+// pass. `check` is that sdk call (a fake in the spec); a check that throws
+// refuses.
 template <typename Check>
 bool CryptoUriAllowed(const std::string& asset, const std::string& uri,
                       const std::string& address, Check&& check) {
-  const std::string_view scheme = UriSchemeFor(asset);
-  if (scheme.empty() || uri.size() <= scheme.size() || address.empty()) return false;
-  for (size_t at = 0; at < scheme.size(); ++at) {
-    char c = uri[at];
-    if ('A' <= c && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
-    if (c != scheme[at]) return false;
-  }
-  for (const char c : uri) {
-    const auto byte = static_cast<unsigned char>(c);
-    if (byte <= 0x20 || 0x7F <= byte) return false;
-  }
   try {
     return static_cast<bool>(check(asset, uri, address));
   } catch (...) {
@@ -405,6 +401,22 @@ inline std::string JoinNames(const std::vector<std::string>& names) {
   return joined;
 }
 
+// One of the invoice's status steps (urnet::CryptoPaymentStep, the state's
+// steps): the status it stands for (pending, seen, confirming or paid), how it
+// is drawn (kStepDone, kStepCurrent, kStepUpcoming) and the confirming step's
+// counts, 0 for the others. The sdk decides each: USDC has two steps, every
+// other coin four (confirming only while its required count is known); a step
+// the payment is past is done whether the server reported it or skipped it,
+// and once paid every step is.
+struct PaymentStepView {
+  std::string status;
+  std::string progress;
+  int64_t confirmations = 0;
+  int64_t confirmationsRequired = 0;
+
+  bool operator==(const PaymentStepView&) const = default;
+};
+
 // The sdk's CryptoInvoiceState (§4.4), as this app reads it.
 struct CryptoInvoiceView {
   std::string phase;  // none | starting | open | paid | failed ("" before any state)
@@ -423,7 +435,9 @@ struct CryptoInvoiceView {
   // sdk's check passed it, or for a coin with no payment link the address
   // alone; "" for no QR code
   std::string qrText;
-  std::string memo;  // usdc_solana and sol: the memo for a transfer sent by hand
+  // the memo for a transfer sent by hand: the server sends one for USDC on
+  // Solana alone (its Solana Pay reference), "" for every other coin
+  std::string memo;
   double priceUsd = 0;
   std::string expiresAt;
   int64_t secondsLeft = 0;  // 0 once expired
@@ -433,11 +447,23 @@ struct CryptoInvoiceView {
   std::string remaining;
   int64_t confirmations = 0;
   int64_t confirmationsRequired = 0;
+  // the status steps at `status`, as the sdk draws them (the state's steps);
+  // none before the first status, in review or unknown
+  std::vector<PaymentStepView> steps;
   bool refreshing = false;  // a requote is in flight
   // the last start or requote failure: a refusal code, or "" with a message
   // for a failure without an answer from the server
   std::string errorCode;
   std::string errorMessage;
+
+  // The sdk's answers for the invoice's coin beside the state (CryptoPaySdk.h
+  // ViewFromSdk): its lines (urnet::cryptoAssetLinesFor); whether it has no
+  // payment link (urnet::cryptoPaymentUriScheme is empty: TAO, whose invoice
+  // is paid by hand and whose QR holds the address alone); and whether its
+  // memo shows (urnet::cryptoPaymentShowsMemo: only when the server sent one).
+  CoinLines lines;
+  bool noPaymentLink = false;
+  bool showsMemo = false;
 };
 
 // What the hosting surface does with a state.
@@ -497,14 +523,23 @@ inline const char* StatusKey(const CryptoInvoiceView& view) {
   return "crypto_status_waiting";
 }
 
-// The step the status has reached: 0 waiting, 1 payment seen, 2 confirming,
-// 3 paid; -1 in review, which shows its copy instead of the steps.
-inline int StatusStep(const CryptoInvoiceView& view) {
-  if (view.status == kStatusReview) return -1;
-  if (view.phase == kPhasePaid || view.status == kStatusPaid) return 3;
-  if (view.status == kStatusConfirming) return 2;
-  if (view.status == kStatusSeen) return 1;
-  return 0;
+// A status step's line: waiting, payment seen, confirming n of N (which takes
+// the step's counts), paid; "" for a status that is no step.
+inline const char* StepKey(std::string_view stepStatus) {
+  if (stepStatus == kStatusPending) return "crypto_status_waiting";
+  if (stepStatus == kStatusSeen) return "crypto_status_seen";
+  if (stepStatus == kStatusConfirming) return "crypto_status_confirming";
+  if (stepStatus == kStatusPaid) return "crypto_status_paid";
+  return "";
+}
+
+// The step a screen reader hears when the payment moves on: the current one,
+// or the last once every step is done (paid); -1 without steps.
+inline int AnnouncedStep(const std::vector<PaymentStepView>& steps) {
+  for (size_t index = 0; index < steps.size(); ++index) {
+    if (steps[index].progress == kStepCurrent) return static_cast<int>(index);
+  }
+  return static_cast<int>(steps.size()) - 1;
 }
 
 enum class QuoteLine {
@@ -519,10 +554,11 @@ enum class QuoteLine {
 //              text: the uri the gate passed, or the address alone for a coin
 //              with no payment link), Open in wallet (a non-empty uri the gate
 //              passed), the address with the coin's network warning, the memo
-//              of a coin on Solana and the countdown. A coin with no payment
-//              link (TAO) says to send exactly this amount to this address,
-//              its Copy buttons say what they copy, and its QR says it holds
-//              only the address
+//              when the sdk says it shows (the server sent one: USDC on
+//              Solana) and the countdown. A coin with no payment link (TAO)
+//              says to send exactly this amount to this address, its Copy
+//              buttons say what they copy, and its QR says it holds only the
+//              address
 //   not polled a resumed invoice before its first status (""): a brief
 //              loading line in place of the payment details, nothing payable
 //   expired    expired, or pending at zero: the expired line and Refresh
@@ -531,12 +567,15 @@ enum class QuoteLine {
 //              send"; never the QR or the full amount (scanning again overpays)
 //   confirming the status steps
 //   review     crypto_status_review, nothing else to do
-// Refresh quote only while nothing was received (pending, expired), disabled
-// while a requote is in flight. Pay another way only while nothing was
-// received, or when the invoice failed or is unknown; otherwise only Close,
-// which hides the invoice and leaves "Payment in progress".
+// The status steps are the sdk's (the view's steps, each drawn by its
+// progress); this app only says when they show: while pending, seen or
+// confirming and not expired, and once paid. Refresh quote only while nothing
+// was received (pending, expired), disabled while a requote is in flight. Pay
+// another way only while nothing was received, or when the invoice failed or
+// is unknown; otherwise only Close, which hides the invoice and leaves
+// "Payment in progress".
 struct CryptoInvoiceDisplay {
-  std::string networkLineKey;  // 1. the network, first
+  CoinLine networkLine;  // 1. the network, first
   // a start in flight, or a resumed invoice before its first status: a brief
   // loading line in place of the payment details
   bool busy = false;
@@ -551,26 +590,25 @@ struct CryptoInvoiceDisplay {
   // under its QR (the address alone) the note saying so
   bool noPaymentLink = false;
   bool showByHandLine = false;
-  std::string noPaymentLinkKey;  // "" while no such QR shows
+  CoinLine noPaymentLinkNote;  // no key while no such QR shows
   bool showAddress = false;
   std::string address;
-  bool showMemo = false;  // a coin on Solana: the memo, for a transfer sent by hand
+  bool showMemo = false;  // the memo, for a transfer sent by hand
   std::string memo;
-  // the coin's network warning, with the address ("" for a coin without one)
+  // the coin's network warning, with the address (no key for a coin without one)
   bool showNetworkWarning = false;
-  std::string networkWarningKey;
+  CoinLine networkWarning;
   // 4. the quote
   QuoteLine quote = QuoteLine::Hidden;
   std::string countdown;
   bool showRefresh = false;
   bool refreshEnabled = false;
-  // 5. the status
+  // 5. the status: the sdk's steps while they show (each by its progress,
+  // the confirming one with its counts), and the line that says where the
+  // payment is
   bool showSteps = false;
-  int step = 0;
+  std::vector<PaymentStepView> steps;
   std::string statusKey;
-  bool statusCounts = false;  // crypto_status_confirming takes the counts
-  int64_t confirmations = 0;
-  int64_t confirmationsRequired = 0;
   bool showRemaining = false;  // crypto_invoice_remaining
   std::string remainingText;
   bool review = false;  // crypto_status_review, and nothing else to do
@@ -591,7 +629,7 @@ struct CryptoInvoiceDisplay {
 // address.
 inline CryptoInvoiceDisplay DisplayFor(const CryptoInvoiceView& view, bool uriAllowed) {
   CryptoInvoiceDisplay display;
-  display.networkLineKey = NetworkLineKey(view.asset);
+  display.networkLine = view.lines.networkLine;
   const InvoiceRoute route = RouteFor(view);
   const bool open = route == InvoiceRoute::Open;
   const std::string& status = view.status;
@@ -613,21 +651,21 @@ inline CryptoInvoiceDisplay DisplayFor(const CryptoInvoiceView& view, bool uriAl
   // no Open in wallet: the address and the exact amount, sent by hand
   // (CONTRACT §4.4.1).
   const bool qrIsUri = uriAllowed && !view.uri.empty() && view.qrText == view.uri;
-  const bool qrIsAddress = HasNoPaymentLink(view.asset) && view.uri.empty() &&
-                           !view.address.empty() && view.qrText == view.address;
+  const bool qrIsAddress = view.noPaymentLink && view.uri.empty() && !view.address.empty() &&
+                           view.qrText == view.address;
   display.showQr = payable && (qrIsUri || qrIsAddress);
   display.qrText = display.showQr ? view.qrText : std::string();
   display.showOpenWallet = payable && uriAllowed && !view.uri.empty();
-  display.noPaymentLink = HasNoPaymentLink(view.asset);
+  display.noPaymentLink = view.noPaymentLink;
   display.showByHandLine = display.noPaymentLink && display.showAmount;
-  display.noPaymentLinkKey = display.showQr && qrIsAddress ? NoPaymentLinkKey(view.asset) : "";
+  if (display.showQr && qrIsAddress) display.noPaymentLinkNote = view.lines.noPaymentLinkNote;
   display.showAddress = (payable || partial) && !view.address.empty();
   display.address = view.address;
-  display.showMemo = payable && (view.asset == kAssetUsdcSolana || view.asset == kAssetSol) &&
-                     !view.memo.empty();
+  // the sdk's rule (only a memo the server sent), shown only while payable
+  display.showMemo = payable && view.showsMemo;
   display.memo = view.memo;
-  display.networkWarningKey = NetworkWarningKey(view.asset);
-  display.showNetworkWarning = display.showAddress && !display.networkWarningKey.empty();
+  display.networkWarning = view.lines.networkWarning;
+  display.showNetworkWarning = display.showAddress && !display.networkWarning.key.empty();
 
   if (expired) {
     display.quote = QuoteLine::Expired;
@@ -638,14 +676,12 @@ inline CryptoInvoiceDisplay DisplayFor(const CryptoInvoiceView& view, bool uriAl
   display.showRefresh = open && NothingReceived(view);
   display.refreshEnabled = display.showRefresh && !view.refreshing;
 
+  // when the steps show is this app's; what they say is the sdk's
   const bool stepped =
       status == kStatusPending || status == kStatusSeen || status == kStatusConfirming;
-  display.showSteps = (open && stepped && !expired) || display.paid;
-  display.step = StatusStep(view);
+  display.showSteps = ((open && stepped && !expired) || display.paid) && !view.steps.empty();
+  if (display.showSteps) display.steps = view.steps;
   display.statusKey = StatusKey(view);
-  display.statusCounts = status == kStatusConfirming && !display.paid;
-  display.confirmations = view.confirmations;
-  display.confirmationsRequired = view.confirmationsRequired;
   display.showRemaining = partial && DecimalIsPositive(view.remaining);
   display.remainingText = AmountWithTicker(view.remaining, ticker);
 
@@ -681,17 +717,6 @@ inline const char* InProgressNoteKey(const CryptoInvoiceView& view) {
   if (!InvoiceInProgress(view) || view.status.empty()) return "";
   if (QuoteExpired(view)) return "crypto_invoice_quote_expired";
   return StatusKey(view);
-}
-
-// The status steps an asset passes through: waiting -> payment seen ->
-// confirming n of N -> paid. USDC only ever reports pending, paid or expired
-// (§2.5: the server sees confirmed transfers only), so its invoice shows
-// waiting -> paid; and the confirming step needs the confirmations the asset
-// requires, which the quote carries.
-inline std::vector<int> StepsFor(std::string_view asset, int64_t confirmationsRequired) {
-  if (asset == kAssetUsdcSolana) return {0, 3};
-  if (confirmationsRequired <= 0) return {0, 1, 3};
-  return {0, 1, 2, 3};
 }
 
 // ---- a crypto year's plan rows (§2.2, §6.2) -------------------------------------
@@ -768,7 +793,9 @@ inline std::optional<int64_t> ParseRfc3339(std::string_view text) {
 }
 
 // The network's latest one-time crypto credit whose grace has not ended
-// (SubscriptionBalanceResult.crypto_term). Empty fields: none.
+// (SubscriptionBalanceResult.crypto_term). Empty fields: none. Its coin
+// (crypto_term.asset, urnet::cryptoPaidAsset) is not read: no surface here
+// names the coin a year was paid with (Manage subscription is ur.io's).
 struct CryptoTermView {
   std::string market;
   std::string termEndTime;

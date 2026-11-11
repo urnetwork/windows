@@ -164,10 +164,12 @@ var catalogNonLookupLiteralReasons = map[string]string{
 // Keys tagged windows that the app looks up only where the scan cannot see,
 // each with where: the crypto payment row's labels, which the sdk hands out as
 // a store key with its English (urnet::cryptoPaymentTabs' label_key and
-// urnet::cryptoAssetLabelKey), looked up by CryptoPayViews.cpp PaymentLabel.
-// crypto_pay_test.go TestCryptoPayStrings holds each to the catalog and to the
-// sdk's keys. Every other lookup is a call or a key literal of an app source
-// the scan reads.
+// urnet::cryptoAssetLabelKey), and each coin's own lines, its network, its
+// network's warning and TAO's note under its QR (urnet::cryptoAssetLinesFor),
+// each looked up by CryptoPayViews.cpp PaymentLabel. crypto_pay_test.go
+// TestCryptoPayStrings holds each to the catalog and TestCryptoPayAgreesWithTheSdk
+// to the sdk's keys. Every other lookup is a call or a key literal of an app
+// source the scan reads.
 var catalogUnscannedTaggedKeyReasons = map[string]string{
 	"pay_method_usdc_solana": cryptoPaySdkLabelReason,
 	"pay_method_zcash":       cryptoPaySdkLabelReason,
@@ -177,10 +179,27 @@ var catalogUnscannedTaggedKeyReasons = map[string]string{
 	"pay_method_bitcoin":     cryptoPaySdkLabelReason,
 	"pay_method_eth":         cryptoPaySdkLabelReason,
 	"pay_method_sol":         cryptoPaySdkLabelReason,
+
+	"crypto_network_usdc":                 cryptoPaySdkLineReason,
+	"crypto_network_zcash":                cryptoPaySdkLineReason,
+	"crypto_network_monero":               cryptoPaySdkLineReason,
+	"crypto_network_tao":                  cryptoPaySdkLineReason,
+	"crypto_network_bitcoin":              cryptoPaySdkLineReason,
+	"crypto_network_eth":                  cryptoPaySdkLineReason,
+	"crypto_network_sol":                  cryptoPaySdkLineReason,
+	"usdc_solana_network_only":            cryptoPaySdkLineReason,
+	"crypto_invoice_tao_network_only":     cryptoPaySdkLineReason,
+	"crypto_invoice_bitcoin_network_only": cryptoPaySdkLineReason,
+	"crypto_invoice_eth_network_only":     cryptoPaySdkLineReason,
+	"crypto_invoice_sol_network_only":     cryptoPaySdkLineReason,
+	"crypto_invoice_tao_no_payment_link":  cryptoPaySdkLineReason,
 }
 
 const cryptoPaySdkLabelReason = "a crypto payment label the sdk hands out by its key " +
 	"(urnet::cryptoPaymentTabs, urnet::cryptoAssetLabelKey), looked up by CryptoPayViews.cpp PaymentLabel"
+
+const cryptoPaySdkLineReason = "a coin's line the sdk hands out by its key " +
+	"(urnet::cryptoAssetLinesFor), looked up by CryptoPayViews.cpp PaymentLabel"
 
 // Keys tagged windows that the app no longer looks up, each with why, until the
 // store moves windows to deprecated for them and the catalogs are regenerated.
