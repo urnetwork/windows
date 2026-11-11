@@ -563,8 +563,9 @@ func TestRelativeTimeReachesDaysAndADate(t *testing.T) {
 	}
 }
 
-// Every Api the app creates or replaces reports "windows" and this build's
-// version, and so does the service's Api for each space it imports; the
+// Every Api the app creates or replaces reports "windows", this build's
+// version and the Windows distribution, and so does the service's Api for
+// each space it imports; the
 // hard-coded "0.0.1" is gone from everything that reported it (the sdk's
 // client info, the service's devices, the product events and the log
 // uploads); and the Api's confirmed rejection of the account credential (a
@@ -581,7 +582,7 @@ func TestSessionsClientInfoAndAppVersion(t *testing.T) {
 	host := stripComments(readAppSource(t, "SdkHost.cpp"))
 	bind := definitionBody(t, "SdkHost.cpp", host, "void SdkHost::BindApiLocked() {")
 	for _, want := range []string{
-		"api_->setClientInfo(urnet::newClientInfo(kClientDeviceType, appVersion_));",
+		"api_->setClientInfo(urnet::newClientInfoWithDistribution(kClientDeviceType, appVersion_, kClientDistribution));",
 		"apiLogoutSub_.reset();",
 		"apiLogoutSub_.emplace(api_->addAuthLogoutListener(",
 		"if (!loggedIn_.load(std::memory_order_acquire) || !onAuthInvalid_) return;",
@@ -593,6 +594,11 @@ func TestSessionsClientInfoAndAppVersion(t *testing.T) {
 	}
 	if !strings.Contains(host, `constexpr const char* kClientDeviceType = "windows";`) {
 		t.Error(`SdkHost.cpp: the client info's device type must be "windows"`)
+	}
+	// the distribution the server tells the platforms' billing apart by (sdk
+	// ClientDistribution*): the one Windows build, which Stripe bills
+	if !strings.Contains(host, `constexpr const char* kClientDistribution = urnet::ClientDistributionWindows;`) {
+		t.Error("SdkHost.cpp: the client info's distribution must be the sdk's ClientDistributionWindows")
 	}
 	// every Api the host takes is bound at once: Initialize's and
 	// ApplyNetworkServer's, and any later one
@@ -620,8 +626,9 @@ func TestSessionsClientInfoAndAppVersion(t *testing.T) {
 	// the service's Api, which the app's SetClientInfo does not reach
 	service := stripComments(readServiceSource(t, "TunnelController.cpp"))
 	imported := definitionBody(t, "TunnelController.cpp", service, "urnet::NetworkSpace TunnelController::ImportNetworkSpaceLocked(")
-	if !strings.Contains(imported, `space.getApi().setClientInfo(urnet::newClientInfo("windows", version::kString));`) {
-		t.Error("TunnelController::ImportNetworkSpaceLocked must set the imported space's Api client info to windows and this build's version")
+	serviceClientInfo := regexp.MustCompile(`space\.getApi\(\)\.setClientInfo\(\s*urnet::newClientInfoWithDistribution\("windows", version::kString, urnet::ClientDistributionWindows\)\);`)
+	if !serviceClientInfo.MatchString(imported) {
+		t.Error("TunnelController::ImportNetworkSpaceLocked must set the imported space's Api client info to windows, this build's version and the Windows distribution")
 	}
 
 	// no source sends the old placeholder version
