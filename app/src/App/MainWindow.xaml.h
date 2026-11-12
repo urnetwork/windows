@@ -358,6 +358,10 @@ struct MainWindow : MainWindowT<MainWindow> {
   // the account pane's referral rows after a failed read
   void OnRetryReferralTotals(winrt::Windows::Foundation::IInspectable const&,
                              winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the plan value after a failed balance read with no answer since
+  // (PlanView.h): read the balance again
+  void OnRetryPlan(winrt::Windows::Foundation::IInspectable const&,
+                   winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnSendFeedback(winrt::Windows::Foundation::IInspectable const&,
                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnWalletAddressChanged(

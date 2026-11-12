@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <string_view>
 
 #include "CryptoPaySdk.h"
 #include "GuestConversion.h"
@@ -13,6 +14,12 @@
 #include "PaymentPastDueSdk.h"
 
 namespace urnw {
+
+// PlanView.h reads the sdk's plan values by their text
+static_assert(std::string_view(urnet::ShownPlanPro) == planview::kShownPlanPro);
+static_assert(std::string_view(urnet::ShownPlanFree) == planview::kShownPlanFree);
+static_assert(std::string_view(urnet::ShownPlanUnknown) == planview::kShownPlanUnknown);
+
 namespace {
 
 // Monotonic, not wall-clock: this feeds the confirmation budget
@@ -95,11 +102,11 @@ void SubscriptionBalanceStore::Start() {
 
   // Pro and guest are readable without any network call: they are claims baked
   // into the stored jwt. The sdk's decision reads the Pro claim until the
-  // first fetch lands.
+  // first fetch lands; a claim of Free shows Loading until then.
   serverGuest_ = false;
   proTracker_.reset();
   TrackStoredJwt();
-  snapshot_.isPro = proTracker_.getIsPro();
+  SyncPlan();
   if (auto jwt = sdk_.ParsedJwt()) {
     jwtGuest_ = jwt->GuestMode;
   } else {
@@ -235,19 +242,19 @@ void SubscriptionBalanceStore::OnJwtRefreshed() {
   // from the unchanged claim here flipped the plan back on every refresh
   // (support inbox 8211).
   TrackStoredJwt();
-  const bool isPro = proTracker_.getIsPro();  // moves only before the first fetch
+  // the plan moves only before the first fetch, or for another network
+  const bool planChanged = SyncPlan();
   // a refresh signs the jwt without GuestMode; the server's guest still holds
   jwtGuest_ = byJwt->GuestMode;
   const bool guest = IsGuestNetwork(jwtGuest_, serverGuest_);
   const bool guestChanged = snapshot_.guest != guest;
   snapshot_.guest = guest;
-  if (snapshot_.isPro == isPro) {
+  if (!planChanged) {
     if (guestChanged) Publish();
     return;
   }
-  snapshot_.isPro = isPro;
   // a lapse back to free resumes the background poll; Pro stops it (Apply parity)
-  if (!isPro) EnsureBackgroundPolling();
+  if (!snapshot_.isPro) EnsureBackgroundPolling();
   Publish();
 }
 
@@ -255,6 +262,16 @@ void SubscriptionBalanceStore::TrackStoredJwt() {
   if (const std::string byJwt = sdk_.StoredByJwt(); !byJwt.empty()) {
     proTracker_.setJwt(byJwt);
   }
+}
+
+bool SubscriptionBalanceStore::SyncPlan() {
+  const planview::PlanView plan =
+      planview::PlanViewFor(proTracker_.getShownPlan(), proTracker_.getLastReadFailed());
+  const bool isPro = proTracker_.getIsPro();
+  const bool changed = snapshot_.plan != plan || snapshot_.isPro != isPro;
+  snapshot_.plan = plan;
+  snapshot_.isPro = isPro;
+  return changed;
 }
 
 void SubscriptionBalanceStore::Fetch() {
@@ -281,7 +298,11 @@ void SubscriptionBalanceStore::Fetch() {
           loading_ = false;
           if (err || !result) {
             if (err) LogWarn("balance: fetch failed: {}", *err);
-            // keep the last snapshot; the poll retries
+            // keep the last snapshot; the poll retries. The plan stays the
+            // server's last answer, and before one it reads Failed with Try
+            // again, never Free (support inbox 4074)
+            proTracker_.balanceFailed();
+            if (SyncPlan()) Publish();
             Settle();
             return;
           }
@@ -345,7 +366,8 @@ void SubscriptionBalanceStore::Apply(urnet::SubscriptionBalanceResult const& res
   const bool serverIsPro = result.current_subscription.has_value();
   TrackStoredJwt();
   const bool refreshJwt = proTracker_.balanceLoaded(serverIsPro);
-  snapshot_.isPro = proTracker_.getIsPro();
+  // the plan is the server's answer now: Pro or Free
+  SyncPlan();
   if (refreshJwt) sdk_.RefreshJwt();
   snapshot_.subscriptionStoreFamily =
       result.current_subscription ? urnet::classifySubscriptionStore(result.current_subscription->store)

@@ -524,6 +524,8 @@
     <!-- header-only, WinRT-free, needs the sdk: tools/payment-past-due-tests.cpp builds it against the generated header -->
     <ClInclude Include="PaymentPastDueSdk.h" />
     <ClInclude Include="ConfirmationPollGate.h" />
+    <!-- header-only and WinRT-free: tools/plan-view-tests.cpp runs it -->
+    <ClInclude Include="PlanView.h" />
     <ClInclude Include="ClientEvents.h" />
     <!-- header-only, WinRT-free: tools/client-limit-notice-tests.cpp runs it -->
     <ClInclude Include="ClientLimitNotice.h" />
