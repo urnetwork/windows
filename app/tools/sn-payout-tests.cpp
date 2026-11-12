@@ -27,6 +27,8 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+#include <array>
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -339,6 +341,56 @@ void CheckTimes(const PayoutLineView& view) {
   CheckEq(Tag(kClaimOpen), view.claimOpen, "claim open");
   CheckEq(Tag(kExpiry), view.expiry, "expiry");
 }
+
+// WalletPage's part in the wins after a claim, as it wires them: the claimer's
+// Done (WithClaimPaid) reads the wins (LoadCtfClient) and hands `paid` to the
+// schedule (ReadCtfWinsAfterClaim), whose one-shot timer waits each wait it
+// gives and calls Tick (OnCtfWinsTimer); a sign-out stops it. The server is a
+// fake whose next reads answer `answers`, one each, then `settled`.
+struct WinsPage {
+  CtfWinsReadsAfterClaim schedule;
+  std::optional<std::chrono::milliseconds> timer;  // armed with this wait
+  std::vector<std::chrono::milliseconds> waits;    // every wait armed
+  std::vector<CtfWin> lines;
+  std::vector<std::vector<CtfWin>> answers;
+  std::vector<CtfWin> settled;
+  int reads = 0;
+  std::vector<std::string> heard;  // the dialog's events and the page's reads, in order
+
+  void Read() {
+    ++reads;
+    heard.push_back("read");
+    if (!answers.empty()) {
+      lines = answers.front();
+      answers.erase(answers.begin());
+    } else {
+      lines = settled;
+    }
+  }
+  void Arm(std::chrono::milliseconds wait) {
+    timer = wait;
+    waits.push_back(wait);
+  }
+  // the claimer, around the dialog's events
+  LedgerClaimEvents Claimer(LedgerClaimEvents dialog = {}) {
+    return WithClaimPaid(std::move(dialog), [this](bool paid) {
+      Read();
+      if (const auto wait = schedule.Done(paid)) Arm(*wait);
+    });
+  }
+  // the timer's wait ran out
+  void Fire() {
+    timer.reset();
+    const CtfWinsReadsAfterClaim::Step step = schedule.Tick();
+    if (!step.read) return;
+    Read();
+    if (step.next) Arm(*step.next);
+  }
+  void SignOut() {
+    schedule.Stop();
+    timer.reset();
+  }
+};
 
 }  // namespace
 
@@ -1470,6 +1522,118 @@ int main() {
     result.unclaimed_wins = std::vector<SdkCtfWin>{SdkWin(11, "provider", "is")};
     result.error = SdkError{};
     Check(CtfWinsFrom(result).empty(), "an answer with an error says nothing, never no wins");
+  }
+  {
+    TEST_CASE("ctf: after a claim that paid, the wins are read at Done and 30 s, 60 s and 120 s after it");
+    using std::chrono::milliseconds;
+    using std::chrono::seconds;
+    Check(kCtfWinsReadsAfterClaim == std::array<milliseconds, 3>{seconds(30), seconds(60), seconds(120)},
+          "every app's schedule");
+    const CtfWin iceland{CtfRole::Provider, "is"};
+    WinsPage page;
+    page.lines = {iceland};
+    // the server reads the claim at the finalized head: it still says
+    // unclaimed at Done and 30 s after it, and claimed from then on
+    page.answers = {{iceland}, {iceland}};
+    // the dialog keeps its own events, and its Done comes before the page's read
+    LedgerClaimProgress dialog = Dialog({CtfAccount()});
+    Check(dialog.Start(), "Claim");
+    LedgerClaimEvents dialogEvents;
+    dialogEvents.sent = [&](int64_t noId, int64_t index, std::string txHash) {
+      page.heard.push_back("sent");
+      dialog.Sent(noId, index, txHash);
+    };
+    dialogEvents.confirmed = [&](int64_t noId, int64_t index, std::string txHash, int64_t amountRao) {
+      page.heard.push_back("confirmed");
+      dialog.Confirmed(noId, index, txHash, amountRao);
+    };
+    dialogEvents.done = [&] {
+      page.heard.push_back("done");
+      dialog.Done();
+    };
+    // through the SDK's callback, as WalletPage hands it to snLedgerClaim
+    const SdkLedgerClaimCallback callback =
+        LedgerClaimCallbackFor<SdkLedgerClaimCallback>(page.Claimer(dialogEvents));
+    callback.sent(kCtfNoId, 9, "0xclaim");
+    callback.confirmed(kCtfNoId, 9, "0xclaim", 50'000'000);
+    callback.done();
+    Check(page.heard == std::vector<std::string>{"sent", "confirmed", "done", "read"},
+          "the dialog's events, then the read at Done");
+    CheckRow(dialog.rows()[0], kCtfNoId, 9, 50'000'000, LedgerClaimState::Confirmed, "0xclaim", "",
+             "the dialog's row");
+    Check(page.reads == 1 && page.lines == std::vector<CtfWin>{iceland}, "at Done: still unclaimed");
+    Check(page.timer == milliseconds(seconds(30)), "the next read 30 s after Done");
+    page.Fire();
+    Check(page.reads == 2 && page.lines == std::vector<CtfWin>{iceland}, "30 s after Done: still unclaimed");
+    Check(page.timer == milliseconds(seconds(30)), "the next 60 s after Done");
+    page.Fire();
+    Check(page.reads == 3 && page.lines.empty(), "60 s after Done: claimed, and the line goes");
+    Check(page.timer == milliseconds(seconds(60)), "the next 120 s after Done");
+    page.Fire();
+    Check(page.reads == 4 && page.lines.empty(), "120 s after Done: the last read");
+    Check(!page.timer, "nothing after it");
+    page.Fire();
+    Check(page.reads == 4, "a stray tick reads nothing");
+    Check(page.waits == std::vector<milliseconds>{seconds(30), seconds(30), seconds(60)},
+          "30 s, 60 s and 120 s after Done");
+  }
+  {
+    TEST_CASE("ctf: the wins' reads after a claim: what pays, starting over, and a sign-out");
+    using std::chrono::milliseconds;
+    using std::chrono::seconds;
+    // a claim that paid nothing: the read at Done, as after any claim, and none after
+    WinsPage none;
+    LedgerClaimEvents nothing = none.Claimer();
+    nothing.failed(kCtfNoId, 9, "needs_gas: the gas key cannot pay for the claim");
+    nothing.failed(0, 0, "chain_rpc_unreachable: dial tcp: i/o timeout");
+    nothing.done();
+    Check(none.reads == 1 && !none.timer, "paid nothing: no read after Done");
+    // already_claimed for an account is paid, another sender's claim paying the
+    // same coldkey; for no pool it is not
+    WinsPage already;
+    LedgerClaimEvents third = already.Claimer();
+    third.failed(1, 42, "already_claimed: another sender claimed it");
+    third.done();
+    Check(already.reads == 1 && already.timer == milliseconds(seconds(30)), "already_claimed pays");
+    WinsPage noPool;
+    LedgerClaimEvents whole = noPool.Claimer();
+    whole.failed(0, 0, "already_claimed: nothing left");
+    whole.done();
+    Check(!noPool.timer, "already_claimed for no pool pays nothing");
+
+    WinsPage page;
+    LedgerClaimEvents first = page.Claimer();
+    first.confirmed(1, 42, "0xone", 3'241'000'000);
+    first.done();
+    Check(page.reads == 1 && page.timer == milliseconds(seconds(30)), "the first claim paid");
+    // one that paid nothing leaves the first claim's reads be
+    LedgerClaimEvents unpaid = page.Claimer();
+    unpaid.failed(kCtfNoId, 9, "claim_failed: execution reverted");
+    unpaid.done();
+    Check(page.reads == 2 && page.timer == milliseconds(seconds(30)), "the first claim's wait stands");
+    page.Fire();
+    Check(page.reads == 3 && page.timer == milliseconds(seconds(30)), "the first claim's 30 s read");
+    // the next paying claim's Done starts them over
+    LedgerClaimEvents second = page.Claimer();
+    second.confirmed(kCtfNoId, 9, "0xtwo", 50'000'000);
+    second.done();
+    Check(page.reads == 4 && page.timer == milliseconds(seconds(30)), "30 s from the second Done");
+    page.Fire();
+    page.Fire();
+    Check(page.reads == 6 && page.timer == milliseconds(seconds(60)), "60 s from it, then 120 s");
+    Check(page.waits == std::vector<milliseconds>{seconds(30), seconds(30), seconds(30), seconds(30),
+                                                  seconds(60)},
+          "the waits");
+    // a sign-out: none of the reads left, even from a tick already on its way
+    page.SignOut();
+    page.Fire();
+    Check(page.reads == 6 && !page.timer, "no read after a sign-out");
+    // the next account's paying claim starts its own
+    LedgerClaimEvents next = page.Claimer();
+    next.confirmed(1, 42, "0xthree", 3'241'000'000);
+    next.done();
+    page.Fire();
+    Check(page.reads == 8 && page.timer == milliseconds(seconds(30)), "the next account's reads");
   }
 
   {

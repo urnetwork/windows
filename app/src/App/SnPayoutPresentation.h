@@ -22,6 +22,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <array>
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -522,6 +525,54 @@ struct CtfWin {
 // The line's store key: sn_ctf_won_provider_slot or sn_ctf_won_extender_slot,
 // each with the country's name as its one placeholder.
 std::string CtfWinKey(const CtfWin& win);
+
+// ---- the wins after a claim
+//
+// The SDK's Done comes once the claim is in a block, but the server says a win
+// is claimed only once vault2's claimed at the finalized head covers the
+// claim, so the read at Done can still list a win the claim paid. After a
+// claim that paid an account (Confirmed, or already_claimed: another sender's
+// claim, which vault2 paid to the same coldkey) the page reads the wins at
+// Done, as after any claim, and again 30 s, 60 s and 120 s after Done (every
+// app's schedule), unless the page is gone or the user signed out. Each read
+// replaces the lines.
+
+// When those reads come, after the claim's Done.
+inline constexpr std::array<std::chrono::milliseconds, 3> kCtfWinsReadsAfterClaim{
+    std::chrono::seconds(30), std::chrono::seconds(60), std::chrono::seconds(120)};
+
+// The claim's events as they came, with `afterDone` called once Done has been
+// handed on, told whether the claim paid an account. The SDK may call the
+// events from any of its threads, in order, Done last.
+LedgerClaimEvents WithClaimPaid(LedgerClaimEvents events, std::function<void(bool paid)> afterDone);
+
+// The reads on that schedule. The page arms its one-shot timer with each wait
+// this gives, and calls Tick when the timer fires.
+class CtfWinsReadsAfterClaim {
+ public:
+  // A claim's Done. One that paid an account starts the reads over from this
+  // Done and gives the wait until the first; one that paid nothing gives none
+  // and leaves an earlier claim's reads as they are.
+  std::optional<std::chrono::milliseconds> Done(bool paid);
+
+  struct Step {
+    bool read = false;                              // read the wins now
+    std::optional<std::chrono::milliseconds> next;  // then wait this for the next read
+
+    bool operator==(const Step&) const = default;
+  };
+  // The timer fired: the read due, and the wait until the one after it. No
+  // read once the reads are over or stopped.
+  Step Tick();
+
+  // The user signed out, or the page goes: no read is left.
+  void Stop();
+
+ private:
+  // the read the timer waits for, by its place in kCtfWinsReadsAfterClaim; its
+  // size while none is
+  std::size_t next_ = kCtfWinsReadsAfterClaim.size();
+};
 
 // ---- at the SDK's boundary (WalletPage.cpp)
 //

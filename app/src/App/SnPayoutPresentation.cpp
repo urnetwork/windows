@@ -2,8 +2,10 @@
 #include "SnPayoutPresentation.h"
 
 #include <algorithm>
+#include <atomic>
 #include <format>
 #include <limits>
+#include <memory>
 
 namespace urnw::snpayout {
 
@@ -523,5 +525,47 @@ RelayTileView RelayTileFor(const std::vector<RelayAccount>& accounts, const std:
 std::string CtfWinKey(const CtfWin& win) {
   return win.role == CtfRole::Extender ? "sn_ctf_won_extender_slot" : "sn_ctf_won_provider_slot";
 }
+
+LedgerClaimEvents WithClaimPaid(LedgerClaimEvents events, std::function<void(bool paid)> afterDone) {
+  // set on the SDK's thread, read at Done, which the SDK calls last
+  auto paid = std::make_shared<std::atomic<bool>>(false);
+  LedgerClaimEvents out;
+  out.sent = std::move(events.sent);
+  out.confirmed = [confirmed = std::move(events.confirmed), paid](int64_t noId, int64_t index,
+                                                                   std::string txHash, int64_t amountRao) {
+    paid->store(true);
+    if (confirmed) confirmed(noId, index, std::move(txHash), amountRao);
+  };
+  out.failed = [failed = std::move(events.failed), paid](int64_t noId, int64_t index,
+                                                         std::string message) {
+    // already_claimed is an account's success: vault2 paid it to the same coldkey
+    if (noId > 0 && ClaimFailureCode(message) == "already_claimed") paid->store(true);
+    if (failed) failed(noId, index, std::move(message));
+  };
+  out.done = [done = std::move(events.done), paid, afterDone = std::move(afterDone)] {
+    if (done) done();
+    if (afterDone) afterDone(paid->load());
+  };
+  return out;
+}
+
+std::optional<std::chrono::milliseconds> CtfWinsReadsAfterClaim::Done(bool paid) {
+  if (!paid) return std::nullopt;
+  next_ = 0;
+  return kCtfWinsReadsAfterClaim[0];
+}
+
+CtfWinsReadsAfterClaim::Step CtfWinsReadsAfterClaim::Tick() {
+  Step step;
+  if (next_ >= kCtfWinsReadsAfterClaim.size()) return step;
+  step.read = true;
+  const std::size_t at = next_++;
+  if (next_ < kCtfWinsReadsAfterClaim.size()) {
+    step.next = kCtfWinsReadsAfterClaim[next_] - kCtfWinsReadsAfterClaim[at];
+  }
+  return step;
+}
+
+void CtfWinsReadsAfterClaim::Stop() { next_ = kCtfWinsReadsAfterClaim.size(); }
 
 }  // namespace urnw::snpayout

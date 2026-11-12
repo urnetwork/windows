@@ -29,6 +29,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -395,8 +396,16 @@ class WalletPage {
   // account.
   void LoadCtfClient();
   void ApplyCtfClient(uint32_t read, std::vector<snpayout::CtfWin> wins);
+  // After a v2 claim's Done, which read the wins: when the claim paid an
+  // account they are read again 30 s, 60 s and 120 s after Done
+  // (snpayout::CtfWinsReadsAfterClaim, every app's schedule) through
+  // LoadCtfClient, on ctfWinsTimer_, until the page goes or the user signs out.
+  void ReadCtfWinsAfterClaim(bool paid);
+  void ArmCtfWinsTimer(std::chrono::milliseconds wait);
+  void OnCtfWinsTimer();
   // The SDK's v2 claim, wrapped for the v2 dialog (Device.snLedgerClaim); after
-  // its Done the page reads the accounts and the gas balance again.
+  // its Done the page reads the accounts, the gas balance, the relay's status
+  // and the wins again, and the wins on the schedule after a claim that paid.
   LedgerClaimer MakeV2Claimer();
 
   // ---- the payout consent (SnConsentPresentation.h)
@@ -633,6 +642,10 @@ class WalletPage {
   // newest first
   uint32_t ctfClientGeneration_ = 0;
   std::vector<snpayout::CtfWin> ctfWins_;
+  // the wins' reads after a v2 claim that paid an account, and the one-shot
+  // timer that waits for each (ReadCtfWinsAfterClaim)
+  snpayout::CtfWinsReadsAfterClaim ctfWinsAfterClaim_;
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer ctfWinsTimer_{nullptr};
   // the payout consent: the read (Idle until a session asks for it), the
   // consent it answered with (none before an answer and after a failed read),
   // and whether a signing is out (the challenge, the wallet, the submission)

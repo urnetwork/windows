@@ -538,6 +538,7 @@ WalletPage::~WalletPage() {
   if (legacyFlow_.timer) legacyFlow_.timer.Stop();
   if (removeFlow_.timer) removeFlow_.timer.Stop();
   if (keyReminderTimer_) keyReminderTimer_.Stop();
+  if (ctfWinsTimer_) ctfWinsTimer_.Stop();
   try {
     // the flow's changes reach no page after this one
     SetBittensorKeyFlowListener(nullptr);
@@ -939,6 +940,9 @@ void WalletPage::ResetForSignOut() {
   claimStatus_.reset();
   ++ctfClientGeneration_;
   ctfWins_.clear();
+  // and the wins are not read again after that account's claim
+  ctfWinsAfterClaim_.Stop();
+  if (ctfWinsTimer_) ctfWinsTimer_.Stop();
   RebuildV2Section();
 
   // The payout consent is the network's that left: hidden until the next
@@ -1288,6 +1292,41 @@ void WalletPage::ApplyCtfClient(uint32_t read, std::vector<snpayout::CtfWin> win
   if (read != ctfClientGeneration_) return;
   ctfWins_ = std::move(wins);
   RebuildV2Section();
+}
+
+// The SDK's Done comes once the claim is in a block, but the server says a win
+// is claimed only once vault2's claimed at the finalized head covers the claim,
+// so the read at Done can still list a win the claim paid. After a claim that
+// paid an account the wins are read again 30 s, 60 s and 120 s after Done
+// (snpayout::CtfWinsReadsAfterClaim, every app's schedule), each read
+// replacing the lines. The next paying claim's Done starts them over, and one
+// that paid nothing leaves them be. They run while the page lives, with
+// Earnings off screen too; a sign-out stops them (ResetForSignOut), and so
+// does the page's end.
+void WalletPage::ReadCtfWinsAfterClaim(bool paid) {
+  if (const auto wait = ctfWinsAfterClaim_.Done(paid)) ArmCtfWinsTimer(*wait);
+}
+
+void WalletPage::ArmCtfWinsTimer(std::chrono::milliseconds wait) {
+  if (!ctfWinsTimer_) {
+    ctfWinsTimer_ = w_.DispatcherQueue().CreateTimer();
+    ctfWinsTimer_.IsRepeating(false);
+    ctfWinsTimer_.Tick([weak = w_.get_weak(), alive = alive_](auto const&, auto const&) {
+      if (!*alive) return;
+      if (auto self = weak.get()) self->wallet().OnCtfWinsTimer();
+    });
+  }
+  ctfWinsTimer_.Stop();
+  ctfWinsTimer_.Interval(wait);
+  ctfWinsTimer_.Start();
+}
+
+void WalletPage::OnCtfWinsTimer() {
+  // none once the reads are over or a sign-out stopped them
+  const snpayout::CtfWinsReadsAfterClaim::Step step = ctfWinsAfterClaim_.Tick();
+  if (!step.read) return;
+  LoadCtfClient();
+  if (step.next) ArmCtfWinsTimer(*step.next);
 }
 
 // ---- points --------------------------------------------------------------
@@ -2778,24 +2817,26 @@ int64_t WalletPage::TransferFloorRao() const {
 // chain settings name a batcher and the gas key can pay for it, else one claim
 // each to vault2, the largest first. After its Done the page reads the
 // accounts and the gas balance again, whether or not the dialog is still up,
-// and the relay's status and capture the flag's wins, so a win the claim paid
-// loses its line. The claim itself touches no URnetwork API.
+// and the relay's status and capture the flag's wins, and after a claim that
+// paid an account the wins again on the apps' schedule (ReadCtfWinsAfterClaim),
+// so a win the claim paid loses its line once the server reads it claimed. The
+// claim itself touches no URnetwork API.
 LedgerClaimer WalletPage::MakeV2Claimer() {
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   return [queue, weak](snpayout::LedgerClaimEvents events) {
-    auto done = events.done;
-    events.done = [done, queue, weak] {
-      if (done) done();
-      queue.TryEnqueue([weak] {
+    // after the dialog's Done, told whether the claim paid an account
+    events = snpayout::WithClaimPaid(std::move(events), [queue, weak](bool paid) {
+      queue.TryEnqueue([weak, paid] {
         if (auto self = weak.get()) {
           self->wallet().LoadV2Accounts();
           self->wallet().LoadGas();
           self->wallet().LoadClaimStatus();
           self->wallet().LoadCtfClient();
+          self->wallet().ReadCtfWinsAfterClaim(paid);
         }
       });
-    };
+    });
     if (!Sdk().hasDevice()) {
       if (events.failed) events.failed(0, 0, "no device");
       events.done();
