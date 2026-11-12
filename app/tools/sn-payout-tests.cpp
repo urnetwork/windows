@@ -435,6 +435,7 @@ struct ClaimPage {
   std::vector<SdkLedgerClaimCallback> sdk;    // each claim the SDK was asked for
   int redraws = 0;                            // an open dialog drew the claim again
   std::vector<bool> reads;                    // each Done's reads, told whether it paid
+  bool v1InFlight = false;                    // the page's v1 claim is in flight
 
   // OnClaimV2
   void Open() {
@@ -442,9 +443,13 @@ struct ClaimPage {
     if (!dialog) dialog = std::make_shared<LedgerClaimProgress>(accounts, 0.5, unavailable, floor);
   }
   void Close() { dialog.reset(); }
+  // the dialog's Claim, held while a v1 claim is in flight (Held), which
+  // StartV2Claim refuses too: the gas key sends one claim at a time
+  bool ClaimEnabled() const { return dialog && dialog->CanClaim(true) && !v1InFlight; }
   // the dialog's Claim: ClaimLedgerSheet::StartClaim, then StartV2Claim
   bool Press() {
     if (!dialog || dialog->sending()) return false;
+    if (v1InFlight) return false;
     const std::optional<uint64_t> started = claim.Start(dialog);
     if (!started) return false;
     const uint64_t ticket = *started;
@@ -1241,12 +1246,12 @@ int main() {
               progress.rows()[1].amountRao == 50'000'000,
           "its row is unavailable");
     Check(progress.ClaimableRao() == 3'241'000'000, "what Claim moves leaves it out");
-    // and so does what the claim moves (every app, 2026-11-12), and Claim
-    // both, as an account of an unknown amount now
-    Check(progress.FigureRao() == 3'241'000'000 && !progress.ClaimsBoth(), "the claim's figure leaves it out");
+    // the figure and Claim both are the press's until Done (every app,
+    // 2026-11-12: fixed at the press); the row says the pool is unavailable
+    Check(progress.FigureRao() == 3'291'000'000 && progress.ClaimsBoth(), "the claim's figure, fixed at the press");
     progress.Sent(1, 42, "0xabc");
     progress.Confirmed(1, 42, "0xabc", 3'241'000'000);
-    Check(progress.FigureRao() == 3'241'000'000 && progress.TotalKnown(), "the one it moved, confirmed: still its figure");
+    Check(progress.FigureRao() == 3'291'000'000 && progress.TotalKnown(), "one confirmed: still its figure");
     progress.Done();
     Check(!progress.CanClaim(true), "the page reads the accounts again");
     Check(!progress.ClaimsBoth() && !progress.TotalKnown(), "after Done: no Claim both, and no figure");
@@ -2044,6 +2049,20 @@ int main() {
     Check(!late.Press() && late.sdk.size() == 2, "and its Claim stays held");
   }
   {
+    TEST_CASE("v2 claim: none while a v1 claim is in flight");
+    // the SDK reads the gas key's pending nonce as it signs, with no lock
+    // across a v1 and a v2 claim: the page sends one at a time (Linux's too)
+    ClaimPage page;
+    page.accounts = {Account()};
+    page.v1InFlight = true;
+    page.Open();
+    Check(!page.ClaimEnabled(), "Claim waits for the v1 claim");
+    Check(!page.Press() && page.sdk.empty() && !page.claim.InFlight() && !page.dialog->sending(),
+          "no v2 claim while it runs");
+    page.v1InFlight = false;
+    Check(page.ClaimEnabled() && page.Press() && page.sdk.size() == 1, "after its Done, Claim");
+  }
+  {
     TEST_CASE("v1 claim: the claim in flight is the session's too");
     // the v1 dialog's progress as the claim in flight needs it
     // (EarningsSheets.h ClaimAlphaProgress): Start takes the claimable epochs
@@ -2130,29 +2149,25 @@ int main() {
     Check(both.Start() && both.ClaimsBoth() && both.FigureRao() == 3'291'000'000, "Claim both");
     both.Confirmed(1, 42, "0xbatch", 3'241'000'000);
     Check(both.ClaimsBoth() && both.FigureRao() == 3'291'000'000, "one confirmed: still Claim both, its figure");
-    // an account the gas key could not pay for: the claim sent nothing for it,
-    // so it leaves the claim's figure and Claim both; after Done it is what
+    // an account the gas key could not pay for: the figure and Claim both stay
+    // the press's until Done (every app, 2026-11-12), and the account's own
+    // line is claimable again, with the funding hint; after Done it is what
     // Claim moves
     both.Failed(kCtfNoId, 9, "needs_gas: the gas key cannot pay for the claim");
-    Check(!both.ClaimsBoth() && both.FigureRao() == 3'241'000'000 && both.TotalKnown(),
-          "short of gas: not in what the claim moves");
+    Check(both.ClaimsBoth() && both.FigureRao() == 3'291'000'000 && both.TotalKnown(),
+          "short of gas: the press's figure until Done");
+    CheckRow(both.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Idle, "", "", "its own line, claimable");
+    Check(!both.rows()[1].underFloor && both.needsGas(), "with the funding hint");
     both.Done();
     Check(!both.ClaimsBoth() && both.FigureRao() == 50'000'000 && both.TotalKnown(),
           "after Done: what Claim moves, the account short of gas");
 
-    // with no floor read yet, the preflight refuses capture the flag's slot as
-    // under the runtime's floor: an account under the floor, never in the
-    // claim's figure from then on
-    LedgerClaimProgress slot = Dialog({Account(), CtfAccount()});
-    Check(slot.Start() && slot.FigureRao() == 3'291'000'000 && slot.ClaimsBoth(), "Claim both, the floor unknown");
-    slot.Failed(kCtfNoId, 9, "not_claimable: AmountTooLow: under the transfer floor");
-    Check(slot.FigureRao() == 3'241'000'000 && !slot.ClaimsBoth(), "AmountTooLow: out of the figure");
-
-    // a claim that sends nothing it took: no figure, never a zero
+    // a claim that sends nothing it took: still the press's figure until Done,
+    // never a zero
     LedgerClaimProgress none = Dialog({Account()});
     Check(none.Start(), "Claim");
     none.Failed(1, 42, "needs_gas: the gas key cannot pay for the claim");
-    Check(none.sending() && none.FigureRao() == 0 && !none.TotalKnown(), "nothing it moves: no figure");
+    Check(none.sending() && none.FigureRao() == 3'241'000'000 && none.TotalKnown(), "the press's figure");
 
     // a claim that moved everything, after Done: a true 0 between claims
     LedgerClaimProgress all = Dialog({Account()});

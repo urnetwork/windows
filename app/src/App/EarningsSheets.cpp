@@ -290,8 +290,15 @@ size_t ClaimAlphaProgress::ClaimableCount() const {
   return count;
 }
 
+int64_t ClaimAlphaProgress::FigureRao() const {
+  // during a claim what its press moves, which no epoch confirming takes from it
+  return sending_ ? pressRao_ : TotalClaimableRao();
+}
+
 bool ClaimAlphaProgress::Start() {
   if (sending_) return false;
+  // what this press moves: the epochs it sends below, as they are now
+  const int64_t pressRao = TotalClaimableRao();
   std::vector<int64_t> epochs;
   for (auto& row : rows_) {
     if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
@@ -302,6 +309,7 @@ bool ClaimAlphaProgress::Start() {
   }
   if (epochs.empty()) return false;
   epochs_ = std::move(epochs);
+  pressRao_ = pressRao;
   sending_ = true;
   return true;
 }
@@ -352,21 +360,23 @@ void ClaimAlphaProgress::Done() {
 
 std::shared_ptr<ClaimAlphaSheet> ClaimAlphaSheet::Create(
     XamlRoot const& root, std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas,
-    std::string explorerTxUrl, bool allowActions, Claimer claimer) {
+    std::string explorerTxUrl, bool allowActions, Claimer claimer, std::function<bool()> held) {
   auto sheet = std::shared_ptr<ClaimAlphaSheet>(
       new ClaimAlphaSheet(std::move(progress), std::move(gas), std::move(explorerTxUrl),
-                          allowActions, std::move(claimer)));
+                          allowActions, std::move(claimer), std::move(held)));
   sheet->Build(root);
   return sheet;
 }
 
 ClaimAlphaSheet::ClaimAlphaSheet(std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas,
-                                 std::string explorerTxUrl, bool allowActions, Claimer claimer)
+                                 std::string explorerTxUrl, bool allowActions, Claimer claimer,
+                                 std::function<bool()> held)
     : progress_(std::move(progress)),
       gas_(std::move(gas)),
       explorerTxUrl_(std::move(explorerTxUrl)),
       allowActions_(allowActions),
-      claimer_(std::move(claimer)) {}
+      claimer_(std::move(claimer)),
+      held_(std::move(held)) {}
 
 void ClaimAlphaSheet::Build(XamlRoot const& root) {
   dialog_ = MakeDialog(root, Loc("claim_alpha_title"));
@@ -375,8 +385,9 @@ void ClaimAlphaSheet::Build(XamlRoot const& root) {
   content.Spacing(6);
   content.MinWidth(sheetfit::Width(root, 460));
 
-  // the figure: what is claimable now, over how many epochs
-  totalValue_ = MakeValue(hstring{FormatAlphaRao(progress_->TotalClaimableRao())}, 36);
+  // the figure: what is claimable now, over how many epochs; during a claim
+  // what the claim moves
+  totalValue_ = MakeValue(hstring{FormatAlphaRao(progress_->FigureRao())}, 36);
   content.Children().Append(totalValue_);
   acrossText_ = MakeText(
       hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(progress_->ClaimableCount()))}, 12,
@@ -553,7 +564,10 @@ UIElement ClaimAlphaSheet::BuildRow(Row const& row) {
 }
 
 void ClaimAlphaSheet::ApplyState() {
-  totalValue_.Text(hstring{FormatAlphaRao(progress_->TotalClaimableRao())});
+  // what is claimable, and during a claim what the claim moves, fixed until
+  // its Done (owner, 2026-11-12): never a 0 while it runs
+  const int64_t total = progress_->FigureRao();
+  totalValue_.Text(hstring{FormatAlphaRao(total)});
   acrossText_.Text(
       hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(progress_->ClaimableCount()))});
   gasBalanceValue_.Text(gas_.tao ? hstring{FormatTao(*gas_.tao) + L" TAO"} : hstring{L"-"});
@@ -564,11 +578,12 @@ void ClaimAlphaSheet::ApplyState() {
 
   progressRow_.Visibility(progress_->sending() ? Visibility::Visible : Visibility::Collapsed);
 
-  const int64_t total = progress_->TotalClaimableRao();
   claimButton_.Content(winrt::box_value(
       hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}));
-  // held while the claim in flight runs, in this dialog or one closed since
-  claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending());
+  // held while the claim in flight runs, in this dialog or one closed since,
+  // and while a v2 claim runs: the gas key sends one claim at a time
+  claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending() &&
+                         !Held());
   // Once every claimable epoch confirmed the button has nothing left to do and
   // says so by its figure ("Claim 0.0000"), which is disabled above.
 }
@@ -625,22 +640,23 @@ void ClaimAlphaSheet::OpenTx(std::string const& txHash) {
 
 std::shared_ptr<ClaimLedgerSheet> ClaimLedgerSheet::Create(
     XamlRoot const& root, std::shared_ptr<snpayout::LedgerClaimProgress> progress, GasKeyInfo gas,
-    std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer) {
+    std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer, std::function<bool()> held) {
   auto sheet = std::shared_ptr<ClaimLedgerSheet>(
       new ClaimLedgerSheet(std::move(progress), std::move(gas), std::move(explorerTxUrl),
-                           allowActions, std::move(claimer)));
+                           allowActions, std::move(claimer), std::move(held)));
   sheet->Build(root);
   return sheet;
 }
 
 ClaimLedgerSheet::ClaimLedgerSheet(std::shared_ptr<snpayout::LedgerClaimProgress> progress,
                                    GasKeyInfo gas, std::string explorerTxUrl, bool allowActions,
-                                   LedgerClaimer claimer)
+                                   LedgerClaimer claimer, std::function<bool()> held)
     : progress_(std::move(progress)),
       gas_(std::move(gas)),
       explorerTxUrl_(std::move(explorerTxUrl)),
       allowActions_(allowActions),
-      claimer_(std::move(claimer)) {}
+      claimer_(std::move(claimer)),
+      held_(std::move(held)) {}
 
 void ClaimLedgerSheet::Build(XamlRoot const& root) {
   dialog_ = MakeDialog(root, Loc("claim_alpha_title"));
@@ -858,8 +874,9 @@ void ClaimLedgerSheet::ApplyState() {
       progress_->ClaimsBoth()
           ? Loc("sn_ledger_claim_both")
           : 0 < total ? hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))} : Loc("claim")));
-  // held while the claim in flight runs, in this dialog or one closed since
-  claimButton_.IsEnabled(progress_->CanClaim(allowActions_));
+  // held while the claim in flight runs, in this dialog or one closed since,
+  // and while a v1 claim runs: the gas key sends one claim at a time
+  claimButton_.IsEnabled(progress_->CanClaim(allowActions_) && !Held());
   // with nothing Claim moves and no claim out (all claimed, or every row below
   // the claim minimum or unavailable) only Close is offered, never a Claim of 0
   claimButton_.Visibility(0 < total || progress_->sending() ? Visibility::Visible : Visibility::Collapsed);

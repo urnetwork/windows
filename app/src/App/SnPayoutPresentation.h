@@ -378,18 +378,17 @@ class LedgerClaimProgress {
   // The dialog's figure, which Claim names too. Between claims it is what
   // Claim moves (ClaimableRao). During a claim it is what the claim moves
   // (owner, 2026-11-12): the rows its press took, an amount the dialog knows
-  // above the floor, at their amounts as Start found them, but for each the
-  // SDK has said it sent nothing for since (needs_gas, the preflight's
-  // AmountTooLow, its pool unavailable). It does not fall as rows confirm, so
-  // it never reads 0 before Done, and it never counts a row under the floor
-  // or of an amount not known.
+  // above the floor, at their amounts as Start found them, fixed until Done
+  // as on Android, Linux and Apple. A row the SDK then sends nothing for says
+  // so on its own line (needs_gas: claimable, with the funding hint). It does
+  // not fall as rows confirm, so it never reads 0 before Done, and it never
+  // counts a row the dialog put under the floor or of an amount not known.
   int64_t FigureRao() const;
-  // FigureRao is a total to show. During a claim: while the claim moves
-  // something (with nothing left, no figure, never a zero). Between claims: a
-  // row not claimed yet is one Claim moves, or every row is claimed (or there
-  // is none), and the total is a true zero. While the rows left are all under
-  // the floor or unavailable, or of an amount not known yet, they say why
-  // rather than a zero (Android's dialog).
+  // FigureRao is a total to show. During a claim always (a press takes
+  // something). Between claims: a row not claimed yet is one Claim moves, or
+  // every row is claimed (or there is none), and the total is a true zero.
+  // While the rows left are all under the floor or unavailable, or of an
+  // amount not known yet, they say why rather than a zero (Android's dialog).
   bool TotalKnown() const;
   // Claim's button: actions allowed (a device session), something to claim
   // above the transfer floor, gas, and no claim out
@@ -397,7 +396,7 @@ class LedgerClaimProgress {
   // Claim's button says Claim both (sn_ledger_claim_both): the rows Claim
   // moves are exactly the operator pool's and capture the flag's
   // (ClaimsBothPools), which the one claim sends together. During a claim,
-  // whether FigureRao's rows are exactly those two.
+  // whether the press took exactly those two (FigureRao's rows).
   bool ClaimsBoth() const;
   // A row's title (PoolTitleKey): every row names its pool, and the one
   // operator pool beside capture the flag's (an account or a pool of the
@@ -429,8 +428,8 @@ class LedgerClaimProgress {
   LedgerClaimRow& RowFor(int64_t noId, int64_t index);
   // a row Claim moves (ClaimableRao, TotalKnown, ClaimsBoth, Start)
   bool Movable(const LedgerClaimRow& row) const;
-  // during a claim, a row it moves: one its press took that the SDK has not
-  // sent back to rest since (FigureRao, TotalKnown, ClaimsBoth)
+  // during a claim, a row it moves: one its press took (FigureRao,
+  // TotalKnown, ClaimsBoth)
   bool Moving(const LedgerClaimRow& row) const;
 
   std::vector<LedgerClaimRow> rows_;

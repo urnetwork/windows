@@ -260,18 +260,16 @@ int64_t LedgerClaimProgress::ClaimableRao() const {
   return total;
 }
 
-// during a claim, a row it moves: its press took it, and the SDK has not sent
-// it back to rest since (needs_gas, the preflight's AmountTooLow and its pool
-// unavailable each leave a taken row Idle); Sent, Confirmed and Failed are the
-// claim's
+// during a claim, a row it moves: one its press took, whatever the SDK says
+// of it since (every app, 2026-11-12: the figure is fixed at the press)
 bool LedgerClaimProgress::Moving(const LedgerClaimRow& row) const {
-  return row.pressRao > 0 && row.state != LedgerClaimState::Idle;
+  return row.pressRao > 0;
 }
 
 int64_t LedgerClaimProgress::FigureRao() const {
   if (!sending_) return ClaimableRao();
-  // at the amounts the press took, which a row moving along (Confirmed above
-  // all) never takes from it
+  // at the amounts the press took, which no row moving along (Confirmed above
+  // all) takes from it
   constexpr int64_t kMax = std::numeric_limits<int64_t>::max();
   int64_t total = 0;
   for (const LedgerClaimRow& row : rows_) {
@@ -282,7 +280,7 @@ int64_t LedgerClaimProgress::FigureRao() const {
 }
 
 bool LedgerClaimProgress::TotalKnown() const {
-  // with nothing it moves left, no figure, never a zero
+  // a press takes something (Start), so its figure is never a zero
   if (sending_) return FigureRao() > 0;
   bool left = false;
   for (const LedgerClaimRow& row : rows_) {

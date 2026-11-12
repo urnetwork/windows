@@ -159,6 +159,11 @@ class ClaimAlphaProgress {
 
   int64_t TotalClaimableRao() const;
   size_t ClaimableCount() const;
+  // The dialog's figure, which Claim names too: what is claimable, and during
+  // a claim what the claim moves, the epochs it sends as Start found them,
+  // fixed until Done (owner, 2026-11-12, as on Android, Linux and Apple), so
+  // it never falls to 0 as the epochs confirm.
+  int64_t FigureRao() const;
 
   // Claim pressed: every claimable epoch not confirmed yet is Sending, and
   // epochs() are the press's. False, changing nothing, while a claim is out
@@ -176,6 +181,8 @@ class ClaimAlphaProgress {
 
   std::vector<Row> rows_;
   std::vector<int64_t> epochs_;
+  // what the press in flight moves (FigureRao)
+  int64_t pressRao_ = 0;
   bool sending_ = false;
   bool needsGas_ = false;
 };
@@ -197,22 +204,28 @@ class ClaimAlphaSheet : public std::enable_shared_from_this<ClaimAlphaSheet> {
   // WalletPage::CanClaim(): false when there is no device session to send
   // with, in which case the dialog still opens and still READS but its one
   // action is disabled. The page reads the claims again after the claim's
-  // Done, whether or not the dialog is still up.
+  // Done, whether or not the dialog is still up. `held`: a claim of the other
+  // kind is in flight, which Claim waits for, as the gas key sends one claim
+  // at a time (the SDK reads its pending nonce as it signs, with no lock
+  // across the two kinds).
   static std::shared_ptr<ClaimAlphaSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root,
       std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas, std::string explorerTxUrl,
-      bool allowActions, Claimer claimer);
+      bool allowActions, Claimer claimer, std::function<bool()> held);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
   // Draws the progress again: the page calls it on each event of the claim
-  // in flight.
+  // in flight, and at the other kind's Done.
   void Redraw() { ApplyState(); }
 
  private:
   using Row = ClaimAlphaProgress::Row;
 
   ClaimAlphaSheet(std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas,
-                  std::string explorerTxUrl, bool allowActions, Claimer claimer);
+                  std::string explorerTxUrl, bool allowActions, Claimer claimer,
+                  std::function<bool()> held);
+  // a claim of the other kind is in flight
+  bool Held() const { return held_ && held_(); }
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void StartClaim();
@@ -228,6 +241,7 @@ class ClaimAlphaSheet : public std::enable_shared_from_this<ClaimAlphaSheet> {
   std::string explorerTxUrl_;
   bool allowActions_;
   Claimer claimer_;
+  std::function<bool()> held_;
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock totalValue_{nullptr};
@@ -257,22 +271,27 @@ class ClaimLedgerSheet : public std::enable_shared_from_this<ClaimLedgerSheet> {
   // opened again shows the claim as it went on, and its Claim waits for it;
   // between claims the claimable accounts and the unavailable pools of the
   // page's last read, at the claim relay's transfer floor
-  // (snpayout::LedgerClaimProgress). `explorerTxUrl` and `allowActions` as for
-  // ClaimAlphaSheet. The page reads the accounts again after the claim's Done,
-  // whether or not the dialog is still up.
+  // (snpayout::LedgerClaimProgress). `explorerTxUrl`, `allowActions` and
+  // `held` (a v1 claim in flight) as for ClaimAlphaSheet. The page reads the
+  // accounts again after the claim's Done, whether or not the dialog is still
+  // up.
   static std::shared_ptr<ClaimLedgerSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root,
       std::shared_ptr<snpayout::LedgerClaimProgress> progress, GasKeyInfo gas,
-      std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer);
+      std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer,
+      std::function<bool()> held);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
   // Draws the progress again: the page calls it on each event of the claim
-  // in flight.
+  // in flight, and at the other kind's Done.
   void Redraw() { ApplyState(); }
 
  private:
   ClaimLedgerSheet(std::shared_ptr<snpayout::LedgerClaimProgress> progress, GasKeyInfo gas,
-                   std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer);
+                   std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer,
+                   std::function<bool()> held);
+  // a v1 claim is in flight
+  bool Held() const { return held_ && held_(); }
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void StartClaim();
@@ -289,6 +308,7 @@ class ClaimLedgerSheet : public std::enable_shared_from_this<ClaimLedgerSheet> {
   std::string explorerTxUrl_;
   bool allowActions_;
   LedgerClaimer claimer_;
+  std::function<bool()> held_;
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock totalValue_{nullptr};

@@ -2619,6 +2619,8 @@ Claimer WalletPage::MakeClaimer() {
 // flight. After its Done the page reads the claims and the gas balance again,
 // which moves the tile and the history. A sign-out drops it (ResetForSignOut).
 bool WalletPage::StartV1Claim(std::shared_ptr<ClaimAlphaProgress> progress) {
+  // the gas key sends one claim at a time (StartV2Claim)
+  if (v2Claim_.InFlight()) return false;
   const std::optional<uint64_t> started = v1Claim_.Start(progress);
   if (!started) return false;
   const uint64_t ticket = *started;
@@ -2692,6 +2694,8 @@ void WalletPage::OnV1ClaimEvent(std::weak_ptr<ClaimAlphaProgress> const& claim,
 void WalletPage::OnV1ClaimDone(std::weak_ptr<ClaimAlphaProgress> const& claim, uint64_t ticket) {
   if (const auto progress = claim.lock()) progress->Done();
   if (claimSheet_) claimSheet_->Redraw();
+  // a v2 dialog up waited for this claim
+  if (v2ClaimSheet_) v2ClaimSheet_->Redraw();
   // no claim in flight from now, unless a sign-out dropped this one: the tile,
   // its Claim and the history follow the claims as the vault now has them
   if (v1Claim_.End(ticket)) {
@@ -2716,10 +2720,17 @@ winrt::fire_and_forget WalletPage::OnClaimAlpha(IInspectable const&, RoutedEvent
   // epochs as last read.
   std::shared_ptr<ClaimAlphaProgress> progress = v1Claim_.Progress();
   if (!progress) progress = std::make_shared<ClaimAlphaProgress>(claims_, gas.tao);
+  // and its Claim waits for a v2 claim in flight: the gas key sends one claim
+  // at a time (StartV2Claim)
+  auto page = w_.get_weak();
+  auto v2InFlight = [page] {
+    auto window = page.get();
+    return window && window->wallet().v2Claim_.InFlight();
+  };
   self->SetSheetOpen(true);
   try {
     claimSheet_ = urnw::ClaimAlphaSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,
-                                                ExplorerTxUrl(), allowActions, MakeClaimer());
+                                                ExplorerTxUrl(), allowActions, MakeClaimer(), v2InFlight);
     co_await self->wallet().claimSheet_->Dialog().ShowAsync();
   } catch (winrt::hresult_error const& e) {
     urnw::LogError("earnings: the claim sheet failed to open: {}",
@@ -2929,6 +2940,10 @@ LedgerClaimer WalletPage::MakeV2Claimer() {
 // line once the server reads it claimed. A sign-out drops it (ResetForSignOut).
 // The claim itself touches no URnetwork API.
 bool WalletPage::StartV2Claim(std::shared_ptr<snpayout::LedgerClaimProgress> progress) {
+  // The gas key sends one claim at a time: the SDK reads its pending nonce as
+  // it signs, with no lock across a v1 and a v2 claim, so two claims at once
+  // could take the same nonce (Linux's page holds one the same way).
+  if (v1Claim_.InFlight()) return false;
   const std::optional<uint64_t> started = v2Claim_.Start(progress);
   if (!started) return false;
   const uint64_t ticket = *started;
@@ -3013,6 +3028,8 @@ void WalletPage::OnV2ClaimDone(std::weak_ptr<snpayout::LedgerClaimProgress> cons
   // section's Claim follows the read again
   if (v2Claim_.End(ticket)) RebuildV2Section();
   if (v2ClaimSheet_) v2ClaimSheet_->Redraw();
+  // a v1 dialog up waited for this claim
+  if (claimSheet_) claimSheet_->Redraw();
 }
 
 winrt::fire_and_forget WalletPage::OnClaimV2(IInspectable const&, RoutedEventArgs const&) {
@@ -3034,10 +3051,17 @@ winrt::fire_and_forget WalletPage::OnClaimV2(IInspectable const&, RoutedEventArg
     progress = std::make_shared<snpayout::LedgerClaimProgress>(v2Accounts_, gas.tao, v2Unavailable_,
                                                                TransferFloorRao());
   }
+  // and its Claim waits for a v1 claim in flight: the gas key sends one claim
+  // at a time (StartV2Claim)
+  auto page = w_.get_weak();
+  auto v1InFlight = [page] {
+    auto window = page.get();
+    return window && window->wallet().v1Claim_.InFlight();
+  };
   self->SetSheetOpen(true);
   try {
     v2ClaimSheet_ = urnw::ClaimLedgerSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,
-                                                   ExplorerTxUrl(), allowActions, MakeV2Claimer());
+                                                   ExplorerTxUrl(), allowActions, MakeV2Claimer(), v1InFlight);
     co_await self->wallet().v2ClaimSheet_->Dialog().ShowAsync();
   } catch (winrt::hresult_error const& e) {
     urnw::LogError("earnings: the v2 claim sheet failed to open: {}",

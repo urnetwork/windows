@@ -217,6 +217,7 @@ func TestSettlementV2Wiring(t *testing.T) {
 	// dialog draws it again, and Done ends the claim in flight.
 	startV2 := functionBody(walletPage, "bool WalletPage::StartV2Claim(")
 	requireAll("WalletPage::StartV2Claim", startV2,
+		"if (v1Claim_.InFlight()) return false;",
 		"const std::optional<uint64_t> started = v2Claim_.Start(progress);",
 		"if (!started) return false;",
 		"const std::weak_ptr<snpayout::LedgerClaimProgress> claim = progress;",
@@ -239,6 +240,8 @@ func TestSettlementV2Wiring(t *testing.T) {
 		"if (const auto progress = claim.lock()) progress->Done();",
 		"if (v2Claim_.End(ticket)) RebuildV2Section();",
 		"if (v2ClaimSheet_) v2ClaimSheet_->Redraw();",
+		// a v1 dialog up waited for it
+		"if (claimSheet_) claimSheet_->Redraw();",
 	)
 	requireAll("WalletPage::MakeV2Claimer", functionBody(walletPage, "LedgerClaimer WalletPage::MakeV2Claimer("),
 		"return self && self->wallet().StartV2Claim(std::move(progress));",
@@ -277,7 +280,8 @@ func TestSettlementV2Wiring(t *testing.T) {
 	)
 	requireAll("ClaimLedgerSheet::ApplyState", sheet("void ClaimLedgerSheet::ApplyState("),
 		"needsGasPanel_.Visibility(progress_->needsGas() ? Visibility::Visible : Visibility::Collapsed);",
-		"claimButton_.IsEnabled(progress_->CanClaim(allowActions_));",
+		// and waits for a v1 claim in flight: the gas key sends one at a time
+		"claimButton_.IsEnabled(progress_->CanClaim(allowActions_) && !Held());",
 		"LedgerFailureText(progress_->failure())",
 	)
 	// Sent links the explorer; a failure says the store's sentence or the
@@ -469,7 +473,8 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		"progress = std::make_shared<snpayout::LedgerClaimProgress>(v2Accounts_, gas.tao, v2Unavailable_,",
 		"TransferFloorRao());",
 		"urnw::ClaimLedgerSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,",
-		"ExplorerTxUrl(), allowActions, MakeV2Claimer());")
+		"ExplorerTxUrl(), allowActions, MakeV2Claimer(), v1InFlight);",
+		"return window && window->wallet().v1Claim_.InFlight();")
 	requireOrder("WalletPage::OnClaimV2", openV2,
 		"= v2Claim_.Progress();", "if (!progress) {", "std::make_shared<snpayout::LedgerClaimProgress>(",
 		"urnw::ClaimLedgerSheet::Create(")
@@ -487,7 +492,7 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		"self->wallet().LoadCtfClient();",
 		"self->wallet().ReadCtfWinsAfterClaim(paid, session);")
 	requireOrder("WalletPage::StartV2Claim", claimer,
-		"v2Claim_.Start(", "ctfWinsAfterClaim_.Session();", "snpayout::WithClaimPaid(", "self->wallet().LoadCtfClient();",
+		"if (v1Claim_.InFlight()) return false;", "v2Claim_.Start(", "ctfWinsAfterClaim_.Session();", "snpayout::WithClaimPaid(", "self->wallet().LoadCtfClient();",
 		"self->wallet().ReadCtfWinsAfterClaim(paid, session);",
 		"snpayout::LedgerClaimCallbackFor<urnet::SnLedgerClaimCallback>(events)")
 	requireAll("WalletPage::ReadCtfWinsAfterClaim", body("WalletPage.cpp", page, "void WalletPage::ReadCtfWinsAfterClaim("),
@@ -671,6 +676,8 @@ func TestV1ClaimIsTheSessions(t *testing.T) {
 		"return self && self->wallet().StartV1Claim(std::move(progress));")
 	start := body("WalletPage.cpp", page, "bool WalletPage::StartV1Claim(")
 	requireAll("WalletPage::StartV1Claim", start,
+		// one claim at a time: none while a v2 claim is in flight
+		"if (v2Claim_.InFlight()) return false;",
 		"const std::optional<uint64_t> started = v1Claim_.Start(progress);",
 		"if (!started) return false;",
 		"const std::weak_ptr<ClaimAlphaProgress> claim = progress;",
@@ -685,12 +692,16 @@ func TestV1ClaimIsTheSessions(t *testing.T) {
 		"if (claimSheet_) claimSheet_->Redraw();")
 	requireAll("WalletPage::OnV1ClaimDone", body("WalletPage.cpp", page, "void WalletPage::OnV1ClaimDone("),
 		"if (const auto progress = claim.lock()) progress->Done();",
-		"if (v1Claim_.End(ticket)) {", "LoadClaims();", "LoadGas();")
+		"if (v1Claim_.End(ticket)) {", "LoadClaims();", "LoadGas();",
+		// a v2 dialog up waited for it
+		"if (v2ClaimSheet_) v2ClaimSheet_->Redraw();")
 	open := body("WalletPage.cpp", page, "winrt::fire_and_forget WalletPage::OnClaimAlpha(")
 	requireAll("WalletPage::OnClaimAlpha", open,
 		"std::shared_ptr<ClaimAlphaProgress> progress = v1Claim_.Progress();",
 		"if (!progress) progress = std::make_shared<ClaimAlphaProgress>(claims_, gas.tao);",
-		"urnw::ClaimAlphaSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,")
+		"urnw::ClaimAlphaSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,",
+		"ExplorerTxUrl(), allowActions, MakeClaimer(), v2InFlight);",
+		"return window && window->wallet().v2Claim_.InFlight();")
 	claims := body("WalletPage.cpp", page, "void WalletPage::ApplyClaims(")
 	requireAll("WalletPage::ApplyClaims", claims,
 		"w_.ClaimButton().IsEnabled(v1Claim_.InFlight());",
@@ -710,7 +721,14 @@ func TestV1ClaimIsTheSessions(t *testing.T) {
 	}
 	requireAll("ClaimAlphaSheet::ApplyState", body("EarningsSheets.cpp", sheets, "void ClaimAlphaSheet::ApplyState("),
 		"for (auto const& row : progress_->rows()) rowsPanel_.Children().Append(BuildRow(row));",
-		"claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending());")
+		// the figure: during a claim what it moves, fixed at the press
+		"const int64_t total = progress_->FigureRao();",
+		"totalValue_.Text(hstring{FormatAlphaRao(total)});",
+		// held by its own claim and by a v2 claim in flight
+		"claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending() &&",
+		"!Held());")
+	requireAll("ClaimAlphaProgress::FigureRao", body("EarningsSheets.cpp", sheets, "int64_t ClaimAlphaProgress::FigureRao() const"),
+		"return sending_ ? pressRao_ : TotalClaimableRao();")
 	// the events' rows, moved from the dialog's handlers unchanged
 	requireAll("ClaimAlphaProgress::Failed", body("EarningsSheets.cpp", sheets, "void ClaimAlphaProgress::Failed("),
 		`if (MentionsExpiry(message)) row->claim.status = "expired";`, "if (MentionsGas(message)) needsGas_ = true;")
