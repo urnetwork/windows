@@ -153,6 +153,7 @@ var catalogNonLookupLiteralReasons = map[string]string{
 	"developer": "a --preview-ui destination (MainWindow.xaml.cpp)",
 	"dns_pill_defaults": "the sdk's id for the defaults pill, android's key for the text the dns card " +
 		"shows from dns_pill_default (DnsPresetPresentation.h kPillDefaultsId)",
+	"extender":   "the sdk's capture the flag role of a win (SnPayoutPresentation.h kCtfRoleExtender)",
 	"key":        "a JSON field (SdkHost.cpp, VlessPresentation.h)",
 	"other":      "a CLDR plural category (Localization.cpp)",
 	"provide":    "an onboarding step id (OnboardingRouting.h)",

@@ -375,15 +375,25 @@ class WalletPage {
   const EpochClaim* ClaimForEpoch(int64_t epoch) const;
 
   // ---- settlement v2
-  // The read's answer: its state and, when Ready, the accounts (a failed read
-  // and a missing device session leave none).
+  // The read's answer: its state and, when Ready, the accounts and the pools
+  // it could not read (a failed read and a missing device session leave none).
   void ApplyV2Accounts(snpayout::LedgerFetch fetch,
-                       std::vector<snpayout::LedgerAccount> const& accounts);
+                       std::vector<snpayout::LedgerAccount> const& accounts,
+                       std::vector<snpayout::UnavailablePool> const& unavailable);
   // The section beside the v1 tile (snpayout::LedgerSectionFor), from the
   // coldkey, the chain settings, the read and the device.
   void RebuildV2Section();
   // The chain settings name a vault2 (Vault2Address): v2 claims are configured.
   bool Vault2Configured() const;
+  // The claim relay's transfer floor in rao of α at its last price, under
+  // which a claim reverts; 0 while the relay has not said.
+  int64_t TransferFloorRao() const;
+  // Capture the flag's won-slot line (GET /sn/ctf/client, the sdk's
+  // SnCtfClient): this client's latest win, read with the Earnings reads, and
+  // the answer to read number `read`, dropped unless it is the newest read's.
+  // Drawn with the settlement v2 section's capture the flag account.
+  void LoadCtfClient();
+  void ApplyCtfClient(uint32_t read, std::optional<snpayout::CtfWin> win);
   // The SDK's v2 claim, wrapped for the v2 dialog (Device.snLedgerClaim); after
   // its Done the page reads the accounts and the gas balance again.
   LedgerClaimer MakeV2Claimer();
@@ -612,9 +622,15 @@ class WalletPage {
   std::optional<snpayout::EpochSchedule> schedule_;
   std::optional<GasKeyInfo> gas_;
   bool chainSynced_ = false;
-  // settlement v2: the read, and the accounts it answered with
+  // settlement v2: the read, the accounts it answered with, and the pools it
+  // could not read (capture the flag's or the provider pool's), each shown as
+  // unavailable beside the others
   snpayout::LedgerFetch v2Fetch_ = snpayout::LedgerFetch::Loading;
   std::vector<snpayout::LedgerAccount> v2Accounts_;
+  std::vector<snpayout::UnavailablePool> v2Unavailable_;
+  // capture the flag: the newest read's number and this client's latest win
+  uint32_t ctfClientGeneration_ = 0;
+  std::optional<snpayout::CtfWin> ctfWin_;
   // the payout consent: the read (Idle until a session asks for it), the
   // consent it answered with (none before an answer and after a failed read),
   // and whether a signing is out (the challenge, the wallet, the submission)

@@ -802,6 +802,10 @@ void ClaimRelaySheet::Build(XamlRoot const& root) {
     if (!coldkey.empty()) {
       content.Children().Append(Line(hstring{urnw::Format("sn_claim_relay_lands_on", ShortAddress(coldkey))}));
     }
+    // a row per pool under the figure (the claim status sums the coldkey's
+    // pools): capture the flag's beside the provider pool's, and a pool it
+    // could not read, never as a zero
+    if (auto rows = btkeyviews::MakeRelayPoolRows(*status_)) content.Children().Append(rows);
     StackPanel section;
     section.Spacing(8);
     btkeyviews::DrawRelaySection(section, *status_, /*inSheet=*/true, nullptr, nullptr);
