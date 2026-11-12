@@ -233,13 +233,15 @@ std::string ControlDohText(const std::vector<std::string>& urls);
 const char* ControlDohErrorKey(std::string_view errorId);
 
 // What the block says for the sdk's answer to setControlDohUrls. Only "" is
-// saved, with the next-connect note (the service imports the space at its next
-// StartTunnel); any other answer saved nothing, and its message is
-// ControlDohErrorKey's.
+// saved; any other answer saved nothing, and its message is
+// ControlDohErrorKey's. A save has no next-connect note: the service's running
+// session takes the servers in place, from the app's set_ingress_dns and from
+// the sdk's device remote (sdk device_remote_ingress_dns.go).
 struct ControlDohSaveOutcome {
   bool saved = false;
   // a store key, never an sdk id
   const char* messageKey = "";
+  // never set now; kept so the block's note line stays wired
   bool nextConnectNote = false;
 };
 
