@@ -984,6 +984,9 @@ void UpgradeSheet::BeginCheckout() {
   hostedFallbackTried_ = false;
   purchaseEmitted_ = false;
   paySheetActive_ = false;
+  paySheetSubscriptionId_.clear();
+  checkoutSessionId_.clear();
+  cardPaymentReported_ = false;
   // the card's purchase, whatever an earlier invoice of this sheet was
   purchaseMethod_ = cryptopay::kMethodCard;
   purchasePriceUsd_ = 0;
@@ -1018,6 +1021,8 @@ void UpgradeSheet::RequestPaymentSheet() {
         // trial defers the charge), the PaymentIntent for monthly
         std::string clientSecret;
         std::string publishableKey;
+        // what the finished payment is reported by (ReportCardPayment)
+        std::string subscriptionId;
         const PurchaseRefusal refusal =
             result && result->error ? PurchaseRefusalFor(result->error->code.value_or(std::string()))
                                     : PurchaseRefusal::PaymentError;
@@ -1029,9 +1034,10 @@ void UpgradeSheet::RequestPaymentSheet() {
             clientSecret = *result->payment_intent_client_secret;
           }
           if (result->publishable_key) publishableKey = *result->publishable_key;
+          if (result->subscription_id) subscriptionId = *result->subscription_id;
         }
         if (err) LogWarn("upgrade: payment sheet failed: {}", *err);
-        queue.TryEnqueue([weak, clientSecret, publishableKey, refusal] {
+        queue.TryEnqueue([weak, clientSecret, publishableKey, subscriptionId, refusal] {
           auto self = weak.lock();
           if (!self || self->closed_) return;
           if (refusal == PurchaseRefusal::AddSignIn) {
@@ -1043,6 +1049,7 @@ void UpgradeSheet::RequestPaymentSheet() {
             self->RequestSession(/*embedded=*/true);
             return;
           }
+          self->paySheetSubscriptionId_ = subscriptionId;
           self->OpenPaySheet(clientSecret, publishableKey);
         });
       });
@@ -1100,6 +1107,7 @@ winrt::fire_and_forget UpgradeSheet::OpenPaySheet(std::string clientSecret,
         // died after the form rendered: the card may have been charged —
         // confirm with the server rather than inviting a second purchase
         self->waitingBodyText_.Text(Loc("checkout_interrupted_confirming"));
+        self->ReportCardPayment(/*paySheet=*/true);
         self->balance_.StartConfirmationPolling();
         self->ShowPage(Page::Waiting);
         return;
@@ -1213,8 +1221,11 @@ void UpgradeSheet::RequestSession(bool embedded) {
             result && result->checkout_url ? *result->checkout_url : std::string();
         const std::string clientSecret =
             result && result->client_secret ? *result->client_secret : std::string();
+        // what the finished payment is reported by (ReportCardPayment)
+        const std::string sessionId =
+            result && result->session_id ? *result->session_id : std::string();
         const std::string transportError = err ? *err : std::string();
-        queue.TryEnqueue([weak, embedded, refused, refusalText, url, clientSecret,
+        queue.TryEnqueue([weak, embedded, refused, refusalText, url, clientSecret, sessionId,
                           transportError, refusal] {
           auto self = weak.lock();
           if (!self || self->closed_) return;
@@ -1223,6 +1234,8 @@ void UpgradeSheet::RequestSession(bool embedded) {
             self->RefuseForGuest();
             return;
           }
+          // the session this attempt goes on with; a fallback's replaces it
+          self->checkoutSessionId_ = sessionId;
           if (embedded) {
             // Any embedded failure — transport, server error, or a session
             // without a client_secret — retries once as hosted: nothing has
@@ -1278,8 +1291,10 @@ winrt::fire_and_forget UpgradeSheet::LaunchHosted(std::string url) {
   self->subscribeButton_.IsEnabled(true);
   self->plans_.SetEnabled(true);
   self->methods_.SetEnabled(true);
-  // bridge the webhook gap: poll until the server confirms Pro
+  // bridge the webhook gap: report the session now (the sdk asks again while
+  // the browser payment is pending) and poll until the server confirms Pro
   self->waitingBodyText_.Text(Loc("checkout_opened_in_browser"));
+  self->ReportCardPayment(/*paySheet=*/false);
   self->balance_.StartConfirmationPolling();
   self->ShowPage(Page::Waiting);
 }
@@ -1347,6 +1362,7 @@ winrt::fire_and_forget UpgradeSheet::OpenEmbedded(std::string clientSecret) {
         // copy saying the plan updates automatically if the payment went
         // through. (ShowPage(Waiting) also tears the dead webview down.)
         self->waitingBodyText_.Text(Loc("checkout_interrupted_confirming"));
+        self->ReportCardPayment(/*paySheet=*/false);
         self->balance_.StartConfirmationPolling();
         self->ShowPage(Page::Waiting);
         return;
@@ -1401,13 +1417,16 @@ winrt::fire_and_forget UpgradeSheet::OpenEmbedded(std::string clientSecret) {
 void UpgradeSheet::HandleCheckoutCallback(std::string const& uri) {
   // the checkout bridge's hand-back is the SDK's envelope; the pay page's
   // (urnetwork://pay/done, urnetwork://pay/error?errorMessage=) is this sheet's
+  const bool checkoutRedirect = urnet::isCheckoutRedirect(uri);
   bool complete = false;
+  std::string sessionId;
   std::string errorCode;
   std::string errorMessage;
-  if (urnet::isCheckoutRedirect(uri)) {
+  if (checkoutRedirect) {
     try {
       if (auto redirect = urnet::parseCheckoutRedirect(uri)) {
         complete = redirect->Complete;
+        sessionId = redirect->SessionId;
         errorCode = redirect->ErrorCode;
         errorMessage = redirect->ErrorMessage;
       }
@@ -1422,9 +1441,12 @@ void UpgradeSheet::HandleCheckoutCallback(std::string const& uri) {
     }
   }
   if (complete) {
-    // Paid inside the webview. The server only believes the Stripe payment
-    // webhook — a client saying "I paid" is not evidence — so bridge the gap
-    // with the same confirmation poll as hosted checkout.
+    // Paid inside the webview. A client saying "I paid" is not evidence, so
+    // the report hands the server the payment's id to read back from Stripe
+    // (the session the bridge names, else the one it was opened with), and
+    // the same confirmation poll as hosted checkout shows the result.
+    if (!sessionId.empty()) checkoutSessionId_ = sessionId;
+    ReportCardPayment(/*paySheet=*/!checkoutRedirect);
     waitingBodyText_.Text(Loc("processing_payment"));
     balance_.StartConfirmationPolling();
     ShowPage(Page::Waiting);
@@ -1462,6 +1484,41 @@ void UpgradeSheet::FallBackToHosted() {
   subscribeRing_.IsActive(true);
   checkoutErrorText_.Visibility(Visibility::Collapsed);
   RequestSession(/*embedded=*/fromPaySheet);
+}
+
+void UpgradeSheet::ReportCardPayment(bool paySheet) {
+  // once: the pay page can both post its result and navigate to the return url
+  if (cardPaymentReported_ || !sdk_.IsLoggedIn()) return;
+  // exactly one id; a server that answered none leaves the webhook to credit it
+  urnet::VerifyStripeCheckoutArgs args;
+  if (paySheet) {
+    if (paySheetSubscriptionId_.empty()) return;
+    args.subscription_id = paySheetSubscriptionId_;
+  } else {
+    if (checkoutSessionId_.empty()) return;
+    args.session_id = checkoutSessionId_;
+  }
+  cardPaymentReported_ = true;
+  auto queue = dialog_.DispatcherQueue();
+  auto weak = weak_from_this();
+  sdk_.api().reportStripePurchase(
+      args, [queue, weak](std::optional<urnet::VerifyStorePurchaseResult> result,
+                          std::optional<std::string> err) {
+        // the api callback runs on an sdk thread, once, after the sdk's retries
+        if (err) LogWarn("upgrade: card payment report failed: {}", *err);
+        const std::string status = result ? result->status : std::string();
+        if (!status.empty()) LogInfo("upgrade: card payment report: {}", status);
+        queue.TryEnqueue([weak, status] {
+          auto self = weak.lock();
+          if (!self) return;
+          // the server holds the credit: read the balance now, which also
+          // takes a timed-out wait to the success page
+          if (status == urnet::PurchaseReportStatusCredited ||
+              status == urnet::PurchaseReportStatusAlreadyCredited) {
+            self->balance_.Refresh();
+          }
+        });
+      });
 }
 
 void UpgradeSheet::TeardownWebView() {

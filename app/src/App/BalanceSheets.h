@@ -119,6 +119,8 @@ class DataInfoSheet {
 // ---- Upgrade to UR Pro -------------------------------------------------------
 // Product cards (yearly / monthly) → Stripe checkout → waiting state while the
 // balance store's confirmation poll runs → purchase-success (or timeout) state.
+// The finished card payment is also reported to the server by its Stripe id
+// (ReportCardPayment), so a late webhook no longer keeps a paid plan on Free.
 // macOS UpgradeSubscriptionSheet parity, with the checkout leg swapped from
 // StoreKit to a Stripe session (linux UpgradeSheet parity):
 //   - embedded first: the ur.io/checkout bridge page in a WebView2, which
@@ -259,6 +261,13 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   void HandleCheckoutCallback(std::string const& uri);
   // The embedded leg failed before Stripe's form rendered: retry as hosted.
   void FallBackToHosted();
+  // Hands the server the id this attempt's card payment started with
+  // (Api::reportStripePurchase), so it reads the payment back from Stripe
+  // instead of waiting for the webhook: the payment sheet's subscription, or
+  // the checkout session's. Called where the confirmation poll starts, once
+  // per attempt; the sdk asks again while the answer is pending. A credited
+  // answer reads the balance at once; the page still follows the balance.
+  void ReportCardPayment(bool paySheet);
   void TeardownWebView();
   void ShowPage(Page page);
   void ShowCheckoutError(winrt::hstring const& message);
@@ -304,6 +313,12 @@ class UpgradeSheet : public std::enable_shared_from_this<UpgradeSheet> {
   bool checkoutPageLoaded_ = false;   // the ur.io page rendered at least once
   bool hostedFallbackTried_ = false;  // one embedded→hosted rescue per attempt
   uint32_t webviewGeneration_ = 0;    // drops async results of a torn-down webview
+  // the Stripe ids the server answered for this attempt, which
+  // ReportCardPayment reports: the payment sheet's subscription and the
+  // checkout session (embedded or hosted) of the latest leg
+  std::string paySheetSubscriptionId_;
+  std::string checkoutSessionId_;
+  bool cardPaymentReported_ = false;  // ReportCardPayment ran for this attempt
 
   // ---- crypto (crypto-pay CONTRACT §6) ----
   PaymentMethodRow methods_;  // Card, then the sdk's coin tabs, above the button
