@@ -386,14 +386,15 @@ class WalletPage {
   // The chain settings name a vault2 (Vault2Address): v2 claims are configured.
   bool Vault2Configured() const;
   // The claim relay's transfer floor in rao of α at its last price, under
-  // which a claim reverts; 0 while the relay has not said.
+  // which the chain refuses a claim; 0 while the relay has not said.
   int64_t TransferFloorRao() const;
-  // Capture the flag's won-slot line (GET /sn/ctf/client, the sdk's
-  // SnCtfClient): this client's latest win, read with the Earnings reads, and
-  // the answer to read number `read`, dropped unless it is the newest read's.
-  // Drawn with the settlement v2 section's capture the flag account.
+  // Capture the flag's won-slot lines (GET /sn/ctf/client, the sdk's
+  // SnCtfClient): a line for every win not claimed yet, read with the Earnings
+  // reads, and the answer to read number `read`, dropped unless it is the
+  // newest read's. Drawn with the settlement v2 section's capture the flag
+  // account.
   void LoadCtfClient();
-  void ApplyCtfClient(uint32_t read, std::optional<snpayout::CtfWin> win);
+  void ApplyCtfClient(uint32_t read, std::vector<snpayout::CtfWin> wins);
   // The SDK's v2 claim, wrapped for the v2 dialog (Device.snLedgerClaim); after
   // its Done the page reads the accounts and the gas balance again.
   LedgerClaimer MakeV2Claimer();
@@ -628,9 +629,10 @@ class WalletPage {
   snpayout::LedgerFetch v2Fetch_ = snpayout::LedgerFetch::Loading;
   std::vector<snpayout::LedgerAccount> v2Accounts_;
   std::vector<snpayout::UnavailablePool> v2Unavailable_;
-  // capture the flag: the newest read's number and this client's latest win
+  // capture the flag: the newest read's number and the wins not claimed yet,
+  // newest first
   uint32_t ctfClientGeneration_ = 0;
-  std::optional<snpayout::CtfWin> ctfWin_;
+  std::vector<snpayout::CtfWin> ctfWins_;
   // the payout consent: the read (Idle until a session asks for it), the
   // consent it answered with (none before an answer and after a failed read),
   // and whether a signing is out (the challenge, the wallet, the submission)
