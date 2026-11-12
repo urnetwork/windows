@@ -2417,8 +2417,9 @@ bool TunnelController::SetProvideExtenderPortMapping(bool on, std::string& error
             kStopLockBudget.count());
     return false;
   }
-  // the provide extender setting's rule (Common/ProvideLifecycle.h) for the two
-  // devices; the space alone cannot take this setting
+  // the provide extender setting's rule (Common/ProvideLifecycle.h), as the
+  // measurements setting's: the same space holds it, and the same devices read
+  // it
   const provide::ExtenderSettingTarget target = provide::ExtenderSettingTargetFor(
       providerDevice_ != nullptr, device_ != nullptr, spaceManager_ && lastSpaceKey_);
   try {
@@ -2433,15 +2434,24 @@ bool TunnelController::SetProvideExtenderPortMapping(bool on, std::string& error
       case provide::ExtenderSettingTarget::SessionDevice:
         device_->setProvideExtenderPortMapping(on);
         break;
-      case provide::ExtenderSettingTarget::NetworkSpace:
+      case provide::ExtenderSettingTarget::NetworkSpace: {
+        // Between two devices: the space the last device ran in keeps it
+        // (the sdk's LocalState), and the next device of either kind reads it
+        // from there as its role starts, so the toggle is not dropped. Nothing
+        // asks the router meanwhile.
+        urnet::NetworkSpace space = spaceManager_->getNetworkSpace(lastSpaceKey_);
+        if (!space) {
+          error = "the last device's network space is gone";
+          LogWarn("provide: set_provide_extender_port_mapping refused: {}", error);
+          return false;
+        }
+        space.getAsyncLocalState().getLocalState().setProvideExtenderPortMapping(on);
+        break;
+      }
       case provide::ExtenderSettingTarget::None:
-        // The sdk writes this setting only through a device: a space has no
-        // setter for it. The app shows the switch only over a running device's
-        // status, and its next status shows the setting as it stands.
-        error = "no device runs in this service, and the router port mapping setting is written "
-                "only through one";
-        LogWarn("provide: set_provide_extender_port_mapping refused ({}): {}",
-                provide::ToString(target), error);
+        error = "no device has run in this service yet, so there is no network space to keep the "
+                "setting in";
+        LogWarn("provide: set_provide_extender_port_mapping refused: {}", error);
         return false;
     }
   } catch (const std::exception&) {
@@ -3099,8 +3109,8 @@ proto::ProviderStats TunnelController::ProviderStats() {
     // (SetMeasurementsEnabled)
     stats.measurements_enabled = providerMeasurementsSetting_;
     stats.measurements_enabled_writable = true;
-    // and the router port mapping setting, which it writes through this device
-    // (SetProvideExtenderPortMapping)
+    // and the router port mapping setting, which this service writes the same
+    // way (SetProvideExtenderPortMapping)
     stats.provide_extender_port_mapping = providerPortMappingSetting_;
     stats.provide_extender_port_mapping_writable = true;
   }

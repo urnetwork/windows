@@ -2314,6 +2314,17 @@ void ConnectPage::ApplyPortMappingRow() {
   // the speed tests switch, and over the provider-only device's status only
   // when the service takes this write too.
   w_.PortMappingRow().Visibility(model.visible ? Visibility::Visible : Visibility::Collapsed);
+  // The status line under the description, the model's alone: what the role
+  // last said the router did, while the switch is on; never the router's own
+  // words. A pushed status, a flip's guess and a new language all repaint it.
+  const hstring status{urnw::PortMappingStatusText(model)};
+  w_.PortMappingStatus().Text(status);
+  const bool statusShown = !model.statusKey.empty();
+  w_.PortMappingStatus().Visibility(statusShown ? Visibility::Visible : Visibility::Collapsed);
+  // the switch is named by its title (LabeledBy in the markup) and carries the
+  // line as its help text, as the Extender switch carries its state
+  winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetHelpText(
+      w_.PortMappingToggle(), status);
   // the switch is the setting, off until the user turns it on, read beside the
   // status; the echo guard keeps the repaint from writing it back
   if (w_.PortMappingToggle().IsOn() != model.on) {

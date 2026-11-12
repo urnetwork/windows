@@ -483,11 +483,10 @@ struct SetMeasurementsEnabled {
 // ports (tcp 443, udp 443 and udp 4053) to this device, which opens them on the
 // router. Off until the user turns it on, on every app (owner, 2026-11-11; the
 // miner turns it on). Like the provide extender setting it belongs to the
-// network space (`.provide_extender_port_mapping`) and every device reads it
-// from its space when it starts, but it is written only through a device that
-// runs (provide::ExtenderSettingTargetFor's two device targets): the sdk has
-// no setter for it on a space alone, so with no device the service refuses
-// it. Sent only over a status whose
+// network space (`.provide_extender_port_mapping`), every device reads it from
+// its space when it starts, and it is written through the same targets
+// (provide::ExtenderSettingTargetFor), with no device into the space the last
+// device ran in. Sent only over a status whose
 // ProviderStats::provide_extender_port_mapping_writable said the service takes
 // it.
 struct SetProvideExtenderPortMapping {
@@ -765,7 +764,13 @@ struct ProviderStats {
   // The provider extender role on the device (EXTENDER.md N2, N7): the status
   // its listener pushed last (Device::getExtenderProvideStatus before the
   // first), null when none was read, and the setting read beside it
-  // (Device::getProvideExtender).
+  // (Device::getProvideExtender). Whole, so the router port mapping's state
+  // and its two texts (PortMapping, PortMappingMethodName, PortMappingPorts,
+  // connect EXTENDER.md S10) ride it as they do a session's status, and the
+  // line under the port mapping switch reads the same either way; a status
+  // from a service built before the texts reads them empty, which shows no
+  // line. The app's view reads nothing else of the port mapping
+  // (ExtenderProvideStatusViewOf).
   nlohmann::json extender_provide_status;
   bool provide_extender = false;
   // The service takes set_provide_extender for that setting, sent with the

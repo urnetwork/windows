@@ -245,13 +245,13 @@ class TunnelController {
   bool SetMeasurementsEnabled(bool on, std::string& error);
   // The router port mapping switch while there is no session
   // (set_provide_extender_port_mapping, connect EXTENDER.md S8). Writes the
-  // router port mapping setting through the device SetProvideExtender would
-  // write, under the same budget: the provider-only device (applied at once, a
-  // running role replaced by one that asks the router to forward its ports or
-  // removes what it forwards, and in the next get_provider_stats) or a
-  // session's device. Never into a space alone: the sdk has no setter for it
-  // there, so with no device it refuses. False with `error` when nothing took
-  // it.
+  // router port mapping setting where SetMeasurementsEnabled writes the
+  // measurements setting, by the same rule and under the same budget: the
+  // provider-only device (applied at once, a running role replaced by one that
+  // asks the router to forward its ports or removes what it forwards, and in
+  // the next get_provider_stats), a session's device, or the space the last
+  // device ran in, which the next device's role starts with. False with
+  // `error` when nothing took it.
   bool SetProvideExtenderPortMapping(bool on, std::string& error);
   // reset_extenders (Protocol.h ResetExtenders; connect EXTENDER.md E7): the
   // app reset its own space and hands the reset's id here. Applied to the

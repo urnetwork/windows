@@ -3,8 +3,9 @@
 // and word, the panel's "N of M" and event rate, the settings form's text and
 // placeholders, whether the form's reset is live, the bootstrap DNS-over-HTTPS
 // servers box and its messages, the share screen's QR placement, whether an
-// import may proceed, the provider extender row's dot, text and switch, and
-// which of the Earnings page's provider and extender statistics sections show.
+// import may proceed, the provider extender row's dot, text and switch, the
+// router port mapping switch's status line, and which of the Earnings page's
+// provider and extender statistics sections show.
 //
 // It is all here, and it is all pure, for the reason IpFamilyStatus.h gives:
 // the windows solution has no test project and a WinUI 3 app cannot even be
@@ -403,11 +404,22 @@ inline constexpr const char* kExtenderProvideErrorActivationFailed = "activation
 inline constexpr const char* kExtenderProvideErrorActivationRefused = "activation_refused";
 inline constexpr const char* kExtenderProvideErrorActivationUnreachable = "activation_unreachable";
 
+// The SDK's ExtenderPortMapping tokens, the router port mapping's state in the
+// status (connect EXTENDER.md S10), empty while no role runs. Mirrors
+// urnet::ExtenderPortMapping* as the tokens above mirror theirs.
+inline constexpr const char* kExtenderPortMappingOff = "off";
+inline constexpr const char* kExtenderPortMappingNotNeeded = "not_needed";
+inline constexpr const char* kExtenderPortMappingMapping = "mapping";
+inline constexpr const char* kExtenderPortMappingMapped = "mapped";
+inline constexpr const char* kExtenderPortMappingFailed = "failed";
+
 // As much of the SDK's ExtenderProvideStatus as the apps read (N7), with the
 // setting read beside it. The SDK derived `state` and `errorCase` once from the
 // fields this leaves out (RevokedTime, Listening, ListenError, StartError,
 // TcpUnavailableError, LastActivationError), so nothing here re-derives that
-// rule.
+// rule. Of the router port mapping's reading (S10) it holds the state and the
+// two texts an app may show, never PortMappingError or PortMappingExternalIp:
+// the router's words can name an address, and they stay in the device's log.
 //
 //   refused          LastActivationRefused: in the active state, whether
 //                    `reason` (the other family's text) is a refusal
@@ -448,6 +460,16 @@ inline constexpr const char* kExtenderProvideErrorActivationUnreachable = "activ
 //                    provide_extender_port_mapping_writable). A service from
 //                    before set_provide_extender_port_mapping does not, and
 //                    that switch stays hidden over its status (N1).
+//   portMapping      PortMapping: the router port mapping's state as the role
+//                    reports it (kExtenderPortMapping*), empty while no role
+//                    runs. The role's report, not the switch's position.
+//   portMappingMethodName, portMappingPorts
+//                    PortMappingMethodName ("PCP", "NAT-PMP", "UPnP") and
+//                    PortMappingPorts ("TCP 443, UDP 443, UDP 4053", or
+//                    "TCP 40443→443" for a port the router moved): how the
+//                    router was asked and what it forwards, the same in every
+//                    language, empty unless mapped. The status line's two
+//                    texts.
 //
 // A default-constructed view is "no session": unsupported, so both rows hide.
 struct ExtenderProvideStatusView {
@@ -466,6 +488,9 @@ struct ExtenderProvideStatusView {
   bool measurementsServiceWritable = false;
   bool provideExtenderPortMapping = false;
   bool portMappingServiceWritable = false;
+  std::string portMapping;
+  std::string portMappingMethodName;
+  std::string portMappingPorts;
 
   // The device pushes a status after any change of the setting, the provide
   // state or the role, coalesced to one status per epoch and never on
@@ -483,6 +508,9 @@ struct ExtenderProvideStatusView {
            measurementsServiceWritable == o.measurementsServiceWritable &&
            provideExtenderPortMapping == o.provideExtenderPortMapping &&
            portMappingServiceWritable == o.portMappingServiceWritable &&
+           portMapping == o.portMapping &&
+           portMappingMethodName == o.portMappingMethodName &&
+           portMappingPorts == o.portMappingPorts &&
            serviceWritable == o.serviceWritable;
   }
   bool operator!=(const ExtenderProvideStatusView& o) const { return !(*this == o); }
@@ -494,7 +522,10 @@ struct ExtenderProvideStatusView {
 // for a setting it may not have (N1). Those are the provide extender setting
 // and the two that ride on the role, the lag.dev measurements setting and the
 // router port mapping setting. Generic over the status type so the host tests
-// hand it every field of urnet::ExtenderProvideStatus by the SDK's names.
+// hand it every field of urnet::ExtenderProvideStatus by the SDK's names. A
+// session's device's status and the provider-only device's (the service's
+// document, Protocol.h ExtenderProvideStatusOf) both come through here, so the
+// rows and the port mapping line read the same on either.
 template <typename Status, typename ReadSetting, typename ReadMeasurements,
           typename ReadPortMapping>
 ExtenderProvideStatusView ExtenderProvideStatusViewOf(const std::optional<Status>& status,
@@ -511,6 +542,11 @@ ExtenderProvideStatusView ExtenderProvideStatusViewOf(const std::optional<Status
   view.activatedV6 = status->ActivatedV6;
   view.refused = status->LastActivationRefused;
   view.enabled = status->Enabled;
+  // the router port mapping's state and the two texts the line may show (S10),
+  // never PortMappingError or PortMappingExternalIp
+  view.portMapping = status->PortMapping;
+  view.portMappingMethodName = status->PortMappingMethodName;
+  view.portMappingPorts = status->PortMappingPorts;
   view.provideExtender = readSetting();
   view.measurementsEnabled = readMeasurements();
   view.provideExtenderPortMapping = readPortMapping();
@@ -651,18 +687,56 @@ ExtenderProvideStatusView SpeedTestsGuessFor(const ExtenderProvideStatusView& cu
 // a session's device, or for the provider-only device's status the service,
 // when it said it takes this write too (portMappingServiceWritable). Hidden,
 // never disabled (N1).
+//
+// Under its description, one status line (S10) while the switch shows and is
+// on and the role reports a state: what the router did. The sdk's state reads
+//
+//   not_needed  extender_port_mapping_not_needed (a public address)
+//   mapping     extender_port_mapping_mapping (asking the router)
+//   mapped      extender_port_mapping_mapped, its {0} the ports text and its
+//               {1} the method name, the sdk's two texts; no line when either
+//               is empty, rather than a sentence with empty parentheses
+//   failed      extender_port_mapping_failed (the device asks again itself)
+//
+// and off, no role (empty) or a state this build does not know read as no
+// line: none of them says what the router did. Never the router's own words
+// (PortMappingError), which can name an address: the view does not hold them.
 struct PortMappingRowModel {
   bool visible = false;
   // the setting: off by default, as the sdk's on every app
   bool on = false;
+  // the status line's store key; empty for no line
+  std::string statusKey;
+  // the mapped line's {0} and {1}, the sdk's texts as they are; empty for a
+  // line that is its key's whole text
+  std::string statusPorts;
+  std::string statusMethod;
 
   bool operator==(const PortMappingRowModel& o) const {
-    return visible == o.visible && on == o.on;
+    return visible == o.visible && on == o.on && statusKey == o.statusKey &&
+           statusPorts == o.statusPorts && statusMethod == o.statusMethod;
   }
   bool operator!=(const PortMappingRowModel& o) const { return !(*this == o); }
 };
 
 PortMappingRowModel PortMappingRowModelFor(const ExtenderProvideStatusView& view);
+
+// The status line as `Text`, empty for none. `localized(key)` answers the
+// store's text for a key, `formatted(key, ports, method)` the store's text with
+// its {0} and {1} filled, which a translation may reorder, and `fromUtf8` lifts
+// the sdk's texts into `Text`. A template so the composition is checked off
+// Windows with plain strings; the app passes Localized, Format and Widen
+// (ProvideModeVisual.h).
+template <typename Text, typename LocalizedFn, typename FormattedFn, typename FromUtf8Fn>
+Text ComposePortMappingStatusText(const PortMappingRowModel& model, LocalizedFn&& localized,
+                                  FormattedFn&& formatted, FromUtf8Fn&& fromUtf8) {
+  if (model.statusKey.empty()) return Text{};
+  // the mapped line, the one that takes the sdk's two texts
+  if (!model.statusPorts.empty()) {
+    return formatted(model.statusKey, fromUtf8(model.statusPorts), fromUtf8(model.statusMethod));
+  }
+  return localized(model.statusKey);
+}
 
 // Where the port mapping switch's write goes
 // (SdkHost::SetProvideExtenderPortMapping): the speed tests switch's rule, with
@@ -672,8 +746,11 @@ ExtenderProvideWriteRoute PortMappingWriteRouteFor(bool sessionDevice,
                                                    const ExtenderProvideStatusView& shown);
 
 // The view the port mapping switch paints the moment it is flipped: the shown
-// view with the setting guessed and nothing else changed. The next pushed
-// status replaces it, as it does the other switches' guesses.
+// view with the setting guessed and the role's port mapping report dropped,
+// nothing else changed. A changed setting replaces a running role (S10), so
+// what the router did for the old one no longer holds, and the line waits for
+// the next pushed status, which replaces the guess as it does the other
+// switches' guesses.
 ExtenderProvideStatusView PortMappingGuessFor(const ExtenderProvideStatusView& current, bool on);
 
 // The one line of state text a model reads as. `localized(key)` answers the

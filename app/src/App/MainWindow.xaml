@@ -1157,8 +1157,11 @@
                                      device. Off until the user turns it on. It rides on the role,
                                      so it shows only under the speed tests switch, hidden, never
                                      disabled, with its description under its title, and its title
-                                     starts under the Extender title.
-                                     ConnectPage::ApplyPortMappingRow is its one writer. -->
+                                     starts under the Extender title. Under the description, while
+                                     the switch is on and the role reports a state, one line of what
+                                     the router did (S10), wrapped like the description and hidden
+                                     while there is none. ConnectPage::ApplyPortMappingRow is the
+                                     one writer of all three. -->
                                 <Border x:Name="PortMappingRow" Visibility="Collapsed"
                                         Style="{StaticResource UrPaneRowStyle}" MinHeight="44">
                                     <Grid ColumnSpacing="8">
@@ -1174,6 +1177,10 @@
                                             <TextBlock x:Name="PortMappingLabel"
                                                        Style="{StaticResource UrRowTitleStyle}" />
                                             <TextBlock x:Name="PortMappingDescription"
+                                                       TextWrapping="Wrap"
+                                                       Style="{StaticResource UrRowNoteStyle}"
+                                                       TextTrimming="None" />
+                                            <TextBlock x:Name="PortMappingStatus" Visibility="Collapsed"
                                                        TextWrapping="Wrap"
                                                        Style="{StaticResource UrRowNoteStyle}"
                                                        TextTrimming="None" />

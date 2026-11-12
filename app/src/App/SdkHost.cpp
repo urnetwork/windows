@@ -5186,9 +5186,11 @@ void SdkHost::ShowProviderOnlyStatsLocked(const proto::ProviderStats& stats) {
   if (onProviderThroughput_) onProviderThroughput_(std::move(provider));
   // The extender role (EXTENDER.md N7): the rows, the switch and the extender
   // plot's gate, read as a session's listener reads its push, from the status
-  // and the setting the service read off the device. No status (an older
-  // service, or a reading that could not be opened) is the role unsupported:
-  // all hidden.
+  // and the setting the service read off the device. The status is the
+  // device's whole, so the port mapping line under its switch reads the
+  // router's state and texts from it as from a session's (S10). No status (an
+  // older service, or a reading that could not be opened) is the role
+  // unsupported: all hidden.
   ExtenderProvideStatusView extender = ExtenderProvideStatusViewOf(
       proto::ExtenderProvideStatusOf<urnet::ExtenderProvideStatus>(stats),
       [&stats] { return stats.provide_extender; },
@@ -5831,14 +5833,16 @@ ExtenderStatusView SdkHost::CurrentExtenderStatus() {
 }
 
 void SdkHost::PublishExtenderProvideStatus(std::optional<urnet::ExtenderProvideStatus> status) {
-  // The view reads only the fields the apps may read (N7), and the setting only
-  // for a status whose row shows (N1). The setting is the switch's position: the
-  // DeviceRemote answers the queued or last-known value while the device process
-  // is out of contact, so the switch holds through a daemon restart. It hands a
-  // listener its status after releasing its own lock, so the read cannot
-  // deadlock it, and the read is made without mutex_, as every listener callback
-  // here reads the device: the subscription is dropped in ClosePresentationLocked
-  // before the device is, and mutex_ is held across a whole bootstrap.
+  // The view reads only the fields the apps may read (N7), of the router port
+  // mapping its state and the two texts its line shows and never the router's
+  // own words (S10), and the setting only for a status whose row shows (N1).
+  // The setting is the switch's position: the DeviceRemote answers the queued
+  // or last-known value while the device process is out of contact, so the
+  // switch holds through a daemon restart. It hands a listener its status after
+  // releasing its own lock, so the read cannot deadlock it, and the read is
+  // made without mutex_, as every listener callback here reads the device: the
+  // subscription is dropped in ClosePresentationLocked before the device is,
+  // and mutex_ is held across a whole bootstrap.
   const auto readSetting = [this] {
     // D4: with the control pipe down the getter is an rpc into a dying service
     // that waits out the transport timeout on the callback goroutine, holding the

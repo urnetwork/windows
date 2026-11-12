@@ -15,15 +15,17 @@ import (
 // is the speed tests switch's twin: read beside the role's status, written
 // through a session's device, and with no session through the service
 // (set_provide_extender_port_mapping) when its get_provider_stats said it
-// takes it. Unlike the speed tests setting the sdk has no setter for it on a
-// space alone, so with no device the service refuses it. The pure parts run
-// in extender-tests.cpp and provide-protocol-tests.cpp; these read the service
+// takes it, which writes it where it writes the speed tests setting: through
+// the device that runs, or with none into the space the last device ran in
+// (the sdk's LocalState.SetProvideExtenderPortMapping), so a toggle that lands
+// between two devices is the next one's setting. The pure parts run in
+// extender-tests.cpp and provide-protocol-tests.cpp; these read the service
 // and app sources, which need Windows and WinRT, with comments stripped so
 // prose cannot satisfy a contract.
 
 // The service answers the verb on the one control pipe, under the session lock
-// in budget, writes through the device that runs and refuses with none, and
-// reports the setting beside the role, never without it, off until read.
+// in budget, writes where the speed tests switch's write goes, and reports the
+// setting beside the role, never without it, off until read.
 func TestPortMappingSwitchServiceWiring(t *testing.T) {
 	server := stripComments(readServiceSource(t, "ControlServer.cpp"))
 	handle := definitionBody(t, "ControlServer.cpp", server, "nlohmann::json ControlServer::Handle(")
@@ -46,19 +48,23 @@ func TestPortMappingSwitchServiceWiring(t *testing.T) {
 	// the provider-only device's next answer carries the write
 	provideRequireOrder(t, "SetProvideExtenderPortMapping", write,
 		"providerDevice_->setProvideExtenderPortMapping(on);", "RefreshProviderPortMappingLocked();")
-	// With no device nothing takes it: the sdk has no setter for it on a space
-	// alone, so the space target is refused exactly as no target is.
+	// With no device the space the last device ran in takes it, through the
+	// sdk's LocalState as the speed tests setting's, so a toggle that lands
+	// between two devices is not dropped: the next device reads it from its
+	// space. A space that is gone refuses it before anything is written.
 	space := sourceBetween(t, "SetProvideExtenderPortMapping", write,
 		"case provide::ExtenderSettingTarget::NetworkSpace:", "case provide::ExtenderSettingTarget::None:")
-	if strings.TrimSpace(strings.TrimPrefix(space, "case provide::ExtenderSettingTarget::NetworkSpace:")) != "" {
-		t.Error("SetProvideExtenderPortMapping must refuse the space target as it refuses none")
-	}
+	provideRequireOrder(t, "the space target", space,
+		"urnet::NetworkSpace space = spaceManager_->getNetworkSpace(lastSpaceKey_);", "if (!space) {")
+	gone := sourceBetween(t, "the space target", space, "if (!space) {", "return false;")
+	provideRequire(t, "a space that is gone", gone, "error = ")
+	provideRequireOrder(t, "the space target", space, "return false;",
+		"space.getAsyncLocalState().getLocalState().setProvideExtenderPortMapping(on);")
 	refused := sourceBetween(t, "SetProvideExtenderPortMapping", write,
 		"case provide::ExtenderSettingTarget::None:", "} catch")
-	provideRequireOrder(t, "the refused targets", refused, "error = ", "return false;")
-	// it writes its own setting, through a device, and nothing else
-	requireNone(t, "SetProvideExtenderPortMapping", write, "getNetworkSpace(", "getAsyncLocalState()",
-		"setProvideExtender(", "setMeasurementsEnabled(")
+	provideRequireOrder(t, "the refused target", refused, "error = ", "return false;")
+	// it writes its own setting and nothing else
+	requireNone(t, "SetProvideExtenderPortMapping", write, "setProvideExtender(", "setMeasurementsEnabled(")
 
 	refresh := definitionBody(t, "TunnelController.cpp", source,
 		"void TunnelController::RefreshProviderPortMappingLocked()")

@@ -16,7 +16,8 @@
 // and an older service's silence. And the router port mapping switch the same
 // way, off by default: set_provide_extender_port_mapping, its strict request,
 // and provide_extender_port_mapping with provide_extender_port_mapping_writable
-// and an older service's silence. Run
+// and an older service's silence, and the port mapping's state and two texts
+// riding the extender status. Run
 // against the same header the service and the app compile; it needs
 // nlohmann/json, like the app.
 //
@@ -96,13 +97,22 @@ struct ExtenderProvideStatus {
   std::string Reason;
   bool Enabled = false;
   bool ActivatedV4 = false;
+  // the router port mapping's state and the two texts the status line shows
+  // (connect EXTENDER.md S10), read as the generated wrapper reads every
+  // field, so a status from a service built before them reads them empty
+  std::string PortMapping;
+  std::string PortMappingMethodName;
+  std::string PortMappingPorts;
 };
 inline void to_json(nlohmann::json& j, const ExtenderProvideStatus& v) {
   j = {{"Supported", v.Supported},
        {"State", v.State},
        {"Reason", v.Reason},
        {"Enabled", v.Enabled},
-       {"ActivatedV4", v.ActivatedV4}};
+       {"ActivatedV4", v.ActivatedV4},
+       {"PortMapping", v.PortMapping},
+       {"PortMappingMethodName", v.PortMappingMethodName},
+       {"PortMappingPorts", v.PortMappingPorts}};
 }
 inline void from_json(const nlohmann::json& j, ExtenderProvideStatus& v) {
   j.at("Supported").get_to(v.Supported);
@@ -110,6 +120,11 @@ inline void from_json(const nlohmann::json& j, ExtenderProvideStatus& v) {
   j.at("Reason").get_to(v.Reason);
   j.at("Enabled").get_to(v.Enabled);
   j.at("ActivatedV4").get_to(v.ActivatedV4);
+  if (auto it = j.find("PortMapping"); it != j.end() && !it->is_null()) it->get_to(v.PortMapping);
+  if (auto it = j.find("PortMappingMethodName"); it != j.end() && !it->is_null())
+    it->get_to(v.PortMappingMethodName);
+  if (auto it = j.find("PortMappingPorts"); it != j.end() && !it->is_null())
+    it->get_to(v.PortMappingPorts);
 }
 // the fields of urnet::NetworkPeer the peer rows read, every one optional on
 // the wire as in the generated wrapper's from_json
@@ -899,6 +914,83 @@ void TestSetProvideExtenderPortMapping() {
   Check(kProtocolVersion == 4, "port mapping: no protocol bump for the verb and its fields");
 }
 
+// (m) the router port mapping's status (connect EXTENDER.md S10): its state
+// and the two texts the line under the switch shows ride the extender status
+// the service writes whole, so the provider-only device's line reads what a
+// session's does; a status from a service built before the texts reads them
+// empty, and one from before port mapping reads no state, which the app shows
+// as no line
+void TestProviderStatsPortMappingStatus() {
+  doc::ExtenderProvideStatus status{};
+  status.Supported = true;
+  status.State = "active";
+  status.Enabled = true;
+  status.ActivatedV4 = true;
+  status.PortMapping = "mapped";
+  status.PortMappingMethodName = "NAT-PMP";
+  // the router's port, an arrow (U+2192), the bound one
+  status.PortMappingPorts = "TCP 40443\xE2\x86\x92" "443, UDP 4053";
+  ProviderStats sent;
+  sent.available = true;
+  sent.extender_provide_status = status;
+  sent.provide_extender = true;
+  sent.provide_extender_writable = true;
+  sent.provide_extender_port_mapping = true;
+  sent.provide_extender_port_mapping_writable = true;
+  Reply reply;
+  reply.ok = true;
+  reply.in_reply_to = msg::kGetProviderStats;
+  reply.provider_stats = sent;
+  const Reply back = nlohmann::json::parse(DumpForWire(nlohmann::json(reply))).get<Reply>();
+  Check(back.provider_stats.has_value(), "port mapping status: the reply carries the statistics");
+  if (back.provider_stats) {
+    const std::optional<doc::ExtenderProvideStatus> read =
+        ExtenderProvideStatusOf<doc::ExtenderProvideStatus>(*back.provider_stats);
+    Check(read && read->PortMapping == "mapped", "port mapping status: the state round-trips");
+    Check(read && read->PortMappingMethodName == "NAT-PMP",
+          "port mapping status: the method name round-trips");
+    Check(read && read->PortMappingPorts == status.PortMappingPorts,
+          "port mapping status: the ports text round-trips, its arrow and all");
+    Check(back.provider_stats->provide_extender_port_mapping,
+          "port mapping status: the setting beside it stays its own");
+  }
+  // every state the line reads, and the one it does not
+  for (const char* state : {"off", "not_needed", "mapping", "failed"}) {
+    doc::ExtenderProvideStatus each = status;
+    each.PortMapping = state;
+    each.PortMappingMethodName.clear();
+    each.PortMappingPorts.clear();
+    ProviderStats stats;
+    stats.available = true;
+    stats.extender_provide_status = each;
+    const ProviderStats wire =
+        nlohmann::json::parse(DumpForWire(nlohmann::json(stats))).get<ProviderStats>();
+    const std::optional<doc::ExtenderProvideStatus> read =
+        ExtenderProvideStatusOf<doc::ExtenderProvideStatus>(wire);
+    Check(read && read->PortMapping == state && read->PortMappingMethodName.empty() &&
+              read->PortMappingPorts.empty(),
+          std::string("port mapping status: ") + state + " round-trips with no texts");
+  }
+  // a service built before the texts sends the state alone, one from before
+  // port mapping neither: both still read as a status, never as none
+  const ProviderStats older = nlohmann::json::parse(
+      R"({"available":true,"extender_provide_status":{"Supported":true,"State":"active","Reason":"","Enabled":true,"ActivatedV4":true,"PortMapping":"mapped"}})")
+                                  .get<ProviderStats>();
+  const std::optional<doc::ExtenderProvideStatus> olderRead =
+      ExtenderProvideStatusOf<doc::ExtenderProvideStatus>(older);
+  Check(olderRead && olderRead->PortMapping == "mapped" &&
+            olderRead->PortMappingMethodName.empty() && olderRead->PortMappingPorts.empty(),
+        "port mapping status: a status without the texts reads them empty");
+  const ProviderStats oldest = nlohmann::json::parse(
+      R"({"available":true,"extender_provide_status":{"Supported":true,"State":"active","Reason":"","Enabled":true,"ActivatedV4":true}})")
+                                   .get<ProviderStats>();
+  const std::optional<doc::ExtenderProvideStatus> oldestRead =
+      ExtenderProvideStatusOf<doc::ExtenderProvideStatus>(oldest);
+  Check(oldestRead && oldestRead->Supported && oldestRead->PortMapping.empty(),
+        "port mapping status: a status from before port mapping reads no state");
+  Check(kProtocolVersion == 4, "port mapping status: no protocol bump, it rides the status");
+}
+
 }  // namespace
 
 int main() {
@@ -916,6 +1008,7 @@ int main() {
   TestSetProvideExtender();
   TestSetMeasurementsEnabled();
   TestSetProvideExtenderPortMapping();
+  TestProviderStatsPortMappingStatus();
   std::cout << (gCases - gFailures) << "/" << gCases << " provide protocol checks passed"
 #if defined(URNW_PROVIDE_PROTOCOL_TESTS_SDK)
             << " (against urnetwork_sdk.hpp)"
