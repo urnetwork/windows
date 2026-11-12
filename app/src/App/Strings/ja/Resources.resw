@@ -4555,6 +4555,22 @@
     <value>UPnP、NAT-PMP、または PCP でルーターに TCP と UDP 443、UDP 4053 をこのデバイスへ転送するよう求め、インターネットからエクステンダーに接続できるようにします。ルーターのポートが開きます。</value>
     <comment>Secondary text under the Open a port on my router toggle: what turning it on does. It must say plainly that it opens a port on the user's router.</comment>
   </data>
+  <data name="extender_port_mapping_failed" xml:space="preserve">
+    <value>ルーターがポートを開きませんでした。後でもう一度試します。</value>
+    <comment>Status line under the Open a port on my router switch when no method mapped the ports. The reason stays in the log, since the router's words can name an address; the device asks again on its own.</comment>
+  </data>
+  <data name="extender_port_mapping_mapped" xml:space="preserve">
+    <value>ルーターが {0} を転送しています（{1}）。</value>
+    <comment>Status line under the Open a port on my router switch once the router forwards the extender's ports. The first argument is the ports, such as TCP 443, UDP 443, UDP 4053 (an arrow joins a router port to the device's, as TCP 40443→443); the second is how the router was asked: PCP, NAT-PMP or UPnP. Neither is translated.</comment>
+  </data>
+  <data name="extender_port_mapping_mapping" xml:space="preserve">
+    <value>ルーターに問い合わせています…</value>
+    <comment>Status line under the Open a port on my router switch while the router's first answer is awaited.</comment>
+  </data>
+  <data name="extender_port_mapping_not_needed" xml:space="preserve">
+    <value>不要です：このデバイスにはパブリックアドレスがあります。</value>
+    <comment>Status line under the Open a port on my router switch: the device has a public address, so the router is not asked to open anything.</comment>
+  </data>
   <data name="extender_revoked" xml:space="preserve">
     <value>オペレーターにより取り消されました</value>
     <comment>Extender status when the operator revoked this device's extender key.</comment>

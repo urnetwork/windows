@@ -738,6 +738,10 @@ extender_listen_failed
 extender_not_providing
 extender_port_mapping
 extender_port_mapping_description
+extender_port_mapping_failed
+extender_port_mapping_mapped
+extender_port_mapping_mapping
+extender_port_mapping_not_needed
 extender_revoked
 extender_setting_description
 extender_setting_up
