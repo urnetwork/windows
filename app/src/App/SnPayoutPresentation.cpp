@@ -293,10 +293,13 @@ bool LedgerClaimProgress::Start() {
     if (UnderTransferFloor(row.amountRao, transferFloorRao_)) {
       // under the dialog's floor no press takes it: one the last press left
       // claimable (needs_gas) or failed waits below the claim minimum again,
-      // as the page's read listed it, until the SDK reports on it (Linux's)
-      row.state = LedgerClaimState::Idle;
-      row.underFloor = true;
-      row.message.clear();
+      // as the page's read listed it, until the SDK reports on it, and one
+      // still Sent keeps its state (Linux's)
+      if (row.state != LedgerClaimState::Sent) {
+        row.state = LedgerClaimState::Idle;
+        row.underFloor = true;
+        row.message.clear();
+      }
       continue;
     }
     // a row the SDK added has no amount to count, and is claimed again too
@@ -545,10 +548,16 @@ std::string CtfWinKey(const CtfWin& win) {
   return win.role == CtfRole::Extender ? "sn_ctf_won_extender_slot" : "sn_ctf_won_provider_slot";
 }
 
-bool ApplyCtfWinsRead(std::vector<CtfWin>& lines, std::optional<std::vector<CtfWin>> read) {
-  if (!read) return false;
-  lines = std::move(*read);
+bool CtfWinsLines::Apply(uint32_t read, std::optional<std::vector<CtfWin>> wins) {
+  if (!wins || read <= shown_) return false;
+  shown_ = read;
+  lines_ = std::move(*wins);
   return true;
+}
+
+void CtfWinsLines::Reset() {
+  lines_.clear();
+  shown_ = started_;
 }
 
 LedgerClaimEvents WithClaimPaid(LedgerClaimEvents events, std::function<void(bool paid)> afterDone) {

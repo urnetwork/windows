@@ -542,14 +542,33 @@ struct CtfWin {
 // each with the country's name as its one placeholder.
 std::string CtfWinKey(const CtfWin& win);
 
-// The lines after a read of the wins (every app, 2026-11-12): a read that
-// answered (`read`, CtfWinsReadFrom) replaces them, and one that failed or
-// could not be read (std::nullopt) leaves the last good read's lines as they
-// were: it never blanks them. Only such a good read that no longer lists a
-// win, or a sign-out (a change of device or network), takes a line away, and
-// the first read after a sign-in shows none until it answers. True when the
-// lines were replaced.
-bool ApplyCtfWinsRead(std::vector<CtfWin>& lines, std::optional<std::vector<CtfWin>> read);
+// The won lines, from the reads of the wins (every app, 2026-11-12). Reads
+// may overlap: each starts at its time (an Earnings load, a claim's Done and
+// the reads after it), and their answers land in any order. A good answer
+// (CtfWinsReadFrom) replaces the lines unless they already show a newer
+// read's; a read that failed or could not be read (std::nullopt) changes
+// nothing, so it never blanks them, nor drops an older read's good answer
+// that is still to land. Only a good read that no longer lists a win takes
+// its line away, or a sign-out (Reset, a change of device or network), after
+// which no answer of a read from before shows, and the first read shows none
+// until it answers.
+class CtfWinsLines {
+ public:
+  // A read starts: its number, for its answer.
+  uint32_t Start() { return ++started_; }
+  // The answer of read `read`: true when it replaced the lines.
+  bool Apply(uint32_t read, std::optional<std::vector<CtfWin>> wins);
+  // A sign-out: no lines, and no answer of a read from before shows.
+  void Reset();
+  const std::vector<CtfWin>& lines() const { return lines_; }
+
+ private:
+  uint32_t started_ = 0;  // the newest read's number
+  // the read whose good answer the lines show, or, after a sign-out, the
+  // newest read from before it
+  uint32_t shown_ = 0;
+  std::vector<CtfWin> lines_;
+};
 
 // ---- the wins after a claim
 //
@@ -720,7 +739,7 @@ std::vector<CtfWin> CtfWinsFrom(const SdkCtfClientResult& result) {
   return wins;
 }
 
-// A read's wins for the lines (ApplyCtfWinsRead): CtfWinsFrom for an answer
+// A read's wins for the lines (CtfWinsLines::Apply): CtfWinsFrom for an answer
 // the SDK could read, none at all (std::nullopt) for one with an Error or
 // without the list, which the SDK always sends: a read that failed, which
 // keeps the lines.

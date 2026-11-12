@@ -873,11 +873,13 @@ void ClaimLedgerSheet::ApplyState() {
 
   // one Claim sends every pool's: while what it moves is exactly the operator
   // pool's account and capture the flag's it says Claim both, else the amount
-  // it moves, which leaves out an account below the claim minimum
+  // it moves, which leaves out an account below the claim minimum, and with
+  // nothing it moves (a claim still out, for an account under the floor or
+  // none left) no amount at all: never a Claim of 0
   claimButton_.Content(winrt::box_value(
       progress_.ClaimsBoth()
           ? Loc("sn_ledger_claim_both")
-          : hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}));
+          : 0 < total ? hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))} : Loc("claim")));
   claimButton_.IsEnabled(progress_.CanClaim(allowActions_));
   // with nothing Claim moves and no claim out (all claimed, or every row below
   // the claim minimum or unavailable) only Close is offered, never a Claim of 0

@@ -938,8 +938,8 @@ void WalletPage::ResetForSignOut() {
   CloseKeyFlow();
   ++claimStatusGeneration_;
   claimStatus_.reset();
-  ++ctfClientGeneration_;
-  ctfWins_.clear();
+  // no line, and no answer of a read from before shows
+  ctfWins_.Reset();
   // and the wins are not read again after that account's claim
   ctfWinsAfterClaim_.Stop();
   if (ctfWinsTimer_) ctfWinsTimer_.Stop();
@@ -1266,10 +1266,12 @@ void WalletPage::LoadV2Accounts() {
 // signs anyone out. Each of its UnclaimedWins is a line
 // (snpayout::CtfWinsReadFrom), newest first. An answer with an error, or no
 // answer, is a read that failed: it keeps the lines of the last good read and
-// never blanks them, nor says there was no win (every app, 2026-11-12).
+// never blanks them, nor says there was no win (every app, 2026-11-12). Each
+// read starts when asked, and the lines show the newest read's good answer
+// (snpayout::CtfWinsLines), whatever order the answers land in.
 void WalletPage::LoadCtfClient() {
   if (!CanCallApi() || !Sdk().hasDevice()) return;
-  const uint32_t read = ++ctfClientGeneration_;
+  const uint32_t read = ctfWins_.Start();
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().device().snCtfClient([queue, weak, read](std::optional<urnet::SnCtfClientResult> result,
@@ -1290,10 +1292,10 @@ void WalletPage::LoadCtfClient() {
 }
 
 void WalletPage::ApplyCtfClient(uint32_t read, std::optional<std::vector<snpayout::CtfWin>> wins) {
-  // the answer to a read that a newer read or a sign-out superseded
-  if (read != ctfClientGeneration_) return;
-  // a read that failed keeps the last good read's lines (ApplyCtfWinsRead)
-  if (!snpayout::ApplyCtfWinsRead(ctfWins_, std::move(wins))) return;
+  // a read that failed keeps the last good read's lines, and the answer of a
+  // read older than the one the lines show, or from before a sign-out, is
+  // dropped (snpayout::CtfWinsLines)
+  if (!ctfWins_.Apply(read, std::move(wins))) return;
   RebuildV2Section();
 }
 
@@ -2678,7 +2680,7 @@ void WalletPage::RebuildV2Section() {
                                                             : Visibility::Collapsed);
   // a line for each capture the flag slot won and not claimed yet, newest first
   auto appendWins = [this](StackPanel const& host) {
-    for (auto const& win : ctfWins_) {
+    for (auto const& win : ctfWins_.lines()) {
       host.Children().Append(MakeText(CtfWinText(win), 13, colors::TextBrush(), true));
     }
   };

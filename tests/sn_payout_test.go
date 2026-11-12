@@ -374,7 +374,7 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		`MakeText(Loc("sn_ledger_pool_under_floor"), 13, colors::MutedBrush(), true)`,
 		// a line for every win not claimed yet, under capture the flag's
 		// block, else after the blocks
-		"for (auto const& win : ctfWins_) {",
+		"for (auto const& win : ctfWins_.lines()) {",
 		"host.Children().Append(MakeText(CtfWinText(win), 13, colors::TextBrush(), true));",
 		"if (!winShown && account.kind == snpayout::PoolKind::Ctf) {",
 		"appendWins(block);",
@@ -461,9 +461,11 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		"if (ctfWinsTimer_) ctfWinsTimer_.Stop();")
 	// the won slots: every unclaimed win, read with the Earnings reads, dropped
 	// at sign-out, with the reads after that account's claim; a read that failed
-	// keeps the last good read's lines (snpayout::ApplyCtfWinsRead)
+	// keeps the last good read's lines, and the lines show the newest read's good
+	// answer whatever order the answers land in (snpayout::CtfWinsLines)
 	loadWins := body("WalletPage.cpp", page, "void WalletPage::LoadCtfClient(")
 	requireAll("WalletPage::LoadCtfClient", loadWins,
+		"const uint32_t read = ctfWins_.Start();",
 		"Sdk().device().snCtfClient(", "std::optional<std::vector<snpayout::CtfWin>> wins;",
 		"wins = snpayout::CtfWinsReadFrom(*result);",
 		"self->wallet().ApplyCtfClient(read, wins);")
@@ -471,17 +473,22 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		t.Error("WalletPage::LoadCtfClient: reads CtfWinsFrom, which makes a failed read no lines")
 	}
 	requireAll("WalletPage::ApplyCtfClient", body("WalletPage.cpp", page, "void WalletPage::ApplyCtfClient("),
-		"if (read != ctfClientGeneration_) return;",
-		"if (!snpayout::ApplyCtfWinsRead(ctfWins_, std::move(wins))) return;", "RebuildV2Section();")
+		"if (!ctfWins_.Apply(read, std::move(wins))) return;", "RebuildV2Section();")
 	requireAll("WalletPage::LoadWallet", body("WalletPage.cpp", page, "void WalletPage::LoadWallet("), "LoadCtfClient();")
 	requireAll("WalletPage::ResetForSignOut", body("WalletPage.cpp", page, "void WalletPage::ResetForSignOut("),
-		"++ctfClientGeneration_;", "ctfWins_.clear();", "ctfWinsAfterClaim_.Stop();", "if (ctfWinsTimer_) ctfWinsTimer_.Stop();")
+		"ctfWins_.Reset();", "ctfWinsAfterClaim_.Stop();", "if (ctfWinsTimer_) ctfWinsTimer_.Stop();")
 	header := stripComments(readAppSource(t, "WalletPage.h"))
 	requireAll("WalletPage.h", header,
 		"void ReadCtfWinsAfterClaim(bool paid, uint32_t session);",
 		"void ArmCtfWinsTimer(snpayout::CtfWinsReadsAfterClaim::Wait wait);",
 		"void OnCtfWinsTimer(uint32_t token);", "snpayout::CtfWinsReadsAfterClaim ctfWinsAfterClaim_;",
-		"winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer ctfWinsTimer_{nullptr};")
+		"winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer ctfWinsTimer_{nullptr};",
+		"snpayout::CtfWinsLines ctfWins_;")
+	// the lines are the newest read's good answer: no generation drops an older
+	// read's good answer when a newer read fails
+	if strings.Contains(page, "ctfClientGeneration_") || strings.Contains(header, "ctfClientGeneration_") {
+		t.Error("WalletPage: the wins still have a read generation, which drops an older good answer")
+	}
 	// the page draws the unclaimed wins, never the latest win alone
 	for _, gone := range []string{"latest_win", "CtfWinFrom(", "ctfWin_"} {
 		if strings.Contains(page, gone) {
@@ -512,7 +519,8 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		// nothing Claim moves and no claim out: only Close, never a Claim of 0
 		"claimButton_.Visibility(0 < total || progress_.sending() ? Visibility::Visible : Visibility::Collapsed);",
 		"progress_.ClaimsBoth()", `? Loc("sn_ledger_claim_both")`,
-		`: hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}`)
+		// and with nothing it moves no amount at all: never a Claim of 0
+		`: 0 < total ? hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))} : Loc("claim")`)
 
 	// the claim sheet: a row per account under its figure, which shows only
 	// with a total

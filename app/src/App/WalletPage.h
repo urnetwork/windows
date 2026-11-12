@@ -391,10 +391,10 @@ class WalletPage {
   int64_t TransferFloorRao() const;
   // Capture the flag's won-slot lines (GET /sn/ctf/client, the sdk's
   // SnCtfClient): a line for every win not claimed yet, read with the Earnings
-  // reads, and the answer to read number `read`, dropped unless it is the
-  // newest read's; none (std::nullopt) for a read that failed, which keeps the
-  // last good read's lines. Drawn with the settlement v2 section's capture the
-  // flag account.
+  // reads, and the answer to read number `read`: the lines show the newest
+  // read's good answer (snpayout::CtfWinsLines), and none (std::nullopt) is a
+  // read that failed, which keeps them. Drawn with the settlement v2 section's
+  // capture the flag account.
   void LoadCtfClient();
   void ApplyCtfClient(uint32_t read, std::optional<std::vector<snpayout::CtfWin>> wins);
   // After a v2 claim's Done, which read the wins: when the claim, started in
@@ -639,11 +639,10 @@ class WalletPage {
   snpayout::LedgerFetch v2Fetch_ = snpayout::LedgerFetch::Loading;
   std::vector<snpayout::LedgerAccount> v2Accounts_;
   std::vector<snpayout::UnavailablePool> v2Unavailable_;
-  // capture the flag: the newest read's number and the wins not claimed yet,
-  // newest first, as the last good read gave them (none from a sign-out until
-  // the next good read)
-  uint32_t ctfClientGeneration_ = 0;
-  std::vector<snpayout::CtfWin> ctfWins_;
+  // capture the flag: the wins not claimed yet, newest first, as the newest
+  // read's good answer gave them (none from a sign-out until the next good
+  // read), and the reads' numbers
+  snpayout::CtfWinsLines ctfWins_;
   // the wins' reads after a v2 claim that paid an account, and the one-shot
   // timer of the wait for the next one (ReadCtfWinsAfterClaim, a new timer
   // each wait)
