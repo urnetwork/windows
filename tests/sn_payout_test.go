@@ -461,6 +461,8 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 	requireAll("ClaimLedgerSheet::ApplyState", body("EarningsSheets.cpp", sheets, "void ClaimLedgerSheet::ApplyState("),
 		// with only pools it could not read, no total
 		"totalValue_.Text(progress_.TotalKnown() ? hstring{FormatAlphaRao(total)} : hstring{});",
+		// nothing Claim moves and no claim out: only Close, never a Claim of 0
+		"claimButton_.Visibility(0 < total || progress_.sending() ? Visibility::Visible : Visibility::Collapsed);",
 		"progress_.ClaimsBoth()", `? Loc("sn_ledger_claim_both")`,
 		`: hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}`)
 

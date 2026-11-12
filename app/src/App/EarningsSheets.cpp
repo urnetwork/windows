@@ -879,6 +879,9 @@ void ClaimLedgerSheet::ApplyState() {
           ? Loc("sn_ledger_claim_both")
           : hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}));
   claimButton_.IsEnabled(progress_.CanClaim(allowActions_));
+  // with nothing Claim moves and no claim out (all claimed, or every row below
+  // the claim minimum or unavailable) only Close is offered, never a Claim of 0
+  claimButton_.Visibility(0 < total || progress_.sending() ? Visibility::Visible : Visibility::Collapsed);
 }
 
 void ClaimLedgerSheet::StartClaim() {
