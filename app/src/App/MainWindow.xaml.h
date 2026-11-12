@@ -84,7 +84,7 @@ struct MainWindow : MainWindowT<MainWindow> {
   // on the login screen and signed in alike.
   winrt::fire_and_forget OpenConnectionRegion();
   // A platform call failed: raises the can't-reach prompt when it failed to
-  // reach URnetwork at all (ConnectionRegion.h IsCantReachFailure), not for an
+  // reach URnetwork at all (the sdk's urnet::isCantReachError), not for an
   // answer the server gave. Never changes the region.
   void NoteReachFailure(std::string const& error);
   void ShowCantReachPrompt();

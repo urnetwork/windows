@@ -1,9 +1,9 @@
 // Executable spec for the connection region (App/ConnectionRegion.h): the
 // picker's rows, the stored value a selection writes, the shared store behind
-// the login control and the DNS editor's picker, and the can't-reach
-// classification. Runs on any host with a C++20 compiler, against the app
-// sources and the generated English strings, so it needs no SDK build and no
-// Windows:
+// the login control and the DNS editor's picker, and the wiring of the
+// can't-reach prompt to the sdk's rule (sdk cant_reach.go, tested there).
+// Runs on any host with a C++20 compiler, against the app sources and the
+// generated English strings, so it needs no SDK build and no Windows:
 //
 //   c++ -std=c++20 -I ../src/App connection-region-tests.cpp -o /tmp/connection-region-tests && /tmp/connection-region-tests ..
 //
@@ -140,64 +140,11 @@ int main(int argc, char** argv) {
     if (summary.Defaults()) Fail("summary with servers reads as defaults");
   }
 
-  Case("a network-level failure to reach URnetwork raises the prompt");
-  for (const char* error : {
-           "http request failed: Post \"https://api.bringyour.com/auth/login\": dial tcp: lookup "
-           "api.bringyour.com: no such host",
-           "Post \"https://api.bringyour.com/auth/login\": dial tcp 1.2.3.4:443: i/o timeout",
-           "read tcp 10.0.0.2:5555->1.2.3.4:443: read: connection reset by peer",
-           "context deadline exceeded",
-           "net/http: TLS handshake timeout",
-           "dial tcp 1.2.3.4:443: connect: network is unreachable",
-       }) {
-    if (!region::IsCantReachFailure(error)) Fail(std::string("not classified: ") + error);
-  }
-
-  // Support inbox 8050, 8051: what the sdk's api calls answer when nothing
-  // reached URnetwork. connect ends a request whose attempts all failed -- a
-  // lookup a censor drops, a dial to a blackholed address, a timeout -- with
-  // its HttpRequestExhaustedError, whose text names none of those causes
-  // (net_http_exhaustion.go). A sign-in from such a network fails with exactly
-  // this text.
-  Case("an api request that no route answered raises the prompt");
-  if (!region::IsCantReachFailure("http request attempts exhausted")) {
-    Fail("not classified: http request attempts exhausted");
-  }
-
-  Case("auth and validation errors do not raise the prompt");
-  for (const char* error : {
-           "",
-           "401 Unauthorized: invalid jwt",
-           "400 Bad Request: invalid user auth",
-           "503 Service Unavailable: dial tcp upstream refused",
-           "Invalid password.",
-           "verification_required",
-           "not_configured",
-           "signed out while this sign-in was pending",
-           "no result",
-       }) {
-    if (region::IsCantReachFailure(error)) Fail(std::string("misclassified: ") + error);
-  }
-
-  Case("signed in, the prompt rises once as the stall turns platform-unreachable");
-  if (!region::ShouldPromptOnStall("", "platform-unreachable") ||
-      !region::ShouldPromptOnStall("providers-unresponsive", "platform-unreachable")) {
-    Fail("no prompt on platform-unreachable");
-  }
-  if (region::ShouldPromptOnStall("platform-unreachable", "platform-unreachable")) {
-    Fail("prompt repeated on every push");
-  }
-  for (const char* other : {"", "evaluating", "providers-unresponsive", "rate-limited",
-                            "auth-failing"}) {
-    if (region::ShouldPromptOnStall("", other)) Fail(std::string("prompt on ") + other);
-  }
-
-  Case("classifying a failure never changes the region");
-  {
-    FakeSpace space{sdkCodes, "cn", 0};
-    (void)region::IsCantReachFailure("http request failed: dial tcp: i/o timeout");
-    if (space.sets != 0 || space.stored != "cn") Fail("region changed");
-  }
+  // Which failures and stalls raise the can't-reach prompt is the sdk's one
+  // rule for every app (sdk cant_reach.go IsCantReachError and
+  // CantReachOnStall; support inbox 7956, 7973): its tests hold the cases this
+  // file kept, with the other apps', whose lists had drifted from these. The
+  // wiring below pins that the window and the connect page ask the sdk.
 
   // ---- wiring: the app sources and the generated strings ----------------
   const std::string src = appDir + "/src/App/";
@@ -232,17 +179,18 @@ int main(int argc, char** argv) {
     Fail("the login screen has no Connecting from control");
   }
   if (!Contains(window, "ConnectionRegionSheet::Create")) Fail("the window does not open the picker");
-  if (!Contains(window, "connection_region::IsCantReachFailure")) {
-    Fail("the window does not classify can't-reach failures");
+  if (!Contains(window, "urnet::isCantReachError(error)")) {
+    Fail("the window does not ask the sdk's rule for can't-reach failures");
   }
+  if (Contains(window, "IsCantReachFailure")) Fail("the window keeps its own failure list");
   if (!Contains(xaml, "x:Name=\"RegionPromptBar\"")) Fail("no can't-reach prompt bar");
   for (const char* site : {"w_.NoteReachFailure(routing.error)", "w_.NoteReachFailure(error)",
                            "self->NoteReachFailure(r.error)"}) {
     if (!Contains(login, site)) Fail(std::string("login does not report ") + site);
   }
   if (!Contains(dns, "ConnectionRegionBlock::Create")) Fail("DNS editor has no region picker");
-  if (!Contains(connect, "connection_region::ShouldPromptOnStall")) {
-    Fail("the signed-in stall does not raise the prompt");
+  if (!Contains(connect, "urnet::cantReachOnStall(previousStallReason, windowStallReason_)")) {
+    Fail("the signed-in stall does not raise the prompt by the sdk's rule");
   }
   if (!Contains(project, "ConnectionRegionSheet.cpp") || !Contains(project, "ConnectionRegion.h")) {
     Fail("App.vcxproj does not build the region sources");
