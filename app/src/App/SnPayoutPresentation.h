@@ -514,6 +514,88 @@ class ClaimInFlight {
 // The v2 claim in flight.
 using LedgerClaimInFlight = ClaimInFlight<LedgerClaimProgress>;
 
+// ---- the v1 claim dialog
+
+// One finalized epoch's claim, as the page and the dialog see it (the SDK's
+// SnEpochClaim, copied so the dialog holds no SDK handle).
+struct EpochClaim {
+  int64_t epoch = 0;
+  int64_t shareBps = 0;
+  int64_t amountRao = 0;
+  std::string status;  // "open" | "claimable" | "claimed" | "expired" | "not-finalized"
+  int64_t claimOpenBlock = 0;
+  int64_t expiryBlock = 0;
+  std::string txHash;   // the last known claim tx for this epoch, "" if none
+  std::string message;  // the SDK's reason an epoch is not claimable, "" if none
+};
+
+// A failure message from the SDK is a short English reason ("needs gas",
+// "expired", "rpc unreachable"): it names the gas, or the epoch's expiry.
+bool MentionsGas(std::string const& message);
+bool MentionsExpiry(std::string const& message);
+
+// The v1 dialog's epochs and the state of their claim, which the dialog draws.
+// The claim is the signed-in session's, not the dialog's (owner, 2026-11-12):
+// the page holds this while a claim is in flight (ClaimInFlight) and
+// moves it with the claim's events whether or not a dialog is up, so a dialog
+// dismissed during the claim drops none of them, one opened again shows the
+// claim with Claim held until Done, and no second claim starts while it is in
+// flight. UI thread only.
+class ClaimAlphaProgress {
+ public:
+  // the dialog's view of one epoch, moved along by the claim events
+  struct Row {
+    EpochClaim claim;
+    enum class State { Idle, Sending, Sent, Confirmed, Failed } state = State::Idle;
+    std::string message;  // the failure, when State::Failed
+  };
+
+  // `claims` is every epoch the SDK reported since the wallet was attached;
+  // the dialog claims the "claimable" ones and lists the rest with their
+  // state, newest first. `gasTao` is the gas key's balance when known: a known
+  // empty key needs gas before anything can be sent.
+  ClaimAlphaProgress(std::vector<EpochClaim> claims, std::optional<double> gasTao);
+
+  const std::vector<Row>& rows() const { return rows_; }
+  bool sending() const { return sending_; }
+  // set from a "needs gas" failure as well as a known empty gas key
+  bool needsGas() const { return needsGas_; }
+  // the epochs the last press claims (Start)
+  const std::vector<int64_t>& epochs() const { return epochs_; }
+
+  int64_t TotalClaimableRao() const;
+  size_t ClaimableCount() const;
+  // The dialog's figure, which Claim names too: what is claimable, and during
+  // a claim what the claim moves, the epochs it sends as Start found them,
+  // fixed until Done (owner, 2026-11-12, as on Android, Linux and Apple), so
+  // it never falls to 0 as the epochs confirm.
+  int64_t FigureRao() const;
+  // The count under the figure ("Claimable epochs: N"): the claimable epochs,
+  // and during a claim the epochs it sends, fixed with the figure until Done.
+  size_t CaptionCount() const;
+
+  // Claim pressed: every claimable epoch not confirmed yet is Sending, and
+  // epochs() are the press's. False, changing nothing, while a claim is out
+  // or with no epoch to claim.
+  bool Start();
+  // The claim's events.
+  void Sent(int64_t epoch, std::string const& txHash);
+  void Confirmed(int64_t epoch, std::string const& txHash, int64_t amountRao);
+  void Failed(int64_t epoch, std::string const& message);
+  // The claim is over: a row the SDK never reported on is not sending any more.
+  void Done();
+
+ private:
+  Row* Find(int64_t epoch);
+
+  std::vector<Row> rows_;
+  std::vector<int64_t> epochs_;
+  // what the press in flight moves (FigureRao)
+  int64_t pressRao_ = 0;
+  bool sending_ = false;
+  bool needsGas_ = false;
+};
+
 // ---- the claim sheet's pool rows
 //
 // URnetwork's claim relay claims every pool of a coldkey with one Claim now,

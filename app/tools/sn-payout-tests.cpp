@@ -2065,7 +2065,7 @@ int main() {
   {
     TEST_CASE("v1 claim: the claim in flight is the session's too");
     // the v1 dialog's progress as the claim in flight needs it
-    // (EarningsSheets.h ClaimAlphaProgress): Start takes the claimable epochs
+    // (ClaimAlphaProgress, below): Start takes the claimable epochs
     struct Epochs {
       int claimable = 2;
       bool sending = false;
@@ -2099,6 +2099,61 @@ int main() {
     const std::optional<uint64_t> nextTicket = v1.Start(next);
     Check(departed && nextTicket && !v1.End(*departed) && v1.Progress() == next,
           "the departed claim's Done ends nothing of the next one's");
+  }
+  {
+    TEST_CASE("v1 claim: the dialog's figure and count are the press's until Done");
+    // the v1 dialog's progress (ClaimAlphaProgress): Claim names what is
+    // claimable, and during the claim what it moves, the epochs it sends as
+    // Start found them, which no epoch confirming takes from it (owner,
+    // 2026-11-12, as on Android, Linux and Apple); the count under the figure
+    // is the press's too
+    auto epoch = [](int64_t number, int64_t rao, std::string status) {
+      EpochClaim claim;
+      claim.epoch = number;
+      claim.amountRao = rao;
+      claim.status = std::move(status);
+      return claim;
+    };
+    ClaimAlphaProgress dialog(
+        {epoch(7, 1'000'000'000, "claimable"), epoch(9, 500'000'000, "claimable"), epoch(5, 2'000'000'000, "claimed")},
+        1.0);
+    Check(dialog.FigureRao() == 1'500'000'000 && dialog.CaptionCount() == 2, "between claims: what is claimable");
+    Check(dialog.rows().size() == 3 && dialog.rows()[0].claim.epoch == 9, "newest epoch first");
+    Check(dialog.Start() && dialog.sending() && dialog.epochs() == std::vector<int64_t>{9, 7},
+          "Claim sends the claimable epochs");
+    Check(!dialog.Start(), "no second press while it runs");
+    dialog.Sent(9, "0x9");
+    dialog.Confirmed(9, "0x9", 600'000'000);
+    Check(dialog.FigureRao() == 1'500'000'000 && dialog.CaptionCount() == 2,
+          "one confirmed, paying more than the read said: the press's figure and count");
+    dialog.Confirmed(7, "0x7", 1'000'000'000);
+    Check(dialog.FigureRao() == 1'500'000'000 && dialog.CaptionCount() == 2 && dialog.TotalClaimableRao() == 0,
+          "every epoch confirmed before Done: still the press's, never 0");
+    dialog.Done();
+    Check(!dialog.sending() && dialog.FigureRao() == 0 && dialog.CaptionCount() == 0,
+          "after Done nothing is left: a true 0");
+
+    // an epoch the gas key cannot pay for: the press's figure until Done,
+    // with the funding hint, and after Done it is what is left
+    ClaimAlphaProgress gas({epoch(7, 1'000'000'000, "claimable"), epoch(9, 500'000'000, "claimable")}, 1.0);
+    Check(gas.Start(), "Claim");
+    gas.Confirmed(9, "0x9", 500'000'000);
+    gas.Failed(7, "needs gas: the gas key cannot pay for the claim");
+    Check(gas.FigureRao() == 1'500'000'000 && gas.CaptionCount() == 2 && gas.needsGas(),
+          "short of gas: the press's figure, with the funding hint");
+    gas.Done();
+    Check(gas.FigureRao() == 1'000'000'000 && gas.CaptionCount() == 1, "after Done: the epoch short of gas is left");
+
+    // an expired epoch's failure says so and leaves it out; a known empty gas
+    // key needs gas; nothing claimable starts nothing
+    ClaimAlphaProgress expired({epoch(4, 1'000'000'000, "claimable")}, 0.0);
+    Check(expired.needsGas(), "a known empty gas key");
+    Check(expired.Start(), "Claim");
+    expired.Failed(4, "claims for epoch 4 expired");
+    expired.Done();
+    Check(expired.rows()[0].claim.status == "expired" && expired.FigureRao() == 0, "an expired epoch is left out");
+    ClaimAlphaProgress none({epoch(3, 1'000'000'000, "claimed")}, 1.0);
+    Check(!none.Start() && !none.sending() && none.FigureRao() == 0, "nothing claimable: no claim");
   }
   {
     TEST_CASE("v2: a claim in flight keeps the section's Claim");

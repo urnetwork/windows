@@ -97,14 +97,20 @@ func TestClaimCountUnderTheUnclaimedTotalSaysClaimableEpochs(t *testing.T) {
 		t.Errorf("claim_across_epochs reads %q, want Claimable epochs: {}", got)
 	}
 	sheets := stripComments(readAppSource(t, "EarningsSheets.cpp"))
-	if n := strings.Count(sheets, `urnw::Format("claim_across_epochs", static_cast<int64_t>(progress_->ClaimableCount()))`); n != 2 {
-		t.Errorf("the claim dialog formats claim_across_epochs with ClaimableCount() %d times, want 2 (Build and ApplyState)", n)
+	if n := strings.Count(sheets, `urnw::Format("claim_across_epochs", static_cast<int64_t>(progress_->CaptionCount()))`); n != 2 {
+		t.Errorf("the claim dialog formats claim_across_epochs with CaptionCount() %d times, want 2 (Build and ApplyState)", n)
 	}
 	// the dialog's epochs are its progress's, which the page holds while a
-	// claim is in flight (ClaimAlphaProgress)
-	count := functionBody(sheets, "size_t ClaimAlphaProgress::ClaimableCount() const")
+	// claim is in flight (snpayout::ClaimAlphaProgress): the claimable ones,
+	// and during a claim the ones it sends, as the figure is its press's
+	presentation := stripComments(readAppSource(t, "SnPayoutPresentation.cpp"))
+	count := functionBody(presentation, "size_t ClaimAlphaProgress::ClaimableCount() const")
 	if !strings.Contains(count, `if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) ++count;`) {
 		t.Errorf("ClaimableCount does not count the claimable rows:\n%s", count)
+	}
+	caption := functionBody(presentation, "size_t ClaimAlphaProgress::CaptionCount() const")
+	if !strings.Contains(caption, "return sending_ ? epochs_.size() : ClaimableCount();") {
+		t.Errorf("CaptionCount is not the press's epochs during a claim and the claimable ones otherwise:\n%s", caption)
 	}
 	wallet := stripComments(readAppSource(t, "WalletPage.cpp"))
 	for _, want := range []string{

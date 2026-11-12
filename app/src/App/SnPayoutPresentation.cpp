@@ -2,6 +2,7 @@
 #include "SnPayoutPresentation.h"
 
 #include <algorithm>
+#include <cctype>
 #include <atomic>
 #include <format>
 #include <limits>
@@ -642,6 +643,126 @@ void CtfWinsReadsAfterClaim::Stop() {
   next_ = kCtfWinsReadsAfterClaim.size();
   ++token_;
   ++session_;
+}
+
+bool MentionsGas(std::string const& message) {
+  std::string lower = message;
+  std::transform(lower.begin(), lower.end(), lower.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return lower.find("gas") != std::string::npos || lower.find("funds") != std::string::npos;
+}
+
+bool MentionsExpiry(std::string const& message) {
+  std::string lower = message;
+  std::transform(lower.begin(), lower.end(), lower.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return lower.find("expire") != std::string::npos;
+}
+
+// ---- the v1 claim dialog -------------------------------------------------------
+
+ClaimAlphaProgress::ClaimAlphaProgress(std::vector<EpochClaim> claims, std::optional<double> gasTao)
+    // A known-empty gas key cannot pay for anything; an unknown balance (the
+    // chain did not answer) does not block the attempt, the SDK reports the
+    // real reason if there is one.
+    : needsGas_(gasTao.has_value() && *gasTao <= 0.0) {
+  // newest epoch first, as the history table orders them
+  std::sort(claims.begin(), claims.end(),
+            [](EpochClaim const& a, EpochClaim const& b) { return a.epoch > b.epoch; });
+  for (auto& claim : claims) {
+    Row row;
+    row.claim = std::move(claim);
+    rows_.push_back(std::move(row));
+  }
+}
+
+int64_t ClaimAlphaProgress::TotalClaimableRao() const {
+  int64_t total = 0;
+  for (auto const& row : rows_) {
+    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
+      total += row.claim.amountRao;
+    }
+  }
+  return total;
+}
+
+size_t ClaimAlphaProgress::ClaimableCount() const {
+  size_t count = 0;
+  for (auto const& row : rows_) {
+    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) ++count;
+  }
+  return count;
+}
+
+int64_t ClaimAlphaProgress::FigureRao() const {
+  // during a claim what its press moves, which no epoch confirming takes from it
+  return sending_ ? pressRao_ : TotalClaimableRao();
+}
+
+size_t ClaimAlphaProgress::CaptionCount() const {
+  // during a claim the epochs its press sends, as the figure is its press's
+  return sending_ ? epochs_.size() : ClaimableCount();
+}
+
+bool ClaimAlphaProgress::Start() {
+  if (sending_) return false;
+  // what this press moves: the epochs it sends below, as they are now
+  const int64_t pressRao = TotalClaimableRao();
+  std::vector<int64_t> epochs;
+  for (auto& row : rows_) {
+    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
+      row.state = Row::State::Sending;
+      row.message.clear();
+      epochs.push_back(row.claim.epoch);
+    }
+  }
+  if (epochs.empty()) return false;
+  epochs_ = std::move(epochs);
+  pressRao_ = pressRao;
+  sending_ = true;
+  return true;
+}
+
+ClaimAlphaProgress::Row* ClaimAlphaProgress::Find(int64_t epoch) {
+  for (auto& row : rows_) {
+    if (row.claim.epoch == epoch) return &row;
+  }
+  return nullptr;
+}
+
+void ClaimAlphaProgress::Sent(int64_t epoch, std::string const& txHash) {
+  if (auto* row = Find(epoch)) {
+    row->state = Row::State::Sent;
+    row->claim.txHash = txHash;
+  }
+}
+
+void ClaimAlphaProgress::Confirmed(int64_t epoch, std::string const& txHash, int64_t amountRao) {
+  if (auto* row = Find(epoch)) {
+    row->state = Row::State::Confirmed;
+    row->claim.status = "claimed";
+    row->claim.txHash = txHash;
+    if (amountRao > 0) row->claim.amountRao = amountRao;
+  }
+}
+
+void ClaimAlphaProgress::Failed(int64_t epoch, std::string const& message) {
+  if (auto* row = Find(epoch)) {
+    row->state = Row::State::Failed;
+    row->message = message;
+    if (MentionsExpiry(message)) row->claim.status = "expired";
+  }
+  // "needs gas" is a funding problem, not an epoch's: surface the mirror
+  // address above the rows as well as the reason on the row
+  if (MentionsGas(message)) needsGas_ = true;
+}
+
+void ClaimAlphaProgress::Done() {
+  sending_ = false;
+  // a row the SDK never reported on is not still sending
+  for (auto& row : rows_) {
+    if (row.state == Row::State::Sending) row.state = Row::State::Idle;
+  }
 }
 
 }  // namespace urnw::snpayout

@@ -727,15 +727,22 @@ func TestV1ClaimIsTheSessions(t *testing.T) {
 		// held by its own claim and by a v2 claim in flight
 		"claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending() &&",
 		"!Held());")
-	requireAll("ClaimAlphaProgress::FigureRao", body("EarningsSheets.cpp", sheets, "int64_t ClaimAlphaProgress::FigureRao() const"),
+	// the progress is the pure layer's, which the spec builds and runs ("v1
+	// claim: the dialog's figure and count are the press's until Done")
+	presentation := stripComments(readAppSource(t, "SnPayoutPresentation.cpp"))
+	requireAll("ClaimAlphaProgress::FigureRao", body("SnPayoutPresentation.cpp", presentation, "int64_t ClaimAlphaProgress::FigureRao() const"),
 		"return sending_ ? pressRao_ : TotalClaimableRao();")
 	// the events' rows, moved from the dialog's handlers unchanged
-	requireAll("ClaimAlphaProgress::Failed", body("EarningsSheets.cpp", sheets, "void ClaimAlphaProgress::Failed("),
+	requireAll("ClaimAlphaProgress::Failed", body("SnPayoutPresentation.cpp", presentation, "void ClaimAlphaProgress::Failed("),
 		`if (MentionsExpiry(message)) row->claim.status = "expired";`, "if (MentionsGas(message)) needsGas_ = true;")
-	requireAll("ClaimAlphaProgress::Confirmed", body("EarningsSheets.cpp", sheets, "void ClaimAlphaProgress::Confirmed("),
+	requireAll("ClaimAlphaProgress::Confirmed", body("SnPayoutPresentation.cpp", presentation, "void ClaimAlphaProgress::Confirmed("),
 		`row->claim.status = "claimed";`, "if (amountRao > 0) row->claim.amountRao = amountRao;")
-	requireAll("ClaimAlphaProgress::Done", body("EarningsSheets.cpp", sheets, "void ClaimAlphaProgress::Done("),
+	requireAll("ClaimAlphaProgress::Done", body("SnPayoutPresentation.cpp", presentation, "void ClaimAlphaProgress::Done("),
 		"sending_ = false;", "if (row.state == Row::State::Sending) row.state = Row::State::Idle;")
+	// the page and the dialog name the pure layer's progress
+	sheetsHeader := stripComments(readAppSource(t, "EarningsSheets.h"))
+	requireAll("EarningsSheets.h", sheetsHeader,
+		"using EpochClaim = snpayout::EpochClaim;", "using ClaimAlphaProgress = snpayout::ClaimAlphaProgress;")
 }
 
 // Every way settlement v2's Claim misses the look of the earnings claim action,
