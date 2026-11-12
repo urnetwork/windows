@@ -2586,27 +2586,25 @@ void MainWindow::HideReferralCelebration() {
 }
 
 void MainWindow::ApplyBalance() {
-  // plan value: Guest / Free / Pro (macOS AccountRootView). Until the server
-  // answers, the plan is unknown and the value says Loading, or Something went
-  // wrong with Try again once a read failed: never Free, and no upgrade below
-  // (PlanView.h; support inbox 4074)
-  const urnw::planview::PlanView planView = balance_.plan;
+  // plan value: Guest / Free / Pro (macOS AccountRootView), and while unknown
+  // Loading, or Something went wrong with Try again, never Free (PlanView.h)
+  const urnw::planview::PlanView planView = balance_.planView;
   const bool planUnknown = planView == urnw::planview::PlanView::Loading ||
                            planView == urnw::planview::PlanView::Failed;
   AccountPlanValueText().Text(Loc(urnw::planview::PlanValueKey(planView, balance_.guest)));
-  AccountPlanRetry().Content(LocBox("try_again"));
-  AccountPlanRetry().Visibility(urnw::planview::OffersRetry(planView, balance_.guest)
-                                    ? Visibility::Visible
-                                    : Visibility::Collapsed);
+  AccountPlanRetryButton().Content(LocBox("try_again"));
+  AccountPlanRetryButton().Visibility(urnw::planview::OffersRetry(planView, balance_.guest)
+                                          ? Visibility::Visible
+                                          : Visibility::Collapsed);
   // Pro gold (android theme/Color.kt ProGold). Android spends this colour on the
   // Pro entitlement and on nothing else, so the plan value is the ONE place on
   // these cards that may wear it — until now "Supporter" was a word in the same
   // white as every other label, and the entitlement was invisible. The upgrade
   // affordance beside it stays un-gilded: it is hidden for Pro accounts anyway.
-  // An unknown plan's words are muted: they are a state, not a plan.
-  auto planBrush = balance_.isPro                        ? urnw::colors::ProGoldBrush()
-                   : (planUnknown && !balance_.guest)    ? urnw::colors::MutedBrush()
-                                                         : urnw::colors::TextBrush();
+  auto planBrush = balance_.isPro ? urnw::colors::ProGoldBrush()
+                   // an unknown plan's words are a state, not a plan: muted
+                   : (planUnknown && !balance_.guest) ? urnw::colors::MutedBrush()
+                                                      : urnw::colors::TextBrush();
   AccountPlanValueText().Foreground(planBrush);
   // a Pro network's plan label replays the Pro celebration on a tap (android
   // AccountRootSubscription onPlanLabelTap); free and guest labels stay text
@@ -2620,10 +2618,9 @@ void MainWindow::ApplyBalance() {
   }
   AccountPlanValueText().IsTapEnabled(balance_.isPro && !balance_.guest);
 
-  // the upgrade affordances show for a signed-in account the server said is
-  // free, never while the plan is unknown; a guest gets a create-account
-  // affordance on the plan cards instead (macOS AccountRootView, linux
-  // ConnectDrawer), which offers signing out to create an account
+  // the upgrade affordances show for a signed-in free account; a guest gets a
+  // create-account affordance on the plan cards instead (macOS AccountRootView,
+  // linux ConnectDrawer), which offers signing out to create an account
   // (LoginPage::OpenGuestConversion)
   const auto upgradeVisibility = urnw::planview::OffersUpgrade(planView, balance_.guest)
                                      ? Visibility::Visible

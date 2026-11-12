@@ -265,11 +265,11 @@ void SubscriptionBalanceStore::TrackStoredJwt() {
 }
 
 bool SubscriptionBalanceStore::SyncPlan() {
-  const planview::PlanView plan =
+  const planview::PlanView planView =
       planview::PlanViewFor(proTracker_.getShownPlan(), proTracker_.getLastReadFailed());
   const bool isPro = proTracker_.getIsPro();
-  const bool changed = snapshot_.plan != plan || snapshot_.isPro != isPro;
-  snapshot_.plan = plan;
+  const bool changed = snapshot_.planView != planView || snapshot_.isPro != isPro;
+  snapshot_.planView = planView;
   snapshot_.isPro = isPro;
   return changed;
 }
@@ -298,9 +298,8 @@ void SubscriptionBalanceStore::Fetch() {
           loading_ = false;
           if (err || !result) {
             if (err) LogWarn("balance: fetch failed: {}", *err);
-            // keep the last snapshot; the poll retries. The plan stays the
-            // server's last answer, and before one it reads Failed with Try
-            // again, never Free (support inbox 4074)
+            // keep the last snapshot; the poll retries. Before the server's
+            // first answer the plan turns Failed, with Try again, never Free
             proTracker_.balanceFailed();
             if (SyncPlan()) Publish();
             Settle();

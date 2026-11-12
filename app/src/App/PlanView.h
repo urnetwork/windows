@@ -17,6 +17,8 @@
 
 namespace urnw::planview {
 
+// What the card can show: the server's answer, or the two states of a plan
+// it has not answered yet.
 enum class PlanView {
   Pro,
   Free,
@@ -32,18 +34,19 @@ inline constexpr std::string_view kShownPlanPro = "pro";
 inline constexpr std::string_view kShownPlanFree = "free";
 inline constexpr std::string_view kShownPlanUnknown = "unknown";
 
-// `shownPlan` is the sdk's getShownPlan; any value but Pro and Free is unknown.
+// The card's view of the sdk's decision: `shownPlan` is its getShownPlan and
+// `lastReadFailed` its getLastReadFailed; any value but Pro and Free is unknown.
 constexpr PlanView PlanViewFor(std::string_view shownPlan, bool lastReadFailed) {
   if (shownPlan == kShownPlanPro) return PlanView::Pro;
   if (shownPlan == kShownPlanFree) return PlanView::Free;
   return lastReadFailed ? PlanView::Failed : PlanView::Loading;
 }
 
-// The plan value's string key. A guest network reads "guest" whatever the
-// plan (its card offers creating an account instead).
-constexpr std::string_view PlanValueKey(PlanView plan, bool guest) {
+// What the card's value says, as a localization key: Guest for a guest
+// network whatever its plan (its card offers creating an account instead).
+constexpr std::string_view PlanValueKey(PlanView planView, bool guest) {
   if (guest) return "guest";
-  switch (plan) {
+  switch (planView) {
     case PlanView::Pro:
       return "supporter";
     case PlanView::Free:
@@ -58,14 +61,14 @@ constexpr std::string_view PlanValueKey(PlanView plan, bool guest) {
 
 // Try again beside the plan value: a read failed and the server has not
 // answered since.
-constexpr bool OffersRetry(PlanView plan, bool guest) {
-  return !guest && plan == PlanView::Failed;
+constexpr bool OffersRetry(PlanView planView, bool guest) {
+  return !guest && planView == PlanView::Failed;
 }
 
 // The plan card's Upgrade and the wallet's checkout: a signed-in account the
 // server said is Free. Never while the plan is unknown.
-constexpr bool OffersUpgrade(PlanView plan, bool guest) {
-  return !guest && plan == PlanView::Free;
+constexpr bool OffersUpgrade(PlanView planView, bool guest) {
+  return !guest && planView == PlanView::Free;
 }
 
 }  // namespace urnw::planview
