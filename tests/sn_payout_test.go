@@ -638,6 +638,88 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 	}
 }
 
+// The v1 claim is the signed-in session's, not its dialog's, as the v2 claim
+// is (owner, 2026-11-12): the page holds it (snpayout::ClaimInFlight of
+// ClaimAlphaProgress, whose holder the spec pins), each event moves its
+// progress on the UI thread whether or not the dialog is up, the dialog opened
+// during the claim draws it with Claim held, the tile's Claim stays enabled to
+// open it, the page reads the claims again after its Done, and a sign-out
+// drops it.
+func TestV1ClaimIsTheSessions(t *testing.T) {
+	requireAll := func(file string, source string, wants ...string) {
+		t.Helper()
+		for _, want := range wants {
+			if !strings.Contains(source, want) {
+				t.Errorf("%s: missing %s", file, want)
+			}
+		}
+	}
+	body := func(file, source, signature string) string {
+		t.Helper()
+		found := functionBody(source, signature)
+		if found == "" {
+			t.Fatalf("%s: no %s", file, signature)
+		}
+		return found
+	}
+	header := stripComments(readAppSource(t, "WalletPage.h"))
+	requireAll("WalletPage.h", header,
+		"snpayout::ClaimInFlight<ClaimAlphaProgress> v1Claim_;",
+		"bool StartV1Claim(std::shared_ptr<ClaimAlphaProgress> progress);")
+	page := stripComments(readAppSource(t, "WalletPage.cpp"))
+	requireAll("WalletPage::MakeClaimer", body("WalletPage.cpp", page, "Claimer WalletPage::MakeClaimer("),
+		"return self && self->wallet().StartV1Claim(std::move(progress));")
+	start := body("WalletPage.cpp", page, "bool WalletPage::StartV1Claim(")
+	requireAll("WalletPage::StartV1Claim", start,
+		"const std::optional<uint64_t> started = v1Claim_.Start(progress);",
+		"if (!started) return false;",
+		"const std::weak_ptr<ClaimAlphaProgress> claim = progress;",
+		"rows.Sent(epoch, txHash);", "rows.Confirmed(epoch, txHash, amountRao);", "rows.Failed(epoch, message);",
+		"if (auto self = weak.get()) self->wallet().OnV1ClaimDone(claim, ticket);",
+		"Sdk().device().snClaim(epochs, callback);")
+	if strings.Count(start, "self->wallet().OnV1ClaimEvent(") != 3 {
+		t.Error("WalletPage::StartV1Claim: Sent, Confirmed and Failed do not each go through OnV1ClaimEvent")
+	}
+	requireAll("WalletPage::OnV1ClaimEvent", body("WalletPage.cpp", page, "void WalletPage::OnV1ClaimEvent("),
+		"const auto progress = claim.lock();", "if (!progress) return;", "step(*progress);",
+		"if (claimSheet_) claimSheet_->Redraw();")
+	requireAll("WalletPage::OnV1ClaimDone", body("WalletPage.cpp", page, "void WalletPage::OnV1ClaimDone("),
+		"if (const auto progress = claim.lock()) progress->Done();",
+		"if (v1Claim_.End(ticket)) {", "LoadClaims();", "LoadGas();")
+	open := body("WalletPage.cpp", page, "winrt::fire_and_forget WalletPage::OnClaimAlpha(")
+	requireAll("WalletPage::OnClaimAlpha", open,
+		"std::shared_ptr<ClaimAlphaProgress> progress = v1Claim_.Progress();",
+		"if (!progress) progress = std::make_shared<ClaimAlphaProgress>(claims_, gas.tao);",
+		"urnw::ClaimAlphaSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,")
+	claims := body("WalletPage.cpp", page, "void WalletPage::ApplyClaims(")
+	requireAll("WalletPage::ApplyClaims", claims,
+		"w_.ClaimButton().IsEnabled(v1Claim_.InFlight());",
+		"w_.ClaimButton().IsEnabled((totalClaimableRao_ > 0 && CanClaim()) || previewSample || v1Claim_.InFlight());")
+	requireAll("WalletPage::ResetForSignOut", body("WalletPage.cpp", page, "void WalletPage::ResetForSignOut("),
+		"v1Claim_.Drop();")
+
+	sheets := stripComments(readAppSource(t, "EarningsSheets.cpp"))
+	startClaim := body("EarningsSheets.cpp", sheets, "void ClaimAlphaSheet::StartClaim(")
+	requireAll("ClaimAlphaSheet::StartClaim", startClaim,
+		"if (progress_->sending() || !claimer_) return;", "if (!claimer_(progress_)) return;")
+	for _, own := range []string{"weak_from_this()", "TryEnqueue(", "progress_->Sent(", "progress_->Confirmed(",
+		"progress_->Failed(", "progress_->Done(", "progress_->Start("} {
+		if strings.Contains(startClaim, own) {
+			t.Errorf("ClaimAlphaSheet::StartClaim: %s: the dialog moves the claim itself, and drops its events once dismissed", own)
+		}
+	}
+	requireAll("ClaimAlphaSheet::ApplyState", body("EarningsSheets.cpp", sheets, "void ClaimAlphaSheet::ApplyState("),
+		"for (auto const& row : progress_->rows()) rowsPanel_.Children().Append(BuildRow(row));",
+		"claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending());")
+	// the events' rows, moved from the dialog's handlers unchanged
+	requireAll("ClaimAlphaProgress::Failed", body("EarningsSheets.cpp", sheets, "void ClaimAlphaProgress::Failed("),
+		`if (MentionsExpiry(message)) row->claim.status = "expired";`, "if (MentionsGas(message)) needsGas_ = true;")
+	requireAll("ClaimAlphaProgress::Confirmed", body("EarningsSheets.cpp", sheets, "void ClaimAlphaProgress::Confirmed("),
+		`row->claim.status = "claimed";`, "if (amountRao > 0) row->claim.amountRao = amountRao;")
+	requireAll("ClaimAlphaProgress::Done", body("EarningsSheets.cpp", sheets, "void ClaimAlphaProgress::Done("),
+		"sending_ = false;", "if (row.state == Row::State::Sending) row.state = Row::State::Idle;")
+}
+
 // Every way settlement v2's Claim misses the look of the earnings claim action,
 // one line each (owner decision, 2026-10-13: its colour is consistent with the
 // other platforms). On every other platform the v2 tile's Claim is the very

@@ -255,29 +255,13 @@ hstring CtfWinText(snpayout::CtfWin const& win) {
   return hstring{urnw::Format(snpayout::CtfWinKey(win), country)};
 }
 
-// ---- ClaimAlphaSheet ---------------------------------------------------------
+// ---- ClaimAlphaProgress --------------------------------------------------------
 
-std::shared_ptr<ClaimAlphaSheet> ClaimAlphaSheet::Create(
-    XamlRoot const& root, winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-    std::vector<EpochClaim> claims, GasKeyInfo gas, std::string explorerTxUrl,
-    bool allowActions, Claimer claimer, std::function<void()> onClaimed) {
-  auto sheet = std::shared_ptr<ClaimAlphaSheet>(
-      new ClaimAlphaSheet(queue, std::move(claims), std::move(gas), std::move(explorerTxUrl),
-                          allowActions, std::move(claimer), std::move(onClaimed)));
-  sheet->Build(root);
-  return sheet;
-}
-
-ClaimAlphaSheet::ClaimAlphaSheet(winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-                                 std::vector<EpochClaim> claims, GasKeyInfo gas,
-                                 std::string explorerTxUrl, bool allowActions, Claimer claimer,
-                                 std::function<void()> onClaimed)
-    : queue_(queue),
-      gas_(std::move(gas)),
-      explorerTxUrl_(std::move(explorerTxUrl)),
-      allowActions_(allowActions),
-      claimer_(std::move(claimer)),
-      onClaimed_(std::move(onClaimed)) {
+ClaimAlphaProgress::ClaimAlphaProgress(std::vector<EpochClaim> claims, std::optional<double> gasTao)
+    // A known-empty gas key cannot pay for anything; an unknown balance (the
+    // chain did not answer) does not block the attempt, the SDK reports the
+    // real reason if there is one.
+    : needsGas_(gasTao.has_value() && *gasTao <= 0.0) {
   // newest epoch first, as the history table orders them
   std::sort(claims.begin(), claims.end(),
             [](EpochClaim const& a, EpochClaim const& b) { return a.epoch > b.epoch; });
@@ -286,10 +270,9 @@ ClaimAlphaSheet::ClaimAlphaSheet(winrt::Microsoft::UI::Dispatching::DispatcherQu
     row.claim = std::move(claim);
     rows_.push_back(std::move(row));
   }
-  needsGas_ = NeedsGas();
 }
 
-int64_t ClaimAlphaSheet::TotalClaimableRao() const {
+int64_t ClaimAlphaProgress::TotalClaimableRao() const {
   int64_t total = 0;
   for (auto const& row : rows_) {
     if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
@@ -299,7 +282,7 @@ int64_t ClaimAlphaSheet::TotalClaimableRao() const {
   return total;
 }
 
-size_t ClaimAlphaSheet::ClaimableCount() const {
+size_t ClaimAlphaProgress::ClaimableCount() const {
   size_t count = 0;
   for (auto const& row : rows_) {
     if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) ++count;
@@ -307,12 +290,83 @@ size_t ClaimAlphaSheet::ClaimableCount() const {
   return count;
 }
 
-bool ClaimAlphaSheet::NeedsGas() const {
-  // A known-empty gas key cannot pay for anything; an unknown balance (the
-  // chain did not answer) does not block the attempt, the SDK reports the
-  // real reason if there is one.
-  return gas_.tao.has_value() && *gas_.tao <= 0.0;
+bool ClaimAlphaProgress::Start() {
+  if (sending_) return false;
+  std::vector<int64_t> epochs;
+  for (auto& row : rows_) {
+    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
+      row.state = Row::State::Sending;
+      row.message.clear();
+      epochs.push_back(row.claim.epoch);
+    }
+  }
+  if (epochs.empty()) return false;
+  epochs_ = std::move(epochs);
+  sending_ = true;
+  return true;
 }
+
+ClaimAlphaProgress::Row* ClaimAlphaProgress::Find(int64_t epoch) {
+  for (auto& row : rows_) {
+    if (row.claim.epoch == epoch) return &row;
+  }
+  return nullptr;
+}
+
+void ClaimAlphaProgress::Sent(int64_t epoch, std::string const& txHash) {
+  if (auto* row = Find(epoch)) {
+    row->state = Row::State::Sent;
+    row->claim.txHash = txHash;
+  }
+}
+
+void ClaimAlphaProgress::Confirmed(int64_t epoch, std::string const& txHash, int64_t amountRao) {
+  if (auto* row = Find(epoch)) {
+    row->state = Row::State::Confirmed;
+    row->claim.status = "claimed";
+    row->claim.txHash = txHash;
+    if (amountRao > 0) row->claim.amountRao = amountRao;
+  }
+}
+
+void ClaimAlphaProgress::Failed(int64_t epoch, std::string const& message) {
+  if (auto* row = Find(epoch)) {
+    row->state = Row::State::Failed;
+    row->message = message;
+    if (MentionsExpiry(message)) row->claim.status = "expired";
+  }
+  // "needs gas" is a funding problem, not an epoch's: surface the mirror
+  // address above the rows as well as the reason on the row
+  if (MentionsGas(message)) needsGas_ = true;
+}
+
+void ClaimAlphaProgress::Done() {
+  sending_ = false;
+  // a row the SDK never reported on is not still sending
+  for (auto& row : rows_) {
+    if (row.state == Row::State::Sending) row.state = Row::State::Idle;
+  }
+}
+
+// ---- ClaimAlphaSheet ---------------------------------------------------------
+
+std::shared_ptr<ClaimAlphaSheet> ClaimAlphaSheet::Create(
+    XamlRoot const& root, std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas,
+    std::string explorerTxUrl, bool allowActions, Claimer claimer) {
+  auto sheet = std::shared_ptr<ClaimAlphaSheet>(
+      new ClaimAlphaSheet(std::move(progress), std::move(gas), std::move(explorerTxUrl),
+                          allowActions, std::move(claimer)));
+  sheet->Build(root);
+  return sheet;
+}
+
+ClaimAlphaSheet::ClaimAlphaSheet(std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas,
+                                 std::string explorerTxUrl, bool allowActions, Claimer claimer)
+    : progress_(std::move(progress)),
+      gas_(std::move(gas)),
+      explorerTxUrl_(std::move(explorerTxUrl)),
+      allowActions_(allowActions),
+      claimer_(std::move(claimer)) {}
 
 void ClaimAlphaSheet::Build(XamlRoot const& root) {
   dialog_ = MakeDialog(root, Loc("claim_alpha_title"));
@@ -322,10 +376,10 @@ void ClaimAlphaSheet::Build(XamlRoot const& root) {
   content.MinWidth(sheetfit::Width(root, 460));
 
   // the figure: what is claimable now, over how many epochs
-  totalValue_ = MakeValue(hstring{FormatAlphaRao(TotalClaimableRao())}, 36);
+  totalValue_ = MakeValue(hstring{FormatAlphaRao(progress_->TotalClaimableRao())}, 36);
   content.Children().Append(totalValue_);
   acrossText_ = MakeText(
-      hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(ClaimableCount()))}, 12,
+      hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(progress_->ClaimableCount()))}, 12,
       colors::MutedBrush(), true);
   content.Children().Append(acrossText_);
 
@@ -499,27 +553,28 @@ UIElement ClaimAlphaSheet::BuildRow(Row const& row) {
 }
 
 void ClaimAlphaSheet::ApplyState() {
-  totalValue_.Text(hstring{FormatAlphaRao(TotalClaimableRao())});
+  totalValue_.Text(hstring{FormatAlphaRao(progress_->TotalClaimableRao())});
   acrossText_.Text(
-      hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(ClaimableCount()))});
+      hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(progress_->ClaimableCount()))});
   gasBalanceValue_.Text(gas_.tao ? hstring{FormatTao(*gas_.tao) + L" TAO"} : hstring{L"-"});
-  needsGasPanel_.Visibility(needsGas_ ? Visibility::Visible : Visibility::Collapsed);
+  needsGasPanel_.Visibility(progress_->needsGas() ? Visibility::Visible : Visibility::Collapsed);
 
   rowsPanel_.Children().Clear();
-  for (auto const& row : rows_) rowsPanel_.Children().Append(BuildRow(row));
+  for (auto const& row : progress_->rows()) rowsPanel_.Children().Append(BuildRow(row));
 
-  progressRow_.Visibility(sending_ ? Visibility::Visible : Visibility::Collapsed);
+  progressRow_.Visibility(progress_->sending() ? Visibility::Visible : Visibility::Collapsed);
 
-  const int64_t total = TotalClaimableRao();
+  const int64_t total = progress_->TotalClaimableRao();
   claimButton_.Content(winrt::box_value(
       hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}));
-  claimButton_.IsEnabled(allowActions_ && total > 0 && !needsGas_ && !sending_);
+  // held while the claim in flight runs, in this dialog or one closed since
+  claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending());
   // Once every claimable epoch confirmed the button has nothing left to do and
   // says so by its figure ("Claim 0.0000"), which is disabled above.
 }
 
 void ClaimAlphaSheet::StartClaim() {
-  if (sending_ || !claimer_) return;
+  if (progress_->sending() || !claimer_) return;
   if (!allowActions_) {
     // Disabled without a session, so reaching this is a bug rather than a
     // user path: say so instead of returning.
@@ -528,87 +583,13 @@ void ClaimAlphaSheet::StartClaim() {
     errorText_.Visibility(Visibility::Visible);
     return;
   }
-  std::vector<int64_t> epochs;
-  for (auto& row : rows_) {
-    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
-      row.state = Row::State::Sending;
-      row.message.clear();
-      epochs.push_back(row.claim.epoch);
-    }
-  }
-  if (epochs.empty()) return;
-  sending_ = true;
+  // The claim is the session's from here, not this dialog's (owner,
+  // 2026-11-12): the page starts it on this progress and moves the progress
+  // along with its events, so a dialog dismissed during the claim drops none
+  // of them, and one opened again draws them, its Claim held until Done.
+  if (!claimer_(progress_)) return;
   errorText_.Visibility(Visibility::Collapsed);
   ApplyState();
-
-  // The events arrive on the SDK's thread; each is marshalled here and applied
-  // through a weak reference, so a dismissed sheet drops them on the floor and
-  // the claim itself carries on regardless (it is the chain's, not the
-  // dialog's).
-  auto weak = weak_from_this();
-  auto queue = queue_;
-  auto find = [](std::vector<Row>& rows, int64_t epoch) -> Row* {
-    for (auto& row : rows) {
-      if (row.claim.epoch == epoch) return &row;
-    }
-    return nullptr;
-  };
-  ClaimEvents events;
-  events.sent = [weak, queue, find](int64_t epoch, std::string txHash) {
-    queue.TryEnqueue([weak, find, epoch, txHash] {
-      auto self = weak.lock();
-      if (!self) return;
-      if (auto* row = find(self->rows_, epoch)) {
-        row->state = Row::State::Sent;
-        row->claim.txHash = txHash;
-      }
-      self->ApplyState();
-    });
-  };
-  events.confirmed = [weak, queue, find](int64_t epoch, std::string txHash, int64_t amountRao) {
-    queue.TryEnqueue([weak, find, epoch, txHash, amountRao] {
-      auto self = weak.lock();
-      if (!self) return;
-      if (auto* row = find(self->rows_, epoch)) {
-        row->state = Row::State::Confirmed;
-        row->claim.status = "claimed";
-        row->claim.txHash = txHash;
-        if (amountRao > 0) row->claim.amountRao = amountRao;
-      }
-      self->anyConfirmed_ = true;
-      self->ApplyState();
-    });
-  };
-  events.failed = [weak, queue, find](int64_t epoch, std::string message) {
-    urnw::LogError("claim sheet: epoch {} failed: {}", epoch, message);
-    queue.TryEnqueue([weak, find, epoch, message] {
-      auto self = weak.lock();
-      if (!self) return;
-      if (auto* row = find(self->rows_, epoch)) {
-        row->state = Row::State::Failed;
-        row->message = message;
-        if (MentionsExpiry(message)) row->claim.status = "expired";
-      }
-      // "needs gas" is a funding problem, not an epoch's: surface the mirror
-      // address above the rows as well as the reason on the row
-      if (MentionsGas(message)) self->needsGas_ = true;
-      self->ApplyState();
-    });
-  };
-  events.done = [weak, queue] {
-    queue.TryEnqueue([weak] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->sending_ = false;
-      // a row the SDK never reported on is not still sending
-      for (auto& row : self->rows_) {
-        if (row.state == Row::State::Sending) row.state = Row::State::Idle;
-      }
-      self->ApplyState();
-      if (self->anyConfirmed_ && self->onClaimed_) self->onClaimed_();
-    });
-  };
-  claimer_(std::move(epochs), std::move(events));
 }
 
 void ClaimAlphaSheet::CopyMirrorAddress() {

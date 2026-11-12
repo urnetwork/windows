@@ -1241,11 +1241,12 @@ int main() {
               progress.rows()[1].amountRao == 50'000'000,
           "its row is unavailable");
     Check(progress.ClaimableRao() == 3'241'000'000, "what Claim moves leaves it out");
-    // the figure and Claim both are the claim's until its Done (every app,
-    // 2026-11-12: what the claim moves)
-    Check(progress.FigureRao() == 3'291'000'000 && progress.ClaimsBoth(), "the claim's figure until Done");
+    // and so does what the claim moves (every app, 2026-11-12), and Claim
+    // both, as an account of an unknown amount now
+    Check(progress.FigureRao() == 3'241'000'000 && !progress.ClaimsBoth(), "the claim's figure leaves it out");
     progress.Sent(1, 42, "0xabc");
     progress.Confirmed(1, 42, "0xabc", 3'241'000'000);
+    Check(progress.FigureRao() == 3'241'000'000 && progress.TotalKnown(), "the one it moved, confirmed: still its figure");
     progress.Done();
     Check(!progress.CanClaim(true), "the page reads the accounts again");
     Check(!progress.ClaimsBoth() && !progress.TotalKnown(), "after Done: no Claim both, and no figure");
@@ -2043,6 +2044,44 @@ int main() {
     Check(!late.Press() && late.sdk.size() == 2, "and its Claim stays held");
   }
   {
+    TEST_CASE("v1 claim: the claim in flight is the session's too");
+    // the v1 dialog's progress as the claim in flight needs it
+    // (EarningsSheets.h ClaimAlphaProgress): Start takes the claimable epochs
+    struct Epochs {
+      int claimable = 2;
+      bool sending = false;
+      bool Start() {
+        if (sending || claimable == 0) return false;
+        sending = true;
+        return true;
+      }
+    };
+    ClaimInFlight<Epochs> v1;
+    auto dialog = std::make_shared<Epochs>();
+    const std::optional<uint64_t> ticket = v1.Start(dialog);
+    Check(ticket && v1.InFlight() && v1.Progress() == dialog && dialog->sending, "Claim: the claim in flight");
+    // the dialog dismissed and opened again: the claim in flight's progress,
+    // and no second claim, from it or from a dialog over the read
+    Check(v1.Progress() == dialog, "opened again on the claim in flight");
+    Check(!v1.Start(dialog) && !v1.Start(std::make_shared<Epochs>()), "no second claim while one is in flight");
+    // its Done ends it, once
+    Check(v1.End(*ticket) && !v1.InFlight() && !v1.Progress(), "Done");
+    Check(!v1.End(*ticket), "a Done twice ends nothing");
+    // nothing to claim starts nothing
+    auto none = std::make_shared<Epochs>();
+    none->claimable = 0;
+    Check(!v1.Start(none) && !v1.InFlight(), "no epoch to claim: no claim");
+    // a sign-out drops the claim in flight, and its Done, landing after the
+    // next account's claim started, ends nothing of it
+    const std::optional<uint64_t> departed = v1.Start(std::make_shared<Epochs>());
+    v1.Drop();
+    Check(!v1.InFlight(), "a sign-out drops it");
+    auto next = std::make_shared<Epochs>();
+    const std::optional<uint64_t> nextTicket = v1.Start(next);
+    Check(departed && nextTicket && !v1.End(*departed) && v1.Progress() == next,
+          "the departed claim's Done ends nothing of the next one's");
+  }
+  {
     TEST_CASE("v2: a claim in flight keeps the section's Claim");
     LedgerAccount paidAccount = Account();
     paidAccount.claimableRao = 0;
@@ -2086,17 +2125,34 @@ int main() {
     dialog.Done();
     Check(!dialog.TotalKnown(), "after Done the rows left say why: no figure, never 0");
 
-    // Claim both says what the press sends while it runs
+    // Claim both says what the claim moves while it runs
     LedgerClaimProgress both = Dialog({Account(), CtfAccount()});
     Check(both.Start() && both.ClaimsBoth() && both.FigureRao() == 3'291'000'000, "Claim both");
     both.Confirmed(1, 42, "0xbatch", 3'241'000'000);
     Check(both.ClaimsBoth() && both.FigureRao() == 3'291'000'000, "one confirmed: still Claim both, its figure");
-    // an account short of gas: the claim's figure until Done, then what Claim moves
+    // an account the gas key could not pay for: the claim sent nothing for it,
+    // so it leaves the claim's figure and Claim both; after Done it is what
+    // Claim moves
     both.Failed(kCtfNoId, 9, "needs_gas: the gas key cannot pay for the claim");
-    Check(both.FigureRao() == 3'291'000'000 && both.TotalKnown(), "short of gas: the claim's figure until Done");
+    Check(!both.ClaimsBoth() && both.FigureRao() == 3'241'000'000 && both.TotalKnown(),
+          "short of gas: not in what the claim moves");
     both.Done();
     Check(!both.ClaimsBoth() && both.FigureRao() == 50'000'000 && both.TotalKnown(),
           "after Done: what Claim moves, the account short of gas");
+
+    // with no floor read yet, the preflight refuses capture the flag's slot as
+    // under the runtime's floor: an account under the floor, never in the
+    // claim's figure from then on
+    LedgerClaimProgress slot = Dialog({Account(), CtfAccount()});
+    Check(slot.Start() && slot.FigureRao() == 3'291'000'000 && slot.ClaimsBoth(), "Claim both, the floor unknown");
+    slot.Failed(kCtfNoId, 9, "not_claimable: AmountTooLow: under the transfer floor");
+    Check(slot.FigureRao() == 3'241'000'000 && !slot.ClaimsBoth(), "AmountTooLow: out of the figure");
+
+    // a claim that sends nothing it took: no figure, never a zero
+    LedgerClaimProgress none = Dialog({Account()});
+    Check(none.Start(), "Claim");
+    none.Failed(1, 42, "needs_gas: the gas key cannot pay for the claim");
+    Check(none.sending() && none.FigureRao() == 0 && !none.TotalKnown(), "nothing it moves: no figure");
 
     // a claim that moved everything, after Done: a true 0 between claims
     LedgerClaimProgress all = Dialog({Account()});

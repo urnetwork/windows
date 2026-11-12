@@ -97,10 +97,12 @@ func TestClaimCountUnderTheUnclaimedTotalSaysClaimableEpochs(t *testing.T) {
 		t.Errorf("claim_across_epochs reads %q, want Claimable epochs: {}", got)
 	}
 	sheets := stripComments(readAppSource(t, "EarningsSheets.cpp"))
-	if n := strings.Count(sheets, `urnw::Format("claim_across_epochs", static_cast<int64_t>(ClaimableCount()))`); n != 2 {
+	if n := strings.Count(sheets, `urnw::Format("claim_across_epochs", static_cast<int64_t>(progress_->ClaimableCount()))`); n != 2 {
 		t.Errorf("the claim dialog formats claim_across_epochs with ClaimableCount() %d times, want 2 (Build and ApplyState)", n)
 	}
-	count := functionBody(sheets, "size_t ClaimAlphaSheet::ClaimableCount() const")
+	// the dialog's epochs are its progress's, which the page holds while a
+	// claim is in flight (ClaimAlphaProgress)
+	count := functionBody(sheets, "size_t ClaimAlphaProgress::ClaimableCount() const")
 	if !strings.Contains(count, `if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) ++count;`) {
 		t.Errorf("ClaimableCount does not count the claimable rows:\n%s", count)
 	}

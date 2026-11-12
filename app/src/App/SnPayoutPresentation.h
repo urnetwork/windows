@@ -339,6 +339,9 @@ struct LedgerClaimRow {
   // Claim both leave it out, and they leave out a row under the dialog's floor
   // by its amount whatever it says (needs_gas, Failed)
   bool underFloor = false;
+  // what the last press took of it, its amount as Start found it; 0 for a row
+  // that press did not take (FigureRao)
+  int64_t pressRao = 0;
 
   bool operator==(const LedgerClaimRow&) const = default;
 };
@@ -374,16 +377,19 @@ class LedgerClaimProgress {
   int64_t ClaimableRao() const;
   // The dialog's figure, which Claim names too. Between claims it is what
   // Claim moves (ClaimableRao). During a claim it is what the claim moves
-  // (owner, 2026-11-12): the rows its press sent with an amount the dialog
-  // knows, above the floor, as Start found them, which stays until Done while
-  // the rows move along. So it is never 0, and never counts a row under the
-  // floor or of an amount not known yet.
+  // (owner, 2026-11-12): the rows its press took, an amount the dialog knows
+  // above the floor, at their amounts as Start found them, but for each the
+  // SDK has said it sent nothing for since (needs_gas, the preflight's
+  // AmountTooLow, its pool unavailable). It does not fall as rows confirm, so
+  // it never reads 0 before Done, and it never counts a row under the floor
+  // or of an amount not known.
   int64_t FigureRao() const;
-  // FigureRao is a total to show. During a claim it always is: the press moved
-  // something. Between claims: a row not claimed yet is one Claim moves, or
-  // every row is claimed (or there is none), and the total is a true zero.
-  // While the rows left are all under the floor or unavailable, or of an
-  // amount not known yet, they say why rather than a zero (Android's dialog).
+  // FigureRao is a total to show. During a claim: while the claim moves
+  // something (with nothing left, no figure, never a zero). Between claims: a
+  // row not claimed yet is one Claim moves, or every row is claimed (or there
+  // is none), and the total is a true zero. While the rows left are all under
+  // the floor or unavailable, or of an amount not known yet, they say why
+  // rather than a zero (Android's dialog).
   bool TotalKnown() const;
   // Claim's button: actions allowed (a device session), something to claim
   // above the transfer floor, gas, and no claim out
@@ -391,7 +397,7 @@ class LedgerClaimProgress {
   // Claim's button says Claim both (sn_ledger_claim_both): the rows Claim
   // moves are exactly the operator pool's and capture the flag's
   // (ClaimsBothPools), which the one claim sends together. During a claim,
-  // whether its press sent exactly those two (FigureRao's rows).
+  // whether FigureRao's rows are exactly those two.
   bool ClaimsBoth() const;
   // A row's title (PoolTitleKey): every row names its pool, and the one
   // operator pool beside capture the flag's (an account or a pool of the
@@ -423,6 +429,9 @@ class LedgerClaimProgress {
   LedgerClaimRow& RowFor(int64_t noId, int64_t index);
   // a row Claim moves (ClaimableRao, TotalKnown, ClaimsBoth, Start)
   bool Movable(const LedgerClaimRow& row) const;
+  // during a claim, a row it moves: one its press took that the SDK has not
+  // sent back to rest since (FigureRao, TotalKnown, ClaimsBoth)
+  bool Moving(const LedgerClaimRow& row) const;
 
   std::vector<LedgerClaimRow> rows_;
   // the pools of the page's read, every account claimable or not and each
@@ -438,10 +447,6 @@ class LedgerClaimProgress {
   bool ledgerRead_ = false;
   // the pools this claim's own read reported unavailable (ledger_unavailable)
   std::vector<int64_t> reportedUnavailable_;
-  // what the press in flight moves, and whether it is Claim both, as Start
-  // found them (FigureRao, ClaimsBoth)
-  int64_t pressRao_ = 0;
-  bool pressBoth_ = false;
 };
 
 // The SDK's SnLedgerClaimCallback as four plain functions, which the page
@@ -454,41 +459,61 @@ struct LedgerClaimEvents {
   std::function<void()> done;
 };
 
-// The v2 claim in flight, the signed-in session's rather than its dialog's
-// (owner, 2026-11-12). The page holds its progress, which the claim's events
-// move whether or not a dialog shows it, so a dialog dismissed during the
-// claim drops none of them and misses none of its Done. A dialog opened during
-// the claim draws the same progress, where Claim waits
-// (LedgerClaimProgress::CanClaim), and the page starts no second claim while
-// one is in flight: the gas key sends one at a time. A dialog pressed again
-// after Done claims on from its own progress. Only the claim's Done and a
-// sign-out end it; after a sign-out the page holds it no more, and its events
-// move only its own progress, which a dialog still up from before the
-// sign-out may show. Linux's snledger::ClaimInFlight is the same. UI thread
-// only.
-class LedgerClaimInFlight {
+// A claim in flight, the signed-in session's rather than its dialog's (owner,
+// 2026-11-12): the v2 claim's (LedgerClaimInFlight, of LedgerClaimProgress)
+// and the v1 claim's (WalletPage, of EarningsSheets.h ClaimAlphaProgress).
+// The page holds its progress, which the claim's events move whether or not
+// a dialog shows it, so a dialog dismissed during the claim drops none of them
+// and misses none of its Done. A dialog opened during the claim draws the same
+// progress, where Claim waits, and the page starts no second claim while one
+// is in flight: the gas key sends one at a time. A dialog pressed again after
+// Done claims on from its own progress. Only the claim's Done and a sign-out
+// end it; after a sign-out the page holds it no more, and its events move
+// only its own progress, which a dialog still up from before the sign-out may
+// show. Linux's snledger::ClaimInFlight is the same. UI thread only.
+//
+// `ClaimProgress` has `bool Start()`: Claim pressed, false with nothing to
+// claim or a claim out.
+template <typename ClaimProgress>
+class ClaimInFlight {
  public:
   // Claim pressed in a dialog on `progress`: it starts the press
-  // (LedgerClaimProgress::Start) and is the claim in flight from now. The
-  // ticket its Done carries, or none, changing nothing, while a claim is in
-  // flight already or when the press would take nothing.
-  std::optional<uint64_t> Start(std::shared_ptr<LedgerClaimProgress> progress);
+  // (ClaimProgress::Start) and is the claim in flight from now. The ticket its
+  // Done carries, or none, changing nothing, while a claim is in flight
+  // already or when the press would take nothing.
+  std::optional<uint64_t> Start(std::shared_ptr<ClaimProgress> progress) {
+    // one claim at a time: the gas key sends one
+    if (progress_ || !progress || !progress->Start()) return std::nullopt;
+    progress_ = std::move(progress);
+    return ++ticket_;
+  }
   bool InFlight() const { return progress_ != nullptr; }
   // The progress of the claim in flight, which its events move and a dialog
   // opened during it draws; null between claims.
-  const std::shared_ptr<LedgerClaimProgress>& Progress() const { return progress_; }
+  const std::shared_ptr<ClaimProgress>& Progress() const { return progress_; }
   // The Done of claim `ticket` (its progress's own Done is the claim's): no
   // claim is in flight any more. False, changing nothing, for a claim no
   // longer in flight (a sign-out dropped it).
-  bool End(uint64_t ticket);
+  bool End(uint64_t ticket) {
+    if (!progress_ || ticket != ticket_) return false;
+    progress_.reset();
+    ++ticket_;
+    return true;
+  }
   // A sign-out: the claim was the departed account's, and the page holds it
   // no more.
-  void Drop();
+  void Drop() {
+    progress_.reset();
+    ++ticket_;
+  }
 
  private:
-  std::shared_ptr<LedgerClaimProgress> progress_;
+  std::shared_ptr<ClaimProgress> progress_;
   uint64_t ticket_ = 0;
 };
+
+// The v2 claim in flight.
+using LedgerClaimInFlight = ClaimInFlight<LedgerClaimProgress>;
 
 // ---- the claim sheet's pool rows
 //

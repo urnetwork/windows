@@ -371,8 +371,20 @@ class WalletPage {
   void EnsureChainSettings(std::function<void()> then);
   void ApplyGas(std::optional<GasKeyInfo> gas);
   void ApplyLedgerMeta();
-  // The SDK claim, wrapped for the dialog (Device.snClaim).
+  // The v1 dialog's Claim (Device.snClaim): StartV1Claim.
   Claimer MakeClaimer();
+  // Starts the SDK's v1 claim on a dialog's `progress` as the session's claim
+  // in flight (v1Claim_): false, starting nothing, while one is in flight or
+  // when the press takes no epoch. Its events move the progress through
+  // OnV1ClaimEvent whether or not a dialog shows it; after its Done the page
+  // reads the claims and the gas balance again.
+  bool StartV1Claim(std::shared_ptr<ClaimAlphaProgress> progress);
+  // An event of the claim whose progress is `claim`, and its Done (`ticket`):
+  // they move that progress while the page or a dialog holds it, an open
+  // dialog draws it again, and Done ends the claim in flight.
+  void OnV1ClaimEvent(std::weak_ptr<ClaimAlphaProgress> const& claim,
+                      std::function<void(ClaimAlphaProgress&)> const& step);
+  void OnV1ClaimDone(std::weak_ptr<ClaimAlphaProgress> const& claim, uint64_t ticket);
   std::string ExplorerTxUrl() const;
   const EpochClaim* ClaimForEpoch(int64_t epoch) const;
 
@@ -655,9 +667,11 @@ class WalletPage {
   std::vector<snpayout::LedgerAccount> v2Accounts_;
   std::vector<snpayout::UnavailablePool> v2Unavailable_;
   // the v2 claim in flight, the session's rather than its dialog's: its
-  // progress, which a dialog shows while it is up, and the ticket its events
-  // carry; only its Done and a sign-out end it
+  // progress, which a dialog shows while it is up, and the ticket its Done
+  // carries; only its Done and a sign-out end it
   snpayout::LedgerClaimInFlight v2Claim_;
+  // the v1 claim in flight, the same way
+  snpayout::ClaimInFlight<ClaimAlphaProgress> v1Claim_;
   // capture the flag: the wins not claimed yet, newest first, as the newest
   // read's good answer gave them (none from a sign-out until the next good
   // read), and the reads' numbers

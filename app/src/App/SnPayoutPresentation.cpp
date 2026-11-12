@@ -260,15 +260,30 @@ int64_t LedgerClaimProgress::ClaimableRao() const {
   return total;
 }
 
+// during a claim, a row it moves: its press took it, and the SDK has not sent
+// it back to rest since (needs_gas, the preflight's AmountTooLow and its pool
+// unavailable each leave a taken row Idle); Sent, Confirmed and Failed are the
+// claim's
+bool LedgerClaimProgress::Moving(const LedgerClaimRow& row) const {
+  return row.pressRao > 0 && row.state != LedgerClaimState::Idle;
+}
+
 int64_t LedgerClaimProgress::FigureRao() const {
-  // during a claim what its press moves, which a row moving along (Confirmed
-  // above all) never takes from it
-  return sending_ ? pressRao_ : ClaimableRao();
+  if (!sending_) return ClaimableRao();
+  // at the amounts the press took, which a row moving along (Confirmed above
+  // all) never takes from it
+  constexpr int64_t kMax = std::numeric_limits<int64_t>::max();
+  int64_t total = 0;
+  for (const LedgerClaimRow& row : rows_) {
+    if (!Moving(row)) continue;
+    total = row.pressRao > kMax - total ? kMax : total + row.pressRao;
+  }
+  return total;
 }
 
 bool LedgerClaimProgress::TotalKnown() const {
-  // a press starts only with something it moves (Start)
-  if (sending_) return true;
+  // with nothing it moves left, no figure, never a zero
+  if (sending_) return FigureRao() > 0;
   bool left = false;
   for (const LedgerClaimRow& row : rows_) {
     if (row.state == LedgerClaimState::Confirmed) continue;
@@ -283,10 +298,9 @@ bool LedgerClaimProgress::CanClaim(bool allowActions) const {
 }
 
 bool LedgerClaimProgress::ClaimsBoth() const {
-  if (sending_) return pressBoth_;
   std::vector<PoolKind> movable;
   for (const LedgerClaimRow& row : rows_) {
-    if (Movable(row)) movable.push_back(row.kind);
+    if (sending_ ? Moving(row) : Movable(row)) movable.push_back(row.kind);
   }
   return ClaimsBothPools(movable);
 }
@@ -299,11 +313,10 @@ std::string LedgerClaimProgress::TitleKey(const LedgerClaimRow& row) const {
 
 bool LedgerClaimProgress::Start() {
   if (sending_ || ClaimableRao() <= 0) return false;
-  // what this press moves: the rows below that it sends with an amount the
-  // dialog knows above the floor, the figure until Done
-  pressRao_ = ClaimableRao();
-  pressBoth_ = ClaimsBoth();
   for (LedgerClaimRow& row : rows_) {
+    // what this press takes of the row: a row Claim moves, at its amount now,
+    // the figure until Done (FigureRao)
+    row.pressRao = Movable(row) ? row.amountRao : 0;
     if (row.state == LedgerClaimState::Confirmed || row.unavailable) continue;
     if (UnderTransferFloor(row.amountRao, transferFloorRao_)) {
       // under the dialog's floor no press takes it: one the last press left
@@ -450,25 +463,6 @@ void LedgerClaimProgress::Done() {
            std::find(reportedUnavailable_.begin(), reportedUnavailable_.end(), row.noId) ==
                reportedUnavailable_.end();
   });
-}
-
-std::optional<uint64_t> LedgerClaimInFlight::Start(std::shared_ptr<LedgerClaimProgress> progress) {
-  // one claim at a time: the gas key sends one
-  if (progress_ || !progress || !progress->Start()) return std::nullopt;
-  progress_ = std::move(progress);
-  return ++ticket_;
-}
-
-bool LedgerClaimInFlight::End(uint64_t ticket) {
-  if (!progress_ || ticket != ticket_) return false;
-  progress_.reset();
-  ++ticket_;
-  return true;
-}
-
-void LedgerClaimInFlight::Drop() {
-  progress_.reset();
-  ++ticket_;
 }
 
 namespace {
