@@ -146,12 +146,14 @@ using SdkUnavailablePool = urnet::SnLedgerUnavailablePool;
 using SdkUnavailablePoolList = urnet::SnLedgerUnavailablePoolList;
 using SdkLedgerClaimCallback = urnet::SnLedgerClaimCallback;
 using SdkRelayAccount = urnet::SnClaimRelayAccount;
+using SdkClaimStatus = urnet::SnClaimStatusResult;
 using SdkCtfWin = urnet::SnCtfWin;
 using SdkCtfClientResult = urnet::SnCtfClientResult;
 using SdkError = urnet::SnError;
 #else
-// The SDK's v2 account, unavailable pool, claim callback, relay account and
-// capture the flag status, by the generated wrapper's names and types.
+// The SDK's v2 account, unavailable pool, claim callback, relay account, claim
+// status and capture the flag status, by the generated wrapper's names and
+// types.
 struct SdkLedgerAccount {
   std::string vault{};
   int64_t no_id{};
@@ -197,6 +199,13 @@ struct SdkRelayAccount {
   std::optional<std::string> action;
   std::optional<std::string> claim_tx_url;
 };
+struct SdkClaimStatus {
+  std::optional<std::string> coldkey_ss58;
+  int64_t claimable_rao{};
+  int64_t transfer_floor_rao{};
+  std::optional<std::vector<SdkRelayAccount>> accounts;
+  std::optional<std::vector<SdkUnavailablePool>> unavailable_pools;
+};
 struct SdkCtfWin {
   int64_t epoch{};
   std::string role{};
@@ -208,6 +217,8 @@ struct SdkCtfWin {
   bool pending{};
   std::string root_status{};
   std::string coldkey_ss58{};
+  std::string client_id{};
+  std::string claim_state{};
 };
 struct SdkError {
   std::string message{};
@@ -215,8 +226,10 @@ struct SdkError {
 struct SdkCtfClientResult {
   std::string client_id{};
   int64_t as_of_millis{};
+  std::optional<std::vector<SdkCtfWin>> wins;
   std::optional<SdkCtfWin> latest_win;
   std::optional<SdkError> error;
+  std::optional<std::vector<SdkCtfWin>> unclaimed_wins;
 };
 #endif
 
@@ -279,6 +292,29 @@ RelayRow Row(int64_t noId, const std::string& titleKey, RelayRowStatus status, i
   row.amountRao = amountRao;
   row.txUrl = txUrl;
   return row;
+}
+
+// A win of the SDK's (SnCtfWin) in `epoch`, rank 1, not claimed.
+SdkCtfWin SdkWin(int64_t epoch, const std::string& role, const std::string& country) {
+  SdkCtfWin win;
+  win.epoch = epoch;
+  win.role = role;
+  win.country = country;
+  win.rank = 1;
+  win.slot_rao = 48'025'660;
+  win.pot_share_rao = 28'815'396;
+  win.amount_rao = 76'841'056;
+  win.root_status = "finalized";
+  win.coldkey_ss58 = "5COLD";
+  win.client_id = "3f6c2a1e-8d4b-4c7a-9e21-5b0d7f3a9c64";
+  win.claim_state = "unclaimed";
+  return win;
+}
+
+// a claim dialog over `accounts` with half a TAO of gas and the floor
+LedgerClaimProgress Dialog(const std::vector<LedgerAccount>& accounts, int64_t transferFloorRao = 0,
+                           const std::vector<UnavailablePool>& unavailable = {}) {
+  return LedgerClaimProgress(accounts, 0.5, unavailable, transferFloorRao);
 }
 
 void CheckRow(const LedgerClaimRow& row, int64_t noId, int64_t index, int64_t amountRao,
@@ -577,8 +613,9 @@ int main() {
           "nothing left");
   }
   {
-    TEST_CASE("v2 claim: needs_gas opens the gas top-up");
-    // the SDK's preflight refusal (snNeedsGasMessage)
+    TEST_CASE("v2 claim: needs_gas opens the gas top-up, and the account stays claimable");
+    // the SDK's refusal before it sends (snNeedsGasMessage): nothing was sent
+    // for the account
     const std::string needsGas =
         "needs_gas: this claim needs up to 0.0173 TAO of gas, the gas key 0x00aa has 0.0050 TAO; "
         "send TAO to 5GAS";
@@ -588,10 +625,13 @@ int main() {
     Check(progress.Start(), "Claim starts");
     progress.Failed(1, 42, needsGas);
     Check(progress.needsGas(), "the funding hint shows");
-    CheckRow(progress.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Failed, "", needsGas,
-             "failed");
-    CheckEq("add_tao_for_gas", ClaimFailureKey(progress.rows()[0].message), "the row's words");
+    CheckRow(progress.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Idle, "", "",
+             "still claimable, never failed");
+    Check(progress.ClaimableRao() == 3'241'000'000, "still in the claim's amount");
+    CheckEq("add_tao_for_gas", ClaimFailureKey(needsGas), "the hint's words");
     progress.Done();
+    CheckRow(progress.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Idle, "", "",
+             "claimable after the claim");
     Check(!progress.CanClaim(true), "Claim waits for gas");
     Check(LedgerClaimProgress({Account()}, 0.0).needsGas(), "a known empty gas key");
     Check(!LedgerClaimProgress({Account()}, 0.0).CanClaim(true), "cannot claim");
@@ -711,12 +751,10 @@ int main() {
     CheckEq("sn_ledger_pool", PoolTitleKey(PoolKind::Pool, false), "Pool {}, as before");
   }
   {
-    TEST_CASE("ctf: an older server's entries are pools, and everything is what it was");
+    TEST_CASE("ctf: an older server's entries are pools, titled and claimed as before");
     // an entry without a kind reads as a pool (LedgerAccountFrom of kind ""),
     // and the relay's floor is known today too
     constexpr int64_t kFloor = 100'000'000;
-    LedgerAccount small = Account();
-    small.claimableRao = 50'000'000;
     for (const int64_t floor : {int64_t{0}, kFloor}) {
       const std::string with = floor ? ", with the relay's floor" : "";
       const LedgerSectionView one =
@@ -725,27 +763,41 @@ int main() {
       Check(!one.poolTitles && one.accounts.size() == 1 && one.accounts[0].titleKey.empty(),
             "a lone account names no pool" + with);
       Check(one.showClaim && one.claimEnabled && !one.claimBoth, "Claim" + with);
-      // a lone account under the floor: the relay's note says it, not the block
-      Check(!LedgerSectionFor(true, true, LedgerFetch::Ready, {small}, true, {}, floor)
-                 .accounts[0]
-                 .underFloor,
-            "a lone account is not marked under the floor" + with);
       LedgerClaimProgress progress({Account()}, 0.5, {}, floor);
       CheckEq("sn_ledger_pool", progress.TitleKey(progress.rows()[0]), "Pool {} in the dialog" + with);
-      Check(!progress.ClaimsBoth(), "Claim with its amount" + with);
-      Check(!LedgerClaimProgress({small}, 0.5, {}, floor).rows()[0].underFloor,
-            "its dialog row is not marked" + with);
-      Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000)}, {}, floor).empty(),
-            "the claim sheet's figure, with no rows" + with);
-      Check(RelayRowsFor({Relay(1, PoolKind::Pool, 50'000'000)}, {}, floor).empty(),
-            "under the floor too: the claim sheet's note says it" + with);
+      Check(!progress.ClaimsBoth() && progress.ClaimableRao() == 3'241'000'000, "Claim with its amount" + with);
+      // the claim sheet has a row per account, as Android's always had
+      Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000)}, {}, floor) ==
+                std::vector<RelayRow>{Row(1, "sn_ledger_pool", RelayRowStatus::Pending, 841'000'000)},
+            "the claim sheet's row, Pool {}" + with);
       // a network paid to two coldkeys (one of them a wallet it replaced)
       Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000, "5AAA"),
                           Relay(1, PoolKind::Pool, 120'000'000, "5BBB")},
-                         {}, floor)
-                .empty(),
-            "two coldkeys' provider pool accounts: no rows, as before" + with);
+                         {}, floor) ==
+                std::vector<RelayRow>{Row(1, "sn_ledger_pool", RelayRowStatus::Pending, 841'000'000, "5AAA"),
+                                      Row(1, "sn_ledger_pool", RelayRowStatus::Pending, 120'000'000, "5BBB")},
+            "two coldkeys' accounts, each named" + with);
+      // the tile of a network with no wallet here: the figure alone
+      Check(RelayTileFor({Relay(1, PoolKind::Pool, 841'000'000)}, "5COLD", {}, floor) == RelayTileView{},
+            "the no-wallet tile's figure alone" + with);
     }
+    // below the claim minimum on a lone account too (owner, 2026-11-11), once
+    // the relay's floor is known
+    LedgerAccount small = Account();
+    small.claimableRao = 50'000'000;
+    Check(!LedgerSectionFor(true, true, LedgerFetch::Ready, {small}, true, {}, 0).accounts[0].underFloor,
+          "no floor known: nothing is under it");
+    const LedgerSectionView under = LedgerSectionFor(true, true, LedgerFetch::Ready, {small}, true, {}, kFloor);
+    Check(under.accounts[0].underFloor && under.accounts[0].titleKey.empty(), "a lone account under the floor");
+    Check(under.showClaim && !under.claimEnabled, "no claim the chain will refuse");
+    Check(LedgerClaimProgress({small}, 0.5, {}, kFloor).rows()[0].underFloor, "its dialog row");
+    Check(RelayRowsFor({Relay(1, PoolKind::Pool, 50'000'000)}, {}, kFloor) ==
+              std::vector<RelayRow>{Row(1, "sn_ledger_pool", RelayRowStatus::UnderFloor, 50'000'000)},
+          "its claim sheet row");
+    RelayTileView loneUnder;
+    loneUnder.underFloor = true;
+    Check(RelayTileFor({Relay(1, PoolKind::Pool, 50'000'000)}, "5COLD", {}, kFloor) == loneUnder,
+          "under the no-wallet tile's figure");
   }
   {
     TEST_CASE("ctf: the capture the flag account is a block of its own beside the provider pool's");
@@ -858,11 +910,21 @@ int main() {
                                                       {Unavailable(kCtfNoId, PoolKind::Ctf)}, kFloor);
     Check(beside.accounts[0].underFloor && !beside.accounts[1].underFloor,
           "the provider pool's under it, beside capture the flag unavailable");
-    // under the floor alone, Claim stays as it was: the SDK's preflight decides
+    // every account under the floor: nothing the claim can move, so no Claim,
+    // never a claim the chain will refuse
     LedgerAccount small = Account();
     small.claimableRao = 1;
-    Check(LedgerSectionFor(true, true, LedgerFetch::Ready, {small}, true, {}, kFloor).claimEnabled,
-          "Claim enabled");
+    LedgerAccount smallCtf = CtfAccount();
+    smallCtf.claimableRao = 1;
+    Check(!LedgerSectionFor(true, true, LedgerFetch::Ready, {small}, true, {}, kFloor).claimEnabled,
+          "a lone account under it: no Claim");
+    const LedgerSectionView both =
+        LedgerSectionFor(true, true, LedgerFetch::Ready, {small, smallCtf}, true, {}, kFloor);
+    Check(both.accounts[0].underFloor && both.accounts[1].underFloor && both.showClaim &&
+              !both.claimEnabled && !both.claimBoth,
+          "both under it: no Claim");
+    Check(LedgerSectionFor(true, true, LedgerFetch::Ready, {small}, true, {}, 0).claimEnabled,
+          "no floor known: Claim, and the SDK's preflight decides");
     // the dialog marks a row where the tile marks its block
     const LedgerClaimProgress dialog({Account(), CtfAccount()}, 0.5, {}, kFloor);
     Check(!dialog.rows()[0].underFloor && dialog.rows()[1].underFloor, "the dialog's rows");
@@ -870,6 +932,10 @@ int main() {
               .rows()[0]
               .underFloor,
           "beside an unavailable pool");
+    LedgerClaimProgress alone = Dialog({small}, kFloor);
+    Check(alone.rows().size() == 1 && alone.rows()[0].underFloor && alone.rows()[0].state == LedgerClaimState::Idle,
+          "a lone row under it");
+    Check(alone.ClaimableRao() == 0 && !alone.CanClaim(true) && !alone.Start(), "nothing for Claim to send");
   }
   {
     TEST_CASE("ctf claim: one Claim claims both pools, in one batch transaction");
@@ -925,12 +991,18 @@ int main() {
     const LedgerClaimProgress unavailableCtf({Account()}, 0.5, {Unavailable(kCtfNoId, PoolKind::Ctf)});
     CheckEq("sn_ledger_provider_pool", unavailableCtf.TitleKey(unavailableCtf.rows()[0]),
             "beside capture the flag unavailable");
-    // under the relay's floor, capture the flag's is not Claim both; the claim
-    // still sends what it can, and its preflight decides
+    // under the relay's floor, capture the flag's is not Claim both, and the
+    // claim's amount leaves it out: Claim moves the provider pool's
     LedgerClaimProgress floor({Account(), CtfAccount()}, 0.5, {}, 100'000'000);
     Check(!floor.rows()[0].underFloor && floor.rows()[1].underFloor, "under the floor");
     Check(!floor.ClaimsBoth() && floor.CanClaim(true), "Claim with its amount");
-    Check(floor.ClaimableRao() == 3'291'000'000, "the total keeps it");
+    Check(floor.ClaimableRao() == 3'241'000'000, "the amount leaves it out");
+    Check(floor.Start(), "Claim");
+    Check(floor.rows()[0].state == LedgerClaimState::Sending && floor.rows()[1].state == LedgerClaimState::Idle,
+          "only the provider pool's is sending");
+    // the SDK claims what its own preflight passes: the page's estimate can be off
+    floor.Sent(kCtfNoId, 9, "0xbatch");
+    Check(floor.rows()[1].state == LedgerClaimState::Sent && !floor.rows()[1].underFloor, "the chain took it");
   }
   {
     TEST_CASE("ctf claim: an unavailable pool is a row of its own, never a zero");
@@ -969,6 +1041,39 @@ int main() {
     back.Confirmed(kCtfNoId, 9, "0xbatch", 50'000'000);
     CheckRow(back.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Confirmed, "0xbatch", "",
              "confirmed with the Claimed amount");
+    // the dialog's total: what Claim moves, else nothing rather than a zero
+    // while the rows left say why (Android's dialog)
+    Check(Dialog({Account()}, 0, {Unavailable(kCtfNoId, PoolKind::Ctf)}).TotalKnown(),
+          "an account beside the unavailable pool: its total");
+    Check(!progress.TotalKnown(), "the provider pool's claimed, capture the flag's unread: no total");
+    const LedgerClaimProgress unread =
+        Dialog({}, 0, {Unavailable(1, PoolKind::Pool), Unavailable(kCtfNoId, PoolKind::Ctf)});
+    Check(!unread.TotalKnown() && unread.rows().size() == 2 && !unread.CanClaim(true), "nothing read: no total");
+    Check(Dialog({}).TotalKnown(), "nothing to claim and nothing unread: its zero");
+    LedgerAccount small = Account();
+    small.claimableRao = 1;
+    Check(!Dialog({small}, 1'000).TotalKnown(), "every account under the floor: no total, the rows say why");
+    Check(Dialog({Account(), CtfAccount()}, 100'000'000).TotalKnown(), "one above the floor: its total");
+    // an account's pool unavailable to the claim's own read, and nothing else
+    LedgerClaimProgress lost = Dialog({CtfAccount()});
+    Check(lost.Start(), "Claim");
+    lost.Failed(kCtfNoId, 0, "ledger_unavailable: 503");
+    lost.Done();
+    Check(!lost.TotalKnown() && lost.rows().size() == 1, "no total once its only pool is unread");
+    // everything claimed: a true zero
+    LedgerClaimProgress all = Dialog({Account(), CtfAccount()});
+    Check(all.Start(), "Claim both");
+    all.Confirmed(1, 42, "0xbatch", 3'241'000'000);
+    all.Confirmed(kCtfNoId, 9, "0xbatch", 50'000'000);
+    all.Done();
+    Check(all.TotalKnown() && all.ClaimableRao() == 0, "both claimed: 0 left");
+    // a row the SDK added, of an amount not known yet, is not a zero either
+    LedgerClaimProgress added = Dialog({Account()});
+    Check(added.Start(), "Claim");
+    added.Confirmed(1, 42, "0xabc", 3'241'000'000);
+    added.Failed(2, 7, "claim_failed: reverted");
+    added.Done();
+    Check(!added.TotalKnown(), "an unlisted account's failure: no total");
   }
   {
     TEST_CASE("ctf claim: the claim's own read cannot read a pool the page listed");
@@ -993,6 +1098,20 @@ int main() {
     Check(claimed.rows().size() == 2 && !claimed.rows()[1].unavailable &&
               claimed.rows()[1].state == LedgerClaimState::Confirmed,
           "claimed, and no unavailable row beside it");
+    // only rows this claim has not sent: one sent may still confirm, and one
+    // the claim failed keeps its failure (Android's and Linux's rule)
+    LedgerClaimProgress sent = Dialog({Account(), CtfAccount()});
+    Check(sent.Start(), "Claim both");
+    sent.Sent(kCtfNoId, 9, "0xbatch");
+    sent.Failed(kCtfNoId, 0, "ledger_unavailable: 503");
+    Check(sent.rows().size() == 2 && sent.rows()[1].state == LedgerClaimState::Sent && !sent.rows()[1].unavailable,
+          "sent, never unavailable");
+    LedgerClaimProgress refused = Dialog({Account(), CtfAccount()});
+    Check(refused.Start(), "Claim both");
+    refused.Failed(kCtfNoId, 9, "proof_mismatch: the root does not match");
+    refused.Failed(kCtfNoId, 0, "ledger_unavailable: 503");
+    Check(refused.rows()[1].state == LedgerClaimState::Failed && !refused.rows()[1].unavailable,
+          "failed, never unavailable");
     // a pool, or an account, the page never listed: its kind by its noId
     LedgerClaimProgress unlisted({Account()}, 0.5);
     Check(unlisted.Start(), "Claim");
@@ -1009,8 +1128,9 @@ int main() {
   {
     TEST_CASE("ctf: the claim sheet's pool rows");
     Check(RelayRowsFor({}, {}, 0).empty(), "no accounts, no rows");
-    Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000)}, {}, 0).empty(),
-          "one pool's row alone: the figure says it");
+    Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000)}, {}, 0) ==
+              std::vector<RelayRow>{Row(1, "sn_ledger_pool", RelayRowStatus::Pending, 841'000'000)},
+          "one pool's row alone, as Android's sheet has it");
     Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000), Relay(kCtfNoId, PoolKind::Ctf, 50'000'000)},
                        {}, 0) ==
               std::vector<RelayRow>{
@@ -1032,14 +1152,21 @@ int main() {
     claimed.claimTxHash = hash;
     claimed.claimTxUrl = "https://evm.taostats.io/tx/" + hash;
     claimed.claimAmountRao = 841'000'000;
-    Check(RelayRowsFor({claimed, Relay(kCtfNoId, PoolKind::Ctf, 50'000'000),
-                        Relay(2, PoolKind::Pool, 0)},
-                       {}, 0) ==
+    Check(RelayRowsFor({claimed, Relay(kCtfNoId, PoolKind::Ctf, 50'000'000)}, {}, 0) ==
               std::vector<RelayRow>{
                   Row(1, "sn_ledger_provider_pool", RelayRowStatus::Claimed, 841'000'000, "",
                       "https://evm.taostats.io/tx/" + hash),
                   Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::Pending, 50'000'000)},
           "Claimed with what it paid and its transaction");
+    // a second operator pool in the answer, even one with nothing, names each
+    // operator pool by its number (Android's snLedgerPoolName)
+    Check(RelayRowsFor({claimed, Relay(kCtfNoId, PoolKind::Ctf, 50'000'000), Relay(2, PoolKind::Pool, 0)},
+                       {}, 0) ==
+              std::vector<RelayRow>{
+                  Row(1, "sn_ledger_pool", RelayRowStatus::Claimed, 841'000'000, "",
+                      "https://evm.taostats.io/tx/" + hash),
+                  Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::Pending, 50'000'000)},
+          "Pool {} beside a second operator pool");
     // an unavailable pool, after the accounts; and alone
     Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000)},
                        {Unavailable(kCtfNoId, PoolKind::Ctf)}, 0) ==
@@ -1055,10 +1182,10 @@ int main() {
                   .size() == 1,
           "a pool both read and unavailable shows its account");
     // capture the flag's with nothing to claim and no claim of URnetwork's has
-    // no row, and the provider pool's alone is the figure again
-    Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000), Relay(kCtfNoId, PoolKind::Ctf, 0)}, {}, 0)
-              .empty(),
-          "capture the flag's with nothing: the figure alone");
+    // no row, and still names the provider pool's beside it
+    Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000), Relay(kCtfNoId, PoolKind::Ctf, 0)}, {}, 0) ==
+              std::vector<RelayRow>{Row(1, "sn_ledger_provider_pool", RelayRowStatus::Pending, 841'000'000)},
+          "capture the flag's with nothing: no row of its own");
     // a network paid to two coldkeys names each row's coldkey
     Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000, "5AAA"),
                         Relay(kCtfNoId, PoolKind::Ctf, 50'000'000, "5AAA"),
@@ -1071,31 +1198,278 @@ int main() {
           "each coldkey named");
   }
   {
-    TEST_CASE("ctf: the won slot's line");
+    TEST_CASE("ctf: Provider pool names the one operator pool beside capture the flag");
+    Check(!NamesProviderPool(std::vector<PoolInView>{}), "no pools");
+    Check(!NamesProviderPool(std::vector<PoolInView>{{1, PoolKind::Pool}}), "a pool alone");
+    Check(!NamesProviderPool(std::vector<PoolInView>{{kCtfNoId, PoolKind::Ctf}}), "capture the flag alone");
+    Check(NamesProviderPool(std::vector<PoolInView>{{1, PoolKind::Pool}, {kCtfNoId, PoolKind::Ctf}}),
+          "beside capture the flag");
+    Check(NamesProviderPool(
+              std::vector<PoolInView>{{1, PoolKind::Pool}, {1, PoolKind::Pool}, {kCtfNoId, PoolKind::Ctf}}),
+          "one operator pool, two coldkeys' accounts in it");
+    Check(!NamesProviderPool(
+              std::vector<PoolInView>{{1, PoolKind::Pool}, {2, PoolKind::Pool}, {kCtfNoId, PoolKind::Ctf}}),
+          "two operator pools: Pool {} each");
+    // the tile, the dialog and the sheet name them alike
+    LedgerAccount second = Account();
+    second.noId = 2;
+    second.index = 5;
+    second.claimableRao = 900'000'000;
+    const LedgerSectionView three = Section(true, LedgerFetch::Ready, {Account(), second, CtfAccount()});
+    Check(three.accounts.size() == 3 && three.accounts[0].titleKey == "sn_ledger_pool" &&
+              three.accounts[1].titleKey == "sn_ledger_pool" && three.accounts[2].titleKey == "sn_ctf_pool",
+          "the tile: Pool 1, Pool 2, Capture the flag");
+    const LedgerClaimProgress dialog = Dialog({Account(), second, CtfAccount()});
+    CheckEq("sn_ledger_pool", dialog.TitleKey(dialog.rows()[0]), "the dialog: Pool 1");
+    CheckEq("sn_ctf_pool", dialog.TitleKey(dialog.rows()[2]), "the dialog: Capture the flag");
+    Check(RelayRowsFor({Relay(1, PoolKind::Pool, 841'000'000), Relay(2, PoolKind::Pool, 120'000'000),
+                        Relay(kCtfNoId, PoolKind::Ctf, 50'000'000)},
+                       {}, 0) ==
+              std::vector<RelayRow>{Row(1, "sn_ledger_pool", RelayRowStatus::Pending, 841'000'000),
+                                    Row(2, "sn_ledger_pool", RelayRowStatus::Pending, 120'000'000),
+                                    Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::Pending, 50'000'000)},
+          "the sheet: Pool 1, Pool 2, Capture the flag");
+    // an account of a second pool that the claim reports names them by number
+    LedgerClaimProgress reported = Dialog({Account(), CtfAccount()});
+    CheckEq("sn_ledger_provider_pool", reported.TitleKey(reported.rows()[0]), "Provider pool before");
+    Check(reported.Start(), "Claim both");
+    reported.Sent(2, 5, "0xbatch");
+    CheckEq("sn_ledger_pool", reported.TitleKey(reported.rows()[0]), "Pool 1 once pool 2 is in view");
+  }
+  {
+    TEST_CASE("ctf: Claim both is exactly the operator pool's and capture the flag's");
+    Check(ClaimsBothPools({PoolKind::Pool, PoolKind::Ctf}), "the two");
+    Check(ClaimsBothPools({PoolKind::Ctf, PoolKind::Pool}), "in either order");
+    Check(!ClaimsBothPools({}), "none");
+    Check(!ClaimsBothPools({PoolKind::Pool}), "the pool's alone");
+    Check(!ClaimsBothPools({PoolKind::Ctf}), "capture the flag's alone");
+    Check(!ClaimsBothPools({PoolKind::Pool, PoolKind::Pool}), "two operator pools");
+    Check(!ClaimsBothPools({PoolKind::Pool, PoolKind::Pool, PoolKind::Ctf}), "three accounts");
+    LedgerAccount second = Account();
+    second.noId = 2;
+    second.index = 5;
+    second.claimableRao = 900'000'000;
+    const LedgerSectionView three = Section(true, LedgerFetch::Ready, {Account(), second, CtfAccount()});
+    Check(three.claimEnabled && !three.claimBoth, "the tile: three accounts, Claim");
+    const LedgerClaimProgress dialog = Dialog({Account(), second, CtfAccount()});
+    Check(!dialog.ClaimsBoth() && dialog.CanClaim(true), "the dialog: three rows, Claim with the amount");
+    // a third under the floor leaves the two the claim moves
+    LedgerAccount tiny = second;
+    tiny.claimableRao = 1;
+    Check(LedgerSectionFor(true, true, LedgerFetch::Ready, {Account(), tiny, CtfAccount()}, true, {}, 1'000)
+              .claimBoth,
+          "the tile: the two above the floor");
+    Check(Dialog({Account(), tiny, CtfAccount()}, 1'000).ClaimsBoth(), "the dialog: the two above the floor");
+  }
+  {
+    TEST_CASE("ctf claim: the preflight's AmountTooLow reads below the claim minimum, never failed");
+    // the SDK's words for the runtime's transfer floor (runtimeRefusalMessage)
+    const std::string tooLow = "not_claimable: AmountTooLow: the claim is below the runtime's transfer floor";
+    // the page's estimate had it above the floor (no price yet, or a price
+    // that moved since): the claim's preflight refused it and sent nothing
+    LedgerClaimProgress progress = Dialog({Account(), CtfAccount()});
+    Check(progress.ClaimsBoth() && progress.Start(), "Claim both");
+    progress.Failed(kCtfNoId, 9, tooLow);
+    const LedgerClaimRow ctf = progress.rows()[1];
+    Check(ctf.state == LedgerClaimState::Idle && ctf.underFloor && ctf.message.empty() && !ctf.unavailable,
+          "below the claim minimum, never failed");
+    Check(progress.failure().empty() && !progress.needsGas(), "no failure, no gas hint");
+    progress.Sent(1, 42, "0xabc");
+    progress.Confirmed(1, 42, "0xabc", 3'241'000'000);
+    progress.Done();
+    Check(progress.rows()[1].underFloor && progress.rows()[1].state == LedgerClaimState::Idle, "after the claim");
+    Check(progress.ClaimableRao() == 0 && !progress.CanClaim(true) && !progress.ClaimsBoth(),
+          "nothing the claim can move");
+    // a lone account too
+    LedgerClaimProgress lone = Dialog({Account()});
+    Check(lone.Start(), "Claim");
+    lone.Failed(1, 42, tooLow);
+    lone.Done();
+    Check(lone.rows()[0].underFloor && lone.rows()[0].state == LedgerClaimState::Idle && !lone.CanClaim(true),
+          "a lone account under the runtime's floor");
+    // any other not_claimable of an account is its failure, as before
+    const std::string elsewhere =
+        "not_claimable: the ledger lists this account in 0x01, not in the configured vault2 0x02";
+    LedgerClaimProgress other = Dialog({Account()});
+    Check(other.Start(), "Claim");
+    other.Failed(1, 42, elsewhere);
+    CheckRow(other.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Failed, "", elsewhere, "failed");
+    Check(!other.rows()[0].underFloor, "not under the floor");
+  }
+  {
+    TEST_CASE("ctf claim: the gas key pays for the largest alone, and the other stays claimable");
+    // the SDK's fallback (sdk-ctf-v2 §2.1): the gas key cannot pay for the
+    // batch, so each account goes alone, the largest first, and one it then
+    // cannot pay for is reported needs_gas with nothing sent
+    const std::string needsGas =
+        "needs_gas: this claim needs up to 0.0173 TAO of gas, the gas key 0x00aa has 0.0050 TAO; "
+        "send TAO to 5GAS";
+    LedgerClaimProgress progress = Dialog({Account(), CtfAccount()});
+    Check(progress.ClaimsBoth() && progress.Start(), "Claim both");
+    progress.Sent(1, 42, "0xlargest");
+    progress.Confirmed(1, 42, "0xlargest", 3'241'000'000);
+    progress.Failed(kCtfNoId, 9, needsGas);
+    progress.Done();
+    CheckRow(progress.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Confirmed, "0xlargest", "",
+             "the largest, claimed");
+    CheckRow(progress.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Idle, "", "",
+             "capture the flag's, still claimable");
+    Check(!progress.rows()[1].underFloor && !progress.rows()[1].unavailable, "neither under the floor nor unavailable");
+    Check(progress.needsGas() && progress.failure().empty(), "the funding hint, and no failure");
+    Check(progress.ClaimableRao() == 50'000'000, "the claim's amount is what is left");
+    Check(!progress.CanClaim(true), "Claim again once the gas key has gas");
+    // the gas key pays for both alone after all: both claimed, no hint
+    LedgerClaimProgress paid = Dialog({Account(), CtfAccount()});
+    Check(paid.Start(), "Claim both");
+    paid.Sent(1, 42, "0xlargest");
+    paid.Confirmed(1, 42, "0xlargest", 3'241'000'000);
+    paid.Sent(kCtfNoId, 9, "0xnext");
+    paid.Confirmed(kCtfNoId, 9, "0xnext", 50'000'000);
+    paid.Done();
+    Check(!paid.needsGas() && paid.ClaimableRao() == 0, "both claimed");
+  }
+  {
+    TEST_CASE("ctf claim: a pool the page could not read leaves at Done once the claim read it");
+    // the claim's own read answered and said nothing of capture the flag's
+    // pool: it was read, and held nothing to claim
+    LedgerClaimProgress read = Dialog({Account()}, 0, {Unavailable(kCtfNoId, PoolKind::Ctf)});
+    Check(read.rows().size() == 2 && read.Start(), "Claim");
+    read.Sent(1, 42, "0xabc");
+    read.Confirmed(1, 42, "0xabc", 3'241'000'000);
+    Check(read.rows().size() == 2, "kept while the claim is out");
+    read.Done();
+    Check(read.rows().size() == 1 && read.rows()[0].noId == 1, "the pool's row goes");
+    CheckEq("sn_ledger_provider_pool", read.TitleKey(read.rows()[0]), "the provider pool, as the page read it");
+    // still unavailable to the claim's read: it stays
+    LedgerClaimProgress still = Dialog({Account()}, 0, {Unavailable(kCtfNoId, PoolKind::Ctf)});
+    Check(still.Start(), "Claim");
+    still.Failed(kCtfNoId, 0, "ledger_unavailable: 503");
+    still.Sent(1, 42, "0xabc");
+    still.Done();
+    Check(still.rows().size() == 2 && still.rows()[1].unavailable, "unavailable, kept");
+    // the claim stopped before its read: it stays
+    LedgerClaimProgress stopped = Dialog({Account()}, 0, {Unavailable(kCtfNoId, PoolKind::Ctf)});
+    Check(stopped.Start(), "Claim");
+    stopped.Failed(0, 0, "chain_rpc_unreachable: dial tcp");
+    stopped.Done();
+    Check(stopped.rows().size() == 2 && stopped.rows()[1].unavailable, "kept: nothing was read");
+    // nothing to claim in any pool is the read answering too
+    LedgerClaimProgress nothing = Dialog({Account()}, 0, {Unavailable(kCtfNoId, PoolKind::Ctf)});
+    Check(nothing.Start(), "Claim");
+    nothing.Failed(0, 0, "not_claimable: no settlement v2 account has anything to claim");
+    nothing.Done();
+    Check(nothing.rows().size() == 1 && nothing.rows()[0].noId == 1, "the pool's row goes");
+    // its account found after all takes the row, and stays
+    LedgerClaimProgress found = Dialog({Account()}, 0, {Unavailable(kCtfNoId, PoolKind::Ctf)});
+    Check(found.Start(), "Claim");
+    found.Sent(1, 42, "0xbatch");
+    found.Sent(kCtfNoId, 9, "0xbatch");
+    found.Done();
+    Check(found.rows().size() == 2 && !found.rows()[1].unavailable && found.rows()[1].index == 9 &&
+              found.rows()[1].state == LedgerClaimState::Sent,
+          "the account's row");
+    // a second claim starts its own read: the pool reported unavailable by the
+    // first, read by the second, goes
+    LedgerClaimProgress again = Dialog({Account(), CtfAccount()});
+    Check(again.Start(), "Claim both");
+    again.Failed(kCtfNoId, 0, "ledger_unavailable: 503");
+    again.Failed(1, 42, "claim_failed: reverted");
+    again.Done();
+    Check(again.rows().size() == 2 && again.rows()[1].unavailable, "unavailable to the first claim");
+    Check(again.Start(), "Claim again");
+    again.Sent(1, 42, "0xdef");
+    again.Done();
+    Check(again.rows().size() == 2, "a row with its amount stays: the page listed its account");
+  }
+  {
+    TEST_CASE("ctf: the no-wallet tile's rows and its total");
+    // the primary coldkey's accounts with something to claim, once there are
+    // two or one is capture the flag's (Android's snClaimRelayTileRows)
+    RelayTileView both;
+    both.rows = {Row(1, "sn_ledger_provider_pool", RelayRowStatus::Pending, 841'000'000),
+                 Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::UnderFloor, 50'000'000)};
+    Check(RelayTileFor({Relay(1, PoolKind::Pool, 841'000'000), Relay(kCtfNoId, PoolKind::Ctf, 50'000'000)},
+                       "5COLD", {}, 100'000'000) == both,
+          "both pools, capture the flag's under the floor");
+    RelayTileView ctfAlone;
+    ctfAlone.rows = {Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::Pending, 50'000'000)};
+    Check(RelayTileFor({Relay(1, PoolKind::Pool, 0), Relay(kCtfNoId, PoolKind::Ctf, 50'000'000)}, "5COLD", {}, 0) ==
+              ctfAlone,
+          "capture the flag's alone names its pool");
+    RelayTileView two;
+    two.rows = {Row(1, "sn_ledger_pool", RelayRowStatus::Pending, 841'000'000),
+                Row(2, "sn_ledger_pool", RelayRowStatus::Pending, 120'000'000)};
+    Check(RelayTileFor({Relay(1, PoolKind::Pool, 841'000'000), Relay(2, PoolKind::Pool, 120'000'000)}, "5COLD", {},
+                       0) == two,
+          "two operator pools: a row each");
+    // another coldkey's account is not in the figure (a wallet the network replaced)
+    Check(RelayTileFor({Relay(1, PoolKind::Pool, 841'000'000), Relay(kCtfNoId, PoolKind::Ctf, 50'000'000, "5OLD")},
+                       "5COLD", {}, 0) == RelayTileView{},
+          "the primary coldkey's one account: the figure alone");
+    // a pool the relay could not read: the coldkey's accounts, then the pool
+    RelayTileView partial;
+    partial.rows = {Row(1, "sn_ledger_provider_pool", RelayRowStatus::Pending, 841'000'000),
+                    Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::Unavailable, 0)};
+    Check(RelayTileFor({Relay(1, PoolKind::Pool, 841'000'000)}, "5COLD", {Unavailable(kCtfNoId, PoolKind::Ctf)}, 0) ==
+              partial,
+          "capture the flag unavailable");
+    // none of the coldkey's pools read: no total, never a zero
+    RelayTileView unread;
+    unread.showTotal = false;
+    unread.rows = {Row(1, "sn_ledger_pool", RelayRowStatus::Unavailable, 0)};
+    Check(RelayTileFor({}, "5COLD", {Unavailable(1, PoolKind::Pool)}, 0) == unread, "nothing read");
+    Check(!RelayTotalKnown({Relay(1, PoolKind::Pool, 5, "5OLD")}, "5COLD", {Unavailable(1, PoolKind::Pool)}),
+          "another coldkey's account adds nothing to this one's");
+    Check(RelayTotalKnown({}, "5COLD", {}), "a whole answer with nothing: its zero is the total");
+    Check(RelayTotalKnown({Relay(1, PoolKind::Pool, 0)}, "5COLD", {Unavailable(kCtfNoId, PoolKind::Ctf)}),
+          "one of its pools read");
+  }
+  {
+    TEST_CASE("ctf: a line for every unclaimed win, newest first");
     CheckEq("sn_ctf_won_provider_slot", CtfWinKey(CtfWin{CtfRole::Provider, "is"}), "a provider slot");
     CheckEq("sn_ctf_won_extender_slot", CtfWinKey(CtfWin{CtfRole::Extender, "la"}), "an extender slot");
+    const CtfWin icelandProvider{CtfRole::Provider, "is"};
+    const CtfWin icelandExtender{CtfRole::Extender, "is"};
+    const CtfWin kenyaProvider{CtfRole::Provider, "ke"};
     SdkCtfClientResult result;
-    Check(!CtfWinFrom(result), "no win, no line");
-    SdkCtfWin latest;
-    latest.epoch = 9;
-    latest.role = "provider";
-    latest.country = "is";
-    latest.rank = 1;
-    latest.root_status = "finalized";
-    result.latest_win = latest;
-    Check(CtfWinFrom(result) == std::optional<CtfWin>(CtfWin{CtfRole::Provider, "is"}),
-          "Iceland's provider slot");
-    result.latest_win->role = "extender";
-    Check(CtfWinFrom(result) == std::optional<CtfWin>(CtfWin{CtfRole::Extender, "is"}),
-          "Iceland's extender slot");
-    result.latest_win->role = "validator";
-    Check(!CtfWinFrom(result), "a role this build does not know: no line");
-    result.latest_win->role = "provider";
-    result.latest_win->country = "";
-    Check(!CtfWinFrom(result), "no country to name: no line");
-    result.latest_win->country = "is";
+    Check(CtfWinsFrom(result).empty(), "an answer without the list: no line");
+    result.unclaimed_wins = std::vector<SdkCtfWin>{};
+    Check(CtfWinsFrom(result).empty(), "nothing unclaimed: no line");
+    // the SDK's order, newest first and a provider's before an extender's
+    // within an epoch, is the lines' order
+    result.unclaimed_wins = std::vector<SdkCtfWin>{SdkWin(11, "provider", "is"),
+                                                   SdkWin(11, "extender", "is"),
+                                                   SdkWin(9, "provider", "ke")};
+    Check(CtfWinsFrom(result) == std::vector<CtfWin>{icelandProvider, icelandExtender, kenyaProvider},
+          "a line each, in the SDK's order");
+    // the latest win is no longer the line: one claimed since says nothing, as
+    // one the server cannot say of (unknown), and an older one not claimed yet
+    // still does
+    SdkCtfWin claimed = SdkWin(13, "provider", "fi");
+    claimed.claim_state = "claimed";
+    SdkCtfWin unknown = SdkWin(12, "provider", "se");
+    unknown.claim_state = "unknown";
+    result.latest_win = claimed;
+    result.wins = std::vector<SdkCtfWin>{claimed, unknown, SdkWin(11, "provider", "is"),
+                                         SdkWin(11, "extender", "is"), SdkWin(9, "provider", "ke")};
+    Check(CtfWinsFrom(result) == std::vector<CtfWin>{icelandProvider, icelandExtender, kenyaProvider},
+          "the unclaimed wins, not the latest");
+    // the same slot won again in a later epoch is a line of its own, and so is
+    // a win of another of the network's clients (a network's answer)
+    SdkCtfWin otherClient = SdkWin(10, "provider", "is");
+    otherClient.client_id = "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d";
+    result.unclaimed_wins =
+        std::vector<SdkCtfWin>{SdkWin(11, "provider", "is"), SdkWin(10, "provider", "is"), otherClient};
+    Check(CtfWinsFrom(result) == std::vector<CtfWin>{icelandProvider, icelandProvider, icelandProvider},
+          "one line per win");
+    // a win in a role this build does not know, or with no country to name,
+    // has no line, and the others keep theirs
+    result.unclaimed_wins = std::vector<SdkCtfWin>{SdkWin(11, "validator", "is"), SdkWin(10, "provider", ""),
+                                                   SdkWin(9, "provider", "ke")};
+    Check(CtfWinsFrom(result) == std::vector<CtfWin>{kenyaProvider}, "only the wins it can name");
+    result.unclaimed_wins = std::vector<SdkCtfWin>{SdkWin(11, "provider", "is")};
     result.error = SdkError{};
-    Check(!CtfWinFrom(result), "an answer with an error says nothing, never no wins");
+    Check(CtfWinsFrom(result).empty(), "an answer with an error says nothing, never no wins");
   }
 
   {
@@ -1182,7 +1556,7 @@ int main() {
 #endif
   }
   {
-    TEST_CASE("ctf at the SDK's boundary: the relay's accounts and the latest win");
+    TEST_CASE("ctf at the SDK's boundary: the relay's accounts and the unclaimed wins");
     SdkRelayAccount relay;
     relay.coldkey_ss58 = "5COLD";
     relay.no_id = kCtfNoId;
@@ -1202,40 +1576,74 @@ int main() {
     claimed.claimTxUrl = "https://evm.taostats.io/tx/" + hash;
     claimed.claimAmountRao = 50'000'000;
     Check(RelayAccountFrom(relay) == claimed, "URnetwork's claim of it");
+    // a claim status's accounts, and one without its list
+    SdkClaimStatus withAccounts;
+    withAccounts.accounts = std::vector<SdkRelayAccount>{relay};
+    Check(RelayAccountsFrom(withAccounts) == std::vector<RelayAccount>{claimed}, "the status's accounts");
+    Check(RelayAccountsFrom(SdkClaimStatus{}).empty(), "a list left out is none");
+    // one SnCtfWin as the line's win
+    Check(CtfWinOf(SdkWin(9, "provider", "is")) == std::optional<CtfWin>(CtfWin{CtfRole::Provider, "is"}),
+          "a provider's win");
+    Check(CtfWinOf(SdkWin(9, "extender", "is")) == std::optional<CtfWin>(CtfWin{CtfRole::Extender, "is"}),
+          "an extender's win");
+    Check(!CtfWinOf(SdkWin(9, "validator", "is")) && !CtfWinOf(SdkWin(9, "provider", "")),
+          "a role this build does not know, or no country: no line");
 #if defined(URNW_SN_PAYOUT_TESTS_SDK)
     // what the device's SnClaimStatus and SnCtfClient answer with, through the header
     const auto status =
         nlohmann::json::parse(R"({"relay_state":"running","action":"claim_now","reason":"queued",
-            "claimable_rao":891000000,"accounts":[{"coldkey_ss58":"5COLD","no_id":1,"kind":"pool",
+            "coldkey_ss58":"5COLD","claimable_rao":891000000,"transfer_floor_rao":100000000,
+            "accounts":[{"coldkey_ss58":"5COLD","no_id":1,"kind":"pool",
             "label":"Pool 1","index":42,"claimable_rao":841000000,"value_tao_rao":0,"pending_rao":0,
             "reason":"queued","claim_now_available":true},{"coldkey_ss58":"5COLD","no_id":4294967297,
             "kind":"ctf","label":"Capture the flag","index":9,"claimable_rao":50000000,
             "value_tao_rao":0,"pending_rao":0,"reason":"under_threshold","claim_now_available":true}],
             "unavailable_pools":[],"partial":false})")
             .get<urnet::SnClaimStatusResult>();
-    std::vector<RelayAccount> accounts;
-    if (status.accounts) {
-      for (const auto& account : *status.accounts) accounts.push_back(RelayAccountFrom(account));
-    }
+    const std::vector<RelayAccount> accounts = RelayAccountsFrom(status);
     Check(RelayRowsFor(accounts, UnavailablePoolsFrom(status.unavailable_pools), status.transfer_floor_rao) ==
               std::vector<RelayRow>{
                   Row(1, "sn_ledger_provider_pool", RelayRowStatus::Pending, 841'000'000),
-                  Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::Pending, 50'000'000)},
+                  Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::UnderFloor, 50'000'000)},
           "the header's relay accounts as the sheet's rows");
+    RelayTileView tile;
+    tile.rows = {Row(1, "sn_ledger_provider_pool", RelayRowStatus::Pending, 841'000'000),
+                 Row(kCtfNoId, "sn_ctf_pool", RelayRowStatus::UnderFloor, 50'000'000)};
+    Check(RelayTileFor(accounts, status.coldkey_ss58.value_or(std::string()),
+                       UnavailablePoolsFrom(status.unavailable_pools), status.transfer_floor_rao) == tile,
+          "the header's status as the no-wallet tile");
     const auto client =
         nlohmann::json::parse(R"({"client_id":"3f6c2a1e-8d4b-4c7a-9e21-5b0d7f3a9c64","as_of_millis":1,
-            "epochs":[],"wins":[{"epoch":9,"role":"provider","country":"is","rank":1,"slot_rao":48025660,
-            "pot_share_rao":28815396,"amount_rao":76841056,"pending":false,"root_status":"pending",
-            "coldkey_ss58":"5COLD"}],"latest_win":{"epoch":9,"role":"provider","country":"is","rank":1,
-            "slot_rao":48025660,"pot_share_rao":28815396,"amount_rao":76841056,"pending":false,
-            "root_status":"pending","coldkey_ss58":"5COLD"}})")
+            "epochs":[],"wins":[{"epoch":10,"role":"provider","country":"fi","rank":2,"slot_rao":48025660,
+            "pot_share_rao":0,"amount_rao":48025660,"pending":false,"root_status":"finalized",
+            "coldkey_ss58":"5COLD","client_id":"3f6c2a1e-8d4b-4c7a-9e21-5b0d7f3a9c64","claim_state":"claimed"},
+            {"epoch":9,"role":"provider","country":"is","rank":1,"slot_rao":48025660,
+            "pot_share_rao":28815396,"amount_rao":76841056,"pending":false,"root_status":"finalized",
+            "coldkey_ss58":"5COLD","client_id":"3f6c2a1e-8d4b-4c7a-9e21-5b0d7f3a9c64","claim_state":"unclaimed"},
+            {"epoch":9,"role":"extender","country":"is","rank":3,"slot_rao":48025660,
+            "pot_share_rao":0,"amount_rao":48025660,"pending":false,"root_status":"pending",
+            "coldkey_ss58":"5COLD","client_id":"3f6c2a1e-8d4b-4c7a-9e21-5b0d7f3a9c64","claim_state":"unclaimed"}],
+            "latest_win":{"epoch":10,"role":"provider","country":"fi","rank":2,"slot_rao":48025660,
+            "pot_share_rao":0,"amount_rao":48025660,"pending":false,"root_status":"finalized",
+            "coldkey_ss58":"5COLD","client_id":"3f6c2a1e-8d4b-4c7a-9e21-5b0d7f3a9c64","claim_state":"claimed"},
+            "unclaimed_wins":[{"epoch":9,"role":"provider","country":"is","rank":1,"slot_rao":48025660,
+            "pot_share_rao":28815396,"amount_rao":76841056,"pending":false,"root_status":"finalized",
+            "coldkey_ss58":"5COLD","client_id":"3f6c2a1e-8d4b-4c7a-9e21-5b0d7f3a9c64","claim_state":"unclaimed"},
+            {"epoch":9,"role":"extender","country":"is","rank":3,"slot_rao":48025660,
+            "pot_share_rao":0,"amount_rao":48025660,"pending":false,"root_status":"pending",
+            "coldkey_ss58":"5COLD","client_id":"3f6c2a1e-8d4b-4c7a-9e21-5b0d7f3a9c64","claim_state":"unclaimed"}]})")
             .get<urnet::SnCtfClientResult>();
-    Check(CtfWinFrom(client) == std::optional<CtfWin>(CtfWin{CtfRole::Provider, "is"}),
-          "the header's latest win");
+    Check(CtfWinsFrom(client) ==
+              std::vector<CtfWin>{CtfWin{CtfRole::Provider, "is"}, CtfWin{CtfRole::Extender, "is"}},
+          "the header's unclaimed wins, not its latest, which is claimed");
+    const auto none =
+        nlohmann::json::parse(R"({"client_id":"","as_of_millis":1,"epochs":[],"wins":[],"unclaimed_wins":[]})")
+            .get<urnet::SnCtfClientResult>();
+    Check(CtfWinsFrom(none).empty(), "the header's no wins: no line");
     const auto unauthorized =
-        nlohmann::json::parse(R"({"client_id":"","as_of_millis":0,"error":{"code":"unauthorized","message":"401"}})")
+        nlohmann::json::parse(R"({"client_id":"","as_of_millis":0,"error":{"code":"ctf_unavailable","message":"503"}})")
             .get<urnet::SnCtfClientResult>();
-    Check(!CtfWinFrom(unauthorized), "the header's error: no line");
+    Check(CtfWinsFrom(unauthorized).empty(), "the header's error: no line");
 #endif
   }
   {

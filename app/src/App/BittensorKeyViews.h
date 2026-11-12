@@ -15,12 +15,14 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
 #include "BittensorKeyPresentation.h"
 #include "Sdk.h"
+#include "SnPayoutPresentation.h"
 
 namespace urnw::btkeyviews {
 
@@ -73,13 +75,21 @@ void DrawRelaySection(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& ho
 winrt::Microsoft::UI::Xaml::FrameworkElement MakeClaimedBanner(urnet::SnClaimStatusResult const& status);
 
 // The claim sheet's pool rows (snpayout::RelayRowsFor) for the sdk's claim
-// status, as Android's sheet has them: each pool's title (capture the flag's
-// beside the provider pool's), with its coldkey while the network is paid to
-// more than one, what it holds to claim or what URnetwork's claim paid, and
-// its pill: Pending, Below the claim minimum, Claimed with its transaction, or
-// Unavailable right now in place of an amount. nullptr with no rows: one
-// pool's row alone is the sheet's figure, as before capture the flag.
+// status, as Android's sheet has them: a row for each account, a lone one
+// too, with its pool's title (capture the flag's beside the provider pool's),
+// its coldkey while the network is paid to more than one, what it holds to
+// claim or what URnetwork's claim paid, and its pill: Pending, Below the claim
+// minimum, Claimed with its transaction, or Unavailable right now in place of
+// an amount. nullptr with no rows.
 winrt::Microsoft::UI::Xaml::FrameworkElement MakeRelayPoolRows(urnet::SnClaimStatusResult const& status);
+
+// `rows` drawn as the claim sheet's; nullptr with none. A Claimed row links its
+// transaction unless it is `bannerUrl`, which the claimed banner under the
+// rows links already. Without `pendingPill` a Pending row has no pill: the
+// tile of a network with no wallet here (snpayout::RelayTileFor) leaves it to
+// the relay's reason under it, as Android's tile does.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakeRelayRows(std::vector<snpayout::RelayRow> const& rows,
+                                                           std::string const& bannerUrl, bool pendingPill);
 
 // The line under Claim now (btkey::ClaimNowNoteFor, or btkey::ClaimedNoteFor in
 // the claimed state), "" for none.

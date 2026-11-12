@@ -824,9 +824,12 @@ UIElement ClaimLedgerSheet::BuildRow(snpayout::LedgerClaimRow const& row) {
       if (row.unavailable) {
         word = Loc("sn_ledger_pool_unavailable");
       } else if (row.underFloor) {
-        // no claim moves it until it clears the transfer floor
+        // no claim moves it until it clears the transfer floor, which the
+        // claim's preflight refusing it (AmountTooLow) says too
         word = Loc("sn_ledger_pool_under_floor");
       } else {
+        // claimable, and still so when the gas key could not pay for it after
+        // the largest went (needs_gas): the funding hint above says so
         word = Loc("sn_ledger_claimable");
         brush = colors::MakeBrush(colors::kUrGreen);
       }
@@ -854,7 +857,8 @@ UIElement ClaimLedgerSheet::BuildRow(snpayout::LedgerClaimRow const& row) {
 
 void ClaimLedgerSheet::ApplyState() {
   const int64_t total = progress_.ClaimableRao();
-  totalValue_.Text(hstring{FormatAlphaRao(total)});
+  // with only pools it could not read there is no total, never a zero
+  totalValue_.Text(progress_.TotalKnown() ? hstring{FormatAlphaRao(total)} : hstring{});
   gasBalanceValue_.Text(gas_.tao ? hstring{FormatTao(*gas_.tao) + L" TAO"} : hstring{L"-"});
   needsGasPanel_.Visibility(progress_.needsGas() ? Visibility::Visible : Visibility::Collapsed);
 
@@ -867,13 +871,17 @@ void ClaimLedgerSheet::ApplyState() {
     errorText_.Visibility(Visibility::Visible);
   }
 
-  // one Claim sends every pool's: while capture the flag's and the provider
-  // pool's both have something to claim it says Claim both, else the amount
+  // one Claim sends every pool's: while what it moves is exactly the operator
+  // pool's account and capture the flag's it says Claim both, else the amount
+  // it moves, which leaves out an account below the claim minimum
   claimButton_.Content(winrt::box_value(
       progress_.ClaimsBoth()
           ? Loc("sn_ledger_claim_both")
           : hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}));
   claimButton_.IsEnabled(progress_.CanClaim(allowActions_));
+  // with nothing Claim moves and no claim out (all claimed, or every row below
+  // the claim minimum or unavailable) only Close is offered, never a Claim of 0
+  claimButton_.Visibility(0 < total || progress_.sending() ? Visibility::Visible : Visibility::Collapsed);
 }
 
 void ClaimLedgerSheet::StartClaim() {

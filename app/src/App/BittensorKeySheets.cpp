@@ -20,6 +20,7 @@
 #include "MainWindow.xaml.h"
 #include "PageContext.h"
 #include "SheetFit.h"
+#include "SnPayoutPresentation.h"  // the claim sheet's total
 #include "Strings.h"
 #include "UrColors.h"
 #include "UrComponents.h"
@@ -793,18 +794,23 @@ void ClaimRelaySheet::Build(XamlRoot const& root) {
     // the balances could not be read: unavailable, never zero
     content.Children().Append(MakeText(Loc("sn_ledger_unavailable"), 22, colors::MutedBrush()));
   } else {
-    StackPanel figure;
-    figure.Spacing(2);
-    figure.Children().Append(MakeText(Loc("sn_ledger_claimable"), 12, colors::MutedBrush()));
-    figure.Children().Append(MakeText(hstring{FormatAlphaRao(status_->claimable_rao)}, 28, colors::TextBrush()));
-    content.Children().Append(figure);
     const std::string coldkey = status_->coldkey_ss58.value_or(std::string());
+    // the figure sums the coldkey's pools it could read: with none of them
+    // read there is no sum, and the unavailable rows say so, never a zero
+    if (snpayout::RelayTotalKnown(snpayout::RelayAccountsFrom(*status_), coldkey,
+                                  snpayout::UnavailablePoolsFrom(status_->unavailable_pools))) {
+      StackPanel figure;
+      figure.Spacing(2);
+      figure.Children().Append(MakeText(Loc("sn_ledger_claimable"), 12, colors::MutedBrush()));
+      figure.Children().Append(MakeText(hstring{FormatAlphaRao(status_->claimable_rao)}, 28, colors::TextBrush()));
+      content.Children().Append(figure);
+    }
     if (!coldkey.empty()) {
       content.Children().Append(Line(hstring{urnw::Format("sn_claim_relay_lands_on", ShortAddress(coldkey))}));
     }
-    // a row per pool under the figure (the claim status sums the coldkey's
-    // pools): capture the flag's beside the provider pool's, and a pool it
-    // could not read, never as a zero
+    // a row per account under the figure, a lone one too (Android's sheet):
+    // capture the flag's beside the provider pool's, each one's status, Below
+    // the claim minimum among them, and a pool it could not read, never as a zero
     if (auto rows = btkeyviews::MakeRelayPoolRows(*status_)) content.Children().Append(rows);
     StackPanel section;
     section.Spacing(8);
