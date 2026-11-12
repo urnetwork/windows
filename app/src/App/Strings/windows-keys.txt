@@ -1004,6 +1004,7 @@ pending_data_key
 periodic_product_updates
 phantom
 plan
+plan_account_name
 plan_billed_monthly_cancel_anytime
 plan_monthly_equivalent_line
 plan_price_per_month

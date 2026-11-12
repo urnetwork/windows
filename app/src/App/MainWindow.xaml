@@ -2172,6 +2172,15 @@
                                                 Click="OnRetryPlan" />
                                     </StackPanel>
                                 </Border>
+                                <!-- the account the plan is on, for a customer with
+                                     several (MainWindow::ApplyNetworkIdentity); hidden
+                                     for a guest and without a name -->
+                                <Border x:Name="AccountPlanAccountRow"
+                                        Style="{StaticResource UrPaneRowStyle}" MinHeight="34"
+                                        Visibility="Collapsed">
+                                    <TextBlock x:Name="AccountPlanAccountText"
+                                               Style="{StaticResource UrKeyTextStyle}" />
+                                </Border>
                                 <!-- the usage bar, full width of the pane, on the
                                      same rhythm as Home's charts -->
                                 <Border BorderBrush="{StaticResource UrBorderBrush}"

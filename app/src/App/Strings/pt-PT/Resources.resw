@@ -2350,7 +2350,7 @@ maneira certa</value>
   </data>
   <data name="data_info_refresh_at" xml:space="preserve">
     <value>Os dados gratuitos são renovados diariamente às 00:00 UTC (dentro de {}).</value>
-    <comment>"About your data" sheet: when the free daily data is granted again. {time} is the time left until the next 00:00 UTC as a compact duration (e.g. 5h 12m). Keep 00:00 UTC as is. Shown only to accounts without Pro (Pro does not get the free grant).</comment>
+    <comment>"About your data" sheet: when the free daily data is granted again. {time} is the time left until the next 00:00 UTC as a compact duration (e.g. 5h 12m). Keep 00:00 UTC as is. Every account gets the free daily data, Pro accounts included. Which accounts see this line is up to each app (today: only accounts without Pro).</comment>
   </data>
   <data name="data_info_title" xml:space="preserve">
     <value>Sobre os seus dados</value>
@@ -6384,6 +6384,10 @@ e mais descentralizado protocolo de entrada e saída do mundo.</value>
     <value>Plano</value>
     <comment>Upgrade subscription overlay</comment>
   </data>
+  <data name="plan_account_name" xml:space="preserve">
+    <value>Conta: {}</value>
+    <comment>Shown with the plan (Free or Pro) on the Account screen, the plan card and the subscription screen, and in the purchase confirmation: the account (network) the plan belongs to. The argument is the signed-in network's own name. Customers with several accounts could not tell which one held Pro (support inbox 6546).</comment>
+  </data>
   <data name="plan_billed_monthly_cancel_anytime" xml:space="preserve">
     <value>Cobrado mensalmente · cancele quando quiser</value>
     <comment>Plan picker: the line under the monthly price.</comment>
@@ -8018,8 +8022,8 @@ conteúdo do mundo</value>
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
   </data>
   <data name="site_data_limit_pro" xml:space="preserve">
-    <value>Os seus dados Pro deste mês esgotaram-se. São renovados no dia 1 do próximo mês (UTC), e um pacote de dados adiciona mais já.</value>
-    <comment>ur.io Connect screen, out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's data is granted at 00:00 UTC on the 1st of each month; a data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and UTC as is.</comment>
+    <value>Os seus dados Pro deste ciclo esgotaram-se. Continua a receber os seus dados diários gratuitos todos os dias às 00:00 UTC, os seus dados Pro são renovados no início do seu próximo ciclo de subscrição, e um pacote de dados adiciona mais já.</value>
+    <comment>ur.io Connect screen and the browser extension popup: out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's 10 TiB is granted at the start of each of the network's own subscription cycles, not on a fixed day of the month. Every account, Pro included, also gets the free daily data at 00:00 UTC, which a Pro account uses once its plan data is used up. A data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and 00:00 UTC as is.</comment>
   </data>
   <data name="site_ext_setting_up" xml:space="preserve">
     <value>A configurar…</value>

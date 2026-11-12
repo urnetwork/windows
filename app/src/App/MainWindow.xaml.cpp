@@ -3276,10 +3276,11 @@ void MainWindow::ApplyAuthState(urnw::AuthState state, std::string const& error)
   }
 }
 
-// The identity ApplyAuthState read, onto Connect, the status strip and the
-// account menu. Guest is the claim OR the balance's guest (the server's: no
-// login method), the same rule as the balance store and the purchase gates; a
-// refreshed guest has lost the claim and would otherwise show its network name.
+// The identity ApplyAuthState read, onto Connect, the status strip, the
+// account menu and the Account plan pane. Guest is the claim OR the balance's
+// guest (the server's: no login method), the same rule as the balance store and
+// the purchase gates; a refreshed guest has lost the claim and would otherwise
+// show its network name.
 void MainWindow::ApplyNetworkIdentity() {
   const bool guest =
       identityLoggedIn_ && urnw::IsGuestNetwork(identityJwtGuest_, balance_.guest);
@@ -3306,6 +3307,16 @@ void MainWindow::ApplyNetworkIdentity() {
   // not show. The identity stays whatever the jwt says (empty in preview); only
   // the visibility follows the pinned view.
   login_->ApplyAccountIdentity(identityNetworkName_, guest, identityPro_, identityShown_);
+  // The account the plan is on, under the plan value, so a customer with
+  // several accounts sees which one holds the plan, Free or Pro (the sdk's
+  // rule: nothing for a guest or without a name). Here rather than in
+  // ApplyBalance: the name and the guest change only where this runs.
+  const std::string planAccount = urnet::planAccountName(identityNetworkName_, guest);
+  AccountPlanAccountText().Text(
+      planAccount.empty() ? hstring{}
+                          : hstring{urnw::Format("plan_account_name", urnw::Widen(planAccount))});
+  AccountPlanAccountRow().Visibility(planAccount.empty() ? Visibility::Collapsed
+                                                         : Visibility::Visible);
 }
 
 void MainWindow::OnTunnelStateChanged(urnw::proto::TunnelStatus const& status) {
