@@ -204,7 +204,7 @@ LedgerClaimProgress::LedgerClaimProgress(const std::vector<LedgerAccount>& accou
     // A known-empty gas key cannot pay for anything; an unknown balance (the
     // chain did not answer) does not block the attempt, and the SDK's
     // preflight says needs_gas if it comes to that.
-    : needsGas_(gasTao.has_value() && *gasTao <= 0.0) {
+    : transferFloorRao_(transferFloorRao), needsGas_(gasTao.has_value() && *gasTao <= 0.0) {
   // the pools of the page's read, as the tile has them: every account,
   // claimable or not, and each pool it could not read and did not list (the
   // SDK refuses an answer with a pool in both)
@@ -237,15 +237,14 @@ LedgerClaimProgress::LedgerClaimProgress(const std::vector<LedgerAccount>& accou
   }
 }
 
-namespace {
-
-// a row Claim moves: not confirmed, its pool read, above the floor, with an
-// amount the dialog knows
-bool Movable(const LedgerClaimRow& row) {
-  return row.state != LedgerClaimState::Confirmed && !row.unavailable && !row.underFloor && row.amountRao > 0;
+// a row Claim moves: not confirmed, its pool read, with an amount the dialog
+// knows, and above the floor: neither under the dialog's floor by its amount,
+// whatever the SDK said of it since (Linux's sheet), nor refused by the
+// claim's preflight (AmountTooLow)
+bool LedgerClaimProgress::Movable(const LedgerClaimRow& row) const {
+  return row.state != LedgerClaimState::Confirmed && !row.unavailable && !row.underFloor && row.amountRao > 0 &&
+         !UnderTransferFloor(row.amountRao, transferFloorRao_);
 }
-
-}  // namespace
 
 int64_t LedgerClaimProgress::ClaimableRao() const {
   // every row's amount is at least 0: the constructor takes the claimable
@@ -290,8 +289,18 @@ std::string LedgerClaimProgress::TitleKey(const LedgerClaimRow& row) const {
 bool LedgerClaimProgress::Start() {
   if (sending_ || ClaimableRao() <= 0) return false;
   for (LedgerClaimRow& row : rows_) {
+    if (row.state == LedgerClaimState::Confirmed || row.unavailable) continue;
+    if (UnderTransferFloor(row.amountRao, transferFloorRao_)) {
+      // under the dialog's floor no press takes it: one the last press left
+      // claimable (needs_gas) or failed waits below the claim minimum again,
+      // as the page's read listed it, until the SDK reports on it (Linux's)
+      row.state = LedgerClaimState::Idle;
+      row.underFloor = true;
+      row.message.clear();
+      continue;
+    }
     // a row the SDK added has no amount to count, and is claimed again too
-    if (row.state == LedgerClaimState::Confirmed || row.unavailable || row.underFloor) continue;
+    if (row.underFloor) continue;
     row.state = LedgerClaimState::Sending;
     row.message.clear();
   }
@@ -382,20 +391,30 @@ void LedgerClaimProgress::Failed(int64_t noId, int64_t index, const std::string&
   }
   if (code == "needs_gas") {
     // the gas key could not pay for this account once the largest went: the
-    // SDK sent nothing for it, so it is still claimable, with the funding hint
-    row.state = LedgerClaimState::Idle;
+    // SDK sent nothing for it, so it is still claimable, with the funding
+    // hint, and no transaction claims it now; so too for one the dialog
+    // listed under the floor, which the SDK tried (a press still leaves it out)
+    if (row.state != LedgerClaimState::Confirmed) {
+      row.state = LedgerClaimState::Idle;
+      row.underFloor = false;
+      row.txHash.clear();
+    }
     row.message.clear();
     return;
   }
   if (code == "not_claimable" && message.find("AmountTooLow") != std::string::npos) {
     // the claim's preflight: under the runtime's transfer floor, so nothing
-    // was sent and it waits in vault2, Below the claim minimum
+    // was sent and it waits in vault2, Below the claim minimum; once the SDK
+    // has tried an account, only this reads so
     row.state = LedgerClaimState::Idle;
     row.underFloor = true;
     row.message.clear();
     return;
   }
+  // any other failure is Failed, with the SDK's message, whatever the dialog
+  // listed the account as
   row.state = LedgerClaimState::Failed;
+  row.underFloor = false;
   row.message = message;
 }
 
@@ -526,6 +545,12 @@ std::string CtfWinKey(const CtfWin& win) {
   return win.role == CtfRole::Extender ? "sn_ctf_won_extender_slot" : "sn_ctf_won_provider_slot";
 }
 
+bool ApplyCtfWinsRead(std::vector<CtfWin>& lines, std::optional<std::vector<CtfWin>> read) {
+  if (!read) return false;
+  lines = std::move(*read);
+  return true;
+}
+
 LedgerClaimEvents WithClaimPaid(LedgerClaimEvents events, std::function<void(bool paid)> afterDone) {
   // set on the SDK's thread, read at Done, which the SDK calls last
   auto paid = std::make_shared<std::atomic<bool>>(false);
@@ -549,23 +574,27 @@ LedgerClaimEvents WithClaimPaid(LedgerClaimEvents events, std::function<void(boo
   return out;
 }
 
-std::optional<std::chrono::milliseconds> CtfWinsReadsAfterClaim::Done(bool paid) {
-  if (!paid) return std::nullopt;
+std::optional<CtfWinsReadsAfterClaim::Wait> CtfWinsReadsAfterClaim::Done(bool paid, uint32_t session) {
+  if (!paid || session != session_) return std::nullopt;
   next_ = 0;
-  return kCtfWinsReadsAfterClaim[0];
+  return Wait{kCtfWinsReadsAfterClaim[0], ++token_};
 }
 
-CtfWinsReadsAfterClaim::Step CtfWinsReadsAfterClaim::Tick() {
+CtfWinsReadsAfterClaim::Step CtfWinsReadsAfterClaim::Tick(uint32_t token) {
   Step step;
-  if (next_ >= kCtfWinsReadsAfterClaim.size()) return step;
+  if (token != token_ || next_ >= kCtfWinsReadsAfterClaim.size()) return step;
   step.read = true;
   const std::size_t at = next_++;
   if (next_ < kCtfWinsReadsAfterClaim.size()) {
-    step.next = kCtfWinsReadsAfterClaim[next_] - kCtfWinsReadsAfterClaim[at];
+    step.next = Wait{kCtfWinsReadsAfterClaim[next_] - kCtfWinsReadsAfterClaim[at], ++token_};
   }
   return step;
 }
 
-void CtfWinsReadsAfterClaim::Stop() { next_ = kCtfWinsReadsAfterClaim.size(); }
+void CtfWinsReadsAfterClaim::Stop() {
+  next_ = kCtfWinsReadsAfterClaim.size();
+  ++token_;
+  ++session_;
+}
 
 }  // namespace urnw::snpayout

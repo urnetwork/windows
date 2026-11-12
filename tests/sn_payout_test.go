@@ -127,7 +127,7 @@ func TestSnPayoutLine(t *testing.T) {
 // instantiates snpayout::LedgerAccountFrom with urnet::SnLedgerAccount,
 // snpayout::UnavailablePoolsFrom with its unavailable pools,
 // snpayout::LedgerClaimCallbackFor with urnet::SnLedgerClaimCallback,
-// snpayout::CtfWinsFrom with urnet::SnCtfClientResult (its unclaimed wins) and
+// snpayout::CtfWinsReadFrom with urnet::SnCtfClientResult (its unclaimed wins) and
 // snpayout::RelayAccountsFrom with urnet::SnClaimStatusResult, and the claim
 // sheet snpayout::RelayAccountsFrom too, so the spec builds each with the
 // header's own types and reads the json the device answers with. The header
@@ -204,8 +204,8 @@ func TestSettlementV2Wiring(t *testing.T) {
 	// After Done (the dialog's own first: snpayout::WithClaimPaid, which the
 	// spec pins) the claimer reads the accounts and the gas balance again, so a
 	// dialog closed early does not leave the page stale.
-	if !regexp.MustCompile(`events = snpayout::WithClaimPaid\(std::move\(events\), \[queue, weak\]\(bool paid\) \{\s*` +
-		`queue\.TryEnqueue\(\[weak, paid\] \{\s*if \(auto self = weak\.get\(\)\) \{\s*` +
+	if !regexp.MustCompile(`events = snpayout::WithClaimPaid\(std::move\(events\), \[queue, weak, session\]\(bool paid\) \{\s*` +
+		`queue\.TryEnqueue\(\[weak, paid, session\] \{\s*if \(auto self = weak\.get\(\)\) \{\s*` +
 		`self->wallet\(\)\.LoadV2Accounts\(\);\s*self->wallet\(\)\.LoadGas\(\);`).MatchString(walletPage) {
 		t.Error("WalletPage.cpp: the v2 claimer does not read the accounts and the gas balance again after Done")
 	}
@@ -429,39 +429,58 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		// a win the claim paid loses its line: the wins are read again at Done,
 		// and after a claim that paid an account on the apps' schedule (the
 		// server reads a claim only once the finalized head covers it)
-		"events = snpayout::WithClaimPaid(std::move(events), [queue, weak](bool paid) {",
-		"queue.TryEnqueue([weak, paid] {",
+		// the session the claim starts in: a Done after a sign-out starts no
+		// reads for the next account
+		"if (auto self = weak.get()) session = self->wallet().ctfWinsAfterClaim_.Session();",
+		"events = snpayout::WithClaimPaid(std::move(events), [queue, weak, session](bool paid) {",
+		"queue.TryEnqueue([weak, paid, session] {",
 		"self->wallet().LoadCtfClient();",
-		"self->wallet().ReadCtfWinsAfterClaim(paid);")
+		"self->wallet().ReadCtfWinsAfterClaim(paid, session);")
 	requireOrder("WalletPage::MakeV2Claimer", claimer,
-		"snpayout::WithClaimPaid(", "self->wallet().LoadCtfClient();", "self->wallet().ReadCtfWinsAfterClaim(paid);",
+		"ctfWinsAfterClaim_.Session();", "snpayout::WithClaimPaid(", "self->wallet().LoadCtfClient();",
+		"self->wallet().ReadCtfWinsAfterClaim(paid, session);",
 		"snpayout::LedgerClaimCallbackFor<urnet::SnLedgerClaimCallback>(events)")
 	requireAll("WalletPage::ReadCtfWinsAfterClaim", body("WalletPage.cpp", page, "void WalletPage::ReadCtfWinsAfterClaim("),
-		"if (const auto wait = ctfWinsAfterClaim_.Done(paid)) ArmCtfWinsTimer(*wait);")
-	requireAll("WalletPage::ArmCtfWinsTimer", body("WalletPage.cpp", page, "void WalletPage::ArmCtfWinsTimer("),
+		"if (const auto wait = ctfWinsAfterClaim_.Done(paid, session)) ArmCtfWinsTimer(*wait);")
+	// a timer for each wait, whose tick hands the wait's token back: a tick
+	// already on its way from a timer since replaced reads nothing
+	arm := body("WalletPage.cpp", page, "void WalletPage::ArmCtfWinsTimer(")
+	requireAll("WalletPage::ArmCtfWinsTimer", arm,
+		"if (ctfWinsTimer_) ctfWinsTimer_.Stop();",
 		"ctfWinsTimer_ = w_.DispatcherQueue().CreateTimer();", "ctfWinsTimer_.IsRepeating(false);",
-		"ctfWinsTimer_.Tick([weak = w_.get_weak(), alive = alive_](auto const&, auto const&) {",
-		"if (!*alive) return;", "if (auto self = weak.get()) self->wallet().OnCtfWinsTimer();",
-		"ctfWinsTimer_.Stop();", "ctfWinsTimer_.Interval(wait);", "ctfWinsTimer_.Start();")
+		"ctfWinsTimer_.Interval(wait.wait);",
+		"ctfWinsTimer_.Tick([weak = w_.get_weak(), alive = alive_, token = wait.token](auto const&, auto const&) {",
+		"if (!*alive) return;", "if (auto self = weak.get()) self->wallet().OnCtfWinsTimer(token);",
+		"ctfWinsTimer_.Start();")
+	requireOrder("WalletPage::ArmCtfWinsTimer", arm,
+		"ctfWinsTimer_.Stop();", "CreateTimer();", "ctfWinsTimer_.Tick(", "ctfWinsTimer_.Start();")
 	requireAll("WalletPage::OnCtfWinsTimer", body("WalletPage.cpp", page, "void WalletPage::OnCtfWinsTimer("),
-		"const snpayout::CtfWinsReadsAfterClaim::Step step = ctfWinsAfterClaim_.Tick();",
+		"const snpayout::CtfWinsReadsAfterClaim::Step step = ctfWinsAfterClaim_.Tick(token);",
 		"if (!step.read) return;", "LoadCtfClient();", "if (step.next) ArmCtfWinsTimer(*step.next);")
 	requireAll("WalletPage::~WalletPage", body("WalletPage.cpp", page, "WalletPage::~WalletPage() {"),
 		"if (ctfWinsTimer_) ctfWinsTimer_.Stop();")
 	// the won slots: every unclaimed win, read with the Earnings reads, dropped
-	// at sign-out, with the reads after that account's claim
-	requireAll("WalletPage::LoadCtfClient", body("WalletPage.cpp", page, "void WalletPage::LoadCtfClient("),
-		"Sdk().device().snCtfClient(", "wins = snpayout::CtfWinsFrom(*result);",
+	// at sign-out, with the reads after that account's claim; a read that failed
+	// keeps the last good read's lines (snpayout::ApplyCtfWinsRead)
+	loadWins := body("WalletPage.cpp", page, "void WalletPage::LoadCtfClient(")
+	requireAll("WalletPage::LoadCtfClient", loadWins,
+		"Sdk().device().snCtfClient(", "std::optional<std::vector<snpayout::CtfWin>> wins;",
+		"wins = snpayout::CtfWinsReadFrom(*result);",
 		"self->wallet().ApplyCtfClient(read, wins);")
+	if strings.Contains(loadWins, "CtfWinsFrom(") {
+		t.Error("WalletPage::LoadCtfClient: reads CtfWinsFrom, which makes a failed read no lines")
+	}
 	requireAll("WalletPage::ApplyCtfClient", body("WalletPage.cpp", page, "void WalletPage::ApplyCtfClient("),
-		"if (read != ctfClientGeneration_) return;", "ctfWins_ = std::move(wins);", "RebuildV2Section();")
+		"if (read != ctfClientGeneration_) return;",
+		"if (!snpayout::ApplyCtfWinsRead(ctfWins_, std::move(wins))) return;", "RebuildV2Section();")
 	requireAll("WalletPage::LoadWallet", body("WalletPage.cpp", page, "void WalletPage::LoadWallet("), "LoadCtfClient();")
 	requireAll("WalletPage::ResetForSignOut", body("WalletPage.cpp", page, "void WalletPage::ResetForSignOut("),
 		"++ctfClientGeneration_;", "ctfWins_.clear();", "ctfWinsAfterClaim_.Stop();", "if (ctfWinsTimer_) ctfWinsTimer_.Stop();")
 	header := stripComments(readAppSource(t, "WalletPage.h"))
 	requireAll("WalletPage.h", header,
-		"void ReadCtfWinsAfterClaim(bool paid);", "void ArmCtfWinsTimer(std::chrono::milliseconds wait);",
-		"void OnCtfWinsTimer();", "snpayout::CtfWinsReadsAfterClaim ctfWinsAfterClaim_;",
+		"void ReadCtfWinsAfterClaim(bool paid, uint32_t session);",
+		"void ArmCtfWinsTimer(snpayout::CtfWinsReadsAfterClaim::Wait wait);",
+		"void OnCtfWinsTimer(uint32_t token);", "snpayout::CtfWinsReadsAfterClaim ctfWinsAfterClaim_;",
 		"winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer ctfWinsTimer_{nullptr};")
 	// the page draws the unclaimed wins, never the latest win alone
 	for _, gone := range []string{"latest_win", "CtfWinFrom(", "ctfWin_"} {
