@@ -6720,6 +6720,14 @@
     <value>이 연결에서는 아직 네트워크 검사가 실행되지 않았습니다. 검사를 통과할 때까지는 검사를 마친 제공업체가 부족할 때만 클라이언트에게 제시됩니다.</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>이 검사 중 {}개가 IPv6에서만 실패하여 이 기기는 IPv4 트래픽 전용으로 제시됩니다.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>이 검사 중 {}개가 HTTP/3(UDP)에서만 실패하여 이 기기는 TCP 트래픽 전용으로 제시됩니다. 일부 앱 버전과 일부 네트워크는 UDP를 라우팅하지 않습니다.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>이 기기가 둘 이상의 주소에서 연결하고 있거나 위치를 알 수 없습니다. 클라이언트에게는 주소가 하나이고 위치가 확인된 기기만 제시됩니다.</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

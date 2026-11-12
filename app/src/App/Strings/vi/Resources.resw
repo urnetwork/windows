@@ -6721,6 +6721,14 @@ an toàn nhất và phi tập trung nhất thế giới.</value>
     <value>Chưa chạy kiểm tra mạng trên kết nối này. Cho đến khi đạt, thiết bị này chỉ được đề xuất cho máy khách khi các nhà cung cấp đã kiểm tra không còn.</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>{} trong số các lần kiểm tra này chỉ thất bại qua IPv6, nên thiết bị này chỉ được đề xuất cho lưu lượng IPv4.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>{} trong số các lần kiểm tra này chỉ thất bại qua HTTP/3 (UDP), nên thiết bị này chỉ được đề xuất cho lưu lượng TCP. Một số phiên bản ứng dụng và một số mạng không định tuyến UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>Thiết bị này đang kết nối từ nhiều địa chỉ, hoặc không xác định được vị trí. Máy khách chỉ được đề xuất các thiết bị có một địa chỉ và vị trí đã biết.</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

@@ -507,6 +507,7 @@ providerstatus::ValueText<std::wstring> ProviderStatusText() {
   text.formatCounts = [](std::string_view key, int64_t count, int64_t total) {
     return urnw::Format(key, count, total);
   };
+  text.plural = [](std::string_view key, int64_t count) { return urnw::Plural(key, count); };
   text.percent = [](double ratio) {
     PercentStyle const& style = LocalePercentStyle();
     return urnw::Widen(providerstatus::FormatPercent(ratio, style.pattern, style.sign));
@@ -6100,6 +6101,10 @@ void WalletPage::RebuildProviderWhy() {
                                               hstring{std::wstring{label} + L", " + row.value});
     entry.Children().Append(line);
     entry.Children().Append(MakeText(Loc(row.helpKey), 11, colors::MutedBrush(), /*wrap=*/true));
+    // why the network checks downgraded the device, in the reader's language
+    for (auto const& reason : row.reasons) {
+      entry.Children().Append(MakeText(hstring{reason}, 11, colors::TextBrush(), /*wrap=*/true));
+    }
     panel.Children().Append(entry);
   }
 }

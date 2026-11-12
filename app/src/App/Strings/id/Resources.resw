@@ -6721,6 +6721,14 @@ terbesar, teraman, dan paling terdesentralisasi di dunia.</value>
     <value>Pemeriksaan jaringan belum dijalankan pada koneksi ini. Hingga lulus, perangkat ini hanya ditawarkan ke klien saat penyedia yang sudah diperiksa habis.</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>{} dari pemeriksaan ini gagal hanya melalui IPv6, jadi perangkat ini hanya ditawarkan untuk lalu lintas IPv4.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>{} dari pemeriksaan ini gagal hanya melalui HTTP/3 (UDP), jadi perangkat ini hanya ditawarkan untuk lalu lintas TCP. Beberapa versi aplikasi dan beberapa jaringan tidak merutekan UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>Perangkat ini terhubung dari lebih dari satu alamat, atau lokasinya tidak diketahui. Klien hanya ditawari perangkat dengan satu alamat dan lokasi yang diketahui.</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

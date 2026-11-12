@@ -6718,6 +6718,14 @@
     <value>この接続ではまだネットワークチェックが実行されていません。合格するまでは、チェック済みのプロバイダーが足りなくなった場合にのみクライアントに提示されます。</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>これらのチェックのうち {} 件は IPv6 でのみ失敗したため、このデバイスは IPv4 トラフィック専用で提示されます。</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>これらのチェックのうち {} 件は HTTP/3 (UDP) でのみ失敗したため、このデバイスは TCP トラフィック専用で提示されます。一部のアプリのバージョンや一部のネットワークは UDP をルーティングしません。</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>このデバイスは複数のアドレスから接続しているか、位置が不明です。クライアントには、アドレスが1つで位置がわかっているデバイスのみが提示されます。</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

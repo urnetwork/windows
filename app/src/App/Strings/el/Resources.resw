@@ -6812,6 +6812,22 @@
     <value>Ο έλεγχος δικτύου δεν έχει εκτελεστεί ακόμη σε αυτή τη σύνδεση. Μέχρι να περάσει, η συσκευή προτείνεται σε πελάτες μόνο όταν εξαντληθούν οι ελεγμένοι πάροχοι.</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.one" xml:space="preserve">
+    <value>{} από αυτούς τους ελέγχους απέτυχε μόνο μέσω IPv6, οπότε η συσκευή προτείνεται μόνο για κίνηση IPv4.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>{} από αυτούς τους ελέγχους απέτυχαν μόνο μέσω IPv6, οπότε η συσκευή προτείνεται μόνο για κίνηση IPv4.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.one" xml:space="preserve">
+    <value>{} από αυτούς τους ελέγχους απέτυχε μόνο μέσω HTTP/3 (UDP), οπότε η συσκευή προτείνεται μόνο για κίνηση TCP. Ορισμένες εκδόσεις της εφαρμογής και ορισμένα δίκτυα δεν δρομολογούν UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>{} από αυτούς τους ελέγχους απέτυχαν μόνο μέσω HTTP/3 (UDP), οπότε η συσκευή προτείνεται μόνο για κίνηση TCP. Ορισμένες εκδόσεις της εφαρμογής και ορισμένα δίκτυα δεν δρομολογούν UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>Αυτή η συσκευή συνδέεται από περισσότερες από μία διευθύνσεις ή η τοποθεσία της είναι άγνωστη. Στους πελάτες προτείνονται μόνο συσκευές με μία διεύθυνση και γνωστή τοποθεσία.</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

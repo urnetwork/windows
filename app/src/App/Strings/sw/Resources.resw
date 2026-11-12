@@ -6812,6 +6812,22 @@ iliyo kubwa, salama na iliyogatuliwa zaidi duniani.</value>
     <value>Ukaguzi wa mtandao bado haujafanyika kwenye muunganisho huu. Hadi ufaulu, kifaa hiki hupendekezwa kwa wateja tu watoa huduma waliokaguliwa wanapoisha.</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.one" xml:space="preserve">
+    <value>{} kati ya ukaguzi huu ulishindwa kupitia IPv6 pekee, kwa hivyo kifaa hiki hupendekezwa kwa trafiki ya IPv4 pekee.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>{} kati ya ukaguzi huu ulishindwa kupitia IPv6 pekee, kwa hivyo kifaa hiki hupendekezwa kwa trafiki ya IPv4 pekee.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.one" xml:space="preserve">
+    <value>{} kati ya ukaguzi huu ulishindwa kupitia HTTP/3 (UDP) pekee, kwa hivyo kifaa hiki hupendekezwa kwa trafiki ya TCP pekee. Baadhi ya matoleo ya programu na baadhi ya mitandao haipitishi UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>{} kati ya ukaguzi huu ulishindwa kupitia HTTP/3 (UDP) pekee, kwa hivyo kifaa hiki hupendekezwa kwa trafiki ya TCP pekee. Baadhi ya matoleo ya programu na baadhi ya mitandao haipitishi UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>Kifaa hiki kinaunganisha kutoka anwani zaidi ya moja, au mahali kilipo hapajulikani. Wateja hupendekezewa vifaa vyenye anwani moja na mahali panapojulikana pekee.</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

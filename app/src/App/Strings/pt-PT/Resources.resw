@@ -6812,6 +6812,22 @@ e mais descentralizado protocolo de entrada e saída do mundo.</value>
     <value>A verificação de rede ainda não foi feita nesta ligação. Até ser aprovada, este dispositivo só é oferecido aos clientes quando os fornecedores verificados se esgotam.</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.one" xml:space="preserve">
+    <value>{} destas verificações falhou apenas através de IPv6, por isso este dispositivo só é oferecido para tráfego IPv4.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>{} destas verificações falharam apenas através de IPv6, por isso este dispositivo só é oferecido para tráfego IPv4.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.one" xml:space="preserve">
+    <value>{} destas verificações falhou apenas através de HTTP/3 (UDP), por isso este dispositivo só é oferecido para tráfego TCP. Algumas versões da aplicação e algumas redes não encaminham UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>{} destas verificações falharam apenas através de HTTP/3 (UDP), por isso este dispositivo só é oferecido para tráfego TCP. Algumas versões da aplicação e algumas redes não encaminham UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>Este dispositivo está a ligar-se a partir de mais de um endereço, ou a sua localização é desconhecida. Só são oferecidos aos clientes dispositivos com um único endereço e uma localização conhecida.</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

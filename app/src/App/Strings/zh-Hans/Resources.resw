@@ -6797,6 +6797,14 @@
     <value>此连接尚未进行网络检查。在检查通过之前，只有在已检查的提供商用完时，此设备才会被推荐给客户端。</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>这些检查中有 {} 项仅通过 IPv6 时失败，因此此设备仅推荐用于 IPv4 流量。</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>这些检查中有 {} 项仅通过 HTTP/3 (UDP) 时失败，因此此设备仅推荐用于 TCP 流量。部分应用版本和部分网络不路由 UDP。</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>此设备正从多个地址连接，或其位置未知。只有单一地址且位置已知的设备才会被推荐给客户端。</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

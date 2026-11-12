@@ -6810,6 +6810,22 @@
     <value>इस कनेक्शन पर नेटवर्क जाँच अभी नहीं चली है। इसके पास होने तक, यह डिवाइस क्लाइंट को तभी पेश किया जाता है जब जाँचे गए प्रदाता खत्म हो जाएँ।</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.one" xml:space="preserve">
+    <value>इनमें से {} जाँच केवल IPv6 पर विफल हुई, इसलिए यह डिवाइस केवल IPv4 ट्रैफ़िक के लिए पेश किया जाता है।</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>इनमें से {} जाँचें केवल IPv6 पर विफल हुईं, इसलिए यह डिवाइस केवल IPv4 ट्रैफ़िक के लिए पेश किया जाता है।</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.one" xml:space="preserve">
+    <value>इनमें से {} जाँच केवल HTTP/3 (UDP) पर विफल हुई, इसलिए यह डिवाइस केवल TCP ट्रैफ़िक के लिए पेश किया जाता है। कुछ ऐप संस्करण और कुछ नेटवर्क UDP को रूट नहीं करते।</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>इनमें से {} जाँचें केवल HTTP/3 (UDP) पर विफल हुईं, इसलिए यह डिवाइस केवल TCP ट्रैफ़िक के लिए पेश किया जाता है। कुछ ऐप संस्करण और कुछ नेटवर्क UDP को रूट नहीं करते।</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>यह डिवाइस एक से अधिक पते से कनेक्ट हो रहा है, या इसका स्थान अज्ञात है। क्लाइंट को केवल एक पते और ज्ञात स्थान वाले डिवाइस पेश किए जाते हैं।</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>
