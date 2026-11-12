@@ -3509,7 +3509,8 @@ winrt::fire_and_forget MainWindow::OpenConnectionRegion() {
 }
 
 void MainWindow::NoteReachFailure(std::string const& error) {
-  if (urnw::connection_region::IsCantReachFailure(error)) ShowCantReachPrompt();
+  // the sdk's one rule for every app (sdk cant_reach.go)
+  if (urnet::isCantReachError(error)) ShowCantReachPrompt();
 }
 
 void MainWindow::ShowCantReachPrompt() {

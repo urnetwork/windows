@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "BalanceGate.h"
-#include "ConnectionRegion.h"  // the can't-reach prompt on a platform-unreachable stall
 #include "DnsPresetPresentation.h"  // the dns card's sdk keys and pills
 #include "FastDnsOnConnect.h"
 #include "Log.h"
@@ -1337,9 +1336,10 @@ void ConnectPage::ApplyStats(urnw::LiveStats const& stats) {
   const std::string previousStallReason = windowStallReason_;
   windowStallReason_ = stats.windowStallReason;
   // Can't reach URnetwork: offer the connection region picker, once as the
-  // diagnosis turns to it. The prompt only opens the picker; the region is
+  // diagnosis turns to it, by the sdk's one rule for every app
+  // (urnet::cantReachOnStall). The prompt only opens the picker; the region is
   // never changed here (ConnectionRegion.h).
-  if (urnw::connection_region::ShouldPromptOnStall(previousStallReason, windowStallReason_)) {
+  if (urnet::cantReachOnStall(previousStallReason, windowStallReason_)) {
     w_.ShowCantReachPrompt();
   }
   // #27: the aggregate health, derived in the SAME ReadStats as every other

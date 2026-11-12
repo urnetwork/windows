@@ -14,7 +14,8 @@
 //
 // Everything here is pure and runs off-Windows
 // (tools/connection-region-tests.cpp): the picker's rows, the stored value a
-// selection writes, the resolver summary and the can't-reach classification.
+// selection writes and the resolver summary. Which failures raise the
+// can't-reach prompt is the sdk's rule (see the end of this file).
 //
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
@@ -124,62 +125,13 @@ class RegionSelection {
   Store& store_;
 };
 
-namespace detail {
-inline bool Contains(const std::string& haystack, std::string_view needle) {
-  return haystack.find(needle) != std::string::npos;
-}
-}  // namespace detail
-
-// Whether a failed platform call failed to REACH URnetwork: a transport error
-// from the sdk's http client (connect net_http.go: "http request failed: ...",
-// Go's dial / lookup / timeout / reset errors). An api call that no route
-// answered -- a lookup a censor drops, a dial to a blackholed address, a
-// timeout -- fails as "http request attempts exhausted" (connect
-// HttpRequestExhaustedError, net_http_exhaustion.go), whose text names none of
-// those causes. An answer from the server -- a status error ("401
-// Unauthorized: ..."), a validation or auth message in a result -- is not:
-// URnetwork was reached. Only this raises the can't-reach prompt; it never
-// changes the region.
-inline bool IsCantReachFailure(std::string_view error) {
-  if (error.empty()) return false;
-  const std::string text = Lower(error);
-  // HttpStatusError renders as "<code> <status>: <body>": the server answered
-  if (3 < text.size() && std::isdigit(static_cast<unsigned char>(text[0])) &&
-      std::isdigit(static_cast<unsigned char>(text[1])) &&
-      std::isdigit(static_cast<unsigned char>(text[2])) && text[3] == ' ') {
-    return false;
-  }
-  static constexpr std::string_view kTransport[] = {
-      "http request attempts exhausted",
-      "http request failed",
-      "dial tcp",
-      "dial udp",
-      "no such host",
-      "server misbehaving",
-      "i/o timeout",
-      "connection refused",
-      "connection reset",
-      "network is unreachable",
-      "host is unreachable",
-      "no route to host",
-      "context deadline exceeded",
-      "tls handshake",
-      "client.timeout exceeded",
-      "unexpected eof",
-  };
-  for (std::string_view needle : kTransport) {
-    if (detail::Contains(text, needle)) return true;
-  }
-  return false;
-}
-
-// Signed in, the sdk's own diagnosis of a stalled connection says when the
-// platform cannot be reached (window stall reason "platform-unreachable"). The
-// prompt is raised once as the reason turns to it, not on every stats push.
-inline constexpr std::string_view kStallPlatformUnreachable = "platform-unreachable";
-
-inline bool ShouldPromptOnStall(std::string_view previous, std::string_view current) {
-  return current == kStallPlatformUnreachable && previous != kStallPlatformUnreachable;
-}
+// Which failures mean URnetwork could not be reached is the sdk's one rule for
+// every app (sdk cant_reach.go; support inbox 7956, 7973): a failed call's
+// text (urnet::isCantReachError, which MainWindow::NoteReachFailure asks),
+// and, signed in, the connect window's diagnosis turning to the platform being
+// unreachable (urnet::cantReachOnStall, which ConnectPage asks on each stats
+// snapshot). The apps used to keep a list of failure texts each, and the
+// lists drifted. The prompt only opens the picker; it never changes the
+// region.
 
 }  // namespace urnw::connection_region
