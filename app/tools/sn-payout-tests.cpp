@@ -27,6 +27,8 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+#include <array>
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -339,6 +341,70 @@ void CheckTimes(const PayoutLineView& view) {
   CheckEq(Tag(kClaimOpen), view.claimOpen, "claim open");
   CheckEq(Tag(kExpiry), view.expiry, "expiry");
 }
+
+// WalletPage's part in the wins after a claim, as it wires them: the claimer's
+// Done (WithClaimPaid) reads the wins (LoadCtfClient) and hands `paid` to the
+// schedule (ReadCtfWinsAfterClaim), whose one-shot timer waits each wait it
+// gives and calls Tick (OnCtfWinsTimer); each answer goes to the lines through
+// CtfWinsLines (ApplyCtfClient); a sign-out stops the reads and drops the
+// lines (ResetForSignOut). The server is a fake whose next reads answer
+// `answers`, one each, then `settled`; std::nullopt is a read that failed.
+struct WinsPage {
+  CtfWinsReadsAfterClaim schedule;
+  std::optional<std::chrono::milliseconds> timer;  // armed with this wait
+  uint32_t timerToken = 0;                         // and the token its tick hands back
+  std::vector<std::chrono::milliseconds> waits;    // every wait armed
+  CtfWinsLines wins;
+  std::vector<std::optional<std::vector<CtfWin>>> answers;
+  std::optional<std::vector<CtfWin>> settled = std::vector<CtfWin>{};
+  int reads = 0;
+  std::vector<std::string> heard;  // the dialog's events and the page's reads, in order
+
+  const std::vector<CtfWin>& lines() const { return wins.lines(); }
+  // the lines an earlier good read gave
+  void Seed(std::vector<CtfWin> earlier) { wins.Apply(wins.Start(), std::move(earlier)); }
+  void Read() {
+    ++reads;
+    heard.push_back("read");
+    std::optional<std::vector<CtfWin>> answer = settled;
+    if (!answers.empty()) {
+      answer = answers.front();
+      answers.erase(answers.begin());
+    }
+    wins.Apply(wins.Start(), std::move(answer));
+  }
+  void Arm(CtfWinsReadsAfterClaim::Wait wait) {
+    timer = wait.wait;
+    timerToken = wait.token;
+    waits.push_back(wait.wait);
+  }
+  // the claimer, around the dialog's events, in the session the claim starts in
+  LedgerClaimEvents Claimer(LedgerClaimEvents dialog = {}) {
+    const uint32_t session = schedule.Session();
+    return WithClaimPaid(std::move(dialog), [this, session](bool paid) {
+      Read();
+      if (const auto wait = schedule.Done(paid, session)) Arm(*wait);
+    });
+  }
+  // a tick with `token`: the armed timer's, or one on its way from a timer
+  // since replaced
+  void Tick(uint32_t token) {
+    const CtfWinsReadsAfterClaim::Step step = schedule.Tick(token);
+    if (!step.read) return;
+    Read();
+    if (step.next) Arm(*step.next);
+  }
+  // the armed timer's wait ran out
+  void Fire() {
+    timer.reset();
+    Tick(timerToken);
+  }
+  void SignOut() {
+    schedule.Stop();
+    timer.reset();
+    wins.Reset();
+  }
+};
 
 }  // namespace
 
@@ -1287,6 +1353,24 @@ int main() {
     lone.Done();
     Check(lone.rows()[0].underFloor && lone.rows()[0].state == LedgerClaimState::Idle && !lone.CanClaim(true),
           "a lone account under the runtime's floor");
+    // the SDK tries it again with the next press, and its newest answer is a
+    // failure: Failed, and above the dialog's floor (none here) a press takes
+    // it again
+    LedgerClaimProgress again = Dialog({Account(), CtfAccount()});
+    Check(again.Start(), "Claim both");
+    again.Failed(kCtfNoId, 9, tooLow);
+    again.Failed(1, 42, "claim_failed: execution reverted");
+    again.Done();
+    Check(again.rows()[1].underFloor && again.ClaimableRao() == 3'241'000'000, "the provider pool's alone");
+    Check(again.Start(), "Claim again");
+    Check(again.rows()[1].state == LedgerClaimState::Idle && again.rows()[1].underFloor,
+          "the preflight's refusal stands until the SDK answers again");
+    again.Confirmed(1, 42, "0xabc", 3'241'000'000);
+    again.Failed(kCtfNoId, 9, "claim_failed: execution reverted");
+    again.Done();
+    CheckRow(again.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Failed, "",
+             "claim_failed: execution reverted", "now Failed");
+    Check(!again.rows()[1].underFloor && again.ClaimableRao() == 50'000'000, "a press takes it again");
     // any other not_claimable of an account is its failure, as before
     const std::string elsewhere =
         "not_claimable: the ledger lists this account in 0x01, not in the configured vault2 0x02";
@@ -1471,6 +1555,268 @@ int main() {
     result.error = SdkError{};
     Check(CtfWinsFrom(result).empty(), "an answer with an error says nothing, never no wins");
   }
+  {
+    TEST_CASE("ctf: after a claim that paid, the wins are read at Done and 30 s, 60 s and 120 s after it");
+    using std::chrono::milliseconds;
+    using std::chrono::seconds;
+    Check(kCtfWinsReadsAfterClaim == std::array<milliseconds, 3>{seconds(30), seconds(60), seconds(120)},
+          "every app's schedule");
+    const CtfWin iceland{CtfRole::Provider, "is"};
+    WinsPage page;
+    page.Seed({iceland});
+    // the server reads the claim at the finalized head: it still says
+    // unclaimed at Done and 30 s after it, and claimed from then on
+    page.answers = {std::vector<CtfWin>{iceland}, std::vector<CtfWin>{iceland}};
+    // the dialog keeps its own events, and its Done comes before the page's read
+    LedgerClaimProgress dialog = Dialog({CtfAccount()});
+    Check(dialog.Start(), "Claim");
+    LedgerClaimEvents dialogEvents;
+    dialogEvents.sent = [&](int64_t noId, int64_t index, std::string txHash) {
+      page.heard.push_back("sent");
+      dialog.Sent(noId, index, txHash);
+    };
+    dialogEvents.confirmed = [&](int64_t noId, int64_t index, std::string txHash, int64_t amountRao) {
+      page.heard.push_back("confirmed");
+      dialog.Confirmed(noId, index, txHash, amountRao);
+    };
+    dialogEvents.done = [&] {
+      page.heard.push_back("done");
+      dialog.Done();
+    };
+    // through the SDK's callback, as WalletPage hands it to snLedgerClaim
+    const SdkLedgerClaimCallback callback =
+        LedgerClaimCallbackFor<SdkLedgerClaimCallback>(page.Claimer(dialogEvents));
+    callback.sent(kCtfNoId, 9, "0xclaim");
+    callback.confirmed(kCtfNoId, 9, "0xclaim", 50'000'000);
+    callback.done();
+    Check(page.heard == std::vector<std::string>{"sent", "confirmed", "done", "read"},
+          "the dialog's events, then the read at Done");
+    CheckRow(dialog.rows()[0], kCtfNoId, 9, 50'000'000, LedgerClaimState::Confirmed, "0xclaim", "",
+             "the dialog's row");
+    Check(page.reads == 1 && page.lines() == std::vector<CtfWin>{iceland}, "at Done: still unclaimed");
+    Check(page.timer == milliseconds(seconds(30)), "the next read 30 s after Done");
+    page.Fire();
+    Check(page.reads == 2 && page.lines() == std::vector<CtfWin>{iceland}, "30 s after Done: still unclaimed");
+    Check(page.timer == milliseconds(seconds(30)), "the next 60 s after Done");
+    page.Fire();
+    Check(page.reads == 3 && page.lines().empty(), "60 s after Done: claimed, and the line goes");
+    Check(page.timer == milliseconds(seconds(60)), "the next 120 s after Done");
+    page.Fire();
+    Check(page.reads == 4 && page.lines().empty(), "120 s after Done: the last read");
+    Check(!page.timer, "nothing after it");
+    page.Fire();
+    Check(page.reads == 4, "a stray tick reads nothing");
+    Check(page.waits == std::vector<milliseconds>{seconds(30), seconds(30), seconds(60)},
+          "30 s, 60 s and 120 s after Done");
+  }
+  {
+    TEST_CASE("ctf: the wins' reads after a claim: what pays, starting over, and a sign-out");
+    using std::chrono::milliseconds;
+    using std::chrono::seconds;
+    // a claim that paid nothing: the read at Done, as after any claim, and none after
+    WinsPage none;
+    LedgerClaimEvents nothing = none.Claimer();
+    nothing.failed(kCtfNoId, 9, "needs_gas: the gas key cannot pay for the claim");
+    nothing.failed(0, 0, "chain_rpc_unreachable: dial tcp: i/o timeout");
+    nothing.done();
+    Check(none.reads == 1 && !none.timer, "paid nothing: no read after Done");
+    // already_claimed for an account is paid, another sender's claim paying the
+    // same coldkey; for no pool it is not
+    WinsPage already;
+    LedgerClaimEvents third = already.Claimer();
+    third.failed(1, 42, "already_claimed: another sender claimed it");
+    third.done();
+    Check(already.reads == 1 && already.timer == milliseconds(seconds(30)), "already_claimed pays");
+    WinsPage noPool;
+    LedgerClaimEvents whole = noPool.Claimer();
+    whole.failed(0, 0, "already_claimed: nothing left");
+    whole.done();
+    Check(!noPool.timer, "already_claimed for no pool pays nothing");
+
+    WinsPage page;
+    LedgerClaimEvents first = page.Claimer();
+    first.confirmed(1, 42, "0xone", 3'241'000'000);
+    first.done();
+    Check(page.reads == 1 && page.timer == milliseconds(seconds(30)), "the first claim paid");
+    // one that paid nothing leaves the first claim's reads be
+    LedgerClaimEvents unpaid = page.Claimer();
+    unpaid.failed(kCtfNoId, 9, "claim_failed: execution reverted");
+    unpaid.done();
+    Check(page.reads == 2 && page.timer == milliseconds(seconds(30)), "the first claim's wait stands");
+    page.Fire();
+    Check(page.reads == 3 && page.timer == milliseconds(seconds(30)), "the first claim's 30 s read");
+    // the next paying claim's Done starts them over, and a tick of the wait it
+    // replaced, already on its way, reads nothing
+    const uint32_t replaced = page.timerToken;
+    LedgerClaimEvents second = page.Claimer();
+    second.confirmed(kCtfNoId, 9, "0xtwo", 50'000'000);
+    second.done();
+    Check(page.reads == 4 && page.timer == milliseconds(seconds(30)), "30 s from the second Done");
+    page.Tick(replaced);
+    Check(page.reads == 4 && page.timer == milliseconds(seconds(30)), "the replaced wait's tick reads nothing");
+    page.Fire();
+    page.Fire();
+    Check(page.reads == 6 && page.timer == milliseconds(seconds(60)), "60 s from it, then 120 s");
+    Check(page.waits == std::vector<milliseconds>{seconds(30), seconds(30), seconds(30), seconds(30),
+                                                  seconds(60)},
+          "the waits");
+    // a claim that started before a sign-out and whose Done lands after it
+    // starts no reads for the next account
+    LedgerClaimEvents before = page.Claimer();
+    // a sign-out: none of the reads left, even from a tick already on its way
+    page.SignOut();
+    page.Fire();
+    Check(page.reads == 6 && !page.timer, "no read after a sign-out");
+    before.confirmed(1, 42, "0xbefore", 3'241'000'000);
+    before.done();
+    Check(!page.timer, "a claim from before the sign-out starts no reads");
+    // the next account's paying claim starts its own
+    LedgerClaimEvents next = page.Claimer();
+    next.confirmed(1, 42, "0xthree", 3'241'000'000);
+    next.done();
+    page.Fire();
+    Check(page.reads == 9 && page.timer == milliseconds(seconds(30)), "the next account's reads");
+  }
+  {
+    TEST_CASE("ctf: a read of the wins that failed keeps the last good read's lines");
+    const CtfWin iceland{CtfRole::Provider, "is"};
+    const CtfWin laos{CtfRole::Extender, "la"};
+    // what a read answers: the wins of an answer the SDK could read, a good
+    // read with none, and nothing at all for one with an Error or without the
+    // list, which the SDK always sends
+    SdkCtfClientResult read;
+    read.unclaimed_wins = std::vector<SdkCtfWin>{SdkWin(11, "provider", "is")};
+    Check(CtfWinsReadFrom(read) == std::optional<std::vector<CtfWin>>{std::vector<CtfWin>{iceland}},
+          "a good read's wins");
+    read.unclaimed_wins = std::vector<SdkCtfWin>{};
+    Check(CtfWinsReadFrom(read) == std::optional<std::vector<CtfWin>>{std::vector<CtfWin>{}},
+          "a good read with none");
+    read.unclaimed_wins = std::vector<SdkCtfWin>{SdkWin(11, "provider", "is")};
+    read.error = SdkError{};
+    Check(!CtfWinsReadFrom(read), "an answer with an Error: a read that failed");
+    Check(!CtfWinsReadFrom(SdkCtfClientResult{}), "an answer without the list: a read that failed");
+    // a failure between two good reads leaves the lines as they were, and a
+    // good read that no longer lists a win takes its line away
+    CtfWinsLines lines;
+    Check(lines.Apply(lines.Start(), std::vector<CtfWin>{iceland, laos}) &&
+              lines.lines() == std::vector<CtfWin>{iceland, laos},
+          "a good read");
+    Check(!lines.Apply(lines.Start(), std::nullopt) && lines.lines() == std::vector<CtfWin>{iceland, laos},
+          "a read that failed keeps the lines");
+    Check(lines.Apply(lines.Start(), std::vector<CtfWin>{laos}) && lines.lines() == std::vector<CtfWin>{laos},
+          "a good read replaces them");
+    // reads overlap, each started at its time, and answer in any order: the
+    // lines show the newest read's good answer
+    const uint32_t slow = lines.Start();
+    const uint32_t quick = lines.Start();
+    Check(lines.Apply(quick, std::vector<CtfWin>{iceland}) && lines.lines() == std::vector<CtfWin>{iceland},
+          "the newer read answers first");
+    Check(!lines.Apply(slow, std::vector<CtfWin>{}) && lines.lines() == std::vector<CtfWin>{iceland},
+          "an older read's late answer is dropped");
+    // a newer read that fails drops no older read's good answer still to land
+    const uint32_t older = lines.Start();
+    const uint32_t newer = lines.Start();
+    Check(!lines.Apply(newer, std::nullopt) && lines.lines() == std::vector<CtfWin>{iceland}, "the newer fails");
+    Check(lines.Apply(older, std::vector<CtfWin>{}) && lines.lines().empty(),
+          "the older read's good answer still shows: the win claimed");
+    // a sign-out: no lines, and no answer of a read from before shows
+    lines.Apply(lines.Start(), std::vector<CtfWin>{iceland});
+    const uint32_t before = lines.Start();
+    lines.Reset();
+    Check(lines.lines().empty(), "a sign-out drops the lines");
+    Check(!lines.Apply(before, std::vector<CtfWin>{laos}) && lines.lines().empty(),
+          "a read from before the sign-out shows nothing");
+    Check(lines.Apply(lines.Start(), std::vector<CtfWin>{laos}) && lines.lines() == std::vector<CtfWin>{laos},
+          "the next account's first good read");
+    // through the page: the read at a claim's Done fails, then the 30 s read
+    // still lists the win, then the 60 s read says it is claimed
+    WinsPage page;
+    page.Seed({iceland});
+    page.answers = {std::nullopt, std::vector<CtfWin>{iceland}, std::nullopt};
+    page.settled = std::vector<CtfWin>{};
+    LedgerClaimEvents claim = page.Claimer();
+    claim.confirmed(kCtfNoId, 9, "0xclaim", 50'000'000);
+    claim.done();
+    Check(page.reads == 1 && page.lines() == std::vector<CtfWin>{iceland}, "a failed read at Done keeps the line");
+    page.Fire();
+    Check(page.reads == 2 && page.lines() == std::vector<CtfWin>{iceland}, "30 s after Done: still unclaimed");
+    page.Fire();
+    Check(page.reads == 3 && page.lines() == std::vector<CtfWin>{iceland}, "60 s after Done: failed, kept");
+    page.Fire();
+    Check(page.reads == 4 && page.lines().empty(), "120 s after Done: claimed, and the line goes");
+    // a sign-out drops the lines, and the next account's first read that fails shows none
+    page.Seed({iceland});
+    page.SignOut();
+    Check(page.lines().empty(), "a sign-out drops them");
+    page.answers = {std::nullopt};
+    page.Read();
+    Check(page.lines().empty(), "the first read after a sign-in shows none until one answers");
+  }
+  {
+    TEST_CASE("ctf claim: an account the dialog lists under the floor, which the SDK then tries");
+    // the SDK tries every account with something to claim, capture the flag's
+    // 0.05 under the floor too: the dialog shows what it answers, as Android's,
+    // Linux's and Apple's do, and no press of this dialog ever takes it
+    constexpr int64_t kFloor = 100'000'000;
+    const std::string needsGas =
+        "needs_gas: this claim needs up to 0.0173 TAO of gas, the gas key 0x00aa has 0.0050 TAO; "
+        "send TAO to 5GAS";
+    const std::string tooLow = "not_claimable: AmountTooLow: the claim is below the runtime's transfer floor";
+    // needs_gas: claimable under the funding hint, never Below the claim minimum
+    LedgerClaimProgress gas = Dialog({Account(), CtfAccount()}, kFloor);
+    Check(gas.rows()[1].underFloor && gas.Start(), "listed under the floor; Claim the provider pool's");
+    Check(gas.rows()[1].state == LedgerClaimState::Idle, "it is not sending");
+    gas.Sent(1, 42, "0xone");
+    gas.Confirmed(1, 42, "0xone", 3'241'000'000);
+    gas.Failed(kCtfNoId, 9, needsGas);
+    gas.Done();
+    CheckRow(gas.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Idle, "", "", "claimable");
+    Check(!gas.rows()[1].underFloor && !gas.rows()[1].unavailable, "not below the claim minimum");
+    Check(gas.needsGas(), "under the funding hint");
+    Check(gas.ClaimableRao() == 0 && !gas.ClaimsBoth() && !gas.CanClaim(true) && !gas.TotalKnown(),
+          "still no claim of it, and no total");
+    // another failure, after the chain took it in the batch: Failed with its
+    // message, and the next press leaves it out
+    LedgerClaimProgress failed = Dialog({Account(), CtfAccount()}, kFloor);
+    Check(failed.Start(), "Claim");
+    failed.Sent(1, 42, "0xbatch");
+    failed.Sent(kCtfNoId, 9, "0xbatch");
+    failed.Failed(1, 42, "claim_failed: execution reverted");
+    failed.Failed(kCtfNoId, 9, "claim_failed: execution reverted");
+    failed.Done();
+    CheckRow(failed.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Failed, "0xbatch",
+             "claim_failed: execution reverted", "Failed, with its message");
+    Check(!failed.rows()[1].underFloor, "not below the claim minimum");
+    Check(failed.ClaimableRao() == 3'241'000'000 && !failed.ClaimsBoth(),
+          "the next press takes the provider pool's alone, never Claim both");
+    // that press lists it Below the claim minimum again until the SDK reports
+    Check(failed.Start(), "Claim again");
+    CheckRow(failed.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Sending, "0xbatch", "",
+             "the provider pool's, sending");
+    CheckRow(failed.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Idle, "0xbatch", "",
+             "capture the flag's, waiting");
+    Check(failed.rows()[1].underFloor, "below the claim minimum again");
+    // and AmountTooLow alone reads Below the claim minimum once the SDK tried it
+    failed.Failed(kCtfNoId, 9, tooLow);
+    failed.Done();
+    Check(failed.rows()[1].underFloor && failed.rows()[1].state == LedgerClaimState::Idle &&
+              failed.rows()[1].message.empty(),
+          "AmountTooLow: below the claim minimum");
+    // one still Sent when its press ended keeps that state at the next press
+    // (Linux's), and is not taken
+    LedgerClaimProgress inflight = Dialog({Account(), CtfAccount()}, kFloor);
+    Check(inflight.Start(), "Claim");
+    inflight.Sent(kCtfNoId, 9, "0xslow");
+    inflight.Failed(1, 42, "claim_failed: execution reverted");
+    inflight.Done();
+    Check(inflight.ClaimableRao() == 3'241'000'000 && inflight.Start(), "Claim the provider pool's again");
+    CheckRow(inflight.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Sent, "0xslow", "", "still Sent");
+    // a lone account under the floor: never a Claim of it
+    LedgerAccount small = Account();
+    small.claimableRao = 1;
+    LedgerClaimProgress lone = Dialog({small}, kFloor);
+    Check(!lone.CanClaim(true) && !lone.Start() && !lone.TotalKnown(), "nothing for Claim to send, and no total");
+  }
 
   {
     TEST_CASE("v2 at the SDK's boundary: an account's fields");
@@ -1644,6 +1990,11 @@ int main() {
         nlohmann::json::parse(R"({"client_id":"","as_of_millis":0,"error":{"code":"ctf_unavailable","message":"503"}})")
             .get<urnet::SnCtfClientResult>();
     Check(CtfWinsFrom(unauthorized).empty(), "the header's error: no line");
+    // the read the page applies: the header's no wins is a good read with
+    // none, its error a read that failed, which keeps the lines
+    Check(CtfWinsReadFrom(none) == std::optional<std::vector<CtfWin>>{std::vector<CtfWin>{}},
+          "the header's no wins: a good read with none");
+    Check(!CtfWinsReadFrom(unauthorized), "the header's error: a read that failed");
 #endif
   }
   {

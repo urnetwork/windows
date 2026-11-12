@@ -538,6 +538,7 @@ WalletPage::~WalletPage() {
   if (legacyFlow_.timer) legacyFlow_.timer.Stop();
   if (removeFlow_.timer) removeFlow_.timer.Stop();
   if (keyReminderTimer_) keyReminderTimer_.Stop();
+  if (ctfWinsTimer_) ctfWinsTimer_.Stop();
   try {
     // the flow's changes reach no page after this one
     SetBittensorKeyFlowListener(nullptr);
@@ -937,8 +938,11 @@ void WalletPage::ResetForSignOut() {
   CloseKeyFlow();
   ++claimStatusGeneration_;
   claimStatus_.reset();
-  ++ctfClientGeneration_;
-  ctfWins_.clear();
+  // no line, and no answer of a read from before shows
+  ctfWins_.Reset();
+  // and the wins are not read again after that account's claim
+  ctfWinsAfterClaim_.Stop();
+  if (ctfWinsTimer_) ctfWinsTimer_.Stop();
   RebuildV2Section();
 
   // The payout consent is the network's that left: hidden until the next
@@ -1260,22 +1264,26 @@ void WalletPage::LoadV2Accounts() {
 // /sn/ctf/client with the session's network credential (the network's wins,
 // as ur.io reads them), else the device's client token, and no answer of it
 // signs anyone out. Each of its UnclaimedWins is a line
-// (snpayout::CtfWinsFrom), newest first. An answer with an error, or no
-// answer, draws no line: it never says there was no win.
+// (snpayout::CtfWinsReadFrom), newest first. An answer with an error, or no
+// answer, is a read that failed: it keeps the lines of the last good read and
+// never blanks them, nor says there was no win (every app, 2026-11-12). Each
+// read starts when asked, and the lines show the newest read's good answer
+// (snpayout::CtfWinsLines), whatever order the answers land in.
 void WalletPage::LoadCtfClient() {
   if (!CanCallApi() || !Sdk().hasDevice()) return;
-  const uint32_t read = ++ctfClientGeneration_;
+  const uint32_t read = ctfWins_.Start();
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   Sdk().device().snCtfClient([queue, weak, read](std::optional<urnet::SnCtfClientResult> result,
                                                  std::optional<std::string> err) {
-    std::vector<snpayout::CtfWin> wins;
+    // none for a read that failed
+    std::optional<std::vector<snpayout::CtfWin>> wins;
     if (err) {
       urnw::LogWarn("earnings: snCtfClient failed: {}", *err);
     } else if (result && result->error) {
       urnw::LogWarn("earnings: snCtfClient failed: {}", result->error->message);
     } else if (result) {
-      wins = snpayout::CtfWinsFrom(*result);
+      wins = snpayout::CtfWinsReadFrom(*result);
     }
     queue.TryEnqueue([weak, read, wins = std::move(wins)] {
       if (auto self = weak.get()) self->wallet().ApplyCtfClient(read, wins);
@@ -1283,11 +1291,50 @@ void WalletPage::LoadCtfClient() {
   });
 }
 
-void WalletPage::ApplyCtfClient(uint32_t read, std::vector<snpayout::CtfWin> wins) {
-  // the answer to a read that a newer read or a sign-out superseded
-  if (read != ctfClientGeneration_) return;
-  ctfWins_ = std::move(wins);
+void WalletPage::ApplyCtfClient(uint32_t read, std::optional<std::vector<snpayout::CtfWin>> wins) {
+  // a read that failed keeps the last good read's lines, and the answer of a
+  // read older than the one the lines show, or from before a sign-out, is
+  // dropped (snpayout::CtfWinsLines)
+  if (!ctfWins_.Apply(read, std::move(wins))) return;
   RebuildV2Section();
+}
+
+// The SDK's Done comes once the claim is in a block, but the server says a win
+// is claimed only once vault2's claimed at the finalized head covers the claim,
+// so the read at Done can still list a win the claim paid. After a claim that
+// paid an account the wins are read again 30 s, 60 s and 120 s after Done
+// (snpayout::CtfWinsReadsAfterClaim, every app's schedule), each read
+// replacing the lines. The next paying claim's Done starts them over, and one
+// that paid nothing leaves them be. They run while the page lives, with
+// Earnings off screen too; a sign-out stops them (ResetForSignOut), and so
+// does the page's end. `session` is the one the claim started in: a Done that
+// lands after a sign-out starts no reads for the next account.
+void WalletPage::ReadCtfWinsAfterClaim(bool paid, uint32_t session) {
+  if (const auto wait = ctfWinsAfterClaim_.Done(paid, session)) ArmCtfWinsTimer(*wait);
+}
+
+// A timer for each wait, whose tick hands the wait's token back: the tick of
+// one replaced since (a later paying claim's Done, a sign-out), if it was on
+// its way already, reads nothing (CtfWinsReadsAfterClaim::Tick).
+void WalletPage::ArmCtfWinsTimer(snpayout::CtfWinsReadsAfterClaim::Wait wait) {
+  if (ctfWinsTimer_) ctfWinsTimer_.Stop();
+  ctfWinsTimer_ = w_.DispatcherQueue().CreateTimer();
+  ctfWinsTimer_.IsRepeating(false);
+  ctfWinsTimer_.Interval(wait.wait);
+  ctfWinsTimer_.Tick([weak = w_.get_weak(), alive = alive_, token = wait.token](auto const&, auto const&) {
+    if (!*alive) return;
+    if (auto self = weak.get()) self->wallet().OnCtfWinsTimer(token);
+  });
+  ctfWinsTimer_.Start();
+}
+
+void WalletPage::OnCtfWinsTimer(uint32_t token) {
+  // none once the reads are over, a sign-out stopped them, or a later wait
+  // replaced this one
+  const snpayout::CtfWinsReadsAfterClaim::Step step = ctfWinsAfterClaim_.Tick(token);
+  if (!step.read) return;
+  LoadCtfClient();
+  if (step.next) ArmCtfWinsTimer(*step.next);
 }
 
 // ---- points --------------------------------------------------------------
@@ -2633,7 +2680,7 @@ void WalletPage::RebuildV2Section() {
                                                             : Visibility::Collapsed);
   // a line for each capture the flag slot won and not claimed yet, newest first
   auto appendWins = [this](StackPanel const& host) {
-    for (auto const& win : ctfWins_) {
+    for (auto const& win : ctfWins_.lines()) {
       host.Children().Append(MakeText(CtfWinText(win), 13, colors::TextBrush(), true));
     }
   };
@@ -2778,24 +2825,29 @@ int64_t WalletPage::TransferFloorRao() const {
 // chain settings name a batcher and the gas key can pay for it, else one claim
 // each to vault2, the largest first. After its Done the page reads the
 // accounts and the gas balance again, whether or not the dialog is still up,
-// and the relay's status and capture the flag's wins, so a win the claim paid
-// loses its line. The claim itself touches no URnetwork API.
+// and the relay's status and capture the flag's wins, and after a claim that
+// paid an account the wins again on the apps' schedule (ReadCtfWinsAfterClaim),
+// so a win the claim paid loses its line once the server reads it claimed. The
+// claim itself touches no URnetwork API.
 LedgerClaimer WalletPage::MakeV2Claimer() {
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
   return [queue, weak](snpayout::LedgerClaimEvents events) {
-    auto done = events.done;
-    events.done = [done, queue, weak] {
-      if (done) done();
-      queue.TryEnqueue([weak] {
+    // the session the claim starts in (on the UI thread, at Claim)
+    uint32_t session = 0;
+    if (auto self = weak.get()) session = self->wallet().ctfWinsAfterClaim_.Session();
+    // after the dialog's Done, told whether the claim paid an account
+    events = snpayout::WithClaimPaid(std::move(events), [queue, weak, session](bool paid) {
+      queue.TryEnqueue([weak, paid, session] {
         if (auto self = weak.get()) {
           self->wallet().LoadV2Accounts();
           self->wallet().LoadGas();
           self->wallet().LoadClaimStatus();
           self->wallet().LoadCtfClient();
+          self->wallet().ReadCtfWinsAfterClaim(paid, session);
         }
       });
-    };
+    });
     if (!Sdk().hasDevice()) {
       if (events.failed) events.failed(0, 0, "no device");
       events.done();

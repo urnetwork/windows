@@ -29,6 +29,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -390,13 +391,22 @@ class WalletPage {
   int64_t TransferFloorRao() const;
   // Capture the flag's won-slot lines (GET /sn/ctf/client, the sdk's
   // SnCtfClient): a line for every win not claimed yet, read with the Earnings
-  // reads, and the answer to read number `read`, dropped unless it is the
-  // newest read's. Drawn with the settlement v2 section's capture the flag
-  // account.
+  // reads, and the answer to read number `read`: the lines show the newest
+  // read's good answer (snpayout::CtfWinsLines), and none (std::nullopt) is a
+  // read that failed, which keeps them. Drawn with the settlement v2 section's
+  // capture the flag account.
   void LoadCtfClient();
-  void ApplyCtfClient(uint32_t read, std::vector<snpayout::CtfWin> wins);
+  void ApplyCtfClient(uint32_t read, std::optional<std::vector<snpayout::CtfWin>> wins);
+  // After a v2 claim's Done, which read the wins: when the claim, started in
+  // `session`, paid an account they are read again 30 s, 60 s and 120 s after
+  // Done (snpayout::CtfWinsReadsAfterClaim, every app's schedule) through
+  // LoadCtfClient, on ctfWinsTimer_, until the page goes or the user signs out.
+  void ReadCtfWinsAfterClaim(bool paid, uint32_t session);
+  void ArmCtfWinsTimer(snpayout::CtfWinsReadsAfterClaim::Wait wait);
+  void OnCtfWinsTimer(uint32_t token);
   // The SDK's v2 claim, wrapped for the v2 dialog (Device.snLedgerClaim); after
-  // its Done the page reads the accounts and the gas balance again.
+  // its Done the page reads the accounts, the gas balance, the relay's status
+  // and the wins again, and the wins on the schedule after a claim that paid.
   LedgerClaimer MakeV2Claimer();
 
   // ---- the payout consent (SnConsentPresentation.h)
@@ -629,10 +639,15 @@ class WalletPage {
   snpayout::LedgerFetch v2Fetch_ = snpayout::LedgerFetch::Loading;
   std::vector<snpayout::LedgerAccount> v2Accounts_;
   std::vector<snpayout::UnavailablePool> v2Unavailable_;
-  // capture the flag: the newest read's number and the wins not claimed yet,
-  // newest first
-  uint32_t ctfClientGeneration_ = 0;
-  std::vector<snpayout::CtfWin> ctfWins_;
+  // capture the flag: the wins not claimed yet, newest first, as the newest
+  // read's good answer gave them (none from a sign-out until the next good
+  // read), and the reads' numbers
+  snpayout::CtfWinsLines ctfWins_;
+  // the wins' reads after a v2 claim that paid an account, and the one-shot
+  // timer of the wait for the next one (ReadCtfWinsAfterClaim, a new timer
+  // each wait)
+  snpayout::CtfWinsReadsAfterClaim ctfWinsAfterClaim_;
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer ctfWinsTimer_{nullptr};
   // the payout consent: the read (Idle until a session asks for it), the
   // consent it answered with (none before an answer and after a failed read),
   // and whether a signing is out (the challenge, the wallet, the submission)

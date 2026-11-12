@@ -22,6 +22,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+#include <array>
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -289,7 +292,14 @@ bool UnderTransferFloor(int64_t claimableRao, int64_t transferFloorRao);
 // claim's amount, and the SDK's preflight refusing it (not_claimable:
 // AmountTooLow) reads the same. An account the gas key could not pay for once
 // the largest went (needs_gas for the account: nothing was sent for it) is
-// still claimable, with the gas key's funding hint.
+// still claimable, with the gas key's funding hint. The SDK tries every
+// account with something to claim, one the dialog lists under the floor too,
+// and the dialog shows what it answers, as Android's, Linux's and Apple's do:
+// Below the claim minimum only for AmountTooLow, claimable under the funding
+// hint for needs_gas, and Failed with the SDK's message for any other failure.
+// No press takes such an account, whatever the SDK said of it, and a press
+// lists it Below the claim minimum again until the SDK reports on it (Linux's
+// sheet), so the dialog never offers a claim the chain refuses.
 
 // The TAO the funding hint asks for. The SDK sends a v2 claim only when the gas
 // key holds its gas limit (eth_estimateGas, about 2.51M on runtime 475 for
@@ -316,9 +326,11 @@ struct LedgerClaimRow {
   // the pool could not be read, by the page or by the claim: at rest the row
   // says sn_ledger_pool_unavailable in place of its amount, and Claim leaves it out
   bool unavailable = false;
-  // the amount is under the transfer floor (the page's estimate, or the claim's
-  // preflight refusing it as under the runtime's): at rest the row says
-  // sn_ledger_pool_under_floor, and Claim, its amount and Claim both leave it out
+  // the row says sn_ledger_pool_under_floor at rest: the page's estimate put it
+  // under the transfer floor and the SDK has not said otherwise since, or the
+  // claim's preflight refused it as under the runtime's. Claim, its amount and
+  // Claim both leave it out, and they leave out a row under the dialog's floor
+  // by its amount whatever it says (needs_gas, Failed)
   bool underFloor = false;
 
   bool operator==(const LedgerClaimRow&) const = default;
@@ -372,9 +384,11 @@ class LedgerClaimProgress {
   std::string TitleKey(const LedgerClaimRow& row) const;
 
   // Claim pressed: every row Claim moves is Sending; an unavailable pool's,
-  // which the claim's own read reports on again, and one under the floor stay
-  // as they are. False, changing nothing, while a claim is out or with nothing
-  // to claim.
+  // which the claim's own read reports on again, and one the preflight refused
+  // stay as they are, and one under the dialog's floor by its amount that the
+  // last press left claimable or failed reads Below the claim minimum again
+  // until the SDK reports on it. False, changing nothing, while a claim is out
+  // or with nothing to claim.
   bool Start();
   // The callback's events. The SDK claims every account it verified, which can
   // be one the page's read did not list: that account gets a row, or takes the
@@ -391,11 +405,16 @@ class LedgerClaimProgress {
 
  private:
   LedgerClaimRow& RowFor(int64_t noId, int64_t index);
+  // a row Claim moves (ClaimableRao, TotalKnown, ClaimsBoth, Start)
+  bool Movable(const LedgerClaimRow& row) const;
 
   std::vector<LedgerClaimRow> rows_;
   // the pools of the page's read, every account claimable or not and each
   // pool it could not read, which name the rows
   std::vector<PoolInView> poolsInView_;
+  // the claim relay's transfer floor when the dialog opened, 0 without one:
+  // no press takes a row under it
+  int64_t transferFloorRao_ = 0;
   bool sending_ = false;
   bool needsGas_ = false;
   std::string failure_;
@@ -523,6 +542,100 @@ struct CtfWin {
 // each with the country's name as its one placeholder.
 std::string CtfWinKey(const CtfWin& win);
 
+// The won lines, from the reads of the wins (every app, 2026-11-12). Reads
+// may overlap: each starts at its time (an Earnings load, a claim's Done and
+// the reads after it), and their answers land in any order. A good answer
+// (CtfWinsReadFrom) replaces the lines unless they already show a newer
+// read's; a read that failed or could not be read (std::nullopt) changes
+// nothing, so it never blanks them, nor drops an older read's good answer
+// that is still to land. Only a good read that no longer lists a win takes
+// its line away, or a sign-out (Reset, a change of device or network), after
+// which no answer of a read from before shows, and the first read shows none
+// until it answers.
+class CtfWinsLines {
+ public:
+  // A read starts: its number, for its answer.
+  uint32_t Start() { return ++started_; }
+  // The answer of read `read`: true when it replaced the lines.
+  bool Apply(uint32_t read, std::optional<std::vector<CtfWin>> wins);
+  // A sign-out: no lines, and no answer of a read from before shows.
+  void Reset();
+  const std::vector<CtfWin>& lines() const { return lines_; }
+
+ private:
+  uint32_t started_ = 0;  // the newest read's number
+  // the read whose good answer the lines show, or, after a sign-out, the
+  // newest read from before it
+  uint32_t shown_ = 0;
+  std::vector<CtfWin> lines_;
+};
+
+// ---- the wins after a claim
+//
+// The SDK's Done comes once the claim is in a block, but the server says a win
+// is claimed only once vault2's claimed at the finalized head covers the
+// claim, so the read at Done can still list a win the claim paid. After a
+// claim that paid an account (Confirmed, or already_claimed: another sender's
+// claim, which vault2 paid to the same coldkey) the page reads the wins at
+// Done, as after any claim, and again 30 s, 60 s and 120 s after Done (every
+// app's schedule), unless the page is gone or the user signed out. Each read
+// replaces the lines.
+
+// When those reads come, after the claim's Done.
+inline constexpr std::array<std::chrono::milliseconds, 3> kCtfWinsReadsAfterClaim{
+    std::chrono::seconds(30), std::chrono::seconds(60), std::chrono::seconds(120)};
+
+// The claim's events as they came, with `afterDone` called once Done has been
+// handed on, told whether the claim paid an account. The SDK may call the
+// events from any of its threads, in order, Done last.
+LedgerClaimEvents WithClaimPaid(LedgerClaimEvents events, std::function<void(bool paid)> afterDone);
+
+// The reads on that schedule. The page arms a one-shot timer with each wait
+// this gives, and its tick hands the wait's token back to Tick.
+class CtfWinsReadsAfterClaim {
+ public:
+  // A wait for the page's timer, and the token its tick hands back.
+  struct Wait {
+    std::chrono::milliseconds wait{0};
+    uint32_t token = 0;
+
+    bool operator==(const Wait&) const = default;
+  };
+
+  // The session a claim starts in, for its Done.
+  uint32_t Session() const { return session_; }
+
+  // The Done of a claim started in `session`. One that paid an account starts
+  // the reads over from this Done and gives the first wait; one that paid
+  // nothing gives none and leaves an earlier claim's reads as they are; and so
+  // does one that started before a sign-out, whose account has gone.
+  std::optional<Wait> Done(bool paid, uint32_t session);
+
+  struct Step {
+    bool read = false;          // read the wins now
+    std::optional<Wait> next;   // then arm the timer with this
+
+    bool operator==(const Step&) const = default;
+  };
+  // The timer armed with `token` fired: the read due, and the wait until the
+  // one after it. No read once the reads are over or stopped, nor for the tick
+  // of a timer since replaced (a later paying claim's Done, a sign-out),
+  // though it was on its way already.
+  Step Tick(uint32_t token);
+
+  // The user signed out, or the page goes: no read is left, and a claim from
+  // before starts none.
+  void Stop();
+
+ private:
+  // the read the timer waits for, by its place in kCtfWinsReadsAfterClaim; its
+  // size while none is
+  std::size_t next_ = kCtfWinsReadsAfterClaim.size();
+  // the newest wait's token, and the session (one per sign-out)
+  uint32_t token_ = 0;
+  uint32_t session_ = 0;
+};
+
 // ---- at the SDK's boundary (WalletPage.cpp)
 //
 // Templates over the generated wrapper's types (urnetwork_sdk.hpp's
@@ -624,6 +737,16 @@ std::vector<CtfWin> CtfWinsFrom(const SdkCtfClientResult& result) {
     if (auto win = CtfWinOf(sdk)) wins.push_back(*win);
   }
   return wins;
+}
+
+// A read's wins for the lines (CtfWinsLines::Apply): CtfWinsFrom for an answer
+// the SDK could read, none at all (std::nullopt) for one with an Error or
+// without the list, which the SDK always sends: a read that failed, which
+// keeps the lines.
+template <typename SdkCtfClientResult>
+std::optional<std::vector<CtfWin>> CtfWinsReadFrom(const SdkCtfClientResult& result) {
+  if (result.error || !result.unclaimed_wins) return std::nullopt;
+  return CtfWinsFrom(result);
 }
 
 // An SnLedgerClaimCallback that hands each event to `events`.
