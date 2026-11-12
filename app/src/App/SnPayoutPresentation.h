@@ -1,7 +1,8 @@
 // Everything the SN payout line decides before it touches a XAML object: which
 // line shows under the points figure on Earnings, the current epoch's times it
 // names and whether it carries Claim. And the same for settlement v2: what its
-// section beside the v1 tile shows, and how its claim dialog moves along.
+// section beside the v1 tile shows, how its claim dialog moves along, the claim
+// sheet's pool rows, and capture the flag's won-slot line.
 //
 // Why it exists: provider payouts moved from weekly USDC to the UR subnet, and
 // nothing on Earnings said how or when a provider is paid ("used it a month, no
@@ -25,6 +26,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace urnw::snpayout {
@@ -79,14 +81,55 @@ std::string FormatScheduleTime(int64_t millis, int32_t utcOffsetMinutes);
 // payout coldkey has one account per pool, a cumulative balance that never
 // expires. The SDK on this device reads the coldkey's accounts from the
 // operator's ledger (SnLedgerAccounts) and claims them (SnLedgerClaim), each
-// account's proof verified against vault2's root before one claim per account
-// goes to the pinned vault2. Earnings shows them in a "Settlement v2" section
-// beside the v1 tile, which stays as it was. The SDK's SnLedgerAccount is
-// mirrored as a plain view; WalletPage.cpp copies the fields across.
+// account's proof verified against vault2's root before its claim is sent:
+// alone to the pinned vault2, or with the others in one STClaimBatcher
+// transaction that calls vault2 for each. Earnings shows them in a
+// "Settlement v2" section beside the v1 tile, which stays as it was. The SDK's
+// SnLedgerAccount is mirrored as a plain view; WalletPage.cpp copies the
+// fields across.
+//
+// Capture the flag (sn CAPTURETHEFLAG.md §10): from epoch 8 the operator runs a
+// second pool beside its provider pool, whose draw in each country pays its
+// winners into the coldkey's account there, claimed from vault2 like any
+// pool's. The ledger lists that account beside the provider pool's with its
+// kind (SnLedgerAccount.Kind), and names a pool it cannot read just now in
+// UnavailablePools rather than failing the whole answer. Each account is
+// titled by its pool in the store's words ("Capture the flag", and "Provider
+// pool" beside it) and says its own status, an account under the claim
+// relay's transfer floor among them; an unavailable pool's row says so in
+// place of its balances, never a zero, and never hides the others; and one
+// action claims both pools, since the SDK's SnLedgerClaim claims every pool,
+// two or more accounts in one batch transaction where the chain settings name
+// a batcher and the gas key can pay for it. A server from before capture the
+// flag sends no kind, which the SDK reads as a pool, and no unavailable pools,
+// so the coldkey has one account there: everything here is then what it was.
+
+// The pool an account is in (the SDK's SnLedgerPoolKind*).
+enum class PoolKind {
+  Pool,  // "pool": an operator's provider pool, and any kind this build does not know
+  Ctf,   // "ctf": the operator's capture the flag pool
+};
+
+// The SDK's kind as the plain one: "ctf" is capture the flag, anything else a
+// pool (the SDK reads an entry without a kind as one, as the server meant).
+PoolKind PoolKindFrom(std::string_view kind);
+
+// A capture the flag pool's noId is 2^32 plus the operator's (the SDK's
+// SnLedgerCtfPoolIdBase): the kind of an account the claim reports that the
+// page's read did not list, as the SDK reads an entry without a kind.
+inline constexpr int64_t kCtfPoolIdBase = int64_t{1} << 32;
+PoolKind PoolKindOfNoId(int64_t noId);
+
+// The store key that titles an account: its block on the tile, its row in the
+// claim dialog and in the claim sheet. sn_ctf_pool for capture the flag,
+// sn_ledger_provider_pool for a pool listed beside capture the flag, else
+// sn_ledger_pool ("Pool {}" with the pool's noId), as before capture the flag.
+std::string PoolTitleKey(PoolKind kind, bool besideCtf);
 
 // One v2 account (the SDK's SnLedgerAccount). Amounts are rao.
 struct LedgerAccount {
   int64_t noId = 0;          // the operator pool
+  PoolKind kind = PoolKind::Pool;
   int64_t index = 0;         // the account's position in the pool's tree
   int64_t finalizedRao = 0;  // the cumulative in the latest finalized root
   int64_t claimableRao = 0;  // finalized less paid: what a claim transfers now
@@ -95,6 +138,15 @@ struct LedgerAccount {
   int64_t pendingRao = 0;    // its cumulative in that root
 
   bool operator==(const LedgerAccount&) const = default;
+};
+
+// A pool the ledger could not read just now (the SDK's SnLedgerUnavailablePool):
+// whether the coldkey has an account there is unknown.
+struct UnavailablePool {
+  int64_t noId = 0;
+  PoolKind kind = PoolKind::Pool;
+
+  bool operator==(const UnavailablePool&) const = default;
 };
 
 // Where the page's read of the accounts stands.
@@ -120,10 +172,20 @@ std::string LedgerNoteKey(LedgerNote note);
 
 // One account's block: the claimable figure (sn_ledger_claimable), Paid and
 // Earned (sn_ledger_paid, sn_ledger_earned), and the pending line while a
-// root that is not finalized yet raises the account.
+// root that is not finalized yet raises the account. An unavailable pool's
+// block is its title and sn_ledger_pool_unavailable, with no figure.
 struct LedgerAccountView {
   int64_t noId = 0;
+  PoolKind kind = PoolKind::Pool;
+  // the block's title (PoolTitleKey) while the section titles its blocks, else ""
+  std::string titleKey;
+  // the pool could not be read: sn_ledger_pool_unavailable in place of the figures
+  bool unavailable = false;
   int64_t claimableRao = 0;
+  // the claimable is under the transfer floor, under which a claim reverts:
+  // sn_ledger_pool_under_floor under the figure, while the blocks name their
+  // pools (a lone account's floor is the claim relay's own note)
+  bool underFloor = false;
   int64_t paidRao = 0;
   int64_t earnedRao = 0;     // the finalized cumulative
   bool showPending = false;  // sn_ledger_pending: "Pending: +X, awaiting finalization"
@@ -136,11 +198,16 @@ struct LedgerAccountView {
 struct LedgerSectionView {
   bool shown = false;
   bool loading = false;     // "Loading..." in the section's header
-  bool poolTitles = false;  // more than one account: each block names its pool (sn_ledger_pool)
+  // each block names its pool (its titleKey): more than one block, or capture
+  // the flag's, which is never a lone figure that reads as the provider pool's
+  bool poolTitles = false;
   std::vector<LedgerAccountView> accounts;
   LedgerNote note = LedgerNote::None;
   bool showClaim = false;  // Claim, which opens the v2 claim dialog
   bool claimEnabled = false;
+  // Claim reads sn_ledger_claim_both: a provider pool account and a capture the
+  // flag account both have something to claim that clears the transfer floor
+  bool claimBoth = false;
 
   bool operator==(const LedgerSectionView&) const = default;
 };
@@ -155,8 +222,23 @@ struct LedgerSectionView {
 // device can send it. Before vault2 is configured (before v2's activation)
 // there is no Claim, and the section shows only when the read returned
 // accounts, so a ledger that is not served yet says nothing.
+//
+// `unavailable` are the read's unavailable pools, each a block of its own in
+// its place by noId (the ledger lists accounts by ascending noId), shown like
+// the accounts; whether the coldkey has an account there is unknown, so no
+// account yet is not said beside one. `transferFloorRao` is the claim relay's
+// transfer floor in rao of α, 0 when unknown: while the blocks name their
+// pools, an account with less to claim than that is under the floor. A lone
+// account, as every coldkey had before capture the flag, is not marked: the
+// claim relay's note under it already says the floor.
 LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, LedgerFetch fetch,
-                                   const std::vector<LedgerAccount>& accounts, bool canClaim);
+                                   const std::vector<LedgerAccount>& accounts, bool canClaim,
+                                   const std::vector<UnavailablePool>& unavailable = {},
+                                   int64_t transferFloorRao = 0);
+
+// The claimable is under a known transfer floor (`transferFloorRao`, 0 when
+// unknown), under which a claim reverts: no claim moves it until it rises.
+bool UnderTransferFloor(int64_t claimableRao, int64_t transferFloorRao);
 
 // ---- the v2 claim dialog
 //
@@ -167,6 +249,15 @@ LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, Ledge
 // top-up; already_claimed, a third party's claim for the account (vault2 pays
 // the leaf's coldkey whoever sends it), is the account's success. The page
 // reads the accounts again after Done.
+//
+// Its one Claim claims every pool: the SDK sends two or more accounts in one
+// batch transaction where it can, reported per account with the same hash (an
+// account the batch did not get to, or every account without a batcher, is
+// then sent alone), and the button says Claim both while a provider pool
+// account and a capture the flag account have something to claim. An
+// unavailable pool is a row of its own, and the claim's ledger_unavailable for
+// a pool (noId, index 0) makes that pool's rows unavailable, never a failure or
+// a zero.
 
 // The TAO the funding hint asks for. The SDK sends a v2 claim only when the gas
 // key holds its gas limit (eth_estimateGas, about 2.51M on runtime 475 for
@@ -185,10 +276,18 @@ enum class LedgerClaimState { Idle, Sending, Sent, Confirmed, Failed };
 struct LedgerClaimRow {
   int64_t noId = 0;
   int64_t index = 0;
+  PoolKind kind = PoolKind::Pool;
   int64_t amountRao = 0;  // claimable; the Claimed event's amount once confirmed
   LedgerClaimState state = LedgerClaimState::Idle;
   std::string txHash;   // the claim transaction once sent, "" before
   std::string message;  // the SDK's failure, when Failed
+  // the pool could not be read, by the page or by the claim: at rest the row
+  // says sn_ledger_pool_unavailable in place of its amount, and Claim leaves it out
+  bool unavailable = false;
+  // the amount is under the transfer floor, among accounts of more than one
+  // pool: at rest the row says sn_ledger_pool_under_floor, and Claim both
+  // leaves it out
+  bool underFloor = false;
 
   bool operator==(const LedgerClaimRow&) const = default;
 };
@@ -202,10 +301,15 @@ std::string ClaimFailureKey(const std::string& message);
 
 class LedgerClaimProgress {
  public:
-  // `accounts` as the page last read them: the claimable ones are the rows.
-  // `gasTao` is the gas key's balance when known: a known empty key needs gas
-  // before anything can be sent.
-  LedgerClaimProgress(const std::vector<LedgerAccount>& accounts, std::optional<double> gasTao);
+  // `accounts` as the page last read them: the claimable ones are the rows,
+  // and each of the read's `unavailable` pools is a row of its own (its noId,
+  // index 0, no amount). `gasTao` is the gas key's balance when known: a known
+  // empty key needs gas before anything can be sent. `transferFloorRao` is the
+  // claim relay's transfer floor in rao of α, 0 when unknown; a row under it
+  // is marked while the read holds more than one pool, as the tile marks it.
+  LedgerClaimProgress(const std::vector<LedgerAccount>& accounts, std::optional<double> gasTao,
+                      const std::vector<UnavailablePool>& unavailable = {},
+                      int64_t transferFloorRao = 0);
 
   const std::vector<LedgerClaimRow>& rows() const { return rows_; }
   bool sending() const { return sending_; }
@@ -213,18 +317,29 @@ class LedgerClaimProgress {
   // a failure the SDK reported for no pool (pool 0): the claim as a whole
   const std::string& failure() const { return failure_; }
 
-  // the rows not confirmed yet: what Claim sends. Saturates rather than
-  // overflowing on an absurd ledger answer (the endpoint is untrusted).
+  // the rows not confirmed yet, but for an unavailable pool's: what Claim
+  // sends. Saturates rather than overflowing on an absurd ledger answer (the
+  // endpoint is untrusted).
   int64_t ClaimableRao() const;
   // Claim's button: actions allowed (a device session), something to claim,
   // gas, and no claim out
   bool CanClaim(bool allowActions) const;
+  // Claim's button says Claim both (sn_ledger_claim_both): a provider pool row
+  // and a capture the flag row each have something to claim that clears the
+  // transfer floor, and the one claim sends both
+  bool ClaimsBoth() const;
+  // A row's title (PoolTitleKey): every row names its pool, and a pool beside
+  // capture the flag's (an account or a pool of the page's read, or a row the
+  // claim reported) is the provider pool, as on the tile.
+  std::string TitleKey(const LedgerClaimRow& row) const;
 
-  // Claim pressed: every row not confirmed is Sending. False, changing nothing,
-  // while a claim is out or with nothing to claim.
+  // Claim pressed: every row not confirmed is Sending, but for an unavailable
+  // pool's, which the claim's own read reports on again. False, changing
+  // nothing, while a claim is out or with nothing to claim.
   bool Start();
   // The callback's events. The SDK claims every account it verified, which can
-  // be one the page's read did not list: that account gets a row.
+  // be one the page's read did not list: that account gets a row, or takes the
+  // row of its pool when the page could not read that pool.
   void Sent(int64_t noId, int64_t index, const std::string& txHash);
   void Confirmed(int64_t noId, int64_t index, const std::string& txHash, int64_t amountRao);
   void Failed(int64_t noId, int64_t index, const std::string& message);
@@ -235,6 +350,8 @@ class LedgerClaimProgress {
   LedgerClaimRow& RowFor(int64_t noId, int64_t index);
 
   std::vector<LedgerClaimRow> rows_;
+  // the page's read held capture the flag's account or pool, claimable or not
+  bool besideCtf_ = false;
   bool sending_ = false;
   bool needsGas_ = false;
   std::string failure_;
@@ -250,19 +367,100 @@ struct LedgerClaimEvents {
   std::function<void()> done;
 };
 
+// ---- the claim sheet's pool rows
+//
+// URnetwork's claim relay claims every pool of a coldkey with one Claim now,
+// and the SDK's claim status lists each (coldkey, pool) it sees
+// (SnClaimStatusResult.Accounts) and the pools it could not read. The claim
+// sheet (BittensorKeySheets.h ClaimRelaySheet) draws a row per pool under its
+// figure, as Android's does: its title, what it holds to claim or what
+// URnetwork's claim paid, and its status.
+
+// One account as the relay sees it (the SDK's SnClaimRelayAccount).
+struct RelayAccount {
+  std::string coldkeySs58;
+  int64_t noId = 0;
+  PoolKind kind = PoolKind::Pool;
+  int64_t claimableRao = 0;
+  // the account's latest claim when URnetwork sent it: "" and 0 for one anyone
+  // else sent, or none; the explorer's page of it, "" without one
+  std::string claimTxHash;
+  std::string claimTxUrl;
+  int64_t claimAmountRao = 0;
+
+  bool operator==(const RelayAccount&) const = default;
+};
+
+enum class RelayRowStatus {
+  Pending,      // pending_data_key: URnetwork claims it
+  UnderFloor,   // sn_ledger_pool_under_floor: no claim moves it until it clears the floor
+  Claimed,      // claim_confirmed: URnetwork's claim paid it, nothing claimable since
+  Unavailable,  // sn_ledger_pool_unavailable, in place of an amount
+};
+
+struct RelayRow {
+  int64_t noId = 0;
+  std::string titleKey;     // PoolTitleKey
+  std::string coldkeySs58;  // named after the title while the rows hold more than one coldkey, else ""
+  RelayRowStatus status = RelayRowStatus::Pending;
+  int64_t amountRao = 0;    // what it holds to claim, or what URnetwork's claim paid; 0 shows none
+  std::string txUrl;        // Claimed: its transaction's page, "" without one
+
+  bool operator==(const RelayRow&) const = default;
+};
+
+// The claim sheet's rows, in the SDK's order: each account with something to
+// claim, Pending or, under a known transfer floor (`transferFloorRao`, rao of
+// α, 0 when unknown), UnderFloor; each account URnetwork claimed with nothing
+// claimable since, Claimed (Android's snClaimRelayRows); then each unavailable
+// pool. None unless capture the flag's account or an unavailable pool is among
+// them: the provider pool's accounts alone are the sheet's figure and its
+// notes, as before capture the flag.
+std::vector<RelayRow> RelayRowsFor(const std::vector<RelayAccount>& accounts,
+                                   const std::vector<UnavailablePool>& unavailable,
+                                   int64_t transferFloorRao);
+
+// ---- the won slot (GET /sn/ctf/client)
+//
+// The SDK reads this client's capture the flag status for its recent epochs
+// (SnCtfClient), and LatestWin is its newest win, a provider's before an
+// extender's. Earnings words it in a line with the capture the flag account:
+// the client won one of that country's slots in that role. A win is a slot,
+// never the flag, which a country's ten winners hold together. An answer with
+// an Error says nothing, never "no wins".
+
+enum class CtfRole { Provider, Extender };
+
+struct CtfWin {
+  CtfRole role = CtfRole::Provider;
+  std::string country;  // lowercase ISO 3166-1 alpha-2, named in the reader's language by the page
+
+  bool operator==(const CtfWin&) const = default;
+};
+
+// The line's store key: sn_ctf_won_provider_slot or sn_ctf_won_extender_slot,
+// each with the country's name as its one placeholder.
+std::string CtfWinKey(const CtfWin& win);
+
 // ---- at the SDK's boundary (WalletPage.cpp)
 //
 // Templates over the generated wrapper's types (urnetwork_sdk.hpp's
-// urnet::SnLedgerAccount and urnet::SnLedgerClaimCallback): the spec builds
-// them against stand-ins with the wrapper's names and types and, when a header
-// is at hand, against the header itself; WalletPage instantiates them with the
-// SDK's own.
+// urnet::SnLedgerAccount, urnet::SnLedgerUnavailablePool,
+// urnet::SnLedgerClaimCallback, urnet::SnClaimRelayAccount and
+// urnet::SnCtfClientResult): the spec builds them against stand-ins with the
+// wrapper's names and types and, when a header is at hand, against the header
+// itself; WalletPage and the claim sheet instantiate them with the SDK's own.
+
+// The SDK's SnCtfRole* values.
+inline constexpr std::string_view kCtfRoleProvider = "provider";
+inline constexpr std::string_view kCtfRoleExtender = "extender";
 
 // The SDK's SnLedgerAccount as the plain view.
 template <typename SdkLedgerAccount>
 LedgerAccount LedgerAccountFrom(const SdkLedgerAccount& account) {
   LedgerAccount out;
   out.noId = account.no_id;
+  out.kind = PoolKindFrom(account.kind);
   out.index = account.index;
   out.finalizedRao = account.finalized_rao;
   out.claimableRao = account.claimable_rao;
@@ -270,6 +468,60 @@ LedgerAccount LedgerAccountFrom(const SdkLedgerAccount& account) {
   out.pending = account.pending;
   out.pendingRao = account.pending_rao;
   return out;
+}
+
+// The SDK's SnLedgerUnavailablePool as the plain view.
+template <typename SdkUnavailablePool>
+UnavailablePool UnavailablePoolFrom(const SdkUnavailablePool& pool) {
+  UnavailablePool out;
+  out.noId = pool.no_id;
+  out.kind = PoolKindFrom(pool.kind);
+  return out;
+}
+
+// The SDK's unavailable pools of a read (SnLedgerAccountsResult and
+// SnClaimStatusResult's UnavailablePools, never nil from the SDK; a list it
+// leaves out is none).
+template <typename SdkUnavailablePoolList>
+std::vector<UnavailablePool> UnavailablePoolsFrom(const std::optional<SdkUnavailablePoolList>& pools) {
+  std::vector<UnavailablePool> out;
+  if (!pools) return out;
+  for (const auto& pool : *pools) out.push_back(UnavailablePoolFrom(pool));
+  return out;
+}
+
+// The SDK's SnClaimRelayAccount as the plain view.
+template <typename SdkRelayAccount>
+RelayAccount RelayAccountFrom(const SdkRelayAccount& account) {
+  RelayAccount out;
+  out.coldkeySs58 = account.coldkey_ss58;
+  out.noId = account.no_id;
+  out.kind = PoolKindFrom(account.kind);
+  out.claimableRao = account.claimable_rao;
+  out.claimTxHash = account.claim_tx_hash.value_or(std::string());
+  out.claimTxUrl = account.claim_tx_url.value_or(std::string());
+  out.claimAmountRao = account.claim_amount_rao.value_or(0);
+  return out;
+}
+
+// The line's win from the SDK's SnCtfClientResult: its LatestWin, in a role
+// this build knows and with a country to name. None for an answer with an
+// Error, which says nothing.
+template <typename SdkCtfClientResult>
+std::optional<CtfWin> CtfWinFrom(const SdkCtfClientResult& result) {
+  if (result.error || !result.latest_win) return std::nullopt;
+  const auto& latest = *result.latest_win;
+  if (latest.country.empty()) return std::nullopt;
+  CtfWin win;
+  if (latest.role == kCtfRoleProvider) {
+    win.role = CtfRole::Provider;
+  } else if (latest.role == kCtfRoleExtender) {
+    win.role = CtfRole::Extender;
+  } else {
+    return std::nullopt;
+  }
+  win.country = latest.country;
+  return win;
 }
 
 // An SnLedgerClaimCallback that hands each event to `events`.

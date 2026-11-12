@@ -72,6 +72,15 @@ void DrawRelaySection(winrt::Microsoft::UI::Xaml::Controls::StackPanel const& ho
 // (btkey::ClaimedWordsFor), and its transaction.
 winrt::Microsoft::UI::Xaml::FrameworkElement MakeClaimedBanner(urnet::SnClaimStatusResult const& status);
 
+// The claim sheet's pool rows (snpayout::RelayRowsFor) for the sdk's claim
+// status, as Android's sheet has them: each pool's title (capture the flag's
+// beside the provider pool's), with its coldkey while the network is paid to
+// more than one, what it holds to claim or what URnetwork's claim paid, and
+// its pill: Pending, Below the claim minimum, Claimed with its transaction, or
+// Unavailable right now in place of an amount. nullptr with no rows: one
+// pool's row alone is the sheet's figure, as before capture the flag.
+winrt::Microsoft::UI::Xaml::FrameworkElement MakeRelayPoolRows(urnet::SnClaimStatusResult const& status);
+
 // The line under Claim now (btkey::ClaimNowNoteFor, or btkey::ClaimedNoteFor in
 // the claimed state), "" for none.
 winrt::hstring ClaimNowNoteText(btkey::ClaimNowNote note, int64_t periodDays, int64_t floorTaoRao,

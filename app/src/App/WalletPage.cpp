@@ -867,6 +867,8 @@ void WalletPage::LoadWallet() {
   LoadConsentStatus();
   // what URnetwork's claim relay says of the network's settlement v2 balance
   LoadClaimStatus();
+  // whether this client won a capture the flag slot (GET /sn/ctf/client)
+  LoadCtfClient();
 }
 
 void WalletPage::RefreshAfterWalletChange() { LoadWallet(); }
@@ -931,10 +933,12 @@ void WalletPage::ResetForSignOut() {
   // The one-tap key's flow was this network's: it closes, with a Key screen
   // still up, and a phrase only in memory is let go. The key itself stays on
   // this device and comes back when this network signs in again. The relay's
-  // answer was this network's too.
+  // answer was this network's too, and so was capture the flag's win.
   CloseKeyFlow();
   ++claimStatusGeneration_;
   claimStatus_.reset();
+  ++ctfClientGeneration_;
+  ctfWin_.reset();
   RebuildV2Section();
 
   // The payout consent is the network's that left: hidden until the next
@@ -1207,13 +1211,15 @@ void WalletPage::LoadGas() {
 }
 
 // The coldkey's settlement v2 accounts, one per pool, read by the SDK on this
-// device from the operator's ledger (GET /sn/ledger/account). A failed read,
-// and an answer without its list (the SDK answers [] for none), leave the
-// balances unavailable, never zero.
+// device from the operator's ledger (GET /sn/ledger/account, partial=true). A
+// failed read, and an answer without its list (the SDK answers [] for none),
+// leave the balances unavailable, never zero. A pool the ledger could not read
+// just now (capture the flag's or the provider pool's) comes back in the
+// answer's unavailable pools, and only that pool is unavailable.
 void WalletPage::LoadV2Accounts() {
   if (!snWallet_) return;
   if (!Sdk().hasDevice()) {
-    ApplyV2Accounts(snpayout::LedgerFetch::NoDevice, {});
+    ApplyV2Accounts(snpayout::LedgerFetch::NoDevice, {}, {});
     return;
   }
   v2Fetch_ = snpayout::LedgerFetch::Loading;
@@ -1229,21 +1235,57 @@ void WalletPage::LoadV2Accounts() {
       error = TransportError("snLedgerAccounts returned no accounts");
     const bool ok = !error.has_value();
     std::vector<snpayout::LedgerAccount> accounts;
+    std::vector<snpayout::UnavailablePool> unavailable;
     if (ok) {
       for (auto const& account : *result->accounts) {
         accounts.push_back(snpayout::LedgerAccountFrom(account));
       }
+      unavailable = snpayout::UnavailablePoolsFrom(result->unavailable_pools);
     }
     if (!ok) {
       urnw::LogError("earnings: snLedgerAccounts failed: {} {}",
                      error->code.value_or(std::string()), error->message);
+    } else if (!unavailable.empty()) {
+      urnw::LogWarn("earnings: snLedgerAccounts left out {} unavailable pool(s)", unavailable.size());
     }
-    queue.TryEnqueue([weak, accounts = std::move(accounts), ok] {
+    queue.TryEnqueue([weak, accounts = std::move(accounts), unavailable = std::move(unavailable), ok] {
       if (auto self = weak.get())
         self->wallet().ApplyV2Accounts(
-            ok ? snpayout::LedgerFetch::Ready : snpayout::LedgerFetch::Failed, accounts);
+            ok ? snpayout::LedgerFetch::Ready : snpayout::LedgerFetch::Failed, accounts, unavailable);
     });
   });
+}
+
+// Whether this client won a capture the flag slot: the SDK reads GET
+// /sn/ctf/client with the device's client JWT, and its LatestWin is the line
+// (snpayout::CtfWinFrom). An answer with an error, or no answer, draws no
+// line: it never says there was no win.
+void WalletPage::LoadCtfClient() {
+  if (!CanCallApi() || !Sdk().hasDevice()) return;
+  const uint32_t read = ++ctfClientGeneration_;
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  Sdk().device().snCtfClient([queue, weak, read](std::optional<urnet::SnCtfClientResult> result,
+                                                 std::optional<std::string> err) {
+    std::optional<snpayout::CtfWin> win;
+    if (err) {
+      urnw::LogWarn("earnings: snCtfClient failed: {}", *err);
+    } else if (result && result->error) {
+      urnw::LogWarn("earnings: snCtfClient failed: {}", result->error->message);
+    } else if (result) {
+      win = snpayout::CtfWinFrom(*result);
+    }
+    queue.TryEnqueue([weak, read, win] {
+      if (auto self = weak.get()) self->wallet().ApplyCtfClient(read, win);
+    });
+  });
+}
+
+void WalletPage::ApplyCtfClient(uint32_t read, std::optional<snpayout::CtfWin> win) {
+  // the answer to a read that a newer read or a sign-out superseded
+  if (read != ctfClientGeneration_) return;
+  ctfWin_ = std::move(win);
+  RebuildV2Section();
 }
 
 // ---- points --------------------------------------------------------------
@@ -1330,6 +1372,7 @@ void WalletPage::ApplySnWallet(std::optional<SnWalletInfo> wallet, Fetch state) 
     gas_.reset();
     v2Fetch_ = snpayout::LedgerFetch::Loading;
     v2Accounts_.clear();
+    v2Unavailable_.clear();
   }
   RebuildHistory();
   RebuildPayoutLine();
@@ -2558,21 +2601,28 @@ winrt::fire_and_forget WalletPage::OnClaimAlpha(IInspectable const&, RoutedEvent
 // ---- settlement v2 ---------------------------------------------------------
 
 void WalletPage::ApplyV2Accounts(snpayout::LedgerFetch fetch,
-                                 std::vector<snpayout::LedgerAccount> const& accounts) {
+                                 std::vector<snpayout::LedgerAccount> const& accounts,
+                                 std::vector<snpayout::UnavailablePool> const& unavailable) {
   v2Fetch_ = fetch;
   v2Accounts_ = accounts;
+  v2Unavailable_ = unavailable;
   RebuildV2Section();
   ApplyKeyReminder();
 }
 
 // Settlement v2, beside the v1 tile: per account Claimable over its figure,
 // Paid and Earned beside each other, and the pending line, or the line that
-// says why there is no figure. The decision is snpayout::LedgerSectionFor's
-// and the words are the store's sn_ledger_* keys, the Android and Linux apps'
-// own. Claim opens the v2 claim dialog, and the app never claims by itself.
+// says why there is no figure. Beside capture the flag each block names its
+// pool, a pool the ledger could not read is a block that says so, and the
+// won-slot line follows capture the flag's block. The decision is
+// snpayout::LedgerSectionFor's and the words are the store's sn_ledger_* and
+// sn_ctf_* keys, the Android and Linux apps' own. Claim opens the v2 claim
+// dialog, and says Claim both while it claims both pools; the app never
+// claims by itself.
 void WalletPage::RebuildV2Section() {
-  const auto view = snpayout::LedgerSectionFor(snWallet_.has_value(), Vault2Configured(),
-                                               v2Fetch_, v2Accounts_, CanClaim());
+  const auto view =
+      snpayout::LedgerSectionFor(snWallet_.has_value(), Vault2Configured(), v2Fetch_, v2Accounts_,
+                                 CanClaim(), v2Unavailable_, TransferFloorRao());
   // A network with no wallet on this device has no ledger read here: the tile
   // shows what URnetwork's claim relay claims for its consent, once the relay
   // reports a claimable or pending balance.
@@ -2590,6 +2640,11 @@ void WalletPage::RebuildV2Section() {
     if (claimStatus_->claimable_rao > 0) relayFigure.Foreground(colors::AccentBrush());
     block.Children().Append(relayFigure);
     relayPanel.Children().Append(block);
+    // the figure sums the pools the relay could read: a row per pool beside
+    // capture the flag's, and a pool it could not read says so, never hidden
+    if (auto rows = btkeyviews::MakeRelayPoolRows(*claimStatus_)) relayPanel.Children().Append(rows);
+    // capture the flag's won slot, under the figure the relay claims
+    if (ctfWin_) relayPanel.Children().Append(MakeText(CtfWinText(*ctfWin_), 13, colors::TextBrush(), true));
     kit::SetTextOrCollapse(w_.SettlementV2Note(), hstring{});
     w_.SettlementV2ClaimButton().Visibility(Visibility::Collapsed);
     ApplyRelayToV2Section(view);
@@ -2609,41 +2664,65 @@ void WalletPage::RebuildV2Section() {
     cell.Children().Append(MakeValue(hstring{FormatAlphaRao(rao)}));
     return cell;
   };
+  bool winShown = false;
   for (auto const& account : view.accounts) {
     StackPanel block;
     block.Spacing(2);
-    if (view.poolTitles) {
-      block.Children().Append(MakeText(hstring{urnw::Format("sn_ledger_pool", account.noId)}, 13,
-                                       colors::TextBrush()));
+    // Pool {}, or capture the flag's and the provider pool's beside it
+    if (!account.titleKey.empty()) {
+      block.Children().Append(
+          MakeText(PoolTitleText(account.titleKey, account.noId), 13, colors::TextBrush()));
     }
-    // Claimable is the figure, in the v1 tile's face and its lime while there is some
-    block.Children().Append(MakeText(Loc("sn_ledger_claimable"), 12, colors::MutedBrush()));
-    auto figure = MakeValue(hstring{FormatAlphaRao(account.claimableRao)}, 32);
-    if (account.claimableRao > 0) figure.Foreground(colors::AccentBrush());
-    block.Children().Append(figure);
-    Grid figures;
-    figures.ColumnSpacing(24);
-    figures.ColumnDefinitions().Append(StarColumn());
-    figures.ColumnDefinitions().Append(StarColumn());
-    auto paid = figureCell(Loc("sn_ledger_paid"), account.paidRao);
-    Grid::SetColumn(paid, 0);
-    figures.Children().Append(paid);
-    auto earned = figureCell(Loc("sn_ledger_earned"), account.earnedRao);
-    Grid::SetColumn(earned, 1);
-    figures.Children().Append(earned);
-    block.Children().Append(figures);
-    if (account.showPending) {
-      block.Children().Append(MakeText(
-          hstring{urnw::Format("sn_ledger_pending", FormatAlphaRao(account.pendingRao))}, 13,
-          colors::MutedBrush(), true));
+    if (account.unavailable) {
+      // the pool could not be read just now: no figure, never a zero
+      block.Children().Append(
+          MakeText(Loc("sn_ledger_pool_unavailable"), 13, colors::MutedBrush(), true));
+    } else {
+      // Claimable is the figure, in the v1 tile's face and its lime while there is some
+      block.Children().Append(MakeText(Loc("sn_ledger_claimable"), 12, colors::MutedBrush()));
+      auto figure = MakeValue(hstring{FormatAlphaRao(account.claimableRao)}, 32);
+      if (account.claimableRao > 0) figure.Foreground(colors::AccentBrush());
+      block.Children().Append(figure);
+      // under the relay's transfer floor no claim moves it yet
+      if (account.underFloor) {
+        block.Children().Append(
+            MakeText(Loc("sn_ledger_pool_under_floor"), 13, colors::MutedBrush(), true));
+      }
+      Grid figures;
+      figures.ColumnSpacing(24);
+      figures.ColumnDefinitions().Append(StarColumn());
+      figures.ColumnDefinitions().Append(StarColumn());
+      auto paid = figureCell(Loc("sn_ledger_paid"), account.paidRao);
+      Grid::SetColumn(paid, 0);
+      figures.Children().Append(paid);
+      auto earned = figureCell(Loc("sn_ledger_earned"), account.earnedRao);
+      Grid::SetColumn(earned, 1);
+      figures.Children().Append(earned);
+      block.Children().Append(figures);
+      if (account.showPending) {
+        block.Children().Append(MakeText(
+            hstring{urnw::Format("sn_ledger_pending", FormatAlphaRao(account.pendingRao))}, 13,
+            colors::MutedBrush(), true));
+      }
+    }
+    // capture the flag's won slot, with its account
+    if (ctfWin_ && !winShown && account.kind == snpayout::PoolKind::Ctf) {
+      block.Children().Append(MakeText(CtfWinText(*ctfWin_), 13, colors::TextBrush(), true));
+      winShown = true;
     }
     panel.Children().Append(block);
+  }
+  // a win before its account is on screen follows the accounts
+  if (ctfWin_ && !winShown) {
+    panel.Children().Append(MakeText(CtfWinText(*ctfWin_), 13, colors::TextBrush(), true));
   }
   const std::string note = snpayout::LedgerNoteKey(view.note);
   kit::SetTextOrCollapse(w_.SettlementV2Note(), note.empty() ? hstring{} : Loc(note));
   w_.SettlementV2ClaimButton().Visibility(view.showClaim ? Visibility::Visible
                                                          : Visibility::Collapsed);
   w_.SettlementV2ClaimButton().IsEnabled(view.claimEnabled);
+  // one Claim claims every pool: Claim both while it claims both
+  w_.SettlementV2ClaimButton().Content(LocBox(view.claimBoth ? "sn_ledger_claim_both" : "claim"));
   // URnetwork's claim relay under the balances: who claims, why it waits, Claim now
   ApplyRelayToV2Section(view);
 }
@@ -2663,10 +2742,21 @@ bool WalletPage::Vault2Configured() const {
   return false;
 }
 
+// The relay's floor, which the sdk's claim status gives in rao of α at the
+// relay's last price: an account with less to claim reads below the claim
+// minimum, and is not in Claim both. With no answer, or one without a price,
+// nothing is said to be under it, and the claim's own preflight decides.
+int64_t WalletPage::TransferFloorRao() const {
+  return claimStatus_ && !claimStatus_->error ? claimStatus_->transfer_floor_rao : 0;
+}
+
 // Device.snLedgerClaim, as the v2 dialog's claimer: the SDK reads the accounts
-// and their proofs, verifies each against vault2's root, preflights, and sends
-// one claim per account to the pinned vault2, signed with the gas key and
-// reported per account. After its Done the page reads the accounts and the gas
+// of every pool (capture the flag's beside the provider pool's) and their
+// proofs, verifies each against vault2's root, preflights, and sends them,
+// signed with the gas key and reported per account: two or more in one
+// STClaimBatcher transaction that calls the pinned vault2 for each, where the
+// chain settings name a batcher and the gas key can pay for it, else one claim
+// each to vault2. After its Done the page reads the accounts and the gas
 // balance again, whether or not the dialog is still up. Nothing here touches a
 // URnetwork API.
 LedgerClaimer WalletPage::MakeV2Claimer() {
@@ -2707,9 +2797,9 @@ winrt::fire_and_forget WalletPage::OnClaimV2(IInspectable const&, RoutedEventArg
   GasKeyInfo gas = gas_.value_or(GasKeyInfo{});
   self->SetSheetOpen(true);
   try {
-    v2ClaimSheet_ = urnw::ClaimLedgerSheet::Create(self->Content().XamlRoot(),
-                                                   self->DispatcherQueue(), v2Accounts_, gas,
-                                                   ExplorerTxUrl(), allowActions, MakeV2Claimer());
+    v2ClaimSheet_ = urnw::ClaimLedgerSheet::Create(
+        self->Content().XamlRoot(), self->DispatcherQueue(), v2Accounts_, v2Unavailable_,
+        TransferFloorRao(), gas, ExplorerTxUrl(), allowActions, MakeV2Claimer());
     co_await self->wallet().v2ClaimSheet_->Dialog().ShowAsync();
   } catch (winrt::hresult_error const& e) {
     urnw::LogError("earnings: the v2 claim sheet failed to open: {}",

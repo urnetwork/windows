@@ -11,10 +11,11 @@
 #include <winrt/Windows.System.h>
 #include <winrt/Windows.UI.Text.h>
 
-#include "EarningsSheets.h"  // ShortAddress, DateFromMillis
+#include "EarningsSheets.h"  // ShortAddress, DateFromMillis, FormatAlphaRao, PoolTitleText
 #include "Localization.h"
 #include "Log.h"
 #include "PageContext.h"
+#include "SnPayoutPresentation.h"  // the claim sheet's pool rows
 #include "Strings.h"
 #include "UrColors.h"
 #include "UrComponents.h"
@@ -445,6 +446,83 @@ FrameworkElement MakeClaimedBanner(urnet::SnClaimStatusResult const& status) {
   box.Child(grid);
   winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(box, sentence);
   return box;
+}
+
+FrameworkElement MakeRelayPoolRows(urnet::SnClaimStatusResult const& status) {
+  std::vector<snpayout::RelayAccount> accounts;
+  if (status.accounts) {
+    for (auto const& account : *status.accounts) accounts.push_back(snpayout::RelayAccountFrom(account));
+  }
+  const std::vector<snpayout::RelayRow> rows = snpayout::RelayRowsFor(
+      accounts, snpayout::UnavailablePoolsFrom(status.unavailable_pools), status.transfer_floor_rao);
+  if (rows.empty()) return nullptr;
+  // the claimed banner under the rows links the lead account's claim already
+  const std::string bannerUrl = status.shows_claimed ? status.claim_tx_url.value_or(std::string()) : std::string();
+  StackPanel list;
+  list.Spacing(6);
+  for (auto const& row : rows) {
+    Grid line;
+    line.ColumnSpacing(8);
+    line.ColumnDefinitions().Append(ColumnDefinition());
+    ColumnDefinition amountColumn;
+    amountColumn.Width(GridLengthHelper::Auto());
+    line.ColumnDefinitions().Append(amountColumn);
+    ColumnDefinition pillColumn;
+    pillColumn.Width(GridLengthHelper::Auto());
+    line.ColumnDefinitions().Append(pillColumn);
+    // the pool, and its coldkey while the network is paid to more than one
+    std::wstring name{PoolTitleText(row.titleKey, row.noId)};
+    if (!row.coldkeySs58.empty()) name += L" · " + ShortAddress(row.coldkeySs58);
+    auto title = MakeText(hstring{name}, 13, colors::TextBrush());
+    title.VerticalAlignment(VerticalAlignment::Center);
+    Grid::SetColumn(title, 0);
+    line.Children().Append(title);
+    // what it holds to claim, or what URnetwork's claim paid; an unavailable
+    // pool has no figure, never a zero
+    if (0 < row.amountRao && row.status != snpayout::RelayRowStatus::Unavailable) {
+      auto figure = MakeText(hstring{FormatAlphaRao(row.amountRao)}, 13, colors::TextBrush());
+      figure.TextWrapping(TextWrapping::NoWrap);
+      figure.VerticalAlignment(VerticalAlignment::Center);
+      Grid::SetColumn(figure, 1);
+      line.Children().Append(figure);
+    }
+    hstring word;
+    Brush ink = colors::TextBrush();
+    Brush fill = colors::BorderBrush();
+    switch (row.status) {
+      case snpayout::RelayRowStatus::Pending:
+        word = Loc("pending_data_key");
+        break;
+      case snpayout::RelayRowStatus::UnderFloor:
+        // no claim moves it until it clears the transfer floor
+        word = Loc("sn_ledger_pool_under_floor");
+        ink = colors::MutedBrush();
+        break;
+      case snpayout::RelayRowStatus::Claimed:
+        word = Loc("claim_confirmed");
+        fill = colors::MakeBrush(colors::WithAlpha(colors::kUrGreen, 0x1F));
+        break;
+      case snpayout::RelayRowStatus::Unavailable:
+        word = Loc("sn_ledger_pool_unavailable");
+        ink = colors::MutedBrush();
+        break;
+    }
+    Border pill;
+    pill.Background(fill);
+    pill.CornerRadius(CornerRadius{9, 9, 9, 9});
+    pill.Padding(Thickness{8, 2, 8, 2});
+    pill.VerticalAlignment(VerticalAlignment::Center);
+    pill.Child(MakeText(word, 12, ink));
+    Grid::SetColumn(pill, 2);
+    line.Children().Append(pill);
+    list.Children().Append(line);
+    // URnetwork's claim of it, with its transaction
+    if (row.status == snpayout::RelayRowStatus::Claimed && !row.txUrl.empty() && row.txUrl != bannerUrl) {
+      const std::string url = row.txUrl;
+      list.Children().Append(Link(Loc("transaction"), true, [url] { OpenTransaction(url); }));
+    }
+  }
+  return list;
 }
 
 void DrawRelaySection(StackPanel const& host, urnet::SnClaimStatusResult const& status, bool inSheet,
