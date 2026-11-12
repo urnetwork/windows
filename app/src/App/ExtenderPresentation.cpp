@@ -441,6 +441,25 @@ PortMappingRowModel PortMappingRowModelFor(const ExtenderProvideStatusView& view
   model.visible = SpeedTestsRowModelFor(view).visible &&
                   (!view.providerOnly || view.portMappingServiceWritable);
   model.on = view.provideExtenderPortMapping;
+  // the line under it, only under a switch that shows and is on, from what the
+  // role last reported; off, no role and a state this build does not know say
+  // nothing of what the router did, so they read as no line
+  if (!model.visible || !model.on) return model;
+  const std::string_view state = view.portMapping;
+  if (state == kExtenderPortMappingNotNeeded) {
+    model.statusKey = "extender_port_mapping_not_needed";
+  } else if (state == kExtenderPortMappingMapping) {
+    model.statusKey = "extender_port_mapping_mapping";
+  } else if (state == kExtenderPortMappingFailed) {
+    model.statusKey = "extender_port_mapping_failed";
+  } else if (state == kExtenderPortMappingMapped) {
+    // the sdk's two texts fill the line; without either it would name no
+    // ports or print empty parentheses, so it shows nothing instead
+    if (view.portMappingPorts.empty() || view.portMappingMethodName.empty()) return model;
+    model.statusKey = "extender_port_mapping_mapped";
+    model.statusPorts = view.portMappingPorts;
+    model.statusMethod = view.portMappingMethodName;
+  }
   return model;
 }
 
@@ -460,6 +479,11 @@ ExtenderProvideWriteRoute PortMappingWriteRouteFor(bool sessionDevice,
 ExtenderProvideStatusView PortMappingGuessFor(const ExtenderProvideStatusView& current, bool on) {
   ExtenderProvideStatusView guess = current;
   guess.provideExtenderPortMapping = on;
+  // the role the report was of is being replaced: no line until the next
+  // pushed status says what the router does for the new one
+  guess.portMapping.clear();
+  guess.portMappingMethodName.clear();
+  guess.portMappingPorts.clear();
   return guess;
 }
 

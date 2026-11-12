@@ -764,7 +764,13 @@ struct ProviderStats {
   // The provider extender role on the device (EXTENDER.md N2, N7): the status
   // its listener pushed last (Device::getExtenderProvideStatus before the
   // first), null when none was read, and the setting read beside it
-  // (Device::getProvideExtender).
+  // (Device::getProvideExtender). Whole, so the router port mapping's state
+  // and its two texts (PortMapping, PortMappingMethodName, PortMappingPorts,
+  // connect EXTENDER.md S10) ride it as they do a session's status, and the
+  // line under the port mapping switch reads the same either way; a status
+  // from a service built before the texts reads them empty, which shows no
+  // line. The app's view reads nothing else of the port mapping
+  // (ExtenderProvideStatusViewOf).
   nlohmann::json extender_provide_status;
   bool provide_extender = false;
   // The service takes set_provide_extender for that setting, sent with the
