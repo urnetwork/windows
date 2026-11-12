@@ -175,10 +175,9 @@ constexpr const char* RefusalReason(ProviderRefusal refusal) {
 // (`.measurements_enabled`, lag.dev/PLAN.md C4) by the same rule: it belongs to
 // the same space and rides on the same role.
 // set_provide_extender_port_mapping writes the router port mapping setting
-// (`.provide_extender_port_mapping`, connect EXTENDER.md S8) through the same
-// two devices, and never into a space alone: the sdk has no setter for it on a
-// space, so TunnelController::SetProvideExtenderPortMapping refuses the
-// NetworkSpace target as it refuses None.
+// (`.provide_extender_port_mapping`, connect EXTENDER.md S8) by the same rule
+// too, into the space through the sdk's LocalState when no device runs, so a
+// toggle that lands between two devices is the next one's setting.
 enum class ExtenderSettingTarget {
   ProviderDevice,  // the provider-only device: the switch's own case
   SessionDevice,   // a session's device that came up after the app asked

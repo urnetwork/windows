@@ -483,11 +483,10 @@ struct SetMeasurementsEnabled {
 // ports (tcp 443, udp 443 and udp 4053) to this device, which opens them on the
 // router. Off until the user turns it on, on every app (owner, 2026-11-11; the
 // miner turns it on). Like the provide extender setting it belongs to the
-// network space (`.provide_extender_port_mapping`) and every device reads it
-// from its space when it starts, but it is written only through a device that
-// runs (provide::ExtenderSettingTargetFor's two device targets): the sdk has
-// no setter for it on a space alone, so with no device the service refuses
-// it. Sent only over a status whose
+// network space (`.provide_extender_port_mapping`), every device reads it from
+// its space when it starts, and it is written through the same targets
+// (provide::ExtenderSettingTargetFor), with no device into the space the last
+// device ran in. Sent only over a status whose
 // ProviderStats::provide_extender_port_mapping_writable said the service takes
 // it.
 struct SetProvideExtenderPortMapping {
