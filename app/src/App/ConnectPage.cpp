@@ -280,6 +280,11 @@ void ConnectPage::ApplyStrings() {
   // which also names the switch (LabeledBy in the markup), and what it allows
   w_.SpeedTestsLabel().Text(Loc("extender_speed_tests"));
   w_.SpeedTestsDescription().Text(Loc("extender_speed_tests_description"));
+  // the router port mapping switch under that (connect EXTENDER.md S8): its
+  // title, which also names the switch, and under it what turning it on does,
+  // which says it opens a port on the router
+  w_.PortMappingLabel().Text(Loc("extender_port_mapping"));
+  w_.PortMappingDescription().Text(Loc("extender_port_mapping_description"));
   ApplyExtenderProvideRow();
   w_.FixedIpLabel().Text(Loc("fixed_ip"));
   w_.FixedIpNote().Text(Loc("fixed_ip_subtitle"));
@@ -2268,6 +2273,7 @@ void ConnectPage::ApplyExtenderProvideRow() {
     updatingControls_ = false;
   }
   ApplySpeedTestsRow();
+  ApplyPortMappingRow();
 }
 
 // ---- the lag.dev speed tests switch (lag.dev/PLAN.md C4, decision 18) ---------
@@ -2298,6 +2304,36 @@ void ConnectPage::OnSpeedTestsToggled(IInspectable const&, RoutedEventArgs const
   // carries the setting, replaces the guess.
   extenderProvideView_ = urnw::SpeedTestsGuessFor(extenderProvideView_, on);
   ApplySpeedTestsRow();
+}
+
+// ---- the router port mapping switch (connect EXTENDER.md S8) ------------------
+
+void ConnectPage::ApplyPortMappingRow() {
+  const urnw::PortMappingRowModel model = urnw::PortMappingRowModelFor(extenderProvideView_);
+  // Hidden, never disabled (N1): it rides on the role, so it shows only under
+  // the speed tests switch, and over the provider-only device's status only
+  // when the service takes this write too.
+  w_.PortMappingRow().Visibility(model.visible ? Visibility::Visible : Visibility::Collapsed);
+  // the switch is the setting, off until the user turns it on, read beside the
+  // status; the echo guard keeps the repaint from writing it back
+  if (w_.PortMappingToggle().IsOn() != model.on) {
+    updatingControls_ = true;
+    w_.PortMappingToggle().IsOn(model.on);
+    updatingControls_ = false;
+  }
+}
+
+void ConnectPage::OnPortMappingToggled(IInspectable const&, RoutedEventArgs const&) {
+  if (updatingControls_) return;
+  // never written while hidden (N1): a device or service that cannot take it
+  // shows no switch
+  if (!urnw::PortMappingRowModelFor(extenderProvideView_).visible) return;
+  const bool on = w_.PortMappingToggle().IsOn();
+  Sdk().SetProvideExtenderPortMapping(on);
+  // The switch holds its new position until the next pushed status, which
+  // carries the setting, replaces the guess.
+  extenderProvideView_ = urnw::PortMappingGuessFor(extenderProvideView_, on);
+  ApplyPortMappingRow();
 }
 
 void ConnectPage::OnFixedIpToggled(IInspectable const&, RoutedEventArgs const&) {

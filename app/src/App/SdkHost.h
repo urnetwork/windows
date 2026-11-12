@@ -1787,6 +1787,16 @@ class SdkHost {
   // (SpeedTestsWriteRouteFor). No app-side mirror; callers never write while
   // the switch is hidden (N1).
   void SetMeasurementsEnabled(bool on);
+  // The router port mapping setting (connect EXTENDER.md S8), the "Open a port
+  // on my router" switch under the speed tests switch: whether the extender
+  // role asks the router, by UPnP, NAT-PMP or PCP, to forward its ports to this
+  // device. Off until the user turns it on (owner, 2026-11-11). Written as the
+  // measurements setting is, through the device, which persists it in its
+  // space and applies it at once, or with no session to the service
+  // (set_provide_extender_port_mapping) when its status said it takes it
+  // (PortMappingWriteRouteFor). No app-side mirror; callers never write while
+  // the switch is hidden (N1).
+  void SetProvideExtenderPortMapping(bool on);
   // The DNS editor's Update: written only while the device's settings are
   // still `opened`, the reading the editor opened on (EditorApply.h); the
   // views take the device's reading either way.
@@ -2304,6 +2314,10 @@ class SdkHost {
   // way (set_measurements_enabled).
   void QueueProviderOnlyMeasurementsWrite(bool on);
   void WriteProviderOnlyMeasurements(bool on);
+  // The router port mapping switch's write with no session, queued and sent
+  // the same way (set_provide_extender_port_mapping).
+  void QueueProviderOnlyPortMappingWrite(bool on);
+  void WriteProviderOnlyPortMapping(bool on);
   // A reset_extenders the service refused as busy (Common/ExtenderReset.h):
   // owed by ResetExtenders, made due by the first pushed status that ends the
   // operation which held the service's lock (the state handler, on the pipe's
@@ -2338,6 +2352,9 @@ class SdkHost {
   std::optional<bool> providerOnlyExtenderWrite_;
   // The speed tests switch's last write not yet sent; a newer flip replaces it.
   std::optional<bool> providerOnlyMeasurementsWrite_;
+  // The router port mapping switch's last write not yet sent; a newer flip
+  // replaces it.
+  std::optional<bool> providerOnlyPortMappingWrite_;
   // The owed reset made due and not yet sent again.
   std::optional<proto::ResetExtenders> extenderResetResend_;
   // The reset the service last refused as busy, until a pushed status ends

@@ -1151,6 +1151,39 @@
                                                       Toggled="OnSpeedTestsToggled" />
                                     </Grid>
                                 </Border>
+                                <!-- The router port mapping switch, "Open a port on my router"
+                                     (connect EXTENDER.md S8): whether the extender role asks the
+                                     router, by UPnP, NAT-PMP or PCP, to forward its ports to this
+                                     device. Off until the user turns it on. It rides on the role,
+                                     so it shows only under the speed tests switch, hidden, never
+                                     disabled, with its description under its title, and its title
+                                     starts under the Extender title.
+                                     ConnectPage::ApplyPortMappingRow is its one writer. -->
+                                <Border x:Name="PortMappingRow" Visibility="Collapsed"
+                                        Style="{StaticResource UrPaneRowStyle}" MinHeight="44">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <!-- the Extender dot's column, so the titles line up -->
+                                        <Grid Width="12" />
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                                    Spacing="1">
+                                            <TextBlock x:Name="PortMappingLabel"
+                                                       Style="{StaticResource UrRowTitleStyle}" />
+                                            <TextBlock x:Name="PortMappingDescription"
+                                                       TextWrapping="Wrap"
+                                                       Style="{StaticResource UrRowNoteStyle}"
+                                                       TextTrimming="None" />
+                                        </StackPanel>
+                                        <ToggleSwitch x:Name="PortMappingToggle" Grid.Column="2" Width="44"
+                                                      Style="{StaticResource UrSwitchToggleStyle}"
+                                                      AutomationProperties.LabeledBy="{Binding ElementName=PortMappingLabel}"
+                                                      Toggled="OnPortMappingToggled" />
+                                    </Grid>
+                                </Border>
 
                                 <!-- connect options ................................ -->
                                 <Border Style="{StaticResource UrGroupHeaderStyle}">

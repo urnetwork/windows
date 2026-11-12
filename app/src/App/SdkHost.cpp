@@ -4870,6 +4870,7 @@ void SdkHost::ProviderOnlyStatsLoop() {
     bool wanted = false;
     std::optional<bool> extenderWrite;
     std::optional<bool> measurementsWrite;
+    std::optional<bool> portMappingWrite;
     std::optional<proto::ResetExtenders> extenderReset;
     std::optional<proto::SetIngressDns> ingressDns;
     {
@@ -4881,6 +4882,7 @@ void SdkHost::ProviderOnlyStatsLoop() {
       wanted = providerOnlyStatusWanted_;
       extenderWrite = std::exchange(providerOnlyExtenderWrite_, std::nullopt);
       measurementsWrite = std::exchange(providerOnlyMeasurementsWrite_, std::nullopt);
+      portMappingWrite = std::exchange(providerOnlyPortMappingWrite_, std::nullopt);
       extenderReset = std::exchange(extenderResetResend_, std::nullopt);
       ingressDns = std::exchange(ingressDnsSend_, std::nullopt);
     }
@@ -4890,6 +4892,8 @@ void SdkHost::ProviderOnlyStatsLoop() {
       if (extenderWrite) WriteProviderOnlyExtender(*extenderWrite);
       // The speed tests switch's write, the same way.
       if (measurementsWrite) WriteProviderOnlyMeasurements(*measurementsWrite);
+      // The router port mapping switch's write, the same way.
+      if (portMappingWrite) WriteProviderOnlyPortMapping(*portMappingWrite);
       // An owed extender reset, sent once more, outside mutex_ too.
       if (extenderReset) ResendExtenderReset(*extenderReset);
       // The ingress dns the app's space holds, outside mutex_ too.
@@ -5029,6 +5033,30 @@ void SdkHost::WriteProviderOnlyMeasurements(bool on) {
   extenderProvideRepublish_ = true;
 }
 
+void SdkHost::QueueProviderOnlyPortMappingWrite(bool on) {
+  {
+    std::scoped_lock lock(providerOnlyMutex_);
+    // a flip that has not gone out yet is replaced by the newer one
+    providerOnlyPortMappingWrite_ = on;
+    providerOnlyKick_ = true;
+  }
+  providerOnlyCv_.notify_all();
+}
+
+void SdkHost::WriteProviderOnlyPortMapping(bool on) {
+  std::string error;
+  const bool written =
+      service_.IsConnected() && service_.SetProvideExtenderPortMapping(on, &error);
+  if (!written) {
+    LogWarn("sdkhost: provide: the service did not write the router port mapping setting: {}",
+            error.empty() ? "no control channel" : error);
+  }
+  // Written or refused, the next status replaces the switch's guess: a refused
+  // write shows the setting as it stands.
+  std::scoped_lock lock(drawerMutex_);
+  extenderProvideRepublish_ = true;
+}
+
 void SdkHost::QueueExtenderResetResend(proto::ResetExtenders request) {
   {
     std::scoped_lock lock(providerOnlyMutex_);
@@ -5164,10 +5192,12 @@ void SdkHost::ShowProviderOnlyStatsLocked(const proto::ProviderStats& stats) {
   ExtenderProvideStatusView extender = ExtenderProvideStatusViewOf(
       proto::ExtenderProvideStatusOf<urnet::ExtenderProvideStatus>(stats),
       [&stats] { return stats.provide_extender; },
-      [&stats] { return stats.measurements_enabled; });
+      [&stats] { return stats.measurements_enabled; },
+      [&stats] { return stats.provide_extender_port_mapping; });
   extender.providerOnly = true;
   extender.serviceWritable = stats.provide_extender_writable;
   extender.measurementsServiceWritable = stats.measurements_enabled_writable;
+  extender.portMappingServiceWritable = stats.provide_extender_port_mapping_writable;
   PublishExtenderProvideView(std::move(extender));
   // The peers it discovers with no session: the lists a session's
   // PeerViewController fills, filtered as it filters them. An older service
@@ -5824,8 +5854,16 @@ void SdkHost::PublishExtenderProvideStatus(std::optional<urnet::ExtenderProvideS
     std::scoped_lock lock(drawerMutex_);
     return lastExtenderProvideStatus_.measurementsEnabled;
   };
+  // the router port mapping setting (the Open a port on my router switch), by
+  // the same rule: the setting last published stands in, off until a reading
+  // said otherwise
+  const auto readPortMapping = [this] {
+    if (device_ && service_.IsConnected()) return device_->getProvideExtenderPortMapping();
+    std::scoped_lock lock(drawerMutex_);
+    return lastExtenderProvideStatus_.provideExtenderPortMapping;
+  };
   ExtenderProvideStatusView view =
-      ExtenderProvideStatusViewOf(status, readSetting, readMeasurements);
+      ExtenderProvideStatusViewOf(status, readSetting, readMeasurements, readPortMapping);
   PublishExtenderProvideView(std::move(view));
 }
 
@@ -6507,6 +6545,36 @@ void SdkHost::SetMeasurementsEnabled(bool on) {
     // The device persists it in its space and applies it at once; detached, the
     // DeviceRemote queues it for the next sync.
     device_->setMeasurementsEnabled(on);
+    // The switch paints its guess after this returns; the device's next status
+    // replaces it, even one equal to the last published.
+    std::scoped_lock drawerLock(drawerMutex_);
+    extenderProvideRepublish_ = true;
+  });
+}
+
+void SdkHost::SetProvideExtenderPortMapping(bool on) {
+  PostWrite("set provide extender port mapping", [this, on] {
+    std::scoped_lock lock(mutex_);
+    ExtenderProvideStatusView shown;
+    {
+      std::scoped_lock drawerLock(drawerMutex_);
+      shown = lastExtenderProvideStatus_;
+    }
+    switch (PortMappingWriteRouteFor(device_.has_value(), shown)) {
+      case ExtenderProvideWriteRoute::Device:
+        break;
+      case ExtenderProvideWriteRoute::Service:
+        // Not on this worker either, as the Extender switch's write.
+        QueueProviderOnlyPortMappingWrite(on);
+        return;
+      case ExtenderProvideWriteRoute::None:
+        return;
+    }
+    // The device persists it in its space and applies it at once: a running
+    // role is replaced by one that asks the router to forward its ports, or
+    // that removes what the router forwards. Detached, the DeviceRemote queues
+    // it for the next sync.
+    device_->setProvideExtenderPortMapping(on);
     // The switch paints its guess after this returns; the device's next status
     // replaces it, even one equal to the last published.
     std::scoped_lock drawerLock(drawerMutex_);

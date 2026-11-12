@@ -4547,6 +4547,14 @@
     <value>未提供</value>
     <comment>Extender status when the setting is on but this device is not providing. Apple is not listed because its catalog is keyed by the English text, which widget_not_providing already carries.</comment>
   </data>
+  <data name="extender_port_mapping" xml:space="preserve">
+    <value>在我的路由器上開啟連接埠</value>
+    <comment>Title of the toggle under the Extender setting that has the extender ask the router (UPnP, NAT-PMP or PCP) to forward its ports to this device. Off by default on every app.</comment>
+  </data>
+  <data name="extender_port_mapping_description" xml:space="preserve">
+    <value>透過 UPnP、NAT-PMP 或 PCP 要求你的路由器將 TCP 和 UDP 443 以及 UDP 4053 轉發到此裝置，以便從互聯網存取擴展器。這會在你的路由器上開啟連接埠。</value>
+    <comment>Secondary text under the Open a port on my router toggle: what turning it on does. It must say plainly that it opens a port on the user's router.</comment>
+  </data>
   <data name="extender_revoked" xml:space="preserve">
     <value>已被營運方撤銷</value>
     <comment>Extender status when the operator revoked this device's extender key.</comment>

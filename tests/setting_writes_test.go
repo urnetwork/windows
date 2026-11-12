@@ -116,6 +116,7 @@ func TestSettingWritesRunOffTheUiThread(t *testing.T) {
 		"void SdkHost::SetProvideControlMode(",
 		"void SdkHost::SetProvideExtender(",
 		"void SdkHost::SetMeasurementsEnabled(",
+		"void SdkHost::SetProvideExtenderPortMapping(",
 		"void SdkHost::ApplyDnsSettings(",
 		"void SdkHost::ApplyTransportSettings(",
 		"void SdkHost::UpdateSplitRule(",

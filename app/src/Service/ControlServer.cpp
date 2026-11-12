@@ -205,6 +205,17 @@ nlohmann::json ControlServer::Handle(const nlohmann::json& request) {
       std::string error;
       reply.ok = tunnel_.SetMeasurementsEnabled(req.measurements_enabled, error);
       reply.error = error;
+    } else if (type == proto::msg::kSetProvideExtenderPortMapping) {
+      // The router port mapping switch while disconnected (TunnelController::
+      // SetProvideExtenderPortMapping), on this pipe under its access rule like
+      // the Extender switch's. A request without the value throws out of the
+      // get<> as a failed reply, so nothing opens a port the user did not ask
+      // for; the next get_provider_stats carries the setting.
+      proto::SetProvideExtenderPortMapping req =
+          request.get<proto::SetProvideExtenderPortMapping>();
+      std::string error;
+      reply.ok = tunnel_.SetProvideExtenderPortMapping(req.provide_extender_port_mapping, error);
+      reply.error = error;
     } else if (type == proto::msg::kResetExtenders) {
       // "Reset extenders" in the app's Account > Extenders (TunnelController::
       // ResetExtenders), on this pipe under its access rule (kPipeSddl) like

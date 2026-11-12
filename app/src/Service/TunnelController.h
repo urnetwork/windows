@@ -243,6 +243,16 @@ class TunnelController {
   // at once, and in the next get_provider_stats), a session's device, or the
   // space the last device ran in. False with `error` when nothing took it.
   bool SetMeasurementsEnabled(bool on, std::string& error);
+  // The router port mapping switch while there is no session
+  // (set_provide_extender_port_mapping, connect EXTENDER.md S8). Writes the
+  // router port mapping setting through the device SetProvideExtender would
+  // write, under the same budget: the provider-only device (applied at once, a
+  // running role replaced by one that asks the router to forward its ports or
+  // removes what it forwards, and in the next get_provider_stats) or a
+  // session's device. Never into a space alone: the sdk has no setter for it
+  // there, so with no device it refuses. False with `error` when nothing took
+  // it.
+  bool SetProvideExtenderPortMapping(bool on, std::string& error);
   // reset_extenders (Protocol.h ResetExtenders; connect EXTENDER.md E7): the
   // app reset its own space and hands the reset's id here. Applied to the
   // space spaceManager_ holds under the request's key, which is the one object
@@ -626,6 +636,11 @@ class TunnelController {
   // get_provider_stats answers. Nothing when the role's reading never opened.
   // An SDK call; caller holds mutex_.
   void RefreshProviderMeasurementsLocked();
+  // Read the provider-only device's router port mapping setting again after
+  // set_provide_extender_port_mapping wrote it through this device, into the
+  // copy get_provider_stats answers. Nothing when the role's reading never
+  // opened. An SDK call; caller holds mutex_.
+  void RefreshProviderPortMappingLocked();
   // The provider-only device's egress monitor: a binding one, like a session's
   // (R1 from the first socket; see StartProvider), with no tun to exclude.
   // Started before the device is built, and before a kept session device is
@@ -833,6 +848,11 @@ class TunnelController {
   // again after set_measurements_enabled writes it through this device
   // (RefreshProviderMeasurementsLocked). On by default, as the sdk's.
   bool providerMeasurementsSetting_ = true;
+  // The router port mapping setting, read beside providerExtenderSetting_ and
+  // again after set_provide_extender_port_mapping writes it through this device
+  // (RefreshProviderPortMappingLocked). Off by default, as the sdk's on every
+  // app.
+  bool providerPortMappingSetting_ = false;
   // The standalone log upload device's slot (LogUploadDevice), empty while
   // none was built. A third device slot, never engaged beside device_ or
   // providerDevice_: both are built only after RetireLogUploadDeviceLocked.

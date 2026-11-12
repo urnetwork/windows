@@ -4547,6 +4547,14 @@ cara yang benar</value>
     <value>Tidak menyediakan</value>
     <comment>Extender status when the setting is on but this device is not providing. Apple is not listed because its catalog is keyed by the English text, which widget_not_providing already carries.</comment>
   </data>
+  <data name="extender_port_mapping" xml:space="preserve">
+    <value>Buka port di router saya</value>
+    <comment>Title of the toggle under the Extender setting that has the extender ask the router (UPnP, NAT-PMP or PCP) to forward its ports to this device. Off by default on every app.</comment>
+  </data>
+  <data name="extender_port_mapping_description" xml:space="preserve">
+    <value>Meminta router Anda, melalui UPnP, NAT-PMP, atau PCP, untuk meneruskan TCP dan UDP 443 serta UDP 4053 ke perangkat ini, agar extender dapat dijangkau dari internet. Ini membuka port di router Anda.</value>
+    <comment>Secondary text under the Open a port on my router toggle: what turning it on does. It must say plainly that it opens a port on the user's router.</comment>
+  </data>
   <data name="extender_revoked" xml:space="preserve">
     <value>Dicabut oleh operator</value>
     <comment>Extender status when the operator revoked this device's extender key.</comment>

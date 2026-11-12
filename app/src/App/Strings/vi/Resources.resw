@@ -4547,6 +4547,14 @@ cách đúng đắn</value>
     <value>Không cung cấp</value>
     <comment>Extender status when the setting is on but this device is not providing. Apple is not listed because its catalog is keyed by the English text, which widget_not_providing already carries.</comment>
   </data>
+  <data name="extender_port_mapping" xml:space="preserve">
+    <value>Mở cổng trên bộ định tuyến của tôi</value>
+    <comment>Title of the toggle under the Extender setting that has the extender ask the router (UPnP, NAT-PMP or PCP) to forward its ports to this device. Off by default on every app.</comment>
+  </data>
+  <data name="extender_port_mapping_description" xml:space="preserve">
+    <value>Yêu cầu bộ định tuyến của bạn, qua UPnP, NAT-PMP hoặc PCP, chuyển tiếp TCP và UDP 443 cùng UDP 4053 đến thiết bị này để có thể truy cập bộ mở rộng từ internet. Việc này mở một cổng trên bộ định tuyến của bạn.</value>
+    <comment>Secondary text under the Open a port on my router toggle: what turning it on does. It must say plainly that it opens a port on the user's router.</comment>
+  </data>
   <data name="extender_revoked" xml:space="preserve">
     <value>Đã bị nhà vận hành thu hồi</value>
     <comment>Extender status when the operator revoked this device's extender key.</comment>

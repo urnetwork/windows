@@ -4651,6 +4651,14 @@ de la manera correcta</value>
     <value>Sin proporcionar</value>
     <comment>Extender status when the setting is on but this device is not providing. Apple is not listed because its catalog is keyed by the English text, which widget_not_providing already carries.</comment>
   </data>
+  <data name="extender_port_mapping" xml:space="preserve">
+    <value>Abrir un puerto en mi router</value>
+    <comment>Title of the toggle under the Extender setting that has the extender ask the router (UPnP, NAT-PMP or PCP) to forward its ports to this device. Off by default on every app.</comment>
+  </data>
+  <data name="extender_port_mapping_description" xml:space="preserve">
+    <value>Pide a tu router, mediante UPnP, NAT-PMP o PCP, que reenvíe TCP y UDP 443 y UDP 4053 a este dispositivo, para que se pueda acceder al extensor desde internet. Esto abre un puerto en tu router.</value>
+    <comment>Secondary text under the Open a port on my router toggle: what turning it on does. It must say plainly that it opens a port on the user's router.</comment>
+  </data>
   <data name="extender_revoked" xml:space="preserve">
     <value>Revocado por el operador</value>
     <comment>Extender status when the operator revoked this device's extender key.</comment>

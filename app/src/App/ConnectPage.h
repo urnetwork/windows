@@ -174,6 +174,11 @@ class ConnectPage {
   // the next pushed status
   void OnSpeedTestsToggled(winrt::Windows::Foundation::IInspectable const&,
                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
+  // the router port mapping switch under that (connect EXTENDER.md S8): writes
+  // the setting through the device and holds its new position until the next
+  // pushed status
+  void OnPortMappingToggled(winrt::Windows::Foundation::IInspectable const&,
+                            winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnFixedIpToggled(winrt::Windows::Foundation::IInspectable const&,
                         winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   void OnStrongAnonToggled(winrt::Windows::Foundation::IInspectable const&,
@@ -266,13 +271,17 @@ class ConnectPage {
   void ApplySplitRuleCount();
   void ApplyBlockerUi(bool on);
   // The extender row, its description and its switch, from extenderProvideView_:
-  // the one writer of all three (N7), and through ApplySpeedTestsRow of the
-  // speed tests row under them.
+  // the one writer of all three (N7), and through ApplySpeedTestsRow and
+  // ApplyPortMappingRow of the two rows under them.
   void ApplyExtenderProvideRow();
   // The lag.dev speed tests row and its switch, from extenderProvideView_: shown
   // only beside the Extender switch, and only where its own write has a taker
   // (SpeedTestsRowModelFor). Hidden, never disabled (N1).
   void ApplySpeedTestsRow();
+  // The router port mapping row and its switch, from extenderProvideView_:
+  // shown only under the speed tests switch, and only where its own write has
+  // a taker (PortMappingRowModelFor). Hidden, never disabled (N1).
+  void ApplyPortMappingRow();
   // R3: the activity pane's list vs its empty state. The empty state is a
   // centred line INSIDE the full-height pane, not a card, so this only swaps
   // which of the two is drawn in that same area.
