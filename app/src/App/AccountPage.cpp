@@ -274,8 +274,10 @@ void AccountPage::ApplyStrings() {
   // builders below it cannot simply be re-run after a language change.
   ApplyExtenderStrings();
 
-  // pane A: plan + usage
-  w_.AccountPlanValueText().Text(Loc("free"));
+  // pane A: plan + usage. The plan is unknown until the balance store says
+  // otherwise (MainWindow::ApplyBalance), never seeded Free (PlanView.h)
+  w_.AccountPlanValueText().Text(Loc("loading"));
+  w_.AccountPlanRetry().Content(LocBox("try_again"));
   w_.AccountUpgradeButton().Content(LocBox("upgrade"));
   w_.AccountUsageGroupLabel().Text(Loc("data_usage"));
   w_.AccountDailyLabel().Text(Loc("daily_data_balance"));

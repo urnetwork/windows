@@ -2156,12 +2156,21 @@
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="AccountPaneAStack">
                                 <!-- WHAT THE PLAN IS. It leads the pane, the way
-                                     the protection state leads Home's. -->
+                                     the protection state leads Home's. Until the
+                                     server answers it says Loading, or the error
+                                     with Try again (PlanView.h), never Free. -->
                                 <Border Style="{StaticResource UrPaneRowStyle}"
                                         MinHeight="0" Padding="12,14">
-                                    <TextBlock x:Name="AccountPlanValueText"
-                                               FontFamily="{StaticResource UrBodyFontFamily}"
-                                               FontSize="22" FontWeight="SemiBold" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock x:Name="AccountPlanValueText"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="{StaticResource UrBodyFontFamily}"
+                                                   FontSize="22" FontWeight="SemiBold" />
+                                        <Button x:Name="AccountPlanRetry"
+                                                VerticalAlignment="Center"
+                                                Visibility="Collapsed"
+                                                Click="OnRetryPlan" />
+                                    </StackPanel>
                                 </Border>
                                 <!-- the usage bar, full width of the pane, on the
                                      same rhythm as Home's charts -->
