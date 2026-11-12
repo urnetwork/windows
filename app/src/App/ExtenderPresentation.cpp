@@ -157,7 +157,8 @@ ControlDohSaveOutcome ControlDohSaveOutcomeFor(std::string_view errorId) {
   }
   outcome.saved = true;
   outcome.messageKey = "control_doh_urls_saved";
-  outcome.nextConnectNote = true;
+  // no next-connect note: a running session takes the servers in place
+  // (set_ingress_dns, and the sdk's device remote)
   return outcome;
 }
 

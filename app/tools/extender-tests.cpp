@@ -2211,7 +2211,8 @@ https://203.0.113.53/dns-query)",
     const auto saved = ControlDohSaveOutcomeFor("");
     Check(saved.saved, "\"\" is saved");
     CheckEq("control_doh_urls_saved", saved.messageKey, "with the saved line");
-    Check(saved.nextConnectNote, "and the next-connect note: the service imports the space later");
+    Check(!saved.nextConnectNote,
+          "and no next-connect note: the running session takes the servers in place");
     for (const char* id : {kSdkErrorIdInternal, "control_doh_error_from_a_newer_sdk",
                            kControlDohErrorIpRequired, kControlDohErrorTooMany}) {
       const auto refused = ControlDohSaveOutcomeFor(id);
