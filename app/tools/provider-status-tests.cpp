@@ -62,12 +62,18 @@ void CheckEq(int64_t want, int64_t got, const std::string& what) {
 }
 
 #if defined(URNW_PROVIDER_STATUS_TESTS_SDK)
+using ReasonLine = urnet::ProviderStatusReasonLine;
 using Number = urnet::ProviderRankingNumber;
 using Country = urnet::ProviderStatusCountry;
 using Appearances = urnet::ProviderAppearanceHistogram;
 using Status = urnet::ProviderStatus;
 #else
 // The fields of the sdk's structs, by the generated wrapper's names and types.
+struct ReasonLine {
+  std::string label;
+  std::optional<int64_t> count;
+  std::optional<std::string> text;
+};
 struct Number {
   std::string name;
   bool has_value = false;
@@ -80,6 +86,10 @@ struct Number {
   int64_t count = 0;
   int64_t total = 0;
   std::string explanation;
+  std::optional<std::string> reason;
+  std::optional<int64_t> reason_tcp_count;
+  std::optional<int64_t> reason_ipv4_count;
+  std::optional<std::vector<ReasonLine>> reason_lines;
 };
 struct Country {
   std::string country_code;
@@ -140,6 +150,21 @@ Number WithCounts(Number number, int64_t count, int64_t total) {
   return number;
 }
 
+// a line as the sdk derives it from the server's reason
+ReasonLine MakeReasonLine(const std::string& label, std::optional<int64_t> count,
+                          std::optional<std::string> text) {
+  ReasonLine line;
+  line.label = label;
+  line.count = count;
+  line.text = text;
+  return line;
+}
+
+Number WithReasonLines(Number number, std::vector<ReasonLine> lines) {
+  number.reason_lines = std::move(lines);
+  return number;
+}
+
 Status MakeStatus(const std::string& reason, const std::string& reasonText) {
   Status status;
   status.reason = reason;
@@ -164,6 +189,11 @@ const std::map<std::string, std::string, std::less<>> kEnglish = {
     {"provider_status_value_not_yet", "Not yet"},
     {"provider_status_value_no_history", "No history yet"},
     {"provider_status_value_not_in_pool", "Not in this pool"},
+    // plurals, by the English other form: {} is the count
+    {"provider_status_reason_line_tcp",
+     "{} of these checks failed only over HTTP/3 (UDP), so this device is offered for TCP traffic only. Some app builds and some networks do not route UDP."},
+    {"provider_status_reason_line_ipv4",
+     "{} of these checks failed only over IPv6, so this device is offered for IPv4 traffic only."},
 };
 
 std::string English(std::string_view key) {
@@ -187,6 +217,11 @@ ps::ValueText<std::string> EnglishText() {
   };
   text.formatCounts = [](std::string_view key, int64_t a, int64_t b) {
     return Substitute(key, std::to_string(a), std::to_string(b));
+  };
+  text.plural = [](std::string_view key, int64_t count) {
+    std::string out = English(key);
+    if (auto at = out.find("{}"); at != std::string::npos) out.replace(at, 2, std::to_string(count));
+    return out;
   };
   text.percent = [](double ratio) { return ps::FormatPercent(ratio, 1, "%"); };
   // the app's byte rate is outside this header: a marker shows it was used
@@ -465,6 +500,35 @@ int main() {
     }
   }
 
+  // ---- the reason lines under the network checks (server FP2-PROTOCOL.md §5.5) ----
+  {
+    const std::string tcp =
+        "3 of these checks failed only over HTTP/3 (UDP), so this device is offered for TCP traffic only. Some app builds and some networks do not route UDP.";
+    const std::string ipv4 = "2 of these checks failed only over IPv6, so this device is offered for IPv4 traffic only.";
+    const Number downgraded = WithReasonLines(
+        WithCounts(WithMinimum(MakeNumber("url_checks", true, 0.65, false), 0.8), 13, 20),
+        {MakeReasonLine("tcp", 3, std::nullopt), MakeReasonLine("ipv4", 2, std::nullopt)});
+    const auto row = Row(downgraded);
+    CheckRow({"provider_status_number_url_checks", "13 of 20 loaded (needs 80%)", "provider_status_help_url_checks", false},
+             row, "a downgraded url_checks");
+    Check(row && row->reasons == std::vector<std::string>{tcp, ipv4},
+          "a downgraded url_checks: the tcp line, then the ipv4 line, with their counts");
+    // a label this build has no string for shows the server's English; one
+    // without text, and one with an empty text, show nothing
+    const auto unknown = Row(WithReasonLines(MakeNumber("url_checks", true, 0.65, false),
+                                             {MakeReasonLine("text", std::nullopt, "A newer server's sentence."),
+                                              MakeReasonLine("pq", std::nullopt, std::nullopt),
+                                              MakeReasonLine("pq", std::nullopt, "")}));
+    Check(unknown && unknown->reasons == std::vector<std::string>{"A newer server's sentence."},
+          "an unknown reason line shows the server's English");
+    // no lines, as from a server or sdk before them: no reasons
+    const auto plain = Row(WithCounts(WithMinimum(MakeNumber("url_checks", true, 0.95, true), 0.8), 19, 20));
+    Check(plain && plain->reasons.empty(), "a url_checks without lines has no reasons");
+    // the other rows never have lines from the sdk
+    const auto reliability = Row(MakeNumber("reliability_5m", true, 0.82, true));
+    Check(reliability && reliability->reasons.empty(), "reliability_5m has no reasons");
+  }
+
   // ---- the Why? rows, as the server sends them ----
   {
     Status status = MakeStatus("reliability_warming_up", "Building reliability.");
@@ -601,7 +665,9 @@ int main() {
         {"name": "reliability_5m", "has_value": true, "value": 1, "passes": true},
         {"name": "reliability_1h", "has_value": true, "value": 0.98, "has_minimum": true, "minimum": 0.95, "passes": true},
         {"name": "reliability_12h", "has_value": true, "value": 0.41, "has_minimum": true, "minimum": 0.7, "passes": false},
-        {"name": "url_checks", "has_value": true, "value": 0.95, "has_minimum": true, "minimum": 0.8, "passes": true, "count": 19, "total": 20},
+        {"name": "url_checks", "has_value": true, "value": 0.95, "has_minimum": true, "minimum": 0.8, "passes": true, "count": 19, "total": 20,
+         "reason": "3 of these checks failed only over HTTP/3 (UDP), so this device is offered for TCP traffic only. Some app builds and some networks do not route UDP.",
+         "reason_tcp_count": 3, "reason_lines": [{"label": "tcp", "count": 3}]},
         {"name": "speed_test", "has_value": true, "value": 3565158, "has_minimum": true, "minimum": 1048576, "passes": true},
         {"name": "latency", "has_value": true, "value": 35, "has_maximum": true, "maximum": 200, "passes": true},
         {"name": "weight_quality", "has_value": true, "value": 0.4166, "passes": true},
@@ -629,6 +695,11 @@ int main() {
     Check(rows.size() == 9, "sdk: eight known numbers and the country, got " + std::to_string(rows.size()));
     if (rows.size() == 9) {
       CheckText("19 of 20 loaded (needs 80%)", rows[3].value, "sdk: url_checks");
+      Check(rows[3].reasons ==
+                std::vector<std::string>{
+                    "3 of these checks failed only over HTTP/3 (UDP), so this device is offered for TCP traffic only. Some app builds and some networks do not route UDP."},
+            "sdk: url_checks has the sdk's tcp line");
+      Check(rows[0].reasons.empty(), "sdk: reliability_5m has no reasons");
       CheckText("35 ms (at most 200 ms)", rows[5].value, "sdk: latency");
       CheckText("0.42", rows[6].value, "sdk: weight_quality");
       CheckText("Germany", rows[8].value, "sdk: the country");
@@ -674,6 +745,9 @@ int main() {
     };
     Check(sdkReasons == kReasonCodes, "the reason codes are the sdk's urnet::ProviderStatusReason* constants");
     Check(ps::kReasonNone == urnet::ProviderStatusReasonNone, "none is the sdk's");
+    Check(ps::kReasonLineTcp == urnet::ProviderStatusReasonLineTcp &&
+              ps::kReasonLineIpv4 == urnet::ProviderStatusReasonLineIpv4,
+          "the reason line labels are the sdk's urnet::ProviderStatusReasonLine* constants");
     for (const char* name : {urnet::ProviderStatusNumberReliability5m, urnet::ProviderStatusNumberReliability1h,
                              urnet::ProviderStatusNumberReliability12h, urnet::ProviderStatusNumberUrlChecks,
                              urnet::ProviderStatusNumberSpeedTest, urnet::ProviderStatusNumberLatency,

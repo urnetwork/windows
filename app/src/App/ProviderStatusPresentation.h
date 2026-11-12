@@ -4,7 +4,8 @@
 // the demand area shows and whether Why? does; the line under the provide mode
 // row, which merges the local idle reason (ProviderIdleReason.h) with the
 // server's; and the Why? rows, each ranking number as a label, a value and a
-// help line.
+// help line, with the lines of the reason the network checks downgraded the
+// device (server FP2-PROTOCOL.md §5.5).
 //
 // The data is the sdk's ProviderStatusViewController's, which reads
 // GET /network/provider-status about once a minute: how often the network
@@ -252,6 +253,13 @@ inline Line LineFor(provideridle::ProviderIdleReason idle, std::string_view serv
 
 // ---- the Why? rows -----------------------------------------------------------
 
+// The labels of the sdk's reason lines (urnet::ProviderStatusReasonLine*): the
+// network checks took UDP away, so the device is offered for TCP traffic only,
+// or took IPv6 away, so it is offered for IPv4 traffic only (server
+// FP2-PROTOCOL.md §5.5).
+inline constexpr std::string_view kReasonLineTcp = "tcp";
+inline constexpr std::string_view kReasonLineIpv4 = "ipv4";
+
 template <typename Text>
 struct NumberRow {
   std::string labelKey;
@@ -259,6 +267,9 @@ struct NumberRow {
   std::string helpKey;
   // false tints the value amber: the number holds the device back
   bool passes = true;
+  // under the help line, why the network checks downgraded the device, in
+  // the reader's language (ReasonsFor)
+  std::vector<Text> reasons;
 };
 
 // How a row's value becomes text: the store's strings and the platform's
@@ -271,6 +282,8 @@ struct ValueText {
   std::function<Text(std::string_view key, const Text&, const Text&)> format;
   // a key with two integer placeholders (provider_status_value_count_of_total)
   std::function<Text(std::string_view key, int64_t, int64_t)> formatCounts;
+  // a plural key on its one integer placeholder (provider_status_reason_line_*)
+  std::function<Text(std::string_view key, int64_t count)> plural;
   // a 0-1 ratio as a whole percent in the reader's locale ("82%")
   std::function<Text(double ratio)> percent;
   // bytes per second in the app's byte rate ("3.4 MiB/s")
@@ -293,6 +306,26 @@ constexpr bool IsReliabilityLookback(std::string_view name) {
 // "35 ms": the delay is not localized (the store has no key for it)
 inline std::string Milliseconds(double value) {
   return std::to_string(std::llround(value)) + " ms";
+}
+
+// The lines the sdk derived from a number's reason, in its order: tcp and
+// ipv4 as the store's plurals with their counts, any other label as the
+// server's English, and a line with neither left out. None without lines.
+template <typename Text, typename Number>
+std::vector<Text> ReasonsFor(const Number& number, const ValueText<Text>& text) {
+  std::vector<Text> reasons;
+  if (!number.reason_lines) return reasons;
+  for (const auto& line : *number.reason_lines) {
+    const int64_t count = line.count ? *line.count : 0;
+    if (line.label == kReasonLineTcp) {
+      reasons.push_back(text.plural("provider_status_reason_line_tcp", count));
+    } else if (line.label == kReasonLineIpv4) {
+      reasons.push_back(text.plural("provider_status_reason_line_ipv4", count));
+    } else if (line.text && !line.text->empty()) {
+      reasons.push_back(text.plain(*line.text));
+    }
+  }
+  return reasons;
 }
 
 // A row for one ranking number, or nullopt for a name this build does not know
@@ -373,6 +406,7 @@ std::optional<NumberRow<Text>> NumberRowFor(const Number& number, const ValueTex
   } else {
     return std::nullopt;
   }
+  row.reasons = ReasonsFor(number, text);
   return row;
 }
 
@@ -397,7 +431,7 @@ std::vector<NumberRow<Text>> WhyRowsFor(const Status& status, const ValueText<Te
         name.push_back('a' <= c && c <= 'z' ? static_cast<char>(c - 'a' + 'A') : c);
       }
     }
-    if (!name.empty()) rows.push_back({"country", text.plain(name), "provider_status_help_country", true});
+    if (!name.empty()) rows.push_back({"country", text.plain(name), "provider_status_help_country", true, {}});
   }
   return rows;
 }

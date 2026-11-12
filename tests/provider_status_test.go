@@ -230,7 +230,11 @@ func TestProviderStatusWiring(t *testing.T) {
 	requireAll("WalletPage::RebuildProviderWhy", body("void WalletPage::RebuildProviderWhy() {"),
 		"providerstatus::WhyRowsFor(*providerStatus_, ProviderStatusText())",
 		"colors::kUrAmber",
-		"Loc(row.helpKey)")
+		"Loc(row.helpKey)",
+		"for (auto const& reason : row.reasons) {")
+	// the reason lines' plurals go through the store's plural lookup
+	requireAll("ProviderStatusText", body("providerstatus::ValueText<std::wstring> ProviderStatusText() {"),
+		"text.plural = [](std::string_view key, int64_t count) { return urnw::Plural(key, count); };")
 	requireAll("WalletPage::BuildCharts", body("void WalletPage::BuildCharts() {"),
 		"w_.WalletProviderDemandBars()",
 		"providerstatus::kBarCount",
@@ -293,26 +297,34 @@ func TestProviderStatusWiring(t *testing.T) {
 	if len(keys) < 45 {
 		t.Errorf("found only %d store keys in the provider status sources; update this contract", len(keys))
 	}
+	// the plural keys, which the catalog holds per category
+	plurals := map[string]bool{
+		"provider_status_histogram_total":  true,
+		"provider_status_reason_line_tcp":  true,
+		"provider_status_reason_line_ipv4": true,
+	}
 	for key := range keys {
 		lookup := key
-		if key == "provider_status_histogram_total" {
-			lookup = key + ".other" // a plural
+		if plurals[key] {
+			lookup = key + ".other"
 		}
 		if reswValue(t, root, "en", lookup) == "" {
 			t.Errorf("the provider status reads %q, which en/Resources.resw does not define", key)
 		}
 	}
 	for key, want := range map[string]string{
-		"provider_status_demand":                "Demand",
-		"provider_status_histogram_title":       "Times clients were offered this device, per minute, last hour",
-		"provider_status_histogram_start":       "60 min ago",
-		"provider_status_histogram_end":         "Now",
-		"provider_status_histogram_empty":       "Not offered to clients in the last hour",
-		"provider_status_unavailable":           "Provider status isn't available right now.",
-		"provider_status_why":                   "Why?",
-		"provider_status_histogram_total.other": "{} times in the last hour",
-		"provider_status_value_with_minimum":    "{0} (needs {1})",
-		"provider_status_value_count_of_total":  "{0} of {1} loaded",
+		"provider_status_demand":                 "Demand",
+		"provider_status_histogram_title":        "Times clients were offered this device, per minute, last hour",
+		"provider_status_histogram_start":        "60 min ago",
+		"provider_status_histogram_end":          "Now",
+		"provider_status_histogram_empty":        "Not offered to clients in the last hour",
+		"provider_status_unavailable":            "Provider status isn't available right now.",
+		"provider_status_why":                    "Why?",
+		"provider_status_histogram_total.other":  "{} times in the last hour",
+		"provider_status_value_with_minimum":     "{0} (needs {1})",
+		"provider_status_value_count_of_total":   "{0} of {1} loaded",
+		"provider_status_reason_line_tcp.other":  "{} of these checks failed only over HTTP/3 (UDP), so this device is offered for TCP traffic only. Some app builds and some networks do not route UDP.",
+		"provider_status_reason_line_ipv4.other": "{} of these checks failed only over IPv6, so this device is offered for IPv4 traffic only.",
 	} {
 		if got := reswValue(t, root, "en", key); got != want {
 			t.Errorf("en resw %s = %q, want %q", key, got, want)
