@@ -2,8 +2,9 @@
 // K3, K4, K6, K7, K9, N7, O8): the ring geometry a provider dot is drawn with
 // (App/ExtenderRingGeometry.h), the status mapping, settings form, QR
 // placement and import decision the panel and the sheets act on, the provider
-// extender row's reading and its switch guess, and which statistics sections
-// the Earnings page shows (App/ExtenderPresentation.h), and a build+encode of
+// extender row's reading and its switch guess, the router port mapping
+// switch's status line, and which statistics sections the Earnings page shows
+// (App/ExtenderPresentation.h), and a build+encode of
 // the vendored Nayuki encoder the share screen renders with — run against the
 // SAME sources the app compiles, on any host with a C++20 compiler.
 //
@@ -20,6 +21,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <format>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -1197,10 +1199,13 @@ void ProvideRowTests() {
 // Every field of urnet::ExtenderProvideStatus (urnetwork_sdk.hpp), by the SDK's
 // names and types. ExtenderProvideStatusViewOf reads the same names in SdkHost,
 // so a rename breaks the app build there; here the struct pins which of the
-// thirty-three the view reads, and that the twenty-five it leaves alone change
-// nothing. The router port mapping's own state (PortMapping and the six after
-// it, connect EXTENDER.md S8) is among those: the switch is the setting, read
-// beside the status, never this reading.
+// thirty-five the view reads, and that the twenty-four it leaves alone change
+// nothing. Of the router port mapping's own reading (PortMapping and the eight
+// after it, connect EXTENDER.md S10) the view reads the state and the two texts
+// an app may show, PortMappingMethodName and PortMappingPorts, and never
+// PortMappingError or PortMappingExternalIp: the router's words can name an
+// address. None of it is the switch: the switch is the setting, read beside the
+// status.
 struct FullStatus {
   bool Supported{};
   std::string State{};
@@ -1234,6 +1239,8 @@ struct FullStatus {
   int64_t PortMappingUdpPort{};
   int64_t PortMappingDnsPort{};
   std::string PortMappingError{};
+  std::string PortMappingMethodName{};
+  std::string PortMappingPorts{};
   int64_t ConnectionCount{};
 };
 
@@ -1278,19 +1285,57 @@ void ProvideStatusViewTests() {
     noisy.LastPeerPingTime = 1757800000002;
     noisy.LimitedBySubnetsCount = 3;
     noisy.LimitedBySourceCount = 4;
-    noisy.PortMapping = "mapped";
     noisy.PortMappingMethod = "pcp";
     noisy.PortMappingExternalIp = "198.51.100.7";
     noisy.PortMappingTcpPort = 443;
     noisy.PortMappingUdpPort = 443;
     noisy.PortMappingDnsPort = 4053;
-    noisy.PortMappingError = "udp 4053: the router refused the mapping";
+    noisy.PortMappingError = "udp 4053: 192.168.1.1 refused the mapping";
     noisy.ConnectionCount = 12;
     Check(ViewOf(noisy) == base,
-          "the twenty-five fields the view leaves alone change nothing");
+          "the twenty-four fields the view leaves alone change nothing");
     // a mapped router does not turn the switch on: the switch is the setting
-    Check(!ViewOf(noisy).provideExtenderPortMapping,
+    FullStatus mapped = BaseStatus();
+    mapped.PortMapping = kExtenderPortMappingMapped;
+    mapped.PortMappingMethodName = "PCP";
+    mapped.PortMappingPorts = "TCP 443, UDP 443, UDP 4053";
+    Check(!ViewOf(mapped).provideExtenderPortMapping,
           "the router port mapping's state is not the port mapping switch");
+  }
+  {
+    TEST_CASE("readsThePortMappingsStateAndTextsNeverItsError");
+    FullStatus mapped = BaseStatus();
+    mapped.PortMapping = kExtenderPortMappingMapped;
+    mapped.PortMappingMethod = "natpmp";
+    mapped.PortMappingMethodName = "NAT-PMP";
+    mapped.PortMappingPorts = "TCP 40443\xE2\x86\x92" "443, UDP 4053";
+    mapped.PortMappingExternalIp = "198.51.100.7";
+    mapped.PortMappingError = "udp 443: 192.168.1.1 answered 718 ConflictInMappingEntry";
+    const ExtenderProvideStatusView view = ViewOf(mapped);
+    CheckEq("mapped", view.portMapping, "the state comes across as the sdk's token");
+    CheckEq("NAT-PMP", view.portMappingMethodName, "the method comes across as its name");
+    CheckEq("TCP 40443\xE2\x86\x92" "443, UDP 4053", view.portMappingPorts,
+            "the ports text comes across as it is, its arrow and all");
+    // the router's words and its address reach no field of the view
+    FullStatus quiet = mapped;
+    quiet.PortMappingExternalIp.clear();
+    quiet.PortMappingError.clear();
+    Check(ViewOf(quiet) == view, "the router's error and external address change nothing");
+    for (const std::string& field :
+         {view.state, view.errorCase, view.reason, view.portMapping, view.portMappingMethodName,
+          view.portMappingPorts}) {
+      Check(field.find("192.168.1.1") == std::string::npos &&
+                field.find("198.51.100.7") == std::string::npos &&
+                field.find("ConflictInMappingEntry") == std::string::npos,
+            "no field of the view carries the router's words or an address it names");
+    }
+    // nothing of it is read off a role the device does not report
+    FullStatus unsupported = mapped;
+    unsupported.Supported = false;
+    const ExtenderProvideStatusView hidden = ViewOf(unsupported);
+    Check(hidden.portMapping.empty() && hidden.portMappingMethodName.empty() &&
+              hidden.portMappingPorts.empty(),
+          "an unsupported role reads no port mapping state");
   }
   {
     TEST_CASE("eachReadFieldMovesTheView");
@@ -1307,6 +1352,9 @@ void ProvideStatusViewTests() {
         {"ActivatedV6", [](FullStatus& s) { s.ActivatedV6 = true; }},
         {"LastActivationRefused", [](FullStatus& s) { s.LastActivationRefused = true; }},
         {"Enabled", [](FullStatus& s) { s.Enabled = false; }},
+        {"PortMapping", [](FullStatus& s) { s.PortMapping = kExtenderPortMappingFailed; }},
+        {"PortMappingMethodName", [](FullStatus& s) { s.PortMappingMethodName = "UPnP"; }},
+        {"PortMappingPorts", [](FullStatus& s) { s.PortMappingPorts = "TCP 443"; }},
     };
     for (const Flip& flip : flips) {
       FullStatus status = BaseStatus();
@@ -1760,6 +1808,41 @@ void PortMappingRowTests() {
           "and a flip back holds off");
   }
   {
+    TEST_CASE("itsGuessDropsTheRolesLastReport");
+    // A changed setting replaces a running role (connect EXTENDER.md S10), so
+    // what the router did for the old one is no longer so: the line goes with
+    // the flip, and the next pushed status brings the new role's.
+    ExtenderProvideStatusView mapped = s.writable;
+    mapped.provideExtenderPortMapping = true;
+    mapped.portMapping = kExtenderPortMappingMapped;
+    mapped.portMappingMethodName = "PCP";
+    mapped.portMappingPorts = "TCP 443, UDP 443, UDP 4053";
+    for (bool on : {false, true}) {
+      const ExtenderProvideStatusView guess = PortMappingGuessFor(mapped, on);
+      Check(guess.portMapping.empty() && guess.portMappingMethodName.empty() &&
+                guess.portMappingPorts.empty(),
+            "a flip drops the role's last port mapping report");
+      Check(PortMappingRowModelFor(guess).statusKey.empty(),
+            "so no line shows until the next pushed status");
+      ExtenderProvideStatusView expected = mapped;
+      expected.provideExtenderPortMapping = on;
+      expected.portMapping.clear();
+      expected.portMappingMethodName.clear();
+      expected.portMappingPorts.clear();
+      Check(guess == expected, "and nothing else of the reading changes");
+    }
+    // the Extender switch's guess starts or stops the role, so it drops it too
+    const ExtenderProvideStatusView extenderGuess = ExtenderProvideGuessFor(mapped, true, true);
+    Check(extenderGuess.portMapping.empty() &&
+              PortMappingRowModelFor(extenderGuess).statusKey.empty(),
+          "flipping the Extender switch drops the port mapping report");
+    // the speed tests switch changes no role: the router still forwards
+    const ExtenderProvideStatusView speedTestsGuess = SpeedTestsGuessFor(mapped, false);
+    Check(speedTestsGuess.portMapping == kExtenderPortMappingMapped &&
+              !PortMappingRowModelFor(speedTestsGuess).statusKey.empty(),
+          "flipping the speed tests switch keeps the port mapping line");
+  }
+  {
     TEST_CASE("theOtherSwitchesGuessesKeepIt");
     ExtenderProvideStatusView on = s.writable;
     on.provideExtenderPortMapping = true;
@@ -1826,6 +1909,184 @@ void PortMappingWriteRouteTests() {
               "the provider-only switch shows exactly when its write goes to the service");
       }
     }
+  }
+}
+
+// ---- ExtenderPresentation.h: the router port mapping's status line ----------
+
+// The line as the app composes it (ProvideModeVisual.h PortMappingStatusText),
+// in English: the key through the store, and the mapped line through
+// std::vformat with the sdk's two texts as its {0} and {1}, as urnw::Format
+// fills a translation that may reorder them. Empty for no line.
+std::string PortMappingLine(const PortMappingRowModel& model) {
+  return ComposePortMappingStatusText<std::string>(
+      model, [](const std::string& key) { return EnglishFor(key); },
+      [](const std::string& key, const std::string& ports, const std::string& method) {
+        return std::vformat(EnglishFor(key), std::make_format_args(ports, method));
+      },
+      [](const std::string& utf8) { return utf8; });
+}
+
+// A shown switch, turned on, over a role that reports `state` with the texts.
+ExtenderProvideStatusView PortMappingReport(const char* state, const char* methodName = "",
+                                            const char* ports = "") {
+  ExtenderProvideStatusView view = ProvideStatus(kExtenderProvideStateActive);
+  view.enabled = true;
+  view.provideExtenderPortMapping = true;
+  view.portMapping = state;
+  view.portMappingMethodName = methodName;
+  view.portMappingPorts = ports;
+  return view;
+}
+
+void PortMappingStatusLineTests() {
+  const PortMappingStatuses s = PortMappingStatusesFor();
+  // "TCP 40443→443": the router's port, an arrow, the bound one
+  const std::string moved = "TCP 40443\xE2\x86\x92" "443, UDP 4053";
+  {
+    TEST_CASE("theStoreHasEveryLine");
+    for (const char* key : {"extender_port_mapping_not_needed", "extender_port_mapping_mapping",
+                            "extender_port_mapping_failed"}) {
+      const auto found = EnglishStore().find(key);
+      Check(found != EnglishStore().end(), std::string("the store carries ") + key);
+      if (found == EnglishStore().end()) continue;
+      Check(!found->second.empty() && found->second.find('{') == std::string::npos,
+            std::string(key) + " is whole text, with no placeholder");
+    }
+    const auto mapped = EnglishStore().find("extender_port_mapping_mapped");
+    Check(mapped != EnglishStore().end(), "the store carries extender_port_mapping_mapped");
+    if (mapped != EnglishStore().end()) {
+      Check(mapped->second.find("{0}") != std::string::npos &&
+                mapped->second.find("{1}") != std::string::npos &&
+                mapped->second.find("{}") == std::string::npos,
+            "extender_port_mapping_mapped takes the ports as {0} and the method as {1}");
+    }
+  }
+  {
+    TEST_CASE("eachStateReadsItsLine");
+    CheckEq("Not needed: this device has a public address.",
+            PortMappingLine(PortMappingRowModelFor(PortMappingReport(kExtenderPortMappingNotNeeded))),
+            "not_needed reads extender_port_mapping_not_needed");
+    CheckEq("Asking your router\xE2\x80\xA6",
+            PortMappingLine(PortMappingRowModelFor(PortMappingReport(kExtenderPortMappingMapping))),
+            "mapping reads extender_port_mapping_mapping");
+    CheckEq("Your router didn't open the ports. Trying again later.",
+            PortMappingLine(PortMappingRowModelFor(PortMappingReport(kExtenderPortMappingFailed))),
+            "failed reads extender_port_mapping_failed");
+    CheckEq("Your router forwards TCP 443, UDP 443, UDP 4053 (PCP).",
+            PortMappingLine(PortMappingRowModelFor(PortMappingReport(
+                kExtenderPortMappingMapped, "PCP", "TCP 443, UDP 443, UDP 4053"))),
+            "mapped reads extender_port_mapping_mapped, the ports and then the method");
+    CheckEq("Your router forwards " + moved + " (NAT-PMP).",
+            PortMappingLine(PortMappingRowModelFor(
+                PortMappingReport(kExtenderPortMappingMapped, "NAT-PMP", moved.c_str()))),
+            "a port the router moved reads as the sdk wrote it");
+    const PortMappingRowModel model = PortMappingRowModelFor(
+        PortMappingReport(kExtenderPortMappingMapped, "UPnP", "TCP 443"));
+    CheckEq("extender_port_mapping_mapped", model.statusKey, "the mapped line's key");
+    CheckEq("TCP 443", model.statusPorts, "its {0}, the ports");
+    CheckEq("UPnP", model.statusMethod, "its {1}, the method");
+  }
+  {
+    TEST_CASE("offNoRoleOrAnUnknownStateReadsNoLine");
+    for (const char* state : {kExtenderPortMappingOff, "", "renewing"}) {
+      const PortMappingRowModel model =
+          PortMappingRowModelFor(PortMappingReport(state, "PCP", "TCP 443"));
+      Check(model.statusKey.empty() && PortMappingLine(model).empty(),
+            std::string("no line for the state \"") + state + "\"");
+      Check(model.visible && model.on, "and the switch still shows, on");
+    }
+  }
+  {
+    TEST_CASE("aMappedLineNeedsBothTexts");
+    for (const auto& [method, ports] : std::initializer_list<std::pair<const char*, const char*>>{
+             {"", "TCP 443"}, {"PCP", ""}, {"", ""}}) {
+      const PortMappingRowModel model =
+          PortMappingRowModelFor(PortMappingReport(kExtenderPortMappingMapped, method, ports));
+      Check(model.statusKey.empty() && PortMappingLine(model).empty(),
+            "a mapped status without its method or its ports shows no line, never empty "
+            "parentheses");
+    }
+  }
+  {
+    TEST_CASE("onlyWhileTheSwitchIsOn");
+    for (const char* state : {kExtenderPortMappingNotNeeded, kExtenderPortMappingMapping,
+                              kExtenderPortMappingMapped, kExtenderPortMappingFailed}) {
+      ExtenderProvideStatusView view = PortMappingReport(state, "PCP", "TCP 443");
+      view.provideExtenderPortMapping = false;
+      const PortMappingRowModel model = PortMappingRowModelFor(view);
+      Check(model.visible && !model.on && model.statusKey.empty(),
+            std::string("no line while the switch is off: ") + state);
+    }
+  }
+  {
+    TEST_CASE("onlyUnderASwitchThatShows");
+    for (ExtenderProvideStatusView view : {s.older, s.extenderOnly, s.speedTestsOnly}) {
+      view.provideExtenderPortMapping = true;
+      view.portMapping = kExtenderPortMappingMapped;
+      view.portMappingMethodName = "PCP";
+      view.portMappingPorts = "TCP 443";
+      const PortMappingRowModel model = PortMappingRowModelFor(view);
+      Check(!model.visible && model.statusKey.empty(), "a hidden switch has no line under it");
+    }
+    ExtenderProvideStatusView unsupported = PortMappingReport(kExtenderPortMappingFailed);
+    unsupported.supported = false;
+    Check(PortMappingRowModelFor(unsupported).statusKey.empty(),
+          "nor does an unsupported role");
+    // the provider-only device's status, from a service that takes the write,
+    // reads exactly as a session's
+    for (const char* state : {kExtenderPortMappingNotNeeded, kExtenderPortMappingMapping,
+                              kExtenderPortMappingMapped, kExtenderPortMappingFailed}) {
+      ExtenderProvideStatusView providerOnly = s.writable;
+      providerOnly.provideExtenderPortMapping = true;
+      providerOnly.portMapping = state;
+      providerOnly.portMappingMethodName = "PCP";
+      providerOnly.portMappingPorts = "TCP 443";
+      CheckEq(PortMappingLine(PortMappingRowModelFor(PortMappingReport(state, "PCP", "TCP 443"))),
+              PortMappingLine(PortMappingRowModelFor(providerOnly)),
+              std::string("the provider-only device's line: ") + state);
+    }
+  }
+  {
+    TEST_CASE("theRoutersWordsNeverShow");
+    // what a device reports beside a failure or a mapping: its error names the
+    // gateway and its external address the public one; neither field is read,
+    // so no line can carry them, whatever the state
+    for (const char* state : {kExtenderPortMappingNotNeeded, kExtenderPortMappingMapping,
+                              kExtenderPortMappingMapped, kExtenderPortMappingFailed}) {
+      FullStatus status = BaseStatus();
+      status.PortMapping = state;
+      status.PortMappingMethod = "upnp";
+      status.PortMappingMethodName = "UPnP";
+      status.PortMappingPorts = "TCP 443, UDP 4053";
+      status.PortMappingExternalIp = "198.51.100.7";
+      status.PortMappingError = "udp 443: 192.168.1.1 answered 718 ConflictInMappingEntry";
+      const std::string line =
+          PortMappingLine(PortMappingRowModelFor(ViewOf(status, true, true, true)));
+      Check(!line.empty(), std::string("the line shows: ") + state);
+      Check(line.find("192.168.1.1") == std::string::npos &&
+                line.find("198.51.100.7") == std::string::npos &&
+                line.find("ConflictInMappingEntry") == std::string::npos &&
+                line.find("upnp") == std::string::npos,
+            std::string("the line never carries the router's words or an address: ") + state);
+    }
+  }
+  {
+    TEST_CASE("theLineIsPartOfTheModel");
+    const PortMappingRowModel failed =
+        PortMappingRowModelFor(PortMappingReport(kExtenderPortMappingFailed));
+    const PortMappingRowModel mapping =
+        PortMappingRowModelFor(PortMappingReport(kExtenderPortMappingMapping));
+    Check(failed != mapping, "a new line alone is a change");
+    const PortMappingRowModel pcp = PortMappingRowModelFor(
+        PortMappingReport(kExtenderPortMappingMapped, "PCP", "TCP 443"));
+    const PortMappingRowModel upnp = PortMappingRowModelFor(
+        PortMappingReport(kExtenderPortMappingMapped, "UPnP", "TCP 443"));
+    const PortMappingRowModel morePorts = PortMappingRowModelFor(
+        PortMappingReport(kExtenderPortMappingMapped, "PCP", "TCP 443, UDP 443"));
+    Check(pcp != upnp, "so is a new method");
+    Check(pcp != morePorts, "and new ports");
+    Check(PortMappingRowModel{}.statusKey.empty(), "a default row has no line");
   }
 }
 
@@ -2063,6 +2324,8 @@ int main() {
   PortMappingRowTests();
   std::cout << "router port mapping switch write\n";
   PortMappingWriteRouteTests();
+  std::cout << "router port mapping status line\n";
+  PortMappingStatusLineTests();
   std::cout << "statistics sections\n";
   StatsSectionsTests();
 
