@@ -201,14 +201,48 @@ func TestSettlementV2Wiring(t *testing.T) {
 	requireAll("WalletPage::RebuildV2Section", functionBody(walletPage, "void WalletPage::RebuildV2Section("),
 		"if (account.claimableRao > 0) figure.Foreground(colors::AccentBrush());",
 	)
-	// After Done (the dialog's own first: snpayout::WithClaimPaid, which the
-	// spec pins) the claimer reads the accounts and the gas balance again, so a
-	// dialog closed early does not leave the page stale.
+	// After Done (the claim in flight's own first: snpayout::WithClaimPaid,
+	// which the spec pins) the page reads the accounts and the gas balance
+	// again, whether or not a dialog is still up.
 	if !regexp.MustCompile(`events = snpayout::WithClaimPaid\(std::move\(events\), \[queue, weak, session\]\(bool paid\) \{\s*` +
 		`queue\.TryEnqueue\(\[weak, paid, session\] \{\s*if \(auto self = weak\.get\(\)\) \{\s*` +
 		`self->wallet\(\)\.LoadV2Accounts\(\);\s*self->wallet\(\)\.LoadGas\(\);`).MatchString(walletPage) {
-		t.Error("WalletPage.cpp: the v2 claimer does not read the accounts and the gas balance again after Done")
+		t.Error("WalletPage.cpp: the v2 claim does not read the accounts and the gas balance again after Done")
 	}
+
+	// The claim in flight is the page's, the signed-in session's, never the
+	// dialog's (owner, 2026-11-12): the page starts it on the dialog's progress
+	// (snpayout::LedgerClaimInFlight, which the spec pins), each event moves
+	// that progress on the UI thread whether or not a dialog is up, an open
+	// dialog draws it again, and Done ends the claim in flight.
+	startV2 := functionBody(walletPage, "bool WalletPage::StartV2Claim(")
+	requireAll("WalletPage::StartV2Claim", startV2,
+		"const std::optional<uint64_t> started = v2Claim_.Start(progress);",
+		"if (!started) return false;",
+		"const std::weak_ptr<snpayout::LedgerClaimProgress> claim = progress;",
+		"rows.Sent(noId, index, txHash);",
+		"rows.Confirmed(noId, index, txHash, amountRao);",
+		"rows.Failed(noId, index, message);",
+		"if (auto self = weak.get()) self->wallet().OnV2ClaimDone(claim, ticket);",
+		"Sdk().device().snLedgerClaim(",
+	)
+	if strings.Count(startV2, "self->wallet().OnV2ClaimEvent(") != 3 {
+		t.Error("WalletPage::StartV2Claim: Sent, Confirmed and Failed do not each go through OnV2ClaimEvent")
+	}
+	requireAll("WalletPage::OnV2ClaimEvent", functionBody(walletPage, "void WalletPage::OnV2ClaimEvent("),
+		"const auto progress = claim.lock();",
+		"if (!progress) return;",
+		"step(*progress);",
+		"if (v2ClaimSheet_) v2ClaimSheet_->Redraw();",
+	)
+	requireAll("WalletPage::OnV2ClaimDone", functionBody(walletPage, "void WalletPage::OnV2ClaimDone("),
+		"if (const auto progress = claim.lock()) progress->Done();",
+		"if (v2Claim_.End(ticket)) RebuildV2Section();",
+		"if (v2ClaimSheet_) v2ClaimSheet_->Redraw();",
+	)
+	requireAll("WalletPage::MakeV2Claimer", functionBody(walletPage, "LedgerClaimer WalletPage::MakeV2Claimer("),
+		"return self && self->wallet().StartV2Claim(std::move(progress));",
+	)
 
 	// The v2 dialog's own functions (the v1 dialog beside it has its own).
 	sheets := stripComments(readAppSource(t, "EarningsSheets.cpp"))
@@ -220,15 +254,20 @@ func TestSettlementV2Wiring(t *testing.T) {
 		}
 		return body
 	}
-	// every event moves the spec's progress, and the dialog redraws from it
-	requireAll("ClaimLedgerSheet::StartClaim", sheet("void ClaimLedgerSheet::StartClaim("),
-		"if (!progress_.Start()) return;",
-		"self->progress_.Sent(noId, index, txHash);",
-		"self->progress_.Confirmed(noId, index, txHash, amountRao);",
-		"self->progress_.Failed(noId, index, message);",
-		"self->progress_.Done();",
-		"claimer_(std::move(events));",
+	// the dialog's Claim asks the page for the claim on its progress, held
+	// while one is out, and applies none of the claim's events itself: a
+	// dismissed dialog would drop them
+	startClaim := sheet("void ClaimLedgerSheet::StartClaim(")
+	requireAll("ClaimLedgerSheet::StartClaim", startClaim,
+		"if (progress_->sending() || !claimer_) return;",
+		"if (!claimer_(progress_)) return;",
 	)
+	for _, own := range []string{"weak_from_this()", "progress_->Sent(", "progress_->Confirmed(", "progress_->Failed(",
+		"progress_->Done(", "progress_->Start("} {
+		if strings.Contains(startClaim, own) {
+			t.Errorf("ClaimLedgerSheet::StartClaim: %s: the dialog moves the claim itself, and drops its events once dismissed", own)
+		}
+	}
 	// needs_gas opens the v1 dialog's funding hint, asking for a v2 claim's gas,
 	// and the dialog clamps to its window as the v1 dialog does (SheetFit.h)
 	requireAll("ClaimLedgerSheet::Build", sheet("void ClaimLedgerSheet::Build("),
@@ -237,14 +276,14 @@ func TestSettlementV2Wiring(t *testing.T) {
 		"scroll.MaxHeight(sheetfit::Height(root, 560));",
 	)
 	requireAll("ClaimLedgerSheet::ApplyState", sheet("void ClaimLedgerSheet::ApplyState("),
-		"needsGasPanel_.Visibility(progress_.needsGas() ? Visibility::Visible : Visibility::Collapsed);",
-		"claimButton_.IsEnabled(progress_.CanClaim(allowActions_));",
-		"LedgerFailureText(progress_.failure())",
+		"needsGasPanel_.Visibility(progress_->needsGas() ? Visibility::Visible : Visibility::Collapsed);",
+		"claimButton_.IsEnabled(progress_->CanClaim(allowActions_));",
+		"LedgerFailureText(progress_->failure())",
 	)
 	// Sent links the explorer; a failure says the store's sentence or the
 	// message as it came
 	requireAll("ClaimLedgerSheet::BuildRow", sheet("UIElement ClaimLedgerSheet::BuildRow("),
-		"PoolTitleText(progress_.TitleKey(row), row.noId)",
+		"PoolTitleText(progress_->TitleKey(row), row.noId)",
 		"snpayout::ExplorerTxLink(explorerTxUrl_, row.txHash)",
 		`link.Content(LocBox("earnings_view_transaction"));`,
 		"LedgerFailureText(row.message)",
@@ -365,7 +404,8 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 	// status, the won slots with capture the flag's account, and Claim both
 	section := body("WalletPage.cpp", page, "void WalletPage::RebuildV2Section(")
 	requireAll("WalletPage::RebuildV2Section", section,
-		"CanClaim(), v2Unavailable_, TransferFloorRao());",
+		// a claim in flight keeps Claim, which opens its dialog
+		"CanClaim(), v2Unavailable_, TransferFloorRao(), v2Claim_.InFlight());",
 		"if (!account.titleKey.empty()) {",
 		"MakeText(PoolTitleText(account.titleKey, account.noId), 13, colors::TextBrush())",
 		"if (account.unavailable) {",
@@ -419,25 +459,35 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 	}
 	requireAll("WalletPage::TransferFloorRao", body("WalletPage.cpp", page, "int64_t WalletPage::TransferFloorRao("),
 		"return claimStatus_ && !claimStatus_->error ? claimStatus_->transfer_floor_rao : 0;")
-	// the claim dialog gets the read's unavailable pools and the floor; its one
-	// Claim is the SDK's SnLedgerClaim, which batches
-	requireAll("WalletPage::OnClaimV2", body("WalletPage.cpp", page, "winrt::fire_and_forget WalletPage::OnClaimV2("),
-		"v2Accounts_, v2Unavailable_,", "TransferFloorRao(), gas, ExplorerTxUrl(), allowActions, MakeV2Claimer());")
-	claimer := body("WalletPage.cpp", page, "LedgerClaimer WalletPage::MakeV2Claimer(")
-	requireAll("WalletPage::MakeV2Claimer", claimer,
+	// the claim dialog: the claim in flight's progress while there is one, else
+	// one over the read with its unavailable pools and the floor; its one Claim
+	// is the SDK's SnLedgerClaim, which batches
+	openV2 := body("WalletPage.cpp", page, "winrt::fire_and_forget WalletPage::OnClaimV2(")
+	requireAll("WalletPage::OnClaimV2", openV2,
+		"std::shared_ptr<snpayout::LedgerClaimProgress> progress = v2Claim_.Progress();",
+		"if (!progress) {",
+		"progress = std::make_shared<snpayout::LedgerClaimProgress>(v2Accounts_, gas.tao, v2Unavailable_,",
+		"TransferFloorRao());",
+		"urnw::ClaimLedgerSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,",
+		"ExplorerTxUrl(), allowActions, MakeV2Claimer());")
+	requireOrder("WalletPage::OnClaimV2", openV2,
+		"= v2Claim_.Progress();", "if (!progress) {", "std::make_shared<snpayout::LedgerClaimProgress>(",
+		"urnw::ClaimLedgerSheet::Create(")
+	claimer := body("WalletPage.cpp", page, "bool WalletPage::StartV2Claim(")
+	requireAll("WalletPage::StartV2Claim", claimer,
 		"Sdk().device().snLedgerClaim(",
 		// a win the claim paid loses its line: the wins are read again at Done,
 		// and after a claim that paid an account on the apps' schedule (the
 		// server reads a claim only once the finalized head covers it)
 		// the session the claim starts in: a Done after a sign-out starts no
 		// reads for the next account
-		"if (auto self = weak.get()) session = self->wallet().ctfWinsAfterClaim_.Session();",
+		"const uint32_t session = ctfWinsAfterClaim_.Session();",
 		"events = snpayout::WithClaimPaid(std::move(events), [queue, weak, session](bool paid) {",
 		"queue.TryEnqueue([weak, paid, session] {",
 		"self->wallet().LoadCtfClient();",
 		"self->wallet().ReadCtfWinsAfterClaim(paid, session);")
-	requireOrder("WalletPage::MakeV2Claimer", claimer,
-		"ctfWinsAfterClaim_.Session();", "snpayout::WithClaimPaid(", "self->wallet().LoadCtfClient();",
+	requireOrder("WalletPage::StartV2Claim", claimer,
+		"v2Claim_.Start(", "ctfWinsAfterClaim_.Session();", "snpayout::WithClaimPaid(", "self->wallet().LoadCtfClient();",
 		"self->wallet().ReadCtfWinsAfterClaim(paid, session);",
 		"snpayout::LedgerClaimCallbackFor<urnet::SnLedgerClaimCallback>(events)")
 	requireAll("WalletPage::ReadCtfWinsAfterClaim", body("WalletPage.cpp", page, "void WalletPage::ReadCtfWinsAfterClaim("),
@@ -461,29 +511,36 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		"if (ctfWinsTimer_) ctfWinsTimer_.Stop();")
 	// the won slots: every unclaimed win, read with the Earnings reads, dropped
 	// at sign-out, with the reads after that account's claim; a read that failed
-	// keeps the last good read's lines, and the lines show the newest read's good
-	// answer whatever order the answers land in (snpayout::CtfWinsLines)
+	// keeps the last good read's lines, the lines show the newest read's good
+	// answer whatever order the answers land in, and a client answer never
+	// replaces a network answer's lines (snpayout::CtfWinsLines)
 	loadWins := body("WalletPage.cpp", page, "void WalletPage::LoadCtfClient(")
 	requireAll("WalletPage::LoadCtfClient", loadWins,
 		"const uint32_t read = ctfWins_.Start();",
 		"Sdk().device().snCtfClient(", "std::optional<std::vector<snpayout::CtfWin>> wins;",
 		"wins = snpayout::CtfWinsReadFrom(*result);",
-		"self->wallet().ApplyCtfClient(read, wins);")
+		"answer = snpayout::CtfAnswerOf(*result);",
+		"self->wallet().ApplyCtfClient(read, wins, answer);")
 	if strings.Contains(loadWins, "CtfWinsFrom(") {
 		t.Error("WalletPage::LoadCtfClient: reads CtfWinsFrom, which makes a failed read no lines")
 	}
 	requireAll("WalletPage::ApplyCtfClient", body("WalletPage.cpp", page, "void WalletPage::ApplyCtfClient("),
-		"if (!ctfWins_.Apply(read, std::move(wins))) return;", "RebuildV2Section();")
+		"if (!ctfWins_.Apply(read, std::move(wins), answer)) return;", "RebuildV2Section();")
 	requireAll("WalletPage::LoadWallet", body("WalletPage.cpp", page, "void WalletPage::LoadWallet("), "LoadCtfClient();")
+	// a sign-out also drops the claim in flight, so the next account's Claim is
+	// its own
 	requireAll("WalletPage::ResetForSignOut", body("WalletPage.cpp", page, "void WalletPage::ResetForSignOut("),
-		"ctfWins_.Reset();", "ctfWinsAfterClaim_.Stop();", "if (ctfWinsTimer_) ctfWinsTimer_.Stop();")
+		"ctfWins_.Reset();", "ctfWinsAfterClaim_.Stop();", "if (ctfWinsTimer_) ctfWinsTimer_.Stop();",
+		"v2Claim_.Drop();")
 	header := stripComments(readAppSource(t, "WalletPage.h"))
 	requireAll("WalletPage.h", header,
 		"void ReadCtfWinsAfterClaim(bool paid, uint32_t session);",
 		"void ArmCtfWinsTimer(snpayout::CtfWinsReadsAfterClaim::Wait wait);",
 		"void OnCtfWinsTimer(uint32_t token);", "snpayout::CtfWinsReadsAfterClaim ctfWinsAfterClaim_;",
 		"winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer ctfWinsTimer_{nullptr};",
-		"snpayout::CtfWinsLines ctfWins_;")
+		"snpayout::CtfWinsLines ctfWins_;",
+		"snpayout::LedgerClaimInFlight v2Claim_;",
+		"bool StartV2Claim(std::shared_ptr<snpayout::LedgerClaimProgress> progress);")
 	// the lines are the newest read's good answer: no generation drops an older
 	// read's good answer when a newer read fails
 	if strings.Contains(page, "ctfClientGeneration_") || strings.Contains(header, "ctfClientGeneration_") {
@@ -503,22 +560,25 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 		"return Loc(titleKey);")
 	requireAll("CtfWinText", body("EarningsSheets.cpp", sheets, "hstring CtfWinText("),
 		"RegionDisplayName(win.country)", "urnw::Format(snpayout::CtfWinKey(win), country)")
-	// the claim dialog: the read's unavailable pools and the floor, each row's
-	// title, its unavailable and under-the-floor words, and Claim both
-	requireAll("ClaimLedgerSheet::ClaimLedgerSheet", sheets,
-		"progress_(accounts, gas.tao, unavailable, transferFloorRao)")
+	// the claim dialog: the progress it is given (the claim in flight's, or one
+	// over the read's unavailable pools and the floor: WalletPage::OnClaimV2),
+	// each row's title, its unavailable and under-the-floor words, and Claim both
+	requireAll("ClaimLedgerSheet::ClaimLedgerSheet", sheets, ": progress_(std::move(progress)),")
 	requireAll("ClaimLedgerSheet::BuildRow", body("EarningsSheets.cpp", sheets, "UIElement ClaimLedgerSheet::BuildRow("),
-		"PoolTitleText(progress_.TitleKey(row), row.noId)",
+		"PoolTitleText(progress_->TitleKey(row), row.noId)",
 		// no figure for an unavailable pool or an amount not known yet: never a zero
 		"const bool known = row.amountRao > 0 && !row.unavailable;",
 		"known ? hstring{FormatAlphaRao(row.amountRao)} : hstring{}",
 		`word = Loc("sn_ledger_pool_unavailable");`, `word = Loc("sn_ledger_pool_under_floor");`)
 	requireAll("ClaimLedgerSheet::ApplyState", body("EarningsSheets.cpp", sheets, "void ClaimLedgerSheet::ApplyState("),
+		// the figure: during a claim what the claim moves, between claims what
+		// Claim moves (snpayout::LedgerClaimProgress::FigureRao)
+		"const int64_t total = progress_->FigureRao();",
 		// with only pools it could not read, no total
-		"totalValue_.Text(progress_.TotalKnown() ? hstring{FormatAlphaRao(total)} : hstring{});",
+		"totalValue_.Text(progress_->TotalKnown() ? hstring{FormatAlphaRao(total)} : hstring{});",
 		// nothing Claim moves and no claim out: only Close, never a Claim of 0
-		"claimButton_.Visibility(0 < total || progress_.sending() ? Visibility::Visible : Visibility::Collapsed);",
-		"progress_.ClaimsBoth()", `? Loc("sn_ledger_claim_both")`,
+		"claimButton_.Visibility(0 < total || progress_->sending() ? Visibility::Visible : Visibility::Collapsed);",
+		"progress_->ClaimsBoth()", `? Loc("sn_ledger_claim_both")`,
 		// and with nothing it moves no amount at all: never a Claim of 0
 		`: 0 < total ? hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))} : Loc("claim")`)
 

@@ -152,7 +152,8 @@ class WalletPage {
                           winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   winrt::fire_and_forget OnClaimAlpha(winrt::Windows::Foundation::IInspectable const&,
                                       winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-  // settlement v2's Claim: the v2 claim dialog
+  // settlement v2's Claim: the v2 claim dialog, on the claim in flight while
+  // there is one
   winrt::fire_and_forget OnClaimV2(winrt::Windows::Foundation::IInspectable const&,
                                    winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
   // the payout consent's button beside it: Sign with wallet, or Change wallet
@@ -392,11 +393,13 @@ class WalletPage {
   // Capture the flag's won-slot lines (GET /sn/ctf/client, the sdk's
   // SnCtfClient): a line for every win not claimed yet, read with the Earnings
   // reads, and the answer to read number `read`: the lines show the newest
-  // read's good answer (snpayout::CtfWinsLines), and none (std::nullopt) is a
-  // read that failed, which keeps them. Drawn with the settlement v2 section's
-  // capture the flag account.
+  // read's good answer (snpayout::CtfWinsLines), a network answer beating a
+  // client answer (`answer`), and none (std::nullopt) is a read that failed,
+  // which keeps them. Drawn with the settlement v2 section's capture the flag
+  // account.
   void LoadCtfClient();
-  void ApplyCtfClient(uint32_t read, std::optional<std::vector<snpayout::CtfWin>> wins);
+  void ApplyCtfClient(uint32_t read, std::optional<std::vector<snpayout::CtfWin>> wins,
+                      snpayout::CtfAnswer answer);
   // After a v2 claim's Done, which read the wins: when the claim, started in
   // `session`, paid an account they are read again 30 s, 60 s and 120 s after
   // Done (snpayout::CtfWinsReadsAfterClaim, every app's schedule) through
@@ -404,10 +407,22 @@ class WalletPage {
   void ReadCtfWinsAfterClaim(bool paid, uint32_t session);
   void ArmCtfWinsTimer(snpayout::CtfWinsReadsAfterClaim::Wait wait);
   void OnCtfWinsTimer(uint32_t token);
-  // The SDK's v2 claim, wrapped for the v2 dialog (Device.snLedgerClaim); after
-  // its Done the page reads the accounts, the gas balance, the relay's status
-  // and the wins again, and the wins on the schedule after a claim that paid.
+  // The v2 dialog's Claim (Device.snLedgerClaim): StartV2Claim.
   LedgerClaimer MakeV2Claimer();
+  // Starts the SDK's v2 claim on a dialog's `progress` as the session's claim
+  // in flight (v2Claim_): false, starting nothing, while one is in flight or
+  // when the press would take nothing. Its events move the progress through
+  // OnV2ClaimEvent whether or not a dialog shows it; after its Done the page
+  // reads the accounts, the gas balance, the relay's status and the wins
+  // again, and the wins on the schedule after a claim that paid.
+  bool StartV2Claim(std::shared_ptr<snpayout::LedgerClaimProgress> progress);
+  // An event of the claim whose progress is `claim`, and its Done (`ticket`):
+  // they move that progress while the page or a dialog holds it, an open
+  // dialog draws it again, and Done ends the claim in flight
+  // (snpayout::LedgerClaimInFlight).
+  void OnV2ClaimEvent(std::weak_ptr<snpayout::LedgerClaimProgress> const& claim,
+                      std::function<void(snpayout::LedgerClaimProgress&)> const& step);
+  void OnV2ClaimDone(std::weak_ptr<snpayout::LedgerClaimProgress> const& claim, uint64_t ticket);
 
   // ---- the payout consent (SnConsentPresentation.h)
   // The network's consent (Api.snNetworkConsentStatus), and the answer to read
@@ -639,6 +654,10 @@ class WalletPage {
   snpayout::LedgerFetch v2Fetch_ = snpayout::LedgerFetch::Loading;
   std::vector<snpayout::LedgerAccount> v2Accounts_;
   std::vector<snpayout::UnavailablePool> v2Unavailable_;
+  // the v2 claim in flight, the session's rather than its dialog's: its
+  // progress, which a dialog shows while it is up, and the ticket its events
+  // carry; only its Done and a sign-out end it
+  snpayout::LedgerClaimInFlight v2Claim_;
   // capture the flag: the wins not claimed yet, newest first, as the newest
   // read's good answer gave them (none from a sign-out until the next good
   // read), and the reads' numbers

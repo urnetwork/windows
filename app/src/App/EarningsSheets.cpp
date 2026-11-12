@@ -643,25 +643,19 @@ void ClaimAlphaSheet::OpenTx(std::string const& txHash) {
 // ---- ClaimLedgerSheet --------------------------------------------------------
 
 std::shared_ptr<ClaimLedgerSheet> ClaimLedgerSheet::Create(
-    XamlRoot const& root, winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-    std::vector<snpayout::LedgerAccount> const& accounts,
-    std::vector<snpayout::UnavailablePool> const& unavailable, int64_t transferFloorRao,
-    GasKeyInfo gas, std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer) {
+    XamlRoot const& root, std::shared_ptr<snpayout::LedgerClaimProgress> progress, GasKeyInfo gas,
+    std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer) {
   auto sheet = std::shared_ptr<ClaimLedgerSheet>(
-      new ClaimLedgerSheet(queue, accounts, unavailable, transferFloorRao, std::move(gas),
-                           std::move(explorerTxUrl), allowActions, std::move(claimer)));
+      new ClaimLedgerSheet(std::move(progress), std::move(gas), std::move(explorerTxUrl),
+                           allowActions, std::move(claimer)));
   sheet->Build(root);
   return sheet;
 }
 
-ClaimLedgerSheet::ClaimLedgerSheet(winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-                                   std::vector<snpayout::LedgerAccount> const& accounts,
-                                   std::vector<snpayout::UnavailablePool> const& unavailable,
-                                   int64_t transferFloorRao, GasKeyInfo gas,
-                                   std::string explorerTxUrl, bool allowActions,
+ClaimLedgerSheet::ClaimLedgerSheet(std::shared_ptr<snpayout::LedgerClaimProgress> progress,
+                                   GasKeyInfo gas, std::string explorerTxUrl, bool allowActions,
                                    LedgerClaimer claimer)
-    : queue_(queue),
-      progress_(accounts, gas.tao, unavailable, transferFloorRao),
+    : progress_(std::move(progress)),
       gas_(std::move(gas)),
       explorerTxUrl_(std::move(explorerTxUrl)),
       allowActions_(allowActions),
@@ -781,7 +775,7 @@ UIElement ClaimLedgerSheet::BuildRow(snpayout::LedgerClaimRow const& row) {
   grid.ColumnDefinitions().Append(AutoColumn());
 
   // the pool: Pool {}, or capture the flag's and the provider pool's beside it
-  auto pool = MakeText(PoolTitleText(progress_.TitleKey(row), row.noId), 13, colors::TextBrush());
+  auto pool = MakeText(PoolTitleText(progress_->TitleKey(row), row.noId), 13, colors::TextBrush());
   pool.VerticalAlignment(VerticalAlignment::Center);
   Grid::SetColumn(pool, 0);
   grid.Children().Append(pool);
@@ -856,38 +850,42 @@ UIElement ClaimLedgerSheet::BuildRow(snpayout::LedgerClaimRow const& row) {
 }
 
 void ClaimLedgerSheet::ApplyState() {
-  const int64_t total = progress_.ClaimableRao();
+  // between claims what Claim moves; during one what the claim moves, which
+  // stays until its Done (owner, 2026-11-12): never a zero, nor an account
+  // under the floor or of an amount not known yet
+  const int64_t total = progress_->FigureRao();
   // with only pools it could not read there is no total, never a zero
-  totalValue_.Text(progress_.TotalKnown() ? hstring{FormatAlphaRao(total)} : hstring{});
+  totalValue_.Text(progress_->TotalKnown() ? hstring{FormatAlphaRao(total)} : hstring{});
   gasBalanceValue_.Text(gas_.tao ? hstring{FormatTao(*gas_.tao) + L" TAO"} : hstring{L"-"});
-  needsGasPanel_.Visibility(progress_.needsGas() ? Visibility::Visible : Visibility::Collapsed);
+  needsGasPanel_.Visibility(progress_->needsGas() ? Visibility::Visible : Visibility::Collapsed);
 
   rowsPanel_.Children().Clear();
-  for (auto const& row : progress_.rows()) rowsPanel_.Children().Append(BuildRow(row));
+  for (auto const& row : progress_->rows()) rowsPanel_.Children().Append(BuildRow(row));
 
-  progressRow_.Visibility(progress_.sending() ? Visibility::Visible : Visibility::Collapsed);
-  if (!progress_.failure().empty()) {
-    errorText_.Text(LedgerFailureText(progress_.failure()));
+  progressRow_.Visibility(progress_->sending() ? Visibility::Visible : Visibility::Collapsed);
+  if (!progress_->failure().empty()) {
+    errorText_.Text(LedgerFailureText(progress_->failure()));
     errorText_.Visibility(Visibility::Visible);
   }
 
   // one Claim sends every pool's: while what it moves is exactly the operator
   // pool's account and capture the flag's it says Claim both, else the amount
   // it moves, which leaves out an account below the claim minimum, and with
-  // nothing it moves (a claim still out, for an account under the floor or
-  // none left) no amount at all: never a Claim of 0
+  // nothing it moves (an account under the floor, or none left) no amount at
+  // all: never a Claim of 0
   claimButton_.Content(winrt::box_value(
-      progress_.ClaimsBoth()
+      progress_->ClaimsBoth()
           ? Loc("sn_ledger_claim_both")
           : 0 < total ? hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))} : Loc("claim")));
-  claimButton_.IsEnabled(progress_.CanClaim(allowActions_));
+  // held while the claim in flight runs, in this dialog or one closed since
+  claimButton_.IsEnabled(progress_->CanClaim(allowActions_));
   // with nothing Claim moves and no claim out (all claimed, or every row below
   // the claim minimum or unavailable) only Close is offered, never a Claim of 0
-  claimButton_.Visibility(0 < total || progress_.sending() ? Visibility::Visible : Visibility::Collapsed);
+  claimButton_.Visibility(0 < total || progress_->sending() ? Visibility::Visible : Visibility::Collapsed);
 }
 
 void ClaimLedgerSheet::StartClaim() {
-  if (progress_.sending() || !claimer_) return;
+  if (progress_->sending() || !claimer_) return;
   if (!allowActions_) {
     // Disabled without a session, so reaching this is a bug rather than a
     // user path: say so instead of returning.
@@ -897,52 +895,13 @@ void ClaimLedgerSheet::StartClaim() {
     errorText_.Visibility(Visibility::Visible);
     return;
   }
-  if (!progress_.Start()) return;
+  // The claim is the session's from here, not this dialog's (owner,
+  // 2026-11-12): the page starts it on this progress and moves the progress
+  // along with its events, so a dialog dismissed during the claim drops none
+  // of them, and one opened again draws them, its Claim held until Done.
+  if (!claimer_(progress_)) return;
   errorText_.Visibility(Visibility::Collapsed);
   ApplyState();
-
-  // The events arrive on the SDK's thread; each is marshalled here and applied
-  // through a weak reference, so a dismissed sheet drops them on the floor and
-  // the claim itself carries on regardless (it is the chain's, not the
-  // dialog's).
-  auto weak = weak_from_this();
-  auto queue = queue_;
-  snpayout::LedgerClaimEvents events;
-  events.sent = [weak, queue](int64_t noId, int64_t index, std::string txHash) {
-    queue.TryEnqueue([weak, noId, index, txHash] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->progress_.Sent(noId, index, txHash);
-      self->ApplyState();
-    });
-  };
-  events.confirmed = [weak, queue](int64_t noId, int64_t index, std::string txHash,
-                                   int64_t amountRao) {
-    queue.TryEnqueue([weak, noId, index, txHash, amountRao] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->progress_.Confirmed(noId, index, txHash, amountRao);
-      self->ApplyState();
-    });
-  };
-  events.failed = [weak, queue](int64_t noId, int64_t index, std::string message) {
-    urnw::LogError("v2 claim sheet: pool {} account {} failed: {}", noId, index, message);
-    queue.TryEnqueue([weak, noId, index, message] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->progress_.Failed(noId, index, message);
-      self->ApplyState();
-    });
-  };
-  events.done = [weak, queue] {
-    queue.TryEnqueue([weak] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->progress_.Done();
-      self->ApplyState();
-    });
-  };
-  claimer_(std::move(events));
 }
 
 void ClaimLedgerSheet::CopyMirrorAddress() {

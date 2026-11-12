@@ -93,7 +93,7 @@ bool UnderTransferFloor(int64_t claimableRao, int64_t transferFloorRao) {
 LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, LedgerFetch fetch,
                                    const std::vector<LedgerAccount>& accounts, bool canClaim,
                                    const std::vector<UnavailablePool>& unavailable,
-                                   int64_t transferFloorRao) {
+                                   int64_t transferFloorRao, bool claimInFlight) {
   LedgerSectionView view;
   if (!hasColdkey) return view;
   bool anyAccount = false;
@@ -154,7 +154,9 @@ LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, Ledge
     if (!block.unavailable && block.claimableRao > 0 && !block.underFloor) movable.push_back(block.kind);
   }
   view.showClaim = vault2Configured;
-  view.claimEnabled = vault2Configured && canClaim && !movable.empty();
+  // a claim in flight keeps Claim, which opens its dialog, whatever the read
+  // says since it started
+  view.claimEnabled = vault2Configured && ((canClaim && !movable.empty()) || claimInFlight);
   view.claimBoth = vault2Configured && ClaimsBothPools(movable);
   return view;
 }
@@ -258,7 +260,15 @@ int64_t LedgerClaimProgress::ClaimableRao() const {
   return total;
 }
 
+int64_t LedgerClaimProgress::FigureRao() const {
+  // during a claim what its press moves, which a row moving along (Confirmed
+  // above all) never takes from it
+  return sending_ ? pressRao_ : ClaimableRao();
+}
+
 bool LedgerClaimProgress::TotalKnown() const {
+  // a press starts only with something it moves (Start)
+  if (sending_) return true;
   bool left = false;
   for (const LedgerClaimRow& row : rows_) {
     if (row.state == LedgerClaimState::Confirmed) continue;
@@ -273,6 +283,7 @@ bool LedgerClaimProgress::CanClaim(bool allowActions) const {
 }
 
 bool LedgerClaimProgress::ClaimsBoth() const {
+  if (sending_) return pressBoth_;
   std::vector<PoolKind> movable;
   for (const LedgerClaimRow& row : rows_) {
     if (Movable(row)) movable.push_back(row.kind);
@@ -288,6 +299,10 @@ std::string LedgerClaimProgress::TitleKey(const LedgerClaimRow& row) const {
 
 bool LedgerClaimProgress::Start() {
   if (sending_ || ClaimableRao() <= 0) return false;
+  // what this press moves: the rows below that it sends with an amount the
+  // dialog knows above the floor, the figure until Done
+  pressRao_ = ClaimableRao();
+  pressBoth_ = ClaimsBoth();
   for (LedgerClaimRow& row : rows_) {
     if (row.state == LedgerClaimState::Confirmed || row.unavailable) continue;
     if (UnderTransferFloor(row.amountRao, transferFloorRao_)) {
@@ -437,6 +452,25 @@ void LedgerClaimProgress::Done() {
   });
 }
 
+std::optional<uint64_t> LedgerClaimInFlight::Start(std::shared_ptr<LedgerClaimProgress> progress) {
+  // one claim at a time: the gas key sends one
+  if (progress_ || !progress || !progress->Start()) return std::nullopt;
+  progress_ = std::move(progress);
+  return ++ticket_;
+}
+
+bool LedgerClaimInFlight::End(uint64_t ticket) {
+  if (!progress_ || ticket != ticket_) return false;
+  progress_.reset();
+  ++ticket_;
+  return true;
+}
+
+void LedgerClaimInFlight::Drop() {
+  progress_.reset();
+  ++ticket_;
+}
+
 namespace {
 
 // Every pool of the relay's answer, its accounts' and the ones it could not
@@ -548,16 +582,28 @@ std::string CtfWinKey(const CtfWin& win) {
   return win.role == CtfRole::Extender ? "sn_ctf_won_extender_slot" : "sn_ctf_won_provider_slot";
 }
 
-bool CtfWinsLines::Apply(uint32_t read, std::optional<std::vector<CtfWin>> wins) {
-  if (!wins || read <= shown_) return false;
+bool CtfWinsLines::Apply(uint32_t read, std::optional<std::vector<CtfWin>> wins, CtfAnswer answer) {
+  // a read that failed, or one from before a sign-out, changes nothing
+  if (!wins || read <= reset_) return false;
+  if (answer == CtfAnswer::Client) {
+    // this client's wins alone: a read that failed for a network answer's
+    // lines, and else the newest read's answer shows
+    if (networkShown_ || read <= shown_) return false;
+  } else if (networkShown_ && read <= shown_) {
+    // a network answer older than the one shown; one replaces a client
+    // answer's lines whatever their read
+    return false;
+  }
   shown_ = read;
+  networkShown_ = networkShown_ || answer == CtfAnswer::Network;
   lines_ = std::move(*wins);
   return true;
 }
 
 void CtfWinsLines::Reset() {
   lines_.clear();
-  shown_ = started_;
+  reset_ = shown_ = started_;
+  networkShown_ = false;
 }
 
 LedgerClaimEvents WithClaimPaid(LedgerClaimEvents events, std::function<void(bool paid)> afterDone) {

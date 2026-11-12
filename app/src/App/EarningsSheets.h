@@ -197,35 +197,37 @@ class ClaimAlphaSheet : public std::enable_shared_from_this<ClaimAlphaSheet> {
 
 // ---- the settlement v2 claim dialog --------------------------------------------
 
-// Starts the claim of every claimable v2 account (Device.snLedgerClaim) with
-// the SDK's SnLedgerClaimCallback as snpayout::LedgerClaimEvents, which the
-// page may call from any thread; the page owns the SDK call.
-using LedgerClaimer = std::function<void(snpayout::LedgerClaimEvents events)>;
+// Starts the claim of every claimable v2 account (Device.snLedgerClaim) on
+// the dialog's `progress`, as the session's claim in flight
+// (WalletPage::StartV2Claim): false, starting nothing, while one is in flight
+// already or when the press would take nothing. The page owns the SDK call and
+// moves `progress` along with the claim's events.
+using LedgerClaimer = std::function<bool(std::shared_ptr<snpayout::LedgerClaimProgress> progress)>;
 
 class ClaimLedgerSheet : public std::enable_shared_from_this<ClaimLedgerSheet> {
  public:
-  // `accounts` are the v2 accounts as the page last read them, and
-  // `unavailable` the pools that read could not read; the dialog lists the
-  // claimable accounts and those pools and moves them along with the claim
-  // events (snpayout::LedgerClaimProgress). `transferFloorRao` is the claim
-  // relay's transfer floor, 0 when unknown. `explorerTxUrl` and `allowActions`
-  // as for ClaimAlphaSheet. The page reads the accounts again after the
-  // claim's Done, through its claimer, whether or not the dialog is still up.
+  // `progress` is what the dialog draws, shared with the page: during a claim
+  // the claim in flight's (snpayout::LedgerClaimInFlight), whose events the
+  // page applies whether or not a dialog is up, so a dialog dismissed and
+  // opened again shows the claim as it went on, and its Claim waits for it;
+  // between claims the claimable accounts and the unavailable pools of the
+  // page's last read, at the claim relay's transfer floor
+  // (snpayout::LedgerClaimProgress). `explorerTxUrl` and `allowActions` as for
+  // ClaimAlphaSheet. The page reads the accounts again after the claim's Done,
+  // whether or not the dialog is still up.
   static std::shared_ptr<ClaimLedgerSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root,
-      winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-      std::vector<snpayout::LedgerAccount> const& accounts,
-      std::vector<snpayout::UnavailablePool> const& unavailable, int64_t transferFloorRao,
-      GasKeyInfo gas, std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer);
+      std::shared_ptr<snpayout::LedgerClaimProgress> progress, GasKeyInfo gas,
+      std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+  // Draws the progress again: the page calls it on each event of the claim
+  // in flight.
+  void Redraw() { ApplyState(); }
 
  private:
-  ClaimLedgerSheet(winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-                   std::vector<snpayout::LedgerAccount> const& accounts,
-                   std::vector<snpayout::UnavailablePool> const& unavailable,
-                   int64_t transferFloorRao, GasKeyInfo gas, std::string explorerTxUrl,
-                   bool allowActions, LedgerClaimer claimer);
+  ClaimLedgerSheet(std::shared_ptr<snpayout::LedgerClaimProgress> progress, GasKeyInfo gas,
+                   std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer);
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void StartClaim();
@@ -237,8 +239,7 @@ class ClaimLedgerSheet : public std::enable_shared_from_this<ClaimLedgerSheet> {
   // opens a claim transaction's page (snpayout::ExplorerTxLink)
   static void OpenTx(std::string const& url);
 
-  winrt::Microsoft::UI::Dispatching::DispatcherQueue queue_;
-  snpayout::LedgerClaimProgress progress_;
+  std::shared_ptr<snpayout::LedgerClaimProgress> progress_;
   GasKeyInfo gas_;
   std::string explorerTxUrl_;
   bool allowActions_;
