@@ -93,4 +93,17 @@ inline std::wstring ExtenderProvideText(ExtenderProvideRowModel const& model) {
       [](std::string const& utf8) { return urnw::Widen(utf8); });
 }
 
+// The router port mapping switch's status line (connect EXTENDER.md S10), from
+// the store: the model's key through Localized, and the mapped line through
+// Format with the sdk's ports and method, widened from UTF-8, as its {0} and
+// {1}. Empty for no line.
+inline std::wstring PortMappingStatusText(PortMappingRowModel const& model) {
+  return ComposePortMappingStatusText<std::wstring>(
+      model, [](std::string_view key) { return urnw::Localized(key); },
+      [](std::string_view key, std::wstring const& ports, std::wstring const& method) {
+        return urnw::Format(key, ports, method);
+      },
+      [](std::string const& utf8) { return urnw::Widen(utf8); });
+}
+
 }  // namespace urnw

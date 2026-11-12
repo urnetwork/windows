@@ -278,9 +278,10 @@ class ConnectPage {
   // only beside the Extender switch, and only where its own write has a taker
   // (SpeedTestsRowModelFor). Hidden, never disabled (N1).
   void ApplySpeedTestsRow();
-  // The router port mapping row and its switch, from extenderProvideView_:
-  // shown only under the speed tests switch, and only where its own write has
-  // a taker (PortMappingRowModelFor). Hidden, never disabled (N1).
+  // The router port mapping row, its switch and the status line under its
+  // description, from extenderProvideView_: shown only under the speed tests
+  // switch, and only where its own write has a taker (PortMappingRowModelFor).
+  // Hidden, never disabled (N1).
   void ApplyPortMappingRow();
   // R3: the activity pane's list vs its empty state. The empty state is a
   // centred line INSIDE the full-height pane, not a card, so this only swaps

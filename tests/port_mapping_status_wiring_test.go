@@ -22,6 +22,74 @@ import (
 // sources and stores, which need Windows and WinRT to build, with comments
 // stripped so prose cannot satisfy a contract.
 
+// The Connect page draws the line the presentation decided, composed from the
+// store, under the switch's description, hidden while there is none; both
+// devices' statuses feed it through the one view reader.
+func TestPortMappingStatusLineWiring(t *testing.T) {
+	// the store's key, the mapped line through Format with the sdk's two texts
+	// widened from UTF-8 as its {0} and {1}
+	visual := stripComments(readAppSource(t, "ProvideModeVisual.h"))
+	text := definitionBody(t, "ProvideModeVisual.h", visual,
+		"inline std::wstring PortMappingStatusText(PortMappingRowModel const& model)")
+	provideRequire(t, "PortMappingStatusText", text,
+		"ComposePortMappingStatusText<std::wstring>(",
+		"urnw::Localized(key)",
+		"urnw::Format(key, ports, method)",
+		"urnw::Widen(utf8)")
+
+	connect := stripComments(readAppSource(t, "ConnectPage.cpp"))
+	row := definitionBody(t, "ConnectPage.cpp", connect, "void ConnectPage::ApplyPortMappingRow()")
+	provideRequire(t, "ConnectPage::ApplyPortMappingRow", row,
+		"const hstring status{urnw::PortMappingStatusText(model)};",
+		"w_.PortMappingStatus().Text(status);",
+		"const bool statusShown = !model.statusKey.empty();",
+		"w_.PortMappingStatus().Visibility(statusShown ? Visibility::Visible : Visibility::Collapsed);")
+	// the switch carries the line as its help text, as the Extender switch
+	// carries its state
+	provideRequireOrder(t, "ConnectPage::ApplyPortMappingRow", row,
+		"AutomationProperties::SetHelpText(", "w_.PortMappingToggle(), status);")
+	// the line is the model's: the page reads none of the status's own fields
+	requireNone(t, "ConnectPage::ApplyPortMappingRow", row, "extenderProvideView_.portMapping")
+	// a pushed status and a guess both repaint it, and so does a new language,
+	// all through the one row writer
+	provideRequireOrder(t, "ConnectPage::ApplyExtenderProvideRow",
+		definitionBody(t, "ConnectPage.cpp", connect, "void ConnectPage::ApplyExtenderProvideRow()"),
+		"ApplySpeedTestsRow();", "ApplyPortMappingRow();")
+	provideRequire(t, "ConnectPage::OnPortMappingToggled",
+		definitionBody(t, "ConnectPage.cpp", connect, "void ConnectPage::OnPortMappingToggled("),
+		"ApplyPortMappingRow();")
+
+	// the markup: under the description, before the switch, hidden until there
+	// is a line, and wrapping rather than cut, as the description does
+	xaml := readAppSource(t, "MainWindow.xaml")
+	markup := sourceBetween(t, "MainWindow.xaml", xaml, `x:Name="PortMappingRow"`, "</Border>")
+	provideRequireOrder(t, "the port mapping row", markup,
+		`x:Name="PortMappingDescription"`, `x:Name="PortMappingStatus"`)
+	provideRequireOrder(t, "the port mapping row", markup,
+		`x:Name="PortMappingStatus"`, `x:Name="PortMappingToggle"`)
+	status := sourceBetween(t, "the port mapping row", markup, `x:Name="PortMappingStatus"`, "/>")
+	provideRequire(t, "the status line", status,
+		`Visibility="Collapsed"`, `TextWrapping="Wrap"`, `TextTrimming="None"`,
+		`Style="{StaticResource UrRowNoteStyle}"`)
+
+	// A session's device's status from its listener and the provider-only
+	// device's from the service's document both go through the view reader,
+	// whole; the service writes the device's status whole, texts and all.
+	source := sdkHostSource(t)
+	provideRequire(t, "PublishExtenderProvideStatus",
+		definitionBody(t, "SdkHost.cpp", source,
+			"void SdkHost::PublishExtenderProvideStatus(std::optional<urnet::ExtenderProvideStatus> status)"),
+		"ExtenderProvideStatusViewOf(status, readSetting, readMeasurements, readPortMapping)")
+	provideRequire(t, "ShowProviderOnlyStatsLocked",
+		definitionBody(t, "SdkHost.cpp", source,
+			"void SdkHost::ShowProviderOnlyStatsLocked(const proto::ProviderStats& stats)"),
+		"proto::ExtenderProvideStatusOf<urnet::ExtenderProvideStatus>(stats)")
+	provideRequire(t, "ProviderStats",
+		definitionBody(t, "TunnelController.cpp", tunnelControllerSource(t),
+			"proto::ProviderStats TunnelController::ProviderStats()"),
+		"stats.extender_provide_status = *status;")
+}
+
 // The router's words never reach a screen: no app source reads
 // PortMappingError or PortMappingExternalIp, so no view, line, tooltip or help
 // text can carry them, whatever a later change draws. The device logs them.
