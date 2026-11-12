@@ -2330,7 +2330,7 @@
   </data>
   <data name="data_info_refresh_at" xml:space="preserve">
     <value>무료 데이터는 매일 00:00 UTC에 갱신됩니다({} 후).</value>
-    <comment>"About your data" sheet: when the free daily data is granted again. {time} is the time left until the next 00:00 UTC as a compact duration (e.g. 5h 12m). Keep 00:00 UTC as is. Shown only to accounts without Pro (Pro does not get the free grant).</comment>
+    <comment>"About your data" sheet: when the free daily data is granted again. {time} is the time left until the next 00:00 UTC as a compact duration (e.g. 5h 12m). Keep 00:00 UTC as is. Every account gets the free daily data, Pro accounts included. Which accounts see this line is up to each app (today: only accounts without Pro).</comment>
   </data>
   <data name="data_info_title" xml:space="preserve">
     <value>내 데이터 안내</value>
@@ -6308,6 +6308,10 @@
     <value>플랜</value>
     <comment>Upgrade subscription overlay</comment>
   </data>
+  <data name="plan_account_name" xml:space="preserve">
+    <value>계정: {}</value>
+    <comment>Shown with the plan (Free or Pro) on the Account screen, the plan card and the subscription screen, and in the purchase confirmation: the account (network) the plan belongs to. The argument is the signed-in network's own name. Customers with several accounts could not tell which one held Pro (support inbox 6546).</comment>
+  </data>
   <data name="plan_billed_monthly_cancel_anytime" xml:space="preserve">
     <value>매월 청구 · 언제든 취소 가능</value>
     <comment>Plan picker: the line under the monthly price.</comment>
@@ -7898,8 +7902,8 @@
     <comment>Instant account creation: button that copies the seedphrase to the clipboard.</comment>
   </data>
   <data name="site_data_limit_pro" xml:space="preserve">
-    <value>이번 달 Pro 데이터를 모두 사용했습니다. 다음 달 1일(UTC)에 갱신되며, 데이터 팩으로 지금 더 추가할 수 있습니다.</value>
-    <comment>ur.io Connect screen, out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's data is granted at 00:00 UTC on the 1st of each month; a data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and UTC as is.</comment>
+    <value>이번 주기의 Pro 데이터를 모두 사용했습니다. 무료 일일 데이터는 계속 매일 00:00 UTC에 제공되고, Pro 데이터는 다음 구독 주기가 시작될 때 갱신되며, 데이터 팩으로 지금 더 추가할 수 있습니다.</value>
+    <comment>ur.io Connect screen and the browser extension popup: out-of-balance notice for a Pro account whose plan data is used up (title: Data limit reached). Pro's 10 TiB is granted at the start of each of the network's own subscription cycles, not on a fixed day of the month. Every account, Pro included, also gets the free daily data at 00:00 UTC, which a Pro account uses once its plan data is used up. A data pack (sold on ur.io, the Buy data button beside this line) adds data at once. Keep Pro and 00:00 UTC as is.</comment>
   </data>
   <data name="site_ext_setting_up" xml:space="preserve">
     <value>설정 중…</value>

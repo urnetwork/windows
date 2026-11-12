@@ -815,6 +815,18 @@ void UpgradeSheet::Build(XamlRoot const& root) {
   successBody.Children().Append(
       MakeText(Loc("thanks_for_building_the_new_internet_with_us"), 16,
                colors::MakeBrush(colors::kInverseText), true));
+  // the account the plan is on, for a customer with several (the sdk's rule:
+  // nothing for a guest or without a name); the sheet is built per opening,
+  // so this is the signed-in network's
+  if (auto jwt = sdk_.ParsedJwt()) {
+    const std::string account =
+        urnet::planAccountName(kit::SanitizeExternalDisplayText(jwt->NetworkName),
+                               IsGuestNetwork(jwt->GuestMode, balance_.Current().guest));
+    if (!account.empty()) {
+      successBody.Children().Append(MakeText(hstring{Format("plan_account_name", Widen(account))},
+                                             14, colors::MakeBrush(colors::kInverseText), true));
+    }
+  }
   successCard.Child(successBody);
   successPanel_.Children().Append(successCard);
   content.Children().Append(successPanel_);
