@@ -27,6 +27,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -260,10 +261,16 @@ struct LedgerSectionView {
 // account yet is not said beside one. `transferFloorRao` is the claim relay's
 // transfer floor in rao of α, 0 when unknown: any account with something to
 // claim under it, lone or beside others, is under the floor.
+//
+// `claimInFlight`: a v2 claim of this session is in flight
+// (LedgerClaimInFlight). Claim then stays enabled, whatever the read says, and
+// opens the dialog on the claim's progress, where Claim waits for it (owner,
+// 2026-11-12: a claim in flight is the session's, and a dialog opened again
+// shows it), as Linux's tile does.
 LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, LedgerFetch fetch,
                                    const std::vector<LedgerAccount>& accounts, bool canClaim,
                                    const std::vector<UnavailablePool>& unavailable = {},
-                                   int64_t transferFloorRao = 0);
+                                   int64_t transferFloorRao = 0, bool claimInFlight = false);
 
 // The claimable is under a known transfer floor (`transferFloorRao`, 0 when
 // unknown), under which the chain refuses a claim: no claim moves it until it
@@ -332,6 +339,9 @@ struct LedgerClaimRow {
   // Claim both leave it out, and they leave out a row under the dialog's floor
   // by its amount whatever it says (needs_gas, Failed)
   bool underFloor = false;
+  // what the last press took of it, its amount as Start found it; 0 for a row
+  // that press did not take (FigureRao)
+  int64_t pressRao = 0;
 
   bool operator==(const LedgerClaimRow&) const = default;
 };
@@ -365,8 +375,18 @@ class LedgerClaimProgress {
   // the transfer floor: what Claim moves. Saturates rather than overflowing on
   // an absurd ledger answer (the endpoint is untrusted).
   int64_t ClaimableRao() const;
-  // ClaimableRao is a total to show: a row not claimed yet is one Claim moves,
-  // or every row is claimed (or there is none), and the total is a true zero.
+  // The dialog's figure, which Claim names too. Between claims it is what
+  // Claim moves (ClaimableRao). During a claim it is what the claim moves
+  // (owner, 2026-11-12): the rows its press took, an amount the dialog knows
+  // above the floor, at their amounts as Start found them, fixed until Done
+  // as on Android, Linux and Apple. A row the SDK then sends nothing for says
+  // so on its own line (needs_gas: claimable, with the funding hint). It does
+  // not fall as rows confirm, so it never reads 0 before Done, and it never
+  // counts a row the dialog put under the floor or of an amount not known.
+  int64_t FigureRao() const;
+  // FigureRao is a total to show. During a claim always (a press takes
+  // something). Between claims: a row not claimed yet is one Claim moves, or
+  // every row is claimed (or there is none), and the total is a true zero.
   // While the rows left are all under the floor or unavailable, or of an
   // amount not known yet, they say why rather than a zero (Android's dialog).
   bool TotalKnown() const;
@@ -375,7 +395,8 @@ class LedgerClaimProgress {
   bool CanClaim(bool allowActions) const;
   // Claim's button says Claim both (sn_ledger_claim_both): the rows Claim
   // moves are exactly the operator pool's and capture the flag's
-  // (ClaimsBothPools), which the one claim sends together
+  // (ClaimsBothPools), which the one claim sends together. During a claim,
+  // whether the press took exactly those two (FigureRao's rows).
   bool ClaimsBoth() const;
   // A row's title (PoolTitleKey): every row names its pool, and the one
   // operator pool beside capture the flag's (an account or a pool of the
@@ -407,6 +428,9 @@ class LedgerClaimProgress {
   LedgerClaimRow& RowFor(int64_t noId, int64_t index);
   // a row Claim moves (ClaimableRao, TotalKnown, ClaimsBoth, Start)
   bool Movable(const LedgerClaimRow& row) const;
+  // during a claim, a row it moves: one its press took (FigureRao,
+  // TotalKnown, ClaimsBoth)
+  bool Moving(const LedgerClaimRow& row) const;
 
   std::vector<LedgerClaimRow> rows_;
   // the pools of the page's read, every account claimable or not and each
@@ -424,14 +448,152 @@ class LedgerClaimProgress {
   std::vector<int64_t> reportedUnavailable_;
 };
 
-// The SDK's SnLedgerClaimCallback as four plain functions, which the dialog
-// marshals to the UI thread itself (EarningsSheets.h LedgerClaimer). A failure
-// with no pool (noId 0) is the claim's as a whole.
+// The SDK's SnLedgerClaimCallback as four plain functions, which the page
+// marshals to the UI thread (WalletPage::StartV2Claim). A failure with no pool
+// (noId 0) is the claim's as a whole.
 struct LedgerClaimEvents {
   std::function<void(int64_t noId, int64_t index, std::string txHash)> sent;
   std::function<void(int64_t noId, int64_t index, std::string txHash, int64_t amountRao)> confirmed;
   std::function<void(int64_t noId, int64_t index, std::string message)> failed;
   std::function<void()> done;
+};
+
+// A claim in flight, the signed-in session's rather than its dialog's (owner,
+// 2026-11-12): the v2 claim's (LedgerClaimInFlight, of LedgerClaimProgress)
+// and the v1 claim's (WalletPage, of EarningsSheets.h ClaimAlphaProgress).
+// The page holds its progress, which the claim's events move whether or not
+// a dialog shows it, so a dialog dismissed during the claim drops none of them
+// and misses none of its Done. A dialog opened during the claim draws the same
+// progress, where Claim waits, and the page starts no second claim while one
+// is in flight: the gas key sends one at a time. A dialog pressed again after
+// Done claims on from its own progress. Only the claim's Done and a sign-out
+// end it; after a sign-out the page holds it no more, and its events move
+// only its own progress, which a dialog still up from before the sign-out may
+// show. Linux's snledger::ClaimInFlight is the same. UI thread only.
+//
+// `ClaimProgress` has `bool Start()`: Claim pressed, false with nothing to
+// claim or a claim out.
+template <typename ClaimProgress>
+class ClaimInFlight {
+ public:
+  // Claim pressed in a dialog on `progress`: it starts the press
+  // (ClaimProgress::Start) and is the claim in flight from now. The ticket its
+  // Done carries, or none, changing nothing, while a claim is in flight
+  // already or when the press would take nothing.
+  std::optional<uint64_t> Start(std::shared_ptr<ClaimProgress> progress) {
+    // one claim at a time: the gas key sends one
+    if (progress_ || !progress || !progress->Start()) return std::nullopt;
+    progress_ = std::move(progress);
+    return ++ticket_;
+  }
+  bool InFlight() const { return progress_ != nullptr; }
+  // The progress of the claim in flight, which its events move and a dialog
+  // opened during it draws; null between claims.
+  const std::shared_ptr<ClaimProgress>& Progress() const { return progress_; }
+  // The Done of claim `ticket` (its progress's own Done is the claim's): no
+  // claim is in flight any more. False, changing nothing, for a claim no
+  // longer in flight (a sign-out dropped it).
+  bool End(uint64_t ticket) {
+    if (!progress_ || ticket != ticket_) return false;
+    progress_.reset();
+    ++ticket_;
+    return true;
+  }
+  // A sign-out: the claim was the departed account's, and the page holds it
+  // no more.
+  void Drop() {
+    progress_.reset();
+    ++ticket_;
+  }
+
+ private:
+  std::shared_ptr<ClaimProgress> progress_;
+  uint64_t ticket_ = 0;
+};
+
+// The v2 claim in flight.
+using LedgerClaimInFlight = ClaimInFlight<LedgerClaimProgress>;
+
+// ---- the v1 claim dialog
+
+// One finalized epoch's claim, as the page and the dialog see it (the SDK's
+// SnEpochClaim, copied so the dialog holds no SDK handle).
+struct EpochClaim {
+  int64_t epoch = 0;
+  int64_t shareBps = 0;
+  int64_t amountRao = 0;
+  std::string status;  // "open" | "claimable" | "claimed" | "expired" | "not-finalized"
+  int64_t claimOpenBlock = 0;
+  int64_t expiryBlock = 0;
+  std::string txHash;   // the last known claim tx for this epoch, "" if none
+  std::string message;  // the SDK's reason an epoch is not claimable, "" if none
+};
+
+// A failure message from the SDK is a short English reason ("needs gas",
+// "expired", "rpc unreachable"): it names the gas, or the epoch's expiry.
+bool MentionsGas(std::string const& message);
+bool MentionsExpiry(std::string const& message);
+
+// The v1 dialog's epochs and the state of their claim, which the dialog draws.
+// The claim is the signed-in session's, not the dialog's (owner, 2026-11-12):
+// the page holds this while a claim is in flight (ClaimInFlight) and
+// moves it with the claim's events whether or not a dialog is up, so a dialog
+// dismissed during the claim drops none of them, one opened again shows the
+// claim with Claim held until Done, and no second claim starts while it is in
+// flight. UI thread only.
+class ClaimAlphaProgress {
+ public:
+  // the dialog's view of one epoch, moved along by the claim events
+  struct Row {
+    EpochClaim claim;
+    enum class State { Idle, Sending, Sent, Confirmed, Failed } state = State::Idle;
+    std::string message;  // the failure, when State::Failed
+  };
+
+  // `claims` is every epoch the SDK reported since the wallet was attached;
+  // the dialog claims the "claimable" ones and lists the rest with their
+  // state, newest first. `gasTao` is the gas key's balance when known: a known
+  // empty key needs gas before anything can be sent.
+  ClaimAlphaProgress(std::vector<EpochClaim> claims, std::optional<double> gasTao);
+
+  const std::vector<Row>& rows() const { return rows_; }
+  bool sending() const { return sending_; }
+  // set from a "needs gas" failure as well as a known empty gas key
+  bool needsGas() const { return needsGas_; }
+  // the epochs the last press claims (Start)
+  const std::vector<int64_t>& epochs() const { return epochs_; }
+
+  int64_t TotalClaimableRao() const;
+  size_t ClaimableCount() const;
+  // The dialog's figure, which Claim names too: what is claimable, and during
+  // a claim what the claim moves, the epochs it sends as Start found them,
+  // fixed until Done (owner, 2026-11-12, as on Android, Linux and Apple), so
+  // it never falls to 0 as the epochs confirm.
+  int64_t FigureRao() const;
+  // The count under the figure ("Claimable epochs: N"): the claimable epochs,
+  // and during a claim the epochs it sends, fixed with the figure until Done.
+  size_t CaptionCount() const;
+
+  // Claim pressed: every claimable epoch not confirmed yet is Sending, and
+  // epochs() are the press's. False, changing nothing, while a claim is out
+  // or with no epoch to claim.
+  bool Start();
+  // The claim's events.
+  void Sent(int64_t epoch, std::string const& txHash);
+  void Confirmed(int64_t epoch, std::string const& txHash, int64_t amountRao);
+  void Failed(int64_t epoch, std::string const& message);
+  // The claim is over: a row the SDK never reported on is not sending any more.
+  void Done();
+
+ private:
+  Row* Find(int64_t epoch);
+
+  std::vector<Row> rows_;
+  std::vector<int64_t> epochs_;
+  // what the press in flight moves (FigureRao)
+  int64_t pressRao_ = 0;
+  bool sending_ = false;
+  bool needsGas_ = false;
 };
 
 // ---- the claim sheet's pool rows
@@ -542,6 +704,18 @@ struct CtfWin {
 // each with the country's name as its one placeholder.
 std::string CtfWinKey(const CtfWin& win);
 
+// Whose wins a good answer holds (the SDK's SnCtfClientResult.ClientId, ""
+// for a network's answer; CtfAnswerOf).
+enum class CtfAnswer {
+  // the network's: every client's wins, read with the session's network
+  // credential
+  Network,
+  // this client's alone: the SDK's read with the client token, after the
+  // network credential's read failed, or from a server before the network
+  // answer
+  Client,
+};
+
 // The won lines, from the reads of the wins (every app, 2026-11-12). Reads
 // may overlap: each starts at its time (an Earnings load, a claim's Done and
 // the reads after it), and their answers land in any order. A good answer
@@ -552,21 +726,36 @@ std::string CtfWinKey(const CtfWin& win);
 // its line away, or a sign-out (Reset, a change of device or network), after
 // which no answer of a read from before shows, and the first read shows none
 // until it answers.
+//
+// A network answer beats a client answer (owner, 2026-11-12). A client
+// answer holds only this client's wins, so once a network answer has shown
+// since the sign-in, a client answer is a read that failed for its lines: it
+// never replaces them. It shows only while no network answer has, as with a
+// server before the network answer, whose every answer is a client's. A
+// network answer replaces a client answer's lines whatever order their reads
+// started in, and another network answer's unless that read is newer.
 class CtfWinsLines {
  public:
   // A read starts: its number, for its answer.
   uint32_t Start() { return ++started_; }
-  // The answer of read `read`: true when it replaced the lines.
-  bool Apply(uint32_t read, std::optional<std::vector<CtfWin>> wins);
-  // A sign-out: no lines, and no answer of a read from before shows.
+  // The answer of read `read`, and whose wins it holds: true when it replaced
+  // the lines.
+  bool Apply(uint32_t read, std::optional<std::vector<CtfWin>> wins, CtfAnswer answer);
+  // A sign-out: no lines, no answer of a read from before shows, and no
+  // network answer has shown since.
   void Reset();
   const std::vector<CtfWin>& lines() const { return lines_; }
 
  private:
   uint32_t started_ = 0;  // the newest read's number
+  // the newest read from before the last sign-out, whose answers show nothing
+  uint32_t reset_ = 0;
   // the read whose good answer the lines show, or, after a sign-out, the
   // newest read from before it
   uint32_t shown_ = 0;
+  // a network answer has shown since the sign-in: the lines are a network
+  // answer's
+  bool networkShown_ = false;
   std::vector<CtfWin> lines_;
 };
 
@@ -747,6 +936,14 @@ template <typename SdkCtfClientResult>
 std::optional<std::vector<CtfWin>> CtfWinsReadFrom(const SdkCtfClientResult& result) {
   if (result.error || !result.unclaimed_wins) return std::nullopt;
   return CtfWinsFrom(result);
+}
+
+// Whose wins the SDK's SnCtfClientResult holds (CtfWinsLines::Apply): its
+// ClientId is "" for the network's answer, and names the client for this
+// client's alone.
+template <typename SdkCtfClientResult>
+CtfAnswer CtfAnswerOf(const SdkCtfClientResult& result) {
+  return result.client_id.empty() ? CtfAnswer::Network : CtfAnswer::Client;
 }
 
 // An SnLedgerClaimCallback that hands each event to `events`.

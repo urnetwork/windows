@@ -943,6 +943,12 @@ void WalletPage::ResetForSignOut() {
   // and the wins are not read again after that account's claim
   ctfWinsAfterClaim_.Stop();
   if (ctfWinsTimer_) ctfWinsTimer_.Stop();
+  // The claims in flight, v1's and v2's, were that account's: the page holds
+  // them no more, so the next account's Claim is its own. Their events move
+  // only their own progress, which a dialog still up from before shows to
+  // its end.
+  v1Claim_.Drop();
+  v2Claim_.Drop();
   RebuildV2Section();
 
   // The payout consent is the network's that left: hidden until the next
@@ -1268,7 +1274,10 @@ void WalletPage::LoadV2Accounts() {
 // answer, is a read that failed: it keeps the lines of the last good read and
 // never blanks them, nor says there was no win (every app, 2026-11-12). Each
 // read starts when asked, and the lines show the newest read's good answer
-// (snpayout::CtfWinsLines), whatever order the answers land in.
+// (snpayout::CtfWinsLines), whatever order the answers land in. An answer for
+// this client alone (the SDK's read with the client token after the network
+// credential's failed, or a server before the network answer) never replaces
+// a network answer's lines (owner, 2026-11-12).
 void WalletPage::LoadCtfClient() {
   if (!CanCallApi() || !Sdk().hasDevice()) return;
   const uint32_t read = ctfWins_.Start();
@@ -1278,24 +1287,27 @@ void WalletPage::LoadCtfClient() {
                                                  std::optional<std::string> err) {
     // none for a read that failed
     std::optional<std::vector<snpayout::CtfWin>> wins;
+    snpayout::CtfAnswer answer = snpayout::CtfAnswer::Network;
     if (err) {
       urnw::LogWarn("earnings: snCtfClient failed: {}", *err);
     } else if (result && result->error) {
       urnw::LogWarn("earnings: snCtfClient failed: {}", result->error->message);
     } else if (result) {
       wins = snpayout::CtfWinsReadFrom(*result);
+      answer = snpayout::CtfAnswerOf(*result);
     }
-    queue.TryEnqueue([weak, read, wins = std::move(wins)] {
-      if (auto self = weak.get()) self->wallet().ApplyCtfClient(read, wins);
+    queue.TryEnqueue([weak, read, wins = std::move(wins), answer] {
+      if (auto self = weak.get()) self->wallet().ApplyCtfClient(read, wins, answer);
     });
   });
 }
 
-void WalletPage::ApplyCtfClient(uint32_t read, std::optional<std::vector<snpayout::CtfWin>> wins) {
-  // a read that failed keeps the last good read's lines, and the answer of a
-  // read older than the one the lines show, or from before a sign-out, is
-  // dropped (snpayout::CtfWinsLines)
-  if (!ctfWins_.Apply(read, std::move(wins))) return;
+void WalletPage::ApplyCtfClient(uint32_t read, std::optional<std::vector<snpayout::CtfWin>> wins,
+                                snpayout::CtfAnswer answer) {
+  // a read that failed keeps the last good read's lines, a client answer
+  // keeps a network answer's, and the answer of a read older than the one the
+  // lines show, or from before a sign-out, is dropped (snpayout::CtfWinsLines)
+  if (!ctfWins_.Apply(read, std::move(wins), answer)) return;
   RebuildV2Section();
 }
 
@@ -2455,7 +2467,8 @@ void WalletPage::ApplyClaims(std::vector<EpochClaim> const& claims, int64_t tota
     w_.ClaimsStatusText().Visibility(noDevice ? Visibility::Collapsed : Visibility::Visible);
     SetStatValue(w_.UnclaimedValue(), L"-", false);
     w_.UnclaimedNote().Text(noDevice ? Loc("earnings_claims_need_session") : SnErrorText(error));
-    w_.ClaimButton().IsEnabled(false);
+    // a claim in flight keeps Claim, which opens its dialog
+    w_.ClaimButton().IsEnabled(v1Claim_.InFlight());
     RebuildHistory();
     return;
   }
@@ -2472,7 +2485,9 @@ void WalletPage::ApplyClaims(std::vector<EpochClaim> const& claims, int64_t tota
   // preview's sample the dialog still OPENS (read-only, its action disabled)
   // so it can be looked at.
   const bool previewSample = w_.previewUi() && PreviewSample() && !claims_.empty();
-  w_.ClaimButton().IsEnabled((totalClaimableRao_ > 0 && CanClaim()) || previewSample);
+  // A claim in flight keeps Claim, which opens its dialog, whatever the read
+  // says since it started.
+  w_.ClaimButton().IsEnabled((totalClaimableRao_ > 0 && CanClaim()) || previewSample || v1Claim_.InFlight());
   RebuildHistory();
 }
 
@@ -2584,33 +2599,109 @@ std::string WalletPage::ExplorerTxUrl() const {
   return {};
 }
 
-// Device.snClaim, as the dialog's Claimer: the SDK builds the claim calldata
-// from the published artifact, signs with the gas key and sends it to the
-// vault, reporting per epoch. Nothing here touches a URnetwork API.
+// The v1 dialog's Claim: the claim of the dialog's progress, as the session's
+// claim in flight (StartV1Claim), while the page lives.
 Claimer WalletPage::MakeClaimer() {
-  return [](std::vector<int64_t> epochs, ClaimEvents events) {
-    if (!Sdk().hasDevice()) {
-      if (events.failed) {
-        for (int64_t epoch : epochs) events.failed(epoch, "no device");
-      }
-      if (events.done) events.done();
-      return;
-    }
-    urnet::SnClaimCallback callback;
-    callback.sent = [events](int64_t epoch, const std::string& txHash) {
-      if (events.sent) events.sent(epoch, txHash);
-    };
-    callback.confirmed = [events](int64_t epoch, const std::string& txHash, int64_t amountRao) {
-      if (events.confirmed) events.confirmed(epoch, txHash, amountRao);
-    };
-    callback.failed = [events](int64_t epoch, const std::string& message) {
-      if (events.failed) events.failed(epoch, message);
-    };
-    callback.done = [events]() {
-      if (events.done) events.done();
-    };
-    Sdk().device().snClaim(epochs, callback);
+  auto weak = w_.get_weak();
+  return [weak](std::shared_ptr<ClaimAlphaProgress> progress) {
+    auto self = weak.get();
+    return self && self->wallet().StartV1Claim(std::move(progress));
   };
+}
+
+// Device.snClaim: the SDK builds the claim calldata from the published
+// artifact, signs with the gas key and sends it to the vault, reporting per
+// epoch. Nothing here touches a URnetwork API. The claim is the session's,
+// not the dialog's (owner, 2026-11-12): v1Claim_ holds it, and its events move
+// its progress on the UI thread whether or not a dialog is up, so a dialog
+// dismissed during the claim drops none of them, one opened again draws them
+// with Claim held until Done, and no second claim starts while it is in
+// flight. After its Done the page reads the claims and the gas balance again,
+// which moves the tile and the history. A sign-out drops it (ResetForSignOut).
+bool WalletPage::StartV1Claim(std::shared_ptr<ClaimAlphaProgress> progress) {
+  // the gas key sends one claim at a time (StartV2Claim)
+  if (v2Claim_.InFlight()) return false;
+  const std::optional<uint64_t> started = v1Claim_.Start(progress);
+  if (!started) return false;
+  const uint64_t ticket = *started;
+  auto queue = w_.DispatcherQueue();
+  auto weak = w_.get_weak();
+  // the claim's progress, which its events move while the page or a dialog
+  // holds it
+  const std::weak_ptr<ClaimAlphaProgress> claim = progress;
+  ClaimEvents events;
+  events.sent = [queue, weak, claim](int64_t epoch, std::string txHash) {
+    queue.TryEnqueue([weak, claim, epoch, txHash] {
+      if (auto self = weak.get()) {
+        self->wallet().OnV1ClaimEvent(claim, [&](ClaimAlphaProgress& rows) { rows.Sent(epoch, txHash); });
+      }
+    });
+  };
+  events.confirmed = [queue, weak, claim](int64_t epoch, std::string txHash, int64_t amountRao) {
+    queue.TryEnqueue([weak, claim, epoch, txHash, amountRao] {
+      if (auto self = weak.get()) {
+        self->wallet().OnV1ClaimEvent(
+            claim, [&](ClaimAlphaProgress& rows) { rows.Confirmed(epoch, txHash, amountRao); });
+      }
+    });
+  };
+  events.failed = [queue, weak, claim](int64_t epoch, std::string message) {
+    urnw::LogError("earnings: claim of epoch {} failed: {}", epoch, message);
+    queue.TryEnqueue([weak, claim, epoch, message] {
+      if (auto self = weak.get()) {
+        self->wallet().OnV1ClaimEvent(claim, [&](ClaimAlphaProgress& rows) { rows.Failed(epoch, message); });
+      }
+    });
+  };
+  events.done = [queue, weak, claim, ticket] {
+    queue.TryEnqueue([weak, claim, ticket] {
+      if (auto self = weak.get()) self->wallet().OnV1ClaimDone(claim, ticket);
+    });
+  };
+  const std::vector<int64_t> epochs = progress->epochs();
+  if (!Sdk().hasDevice()) {
+    for (int64_t epoch : epochs) events.failed(epoch, "no device");
+    events.done();
+    return true;
+  }
+  urnet::SnClaimCallback callback;
+  callback.sent = [events](int64_t epoch, const std::string& txHash) {
+    if (events.sent) events.sent(epoch, txHash);
+  };
+  callback.confirmed = [events](int64_t epoch, const std::string& txHash, int64_t amountRao) {
+    if (events.confirmed) events.confirmed(epoch, txHash, amountRao);
+  };
+  callback.failed = [events](int64_t epoch, const std::string& message) {
+    if (events.failed) events.failed(epoch, message);
+  };
+  callback.done = [events]() {
+    if (events.done) events.done();
+  };
+  Sdk().device().snClaim(epochs, callback);
+  return true;
+}
+
+void WalletPage::OnV1ClaimEvent(std::weak_ptr<ClaimAlphaProgress> const& claim,
+                                std::function<void(ClaimAlphaProgress&)> const& step) {
+  // held while the claim is in flight, and by a dialog that shows it
+  const auto progress = claim.lock();
+  if (!progress) return;
+  step(*progress);
+  // a dialog open during the claim draws its progress (OnClaimAlpha)
+  if (claimSheet_) claimSheet_->Redraw();
+}
+
+void WalletPage::OnV1ClaimDone(std::weak_ptr<ClaimAlphaProgress> const& claim, uint64_t ticket) {
+  if (const auto progress = claim.lock()) progress->Done();
+  if (claimSheet_) claimSheet_->Redraw();
+  // a v2 dialog up waited for this claim
+  if (v2ClaimSheet_) v2ClaimSheet_->Redraw();
+  // no claim in flight from now, unless a sign-out dropped this one: the tile,
+  // its Claim and the history follow the claims as the vault now has them
+  if (v1Claim_.End(ticket)) {
+    LoadClaims();
+    LoadGas();
+  }
 }
 
 winrt::fire_and_forget WalletPage::OnClaimAlpha(IInspectable const&, RoutedEventArgs const&) {
@@ -2624,18 +2715,22 @@ winrt::fire_and_forget WalletPage::OnClaimAlpha(IInspectable const&, RoutedEvent
   // ACTABLE: its one button sends a transaction.
   const bool allowActions = CanClaim();
   GasKeyInfo gas = gas_.value_or(GasKeyInfo{});
-  auto weak = w_.get_weak();
+  // A dialog opened during a claim draws the claim in flight, the session's,
+  // whatever the page read since, and its Claim waits for it; otherwise the
+  // epochs as last read.
+  std::shared_ptr<ClaimAlphaProgress> progress = v1Claim_.Progress();
+  if (!progress) progress = std::make_shared<ClaimAlphaProgress>(claims_, gas.tao);
+  // and its Claim waits for a v2 claim in flight: the gas key sends one claim
+  // at a time (StartV2Claim)
+  auto page = w_.get_weak();
+  auto v2InFlight = [page] {
+    auto window = page.get();
+    return window && window->wallet().v2Claim_.InFlight();
+  };
   self->SetSheetOpen(true);
   try {
-    claimSheet_ = urnw::ClaimAlphaSheet::Create(
-        self->Content().XamlRoot(), self->DispatcherQueue(), claims_, gas, ExplorerTxUrl(),
-        allowActions, MakeClaimer(), [weak] {
-          // at least one epoch confirmed: the tile and the history move
-          if (auto w = weak.get()) {
-            w->wallet().LoadClaims();
-            w->wallet().LoadGas();
-          }
-        });
+    claimSheet_ = urnw::ClaimAlphaSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,
+                                                ExplorerTxUrl(), allowActions, MakeClaimer(), v2InFlight);
     co_await self->wallet().claimSheet_->Dialog().ShowAsync();
   } catch (winrt::hresult_error const& e) {
     urnw::LogError("earnings: the claim sheet failed to open: {}",
@@ -2669,9 +2764,10 @@ void WalletPage::ApplyV2Accounts(snpayout::LedgerFetch fetch,
 // sn_ctf_* keys, the other apps' own. Claim opens the v2 claim dialog, and
 // says Claim both while it claims both pools; the app never claims by itself.
 void WalletPage::RebuildV2Section() {
+  // a claim in flight keeps Claim, which opens its dialog
   const auto view =
       snpayout::LedgerSectionFor(snWallet_.has_value(), Vault2Configured(), v2Fetch_, v2Accounts_,
-                                 CanClaim(), v2Unavailable_, TransferFloorRao());
+                                 CanClaim(), v2Unavailable_, TransferFloorRao(), v2Claim_.InFlight());
   // A network with no wallet on this device has no ledger read here: the tile
   // shows what URnetwork's claim relay claims for its consent, once the relay
   // reports a claimable or pending balance.
@@ -2817,45 +2913,123 @@ int64_t WalletPage::TransferFloorRao() const {
   return claimStatus_ && !claimStatus_->error ? claimStatus_->transfer_floor_rao : 0;
 }
 
-// Device.snLedgerClaim, as the v2 dialog's claimer: the SDK reads the accounts
-// of every pool (capture the flag's beside the provider pool's) and their
-// proofs, verifies each against vault2's root, preflights, and sends them,
-// signed with the gas key and reported per account: two or more in one
-// STClaimBatcher transaction that calls the pinned vault2 for each, where the
-// chain settings name a batcher and the gas key can pay for it, else one claim
-// each to vault2, the largest first. After its Done the page reads the
-// accounts and the gas balance again, whether or not the dialog is still up,
-// and the relay's status and capture the flag's wins, and after a claim that
-// paid an account the wins again on the apps' schedule (ReadCtfWinsAfterClaim),
-// so a win the claim paid loses its line once the server reads it claimed. The
-// claim itself touches no URnetwork API.
+// The v2 dialog's Claim: the claim of the dialog's progress, as the session's
+// claim in flight (StartV2Claim), while the page lives.
 LedgerClaimer WalletPage::MakeV2Claimer() {
+  auto weak = w_.get_weak();
+  return [weak](std::shared_ptr<snpayout::LedgerClaimProgress> progress) {
+    auto self = weak.get();
+    return self && self->wallet().StartV2Claim(std::move(progress));
+  };
+}
+
+// Device.snLedgerClaim: the SDK reads the accounts of every pool (capture the
+// flag's beside the provider pool's) and their proofs, verifies each against
+// vault2's root, preflights, and sends them, signed with the gas key and
+// reported per account: two or more in one STClaimBatcher transaction that
+// calls the pinned vault2 for each, where the chain settings name a batcher
+// and the gas key can pay for it, else one claim each to vault2, the largest
+// first. The claim is the session's, not the dialog's (owner, 2026-11-12):
+// v2Claim_ holds it, and its events move its progress on the UI thread
+// whether or not a dialog is up, so a dialog dismissed during the claim drops
+// none of them, one opened again draws them with Claim held until Done, and no
+// second claim starts while it is in flight. After its Done the page reads the
+// accounts and the gas balance again, and the relay's status and capture the
+// flag's wins, and after a claim that paid an account the wins again on the
+// apps' schedule (ReadCtfWinsAfterClaim), so a win the claim paid loses its
+// line once the server reads it claimed. A sign-out drops it (ResetForSignOut).
+// The claim itself touches no URnetwork API.
+bool WalletPage::StartV2Claim(std::shared_ptr<snpayout::LedgerClaimProgress> progress) {
+  // The gas key sends one claim at a time: the SDK reads its pending nonce as
+  // it signs, with no lock across a v1 and a v2 claim, so two claims at once
+  // could take the same nonce (Linux's page holds one the same way).
+  if (v1Claim_.InFlight()) return false;
+  const std::optional<uint64_t> started = v2Claim_.Start(progress);
+  if (!started) return false;
+  const uint64_t ticket = *started;
+  // the section's Claim opens the claim in flight from now
+  RebuildV2Section();
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
-  return [queue, weak](snpayout::LedgerClaimEvents events) {
-    // the session the claim starts in (on the UI thread, at Claim)
-    uint32_t session = 0;
-    if (auto self = weak.get()) session = self->wallet().ctfWinsAfterClaim_.Session();
-    // after the dialog's Done, told whether the claim paid an account
-    events = snpayout::WithClaimPaid(std::move(events), [queue, weak, session](bool paid) {
-      queue.TryEnqueue([weak, paid, session] {
-        if (auto self = weak.get()) {
-          self->wallet().LoadV2Accounts();
-          self->wallet().LoadGas();
-          self->wallet().LoadClaimStatus();
-          self->wallet().LoadCtfClient();
-          self->wallet().ReadCtfWinsAfterClaim(paid, session);
-        }
-      });
+  // the claim's progress, which its events move while the page or a dialog
+  // holds it
+  const std::weak_ptr<snpayout::LedgerClaimProgress> claim = progress;
+  // the session the claim starts in (on the UI thread, at Claim)
+  const uint32_t session = ctfWinsAfterClaim_.Session();
+  snpayout::LedgerClaimEvents events;
+  events.sent = [queue, weak, claim](int64_t noId, int64_t index, std::string txHash) {
+    queue.TryEnqueue([weak, claim, noId, index, txHash] {
+      if (auto self = weak.get()) {
+        self->wallet().OnV2ClaimEvent(
+            claim, [&](snpayout::LedgerClaimProgress& rows) { rows.Sent(noId, index, txHash); });
+      }
     });
-    if (!Sdk().hasDevice()) {
-      if (events.failed) events.failed(0, 0, "no device");
-      events.done();
-      return;
-    }
-    Sdk().device().snLedgerClaim(
-        snpayout::LedgerClaimCallbackFor<urnet::SnLedgerClaimCallback>(events));
   };
+  events.confirmed = [queue, weak, claim](int64_t noId, int64_t index, std::string txHash,
+                                          int64_t amountRao) {
+    queue.TryEnqueue([weak, claim, noId, index, txHash, amountRao] {
+      if (auto self = weak.get()) {
+        self->wallet().OnV2ClaimEvent(claim, [&](snpayout::LedgerClaimProgress& rows) {
+          rows.Confirmed(noId, index, txHash, amountRao);
+        });
+      }
+    });
+  };
+  events.failed = [queue, weak, claim](int64_t noId, int64_t index, std::string message) {
+    urnw::LogError("earnings: v2 claim for pool {} account {} failed: {}", noId, index, message);
+    queue.TryEnqueue([weak, claim, noId, index, message] {
+      if (auto self = weak.get()) {
+        self->wallet().OnV2ClaimEvent(
+            claim, [&](snpayout::LedgerClaimProgress& rows) { rows.Failed(noId, index, message); });
+      }
+    });
+  };
+  events.done = [queue, weak, claim, ticket] {
+    queue.TryEnqueue([weak, claim, ticket] {
+      if (auto self = weak.get()) self->wallet().OnV2ClaimDone(claim, ticket);
+    });
+  };
+  // after the claim's Done, told whether the claim paid an account
+  events = snpayout::WithClaimPaid(std::move(events), [queue, weak, session](bool paid) {
+    queue.TryEnqueue([weak, paid, session] {
+      if (auto self = weak.get()) {
+        self->wallet().LoadV2Accounts();
+        self->wallet().LoadGas();
+        self->wallet().LoadClaimStatus();
+        self->wallet().LoadCtfClient();
+        self->wallet().ReadCtfWinsAfterClaim(paid, session);
+      }
+    });
+  });
+  if (!Sdk().hasDevice()) {
+    if (events.failed) events.failed(0, 0, "no device");
+    events.done();
+    return true;
+  }
+  Sdk().device().snLedgerClaim(
+      snpayout::LedgerClaimCallbackFor<urnet::SnLedgerClaimCallback>(events));
+  return true;
+}
+
+void WalletPage::OnV2ClaimEvent(std::weak_ptr<snpayout::LedgerClaimProgress> const& claim,
+                                std::function<void(snpayout::LedgerClaimProgress&)> const& step) {
+  // held while the claim is in flight, and by a dialog that shows it
+  const auto progress = claim.lock();
+  if (!progress) return;
+  step(*progress);
+  // a dialog open during the claim draws its progress (OnClaimV2)
+  if (v2ClaimSheet_) v2ClaimSheet_->Redraw();
+}
+
+void WalletPage::OnV2ClaimDone(std::weak_ptr<snpayout::LedgerClaimProgress> const& claim,
+                               uint64_t ticket) {
+  if (const auto progress = claim.lock()) progress->Done();
+  // no claim in flight from now, unless a sign-out dropped this one: the
+  // section's Claim follows the read again
+  if (v2Claim_.End(ticket)) RebuildV2Section();
+  if (v2ClaimSheet_) v2ClaimSheet_->Redraw();
+  // a v1 dialog up waited for this claim
+  if (claimSheet_) claimSheet_->Redraw();
 }
 
 winrt::fire_and_forget WalletPage::OnClaimV2(IInspectable const&, RoutedEventArgs const&) {
@@ -2869,11 +3043,25 @@ winrt::fire_and_forget WalletPage::OnClaimV2(IInspectable const&, RoutedEventArg
   // transactions, and only to a configured vault2.
   const bool allowActions = CanClaim() && Vault2Configured();
   GasKeyInfo gas = gas_.value_or(GasKeyInfo{});
+  // A dialog opened during a claim draws the claim in flight, the session's,
+  // whatever the page read since, and its Claim waits for it; otherwise the
+  // accounts as last read, and the pools that read could not read.
+  std::shared_ptr<snpayout::LedgerClaimProgress> progress = v2Claim_.Progress();
+  if (!progress) {
+    progress = std::make_shared<snpayout::LedgerClaimProgress>(v2Accounts_, gas.tao, v2Unavailable_,
+                                                               TransferFloorRao());
+  }
+  // and its Claim waits for a v1 claim in flight: the gas key sends one claim
+  // at a time (StartV2Claim)
+  auto page = w_.get_weak();
+  auto v1InFlight = [page] {
+    auto window = page.get();
+    return window && window->wallet().v1Claim_.InFlight();
+  };
   self->SetSheetOpen(true);
   try {
-    v2ClaimSheet_ = urnw::ClaimLedgerSheet::Create(
-        self->Content().XamlRoot(), self->DispatcherQueue(), v2Accounts_, v2Unavailable_,
-        TransferFloorRao(), gas, ExplorerTxUrl(), allowActions, MakeV2Claimer());
+    v2ClaimSheet_ = urnw::ClaimLedgerSheet::Create(self->Content().XamlRoot(), std::move(progress), gas,
+                                                   ExplorerTxUrl(), allowActions, MakeV2Claimer(), v1InFlight);
     co_await self->wallet().v2ClaimSheet_->Dialog().ShowAsync();
   } catch (winrt::hresult_error const& e) {
     urnw::LogError("earnings: the v2 claim sheet failed to open: {}",

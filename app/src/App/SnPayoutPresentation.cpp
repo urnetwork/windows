@@ -2,6 +2,7 @@
 #include "SnPayoutPresentation.h"
 
 #include <algorithm>
+#include <cctype>
 #include <atomic>
 #include <format>
 #include <limits>
@@ -93,7 +94,7 @@ bool UnderTransferFloor(int64_t claimableRao, int64_t transferFloorRao) {
 LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, LedgerFetch fetch,
                                    const std::vector<LedgerAccount>& accounts, bool canClaim,
                                    const std::vector<UnavailablePool>& unavailable,
-                                   int64_t transferFloorRao) {
+                                   int64_t transferFloorRao, bool claimInFlight) {
   LedgerSectionView view;
   if (!hasColdkey) return view;
   bool anyAccount = false;
@@ -154,7 +155,9 @@ LedgerSectionView LedgerSectionFor(bool hasColdkey, bool vault2Configured, Ledge
     if (!block.unavailable && block.claimableRao > 0 && !block.underFloor) movable.push_back(block.kind);
   }
   view.showClaim = vault2Configured;
-  view.claimEnabled = vault2Configured && canClaim && !movable.empty();
+  // a claim in flight keeps Claim, which opens its dialog, whatever the read
+  // says since it started
+  view.claimEnabled = vault2Configured && ((canClaim && !movable.empty()) || claimInFlight);
   view.claimBoth = vault2Configured && ClaimsBothPools(movable);
   return view;
 }
@@ -258,7 +261,28 @@ int64_t LedgerClaimProgress::ClaimableRao() const {
   return total;
 }
 
+// during a claim, a row it moves: one its press took, whatever the SDK says
+// of it since (every app, 2026-11-12: the figure is fixed at the press)
+bool LedgerClaimProgress::Moving(const LedgerClaimRow& row) const {
+  return row.pressRao > 0;
+}
+
+int64_t LedgerClaimProgress::FigureRao() const {
+  if (!sending_) return ClaimableRao();
+  // at the amounts the press took, which no row moving along (Confirmed above
+  // all) takes from it
+  constexpr int64_t kMax = std::numeric_limits<int64_t>::max();
+  int64_t total = 0;
+  for (const LedgerClaimRow& row : rows_) {
+    if (!Moving(row)) continue;
+    total = row.pressRao > kMax - total ? kMax : total + row.pressRao;
+  }
+  return total;
+}
+
 bool LedgerClaimProgress::TotalKnown() const {
+  // a press takes something (Start), so its figure is never a zero
+  if (sending_) return FigureRao() > 0;
   bool left = false;
   for (const LedgerClaimRow& row : rows_) {
     if (row.state == LedgerClaimState::Confirmed) continue;
@@ -275,7 +299,7 @@ bool LedgerClaimProgress::CanClaim(bool allowActions) const {
 bool LedgerClaimProgress::ClaimsBoth() const {
   std::vector<PoolKind> movable;
   for (const LedgerClaimRow& row : rows_) {
-    if (Movable(row)) movable.push_back(row.kind);
+    if (sending_ ? Moving(row) : Movable(row)) movable.push_back(row.kind);
   }
   return ClaimsBothPools(movable);
 }
@@ -289,6 +313,9 @@ std::string LedgerClaimProgress::TitleKey(const LedgerClaimRow& row) const {
 bool LedgerClaimProgress::Start() {
   if (sending_ || ClaimableRao() <= 0) return false;
   for (LedgerClaimRow& row : rows_) {
+    // what this press takes of the row: a row Claim moves, at its amount now,
+    // the figure until Done (FigureRao)
+    row.pressRao = Movable(row) ? row.amountRao : 0;
     if (row.state == LedgerClaimState::Confirmed || row.unavailable) continue;
     if (UnderTransferFloor(row.amountRao, transferFloorRao_)) {
       // under the dialog's floor no press takes it: one the last press left
@@ -548,16 +575,28 @@ std::string CtfWinKey(const CtfWin& win) {
   return win.role == CtfRole::Extender ? "sn_ctf_won_extender_slot" : "sn_ctf_won_provider_slot";
 }
 
-bool CtfWinsLines::Apply(uint32_t read, std::optional<std::vector<CtfWin>> wins) {
-  if (!wins || read <= shown_) return false;
+bool CtfWinsLines::Apply(uint32_t read, std::optional<std::vector<CtfWin>> wins, CtfAnswer answer) {
+  // a read that failed, or one from before a sign-out, changes nothing
+  if (!wins || read <= reset_) return false;
+  if (answer == CtfAnswer::Client) {
+    // this client's wins alone: a read that failed for a network answer's
+    // lines, and else the newest read's answer shows
+    if (networkShown_ || read <= shown_) return false;
+  } else if (networkShown_ && read <= shown_) {
+    // a network answer older than the one shown; one replaces a client
+    // answer's lines whatever their read
+    return false;
+  }
   shown_ = read;
+  networkShown_ = networkShown_ || answer == CtfAnswer::Network;
   lines_ = std::move(*wins);
   return true;
 }
 
 void CtfWinsLines::Reset() {
   lines_.clear();
-  shown_ = started_;
+  reset_ = shown_ = started_;
+  networkShown_ = false;
 }
 
 LedgerClaimEvents WithClaimPaid(LedgerClaimEvents events, std::function<void(bool paid)> afterDone) {
@@ -604,6 +643,126 @@ void CtfWinsReadsAfterClaim::Stop() {
   next_ = kCtfWinsReadsAfterClaim.size();
   ++token_;
   ++session_;
+}
+
+bool MentionsGas(std::string const& message) {
+  std::string lower = message;
+  std::transform(lower.begin(), lower.end(), lower.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return lower.find("gas") != std::string::npos || lower.find("funds") != std::string::npos;
+}
+
+bool MentionsExpiry(std::string const& message) {
+  std::string lower = message;
+  std::transform(lower.begin(), lower.end(), lower.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return lower.find("expire") != std::string::npos;
+}
+
+// ---- the v1 claim dialog -------------------------------------------------------
+
+ClaimAlphaProgress::ClaimAlphaProgress(std::vector<EpochClaim> claims, std::optional<double> gasTao)
+    // A known-empty gas key cannot pay for anything; an unknown balance (the
+    // chain did not answer) does not block the attempt, the SDK reports the
+    // real reason if there is one.
+    : needsGas_(gasTao.has_value() && *gasTao <= 0.0) {
+  // newest epoch first, as the history table orders them
+  std::sort(claims.begin(), claims.end(),
+            [](EpochClaim const& a, EpochClaim const& b) { return a.epoch > b.epoch; });
+  for (auto& claim : claims) {
+    Row row;
+    row.claim = std::move(claim);
+    rows_.push_back(std::move(row));
+  }
+}
+
+int64_t ClaimAlphaProgress::TotalClaimableRao() const {
+  int64_t total = 0;
+  for (auto const& row : rows_) {
+    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
+      total += row.claim.amountRao;
+    }
+  }
+  return total;
+}
+
+size_t ClaimAlphaProgress::ClaimableCount() const {
+  size_t count = 0;
+  for (auto const& row : rows_) {
+    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) ++count;
+  }
+  return count;
+}
+
+int64_t ClaimAlphaProgress::FigureRao() const {
+  // during a claim what its press moves, which no epoch confirming takes from it
+  return sending_ ? pressRao_ : TotalClaimableRao();
+}
+
+size_t ClaimAlphaProgress::CaptionCount() const {
+  // during a claim the epochs its press sends, as the figure is its press's
+  return sending_ ? epochs_.size() : ClaimableCount();
+}
+
+bool ClaimAlphaProgress::Start() {
+  if (sending_) return false;
+  // what this press moves: the epochs it sends below, as they are now
+  const int64_t pressRao = TotalClaimableRao();
+  std::vector<int64_t> epochs;
+  for (auto& row : rows_) {
+    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
+      row.state = Row::State::Sending;
+      row.message.clear();
+      epochs.push_back(row.claim.epoch);
+    }
+  }
+  if (epochs.empty()) return false;
+  epochs_ = std::move(epochs);
+  pressRao_ = pressRao;
+  sending_ = true;
+  return true;
+}
+
+ClaimAlphaProgress::Row* ClaimAlphaProgress::Find(int64_t epoch) {
+  for (auto& row : rows_) {
+    if (row.claim.epoch == epoch) return &row;
+  }
+  return nullptr;
+}
+
+void ClaimAlphaProgress::Sent(int64_t epoch, std::string const& txHash) {
+  if (auto* row = Find(epoch)) {
+    row->state = Row::State::Sent;
+    row->claim.txHash = txHash;
+  }
+}
+
+void ClaimAlphaProgress::Confirmed(int64_t epoch, std::string const& txHash, int64_t amountRao) {
+  if (auto* row = Find(epoch)) {
+    row->state = Row::State::Confirmed;
+    row->claim.status = "claimed";
+    row->claim.txHash = txHash;
+    if (amountRao > 0) row->claim.amountRao = amountRao;
+  }
+}
+
+void ClaimAlphaProgress::Failed(int64_t epoch, std::string const& message) {
+  if (auto* row = Find(epoch)) {
+    row->state = Row::State::Failed;
+    row->message = message;
+    if (MentionsExpiry(message)) row->claim.status = "expired";
+  }
+  // "needs gas" is a funding problem, not an epoch's: surface the mirror
+  // address above the rows as well as the reason on the row
+  if (MentionsGas(message)) needsGas_ = true;
+}
+
+void ClaimAlphaProgress::Done() {
+  sending_ = false;
+  // a row the SDK never reported on is not still sending
+  for (auto& row : rows_) {
+    if (row.state == Row::State::Sending) row.state = Row::State::Idle;
+  }
 }
 
 }  // namespace urnw::snpayout

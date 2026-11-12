@@ -33,6 +33,7 @@
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -349,6 +350,7 @@ void CheckTimes(const PayoutLineView& view) {
 // CtfWinsLines (ApplyCtfClient); a sign-out stops the reads and drops the
 // lines (ResetForSignOut). The server is a fake whose next reads answer
 // `answers`, one each, then `settled`; std::nullopt is a read that failed.
+// Each answer is the network's unless `from` says whose it is, one each.
 struct WinsPage {
   CtfWinsReadsAfterClaim schedule;
   std::optional<std::chrono::milliseconds> timer;  // armed with this wait
@@ -356,13 +358,14 @@ struct WinsPage {
   std::vector<std::chrono::milliseconds> waits;    // every wait armed
   CtfWinsLines wins;
   std::vector<std::optional<std::vector<CtfWin>>> answers;
+  std::vector<CtfAnswer> from;
   std::optional<std::vector<CtfWin>> settled = std::vector<CtfWin>{};
   int reads = 0;
   std::vector<std::string> heard;  // the dialog's events and the page's reads, in order
 
   const std::vector<CtfWin>& lines() const { return wins.lines(); }
   // the lines an earlier good read gave
-  void Seed(std::vector<CtfWin> earlier) { wins.Apply(wins.Start(), std::move(earlier)); }
+  void Seed(std::vector<CtfWin> earlier) { wins.Apply(wins.Start(), std::move(earlier), CtfAnswer::Network); }
   void Read() {
     ++reads;
     heard.push_back("read");
@@ -371,7 +374,12 @@ struct WinsPage {
       answer = answers.front();
       answers.erase(answers.begin());
     }
-    wins.Apply(wins.Start(), std::move(answer));
+    CtfAnswer whose = CtfAnswer::Network;
+    if (!from.empty()) {
+      whose = from.front();
+      from.erase(from.begin());
+    }
+    wins.Apply(wins.Start(), std::move(answer), whose);
   }
   void Arm(CtfWinsReadsAfterClaim::Wait wait) {
     timer = wait.wait;
@@ -403,6 +411,93 @@ struct WinsPage {
     schedule.Stop();
     timer.reset();
     wins.Reset();
+  }
+};
+
+// WalletPage's v2 claim, as it wires it: the claim in flight is the page's
+// (LedgerClaimInFlight), never a dialog's. A dialog (OnClaimV2) draws the
+// claim in flight's progress while there is one, else a new one over the
+// page's read; its Claim starts the claim on its progress (StartV2Claim). The
+// SDK's events come through its callback (LedgerClaimCallbackFor) and
+// WithClaimPaid, each posted to the UI thread (`posted`, which Drain runs),
+// where it moves the claim's own progress while the page or a dialog holds it
+// (OnV2ClaimEvent), and Done ends the claim in flight (OnV2ClaimDone), then the
+// page reads again. A sign-out drops it (ResetForSignOut), and a dialog up from
+// before keeps its progress. The section's Claim is RebuildV2Section's.
+struct ClaimPage {
+  std::vector<LedgerAccount> accounts;  // the page's last read
+  std::vector<UnavailablePool> unavailable;
+  int64_t floor = 0;
+  LedgerClaimInFlight claim;
+  // the open dialog's progress, null while no dialog is up
+  std::shared_ptr<LedgerClaimProgress> dialog;
+  std::vector<std::function<void()>> posted;  // the UI thread's queue
+  std::vector<SdkLedgerClaimCallback> sdk;    // each claim the SDK was asked for
+  int redraws = 0;                            // an open dialog drew the claim again
+  std::vector<bool> reads;                    // each Done's reads, told whether it paid
+  bool v1InFlight = false;                    // the page's v1 claim is in flight
+
+  // OnClaimV2
+  void Open() {
+    dialog = claim.Progress();
+    if (!dialog) dialog = std::make_shared<LedgerClaimProgress>(accounts, 0.5, unavailable, floor);
+  }
+  void Close() { dialog.reset(); }
+  // the dialog's Claim, held while a v1 claim is in flight (Held), which
+  // StartV2Claim refuses too: the gas key sends one claim at a time
+  bool ClaimEnabled() const { return dialog && dialog->CanClaim(true) && !v1InFlight; }
+  // the dialog's Claim: ClaimLedgerSheet::StartClaim, then StartV2Claim
+  bool Press() {
+    if (!dialog || dialog->sending()) return false;
+    if (v1InFlight) return false;
+    const std::optional<uint64_t> started = claim.Start(dialog);
+    if (!started) return false;
+    const uint64_t ticket = *started;
+    const std::weak_ptr<LedgerClaimProgress> rows = dialog;
+    LedgerClaimEvents events;
+    events.sent = [this, rows](int64_t noId, int64_t index, std::string txHash) {
+      posted.push_back([this, rows, noId, index, txHash] {
+        Event(rows, [&](LedgerClaimProgress& progress) { progress.Sent(noId, index, txHash); });
+      });
+    };
+    events.confirmed = [this, rows](int64_t noId, int64_t index, std::string txHash, int64_t amountRao) {
+      posted.push_back([this, rows, noId, index, txHash, amountRao] {
+        Event(rows, [&](LedgerClaimProgress& progress) { progress.Confirmed(noId, index, txHash, amountRao); });
+      });
+    };
+    events.failed = [this, rows](int64_t noId, int64_t index, std::string message) {
+      posted.push_back([this, rows, noId, index, message] {
+        Event(rows, [&](LedgerClaimProgress& progress) { progress.Failed(noId, index, message); });
+      });
+    };
+    events.done = [this, rows, ticket] { posted.push_back([this, rows, ticket] { Done(rows, ticket); }); };
+    events = WithClaimPaid(std::move(events), [this](bool paid) { posted.push_back([this, paid] { reads.push_back(paid); }); });
+    sdk.push_back(LedgerClaimCallbackFor<SdkLedgerClaimCallback>(events));
+    return true;
+  }
+  // OnV2ClaimEvent and OnV2ClaimDone
+  void Event(const std::weak_ptr<LedgerClaimProgress>& rows, const std::function<void(LedgerClaimProgress&)>& step) {
+    const auto progress = rows.lock();
+    if (!progress) return;
+    step(*progress);
+    if (dialog) ++redraws;
+  }
+  void Done(const std::weak_ptr<LedgerClaimProgress>& rows, uint64_t ticket) {
+    if (const auto progress = rows.lock()) progress->Done();
+    claim.End(ticket);
+    if (dialog) ++redraws;
+  }
+  // the UI thread runs what was posted, in order
+  void Drain() {
+    while (!posted.empty()) {
+      const std::function<void()> step = posted.front();
+      posted.erase(posted.begin());
+      step();
+    }
+  }
+  void SignOut() { claim.Drop(); }
+  LedgerSectionView Section() const {
+    return LedgerSectionFor(true, true, LedgerFetch::Ready, accounts, true, unavailable, floor, claim.InFlight());
   }
 };
 
@@ -1150,12 +1245,16 @@ int main() {
     Check(progress.rows()[1].unavailable && progress.rows()[1].state == LedgerClaimState::Idle &&
               progress.rows()[1].amountRao == 50'000'000,
           "its row is unavailable");
-    Check(progress.ClaimableRao() == 3'241'000'000 && !progress.ClaimsBoth(),
-          "the total leaves it out");
+    Check(progress.ClaimableRao() == 3'241'000'000, "what Claim moves leaves it out");
+    // the figure and Claim both are the press's until Done (every app,
+    // 2026-11-12: fixed at the press); the row says the pool is unavailable
+    Check(progress.FigureRao() == 3'291'000'000 && progress.ClaimsBoth(), "the claim's figure, fixed at the press");
     progress.Sent(1, 42, "0xabc");
     progress.Confirmed(1, 42, "0xabc", 3'241'000'000);
+    Check(progress.FigureRao() == 3'291'000'000 && progress.TotalKnown(), "one confirmed: still its figure");
     progress.Done();
     Check(!progress.CanClaim(true), "the page reads the accounts again");
+    Check(!progress.ClaimsBoth() && !progress.TotalKnown(), "after Done: no Claim both, and no figure");
     // a confirmed account's pool unavailable to a later claim stays claimed
     LedgerClaimProgress claimed({Account(), CtfAccount()}, 0.5);
     Check(claimed.Start(), "Claim both");
@@ -1698,35 +1797,35 @@ int main() {
     // a failure between two good reads leaves the lines as they were, and a
     // good read that no longer lists a win takes its line away
     CtfWinsLines lines;
-    Check(lines.Apply(lines.Start(), std::vector<CtfWin>{iceland, laos}) &&
+    Check(lines.Apply(lines.Start(), std::vector<CtfWin>{iceland, laos}, CtfAnswer::Network) &&
               lines.lines() == std::vector<CtfWin>{iceland, laos},
           "a good read");
-    Check(!lines.Apply(lines.Start(), std::nullopt) && lines.lines() == std::vector<CtfWin>{iceland, laos},
+    Check(!lines.Apply(lines.Start(), std::nullopt, CtfAnswer::Network) && lines.lines() == std::vector<CtfWin>{iceland, laos},
           "a read that failed keeps the lines");
-    Check(lines.Apply(lines.Start(), std::vector<CtfWin>{laos}) && lines.lines() == std::vector<CtfWin>{laos},
+    Check(lines.Apply(lines.Start(), std::vector<CtfWin>{laos}, CtfAnswer::Network) && lines.lines() == std::vector<CtfWin>{laos},
           "a good read replaces them");
     // reads overlap, each started at its time, and answer in any order: the
     // lines show the newest read's good answer
     const uint32_t slow = lines.Start();
     const uint32_t quick = lines.Start();
-    Check(lines.Apply(quick, std::vector<CtfWin>{iceland}) && lines.lines() == std::vector<CtfWin>{iceland},
+    Check(lines.Apply(quick, std::vector<CtfWin>{iceland}, CtfAnswer::Network) && lines.lines() == std::vector<CtfWin>{iceland},
           "the newer read answers first");
-    Check(!lines.Apply(slow, std::vector<CtfWin>{}) && lines.lines() == std::vector<CtfWin>{iceland},
+    Check(!lines.Apply(slow, std::vector<CtfWin>{}, CtfAnswer::Network) && lines.lines() == std::vector<CtfWin>{iceland},
           "an older read's late answer is dropped");
     // a newer read that fails drops no older read's good answer still to land
     const uint32_t older = lines.Start();
     const uint32_t newer = lines.Start();
-    Check(!lines.Apply(newer, std::nullopt) && lines.lines() == std::vector<CtfWin>{iceland}, "the newer fails");
-    Check(lines.Apply(older, std::vector<CtfWin>{}) && lines.lines().empty(),
+    Check(!lines.Apply(newer, std::nullopt, CtfAnswer::Network) && lines.lines() == std::vector<CtfWin>{iceland}, "the newer fails");
+    Check(lines.Apply(older, std::vector<CtfWin>{}, CtfAnswer::Network) && lines.lines().empty(),
           "the older read's good answer still shows: the win claimed");
     // a sign-out: no lines, and no answer of a read from before shows
-    lines.Apply(lines.Start(), std::vector<CtfWin>{iceland});
+    lines.Apply(lines.Start(), std::vector<CtfWin>{iceland}, CtfAnswer::Network);
     const uint32_t before = lines.Start();
     lines.Reset();
     Check(lines.lines().empty(), "a sign-out drops the lines");
-    Check(!lines.Apply(before, std::vector<CtfWin>{laos}) && lines.lines().empty(),
+    Check(!lines.Apply(before, std::vector<CtfWin>{laos}, CtfAnswer::Network) && lines.lines().empty(),
           "a read from before the sign-out shows nothing");
-    Check(lines.Apply(lines.Start(), std::vector<CtfWin>{laos}) && lines.lines() == std::vector<CtfWin>{laos},
+    Check(lines.Apply(lines.Start(), std::vector<CtfWin>{laos}, CtfAnswer::Network) && lines.lines() == std::vector<CtfWin>{laos},
           "the next account's first good read");
     // through the page: the read at a claim's Done fails, then the 30 s read
     // still lists the win, then the 60 s read says it is claimed
@@ -1751,6 +1850,394 @@ int main() {
     page.answers = {std::nullopt};
     page.Read();
     Check(page.lines().empty(), "the first read after a sign-in shows none until one answers");
+  }
+  {
+    TEST_CASE("ctf: a network answer beats a client answer");
+    const CtfWin iceland{CtfRole::Provider, "is"};
+    const CtfWin laos{CtfRole::Extender, "la"};
+    const CtfWin kenya{CtfRole::Provider, "ke"};
+    using Lines = std::vector<CtfWin>;
+    // whose answer: the SDK's ClientId, "" for the network's, else the client's
+    SdkCtfClientResult network;
+    network.unclaimed_wins = std::vector<SdkCtfWin>{SdkWin(11, "provider", "is")};
+    Check(CtfAnswerOf(network) == CtfAnswer::Network, "no client named: the network's answer");
+    SdkCtfClientResult client = network;
+    client.client_id = "3f6c2a1e-8d4b-4c7a-9e21-5b0d7f3a9c64";
+    Check(CtfAnswerOf(client) == CtfAnswer::Client, "a client named: that client's alone");
+
+    // a client answer after a network answer leaves the network's lines,
+    // as a read that failed would, whatever it holds
+    CtfWinsLines lines;
+    Check(lines.Apply(lines.Start(), Lines{iceland, laos}, CtfAnswer::Network) &&
+              lines.lines() == Lines{iceland, laos},
+          "the network's lines");
+    Check(!lines.Apply(lines.Start(), Lines{iceland}, CtfAnswer::Client) && lines.lines() == Lines{iceland, laos},
+          "a newer client answer leaves them");
+    Check(!lines.Apply(lines.Start(), Lines{}, CtfAnswer::Client) && lines.lines() == Lines{iceland, laos},
+          "a client answer with no win too");
+    // the next network answer replaces them as before, and an older one than
+    // the one shown is dropped
+    Check(lines.Apply(lines.Start(), Lines{laos}, CtfAnswer::Network) && lines.lines() == Lines{laos},
+          "the next network answer: a win claimed");
+    const uint32_t slow = lines.Start();
+    Check(lines.Apply(lines.Start(), Lines{kenya}, CtfAnswer::Network) && lines.lines() == Lines{kenya},
+          "a newer network answer");
+    Check(!lines.Apply(slow, Lines{laos}, CtfAnswer::Network) && lines.lines() == Lines{kenya},
+          "an older network answer's late answer is dropped");
+
+    // a client answer alone, as from a server before the network answer,
+    // whose every answer is a client's: its lines show, as any good read's
+    CtfWinsLines old;
+    Check(old.Apply(old.Start(), Lines{iceland, laos}, CtfAnswer::Client) && old.lines() == Lines{iceland, laos},
+          "a client answer alone shows its lines");
+    Check(!old.Apply(old.Start(), std::nullopt, CtfAnswer::Client) && old.lines() == Lines{iceland, laos},
+          "a read that failed keeps them");
+    const uint32_t older = old.Start();
+    Check(old.Apply(old.Start(), Lines{laos}, CtfAnswer::Client) && old.lines() == Lines{laos},
+          "the next client answer replaces them");
+    Check(!old.Apply(older, Lines{iceland}, CtfAnswer::Client) && old.lines() == Lines{laos},
+          "an older client answer's late answer is dropped");
+
+    // the network's answer replaces a client answer's lines, even from a read
+    // that started first: its network read was slow, and the next read's
+    // failed and fell back to the client token
+    CtfWinsLines mixed;
+    const uint32_t first = mixed.Start();
+    const uint32_t second = mixed.Start();
+    Check(mixed.Apply(second, Lines{iceland}, CtfAnswer::Client) && mixed.lines() == Lines{iceland},
+          "the client answer shows while no network answer has");
+    Check(mixed.Apply(first, Lines{iceland, laos}, CtfAnswer::Network) && mixed.lines() == Lines{iceland, laos},
+          "the network answer beats it");
+    Check(!mixed.Apply(mixed.Start(), Lines{iceland}, CtfAnswer::Client) && mixed.lines() == Lines{iceland, laos},
+          "and no client answer replaces its lines since");
+
+    // a sign-out: no network answer has shown since, so a client answer shows
+    // again, and no answer of a read from before, network or not, shows
+    const uint32_t before = mixed.Start();
+    mixed.Reset();
+    Check(!mixed.Apply(before, Lines{kenya}, CtfAnswer::Network) && mixed.lines().empty(),
+          "a network answer from before the sign-out");
+    Check(mixed.Apply(mixed.Start(), Lines{kenya}, CtfAnswer::Client) && mixed.lines() == Lines{kenya},
+          "the next account's client answer shows");
+
+    // through the page: the read at a claim's Done fell back to the client
+    // token, whose answer lists this client's win alone; the other client's
+    // line stays, and the network's answer 30 s after Done says the win is
+    // claimed
+    WinsPage page;
+    page.Seed({iceland, laos});
+    page.answers = {Lines{iceland}, Lines{laos}};
+    page.from = {CtfAnswer::Client, CtfAnswer::Network};
+    LedgerClaimEvents paid = page.Claimer();
+    paid.confirmed(kCtfNoId, 9, "0xclaim", 50'000'000);
+    paid.done();
+    Check(page.reads == 1 && page.lines() == Lines{iceland, laos}, "the client answer at Done leaves the lines");
+    page.Fire();
+    Check(page.reads == 2 && page.lines() == Lines{laos}, "the network's answer 30 s after Done");
+  }
+  {
+    TEST_CASE("v2 claim: the claim is the session's, not its dialog's");
+    LedgerAccount paidAccount = Account();
+    paidAccount.claimableRao = 0;
+    paidAccount.paidRao = paidAccount.finalizedRao;
+    ClaimPage page;
+    page.accounts = {Account(), CtfAccount()};
+    Check(page.Section().claimEnabled, "Claim");
+    page.Open();
+    Check(page.Press() && page.sdk.size() == 1, "Claim both: one claim");
+    Check(page.claim.InFlight() && page.dialog == page.claim.Progress(), "the dialog's progress is the claim in flight");
+    const std::shared_ptr<LedgerClaimProgress> first = page.claim.Progress();
+
+    // the dialog open: each event draws it again
+    page.sdk[0].sent(1, 42, "0xbatch");
+    page.Drain();
+    Check(page.redraws == 1, "an event redraws the open dialog");
+
+    // dismissed during the claim: its events still move the claim
+    page.Close();
+    page.sdk[0].sent(kCtfNoId, 9, "0xbatch");
+    page.sdk[0].confirmed(1, 42, "0xbatch", 3'241'000'000);
+    page.Drain();
+    Check(page.redraws == 1, "nothing to redraw with no dialog up");
+    // the page has read the accounts since (a visit to Earnings), and the
+    // confirmed one is paid: Claim still opens the claim in flight
+    page.accounts = {paidAccount, CtfAccount()};
+    Check(page.Section().claimEnabled, "Claim opens the claim in flight whatever the read says since");
+
+    // opened again: the claim as it went on, its Claim held
+    page.Open();
+    Check(page.dialog == first, "the claim in flight's progress, not a new one over the read");
+    CheckRow(page.dialog->rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Confirmed, "0xbatch", "",
+             "the account confirmed while no dialog was up");
+    CheckRow(page.dialog->rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Sent, "0xbatch", "",
+             "the account still sent");
+    Check(page.dialog->sending() && !page.dialog->CanClaim(true), "Claim held");
+    Check(!page.Press() && page.sdk.size() == 1, "no second claim from the dialog opened again");
+    // nor from a dialog over the read
+    auto overTheRead = std::make_shared<LedgerClaimProgress>(std::vector<LedgerAccount>{CtfAccount()}, 0.5);
+    Check(!page.claim.Start(overTheRead) && !overTheRead->sending() && page.claim.Progress() == first,
+          "no second claim while one is in flight");
+
+    // its Done with the dialog closed again: it lands, the page reads again
+    page.Close();
+    page.sdk[0].confirmed(kCtfNoId, 9, "0xbatch", 50'000'000);
+    page.sdk[0].done();
+    page.Drain();
+    Check(!page.claim.InFlight() && !first->sending(), "Done landed with no dialog up");
+    Check(page.reads == std::vector<bool>{true}, "the page read again after it, and it paid");
+    page.accounts = {paidAccount};
+    Check(!page.Section().claimEnabled, "Claim follows the read again");
+
+    // opened after Done: a dialog over the read, which claims anew
+    page.accounts = {Account()};
+    page.Open();
+    Check(page.dialog != first && !page.dialog->sending() && page.dialog->CanClaim(true), "a dialog over the read");
+    Check(page.Press() && page.sdk.size() == 2, "the next claim");
+
+    // the dialog pressed again after its claim's Done claims on from its own
+    // progress
+    page.sdk[1].failed(1, 42, "claim_failed: execution reverted");
+    page.sdk[1].done();
+    page.Drain();
+    const std::shared_ptr<LedgerClaimProgress> retry = page.dialog;
+    Check(!page.claim.InFlight() && retry->CanClaim(true), "failed: Claim again");
+    Check(page.Press() && page.claim.Progress() == retry && page.sdk.size() == 3,
+          "the same dialog's progress claims again");
+  }
+  {
+    TEST_CASE("v2 claim: a sign-out drops the claim in flight");
+    ClaimPage page;
+    page.accounts = {Account()};
+    page.Open();
+    Check(page.Press(), "Claim");
+    const std::shared_ptr<LedgerClaimProgress> departed = page.claim.Progress();
+    page.SignOut();
+    Check(!page.claim.InFlight(), "the page holds it no more");
+    Check(page.dialog == departed, "a dialog up from before keeps its progress");
+    // the device's claim ends with its session: its events move only its own
+    // progress, which the dialog shows to its end
+    page.sdk[0].failed(0, 0, "chain_rpc_unreachable: context canceled");
+    page.sdk[0].done();
+    page.Drain();
+    Check(!departed->sending() && departed->failure() == "chain_rpc_unreachable: context canceled",
+          "the dialog up from before shows the claim's end");
+    Check(!page.claim.InFlight(), "and its Done ends no claim");
+    page.Close();
+    // the next account's read: Claim follows it, and its claim starts
+    LedgerAccount paidAccount = Account();
+    paidAccount.claimableRao = 0;
+    page.accounts = {paidAccount};
+    Check(!page.Section().claimEnabled, "Claim follows the next account's read");
+    page.accounts = {Account()};
+    page.Open();
+    Check(page.dialog != departed && page.Press() && page.sdk.size() == 2, "the next account's claim");
+
+    // a departed claim's Done that lands after the next account's claim
+    // started ends nothing of it
+    ClaimPage late;
+    late.accounts = {Account()};
+    late.Open();
+    Check(late.Press(), "Claim");
+    late.Close();
+    late.SignOut();
+    late.Open();
+    Check(late.Press() && late.sdk.size() == 2, "the next account's claim");
+    late.sdk[0].done();
+    late.Drain();
+    Check(late.claim.InFlight() && late.claim.Progress() == late.dialog && late.dialog->sending(),
+          "the departed claim's Done ends nothing of the next one's");
+    Check(!late.Press() && late.sdk.size() == 2, "and its Claim stays held");
+  }
+  {
+    TEST_CASE("v2 claim: none while a v1 claim is in flight");
+    // the SDK reads the gas key's pending nonce as it signs, with no lock
+    // across a v1 and a v2 claim: the page sends one at a time (Linux's too)
+    ClaimPage page;
+    page.accounts = {Account()};
+    page.v1InFlight = true;
+    page.Open();
+    Check(!page.ClaimEnabled(), "Claim waits for the v1 claim");
+    Check(!page.Press() && page.sdk.empty() && !page.claim.InFlight() && !page.dialog->sending(),
+          "no v2 claim while it runs");
+    page.v1InFlight = false;
+    Check(page.ClaimEnabled() && page.Press() && page.sdk.size() == 1, "after its Done, Claim");
+  }
+  {
+    TEST_CASE("v1 claim: the claim in flight is the session's too");
+    // the v1 dialog's progress as the claim in flight needs it
+    // (ClaimAlphaProgress, below): Start takes the claimable epochs
+    struct Epochs {
+      int claimable = 2;
+      bool sending = false;
+      bool Start() {
+        if (sending || claimable == 0) return false;
+        sending = true;
+        return true;
+      }
+    };
+    ClaimInFlight<Epochs> v1;
+    auto dialog = std::make_shared<Epochs>();
+    const std::optional<uint64_t> ticket = v1.Start(dialog);
+    Check(ticket && v1.InFlight() && v1.Progress() == dialog && dialog->sending, "Claim: the claim in flight");
+    // the dialog dismissed and opened again: the claim in flight's progress,
+    // and no second claim, from it or from a dialog over the read
+    Check(v1.Progress() == dialog, "opened again on the claim in flight");
+    Check(!v1.Start(dialog) && !v1.Start(std::make_shared<Epochs>()), "no second claim while one is in flight");
+    // its Done ends it, once
+    Check(v1.End(*ticket) && !v1.InFlight() && !v1.Progress(), "Done");
+    Check(!v1.End(*ticket), "a Done twice ends nothing");
+    // nothing to claim starts nothing
+    auto none = std::make_shared<Epochs>();
+    none->claimable = 0;
+    Check(!v1.Start(none) && !v1.InFlight(), "no epoch to claim: no claim");
+    // a sign-out drops the claim in flight, and its Done, landing after the
+    // next account's claim started, ends nothing of it
+    const std::optional<uint64_t> departed = v1.Start(std::make_shared<Epochs>());
+    v1.Drop();
+    Check(!v1.InFlight(), "a sign-out drops it");
+    auto next = std::make_shared<Epochs>();
+    const std::optional<uint64_t> nextTicket = v1.Start(next);
+    Check(departed && nextTicket && !v1.End(*departed) && v1.Progress() == next,
+          "the departed claim's Done ends nothing of the next one's");
+  }
+  {
+    TEST_CASE("v1 claim: the dialog's figure and count are the press's until Done");
+    // the v1 dialog's progress (ClaimAlphaProgress): Claim names what is
+    // claimable, and during the claim what it moves, the epochs it sends as
+    // Start found them, which no epoch confirming takes from it (owner,
+    // 2026-11-12, as on Android, Linux and Apple); the count under the figure
+    // is the press's too
+    auto epoch = [](int64_t number, int64_t rao, std::string status) {
+      EpochClaim claim;
+      claim.epoch = number;
+      claim.amountRao = rao;
+      claim.status = std::move(status);
+      return claim;
+    };
+    ClaimAlphaProgress dialog(
+        {epoch(7, 1'000'000'000, "claimable"), epoch(9, 500'000'000, "claimable"), epoch(5, 2'000'000'000, "claimed")},
+        1.0);
+    Check(dialog.FigureRao() == 1'500'000'000 && dialog.CaptionCount() == 2, "between claims: what is claimable");
+    Check(dialog.rows().size() == 3 && dialog.rows()[0].claim.epoch == 9, "newest epoch first");
+    Check(dialog.Start() && dialog.sending() && dialog.epochs() == std::vector<int64_t>{9, 7},
+          "Claim sends the claimable epochs");
+    Check(!dialog.Start(), "no second press while it runs");
+    dialog.Sent(9, "0x9");
+    dialog.Confirmed(9, "0x9", 600'000'000);
+    Check(dialog.FigureRao() == 1'500'000'000 && dialog.CaptionCount() == 2,
+          "one confirmed, paying more than the read said: the press's figure and count");
+    dialog.Confirmed(7, "0x7", 1'000'000'000);
+    Check(dialog.FigureRao() == 1'500'000'000 && dialog.CaptionCount() == 2 && dialog.TotalClaimableRao() == 0,
+          "every epoch confirmed before Done: still the press's, never 0");
+    dialog.Done();
+    Check(!dialog.sending() && dialog.FigureRao() == 0 && dialog.CaptionCount() == 0,
+          "after Done nothing is left: a true 0");
+
+    // an epoch the gas key cannot pay for: the press's figure until Done,
+    // with the funding hint, and after Done it is what is left
+    ClaimAlphaProgress gas({epoch(7, 1'000'000'000, "claimable"), epoch(9, 500'000'000, "claimable")}, 1.0);
+    Check(gas.Start(), "Claim");
+    gas.Confirmed(9, "0x9", 500'000'000);
+    gas.Failed(7, "needs gas: the gas key cannot pay for the claim");
+    Check(gas.FigureRao() == 1'500'000'000 && gas.CaptionCount() == 2 && gas.needsGas(),
+          "short of gas: the press's figure, with the funding hint");
+    gas.Done();
+    Check(gas.FigureRao() == 1'000'000'000 && gas.CaptionCount() == 1, "after Done: the epoch short of gas is left");
+
+    // an expired epoch's failure says so and leaves it out; a known empty gas
+    // key needs gas; nothing claimable starts nothing
+    ClaimAlphaProgress expired({epoch(4, 1'000'000'000, "claimable")}, 0.0);
+    Check(expired.needsGas(), "a known empty gas key");
+    Check(expired.Start(), "Claim");
+    expired.Failed(4, "claims for epoch 4 expired");
+    expired.Done();
+    Check(expired.rows()[0].claim.status == "expired" && expired.FigureRao() == 0, "an expired epoch is left out");
+    ClaimAlphaProgress none({epoch(3, 1'000'000'000, "claimed")}, 1.0);
+    Check(!none.Start() && !none.sending() && none.FigureRao() == 0, "nothing claimable: no claim");
+  }
+  {
+    TEST_CASE("v2: a claim in flight keeps the section's Claim");
+    LedgerAccount paidAccount = Account();
+    paidAccount.claimableRao = 0;
+    Check(!LedgerSectionFor(true, true, LedgerFetch::Ready, {paidAccount}, true).claimEnabled,
+          "nothing claimable: no Claim");
+    Check(LedgerSectionFor(true, true, LedgerFetch::Ready, {paidAccount}, true, {}, 0, true).claimEnabled,
+          "a claim in flight: Claim opens it");
+    Check(LedgerSectionFor(true, true, LedgerFetch::Failed, {}, true, {}, 0, true).claimEnabled,
+          "a read that failed since: Claim still opens it");
+    Check(LedgerSectionFor(true, true, LedgerFetch::Ready, {Account()}, false, {}, 0, true).claimEnabled,
+          "with no device session it still opens the claim");
+    const LedgerSectionView before = LedgerSectionFor(true, false, LedgerFetch::Ready, {Account()}, true, {}, 0, true);
+    Check(!before.showClaim && !before.claimEnabled, "before vault2 there is no Claim");
+    Check(!LedgerSectionFor(false, true, LedgerFetch::Ready, {Account()}, true, {}, 0, true).shown,
+          "no section without a coldkey");
+  }
+  {
+    TEST_CASE("v2 claim: the figure during a claim is what the claim moves, never 0");
+    constexpr int64_t kFloor = 100'000'000;
+    LedgerAccount second = Account();
+    second.noId = 2;
+    second.index = 7;
+    second.claimableRao = 1'000'000'000;
+    // capture the flag's 0.05 under the floor, and a pool that could not be read
+    LedgerClaimProgress dialog = Dialog({Account(), second, CtfAccount()}, kFloor, {Unavailable(3, PoolKind::Pool)});
+    Check(dialog.FigureRao() == 4'241'000'000 && dialog.TotalKnown(), "between claims: what Claim moves");
+    Check(dialog.Start(), "Claim");
+    Check(dialog.FigureRao() == 4'241'000'000 && dialog.TotalKnown(),
+          "during the claim: the known accounts above the floor it sends");
+    // the SDK tries the account under the floor too, and claims one the page
+    // did not list: neither is in the figure
+    dialog.Sent(kCtfNoId, 9, "0xbatch");
+    dialog.Sent(5, 1, "0xbatch");
+    Check(dialog.FigureRao() == 4'241'000'000, "neither an account under the floor nor one of an amount not known");
+    // each account confirmed: the figure stays what the claim moves, never 0
+    dialog.Confirmed(1, 42, "0xbatch", 3'241'000'000);
+    Check(dialog.FigureRao() == 4'241'000'000, "one confirmed: the same figure");
+    dialog.Confirmed(2, 7, "0xbatch", 1'000'000'000);
+    Check(dialog.FigureRao() == 4'241'000'000 && dialog.TotalKnown(),
+          "everything it moves confirmed before Done: still its figure, never 0");
+    dialog.Done();
+    Check(!dialog.TotalKnown(), "after Done the rows left say why: no figure, never 0");
+
+    // Claim both says what the claim moves while it runs
+    LedgerClaimProgress both = Dialog({Account(), CtfAccount()});
+    Check(both.Start() && both.ClaimsBoth() && both.FigureRao() == 3'291'000'000, "Claim both");
+    both.Confirmed(1, 42, "0xbatch", 3'241'000'000);
+    Check(both.ClaimsBoth() && both.FigureRao() == 3'291'000'000, "one confirmed: still Claim both, its figure");
+    // an account the gas key could not pay for: the figure and Claim both stay
+    // the press's until Done (every app, 2026-11-12), and the account's own
+    // line is claimable again, with the funding hint; after Done it is what
+    // Claim moves
+    both.Failed(kCtfNoId, 9, "needs_gas: the gas key cannot pay for the claim");
+    Check(both.ClaimsBoth() && both.FigureRao() == 3'291'000'000 && both.TotalKnown(),
+          "short of gas: the press's figure until Done");
+    CheckRow(both.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Idle, "", "", "its own line, claimable");
+    Check(!both.rows()[1].underFloor && both.needsGas(), "with the funding hint");
+    both.Done();
+    Check(!both.ClaimsBoth() && both.FigureRao() == 50'000'000 && both.TotalKnown(),
+          "after Done: what Claim moves, the account short of gas");
+
+    // a claim that sends nothing it took: still the press's figure until Done,
+    // never a zero
+    LedgerClaimProgress none = Dialog({Account()});
+    Check(none.Start(), "Claim");
+    none.Failed(1, 42, "needs_gas: the gas key cannot pay for the claim");
+    Check(none.sending() && none.FigureRao() == 3'241'000'000 && none.TotalKnown(), "the press's figure");
+
+    // vault2 pays what the account holds when the claim lands, which can be
+    // more than the read said: the figure stays what Claim named until Done
+    LedgerClaimProgress more = Dialog({Account()});
+    Check(more.Start(), "Claim");
+    more.Confirmed(1, 42, "0xone", 3'500'000'000);
+    Check(more.FigureRao() == 3'241'000'000 && more.TotalKnown(), "paid more than Claim named: the press's figure");
+
+    // a claim that moved everything, after Done: a true 0 between claims
+    LedgerClaimProgress all = Dialog({Account()});
+    Check(all.Start(), "Claim");
+    all.Confirmed(1, 42, "0xone", 3'241'000'000);
+    Check(all.FigureRao() == 3'241'000'000 && all.TotalKnown(), "confirmed before Done: its figure");
+    all.Done();
+    Check(all.FigureRao() == 0 && all.TotalKnown(), "after Done nothing is left: a true 0");
   }
   {
     TEST_CASE("ctf claim: an account the dialog lists under the floor, which the SDK then tries");
@@ -1995,6 +2482,9 @@ int main() {
     Check(CtfWinsReadFrom(none) == std::optional<std::vector<CtfWin>>{std::vector<CtfWin>{}},
           "the header's no wins: a good read with none");
     Check(!CtfWinsReadFrom(unauthorized), "the header's error: a read that failed");
+    // and whose answer it is: the client's when it names one, else the network's
+    Check(CtfAnswerOf(client) == CtfAnswer::Client, "the header's answer for a client");
+    Check(CtfAnswerOf(none) == CtfAnswer::Network, "the header's answer for the network");
 #endif
   }
   {

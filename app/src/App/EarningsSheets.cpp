@@ -101,20 +101,10 @@ ColumnDefinition AutoColumn() {
 
 // A failure message from the SDK is a short English reason ("needs gas",
 // "expired", "rpc unreachable"); the store has a sentence for each of the ones
-// a user can act on. Anything else is shown as it came.
-bool MentionsGas(std::string const& message) {
-  std::string lower = message;
-  std::transform(lower.begin(), lower.end(), lower.begin(),
-                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-  return lower.find("gas") != std::string::npos || lower.find("funds") != std::string::npos;
-}
-
-bool MentionsExpiry(std::string const& message) {
-  std::string lower = message;
-  std::transform(lower.begin(), lower.end(), lower.begin(),
-                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-  return lower.find("expire") != std::string::npos;
-}
+// a user can act on. Anything else is shown as it came. The gas and the
+// expiry are the v1 progress's too (snpayout::ClaimAlphaProgress).
+using snpayout::MentionsExpiry;
+using snpayout::MentionsGas;
 
 bool MentionsRpc(std::string const& message) {
   std::string lower = message;
@@ -258,61 +248,24 @@ hstring CtfWinText(snpayout::CtfWin const& win) {
 // ---- ClaimAlphaSheet ---------------------------------------------------------
 
 std::shared_ptr<ClaimAlphaSheet> ClaimAlphaSheet::Create(
-    XamlRoot const& root, winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-    std::vector<EpochClaim> claims, GasKeyInfo gas, std::string explorerTxUrl,
-    bool allowActions, Claimer claimer, std::function<void()> onClaimed) {
+    XamlRoot const& root, std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas,
+    std::string explorerTxUrl, bool allowActions, Claimer claimer, std::function<bool()> held) {
   auto sheet = std::shared_ptr<ClaimAlphaSheet>(
-      new ClaimAlphaSheet(queue, std::move(claims), std::move(gas), std::move(explorerTxUrl),
-                          allowActions, std::move(claimer), std::move(onClaimed)));
+      new ClaimAlphaSheet(std::move(progress), std::move(gas), std::move(explorerTxUrl),
+                          allowActions, std::move(claimer), std::move(held)));
   sheet->Build(root);
   return sheet;
 }
 
-ClaimAlphaSheet::ClaimAlphaSheet(winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-                                 std::vector<EpochClaim> claims, GasKeyInfo gas,
+ClaimAlphaSheet::ClaimAlphaSheet(std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas,
                                  std::string explorerTxUrl, bool allowActions, Claimer claimer,
-                                 std::function<void()> onClaimed)
-    : queue_(queue),
+                                 std::function<bool()> held)
+    : progress_(std::move(progress)),
       gas_(std::move(gas)),
       explorerTxUrl_(std::move(explorerTxUrl)),
       allowActions_(allowActions),
       claimer_(std::move(claimer)),
-      onClaimed_(std::move(onClaimed)) {
-  // newest epoch first, as the history table orders them
-  std::sort(claims.begin(), claims.end(),
-            [](EpochClaim const& a, EpochClaim const& b) { return a.epoch > b.epoch; });
-  for (auto& claim : claims) {
-    Row row;
-    row.claim = std::move(claim);
-    rows_.push_back(std::move(row));
-  }
-  needsGas_ = NeedsGas();
-}
-
-int64_t ClaimAlphaSheet::TotalClaimableRao() const {
-  int64_t total = 0;
-  for (auto const& row : rows_) {
-    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
-      total += row.claim.amountRao;
-    }
-  }
-  return total;
-}
-
-size_t ClaimAlphaSheet::ClaimableCount() const {
-  size_t count = 0;
-  for (auto const& row : rows_) {
-    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) ++count;
-  }
-  return count;
-}
-
-bool ClaimAlphaSheet::NeedsGas() const {
-  // A known-empty gas key cannot pay for anything; an unknown balance (the
-  // chain did not answer) does not block the attempt, the SDK reports the
-  // real reason if there is one.
-  return gas_.tao.has_value() && *gas_.tao <= 0.0;
-}
+      held_(std::move(held)) {}
 
 void ClaimAlphaSheet::Build(XamlRoot const& root) {
   dialog_ = MakeDialog(root, Loc("claim_alpha_title"));
@@ -321,11 +274,12 @@ void ClaimAlphaSheet::Build(XamlRoot const& root) {
   content.Spacing(6);
   content.MinWidth(sheetfit::Width(root, 460));
 
-  // the figure: what is claimable now, over how many epochs
-  totalValue_ = MakeValue(hstring{FormatAlphaRao(TotalClaimableRao())}, 36);
+  // the figure: what is claimable now, over how many epochs; during a claim
+  // what the claim moves
+  totalValue_ = MakeValue(hstring{FormatAlphaRao(progress_->FigureRao())}, 36);
   content.Children().Append(totalValue_);
   acrossText_ = MakeText(
-      hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(ClaimableCount()))}, 12,
+      hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(progress_->CaptionCount()))}, 12,
       colors::MutedBrush(), true);
   content.Children().Append(acrossText_);
 
@@ -499,27 +453,32 @@ UIElement ClaimAlphaSheet::BuildRow(Row const& row) {
 }
 
 void ClaimAlphaSheet::ApplyState() {
-  totalValue_.Text(hstring{FormatAlphaRao(TotalClaimableRao())});
+  // what is claimable, and during a claim what the claim moves, fixed until
+  // its Done (owner, 2026-11-12): never a 0 while it runs
+  const int64_t total = progress_->FigureRao();
+  totalValue_.Text(hstring{FormatAlphaRao(total)});
   acrossText_.Text(
-      hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(ClaimableCount()))});
+      hstring{urnw::Format("claim_across_epochs", static_cast<int64_t>(progress_->CaptionCount()))});
   gasBalanceValue_.Text(gas_.tao ? hstring{FormatTao(*gas_.tao) + L" TAO"} : hstring{L"-"});
-  needsGasPanel_.Visibility(needsGas_ ? Visibility::Visible : Visibility::Collapsed);
+  needsGasPanel_.Visibility(progress_->needsGas() ? Visibility::Visible : Visibility::Collapsed);
 
   rowsPanel_.Children().Clear();
-  for (auto const& row : rows_) rowsPanel_.Children().Append(BuildRow(row));
+  for (auto const& row : progress_->rows()) rowsPanel_.Children().Append(BuildRow(row));
 
-  progressRow_.Visibility(sending_ ? Visibility::Visible : Visibility::Collapsed);
+  progressRow_.Visibility(progress_->sending() ? Visibility::Visible : Visibility::Collapsed);
 
-  const int64_t total = TotalClaimableRao();
   claimButton_.Content(winrt::box_value(
       hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}));
-  claimButton_.IsEnabled(allowActions_ && total > 0 && !needsGas_ && !sending_);
+  // held while the claim in flight runs, in this dialog or one closed since,
+  // and while a v2 claim runs: the gas key sends one claim at a time
+  claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending() &&
+                         !Held());
   // Once every claimable epoch confirmed the button has nothing left to do and
   // says so by its figure ("Claim 0.0000"), which is disabled above.
 }
 
 void ClaimAlphaSheet::StartClaim() {
-  if (sending_ || !claimer_) return;
+  if (progress_->sending() || !claimer_) return;
   if (!allowActions_) {
     // Disabled without a session, so reaching this is a bug rather than a
     // user path: say so instead of returning.
@@ -528,87 +487,13 @@ void ClaimAlphaSheet::StartClaim() {
     errorText_.Visibility(Visibility::Visible);
     return;
   }
-  std::vector<int64_t> epochs;
-  for (auto& row : rows_) {
-    if (row.claim.status == "claimable" && row.state != Row::State::Confirmed) {
-      row.state = Row::State::Sending;
-      row.message.clear();
-      epochs.push_back(row.claim.epoch);
-    }
-  }
-  if (epochs.empty()) return;
-  sending_ = true;
+  // The claim is the session's from here, not this dialog's (owner,
+  // 2026-11-12): the page starts it on this progress and moves the progress
+  // along with its events, so a dialog dismissed during the claim drops none
+  // of them, and one opened again draws them, its Claim held until Done.
+  if (!claimer_(progress_)) return;
   errorText_.Visibility(Visibility::Collapsed);
   ApplyState();
-
-  // The events arrive on the SDK's thread; each is marshalled here and applied
-  // through a weak reference, so a dismissed sheet drops them on the floor and
-  // the claim itself carries on regardless (it is the chain's, not the
-  // dialog's).
-  auto weak = weak_from_this();
-  auto queue = queue_;
-  auto find = [](std::vector<Row>& rows, int64_t epoch) -> Row* {
-    for (auto& row : rows) {
-      if (row.claim.epoch == epoch) return &row;
-    }
-    return nullptr;
-  };
-  ClaimEvents events;
-  events.sent = [weak, queue, find](int64_t epoch, std::string txHash) {
-    queue.TryEnqueue([weak, find, epoch, txHash] {
-      auto self = weak.lock();
-      if (!self) return;
-      if (auto* row = find(self->rows_, epoch)) {
-        row->state = Row::State::Sent;
-        row->claim.txHash = txHash;
-      }
-      self->ApplyState();
-    });
-  };
-  events.confirmed = [weak, queue, find](int64_t epoch, std::string txHash, int64_t amountRao) {
-    queue.TryEnqueue([weak, find, epoch, txHash, amountRao] {
-      auto self = weak.lock();
-      if (!self) return;
-      if (auto* row = find(self->rows_, epoch)) {
-        row->state = Row::State::Confirmed;
-        row->claim.status = "claimed";
-        row->claim.txHash = txHash;
-        if (amountRao > 0) row->claim.amountRao = amountRao;
-      }
-      self->anyConfirmed_ = true;
-      self->ApplyState();
-    });
-  };
-  events.failed = [weak, queue, find](int64_t epoch, std::string message) {
-    urnw::LogError("claim sheet: epoch {} failed: {}", epoch, message);
-    queue.TryEnqueue([weak, find, epoch, message] {
-      auto self = weak.lock();
-      if (!self) return;
-      if (auto* row = find(self->rows_, epoch)) {
-        row->state = Row::State::Failed;
-        row->message = message;
-        if (MentionsExpiry(message)) row->claim.status = "expired";
-      }
-      // "needs gas" is a funding problem, not an epoch's: surface the mirror
-      // address above the rows as well as the reason on the row
-      if (MentionsGas(message)) self->needsGas_ = true;
-      self->ApplyState();
-    });
-  };
-  events.done = [weak, queue] {
-    queue.TryEnqueue([weak] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->sending_ = false;
-      // a row the SDK never reported on is not still sending
-      for (auto& row : self->rows_) {
-        if (row.state == Row::State::Sending) row.state = Row::State::Idle;
-      }
-      self->ApplyState();
-      if (self->anyConfirmed_ && self->onClaimed_) self->onClaimed_();
-    });
-  };
-  claimer_(std::move(epochs), std::move(events));
 }
 
 void ClaimAlphaSheet::CopyMirrorAddress() {
@@ -643,29 +528,24 @@ void ClaimAlphaSheet::OpenTx(std::string const& txHash) {
 // ---- ClaimLedgerSheet --------------------------------------------------------
 
 std::shared_ptr<ClaimLedgerSheet> ClaimLedgerSheet::Create(
-    XamlRoot const& root, winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-    std::vector<snpayout::LedgerAccount> const& accounts,
-    std::vector<snpayout::UnavailablePool> const& unavailable, int64_t transferFloorRao,
-    GasKeyInfo gas, std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer) {
+    XamlRoot const& root, std::shared_ptr<snpayout::LedgerClaimProgress> progress, GasKeyInfo gas,
+    std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer, std::function<bool()> held) {
   auto sheet = std::shared_ptr<ClaimLedgerSheet>(
-      new ClaimLedgerSheet(queue, accounts, unavailable, transferFloorRao, std::move(gas),
-                           std::move(explorerTxUrl), allowActions, std::move(claimer)));
+      new ClaimLedgerSheet(std::move(progress), std::move(gas), std::move(explorerTxUrl),
+                           allowActions, std::move(claimer), std::move(held)));
   sheet->Build(root);
   return sheet;
 }
 
-ClaimLedgerSheet::ClaimLedgerSheet(winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-                                   std::vector<snpayout::LedgerAccount> const& accounts,
-                                   std::vector<snpayout::UnavailablePool> const& unavailable,
-                                   int64_t transferFloorRao, GasKeyInfo gas,
-                                   std::string explorerTxUrl, bool allowActions,
-                                   LedgerClaimer claimer)
-    : queue_(queue),
-      progress_(accounts, gas.tao, unavailable, transferFloorRao),
+ClaimLedgerSheet::ClaimLedgerSheet(std::shared_ptr<snpayout::LedgerClaimProgress> progress,
+                                   GasKeyInfo gas, std::string explorerTxUrl, bool allowActions,
+                                   LedgerClaimer claimer, std::function<bool()> held)
+    : progress_(std::move(progress)),
       gas_(std::move(gas)),
       explorerTxUrl_(std::move(explorerTxUrl)),
       allowActions_(allowActions),
-      claimer_(std::move(claimer)) {}
+      claimer_(std::move(claimer)),
+      held_(std::move(held)) {}
 
 void ClaimLedgerSheet::Build(XamlRoot const& root) {
   dialog_ = MakeDialog(root, Loc("claim_alpha_title"));
@@ -781,7 +661,7 @@ UIElement ClaimLedgerSheet::BuildRow(snpayout::LedgerClaimRow const& row) {
   grid.ColumnDefinitions().Append(AutoColumn());
 
   // the pool: Pool {}, or capture the flag's and the provider pool's beside it
-  auto pool = MakeText(PoolTitleText(progress_.TitleKey(row), row.noId), 13, colors::TextBrush());
+  auto pool = MakeText(PoolTitleText(progress_->TitleKey(row), row.noId), 13, colors::TextBrush());
   pool.VerticalAlignment(VerticalAlignment::Center);
   Grid::SetColumn(pool, 0);
   grid.Children().Append(pool);
@@ -856,38 +736,43 @@ UIElement ClaimLedgerSheet::BuildRow(snpayout::LedgerClaimRow const& row) {
 }
 
 void ClaimLedgerSheet::ApplyState() {
-  const int64_t total = progress_.ClaimableRao();
+  // between claims what Claim moves; during one what the claim moves, which
+  // stays until its Done (owner, 2026-11-12): never a zero, nor an account
+  // under the floor or of an amount not known yet
+  const int64_t total = progress_->FigureRao();
   // with only pools it could not read there is no total, never a zero
-  totalValue_.Text(progress_.TotalKnown() ? hstring{FormatAlphaRao(total)} : hstring{});
+  totalValue_.Text(progress_->TotalKnown() ? hstring{FormatAlphaRao(total)} : hstring{});
   gasBalanceValue_.Text(gas_.tao ? hstring{FormatTao(*gas_.tao) + L" TAO"} : hstring{L"-"});
-  needsGasPanel_.Visibility(progress_.needsGas() ? Visibility::Visible : Visibility::Collapsed);
+  needsGasPanel_.Visibility(progress_->needsGas() ? Visibility::Visible : Visibility::Collapsed);
 
   rowsPanel_.Children().Clear();
-  for (auto const& row : progress_.rows()) rowsPanel_.Children().Append(BuildRow(row));
+  for (auto const& row : progress_->rows()) rowsPanel_.Children().Append(BuildRow(row));
 
-  progressRow_.Visibility(progress_.sending() ? Visibility::Visible : Visibility::Collapsed);
-  if (!progress_.failure().empty()) {
-    errorText_.Text(LedgerFailureText(progress_.failure()));
+  progressRow_.Visibility(progress_->sending() ? Visibility::Visible : Visibility::Collapsed);
+  if (!progress_->failure().empty()) {
+    errorText_.Text(LedgerFailureText(progress_->failure()));
     errorText_.Visibility(Visibility::Visible);
   }
 
   // one Claim sends every pool's: while what it moves is exactly the operator
   // pool's account and capture the flag's it says Claim both, else the amount
   // it moves, which leaves out an account below the claim minimum, and with
-  // nothing it moves (a claim still out, for an account under the floor or
-  // none left) no amount at all: never a Claim of 0
+  // nothing it moves (an account under the floor, or none left) no amount at
+  // all: never a Claim of 0
   claimButton_.Content(winrt::box_value(
-      progress_.ClaimsBoth()
+      progress_->ClaimsBoth()
           ? Loc("sn_ledger_claim_both")
           : 0 < total ? hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))} : Loc("claim")));
-  claimButton_.IsEnabled(progress_.CanClaim(allowActions_));
+  // held while the claim in flight runs, in this dialog or one closed since,
+  // and while a v1 claim runs: the gas key sends one claim at a time
+  claimButton_.IsEnabled(progress_->CanClaim(allowActions_) && !Held());
   // with nothing Claim moves and no claim out (all claimed, or every row below
   // the claim minimum or unavailable) only Close is offered, never a Claim of 0
-  claimButton_.Visibility(0 < total || progress_.sending() ? Visibility::Visible : Visibility::Collapsed);
+  claimButton_.Visibility(0 < total || progress_->sending() ? Visibility::Visible : Visibility::Collapsed);
 }
 
 void ClaimLedgerSheet::StartClaim() {
-  if (progress_.sending() || !claimer_) return;
+  if (progress_->sending() || !claimer_) return;
   if (!allowActions_) {
     // Disabled without a session, so reaching this is a bug rather than a
     // user path: say so instead of returning.
@@ -897,52 +782,13 @@ void ClaimLedgerSheet::StartClaim() {
     errorText_.Visibility(Visibility::Visible);
     return;
   }
-  if (!progress_.Start()) return;
+  // The claim is the session's from here, not this dialog's (owner,
+  // 2026-11-12): the page starts it on this progress and moves the progress
+  // along with its events, so a dialog dismissed during the claim drops none
+  // of them, and one opened again draws them, its Claim held until Done.
+  if (!claimer_(progress_)) return;
   errorText_.Visibility(Visibility::Collapsed);
   ApplyState();
-
-  // The events arrive on the SDK's thread; each is marshalled here and applied
-  // through a weak reference, so a dismissed sheet drops them on the floor and
-  // the claim itself carries on regardless (it is the chain's, not the
-  // dialog's).
-  auto weak = weak_from_this();
-  auto queue = queue_;
-  snpayout::LedgerClaimEvents events;
-  events.sent = [weak, queue](int64_t noId, int64_t index, std::string txHash) {
-    queue.TryEnqueue([weak, noId, index, txHash] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->progress_.Sent(noId, index, txHash);
-      self->ApplyState();
-    });
-  };
-  events.confirmed = [weak, queue](int64_t noId, int64_t index, std::string txHash,
-                                   int64_t amountRao) {
-    queue.TryEnqueue([weak, noId, index, txHash, amountRao] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->progress_.Confirmed(noId, index, txHash, amountRao);
-      self->ApplyState();
-    });
-  };
-  events.failed = [weak, queue](int64_t noId, int64_t index, std::string message) {
-    urnw::LogError("v2 claim sheet: pool {} account {} failed: {}", noId, index, message);
-    queue.TryEnqueue([weak, noId, index, message] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->progress_.Failed(noId, index, message);
-      self->ApplyState();
-    });
-  };
-  events.done = [weak, queue] {
-    queue.TryEnqueue([weak] {
-      auto self = weak.lock();
-      if (!self) return;
-      self->progress_.Done();
-      self->ApplyState();
-    });
-  };
-  claimer_(std::move(events));
 }
 
 void ClaimLedgerSheet::CopyMirrorAddress() {

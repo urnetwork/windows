@@ -97,18 +97,11 @@ winrt::hstring CtfWinText(snpayout::CtfWin const& win);
 
 // ---- the claim dialog ----------------------------------------------------------
 
-// One finalized epoch's claim, as the page and the dialog see it (the SDK's
-// SnEpochClaim, copied so the dialog holds no SDK handle).
-struct EpochClaim {
-  int64_t epoch = 0;
-  int64_t shareBps = 0;
-  int64_t amountRao = 0;
-  std::string status;  // "open" | "claimable" | "claimed" | "expired" | "not-finalized"
-  int64_t claimOpenBlock = 0;
-  int64_t expiryBlock = 0;
-  std::string txHash;   // the last known claim tx for this epoch, "" if none
-  std::string message;  // the SDK's reason an epoch is not claimable, "" if none
-};
+
+// The v1 dialog's epochs and their claim (snpayout::ClaimAlphaProgress, pure and
+// host-tested) and one epoch's claim, as the page and the dialog name them.
+using EpochClaim = snpayout::EpochClaim;
+using ClaimAlphaProgress = snpayout::ClaimAlphaProgress;
 
 // The SDK-held gas key: the EVM address that signs claims, the ss58 mirror the
 // user funds with TAO, and its balance when the chain answered.
@@ -119,45 +112,55 @@ struct GasKeyInfo {
 };
 
 // The SDK's SnClaimCallback, as four functions the page adapts to whatever
-// thread the binding delivers them on. The dialog marshals to the UI thread
-// itself, so an adapter may call these from anywhere.
+// thread the binding delivers them on. The page marshals them to the UI thread
+// (WalletPage::StartV1Claim), so an adapter may call these from anywhere.
 struct ClaimEvents {
   std::function<void(int64_t epoch, std::string txHash)> sent;
   std::function<void(int64_t epoch, std::string txHash, int64_t amountRao)> confirmed;
   std::function<void(int64_t epoch, std::string message)> failed;
   std::function<void()> done;
 };
-// Starts the claim for `epochs` (Device.snClaim); the page owns the SDK call.
-using Claimer = std::function<void(std::vector<int64_t> epochs, ClaimEvents events)>;
+
+
+// Starts the claim of `progress`'s claimable epochs (Device.snClaim) as the
+// session's claim in flight (WalletPage::StartV1Claim): false, starting
+// nothing, while one is in flight or when the press takes no epoch. The page
+// owns the SDK call and moves `progress` along with the claim's events.
+using Claimer = std::function<bool(std::shared_ptr<ClaimAlphaProgress> progress)>;
 
 class ClaimAlphaSheet : public std::enable_shared_from_this<ClaimAlphaSheet> {
  public:
-  // `claims` is every epoch the SDK reported since the wallet was attached;
-  // the dialog claims the "claimable" ones and lists the rest with their state.
-  // `explorerTxUrl` is the chain's "https://.../tx/%s" (empty: no links).
-  // `allowActions` is WalletPage::CanClaim(): false when there is no device
-  // session to send with, in which case the dialog still opens and still
-  // READS but its one action is disabled. `onClaimed` fires on the UI thread
-  // after at least one epoch confirmed, so the page can refresh the tile.
+  // `progress` is what the dialog draws, shared with the page: during a claim
+  // the claim in flight's, whose events the page applies whether or not a
+  // dialog is up, so a dialog dismissed and opened again shows the claim as
+  // it went on, and its Claim waits for it; between claims the epochs the SDK
+  // reported since the wallet was attached. `explorerTxUrl` is the chain's
+  // "https://.../tx/%s" (empty: no links). `allowActions` is
+  // WalletPage::CanClaim(): false when there is no device session to send
+  // with, in which case the dialog still opens and still READS but its one
+  // action is disabled. The page reads the claims again after the claim's
+  // Done, whether or not the dialog is still up. `held`: a claim of the other
+  // kind is in flight, which Claim waits for, as the gas key sends one claim
+  // at a time (the SDK reads its pending nonce as it signs, with no lock
+  // across the two kinds).
   static std::shared_ptr<ClaimAlphaSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root,
-      winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-      std::vector<EpochClaim> claims, GasKeyInfo gas, std::string explorerTxUrl,
-      bool allowActions, Claimer claimer, std::function<void()> onClaimed);
+      std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas, std::string explorerTxUrl,
+      bool allowActions, Claimer claimer, std::function<bool()> held);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+  // Draws the progress again: the page calls it on each event of the claim
+  // in flight, and at the other kind's Done.
+  void Redraw() { ApplyState(); }
 
  private:
-  // the dialog's view of one epoch, moved along by the claim events
-  struct Row {
-    EpochClaim claim;
-    enum class State { Idle, Sending, Sent, Confirmed, Failed } state = State::Idle;
-    std::string message;  // the failure, when State::Failed
-  };
+  using Row = ClaimAlphaProgress::Row;
 
-  ClaimAlphaSheet(winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-                  std::vector<EpochClaim> claims, GasKeyInfo gas, std::string explorerTxUrl,
-                  bool allowActions, Claimer claimer, std::function<void()> onClaimed);
+  ClaimAlphaSheet(std::shared_ptr<ClaimAlphaProgress> progress, GasKeyInfo gas,
+                  std::string explorerTxUrl, bool allowActions, Claimer claimer,
+                  std::function<bool()> held);
+  // a claim of the other kind is in flight
+  bool Held() const { return held_ && held_(); }
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void StartClaim();
@@ -168,21 +171,12 @@ class ClaimAlphaSheet : public std::enable_shared_from_this<ClaimAlphaSheet> {
   winrt::Microsoft::UI::Xaml::UIElement BuildRow(Row const& row);
   void OpenTx(std::string const& txHash);
 
-  int64_t TotalClaimableRao() const;
-  size_t ClaimableCount() const;
-  bool NeedsGas() const;
-
-  winrt::Microsoft::UI::Dispatching::DispatcherQueue queue_;
-  std::vector<Row> rows_;
+  std::shared_ptr<ClaimAlphaProgress> progress_;
   GasKeyInfo gas_;
   std::string explorerTxUrl_;
   bool allowActions_;
   Claimer claimer_;
-  std::function<void()> onClaimed_;
-
-  bool sending_ = false;
-  bool needsGas_ = false;  // set from a "needs gas" failure as well as a zero balance
-  bool anyConfirmed_ = false;
+  std::function<bool()> held_;
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock totalValue_{nullptr};
@@ -197,35 +191,42 @@ class ClaimAlphaSheet : public std::enable_shared_from_this<ClaimAlphaSheet> {
 
 // ---- the settlement v2 claim dialog --------------------------------------------
 
-// Starts the claim of every claimable v2 account (Device.snLedgerClaim) with
-// the SDK's SnLedgerClaimCallback as snpayout::LedgerClaimEvents, which the
-// page may call from any thread; the page owns the SDK call.
-using LedgerClaimer = std::function<void(snpayout::LedgerClaimEvents events)>;
+// Starts the claim of every claimable v2 account (Device.snLedgerClaim) on
+// the dialog's `progress`, as the session's claim in flight
+// (WalletPage::StartV2Claim): false, starting nothing, while one is in flight
+// already or when the press would take nothing. The page owns the SDK call and
+// moves `progress` along with the claim's events.
+using LedgerClaimer = std::function<bool(std::shared_ptr<snpayout::LedgerClaimProgress> progress)>;
 
 class ClaimLedgerSheet : public std::enable_shared_from_this<ClaimLedgerSheet> {
  public:
-  // `accounts` are the v2 accounts as the page last read them, and
-  // `unavailable` the pools that read could not read; the dialog lists the
-  // claimable accounts and those pools and moves them along with the claim
-  // events (snpayout::LedgerClaimProgress). `transferFloorRao` is the claim
-  // relay's transfer floor, 0 when unknown. `explorerTxUrl` and `allowActions`
-  // as for ClaimAlphaSheet. The page reads the accounts again after the
-  // claim's Done, through its claimer, whether or not the dialog is still up.
+  // `progress` is what the dialog draws, shared with the page: during a claim
+  // the claim in flight's (snpayout::LedgerClaimInFlight), whose events the
+  // page applies whether or not a dialog is up, so a dialog dismissed and
+  // opened again shows the claim as it went on, and its Claim waits for it;
+  // between claims the claimable accounts and the unavailable pools of the
+  // page's last read, at the claim relay's transfer floor
+  // (snpayout::LedgerClaimProgress). `explorerTxUrl`, `allowActions` and
+  // `held` (a v1 claim in flight) as for ClaimAlphaSheet. The page reads the
+  // accounts again after the claim's Done, whether or not the dialog is still
+  // up.
   static std::shared_ptr<ClaimLedgerSheet> Create(
       winrt::Microsoft::UI::Xaml::XamlRoot const& root,
-      winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-      std::vector<snpayout::LedgerAccount> const& accounts,
-      std::vector<snpayout::UnavailablePool> const& unavailable, int64_t transferFloorRao,
-      GasKeyInfo gas, std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer);
+      std::shared_ptr<snpayout::LedgerClaimProgress> progress, GasKeyInfo gas,
+      std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer,
+      std::function<bool()> held);
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog Dialog() const { return dialog_; }
+  // Draws the progress again: the page calls it on each event of the claim
+  // in flight, and at the other kind's Done.
+  void Redraw() { ApplyState(); }
 
  private:
-  ClaimLedgerSheet(winrt::Microsoft::UI::Dispatching::DispatcherQueue const& queue,
-                   std::vector<snpayout::LedgerAccount> const& accounts,
-                   std::vector<snpayout::UnavailablePool> const& unavailable,
-                   int64_t transferFloorRao, GasKeyInfo gas, std::string explorerTxUrl,
-                   bool allowActions, LedgerClaimer claimer);
+  ClaimLedgerSheet(std::shared_ptr<snpayout::LedgerClaimProgress> progress, GasKeyInfo gas,
+                   std::string explorerTxUrl, bool allowActions, LedgerClaimer claimer,
+                   std::function<bool()> held);
+  // a v1 claim is in flight
+  bool Held() const { return held_ && held_(); }
 
   void Build(winrt::Microsoft::UI::Xaml::XamlRoot const& root);
   void StartClaim();
@@ -237,12 +238,12 @@ class ClaimLedgerSheet : public std::enable_shared_from_this<ClaimLedgerSheet> {
   // opens a claim transaction's page (snpayout::ExplorerTxLink)
   static void OpenTx(std::string const& url);
 
-  winrt::Microsoft::UI::Dispatching::DispatcherQueue queue_;
-  snpayout::LedgerClaimProgress progress_;
+  std::shared_ptr<snpayout::LedgerClaimProgress> progress_;
   GasKeyInfo gas_;
   std::string explorerTxUrl_;
   bool allowActions_;
   LedgerClaimer claimer_;
+  std::function<bool()> held_;
 
   winrt::Microsoft::UI::Xaml::Controls::ContentDialog dialog_{nullptr};
   winrt::Microsoft::UI::Xaml::Controls::TextBlock totalValue_{nullptr};
