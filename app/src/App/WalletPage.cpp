@@ -2776,9 +2776,10 @@ int64_t WalletPage::TransferFloorRao() const {
 // signed with the gas key and reported per account: two or more in one
 // STClaimBatcher transaction that calls the pinned vault2 for each, where the
 // chain settings name a batcher and the gas key can pay for it, else one claim
-// each to vault2. After its Done the page reads the accounts and the gas
-// balance again, whether or not the dialog is still up. Nothing here touches a
-// URnetwork API.
+// each to vault2, the largest first. After its Done the page reads the
+// accounts and the gas balance again, whether or not the dialog is still up,
+// and the relay's status and capture the flag's wins, so a win the claim paid
+// loses its line. The claim itself touches no URnetwork API.
 LedgerClaimer WalletPage::MakeV2Claimer() {
   auto queue = w_.DispatcherQueue();
   auto weak = w_.get_weak();
@@ -2791,6 +2792,7 @@ LedgerClaimer WalletPage::MakeV2Claimer() {
           self->wallet().LoadV2Accounts();
           self->wallet().LoadGas();
           self->wallet().LoadClaimStatus();
+          self->wallet().LoadCtfClient();
         }
       });
     };

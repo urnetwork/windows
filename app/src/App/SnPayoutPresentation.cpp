@@ -258,9 +258,13 @@ int64_t LedgerClaimProgress::ClaimableRao() const {
 }
 
 bool LedgerClaimProgress::TotalKnown() const {
-  auto unavailable = [](const LedgerClaimRow& row) { return row.unavailable; };
-  return std::any_of(rows_.begin(), rows_.end(), std::not_fn(unavailable)) ||
-         std::none_of(rows_.begin(), rows_.end(), unavailable);
+  bool left = false;
+  for (const LedgerClaimRow& row : rows_) {
+    if (row.state == LedgerClaimState::Confirmed) continue;
+    if (Movable(row)) return true;
+    left = true;
+  }
+  return !left;
 }
 
 bool LedgerClaimProgress::CanClaim(bool allowActions) const {
@@ -352,14 +356,15 @@ void LedgerClaimProgress::Failed(int64_t noId, int64_t index, const std::string&
   ledgerRead_ = true;
   if (code == "ledger_unavailable") {
     // the claim's own read could not read the pool (index 0: its account is
-    // unknown): each of its rows not confirmed is unavailable, never failed,
-    // and a pool with no row gets one
+    // unknown): each of its rows this claim has not sent is unavailable, never
+    // failed, while one sent, claimed or failed keeps its state (Android's and
+    // Linux's rule), and a pool with no row gets one
     reportedUnavailable_.push_back(noId);
     bool listed = false;
     for (LedgerClaimRow& row : rows_) {
       if (row.noId != noId) continue;
       listed = true;
-      if (row.state == LedgerClaimState::Confirmed) continue;
+      if (row.state != LedgerClaimState::Idle && row.state != LedgerClaimState::Sending) continue;
       row.state = LedgerClaimState::Idle;
       row.unavailable = true;
       row.message.clear();

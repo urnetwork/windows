@@ -1041,21 +1041,39 @@ int main() {
     back.Confirmed(kCtfNoId, 9, "0xbatch", 50'000'000);
     CheckRow(back.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Confirmed, "0xbatch", "",
              "confirmed with the Claimed amount");
-    // the dialog's total: none with only pools it could not read, never a zero
-    Check(progress.TotalKnown() && Dialog({Account()}, 0, {Unavailable(kCtfNoId, PoolKind::Ctf)}).TotalKnown(),
-          "an account beside the pool: its total");
-    const LedgerClaimProgress unread = Dialog({}, 0, {Unavailable(1, PoolKind::Pool), Unavailable(kCtfNoId, PoolKind::Ctf)});
+    // the dialog's total: what Claim moves, else nothing rather than a zero
+    // while the rows left say why (Android's dialog)
+    Check(Dialog({Account()}, 0, {Unavailable(kCtfNoId, PoolKind::Ctf)}).TotalKnown(),
+          "an account beside the unavailable pool: its total");
+    Check(!progress.TotalKnown(), "the provider pool's claimed, capture the flag's unread: no total");
+    const LedgerClaimProgress unread =
+        Dialog({}, 0, {Unavailable(1, PoolKind::Pool), Unavailable(kCtfNoId, PoolKind::Ctf)});
     Check(!unread.TotalKnown() && unread.rows().size() == 2 && !unread.CanClaim(true), "nothing read: no total");
     Check(Dialog({}).TotalKnown(), "nothing to claim and nothing unread: its zero");
     LedgerAccount small = Account();
     small.claimableRao = 1;
-    Check(Dialog({small}, 1'000).TotalKnown(), "an account under the floor: a zero the claim moves");
+    Check(!Dialog({small}, 1'000).TotalKnown(), "every account under the floor: no total, the rows say why");
+    Check(Dialog({Account(), CtfAccount()}, 100'000'000).TotalKnown(), "one above the floor: its total");
     // an account's pool unavailable to the claim's own read, and nothing else
     LedgerClaimProgress lost = Dialog({CtfAccount()});
     Check(lost.Start(), "Claim");
     lost.Failed(kCtfNoId, 0, "ledger_unavailable: 503");
     lost.Done();
     Check(!lost.TotalKnown() && lost.rows().size() == 1, "no total once its only pool is unread");
+    // everything claimed: a true zero
+    LedgerClaimProgress all = Dialog({Account(), CtfAccount()});
+    Check(all.Start(), "Claim both");
+    all.Confirmed(1, 42, "0xbatch", 3'241'000'000);
+    all.Confirmed(kCtfNoId, 9, "0xbatch", 50'000'000);
+    all.Done();
+    Check(all.TotalKnown() && all.ClaimableRao() == 0, "both claimed: 0 left");
+    // a row the SDK added, of an amount not known yet, is not a zero either
+    LedgerClaimProgress added = Dialog({Account()});
+    Check(added.Start(), "Claim");
+    added.Confirmed(1, 42, "0xabc", 3'241'000'000);
+    added.Failed(2, 7, "claim_failed: reverted");
+    added.Done();
+    Check(!added.TotalKnown(), "an unlisted account's failure: no total");
   }
   {
     TEST_CASE("ctf claim: the claim's own read cannot read a pool the page listed");
@@ -1080,6 +1098,20 @@ int main() {
     Check(claimed.rows().size() == 2 && !claimed.rows()[1].unavailable &&
               claimed.rows()[1].state == LedgerClaimState::Confirmed,
           "claimed, and no unavailable row beside it");
+    // only rows this claim has not sent: one sent may still confirm, and one
+    // the claim failed keeps its failure (Android's and Linux's rule)
+    LedgerClaimProgress sent = Dialog({Account(), CtfAccount()});
+    Check(sent.Start(), "Claim both");
+    sent.Sent(kCtfNoId, 9, "0xbatch");
+    sent.Failed(kCtfNoId, 0, "ledger_unavailable: 503");
+    Check(sent.rows().size() == 2 && sent.rows()[1].state == LedgerClaimState::Sent && !sent.rows()[1].unavailable,
+          "sent, never unavailable");
+    LedgerClaimProgress refused = Dialog({Account(), CtfAccount()});
+    Check(refused.Start(), "Claim both");
+    refused.Failed(kCtfNoId, 9, "proof_mismatch: the root does not match");
+    refused.Failed(kCtfNoId, 0, "ledger_unavailable: 503");
+    Check(refused.rows()[1].state == LedgerClaimState::Failed && !refused.rows()[1].unavailable,
+          "failed, never unavailable");
     // a pool, or an account, the page never listed: its kind by its noId
     LedgerClaimProgress unlisted({Account()}, 0.5);
     Check(unlisted.Start(), "Claim");

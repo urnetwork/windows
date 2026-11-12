@@ -284,12 +284,12 @@ bool UnderTransferFloor(int64_t claimableRao, int64_t transferFloorRao);
 // and the button says Claim both while the accounts it moves are exactly the
 // operator pool's and capture the flag's. An unavailable pool is a row of its
 // own, and the claim's ledger_unavailable for a pool (noId, index 0) makes
-// that pool's rows unavailable, never a failure or a zero. An account under
-// the transfer floor reads Below the claim minimum and is not in the claim's
-// amount, and the SDK's preflight refusing it (not_claimable: AmountTooLow)
-// reads the same. An account the gas key could not pay for once the largest
-// went (needs_gas for the account: nothing was sent for it) is still
-// claimable, with the gas key's funding hint.
+// that pool's unsent rows unavailable, never a failure or a zero. An account
+// under the transfer floor reads Below the claim minimum and is not in the
+// claim's amount, and the SDK's preflight refusing it (not_claimable:
+// AmountTooLow) reads the same. An account the gas key could not pay for once
+// the largest went (needs_gas for the account: nothing was sent for it) is
+// still claimable, with the gas key's funding hint.
 
 // The TAO the funding hint asks for. The SDK sends a v2 claim only when the gas
 // key holds its gas limit (eth_estimateGas, about 2.51M on runtime 475 for
@@ -353,9 +353,10 @@ class LedgerClaimProgress {
   // the transfer floor: what Claim moves. Saturates rather than overflowing on
   // an absurd ledger answer (the endpoint is untrusted).
   int64_t ClaimableRao() const;
-  // ClaimableRao is a total to show: an account's row is in the dialog, or no
-  // pool is unavailable. With only unavailable pools' rows there is nothing to
-  // add up, and they say so rather than a zero (Android's dialog).
+  // ClaimableRao is a total to show: a row not claimed yet is one Claim moves,
+  // or every row is claimed (or there is none), and the total is a true zero.
+  // While the rows left are all under the floor or unavailable, or of an
+  // amount not known yet, they say why rather than a zero (Android's dialog).
   bool TotalKnown() const;
   // Claim's button: actions allowed (a device session), something to claim
   // above the transfer floor, gas, and no claim out

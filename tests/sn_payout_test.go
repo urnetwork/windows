@@ -421,7 +421,9 @@ func TestCaptureTheFlagClaimFlow(t *testing.T) {
 	requireAll("WalletPage::OnClaimV2", body("WalletPage.cpp", page, "winrt::fire_and_forget WalletPage::OnClaimV2("),
 		"v2Accounts_, v2Unavailable_,", "TransferFloorRao(), gas, ExplorerTxUrl(), allowActions, MakeV2Claimer());")
 	requireAll("WalletPage::MakeV2Claimer", body("WalletPage.cpp", page, "LedgerClaimer WalletPage::MakeV2Claimer("),
-		"Sdk().device().snLedgerClaim(")
+		"Sdk().device().snLedgerClaim(",
+		// a win the claim paid loses its line: the wins are read again after Done
+		"self->wallet().LoadCtfClient();")
 	// the won slots: every unclaimed win, read with the Earnings reads, dropped
 	// at sign-out
 	requireAll("WalletPage::LoadCtfClient", body("WalletPage.cpp", page, "void WalletPage::LoadCtfClient("),
