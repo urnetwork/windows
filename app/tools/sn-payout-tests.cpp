@@ -2169,6 +2169,13 @@ int main() {
     none.Failed(1, 42, "needs_gas: the gas key cannot pay for the claim");
     Check(none.sending() && none.FigureRao() == 3'241'000'000 && none.TotalKnown(), "the press's figure");
 
+    // vault2 pays what the account holds when the claim lands, which can be
+    // more than the read said: the figure stays what Claim named until Done
+    LedgerClaimProgress more = Dialog({Account()});
+    Check(more.Start(), "Claim");
+    more.Confirmed(1, 42, "0xone", 3'500'000'000);
+    Check(more.FigureRao() == 3'241'000'000 && more.TotalKnown(), "paid more than Claim named: the press's figure");
+
     // a claim that moved everything, after Done: a true 0 between claims
     LedgerClaimProgress all = Dialog({Account()});
     Check(all.Start(), "Claim");
