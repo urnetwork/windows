@@ -6717,6 +6717,14 @@
     <value>ยังไม่ได้ตรวจสอบเครือข่ายสำหรับการเชื่อมต่อนี้ จนกว่าจะผ่าน อุปกรณ์นี้จะถูกเสนอให้ไคลเอนต์เฉพาะเมื่อผู้ให้บริการที่ผ่านการตรวจสอบหมดแล้ว</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>การตรวจสอบเหล่านี้ {} รายการล้มเหลวเฉพาะผ่าน IPv6 อุปกรณ์นี้จึงถูกเสนอสำหรับการรับส่งข้อมูล IPv4 เท่านั้น</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>การตรวจสอบเหล่านี้ {} รายการล้มเหลวเฉพาะผ่าน HTTP/3 (UDP) อุปกรณ์นี้จึงถูกเสนอสำหรับการรับส่งข้อมูล TCP เท่านั้น แอปบางเวอร์ชันและเครือข่ายบางแห่งไม่กำหนดเส้นทาง UDP</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>อุปกรณ์นี้เชื่อมต่อจากที่อยู่มากกว่าหนึ่งแห่ง หรือไม่ทราบตำแหน่ง ไคลเอนต์จะได้รับการเสนอเฉพาะอุปกรณ์ที่มีที่อยู่เดียวและทราบตำแหน่ง</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

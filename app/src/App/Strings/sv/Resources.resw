@@ -6809,6 +6809,22 @@ och mest decentraliserade in- och utgångsprotokoll.</value>
     <value>Nätverkskontrollen har inte körts på den här anslutningen än. Tills den godkänns erbjuds enheten klienter bara när kontrollerade leverantörer tar slut.</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.one" xml:space="preserve">
+    <value>{} av dessa kontroller misslyckades bara över IPv6, så den här enheten erbjuds bara för IPv4-trafik.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>{} av dessa kontroller misslyckades bara över IPv6, så den här enheten erbjuds bara för IPv4-trafik.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.one" xml:space="preserve">
+    <value>{} av dessa kontroller misslyckades bara över HTTP/3 (UDP), så den här enheten erbjuds bara för TCP-trafik. Vissa appversioner och vissa nätverk routar inte UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>{} av dessa kontroller misslyckades bara över HTTP/3 (UDP), så den här enheten erbjuds bara för TCP-trafik. Vissa appversioner och vissa nätverk routar inte UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>Den här enheten ansluter från mer än en adress, eller så är dess plats okänd. Klienter erbjuds bara enheter med en adress och en känd plats.</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>

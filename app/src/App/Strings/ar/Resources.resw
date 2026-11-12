@@ -7251,6 +7251,54 @@
     <value>لم يُجرَ فحص الشبكة على هذا الاتصال بعد. وإلى أن ينجح، لا يُعرض هذا الجهاز على العملاء إلا عند نفاد المزودين الذين تم فحصهم.</value>
     <comment>Provider status reason (egress_unprobed): the network check (loading test sites through the device) has not run yet.</comment>
   </data>
+  <data name="provider_status_reason_line_ipv4.zero" xml:space="preserve">
+    <value>فشل {} من هذه الفحوصات عبر IPv6 فقط، لذا يُعرض هذا الجهاز لحركة مرور IPv4 فقط.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.one" xml:space="preserve">
+    <value>فشل فحص واحد من هذه الفحوصات عبر IPv6 فقط، لذا يُعرض هذا الجهاز لحركة مرور IPv4 فقط.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.two" xml:space="preserve">
+    <value>فشل فحصان من هذه الفحوصات عبر IPv6 فقط، لذا يُعرض هذا الجهاز لحركة مرور IPv4 فقط.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.few" xml:space="preserve">
+    <value>فشلت {} من هذه الفحوصات عبر IPv6 فقط، لذا يُعرض هذا الجهاز لحركة مرور IPv4 فقط.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.many" xml:space="preserve">
+    <value>فشل {} من هذه الفحوصات عبر IPv6 فقط، لذا يُعرض هذا الجهاز لحركة مرور IPv4 فقط.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_ipv4.other" xml:space="preserve">
+    <value>فشل {} من هذه الفحوصات عبر IPv6 فقط، لذا يُعرض هذا الجهاز لحركة مرور IPv4 فقط.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took IPv6 away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineIpv4). The argument is how many of the checks failed only over IPv6; the device is still offered to clients, but for IPv4 traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.zero" xml:space="preserve">
+    <value>فشل {} من هذه الفحوصات عبر HTTP/3 (UDP) فقط، لذا يُعرض هذا الجهاز لحركة مرور TCP فقط. بعض إصدارات التطبيق وبعض الشبكات لا توجّه UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.one" xml:space="preserve">
+    <value>فشل فحص واحد من هذه الفحوصات عبر HTTP/3 (UDP) فقط، لذا يُعرض هذا الجهاز لحركة مرور TCP فقط. بعض إصدارات التطبيق وبعض الشبكات لا توجّه UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.two" xml:space="preserve">
+    <value>فشل فحصان من هذه الفحوصات عبر HTTP/3 (UDP) فقط، لذا يُعرض هذا الجهاز لحركة مرور TCP فقط. بعض إصدارات التطبيق وبعض الشبكات لا توجّه UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.few" xml:space="preserve">
+    <value>فشلت {} من هذه الفحوصات عبر HTTP/3 (UDP) فقط، لذا يُعرض هذا الجهاز لحركة مرور TCP فقط. بعض إصدارات التطبيق وبعض الشبكات لا توجّه UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.many" xml:space="preserve">
+    <value>فشل {} من هذه الفحوصات عبر HTTP/3 (UDP) فقط، لذا يُعرض هذا الجهاز لحركة مرور TCP فقط. بعض إصدارات التطبيق وبعض الشبكات لا توجّه UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
+  <data name="provider_status_reason_line_tcp.other" xml:space="preserve">
+    <value>فشل {} من هذه الفحوصات عبر HTTP/3 (UDP) فقط، لذا يُعرض هذا الجهاز لحركة مرور TCP فقط. بعض إصدارات التطبيق وبعض الشبكات لا توجّه UDP.</value>
+    <comment>Provider status 'Why?' list: a line under the network checks when the checks took UDP away (FP2-PROTOCOL.md §5.5, the sdk's ProviderStatusReasonLineTcp). The argument is how many of the checks failed only over HTTP/3, which runs over UDP; the device is still offered to clients, but for TCP traffic only.</comment>
+  </data>
   <data name="provider_status_reason_location_invalid" xml:space="preserve">
     <value>يتصل هذا الجهاز من أكثر من عنوان، أو أن موقعه غير معروف. لا يُعرض على العملاء إلا الأجهزة ذات العنوان الواحد والموقع المعروف.</value>
     <comment>Provider status reason (location_invalid): the device was seen at more than one IP address, or its location is unknown.</comment>
