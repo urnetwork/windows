@@ -18,7 +18,7 @@
 // back on every background poll and asked for a refresh on every one
 // (support inbox 8211).
 //
-// The plan shown (snapshot.plan) is the same decision. Before the server
+// The plan shown (snapshot.planView) is the same decision. Before the server
 // answers, a claim of Free is not shown as Free, since the claim stays Free
 // after a purchase until the network jwt renews: the plan reads Loading, or
 // Failed once a fetch failed, and offers no upgrade (support inbox 4074).
@@ -55,11 +55,10 @@ struct BalanceSnapshot {
   int64_t availableByteCount = 0;
   int64_t startBalanceByteCount = 0;  // the "daily data balance" row
   bool isPro = false;
-  // The plan to show (PlanView.h, from the sdk's decision): Pro or Free as
-  // the server answered (Pro also by the stored jwt's claim before it does),
-  // else Loading or Failed, never Free (support inbox 4074). isPro is its
-  // being Pro.
-  planview::PlanView plan = planview::PlanView::Loading;
+  // What the plan card shows (PlanView.h), from the sdk's decision: Pro or
+  // Free as the server answered (Pro also by the stored jwt's claim before it
+  // does), else Loading or Failed, never Free. isPro is its being Pro.
+  planview::PlanView planView = planview::PlanView::Loading;
   // the current subscription's store family (urnet::classifySubscriptionStore:
   // "stripe", "apple", "google", "crypto" for a year paid once in a coin,
   // "other"), "" without a subscription
@@ -239,7 +238,7 @@ class SubscriptionBalanceStore {
   void StopConfirmation(bool timedOut);
   // hands the stored jwt to proTracker_ (an empty read changes nothing)
   void TrackStoredJwt();
-  // snapshot_.plan and snapshot_.isPro as proTracker_ decides them now;
+  // snapshot_.planView and snapshot_.isPro as proTracker_ decides them now;
   // whether either changed
   bool SyncPlan();
   void Publish();
@@ -264,9 +263,8 @@ class SubscriptionBalanceStore {
   bool started_ = false;
   bool visible_ = false;
   // the sdk's Pro and jwt refresh decision (made in Initialize, driven from
-  // the UI thread only); snapshot_.isPro is its GetIsPro and snapshot_.plan
-  // its GetShownPlan, which a failed fetch (BalanceFailed) turns from Loading
-  // to Failed before the server's first answer
+  // the UI thread only); snapshot_.isPro is its GetIsPro
+  // and snapshot_.planView its GetShownPlan (a failed fetch turns it Failed)
   urnet::SubscriptionProTracker proTracker_;
   // snapshot_.guest is IsGuestNetwork(jwtGuest_, serverGuest_): the jwt's
   // GuestMode claim (a refresh clears it) or the server's `guest` (no login
