@@ -449,15 +449,17 @@ FrameworkElement MakeClaimedBanner(urnet::SnClaimStatusResult const& status) {
 }
 
 FrameworkElement MakeRelayPoolRows(urnet::SnClaimStatusResult const& status) {
-  std::vector<snpayout::RelayAccount> accounts;
-  if (status.accounts) {
-    for (auto const& account : *status.accounts) accounts.push_back(snpayout::RelayAccountFrom(account));
-  }
-  const std::vector<snpayout::RelayRow> rows = snpayout::RelayRowsFor(
-      accounts, snpayout::UnavailablePoolsFrom(status.unavailable_pools), status.transfer_floor_rao);
-  if (rows.empty()) return nullptr;
+  const std::vector<snpayout::RelayRow> rows =
+      snpayout::RelayRowsFor(snpayout::RelayAccountsFrom(status), snpayout::UnavailablePoolsFrom(status.unavailable_pools),
+                             status.transfer_floor_rao);
   // the claimed banner under the rows links the lead account's claim already
   const std::string bannerUrl = status.shows_claimed ? status.claim_tx_url.value_or(std::string()) : std::string();
+  return MakeRelayRows(rows, bannerUrl, /*pendingPill=*/true);
+}
+
+FrameworkElement MakeRelayRows(std::vector<snpayout::RelayRow> const& rows, std::string const& bannerUrl,
+                               bool pendingPill) {
+  if (rows.empty()) return nullptr;
   StackPanel list;
   list.Spacing(6);
   for (auto const& row : rows) {
@@ -507,14 +509,17 @@ FrameworkElement MakeRelayPoolRows(urnet::SnClaimStatusResult const& status) {
         ink = colors::MutedBrush();
         break;
     }
-    Border pill;
-    pill.Background(fill);
-    pill.CornerRadius(CornerRadius{9, 9, 9, 9});
-    pill.Padding(Thickness{8, 2, 8, 2});
-    pill.VerticalAlignment(VerticalAlignment::Center);
-    pill.Child(MakeText(word, 12, ink));
-    Grid::SetColumn(pill, 2);
-    line.Children().Append(pill);
+    // the tile leaves Pending to the relay's reason under it
+    if (pendingPill || row.status != snpayout::RelayRowStatus::Pending) {
+      Border pill;
+      pill.Background(fill);
+      pill.CornerRadius(CornerRadius{9, 9, 9, 9});
+      pill.Padding(Thickness{8, 2, 8, 2});
+      pill.VerticalAlignment(VerticalAlignment::Center);
+      pill.Child(MakeText(word, 12, ink));
+      Grid::SetColumn(pill, 2);
+      line.Children().Append(pill);
+    }
     list.Children().Append(line);
     // URnetwork's claim of it, with its transaction
     if (row.status == snpayout::RelayRowStatus::Claimed && !row.txUrl.empty() && row.txUrl != bannerUrl) {
