@@ -470,9 +470,11 @@ void ClaimAlphaSheet::ApplyState() {
   claimButton_.Content(winrt::box_value(
       hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))}));
   // held while the claim in flight runs, in this dialog or one closed since,
-  // and while a v2 claim runs: the gas key sends one claim at a time
-  claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending() &&
-                         !Held());
+  // and while a v2 claim runs: the gas key sends one claim at a time. After
+  // the claim's Done the dialog shows what came of it and offers no Claim:
+  // what is left is claimed from the dialog opened again, over a read that
+  // started after the Done (ClaimAlphaProgress::CanClaim).
+  claimButton_.IsEnabled(progress_->CanClaim(allowActions_) && !Held());
   // Once every claimable epoch confirmed the button has nothing left to do and
   // says so by its figure ("Claim 0.0000"), which is disabled above.
 }
@@ -764,7 +766,10 @@ void ClaimLedgerSheet::ApplyState() {
           ? Loc("sn_ledger_claim_both")
           : 0 < total ? hstring{urnw::Format("claim_amount_button", FormatAlphaRao(total))} : Loc("claim")));
   // held while the claim in flight runs, in this dialog or one closed since,
-  // and while a v1 claim runs: the gas key sends one claim at a time
+  // and while a v1 claim runs: the gas key sends one claim at a time. After
+  // the claim's Done the dialog shows what came of it and offers no Claim:
+  // what is left is claimed from the dialog opened again, over a read that
+  // started after the Done (LedgerClaimProgress::CanClaim).
   claimButton_.IsEnabled(progress_->CanClaim(allowActions_) && !Held());
   // with nothing Claim moves and no claim out (all claimed, or every row below
   // the claim minimum or unavailable) only Close is offered, never a Claim of 0

@@ -294,7 +294,7 @@ bool LedgerClaimProgress::TotalKnown() const {
 }
 
 bool LedgerClaimProgress::CanClaim(bool allowActions) const {
-  return allowActions && !sending_ && !needsGas_ && ClaimableRao() > 0;
+  return allowActions && !sending_ && !done_ && !needsGas_ && ClaimableRao() > 0;
 }
 
 bool LedgerClaimProgress::ClaimsBoth() const {
@@ -312,33 +312,17 @@ std::string LedgerClaimProgress::TitleKey(const LedgerClaimRow& row) const {
 }
 
 bool LedgerClaimProgress::Start() {
-  if (sending_ || ClaimableRao() <= 0) return false;
+  // a dialog presses once: none while its claim is out, and none once it
+  // ended, its rows being a read's from before the claim
+  if (sending_ || done_ || ClaimableRao() <= 0) return false;
   for (LedgerClaimRow& row : rows_) {
     // what this press takes of the row: a row Claim moves, at its amount now,
-    // the figure until Done (FigureRao)
+    // the figure until Done (FigureRao); one under the floor, or a pool the
+    // page could not read, waits as the page's read listed it
     row.pressRao = Movable(row) ? row.amountRao : 0;
-    if (row.state == LedgerClaimState::Confirmed || row.unavailable) continue;
-    if (UnderTransferFloor(row.amountRao, transferFloorRao_)) {
-      // under the dialog's floor no press takes it: one the last press left
-      // claimable (needs_gas) or failed waits below the claim minimum again,
-      // as the page's read listed it, until the SDK reports on it, and one
-      // still Sent keeps its state (Linux's)
-      if (row.state != LedgerClaimState::Sent) {
-        row.state = LedgerClaimState::Idle;
-        row.underFloor = true;
-        row.message.clear();
-      }
-      continue;
-    }
-    // a row the SDK added has no amount to count, and is claimed again too
-    if (row.underFloor) continue;
-    row.state = LedgerClaimState::Sending;
-    row.message.clear();
+    if (row.pressRao > 0) row.state = LedgerClaimState::Sending;
   }
   sending_ = true;
-  failure_.clear();
-  ledgerRead_ = false;
-  reportedUnavailable_.clear();
   return true;
 }
 
@@ -451,6 +435,7 @@ void LedgerClaimProgress::Failed(int64_t noId, int64_t index, const std::string&
 
 void LedgerClaimProgress::Done() {
   sending_ = false;
+  done_ = true;
   for (LedgerClaimRow& row : rows_) {
     if (row.state == LedgerClaimState::Sending) row.state = LedgerClaimState::Idle;
   }
@@ -717,8 +702,14 @@ size_t ClaimAlphaProgress::CaptionCount() const {
   return sending_ ? epochs_.size() : ClaimableCount();
 }
 
+bool ClaimAlphaProgress::CanClaim(bool allowActions) const {
+  return allowActions && !sending_ && !done_ && !needsGas_ && TotalClaimableRao() > 0;
+}
+
 bool ClaimAlphaProgress::Start() {
-  if (sending_) return false;
+  // a dialog presses once: none while its claim is out, and none once it
+  // ended, its rows being a read's from before the claim
+  if (sending_ || done_) return false;
   // what this press moves: the epochs it sends below, as they are now
   const int64_t pressRao = TotalClaimableRao();
   std::vector<int64_t> epochs;
@@ -772,6 +763,7 @@ void ClaimAlphaProgress::Failed(int64_t epoch, std::string const& message) {
 
 void ClaimAlphaProgress::Done() {
   sending_ = false;
+  done_ = true;
   // a row the SDK never reported on is not still sending
   for (auto& row : rows_) {
     if (row.state == Row::State::Sending) row.state = Row::State::Idle;

@@ -2130,6 +2130,9 @@ Claimer WalletPage::MakeClaimer() {
 bool WalletPage::StartV1Claim(std::shared_ptr<ClaimAlphaProgress> progress) {
   // the gas key sends one claim at a time (StartV2Claim)
   if (v2Claim_.InFlight()) return false;
+  // and nothing starts from epochs a read from before the last v1 claim's
+  // Done listed, whatever pressed it (snpayout::ClaimReads)
+  if (!v1Reads_.Fresh()) return false;
   const std::optional<uint64_t> started = v1Claim_.Start(progress);
   if (!started) return false;
   const uint64_t ticket = *started;
@@ -2474,6 +2477,9 @@ bool WalletPage::StartV2Claim(std::shared_ptr<snpayout::LedgerClaimProgress> pro
   // it signs, with no lock across a v1 and a v2 claim, so two claims at once
   // could take the same nonce (Linux's page holds one the same way).
   if (v1Claim_.InFlight()) return false;
+  // And nothing starts from accounts a read from before the last v2 claim's
+  // Done listed, whatever pressed it (snpayout::ClaimReads).
+  if (!v2Reads_.Fresh()) return false;
   const std::optional<uint64_t> started = v2Claim_.Start(progress);
   if (!started) return false;
   const uint64_t ticket = *started;

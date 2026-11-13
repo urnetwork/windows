@@ -340,10 +340,11 @@ class WalletPage {
   // The v1 dialog's Claim (Device.snClaim): StartV1Claim.
   Claimer MakeClaimer();
   // Starts the SDK's v1 claim on a dialog's `progress` as the session's claim
-  // in flight (v1Claim_): false, starting nothing, while one is in flight or
-  // when the press takes no epoch. Its events move the progress through
-  // OnV1ClaimEvent whether or not a dialog shows it; after its Done the page
-  // reads the claims and the gas balance again.
+  // in flight (v1Claim_): false, starting nothing, while one is in flight,
+  // when the press takes no epoch, or while the claims shown are a read's from
+  // before the last v1 claim's Done (v1Reads_). Its events move the progress
+  // through OnV1ClaimEvent whether or not a dialog shows it; after its Done
+  // the page reads the claims and the gas balance again.
   bool StartV1Claim(std::shared_ptr<ClaimAlphaProgress> progress);
   // An event of the claim whose progress is `claim`, and its Done (`ticket`):
   // they move that progress while the page or a dialog holds it, an open
@@ -390,11 +391,13 @@ class WalletPage {
   // The v2 dialog's Claim (Device.snLedgerClaim): StartV2Claim.
   LedgerClaimer MakeV2Claimer();
   // Starts the SDK's v2 claim on a dialog's `progress` as the session's claim
-  // in flight (v2Claim_): false, starting nothing, while one is in flight or
-  // when the press would take nothing. Its events move the progress through
-  // OnV2ClaimEvent whether or not a dialog shows it; after its Done the page
-  // reads the accounts, the gas balance, the relay's status and the wins
-  // again, and the wins on the schedule after a claim that paid.
+  // in flight (v2Claim_): false, starting nothing, while one is in flight,
+  // when the press would take nothing, or while the accounts shown are a
+  // read's from before the last v2 claim's Done (v2Reads_). Its events move
+  // the progress through OnV2ClaimEvent whether or not a dialog shows it;
+  // after its Done the page reads the accounts, the gas balance, the relay's
+  // status and the wins again, and the wins on the schedule after a claim
+  // that paid.
   bool StartV2Claim(std::shared_ptr<snpayout::LedgerClaimProgress> progress);
   // An event of the claim whose progress is `claim`, and its Done (`ticket`):
   // they move that progress while the page or a dialog holds it, an open

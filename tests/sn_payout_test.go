@@ -729,9 +729,9 @@ func TestV1ClaimIsTheSessions(t *testing.T) {
 		// the figure: during a claim what it moves, fixed at the press
 		"const int64_t total = progress_->FigureRao();",
 		"totalValue_.Text(hstring{FormatAlphaRao(total)});",
-		// held by its own claim and by a v2 claim in flight
-		"claimButton_.IsEnabled(allowActions_ && total > 0 && !progress_->needsGas() && !progress_->sending() &&",
-		"!Held());")
+		// held by its own claim and by a v2 claim in flight, and none after its
+		// claim's Done (ClaimAlphaProgress::CanClaim, which the spec runs)
+		"claimButton_.IsEnabled(progress_->CanClaim(allowActions_) && !Held());")
 	// the progress is the pure layer's, which the spec builds and runs ("v1
 	// claim: the dialog's figure and count are the press's until Done")
 	presentation := stripComments(readAppSource(t, "SnPayoutPresentation.cpp"))
@@ -857,6 +857,15 @@ func TestClaimReadOrder(t *testing.T) {
 		"events = snpayout::WithClaimPaid(std::move(events), [queue, weak, session](bool paid) {",
 		"self->wallet().LoadV2Accounts();")
 
+	// nothing starts from a read from before its kind's last Done, whatever
+	// pressed it
+	requireOrder("WalletPage::StartV1Claim", body(page, "bool WalletPage::StartV1Claim("),
+		"if (v2Claim_.InFlight()) return false;", "if (!v1Reads_.Fresh()) return false;",
+		"const std::optional<uint64_t> started = v1Claim_.Start(progress);")
+	requireOrder("WalletPage::StartV2Claim", body(page, "bool WalletPage::StartV2Claim("),
+		"if (v1Claim_.InFlight()) return false;", "if (!v2Reads_.Fresh()) return false;",
+		"const std::optional<uint64_t> started = v2Claim_.Start(progress);")
+
 	// every Claim waits for a read since its kind's last Done
 	requireAll("WalletPage::RebuildClaimButton", body(page, "void WalletPage::RebuildClaimButton("),
 		"snpayout::V1ClaimEnabled(v1Reads_.Fresh(), totalClaimableRao_, CanClaim(), v1Claim_.InFlight())")
@@ -887,8 +896,23 @@ func TestClaimReadOrder(t *testing.T) {
 			"claims_.clear();", "v2Accounts_.clear();", "v1Reads_.Reset();", "v2Reads_.Reset();", "gasReads_.Reset();", "}")
 	}
 
+	// a dialog presses once: after its claim's Done it offers no Claim from
+	// its own rows, a read's from before the claim (the progress's CanClaim
+	// and Start, which the spec runs); what is left is claimed from the
+	// dialog opened again, which opens only over a fresh read (above)
+	sheets := stripComments(readAppSource(t, "EarningsSheets.cpp"))
+	for _, signature := range []string{"void ClaimAlphaSheet::ApplyState(", "void ClaimLedgerSheet::ApplyState("} {
+		requireAll(signature, functionBody(sheets, signature),
+			"claimButton_.IsEnabled(progress_->CanClaim(allowActions_) && !Held());")
+	}
+
 	// the order is the pure layer's, which the spec builds and runs
 	presentation := stripComments(readAppSource(t, "SnPayoutPresentation.cpp"))
+	for _, kind := range []string{"ClaimAlphaProgress", "LedgerClaimProgress"} {
+		requireAll(kind+"::CanClaim", functionBody(presentation, "bool "+kind+"::CanClaim("), "!done_")
+		requireAll(kind+"::Start", functionBody(presentation, "bool "+kind+"::Start("), "|| done_")
+		requireAll(kind+"::Done", functionBody(presentation, "void "+kind+"::Done("), "done_ = true;")
+	}
 	requireAll("ClaimReads::Apply", functionBody(presentation, "bool ClaimReads::Apply("),
 		"if (read <= shown_) return false;", "shown_ = read;")
 	requireAll("V1ClaimEnabled", functionBody(presentation, "bool V1ClaimEnabled("),

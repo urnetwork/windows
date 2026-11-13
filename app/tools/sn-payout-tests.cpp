@@ -835,16 +835,20 @@ int main() {
     Check(!progress.sending(), "done");
     CheckRow(progress.rows()[1], 2, 3, 900'000'000, LedgerClaimState::Idle, "", "",
              "never reported on");
-    Check(progress.CanClaim(true), "the rest can be claimed again");
-    Check(progress.Start(), "again");
-    CheckRow(progress.rows()[0], 1, 42, 3'241'000'001, LedgerClaimState::Confirmed, "0xabc", "",
-             "a confirmed account is not sent again");
-    progress.Confirmed(2, 3, "0xdef", 0);
-    CheckRow(progress.rows()[1], 2, 3, 900'000'000, LedgerClaimState::Confirmed, "0xdef", "",
+    Check(progress.ClaimableRao() == 900'000'000, "what is left shows");
+    Check(!progress.CanClaim(true) && !progress.Start(),
+          "but after Done the dialog offers no Claim: its rows are a read's from before the claim");
+    // the rest is claimed from the dialog opened again, over the read after Done
+    LedgerAccount paidFirst = Account();
+    paidFirst.claimableRao = 0;
+    paidFirst.paidRao = paidFirst.finalizedRao;
+    LedgerClaimProgress again({paidFirst, other}, std::nullopt);
+    Check(again.rows().size() == 1 && again.CanClaim(true) && again.Start(), "the dialog opened again: Claim");
+    again.Confirmed(2, 3, "0xdef", 0);
+    CheckRow(again.rows()[0], 2, 3, 900'000'000, LedgerClaimState::Confirmed, "0xdef", "",
              "an event without an amount keeps the claimable");
-    progress.Done();
-    Check(progress.ClaimableRao() == 0 && !progress.CanClaim(true) && !progress.Start(),
-          "nothing left");
+    again.Done();
+    Check(again.ClaimableRao() == 0 && !again.CanClaim(true) && !again.Start(), "nothing left");
   }
   {
     TEST_CASE("v2 claim: needs_gas opens the gas top-up, and the account stays claimable");
@@ -883,7 +887,7 @@ int main() {
     Check(progress.ClaimableRao() == 0, "nothing left to claim");
   }
   {
-    TEST_CASE("v2 claim: any other failure shows its message, and a retry clears it");
+    TEST_CASE("v2 claim: any other failure shows its message, and the retry is the dialog opened again");
     LedgerClaimProgress progress({Account()}, 0.5);
     Check(progress.Start(), "Claim starts");
     progress.Sent(1, 42, "0xabc");
@@ -893,10 +897,13 @@ int main() {
     CheckEq("", ClaimFailureKey(progress.rows()[0].message), "the message as it came");
     Check(!progress.needsGas(), "no gas hint");
     progress.Done();
-    Check(progress.CanClaim(true), "still claimable");
-    Check(progress.Start(), "retry");
-    CheckRow(progress.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Sending, "0xabc", "",
-             "sending again");
+    Check(progress.rows()[0].state == LedgerClaimState::Failed && progress.ClaimableRao() == 3'241'000'000,
+          "Failed, and left");
+    Check(!progress.CanClaim(true) && !progress.Start(),
+          "no Claim from the failed row after Done: its transaction may have landed all the same");
+    LedgerClaimProgress retry({Account()}, 0.5);
+    Check(retry.CanClaim(true) && retry.Start(), "the dialog opened again over the read after Done: Claim");
+    CheckRow(retry.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Sending, "", "", "sending, with no failure");
   }
   {
     TEST_CASE("v2 claim: a failure for no pool is the dialog's");
@@ -909,7 +916,10 @@ int main() {
              "untouched");
     progress.Done();
     CheckRow(progress.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Idle, "", "", "at rest");
-    Check(progress.Start() && progress.failure().empty(), "a new claim clears it");
+    Check(!progress.failure().empty() && !progress.CanClaim(true) && !progress.Start(),
+          "after Done the failure stays, with no Claim");
+    LedgerClaimProgress again({Account()}, 0.5);
+    Check(again.failure().empty() && again.Start(), "the dialog opened again starts with none");
   }
   {
     TEST_CASE("v2 claim: an account the page did not list gets a row");
@@ -1198,7 +1208,10 @@ int main() {
     partly.Confirmed(1, 42, "0xbatch", 3'241'000'000);
     partly.Failed(kCtfNoId, 9, "claim_failed: reverted");
     partly.Done();
-    Check(!partly.ClaimsBoth() && partly.CanClaim(true), "capture the flag's alone, again");
+    Check(!partly.ClaimsBoth() && partly.ClaimableRao() == 50'000'000 && !partly.CanClaim(true),
+          "capture the flag's is left, and no Claim from this dialog after Done");
+    Check(!Dialog({CtfAccount()}).ClaimsBoth() && Dialog({CtfAccount()}).CanClaim(true),
+          "the dialog opened again: capture the flag's alone");
     // an account the batch did not attempt is then claimed alone, with its own hash
     LedgerClaimProgress alone({Account(), CtfAccount()}, 0.5);
     Check(alone.Start(), "Claim both");
@@ -1525,16 +1538,12 @@ int main() {
     lone.Done();
     Check(lone.rows()[0].underFloor && lone.rows()[0].state == LedgerClaimState::Idle && !lone.CanClaim(true),
           "a lone account under the runtime's floor");
-    // the SDK tries it again with the next press, and its newest answer is a
-    // failure: Failed, and above the dialog's floor (none here) a press takes
-    // it again
+    // the row says the SDK's newest answer: the preflight's refusal, then a
+    // failure, reads Failed, above the dialog's floor (none here), and what
+    // is left is claimed from the dialog opened again
     LedgerClaimProgress again = Dialog({Account(), CtfAccount()});
     Check(again.Start(), "Claim both");
     again.Failed(kCtfNoId, 9, tooLow);
-    again.Failed(1, 42, "claim_failed: execution reverted");
-    again.Done();
-    Check(again.rows()[1].underFloor && again.ClaimableRao() == 3'241'000'000, "the provider pool's alone");
-    Check(again.Start(), "Claim again");
     Check(again.rows()[1].state == LedgerClaimState::Idle && again.rows()[1].underFloor,
           "the preflight's refusal stands until the SDK answers again");
     again.Confirmed(1, 42, "0xabc", 3'241'000'000);
@@ -1542,7 +1551,8 @@ int main() {
     again.Done();
     CheckRow(again.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Failed, "",
              "claim_failed: execution reverted", "now Failed");
-    Check(!again.rows()[1].underFloor && again.ClaimableRao() == 50'000'000, "a press takes it again");
+    Check(!again.rows()[1].underFloor && again.ClaimableRao() == 50'000'000, "left, above the floor");
+    Check(!again.CanClaim(true) && !again.Start(), "claimed from the dialog opened again, not this one");
     // any other not_claimable of an account is its failure, as before
     const std::string elsewhere =
         "not_claimable: the ledger lists this account in 0x01, not in the configured vault2 0x02";
@@ -1573,7 +1583,8 @@ int main() {
     Check(!progress.rows()[1].underFloor && !progress.rows()[1].unavailable, "neither under the floor nor unavailable");
     Check(progress.needsGas() && progress.failure().empty(), "the funding hint, and no failure");
     Check(progress.ClaimableRao() == 50'000'000, "the claim's amount is what is left");
-    Check(!progress.CanClaim(true), "Claim again once the gas key has gas");
+    Check(!progress.CanClaim(true) && !progress.Start(),
+          "claimed from the dialog opened again once the gas key has gas");
     // the gas key pays for both alone after all: both claimed, no hint
     LedgerClaimProgress paid = Dialog({Account(), CtfAccount()});
     Check(paid.Start(), "Claim both");
@@ -1624,18 +1635,17 @@ int main() {
     Check(found.rows().size() == 2 && !found.rows()[1].unavailable && found.rows()[1].index == 9 &&
               found.rows()[1].state == LedgerClaimState::Sent,
           "the account's row");
-    // a second claim starts its own read: the pool reported unavailable by the
-    // first, read by the second, goes
+    // a pool the claim's own read could not read stays unavailable after its
+    // Done, a row with its amount, and the dialog offers no Claim: the next
+    // claim is the dialog opened again, over the read after Done
     LedgerClaimProgress again = Dialog({Account(), CtfAccount()});
     Check(again.Start(), "Claim both");
     again.Failed(kCtfNoId, 0, "ledger_unavailable: 503");
     again.Failed(1, 42, "claim_failed: reverted");
     again.Done();
-    Check(again.rows().size() == 2 && again.rows()[1].unavailable, "unavailable to the first claim");
-    Check(again.Start(), "Claim again");
-    again.Sent(1, 42, "0xdef");
-    again.Done();
-    Check(again.rows().size() == 2, "a row with its amount stays: the page listed its account");
+    Check(again.rows().size() == 2 && again.rows()[1].unavailable && again.rows()[1].amountRao == 50'000'000,
+          "unavailable to the claim, with its amount");
+    Check(!again.CanClaim(true) && !again.Start(), "no Claim after Done");
   }
   {
     TEST_CASE("ctf: the no-wallet tile's rows and its total");
@@ -2067,15 +2077,19 @@ int main() {
     Check(page.dialog != first && !page.dialog->sending() && page.dialog->CanClaim(true), "a dialog over the read");
     Check(page.Press() && page.sdk.size() == 2, "the next claim");
 
-    // the dialog pressed again after its claim's Done claims on from its own
-    // progress
+    // after its claim's Done the dialog shows what came of it and offers no
+    // Claim from its own rows: a failed account's transaction may have landed
     page.sdk[1].failed(1, 42, "claim_failed: execution reverted");
     page.sdk[1].done();
     page.Drain();
-    const std::shared_ptr<LedgerClaimProgress> retry = page.dialog;
-    Check(!page.claim.InFlight() && retry->CanClaim(true), "failed: Claim again");
-    Check(page.Press() && page.claim.Progress() == retry && page.sdk.size() == 3,
-          "the same dialog's progress claims again");
+    const std::shared_ptr<LedgerClaimProgress> ended = page.dialog;
+    Check(!page.claim.InFlight() && !ended->CanClaim(true) && !page.ClaimEnabled(), "failed: no Claim from it");
+    Check(!page.Press() && page.sdk.size() == 2 && !page.claim.InFlight(), "a press sends nothing");
+    // the dialog opened again, over the read after Done, claims what is left
+    page.Close();
+    page.Open();
+    Check(page.dialog != ended && page.Press() && page.claim.Progress() == page.dialog && page.sdk.size() == 3,
+          "the dialog opened again claims anew");
   }
   {
     TEST_CASE("v2 claim: a sign-out drops the claim in flight");
@@ -2227,6 +2241,39 @@ int main() {
     Check(expired.rows()[0].claim.status == "expired" && expired.FigureRao() == 0, "an expired epoch is left out");
     ClaimAlphaProgress none({epoch(3, 1'000'000'000, "claimed")}, 1.0);
     Check(!none.Start() && !none.sending() && none.FigureRao() == 0, "nothing claimable: no claim");
+  }
+  {
+    TEST_CASE("v1 claim: after its Done the dialog offers no Claim from its rows");
+    // a dialog presses once (every app, 2026-11-12): its rows are a read's
+    // from before the claim, and an epoch the claim reported failed may have
+    // been paid all the same, so a press from them could send a transaction
+    // the vault reverts; what is left is claimed from the dialog opened
+    // again, over a read that started after the Done
+    ClaimAlphaProgress dialog({Epoch(9, 500'000'000, "claimable"), Epoch(7, 1'000'000'000, "claimable"),
+                               Epoch(5, 200'000'000, "claimable")},
+                              1.0);
+    Check(dialog.CanClaim(true) && !dialog.CanClaim(false), "Claim, with a device to send from");
+    Check(dialog.Start() && !dialog.CanClaim(true), "held while the claim runs");
+    dialog.Confirmed(9, "0x9", 500'000'000);
+    dialog.Failed(7, "claim_failed: execution reverted");
+    dialog.Failed(5, "already_claimed: the vault paid it");
+    dialog.Done();
+    Check(!dialog.sending() && dialog.TotalClaimableRao() == 1'200'000'000, "the epochs left, as the claim left them");
+    Check(!dialog.CanClaim(true) && !dialog.Start() && !dialog.sending(),
+          "no Claim from them after Done: not the failed epoch, nor the one paid already");
+    // the dialog opened again over the read after Done: epoch 7 is still
+    // claimable, 9 and 5 are paid
+    ClaimAlphaProgress reopened({Epoch(9, 500'000'000, "claimed"), Epoch(7, 1'000'000'000, "claimable"),
+                                 Epoch(5, 200'000'000, "claimed")},
+                                1.0);
+    Check(reopened.CanClaim(true) && reopened.Start() && reopened.epochs() == std::vector<int64_t>{7},
+          "the dialog opened again claims what that read says is left");
+    // short of gas: the funding hint, and no Claim after Done either
+    ClaimAlphaProgress gas({Epoch(7, 1'000'000'000, "claimable")}, 1.0);
+    Check(gas.Start(), "Claim");
+    gas.Failed(7, "needs gas: the gas key cannot pay for the claim");
+    gas.Done();
+    Check(gas.needsGas() && !gas.CanClaim(true) && !gas.Start(), "the funding hint, and no Claim");
   }
   {
     TEST_CASE("v2: a claim in flight keeps the section's Claim");
@@ -2518,7 +2565,8 @@ int main() {
     Check(gas.ClaimableRao() == 0 && !gas.ClaimsBoth() && !gas.CanClaim(true) && !gas.TotalKnown(),
           "still no claim of it, and no total");
     // another failure, after the chain took it in the batch: Failed with its
-    // message, and the next press leaves it out
+    // message; what is left above the floor is the provider pool's alone, and
+    // the dialog offers no Claim after Done
     LedgerClaimProgress failed = Dialog({Account(), CtfAccount()}, kFloor);
     Check(failed.Start(), "Claim");
     failed.Sent(1, 42, "0xbatch");
@@ -2530,29 +2578,31 @@ int main() {
              "claim_failed: execution reverted", "Failed, with its message");
     Check(!failed.rows()[1].underFloor, "not below the claim minimum");
     Check(failed.ClaimableRao() == 3'241'000'000 && !failed.ClaimsBoth(),
-          "the next press takes the provider pool's alone, never Claim both");
-    // that press lists it Below the claim minimum again until the SDK reports
-    Check(failed.Start(), "Claim again");
-    CheckRow(failed.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Sending, "0xbatch", "",
+          "what is left above the floor: the provider pool's alone, never Claim both");
+    Check(!failed.CanClaim(true) && !failed.Start(), "and no Claim from this dialog after Done");
+    // the dialog opened again over the read after Done lists it Below the
+    // claim minimum, as the read does, and claims the provider pool's alone
+    LedgerClaimProgress reopened = Dialog({Account(), CtfAccount()}, kFloor);
+    Check(reopened.rows()[1].underFloor && reopened.Start(), "Claim");
+    CheckRow(reopened.rows()[0], 1, 42, 3'241'000'000, LedgerClaimState::Sending, "", "",
              "the provider pool's, sending");
-    CheckRow(failed.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Idle, "0xbatch", "",
+    CheckRow(reopened.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Idle, "", "",
              "capture the flag's, waiting");
-    Check(failed.rows()[1].underFloor, "below the claim minimum again");
     // and AmountTooLow alone reads Below the claim minimum once the SDK tried it
-    failed.Failed(kCtfNoId, 9, tooLow);
-    failed.Done();
-    Check(failed.rows()[1].underFloor && failed.rows()[1].state == LedgerClaimState::Idle &&
-              failed.rows()[1].message.empty(),
+    reopened.Failed(kCtfNoId, 9, tooLow);
+    reopened.Done();
+    Check(reopened.rows()[1].underFloor && reopened.rows()[1].state == LedgerClaimState::Idle &&
+              reopened.rows()[1].message.empty(),
           "AmountTooLow: below the claim minimum");
-    // one still Sent when its press ended keeps that state at the next press
-    // (Linux's), and is not taken
+    // one still Sent when its claim ended stays Sent, and no Claim takes it
     LedgerClaimProgress inflight = Dialog({Account(), CtfAccount()}, kFloor);
     Check(inflight.Start(), "Claim");
     inflight.Sent(kCtfNoId, 9, "0xslow");
     inflight.Failed(1, 42, "claim_failed: execution reverted");
     inflight.Done();
-    Check(inflight.ClaimableRao() == 3'241'000'000 && inflight.Start(), "Claim the provider pool's again");
     CheckRow(inflight.rows()[1], kCtfNoId, 9, 50'000'000, LedgerClaimState::Sent, "0xslow", "", "still Sent");
+    Check(inflight.ClaimableRao() == 3'241'000'000 && !inflight.CanClaim(true) && !inflight.Start(),
+          "the provider pool's is left, claimed from the dialog opened again");
     // a lone account under the floor: never a Claim of it
     LedgerAccount small = Account();
     small.claimableRao = 1;
