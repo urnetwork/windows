@@ -573,6 +573,11 @@ void SdkHost::BindApiLocked() {
   // Every request, renewal and connect auth this Api makes carries it; the
   // sdk fills in its own version.
   api_->setClientInfo(urnet::newClientInfoWithDistribution(kClientDeviceType, appVersion_, kClientDistribution));
+  // The device's zone and the user's languages ride on sign-up, sign-in and
+  // auth-client (the sdk fills them into each request's args): the campaign
+  // emails are placed in the reader's day and written in their language
+  // (server controller/mail_context.go).
+  api_->setMailLocale(LocalTimeZoneId(), DeviceLanguages());
   // The sdk drops the account's credential on a confirmed 401 against it, and
   // after a sign-out of this session from the Sessions page, and tells this
   // Api's logout listeners. The app then signs out the way it does when the
@@ -2484,7 +2489,11 @@ void SdkHost::AuthNetworkClientWithLocale(const urnet::AuthNetworkClientArgs& ar
                                           urnet::AuthNetworkClientCallback callback) {
   nlohmann::json json = args;
   json["time_zone"] = LocalTimeZoneId();
-  json["locale"] = ClientEventLocale();
+  // the user's first language, else the app's; the sdk adds the whole list
+  // (setMailLocale). An unknown one is left out, never sent as "en".
+  const std::vector<std::string> languages = DeviceLanguages();
+  const std::string locale = languages.empty() ? ClientEventLocale() : languages.front();
+  if (!locale.empty()) json["locale"] = locale;
   const std::string body = json.dump();
   auto* fn = new urnet::AuthNetworkClientCallback(std::move(callback));
   urnet_api_auth_network_client(api_->handle(), body.c_str(),

@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace urnw {
 
@@ -76,11 +77,17 @@ class ClientEventQueue {
   uint64_t handle_ = 0;
 };
 
-// The locale tag the events and the client registration carry ("en-US", BCP
-// 47), from the app's primary language.
+// The locale tag the events carry ("en-US", BCP 47), from the app's primary
+// language. Empty when unknown: an unknown language is not English.
 std::string ClientEventLocale();
 // The IANA time zone id the client registration carries ("Europe/Berlin"),
 // from Windows.Globalization.Calendar (ICU ids). Empty when unknown.
 std::string LocalTimeZoneId();
+// The user's languages, most preferred first, as BCP 47 tags (Settings >
+// Time & language > Language & region), from
+// Windows.System.UserProfile.GlobalizationPreferences. Empty when unknown.
+// The sdk sends them with sign-up, sign-in and auth-client so the campaign
+// emails are written in the reader's language (Api::setMailLocale).
+std::vector<std::string> DeviceLanguages();
 
 }  // namespace urnw

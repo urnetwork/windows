@@ -310,6 +310,30 @@ func TestClientEventLocaleUsesTheExportedResourceLanguage(t *testing.T) {
 	if strings.Contains(events, "Narrow(PrimaryLanguage())") {
 		t.Fatal("ClientEventLocale narrows PrimaryLanguage even though it already returns UTF-8")
 	}
+	// an unread language is unknown, not English: "en" stops the server from
+	// using the reader's country (campaign review item B, 2026-11-13)
+	locale := events[strings.Index(events, "std::string ClientEventLocale() {"):]
+	locale = locale[:strings.Index(locale, "\n}\n")]
+	if strings.Contains(locale, `"en"`) {
+		t.Fatal("ClientEventLocale reports an unknown language as English")
+	}
+}
+
+// The api carries the user's languages and the device's zone, which the sdk
+// sends with sign-up, sign-in and auth-client (Api::setMailLocale): the user's
+// own list (GlobalizationPreferences), not just the app's resource language.
+func TestApiCarriesTheMailLocale(t *testing.T) {
+	events := readAppSource(t, "ClientEvents.cpp")
+	if !strings.Contains(events, "GlobalizationPreferences::Languages()") {
+		t.Fatal("DeviceLanguages does not read the user's languages")
+	}
+	host := readAppSource(t, "SdkHost.cpp")
+	bind := host[strings.Index(host, "void SdkHost::BindApiLocked() {"):]
+	clientInfo := strings.Index(bind, "api_->setClientInfo(")
+	mailLocale := strings.Index(bind, "api_->setMailLocale(LocalTimeZoneId(), DeviceLanguages());")
+	if clientInfo < 0 || mailLocale < 0 || mailLocale < clientInfo {
+		t.Fatal("BindApiLocked does not give the api the device's zone and languages with its client info")
+	}
 }
 
 func TestReferralReloadIsPublicForMainWindowNavigation(t *testing.T) {

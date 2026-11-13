@@ -4,7 +4,9 @@
 #include "ClientEvents.h"
 
 #include <urnetwork_sdk.h>
+#include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Globalization.h>
+#include <winrt/Windows.System.UserProfile.h>
 
 #include "Localization.h"
 #include "Log.h"
@@ -13,8 +15,24 @@
 namespace urnw {
 
 std::string ClientEventLocale() {
+  // an unread language is unknown, not English: the server falls back to the
+  // reader's country for an unknown language, and never for English
   const std::string tag = PrimaryLanguage();
-  return tag.empty() ? std::string("en") : tag;
+  return tag;
+}
+
+std::vector<std::string> DeviceLanguages() {
+  std::vector<std::string> languages;
+  try {
+    for (const auto& language :
+         winrt::Windows::System::UserProfile::GlobalizationPreferences::Languages()) {
+      std::string tag = Narrow(std::wstring{language});
+      if (!tag.empty()) languages.push_back(std::move(tag));
+    }
+  } catch (...) {
+    languages.clear();
+  }
+  return languages;
 }
 
 std::string LocalTimeZoneId() {
